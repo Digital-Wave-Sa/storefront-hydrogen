@@ -1,3 +1,14 @@
+<<<<<<< HEAD
+node_modules
+/.cache
+/build
+/dist
+/public/build
+/.mf
+.env
+.shopify
+.react-router
+=======
 # Logs
 logs
 *.log
@@ -137,3 +148,4 @@ dist
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+>>>>>>> 623b917ca1bcb2dc65a83229bb563ef820b4c055

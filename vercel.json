@@ -1,13 +1,7 @@
 {
-  "functions": {
-    "server.ts": {
-      "runtime": "edge"
-    }
-  },
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "/server.ts"
-    }
-  ]
+  "version": 2,
+  "framework": "remix",
+  "buildCommand": "npm run build",
+  "outputDirectory": "public",
+  "installCommand": "npm install"
 }

@@ -1,5 +1,13 @@
 {
-  "framework": null,
-  "buildCommand": "npm run build",
-  "outputDirectory": ".vercel/output"
+  "functions": {
+    "server.ts": {
+      "runtime": "edge"
+    }
+  },
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/server.ts"
+    }
+  ]
 }

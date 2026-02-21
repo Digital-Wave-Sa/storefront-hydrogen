@@ -1,8 +1,4 @@
 {
   "version": 2,
-  "buildCommand": "npm run build",
-  "env": {
-    "SHOPIFY_STORE_DOMAIN": "@shopify_store_domain",
-    "SHOPIFY_STOREFRONT_TOKEN": "@shopify_storefront_token"
-  }
+  "buildCommand": "npm run build"
 }

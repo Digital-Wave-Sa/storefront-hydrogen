@@ -1,0 +1,676 @@
+{
+  "buildManifest": {
+    "serverBundles": {
+      "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0": {
+        "id": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+        "file": "build/server/nodejs_eyJydW50aW1lIjoibm9kZWpzIn0/index.js",
+        "config": {
+          "runtime": "nodejs"
+        }
+      }
+    },
+    "routeIdToServerBundleId": {
+      "root": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+      "routes/[robots.txt]": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+      "routes/($locale).blogs.$blogHandle.$articleHandle": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+      "routes/($locale).api.$version.[graphql.json]": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+      "routes/($locale).sitemap.$type.$page[.xml]": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+      "routes/($locale).blogs.$blogHandle._index": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+      "routes/($locale).collections.$handle": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+      "routes/($locale).account_.authorize": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+      "routes/($locale).collections._index": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+      "routes/($locale).policies.$handle": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+      "routes/($locale).products.$handle": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+      "routes/($locale).account_.logout": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+      "routes/($locale).collections.all": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+      "routes/($locale).policies._index": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+      "routes/($locale).account_.login": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+      "routes/($locale).discount.$code": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+      "routes/($locale).pages.$handle": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+      "routes/($locale).[sitemap.xml]": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+      "routes/($locale).blogs._index": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+      "routes/($locale).account.orders._index": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+      "routes/($locale).account.orders.$id": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+      "routes/($locale).account.addresses": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+      "routes/($locale).account.profile": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+      "routes/($locale).account._index": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+      "routes/($locale).account.$": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+      "routes/($locale).search": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+      "routes/($locale)._index": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+      "routes/($locale).cart": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+      "routes/($locale).cart.$lines": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+      "routes/($locale).$": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0"
+    },
+    "routes": {
+      "root": {
+        "id": "root",
+        "file": "app/root.tsx",
+        "path": "",
+        "config": {
+          "runtime": "nodejs"
+        }
+      },
+      "routes/[robots.txt]": {
+        "id": "routes/[robots.txt]",
+        "parentId": "root",
+        "file": "app/routes/[robots.txt].tsx",
+        "path": "robots.txt",
+        "config": {}
+      },
+      "routes/($locale)": {
+        "id": "routes/($locale)",
+        "parentId": "root",
+        "file": "app/routes/($locale).tsx",
+        "path": ":locale?",
+        "config": {}
+      },
+      "routes/($locale).blogs.$blogHandle.$articleHandle": {
+        "id": "routes/($locale).blogs.$blogHandle.$articleHandle",
+        "parentId": "routes/($locale)",
+        "file": "app/routes/($locale).blogs.$blogHandle.$articleHandle.tsx",
+        "path": "blogs/:blogHandle/:articleHandle",
+        "config": {}
+      },
+      "routes/($locale).api.$version.[graphql.json]": {
+        "id": "routes/($locale).api.$version.[graphql.json]",
+        "parentId": "routes/($locale)",
+        "file": "app/routes/($locale).api.$version.[graphql.json].tsx",
+        "path": "api/:version/graphql.json",
+        "config": {}
+      },
+      "routes/($locale).sitemap.$type.$page[.xml]": {
+        "id": "routes/($locale).sitemap.$type.$page[.xml]",
+        "parentId": "routes/($locale)",
+        "file": "app/routes/($locale).sitemap.$type.$page[.xml].tsx",
+        "path": "sitemap/:type/:page.xml",
+        "config": {}
+      },
+      "routes/($locale).blogs.$blogHandle._index": {
+        "id": "routes/($locale).blogs.$blogHandle._index",
+        "parentId": "routes/($locale)",
+        "file": "app/routes/($locale).blogs.$blogHandle._index.tsx",
+        "path": "blogs/:blogHandle",
+        "index": true,
+        "config": {}
+      },
+      "routes/($locale).collections.$handle": {
+        "id": "routes/($locale).collections.$handle",
+        "parentId": "routes/($locale)",
+        "file": "app/routes/($locale).collections.$handle.tsx",
+        "path": "collections/:handle",
+        "config": {}
+      },
+      "routes/($locale).account_.authorize": {
+        "id": "routes/($locale).account_.authorize",
+        "parentId": "routes/($locale)",
+        "file": "app/routes/($locale).account_.authorize.tsx",
+        "path": "account/authorize",
+        "config": {}
+      },
+      "routes/($locale).collections._index": {
+        "id": "routes/($locale).collections._index",
+        "parentId": "routes/($locale)",
+        "file": "app/routes/($locale).collections._index.tsx",
+        "path": "collections",
+        "index": true,
+        "config": {}
+      },
+      "routes/($locale).policies.$handle": {
+        "id": "routes/($locale).policies.$handle",
+        "parentId": "routes/($locale)",
+        "file": "app/routes/($locale).policies.$handle.tsx",
+        "path": "policies/:handle",
+        "config": {}
+      },
+      "routes/($locale).products.$handle": {
+        "id": "routes/($locale).products.$handle",
+        "parentId": "routes/($locale)",
+        "file": "app/routes/($locale).products.$handle.tsx",
+        "path": "products/:handle",
+        "config": {}
+      },
+      "routes/($locale).account_.logout": {
+        "id": "routes/($locale).account_.logout",
+        "parentId": "routes/($locale)",
+        "file": "app/routes/($locale).account_.logout.tsx",
+        "path": "account/logout",
+        "config": {}
+      },
+      "routes/($locale).collections.all": {
+        "id": "routes/($locale).collections.all",
+        "parentId": "routes/($locale)",
+        "file": "app/routes/($locale).collections.all.tsx",
+        "path": "collections/all",
+        "config": {}
+      },
+      "routes/($locale).policies._index": {
+        "id": "routes/($locale).policies._index",
+        "parentId": "routes/($locale)",
+        "file": "app/routes/($locale).policies._index.tsx",
+        "path": "policies",
+        "index": true,
+        "config": {}
+      },
+      "routes/($locale).account_.login": {
+        "id": "routes/($locale).account_.login",
+        "parentId": "routes/($locale)",
+        "file": "app/routes/($locale).account_.login.tsx",
+        "path": "account/login",
+        "config": {}
+      },
+      "routes/($locale).discount.$code": {
+        "id": "routes/($locale).discount.$code",
+        "parentId": "routes/($locale)",
+        "file": "app/routes/($locale).discount.$code.tsx",
+        "path": "discount/:code",
+        "config": {}
+      },
+      "routes/($locale).pages.$handle": {
+        "id": "routes/($locale).pages.$handle",
+        "parentId": "routes/($locale)",
+        "file": "app/routes/($locale).pages.$handle.tsx",
+        "path": "pages/:handle",
+        "config": {}
+      },
+      "routes/($locale).[sitemap.xml]": {
+        "id": "routes/($locale).[sitemap.xml]",
+        "parentId": "routes/($locale)",
+        "file": "app/routes/($locale).[sitemap.xml].tsx",
+        "path": "sitemap.xml",
+        "config": {}
+      },
+      "routes/($locale).blogs._index": {
+        "id": "routes/($locale).blogs._index",
+        "parentId": "routes/($locale)",
+        "file": "app/routes/($locale).blogs._index.tsx",
+        "path": "blogs",
+        "index": true,
+        "config": {}
+      },
+      "routes/($locale).account": {
+        "id": "routes/($locale).account",
+        "parentId": "routes/($locale)",
+        "file": "app/routes/($locale).account.tsx",
+        "path": "account",
+        "config": {}
+      },
+      "routes/($locale).account.orders._index": {
+        "id": "routes/($locale).account.orders._index",
+        "parentId": "routes/($locale).account",
+        "file": "app/routes/($locale).account.orders._index.tsx",
+        "path": "orders",
+        "index": true,
+        "config": {}
+      },
+      "routes/($locale).account.orders.$id": {
+        "id": "routes/($locale).account.orders.$id",
+        "parentId": "routes/($locale).account",
+        "file": "app/routes/($locale).account.orders.$id.tsx",
+        "path": "orders/:id",
+        "config": {}
+      },
+      "routes/($locale).account.addresses": {
+        "id": "routes/($locale).account.addresses",
+        "parentId": "routes/($locale).account",
+        "file": "app/routes/($locale).account.addresses.tsx",
+        "path": "addresses",
+        "config": {}
+      },
+      "routes/($locale).account.profile": {
+        "id": "routes/($locale).account.profile",
+        "parentId": "routes/($locale).account",
+        "file": "app/routes/($locale).account.profile.tsx",
+        "path": "profile",
+        "config": {}
+      },
+      "routes/($locale).account._index": {
+        "id": "routes/($locale).account._index",
+        "parentId": "routes/($locale).account",
+        "file": "app/routes/($locale).account._index.tsx",
+        "index": true,
+        "config": {}
+      },
+      "routes/($locale).account.$": {
+        "id": "routes/($locale).account.$",
+        "parentId": "routes/($locale).account",
+        "file": "app/routes/($locale).account.$.tsx",
+        "path": "*",
+        "config": {}
+      },
+      "routes/($locale).search": {
+        "id": "routes/($locale).search",
+        "parentId": "routes/($locale)",
+        "file": "app/routes/($locale).search.tsx",
+        "path": "search",
+        "config": {}
+      },
+      "routes/($locale)._index": {
+        "id": "routes/($locale)._index",
+        "parentId": "routes/($locale)",
+        "file": "app/routes/($locale)._index.tsx",
+        "index": true,
+        "config": {}
+      },
+      "routes/($locale).cart": {
+        "id": "routes/($locale).cart",
+        "parentId": "routes/($locale)",
+        "file": "app/routes/($locale).cart.tsx",
+        "path": "cart",
+        "config": {}
+      },
+      "routes/($locale).cart.$lines": {
+        "id": "routes/($locale).cart.$lines",
+        "parentId": "routes/($locale).cart",
+        "file": "app/routes/($locale).cart.$lines.tsx",
+        "path": ":lines",
+        "config": {}
+      },
+      "routes/($locale).$": {
+        "id": "routes/($locale).$",
+        "parentId": "routes/($locale)",
+        "file": "app/routes/($locale).$.tsx",
+        "path": "*",
+        "config": {}
+      }
+    }
+  },
+  "reactRouterConfig": {
+    "appDirectory": "C:/Users/ASUS/saadaldeen/app",
+    "basename": "/",
+    "buildDirectory": "C:/Users/ASUS/saadaldeen/build",
+    "future": {
+      "unstable_optimizeDeps": false,
+      "unstable_subResourceIntegrity": false,
+      "unstable_trailingSlashAwareDataRequests": false,
+      "v8_middleware": false,
+      "v8_splitRouteModules": false,
+      "v8_viteEnvironmentApi": false
+    },
+    "routes": {
+      "root": {
+        "id": "root",
+        "file": "root.tsx",
+        "path": ""
+      },
+      "routes/[robots.txt]": {
+        "id": "routes/[robots.txt]",
+        "parentId": "root",
+        "file": "routes/[robots.txt].tsx",
+        "path": "robots.txt"
+      },
+      "routes/($locale)": {
+        "id": "routes/($locale)",
+        "parentId": "root",
+        "file": "routes/($locale).tsx",
+        "path": ":locale?"
+      },
+      "routes/($locale).blogs.$blogHandle.$articleHandle": {
+        "id": "routes/($locale).blogs.$blogHandle.$articleHandle",
+        "parentId": "routes/($locale)",
+        "file": "routes/($locale).blogs.$blogHandle.$articleHandle.tsx",
+        "path": "blogs/:blogHandle/:articleHandle"
+      },
+      "routes/($locale).api.$version.[graphql.json]": {
+        "id": "routes/($locale).api.$version.[graphql.json]",
+        "parentId": "routes/($locale)",
+        "file": "routes/($locale).api.$version.[graphql.json].tsx",
+        "path": "api/:version/graphql.json"
+      },
+      "routes/($locale).sitemap.$type.$page[.xml]": {
+        "id": "routes/($locale).sitemap.$type.$page[.xml]",
+        "parentId": "routes/($locale)",
+        "file": "routes/($locale).sitemap.$type.$page[.xml].tsx",
+        "path": "sitemap/:type/:page.xml"
+      },
+      "routes/($locale).blogs.$blogHandle._index": {
+        "id": "routes/($locale).blogs.$blogHandle._index",
+        "parentId": "routes/($locale)",
+        "file": "routes/($locale).blogs.$blogHandle._index.tsx",
+        "path": "blogs/:blogHandle",
+        "index": true
+      },
+      "routes/($locale).collections.$handle": {
+        "id": "routes/($locale).collections.$handle",
+        "parentId": "routes/($locale)",
+        "file": "routes/($locale).collections.$handle.tsx",
+        "path": "collections/:handle"
+      },
+      "routes/($locale).account_.authorize": {
+        "id": "routes/($locale).account_.authorize",
+        "parentId": "routes/($locale)",
+        "file": "routes/($locale).account_.authorize.tsx",
+        "path": "account/authorize"
+      },
+      "routes/($locale).collections._index": {
+        "id": "routes/($locale).collections._index",
+        "parentId": "routes/($locale)",
+        "file": "routes/($locale).collections._index.tsx",
+        "path": "collections",
+        "index": true
+      },
+      "routes/($locale).policies.$handle": {
+        "id": "routes/($locale).policies.$handle",
+        "parentId": "routes/($locale)",
+        "file": "routes/($locale).policies.$handle.tsx",
+        "path": "policies/:handle"
+      },
+      "routes/($locale).products.$handle": {
+        "id": "routes/($locale).products.$handle",
+        "parentId": "routes/($locale)",
+        "file": "routes/($locale).products.$handle.tsx",
+        "path": "products/:handle"
+      },
+      "routes/($locale).account_.logout": {
+        "id": "routes/($locale).account_.logout",
+        "parentId": "routes/($locale)",
+        "file": "routes/($locale).account_.logout.tsx",
+        "path": "account/logout"
+      },
+      "routes/($locale).collections.all": {
+        "id": "routes/($locale).collections.all",
+        "parentId": "routes/($locale)",
+        "file": "routes/($locale).collections.all.tsx",
+        "path": "collections/all"
+      },
+      "routes/($locale).policies._index": {
+        "id": "routes/($locale).policies._index",
+        "parentId": "routes/($locale)",
+        "file": "routes/($locale).policies._index.tsx",
+        "path": "policies",
+        "index": true
+      },
+      "routes/($locale).account_.login": {
+        "id": "routes/($locale).account_.login",
+        "parentId": "routes/($locale)",
+        "file": "routes/($locale).account_.login.tsx",
+        "path": "account/login"
+      },
+      "routes/($locale).discount.$code": {
+        "id": "routes/($locale).discount.$code",
+        "parentId": "routes/($locale)",
+        "file": "routes/($locale).discount.$code.tsx",
+        "path": "discount/:code"
+      },
+      "routes/($locale).pages.$handle": {
+        "id": "routes/($locale).pages.$handle",
+        "parentId": "routes/($locale)",
+        "file": "routes/($locale).pages.$handle.tsx",
+        "path": "pages/:handle"
+      },
+      "routes/($locale).[sitemap.xml]": {
+        "id": "routes/($locale).[sitemap.xml]",
+        "parentId": "routes/($locale)",
+        "file": "routes/($locale).[sitemap.xml].tsx",
+        "path": "sitemap.xml"
+      },
+      "routes/($locale).blogs._index": {
+        "id": "routes/($locale).blogs._index",
+        "parentId": "routes/($locale)",
+        "file": "routes/($locale).blogs._index.tsx",
+        "path": "blogs",
+        "index": true
+      },
+      "routes/($locale).account": {
+        "id": "routes/($locale).account",
+        "parentId": "routes/($locale)",
+        "file": "routes/($locale).account.tsx",
+        "path": "account"
+      },
+      "routes/($locale).account.orders._index": {
+        "id": "routes/($locale).account.orders._index",
+        "parentId": "routes/($locale).account",
+        "file": "routes/($locale).account.orders._index.tsx",
+        "path": "orders",
+        "index": true
+      },
+      "routes/($locale).account.orders.$id": {
+        "id": "routes/($locale).account.orders.$id",
+        "parentId": "routes/($locale).account",
+        "file": "routes/($locale).account.orders.$id.tsx",
+        "path": "orders/:id"
+      },
+      "routes/($locale).account.addresses": {
+        "id": "routes/($locale).account.addresses",
+        "parentId": "routes/($locale).account",
+        "file": "routes/($locale).account.addresses.tsx",
+        "path": "addresses"
+      },
+      "routes/($locale).account.profile": {
+        "id": "routes/($locale).account.profile",
+        "parentId": "routes/($locale).account",
+        "file": "routes/($locale).account.profile.tsx",
+        "path": "profile"
+      },
+      "routes/($locale).account._index": {
+        "id": "routes/($locale).account._index",
+        "parentId": "routes/($locale).account",
+        "file": "routes/($locale).account._index.tsx",
+        "index": true
+      },
+      "routes/($locale).account.$": {
+        "id": "routes/($locale).account.$",
+        "parentId": "routes/($locale).account",
+        "file": "routes/($locale).account.$.tsx",
+        "path": "*"
+      },
+      "routes/($locale).search": {
+        "id": "routes/($locale).search",
+        "parentId": "routes/($locale)",
+        "file": "routes/($locale).search.tsx",
+        "path": "search"
+      },
+      "routes/($locale)._index": {
+        "id": "routes/($locale)._index",
+        "parentId": "routes/($locale)",
+        "file": "routes/($locale)._index.tsx",
+        "index": true
+      },
+      "routes/($locale).cart": {
+        "id": "routes/($locale).cart",
+        "parentId": "routes/($locale)",
+        "file": "routes/($locale).cart.tsx",
+        "path": "cart"
+      },
+      "routes/($locale).cart.$lines": {
+        "id": "routes/($locale).cart.$lines",
+        "parentId": "routes/($locale).cart",
+        "file": "routes/($locale).cart.$lines.tsx",
+        "path": ":lines"
+      },
+      "routes/($locale).$": {
+        "id": "routes/($locale).$",
+        "parentId": "routes/($locale)",
+        "file": "routes/($locale).$.tsx",
+        "path": "*"
+      }
+    },
+    "routeDiscovery": {
+      "mode": "lazy",
+      "manifestPath": "/__manifest"
+    },
+    "serverBuildFile": "index.js",
+    "serverModuleFormat": "esm",
+    "ssr": true,
+    "allowedActionOrigins": false,
+    "unstable_routeConfig": [
+      {
+        "id": "root",
+        "path": "",
+        "file": "root.tsx",
+        "children": [
+          {
+            "id": "routes/[robots.txt]",
+            "file": "routes/[robots.txt].tsx",
+            "path": "robots.txt"
+          },
+          {
+            "id": "routes/($locale)",
+            "file": "routes/($locale).tsx",
+            "path": ":locale?",
+            "children": [
+              {
+                "id": "routes/($locale).blogs.$blogHandle.$articleHandle",
+                "file": "routes/($locale).blogs.$blogHandle.$articleHandle.tsx",
+                "path": "blogs/:blogHandle/:articleHandle"
+              },
+              {
+                "id": "routes/($locale).api.$version.[graphql.json]",
+                "file": "routes/($locale).api.$version.[graphql.json].tsx",
+                "path": "api/:version/graphql.json"
+              },
+              {
+                "id": "routes/($locale).sitemap.$type.$page[.xml]",
+                "file": "routes/($locale).sitemap.$type.$page[.xml].tsx",
+                "path": "sitemap/:type/:page.xml"
+              },
+              {
+                "id": "routes/($locale).blogs.$blogHandle._index",
+                "file": "routes/($locale).blogs.$blogHandle._index.tsx",
+                "path": "blogs/:blogHandle",
+                "index": true
+              },
+              {
+                "id": "routes/($locale).collections.$handle",
+                "file": "routes/($locale).collections.$handle.tsx",
+                "path": "collections/:handle"
+              },
+              {
+                "id": "routes/($locale).account_.authorize",
+                "file": "routes/($locale).account_.authorize.tsx",
+                "path": "account/authorize"
+              },
+              {
+                "id": "routes/($locale).collections._index",
+                "file": "routes/($locale).collections._index.tsx",
+                "path": "collections",
+                "index": true
+              },
+              {
+                "id": "routes/($locale).policies.$handle",
+                "file": "routes/($locale).policies.$handle.tsx",
+                "path": "policies/:handle"
+              },
+              {
+                "id": "routes/($locale).products.$handle",
+                "file": "routes/($locale).products.$handle.tsx",
+                "path": "products/:handle"
+              },
+              {
+                "id": "routes/($locale).account_.logout",
+                "file": "routes/($locale).account_.logout.tsx",
+                "path": "account/logout"
+              },
+              {
+                "id": "routes/($locale).collections.all",
+                "file": "routes/($locale).collections.all.tsx",
+                "path": "collections/all"
+              },
+              {
+                "id": "routes/($locale).policies._index",
+                "file": "routes/($locale).policies._index.tsx",
+                "path": "policies",
+                "index": true
+              },
+              {
+                "id": "routes/($locale).account_.login",
+                "file": "routes/($locale).account_.login.tsx",
+                "path": "account/login"
+              },
+              {
+                "id": "routes/($locale).discount.$code",
+                "file": "routes/($locale).discount.$code.tsx",
+                "path": "discount/:code"
+              },
+              {
+                "id": "routes/($locale).pages.$handle",
+                "file": "routes/($locale).pages.$handle.tsx",
+                "path": "pages/:handle"
+              },
+              {
+                "id": "routes/($locale).[sitemap.xml]",
+                "file": "routes/($locale).[sitemap.xml].tsx",
+                "path": "sitemap.xml"
+              },
+              {
+                "id": "routes/($locale).blogs._index",
+                "file": "routes/($locale).blogs._index.tsx",
+                "path": "blogs",
+                "index": true
+              },
+              {
+                "id": "routes/($locale).account",
+                "file": "routes/($locale).account.tsx",
+                "path": "account",
+                "children": [
+                  {
+                    "id": "routes/($locale).account.orders._index",
+                    "file": "routes/($locale).account.orders._index.tsx",
+                    "path": "orders",
+                    "index": true
+                  },
+                  {
+                    "id": "routes/($locale).account.orders.$id",
+                    "file": "routes/($locale).account.orders.$id.tsx",
+                    "path": "orders/:id"
+                  },
+                  {
+                    "id": "routes/($locale).account.addresses",
+                    "file": "routes/($locale).account.addresses.tsx",
+                    "path": "addresses"
+                  },
+                  {
+                    "id": "routes/($locale).account.profile",
+                    "file": "routes/($locale).account.profile.tsx",
+                    "path": "profile"
+                  },
+                  {
+                    "id": "routes/($locale).account._index",
+                    "file": "routes/($locale).account._index.tsx",
+                    "index": true
+                  },
+                  {
+                    "id": "routes/($locale).account.$",
+                    "file": "routes/($locale).account.$.tsx",
+                    "path": "*"
+                  }
+                ]
+              },
+              {
+                "id": "routes/($locale).search",
+                "file": "routes/($locale).search.tsx",
+                "path": "search"
+              },
+              {
+                "id": "routes/($locale)._index",
+                "file": "routes/($locale)._index.tsx",
+                "index": true
+              },
+              {
+                "id": "routes/($locale).cart",
+                "file": "routes/($locale).cart.tsx",
+                "path": "cart",
+                "children": [
+                  {
+                    "id": "routes/($locale).cart.$lines",
+                    "file": "routes/($locale).cart.$lines.tsx",
+                    "path": ":lines"
+                  }
+                ]
+              },
+              {
+                "id": "routes/($locale).$",
+                "file": "routes/($locale).$.tsx",
+                "path": "*"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "viteConfig": {
+    "build": {
+      "assetsDir": "assets"
+    }
+  }
+}

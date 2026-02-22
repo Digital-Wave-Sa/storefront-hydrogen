@@ -1,4 +1,5 @@
 import * as build from 'virtual:react-router/server-build';
+// @ts-ignore
 import {createRequestHandler, storefrontRedirect} from '@shopify/hydrogen';
 import {createHydrogenRouterContext} from '~/lib/context';
 

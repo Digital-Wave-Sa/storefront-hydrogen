@@ -28,7 +28,7 @@
     "types": [
       "@shopify/oxygen-workers-types",
       "react-router",
-      "@shopify/hydrogen/react-router-types",
+      "@shopify/hydrogen/react-router", // Corrected this line
       "vite/client"
     ],
     "paths": {

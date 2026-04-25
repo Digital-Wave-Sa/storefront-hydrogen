@@ -20,8 +20,8 @@ export default async function handleRequest(
       storeDomain: context.env.PUBLIC_STORE_DOMAIN,
     },
     frameSrc: ["'self'", 'https://www.google.com', 'https://maps.google.com'],
-    imgSrc: ["'self'", 'https://cdn.shopify.com', 'https://shopify.com', 'data:'],
-    connectSrc: ["'self'", 'https://maps.googleapis.com', '*.google.com', 'https://*.google.com'],
+    imgSrc: ["'self'", 'https://cdn.shopify.com', 'https://shopify.com', 'https://saadeddin.com', 'https://cdn.tamara.co', 'data:'],
+    connectSrc: ["'self'", 'https://maps.googleapis.com', '*.google.com', 'https://*.google.com', 'https://cdn.tamara.co'],
   });
 
   const body = await renderToReadableStream(

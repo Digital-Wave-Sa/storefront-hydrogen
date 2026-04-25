@@ -183,7 +183,14 @@ export default function OrderRoute() {
                     <Link to={`/products/${item.variant?.product?.handle}`} className="line-item-name">
                       {item.title}
                     </Link>
-                    <div className="line-item-variant">{item.variant?.title !== 'Default Title' ? item.variant?.title : ''}</div>
+                    <div className="line-item-variant">
+                      {item.variant?.title !== 'Default Title' ? item.variant?.title : ''}
+                      {item.variant?.product?.tags?.some((tag: string) => ['preorder', 'pre-order', 'طلب مسبق'].includes(tag.toLowerCase())) && (
+                        <span className="ml-2 inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-[#004f59]/10 text-[#004f59] text-[9px] font-black uppercase">
+                          📦 {isEn ? 'Pre-order' : 'طلب مسبق'}
+                        </span>
+                      )}
+                    </div>
                     <div className="line-item-price-qty">
                       <span>{isEn ? 'Qty: ' : 'الكمية: '}{item.quantity}</span>
                       <Money data={item.discountedTotalPrice!} />
@@ -335,6 +342,7 @@ const CUSTOMER_ORDER_QUERY = `#graphql
     }
     product {
       handle
+      tags
     }
     sku
     title

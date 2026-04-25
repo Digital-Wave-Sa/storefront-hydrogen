@@ -73,7 +73,41 @@ export function CartLineItem({
               }}
               className="truncate flex-1"
             >
-              <h4 className="font-bold text-[15px] text-[#1b3d2e] truncate">{product.title}</h4>
+              <div className="flex flex-col gap-1">
+                <h4 className="font-bold text-[15px] text-[#1b3d2e] truncate">{product.title}</h4>
+                {/* Pre-order Indicator */}
+                {product.tags?.some((tag: string) => ['preorder', 'pre-order', 'طلب مسبق'].includes(tag.toLowerCase())) && (
+                  <div className="flex flex-col gap-1">
+                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-[#004f59] text-white text-[10px] font-black w-fit">
+                      <span className="animate-pulse">📦</span>
+                      {isEn ? 'PRE-ORDER' : 'طلب مسبق'}
+                    </span>
+                    {product.availability_date?.value && (
+                      <span className="text-[10px] text-[#004f59] font-bold">
+                        {isEn ? `Available: ` : `متاح: `}
+                        {new Date(product.availability_date.value).toLocaleDateString(isEn ? 'en-US' : 'ar-SA', {
+                          month: 'short',
+                          day: 'numeric'
+                        })}
+                      </span>
+                    )}
+                  </div>
+                )}
+
+                {/* Payment Restrictions */}
+                {product.tags?.some((tag: string) => ['cash-only', 'payment:cash-only'].includes(tag.toLowerCase().trim())) && (
+                  <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-[#27ae60] text-white text-[10px] font-black w-fit">
+                    <span>💵</span>
+                    {isEn ? 'CASH ONLY' : 'كاش فقط'}
+                  </span>
+                )}
+                {product.tags?.some((tag: string) => ['prepaid-only', 'payment:prepaid-only'].includes(tag.toLowerCase().trim())) && (
+                  <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-[#2980b9] text-white text-[10px] font-black w-fit">
+                    <span>💳</span>
+                    {isEn ? 'PAID ONLY' : 'دفع مسبق فقط'}
+                  </span>
+                )}
+              </div>
             </Link>
             
             {/* Remove Button */}

@@ -47,6 +47,10 @@ export const CART_QUERY_FRAGMENT = `#graphql
           title
           id
           vendor
+          tags
+          availability_date: metafield(namespace: "custom", key: "visibility_start") {
+            value
+          }
         }
         selectedOptions {
           name
@@ -102,6 +106,10 @@ export const CART_QUERY_FRAGMENT = `#graphql
           title
           id
           vendor
+          tags
+          availability_date: metafield(namespace: "custom", key: "visibility_start") {
+            value
+          }
         }
         selectedOptions {
           name

@@ -80,6 +80,7 @@ export function BestSellers({
                             return (
                                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                                     {productNodes.map((product: any, idx: number) => {
+                                        console.log(`DEBUG_TAGS (Best Sellers) for ${product.title}:`, product.tags);
                                         const variant = product.variants?.nodes?.[0];
                                         const storeAvailabilityNodes = variant?.storeAvailability?.nodes || [];
                                         
@@ -168,9 +169,23 @@ export function BestSellers({
 
                                                     {/* Sale Badge */}
                                                     {!isVisibilityBlocked && hasDiscount && (
-                                                        <span className="text-[11px] font-bold px-3 py-1.5 rounded-full shadow-sm bg-[#e74c3c] text-white flex items-center gap-1.5">
+                                                        <span className={`text-[11px] font-bold px-3 py-1.5 rounded-full shadow-sm bg-[#e74c3c] text-white flex items-center gap-1.5`}>
                                                             <span>🔥</span>
                                                             {isEn ? 'Sale' : 'تخفيض'}
+                                                        </span>
+                                                    )}
+
+                                                    {/* Payment Restriction Badges */}
+                                                    {!isVisibilityBlocked && product.tags?.some((t: string) => ['cash-only', 'payment:cash-only'].includes(t.toLowerCase().trim())) && (
+                                                        <span className="text-[11px] font-bold px-3 py-1.5 rounded-full shadow-sm bg-[#27ae60] text-white flex items-center gap-1.5 border border-white/20">
+                                                            <span>💵</span>
+                                                            {isEn ? 'Cash Only' : 'كاش فقط'}
+                                                        </span>
+                                                    )}
+                                                    {!isVisibilityBlocked && product.tags?.some((t: string) => ['prepaid-only', 'payment:prepaid-only'].includes(t.toLowerCase().trim())) && (
+                                                        <span className="text-[11px] font-bold px-3 py-1.5 rounded-full shadow-sm bg-[#2980b9] text-white flex items-center gap-1.5 border border-white/20">
+                                                            <span>💳</span>
+                                                            {isEn ? 'Paid Only' : 'دفع مسبق فقط'}
                                                         </span>
                                                     )}
                                                 </div>

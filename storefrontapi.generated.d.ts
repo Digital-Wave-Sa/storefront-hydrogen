@@ -31,7 +31,14 @@ export type CartLineFragment = Pick<
     image?: StorefrontAPI.Maybe<
       Pick<StorefrontAPI.Image, 'id' | 'url' | 'altText' | 'width' | 'height'>
     >;
-    product: Pick<StorefrontAPI.Product, 'handle' | 'title' | 'id' | 'vendor'>;
+    product: Pick<
+      StorefrontAPI.Product,
+      'handle' | 'title' | 'id' | 'vendor' | 'tags'
+    > & {
+      availability_date?: StorefrontAPI.Maybe<
+        Pick<StorefrontAPI.Metafield, 'value'>
+      >;
+    };
     selectedOptions: Array<
       Pick<StorefrontAPI.SelectedOption, 'name' | 'value'>
     >;
@@ -64,7 +71,14 @@ export type CartLineComponentFragment = Pick<
     image?: StorefrontAPI.Maybe<
       Pick<StorefrontAPI.Image, 'id' | 'url' | 'altText' | 'width' | 'height'>
     >;
-    product: Pick<StorefrontAPI.Product, 'handle' | 'title' | 'id' | 'vendor'>;
+    product: Pick<
+      StorefrontAPI.Product,
+      'handle' | 'title' | 'id' | 'vendor' | 'tags'
+    > & {
+      availability_date?: StorefrontAPI.Maybe<
+        Pick<StorefrontAPI.Metafield, 'value'>
+      >;
+    };
     selectedOptions: Array<
       Pick<StorefrontAPI.SelectedOption, 'name' | 'value'>
     >;
@@ -98,8 +112,12 @@ export type CartLineComponentFragment = Pick<
         >;
         product: Pick<
           StorefrontAPI.Product,
-          'handle' | 'title' | 'id' | 'vendor'
-        >;
+          'handle' | 'title' | 'id' | 'vendor' | 'tags'
+        > & {
+          availability_date?: StorefrontAPI.Maybe<
+            Pick<StorefrontAPI.Metafield, 'value'>
+          >;
+        };
         selectedOptions: Array<
           Pick<StorefrontAPI.SelectedOption, 'name' | 'value'>
         >;
@@ -161,8 +179,12 @@ export type CartApiQueryFragment = Pick<
             >;
             product: Pick<
               StorefrontAPI.Product,
-              'handle' | 'title' | 'id' | 'vendor'
-            >;
+              'handle' | 'title' | 'id' | 'vendor' | 'tags'
+            > & {
+              availability_date?: StorefrontAPI.Maybe<
+                Pick<StorefrontAPI.Metafield, 'value'>
+              >;
+            };
             selectedOptions: Array<
               Pick<StorefrontAPI.SelectedOption, 'name' | 'value'>
             >;
@@ -199,8 +221,12 @@ export type CartApiQueryFragment = Pick<
             >;
             product: Pick<
               StorefrontAPI.Product,
-              'handle' | 'title' | 'id' | 'vendor'
-            >;
+              'handle' | 'title' | 'id' | 'vendor' | 'tags'
+            > & {
+              availability_date?: StorefrontAPI.Maybe<
+                Pick<StorefrontAPI.Metafield, 'value'>
+              >;
+            };
             selectedOptions: Array<
               Pick<StorefrontAPI.SelectedOption, 'name' | 'value'>
             >;
@@ -237,8 +263,12 @@ export type CartApiQueryFragment = Pick<
                 >;
                 product: Pick<
                   StorefrontAPI.Product,
-                  'handle' | 'title' | 'id' | 'vendor'
-                >;
+                  'handle' | 'title' | 'id' | 'vendor' | 'tags'
+                > & {
+                  availability_date?: StorefrontAPI.Maybe<
+                    Pick<StorefrontAPI.Metafield, 'value'>
+                  >;
+                };
                 selectedOptions: Array<
                   Pick<StorefrontAPI.SelectedOption, 'name' | 'value'>
                 >;
@@ -741,7 +771,7 @@ export type OrderLineProductVariantFragment = Pick<
     Pick<StorefrontAPI.Image, 'altText' | 'height' | 'url' | 'id' | 'width'>
   >;
   price: Pick<StorefrontAPI.MoneyV2, 'amount' | 'currencyCode'>;
-  product: Pick<StorefrontAPI.Product, 'handle'>;
+  product: Pick<StorefrontAPI.Product, 'handle' | 'tags'>;
 };
 
 export type OrderLineItemFullFragment = Pick<
@@ -770,7 +800,7 @@ export type OrderLineItemFullFragment = Pick<
         Pick<StorefrontAPI.Image, 'altText' | 'height' | 'url' | 'id' | 'width'>
       >;
       price: Pick<StorefrontAPI.MoneyV2, 'amount' | 'currencyCode'>;
-      product: Pick<StorefrontAPI.Product, 'handle'>;
+      product: Pick<StorefrontAPI.Product, 'handle' | 'tags'>;
     }
   >;
 };
@@ -863,7 +893,7 @@ export type OrderFragment = Pick<
               >
             >;
             price: Pick<StorefrontAPI.MoneyV2, 'amount' | 'currencyCode'>;
-            product: Pick<StorefrontAPI.Product, 'handle'>;
+            product: Pick<StorefrontAPI.Product, 'handle' | 'tags'>;
           }
         >;
       }
@@ -967,7 +997,7 @@ export type OrderQuery = {
                   >
                 >;
                 price: Pick<StorefrontAPI.MoneyV2, 'amount' | 'currencyCode'>;
-                product: Pick<StorefrontAPI.Product, 'handle'>;
+                product: Pick<StorefrontAPI.Product, 'handle' | 'tags'>;
               }
             >;
           }
@@ -995,6 +1025,7 @@ export type OrderItemFragment = Pick<
           image?: StorefrontAPI.Maybe<
             Pick<StorefrontAPI.Image, 'url' | 'altText' | 'height' | 'width'>
           >;
+          product: Pick<StorefrontAPI.Product, 'tags'>;
         }>;
       }
     >;
@@ -1031,6 +1062,7 @@ export type CustomerOrdersFragment = Pick<
                     'url' | 'altText' | 'height' | 'width'
                   >
                 >;
+                product: Pick<StorefrontAPI.Product, 'tags'>;
               }>;
             }
           >;
@@ -1087,6 +1119,7 @@ export type CustomerOrdersQuery = {
                         'url' | 'altText' | 'height' | 'width'
                       >
                     >;
+                    product: Pick<StorefrontAPI.Product, 'tags'>;
                   }>;
                 }
               >;
@@ -2555,7 +2588,7 @@ interface GeneratedQueryTypes {
     return: NewArrivalsProductsQuery;
     variables: NewArrivalsProductsQueryVariables;
   };
-  '#graphql\n  fragment OrderMoney on MoneyV2 {\n    amount\n    currencyCode\n  }\n  fragment AddressFull on MailingAddress {\n    address1\n    address2\n    city\n    company\n    country\n    countryCodeV2\n    firstName\n    formatted\n    id\n    lastName\n    name\n    phone\n    province\n    provinceCode\n    zip\n  }\n  fragment DiscountApplication on DiscountApplication {\n    value {\n      __typename\n      ... on MoneyV2 {\n        ...OrderMoney\n      }\n      ... on PricingPercentageValue {\n        percentage\n      }\n    }\n  }\n  fragment OrderLineProductVariant on ProductVariant {\n    id\n    image {\n      altText\n      height\n      url\n      id\n      width\n    }\n    price {\n      ...OrderMoney\n    }\n    product {\n      handle\n    }\n    sku\n    title\n  }\n  fragment OrderLineItemFull on OrderLineItem {\n    title\n    quantity\n    discountAllocations {\n      allocatedAmount {\n        ...OrderMoney\n      }\n      discountApplication {\n        ...DiscountApplication\n      }\n    }\n    originalTotalPrice {\n      ...OrderMoney\n    }\n    discountedTotalPrice {\n      ...OrderMoney\n    }\n    variant {\n      ...OrderLineProductVariant\n    }\n  }\n  fragment Order on Order {\n    id\n    name\n    orderNumber\n    statusUrl\n    processedAt\n    fulfillmentStatus\n    financialStatus\n    totalTaxV2 {\n      ...OrderMoney\n    }\n    totalPriceV2 {\n      ...OrderMoney\n    }\n    subtotalPriceV2 {\n      ...OrderMoney\n    }\n    shippingAddress {\n      ...AddressFull\n    }\n    customAttributes {\n      key\n      value\n    }\n    discountApplications(first: 10) {\n      nodes {\n        ...DiscountApplication\n      }\n    }\n    lineItems(first: 100) {\n      nodes {\n        ...OrderLineItemFull\n      }\n    }\n  }\n  query Order(\n    $country: CountryCode\n    $language: LanguageCode\n    $orderId: ID!\n  ) @inContext(country: $country, language: $language) {\n    order: node(id: $orderId) {\n      ... on Order {\n        ...Order\n      }\n    }\n  }\n': {
+  '#graphql\n  fragment OrderMoney on MoneyV2 {\n    amount\n    currencyCode\n  }\n  fragment AddressFull on MailingAddress {\n    address1\n    address2\n    city\n    company\n    country\n    countryCodeV2\n    firstName\n    formatted\n    id\n    lastName\n    name\n    phone\n    province\n    provinceCode\n    zip\n  }\n  fragment DiscountApplication on DiscountApplication {\n    value {\n      __typename\n      ... on MoneyV2 {\n        ...OrderMoney\n      }\n      ... on PricingPercentageValue {\n        percentage\n      }\n    }\n  }\n  fragment OrderLineProductVariant on ProductVariant {\n    id\n    image {\n      altText\n      height\n      url\n      id\n      width\n    }\n    price {\n      ...OrderMoney\n    }\n    product {\n      handle\n      tags\n    }\n    sku\n    title\n  }\n  fragment OrderLineItemFull on OrderLineItem {\n    title\n    quantity\n    discountAllocations {\n      allocatedAmount {\n        ...OrderMoney\n      }\n      discountApplication {\n        ...DiscountApplication\n      }\n    }\n    originalTotalPrice {\n      ...OrderMoney\n    }\n    discountedTotalPrice {\n      ...OrderMoney\n    }\n    variant {\n      ...OrderLineProductVariant\n    }\n  }\n  fragment Order on Order {\n    id\n    name\n    orderNumber\n    statusUrl\n    processedAt\n    fulfillmentStatus\n    financialStatus\n    totalTaxV2 {\n      ...OrderMoney\n    }\n    totalPriceV2 {\n      ...OrderMoney\n    }\n    subtotalPriceV2 {\n      ...OrderMoney\n    }\n    shippingAddress {\n      ...AddressFull\n    }\n    customAttributes {\n      key\n      value\n    }\n    discountApplications(first: 10) {\n      nodes {\n        ...DiscountApplication\n      }\n    }\n    lineItems(first: 100) {\n      nodes {\n        ...OrderLineItemFull\n      }\n    }\n  }\n  query Order(\n    $country: CountryCode\n    $language: LanguageCode\n    $orderId: ID!\n  ) @inContext(country: $country, language: $language) {\n    order: node(id: $orderId) {\n      ... on Order {\n        ...Order\n      }\n    }\n  }\n': {
     return: OrderQuery;
     variables: OrderQueryVariables;
   };

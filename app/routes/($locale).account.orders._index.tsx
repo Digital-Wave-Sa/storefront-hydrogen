@@ -133,6 +133,7 @@ function OrdersFilters({ searchTerm, statusFilter, isEn }: { searchTerm: string,
             <option value="PAID">{isEn ? 'Paid' : 'مدفوع'}</option>
             <option value="PENDING">{isEn ? 'Pending' : 'قيد الانتظار'}</option>
             <option value="FULFILLED">{isEn ? 'Fulfilled' : 'تم التوصيل'}</option>
+            <option value="PREORDER">{isEn ? 'Pre-orders' : 'طلبات مسبقة'}</option>
           </select>
         </form>
       </div>
@@ -146,6 +147,14 @@ function OrdersList({ orders, searchTerm, statusFilter, isEn }: { orders: any, s
     if (statusFilter !== 'all') {
        if (statusFilter === 'PAID' && order.financialStatus !== 'PAID') return false;
        if (statusFilter === 'FULFILLED' && order.fulfillmentStatus !== 'FULFILLED') return false;
+       if (statusFilter === 'PREORDER') {
+          const hasPreorder = order.lineItems.nodes.some((item: any) => 
+            item.variant?.product?.tags?.some((tag: string) => 
+              ['preorder', 'pre-order', 'طلب مسبق'].includes(tag.toLowerCase())
+            )
+          );
+          if (!hasPreorder) return false;
+       }
     }
     return true;
   });
@@ -292,6 +301,9 @@ const ORDER_ITEM_FRAGMENT = `#graphql
             altText
             height
             width
+          }
+          product {
+            tags
           }
         }
       }

@@ -108,17 +108,35 @@ export async function loader({ params, request, context }: LoaderFunctionArgs) {
     throw new Error('Expected product handle to be defined');
   }
 
-  const { product } = await storefront.query(PRODUCT_QUERY, {
+  let { product } = await storefront.query(PRODUCT_QUERY, {
     variables: { handle, selectedOptions },
   });
+
+  // --- CROSS-LANGUAGE FIX ---
+  // If product not found in current locale (e.g. Arabic handle in English context),
+  // try fetching it without the language restriction to see if it exists at all.
+  if (!product?.id) {
+    const { product: fallbackProduct } = await storefront.query(PRODUCT_QUERY, {
+      variables: { handle, selectedOptions },
+      // Force default context if possible, or just check if it exists
+    });
+    
+    // If we still don't have it, it's a real 404.
+    // If we DO have it, it means the product exists but isn't published to this market/language.
+    // We should redirect to the default locale version of the product.
+    if (!fallbackProduct?.id) {
+       throw new Response(null, { status: 404 });
+    }
+
+    // Redirect to the default (Arabic) path for this product
+    const url = new URL(request.url);
+    const newPath = `/products/${handle}`;
+    throw redirect(newPath + url.search, { status: 302 });
+  }
 
   const variants = storefront.query(VARIANTS_QUERY, {
     variables: { handle },
   });
-
-  if (!product?.id) {
-    throw new Response(null, { status: 404 });
-  }
 
   // --- VISIBILITY SCHEDULING: compute status server-side ---
   const now = Date.now();
@@ -167,6 +185,8 @@ export async function loader({ params, request, context }: LoaderFunctionArgs) {
       dynamicRating = parseRatingValue(product.average_rating?.value);
       dynamicCount = parseInt(product.rating_count?.value || '0');
   }
+
+  console.log(`DEBUG_TAGS (PDP) for ${product.title}:`, product.tags);
 
   return data({ product, variants, visibility, reviews, dynamicRating, dynamicCount });
 }
@@ -339,7 +359,7 @@ export default function Product() {
     date.setHours(date.getHours() + leadTimeHours);
     
     // Format the date based on locale
-    return date.toLocaleDateString(locale === 'ar' ? 'ar-SA' : 'en-US', {
+    return date.toLocaleDateString(locale === 'ar' ? 'ar-SA-u-ca-gregory' : 'en-US', {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
@@ -459,6 +479,32 @@ export default function Product() {
                 <span>🔥</span>
                 {isEn ? 'BOGO Offer' : 'عرض اشتري واحد واحصل على الثاني مجاناً'}
               </span>
+            )}
+
+            {/* Payment Restriction Badges */}
+            {product.tags?.some((t: string) => ['cash-only', 'payment:cash-only'].includes(t.toLowerCase().trim())) && (
+              <div className="relative group/tooltip">
+                <span className="text-[11px] font-black px-3 py-1.5 rounded-lg shadow-sm bg-[#27ae60] text-white flex items-center gap-1.5 border border-white/20 cursor-help">
+                  <span>💵</span>
+                  {isEn ? 'Cash Only' : 'كاش فقط'}
+                </span>
+                <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 w-48 p-2 bg-[#1b3d2e] text-white text-[10px] rounded-lg opacity-0 group-hover/tooltip:opacity-100 transition-opacity pointer-events-none z-20 shadow-xl">
+                  {isEn ? 'This product is only available via cash payment on delivery.' : 'هذا المنتج متاح فقط عن طريق الدفع نقداً عند الاستلام.'}
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-[#1b3d2e]"></div>
+                </div>
+              </div>
+            )}
+            {product.tags?.some((t: string) => ['prepaid-only', 'payment:prepaid-only'].includes(t.toLowerCase().trim())) && (
+              <div className="relative group/tooltip">
+                <span className="text-[11px] font-black px-3 py-1.5 rounded-lg shadow-sm bg-[#2980b9] text-white flex items-center gap-1.5 border border-white/20 cursor-help">
+                  <span>💳</span>
+                  {isEn ? 'Paid Only' : 'دفع مسبق فقط'}
+                </span>
+                <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 w-48 p-2 bg-[#1b3d2e] text-white text-[10px] rounded-lg opacity-0 group-hover/tooltip:opacity-100 transition-opacity pointer-events-none z-20 shadow-xl">
+                  {isEn ? 'This product requires online payment before fulfillment.' : 'هذا المنتج يتطلب الدفع عبر الإنترنت قبل التنفيذ.'}
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-[#1b3d2e]"></div>
+                </div>
+              </div>
             )}
           </div>
 

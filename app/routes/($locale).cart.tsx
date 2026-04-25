@@ -75,8 +75,31 @@ export async function action({request, context}: Route.ActionArgs) {
       break;
     }
     case 'AttributesUpdate': {
-        const attributes = inputs.attributes as {key: string; value: string}[];
-        result = await cart.updateAttributes(attributes);
+        const raw = inputs.attributes;
+        const updates = (Array.isArray(raw) ? raw : Object.values(raw || {})) as any[];
+        
+        // Fetch current cart to merge attributes (Shopify replaces the whole list)
+        const currentCart = await cart.get();
+        const existing = currentCart?.attributes || [];
+        
+        const mergedMap = new Map();
+        
+        // Add existing, but CLEAN them (remove __typename etc)
+        existing.forEach((a: any) => {
+          if (a.key) mergedMap.set(a.key, a.value);
+        });
+        
+        // Overwrite with updates
+        updates.forEach((a: any) => {
+          if (a.key) mergedMap.set(a.key, a.value);
+        });
+        
+        const finalAttributes = Array.from(mergedMap.entries()).map(([key, value]) => ({
+          key: String(key),
+          value: String(value || '')
+        }));
+
+        result = await cart.updateAttributes(finalAttributes);
         break;
     }
     default:

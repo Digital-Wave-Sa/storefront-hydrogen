@@ -20,18 +20,43 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
   const rootData = useRouteLoaderData('root') as any;
   const isEn = rootData?.locale === 'en';
 
-  const branch = cart?.attributes?.find((a) => a.key === 'Branch')?.value;
-  const fulfillmentType = cart?.attributes?.find((a) => a.key === 'Fulfillment Type')?.value;
+  const subtotal = Number(cart?.cost?.subtotalAmount?.amount ?? 0);
+  const minOrderValue = 50; // Minimum order value requirement
+  const isMinOrderMet = subtotal >= minOrderValue;
+  
+  const attributes = cart?.attributes || [];
+  const branch = attributes.find((a: any) => a.key.toLowerCase().trim() === 'branch')?.value;
+  const fulfillmentType = attributes.find((a: any) => a.key.toLowerCase().trim() === 'fulfillment type')?.value;
+  const timeSlot = attributes.find((a: any) => a.key.toLowerCase().trim() === 'time slot')?.value;
+  
+  const isTimeSlotSelected = !!timeSlot && timeSlot.trim() !== '';
+  const isBranchSelected = !!branch && branch.trim() !== '';
+
+  const hasPreOrderItems = cart?.lines?.nodes?.some((line: any) => 
+    line.merchandise?.product?.tags?.some((tag: string) => 
+      ['preorder', 'pre-order', 'طلب مسبق'].includes(tag.toLowerCase())
+    )
+  );
+
+  const hasCashOnly = cart?.lines?.nodes?.some((line: any) => 
+    line.merchandise?.product?.tags?.some((tag: string) => tag.toLowerCase() === 'cash-only')
+  );
+
+  const hasPrepaidOnly = cart?.lines?.nodes?.some((line: any) => 
+    line.merchandise?.product?.tags?.some((tag: string) => tag.toLowerCase() === 'prepaid-only')
+  );
+
+  const canCheckout = isMinOrderMet && isBranchSelected;
 
   return (
     <div aria-labelledby={summaryId} className="flex flex-col gap-4">
       {layout === 'page' && (
         <>
           {/* Delivery / Pickup Status */}
-      <div className="bg-[#fcfaf8] border border-[#f0ece8] rounded-2xl p-4">
+      <div className={`bg-[#fcfaf8] border ${!isBranchSelected ? 'border-red-200 bg-red-50' : 'border-[#f0ece8]'} rounded-2xl p-4 transition-colors`}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-[#1b3d2e] flex items-center justify-center text-white shrink-0">
+            <div className={`w-8 h-8 rounded-full ${!isBranchSelected ? 'bg-red-500' : 'bg-[#1b3d2e]'} flex items-center justify-center text-white shrink-0 transition-colors`}>
               {fulfillmentType === 'Delivery' ? (
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 3h15v13H1zM16 8h4l3 3v5h-7V8z" /><circle cx="5.5" cy="18.5" r="2.5" /><circle cx="18.5" cy="18.5" r="2.5" /></svg>
               ) : (
@@ -42,20 +67,20 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
               <p className="text-[11px] text-gray-400 font-bold uppercase tracking-wider leading-none mb-1">
                 {isEn ? (fulfillmentType === 'Delivery' ? 'Delivering from' : 'Picking up from') : (fulfillmentType === 'Delivery' ? 'توصيل من' : 'استلام من')}
               </p>
-              <p className="text-[13px] font-black text-[#1b3d2e] truncate">{branch || (isEn ? 'Not selected' : 'لم يتم التحديد')}</p>
+              <p className={`text-[13px] font-black ${!isBranchSelected ? 'text-red-600' : 'text-[#1b3d2e]'} truncate`}>{branch || (isEn ? 'Please select a branch' : 'يرجى اختيار الفرع')}</p>
             </div>
           </div>
           <button 
             onClick={() => window.dispatchEvent(new CustomEvent('openDeliveryModal'))}
             className="text-[12px] font-bold text-[#d4a06a] hover:text-[#1b3d2e] transition-colors bg-white px-3 py-1.5 rounded-full border border-[#f0ece8] shadow-sm"
           >
-            {isEn ? 'Edit' : 'تعديل'}
+            {isEn ? (isBranchSelected ? 'Edit' : 'Select') : (isBranchSelected ? 'تعديل' : 'اختيار')}
           </button>
         </div>
       </div>
 
       {/* Time Slot Picker */}
-      <CartTimeSlot isEn={isEn} cart={cart} />
+      <CartTimeSlot isEn={isEn} cart={cart} hasError={!isTimeSlotSelected} />
 
       {/* Order Notes */}
       <CartOrderNotes isEn={isEn} cart={cart} />
@@ -63,16 +88,24 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
       )}
 
       {/* Subtotal */}
-      <dl role="group" className="flex justify-between items-center py-2 border-b border-[#f0ece8] mt-2">
-        <dt className="text-[15px] font-bold text-[#888]">{isEn ? 'Subtotal' : 'المجموع الفرعي'}</dt>
-        <dd className="text-[18px] font-black text-[#1b3d2e]">
-          {cart?.cost?.subtotalAmount?.amount ? (
-            <Money data={cart?.cost?.subtotalAmount} />
-          ) : (
-            '-'
-          )}
-        </dd>
-      </dl>
+      <div className="flex flex-col gap-1">
+        <dl role="group" className="flex justify-between items-center py-2 border-b border-[#f0ece8] mt-2">
+          <dt className="text-[15px] font-bold text-[#888]">{isEn ? 'Subtotal' : 'المجموع الفرعي'}</dt>
+          <dd className="text-[18px] font-black text-[#1b3d2e]">
+            {cart?.cost?.subtotalAmount?.amount ? (
+              <Money data={cart?.cost?.subtotalAmount} />
+            ) : (
+              '-'
+            )}
+          </dd>
+        </dl>
+        {!isMinOrderMet && (
+          <p className="text-red-500 text-[11px] font-bold mt-1 text-right flex items-center justify-end gap-1">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+            {isEn ? `Minimum order value is SAR ${minOrderValue}` : `الحد الأدنى للطلب هو ${minOrderValue} ر.س`}
+          </p>
+        )}
+      </div>
 
       {layout === 'page' && (
         <>
@@ -94,8 +127,58 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
         </>
       )}
 
+      {/* Pre-order Messaging */}
+      {hasPreOrderItems && (
+        <div className="bg-[#004f59]/5 border border-[#004f59]/20 rounded-xl p-3 flex gap-3 animate-fade-in">
+          <div className="w-8 h-8 rounded-full bg-[#004f59] flex items-center justify-center text-white shrink-0 shadow-sm">
+            <span className="animate-pulse">📦</span>
+          </div>
+          <div className="flex-1">
+            <p className="text-[12px] font-black text-[#004f59] uppercase tracking-wider mb-0.5">
+              {isEn ? 'Pre-order Items Included' : 'يحتوي الطلب على أصناف طلب مسبق'}
+            </p>
+            <p className="text-[11px] text-[#004f59]/80 font-medium leading-tight">
+              {isEn 
+                ? 'Your entire order will be shipped together once all items are available.' 
+                : 'سيتم شحن طلبك بالكامل عند توفر جميع الأصناف.'}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Payment Restriction Messaging */}
+      {(hasCashOnly || hasPrepaidOnly) && (
+        <div className={`border rounded-xl p-3 flex gap-3 animate-fade-in ${hasCashOnly && hasPrepaidOnly ? 'bg-red-50 border-red-200' : 'bg-blue-50 border-blue-200'}`}>
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white shrink-0 shadow-sm ${hasCashOnly && hasPrepaidOnly ? 'bg-red-500' : 'bg-blue-500'}`}>
+            <span>⚠️</span>
+          </div>
+          <div className="flex-1">
+            <p className={`text-[12px] font-black uppercase tracking-wider mb-0.5 ${hasCashOnly && hasPrepaidOnly ? 'text-red-700' : 'text-blue-700'}`}>
+              {isEn ? 'Payment Notice' : 'ملاحظة بخصوص الدفع'}
+            </p>
+            <p className={`text-[11px] font-medium leading-tight ${hasCashOnly && hasPrepaidOnly ? 'text-red-600' : 'text-blue-600'}`}>
+              {hasCashOnly && hasPrepaidOnly 
+                ? (isEn ? 'Your cart contains items with conflicting payment requirements. Please check your items.' : 'تحتوي سلتك على منتجات بمتطلبات دفع متعارضة. يرجى مراجعة المنتجات.')
+                : hasCashOnly 
+                  ? (isEn ? 'Some items in your cart can only be paid via Cash.' : 'بعض المنتجات في سلتك تتطلب الدفع نقداً فقط.')
+                  : (isEn ? 'Some items in your cart require online payment.' : 'بعض المنتجات في سلتك تتطلب الدفع أونلاين فقط.')
+              }
+            </p>
+          </div>
+        </div>
+      )}
+
       {layout === 'page' ? (
-        <CartCheckoutActions checkoutUrl={cart?.checkoutUrl} isEn={isEn} />
+        <CartCheckoutActions 
+          checkoutUrl={cart?.checkoutUrl} 
+          isEn={isEn} 
+          disabled={!canCheckout}
+          validationError={
+            !isMinOrderMet ? (isEn ? `Minimum order is SAR ${minOrderValue}` : `الحد الأدنى هو ${minOrderValue} ر.س`) :
+            !isBranchSelected ? (isEn ? 'Please select a branch' : 'يرجى اختيار الفرع') :
+            null
+          }
+        />
       ) : (
         <ViewCartAction isEn={isEn} />
       )}
@@ -103,18 +186,23 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
   );
 }
 
+
+
 // ─── NEW: TIME SLOT PICKER ──────────────────────────────────────────────────
-function CartTimeSlot({ isEn, cart }: { isEn: boolean, cart: any }) {
+function CartTimeSlot({ isEn, cart, hasError }: { isEn: boolean, cart: any, hasError?: boolean }) {
   const timeSlot = cart?.attributes?.find((a: any) => a.key === 'Time Slot')?.value || '';
   
   return (
     <div className="flex flex-col gap-2">
-      <label className="text-[13px] font-bold text-[#1b3d2e] px-1">{isEn ? 'Schedule Order' : 'جدولة الطلب'}</label>
+      <label className="text-[13px] font-bold text-[#1b3d2e] px-1">
+        {isEn ? 'Schedule Order' : 'جدولة الطلب'}
+      </label>
       <CartForm route="/cart" action={'AttributesUpdate' as any}>
         <input type="hidden" name="attributes[0][key]" value="Time Slot" />
         <div className="relative">
           <select 
             name="attributes[0][value]"
+            key={timeSlot}
             defaultValue={timeSlot}
             onChange={(e) => {
               if (e.target.form) e.target.form.requestSubmit();
@@ -157,21 +245,42 @@ function CartOrderNotes({ isEn, cart }: { isEn: boolean, cart: any }) {
   );
 }
 
-function CartCheckoutActions({checkoutUrl, isEn}: {checkoutUrl?: string; isEn: boolean}) {
+function CartCheckoutActions({
+  checkoutUrl, 
+  isEn, 
+  disabled, 
+  validationError
+}: {
+  checkoutUrl?: string; 
+  isEn: boolean;
+  disabled?: boolean;
+  validationError?: string | null;
+}) {
   return (
-    <div className="mt-2">
+    <div className="mt-2 flex flex-col gap-3">
       {checkoutUrl ? (
-        <a 
-          href={checkoutUrl} 
-          target="_self"
-          className="w-full bg-[#1b3d2e] hover:bg-[#d4a06a] text-white font-bold py-4 px-6 rounded-2xl flex items-center justify-center gap-2 transition-all shadow-[0_4px_14px_rgba(27,61,46,0.2)] hover:shadow-[0_4px_14px_rgba(212,160,106,0.3)] hover:-translate-y-0.5"
-        >
-          <span>{isEn ? 'Proceed to Checkout' : 'متابعة الدفع'}</span>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={isEn ? '' : 'rotate-180'}>
-            <line x1="5" y1="12" x2="19" y2="12"></line>
-            <polyline points="12 5 19 12 12 19"></polyline>
-          </svg>
-        </a>
+        <div className="flex flex-col gap-2">
+          <a 
+            href={disabled ? '#' : checkoutUrl} 
+            target="_self"
+            onClick={(e) => {
+              if (disabled) e.preventDefault();
+            }}
+            className={`w-full ${disabled ? 'bg-[#e8e4e1] cursor-not-allowed text-[#888]' : 'bg-[#1b3d2e] hover:bg-[#d4a06a] text-white shadow-[0_4px_14px_rgba(27,61,46,0.2)] hover:shadow-[0_4px_14px_rgba(212,160,106,0.3)] hover:-translate-y-0.5'} font-bold py-4 px-6 rounded-2xl flex items-center justify-center gap-2 transition-all`}
+          >
+            <span>{isEn ? 'Proceed to Checkout' : 'متابعة الدفع'}</span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={isEn ? '' : 'rotate-180'}>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+              <polyline points="12 5 19 12 12 19"></polyline>
+            </svg>
+          </a>
+          {disabled && validationError && (
+            <p className="text-red-500 text-[12px] font-bold text-center px-4 py-2 bg-red-50 rounded-xl border border-red-100 flex items-center justify-center gap-2">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+              {validationError}
+            </p>
+          )}
+        </div>
       ) : (
         <button 
           disabled
@@ -252,25 +361,6 @@ function LoyaltyRedemptionUI({ isEn, cart }: { isEn: boolean, cart: any }) {
         </div>
       </div>
     </section>
-  );
-}
-        >
-          <span>{isEn ? 'Continue to Checkout' : 'متابعة الدفع'}</span>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={isEn ? '' : 'rotate-180'}>
-            <line x1="5" y1="12" x2="19" y2="12"></line>
-            <polyline points="12 5 19 12 12 19"></polyline>
-          </svg>
-        </a>
-      ) : (
-        <button 
-          disabled
-          className="w-full bg-[#e8e4e1] text-[#888] cursor-not-allowed font-bold py-4 px-6 rounded-2xl flex items-center justify-center gap-2 transition-all"
-        >
-          <span>{isEn ? 'Loading Checkout...' : 'جاري تجهيز الدفع...'}</span>
-          <svg className="animate-spin h-5 w-5 ml-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" strokeOpacity="0.25"></circle><path d="M12 2a10 10 0 0 1 10 10" strokeOpacity="0.75"></path></svg>
-        </button>
-      )}
-    </div>
   );
 }
 

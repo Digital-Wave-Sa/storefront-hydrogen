@@ -57,11 +57,9 @@ export function NewArrivals({
                     <Await resolve={products}>
                         {(resolvedData) => {
                             const productNodes = (resolvedData as any).products?.nodes || [];
-                            console.log(`DEBUG: NewArrivals productNodes length:`, productNodes.length);
                             return (
                                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                                     {productNodes.slice(0, 4).map((product: any, idx: number) => {
-                                        console.log(`DEBUG_TAGS for ${product.title}:`, product.tags);
                                         const variant = product.variants?.nodes?.[0];
                                         const storeAvailabilityNodes = variant?.storeAvailability?.nodes || [];
                                         

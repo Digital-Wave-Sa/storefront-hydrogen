@@ -186,8 +186,6 @@ export async function loader({ params, request, context }: LoaderFunctionArgs) {
       dynamicCount = parseInt(product.rating_count?.value || '0');
   }
 
-  console.log(`DEBUG_TAGS (PDP) for ${product.title}:`, product.tags);
-
   return data({ product, variants, visibility, reviews, dynamicRating, dynamicCount });
 }
 

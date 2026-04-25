@@ -80,7 +80,6 @@ export function BestSellers({
                             return (
                                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                                     {productNodes.map((product: any, idx: number) => {
-                                        console.log(`DEBUG_TAGS (Best Sellers) for ${product.title}:`, product.tags);
                                         const variant = product.variants?.nodes?.[0];
                                         const storeAvailabilityNodes = variant?.storeAvailability?.nodes || [];
                                         

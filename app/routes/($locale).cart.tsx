@@ -69,6 +69,11 @@ export async function action({request, context}: Route.ActionArgs) {
       });
       break;
     }
+    case 'NoteUpdate':
+    case CartForm.ACTIONS.NoteUpdate: {
+      result = await cart.updateNote(inputs.note);
+      break;
+    }
     case 'AttributesUpdate': {
         const attributes = inputs.attributes as {key: string; value: string}[];
         result = await cart.updateAttributes(attributes);

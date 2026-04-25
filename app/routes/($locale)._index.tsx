@@ -1,6 +1,6 @@
 import {Await, useLoaderData} from 'react-router';
 import type {Route} from './+types/($locale)._index';
-import {Hero} from '~/components/Hero';
+import {HeroSlider} from '~/components/HeroSlider';
 import {ShopByCategory} from '~/components/ShopByCategory';
 import {BestSellers} from '~/components/BestSellers';
 import {DesignYourCake} from '~/components/DesignYourCake';
@@ -65,7 +65,7 @@ export default function Homepage() {
   const data = useLoaderData<typeof loader>();
 
   return (
-    <div className="home w-full bg-[#fdfaf6]">
+    <div className="home w-full bg-[#FEF8EB]">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
@@ -89,7 +89,7 @@ export default function Homepage() {
           }),
         }}
       />
-      <Hero />
+      <HeroSlider />
       <ShopByCategory />
       <DesignYourCake />
       <BestSellers products={data.recommendedProducts} />

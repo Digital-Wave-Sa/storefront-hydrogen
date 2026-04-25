@@ -138,12 +138,12 @@ export function GlobalSearchBar({ locale, isMobile }: { locale?: string, isMobil
             setIsOpen(true); 
             setSelectedIndex(-1);
           }}
-          placeholder={isEn ? "Search for chocolate, cakes, gifts..." : "ابحث عن شوكولاته، كيك، هدايا..."}
-          className="w-full bg-[#f5f3f1] border border-[#e8e4e1] rounded-full py-2 ps-4 pe-10 text-[12px] font-medium placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-[#1b3d2e] focus:border-[#1b3d2e]"
+          placeholder={isEn ? "Search for a product..." : "إبحث عن منتج..."}
+          className="w-full bg-white !border-transparent !border-none !outline-none !ring-0 !rounded-full !py-3 !ps-12 !pe-5 !text-[14px] !m-0 font-medium text-[#1b3d2e] placeholder:text-gray-400 focus:!outline-none focus:!ring-0 focus:!border-transparent !shadow-sm transition-all"
           autoComplete="off"
         />
-        <button type="submit" className="absolute end-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#1b3d2e] transition-colors">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
+        <button type="submit" className="absolute start-4 top-1/2 -translate-y-1/2 text-[#1b3d2e] hover:opacity-70 transition-opacity">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
         </button>
       </Form>
 

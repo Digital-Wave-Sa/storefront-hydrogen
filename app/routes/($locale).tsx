@@ -3,22 +3,16 @@ import type {LoaderFunctionArgs} from 'react-router';
 export async function loader({params, context}: LoaderFunctionArgs) {
   const {language, country} = context.storefront.i18n;
 
-  const isSingleLang = params.locale && params.locale.length === 2;
-  const expectedLocale = isSingleLang ? language : `${language}-${country}`;
-
-  // Check if the locale parameter looks like a locale (2 or 5 characters)
-  const isPotentialLocale = params.locale && (params.locale.length === 2 || params.locale.length === 5);
-
   if (
     params.locale &&
-    isPotentialLocale &&
-    params.locale.toLowerCase() !== expectedLocale.toLowerCase()
+    params.locale.toLowerCase() !== 'en' &&
+    params.locale.toLowerCase() !== 'ar' &&
+    params.locale.toLowerCase() !== 'en-sa' &&
+    params.locale.toLowerCase() !== 'ar-sa'
   ) {
+    // If it's not one of our supported locales, throw 404
     throw new Response(null, {status: 404});
   }
-
-  // If it's not a potential locale, we should just ignore it and let other routes match
-  // or return null to let the child routes render.
 
   return null;
 }

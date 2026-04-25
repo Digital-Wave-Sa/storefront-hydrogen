@@ -1479,6 +1479,201 @@ button.reset:hover:not(:has(> *)) {
 
 
 /* Header & Tabs */
+
+.status-badge.financial-paid {
+  background: #e6f7ee;
+  color: #27ae60;
+}
+
+.status-badge.fulfillment-fulfilled {
+  background: #ebf5ff;
+  color: #3498db;
+}
+
+.order-total {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.total-label {
+  font-size: 12px;
+  color: #888;
+  margin-bottom: 2px;
+}
+
+.order-total .Money {
+  font-size: 20px;
+  font-weight: 800;
+  color: #1b3d2e;
+}
+
+.empty-orders-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+}
+
+.empty-icon {
+  margin-bottom: 24px;
+  color: #ddd;
+}
+
+.empty-orders-card h3 {
+  font-size: 22px;
+  margin-bottom: 12px;
+  color: #1b3d2e;
+}
+
+.empty-orders-card p {
+  color: #888;
+  max-width: 400px;
+}
+
+/* Address Styles */
+.address-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
+  margin-top: 24px;
+}
+
+.address-card {
+  border: 1.5px solid #eee;
+  border-radius: 20px;
+  padding: 24px;
+  position: relative;
+  transition: all 0.3s;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: white;
+}
+
+.address-card:hover {
+  border-color: #1b3d2e;
+  box-shadow: 0 10px 30px rgba(27, 61, 46, 0.05);
+}
+
+.address-card.is-default {
+  border-color: #1b3d2e;
+  background: #fcfaf5;
+}
+
+.address-badge {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  background: #1b3d2e;
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 20px;
+  text-transform: uppercase;
+}
+
+.address-name {
+  font-weight: 700;
+  font-size: 16px;
+  color: #1b3d2e;
+  margin-bottom: 8px;
+}
+
+.address-details {
+  color: #666;
+  font-size: 14px;
+  line-height: 1.6;
+  flex: 1;
+}
+
+.address-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px dashed #eee;
+}
+
+.address-action-btn {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1b3d2e;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.address-action-btn:hover {
+  text-decoration: underline;
+}
+
+.address-action-btn.delete {
+  color: #e74c3c;
+}
+
+.add-address-card {
+  border: 2px dashed #ddd;
+  border-radius: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  cursor: pointer;
+  transition: all 0.3s;
+  background: #fafafa;
+  min-height: 200px;
+}
+
+.add-address-card:hover {
+  border-color: #1b3d2e;
+  background: #fcfaf5;
+}
+
+.add-address-icon {
+  width: 48px;
+  height: 48px;
+  background: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  color: #1b3d2e;
+  font-size: 24px;
+}
+
+.add-address-text {
+  font-weight: 700;
+  color: #1b3d2e;
+}
+
+/* Modal for Address Edit/Create */
+.address-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  background: rgba(27, 61, 46, 0.15);
+  backdrop-filter: blur(12px);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: dpmFadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  padding: 20px;
+}
+
+
+/* Header & Tabs */
 .dpm-header-tabs {
   padding: 24px;
   background: #fff;
@@ -1509,6 +1704,30 @@ button.reset:hover:not(:has(> *)) {
 }
 
 .dpm-tab-btn.active {
+  background: white;
+  opacity: 1;
+  box-shadow: 0 4px 12px rgba(27, 61, 46, 0.08);
+}
+
+.order-total {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.total-label {
+  font-size: 12px;
+  color: #888;
+  margin-bottom: 2px;
+}
+
+.order-total .Money {
+  font-size: 20px;
+  font-weight: 800;
+  color: #1b3d2e;
+}
+
+.empty-orders-card {
   display: flex;
   flex-direction: column;
   align-items: center;

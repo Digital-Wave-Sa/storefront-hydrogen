@@ -48,11 +48,55 @@ export function CartMain({layout, cart: originalCart}: CartMainProps) {
   const progress = Math.min((subtotal / threshold) * 100, 100);
   const remaining = threshold - subtotal;
 
+  if (layout === 'page') {
+    return (
+      <div className="max-w-[1400px] mx-auto w-full px-4 py-8 md:py-12" dir={isEn ? 'ltr' : 'rtl'}>
+        <div className="lg:grid lg:grid-cols-12 gap-8 lg:gap-12">
+          {/* Left Column (Items) */}
+          <div className="lg:col-span-8 flex flex-col gap-8">
+            <h1 className="text-4xl md:text-5xl font-black text-[#1b3d2e] mb-4">
+              {isEn ? 'Shopping Cart' : 'عربة التسوق'}
+            </h1>
+            
+            <CartEmpty hidden={linesCount} layout={layout} isEn={isEn} />
+            
+            {cartHasItems && (
+              <ul className="flex flex-col gap-5 bg-white rounded-[32px] p-8 md:p-10 border border-[#f0ece8] shadow-sm">
+                {(cart?.lines?.nodes ?? []).map((line) => {
+                  if ('parentRelationship' in line && line.parentRelationship?.parent) return null;
+                  return (
+                    <CartLineItem
+                      key={line.id}
+                      line={line}
+                      layout={layout}
+                      childrenMap={childrenMap}
+                    />
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+
+          {/* Right Column (Summary) */}
+          {cartHasItems && (
+            <div className="lg:col-span-4 lg:sticky lg:top-8 h-fit mt-8 lg:mt-0">
+              <div className="bg-white rounded-[32px] p-8 border border-[#f0ece8] shadow-[0_10px_40px_rgba(0,0,0,0.05)]">
+                <h3 className="text-2xl font-black text-[#1b3d2e] mb-6">{isEn ? 'Order Summary' : 'ملخص الطلب'}</h3>
+                <CartSummary cart={cart} layout={layout} />
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // ASIDE LAYOUT
   return (
-    <section className="flex flex-col h-full bg-white relative" aria-label={layout === 'page' ? 'Cart page' : 'Cart drawer'} dir={isEn ? 'ltr' : 'rtl'}>
+    <section className="flex flex-col h-full bg-white relative" aria-label="Cart drawer" dir={isEn ? 'ltr' : 'rtl'}>
       
       {/* Progress Bar (Only show if items exist and layout is aside) */}
-      {cartHasItems && layout === 'aside' && (
+      {cartHasItems && (
         <div className="px-6 py-4 bg-[#fcfaf8] border-b border-[#f0ece8]">
           <p className="text-[13px] font-bold text-[#1b3d2e] mb-2 text-center">
             {progress >= 100 ? (

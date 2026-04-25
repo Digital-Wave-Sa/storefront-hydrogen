@@ -94,17 +94,38 @@ function AccountLayout({
   customer: CustomerFragment;
   children: React.ReactNode;
 }) {
+  const isEn = typeof window !== 'undefined' ? window.location.pathname.includes('/en') : false;
+
   return (
     <div className="account-page-wrapper">
       <div className="account-container">
         <aside className="account-aside">
           <div className="account-profile-summary">
-            <div className="profile-initials">
-              {(customer.firstName?.[0] || customer.email?.[0] || 'U').toUpperCase()}
+            <div className="flex items-center gap-4">
+              <div className="profile-initials">
+                {(customer.firstName?.[0] || customer.email?.[0] || 'U').toUpperCase()}
+              </div>
+              <div className="profile-info">
+                <h3>{customer.firstName ? `${customer.firstName} ${customer.lastName}` : 'أهلاً بك!'}</h3>
+                <p>{customer.email}</p>
+              </div>
             </div>
-            <div className="profile-info">
-              <h3>{customer.firstName ? `${customer.firstName} ${customer.lastName}` : 'أهلاً بك!'}</h3>
-              <p>{customer.email}</p>
+            
+            {/* Loyalty Points UI */}
+            <div className="mt-4 pt-4 border-t border-[#f0ece8] flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-[#fcfaf8] border border-[#f0ece8] flex items-center justify-center text-[14px]">
+                  ⭐
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none mb-1">
+                    {isEn ? 'Available Points' : 'النقاط المتاحة'}
+                  </p>
+                  <p className="text-[18px] font-black text-[#1b3d2e] leading-none font-en">
+                    2,450
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
           <AcccountMenu />

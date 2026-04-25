@@ -2,7 +2,8 @@ import type {CartApiQueryFragment} from 'storefrontapi.generated';
 import type {CartLayout} from '~/components/CartMain';
 import {CartForm, Money, type OptimisticCart} from '@shopify/hydrogen';
 import {useEffect, useId, useRef, useState} from 'react';
-import {useFetcher, useRouteLoaderData} from 'react-router';
+import {useFetcher, useRouteLoaderData, Link} from 'react-router';
+import {useAside} from '~/components/Aside';
 
 type CartSummaryProps = {
   cart: OptimisticCart<CartApiQueryFragment | null>;
@@ -24,7 +25,9 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
 
   return (
     <div aria-labelledby={summaryId} className="flex flex-col gap-4">
-      {/* Delivery / Pickup Status */}
+      {layout === 'page' && (
+        <>
+          {/* Delivery / Pickup Status */}
       <div className="bg-[#fcfaf8] border border-[#f0ece8] rounded-2xl p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -56,6 +59,8 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
 
       {/* Order Notes */}
       <CartOrderNotes isEn={isEn} cart={cart} />
+        </>
+      )}
 
       {/* Subtotal */}
       <dl role="group" className="flex justify-between items-center py-2 border-b border-[#f0ece8] mt-2">
@@ -69,7 +74,9 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
         </dd>
       </dl>
 
-      <CartDiscounts
+      {layout === 'page' && (
+        <>
+          <CartDiscounts
         discountCodes={cart?.discountCodes}
         discountsHeadingId={discountsHeadingId}
         discountCodeInputId={discountCodeInputId}
@@ -82,8 +89,16 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
         giftCardInputId={giftCardInputId}
         isEn={isEn}
       />
+      
+      <LoyaltyRedemptionUI isEn={isEn} cart={cart} />
+        </>
+      )}
 
-      <CartCheckoutActions checkoutUrl={cart?.checkoutUrl} isEn={isEn} />
+      {layout === 'page' ? (
+        <CartCheckoutActions checkoutUrl={cart?.checkoutUrl} isEn={isEn} />
+      ) : (
+        <ViewCartAction isEn={isEn} />
+      )}
     </div>
   );
 }
@@ -143,21 +158,139 @@ function CartOrderNotes({ isEn, cart }: { isEn: boolean, cart: any }) {
 }
 
 function CartCheckoutActions({checkoutUrl, isEn}: {checkoutUrl?: string; isEn: boolean}) {
-  if (!checkoutUrl) return null;
+  return (
+    <div className="mt-2">
+      {checkoutUrl ? (
+        <a 
+          href={checkoutUrl} 
+          target="_self"
+          className="w-full bg-[#1b3d2e] hover:bg-[#d4a06a] text-white font-bold py-4 px-6 rounded-2xl flex items-center justify-center gap-2 transition-all shadow-[0_4px_14px_rgba(27,61,46,0.2)] hover:shadow-[0_4px_14px_rgba(212,160,106,0.3)] hover:-translate-y-0.5"
+        >
+          <span>{isEn ? 'Proceed to Checkout' : 'متابعة الدفع'}</span>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={isEn ? '' : 'rotate-180'}>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+            <polyline points="12 5 19 12 12 19"></polyline>
+          </svg>
+        </a>
+      ) : (
+        <button 
+          disabled
+          className="w-full bg-[#e8e4e1] text-[#888] cursor-not-allowed font-bold py-4 px-6 rounded-2xl flex items-center justify-center gap-2 transition-all"
+        >
+          <span>{isEn ? 'Loading Checkout...' : 'جاري تجهيز الدفع...'}</span>
+          <svg className="animate-spin h-5 w-5 ml-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" strokeOpacity="0.25"></circle><path d="M12 2a10 10 0 0 1 10 10" strokeOpacity="0.75"></path></svg>
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ─── NEW: LOYALTY POINTS REDEMPTION ─────────────────────────────────────────
+function LoyaltyRedemptionUI({ isEn, cart }: { isEn: boolean, cart: any }) {
+  const [pointsToRedeem, setPointsToRedeem] = useState<number>(0);
+  const maxPoints = 2450; // Mock backend balance
+  const pointsToCurrencyRatio = 0.05; // 1 point = 0.05 SAR
+  
+  const discountAmount = pointsToRedeem * pointsToCurrencyRatio;
+
+  return (
+    <section className="flex flex-col gap-3 mt-4 pt-4 border-t border-dashed border-[#f0ece8]">
+      <div className="flex items-center justify-between mb-1">
+        <div className="flex items-center gap-2 text-[#1b3d2e]">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+          <span className="font-bold text-[14px]">
+            {isEn ? 'Redeem Points' : 'استبدال النقاط'}
+          </span>
+        </div>
+        <span className="text-[12px] font-bold text-gray-400 bg-gray-50 px-2 py-1 rounded-md border border-gray-100">
+          {isEn ? `Available: ${maxPoints}` : `المتاح: ${maxPoints}`}
+        </span>
+      </div>
+
+      <div className="bg-[#fcfaf8] border border-[#f0ece8] rounded-xl p-4 flex flex-col gap-4">
+        {/* Slider & Input */}
+        <div className="flex items-center gap-4">
+          <input 
+            type="range" 
+            min="0" 
+            max={maxPoints} 
+            step="10"
+            value={pointsToRedeem}
+            onChange={(e) => setPointsToRedeem(parseInt(e.target.value))}
+            className="flex-1 accent-[#d4a06a] h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+          />
+          <input 
+            type="number"
+            min="0"
+            max={maxPoints}
+            value={pointsToRedeem}
+            onChange={(e) => {
+              let val = parseInt(e.target.value) || 0;
+              if (val > maxPoints) val = maxPoints;
+              setPointsToRedeem(val);
+            }}
+            className="w-[80px] bg-white border border-[#f0ece8] rounded-lg px-2 py-1.5 text-center text-[13px] font-bold text-[#1b3d2e] focus:outline-none focus:border-[#d4a06a]"
+          />
+        </div>
+
+        {/* Feedback & Apply */}
+        <div className="flex items-center justify-between border-t border-[#f0ece8] pt-3">
+          <div className="flex flex-col">
+            <span className="text-[11px] text-gray-400 font-bold uppercase tracking-widest">
+              {isEn ? 'You save' : 'أنت توفر'}
+            </span>
+            <span className="text-[16px] font-black text-[#27ae60] font-en">
+              {discountAmount.toFixed(2)} SAR
+            </span>
+          </div>
+          <button 
+            disabled={pointsToRedeem === 0}
+            className="bg-[#1b3d2e] text-white font-bold px-5 py-2.5 rounded-lg text-[13px] disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#142e22] transition-colors"
+          >
+            {isEn ? 'Redeem' : 'استبدال'}
+          </button>
+        </div>
+      </div>
+    </section>
+  );
+}
+        >
+          <span>{isEn ? 'Continue to Checkout' : 'متابعة الدفع'}</span>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={isEn ? '' : 'rotate-180'}>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+            <polyline points="12 5 19 12 12 19"></polyline>
+          </svg>
+        </a>
+      ) : (
+        <button 
+          disabled
+          className="w-full bg-[#e8e4e1] text-[#888] cursor-not-allowed font-bold py-4 px-6 rounded-2xl flex items-center justify-center gap-2 transition-all"
+        >
+          <span>{isEn ? 'Loading Checkout...' : 'جاري تجهيز الدفع...'}</span>
+          <svg className="animate-spin h-5 w-5 ml-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" strokeOpacity="0.25"></circle><path d="M12 2a10 10 0 0 1 10 10" strokeOpacity="0.75"></path></svg>
+        </button>
+      )}
+    </div>
+  );
+}
+
+function ViewCartAction({isEn}: {isEn: boolean}) {
+  const {close} = useAside();
 
   return (
     <div className="mt-2">
-      <a 
-        href={checkoutUrl} 
-        target="_self"
+      <Link
+        to={isEn ? '/en/cart' : '/cart'}
+        onClick={close}
+        prefetch="intent"
         className="w-full bg-[#1b3d2e] hover:bg-[#d4a06a] text-white font-bold py-4 px-6 rounded-2xl flex items-center justify-center gap-2 transition-all shadow-[0_4px_14px_rgba(27,61,46,0.2)] hover:shadow-[0_4px_14px_rgba(212,160,106,0.3)] hover:-translate-y-0.5"
       >
-        <span>{isEn ? 'Continue to Checkout' : 'متابعة الدفع'}</span>
+        <span>{isEn ? 'View Cart' : 'عرض السلة'}</span>
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={isEn ? '' : 'rotate-180'}>
           <line x1="5" y1="12" x2="19" y2="12"></line>
           <polyline points="12 5 19 12 12 19"></polyline>
         </svg>
-      </a>
+      </Link>
     </div>
   );
 }
@@ -219,7 +352,14 @@ function CartDiscounts({
           {(fetcher: any) => {
             const isLoading = fetcher.state !== 'idle';
             const errors = fetcher.data?.errors || [];
-            const actionError = errors.length > 0 ? errors[0]?.message : null;
+            let actionError = errors.length > 0 ? errors[0]?.message : null;
+
+            // Catch silent rejections where Shopify accepts the code but flags it as not applicable
+            // Only show this error if the user actively tried to submit a code (fetcher.data exists)
+            const unapplicableCodes = discountCodes?.filter(d => !d.applicable) || [];
+            if (!actionError && unapplicableCodes.length > 0 && fetcher.data) {
+              actionError = isEn ? 'Invalid or expired voucher code.' : 'قسيمة الخصم غير صالحة أو منتهية الصلاحية.';
+            }
 
             return (
               <div>

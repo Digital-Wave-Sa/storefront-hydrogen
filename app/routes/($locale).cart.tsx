@@ -48,14 +48,14 @@ export async function action({request, context}: Route.ActionArgs) {
       result = await cart.updateDiscountCodes(discountCodes);
       break;
     }
-    case CartForm.ACTIONS.GiftCardCodesAdd: {
+    case CartForm.ACTIONS.GiftCardCodesUpdate: {
       const formGiftCardCode = inputs.giftCardCode;
 
       const giftCardCodes = (
         formGiftCardCode ? [formGiftCardCode] : []
       ) as string[];
 
-      result = await cart.addGiftCardCodes(giftCardCodes);
+      result = await cart.updateGiftCardCodes(giftCardCodes);
       break;
     }
     case CartForm.ACTIONS.GiftCardCodesRemove: {
@@ -114,11 +114,6 @@ export async function loader({context}: Route.LoaderArgs) {
 export default function Cart() {
   const cart = useLoaderData<typeof loader>();
 
-  return (
-    <div className="cart">
-      <h1>Cart</h1>
-      <CartMain layout="page" cart={cart} />
-    </div>
-  );
+  return <CartMain layout="page" cart={cart} />;
 }
 

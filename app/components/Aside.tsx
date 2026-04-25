@@ -40,6 +40,8 @@ export function Aside({
     const abortController = new AbortController();
 
     if (expanded) {
+      document.body.style.overflow = 'hidden';
+      document.documentElement.style.overflow = 'hidden';
       document.addEventListener(
         'keydown',
         function handler(event: KeyboardEvent) {
@@ -49,8 +51,16 @@ export function Aside({
         },
         {signal: abortController.signal},
       );
+    } else {
+      document.body.style.overflow = '';
+      document.documentElement.style.overflow = '';
     }
-    return () => abortController.abort();
+    
+    return () => {
+      document.body.style.overflow = '';
+      document.documentElement.style.overflow = '';
+      abortController.abort();
+    };
   }, [close, expanded]);
 
   return (

@@ -19,6 +19,9 @@ export default async function handleRequest(
       checkoutDomain: context.env.PUBLIC_CHECKOUT_DOMAIN,
       storeDomain: context.env.PUBLIC_STORE_DOMAIN,
     },
+    frameSrc: ["'self'", 'https://www.google.com', 'https://maps.google.com'],
+    imgSrc: ["'self'", 'https://cdn.shopify.com', 'https://shopify.com', 'data:'],
+    connectSrc: ["'self'", 'https://maps.googleapis.com', '*.google.com', 'https://*.google.com'],
   });
 
   const body = await renderToReadableStream(

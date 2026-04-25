@@ -62,6 +62,9 @@ export function links() {
       rel: 'preconnect',
       href: 'https://shop.app',
     },
+    {rel: 'stylesheet', href: tailwindCss},
+    {rel: 'stylesheet', href: resetStyles},
+    {rel: 'stylesheet', href: appStyles},
     {rel: 'icon', type: 'image/svg+xml', href: favicon},
   ];
 }
@@ -84,7 +87,7 @@ export async function loader(args: Route.LoaderArgs) {
       publicStorefrontId: env.PUBLIC_STOREFRONT_ID,
     }),
     consent: {
-      checkoutDomain: env.PUBLIC_CHECKOUT_DOMAIN,
+      checkoutDomain: env.PUBLIC_CHECKOUT_DOMAIN || env.PUBLIC_STORE_DOMAIN,
       storefrontAccessToken: env.PUBLIC_STOREFRONT_API_TOKEN,
       withPrivacyBanner: false,
       // localize the privacy banner
@@ -138,21 +141,30 @@ function loadDeferredData({context}: Route.LoaderArgs) {
   return {
     cart: cart.get(),
     isLoggedIn: customerAccount.isLoggedIn(),
+    locations: storefront.query(LOCATIONS_QUERY, {
+        cache: storefront.CacheLong(),
+    }).catch(() => null),
     footer,
+    env: {
+      PUBLIC_GOOGLE_MAPS_KEY: context.env.PUBLIC_GOOGLE_MAPS_KEY,
+      PUBLIC_GOOGLE_PLACES_KEY: context.env.PUBLIC_GOOGLE_PLACES_KEY,
+      PUBLIC_GOOGLE_GEOCODING_KEY: context.env.PUBLIC_GOOGLE_GEOCODING_KEY,
+      PUBLIC_GOOGLE_DISTANCE_MATRIX_KEY: context.env.PUBLIC_GOOGLE_DISTANCE_MATRIX_KEY,
+    },
   };
 }
 
 export function Layout({children}: {children?: React.ReactNode}) {
   const nonce = useNonce();
+  const data = useRouteLoaderData<RootLoader>('root');
+  const locale = data?.consent?.language?.toLowerCase() || 'ar';
+  const isEn = locale === 'en';
 
   return (
-    <html lang="en">
+    <html lang={locale} dir={isEn ? 'ltr' : 'rtl'}>
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width,initial-scale=1" />
-        <link rel="stylesheet" href={tailwindCss}></link>
-        <link rel="stylesheet" href={resetStyles}></link>
-        <link rel="stylesheet" href={appStyles}></link>
         <Meta />
         <Links />
       </head>
@@ -167,10 +179,6 @@ export function Layout({children}: {children?: React.ReactNode}) {
 
 export default function App() {
   const data = useRouteLoaderData<RootLoader>('root');
-
-  if (!data) {
-    return <Outlet />;
-  }
 
   return (
     <Analytics.Provider
@@ -209,3 +217,23 @@ export function ErrorBoundary() {
     </div>
   );
 }
+
+const LOCATIONS_QUERY = `#graphql
+  query Locations {
+    locations(first: 100) {
+      nodes {
+        id
+        name
+        address {
+          address1
+          address2
+          city
+          country
+          latitude
+          longitude
+          phone
+        }
+      }
+    }
+  }
+`;

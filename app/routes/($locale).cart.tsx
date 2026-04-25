@@ -69,6 +69,11 @@ export async function action({request, context}: Route.ActionArgs) {
       });
       break;
     }
+    case 'AttributesUpdate': {
+        const attributes = inputs.attributes as {key: string; value: string}[];
+        result = await cart.updateAttributes(attributes);
+        break;
+    }
     default:
       throw new Error(`${action} cart action is not defined`);
   }
@@ -111,3 +116,4 @@ export default function Cart() {
     </div>
   );
 }
+

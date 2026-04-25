@@ -262,3 +262,4 @@ const NEW_ARRIVALS_QUERY = `#graphql
   }
 ` as const;
 
+

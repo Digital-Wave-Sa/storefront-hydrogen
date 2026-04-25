@@ -11,14 +11,18 @@ export function getLocaleFromRequest(request: Request): I18nLocale {
   type I18nFromUrl = [I18nLocale['language'], I18nLocale['country']];
 
   let pathPrefix = '';
-  let [language, country]: I18nFromUrl = ['EN', 'US'];
+  let [language, country]: I18nFromUrl = ['AR', 'SA'];
 
   if (/^[A-Z]{2}-[A-Z]{2}$/i.test(firstPathPart)) {
     pathPrefix = '/' + firstPathPart;
     [language, country] = firstPathPart.split('-') as I18nFromUrl;
+  } else if (/^[A-Z]{2}$/i.test(firstPathPart)) {
+    pathPrefix = '/' + firstPathPart;
+    language = firstPathPart.toUpperCase() as I18nLocale['language'];
+    country = 'SA'; // Default country
   }
 
-  return {language, country, pathPrefix};
+  return {language: language.toUpperCase() as I18nLocale['language'], country: country.toUpperCase() as I18nLocale['country'], pathPrefix};
 }
 
 export type Locale = 'en' | 'ar';

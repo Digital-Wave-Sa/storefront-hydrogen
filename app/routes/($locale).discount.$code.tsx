@@ -46,3 +46,4 @@ export async function loader({request, context, params}: Route.LoaderArgs) {
     headers,
   });
 }
+

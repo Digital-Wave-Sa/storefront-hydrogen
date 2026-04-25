@@ -1,0 +1,90 @@
+﻿
+> saad-al-deen-storefront@2026.4.2 build
+> shopify hydrogen build --codegen
+
+[36mvite v8.0.10 [32mbuilding client environment for production...[36m[39m
+[2K
+transforming...Γ£ô 222 modules transformed.
+rendering chunks...
+node.exe : [31mΓ£ù[39m Build failed in 1.09s
+At C:\Program Files\nodejs\npm.ps1:29 char:3
++   & $NODE_EXE $NPM_CLI_JS $args
++   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ([31mΓ£ù[39m Build failed in 1.09s:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+Γò¡ΓöÇ error ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓò«
+Γöé                                                                              Γöé
+Γöé  Build failed with 4 errors:                                                 Γöé
+Γöé                                                                              Γöé
+Γöé  [MISSING_EXPORT] Error: "ActionFunctionArgs" is not exported by             Γöé
+Γöé  "node_modules/react-router/dist/development/index.mjs".                     Γöé
+Γöé     Γò¡ΓöÇ[ app/routes/api.fulfillment.tsx:1:10 ]                                Γöé
+Γöé     Γöé                                                                        Γöé
+Γöé   1 Γöé import { ActionFunctionArgs, json } from "react-router";               Γöé
+Γöé     Γöé          ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓö¼ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ                                            
+Γöé
+Γöé     Γöé                   Γò░ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ Missing export                           Γöé
+Γöé  ΓöÇΓöÇΓöÇΓò»                                                                        Γöé
+Γöé                                                                              Γöé
+Γöé  [MISSING_EXPORT] Error: "json" is not exported by                           Γöé
+Γöé  "node_modules/react-router/dist/development/index.mjs".                     Γöé
+Γöé     Γò¡ΓöÇ[ app/routes/api.fulfillment.tsx:1:30 ]                                Γöé
+Γöé     Γöé                                                                        Γöé
+Γöé   1 Γöé import { ActionFunctionArgs, json } from "react-router";               Γöé
+Γöé     Γöé                              ΓöÇΓöÇΓö¼ΓöÇ                                      Γöé
+Γöé     Γöé                                Γò░ΓöÇΓöÇΓöÇ Missing export                     Γöé
+Γöé  ΓöÇΓöÇΓöÇΓò»                                                                        Γöé
+Γöé                                                                              Γöé
+Γöé  [MISSING_EXPORT] Error: "defer" is not exported by                          Γöé
+Γöé  "node_modules/react-router/dist/development/index.mjs".                     Γöé
+Γöé     Γò¡ΓöÇ[ app/routes/($locale).products.$handle.tsx:8:10 ]                     Γöé
+Γöé     Γöé                                                                        Γöé
+Γöé   8 Γöé import { defer } from "react-router";                                  Γöé
+Γöé     Γöé          ΓöÇΓöÇΓö¼ΓöÇΓöÇ                                                         Γöé
+Γöé     Γöé            Γò░ΓöÇΓöÇΓöÇΓöÇ Missing export                                        Γöé
+Γöé  ΓöÇΓöÇΓöÇΓò»                                                                        Γöé
+Γöé                                                                              Γöé
+Γöé  [MISSING_EXPORT] Error: "Branch" is not exported by                         Γöé
+Γöé  "app/components/DeliveryPickupModal.tsx".                                   Γöé
+Γöé     Γò¡ΓöÇ[ app/components/BranchSelector.tsx:2:10 ]                             Γöé
+Γöé     Γöé                                                                        Γöé
+Γöé   2 Γöé import { Branch, parseLocationToBranch, FALLBACK_BRANCHES,             Γöé
+Γöé  getDistance } from "./DeliveryPickupModal";                                 Γöé
+Γöé     Γöé          ΓöÇΓöÇΓöÇΓö¼ΓöÇΓöÇ                                                        Γöé
+Γöé     Γöé             Γò░ΓöÇΓöÇΓöÇΓöÇ Missing export                                       Γöé
+Γöé  ΓöÇΓöÇΓöÇΓò»                                                                        Γöé
+Γöé                                                                              Γöé
+Γöé                                                                              Γöé
+Γöé  To investigate the issue, examine this stack trace:                         Γöé
+Γöé    at (Γò¡ΓöÇ[ app/routes/api.fulfillment.tsx:1)                                 Γöé
+Γöé    at (Γò¡ΓöÇ[ app/routes/api.fulfillment.tsx:1)                                 Γöé
+Γöé    at (Γò¡ΓöÇ[ app/routes/($locale).products.$handle.tsx:8)                      Γöé
+Γöé    at (Γò¡ΓöÇ[ app/components/BranchSelector.tsx:2)                              Γöé
+Γöé    at aggregateBindingErrorsIntoJsError                                      Γöé
+Γöé    (Users/ASUS/Desktop/saadaldeen-hydrogen/saad-al-deen-storefront/node_mod  Γöé
+Γöé    ules/rolldown/dist/shared/error-DL-e8-oE.mjs:48)                          Γöé
+Γöé    at unwrapBindingResult (Users/ASUS/Desktop/saadaldeen-hydrogen/saad-al-d  Γöé
+Γöé    een-storefront/node_modules/rolldown/dist/shared/error-DL-e8-oE.mjs:18)   Γöé
+Γöé    at #build (Users/ASUS/Desktop/saadaldeen-hydrogen/saad-al-deen-storefron  Γöé
+Γöé    t/node_modules/rolldown/dist/shared/rolldown-build-DSxL8qiP.mjs:3317)     Γöé
+Γöé    at buildEnvironment (Users/ASUS/Desktop/saadaldeen-hydrogen/saad-al-deen  Γöé
+Γöé    -storefront/node_modules/vite/dist/node/chunks/node.js:33018)             Γöé
+Γöé    at build (Users/ASUS/Desktop/saadaldeen-hydrogen/saad-al-deen-storefront  Γöé
+Γöé    /node_modules/vite/dist/node/chunks/node.js:33440)                        Γöé
+Γöé    at pR (Users/ASUS/Desktop/saadaldeen-hydrogen/saad-al-deen-storefront/no  Γöé
+Γöé    de_modules/@shopify/cli/dist/index.js:2930)                               Γöé
+Γöé    at run (Users/ASUS/Desktop/saadaldeen-hydrogen/saad-al-deen-storefront/n  Γöé
+Γöé    ode_modules/@shopify/cli/dist/index.js:2930)                              Γöé
+Γöé    at _run (Users/ASUS/Desktop/saadaldeen-hydrogen/saad-al-deen-storefront/  Γöé
+Γöé    node_modules/@shopify/cli/dist/chunk-XVFYDYZA.js:581)                     Γöé
+Γöé    at runCommand (Users/ASUS/Desktop/saadaldeen-hydrogen/saad-al-deen-store  Γöé
+Γöé    front/node_modules/@shopify/cli/dist/chunk-XVFYDYZA.js:567)               Γöé
+Γöé    at YIt (Users/ASUS/Desktop/saadaldeen-hydrogen/saad-al-deen-storefront/n  Γöé
+Γöé    ode_modules/@shopify/cli/dist/chunk-XVFYDYZA.js:581)                      Γöé
+Γöé                                                                              Γöé
+Γò░ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+ò»
+

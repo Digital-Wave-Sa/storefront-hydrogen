@@ -68,3 +68,4 @@ export async function loader({request, context, params}: Route.LoaderArgs) {
 export default function Component() {
   return null;
 }
+

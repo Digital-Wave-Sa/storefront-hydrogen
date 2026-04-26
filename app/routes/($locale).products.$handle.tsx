@@ -108,34 +108,37 @@ export async function loader({ params, request, context }: LoaderFunctionArgs) {
     throw new Error('Expected product handle to be defined');
   }
 
+  // Ensure handle is decoded (for Arabic characters)
+  const decodedHandle = decodeURIComponent(handle);
+
   let { product } = await storefront.query(PRODUCT_QUERY, {
-    variables: { handle, selectedOptions },
+    variables: { handle: decodedHandle, selectedOptions },
   });
 
   // --- CROSS-LANGUAGE FIX ---
   // If product not found in current locale (e.g. Arabic handle in English context),
-  // try fetching it without the language restriction to see if it exists at all.
+  // try fetching it explicitly in the Arabic context to see if it exists.
   if (!product?.id) {
     const { product: fallbackProduct } = await storefront.query(PRODUCT_QUERY, {
-      variables: { handle, selectedOptions },
-      // Force default context if possible, or just check if it exists
+      variables: { 
+        handle: decodedHandle, 
+        selectedOptions,
+        language: 'AR' // Force Arabic context for the fallback check
+      },
     });
     
-    // If we still don't have it, it's a real 404.
-    // If we DO have it, it means the product exists but isn't published to this market/language.
-    // We should redirect to the default locale version of the product.
     if (!fallbackProduct?.id) {
        throw new Response(null, { status: 404 });
     }
 
     // Redirect to the default (Arabic) path for this product
     const url = new URL(request.url);
-    const newPath = `/products/${handle}`;
+    const newPath = `/products/${decodedHandle}`;
     throw redirect(newPath + url.search, { status: 302 });
   }
 
   const variants = storefront.query(VARIANTS_QUERY, {
-    variables: { handle },
+    variables: { handle: decodedHandle },
   });
 
   // --- VISIBILITY SCHEDULING: compute status server-side ---

@@ -99,7 +99,7 @@ function TopBar({ locale, locations, customer, googleMapsKey, selectedLocationNa
       <div className="max-w-[1400px] mx-auto px-4 lg:px-6 h-[44px] flex items-center justify-between text-[13px] font-medium text-[#1b3d2e]">
         {/* LEFT: Language & Branch */}
         <div className="flex items-center gap-4">
-          <Form action="/api/locale" method="post" className="flex items-center">
+          <Form action="/api/locale" method="post" className="flex items-center" reloadDocument>
             <input type="hidden" name="locale" value={isEn ? 'ar' : 'en'} />
             <input type="hidden" name="returnTo" value={getReturnTo()} />
             <button type="submit" className="flex items-center gap-1.5 hover:opacity-70 transition-opacity">

@@ -14,7 +14,7 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
   const isLoggedIn = Boolean(customerAccessToken?.accessToken);
   
   const isAccountHome = pathname === `${localePrefix}/account` || pathname === `${localePrefix}/account/`;
-  const isPrivateRoute = new RegExp(`^${localePrefix}/account/(orders|orders/.*|profile|addresses|addresses/.*)$`).test(pathname);
+  const isPrivateRoute = new RegExp(`^${localePrefix}/account/(orders|orders/.*|profile|addresses|addresses/.*|notification-preferences)$`).test(pathname);
 
   if (!isLoggedIn) {
     if (isPrivateRoute || isAccountHome) {
@@ -176,6 +176,17 @@ function AcccountMenu() {
           <circle cx="12" cy="10" r="3" />
         </svg>
         {isEn ? 'Addresses' : 'العناوين'}
+      </NavLink>
+
+      <NavLink
+        to="/account/notification-preferences"
+        className={({ isActive }) => `account-nav-item ${isActive ? 'active' : ''}`}
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M13.73 21a2 2 0 01-3.46 0" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+        {isEn ? 'Notifications' : 'الإشعارات'}
       </NavLink>
 
       <Logout isEn={isEn} />

@@ -1866,6 +1866,14 @@ export type PredictiveSearchQuery = {
   }>;
 };
 
+export type ProductHandleQueryVariables = StorefrontAPI.Exact<{
+  id: StorefrontAPI.Scalars['ID']['input'];
+}>;
+
+export type ProductHandleQuery = {
+  product?: StorefrontAPI.Maybe<Pick<StorefrontAPI.Product, 'handle'>>;
+};
+
 export type ProductVariantFragment = Pick<
   StorefrontAPI.ProductVariant,
   'availableForSale' | 'id' | 'sku' | 'title'
@@ -1922,7 +1930,11 @@ export type ProductFragment = Pick<
       >;
     }>;
   }>;
-  options: Array<Pick<StorefrontAPI.ProductOption, 'name' | 'values'>>;
+  options: Array<
+    Pick<StorefrontAPI.ProductOption, 'name'> & {
+      optionValues: Array<Pick<StorefrontAPI.ProductOptionValue, 'name'>>;
+    }
+  >;
   addons?: StorefrontAPI.Maybe<{
     references?: StorefrontAPI.Maybe<{
       nodes: Array<
@@ -2079,7 +2091,11 @@ export type ProductQuery = {
           >;
         }>;
       }>;
-      options: Array<Pick<StorefrontAPI.ProductOption, 'name' | 'values'>>;
+      options: Array<
+        Pick<StorefrontAPI.ProductOption, 'name'> & {
+          optionValues: Array<Pick<StorefrontAPI.ProductOptionValue, 'name'>>;
+        }
+      >;
       addons?: StorefrontAPI.Maybe<{
         references?: StorefrontAPI.Maybe<{
           nodes: Array<
@@ -2644,7 +2660,11 @@ interface GeneratedQueryTypes {
     return: PredictiveSearchQuery;
     variables: PredictiveSearchQueryVariables;
   };
-  '#graphql\n  query Product(\n    $country: CountryCode\n    $handle: String!\n    $language: LanguageCode\n    $selectedOptions: [SelectedOptionInput!]!\n\n  ) @inContext(country: $country, language: $language) {\n    product(handle: $handle) {\n      ...Product\n    }\n  }\n  #graphql\n  fragment Product on Product {\n    id\n    title\n    vendor\n    handle\n    descriptionHtml\n    description\n    productType\n    isGiftCard\n    tags\n    bundle_components: metafield(namespace: "custom", key: "bundle_components") {\n      references(first: 20) {\n        nodes {\n          ... on Product {\n            id\n            title\n            handle\n            featuredImage {\n              url\n              altText\n            }\n            variants(first: 1) {\n              nodes {\n                price {\n                  amount\n                  currencyCode\n                }\n              }\n            }\n          }\n        }\n      }\n    }\n    options {\n      name\n      values\n    }\n    addons: metafield(namespace: "custom", key: "product_addons") {\n    references(first: 10) {\n      nodes {\n        ... on Product {\n          id\n          title\n          handle\n          availableForSale\n          variants(first: 1) {\n            nodes {\n              id\n              price {\n                amount\n                currencyCode\n              }\n              image {\n                url\n                altText\n                width\n                height\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n\n      # --- ADDED FOR VISIBILITY SCHEDULING ---\n    visibility_start: metafield(namespace: "custom", key: "visibility_start") {\n      value\n    }\n    visibility_end: metafield(namespace: "custom", key: "visibility_end") {\n      value\n    }\n    nutrition: metafield(namespace: "custom", key: "nutrition") {\n      value\n    }\n    allergens: metafield(namespace: "custom", key: "allergens") {\n      value\n    }\n    estimated_delivery: metafield(namespace: "custom", key: "estimated_delivery") {\n      value\n    }\n    delivery_override: metafield(namespace: "custom", key: "delivery_lead_time") {\n      value\n    }\n    average_rating: metafield(namespace: "custom", key: "average_rating") {\n      value\n    }\n    rating_count: metafield(namespace: "custom", key: "rating_count") {\n      value\n    }\n    collections(first: 10) {\n      nodes {\n        id\n        leadTime: metafield(namespace: "custom", key: "delivery_lead_time") {\n          value\n        }\n      }\n    }\n    # ---------------------------------------\n\n    selectedVariant: variantBySelectedOptions(selectedOptions: $selectedOptions) {\n      ...ProductVariant\n    }\n    variants(first: 100) {\n      nodes {\n        ...ProductVariant\n      }\n    }\n    seo {\n      description\n      title\n    }\n    images(first: 10) {\n      nodes {\n        id\n        url\n        altText\n        width\n        height\n      }\n    }\n  }\n  #graphql\n  fragment ProductVariant on ProductVariant {\n    availableForSale\n    compareAtPrice {\n      amount\n      currencyCode\n    }\n    id\n    image {\n      __typename\n      id\n      url\n      altText\n      width\n      height\n    }\n    price {\n      amount\n      currencyCode\n    }\n    product {\n      title\n      handle\n    }\n    selectedOptions {\n      name\n      value\n    }\n    sku\n    title\n    unitPrice {\n      amount\n      currencyCode\n    }\n    storeAvailability(first: 250) {\n      nodes {\n        available\n        location {\n          id\n          name\n        }\n      }\n    }\n  }\n\n\n': {
+  '#graphql\n            query ProductHandle($id: ID!) {\n                product(id: $id) {\n                    handle\n                }\n            }\n        ': {
+    return: ProductHandleQuery;
+    variables: ProductHandleQueryVariables;
+  };
+  '#graphql\n  query Product(\n    $country: CountryCode\n    $handle: String!\n    $language: LanguageCode\n    $selectedOptions: [SelectedOptionInput!]!\n\n  ) @inContext(country: $country, language: $language) {\n    product(handle: $handle) {\n      ...Product\n    }\n  }\n  #graphql\n  fragment Product on Product {\n    id\n    title\n    vendor\n    handle\n    descriptionHtml\n    description\n    productType\n    isGiftCard\n    tags\n    bundle_components: metafield(namespace: "custom", key: "bundle_components") {\n      references(first: 20) {\n        nodes {\n          ... on Product {\n            id\n            title\n            handle\n            featuredImage {\n              url\n              altText\n            }\n            variants(first: 1) {\n              nodes {\n                price {\n                  amount\n                  currencyCode\n                }\n              }\n            }\n          }\n        }\n      }\n    }\n    options {\n      name\n      optionValues {\n        name\n      }\n    }\n    addons: metafield(namespace: "custom", key: "product_addons") {\n    references(first: 10) {\n      nodes {\n        ... on Product {\n          id\n          title\n          handle\n          availableForSale\n          variants(first: 1) {\n            nodes {\n              id\n              price {\n                amount\n                currencyCode\n              }\n              image {\n                url\n                altText\n                width\n                height\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n\n      # --- ADDED FOR VISIBILITY SCHEDULING ---\n    visibility_start: metafield(namespace: "custom", key: "visibility_start") {\n      value\n    }\n    visibility_end: metafield(namespace: "custom", key: "visibility_end") {\n      value\n    }\n    nutrition: metafield(namespace: "custom", key: "nutrition") {\n      value\n    }\n    allergens: metafield(namespace: "custom", key: "allergens") {\n      value\n    }\n    estimated_delivery: metafield(namespace: "custom", key: "estimated_delivery") {\n      value\n    }\n    delivery_override: metafield(namespace: "custom", key: "delivery_lead_time") {\n      value\n    }\n    average_rating: metafield(namespace: "custom", key: "average_rating") {\n      value\n    }\n    rating_count: metafield(namespace: "custom", key: "rating_count") {\n      value\n    }\n    collections(first: 10) {\n      nodes {\n        id\n        leadTime: metafield(namespace: "custom", key: "delivery_lead_time") {\n          value\n        }\n      }\n    }\n    # ---------------------------------------\n\n    selectedVariant: variantBySelectedOptions(selectedOptions: $selectedOptions) {\n      ...ProductVariant\n    }\n    variants(first: 100) {\n      nodes {\n        ...ProductVariant\n      }\n    }\n    seo {\n      description\n      title\n    }\n    images(first: 10) {\n      nodes {\n        id\n        url\n        altText\n        width\n        height\n      }\n    }\n  }\n  #graphql\n  fragment ProductVariant on ProductVariant {\n    availableForSale\n    compareAtPrice {\n      amount\n      currencyCode\n    }\n    id\n    image {\n      __typename\n      id\n      url\n      altText\n      width\n      height\n    }\n    price {\n      amount\n      currencyCode\n    }\n    product {\n      title\n      handle\n    }\n    selectedOptions {\n      name\n      value\n    }\n    sku\n    title\n    unitPrice {\n      amount\n      currencyCode\n    }\n    storeAvailability(first: 250) {\n      nodes {\n        available\n        location {\n          id\n          name\n        }\n      }\n    }\n  }\n\n\n': {
     return: ProductQuery;
     variables: ProductQueryVariables;
   };

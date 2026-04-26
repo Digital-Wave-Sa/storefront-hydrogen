@@ -1,3 +1,11 @@
+@font-face {
+  font-family: 'Gotham Light';
+  src: url('/fonts/GothamLight.woff2') format('woff2'),
+    url('/fonts/GothamLight.woff') format('woff');
+  font-weight: 300;
+  font-style: normal;
+}
+
 :root {
   --aside-width: 400px;
   --cart-aside-summary-height-with-discount: 300px;
@@ -7,6 +15,23 @@
   --color-dark: #000;
   --color-light: #fff;
 }
+
+.hide-scrollbars {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}
+.hide-scrollbars::-webkit-scrollbar {
+  display: none; /* Chrome, Safari and Opera */
+}
+
+.font-ar {
+  font-family: 'Cairo', sans-serif !important;
+}
+
+.font-en {
+  font-family: 'Inter', 'Outfit', 'Segoe UI', sans-serif !important;
+}
+
 
 img {
   border-radius: 4px;
@@ -93,15 +118,18 @@ aside {
   right: calc(-1 * var(--aside-width));
   top: 0;
   transition: transform 200ms ease-in-out;
+  display: flex;
+  flex-direction: column;
 }
 
 aside header {
   align-items: center;
-  border-bottom: 1px solid var(--color-dark);
+  border-bottom: 1px solid #f0ece8;
   display: flex;
   height: var(--header-height);
   justify-content: space-between;
-  padding: 0 20px;
+  padding: 0 24px;
+  flex-shrink: 0;
 }
 
 aside header h3 {
@@ -126,7 +154,28 @@ aside header h2 {
 }
 
 aside main {
-  margin: 1rem;
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Custom Scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 5px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #f8f5f2;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #e2d9d0;
+  border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #d4a06a;
 }
 
 aside p {

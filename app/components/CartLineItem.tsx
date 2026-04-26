@@ -129,6 +129,17 @@ export function CartLineItem({
             </ul>
           )}
 
+          {/* Gift Message */}
+          {(line as any).attributes?.filter((attr: any) => !attr.key.startsWith('_') && attr.value).map((attr: any) => (
+            <div key={attr.key} className="flex items-start gap-2 mb-3 bg-[#fdf8f0] border border-[#f0ece8] rounded-xl px-3 py-2">
+              <span className="text-sm shrink-0">🎁</span>
+              <div className="min-w-0">
+                <p className="text-[10px] font-bold text-[#d4a06a] uppercase tracking-wider mb-0.5">{attr.key}</p>
+                <p className="text-[11px] text-[#1b3d2e] font-medium leading-snug break-words">{attr.value}</p>
+              </div>
+            </div>
+          ))}
+
           {/* Quantity Controls */}
           <div className="mt-auto flex justify-end">
              <CartLineQuantity line={line} />

@@ -56,11 +56,16 @@ export function links() {
   return [
     {
       rel: 'preconnect',
-      href: 'https://cdn.shopify.com',
+      href: 'https://fonts.googleapis.com',
     },
     {
       rel: 'preconnect',
-      href: 'https://shop.app',
+      href: 'https://fonts.gstatic.com',
+      crossOrigin: 'anonymous',
+    },
+    {
+      rel: 'stylesheet',
+      href: 'https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap',
     },
     {rel: 'stylesheet', href: tailwindCss},
     {rel: 'stylesheet', href: resetStyles},
@@ -168,7 +173,7 @@ export function Layout({children}: {children?: React.ReactNode}) {
         <Meta />
         <Links />
       </head>
-      <body>
+      <body className={`bg-[#FEF8EB] ${isEn ? 'font-en' : 'font-ar'}`}>
         {children}
         <ScrollRestoration nonce={nonce} />
         <Scripts nonce={nonce} />

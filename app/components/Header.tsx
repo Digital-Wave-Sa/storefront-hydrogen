@@ -103,7 +103,7 @@ function TopBar({ locale, locations, customer, googleMapsKey, selectedLocationNa
             <input type="hidden" name="locale" value={isEn ? 'ar' : 'en'} />
             <input type="hidden" name="returnTo" value={getReturnTo()} />
             <button type="submit" className="flex items-center gap-1.5 hover:opacity-70 transition-opacity">
-              <span className="font-bold">{isEn ? 'English' : 'العربية'}</span>
+              <span className="font-bold">{isEn ? 'العربية' : 'English'}</span>
               <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor"><path d="M5 7l5 5 5-5H5z" /></svg>
             </button>
           </Form>

@@ -190,11 +190,11 @@ export default function Collection() {
                 className="flex items-center gap-2.5 px-6 py-3.5 bg-[#1b3d2e] text-white rounded-2xl font-bold hover:bg-[#2d5e4a] transition-all shadow-md active:scale-95 group"
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="group-hover:rotate-12 transition-transform"><path d="M22 3H2l8 9v11l4-6V12L22 3z"/></svg>
-              <span>تـصـفـيـة</span>
+              <span>{isEn ? 'Filter' : 'تـصـفـيـة'}</span>
             </button>
             <div className="h-10 w-[1px] bg-gray-100 hidden md:block"></div>
             <p className="text-gray-400 font-bold hidden md:block">
-                يوجد {collection.products.nodes.length} منتج
+                {isEn ? `Found ${collection.products.nodes.length} products` : `يوجد ${collection.products.nodes.length} منتج`}
             </p>
           </div>
           
@@ -255,13 +255,13 @@ export default function Collection() {
             <>
               <div className="flex justify-center mb-10">
                 <PreviousLink className="text-[#1b3d2e] font-black border-2 border-[#1b3d2e]/10 px-8 py-2.5 rounded-full hover:bg-gray-50 transition-all">
-                  {isLoading ? 'جاري التحميل...' : <span>↑ تحميل المنتجات السابقة</span>}
+                  {isLoading ? (isEn ? 'Loading...' : 'جاري التحميل...') : <span>{isEn ? '↑ Load Previous' : '↑ تحميل المنتجات السابقة'}</span>}
                 </PreviousLink>
               </div>
               <ProductsGrid products={nodes} view={view} />
               <div className="flex justify-center mt-16">
                 <NextLink className="bg-[#1b3d2e] text-white px-16 py-4 rounded-full font-black shadow-[0_10px_30px_rgba(27,61,46,0.3)] hover:shadow-[0_15px_40px_rgba(27,61,46,0.4)] hover:-translate-y-1 transition-all duration-300">
-                  {isLoading ? 'جاري التحميل...' : <span>تصفح المزيد ↓</span>}
+                  {isLoading ? (isEn ? 'Loading...' : 'جاري التحميل...') : <span>{isEn ? 'Browse More ↓' : 'تصفح المزيد ↓'}</span>}
                 </NextLink>
               </div>
             </>

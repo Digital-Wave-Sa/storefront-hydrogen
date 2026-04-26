@@ -117,24 +117,44 @@ export async function loader({ params, request, context }: LoaderFunctionArgs) {
 
   // --- CROSS-LANGUAGE FIX ---
   // If product not found in current locale (e.g. Arabic handle in English context),
-  // try fetching it explicitly in the Arabic context to see if it exists.
+  // try fetching it to find its ID, then redirect to the correct localized handle.
   if (!product?.id) {
     const { product: fallbackProduct } = await storefront.query(PRODUCT_QUERY, {
       variables: { 
         handle: decodedHandle, 
         selectedOptions,
-        language: 'AR' // Force Arabic context for the fallback check
+        language: 'AR' // Try finding it in Arabic first
       },
     });
     
-    if (!fallbackProduct?.id) {
-       throw new Response(null, { status: 404 });
+    if (fallbackProduct?.id) {
+        // If we found the product in Arabic, check if it has a different handle in English
+        // Hydrogen storefront client uses the context's locale by default.
+        const { product: currentLocaleProduct } = await storefront.query(`#graphql
+            query ProductHandle($id: ID!) {
+                product(id: $id) {
+                    handle
+                }
+            }
+        `, {
+            variables: { id: fallbackProduct.id }
+        });
+
+        const url = new URL(request.url);
+        const localePrefix = params.locale ? `/${params.locale}` : '';
+        const targetHandle = currentLocaleProduct?.handle || decodedHandle;
+        
+        // If the handle is different or we just want to ensure we stay in the current locale
+        // We ONLY redirect if we are NOT already on the path we calculated (to avoid loops)
+        const targetPath = `${localePrefix}/products/${targetHandle}`;
+        const currentPath = url.pathname;
+        
+        if (decodeURIComponent(currentPath) !== decodeURIComponent(targetPath)) {
+            throw redirect(targetPath + url.search, { status: 302 });
+        }
     }
 
-    // Redirect to the default (Arabic) path for this product
-    const url = new URL(request.url);
-    const newPath = `/products/${decodedHandle}`;
-    throw redirect(newPath + url.search, { status: 302 });
+    throw new Response(null, { status: 404 });
   }
 
   const variants = storefront.query(VARIANTS_QUERY, {
@@ -843,7 +863,7 @@ export default function Product() {
                                 quantity,
                                 attributes: [
                                   {key: '_groupId', value: groupId},
-                                  ...(note ? [{key: 'Note', value: note}] : []),
+                                  ...(note ? [{key: 'Gift Message', value: note}] : []),
                                 ],
                               };
 
@@ -1595,7 +1615,9 @@ const PRODUCT_FRAGMENT = `#graphql
     }
     options {
       name
-      values
+      optionValues {
+        name
+      }
     }
     addons: metafield(namespace: "custom", key: "product_addons") {
     references(first: 10) {

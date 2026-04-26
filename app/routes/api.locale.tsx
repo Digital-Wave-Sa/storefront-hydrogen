@@ -9,7 +9,9 @@ export async function action({ request, context }: ActionFunctionArgs) {
         context.session.set('locale', locale);
     }
 
-    return redirect(returnTo as string, {
+    const safeReturnTo = encodeURI(decodeURI(returnTo as string));
+
+    return redirect(safeReturnTo, {
         headers: {
             'Set-Cookie': await context.session.commit(),
         },

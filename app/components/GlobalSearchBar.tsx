@@ -13,6 +13,7 @@ export function GlobalSearchBar({ locale, isMobile }: { locale?: string, isMobil
   const wrapperRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const [selectedIndex, setSelectedIndex] = useState(-1);
+  const [isTyping, setIsTyping] = useState(false);
 
   // Load history from session storage
   useEffect(() => {
@@ -42,15 +43,17 @@ export function GlobalSearchBar({ locale, isMobile }: { locale?: string, isMobil
 
   // Debounce logic
   useEffect(() => {
-    if (query.length < 2) {
-      // Don't close if we want to show history
+    if (query.length < 1) {
+      setIsTyping(false);
       return;
     }
+    setIsTyping(true);
+    setIsOpen(true);
     const timer = setTimeout(() => {
       const searchAction = isEn ? '/en/predictive-search' : '/predictive-search';
-      fetcher.submit({ q: query, limit: '5', type: 'PRODUCT,QUERY' }, { method: 'GET', action: searchAction });
-      setIsOpen(true);
-    }, 300);
+      fetcher.submit({ q: query, limit: '6', type: 'PRODUCT,QUERY' }, { method: 'GET', action: searchAction });
+      setIsTyping(false);
+    }, 200);
 
     return () => clearTimeout(timer);
   }, [query, isEn]);
@@ -69,14 +72,14 @@ export function GlobalSearchBar({ locale, isMobile }: { locale?: string, isMobil
   const results = fetcher.data?.searchResults?.results as NormalizedPredictiveSearchResults | undefined;
   
   // Flatten items for keyboard navigation
-  const historyItemsCount = query.length < 2 ? history.length : 0;
+  const historyItemsCount = query.length < 1 ? history.length : 0;
   const flattenedItems = results?.flatMap(group => group.items) || [];
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (!isOpen) return;
     
     // History keyboard nav
-    if (query.length < 2 && history.length > 0) {
+    if (query.length < 1 && history.length > 0) {
         if (e.key === 'ArrowDown') {
             e.preventDefault();
             setSelectedIndex(prev => (prev < history.length - 1 ? prev + 1 : prev));
@@ -149,7 +152,7 @@ export function GlobalSearchBar({ locale, isMobile }: { locale?: string, isMobil
 
       {isOpen && (
         <div className="absolute top-full mt-2 w-[120%] lg:w-full bg-white border border-gray-100 rounded-xl shadow-xl z-50 overflow-hidden end-0 lg:end-auto lg:start-0 animate-fade-in">
-          {(query.length < 2 && history.length > 0) ? (
+          {(query.length < 1 && history.length > 0) ? (
             <div className="py-2">
                 <div className="px-4 py-2 flex items-center justify-between">
                     <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
@@ -180,7 +183,7 @@ export function GlobalSearchBar({ locale, isMobile }: { locale?: string, isMobil
                     ))}
                 </ul>
             </div>
-          ) : query.length >= 2 && fetcher.state === 'loading' ? (
+          ) : query.length >= 1 && (fetcher.state === 'loading' || isTyping) ? (
             <div className="p-5 text-center text-sm font-medium text-gray-500 animate-pulse">{isEn ? 'Searching...' : 'جاري البحث...'}</div>
           ) : results && flattenedItems.length > 0 ? (
             <div className="max-h-[60vh] lg:max-h-[70vh] overflow-y-auto custom-scrollbar">
@@ -240,7 +243,7 @@ export function GlobalSearchBar({ locale, isMobile }: { locale?: string, isMobil
                 </Link>
               </div>
             </div>
-          ) : query.length >= 2 ? (
+          ) : query.length >= 1 && fetcher.state === 'idle' && !isTyping ? (
             <div className="p-6 text-center">
               <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-3">
                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#d4a06a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /><line x1="8" y1="11" x2="14" y2="11" /></svg>

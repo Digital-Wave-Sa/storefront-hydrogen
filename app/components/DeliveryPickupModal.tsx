@@ -242,9 +242,11 @@ export function DeliveryPickupModal({
     locationsPromise,
     customerPromise,
     locale = 'ar',
-    googleMapsKey,
+    googleMapsKey: propGoogleMapsKey,
     onSelectBranch,
 }: DeliveryPickupModalProps) {
+    const googleMapsKey = propGoogleMapsKey || (typeof window !== 'undefined' ? (window as any).ENV?.PUBLIC_GOOGLE_MAPS_KEY : undefined);
+
     const isEn = locale === 'en';
     const [activeTab, setActiveTab] = useState<Tab>(defaultTab);
     const [selectedBranch, setSelectedBranch] = useState<string>('');

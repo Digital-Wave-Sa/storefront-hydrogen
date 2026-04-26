@@ -176,6 +176,12 @@ export function Layout({children}: {children?: React.ReactNode}) {
       <body className={`bg-[#FEF8EB] ${isEn ? 'font-en' : 'font-ar'}`}>
         {children}
         <ScrollRestoration nonce={nonce} />
+        <script
+          nonce={nonce}
+          dangerouslySetInnerHTML={{
+            __html: `window.ENV = ${JSON.stringify(data?.env || {})};`,
+          }}
+        />
         <Scripts nonce={nonce} />
       </body>
     </html>

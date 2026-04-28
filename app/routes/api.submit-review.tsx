@@ -3,7 +3,7 @@ import { adminApiQuery } from '../lib/admin.server';
 
 export async function action({ request, context }: ActionFunctionArgs) {
     const { env } = context;
-    const adminToken = env.SHOPIFY_ADMIN_API_ACCESS_TOKEN;
+    const adminToken = env.PRIVATE_STOREFRONT_API_TOKEN;
     const domain = env.PUBLIC_STORE_DOMAIN;
 
     if (!adminToken) {
@@ -48,9 +48,9 @@ export async function action({ request, context }: ActionFunctionArgs) {
     const fields = [
         { key: "product_handle", value: String(productHandle) },
         { key: "customer_name", value: String(customerName) },
-        { key: "rating", value: String(rating) },
-        { key: "review_title", value: String(title) },
-        { key: "review_comment", value: String(comment) },
+        { key: "rating", value: String(rating) }, // Shopify expects strings for all values in MetaobjectFieldInput
+        { key: "review_title", value: String(title || '') },
+        { key: "review_comment", value: String(comment || '') },
         { key: "language", value: String(language) },
         { key: "status", value: "Pending" }
     ];

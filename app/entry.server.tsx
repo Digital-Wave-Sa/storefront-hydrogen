@@ -22,6 +22,8 @@ export default async function handleRequest(
     frameSrc: ["'self'", 'https://www.google.com', 'https://maps.google.com'],
     imgSrc: ["'self'", 'https://cdn.shopify.com', 'https://shopify.com', 'https://saadeddin.com', 'https://cdn.tamara.co', 'data:'],
     connectSrc: ["'self'", 'https://maps.googleapis.com', '*.google.com', 'https://*.google.com', 'https://cdn.tamara.co'],
+    styleSrc: ["'self'", "'unsafe-inline'", 'https://cdn.shopify.com', 'https://fonts.googleapis.com'],
+    fontSrc: ["'self'", 'https://cdn.shopify.com', 'https://fonts.gstatic.com', 'data:'],
   });
 
   const body = await renderToReadableStream(

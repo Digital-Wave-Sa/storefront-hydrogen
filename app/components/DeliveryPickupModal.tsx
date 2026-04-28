@@ -175,19 +175,32 @@ export function parseLocationToBranch(node: any): Branch {
         if (hFrom && hTo) {
             ou = hTo;
             try {
-                const now = new Date();
+                // Force Riyadh Time (UTC+3)
+                const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Riyadh' }));
                 const currentMins = now.getHours() * 60 + now.getMinutes();
+                
                 const parseTime = (timeStr: string) => {
-                    const match = timeStr.trim().match(/^(\d{1,2}):(\d{2})/);
+                    const arMap: {[key: string]: string} = { '٠': '0', '١': '1', '٢': '2', '٣': '3', '٤': '4', '٥': '5', '٦': '6', '٧': '7', '٨': '8', '٩': '9' };
+                    let normalized = timeStr.trim().toLowerCase().replace(/[٠-٩]/g, d => arMap[d]);
+                    
+                    const match = normalized.match(/^(\d{1,2}):(\d{2})/);
                     if (!match) return -1;
+                    
                     let h = parseInt(match[1], 10);
                     let m = parseInt(match[2], 10);
-                    if (timeStr.toLowerCase().includes('pm') && h !== 12) h += 12;
-                    if (timeStr.toLowerCase().includes('am') && h === 12) h = 0;
+                    
+                    // Support both English (am/pm) and Arabic (ص/م)
+                    const isPm = normalized.includes('pm') || normalized.includes('م');
+                    const isAm = normalized.includes('am') || normalized.includes('ص');
+                    
+                    if (isPm && h !== 12) h += 12;
+                    if (isAm && h === 12) h = 0;
+                    
                     return h * 60 + m;
                 };
                 const fMins = parseTime(hFrom);
                 const tMins = parseTime(hTo);
+                
                 if (fMins !== -1 && tMins !== -1) {
                     if (tMins < fMins) {
                         if (currentMins >= fMins || currentMins < tMins) st = 'open';
@@ -313,8 +326,22 @@ export function DeliveryPickupModal({
                 <Suspense fallback={<div className="dpm-loading"><div className="dpm-loading-spinner" /></div>}>
                     <Await resolve={Promise.all([locationsPromise, customerPromise])}>
                         {([locationsData, customerData]: [any, any]) => {
+                            console.log('--- LOUD DEBUG: RAW DATA FROM SHOPIFY ---', { locationsData, customerData });
                             const nodes = locationsData?.locations?.nodes || [];
-                            const enrichedNodes = mergeWithAdminMeta(nodes);
+                            
+                            // Use Storefront API nodes as the base
+                            let enrichedNodes = mergeWithAdminMeta(nodes);
+                            
+                            // If merging didn't produce results (or backend failed), use Storefront nodes directly
+                            if (enrichedNodes.length === 0 && nodes.length > 0) {
+                                enrichedNodes = nodes;
+                            }
+                            
+                            // Last fallback: use Admin API nodes if Storefront was empty
+                            if (enrichedNodes.length === 0 && adminMetafields.length > 0) {
+                                enrichedNodes = adminMetafields;
+                            }
+
                             const rawBranches: Branch[] = enrichedNodes.length > 0
                                 ? enrichedNodes.map((n: any) => parseLocationToBranch(n))
                                 : FALLBACK_BRANCHES;

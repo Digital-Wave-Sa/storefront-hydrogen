@@ -60,14 +60,12 @@ export async function loader({context}: Route.LoaderArgs) {
     }
 
     const json = await res.json();
-    console.log('ADMIN_UNIQUE_123 RAW RESULT:', JSON.stringify(json, null, 2));
-
+    
     if (json.errors) {
-      console.error('Admin API errors:', json.errors);
+      return Response.json({error: json.errors, locations: []}, {status: 200});
     }
 
     const locations = json?.data?.locations?.nodes || [];
-    console.log('ADMIN API LOCATIONS COUNT:', locations.length);
 
     // Flatten metafields for easier consumption
     const enriched = locations.map((loc: any) => ({
@@ -91,7 +89,6 @@ export async function loader({context}: Route.LoaderArgs) {
       }
     );
   } catch (error) {
-    console.error('Admin GraphQL locations error:', error);
     return Response.json({locations: []}, {status: 200});
   }
 }

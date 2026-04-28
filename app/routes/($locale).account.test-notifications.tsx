@@ -1,8 +1,8 @@
 import { data, type LoaderFunctionArgs } from 'react-router';
 import { useLoaderData } from 'react-router';
 import { useState } from 'react';
-import { getNotificationTemplates } from '~/lib/notification_templates.server';
-import type { OrderStage, Language } from '~/lib/notification_templates.server';
+import { getNotificationTemplates } from '~/lib/notification_templates';
+import type { OrderStage, Language } from '~/lib/notification_templates';
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const url = new URL(request.url);

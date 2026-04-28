@@ -1,6 +1,6 @@
 import { sendEmail } from './email.server';
 import { sendSMS } from './sms.server';
-import { getNotificationTemplates, OrderStage, Language } from './notification_templates.server';
+import { getNotificationTemplates, OrderStage, Language } from './notification_templates';
 
 /**
  * Unified Notification Dispatcher

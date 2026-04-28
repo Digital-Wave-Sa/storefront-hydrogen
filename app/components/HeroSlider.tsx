@@ -76,20 +76,24 @@ export function HeroSlider() {
       {/* Navigation Arrows (Hidden on mobile, appear on hover for desktop) */}
       <button 
         onClick={prevSlide}
-        className="hidden lg:flex absolute left-8 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/80 hover:bg-white text-[#1b3d2e] rounded-full items-center justify-center shadow-lg transition-all z-10 hover:scale-110 active:scale-95 opacity-0 group-hover:opacity-100"
+        className="hidden lg:flex absolute start-8 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/80 hover:bg-white text-[#1b3d2e] rounded-full items-center justify-center shadow-lg transition-all z-10 hover:scale-110 active:scale-95 opacity-0 group-hover:opacity-100"
         aria-label="Previous slide"
       >
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="ltr:block rtl:hidden"><polyline points="15 18 9 12 15 6"></polyline></svg>
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="hidden rtl:block"><polyline points="9 18 15 12 9 6"></polyline></svg>
+        {/* In LTR: points left (<). In RTL: points right (>) */}
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="rtl:rotate-180">
+          <polyline points="15 18 9 12 15 6"></polyline>
+        </svg>
       </button>
       
       <button 
         onClick={nextSlide}
-        className="hidden lg:flex absolute right-8 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/80 hover:bg-white text-[#1b3d2e] rounded-full items-center justify-center shadow-lg transition-all z-10 hover:scale-110 active:scale-95 opacity-0 group-hover:opacity-100"
+        className="hidden lg:flex absolute end-8 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/80 hover:bg-white text-[#1b3d2e] rounded-full items-center justify-center shadow-lg transition-all z-10 hover:scale-110 active:scale-95 opacity-0 group-hover:opacity-100"
         aria-label="Next slide"
       >
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="ltr:block rtl:hidden"><polyline points="9 18 15 12 9 6"></polyline></svg>
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="hidden rtl:block"><polyline points="15 18 9 12 15 6"></polyline></svg>
+        {/* In LTR: points right (>). In RTL: points left (<) */}
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="rtl:rotate-180">
+          <polyline points="9 18 15 12 9 6"></polyline>
+        </svg>
       </button>
 
       {/* Indicators */}

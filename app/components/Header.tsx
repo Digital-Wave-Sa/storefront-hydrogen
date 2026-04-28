@@ -54,8 +54,14 @@ export function Header({ header, isLoggedIn, cart, locations, customer, locale, 
     locationFetcher.submit(locFormData, { method: 'POST', action: '/api/location-id' });
   };
 
+  const [activeMega, setActiveMega] = useState<string | null>(null);
+
   return (
-    <header className={`w-full ${isEn ? 'font-en' : 'font-ar'} bg-[#FEF8EB] relative z-50`} dir={isEn ? 'ltr' : 'rtl'}>
+    <header 
+      className={`w-full ${isEn ? 'font-en' : 'font-ar'} bg-[#FEF8EB] relative z-50`} 
+      dir={isEn ? 'ltr' : 'rtl'}
+      onMouseLeave={() => setActiveMega(null)}
+    >
       <TopBar 
         locale={locale} 
         locations={locations} 
@@ -70,7 +76,17 @@ export function Header({ header, isLoggedIn, cart, locations, customer, locale, 
         cart={cart} 
         locale={locale} 
         menu={menu}
+        activeMega={activeMega}
+        setActiveMega={setActiveMega}
       />
+      
+      {/* FULL WIDTH MEGA MENU */}
+      <div 
+        className={`absolute top-full left-0 w-full transition-all duration-300 origin-top z-[60] 
+          ${activeMega ? 'opacity-100 visible translate-y-0' : 'opacity-0 invisible -translate-y-2'}`}
+      >
+        {activeMega === 'products' && <ProductMegaMenu locale={locale} />}
+      </div>
     </header>
   );
 }
@@ -154,12 +170,16 @@ function MiddleBar({
   isLoggedIn, 
   cart, 
   locale,
-  menu
+  menu,
+  activeMega,
+  setActiveMega
 }: { 
   isLoggedIn: boolean | Promise<boolean>; 
   cart: HeaderProps['cart']; 
   locale?: string, 
-  menu: any
+  menu: any,
+  activeMega: string | null,
+  setActiveMega: (v: string | null) => void
 }) {
   const { open } = useAside();
   const isEn = locale === 'en';
@@ -179,7 +199,7 @@ function MiddleBar({
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="18" x2="21" y2="18" /></svg>
             </button>
             <div className="hidden lg:block">
-              <CategoryNav locale={locale} />
+              <CategoryNav locale={locale} activeMega={activeMega} setActiveMega={setActiveMega} />
             </div>
           </div>
 
@@ -238,51 +258,134 @@ function MiddleBar({
 
 // ─── ROW 3: CATEGORY NAV ────────────────────────────────────────────────────
 const STATIC_NAV_AR = [
-  { title: 'الرئيسية', url: '/' },
-  { title: 'المنتجات', url: '/collections/all' },
+  { title: 'المنتجات', url: '/collections/all', hasMega: true },
   { title: 'المناسبات', url: '/collections/occasions' },
   { title: 'الهدايا', url: '/collections/gifts' },
   { title: 'الكيك المخصص', url: '/pages/design-cake' },
   { title: 'العروض', url: '/collections/offers' },
-  { title: 'الفروع', url: '/pages/branches' },
 ];
 
 const STATIC_NAV_EN = [
-  { title: 'Home', url: '/en' },
-  { title: 'Products', url: '/en/collections/all' },
+  { title: 'Products', url: '/en/collections/all', hasMega: true },
   { title: 'Occasions', url: '/en/collections/occasions' },
   { title: 'Gifts', url: '/en/collections/gifts' },
   { title: 'Custom Cake', url: '/en/pages/design-cake' },
   { title: 'Offers', url: '/en/collections/offers' },
-  { title: 'Branches', url: '/en/pages/branches' },
 ];
 
-function CategoryNav({ locale }: { locale?: string }) {
+function CategoryNav({ 
+  locale, 
+  activeMega, 
+  setActiveMega 
+}: { 
+  locale?: string, 
+  activeMega: string | null, 
+  setActiveMega: (v: string | null) => void 
+}) {
   const isEn = locale === 'en';
   const NAV_ITEMS = isEn ? STATIC_NAV_EN : STATIC_NAV_AR;
 
   return (
-    <nav className="flex items-center gap-1 xl:gap-2">
+    <nav className="flex items-center gap-1 xl:gap-2 h-full">
       {NAV_ITEMS.map((item) => {
         const isOffers = item.url.includes('offers');
         return (
-          <NavLink
-            key={item.url}
-            to={item.url}
-            prefetch="intent"
-            end={item.url === '/' || item.url === '/en'}
-            className={({ isActive }) => `
-              px-2 xl:px-3 py-2 text-[13px] xl:text-[14px] font-bold transition-all whitespace-nowrap rounded-full
-              ${isOffers 
-                ? 'bg-[#e34242] text-white hover:bg-[#c93636] px-4 xl:px-5 shadow-sm' 
-                : isActive ? 'text-[#1b3d2e] bg-[#1b3d2e]/5' : 'text-[#1b3d2e]/80 hover:text-[#1b3d2e] hover:bg-[#1b3d2e]/5'}
-            `}
+          <div 
+            key={item.url} 
+            className="h-full flex items-center"
+            onMouseEnter={() => item.hasMega ? setActiveMega('products') : setActiveMega(null)}
           >
-            {item.title}
-          </NavLink>
+            <NavLink
+              to={item.url}
+              prefetch="intent"
+              end={item.url === '/' || item.url === '/en'}
+              className={({ isActive }) => `
+                px-2 xl:px-3 py-2 text-[13px] xl:text-[14px] font-bold transition-all whitespace-nowrap rounded-full
+                ${isOffers 
+                  ? 'bg-[#e34242] text-white hover:bg-[#c93636] px-4 xl:px-5 shadow-sm' 
+                  : (isActive || (item.hasMega && activeMega)) ? 'text-[#1b3d2e] bg-[#1b3d2e]/5' : 'text-[#1b3d2e]/80 hover:text-[#1b3d2e] hover:bg-[#1b3d2e]/5'}
+              `}
+            >
+              {item.title}
+            </NavLink>
+          </div>
         );
       })}
     </nav>
+  );
+}
+
+function ProductMegaMenu({ locale }: { locale?: string }) {
+  const isEn = locale === 'en';
+  
+  const categories = [
+    {
+      title: isEn ? 'Oriental Sweets' : 'حلويات شرقية',
+      image: 'https://cdn.shopify.com/s/files/1/0943/4280/7861/files/category-baklava.jpg?v=1730000000',
+      items: isEn ? ['Baklava', 'Maamoul', 'Kunafa', 'Basbousa'] : ['بقلاوة', 'معمول', 'كنافة', 'بسبوسة'],
+      url: '/collections/oriental-sweets'
+    },
+    {
+      title: isEn ? 'Premium Chocolates' : 'شوكولاتة فاخرة',
+      image: 'https://cdn.shopify.com/s/files/1/0943/4280/7861/files/category-choco.jpg?v=1730000001',
+      items: isEn ? ['Truffles', 'Pralines', 'Gift Boxes', 'Wrapped Choco'] : ['ترافلز', 'برالين', 'صناديق هدايا', 'شوكولاتة مغلفة'],
+      url: '/collections/chocolates'
+    },
+    {
+      title: isEn ? 'Cakes & Pastries' : 'كيك وحلويات غربية',
+      image: 'https://cdn.shopify.com/s/files/1/0943/4280/7861/files/category-cakes.jpg?v=1730000002',
+      items: isEn ? ['Occasion Cakes', 'Mini Cakes', 'Macarons', 'Éclairs'] : ['كيك المناسبات', 'ميني كيك', 'ماكرون', 'اكلير'],
+      url: '/collections/cakes'
+    },
+    {
+      title: isEn ? 'Ice Cream' : 'آيس كريم',
+      image: 'https://cdn.shopify.com/s/files/1/0943/4280/7861/files/category-icecream.jpg?v=1730000003',
+      items: isEn ? ['Gelato', 'Sorbet', 'Party Tubs', 'Stick Ice Cream'] : ['جيلاتو', 'سوربيه', 'عبوات الحفلات', 'آيس كريم ستيك'],
+      url: '/collections/ice-cream'
+    }
+  ];
+
+  return (
+    <div className="bg-white/95 backdrop-blur-xl border-y border-[#1b3d2e]/10 shadow-2xl w-full">
+      <div className="max-w-[1400px] mx-auto grid grid-cols-4 gap-8 p-10">
+        {categories.map((cat) => (
+          <div key={cat.title} className="group cursor-pointer">
+            <NavLink to={cat.url} className="block">
+              <div className="relative aspect-[4/3] rounded-2xl overflow-hidden mb-6 shadow-md transition-transform duration-500 group-hover:scale-[1.03]">
+                <img src={cat.image} alt={cat.title} className="w-full h-full object-cover" />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#1b3d2e]/80 via-transparent to-transparent opacity-60 group-hover:opacity-80 transition-opacity" />
+                <div className="absolute bottom-4 left-4 right-4">
+                  <h3 className="text-white text-lg font-bold">{cat.title}</h3>
+                </div>
+              </div>
+            </NavLink>
+            <ul className="space-y-3">
+              {cat.items.map((item) => (
+                <li key={item}>
+                  <NavLink 
+                    to={`${cat.url}/${item.toLowerCase().replace(/ /g, '-')}`} 
+                    className="text-[#1b3d2e]/70 hover:text-[#1b3d2e] hover:translate-x-1 transition-all inline-block font-medium text-sm"
+                  >
+                    {item}
+                  </NavLink>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
+      <div className="bg-[#1b3d2e]/5 py-4">
+        <div className="max-w-[1400px] mx-auto px-10 flex justify-between items-center text-sm">
+          <span className="text-[#1b3d2e]/60 font-medium">
+            {isEn ? 'Discover our full collection of fresh delights' : 'اكتشف مجموعتنا الكاملة من الحلويات الطازجة'}
+          </span>
+          <NavLink to="/collections/all" className="text-[#1b3d2e] font-bold hover:underline flex items-center gap-2">
+            {isEn ? 'Shop All Products' : 'تسوق جميع المنتجات'}
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={isEn ? '' : 'rotate-180'}><line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" /></svg>
+          </NavLink>
+        </div>
+      </div>
+    </div>
   );
 }
 

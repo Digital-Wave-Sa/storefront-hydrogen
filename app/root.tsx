@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import {Analytics, getShopAnalytics, useNonce} from '@shopify/hydrogen';
 import {
   Outlet,
@@ -164,6 +165,13 @@ export function Layout({children}: {children?: React.ReactNode}) {
   const data = useRouteLoaderData<RootLoader>('root');
   const locale = data?.consent?.language?.toLowerCase() || 'ar';
   const isEn = locale === 'en';
+  const [isReady, setIsReady] = useState(false);
+
+  useEffect(() => {
+    // Small delay to ensure CSS is applied before fading in
+    const timer = setTimeout(() => setIsReady(true), 10);
+    return () => clearTimeout(timer);
+  }, []);
 
   return (
     <html lang={locale} dir={isEn ? 'ltr' : 'rtl'}>
@@ -172,8 +180,21 @@ export function Layout({children}: {children?: React.ReactNode}) {
         <meta name="viewport" content="width=device-width,initial-scale=1" />
         <Meta />
         <Links />
+        {/* Critical CSS to prevent FOUC */}
+        <style dangerouslySetInnerHTML={{ __html: `
+          body { 
+            background-color: #FEF8EB; 
+            opacity: 0; 
+            visibility: hidden;
+          }
+          body.show-content { 
+            opacity: 1; 
+            visibility: visible; 
+            transition: opacity 0.4s ease-in-out, visibility 0.4s;
+          }
+        `}} />
       </head>
-      <body className={`bg-[#FEF8EB] ${isEn ? 'font-en' : 'font-ar'}`}>
+      <body className={`bg-[#FEF8EB] ${isEn ? 'font-en' : 'font-ar'} ${isReady ? 'show-content' : ''}`}>
         {children}
         <ScrollRestoration nonce={nonce} />
         <script
@@ -243,6 +264,14 @@ const LOCATIONS_QUERY = `#graphql
           latitude
           longitude
           phone
+        }
+        metafields(identifiers: [
+          {namespace: "custom", key: "delivery_fee"},
+          {namespace: "custom", key: "free_delivery_threshold"}
+        ]) {
+          key
+          value
+          namespace
         }
       }
     }

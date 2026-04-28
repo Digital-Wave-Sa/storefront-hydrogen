@@ -1,5 +1,6 @@
-import { data, redirect, type LoaderFunctionArgs} from 'react-router';
-import {Form, Link, useActionData} from 'react-router';
+import { data, redirect, type ActionFunctionArgs, type LoaderFunctionArgs} from 'react-router';
+import {Form, Link, useActionData, useRouteLoaderData} from 'react-router';
+import {Button} from '~/components/layout/Button';
 
 type ActionResponse = {
   error?: string;
@@ -15,10 +16,10 @@ export async function loader({context}: LoaderFunctionArgs) {
   return data({});
 }
 
-export async function action({request, context}: LoaderFunctionArgs) {
-  const {storefront} = context;
+export async function action({request, context}: ActionFunctionArgs) {
+  const {storefront, env} = context;
   const form = await request.formData();
-  const email = form.has('email') ? String(form.get('email')) : null;
+  const email = form.has('email') ? String(form.get('email')).trim().toLowerCase() : null;
 
   if (request.method !== 'POST') {
     return data({error: 'Method not allowed'}, {status: 405});
@@ -28,91 +29,128 @@ export async function action({request, context}: LoaderFunctionArgs) {
     if (!email) {
       throw new Error('Please provide an email.');
     }
-    await storefront.mutate(CUSTOMER_RECOVER_MUTATION, {
+
+    // DEBUG STEP: Check Admin API first to see if customer exists
+    const adminAccessToken = env.SHOPIFY_ADMIN_API_ACCESS_TOKEN;
+    if (adminAccessToken) {
+      const adminResponse = await fetch(`https://${env.PUBLIC_STORE_DOMAIN}/admin/api/2024-01/customers/search.json?query=email:${email}`, {
+        headers: {
+          'X-Shopify-Access-Token': adminAccessToken,
+          'Content-Type': 'application/json',
+        },
+      });
+      const adminData = await adminResponse.json();
+      
+      if (!adminData.customers || adminData.customers.length === 0) {
+        throw new Error(`Admin check: No customer found with email "${email}" in Shopify database.`);
+      }
+
+      const customer = adminData.customers[0];
+      if (customer.state === 'disabled') {
+        throw new Error('This account is disabled. Please contact support.');
+      }
+    }
+    
+    const {customerRecover} = await storefront.mutate(CUSTOMER_RECOVER_MUTATION, {
       variables: {email},
     });
 
+    console.log('[DEBUG] Storefront Recover Response:', JSON.stringify(customerRecover));
+
+    if (customerRecover?.customerUserErrors?.length > 0) {
+      throw new Error(customerRecover.customerUserErrors[0].message);
+    }
+
     return data({resetRequested: true});
   } catch (error: unknown) {
-    const resetRequested = false;
-    if (error instanceof Error) {
-      return data({error: error.message, resetRequested}, {status: 400});
-    }
-    return data({error, resetRequested}, {status: 400});
+    return data({
+      error: error instanceof Error ? error.message : 'Failed to send reset link', 
+      resetRequested: false
+    }, {status: 400});
   }
 }
 
 export default function Recover() {
   const action = useActionData<ActionResponse>();
+  const rootData = useRouteLoaderData('root') as any;
+  const locale = rootData?.consent?.language?.toLowerCase() || 'ar';
+  const isEn = locale === 'en';
 
   return (
-    <div className="account-recover">
-      <div>
-        {action?.resetRequested ? (
-          <>
-            <h1>Request Sent.</h1>
-            <p>
-              If that email address is in our system, you will receive an email
-              with instructions about how to reset your password in a few
-              minutes.
-            </p>
-            <br />
-            <Link to="/account/login">Return to Login</Link>
-          </>
-        ) : (
-          <>
-            <h1>Forgot Password.</h1>
-            <p>
-              Enter the email address associated with your account to receive a
-              link to reset your password.
-            </p>
-            <br />
-            <Form method="POST">
-              <fieldset>
-                <label htmlFor="email">Email</label>
-                <input
-                  aria-label="Email address"
-                  autoComplete="email"
-                  // eslint-disable-next-line jsx-a11y/no-autofocus
-                  autoFocus
-                  id="email"
-                  name="email"
-                  placeholder="Email address"
-                  required
-                  type="email"
-                />
-              </fieldset>
-              {action?.error ? (
-                <p>
-                  <mark>
-                    <small>{action.error}</small>
-                  </mark>
-                </p>
-              ) : (
-                <br />
-              )}
-              <button type="submit">Request Reset Link</button>
-            </Form>
-            <div>
-              <br />
-              <p>
-                <Link to="/account/login">Login →</Link>
+    <div className="otp-login-container luxury-bg" dir={isEn ? 'ltr' : 'rtl'}>
+      <div className="otp-login-card luxury-card">
+        <div className="otp-login-header">
+          <Link to={isEn ? "/en" : "/"}>
+            <img src="/logo.svg" alt="Saadeddin" className="otp-logo luxury-logo" />
+          </Link>
+          
+          {action?.resetRequested ? (
+            <>
+              <h1 className="luxury-title">{isEn ? 'Request Sent' : 'تم إرسال الطلب'}</h1>
+              <p className="luxury-subtitle">
+                {isEn 
+                  ? 'If that email address is in our system, you will receive instructions shortly.' 
+                  : 'إذا كان البريد الإلكتروني مسجلاً لدينا، فستصلك تعليمات استعادة كلمة المرور قريباً.'}
               </p>
-            </div>
-          </>
-        )}
+              <div className="mt-8">
+                <Link to={isEn ? "/en/account/login" : "/account/login"}>
+                   <Button variant="primary" fullWidth size="lg" className="luxury-submit">
+                     {isEn ? 'Return to Login' : 'العودة لتسجيل الدخول'}
+                   </Button>
+                </Link>
+              </div>
+            </>
+          ) : (
+            <>
+              <h1 className="luxury-title">{isEn ? 'Forgot Password' : 'نسيت كلمة المرور'}</h1>
+              <p className="luxury-subtitle">
+                {isEn 
+                  ? 'Enter your email to receive a password reset link' 
+                  : 'أدخل بريدك الإلكتروني لإرسال رابط استعادة كلمة المرور'}
+              </p>
+
+              <Form method="POST" className="otp-form luxury-form animate-fade-in mt-6">
+                <div className="luxury-field">
+                  <label className="luxury-label">{isEn ? 'Email' : 'البريد الإلكتروني'}</label>
+                  <input
+                    autoFocus
+                    name="email"
+                    placeholder={isEn ? "Email address" : "البريد الإلكتروني"}
+                    required
+                    type="email"
+                    className="otp-input-field luxury-input-field"
+                  />
+                </div>
+
+                {action?.error && (
+                  <p className="error-text luxury-error mt-4">
+                    {action.error}
+                  </p>
+                )}
+
+                <Button type="submit" variant="primary" fullWidth size="lg" className="luxury-submit mt-8">
+                  {isEn ? 'Request Reset Link' : 'إرسال رابط الاستعادة'}
+                </Button>
+                
+                <div className="luxury-footer mt-6">
+                  <p>
+                    <Link to={isEn ? "/en/account/login" : "/account/login"}>
+                      {isEn ? '← Back to Login' : '← العودة لتسجيل الدخول'}
+                    </Link>
+                  </p>
+                </div>
+              </Form>
+            </>
+          )}
+        </div>
       </div>
     </div>
   );
 }
 
-// NOTE: https://shopify.dev/docs/api/storefront/latest/mutations/customerrecover
+// Simplified mutation to avoid market-context lock
 const CUSTOMER_RECOVER_MUTATION = `#graphql
-  mutation customerRecover(
-    $email: String!,
-    $country: CountryCode,
-    $language: LanguageCode
-  ) @inContext(country: $country, language: $language) {
+  mutation customerRecover($email: String!) {
     customerRecover(email: $email) {
       customerUserErrors {
         code

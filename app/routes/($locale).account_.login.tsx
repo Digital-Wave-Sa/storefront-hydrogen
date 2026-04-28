@@ -131,7 +131,7 @@ export default function Login() {
   const actionData = useActionData<any>();
   const navigation = useNavigation();
   const rootData = useRouteLoaderData('root') as any;
-  const locale = rootData?.locale || 'ar';
+  const locale = rootData?.consent?.language?.toLowerCase() || 'ar';
   const isEn = locale === 'en';
   const isLoading = navigation.state === 'submitting';
 
@@ -225,7 +225,15 @@ export default function Login() {
               <input name="email" type="email" placeholder="example@mail.com" className="otp-input-field luxury-input-field" required />
             </div>
             <div className="luxury-field mt-4">
-              <label className="luxury-label">{isEn ? 'Password' : 'كلمة المرور'}</label>
+              <div className="flex justify-between items-center mb-1">
+                <label className="luxury-label">{isEn ? 'Password' : 'كلمة المرور'}</label>
+                <Link 
+                  to={isEn ? "/en/account/recover" : "/account/recover"} 
+                  className="text-[12px] text-[#d4a06a] hover:underline font-bold"
+                >
+                  {isEn ? 'Forgot Password?' : 'نسيت كلمة المرور؟'}
+                </Link>
+              </div>
               <input name="password" type="password" placeholder="••••••••" className="otp-input-field luxury-input-field" required />
             </div>
 

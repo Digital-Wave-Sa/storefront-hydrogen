@@ -45,7 +45,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
         },
       });
 
-      const { customers } = await response.data();
+      const { customers } = await response.json();
 
       if (customers && customers.length > 0) {
         return data({
@@ -115,86 +115,98 @@ export async function action({ request, context }: ActionFunctionArgs) {
       const finalFirstName = accountType === 'company' ? companyName : firstName;
       const finalLastName = accountType === 'company' ? '(Company)' : lastName;
 
-      // In Step 3, Email is optional. If empty, we don't send it to Shopify.
-      const customerInput: any = {
-        firstName: finalFirstName,
-        lastName: finalLastName,
-        password,
-        phone,
+      // Create via Admin API to bypass Email Verification
+      const adminAccessToken = env.SHOPIFY_ADMIN_API_ACCESS_TOKEN;
+      if (!adminAccessToken) throw new Error('Missing Admin API Token');
+
+      const customerPayload: any = {
+        customer: {
+          first_name: finalFirstName,
+          last_name: finalLastName,
+          password: password,
+          password_confirmation: password,
+          phone: phone,
+          verified_email: true, // This bypasses the verification link!
+          send_email_welcome: false
+        }
       };
-      
+
       if (email.trim()) {
-        customerInput.email = email.trim();
+        customerPayload.customer.email = email.trim();
       }
 
-      const { customerCreate } = await storefront.mutate(CUSTOMER_CREATE_MUTATION, {
-        variables: {
-          input: customerInput,
+      const adminResponse = await fetch(`https://${env.PUBLIC_STORE_DOMAIN}/admin/api/2024-01/customers.json`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Shopify-Access-Token': adminAccessToken,
         },
+        body: JSON.stringify(customerPayload)
       });
 
-      if (customerCreate?.customerUserErrors?.length) {
-        throw new Error(customerCreate?.customerUserErrors[0].message);
+      const adminData = await adminResponse.json();
+
+      if (adminData.errors) {
+        const errorMsg = typeof adminData.errors === 'string' 
+          ? adminData.errors 
+          : Object.entries(adminData.errors).map(([k, v]) => `${k} ${v}`).join(', ');
+        throw new Error(errorMsg);
       }
 
-      const newCustomerId = customerCreate.customer.id;
-      const numericalId = newCustomerId.split('/').pop();
+      const numericalId = adminData.customer.id;
 
       // Update Metafields via Admin API (Tax ID, Address, Birthdate)
-      const adminAccessToken = env.SHOPIFY_ADMIN_API_ACCESS_TOKEN;
-      if (adminAccessToken) {
-        const metafields = [];
-        
-        if (birthdate) {
+      const metafields = [];
+      
+      if (birthdate) {
+        metafields.push({
+          namespace: 'custom',
+          key: 'birthdate',
+          value: birthdate,
+          type: 'date'
+        });
+      }
+      
+      if (accountType === 'company') {
+        if (taxRegistration) {
           metafields.push({
             namespace: 'custom',
-            key: 'birthdate',
-            value: birthdate,
-            type: 'date'
+            key: 'tax_registration',
+            value: taxRegistration,
+            type: 'single_line_text_field'
           });
         }
-        
-        if (accountType === 'company') {
-          if (taxRegistration) {
-            metafields.push({
-              namespace: 'custom',
-              key: 'tax_registration',
-              value: taxRegistration,
-              type: 'single_line_text_field'
-            });
-          }
-          if (companyAddress) {
-            metafields.push({
-              namespace: 'custom',
-              key: 'company_address',
-              value: companyAddress,
-              type: 'multi_line_text_field'
-            });
-          }
-        }
-
-        if (metafields.length > 0) {
-          try {
-            await fetch(`https://${env.PUBLIC_STORE_DOMAIN}/admin/api/2024-01/customers/${numericalId}.json`, {
-              method: 'PUT',
-              headers: {
-                'Content-Type': 'application/json',
-                'X-Shopify-Access-Token': adminAccessToken,
-              },
-              body: JSON.stringify({
-                customer: {
-                  id: numericalId,
-                  metafields: metafields
-                }
-              })
-            });
-          } catch (e) {
-            console.error('Failed to sync registration metafields:', e);
-          }
+        if (companyAddress) {
+          metafields.push({
+            namespace: 'custom',
+            key: 'company_address',
+            value: companyAddress,
+            type: 'multi_line_text_field'
+          });
         }
       }
 
-      // Login the customer
+      if (metafields.length > 0) {
+        try {
+          await fetch(`https://${env.PUBLIC_STORE_DOMAIN}/admin/api/2024-01/customers/${numericalId}.json`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Shopify-Access-Token': adminAccessToken,
+            },
+            body: JSON.stringify({
+              customer: {
+                id: numericalId,
+                metafields: metafields
+              }
+            })
+          });
+        } catch (e) {
+          console.error('Failed to sync registration metafields:', e);
+        }
+      }
+
+      // Login the customer via Storefront API
       const loginMutationInput: any = { password };
       if (email.trim()) {
         loginMutationInput.email = email.trim();
@@ -208,8 +220,6 @@ export async function action({ request, context }: ActionFunctionArgs) {
       );
 
       if (!customerAccessTokenCreate?.customerAccessToken?.accessToken) {
-        // If automatic login fails (e.g. if Shopify requires email for login but user didn't provide one)
-        // We still created the account, so redirect to login
         return redirect('/account/login');
       }
 
@@ -231,7 +241,7 @@ export default function Register() {
   const navigation = useNavigation();
   const fetcher = useFetcher();
   const rootData = useRouteLoaderData('root') as any;
-  const locale = rootData?.locale || 'ar';
+  const locale = rootData?.consent?.language?.toLowerCase() || 'ar';
   const isEn = locale === 'en';
   const isLoading = navigation.state === 'submitting' || fetcher.state === 'submitting';
 

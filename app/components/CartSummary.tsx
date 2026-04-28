@@ -18,7 +18,7 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
   const giftCardInputId = useId();
 
   const rootData = useRouteLoaderData('root') as any;
-  const isEn = rootData?.locale === 'en';
+  const isEn = rootData?.consent?.language?.toLowerCase() === 'en';
 
   const subtotal = Number(cart?.cost?.subtotalAmount?.amount ?? 0);
   const minOrderValue = 50; // Minimum order value requirement
@@ -31,6 +31,16 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
   
   const isTimeSlotSelected = !!timeSlot && timeSlot.trim() !== '';
   const isBranchSelected = !!branch && branch.trim() !== '';
+
+  // Dynamic Settings from Metafields
+  const locations = rootData?.locations?.nodes || [];
+  const currentBranch = locations.find((loc: any) => loc.name === branch);
+  const thresholdMeta = currentBranch?.metafields?.find((m: any) => m?.key === 'free_delivery_threshold');
+  const feeMeta = currentBranch?.metafields?.find((m: any) => m?.key === 'delivery_fee');
+  
+  const threshold = thresholdMeta?.value ? parseFloat(thresholdMeta.value) : 430;
+  const isFreeDelivery = subtotal >= threshold;
+  const deliveryFee = isFreeDelivery ? 0 : (feeMeta?.value ? parseFloat(feeMeta.value) : 3);
 
   const hasPreOrderItems = cart?.lines?.nodes?.some((line: any) => 
     line.merchandise?.product?.tags?.some((tag: string) => 
@@ -52,120 +62,69 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
     <div aria-labelledby={summaryId} className="flex flex-col gap-4">
       {layout === 'page' && (
         <>
-          {/* Delivery / Pickup Status */}
-      <div className={`bg-[#fcfaf8] border ${!isBranchSelected ? 'border-red-200 bg-red-50' : 'border-[#f0ece8]'} rounded-2xl p-4 transition-colors`}>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className={`w-8 h-8 rounded-full ${!isBranchSelected ? 'bg-red-500' : 'bg-[#1b3d2e]'} flex items-center justify-center text-white shrink-0 transition-colors`}>
-              {fulfillmentType === 'Delivery' ? (
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 3h15v13H1zM16 8h4l3 3v5h-7V8z" /><circle cx="5.5" cy="18.5" r="2.5" /><circle cx="18.5" cy="18.5" r="2.5" /></svg>
-              ) : (
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" /><polyline points="9 22 9 12 15 12 15 22" /></svg>
-              )}
-            </div>
-            <div className="min-w-0">
-              <p className="text-[11px] text-gray-400 font-bold uppercase tracking-wider leading-none mb-1">
-                {isEn ? (fulfillmentType === 'Delivery' ? 'Delivering from' : 'Picking up from') : (fulfillmentType === 'Delivery' ? 'توصيل من' : 'استلام من')}
-              </p>
-              <p className={`text-[13px] font-black ${!isBranchSelected ? 'text-red-600' : 'text-[#1b3d2e]'} truncate`}>{branch || (isEn ? 'Please select a branch' : 'يرجى اختيار الفرع')}</p>
-            </div>
-          </div>
-          <button 
-            onClick={() => window.dispatchEvent(new CustomEvent('openDeliveryModal'))}
-            className="text-[12px] font-bold text-[#d4a06a] hover:text-[#1b3d2e] transition-colors bg-white px-3 py-1.5 rounded-full border border-[#f0ece8] shadow-sm"
-          >
-            {isEn ? (isBranchSelected ? 'Edit' : 'Select') : (isBranchSelected ? 'تعديل' : 'اختيار')}
-          </button>
-        </div>
-      </div>
-
-      {/* Time Slot Picker */}
-      <CartTimeSlot isEn={isEn} cart={cart} hasError={!isTimeSlotSelected} />
-
-      {/* Order Notes */}
-      <CartOrderNotes isEn={isEn} cart={cart} />
-        </>
-      )}
-
-      {/* Subtotal */}
-      <div className="flex flex-col gap-1">
-        <dl role="group" className="flex justify-between items-center py-2 border-b border-[#f0ece8] mt-2">
-          <dt className="text-[15px] font-bold text-[#888]">{isEn ? 'Subtotal' : 'المجموع الفرعي'}</dt>
-          <dd className="text-[18px] font-black text-[#1b3d2e]">
-            {cart?.cost?.subtotalAmount?.amount ? (
-              <Money data={cart?.cost?.subtotalAmount} />
-            ) : (
-              '-'
-            )}
-          </dd>
-        </dl>
-        {!isMinOrderMet && (
-          <p className="text-red-500 text-[11px] font-bold mt-1 text-right flex items-center justify-end gap-1">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
-            {isEn ? `Minimum order value is SAR ${minOrderValue}` : `الحد الأدنى للطلب هو ${minOrderValue} ر.س`}
-          </p>
-        )}
-      </div>
-
-      {layout === 'page' && (
-        <>
+          {/* Promo Code Section (as separate card like design) */}
           <CartDiscounts
-        discountCodes={cart?.discountCodes}
-        discountsHeadingId={discountsHeadingId}
-        discountCodeInputId={discountCodeInputId}
-        isEn={isEn}
-      />
-      
-      <CartGiftCard
-        giftCardCodes={cart?.appliedGiftCards}
-        giftCardHeadingId={giftCardHeadingId}
-        giftCardInputId={giftCardInputId}
-        isEn={isEn}
-      />
-      
-      <LoyaltyRedemptionUI isEn={isEn} cart={cart} />
+            discountCodes={cart?.discountCodes}
+            discountsHeadingId={discountsHeadingId}
+            discountCodeInputId={discountCodeInputId}
+            isEn={isEn}
+          />
+
+          {/* Order Summary Card */}
+          <div className="bg-white rounded-[24px] p-8 shadow-[0_2px_15px_rgba(0,0,0,0.03)] border border-[#f0ece8]">
+            <div className="flex items-center gap-2 mb-8">
+               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#1b3d2e" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+               <h3 className="text-[20px] font-black text-[#1b3d2e]">{isEn ? 'Order Summary' : 'ملخص الطلب'}</h3>
+            </div>
+
+            <div className="space-y-6">
+               <div className="flex justify-between items-center text-[16px]">
+                  <dt className="text-gray-400 font-medium">{isEn ? 'Subtotal' : 'المجموع الفرعي'}</dt>
+                  <dd className="text-[#1b3d2e] font-black font-en">
+                    <Money data={cart?.cost?.subtotalAmount!} />
+                  </dd>
+               </div>
+
+               <div className="flex justify-between items-start text-[16px]">
+                  <dt className="flex flex-col">
+                    <span className="text-gray-400 font-medium">{isEn ? 'Delivery charges' : 'رسوم التوصيل'}</span>
+                    <span className="text-[11px] text-gray-300 font-normal mt-1 max-w-[200px] leading-tight">
+                      {isEn ? 'Please note that specific regions and express delivery may incur extra delivery fees' : 'يرجى ملاحظة أن المناطق المحددة والتوصيل السريع قد تتطلب رسوم إضافية'}
+                    </span>
+                  </dt>
+                  <dd className="text-[#1b3d2e] font-black font-en">
+                    {isFreeDelivery ? (
+                      <span className="text-green-600 uppercase text-[12px]">{isEn ? 'Free' : 'مجاني'}</span>
+                    ) : (
+                      <Money data={{ amount: deliveryFee.toString(), currencyCode: 'SAR' }} />
+                    )}
+                  </dd>
+               </div>
+
+               <div className="pt-6 border-t border-[#f8f5f2] flex justify-between items-center">
+                  <dt className="text-[18px] font-black text-[#1b3d2e]">{isEn ? 'Total' : 'الإجمالي'}</dt>
+                  <dd className="text-[22px] font-black text-[#1b3d2e] font-en">
+                    <Money data={cart?.cost?.totalAmount!} />
+                  </dd>
+               </div>
+            </div>
+          </div>
+
+          {/* Additional Customizations (Branch/Time) */}
+          <div className="bg-white rounded-[24px] p-6 shadow-sm border border-[#f0ece8] flex flex-col gap-4">
+             <div className="flex items-center justify-between">
+                <div className="flex flex-col">
+                   <span className="text-[11px] text-gray-400 font-bold uppercase">{isEn ? 'Fulfillment' : 'طريقة الاستلام'}</span>
+                   <span className="text-[14px] font-black text-[#1b3d2e]">{branch || (isEn ? 'Select Branch' : 'اختر الفرع')}</span>
+                </div>
+                <button onClick={() => window.dispatchEvent(new CustomEvent('openDeliveryModal'))} className="text-[12px] font-bold text-[#d4a06a] hover:underline">
+                  {isEn ? 'Change' : 'تغيير'}
+                </button>
+             </div>
+             <CartTimeSlot isEn={isEn} cart={cart} />
+             <CartOrderNotes isEn={isEn} cart={cart} />
+          </div>
         </>
-      )}
-
-      {/* Pre-order Messaging */}
-      {hasPreOrderItems && (
-        <div className="bg-[#004f59]/5 border border-[#004f59]/20 rounded-xl p-3 flex gap-3 animate-fade-in">
-          <div className="w-8 h-8 rounded-full bg-[#004f59] flex items-center justify-center text-white shrink-0 shadow-sm">
-            <span className="animate-pulse">📦</span>
-          </div>
-          <div className="flex-1">
-            <p className="text-[12px] font-black text-[#004f59] uppercase tracking-wider mb-0.5">
-              {isEn ? 'Pre-order Items Included' : 'يحتوي الطلب على أصناف طلب مسبق'}
-            </p>
-            <p className="text-[11px] text-[#004f59]/80 font-medium leading-tight">
-              {isEn 
-                ? 'Your entire order will be shipped together once all items are available.' 
-                : 'سيتم شحن طلبك بالكامل عند توفر جميع الأصناف.'}
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* Payment Restriction Messaging */}
-      {(hasCashOnly || hasPrepaidOnly) && (
-        <div className={`border rounded-xl p-3 flex gap-3 animate-fade-in ${hasCashOnly && hasPrepaidOnly ? 'bg-red-50 border-red-200' : 'bg-blue-50 border-blue-200'}`}>
-          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white shrink-0 shadow-sm ${hasCashOnly && hasPrepaidOnly ? 'bg-red-500' : 'bg-blue-500'}`}>
-            <span>⚠️</span>
-          </div>
-          <div className="flex-1">
-            <p className={`text-[12px] font-black uppercase tracking-wider mb-0.5 ${hasCashOnly && hasPrepaidOnly ? 'text-red-700' : 'text-blue-700'}`}>
-              {isEn ? 'Payment Notice' : 'ملاحظة بخصوص الدفع'}
-            </p>
-            <p className={`text-[11px] font-medium leading-tight ${hasCashOnly && hasPrepaidOnly ? 'text-red-600' : 'text-blue-600'}`}>
-              {hasCashOnly && hasPrepaidOnly 
-                ? (isEn ? 'Your cart contains items with conflicting payment requirements. Please check your items.' : 'تحتوي سلتك على منتجات بمتطلبات دفع متعارضة. يرجى مراجعة المنتجات.')
-                : hasCashOnly 
-                  ? (isEn ? 'Some items in your cart can only be paid via Cash.' : 'بعض المنتجات في سلتك تتطلب الدفع نقداً فقط.')
-                  : (isEn ? 'Some items in your cart require online payment.' : 'بعض المنتجات في سلتك تتطلب الدفع أونلاين فقط.')
-              }
-            </p>
-          </div>
-        </div>
       )}
 
       {layout === 'page' ? (
@@ -173,6 +132,7 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
           checkoutUrl={cart?.checkoutUrl} 
           isEn={isEn} 
           disabled={!canCheckout}
+          totalAmount={subtotal + deliveryFee}
           validationError={
             !isMinOrderMet ? (isEn ? `Minimum order is SAR ${minOrderValue}` : `الحد الأدنى هو ${minOrderValue} ر.س`) :
             !isBranchSelected ? (isEn ? 'Please select a branch' : 'يرجى اختيار الفرع') :
@@ -249,12 +209,14 @@ function CartCheckoutActions({
   checkoutUrl, 
   isEn, 
   disabled, 
-  validationError
+  validationError,
+  totalAmount
 }: {
   checkoutUrl?: string; 
   isEn: boolean;
   disabled?: boolean;
   validationError?: string | null;
+  totalAmount: number;
 }) {
   return (
     <div className="mt-2 flex flex-col gap-3">
@@ -266,13 +228,18 @@ function CartCheckoutActions({
             onClick={(e) => {
               if (disabled) e.preventDefault();
             }}
-            className={`w-full ${disabled ? 'bg-[#e8e4e1] cursor-not-allowed text-[#888]' : 'bg-[#1b3d2e] hover:bg-[#d4a06a] text-white shadow-[0_4px_14px_rgba(27,61,46,0.2)] hover:shadow-[0_4px_14px_rgba(212,160,106,0.3)] hover:-translate-y-0.5'} font-bold py-4 px-6 rounded-2xl flex items-center justify-center gap-2 transition-all`}
+            className={`w-full ${disabled ? 'bg-[#e8e4e1] cursor-not-allowed text-[#888]' : 'bg-[#004f59] hover:bg-[#003840] text-white shadow-xl hover:-translate-y-1'} font-bold py-6 px-10 rounded-[32px] flex items-center justify-between transition-all group`}
           >
-            <span>{isEn ? 'Proceed to Checkout' : 'متابعة الدفع'}</span>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={isEn ? '' : 'rotate-180'}>
-              <line x1="5" y1="12" x2="19" y2="12"></line>
-              <polyline points="12 5 19 12 12 19"></polyline>
-            </svg>
+            <span className="text-[18px] text-white">{isEn ? 'Proceed To Checkout' : 'متابعة إتمام الطلب'}</span>
+            <div className="flex items-center gap-4 text-white">
+              <span className="text-[20px] font-black font-en">
+                 <Money data={{ amount: totalAmount.toString(), currencyCode: 'SAR' }} />
+              </span>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className={`${isEn ? '' : 'rotate-180'} transition-transform group-hover:translate-x-1`}>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+                <polyline points="12 5 19 12 12 19"></polyline>
+              </svg>
+            </div>
           </a>
           {disabled && validationError && (
             <p className="text-red-500 text-[12px] font-bold text-center px-4 py-2 bg-red-50 rounded-xl border border-red-100 flex items-center justify-center gap-2">
@@ -282,13 +249,9 @@ function CartCheckoutActions({
           )}
         </div>
       ) : (
-        <button 
-          disabled
-          className="w-full bg-[#e8e4e1] text-[#888] cursor-not-allowed font-bold py-4 px-6 rounded-2xl flex items-center justify-center gap-2 transition-all"
-        >
-          <span>{isEn ? 'Loading Checkout...' : 'جاري تجهيز الدفع...'}</span>
-          <svg className="animate-spin h-5 w-5 ml-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" strokeOpacity="0.25"></circle><path d="M12 2a10 10 0 0 1 10 10" strokeOpacity="0.75"></path></svg>
-        </button>
+        <div className="w-full bg-[#e8e4e1] text-[#888] py-6 px-10 rounded-[32px] flex items-center justify-center gap-2">
+          <span className="animate-pulse">{isEn ? 'Loading Checkout...' : 'جاري التحميل...'}</span>
+        </div>
       )}
     </div>
   );
@@ -368,15 +331,15 @@ function ViewCartAction({isEn}: {isEn: boolean}) {
   const {close} = useAside();
 
   return (
-    <div className="mt-2">
+    <div className="mt-4 px-6 mb-6">
       <Link
         to={isEn ? '/en/cart' : '/cart'}
         onClick={close}
         prefetch="intent"
-        className="w-full bg-[#1b3d2e] hover:bg-[#d4a06a] text-white font-bold py-4 px-6 rounded-2xl flex items-center justify-center gap-2 transition-all shadow-[0_4px_14px_rgba(27,61,46,0.2)] hover:shadow-[0_4px_14px_rgba(212,160,106,0.3)] hover:-translate-y-0.5"
+        className="w-full bg-[#004f59] hover:bg-[#003840] text-white font-bold py-5 px-8 rounded-[32px] flex items-center justify-between transition-all group shadow-xl"
       >
-        <span>{isEn ? 'View Cart' : 'عرض السلة'}</span>
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={isEn ? '' : 'rotate-180'}>
+        <span className="text-[16px] text-white">{isEn ? 'View Cart' : 'عرض السلة'}</span>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className={`${isEn ? '' : 'rotate-180'} transition-transform group-hover:translate-x-1`}>
           <line x1="5" y1="12" x2="19" y2="12"></line>
           <polyline points="12 5 19 12 12 19"></polyline>
         </svg>
@@ -396,13 +359,14 @@ function CartDiscounts({
   discountCodeInputId: string;
   isEn: boolean;
 }) {
+  const [showInput, setShowInput] = useState(false);
   const codes: string[] =
     discountCodes
       ?.filter((discount) => discount.applicable)
       ?.map(({code}) => code) || [];
 
   return (
-    <section aria-label="Discounts" className="flex flex-col gap-3 pt-2">
+    <section aria-label="Discounts" className="bg-white rounded-[24px] p-6 shadow-sm border border-[#f0ece8] relative">
       <dl hidden={!codes.length}>
         <div>
           <dt id={discountsHeadingId} className="sr-only">Discounts</dt>
@@ -418,7 +382,7 @@ function CartDiscounts({
                         {codes?.join(', ')}
                       </span>
                       <span className="text-[11px] font-medium opacity-80 block mt-0.5">
-                        {isEn ? 'Voucher applied successfully' : 'تم تطبيق الكود بنجاح'}
+                        {isEn ? 'Voucher applied' : 'تم تطبيق الكود'}
                       </span>
                     </div>
                   </div>
@@ -426,7 +390,7 @@ function CartDiscounts({
                     type="submit" 
                     aria-label="Remove discount"
                     disabled={isRemoving}
-                    className="text-green-600 hover:text-red-500 hover:bg-red-50 transition-colors p-2 rounded-lg"
+                    className="text-green-600 hover:text-red-500 transition-colors p-1"
                   >
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                   </button>
@@ -441,45 +405,49 @@ function CartDiscounts({
         <UpdateDiscountForm discountCodes={codes}>
           {(fetcher: any) => {
             const isLoading = fetcher.state !== 'idle';
-            const errors = fetcher.data?.errors || [];
-            let actionError = errors.length > 0 ? errors[0]?.message : null;
-
-            // Catch silent rejections where Shopify accepts the code but flags it as not applicable
-            // Only show this error if the user actively tried to submit a code (fetcher.data exists)
-            const unapplicableCodes = discountCodes?.filter(d => !d.applicable) || [];
-            if (!actionError && unapplicableCodes.length > 0 && fetcher.data) {
-              actionError = isEn ? 'Invalid or expired voucher code.' : 'قسيمة الخصم غير صالحة أو منتهية الصلاحية.';
-            }
-
             return (
-              <div>
-                <div className="flex gap-2">
-                  <label htmlFor={discountCodeInputId} className="sr-only">
-                    Discount code
-                  </label>
-                  <input
-                    id={discountCodeInputId}
-                    type="text"
-                    name="discountCode"
-                    placeholder={isEn ? "Voucher or Discount code" : "كود الخصم أو القسيمة"}
-                    className={`flex-1 bg-[#fcfaf8] border ${actionError ? 'border-red-400' : 'border-[#f0ece8]'} rounded-xl px-4 py-3 text-[14px] text-[#1b3d2e] placeholder-gray-400 focus:outline-none focus:border-[#d4a06a] focus:ring-1 focus:ring-[#d4a06a] transition-all uppercase`}
-                  />
-                  <button 
-                    type="submit" 
-                    aria-label="Apply discount code"
-                    disabled={isLoading}
-                    className="bg-[#1b3d2e] text-white font-bold px-6 py-3 rounded-xl hover:bg-[#142e22] active:scale-[0.98] transition-all disabled:opacity-50"
+              <>
+                {!showInput ? (
+                  <div 
+                    onClick={() => setShowInput(true)}
+                    className="flex items-center justify-between group cursor-pointer py-1"
                   >
-                    {isLoading ? '...' : (isEn ? 'Apply' : 'تطبيق')}
-                  </button>
-                </div>
-                {actionError && (
-                  <p className="text-red-500 text-[12px] font-bold mt-2 px-1 flex items-center gap-1">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
-                    {actionError}
-                  </p>
+                    <div className="flex items-center gap-3">
+                       <div className="w-10 h-10 rounded-full bg-[#f8f5f2] flex items-center justify-center text-[#1b3d2e] transition-colors group-hover:bg-[#1b3d2e] group-hover:text-white">
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>
+                       </div>
+                       <span className="text-[15px] font-bold text-[#1b3d2e]">{isEn ? 'Add a promo code' : 'إضافة كود خصم'}</span>
+                    </div>
+                    <div className="text-gray-200 group-hover:text-[#d4a06a] transition-colors">
+                       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex gap-2 animate-fade-in">
+                    <input
+                        type="text"
+                        name="discountCode"
+                        autoFocus
+                        placeholder={isEn ? "Enter code" : "أدخل الكود"}
+                        className="flex-1 bg-[#fcfaf8] border border-[#f0ece8] rounded-xl px-4 py-2 text-[14px] text-[#1b3d2e] focus:outline-none focus:border-[#d4a06a]"
+                      />
+                      <button 
+                        type="submit"
+                        disabled={isLoading}
+                        className="bg-[#1b3d2e] text-white px-4 py-2 rounded-xl text-[13px] font-bold hover:bg-[#003840]"
+                      >
+                        {isLoading ? '...' : (isEn ? 'Apply' : 'تطبيق')}
+                      </button>
+                      <button 
+                        type="button"
+                        onClick={() => setShowInput(false)}
+                        className="text-gray-400 hover:text-red-500 p-2"
+                      >
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                      </button>
+                  </div>
                 )}
-              </div>
+              </>
             );
           }}
         </UpdateDiscountForm>

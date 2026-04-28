@@ -72,8 +72,8 @@ export const NO_PREDICTIVE_SEARCH_RESULTS: NormalizedPredictiveSearchResults = [
 
 export function SearchForm({ searchTerm }: { searchTerm: string }) {
   // 1. Get locale from context
-  const rootData = useRouteLoaderData('root') as { locale?: string };
-  const locale = rootData?.locale || 'ar';
+  const rootData = useRouteLoaderData('root') as any;
+  const locale = rootData?.consent?.language?.toLowerCase() || 'ar';
   const isEn = locale === 'en';
   const inputRef = useRef<HTMLInputElement | null>(null);
 
@@ -172,8 +172,8 @@ function SearchResultsProductsGrid({ products }: Pick<SearchQuery, 'products'>) 
 
   // Add locale here
   const { selectedLocationName, selectedLocationId } = useOutletContext<{ selectedLocationName?: string, selectedLocationId?: string }>() || {};
-  const rootData = useRouteLoaderData('root') as { locale?: string, customer?: Promise<any> };
-  const locale = rootData?.locale || 'ar';
+  const rootData = useRouteLoaderData('root') as any;
+  const locale = rootData?.consent?.language?.toLowerCase() || 'ar';
   const isEn = locale === 'en';
   const customer = rootData?.customer;
   const [customerEmail, setCustomerEmail] = useState<string | undefined>(undefined);
@@ -491,8 +491,8 @@ function SearchResultArticleGrid({ articles }: Pick<SearchQuery, 'articles'>) {
 }
 
 export function NoSearchResults({ searchTerm }: { searchTerm: string }) {
-  const rootData = useRouteLoaderData('root') as { locale?: string };
-  const locale = rootData?.locale || 'ar';
+  const rootData = useRouteLoaderData('root') as any;
+  const locale = rootData?.consent?.language?.toLowerCase() || 'ar';
   const isEn = locale === 'en';
 
   // Popular search suggestions
@@ -655,8 +655,8 @@ export function PredictiveSearchResults({ onClose }: { onClose?: () => void }) {
 }
 
 function NoPredictiveSearchResults({ searchTerm }: { searchTerm: React.MutableRefObject<string> }) {
-  const rootData = useRouteLoaderData('root') as { locale?: string };
-  const locale = rootData?.locale || 'ar';
+  const rootData = useRouteLoaderData('root') as any;
+  const locale = rootData?.consent?.language?.toLowerCase() || 'ar';
   if (!searchTerm.current) return null;
   return (
     <p dir={locale === 'en' ? 'ltr' : 'rtl'}>
@@ -674,8 +674,8 @@ type SearchResultTypeProps = {
 };
 
 function PredictiveSearchResult({ goToSearchResult, items, searchTerm, type }: SearchResultTypeProps) {
-  const rootData = useRouteLoaderData('root') as { locale?: string };
-  const locale = rootData?.locale || 'ar';
+  const rootData = useRouteLoaderData('root') as any;
+  const locale = rootData?.consent?.language?.toLowerCase() || 'ar';
   const isEn = locale === 'en';
 
   const isSuggestions = type === 'queries';
@@ -710,8 +710,8 @@ type SearchResultItemProps = Pick<SearchResultTypeProps, 'goToSearchResult'> & {
 };
 
 function SearchResultItem({ goToSearchResult, item }: SearchResultItemProps) {
-  const rootData = useRouteLoaderData('root') as { locale?: string };
-  const locale = rootData?.locale || 'ar';
+  const rootData = useRouteLoaderData('root') as any;
+  const locale = rootData?.consent?.language?.toLowerCase() || 'ar';
   const isEn = locale === 'en';
 
   return (

@@ -36,32 +36,82 @@ function getLineItemChildrenMap(lines: CartLine[]): LineItemChildrenMap {
 export function CartMain({layout, cart: originalCart}: CartMainProps) {
   const cart = useOptimisticCart(originalCart);
   const rootData = useRouteLoaderData('root') as any;
-  const isEn = rootData?.locale === 'en';
+  const isEn = rootData?.consent?.language?.toLowerCase() === 'en';
 
   const linesCount = Boolean(cart?.lines?.nodes?.length || 0);
   const cartHasItems = cart?.totalQuantity ? cart.totalQuantity > 0 : false;
   const childrenMap = getLineItemChildrenMap(cart?.lines?.nodes ?? []);
 
-  // Delivery Threshold Logic
+  // Dynamic Delivery Threshold Logic
+  const branchName = cart?.attributes?.find(a => a.key === 'Branch')?.value;
+  const locations = rootData?.locations?.nodes || [];
+  const currentBranch = locations.find((loc: any) => loc.name === branchName);
+  
+  const thresholdMeta = currentBranch?.metafields?.find((m: any) => m?.key === 'free_delivery_threshold');
+  const threshold = thresholdMeta?.value ? parseFloat(thresholdMeta.value) : 430;
+
   const subtotal = cart?.cost?.subtotalAmount?.amount ? parseFloat(cart.cost.subtotalAmount.amount) : 0;
-  const threshold = 430; // Could be dynamic from branch
   const progress = Math.min((subtotal / threshold) * 100, 100);
-  const remaining = threshold - subtotal;
+  const remaining = Math.max(threshold - subtotal, 0);
+  const currencyCode = cart?.cost?.subtotalAmount?.currencyCode || 'SAR';
 
   if (layout === 'page') {
     return (
-      <div className="max-w-[1400px] mx-auto w-full px-4 py-8 md:py-12" dir={isEn ? 'ltr' : 'rtl'}>
-        <div className="lg:grid lg:grid-cols-12 gap-8 lg:gap-12">
+      <div className="max-w-[1400px] mx-auto w-full px-4 py-8 md:py-16" dir={isEn ? 'ltr' : 'rtl'}>
+        <h1 className="text-4xl md:text-[56px] font-black text-[#1b3d2e] mb-12 tracking-tight">
+          {isEn ? 'Cart' : 'السلة'}
+        </h1>
+
+        <div className="lg:grid lg:grid-cols-[1fr_400px] gap-8 lg:gap-16 items-start">
           {/* Left Column (Items) */}
-          <div className="lg:col-span-8 flex flex-col gap-8">
-            <h1 className="text-4xl md:text-5xl font-black text-[#1b3d2e] mb-4">
-              {isEn ? 'Shopping Cart' : 'عربة التسوق'}
-            </h1>
-            
+          <div className="flex flex-col gap-4">
+            {/* Free Delivery Progress (Restored) */}
+            {cartHasItems && (
+              <div className="bg-white rounded-[24px] p-6 border border-[#f0ece8] shadow-sm mb-2">
+                <div className="flex justify-between items-center mb-3">
+                   <p className="text-[14px] font-bold text-[#1b3d2e]">
+                      {progress >= 100 ? (
+                        <span className="text-green-600 flex items-center gap-1">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                          {isEn ? "Free delivery unlocked!" : "لقد حصلت على توصيل مجاني!"}
+                        </span>
+                      ) : (
+                        isEn ? (
+                          <>Add <span className="text-[#d4a06a]">{currencyCode} {remaining.toFixed(2)}</span> for free delivery</>
+                        ) : (
+                          <>أضف <span className="text-[#d4a06a]">{remaining.toFixed(2)} ر.س</span> للتوصيل المجاني</>
+                        )
+                      )}
+                   </p>
+                   <span className="text-[12px] font-bold text-gray-300">{Math.round(progress)}%</span>
+                </div>
+                <div className="w-full h-2 bg-[#f8f5f2] rounded-full overflow-hidden">
+                  <div 
+                    className={`h-full transition-all duration-700 ease-out rounded-full ${progress >= 100 ? 'bg-green-500' : 'bg-[#d4a06a]'}`}
+                    style={{ width: `${progress}%` }}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Dynamic Delivery Alert (Only shows if relevant) */}
+            {cartHasItems && (cart?.attributes?.find(a => a.key === 'error')?.value) && (
+              <div className="bg-white rounded-2xl p-5 border border-red-100 shadow-sm flex items-start gap-4 relative animate-fade-in">
+                 <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center shrink-0">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                 </div>
+                 <div className="flex-1">
+                    <p className="text-[14px] leading-snug text-red-600 font-medium">
+                      {cart.attributes.find(a => a.key === 'error')?.value}
+                    </p>
+                 </div>
+              </div>
+            )}
+
             <CartEmpty hidden={linesCount} layout={layout} isEn={isEn} />
             
             {cartHasItems && (
-              <ul className="flex flex-col gap-5 bg-white rounded-[32px] p-8 md:p-10 border border-[#f0ece8] shadow-sm">
+              <ul className="flex flex-col gap-4">
                 {(cart?.lines?.nodes ?? []).map((line) => {
                   if ('parentRelationship' in line && line.parentRelationship?.parent) return null;
                   return (
@@ -79,11 +129,8 @@ export function CartMain({layout, cart: originalCart}: CartMainProps) {
 
           {/* Right Column (Summary) */}
           {cartHasItems && (
-            <div className="lg:col-span-4 lg:sticky lg:top-8 h-fit mt-8 lg:mt-0">
-              <div className="bg-white rounded-[32px] p-8 border border-[#f0ece8] shadow-[0_10px_40px_rgba(0,0,0,0.05)]">
-                <h3 className="text-2xl font-black text-[#1b3d2e] mb-6">{isEn ? 'Order Summary' : 'ملخص الطلب'}</h3>
-                <CartSummary cart={cart} layout={layout} />
-              </div>
+            <div className="lg:sticky lg:top-8 flex flex-col gap-6">
+              <CartSummary cart={cart} layout={layout} />
             </div>
           )}
         </div>

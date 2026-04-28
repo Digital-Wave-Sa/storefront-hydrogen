@@ -425,6 +425,11 @@ export type LocationsQuery = {
           | 'longitude'
           | 'phone'
         >;
+        metafields: Array<
+          StorefrontAPI.Maybe<
+            Pick<StorefrontAPI.Metafield, 'key' | 'value' | 'namespace'>
+          >
+        >;
       }
     >;
   };
@@ -1324,8 +1329,6 @@ export type CustomerAccessTokenCreateMutation = {
 
 export type CustomerRecoverMutationVariables = StorefrontAPI.Exact<{
   email: StorefrontAPI.Scalars['String']['input'];
-  country?: StorefrontAPI.InputMaybe<StorefrontAPI.CountryCode>;
-  language?: StorefrontAPI.InputMaybe<StorefrontAPI.LanguageCode>;
 }>;
 
 export type CustomerRecoverMutation = {
@@ -2588,7 +2591,7 @@ interface GeneratedQueryTypes {
     return: FooterQuery;
     variables: FooterQueryVariables;
   };
-  '#graphql\n  query Locations {\n    locations(first: 100) {\n      nodes {\n        id\n        name\n        address {\n          address1\n          address2\n          city\n          country\n          latitude\n          longitude\n          phone\n        }\n      }\n    }\n  }\n': {
+  '#graphql\n  query Locations {\n    locations(first: 100) {\n      nodes {\n        id\n        name\n        address {\n          address1\n          address2\n          city\n          country\n          latitude\n          longitude\n          phone\n        }\n        metafields(identifiers: [\n          {namespace: "custom", key: "delivery_fee"},\n          {namespace: "custom", key: "free_delivery_threshold"}\n        ]) {\n          key\n          value\n          namespace\n        }\n      }\n    }\n  }\n': {
     return: LocationsQuery;
     variables: LocationsQueryVariables;
   };
@@ -2715,7 +2718,7 @@ interface GeneratedMutationTypes {
     return: CustomerAccessTokenCreateMutation;
     variables: CustomerAccessTokenCreateMutationVariables;
   };
-  '#graphql\n  mutation customerRecover(\n    $email: String!,\n    $country: CountryCode,\n    $language: LanguageCode\n  ) @inContext(country: $country, language: $language) {\n    customerRecover(email: $email) {\n      customerUserErrors {\n        code\n        field\n        message\n      }\n    }\n  }\n': {
+  '#graphql\n  mutation customerRecover($email: String!) {\n    customerRecover(email: $email) {\n      customerUserErrors {\n        code\n        field\n        message\n      }\n    }\n  }\n': {
     return: CustomerRecoverMutation;
     variables: CustomerRecoverMutationVariables;
   };

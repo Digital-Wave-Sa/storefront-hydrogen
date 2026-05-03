@@ -17,7 +17,6 @@ export async function loader({context}: Route.LoaderArgs) {
 
   try {
     const adminToken = await getAdminToken(env);
-    console.log('[DEBUG] Using Admin Token:', adminToken ? (adminToken.substring(0, 8) + '...') : 'NONE');
     // Use the GraphQL Admin API  
     const query = `{
       locations(first: 100) {

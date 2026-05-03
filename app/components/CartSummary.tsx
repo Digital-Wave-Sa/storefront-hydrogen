@@ -272,7 +272,8 @@ function CartCheckoutActions({
   disabled, 
   validationError,
   totalAmount,
-  currencyCode
+  currencyCode,
+  isPickup
 }: {
   checkoutUrl?: string; 
   isEn: boolean;
@@ -294,6 +295,11 @@ function CartCheckoutActions({
                 if (isPickup) {
                   url.searchParams.set('pickup', 'true');
                   url.searchParams.set('fulfillment_type', 'pickup');
+                  // Secret parameters to hint the checkout to select the pickup tab
+                  url.searchParams.set('delivery_method', 'pickup_at_location');
+                  url.searchParams.set('method', 'pickup');
+                } else {
+                  url.searchParams.set('delivery_method', 'shipping');
                 }
                 return url.toString();
               } catch(e) {

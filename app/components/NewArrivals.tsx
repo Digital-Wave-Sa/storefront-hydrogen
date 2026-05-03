@@ -1,11 +1,12 @@
 import { Await, Link, useOutletContext } from 'react-router';
 import { Suspense, useEffect, useState } from 'react';
-import { Image, Money, CartForm } from '@shopify/hydrogen';
+import { Image, Money } from '@shopify/hydrogen';
 import { Price } from './Price';
 import { useI18n } from '~/lib/i18n';
 import { useAside } from '~/components/Aside';
 import { getVisibilityStatus } from '~/lib/visibility';
 import { getIsOutOfStock } from '~/lib/stock';
+import { AddToCartButton } from './AddToCartButton';
 import { StockNotificationModal } from '~/components/StockNotificationModal';
 import { StarRating, parseRatingValue } from '~/components/StarRating';
 
@@ -69,6 +70,7 @@ export function NewArrivals({
                                           storeAvailabilityNodes,
                                           product.availableForSale
                                         );
+
 
                                         // --- Visibility scheduling ---
                                         const visibility = getVisibilityStatus(
@@ -276,7 +278,7 @@ export function NewArrivals({
                                                     {/* Add to Cart — only for active products */}
                                                     {!isVisibilityBlocked && (
                                                        <NewArrivalsAddToCart
-                                                          variantId={variant?.id}
+                                                          variant={variant}
                                                           productTags={product.tags}
                                                           isOutOfStock={isOutOfStock && !isPreorder}
                                                           notifyLabel={isPreorder ? t.common.preOrder : t.common.notifyMe}
@@ -316,7 +318,7 @@ export function NewArrivals({
 
 // ─── ADD TO CART BUTTON (uses CartForm to actually add items) ────────────────
 function NewArrivalsAddToCart({
-    variantId,
+    variant,
     productTags,
     isOutOfStock,
     notifyLabel,
@@ -324,7 +326,7 @@ function NewArrivalsAddToCart({
     isPreorder,
     onNotifyClick
 }: {
-    variantId?: string;
+    variant?: any;
     productTags?: string[];
     isOutOfStock: boolean;
     notifyLabel: string;
@@ -333,6 +335,7 @@ function NewArrivalsAddToCart({
     onNotifyClick?: () => void;
 }) {
     const { setOpenAside } = useAside();
+    const variantId = variant?.id;
     const isBogo = productTags?.some((t: string) => t.toLowerCase().includes('bogo'));
 
     if (!variantId || isOutOfStock) {
@@ -355,6 +358,7 @@ function NewArrivalsAddToCart({
     const lines = [{ 
       merchandiseId: variantId, 
       quantity: 1,
+      selectedVariant: variant,
       attributes: [{ key: '_groupId', value: groupId }]
     }];
 
@@ -362,6 +366,7 @@ function NewArrivalsAddToCart({
       lines.push({
         merchandiseId: variantId,
         quantity: 1,
+        selectedVariant: variant,
         attributes: [
           { key: '_groupId', value: groupId },
           { key: '_is_addon', value: 'true' },
@@ -371,20 +376,12 @@ function NewArrivalsAddToCart({
     }
 
     return (
-        <CartForm
-            route="/cart"
-            action={CartForm.ACTIONS.LinesAdd}
-            inputs={{ lines }}
+        <AddToCartButton
+            lines={lines}
+            className={`w-full py-3 rounded-xl font-bold transition-all ${isPreorder ? 'bg-[#004f59] text-white' : 'bg-[#234745] text-white hover:opacity-90 active:scale-95'}`}
+            disabled={isOutOfStock}
         >
-            {(fetcher: any) => (
-                <button
-                    type="submit"
-                    disabled={fetcher.state !== 'idle'}
-                    className={`w-full py-3 rounded-xl font-bold transition-all ${isPreorder ? 'bg-[#004f59] text-white' : 'bg-[#234745] text-white hover:opacity-90 active:scale-95'}`}
-                >
-                    {fetcher.state === 'idle' ? addLabel : '...'}
-                </button>
-            )}
-        </CartForm>
+            {addLabel}
+        </AddToCartButton>
     );
 }

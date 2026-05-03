@@ -1,12 +1,13 @@
 import { Await, Link, useOutletContext } from 'react-router';
 import { Suspense, useEffect, useState } from 'react';
-import { Image, Money, CartForm } from '@shopify/hydrogen';
+import { Image, Money } from '@shopify/hydrogen';
 import { Price } from './Price';
 import { Button } from './layout/Button';
 import { useI18n } from '~/lib/i18n';
 import { useAside } from '~/components/Aside';
 import { getVisibilityStatus } from '~/lib/visibility';
 import { getIsOutOfStock } from '~/lib/stock';
+import { AddToCartButton } from './AddToCartButton';
 
 import { StockNotificationModal } from '~/components/StockNotificationModal';
 import { StarRating, parseRatingValue } from '~/components/StarRating';
@@ -89,6 +90,7 @@ export function BestSellers({
                                           storeAvailabilityNodes,
                                           product.availableForSale
                                         );
+
 
                                         // --- Visibility scheduling ---
                                         const visibility = getVisibilityStatus(
@@ -254,7 +256,7 @@ export function BestSellers({
                                                     {!isVisibilityBlocked && (
                                                       <div className="mt-auto">
                                                           <BestSellersAddToCart
-                                                                variantId={variant?.id}
+                                                                variant={variant}
                                                                 productTags={product.tags}
                                                                 isOutOfStock={isOutOfStock && !isPreorder}
                                                                 notifyLabel={isPreorder ? t.common.preOrder : (isEn ? 'Notify Me' : 'أبلغني عن التوفر')}
@@ -307,7 +309,7 @@ export function BestSellers({
 
 // ─── ADD TO CART BUTTON (uses CartForm to actually add items) ────────────────
 function BestSellersAddToCart({
-    variantId,
+    variant,
     productTags,
     isOutOfStock,
     notifyLabel,
@@ -315,7 +317,7 @@ function BestSellersAddToCart({
     isPreorder,
     onNotifyClick
 }: {
-    variantId?: string;
+    variant?: any;
     productTags?: string[];
     isOutOfStock: boolean;
     notifyLabel: string;
@@ -324,6 +326,7 @@ function BestSellersAddToCart({
     onNotifyClick?: () => void;
 }) {
     const { setOpenAside } = useAside();
+    const variantId = variant?.id;
     const isBogo = productTags?.some((t: string) => t.toLowerCase().includes('bogo'));
 
     if (!variantId || isOutOfStock) {
@@ -346,6 +349,7 @@ function BestSellersAddToCart({
     const lines = [{ 
       merchandiseId: variantId, 
       quantity: 1,
+      selectedVariant: variant,
       attributes: [{ key: '_groupId', value: groupId }]
     }];
 
@@ -353,6 +357,7 @@ function BestSellersAddToCart({
       lines.push({
         merchandiseId: variantId,
         quantity: 1,
+        selectedVariant: variant,
         attributes: [
           { key: '_groupId', value: groupId },
           { key: '_is_addon', value: 'true' },
@@ -362,21 +367,13 @@ function BestSellersAddToCart({
     }
 
     return (
-        <CartForm
-            route="/cart"
-            action={CartForm.ACTIONS.LinesAdd}
-            inputs={{ lines }}
+        <AddToCartButton
+            lines={lines}
+            className={`w-full py-3.5 rounded-full font-bold text-[16px] transition-all shadow-sm ${isPreorder ? 'bg-[#004f59] text-white hover:bg-[#003d45]' : 'bg-[#234745] text-white hover:bg-[#1a3533] active:scale-[0.98]'}`}
+            disabled={isOutOfStock}
         >
-            {(fetcher: any) => (
-                <button
-                    type="submit"
-                    disabled={fetcher.state !== 'idle'}
-                    className={`w-full py-3.5 rounded-full font-bold text-[16px] transition-all shadow-sm ${isPreorder ? 'bg-[#004f59] text-white hover:bg-[#003d45]' : 'bg-[#234745] text-white hover:bg-[#1a3533] active:scale-[0.98]'}`}
-                >
-                    {fetcher.state === 'idle' ? addLabel : '...'}
-                </button>
-            )}
-        </CartForm>
+            {addLabel}
+        </AddToCartButton>
     );
 }
 

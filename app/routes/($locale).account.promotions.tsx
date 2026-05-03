@@ -1,5 +1,5 @@
 import { data, redirect, type LoaderFunctionArgs, type ActionFunctionArgs } from 'react-router';
-import { useLoaderData, Form, useNavigation, useActionData, useRouteLoaderData, Link } from 'react-router';
+import { useLoaderData, Form, useNavigation, useActionData, useRouteLoaderData, Link, useLocation } from 'react-router';
 import { Button } from '~/components/layout/Button';
 import { useState } from 'react';
 import { getAdminToken } from '~/lib/shopify-admin.server';
@@ -18,6 +18,7 @@ export async function loader({ context }: LoaderFunctionArgs) {
     query getCustomerId($customerAccessToken: String!) {
       customer(customerAccessToken: $customerAccessToken) {
         id
+        tags
       }
     }
   `, {
@@ -29,26 +30,8 @@ export async function loader({ context }: LoaderFunctionArgs) {
     return redirect('/account/login');
   }
 
-  // Then we check tags via Admin API (Storefront API denies access to tags by default)
-  const shopDomain = env.PUBLIC_STORE_DOMAIN;
-  const adminToken = await getAdminToken(env);
-  
-  const adminQuery = `
-    query getCustomerTags($id: ID!) {
-      customer(id: $id) {
-        tags
-      }
-    }
-  `;
-
-  const adminRes = await fetch(`https://${shopDomain}/admin/api/2024-01/graphql.json`, {
-    method: 'POST',
-    headers: { 'X-Shopify-Access-Token': adminToken, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ query: adminQuery, variables: { id: sfCustomer.id } }),
-  });
-
-  const adminResult = await adminRes.json();
-  const customerTags = adminResult.data?.customer?.tags || [];
+  // Then we check tags directly via Storefront API (Now that permission is enabled!)
+  const customerTags = sfCustomer?.tags || [];
 
   const isAdmin = customerTags.some((tag: string) => 
     tag.toLowerCase() === 'admin' || tag.toLowerCase() === 'branch_manager'
@@ -59,6 +42,8 @@ export async function loader({ context }: LoaderFunctionArgs) {
   }
 
   // 2. Fetch existing price rules (vouchers) from Shopify Admin API
+  const shopDomain = env.PUBLIC_STORE_DOMAIN;
+  const adminToken = await getAdminToken(env);
 
   const query = `{
     priceRules(first: 20, reverse: true) {
@@ -199,7 +184,6 @@ export async function action({ request, context }: ActionFunctionArgs) {
         }),
       });
 
-      console.log(`[CRM SYNC] Voucher ${code} for Branch ${branchId} synced.`);
       return data({ success: true });
     } catch (e: any) {
       return data({ error: e.message }, { status: 500 });
@@ -213,29 +197,26 @@ export default function PromotionsDashboard() {
   const { priceRules, products, locations } = useLoaderData<typeof loader>();
   const actionData = useActionData<{ success?: boolean; error?: string }>();
   const navigation = useNavigation();
-  const rootData = useRouteLoaderData('root') as any;
-  const locale = rootData?.consent?.language?.toLowerCase() || 'ar';
+  const locale = useLocation().pathname.startsWith('/en') ? 'en' : 'ar';
   const isEn = locale === 'en';
 
   const [showCreate, setShowCreate] = useState(false);
 
   return (
-    <div className="promotions-dashboard luxury-bg min-h-screen" dir={isEn ? 'ltr' : 'rtl'}>
-      <div className="max-w-6xl mx-auto py-12 px-4">
-        
-        <div className="flex justify-between items-end mb-10">
-          <div>
-            <h1 className="luxury-title text-4xl mb-2">
-              {isEn ? 'Promotion Control Center' : 'مركز التحكم في العروض'}
-            </h1>
-            <p className="luxury-subtitle">
-              {isEn ? 'Create and manage vouchers, BOGO, and branch-specific campaigns' : 'إنشاء وإدارة القسائم وعروض الفروع المخصصة'}
-            </p>
-          </div>
-          <Button variant="primary" onClick={() => setShowCreate(!showCreate)}>
-            {showCreate ? (isEn ? 'Cancel' : 'إلغاء') : (isEn ? '+ New Campaign' : '+ حملة جديدة')}
-          </Button>
+    <div className="promotions-dashboard-content" dir={isEn ? 'ltr' : 'rtl'}>
+      <div className="flex justify-between items-end mb-10">
+        <div>
+          <h1 className="text-3xl font-black text-[#1b3d2e] mb-2">
+            {isEn ? 'Promotions' : 'العروض والقسائم'}
+          </h1>
+          <p className="text-gray-500 font-medium">
+            {isEn ? 'Create and manage vouchers and branch-specific campaigns' : 'إنشاء وإدارة القسائم وعروض الفروع المخصصة'}
+          </p>
         </div>
+        <Button variant="primary" onClick={() => setShowCreate(!showCreate)}>
+          {showCreate ? (isEn ? 'Cancel' : 'إلغاء') : (isEn ? '+ New Campaign' : '+ حملة جديدة')}
+        </Button>
+      </div>
 
         {actionData?.success && (
           <div className="bg-green-50 border border-green-200 text-green-700 px-6 py-4 rounded-2xl mb-8 flex items-center gap-3">
@@ -353,17 +334,12 @@ export default function PromotionsDashboard() {
               ))}
             </tbody>
           </table>
-        </div>
       </div>
-
       <style dangerouslySetInnerHTML={{ __html: `
-        .luxury-bg { background: #fffaf5; }
         .luxury-card { background: #fff; border-radius: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.02); }
         .luxury-field { display: flex; flex-direction: column; gap: 8px; }
         .luxury-label { font-size: 12px; font-weight: 700; color: #d4a06a; text-transform: uppercase; letter-spacing: 1px; }
         .luxury-input-field { padding: 12px 16px; border-radius: 12px; border: 1.5px solid #eee; font-size: 14px; }
-        .luxury-title { font-family: 'Playfair Display', serif; color: #1b3d2e; font-weight: 900; }
-        .luxury-subtitle { color: #d4a06a; font-size: 14px; font-weight: 500; }
       `}} />
     </div>
   );

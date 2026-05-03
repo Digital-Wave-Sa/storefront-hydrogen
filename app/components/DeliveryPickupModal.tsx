@@ -45,7 +45,9 @@ interface DeliveryPickupModalProps {
     customerPromise?: Promise<any>;
     locale?: string;
     googleMapsKey?: string;
-    onSelectBranch?: (name: string, id: string, type: Tab) => void;
+    onSelectBranch?: (branch: any, type: Tab, addressName?: string) => void;
+    selectedLocationId?: string;
+    selectedAddressName?: string;
 }
 
 // ─── FALLBACK DATA ────────────────────────────────────────────────────────
@@ -263,6 +265,8 @@ export function DeliveryPickupModal({
     locale = 'ar',
     googleMapsKey: propGoogleMapsKey,
     onSelectBranch,
+    selectedLocationId,
+    selectedAddressName,
 }: DeliveryPickupModalProps) {
     const googleMapsKey = propGoogleMapsKey || (typeof window !== 'undefined' ? (window as any).ENV?.PUBLIC_GOOGLE_MAPS_KEY : undefined);
 
@@ -290,6 +294,14 @@ export function DeliveryPickupModal({
                 .then(data => { if (data?.locations) setAdminMetafields(data.locations); })
                 .catch(err => console.error('Admin metafields fetch error:', err));
             
+            // Sync selected branch ID from session
+            if (activeTab === 'pickup' && selectedLocationId) {
+                setSelectedBranch(selectedLocationId);
+            } else if (activeTab === 'delivery' && selectedAddressName && addresses.length > 0) {
+                const matchedAddr = addresses.find((a: any) => a.id === selectedLocationId || a.firstName + ' ' + a.lastName === selectedAddressName || a.address1 === selectedAddressName);
+                if (matchedAddr) setSelectedBranch(matchedAddr.id);
+            }
+
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition((pos) => {
                     setUserCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });

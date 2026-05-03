@@ -11,9 +11,8 @@ import {
 import { Image, Money, Pagination } from '@shopify/hydrogen';
 import React, { useRef, useEffect, useState } from 'react';
 import { Price } from './Price';
-import { getVisibilityStatus } from '~/lib/visibility';
-import { getIsOutOfStock } from '~/lib/stock';
-import { StockNotificationModal } from '~/components/StockNotificationModal';
+import { ProductItem } from './ProductItem';
+import { useAside } from './Aside';
 
 import type {
   PredictiveProductFragment,
@@ -167,29 +166,9 @@ export function SearchResults({
 
 
 function SearchResultsProductsGrid({ products }: Pick<SearchQuery, 'products'>) {
-  const [isNotifyModalOpen, setIsNotifyModalOpen] = useState(false);
-  const [selectedProduct, setSelectedProduct] = useState<{title: string, variantId: string} | null>(null);
-
-  // Add locale here
-  const { selectedLocationName, selectedLocationId } = useOutletContext<{ selectedLocationName?: string, selectedLocationId?: string }>() || {};
   const rootData = useRouteLoaderData('root') as any;
   const locale = rootData?.consent?.language?.toLowerCase() || 'ar';
   const isEn = locale === 'en';
-  const customer = rootData?.customer;
-  const [customerEmail, setCustomerEmail] = useState<string | undefined>(undefined);
-
-  useEffect(() => {
-    if (customer && typeof customer.then === 'function') {
-        customer.then((res: any) => {
-            if (res?.customer?.email) setCustomerEmail(res.customer.email);
-        }).catch(() => {});
-    }
-  }, [customer]);
-
-  const handleNotifyClick = (title: string, variantId: string) => {
-    setSelectedProduct({ title, variantId });
-    setIsNotifyModalOpen(true);
-  };
 
   return (
     <div className="mb-16" dir={isEn ? 'ltr' : 'rtl'}>
@@ -202,258 +181,34 @@ function SearchResultsProductsGrid({ products }: Pick<SearchQuery, 'products'>) 
 
       <Pagination connection={products}>
         {({ nodes, isLoading, NextLink, PreviousLink }) => {
-          const itemsMarkup = (nodes as any[]).map((product) => {
-            const variant = product.variants.nodes[0];
-            const storeAvailabilityNodes = variant?.storeAvailability?.nodes || [];
-
-            const isOutOfStock = getIsOutOfStock(
-              selectedLocationId,
-              selectedLocationName,
-              storeAvailabilityNodes,
-              product.availableForSale
-            );
-
-            // --- Visibility scheduling ---
-            const visibility = getVisibilityStatus(
-              product.visibility_start?.value,
-              product.visibility_end?.value,
-            );
-            const isVisibilityBlocked = !visibility.isActive;
-            const effectiveOutOfStock = isOutOfStock || isVisibilityBlocked;
-
-            return (
-              <div key={product.id} className={`flex flex-col ${isVisibilityBlocked ? 'product--disabled' : 'group'}`}>
-                {(() => {
-                  const tracking = product.trackingParameters ? (product.trackingParameters.startsWith('?') ? product.trackingParameters : `?${product.trackingParameters}`) : '';
-                  const baseUrl = isEn ? `/en/products/${product.handle}` : `/products/${product.handle}`;
-                  const finalUrl = isVisibilityBlocked ? '#' : `${baseUrl}${tracking}`;
-                  
-                  return (
-                    <Link
-                      prefetch="intent"
-                      to={finalUrl}
-                      onClick={isVisibilityBlocked ? (e: any) => e.preventDefault() : undefined}
-                      className={isVisibilityBlocked ? 'pointer-events-none' : ''}
-                    >
-                      <div className={`aspect-square bg-white rounded-[2rem] overflow-hidden mb-4 shadow-sm border border-gray-50 transition-all duration-500 relative ${isVisibilityBlocked ? 'opacity-60 grayscale-[30%]' : 'group-hover:shadow-xl group-hover:-translate-y-1'}`}>
-                        {variant?.image ? (
-                          <Image
-                            data={variant.image}
-                            alt={variant.image?.altText || product.title || 'Product Thumbnail'}
-                            loading="lazy"
-                            aspectRatio="1/1"
-                            sizes="(min-width: 45em) 25vw, 50vw"
-                            className={`w-full h-full object-contain transition-transform duration-700 ${effectiveOutOfStock ? 'opacity-50 grayscale group-hover:scale-100' : 'group-hover:scale-110'}`}
-                          />
-                        ) : (
-                          <div className="w-full h-full bg-[#FEF8EB] flex items-center justify-center">
-                            <span className="text-gray-300">No image</span>
-                          </div>
-                        )}
-                        {/* Visibility badge */}
-                        {isVisibilityBlocked ? (
-                          <div className="absolute top-4 right-4 z-10">
-                            <span className={`text-[10px] font-black px-3 py-1.5 rounded-xl shadow-sm flex items-center gap-1.5 ${visibility.status === 'scheduled' ? 'bg-amber-500 text-white' : 'bg-red-500 text-white'}`}>
-                              <span>{visibility.status === 'scheduled' ? '🕐' : '⛔'}</span>
-                              {visibility.status === 'scheduled' ? 'قريباً' : 'غير متاح'}
-                            </span>
-                          </div>
-                        ) : (product.productType?.toLowerCase() === 'bundle' || product.tags?.some((t: string) => t.toLowerCase() === 'bundle')) ? (
-                          <div className="absolute top-4 right-4 z-10 flex flex-col gap-2 items-end">
-                            <span className="text-[10px] font-black px-3 py-1.5 rounded-xl shadow-sm flex items-center gap-1.5 bg-blue-600 text-white">
-                              <span>📦</span>
-                              {isEn ? 'Bundle' : 'باقة'}
-                            </span>
-                            {product.tags?.some((t: string) => t.toLowerCase().includes('bogo')) && (
-                              <span className="text-[10px] font-black px-3 py-1.5 rounded-xl shadow-sm bg-orange-500 text-white flex items-center gap-1.5 animate-pulse">
-                                <span>🔥</span>
-                                {isEn ? 'BOGO' : 'عرض خاص'}
-                              </span>
-                            )}
-                          </div>
-                        ) : product.tags?.some((t: string) => t.toLowerCase().includes('bogo')) ? (
-                           <div className="absolute top-4 right-4 z-10 flex flex-col gap-2 items-end">
-                            <span className="text-[10px] font-black px-3 py-1.5 rounded-xl shadow-sm bg-orange-500 text-white flex items-center gap-1.5 animate-pulse">
-                              <span>🔥</span>
-                              {isEn ? 'BOGO' : 'عرض خاص'}
-                            </span>
-                          </div>
-                        ) : isOutOfStock && (
-                          <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex justify-center z-10 px-4">
-                            <span className="bg-red-500 text-white px-4 py-1.5 rounded-full font-bold text-[10px] tracking-wide shadow-sm uppercase text-center">
-                              Not Available
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                      <div className="text-center px-2">
-                        {/* Availability / Visibility Tag */}
-                        <div className={`flex items-center justify-center gap-1 text-[10px] font-medium mb-1 ${isVisibilityBlocked
-                          ? (visibility.status === 'scheduled' ? 'text-amber-600' : 'text-red-500')
-                          : (isOutOfStock ? 'text-red-500' : 'text-gray-400')
-                          }`}>
-                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                            {isVisibilityBlocked ? (
-                              <path d="M12 2v10l4 4M12 22a10 10 0 100-20 10 10 0 000 20z" />
-                            ) : isOutOfStock ? (
-                              <path d="M18 6L6 18M6 6l12 12" />
-                            ) : (
-                              <path d="M20 6L9 17l-5-5" />
-                            )}
-                          </svg>
-                          <span>
-                            {isVisibilityBlocked
-                              ? (isEn ? visibility.label.en : visibility.label.ar)
-                              : isOutOfStock
-                                ? (isEn ? `Not available at ${selectedLocationName || 'this branch'}` : `غير متوفر في ${selectedLocationName || 'هذا الفرع'}`)
-                                : (isEn ? `Available at ${selectedLocationName || 'this branch'}` : `متوفر في ${selectedLocationName || 'هذا الفرع'}`)
-                            }
-                          </span>
-                        </div>
-
-                        <h4 className={`font-bold text-[#234745] text-lg mb-1 transition-colors duration-300 ${isVisibilityBlocked ? '' : 'group-hover:text-[#BBCFCD]'}`}>
-                          {product.title}
-                        </h4>
-
-                        {/* Star Ratings UI */}
-                        {product.rating?.value && (
-                          <div className="flex items-center justify-center gap-1 mb-1.5">
-                            <div className="flex text-[#FFC107] text-[10px]">
-                              {Array.from({ length: 5 }).map((_, i) => (
-                                <svg key={i} width="12" height="12" viewBox="0 0 24 24" fill={i < Math.round(parseFloat(product.rating.value)) ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
-                                </svg>
-                              ))}
-                            </div>
-                            <span className="text-[10px] text-gray-400 font-medium">({product.ratingCount?.value || '0'})</span>
-                          </div>
-                        )}
-
-                        {!isVisibilityBlocked && variant?.price && (
-                          <div className="mb-4">
-                            <Price data={variant.price} isEn={isEn} size="sm" />
-                          </div>
-                        )}
-
-                        {isVisibilityBlocked && (
-                          <span className={`text-xs font-bold ${visibility.status === 'scheduled' ? 'text-amber-600' : 'text-red-500'}`}>
-                            {visibility.status === 'scheduled' ? 'قريباً' : 'غير متاح'}
-                          </span>
-                        )}
-                      </div>
-                    </Link>
-                  );
-                })()}
-
-                {/* JSON-LD Structured Data */}
-                {typeof document !== 'undefined' && (
-                  <script
-                    type="application/ld+json"
-                    dangerouslySetInnerHTML={{
-                      __html: JSON.stringify({
-                        "@context": "https://schema.org/",
-                        "@type": "Product",
-                        "name": product.title,
-                        "image": variant?.image?.url ? [variant.image.url] : [],
-                        "description": `${product.title} by Saadeddin`,
-                        "sku": variant?.sku || product.id,
-                        "brand": {
-                          "@type": "Brand",
-                          "name": "Saadeddin"
-                        },
-                        "offers": {
-                          "@type": "Offer",
-                          "url": `${typeof window !== 'undefined' ? window.location.origin : ''}${isEn ? `/en/products/${product.handle}` : `/products/${product.handle}`}`,
-                          "priceCurrency": variant?.price?.currencyCode || "SAR",
-                          "price": variant?.price?.amount,
-                          "availability": effectiveOutOfStock ? "https://schema.org/OutOfStock" : "https://schema.org/InStock",
-                          "itemCondition": "https://schema.org/NewCondition"
-                        },
-                        ...(product.rating?.value && {
-                            "aggregateRating": {
-                                "@type": "AggregateRating",
-                                "ratingValue": parseFloat(product.rating.value),
-                                "reviewCount": parseInt(product.ratingCount?.value || '0', 10)
-                            }
-                        })
-                      })
-                    }}
-                  />
-                )}
-
-                {/* Actions */}
-                {!isVisibilityBlocked && (
-                  <div className="mt-auto px-2 pb-4">
-                    {isOutOfStock ? (
-                      <button 
-                        type="button"
-                        onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            handleNotifyClick(product.title, variant?.id);
-                        }}
-                        className="w-full bg-amber-500 text-white py-3 rounded-2xl font-bold text-xs hover:bg-amber-600 transition-all flex items-center justify-center gap-2 cursor-pointer relative z-20"
-                      >
-                        🔔 {isEn ? 'Notify Me' : 'أبلغني'}
-                      </button>
-                    ) : (
-                      <Link 
-                        to={isEn ? `/en/products/${product.handle}` : `/products/${product.handle}`}
-                        className="w-full bg-[#1b3d2e] text-white py-3 rounded-2xl font-bold text-xs hover:bg-[#2d5e4a] transition-all flex items-center justify-center gap-2"
-                      >
-                        {isEn ? 'View Product' : 'عرض المنتج'}
-                      </Link>
-                    )}
-                  </div>
-                )}
-              </div>
-            );
-          });
-
           return (
-            <div>
+            <>
               <div className="flex justify-center mb-8">
-                <PreviousLink className="text-[#234745] font-bold hover:underline">
-                  {isLoading
-                    ? (isEn ? 'Loading...' : 'جاري التحميل...')
-                    : (isEn ? '↑ Load previous results' : '↑ تحميل النتائج السابقة')
-                  }
+                <PreviousLink className="text-[#1b3d2e] font-black border-2 border-[#1b3d2e]/10 px-8 py-2.5 rounded-full hover:bg-gray-50 transition-all">
+                  {isLoading ? (isEn ? 'Loading...' : 'جاري التحميل...') : (isEn ? '↑ Load Previous' : '↑ تحميل النتائج السابقة')}
                 </PreviousLink>
               </div>
-
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
-                {itemsMarkup}
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 lg:gap-8">
+                {nodes.map((product) => (
+                  <ProductItem 
+                    key={product.id} 
+                    product={product} 
+                    view="grid"
+                  />
+                ))}
               </div>
-
               <div className="flex justify-center mt-12">
-                <NextLink className="bg-white border-2 border-[#234745] text-[#234745] px-10 py-3 rounded-full font-bold hover:bg-[#234745] hover:text-white transition-all shadow-sm">
-                  {isLoading
-                    ? (isEn ? 'Loading...' : 'جاري التحميل...')
-                    : (isEn ? 'Show More' : 'عرض المزيد')
-                  }
+                <NextLink className="bg-[#1b3d2e] text-white px-16 py-4 rounded-full font-black shadow-[0_10px_30_rgba(27,61,46,0.3)] hover:shadow-[0_15px_40px_rgba(27,61,46,0.4)] hover:-translate-y-1 transition-all duration-300">
+                  {isLoading ? (isEn ? 'Loading...' : 'جاري التحميل...') : (isEn ? 'Browse More ↓' : 'تصفح المزيد ↓')}
                 </NextLink>
               </div>
-
-              {selectedProduct && (
-                <StockNotificationModal 
-                    isOpen={isNotifyModalOpen}
-                    onClose={() => setIsNotifyModalOpen(false)}
-                    productTitle={selectedProduct.title}
-                    variantId={selectedProduct.variantId}
-                    isEn={isEn}
-                    customerEmail={customerEmail}
-                    locationId={selectedLocationId}
-                    locationName={selectedLocationName}
-                />
-              )}
-            </div>
+            </>
           );
         }}
       </Pagination>
     </div>
   );
 }
-
 function SearchResultPageGrid({ pages }: Pick<SearchQuery, 'pages'>) {
   return (
     <div className="search-result">

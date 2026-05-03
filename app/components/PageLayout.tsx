@@ -58,6 +58,10 @@ export function PageLayout({
           locations={locations}
           customer={customer}
           googleMapsKey={rootData?.env?.PUBLIC_GOOGLE_MAPS_KEY}
+          selectedLocationId={rootData?.selectedLocationId}
+          selectedLocationName={rootData?.selectedLocationName}
+          selectedAddressName={rootData?.selectedAddressName}
+          fulfillmentType={rootData?.fulfillmentType}
         />
       )}
       <main>{children}</main>

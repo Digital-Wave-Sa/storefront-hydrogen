@@ -8,7 +8,7 @@ export async function adminApiQuery(
   variables?: any
 ) {
   try {
-    const response = await fetch(`https://${domain}/admin/api/2024-01/graphql.json`, {
+    const response = await fetch(`https://${domain}/admin/api/2024-04/graphql.json`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

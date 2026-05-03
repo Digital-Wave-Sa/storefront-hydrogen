@@ -9,6 +9,7 @@ import {
   AnalyticsEventName,
   AnalyticsPageType,
   useAnalytics,
+  Analytics,
 } from '@shopify/hydrogen';
 
 import { SearchForm, SearchResults, NoSearchResults } from '~/components/Search';
@@ -87,11 +88,14 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
     finalQuery += ` ${activeCollection}`;
   }
 
-  const searchPayload = await context.storefront.query(SEARCH_QUERY as any, {
+  const { storefront } = context;
+  const searchPayload = await storefront.query(SEARCH_QUERY as any, {
     variables: {
       query: finalQuery,
       productFilters: filters.length > 0 ? filters : undefined,
       ...variables,
+      country: storefront.i18n.country,
+      language: storefront.i18n.language,
     },
   });
 
@@ -510,7 +514,7 @@ const SEARCH_QUERY = `#graphql
     ratingCount: metafield(namespace: "reviews", key: "rating_count") {
       value
     }
-    variants(first: 1) {
+    variants(first: 10) {
       nodes {
         id
         image {

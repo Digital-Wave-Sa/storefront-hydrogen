@@ -1,5 +1,6 @@
-import {useOptimisticCart, Analytics} from '@shopify/hydrogen';
+import {useOptimisticCart, Analytics, CartForm} from '@shopify/hydrogen';
 import {Link, useRouteLoaderData} from 'react-router';
+import {useEffect, useState, useRef} from 'react';
 import type {CartApiQueryFragment} from 'storefrontapi.generated';
 import {useAside} from '~/components/Aside';
 import {CartLineItem, type CartLine} from '~/components/CartLineItem';
@@ -42,6 +43,47 @@ export function CartMain({layout, cart: originalCart}: CartMainProps) {
   const linesCount = Boolean(cart?.lines?.nodes?.length || 0);
   const cartHasItems = cart?.totalQuantity ? cart.totalQuantity > 0 : false;
   const childrenMap = getLineItemChildrenMap(cart?.lines?.nodes ?? []);
+
+  // --- UNDO REMOVED ITEM LOGIC ---
+  const prevLinesRef = useRef<CartLine[]>([]);
+  const [deletedLine, setDeletedLine] = useState<CartLine | null>(null);
+
+  // 1. Detect removals
+  useEffect(() => {
+    const currentLines = cart?.lines?.nodes || [];
+    
+    if (prevLinesRef.current.length > 0 && currentLines.length < prevLinesRef.current.length) {
+      const currentIds = new Set(currentLines.map(l => l.id));
+      const removedLines = prevLinesRef.current.filter(l => !currentIds.has(l.id));
+      
+      if (removedLines.length === 1 && !removedLines[0].isOptimistic) {
+        setDeletedLine(removedLines[0]);
+      }
+    }
+
+    // Clear if an item was ADDED
+    if (currentLines.length > prevLinesRef.current.length) {
+      setDeletedLine(null);
+    }
+    
+    prevLinesRef.current = currentLines;
+  }, [cart?.lines?.nodes]);
+
+  // 2. Detect restoration (item comes back)
+  useEffect(() => {
+    const currentLines = cart?.lines?.nodes || [];
+    if (deletedLine && currentLines.some(l => l.merchandise.id === deletedLine.merchandise.id)) {
+      setDeletedLine(null);
+    }
+  }, [cart?.lines?.nodes, deletedLine]);
+
+  // 3. Auto-hide timer
+  useEffect(() => {
+    if (!deletedLine) return;
+    const timer = setTimeout(() => setDeletedLine(null), 6000);
+    return () => clearTimeout(timer);
+  }, [deletedLine]);
+  // -------------------------------
 
   // Dynamic Delivery Threshold Logic
   const branchName = cart?.attributes?.find(a => a.key === 'Branch')?.value;
@@ -232,6 +274,37 @@ export function CartMain({layout, cart: originalCart}: CartMainProps) {
       {cartHasItems && (
         <div className="mt-auto bg-white border-t border-[#f0ece8] p-6 shadow-[0_-10px_40px_rgba(0,0,0,0.03)]">
           <CartSummary cart={cart} layout={layout} />
+        </div>
+      )}
+
+      {/* Undo Toast Notification */}
+      {deletedLine && (
+        <div className="absolute bottom-28 left-1/2 -translate-x-1/2 bg-[#1b3d2e] text-white px-5 py-3 rounded-xl shadow-2xl flex items-center justify-between gap-6 z-50 animate-fade-in w-[90%] max-w-[350px]">
+          <div className="flex flex-col">
+             <span className="text-[13px] font-bold">Item removed</span>
+             <span className="text-[11px] text-gray-300 truncate max-w-[200px]">{deletedLine.merchandise.product.title}</span>
+          </div>
+          <CartForm
+            route="/cart"
+            action={CartForm.ACTIONS.LinesAdd}
+            inputs={{
+              lines: [
+                {
+                  merchandiseId: deletedLine.merchandise.id,
+                  quantity: deletedLine.quantity,
+                  attributes: deletedLine.attributes?.map(a => ({ key: a.key, value: a.value })) || []
+                }
+              ]
+            }}
+          >
+            <button 
+              type="submit" 
+              onClick={() => setTimeout(() => setDeletedLine(null), 200)}
+              className="text-[#d4a06a] font-black text-[13px] hover:text-white transition-colors bg-white/10 px-4 py-2 rounded-lg"
+            >
+              UNDO
+            </button>
+          </CartForm>
         </div>
       )}
     </section>

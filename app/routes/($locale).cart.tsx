@@ -8,7 +8,12 @@ export const meta: Route.MetaFunction = () => {
   return [{title: `Hydrogen | Cart`}];
 };
 
-export const headers: HeadersFunction = ({actionHeaders}) => actionHeaders;
+export const headers: HeadersFunction = ({actionHeaders, loaderHeaders}) => {
+  return {
+    'Cache-Control': 'no-cache, no-store, must-revalidate',
+    ...actionHeaders,
+  };
+};
 
 export async function action({request, context}: Route.ActionArgs) {
   const {cart} = context;

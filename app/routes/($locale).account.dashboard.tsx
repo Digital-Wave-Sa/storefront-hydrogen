@@ -1,5 +1,5 @@
 import { data, redirect, type LoaderFunctionArgs, type ActionFunctionArgs } from 'react-router';
-import { useLoaderData, Form, useNavigation, useActionData, useRouteLoaderData, Link } from 'react-router';
+import { useLoaderData, Form, useNavigation, useActionData, useRouteLoaderData, Link, useLocation } from 'react-router';
 import { Button } from '~/components/layout/Button';
 import { useState } from 'react';
 import { getAdminToken } from '~/lib/shopify-admin.server';
@@ -18,6 +18,7 @@ export async function loader({ context }: LoaderFunctionArgs) {
     query getCustomerId($customerAccessToken: String!) {
       customer(customerAccessToken: $customerAccessToken) {
         id
+        tags
       }
     }
   `, {
@@ -29,26 +30,8 @@ export async function loader({ context }: LoaderFunctionArgs) {
     return redirect('/account/login');
   }
 
-  // Then we check tags via Admin API (Storefront API denies access to tags by default)
-  const shopDomain = env.PUBLIC_STORE_DOMAIN;
-  const adminToken = await getAdminToken(env);
-  
-  const adminQuery = `
-    query getCustomerTags($id: ID!) {
-      customer(id: $id) {
-        tags
-      }
-    }
-  `;
-
-  const adminRes = await fetch(`https://${shopDomain}/admin/api/2024-01/graphql.json`, {
-    method: 'POST',
-    headers: { 'X-Shopify-Access-Token': adminToken, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ query: adminQuery, variables: { id: sfCustomer.id } }),
-  });
-
-  const adminResult = await adminRes.json();
-  const customerTags = adminResult.data?.customer?.tags || [];
+  // Then we check tags directly via Storefront API (Now that permission is enabled!)
+  const customerTags = sfCustomer?.tags || [];
 
   const isAdmin = customerTags.some((tag: string) => 
     tag.toLowerCase() === 'admin' || tag.toLowerCase() === 'branch_manager'
@@ -59,6 +42,8 @@ export async function loader({ context }: LoaderFunctionArgs) {
   }
 
   // 2. Fetch all locations and their metafields via Admin API proxy logic
+  const shopDomain = env.PUBLIC_STORE_DOMAIN;
+  const adminToken = await getAdminToken(env);
 
   const query = `{
     locations(first: 100) {
@@ -90,10 +75,6 @@ export async function loader({ context }: LoaderFunctionArgs) {
 
   return data({ 
     locations: locations.map((loc: any) => {
-      // DEBUG: Log all keys so we can find the "Working Hours" key
-      const keys = loc.metafields.nodes.map((m: any) => m.key);
-      console.log(`[DEBUG] Found Metafield Keys for ${loc.name}:`, keys.join(', '));
-
       return {
         id: loc.id,
         name: loc.name,
@@ -198,38 +179,30 @@ export default function BranchDashboard() {
   const { locations } = useLoaderData<typeof loader>();
   const navigation = useNavigation();
   const actionData = useActionData<{ success?: boolean; error?: string }>();
-  const rootData = useRouteLoaderData('root') as any;
-  const locale = rootData?.consent?.language?.toLowerCase() || 'ar';
+  const locale = useLocation().pathname.startsWith('/en') ? 'en' : 'ar';
   const isEn = locale === 'en';
 
   const [editingId, setEditingId] = useState<string | null>(null);
 
   return (
-    <div className="account-dashboard-container luxury-bg" dir={isEn ? 'ltr' : 'rtl'}>
-      <div className="max-w-6xl mx-auto py-12 px-4">
-        <div className="flex justify-between items-center mb-10">
-          <div>
-            <h1 className="luxury-title text-3xl mb-2">
-              {isEn ? 'Branch Manager Dashboard' : 'لوحة تحكم مدير الفرع'}
-            </h1>
-            <p className="luxury-subtitle">
-              {isEn ? 'Manage delivery times and fees for all branches' : 'إدارة أوقات ورسوم التوصيل لجميع الفروع'}
-            </p>
-          </div>
-          <Link to={isEn ? "/en/account/profile" : "/account/profile"}>
-            <Button variant="secondary" size="sm">
-              {isEn ? '← Back to Profile' : '← العودة للملف الشخصي'}
-            </Button>
-          </Link>
+    <div className="account-dashboard-content" dir={isEn ? 'ltr' : 'rtl'}>
+      <div className="mb-10">
+        <h1 className="text-3xl font-black text-[#1b3d2e] mb-2">
+          {isEn ? 'Branch Manager' : 'مدير الفروع'}
+        </h1>
+        <p className="text-gray-500 font-medium">
+          {isEn ? 'Manage delivery times and fees for all branches' : 'إدارة أوقات ورسوم التوصيل لجميع الفروع'}
+        </p>
+      </div>
+
+      {actionData?.success && (
+        <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-xl mb-6 animate-fade-in flex items-center gap-2">
+           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
+           {isEn ? 'Settings updated successfully!' : 'تم تحديث الإعدادات بنجاح!'}
         </div>
+      )}
 
-        {actionData?.success && (
-          <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-xl mb-6 animate-fade-in">
-             {isEn ? 'Settings updated successfully!' : 'تم تحديث الإعدادات بنجاح!'}
-          </div>
-        )}
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {locations.map((loc: any) => (
             <div key={loc.id} className="luxury-card p-6 border border-[#eee] hover:border-[#d4a06a] transition-all">
               <div className="flex justify-between items-start mb-4">
@@ -307,8 +280,14 @@ export default function BranchDashboard() {
               </Form>
             </div>
           ))}
-        </div>
       </div>
+      <style dangerouslySetInnerHTML={{ __html: `
+        .luxury-card { background: #fff; border-radius: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.02); }
+        .luxury-field { display: flex; flex-direction: column; gap: 8px; }
+        .luxury-label { font-size: 12px; font-weight: 700; color: #d4a06a; text-transform: uppercase; letter-spacing: 1px; }
+        .luxury-input-field { padding: 12px 16px; border-radius: 12px; border: 1.5px solid #eee; font-size: 14px; }
+        .luxury-submit { border-radius: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; }
+      `}} />
     </div>
   );
 }

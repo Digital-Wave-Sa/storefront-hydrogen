@@ -17,19 +17,20 @@ type HeaderProps = {
   googleMapsKey?: string;
   selectedLocationId?: string;
   selectedLocationName?: string;
+  selectedAddressName?: string;
   fulfillmentType?: 'delivery' | 'pickup';
   publicStoreDomain?: string;
 };
 type Viewport = 'desktop' | 'mobile';
 
 // ─── MAIN HEADER ────────────────────────────────────────────────────────────
-export function Header({ header, isLoggedIn, cart, locations, customer, locale, googleMapsKey, selectedLocationId, selectedLocationName, fulfillmentType }: HeaderProps) {
+export function Header({ header, isLoggedIn, cart, locations, customer, locale, googleMapsKey, selectedLocationId, selectedLocationName, selectedAddressName, fulfillmentType }: HeaderProps) {
   const { shop, menu } = header;
   const isEn = locale === 'en';
   const fetcher = useFetcher();
   const locationFetcher = useFetcher();
 
-  const handleSelectBranch = (branch: any, type: 'delivery' | 'pickup', addressName?: string) => {
+  const handleSelectBranch = async (branch: any, type: 'delivery' | 'pickup', addressName?: string) => {
     const branchName = branch?.name || 'Main';
     const branchId = branch?.id || '';
 
@@ -47,14 +48,15 @@ export function Header({ header, isLoggedIn, cart, locations, customer, locale, 
     // Update Buyer Identity for Pickup skip
     let buyerIdentity = undefined;
     if (type === 'pickup' && branch) {
+       const resolvedCustomer = await customer;
        buyerIdentity = {
          deliveryAddressPreferences: [{
            deliveryAddress: {
              address1: branch.address || '',
              city: branch.city || '',
              country: 'SA',
-             firstName: isEn ? 'Pickup from' : 'استلام من',
-             lastName: branchName
+             firstName: resolvedCustomer?.firstName || '',
+             lastName: resolvedCustomer?.lastName || ''
            }
          }]
        };
@@ -77,6 +79,9 @@ export function Header({ header, isLoggedIn, cart, locations, customer, locale, 
     locFormData.append('locationId', branchId);
     locFormData.append('branchName', branchName);
     locFormData.append('fulfillmentType', type);
+    if (addressName) {
+      locFormData.append('addressName', addressName);
+    }
     locationFetcher.submit(locFormData, { method: 'POST', action: '/api/location-id' });
   };
 
@@ -94,6 +99,8 @@ export function Header({ header, isLoggedIn, cart, locations, customer, locale, 
         customer={customer}
         googleMapsKey={googleMapsKey}
         selectedLocationName={selectedLocationName} 
+        selectedAddressName={selectedAddressName}
+        selectedLocationId={selectedLocationId}
         fulfillmentType={fulfillmentType} 
         onSelectBranch={handleSelectBranch} 
       />
@@ -117,8 +124,27 @@ export function Header({ header, isLoggedIn, cart, locations, customer, locale, 
   );
 }
 
-// ─── ROW 1: TOP BAR ────────────────────────────────────────────────────────
-function TopBar({ locale, locations, customer, googleMapsKey, selectedLocationName, fulfillmentType, onSelectBranch }: { locale?: string, locations?: Promise<any>, customer?: Promise<any>, googleMapsKey?: string, selectedLocationName?: string, fulfillmentType?: string, onSelectBranch: any }) {
+function TopBar({ 
+  locale, 
+  locations, 
+  customer, 
+  googleMapsKey, 
+  selectedLocationName, 
+  selectedAddressName, 
+  selectedLocationId, 
+  fulfillmentType, 
+  onSelectBranch 
+}: { 
+  locale?: string, 
+  locations?: Promise<any>, 
+  customer?: Promise<any>, 
+  googleMapsKey?: string, 
+  selectedLocationName?: string, 
+  selectedAddressName?: string, 
+  selectedLocationId?: string, 
+  fulfillmentType?: string, 
+  onSelectBranch: any 
+}) {
   const isEn = locale === 'en';
   const location = useLocation();
   const [modalOpen, setModalOpen] = useState(false);
@@ -155,7 +181,12 @@ function TopBar({ locale, locations, customer, googleMapsKey, selectedLocationNa
             className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-[#1b3d2e]/20 bg-white/40 text-[12px] font-bold hover:bg-white transition-all shadow-sm"
           >
             <div className="w-1.5 h-1.5 rounded-full bg-green-500 shadow-[0_0_5px_rgba(34,197,94,0.5)]" />
-            <span className="truncate max-w-[120px]">{selectedLocationName || (isEn ? 'Select Branch' : 'فرع العليا')}</span>
+            <span className="truncate max-w-[120px]">
+              {fulfillmentType === 'delivery' && selectedAddressName 
+                ? (isEn ? `Delivery: ${selectedAddressName}` : `توصيل: ${selectedAddressName}`) 
+                : (selectedLocationName || (isEn ? 'Select Branch' : 'فرع العليا'))
+              }
+            </span>
             <svg width="10" height="10" viewBox="0 0 20 20" fill="currentColor"><path d="M5 7l5 5 5-5H5z" /></svg>
           </button>
         </div>
@@ -186,6 +217,8 @@ function TopBar({ locale, locations, customer, googleMapsKey, selectedLocationNa
         locale={locale}
         onSelectBranch={onSelectBranch}
         defaultTab={fulfillmentType as any || 'delivery'}
+        selectedLocationId={selectedLocationId}
+        selectedAddressName={selectedAddressName}
       />
     </div>
   );

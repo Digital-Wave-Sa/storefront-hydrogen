@@ -21,6 +21,7 @@ import tailwindCss from './styles/tailwind.css?url';
 import {PageLayout} from './components/PageLayout';
 import {GTMAnalytics} from './components/GTMAnalytics';
 
+
 export type RootLoader = typeof loader;
 
 /**
@@ -91,14 +92,19 @@ export async function loader(args: Route.LoaderArgs) {
   const selectedLocId = session.get('selectedLocationId');
   const selectedLocName = session.get('selectedLocationName');
   const fType = session.get('fulfillmentType');
+  const selectedAddrName = session.get('selectedAddressName');
 
   if (customerAccessToken?.accessToken || selectedLocName || fType) {
     const cartData = await args.context.cart.get();
     if (cartData) {
       const needsIdentity = customerAccessToken?.accessToken && !cartData.buyerIdentity?.customer;
-      const needsAttributes = selectedLocName && !cartData.attributes.some(a => a.key === 'Branch');
-
-      if (needsIdentity || needsAttributes) {
+      const cartBranch = cartData.attributes.find(a => a.key === 'Branch')?.value;
+      const cartFType = cartData.attributes.find(a => a.key === 'Fulfillment Type')?.value;
+      const sessionFType = fType === 'delivery' ? 'Delivery' : 'Pickup';
+      
+      const needsFulfillmentSync = (selectedLocName && cartBranch !== selectedLocName) || (fType && cartFType !== sessionFType);
+      
+      if (needsIdentity || needsFulfillmentSync) {
         args.context.waitUntil(
           (async () => {
             try {
@@ -107,27 +113,39 @@ export async function loader(args: Route.LoaderArgs) {
                   customerAccessToken: customerAccessToken.accessToken,
                 });
               }
-              if (needsAttributes) {
+              
+              if (needsFulfillmentSync) {
                 const attributes = [
-                  { key: 'Branch', value: selectedLocName },
-                  { key: 'Branch ID', value: selectedLocId },
-                  { key: 'Fulfillment Type', value: fType === 'delivery' ? 'Delivery' : 'Pickup' }
+                  { key: 'Branch', value: selectedLocName || '' },
+                  { key: 'Branch ID', value: selectedLocId || '' },
+                  { key: 'Fulfillment Type', value: sessionFType }
                 ];
                 
                 let buyerIdentity = undefined;
                 if (fType === 'pickup') {
-                  // Find branch address from locations if possible
                   const locations = criticalData.locations?.locations?.nodes || [];
                   const branch = locations.find((l: any) => l.id === selectedLocId || l.name === selectedLocName);
                   if (branch) {
+                    let firstName = '';
+                    let lastName = '';
+                    
+                    if (customerAccessToken?.accessToken) {
+                      const {customer} = await storefront.query(CUSTOMER_ADDRESSES_QUERY, {
+                        variables: { customerAccessToken: customerAccessToken.accessToken },
+                        cache: storefront.CacheNone(),
+                      });
+                      firstName = customer?.firstName || '';
+                      lastName = customer?.lastName || '';
+                    }
+
                     buyerIdentity = {
                       deliveryAddressPreferences: [{
                         deliveryAddress: {
                           address1: branch.address?.address1 || '',
                           city: branch.address?.city || '',
                           country: 'SA',
-                          firstName: 'Pickup from',
-                          lastName: selectedLocName
+                          firstName: firstName,
+                          lastName: lastName
                         }
                       }]
                     };
@@ -139,8 +157,8 @@ export async function loader(args: Route.LoaderArgs) {
                   await args.context.cart.updateBuyerIdentity(buyerIdentity);
                 }
               }
-            } catch (e) {
-              console.error('Failed to sync cart data in root loader:', e);
+            } catch (error) {
+              console.error('[ROOT] Cart sync failed:', error);
             }
           })()
         );
@@ -166,6 +184,7 @@ export async function loader(args: Route.LoaderArgs) {
       },
       selectedLocationId: selectedLocId,
       selectedLocationName: selectedLocName,
+      selectedAddressName: selectedAddrName,
       fulfillmentType: fType,
     };
   }
@@ -177,19 +196,38 @@ export async function loader(args: Route.LoaderArgs) {
 async function loadCriticalData({context}: Route.LoaderArgs) {
   const {storefront} = context;
 
-  const [header, locations] = await Promise.all([
+  const [header, locations, reviews] = await Promise.all([
     storefront.query(HEADER_QUERY, {
       cache: storefront.CacheLong(),
       variables: {
-        headerMenuHandle: 'main-menu', // Adjust to your header menu handle
+        headerMenuHandle: 'main-menu',
       },
     }),
     storefront.query(LOCATIONS_QUERY, {
       cache: storefront.CacheNone(),
     }).catch(() => null),
+    storefront.query(`#graphql
+      query GetReviews {
+        metaobjects(type: "storefront_review", first: 250) {
+          nodes {
+            id
+            fields {
+              key
+              value
+            }
+          }
+        }
+      }
+    `, {
+      cache: storefront.CacheNone(),
+    }).then(res => ({ nodes: res.metaobjects?.nodes || [] }))
+      .catch((e: Error) => {
+        console.error('[ROOT] Storefront Review Fetch Failed:', e.message);
+        return { nodes: [] };
+      })
   ]);
 
-  return {header, locations};
+  return {header, locations, reviews};
 }
 
 /**
@@ -226,6 +264,8 @@ function loadDeferredData({context}: Route.LoaderArgs, customerAccessToken: any)
       })
     : Promise.resolve(null);
 
+
+
   return {
     cart: cart.get(),
     isLoggedIn: customerAccount.isLoggedIn(),
@@ -258,7 +298,7 @@ export function Layout({children}: {children?: React.ReactNode}) {
   }, []);
 
   return (
-    <html lang={locale} dir={isEn ? 'ltr' : 'rtl'}>
+    <html lang={locale} dir={isEn ? 'ltr' : 'rtl'} suppressHydrationWarning>
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width,initial-scale=1" />

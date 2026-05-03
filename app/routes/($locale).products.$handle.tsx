@@ -1,7 +1,9 @@
 import { Suspense, useState, useEffect, useMemo } from 'react';
 import { getProductVisibility, type VisibilityResult } from '~/lib/visibility';
+import { getIsOutOfStock } from '~/lib/stock';
 import { StockNotificationModal } from '~/components/StockNotificationModal';
 import { Price } from '~/components/Price';
+import { AddToCartButton } from '~/components/AddToCartButton';
 import { StarRating, parseRatingValue } from '~/components/StarRating';
 import { ReviewForm } from '~/components/ReviewForm';
 import { createPortal } from 'react-dom';
@@ -183,9 +185,8 @@ export async function loader({ params, request, context }: LoaderFunctionArgs) {
     }
   }
   // --- FETCH REVIEWS ---
-  const reviewsData = await storefront.query(REVIEWS_QUERY, {
-    variables: { type: 'storefront_review' }
-  }).catch(() => ({ metaobjects: { nodes: [] } }));
+  // We now fetch reviews via Admin API in the root loader to avoid permission issues
+  const reviewsData = { metaobjects: { nodes: [] } };
 
   const allReviews = reviewsData?.metaobjects?.nodes?.map((node: any) => {
       const f: any = {};
@@ -195,7 +196,7 @@ export async function loader({ params, request, context }: LoaderFunctionArgs) {
 
   const reviews = allReviews.filter((r: any) => 
       r.product_handle === handle && 
-      r.status === 'Approved'
+      (r.status === 'Approved' || r.status === 'Published')
   );
 
   // --- CALCULATE DYNAMIC RATING ---
@@ -211,7 +212,7 @@ export async function loader({ params, request, context }: LoaderFunctionArgs) {
       dynamicCount = parseInt(product.rating_count?.value || '0');
   }
 
-  console.log(`DEBUG_TAGS (PDP) for ${product.title}:`, product.tags);
+
 
   return data({ product, variants, visibility, reviews, dynamicRating, dynamicCount });
 }
@@ -242,15 +243,35 @@ function redirectToFirstVariant({
 }
 
 export default function Product() {
-  const { product, variants, visibility, reviews, dynamicRating, dynamicCount } = useLoaderData<typeof loader>();
-  const rootData = useRouteLoaderData('root') as { locale: string, customer?: Promise<any> };
-  const locale = rootData?.locale || 'ar';
+  const { product, variants, visibility, dynamicRating: loaderRating, dynamicCount: loaderCount } = useLoaderData<typeof loader>();
+  const rootData = useRouteLoaderData('root') as any;
+  const locale = rootData?.consent?.language?.toLowerCase() || 'ar';
   const isEn = locale === 'en';
   const customer = rootData?.customer;
+  
+  // Use global reviews from root loader (Storefront API)
+  const allNodes = rootData?.reviews?.nodes || [];
+  const reviews = allNodes.map((node: any) => {
+      const f: any = {};
+      node.fields.forEach((field: any) => f[field.key] = field.value);
+      return f;
+  }).filter((r: any) => {
+      const isApproved = r.status === 'Approved' || r.status === 'Published';
+      return r.product_handle === product.handle && isApproved;
+  }) || [];
+
+  // Calculate dynamic rating from global reviews
+  let dynamicRating = loaderRating;
+  let dynamicCount = loaderCount;
+  if (reviews.length > 0) {
+    const sum = reviews.reduce((acc: number, r: any) => acc + (parseFloat(r.rating) || 0), 0);
+    dynamicRating = sum / reviews.length;
+    dynamicCount = reviews.length;
+  }
 
   const { selectedVariant } = product;
   const { selectedLocationId, selectedLocationName } = useOutletContext<{ selectedLocationId?: string, selectedLocationName?: string }>();
-  console.log(`[PDP] Current Location: ${selectedLocationName} (${selectedLocationId})`);
+
 
   const storeAvailabilityNodes = (selectedVariant as any)?.storeAvailability?.nodes || [];
   
@@ -277,36 +298,18 @@ export default function Product() {
 
   // Normalized ID comparison to avoid GID mismatch issues
   const isOutOfStock = useMemo(() => {
-    if (isGiftCard) return !selectedVariant?.availableForSale;
-    if (!selectedLocationId) return !selectedVariant?.availableForSale;
-
-    // Is it a fallback branch? (Fallback IDs are like 'fallback-1')
-    if (selectedLocationId.startsWith('fallback-')) {
-      return !selectedVariant?.availableForSale;
+    const result = getIsOutOfStock(
+      selectedLocationId,
+      selectedLocationName,
+      storeAvailabilityNodes,
+      product.selectedVariant?.availableForSale ?? false
+    );
+    console.log(`[STOCK DEBUG] Product: ${product.title}, Tags: [${product.tags?.join(', ')}], Location: ${selectedLocationName}, Nodes Found: ${storeAvailabilityNodes.length}, Global Available: ${product.selectedVariant?.availableForSale}, RESULT: ${result ? 'OUT OF STOCK' : 'IN STOCK'}`);
+    if (result && storeAvailabilityNodes.length > 0) {
+        console.log(`[STOCK DEBUG] Nodes:`, JSON.stringify(storeAvailabilityNodes.map((n: any) => ({ loc: n.location.name, id: n.location.id, avail: n.available })), null, 2));
     }
-
-    const availableNode = storeAvailabilityNodes.find((node: any) => {
-      const nodeId = node.location?.id;
-      const nodeName = node.location?.name;
-      if (!nodeId) return false;
-      
-      const normalize = (str: string) => str.trim().toLowerCase();
-
-      // Compare GIDs, numeric IDs, or normalized names as a final fallback
-      return (
-        nodeId === selectedLocationId || 
-        nodeId.split('/').pop() === selectedLocationId.split('/').pop() ||
-        (selectedLocationName && normalize(nodeName) === normalize(selectedLocationName))
-      );
-    });
-
-    // If we found the specific location in the stock list, use its status
-    if (availableNode) return !availableNode.available;
-
-    // STRICT RULE: If a location is selected but no stock info is found for it, 
-    // it is considered Out of Stock at that specific location.
-    return true;
-  }, [selectedLocationId, storeAvailabilityNodes, selectedVariant]);
+    return result;
+  }, [selectedLocationId, selectedLocationName, storeAvailabilityNodes, product.selectedVariant]);
 
   // Visibility scheduling — force unavailable if product is not active
   const isVisibilityBlocked = !visibility.isActive;
@@ -757,7 +760,17 @@ export default function Product() {
                     </div>
                     
                     <AddToCartButton
+                      analytics={{
+                        products: [
+                          {
+                            productGid: product.id,
+                            variantGid: selectedVariant.id,
+                            quantity,
+                          },
+                        ],
+                      }}
                       disabled={!selectedVariant || effectiveOutOfStock || !recipientContact}
+                      selectedVariant={selectedVariant}
                       lines={
                         selectedVariant
                           ? (() => {
@@ -765,6 +778,7 @@ export default function Product() {
                               return [{
                                 merchandiseId: selectedVariant.id,
                                 quantity,
+                                selectedVariant,
                                 attributes: [
                                   {key: '_groupId', value: groupId},
                                   {key: 'Recipient', value: recipientContact},
@@ -857,7 +871,17 @@ export default function Product() {
                     )}
 
                     <AddToCartButton
+                      analytics={{
+                        products: [
+                          {
+                            productGid: product.id,
+                            variantGid: selectedVariant.id,
+                            quantity,
+                          },
+                        ],
+                      }}
                       disabled={!selectedVariant || effectiveOutOfStock}
+                      onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
                       lines={
                         selectedVariant
                           ? (() => {
@@ -867,20 +891,26 @@ export default function Product() {
                               const mainLine = {
                                 merchandiseId: selectedVariant.id,
                                 quantity,
+                                selectedVariant,
                                 attributes: [
                                   {key: '_groupId', value: groupId},
                                   ...(note ? [{key: 'Gift Message', value: note}] : []),
                                 ],
                               };
 
-                              const addonLines = selectedAddons.map((addonId) => ({
-                                merchandiseId: addonId,
-                                quantity: 1,
-                                attributes: [
-                                  {key: '_groupId', value: groupId},
-                                  {key: '_is_addon', value: 'true'},
-                                ],
-                              }));
+                              const addonLines = selectedAddons.map((addonId) => {
+                                const addonNode = addonNodes.find((n: any) => n.variants.nodes[0].id === addonId);
+                                const variant = addonNode?.variants.nodes[0];
+                                return {
+                                  merchandiseId: addonId,
+                                  quantity: 1,
+                                  selectedVariant: variant,
+                                  attributes: [
+                                    {key: '_groupId', value: groupId},
+                                    {key: '_is_addon', value: 'true'},
+                                  ],
+                                };
+                              });
 
                               if (isBogo) {
                                 return [
@@ -888,6 +918,7 @@ export default function Product() {
                                   {
                                     merchandiseId: selectedVariant.id,
                                     quantity,
+                                    selectedVariant,
                                     attributes: [
                                       {key: '_groupId', value: groupId},
                                       {key: '_is_addon', value: 'true'},
@@ -902,10 +933,7 @@ export default function Product() {
                             })()
                           : []
                       }
-                      className={`w-full ${effectiveOutOfStock
-                        ? 'bg-gray-400 cursor-not-allowed opacity-75'
-                        : 'bg-[#295b45] hover:bg-[#1e4534]'
-                        } transition-colors text-white py-3 rounded-[14px] text-sm font-bold flex items-center justify-center gap-2 shadow-sm`}
+                      className={`w-full ${effectiveOutOfStock ? 'bg-gray-400 cursor-not-allowed opacity-75' : 'bg-[#1b3d2e] hover:bg-[#2d5e4a] active:scale-[0.98] shadow-xl shadow-green-900/10'} text-white py-4 rounded-2xl font-black text-lg transition-all flex items-center justify-center gap-3`}
                     >
                       {effectiveOutOfStock ? (
                         isEn ? 'Not Available at Branch' : 'غير متوفر في هذا الفرع'
@@ -1480,65 +1508,6 @@ function ProductForm({
   );
 }
 
-
-function AddToCartButton({
-  analytics,
-  children,
-  disabled,
-  lines,
-  onClick,
-  className
-}: {
-  analytics?: unknown;
-  children: React.ReactNode;
-  disabled?: boolean;
-  lines: CartLineInput[];
-  onClick?: () => void;
-  className?: string;
-}) {
-  const { open } = useAside();
-
-  return (
-    <CartForm route="/cart" inputs={{ lines }} action={CartForm.ACTIONS.LinesAdd}>
-      {(fetcher: FetcherWithComponents<any>) => (
-        <>
-          <input
-            name="analytics"
-            type="hidden"
-            value={JSON.stringify(analytics)}
-          />
-          <button
-            type="submit"
-            onClick={() => {
-              window.scrollTo({ top: 0, behavior: 'smooth' });
-              if (onClick) {
-                onClick();
-              } else {
-                open('cart');
-              }
-            }}
-            disabled={disabled ?? fetcher.state !== 'idle'}
-            className={className}
-          >
-            {fetcher.state !== 'idle' ? (
-              <span className="flex items-center gap-2">
-                <svg className="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-                </svg>
-                {/* Fallback to children for context text while spinning */}
-                {children}
-              </span>
-            ) : (
-              children
-            )}
-          </button>
-        </>
-      )}
-    </CartForm>
-  );
-}
-
 const PRODUCT_VARIANT_FRAGMENT = `#graphql
   fragment ProductVariant on ProductVariant {
     availableForSale
@@ -1807,6 +1776,29 @@ const RECOMMENDED_PRODUCTS_QUERY = `#graphql
     variants(first: 1) {
       nodes {
         id
+        title
+        image {
+          url
+          altText
+          width
+          height
+        }
+        price {
+          amount
+          currencyCode
+        }
+        compareAtPrice {
+          amount
+          currencyCode
+        }
+        selectedOptions {
+          name
+          value
+        }
+        product {
+          handle
+          title
+        }
         storeAvailability(first: 250) {
           nodes {
             available

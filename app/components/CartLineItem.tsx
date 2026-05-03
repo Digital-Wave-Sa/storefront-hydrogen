@@ -22,8 +22,8 @@ export function CartLineItem({
   childrenMap: LineItemChildrenMap;
 }) {
   const {id, merchandise} = line;
-  const {product, title, image, selectedOptions} = merchandise;
-  const lineItemUrl = useVariantUrl(product.handle, selectedOptions);
+  const {product, title, image, selectedOptions} = merchandise || {};
+  const lineItemUrl = product?.handle ? useVariantUrl(product.handle, selectedOptions) : '#';
   const {close} = useAside();
   const lineItemChildren = childrenMap[id];
   const childrenLabelId = `cart-line-children-${id}`;
@@ -31,7 +31,7 @@ export function CartLineItem({
   const isEn = rootData?.consent?.language?.toLowerCase() === 'en';
 
   // Filter out default title option
-  const validOptions = selectedOptions.filter((opt) => opt.value !== 'Default Title');
+  const validOptions = selectedOptions?.filter((opt: any) => opt.value !== 'Default Title') || [];
 
   return (
     <li key={id} className={`group flex flex-col gap-3 ${layout === 'aside' ? 'p-4' : 'p-6 md:p-8'} bg-white rounded-[24px] shadow-[0_2px_15px_rgba(0,0,0,0.03)] hover:shadow-[0_4px_25px_rgba(0,0,0,0.06)] transition-all relative overflow-hidden`}>
@@ -66,8 +66,8 @@ export function CartLineItem({
         <div className={`flex-1 flex flex-col ${layout === 'aside' ? 'gap-2' : 'md:flex-row md:items-center justify-between gap-4'} min-w-0`}>
           <div className="min-w-0">
             <h4 className={`font-bold ${layout === 'aside' ? 'text-[15px]' : 'text-[18px] md:text-[20px]'} text-[#1b3d2e] mb-1 line-clamp-2 leading-snug`}>
-              {product.title}
-              {product.tags?.some((tag: string) => ['express', 'express-delivery'].includes(tag.toLowerCase())) && (
+              {product?.title || title}
+              {product?.tags?.some((tag: string) => ['express', 'express-delivery'].includes(tag.toLowerCase())) && (
                 <span className="inline-flex items-center gap-1 ml-2 text-[10px] text-[#004f59] font-medium shrink-0">
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                 </span>
@@ -98,7 +98,13 @@ export function CartLineItem({
                <ProductPrice price={line?.cost?.totalAmount} />
             </div>
             
-            {layout !== 'aside' && <CartLineRemoveButton lineIds={[id]} disabled={!!line.isOptimistic} />}
+            {layout === 'aside' ? (
+              <div className="absolute top-2 right-2">
+                <CartLineRemoveButton lineIds={[id]} disabled={!!line.isOptimistic} />
+              </div>
+            ) : (
+              <CartLineRemoveButton lineIds={[id]} disabled={!!line.isOptimistic} />
+            )}
           </div>
         </div>
       </div>
@@ -145,21 +151,21 @@ function CartLineQuantity({line}: {line: CartLine}) {
 
   return (
     <div className="flex items-center gap-1 bg-white border border-[#f0ece8] rounded-full p-1 shadow-sm h-[44px]">
-      <CartLineUpdateButton lines={[{id: lineId, quantity: prevQuantity}]}>
-        <button
-          aria-label="Decrease quantity"
-          disabled={quantity <= 1 || !!isOptimistic}
-          name="decrease-quantity"
-          value={prevQuantity}
-          className="w-9 h-9 flex items-center justify-center rounded-full text-[#1b3d2e] hover:bg-[#f8f5f2] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-        >
-          {quantity <= 1 ? (
-             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-          ) : (
-             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-          )}
-        </button>
-      </CartLineUpdateButton>
+      {quantity <= 1 ? (
+        <CartLineRemoveButton lineIds={[lineId]} disabled={!!isOptimistic} />
+      ) : (
+        <CartLineUpdateButton lines={[{id: lineId, quantity: prevQuantity}]}>
+          <button
+            aria-label="Decrease quantity"
+            disabled={!!isOptimistic}
+            name="decrease-quantity"
+            value={prevQuantity}
+            className="w-9 h-9 flex items-center justify-center rounded-full text-[#1b3d2e] hover:bg-[#f8f5f2] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+          </button>
+        </CartLineUpdateButton>
+      )}
       
       <span className="font-bold text-[15px] text-[#1b3d2e] min-w-[32px] text-center select-none px-1">
         {quantity}
@@ -189,7 +195,7 @@ function CartLineRemoveButton({
 }) {
   return (
     <CartForm
-      fetcherKey={getUpdateKey(lineIds)}
+      fetcherKey={getRemoveKey(lineIds)}
       route="/cart"
       action={CartForm.ACTIONS.LinesRemove}
       inputs={{lineIds}}
@@ -229,4 +235,8 @@ function CartLineUpdateButton({
 
 function getUpdateKey(lineIds: string[]) {
   return [CartForm.ACTIONS.LinesUpdate, ...lineIds].join('-');
+}
+
+function getRemoveKey(lineIds: string[]) {
+  return [CartForm.ACTIONS.LinesRemove, ...lineIds].join('-');
 }

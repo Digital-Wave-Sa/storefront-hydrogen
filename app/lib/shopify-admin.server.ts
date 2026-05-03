@@ -14,25 +14,23 @@ export async function getAdminToken(env: any): Promise<string> {
     return cachedToken;
   }
 
-  // Priority fallback: check common env variables that might hold the admin token
-  const potentialTokens = [
-    env.SHOPIFY_ADMIN_API_ACCESS_TOKEN,
-    env.PRIVATE_STOREFRONT_API_TOKEN
-  ];
-
-  for (const token of potentialTokens) {
-    if (token && typeof token === 'string' && token.startsWith('shpat_')) {
-      return token;
-    }
-  }
-
-  // Priority: 1. SHOPIFY_SHOP, 2. PUBLIC_STORE_DOMAIN, 3. Guess from env
+  // Priority: 1. Dedicated Review Token, 2. Admin API token, 3. Private Storefront token
   const rawShop = env.SHOPIFY_SHOP || env.PUBLIC_STORE_DOMAIN || '';
   const shopDomain = rawShop.includes('.') ? rawShop : `${rawShop}.myshopify.com`;
+
+  if (env.REVIEWS_ADMIN_API_TOKEN?.startsWith('shpat_')) {
+    return env.REVIEWS_ADMIN_API_TOKEN;
+  }
+  
+  if (env.SHOPIFY_ADMIN_API_ACCESS_TOKEN?.startsWith('shpat_')) {
+    return env.SHOPIFY_ADMIN_API_ACCESS_TOKEN;
+  }
+  
+  if (env.PRIVATE_STOREFRONT_API_TOKEN?.startsWith('shpat_')) {
+    return env.PRIVATE_STOREFRONT_API_TOKEN;
+  }
   const clientId = env.SHOPIFY_CLIENT_ID || env.SHOPIFY_ADMIN_CLIENT_ID;
   const clientSecret = env.SHOPIFY_CLIENT_SECRET || env.SHOPIFY_ADMIN_CLIENT_SECRET;
-
-  console.log('[ADMIN AUTH] Login attempt for:', shopDomain, 'using ID:', clientId?.substring(0, 5));
 
   if (!clientId || !clientSecret || !rawShop) {
     throw new Error(`Missing credentials. Found: Shop=${rawShop}, ID=${!!clientId}, Secret=${!!clientSecret}`);

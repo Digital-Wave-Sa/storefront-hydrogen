@@ -32,7 +32,12 @@ export async function loader(args: Route.LoaderArgs) {
 
 async function loadCriticalData({context}: Route.LoaderArgs) {
   const [{collections}] = await Promise.all([
-    context.storefront.query(FEATURED_COLLECTION_QUERY),
+    context.storefront.query(FEATURED_COLLECTION_QUERY, {
+      variables: {
+        country: context.storefront.i18n.country,
+        language: context.storefront.i18n.language,
+      },
+    }),
   ]);
 
   return {
@@ -42,14 +47,24 @@ async function loadCriticalData({context}: Route.LoaderArgs) {
 
 function loadDeferredData({context}: Route.LoaderArgs) {
   const recommendedProducts = context.storefront
-    .query(RECOMMENDED_PRODUCTS_QUERY)
+    .query(RECOMMENDED_PRODUCTS_QUERY, {
+      variables: {
+        country: context.storefront.i18n.country,
+        language: context.storefront.i18n.language,
+      },
+    })
     .catch((error: Error) => {
       console.error(error);
       return null;
     });
 
   const newArrivals = context.storefront
-    .query(NEW_ARRIVALS_QUERY)
+    .query(NEW_ARRIVALS_QUERY, {
+      variables: {
+        country: context.storefront.i18n.country,
+        language: context.storefront.i18n.language,
+      },
+    })
     .catch((error: Error) => {
       console.error(error);
       return null;
@@ -168,9 +183,32 @@ const RECOMMENDED_PRODUCTS_QUERY = `#graphql
     rating_count: metafield(namespace: "custom", key: "rating_count") {
       value
     }
-    variants(first: 1) {
+    variants(first: 10) {
       nodes {
         id
+        title
+        image {
+          url
+          altText
+          width
+          height
+        }
+        price {
+          amount
+          currencyCode
+        }
+        compareAtPrice {
+          amount
+          currencyCode
+        }
+        selectedOptions {
+          name
+          value
+        }
+        product {
+          handle
+          title
+        }
         storeAvailability(first: 250) {
           nodes {
             available
@@ -237,9 +275,32 @@ const NEW_ARRIVALS_QUERY = `#graphql
     rating_count: metafield(namespace: "custom", key: "rating_count") {
       value
     }
-    variants(first: 1) {
+    variants(first: 10) {
       nodes {
         id
+        title
+        image {
+          url
+          altText
+          width
+          height
+        }
+        price {
+          amount
+          currencyCode
+        }
+        compareAtPrice {
+          amount
+          currencyCode
+        }
+        selectedOptions {
+          name
+          value
+        }
+        product {
+          handle
+          title
+        }
         storeAvailability(first: 250) {
           nodes {
             available

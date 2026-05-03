@@ -14,7 +14,7 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
   const isLoggedIn = Boolean(customerAccessToken?.accessToken);
   
   const isAccountHome = pathname === `${localePrefix}/account` || pathname === `${localePrefix}/account/`;
-  const isPrivateRoute = new RegExp(`^${localePrefix}/account/(orders|orders/.*|profile|addresses|addresses/.*|notification-preferences)$`).test(pathname);
+  const isPrivateRoute = new RegExp(`^${localePrefix}/account/(orders|orders/.*|profile|addresses|addresses/.*|notification-preferences|dashboard|promotions)$`).test(pathname);
 
   if (!isLoggedIn) {
     if (isPrivateRoute || isAccountHome) {
@@ -43,8 +43,6 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
     const { customer } = await storefront.query(CUSTOMER_QUERY, {
       variables: {
         customerAccessToken: customerAccessToken.accessToken,
-        country: storefront.i18n.country,
-        language: storefront.i18n.language,
       },
       cache: storefront.CacheNone(),
     });
@@ -53,8 +51,22 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
       throw new Error('Customer not found');
     }
 
+    const tags = customer?.tags || [];
+
+    const isAdmin = tags.some((tag: string) => {
+      const clean = tag.toLowerCase().trim().replace(/[^a-z0-9]/g, '');
+      return clean === 'admin' || clean === 'branchmanager' || clean === 'manager';
+    });
+
     return data(
-      { isLoggedIn, isPrivateRoute, isAccountHome, customer, googleMapsKey: context.env.PUBLIC_GOOGLE_MAPS_KEY },
+      { 
+        isLoggedIn, 
+        isPrivateRoute, 
+        isAccountHome, 
+        customer, 
+        isAdmin,
+        googleMapsKey: context.env.PUBLIC_GOOGLE_MAPS_KEY 
+      },
       {
         headers: {
           'Cache-Control': 'no-cache, no-store, must-revalidate',
@@ -73,25 +85,26 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
 }
 
 export default function Acccount() {
-  const { customer, isPrivateRoute, isAccountHome, googleMapsKey } =
-    useLoaderData<typeof loader>();
+  const { isLoggedIn, isPrivateRoute, isAccountHome, customer, googleMapsKey, isAdmin } = useLoaderData<typeof loader>();
 
   if (!isPrivateRoute && !isAccountHome) {
-    return <Outlet context={{ customer, googleMapsKey }} />;
+    return <Outlet context={{ customer, googleMapsKey, isAdmin }} />;
   }
 
   return (
-    <AccountLayout customer={customer as CustomerFragment}>
-      <Outlet context={{ customer, googleMapsKey }} />
+    <AccountLayout customer={customer as CustomerFragment} isAdmin={isAdmin}>
+      <Outlet context={{ customer, googleMapsKey, isAdmin }} />
     </AccountLayout>
   );
 }
 
 function AccountLayout({
   customer,
+  isAdmin,
   children,
 }: {
   customer: CustomerFragment;
+  isAdmin: boolean;
   children: React.ReactNode;
 }) {
   const isEn = typeof window !== 'undefined' ? window.location.pathname.includes('/en') : false;
@@ -128,9 +141,8 @@ function AccountLayout({
               </div>
             </div>
           </div>
-          <AcccountMenu />
+          <AcccountMenu customer={customer} isAdmin={isAdmin} />
         </aside>
-
         <main className="account-main">
           {children}
         </main>
@@ -139,13 +151,14 @@ function AccountLayout({
   );
 }
 
-function AcccountMenu() {
+function AcccountMenu({ customer, isAdmin }: { customer: CustomerFragment; isAdmin: boolean }) {
   const isEn = useLocation().pathname.includes('/en/');
+  const localePrefix = isEn ? '/en' : '';
 
   return (
     <nav className="account-nav" role="navigation">
       <NavLink
-        to="/account/orders"
+        to={`${localePrefix}/account/orders`}
         className={({ isActive }) => `account-nav-item ${isActive ? 'active' : ''}`}
       >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -157,7 +170,7 @@ function AcccountMenu() {
       </NavLink>
 
       <NavLink
-        to="/account/profile"
+        to={`${localePrefix}/account/profile`}
         className={({ isActive }) => `account-nav-item ${isActive ? 'active' : ''}`}
       >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -168,7 +181,7 @@ function AcccountMenu() {
       </NavLink>
 
       <NavLink
-        to="/account/addresses"
+        to={`${localePrefix}/account/addresses`}
         className={({ isActive }) => `account-nav-item ${isActive ? 'active' : ''}`}
       >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -179,7 +192,7 @@ function AcccountMenu() {
       </NavLink>
 
       <NavLink
-        to="/account/notification-preferences"
+        to={`${localePrefix}/account/notification-preferences`}
         className={({ isActive }) => `account-nav-item ${isActive ? 'active' : ''}`}
       >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -189,28 +202,32 @@ function AcccountMenu() {
         {isEn ? 'Notifications' : 'الإشعارات'}
       </NavLink>
 
-      {/* Manager Tools - These will only work for users with tags, but links are always shown for convenience */}
-      <div className="mt-8 mb-2 px-6 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-        {isEn ? 'Manager Tools' : 'أدوات الإدارة'}
-      </div>
+      {/* Manager Tools */}
+      {isAdmin && (
+        <>
+          <div className="mt-8 mb-2 px-6 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+            {isEn ? 'Manager Tools' : 'أدوات الإدارة'}
+          </div>
 
-      <NavLink
-        to="/account/dashboard"
-        className={({ isActive }) => `account-nav-item ${isActive ? 'active' : ''}`}
-      >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" /><polyline points="9 22 9 12 15 12 15 22" /></svg>
-        {isEn ? 'Branch Manager' : 'مدير الفروع'}
-      </NavLink>
+          <NavLink
+            to={`${localePrefix}/account/dashboard`}
+            className={({ isActive }) => `account-nav-item ${isActive ? 'active' : ''}`}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" /><polyline points="9 22 9 12 15 12 15 22" /></svg>
+            {isEn ? 'Branch Manager' : 'مدير الفروع'}
+          </NavLink>
 
-      <NavLink
-        to="/account/promotions"
-        className={({ isActive }) => `account-nav-item ${isActive ? 'active' : ''}`}
-      >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z" /><line x1="7" y1="7" x2="7.01" y2="7" /></svg>
-        {isEn ? 'Promotions' : 'العروض والقسائم'}
-      </NavLink>
+          <NavLink
+            to={`${localePrefix}/account/promotions`}
+            className={({ isActive }) => `account-nav-item ${isActive ? 'active' : ''}`}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z" /><line x1="7" y1="7" x2="7.01" y2="7" /></svg>
+            {isEn ? 'Promotions' : 'العروض والقسائم'}
+          </NavLink>
+        </>
+      )}
 
       <Logout isEn={isEn} />
     </nav>
@@ -232,6 +249,8 @@ function Logout({ isEn }: { isEn: boolean }) {
 
 export const CUSTOMER_FRAGMENT = `#graphql
   fragment Customer on Customer {
+    id
+    tags
     acceptsMarketing
     addresses(first: 6) {
       nodes {

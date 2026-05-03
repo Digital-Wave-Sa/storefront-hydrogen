@@ -1,13 +1,17 @@
 import { data, type ActionFunctionArgs } from 'react-router';
 import { adminApiQuery } from '../lib/admin.server';
+import { getAdminToken } from '../lib/shopify-admin.server';
 
 export async function action({ request, context }: ActionFunctionArgs) {
     const { env } = context;
-    const adminToken = env.PRIVATE_STOREFRONT_API_TOKEN;
-    const domain = env.PUBLIC_STORE_DOMAIN;
-
-    if (!adminToken) {
-        return data({ error: 'Missing Admin API Token' }, { status: 500 });
+    const rawShop = env.SHOPIFY_SHOP || env.PUBLIC_STORE_DOMAIN || '';
+    const shopDomain = rawShop.includes('myshopify.com') ? rawShop : `${rawShop.split('.')[0]}.myshopify.com`;
+    
+    let adminToken = '';
+    try {
+        adminToken = await getAdminToken(env);
+    } catch (e) {
+        return data({ error: 'Failed to obtain Admin API Token' }, { status: 500 });
     }
 
     const formData = await request.formData();
@@ -60,7 +64,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
     if (branchRating) fields.push({ key: "branch_rating", value: String(branchRating) });
     if (branchName) fields.push({ key: "location_name", value: String(branchName) });
 
-    const result = await adminApiQuery(domain, adminToken, mutation, {
+    const result = await adminApiQuery(shopDomain, adminToken, mutation, {
         handle: reviewHandle,
         fields: fields
     });

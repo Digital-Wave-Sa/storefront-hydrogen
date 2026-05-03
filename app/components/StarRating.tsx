@@ -59,9 +59,8 @@ export function StarRating({
             return [initialRating, initialCount];
         }
 
-        // Processing reviews from root data
-        // Metaobjects are returned as nodes with fields
-        const allNodes = rootData.reviews?.metaobjects?.nodes || [];
+        // Processing reviews from root data (Admin API returns nodes directly)
+        const allNodes = rootData.reviews?.nodes || rootData.reviews?.metaobjects?.nodes || [];
         const reviews = allNodes.map((node: any) => {
             const f: any = {};
             node.fields.forEach((field: any) => f[field.key] = field.value);

@@ -1,4 +1,4 @@
-import {Money} from '@shopify/hydrogen';
+import {Price} from './Price';
 import type {MoneyV2} from '@shopify/hydrogen/storefront-api-types';
 
 export function ProductPrice({
@@ -11,14 +11,14 @@ export function ProductPrice({
   return (
     <div aria-label="Price" className="product-price" role="group">
       {compareAtPrice ? (
-        <div className="product-price-on-sale">
-          {price ? <Money data={price} /> : null}
-          <s>
-            <Money data={compareAtPrice} />
+        <div className="product-price-on-sale flex items-center gap-2">
+          {price ? <Price data={price} size="sm" /> : null}
+          <s className="text-gray-400 text-xs">
+            <Price data={compareAtPrice} size="xs" />
           </s>
         </div>
       ) : price ? (
-        <Money data={price} />
+        <Price data={price} size="sm" />
       ) : (
         <span>&nbsp;</span>
       )}

@@ -189,6 +189,29 @@ function AcccountMenu() {
         {isEn ? 'Notifications' : 'الإشعارات'}
       </NavLink>
 
+      {/* Manager Tools - These will only work for users with tags, but links are always shown for convenience */}
+      <div className="mt-8 mb-2 px-6 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+        {isEn ? 'Manager Tools' : 'أدوات الإدارة'}
+      </div>
+
+      <NavLink
+        to="/account/dashboard"
+        className={({ isActive }) => `account-nav-item ${isActive ? 'active' : ''}`}
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" /><polyline points="9 22 9 12 15 12 15 22" /></svg>
+        {isEn ? 'Branch Manager' : 'مدير الفروع'}
+      </NavLink>
+
+      <NavLink
+        to="/account/promotions"
+        className={({ isActive }) => `account-nav-item ${isActive ? 'active' : ''}`}
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z" /><line x1="7" y1="7" x2="7.01" y2="7" /></svg>
+        {isEn ? 'Promotions' : 'العروض والقسائم'}
+      </NavLink>
+
       <Logout isEn={isEn} />
     </nav>
   );

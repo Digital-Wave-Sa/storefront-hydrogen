@@ -4,6 +4,7 @@ import { Form, Link, useActionData, useNavigation, useFetcher, useRouteLoaderDat
 import type { CustomerCreateMutation } from 'storefrontapi.generated';
 import { Button } from '~/components/layout/Button';
 import { sendSMS } from '~/lib/sms.server';
+import { getAdminToken } from '~/lib/shopify-admin.server';
 
 type ActionResponse = {
   error: string | null;
@@ -38,9 +39,10 @@ export async function action({ request, context }: ActionFunctionArgs) {
     const fullPhone = `+966${cleanPhone}`;
 
     try {
+      const adminToken = await getAdminToken(env);
       const response = await fetch(`https://${env.PUBLIC_STORE_DOMAIN}/admin/api/2023-04/customers/search.json?query=phone:"${fullPhone}"`, {
         headers: {
-          'X-Shopify-Access-Token': env.SHOPIFY_ADMIN_API_ACCESS_TOKEN,
+          'X-Shopify-Access-Token': adminToken,
           'Content-Type': 'application/json',
         },
       });
@@ -116,30 +118,13 @@ export async function action({ request, context }: ActionFunctionArgs) {
       const finalLastName = accountType === 'company' ? '(Company)' : lastName;
 
       // Create via Admin API to bypass Email Verification
-      const adminAccessToken = env.SHOPIFY_ADMIN_API_ACCESS_TOKEN;
-      if (!adminAccessToken) throw new Error('Missing Admin API Token');
-
-      const customerPayload: any = {
-        customer: {
-          first_name: finalFirstName,
-          last_name: finalLastName,
-          password: password,
-          password_confirmation: password,
-          phone: phone,
-          verified_email: true, // This bypasses the verification link!
-          send_email_welcome: false
-        }
-      };
-
-      if (email.trim()) {
-        customerPayload.customer.email = email.trim();
-      }
+      const adminToken = await getAdminToken(env);
 
       const adminResponse = await fetch(`https://${env.PUBLIC_STORE_DOMAIN}/admin/api/2024-01/customers.json`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-Shopify-Access-Token': adminAccessToken,
+          'X-Shopify-Access-Token': adminToken,
         },
         body: JSON.stringify(customerPayload)
       });
@@ -188,11 +173,12 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
       if (metafields.length > 0) {
         try {
+          const adminToken = await getAdminToken(env);
           await fetch(`https://${env.PUBLIC_STORE_DOMAIN}/admin/api/2024-01/customers/${numericalId}.json`, {
             method: 'PUT',
             headers: {
               'Content-Type': 'application/json',
-              'X-Shopify-Access-Token': adminAccessToken,
+              'X-Shopify-Access-Token': adminToken,
             },
             body: JSON.stringify({
               customer: {
@@ -223,7 +209,17 @@ export async function action({ request, context }: ActionFunctionArgs) {
         return redirect('/account/login');
       }
 
+      const accessToken = customerAccessTokenCreate?.customerAccessToken?.accessToken;
       session.set('customerAccessToken', customerAccessTokenCreate?.customerAccessToken);
+
+      // SYNC CART BUYER IDENTITY
+      try {
+        await context.cart.updateBuyerIdentity({
+          customerAccessToken: accessToken,
+        });
+      } catch (e) {
+        console.error('Failed to sync cart buyer identity on register:', e);
+      }
 
       return redirect('/account', {
         headers: { 'Set-Cookie': await session.commit() },
@@ -233,7 +229,76 @@ export async function action({ request, context }: ActionFunctionArgs) {
     }
   }
 
-  return data({ error: 'Invalid intent' }, { status: 400 });
+  // STEP 4: Direct Email Register (Temporary Bypass)
+  if (intent === 'register-email') {
+    const accountType = String(form.get('accountType') || 'individual');
+    const firstName = String(form.get('firstName') || '');
+    const lastName = String(form.get('lastName') || '');
+    const email = String(form.get('email') || '');
+    const password = String(form.get('password') || '');
+    const phone = String(form.get('phone') || '');
+
+    try {
+      const finalFirstName = firstName;
+      const finalLastName = lastName;
+
+      const adminToken = await getAdminToken(env);
+      const customerPayload: any = {
+        customer: {
+          first_name: finalFirstName,
+          last_name: finalLastName,
+          email: email.trim().toLowerCase(),
+          password: password,
+          password_confirmation: password,
+          verified_email: true,
+          send_email_welcome: false
+        }
+      };
+
+      if (phone) customerPayload.customer.phone = phone;
+
+      const adminResponse = await fetch(`https://${env.PUBLIC_STORE_DOMAIN}/admin/api/2024-01/customers.json`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Shopify-Access-Token': adminToken,
+        },
+        body: JSON.stringify(customerPayload)
+      });
+
+      const adminData = await adminResponse.json();
+      if (adminData.errors) {
+        throw new Error(typeof adminData.errors === 'string' ? adminData.errors : JSON.stringify(adminData.errors));
+      }
+
+      // Login immediately
+      const { customerAccessTokenCreate } = await storefront.mutate(REGISTER_LOGIN_MUTATION, {
+        variables: { input: { email: email.trim().toLowerCase(), password } },
+      });
+
+      if (!customerAccessTokenCreate?.customerAccessToken?.accessToken) {
+        return redirect('/account/login');
+      }
+
+      const accessToken = customerAccessTokenCreate?.customerAccessToken?.accessToken;
+      session.set('customerAccessToken', customerAccessTokenCreate?.customerAccessToken);
+      
+      // SYNC CART BUYER IDENTITY
+      try {
+        await context.cart.updateBuyerIdentity({
+          customerAccessToken: accessToken,
+        });
+      } catch (e) {
+        console.error('Failed to sync cart buyer identity on email register:', e);
+      }
+
+      return redirect('/account', {
+        headers: { 'Set-Cookie': await session.commit() },
+      });
+    } catch (error: any) {
+      return data({ error: error.message }, { status: 400 });
+    }
+  }
 };
 
 export default function Register() {
@@ -245,6 +310,7 @@ export default function Register() {
   const isEn = locale === 'en';
   const isLoading = navigation.state === 'submitting' || fetcher.state === 'submitting';
 
+  const [regMethod, setRegMethod] = useState<'mobile' | 'email'>('mobile');
   const [step, setStep] = useState<'mobile' | 'otp' | 'details'>('mobile');
   const [phone, setPhone] = useState('');
   const [accountType, setAccountType] = useState<'individual' | 'company'>('individual');
@@ -351,8 +417,28 @@ export default function Register() {
           <p>{stepSubtitle[step]}</p>
         </div>
 
-        {/* ── STEP 1: MOBILE ── */}
+        {/* REGISTRATION METHOD TOGGLE (Temporary) */}
         {step === 'mobile' && (
+          <div className="type-toggle-wrapper mb-8 !bg-[#f8f1e7]/50">
+            <button 
+              type="button" 
+              className={`type-toggle-btn ${regMethod === 'mobile' ? 'active' : ''}`} 
+              onClick={() => setRegMethod('mobile')}
+            >
+              {isEn ? 'Mobile' : 'رقم الجوال'}
+            </button>
+            <button 
+              type="button" 
+              className={`type-toggle-btn ${regMethod === 'email' ? 'active' : ''}`} 
+              onClick={() => setRegMethod('email')}
+            >
+              {isEn ? 'Email' : 'البريد الإلكتروني'}
+            </button>
+          </div>
+        )}
+
+        {/* ── STEP 1: MOBILE ── */}
+        {step === 'mobile' && regMethod === 'mobile' && (
           <Form method="POST" className="otp-form animate-fade-in text-center">
             <input type="hidden" name="intent" value="check-phone" />
             <input type="hidden" name="phonePrefix" value="+966" />
@@ -391,6 +477,49 @@ export default function Register() {
             </Button>
 
             <div className="login-extras">
+              <p className="no-account">
+                {isEn ? 'Already have an account? ' : 'لديك حساب بالفعل؟ '}
+                <Link to={isEn ? '/en/account/login' : '/account/login'} className="register-link">
+                  {isEn ? 'Login' : 'تسجيل الدخول'}
+                </Link>
+              </p>
+            </div>
+          </Form>
+        )}
+
+        {/* ── TEMPORARY EMAIL REGISTER ── */}
+        {step === 'mobile' && regMethod === 'email' && (
+          <Form method="POST" className="otp-form animate-fade-in">
+            <input type="hidden" name="intent" value="register-email" />
+            
+            <div className="register-grid">
+              <div className="luxury-field">
+                <label className="luxury-label">{isEn ? 'First Name' : 'الاسم الأول'}</label>
+                <input name="firstName" type="text" placeholder={isEn ? 'First Name' : 'الاسم الأول'} required className="luxury-input-field" />
+              </div>
+              <div className="luxury-field">
+                <label className="luxury-label">{isEn ? 'Last Name' : 'الاسم الأخير'}</label>
+                <input name="lastName" type="text" placeholder={isEn ? 'Last Name' : 'الاسم الأخير'} required className="luxury-input-field" />
+              </div>
+            </div>
+
+            <div className="luxury-field mt-4">
+              <label className="luxury-label">{isEn ? 'Email' : 'البريد الإلكتروني'}</label>
+              <input name="email" type="email" placeholder="example@mail.com" required className="luxury-input-field" />
+            </div>
+
+            <div className="luxury-field mt-4">
+              <label className="luxury-label">{isEn ? 'Password' : 'كلمة المرور'}</label>
+              <input name="password" type="password" placeholder="••••••••" minLength={8} required className="luxury-input-field" />
+            </div>
+
+            {localError && <p className="error-text mt-4"><small>{localError}</small></p>}
+
+            <Button type="submit" variant="primary" fullWidth size="lg" className="luxury-submit mt-8" disabled={isLoading}>
+              {isLoading ? (isEn ? 'Creating...' : 'جاري الإنشاء...') : (isEn ? 'Register Now' : 'سجل الآن')}
+            </Button>
+
+            <div className="login-extras mt-6">
               <p className="no-account">
                 {isEn ? 'Already have an account? ' : 'لديك حساب بالفعل؟ '}
                 <Link to={isEn ? '/en/account/login' : '/account/login'} className="register-link">

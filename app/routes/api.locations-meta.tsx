@@ -1,4 +1,5 @@
 import type {Route} from './+types/api.locations-meta';
+import { getAdminToken } from '~/lib/shopify-admin.server';
 
 /**
  * Server-side API route that fetches Location metafields via the Shopify Admin GraphQL API.
@@ -9,13 +10,14 @@ export async function loader({context}: Route.LoaderArgs) {
   const {env} = context;
 
   const shopDomain = env.PUBLIC_STORE_DOMAIN;
-  const adminToken = env.PRIVATE_STOREFRONT_API_TOKEN;
 
-  if (!shopDomain || !adminToken) {
+  if (!shopDomain) {
     return Response.json({locations: []}, {status: 200});
   }
 
   try {
+    const adminToken = await getAdminToken(env);
+    console.log('[DEBUG] Using Admin Token:', adminToken ? (adminToken.substring(0, 8) + '...') : 'NONE');
     // Use the GraphQL Admin API  
     const query = `{
       locations(first: 100) {
@@ -67,17 +69,27 @@ export async function loader({context}: Route.LoaderArgs) {
 
     const locations = json?.data?.locations?.nodes || [];
 
-    // Flatten metafields for easier consumption
-    const enriched = locations.map((loc: any) => ({
-      id: loc.id,
-      name: loc.name,
-      address: loc.address,
-      metafields: (loc.metafields?.nodes || []).map((m: any) => ({
-        key: m.key,
-        namespace: m.namespace,
-        value: m.value,
-      })),
-    }));
+    const enriched = locations.map((loc: any) => {
+      // Ensure the ID is just the numerical part for easier matching if needed, 
+      // but keep the full GID as the primary identifier.
+      const numericalId = loc.id.split('/').pop();
+      
+      return {
+        id: loc.id,
+        numericalId: numericalId,
+        name: loc.name,
+        address: loc.address,
+        metafields: (loc.metafields?.nodes || []).map((m: any) => ({
+          key: m.key,
+          namespace: m.namespace,
+          value: m.value,
+        })),
+        // Helper fields for common UI components
+        hours_from: (loc.metafields?.nodes || []).find((m: any) => m.key === 'working_hours_from')?.value,
+        hours_to: (loc.metafields?.nodes || []).find((m: any) => m.key === 'working_hours_to')?.value,
+        delivery_time: (loc.metafields?.nodes || []).find((m: any) => m.key === 'delivery_time')?.value,
+      };
+    });
 
     return Response.json(
       {locations: enriched},

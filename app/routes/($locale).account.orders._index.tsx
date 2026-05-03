@@ -1,11 +1,12 @@
-import { Link, useLoaderData } from 'react-router';
-import { Money, Pagination, getPaginationVariables } from '@shopify/hydrogen';
 import {
   data,
   redirect,
   type LoaderFunctionArgs,
+  type ActionFunctionArgs,
   type MetaFunction,
 } from 'react-router';
+import { Link, useLoaderData, useFetcher } from 'react-router';
+import { Money, Pagination, getPaginationVariables } from '@shopify/hydrogen';
 import type {
   CustomerOrdersFragment,
   OrderItemFragment,
@@ -15,6 +16,24 @@ import { Button } from '~/components/layout/Button';
 export const meta: MetaFunction<typeof loader> = () => {
   return [{ title: 'طلباتي | Saadeddin' }];
 };
+
+export async function action({ request, context }: ActionFunctionArgs) {
+  const { session, cart } = context;
+  const formData = await request.formData();
+  const intent = formData.get('intent');
+
+  if (intent === 'reorder') {
+    const items = JSON.parse(String(formData.get('items') || '[]'));
+    if (items.length > 0) {
+      await cart.addLines(items.map((item: any) => ({
+        merchandiseId: item.merchandiseId,
+        quantity: item.quantity,
+      })));
+      return redirect('/cart');
+    }
+  }
+  return data({ error: 'Invalid action' }, { status: 400 });
+}
 
 export async function loader({ request, context }: LoaderFunctionArgs) {
   const { session, storefront } = context;
@@ -146,7 +165,8 @@ function OrdersList({ orders, searchTerm, statusFilter, isEn }: { orders: any, s
     if (searchTerm && !order.orderNumber.toString().includes(searchTerm)) return false;
     if (statusFilter !== 'all') {
        if (statusFilter === 'PAID' && order.financialStatus !== 'PAID') return false;
-       if (statusFilter === 'FULFILLED' && order.fulfillmentStatus !== 'FULFILLED') return false;
+       if (statusFilter === 'PENDING' && (order.financialStatus === 'PAID' && order.fulfillmentStatus === 'FULFILLED')) return false;
+       if (statusFilter === 'FULFILLED' && !['FULFILLED', 'PARTIALLY_FULFILLED'].includes(order.fulfillmentStatus || '')) return false;
        if (statusFilter === 'PREORDER') {
           const hasPreorder = order.lineItems.nodes.some((item: any) => 
             item.variant?.product?.tags?.some((tag: string) => 
@@ -196,11 +216,25 @@ function OrdersList({ orders, searchTerm, statusFilter, isEn }: { orders: any, s
 }
 
 function OrderCard({ order, isEn }: { order: OrderItemFragment, isEn: boolean }) {
+  const fetcher = useFetcher();
   const dateStr = new Date(order.processedAt).toLocaleDateString(isEn ? 'en-US' : 'ar-SA', {
     month: 'long', day: 'numeric', year: 'numeric'
   });
 
   const lineItems = order.lineItems.nodes;
+
+  const handleReorder = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const items = lineItems.map(item => ({
+      merchandiseId: item.variant?.id,
+      quantity: 1, // Default to 1 or item.quantity? The requirement says "reorder confirmation"
+    }));
+    
+    const formData = new FormData();
+    formData.append('intent', 'reorder');
+    formData.append('items', JSON.stringify(items));
+    fetcher.submit(formData, { method: 'POST' });
+  };
 
   return (
     <div className="order-card">
@@ -209,8 +243,15 @@ function OrderCard({ order, isEn }: { order: OrderItemFragment, isEn: boolean })
           <span className="order-id-label">{isEn ? 'Order' : 'طلب'} #{order.orderNumber}</span>
           <span className="order-date-label">{dateStr}</span>
         </div>
-        <div className="hidden sm:block">
-           <Link to={`/account/orders/${order.id}`} className="view-btn-v2">
+        <div className="flex gap-3">
+           <button 
+             onClick={handleReorder} 
+             disabled={fetcher.state !== 'idle'}
+             className="view-btn-v2 !bg-[#1b3d2e] !text-white !border-[#1b3d2e] hover:!bg-[#d4a06a] hover:!border-[#d4a06a]"
+           >
+             {fetcher.state !== 'idle' ? (isEn ? 'Adding...' : 'جاري الإضافة...') : (isEn ? 'Reorder' : 'إعادة طلب')}
+           </button>
+           <Link to={`/account/orders/${btoa(order.id)}`} className="view-btn-v2 hidden sm:flex">
              {isEn ? 'View Details' : 'عرض التفاصيل'}
              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <path d="M5 12h14M12 5l7 7-7 7" />
@@ -250,7 +291,7 @@ function OrderCard({ order, isEn }: { order: OrderItemFragment, isEn: boolean })
             <Money data={order.currentTotalPrice} />
           </div>
           <div className="sm:hidden w-full mt-2">
-            <Link to={`/account/orders/${order.id}`} className="view-btn-v2 w-full justify-center">
+            <Link to={`/account/orders/${btoa(order.id)}`} className="view-btn-v2 w-full justify-center">
                {isEn ? 'View Details' : 'عرض التفاصيل'}
             </Link>
           </div>
@@ -332,7 +373,7 @@ const CUSTOMER_FRAGMENT = `#graphql
       pageInfo {
         hasPreviousPage
         hasNextPage
-        hasNextPage
+        startCursor
         endCursor
       }
     }

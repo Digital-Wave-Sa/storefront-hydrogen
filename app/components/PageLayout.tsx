@@ -1,4 +1,4 @@
-import {Await, Link, useRouteLoaderData} from 'react-router';
+import {Await, Link, useRouteLoaderData, useLocation} from 'react-router';
 import {Suspense, useId} from 'react';
 import type {
   CartApiQueryFragment,
@@ -23,6 +23,7 @@ interface PageLayoutProps {
   publicStoreDomain: string;
   children?: React.ReactNode;
   locations?: Promise<any>;
+  customer?: Promise<any>;
 }
 
 export function PageLayout({
@@ -33,9 +34,14 @@ export function PageLayout({
   isLoggedIn,
   publicStoreDomain,
   locations,
+  customer,
 }: PageLayoutProps) {
   const rootData = useRouteLoaderData('root') as any;
-  const locale = rootData?.consent?.language?.toLowerCase() || 'ar';
+  const location = useLocation();
+  const urlLocale = location.pathname.split('/')[1]?.toLowerCase();
+  const locale = (urlLocale === 'en' || urlLocale === 'ar') 
+    ? urlLocale 
+    : (rootData?.consent?.language?.toLowerCase() || 'ar');
 
   return (
     <Aside.Provider>
@@ -50,6 +56,7 @@ export function PageLayout({
           publicStoreDomain={publicStoreDomain}
           locale={locale}
           locations={locations}
+          customer={customer}
           googleMapsKey={rootData?.env?.PUBLIC_GOOGLE_MAPS_KEY}
         />
       )}

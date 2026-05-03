@@ -116,7 +116,18 @@ export async function action({ request, context }: ActionFunctionArgs) {
     });
 
     if (customerAccessTokenCreate?.customerAccessToken?.accessToken) {
+      const accessToken = customerAccessTokenCreate.customerAccessToken.accessToken;
       session.set('customerAccessToken', customerAccessTokenCreate.customerAccessToken);
+      
+      // SYNC CART BUYER IDENTITY
+      try {
+        await context.cart.updateBuyerIdentity({
+          customerAccessToken: accessToken,
+        });
+      } catch (e) {
+        console.error('Failed to sync cart buyer identity on login:', e);
+      }
+
       return redirect('/account', {
         headers: { 'Set-Cookie': await session.commit() },
       });

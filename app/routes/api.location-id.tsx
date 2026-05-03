@@ -7,6 +7,8 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
     const fulfillmentType = formData.get('fulfillmentType');
 
+    console.log(`[API LOCATION] Received POST - ID: ${locationId}, Name: ${branchName}, Type: ${fulfillmentType}`);
+
     if (typeof fulfillmentType === 'string') {
         context.session.set('fulfillmentType', fulfillmentType);
     }
@@ -16,6 +18,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
     if (typeof branchName === 'string') {
         context.session.set('selectedLocationName', branchName);
     }
+    console.log(`[API LOCATION] Session Updated!`);
 
     return data({ success: true }, {
         headers: {

@@ -8,6 +8,7 @@ import {
   sendShopifyAnalytics,
   AnalyticsEventName,
   AnalyticsPageType,
+  useAnalytics,
 } from '@shopify/hydrogen';
 
 import { SearchForm, SearchResults, NoSearchResults } from '~/components/Search';
@@ -130,12 +131,11 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
 export default function SearchPage() {
   const { searchTerm, searchResults, extractedTags, globalCollections } = useLoaderData<any>();
 
-  // 1. Get locale from your root/layout context
   const { locale } = useOutletContext<{ locale: string }>();
   const isEn = locale === 'en';
-
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const {publish} = useAnalytics();
 
   useEffect(() => {
     setMounted(true);
@@ -149,7 +149,7 @@ export default function SearchPage() {
         },
       });
     }
-  }, [searchTerm, searchResults.totalResults]);
+  }, [searchTerm, searchResults.totalResults, publish]);
 
   const totalProducts = searchResults?.results?.products?.nodes?.length || 0;
   const filterOptions = searchResults?.results?.products?.productFilters || [];
@@ -163,6 +163,10 @@ export default function SearchPage() {
       <div className="max-w-[1400px] mx-auto px-6">
 
         <header className="mb-12 text-center">
+          <Analytics.SearchView
+            searchTerm={searchTerm}
+            searchResults={searchResults.totalResults}
+          />
           <h1 className="text-4xl lg:text-5xl font-black text-[#234745] mb-4">
             {searchTerm
               ? (isEn ? `Search results for "${searchTerm}"` : `نتائج البحث عن "${searchTerm}"`)

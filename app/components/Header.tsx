@@ -29,16 +29,42 @@ export function Header({ header, isLoggedIn, cart, locations, customer, locale, 
   const fetcher = useFetcher();
   const locationFetcher = useFetcher();
 
-  const handleSelectBranch = (branchName: string, id: string, type: 'delivery' | 'pickup') => {
+  const handleSelectBranch = (branch: any, type: 'delivery' | 'pickup', addressName?: string) => {
+    const branchName = branch?.name || 'Main';
+    const branchId = branch?.id || '';
+
     // Update cart attributes
+    const attributes = [
+      { key: 'Branch', value: branchName },
+      { key: 'Branch ID', value: branchId },
+      { key: 'Fulfillment Type', value: type === 'delivery' ? 'Delivery' : 'Pickup' }
+    ];
+
+    if (addressName) {
+      attributes.push({ key: 'Delivery Address', value: addressName });
+    }
+
+    // Update Buyer Identity for Pickup skip
+    let buyerIdentity = undefined;
+    if (type === 'pickup' && branch) {
+       buyerIdentity = {
+         deliveryAddressPreferences: [{
+           deliveryAddress: {
+             address1: branch.address || '',
+             city: branch.city || '',
+             country: 'SA',
+             firstName: isEn ? 'Pickup from' : 'استلام من',
+             lastName: branchName
+           }
+         }]
+       };
+    }
+
     const cartFormInput = {
-      action: 'AttributesUpdate',
+      action: 'FulfillmentUpdate',
       inputs: {
-        attributes: [
-          { key: 'Branch', value: branchName },
-          { key: 'Branch ID', value: id },
-          { key: 'Fulfillment Type', value: type === 'delivery' ? 'Delivery' : 'Pickup' }
-        ]
+        attributes,
+        buyerIdentity
       }
     };
 
@@ -48,7 +74,7 @@ export function Header({ header, isLoggedIn, cart, locations, customer, locale, 
 
     // Update session location
     const locFormData = new FormData();
-    locFormData.append('locationId', id);
+    locFormData.append('locationId', branchId);
     locFormData.append('branchName', branchName);
     locFormData.append('fulfillmentType', type);
     locationFetcher.submit(locFormData, { method: 'POST', action: '/api/location-id' });

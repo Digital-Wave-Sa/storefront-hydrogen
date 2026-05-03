@@ -17,12 +17,18 @@ export async function loader({params, context}: LoaderFunctionArgs) {
   return null;
 }
 
-import {Outlet, useRouteLoaderData} from 'react-router';
+import {Outlet, useRouteLoaderData, useParams} from 'react-router';
 
 export default function LocaleLayout() {
   const data = useRouteLoaderData('root') as any;
-  const locale = data?.consent?.language?.toLowerCase() || 'ar';
+  const params = useParams();
+  const locale = params.locale?.toLowerCase() || data?.consent?.language?.toLowerCase() || 'ar';
   
-  return <Outlet context={{ locale }} />;
+  return <Outlet context={{ 
+    locale,
+    selectedLocationId: data?.selectedLocationId,
+    selectedLocationName: data?.selectedLocationName,
+    fulfillmentType: data?.fulfillmentType 
+  }} />;
 }
 

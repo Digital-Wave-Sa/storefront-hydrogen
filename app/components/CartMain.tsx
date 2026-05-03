@@ -1,9 +1,10 @@
-import {useOptimisticCart} from '@shopify/hydrogen';
+import {useOptimisticCart, Analytics} from '@shopify/hydrogen';
 import {Link, useRouteLoaderData} from 'react-router';
 import type {CartApiQueryFragment} from 'storefrontapi.generated';
 import {useAside} from '~/components/Aside';
 import {CartLineItem, type CartLine} from '~/components/CartLineItem';
 import {CartSummary} from './CartSummary';
+import {Price, SaudiRiyalSymbol} from './Price';
 
 export type CartLayout = 'page' | 'aside';
 
@@ -44,11 +45,19 @@ export function CartMain({layout, cart: originalCart}: CartMainProps) {
 
   // Dynamic Delivery Threshold Logic
   const branchName = cart?.attributes?.find(a => a.key === 'Branch')?.value;
-  const locations = rootData?.locations?.nodes || [];
-  const currentBranch = locations.find((loc: any) => loc.name === branchName);
+  const branchId = cart?.attributes?.find(a => a.key === 'Branch ID')?.value;
+  const locations = rootData?.locations?.locations?.nodes || rootData?.locations?.nodes || [];
   
-  const thresholdMeta = currentBranch?.metafields?.find((m: any) => m?.key === 'free_delivery_threshold');
+  // Try matching by ID first (more reliable), then fallback to name
+  const currentBranch = locations.find((loc: any) => 
+    (branchId && loc.id === branchId) || 
+    (branchName && loc.name === branchName)
+  );
+  
+  const thresholdMeta = currentBranch?.free_delivery_threshold || currentBranch?.metafields?.find((m: any) => m?.key === 'free_delivery_threshold');
   const threshold = thresholdMeta?.value ? parseFloat(thresholdMeta.value) : 430;
+  const fulfillmentType = cart?.attributes?.find(a => a.key.toLowerCase().trim() === 'fulfillment type')?.value;
+  const isPickup = fulfillmentType?.toLowerCase() === 'pickup';
 
   const subtotal = cart?.cost?.subtotalAmount?.amount ? parseFloat(cart.cost.subtotalAmount.amount) : 0;
   const progress = Math.min((subtotal / threshold) * 100, 100);
@@ -58,6 +67,7 @@ export function CartMain({layout, cart: originalCart}: CartMainProps) {
   if (layout === 'page') {
     return (
       <div className="max-w-[1400px] mx-auto w-full px-4 py-8 md:py-16" dir={isEn ? 'ltr' : 'rtl'}>
+        <Analytics.CartView cart={cart as any} />
         <h1 className="text-4xl md:text-[56px] font-black text-[#1b3d2e] mb-12 tracking-tight">
           {isEn ? 'Cart' : 'السلة'}
         </h1>
@@ -66,7 +76,7 @@ export function CartMain({layout, cart: originalCart}: CartMainProps) {
           {/* Left Column (Items) */}
           <div className="flex flex-col gap-4">
             {/* Free Delivery Progress (Restored) */}
-            {cartHasItems && (
+            {cartHasItems && !isPickup && (
               <div className="bg-white rounded-[24px] p-6 border border-[#f0ece8] shadow-sm mb-2">
                 <div className="flex justify-between items-center mb-3">
                    <p className="text-[14px] font-bold text-[#1b3d2e]">
@@ -79,7 +89,9 @@ export function CartMain({layout, cart: originalCart}: CartMainProps) {
                         isEn ? (
                           <>Add <span className="text-[#d4a06a]">{currencyCode} {remaining.toFixed(2)}</span> for free delivery</>
                         ) : (
-                          <>أضف <span className="text-[#d4a06a]">{remaining.toFixed(2)} ر.س</span> للتوصيل المجاني</>
+                          <span className="inline-flex items-center gap-1">
+                            أضف <span className="text-[#d4a06a] mx-1">{remaining.toFixed(2)}</span> {currencyCode === 'SAR' ? <SaudiRiyalSymbol className="h-3 w-auto" /> : currencyCode} للتوصيل المجاني
+                          </span>
                         )
                       )}
                    </p>
@@ -90,6 +102,19 @@ export function CartMain({layout, cart: originalCart}: CartMainProps) {
                     className={`h-full transition-all duration-700 ease-out rounded-full ${progress >= 100 ? 'bg-green-500' : 'bg-[#d4a06a]'}`}
                     style={{ width: `${progress}%` }}
                   />
+                </div>
+              </div>
+            )}
+
+            {/* Pickup Info Alert */}
+            {cartHasItems && isPickup && (
+              <div className="bg-[#fcfaf8] rounded-[24px] p-6 border border-[#f0ece8] shadow-sm mb-2 flex items-center gap-4">
+                <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center text-[#1b3d2e] shadow-sm">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" /><polyline points="9 22 9 12 15 12 15 22" /></svg>
+                </div>
+                <div>
+                  <p className="text-[15px] font-black text-[#1b3d2e]">{isEn ? 'Store Pickup Selected' : 'تم اختيار الاستلام من الفرع'}</p>
+                  <p className="text-[13px] text-gray-500 font-medium">{isEn ? 'No delivery fees apply for pickup orders.' : 'لا يتم تطبيق رسوم توصيل على طلبات الاستلام.'}</p>
                 </div>
               </div>
             )}
@@ -141,9 +166,10 @@ export function CartMain({layout, cart: originalCart}: CartMainProps) {
   // ASIDE LAYOUT
   return (
     <section className="flex flex-col h-full bg-white relative" aria-label="Cart drawer" dir={isEn ? 'ltr' : 'rtl'}>
+      <Analytics.CartView cart={cart as any} />
       
-      {/* Progress Bar (Only show if items exist and layout is aside) */}
-      {cartHasItems && (
+      {/* Progress Bar (Only show if items exist and layout is aside AND not pickup) */}
+      {cartHasItems && !isPickup && (
         <div className="px-6 py-4 bg-[#fcfaf8] border-b border-[#f0ece8]">
           <p className="text-[13px] font-bold text-[#1b3d2e] mb-2 text-center">
             {progress >= 100 ? (
@@ -153,9 +179,11 @@ export function CartMain({layout, cart: originalCart}: CartMainProps) {
               </span>
             ) : (
               isEn ? (
-                <>Add <span className="text-yellow-600">SAR {remaining.toFixed(2)}</span> more to unlock free delivery!</>
+                <>Add <span className="text-yellow-600">{currencyCode} {remaining.toFixed(2)}</span> more to unlock free delivery!</>
               ) : (
-                <>أضف <span className="text-yellow-600">{remaining.toFixed(2)} ر.س</span> للحصول على توصيل مجاني!</>
+                <span className="inline-flex items-center gap-1">
+                  أضف <span className="text-yellow-600 mx-1">{remaining.toFixed(2)}</span> {currencyCode === 'SAR' ? <SaudiRiyalSymbol className="h-3.5 w-auto" /> : currencyCode} للحصول على توصيل مجاني!
+                </span>
               )
             )}
           </p>
@@ -170,6 +198,17 @@ export function CartMain({layout, cart: originalCart}: CartMainProps) {
 
       {/* Cart Content Area */}
       <div className="flex-1 overflow-y-auto px-6 py-6 custom-scrollbar">
+        {cartHasItems && isPickup && (
+          <div className="mb-6 p-4 bg-[#fcfaf8] rounded-2xl border border-[#f0ece8] flex items-center gap-3">
+             <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-[#1b3d2e] shadow-sm shrink-0">
+               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" /><polyline points="9 22 9 12 15 12 15 22" /></svg>
+             </div>
+             <div>
+               <p className="text-[13px] font-black text-[#1b3d2e]">{isEn ? 'Store Pickup' : 'استلام من الفرع'}</p>
+               <p className="text-[11px] text-gray-500 font-medium">{isEn ? 'No delivery fees applied' : 'لا توجد رسوم توصيل'}</p>
+             </div>
+          </div>
+        )}
         <CartEmpty hidden={linesCount} layout={layout} isEn={isEn} />
         
         {cartHasItems && (

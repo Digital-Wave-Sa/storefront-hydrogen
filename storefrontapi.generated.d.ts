@@ -425,14 +425,41 @@ export type LocationsQuery = {
           | 'longitude'
           | 'phone'
         >;
-        metafields: Array<
-          StorefrontAPI.Maybe<
-            Pick<StorefrontAPI.Metafield, 'key' | 'value' | 'namespace'>
-          >
+        delivery_fee?: StorefrontAPI.Maybe<
+          Pick<StorefrontAPI.Metafield, 'key' | 'value'>
+        >;
+        free_delivery_threshold?: StorefrontAPI.Maybe<
+          Pick<StorefrontAPI.Metafield, 'key' | 'value'>
         >;
       }
     >;
   };
+};
+
+export type CustomerAddressesQueryVariables = StorefrontAPI.Exact<{
+  customerAccessToken: StorefrontAPI.Scalars['String']['input'];
+}>;
+
+export type CustomerAddressesQuery = {
+  customer?: StorefrontAPI.Maybe<
+    Pick<StorefrontAPI.Customer, 'id' | 'firstName' | 'lastName'> & {
+      addresses: {
+        nodes: Array<
+          Pick<
+            StorefrontAPI.MailingAddress,
+            | 'id'
+            | 'address1'
+            | 'address2'
+            | 'city'
+            | 'country'
+            | 'firstName'
+            | 'lastName'
+            | 'phone'
+          >
+        >;
+      };
+    }
+  >;
 };
 
 export type FeaturedCollectionFragment = Pick<
@@ -1076,7 +1103,7 @@ export type CustomerOrdersFragment = Pick<
     >;
     pageInfo: Pick<
       StorefrontAPI.PageInfo,
-      'hasPreviousPage' | 'hasNextPage' | 'endCursor'
+      'hasPreviousPage' | 'hasNextPage' | 'startCursor' | 'endCursor'
     >;
   };
 };
@@ -1133,7 +1160,7 @@ export type CustomerOrdersQuery = {
         >;
         pageInfo: Pick<
           StorefrontAPI.PageInfo,
-          'hasPreviousPage' | 'hasNextPage' | 'endCursor'
+          'hasPreviousPage' | 'hasNextPage' | 'startCursor' | 'endCursor'
         >;
       };
     }
@@ -2591,9 +2618,13 @@ interface GeneratedQueryTypes {
     return: FooterQuery;
     variables: FooterQueryVariables;
   };
-  '#graphql\n  query Locations {\n    locations(first: 100) {\n      nodes {\n        id\n        name\n        address {\n          address1\n          address2\n          city\n          country\n          latitude\n          longitude\n          phone\n        }\n        metafields(identifiers: [\n          {namespace: "custom", key: "delivery_fee"},\n          {namespace: "custom", key: "free_delivery_threshold"}\n        ]) {\n          key\n          value\n          namespace\n        }\n      }\n    }\n  }\n': {
+  '#graphql\n  query Locations {\n    locations(first: 100) {\n      nodes {\n        id\n        name\n        address {\n          address1\n          address2\n          city\n          country\n          latitude\n          longitude\n          phone\n        }\n        delivery_fee: metafield(namespace: "custom", key: "delivery_fee") {\n          key\n          value\n        }\n        free_delivery_threshold: metafield(namespace: "custom", key: "free_delivery_threshold") {\n          key\n          value\n        }\n      }\n    }\n  }\n': {
     return: LocationsQuery;
     variables: LocationsQueryVariables;
+  };
+  '#graphql\n  query CustomerAddresses($customerAccessToken: String!) {\n    customer(customerAccessToken: $customerAccessToken) {\n      id\n      firstName\n      lastName\n      addresses(first: 20) {\n        nodes {\n          id\n          address1\n          address2\n          city\n          country\n          firstName\n          lastName\n          phone\n        }\n      }\n    }\n  }\n': {
+    return: CustomerAddressesQuery;
+    variables: CustomerAddressesQueryVariables;
   };
   '#graphql\n  fragment FeaturedCollection on Collection {\n    id\n    title\n    image {\n      id\n      url\n      altText\n      width\n      height\n    }\n    handle\n  }\n  query FeaturedCollection($country: CountryCode, $language: LanguageCode)\n    @inContext(country: $country, language: $language) {\n    collections(first: 1, sortKey: UPDATED_AT, reverse: true) {\n      nodes {\n        ...FeaturedCollection\n      }\n    }\n  }\n': {
     return: FeaturedCollectionQuery;
@@ -2622,6 +2653,10 @@ interface GeneratedQueryTypes {
   '#graphql\n  query Customer(\n    $customerAccessToken: String!\n    $country: CountryCode\n    $language: LanguageCode\n  ) @inContext(country: $country, language: $language) {\n    customer(customerAccessToken: $customerAccessToken) {\n      ...Customer\n    }\n  }\n  #graphql\n  fragment Customer on Customer {\n    acceptsMarketing\n    addresses(first: 6) {\n      nodes {\n        ...Address\n      }\n    }\n    defaultAddress {\n      ...Address\n    }\n    email\n    firstName\n    lastName\n    numberOfOrders\n    phone\n    birthdate: metafield(namespace: "custom", key: "birthdate") {\n      value\n    }\n  }\n  fragment Address on MailingAddress {\n    id\n    formatted\n    firstName\n    lastName\n    company\n    address1\n    address2\n    country\n    province\n    city\n    zip\n    phone\n  }\n\n': {
     return: CustomerQuery;
     variables: CustomerQueryVariables;
+  };
+  '#graphql\n    query getCustomerId($customerAccessToken: String!) {\n      customer(customerAccessToken: $customerAccessToken) {\n        id\n      }\n    }\n  ': {
+    return: GetCustomerIdQuery;
+    variables: GetCustomerIdQueryVariables;
   };
   '#graphql\n  query Article(\n    $articleHandle: String!\n    $blogHandle: String!\n    $country: CountryCode\n    $language: LanguageCode\n  ) @inContext(language: $language, country: $country) {\n    blog(handle: $blogHandle) {\n      articleByHandle(handle: $articleHandle) {\n        title\n        contentHtml\n        publishedAt\n        author: authorV2 {\n          name\n        }\n        image {\n          id\n          altText\n          url\n          width\n          height\n        }\n        seo {\n          description\n          title\n        }\n      }\n    }\n  }\n': {
     return: ArticleQuery;

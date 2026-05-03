@@ -27,6 +27,8 @@ export interface Branch {
     minOrder: number;
     deliveryFee: number;
     freeDeliveryThreshold: number;
+    hoursFrom?: string;
+    hoursTo?: string;
     distance?: string;
     google_maps?: string;
     distanceKm?: number;
@@ -165,10 +167,11 @@ export function getDistance(coords1: { lat: number; lng: number } | number, coor
 export function parseLocationToBranch(node: any): Branch {
     const addr = node.address || {};
     const googleMapMeta = node.metafields?.find((m: any) => m?.key === 'google_maps')?.value || '';
+    
 
     const computeStatus = (fromKey: string, toKey: string) => {
         let st: 'open' | 'closed' = 'closed';
-        let ou = '11:59 م';
+        let ou = '11:00 م';
         const hFrom = node.metafields?.find((m: any) => m?.key === fromKey)?.value;
         const hTo = node.metafields?.find((m: any) => m?.key === toKey)?.value;
 
@@ -181,9 +184,9 @@ export function parseLocationToBranch(node: any): Branch {
                 
                 const parseTime = (timeStr: string) => {
                     const arMap: {[key: string]: string} = { '٠': '0', '١': '1', '٢': '2', '٣': '3', '٤': '4', '٥': '5', '٦': '6', '٧': '7', '٨': '8', '٩': '9' };
-                    let normalized = timeStr.trim().toLowerCase().replace(/[٠-٩]/g, d => arMap[d]);
+                    let normalized = String(timeStr).trim().toLowerCase().replace(/[٠-٩]/g, d => arMap[d]);
                     
-                    const match = normalized.match(/^(\d{1,2}):(\d{2})/);
+                    const match = normalized.match(/(\d{1,2}):(\d{2})/);
                     if (!match) return -1;
                     
                     let h = parseInt(match[1], 10);
@@ -203,6 +206,7 @@ export function parseLocationToBranch(node: any): Branch {
                 
                 if (fMins !== -1 && tMins !== -1) {
                     if (tMins < fMins) {
+                        // Overnight case (e.g. 8 PM to 2 AM)
                         if (currentMins >= fMins || currentMins < tMins) st = 'open';
                     } else {
                         if (currentMins >= fMins && currentMins < tMins) st = 'open';
@@ -213,7 +217,7 @@ export function parseLocationToBranch(node: any): Branch {
         return { status: st, openUntil: ou };
     };
 
-    const delivery = computeStatus('delivery_time_from', 'delivery_time_to');
+    const delivery = computeStatus('working_hours_from', 'working_hours_to'); 
     const pickup = computeStatus('working_hours_from', 'working_hours_to');
 
     const getMeta = (k: string, fb: any) => {
@@ -239,6 +243,8 @@ export function parseLocationToBranch(node: any): Branch {
         minOrder: getMeta('minimum_order_value', 50),
         deliveryFee: getMeta('delivery_fee', 25),
         freeDeliveryThreshold: getMeta('free_delivery_threshold', 200),
+        hoursFrom: node.metafields?.find((m: any) => m?.key === 'working_hours_from')?.value,
+        hoursTo: node.metafields?.find((m: any) => m?.key === 'working_hours_to')?.value,
         badge: '',
         google_maps: getMeta('google_maps', googleMapMeta),
         rating: getMeta('rating', 0),
@@ -295,14 +301,20 @@ export function DeliveryPickupModal({
     if (!isOpen) return null;
 
     const mergeWithAdminMeta = (nodes: any[]) => {
-        if (!adminMetafields.length) return nodes;
+        if (!adminMetafields.length) {
+            console.log('[DPM] No admin metafields found to merge.');
+            return nodes;
+        }
+        console.log('[DPM] Merging with Admin Meta:', adminMetafields.length, 'records found');
         return nodes.map(n => {
-            const al = adminMetafields.find((a: any) => a.id === n.id || a.name === n.name);
+            // Match by ID or name
+            const al = adminMetafields.find((a: any) => 
+                (a.id && n.id && a.id.includes(n.id.split('/').pop())) || 
+                a.name === n.name
+            );
             if (al) {
-                const m = { ...n };
-                if (al.metafields?.length) m.metafields = al.metafields;
-                if (al.address?.latitude && !n.address?.latitude) m.address = { ...n.address, ...al.address };
-                return m;
+                console.log(`[DPM] Successfully merged data for: ${n.name}`);
+                return { ...n, ...al }; // Merge all helper fields like hours_from, hours_to
             }
             return n;
         });
@@ -533,6 +545,7 @@ function ModalContent({
                 <div className="dpm-panel-body">
                     {activeTab === 'delivery' ? (
                         <div className="p-4 animate-fade-in">
+                            {console.log('[DPM] Rendering addresses:', { count: addresses.length, customerId: customer?.id })}
                             <h3 className="text-xs font-bold text-gray-400 mb-4 uppercase tracking-widest">{isEn ? 'Your Addresses' : 'عناوينك المسجلة'}</h3>
                             {addresses.length > 0 ? (
                                 addresses.map((addr: any) => (
@@ -598,7 +611,11 @@ function ModalContent({
                                         </div>
                                         <div className="dpm-meta-row">
                                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
-                                            <span>{isEn ? `Until ${branch.openUntil}` : `حتى ${branch.openUntil}`}</span>
+                                            <span>
+                                                {branch.hoursFrom && branch.hoursTo 
+                                                    ? `${branch.hoursFrom} - ${branch.hoursTo}`
+                                                    : (isEn ? `Until ${branch.openUntil}` : `حتى ${branch.openUntil}`)}
+                                            </span>
                                             {branch.distance && (
                                                 <>
                                                     <span className="mx-1">•</span>
@@ -618,14 +635,43 @@ function ModalContent({
                         className="dpm-confirm-btn"
                         disabled={!effectiveSelectedBranch}
                         onClick={() => {
-                            if (onSelectBranch) {
                                 if (isUserAddressSelected) {
-                                    onSelectBranch(`${currentAddress.firstName} ${currentAddress.lastName}`, currentAddress.id, 'delivery');
+                                    const currentAddress = addresses.find((a: any) => a.id === selectedBranch);
+                                    
+                                    // Parse coords from address2 if present (formatted as COORDS:lat,lng)
+                                    let addressCoords: { lat: number; lng: number } | null = null;
+                                    if (currentAddress?.address2?.startsWith('COORDS:')) {
+                                        const [lat, lng] = currentAddress.address2.replace('COORDS:', '').split(',').map(Number);
+                                        if (!isNaN(lat) && !isNaN(lng)) addressCoords = { lat, lng };
+                                    }
+
+                                    // Map address to nearest branch for stock and fees
+                                    let nearestBranch = branches[0];
+                                    if (addressCoords) {
+                                        let minDistance = Infinity;
+                                        for (const b of branches) {
+                                            if (b.lat && b.lng) {
+                                                const dist = getDistance(addressCoords, { lat: b.lat, lng: b.lng });
+                                                if (dist < minDistance) {
+                                                    minDistance = dist;
+                                                    nearestBranch = b;
+                                                }
+                                            }
+                                        }
+                                    } else {
+                                        // Fallback to city match
+                                        nearestBranch = branches.find((b: any) => 
+                                            b.city?.toLowerCase() === currentAddress?.city?.toLowerCase()
+                                        ) || branches[0];
+                                    }
+
+                                    const addrName = currentAddress ? `${currentAddress.firstName} ${currentAddress.lastName}` : (isEn ? 'Home' : 'المنزل');
+                                    // Set Branch to the fulfilling store, but pass addrName as the delivery destination
+                                    onSelectBranch(nearestBranch, 'delivery', addrName);
                                 } else if (currentBranch) {
-                                    onSelectBranch(currentBranch.name, currentBranch.id, activeTab);
+                                    onSelectBranch(currentBranch, activeTab);
                                 }
                                 onClose();
-                            }
                         }}
                     >
                         {isEn ? 'Confirm Selection' : 'تأكيد الاختيار'}

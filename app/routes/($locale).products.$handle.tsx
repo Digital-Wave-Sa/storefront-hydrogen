@@ -20,6 +20,8 @@ import {
   type VariantOption,
   getSelectedProductOptions,
   CartForm,
+  Analytics,
+  useAnalytics,
 } from '@shopify/hydrogen';
 import { useAside } from '~/components/Aside';
 import type { CartLineInput } from '@shopify/hydrogen/storefront-api-types';
@@ -248,6 +250,7 @@ export default function Product() {
 
   const { selectedVariant } = product;
   const { selectedLocationId, selectedLocationName } = useOutletContext<{ selectedLocationId?: string, selectedLocationName?: string }>();
+  console.log(`[PDP] Current Location: ${selectedLocationName} (${selectedLocationId})`);
 
   const storeAvailabilityNodes = (selectedVariant as any)?.storeAvailability?.nodes || [];
   
@@ -300,11 +303,9 @@ export default function Product() {
     // If we found the specific location in the stock list, use its status
     if (availableNode) return !availableNode.available;
 
-    // If the API returned stock for SOME locations but not ours, it's truly out of stock here.
-    if (storeAvailabilityNodes.length > 0) return true;
-
-    // If NO store availability info was returned at all (empty list), fall back to global status
-    return !selectedVariant?.availableForSale;
+    // STRICT RULE: If a location is selected but no stock info is found for it, 
+    // it is considered Out of Stock at that specific location.
+    return true;
   }, [selectedLocationId, storeAvailabilityNodes, selectedVariant]);
 
   // Visibility scheduling — force unavailable if product is not active
@@ -439,6 +440,11 @@ export default function Product() {
             ]
           })
         }}
+      />
+
+      <Analytics.ProductView
+        product={product}
+        selectedVariant={selectedVariant!}
       />
 
       {/* Visibility Alert Banner */}

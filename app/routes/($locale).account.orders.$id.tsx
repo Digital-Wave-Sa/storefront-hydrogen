@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { data, redirect, type LoaderFunctionArgs, type ActionFunctionArgs } from 'react-router';
 import { Link, useLoaderData, useFetcher, type MetaFunction } from 'react-router';
 import { Money, Image, flattenConnection } from '@shopify/hydrogen';
@@ -62,19 +63,50 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
   if (intent === 'reorder') {
     const items = JSON.parse(String(form.get('items') || '[]'));
-    // This would typically involve adding items to a cart via an action or returning data to the client
-    // For now, we'll return a success and let the client handle it if needed, or redirect to cart
-    // BUT the best way is to return the items so the client-side cart can absorb them.
-    return data({ success: true, reorderItems: items });
+    
+    // Use the cart context to add items
+    if (items.length > 0) {
+      await context.cart.addLines(items.map((item: any) => ({
+        merchandiseId: item.merchandiseId,
+        quantity: item.quantity,
+      })));
+      
+      return redirect('/cart', {
+        headers: {
+          'Set-Cookie': await session.commit(),
+        }
+      });
+    }
+    return data({ error: 'No items to reorder' }, { status: 400 });
+  }
+
+  if (intent === 'cancel_order') {
+    const orderId = form.get('orderId');
+    const reason = form.get('reason');
+    
+    // Cancellation logic would typically involve a call to a custom endpoint or Shopify Admin API
+    console.log(`[CANCEL REQUEST] Order: ${orderId}, Reason: ${reason}`);
+    return data({ success: true, message: 'Cancellation request sent' });
+  }
+
+  if (intent === 'modify_order') {
+    const orderId = form.get('orderId');
+    const note = form.get('note');
+    console.log(`[MODIFY REQUEST] Order: ${orderId}, Note: ${note}`);
+    return data({ success: true, message: 'Modification request sent' });
   }
 
   return data({ error: 'Invalid intent' }, { status: 400 });
-};
+}
 
 export default function OrderRoute() {
   const { order, lineItems, discountValue, discountPercentage, fulfillmentType, branchName, locale } = useLoaderData<typeof loader>();
   const isEn = locale === 'en';
-  const fetcher = useFetcher();
+  const fetcher = useFetcher<any>();
+  const actionData = fetcher.data;
+
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [showModifyModal, setShowModifyModal] = useState(false);
 
   // Helper to get localized status
   const getStatusLabel = (status: string) => {
@@ -104,9 +136,11 @@ export default function OrderRoute() {
       merchandiseId: item.variant?.id,
       quantity: item.quantity,
     }));
-    // In a real app, you'd call a cart API here. 
-    // For this UI demo, we'll show we triggered it.
-    alert(isEn ? 'Items added to cart!' : 'تمت إضافة المنتجات للسلة!');
+    
+    const formData = new FormData();
+    formData.append('intent', 'reorder');
+    formData.append('items', JSON.stringify(items));
+    fetcher.submit(formData, { method: 'POST' });
   };
 
   return (
@@ -215,7 +249,7 @@ export default function OrderRoute() {
               </div>
             )}
             <div className="summary-row">
-              <span>{isEn ? 'Tax' : 'الضريبة'}</span>
+              <span>{isEn ? 'VAT' : 'ضريبة القيمة المضافة'}</span>
               <Money data={order.totalTaxV2!} />
             </div>
             <div className="summary-row total">
@@ -265,9 +299,14 @@ export default function OrderRoute() {
               </button>
               
               {order.fulfillmentStatus === 'UNFULFILLED' && (
-                <button className="btn-outline btn-cancel" onClick={() => alert(isEn ? 'Contacting support to cancel...' : 'جاري التواصل مع الدعم للإلغاء...')}>
-                  {isEn ? 'Cancel Order' : 'إلغاء الطلب'}
-                </button>
+                <>
+                  <button className="btn-outline btn-modify" onClick={() => setShowModifyModal(true)}>
+                    {isEn ? 'Request Modification' : 'طلب تعديل'}
+                  </button>
+                  <button className="btn-outline btn-cancel" onClick={() => setShowCancelModal(true)}>
+                    {isEn ? 'Cancel Order' : 'إلغاء الطلب'}
+                  </button>
+                </>
               )}
               
               <Link to="/pages/contact" className="btn-outline">
@@ -277,6 +316,90 @@ export default function OrderRoute() {
           </div>
         </div>
       </div>
+
+      {/* ── CANCELLATION MODAL ── */}
+      {showCancelModal && (
+        <div className="luxury-modal-overlay">
+          <div className="luxury-modal animate-slide-up">
+            <h3 className="modal-title">{isEn ? 'Cancel Order' : 'إلغاء الطلب'}</h3>
+            <p className="modal-desc">{isEn ? 'Are you sure you want to cancel this order?' : 'هل أنت متأكد أنك تريد إلغاء هذا الطلب؟'}</p>
+            
+            <fetcher.Form method="POST" onSubmit={() => setShowCancelModal(false)}>
+              <input type="hidden" name="intent" value="cancel_order" />
+              <input type="hidden" name="orderId" value={order.id} />
+              
+              <div className="luxury-field mb-6">
+                <label className="luxury-label">{isEn ? 'Reason for cancellation' : 'سبب الإلغاء'}</label>
+                <select name="reason" className="luxury-input-field" required>
+                  <option value="">{isEn ? 'Select a reason' : 'اختر السبب'}</option>
+                  <option value="changed_mind">{isEn ? 'Changed my mind' : 'غيرت رأيي'}</option>
+                  <option value="delivery_time">{isEn ? 'Delivery time too long' : 'وقت التوصيل طويل جداً'}</option>
+                  <option value="ordered_by_mistake">{isEn ? 'Ordered by mistake' : 'تم الطلب عن طريق الخطأ'}</option>
+                  <option value="other">{isEn ? 'Other' : 'سبب آخر'}</option>
+                </select>
+              </div>
+
+              <div className="modal-actions">
+                <Button type="button" variant="secondary" onClick={() => setShowCancelModal(false)}>
+                  {isEn ? 'Go Back' : 'رجوع'}
+                </Button>
+                <Button type="submit" variant="primary" className="!bg-[#e74c3c] !border-[#e74c3c]">
+                  {isEn ? 'Confirm Cancellation' : 'تأكيد الإلغاء'}
+                </Button>
+              </div>
+            </fetcher.Form>
+          </div>
+        </div>
+      )}
+
+      {/* ── MODIFICATION MODAL ── */}
+      {showModifyModal && (
+        <div className="luxury-modal-overlay">
+          <div className="luxury-modal animate-slide-up">
+            <h3 className="modal-title">{isEn ? 'Request Modification' : 'طلب تعديل'}</h3>
+            <p className="modal-desc">{isEn ? 'Please describe what you would like to change.' : 'يرجى وصف التعديلات التي ترغب في إجرائها.'}</p>
+            
+            <fetcher.Form method="POST" onSubmit={() => setShowModifyModal(false)}>
+              <input type="hidden" name="intent" value="modify_order" />
+              <input type="hidden" name="orderId" value={order.id} />
+              
+              <div className="luxury-field mb-6">
+                <label className="luxury-label">{isEn ? 'Modification details' : 'تفاصيل التعديل'}</label>
+                <textarea name="note" rows={4} className="luxury-input-field" placeholder={isEn ? 'e.g. Change delivery address or items...' : 'مثلاً تغيير عنوان التوصيل أو الأصناف...'} required />
+              </div>
+
+              <div className="modal-actions">
+                <Button type="button" variant="secondary" onClick={() => setShowModifyModal(false)}>
+                  {isEn ? 'Cancel' : 'إلغاء'}
+                </Button>
+                <Button type="submit" variant="primary">
+                  {isEn ? 'Send Request' : 'إرسال الطلب'}
+                </Button>
+              </div>
+            </fetcher.Form>
+          </div>
+        </div>
+      )}
+
+      {/* SUCCESS MESSAGE */}
+      {actionData?.success && (
+        <div className="fixed bottom-8 right-8 bg-[#1b3d2e] text-white px-6 py-4 rounded-2xl shadow-2xl animate-fade-in z-50">
+          <p className="font-bold">{isEn ? 'Success!' : 'تم بنجاح!'}</p>
+          <p className="text-sm opacity-90">{actionData.message || (isEn ? 'Your request has been sent.' : 'تم إرسال طلبك.')}</p>
+        </div>
+      )}
+
+      <style dangerouslySetInnerHTML={{ __html: `
+        .luxury-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
+        .luxury-modal { background: white; width: 100%; max-width: 500px; padding: 32px; border-radius: 24px; box-shadow: 0 20px 50px rgba(0,0,0,0.2); }
+        .modal-title { font-family: 'Playfair Display', serif; font-size: 24px; font-weight: 900; color: #1b3d2e; margin-bottom: 12px; }
+        .modal-desc { color: #666; margin-bottom: 24px; font-size: 14px; line-height: 1.6; }
+        .modal-actions { display: grid; grid-template-cols: 1fr 1fr; gap: 16px; margin-top: 32px; }
+        .btn-modify { border-color: #d4a06a !important; color: #d4a06a !important; }
+        .btn-modify:hover { background: #fdfaf7 !important; }
+        .luxury-input-field { width: 100%; padding: 12px 16px; border: 1.5px solid #eee; border-radius: 12px; font-size: 14px; }
+        .luxury-label { font-size: 11px; font-weight: 900; color: #d4a06a; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; display: block; }
+      `}} />
     </div>
   );
 }

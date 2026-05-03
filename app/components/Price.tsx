@@ -12,7 +12,7 @@ interface PriceProps {
 /**
  * Official Saudi Riyal Custom Symbol
  */
-function SaudiRiyalSymbol({ className = "" }: { className?: string }) {
+export function SaudiRiyalSymbol({ className = "" }: { className?: string }) {
   return (
     <svg 
       viewBox="0 0 1124.14 1256.39" 

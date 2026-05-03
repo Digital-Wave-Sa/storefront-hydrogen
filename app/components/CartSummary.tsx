@@ -4,6 +4,7 @@ import {CartForm, Money, type OptimisticCart} from '@shopify/hydrogen';
 import {useEffect, useId, useRef, useState} from 'react';
 import {useFetcher, useRouteLoaderData, Link} from 'react-router';
 import {useAside} from '~/components/Aside';
+import {Price} from './Price';
 
 type CartSummaryProps = {
   cart: OptimisticCart<CartApiQueryFragment | null>;
@@ -21,11 +22,13 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
   const isEn = rootData?.consent?.language?.toLowerCase() === 'en';
 
   const subtotal = Number(cart?.cost?.subtotalAmount?.amount ?? 0);
+  const currencyCode = cart?.cost?.subtotalAmount?.currencyCode || 'SAR';
   const minOrderValue = 50; // Minimum order value requirement
   const isMinOrderMet = subtotal >= minOrderValue;
   
   const attributes = cart?.attributes || [];
   const branch = attributes.find((a: any) => a.key.toLowerCase().trim() === 'branch')?.value;
+  const branchId = attributes.find((a: any) => a.key.toLowerCase().trim() === 'branch id')?.value;
   const fulfillmentType = attributes.find((a: any) => a.key.toLowerCase().trim() === 'fulfillment type')?.value;
   const timeSlot = attributes.find((a: any) => a.key.toLowerCase().trim() === 'time slot')?.value;
   
@@ -33,14 +36,21 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
   const isBranchSelected = !!branch && branch.trim() !== '';
 
   // Dynamic Settings from Metafields
-  const locations = rootData?.locations?.nodes || [];
-  const currentBranch = locations.find((loc: any) => loc.name === branch);
-  const thresholdMeta = currentBranch?.metafields?.find((m: any) => m?.key === 'free_delivery_threshold');
-  const feeMeta = currentBranch?.metafields?.find((m: any) => m?.key === 'delivery_fee');
+  const locations = rootData?.locations?.locations?.nodes || rootData?.locations?.nodes || [];
+  // Try matching by ID first (more reliable), then fallback to name
+  const currentBranch = locations.find((loc: any) => 
+    (branchId && loc.id === branchId) || 
+    (branch && loc.name === branch)
+  );
+  const thresholdMeta = currentBranch?.free_delivery_threshold;
+  const feeMeta = currentBranch?.delivery_fee;
   
   const threshold = thresholdMeta?.value ? parseFloat(thresholdMeta.value) : 430;
   const isFreeDelivery = subtotal >= threshold;
-  const deliveryFee = isFreeDelivery ? 0 : (feeMeta?.value ? parseFloat(feeMeta.value) : 3);
+  const isPickup = fulfillmentType?.toLowerCase() === 'pickup';
+  // Use 25 SAR as default if no metafield is found (matching modal default)
+  const deliveryFee = (isFreeDelivery || isPickup) ? 0 : (feeMeta?.value ? parseFloat(feeMeta.value) : 25);
+  const calculatedTotal = parseFloat(cart?.cost?.totalAmount?.amount || '0') + deliveryFee;
 
   const hasPreOrderItems = cart?.lines?.nodes?.some((line: any) => 
     line.merchandise?.product?.tags?.some((tag: string) => 
@@ -78,33 +88,42 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
             </div>
 
             <div className="space-y-6">
-               <div className="flex justify-between items-center text-[16px]">
-                  <dt className="text-gray-400 font-medium">{isEn ? 'Subtotal' : 'المجموع الفرعي'}</dt>
-                  <dd className="text-[#1b3d2e] font-black font-en">
-                    <Money data={cart?.cost?.subtotalAmount!} />
-                  </dd>
-               </div>
+                <div className="flex justify-between items-center text-[16px]">
+                   <dt className="text-gray-400 font-medium">{isEn ? 'Subtotal' : 'المجموع الفرعي'}</dt>
+                   <dd className="text-[#1b3d2e] font-black font-en">
+                     <Price data={cart?.cost?.subtotalAmount!} isEn={isEn} size="sm" />
+                   </dd>
+                </div>
 
-               <div className="flex justify-between items-start text-[16px]">
-                  <dt className="flex flex-col">
-                    <span className="text-gray-400 font-medium">{isEn ? 'Delivery charges' : 'رسوم التوصيل'}</span>
-                    <span className="text-[11px] text-gray-300 font-normal mt-1 max-w-[200px] leading-tight">
-                      {isEn ? 'Please note that specific regions and express delivery may incur extra delivery fees' : 'يرجى ملاحظة أن المناطق المحددة والتوصيل السريع قد تتطلب رسوم إضافية'}
-                    </span>
-                  </dt>
-                  <dd className="text-[#1b3d2e] font-black font-en">
-                    {isFreeDelivery ? (
-                      <span className="text-green-600 uppercase text-[12px]">{isEn ? 'Free' : 'مجاني'}</span>
-                    ) : (
-                      <Money data={{ amount: deliveryFee.toString(), currencyCode: 'SAR' }} />
-                    )}
-                  </dd>
-               </div>
+                <div className="flex justify-between items-start text-[16px]">
+                   <dt className="flex flex-col">
+                     <span className="text-gray-400 font-medium">{isEn ? 'Delivery charges' : 'رسوم التوصيل'}</span>
+                     <span className="text-[11px] text-gray-300 font-normal mt-1 max-w-[200px] leading-tight">
+                       {isEn ? 'Please note that specific regions and express delivery may incur extra delivery fees' : 'يرجى ملاحظة أن المناطق المحددة والتوصيل السريع قد تتطلب رسوم إضافية'}
+                     </span>
+                   </dt>
+                   <dd className="text-[#1b3d2e] font-black font-en">
+                     {isFreeDelivery ? (
+                       <span className="text-green-600 uppercase text-[12px]">{isEn ? 'Free' : 'مجاني'}</span>
+                     ) : (
+                       <Price data={{ amount: deliveryFee.toString(), currencyCode }} isEn={isEn} size="xs" />
+                     )}
+                   </dd>
+                </div>
+
+                {cart?.cost?.totalTaxAmount && (
+                  <div className="flex justify-between items-center text-[16px]">
+                    <dt className="text-gray-400 font-medium">{isEn ? 'VAT' : 'ضريبة القيمة المضافة'}</dt>
+                    <dd className="text-[#1b3d2e] font-black font-en">
+                      <Price data={cart.cost.totalTaxAmount} isEn={isEn} size="xs" />
+                    </dd>
+                  </div>
+                )}
 
                <div className="pt-6 border-t border-[#f8f5f2] flex justify-between items-center">
                   <dt className="text-[18px] font-black text-[#1b3d2e]">{isEn ? 'Total' : 'الإجمالي'}</dt>
                   <dd className="text-[22px] font-black text-[#1b3d2e] font-en">
-                    <Money data={cart?.cost?.totalAmount!} />
+                    <Price data={{ amount: calculatedTotal.toString(), currencyCode }} isEn={isEn} size="lg" />
                   </dd>
                </div>
             </div>
@@ -114,7 +133,9 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
           <div className="bg-white rounded-[24px] p-6 shadow-sm border border-[#f0ece8] flex flex-col gap-4">
              <div className="flex items-center justify-between">
                 <div className="flex flex-col">
-                   <span className="text-[11px] text-gray-400 font-bold uppercase">{isEn ? 'Fulfillment' : 'طريقة الاستلام'}</span>
+                   <span className="text-[11px] text-gray-400 font-bold uppercase">
+                     {fulfillmentType === 'Pickup' ? (isEn ? 'Pickup Branch' : 'فرع الاستلام') : (isEn ? 'Delivery Branch' : 'فرع التوصيل')}
+                   </span>
                    <span className="text-[14px] font-black text-[#1b3d2e]">{branch || (isEn ? 'Select Branch' : 'اختر الفرع')}</span>
                 </div>
                 <button onClick={() => window.dispatchEvent(new CustomEvent('openDeliveryModal'))} className="text-[12px] font-bold text-[#d4a06a] hover:underline">
@@ -127,14 +148,54 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
         </>
       )}
 
+      {layout === 'aside' && (
+        <div className="space-y-2 mb-4 px-1">
+          <div className="flex justify-between items-center text-[14px]">
+            <dt className="text-gray-400 font-medium">{isEn ? 'Subtotal' : 'المجموع الفرعي'}</dt>
+            <dd className="text-[#1b3d2e] font-bold font-en">
+              <Price data={cart?.cost?.subtotalAmount!} isEn={isEn} size="xs" />
+            </dd>
+          </div>
+          
+          <div className="flex justify-between items-center text-[14px]">
+            <dt className="text-gray-400 font-medium">{isEn ? 'Delivery' : 'التوصيل'}</dt>
+            <dd className="text-[#1b3d2e] font-bold font-en">
+              {isFreeDelivery ? (
+                <span className="text-green-600 uppercase text-[10px]">{isEn ? 'Free' : 'مجاني'}</span>
+              ) : (
+                <Price data={{ amount: deliveryFee.toString(), currencyCode }} isEn={isEn} size="xs" />
+              )}
+            </dd>
+          </div>
+
+          {cart?.cost?.totalTaxAmount && (
+            <div className="flex justify-between items-center text-[14px]">
+              <dt className="text-gray-400 font-medium">{isEn ? 'VAT' : 'ضريبة القيمة المضافة'}</dt>
+              <dd className="text-[#1b3d2e] font-bold font-en">
+                <Price data={cart.cost.totalTaxAmount} isEn={isEn} size="xs" />
+              </dd>
+            </div>
+          )}
+
+          <div className="pt-2 border-t border-[#f8f5f2] flex justify-between items-center">
+            <dt className="text-[15px] font-black text-[#1b3d2e]">{isEn ? 'Total' : 'الإجمالي'}</dt>
+            <dd className="text-[16px] font-black text-[#1b3d2e] font-en">
+              <Price data={{ amount: calculatedTotal.toString(), currencyCode }} isEn={isEn} size="sm" />
+            </dd>
+          </div>
+        </div>
+      )}
+
       {layout === 'page' ? (
         <CartCheckoutActions 
           checkoutUrl={cart?.checkoutUrl} 
           isEn={isEn} 
           disabled={!canCheckout}
-          totalAmount={subtotal + deliveryFee}
+          totalAmount={calculatedTotal}
+          currencyCode={currencyCode}
+          isPickup={isPickup}
           validationError={
-            !isMinOrderMet ? (isEn ? `Minimum order is SAR ${minOrderValue}` : `الحد الأدنى هو ${minOrderValue} ر.س`) :
+            !isMinOrderMet ? (isEn ? `Minimum order is ${currencyCode} ${minOrderValue}` : `الحد الأدنى هو ${minOrderValue} ${currencyCode === 'SAR' ? 'ر.س' : currencyCode}`) :
             !isBranchSelected ? (isEn ? 'Please select a branch' : 'يرجى اختيار الفرع') :
             null
           }
@@ -210,30 +271,45 @@ function CartCheckoutActions({
   isEn, 
   disabled, 
   validationError,
-  totalAmount
+  totalAmount,
+  currencyCode
 }: {
   checkoutUrl?: string; 
   isEn: boolean;
   disabled?: boolean;
   validationError?: string | null;
   totalAmount: number;
+  currencyCode: string;
+  isPickup?: boolean;
 }) {
   return (
     <div className="mt-2 flex flex-col gap-3">
       {checkoutUrl ? (
         <div className="flex flex-col gap-2">
           <a 
-            href={disabled ? '#' : checkoutUrl} 
+            href={(() => {
+              if (disabled || !checkoutUrl) return '#';
+              try {
+                const url = new URL(checkoutUrl);
+                if (isPickup) {
+                  url.searchParams.set('pickup', 'true');
+                  url.searchParams.set('fulfillment_type', 'pickup');
+                }
+                return url.toString();
+              } catch(e) {
+                return checkoutUrl;
+              }
+            })()}
             target="_self"
             onClick={(e) => {
               if (disabled) e.preventDefault();
             }}
-            className={`w-full ${disabled ? 'bg-[#e8e4e1] cursor-not-allowed text-[#888]' : 'bg-[#004f59] hover:bg-[#003840] text-white shadow-xl hover:-translate-y-1'} font-bold py-6 px-10 rounded-[32px] flex items-center justify-between transition-all group`}
+            className={`w-full ${disabled ? 'bg-[#e8e4e1] cursor-not-allowed text-[#888]' : 'bg-[#1b3d2e] hover:bg-[#d4a06a] text-white shadow-xl hover:-translate-y-1'} font-bold py-6 px-10 rounded-[32px] flex items-center justify-between transition-all group`}
           >
             <span className="text-[18px] text-white">{isEn ? 'Proceed To Checkout' : 'متابعة إتمام الطلب'}</span>
             <div className="flex items-center gap-4 text-white">
               <span className="text-[20px] font-black font-en">
-                 <Money data={{ amount: totalAmount.toString(), currencyCode: 'SAR' }} />
+                 <Price data={{ amount: totalAmount.toString(), currencyCode }} isEn={isEn} size="md" />
               </span>
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className={`${isEn ? '' : 'rotate-180'} transition-transform group-hover:translate-x-1`}>
                 <line x1="5" y1="12" x2="19" y2="12"></line>
@@ -312,7 +388,7 @@ function LoyaltyRedemptionUI({ isEn, cart }: { isEn: boolean, cart: any }) {
               {isEn ? 'You save' : 'أنت توفر'}
             </span>
             <span className="text-[16px] font-black text-[#27ae60] font-en">
-              {discountAmount.toFixed(2)} SAR
+              <Price data={{ amount: discountAmount.toString(), currencyCode }} isEn={isEn} size="sm" />
             </span>
           </div>
           <button 

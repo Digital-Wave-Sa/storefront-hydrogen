@@ -11,17 +11,18 @@ export async function action({ request, context }: ActionFunctionArgs) {
     }
 
     const formData = await request.formData();
-    const productHandle = formData.get('productHandle');
-    const customerName = formData.get('customerName');
+    const productHandle = formData.get('productHandle') || 'general-feedback';
+    const customerName = formData.get('customerName') || 'Verified Customer';
+    const orderId = formData.get('orderId');
     const rating = formData.get('rating');
+    const branchRating = formData.get('branchRating');
+    const branchName = formData.get('branchName');
     const title = formData.get('title');
     const comment = formData.get('comment');
     const language = formData.get('language') || 'en';
-    const locationId = formData.get('locationId');
-    const locationName = formData.get('locationName');
 
-    if (!productHandle || !rating || !customerName) {
-        return data({ error: 'Missing required fields' }, { status: 400 });
+    if (!rating) {
+        return data({ error: 'Missing rating' }, { status: 400 });
     }
 
     const mutation = `
@@ -48,15 +49,16 @@ export async function action({ request, context }: ActionFunctionArgs) {
     const fields = [
         { key: "product_handle", value: String(productHandle) },
         { key: "customer_name", value: String(customerName) },
-        { key: "rating", value: String(rating) }, // Shopify expects strings for all values in MetaobjectFieldInput
+        { key: "rating", value: String(rating) }, 
         { key: "review_title", value: String(title || '') },
         { key: "review_comment", value: String(comment || '') },
         { key: "language", value: String(language) },
         { key: "status", value: "Pending" }
     ];
 
-    if (locationId) fields.push({ key: "location_id", value: String(locationId) });
-    if (locationName) fields.push({ key: "location_name", value: String(locationName) });
+    if (orderId) fields.push({ key: "order_id", value: String(orderId) });
+    if (branchRating) fields.push({ key: "branch_rating", value: String(branchRating) });
+    if (branchName) fields.push({ key: "location_name", value: String(branchName) });
 
     const result = await adminApiQuery(domain, adminToken, mutation, {
         handle: reviewHandle,

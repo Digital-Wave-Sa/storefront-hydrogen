@@ -8,6 +8,7 @@ import {
   Image,
   Money,
   CartForm,
+  Analytics,
 } from '@shopify/hydrogen';
 import type {ProductItemFragment} from 'storefrontapi.generated';
 import {useVariantUrl} from '~/utils';
@@ -108,7 +109,8 @@ export default function Collection() {
   }, []);
 
   return (
-    <div className="collection-page" dir="rtl">
+    <div className="collection-page" dir={isEn ? 'ltr' : 'rtl'}>
+      <Analytics.CollectionView collection={collection} />
       {/* SEO Structured Data */}
       {typeof document !== 'undefined' && (
         <script
@@ -531,17 +533,19 @@ function ProductItem({
   view: 'grid' | 'list';
 }) {
   const [isNotifyModalOpen, setIsNotifyModalOpen] = useState(false);
-  const {selectedLocationId, selectedLocationName} = useOutletContext<{selectedLocationId?: string, selectedLocationName?: string}>();
-  const variant = product.variants.nodes[0];
+  const { selectedLocationId, selectedLocationName } = useOutletContext<{ selectedLocationId?: string, selectedLocationName?: string }>();
+  console.log(`[COLLECTION] Branch: ${selectedLocationName} | ID: ${selectedLocationId}`);
+  const variant = product.variants?.nodes[0];
   const variantUrl = useVariantUrl(product.handle, variant?.selectedOptions || []);
   
   const storeAvailabilityNodes = variant?.storeAvailability?.nodes || [];
-  const isAvailable = !getIsOutOfStock(
+  const isOutOfStock = getIsOutOfStock(
     selectedLocationId,
     selectedLocationName,
     storeAvailabilityNodes,
     product.availableForSale
   );
+  const isAvailable = !isOutOfStock;
 
   const rootData = useRouteLoaderData('root') as any;
   const locale = rootData?.locale || 'ar';
@@ -673,9 +677,9 @@ function ProductItem({
               <>
                 <AddToCartButton 
                     variantId={variant?.id} 
-                    disabled={!effectiveAvailable}
+                    disabled={!effectiveAvailable || isOutOfStock}
                     onNotifyClick={() => setIsNotifyModalOpen(true)}
-                    className="bg-[#1b3d2e] text-white px-8 py-3 rounded-xl font-bold text-sm hover:bg-[#2d5e4a] transition-all duration-300 shadow-md active:scale-95"
+                    className={`${effectiveAvailable && !isOutOfStock ? 'bg-[#1b3d2e] hover:bg-[#2d5e4a]' : 'bg-gray-300 cursor-not-allowed'} text-white px-8 py-3 rounded-xl font-bold text-sm transition-all duration-300 shadow-md active:scale-95`}
                 />
                 <Link to={variantUrl} className="bg-gray-100 text-gray-600 px-6 py-3 rounded-xl font-bold text-sm hover:bg-gray-200 transition-all">
                     التفاصيل
@@ -789,8 +793,9 @@ function ProductItem({
             <div className="mt-auto">
                 <AddToCartButton 
                       variantId={variant?.id} 
-                      disabled={false}
-                      className="w-full bg-[#1b3d2e] text-white py-3.5 rounded-2xl font-bold text-sm shadow-xl hover:bg-[#2d5e4a] transition-all"
+                      disabled={!effectiveAvailable || isOutOfStock}
+                      onNotifyClick={() => setIsNotifyModalOpen(true)}
+                      className={`w-full ${effectiveAvailable && !isOutOfStock ? 'bg-[#1b3d2e] hover:bg-[#2d5e4a]' : 'bg-gray-300 cursor-not-allowed'} text-white py-3.5 rounded-2xl font-bold text-sm shadow-xl transition-all`}
                   />
             </div>
           )}

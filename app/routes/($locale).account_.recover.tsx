@@ -1,6 +1,7 @@
 import { data, redirect, type ActionFunctionArgs, type LoaderFunctionArgs} from 'react-router';
 import {Form, Link, useActionData, useRouteLoaderData} from 'react-router';
 import {Button} from '~/components/layout/Button';
+import { getAdminToken } from '~/lib/shopify-admin.server';
 
 type ActionResponse = {
   error?: string;
@@ -31,11 +32,11 @@ export async function action({request, context}: ActionFunctionArgs) {
     }
 
     // DEBUG STEP: Check Admin API first to see if customer exists
-    const adminAccessToken = env.SHOPIFY_ADMIN_API_ACCESS_TOKEN;
-    if (adminAccessToken) {
+    const adminToken = await getAdminToken(env);
+    if (adminToken) {
       const adminResponse = await fetch(`https://${env.PUBLIC_STORE_DOMAIN}/admin/api/2024-01/customers/search.json?query=email:${email}`, {
         headers: {
-          'X-Shopify-Access-Token': adminAccessToken,
+          'X-Shopify-Access-Token': adminToken,
           'Content-Type': 'application/json',
         },
       });

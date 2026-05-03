@@ -4,9 +4,11 @@ import type { ActionFunctionArgs, LoaderFunctionArgs } from 'react-router';
 import { data, redirect, type MetaFunction } from 'react-router';
 import {
   Form,
+  Link,
   useActionData,
   useNavigation,
   useOutletContext,
+  useRouteLoaderData,
 } from 'react-router';
 import { Button } from '~/components/layout/Button';
 
@@ -171,6 +173,10 @@ export default function AccountProfile() {
   const { customer: loaderCustomer } = useOutletContext<{ customer: CustomerFragment }>();
   const navigation = useNavigation();
   const action = useActionData<ActionResponse>();
+  const rootData = useRouteLoaderData('root') as any;
+  const locale = rootData?.consent?.language?.toLowerCase() || 'ar';
+  const isEn = locale === 'en';
+  
   const customer = action?.customer ?? loaderCustomer;
   const isLoading = navigation.state !== 'idle';
   const isCompany = customer.lastName === '(Company)';
@@ -183,8 +189,26 @@ export default function AccountProfile() {
           {(customer.firstName?.[0] || customer.email?.[0] || 'U').toUpperCase()}
         </div>
         <div className="profile-meta-text">
-          <h2>{customer.firstName ? `${customer.firstName} ${isCompany ? '' : customer.lastName || ''}` : 'أهلاً بك!'}</h2>
-          <p>{isCompany ? 'حساب تجاري' : 'حساب فردي'} • {customer.email}</p>
+          <div className="flex justify-between items-start w-full">
+            <div>
+              <h2>{customer.firstName ? `${customer.firstName} ${isCompany ? '' : customer.lastName || ''}` : 'أهلاً بك!'}</h2>
+              <p>{isCompany ? 'حساب تجاري' : 'حساب فردي'} • {customer.email}</p>
+            </div>
+            {customer.tags?.some(tag => tag.toLowerCase() === 'admin' || tag.toLowerCase() === 'branch_manager') && (
+              <div className="flex gap-2">
+                <Link to="/account/dashboard">
+                  <Button variant="secondary" size="sm" className="border-[#d4a06a] text-[#d4a06a]">
+                    {isEn ? 'Dashboard' : 'اللوحة'}
+                  </Button>
+                </Link>
+                <Link to="/account/promotions">
+                  <Button variant="secondary" size="sm" className="border-[#d4a06a] text-[#d4a06a]">
+                    {isEn ? 'Promotions' : 'العروض'}
+                  </Button>
+                </Link>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

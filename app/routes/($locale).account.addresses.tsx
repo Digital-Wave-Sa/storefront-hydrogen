@@ -349,8 +349,8 @@ function AddressModal({ type, address, isDefault, onClose }: { type: 'create' | 
   };
 
   return (
-    <div className="address-modal-overlay" onClick={onClose}>
-      <div className="address-modal-container" onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={onClose}>
+      <div className="bg-[#fcfaf5] w-full max-w-2xl rounded-3xl p-6 md:p-8 relative shadow-2xl overflow-y-auto max-h-[90vh]" onClick={e => e.stopPropagation()}>
         <h3 className="account-heading" style={{ fontSize: '22px' }}>
           {type === 'create' ? 'إضافة عنوان جديد' : 'تعديل العنوان'}
         </h3>
@@ -652,8 +652,8 @@ function MapPickerDialog({
         </div>
 
         {/* Map Container */}
-        <div className="flex-1 relative bg-gray-100">
-          <div ref={mapRef} className="w-full h-full" />
+        <div className="flex-1 relative bg-gray-100 min-h-[300px]">
+          <div ref={mapRef} className="absolute inset-0 z-0" />
           
           {/* Custom Center Pin */}
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none mb-8">

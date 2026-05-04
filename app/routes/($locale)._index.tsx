@@ -7,6 +7,7 @@ import {DesignYourCake} from '~/components/DesignYourCake';
 import {ShopByOccasion} from '~/components/ShopByOccasion';
 import {NewArrivals} from '~/components/NewArrivals';
 import {OffersAndDiscounts} from '~/components/OffersAndDiscounts';
+import {WhoAreYouGifting} from '~/components/WhoAreYouGifting';
 import {LoyaltyProgram} from '~/components/LoyaltyProgram';
 
 export const meta: Route.MetaFunction = () => {
@@ -31,17 +32,27 @@ export async function loader(args: Route.LoaderArgs) {
 }
 
 async function loadCriticalData({context}: Route.LoaderArgs) {
-  const [{collections}] = await Promise.all([
+  const [{collections}, occasionsResult] = await Promise.all([
     context.storefront.query(FEATURED_COLLECTION_QUERY, {
       variables: {
         country: context.storefront.i18n.country,
         language: context.storefront.i18n.language,
       },
     }),
+    context.storefront.query(OCCASIONS_QUERY, {
+      variables: {
+        country: context.storefront.i18n.country,
+        language: context.storefront.i18n.language,
+      },
+    }).catch((error) => {
+      console.error('Failed to fetch occasions:', error);
+      return { collections: { nodes: [] } };
+    }),
   ]);
 
   return {
     featuredCollection: collections.nodes[0],
+    occasions: occasionsResult.collections.nodes,
   };
 }
 
@@ -105,10 +116,11 @@ export default function Homepage() {
         }}
       />
       <HeroSlider />
+      <ShopByOccasion collections={data.occasions} />
+      <WhoAreYouGifting collections={data.occasions} />
       <ShopByCategory />
       <DesignYourCake />
       <BestSellers products={data.recommendedProducts} />
-      <ShopByOccasion />
       <NewArrivals products={data.newArrivals} />
       <OffersAndDiscounts />
       <LoyaltyProgram />
@@ -318,6 +330,25 @@ const NEW_ARRIVALS_QUERY = `#graphql
     products(first: 4, sortKey: CREATED_AT, reverse: true) {
       nodes {
         ...NewArrivalProduct
+      }
+    }
+  }
+` as const;
+
+const OCCASIONS_QUERY = `#graphql
+  query Occasions($country: CountryCode, $language: LanguageCode)
+    @inContext(country: $country, language: $language) {
+    collections(first: 100) {
+      nodes {
+        id
+        title
+        handle
+        image {
+          url
+          altText
+          width
+          height
+        }
       }
     }
   }

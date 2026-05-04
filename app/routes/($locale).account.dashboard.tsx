@@ -15,7 +15,7 @@ export async function loader({ context }: LoaderFunctionArgs) {
   // 1. Verify if user is an Admin/Manager
   // We first get the customer ID from Storefront API (allowed)
   const { customer: sfCustomer } = await storefront.query(`#graphql
-    query getCustomerId($customerAccessToken: String!) {
+    query getDashboardCustomerId($customerAccessToken: String!) {
       customer(customerAccessToken: $customerAccessToken) {
         id
         tags

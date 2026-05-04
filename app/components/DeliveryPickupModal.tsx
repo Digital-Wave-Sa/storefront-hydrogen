@@ -295,11 +295,8 @@ export function DeliveryPickupModal({
                 .catch(err => console.error('Admin metafields fetch error:', err));
             
             // Sync selected branch ID from session
-            if (activeTab === 'pickup' && selectedLocationId) {
+            if (selectedLocationId) {
                 setSelectedBranch(selectedLocationId);
-            } else if (activeTab === 'delivery' && selectedAddressName && addresses.length > 0) {
-                const matchedAddr = addresses.find((a: any) => a.id === selectedLocationId || a.firstName + ' ' + a.lastName === selectedAddressName || a.address1 === selectedAddressName);
-                if (matchedAddr) setSelectedBranch(matchedAddr.id);
             }
 
             if (navigator.geolocation) {

@@ -330,6 +330,13 @@ export default function Product() {
   const [activeTab, setActiveTab] = useState('details');
   const [selectedAddons, setSelectedAddons] = useState<string[]>([]); // Array of Variant IDs
   const [note, setNote] = useState('');
+  const [isGiftMode, setIsGiftMode] = useState(false);
+  const [recipientName, setRecipientName] = useState('');
+  const [hideSender, setHideSender] = useState(false);
+  
+  // Check if product tags contain any variation of 'gift' (e.g., 'giftable', 'mothergift')
+  const isGiftable = product.tags?.some((t: string) => t.toLowerCase().includes('gift')) ?? false;
+
   const [recipientContact, setRecipientContact] = useState('');
   const [giftCardMessage, setGiftCardMessage] = useState('');
   const [sortBy, setSortBy] = useState<'newest' | 'highest' | 'lowest'>('newest');
@@ -841,19 +848,34 @@ export default function Product() {
                       </div>
                     )}
 
-                    {/* Gift Message */}
-                    {!isVisibilityBlocked && (
-                      <div className="mb-4">
-                        <label className="block text-xs font-bold text-gray-700 mb-2">
-                          {isEn ? 'Gift Message (Optional)' : 'رسالة إهداء (اختياري)'}
+                    {/* Premium Gifting Options */}
+                    {!isVisibilityBlocked && isGiftable && (
+                      <div className="mb-6 bg-[#fcf9f3] border border-[#f0ece8] rounded-2xl p-5 transition-all shadow-sm">
+                        <label className="flex items-center gap-3 cursor-pointer">
+                           <div className={`w-12 h-7 flex items-center rounded-full p-1 transition-colors duration-300 ${isGiftMode ? 'bg-[#295b45]' : 'bg-gray-300'}`} onClick={(e) => { e.preventDefault(); setIsGiftMode(!isGiftMode); }}>
+                              <div className={`bg-white w-5 h-5 rounded-full shadow-md transform transition-transform duration-300 ${isGiftMode ? (isEn ? 'translate-x-5' : '-translate-x-5') : 'translate-x-0'}`}></div>
+                           </div>
+                           <span className="text-[15px] font-black text-[#1a1a1a]">
+                              {isEn ? 'Send as a Gift 🎁' : 'إرسال كهدية 🎁'}
+                           </span>
                         </label>
-                        <textarea
-                          value={note}
-                          onChange={(e) => setNote(e.target.value)}
-                          className="w-full p-3 text-sm border border-gray-200 rounded-xl focus:ring-[#295b45] focus:border-[#295b45] resize-none"
-                          placeholder={isEn ? 'Write your message...' : 'اكتب رسالتك هنا...'}
-                          rows={2}
-                        />
+                        
+                        {isGiftMode && (
+                           <div className="mt-5 flex flex-col gap-4 animate-fade-in border-t border-gray-200/60 pt-4">
+                              <div>
+                                 <label className="block text-xs font-bold text-gray-700 mb-1.5">{isEn ? 'Recipient Name' : 'اسم المستلم'}</label>
+                                 <input type="text" value={recipientName} onChange={e => setRecipientName(e.target.value)} className="w-full p-3 text-sm border border-gray-200 rounded-xl focus:ring-[#295b45] focus:border-[#295b45] bg-white shadow-inner" placeholder={isEn ? "e.g. Sarah" : "مثال: سارة"} />
+                              </div>
+                              <div>
+                                 <label className="block text-xs font-bold text-gray-700 mb-1.5">{isEn ? 'Gift Message (Optional)' : 'رسالة إهداء (اختياري)'}</label>
+                                 <textarea value={note} onChange={e => setNote(e.target.value)} rows={3} className="w-full p-3 text-sm border border-gray-200 rounded-xl focus:ring-[#295b45] focus:border-[#295b45] resize-none bg-white shadow-inner" placeholder={isEn ? "Write a lovely message..." : "اكتب رسالة جميلة..."}></textarea>
+                              </div>
+                              <label className="flex items-center gap-2 cursor-pointer mt-1 w-fit">
+                                 <input type="checkbox" checked={hideSender} onChange={e => setHideSender(e.target.checked)} className="w-4 h-4 rounded text-[#295b45] focus:ring-[#295b45] border-gray-300" />
+                                 <span className="text-[13px] font-bold text-gray-600">{isEn ? 'Hide my name (Anonymous Gift)' : 'إخفاء اسمي (هدية سرية)'}</span>
+                              </label>
+                           </div>
+                        )}
                       </div>
                     )}
 
@@ -894,7 +916,12 @@ export default function Product() {
                                 selectedVariant,
                                 attributes: [
                                   {key: '_groupId', value: groupId},
-                                  ...(note ? [{key: 'Gift Message', value: note}] : []),
+                                  ...(isGiftMode ? [
+                                    {key: '_isGift', value: 'true'},
+                                    ...(recipientName ? [{key: 'Recipient Name', value: recipientName}] : []),
+                                    ...(note ? [{key: 'Gift Message', value: note}] : []),
+                                    {key: '_hideSender', value: hideSender ? 'Yes' : 'No'},
+                                  ] : (note ? [{key: 'Order Note', value: note}] : [])),
                                 ],
                               };
 

@@ -51,7 +51,7 @@ export function BestSellers({
 
                 {/* Section Header */}
                 <div className="text-center mb-10 flex flex-col items-center">
-                    <h2 className="text-3xl md:text-4xl font-bold text-[#1a1a1a] mb-2 flex items-center justify-center gap-2">
+                    <h2 className="text-[40px] lg:text-[56px] font-black text-[#1a1a1a] mb-2 flex items-center justify-center gap-2 leading-tight">
                         {isEn ? 'Best Sellers 🔥' : 'أفضل المبيعات 🔥'}
                     </h2>
                     <p className="text-gray-500 text-sm md:text-base mb-4">{isEn ? 'Most wanted this week' : 'الأكثر طلباً هذا الأسبوع'}</p>

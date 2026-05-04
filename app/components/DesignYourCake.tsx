@@ -1,130 +1,169 @@
 import { Link, useOutletContext } from 'react-router';
-import { Button } from './layout/Button';
 import { useI18n } from '~/lib/i18n';
 
 export function DesignYourCake() {
     const { locale } = useOutletContext<{ locale: string }>();
-    const t = useI18n(locale);
     const isEn = locale === 'en';
 
     return (
-        <section className={`relative w-full bg-[#234745] overflow-hidden ${isEn ? 'font-en' : 'font-ar'} py-16 lg:py-24 my-8`} dir={isEn ? 'ltr' : 'rtl'}>
-
-            {/* Abstract Background Pattern Overlay */}
-            <div
-                className="absolute inset-0 opacity-[0.04] pointer-events-none"
+        <section 
+            className={`relative w-full min-h-[620px] overflow-hidden ${isEn ? 'font-en' : 'font-ar'}`} 
+            dir={isEn ? 'ltr' : 'rtl'}
+            style={{
+                backgroundImage: `url('/images/cake-builder/cake-bg.webp')`,
+                backgroundSize: 'cover',
+                backgroundPosition: isEn ? 'right center' : 'left center',
+            }}
+        >
+            {/* Gradient overlay: transparent on cake side, solid on UI side */}
+            <div 
+                className="absolute inset-0"
                 style={{
-                    backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cpath d=\'M54.627 0l1.43 1.43-23.86 23.861-1.43-1.43L54.627 0zm-49.254 0L6.803 1.43 30.664 25.291l-1.43 1.43L5.373 0zM30 30L5.373 54.627l1.43-1.43L30 29.336l23.197 23.86 1.43 1.43L30 30z\' fill=\'%23ffffff\' fill-rule=\'evenodd\'/%3E%3C/svg%3E")',
-                    backgroundSize: '120px'
+                    background: isEn 
+                        ? 'linear-gradient(to left, transparent 5%, rgba(248,246,242,0.7) 35%, rgba(248,246,242,0.95) 50%, rgba(248,246,242,1) 60%)' 
+                        : 'linear-gradient(to right, transparent 5%, rgba(248,246,242,0.7) 35%, rgba(248,246,242,0.95) 50%, rgba(248,246,242,1) 60%)'
                 }}
             ></div>
 
-            <div className="max-w-[1400px] mx-auto px-6 relative z-10">
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-12 lg:gap-8 items-center lg:items-stretch min-h-[500px]">
+            <div className="relative z-10 max-w-[1400px] mx-auto px-6 py-10 lg:py-14 flex items-center">
+                
+                {/* UI Content - First in DOM: goes RIGHT in RTL, LEFT in LTR */}
+                <div className="w-full lg:w-[60%] flex flex-col">
+                    
+                    {/* Header */}
+                    <div className="text-center mb-8">
+                        <div className="flex justify-center mb-2">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#8bab9e" strokeWidth="1.5">
+                                <path d="M12 2L14 8L20 9L15.5 13.5L17 20L12 17L7 20L8.5 13.5L4 9L10 8L12 2Z" strokeLinejoin="round" strokeLinecap="round"/>
+                            </svg>
+                        </div>
+                        <p className="text-[#9a7e6f] font-bold text-[13px] mb-4 tracking-wide">
+                            {isEn ? 'Create an unforgettable moment – step by step' : 'أصنع لحظة لا تُنسى – خطوة بخطوة'}
+                        </p>
+                        <h2 className="text-[36px] lg:text-[46px] font-black text-[#1b3d2e] leading-[1.15] mb-3">
+                            {isEn ? 'Design a cake for your occasion' : 'صمم كيكة تناسب مناسبتك'}
+                        </h2>
+                        <p className="text-[#8a9e9a] font-bold text-[15px]">
+                            {isEn 
+                                ? 'Choose the size, flavor, decoration, and your special message with ease' 
+                                : 'إختر الحجم والنكهة والتزيين ورسالتك الخاصة بكل سهولة'}
+                        </p>
+                    </div>
 
-                    {/* Left Column */}
-                    <div className="flex flex-col justify-between items-start h-full gap-16 lg:gap-0 lg:pt-8 lg:pb-8">
-                        {/* Top Floating Badge */}
-                        <div className="bg-[#BBCFCD]/20 backdrop-blur-sm border border-white/10 rounded-[28px] px-8 py-5 flex flex-col items-center justify-center gap-1.5 shadow-lg max-w-[160px] mx-auto lg:mx-0 mr-auto lg:mr-24 relative">
-                            <span className="text-[16px]">🎀</span>
-                            <h4 className="text-white font-bold text-[18px] tracking-tight leading-none mb-1">{isEn ? 'Premium Wrapping' : 'تغليف فاخر'}</h4>
-                            <span className="text-white/60 text-[13px] font-medium leading-none">{isEn ? 'Free' : 'مجاناً'}</span>
+                    {/* Step Cards */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
+                        {/* Step 1 */}
+                        <div className="bg-white/60 backdrop-blur-sm rounded-[18px] p-4 flex flex-col items-center justify-center text-center gap-2.5 min-h-[130px] shadow-[0_2px_10px_rgba(0,0,0,0.03)]">
+                            <div className="w-10 h-10 rounded-full bg-[#c5d5d0] flex items-center justify-center text-white font-black text-[14px]">
+                                {isEn ? '1' : '١'}
+                            </div>
+                            <span className="font-bold text-[#7a8e8a] text-[13px]">{isEn ? 'Choose Size' : 'اختر الحجم'}</span>
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#8bab9e" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                                <rect x="2" y="14" width="20" height="6" rx="2"/><rect x="5" y="8" width="14" height="6" rx="2"/><rect x="8" y="3" width="8" height="5" rx="1.5"/>
+                            </svg>
+                        </div>
+                        
+                        {/* Step 2 (Active) */}
+                        <div className="bg-white rounded-[18px] p-4 flex flex-col items-center justify-center text-center gap-2.5 min-h-[130px] border-[2px] border-[#1b3d2e] shadow-sm">
+                            <div className="w-10 h-10 rounded-full bg-[#1b3d2e] flex items-center justify-center text-white font-black text-[14px]">
+                                {isEn ? '2' : '٢'}
+                            </div>
+                            <span className="font-black text-[#1b3d2e] text-[13px]">{isEn ? 'Choose Flavor' : 'أختر النكهة'}</span>
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#1b3d2e" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/>
+                            </svg>
                         </div>
 
-                        {/* Bottom Text Area */}
-                        <div className={`text-white w-full max-w-[320px] mx-auto lg:mx-0 ${isEn ? 'text-left' : 'text-right'}`}>
-                            <h5 className="font-bold text-[17px] mb-2 text-white/90">{isEn ? 'A cake exactly to your taste' : 'كيكة على ذوقك بالضبط'}</h5>
-                            <h2 className="text-[48px] lg:text-[56px] font-black leading-[1.1] mb-5 tracking-tight">{isEn ? <>Your Cake<br />Your Touch</> : <>كيكتك<br />بلمستك</>}</h2>
-                            <p className="text-[14px] leading-[1.8] text-white/80 font-medium">{isEn ? 'Choose flavor, shape, size, add your special message and Chef Saadeddin will make it with his own hands from finest ingredients & deliver fresh same day.' : 'اختار النكهة والشكل والحجم، وحط رسالتك المميزة وشيف سعد الدين يعملها بأيديه من أجود المكونات وتوصلك طازجة في نفس اليوم'}</p>
+                        {/* Step 3 */}
+                        <div className="bg-white/60 backdrop-blur-sm rounded-[18px] p-4 flex flex-col items-center justify-center text-center gap-2.5 min-h-[130px] shadow-[0_2px_10px_rgba(0,0,0,0.03)]">
+                            <div className="w-10 h-10 rounded-full bg-[#c5d5d0] flex items-center justify-center text-white font-black text-[14px]">
+                                {isEn ? '3' : '٣'}
+                            </div>
+                            <span className="font-bold text-[#7a8e8a] text-[13px]">{isEn ? 'Choose Decoration' : 'اختر التزيين'}</span>
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#8bab9e" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                                <circle cx="12" cy="12" r="10"/><path d="M8 12s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/>
+                            </svg>
+                        </div>
+
+                        {/* Step 4 */}
+                        <div className="bg-white/60 backdrop-blur-sm rounded-[18px] p-4 flex flex-col items-center justify-center text-center gap-2.5 min-h-[130px] shadow-[0_2px_10px_rgba(0,0,0,0.03)]">
+                            <div className="w-10 h-10 rounded-full bg-[#c5d5d0] flex items-center justify-center text-white font-black text-[14px]">
+                                {isEn ? '4' : '٤'}
+                            </div>
+                            <span className="font-bold text-[#7a8e8a] text-[12px] leading-snug">{isEn ? 'Add Your Message' : 'أضف رسالتك الخاصة'}</span>
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#8bab9e" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                            </svg>
                         </div>
                     </div>
 
-                    {/* Center Column (Cake & Title) */}
-                    <div className="flex flex-col items-center justify-between h-full text-center relative z-20">
-                        <div className="mb-8">
-                            <h2 className="text-[42px] lg:text-[52px] font-black text-white leading-tight tracking-tight mb-2 drop-shadow-md">{t.homepage.buildYourOwnCake}</h2>
-                            <p className="text-white/90 font-bold text-[16px] bg-white/10 inline-block px-5 py-1.5 rounded-full backdrop-blur-sm">{isEn ? 'Best Seller' : 'الأكثر مبيعاً'}</p>
+                    {/* Flavor Selector */}
+                    <div className="mb-8">
+                        <h4 className={`font-black text-[#1b3d2e] text-[16px] mb-4 ${isEn ? 'text-left' : 'text-right'}`}>
+                            {isEn ? 'Choose Flavor' : 'أختر النكهة'}
+                        </h4>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                            {/* Active - Vanilla */}
+                            <div className="relative bg-white border-[1.5px] border-[#1b3d2e] rounded-[16px] py-3.5 px-3 flex items-center justify-center gap-2 cursor-pointer shadow-sm">
+                                <img src="/images/cake-builder/vanilla.png" alt="Vanilla" className="w-9 h-9 object-contain" />
+                                <span className="font-bold text-[#1b3d2e] text-[14px]">{isEn ? 'Vanilla' : 'فانيليا'}</span>
+                                <div className={`absolute -top-1.5 ${isEn ? '-right-1.5' : '-left-1.5'} w-[22px] h-[22px] bg-[#1b3d2e] rounded-full flex items-center justify-center border-[2px] border-white shadow`}>
+                                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                </div>
+                            </div>
+                            {/* Chocolate */}
+                            <div className="bg-white border border-[#e5e7e6] rounded-[16px] py-3.5 px-3 flex items-center justify-center gap-2 cursor-pointer hover:border-[#1b3d2e]/40 transition-colors shadow-sm">
+                                <img src="/images/cake-builder/chocolate.png" alt="Chocolate" className="w-9 h-9 object-contain" />
+                                <span className="font-bold text-[#4a5e59] text-[14px]">{isEn ? 'Chocolate' : 'شوكولاته'}</span>
+                            </div>
+                            {/* Caramel */}
+                            <div className="bg-white border border-[#e5e7e6] rounded-[16px] py-3.5 px-3 flex items-center justify-center gap-2 cursor-pointer hover:border-[#1b3d2e]/40 transition-colors shadow-sm">
+                                <img src="/images/cake-builder/caramel.png" alt="Caramel" className="w-9 h-9 object-contain" />
+                                <span className="font-bold text-[#4a5e59] text-[14px]">{isEn ? 'Caramel' : 'كراميل'}</span>
+                            </div>
+                            {/* Red Velvet */}
+                            <div className="bg-white border border-[#e5e7e6] rounded-[16px] py-3.5 px-3 flex items-center justify-center gap-2 cursor-pointer hover:border-[#1b3d2e]/40 transition-colors shadow-sm">
+                                <img src="/images/cake-builder/redvelvet.png" alt="Red Velvet" className="w-9 h-9 object-contain" />
+                                <span className="font-bold text-[#4a5e59] text-[14px]">{isEn ? 'Red Velvet' : 'ريد فلفيت'}</span>
+                            </div>
                         </div>
+                    </div>
 
-                        {/* Cake Graphic */}
-                        <div className="relative w-full max-w-[340px] aspect-square flex items-center justify-center mx-auto mb-8 lg:mb-12">
-                            {/* Stand Glow */}
-                            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-[80%] h-6 bg-white/20 blur-xl rounded-full"></div>
-                            {/* Stand Base */}
-                            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 w-[85%] h-8 bg-[#fdfdfd] rounded-[50%] shadow-[0_4px_15px_rgba(0,0,0,0.1)] border-b-4 border-gray-200"></div>
-                            <div className="absolute bottom-10 left-1/2 -translate-x-1/2 w-[70%] h-8 bg-[#e8e8e8] rounded-[50%] z-0"></div>
-
-                            {/* Cake Layers (Placeholder CSS Art for mock, easily replaceable by an img tag later) */}
-                            <div className="relative z-10 flex flex-col items-center w-full mt-10">
-                                {/* Top Tier */}
-                                <div className="w-[45%] h-[50px] bg-[#BBCFCD]/60 rounded-[20px] relative z-30 shadow-[inset_0_-8px_0_rgba(0,0,0,0.08)] border-t-8 border-t-white">
-                                    {/* Candles */}
-                                    <div className="absolute -top-12 left-1/2 -translate-x-1/2 flex gap-3">
-                                        {[1, 2, 3, 4, 5].map(i => (
-                                            <div key={i} className="w-2.5 h-10 bg-[#ff8f8f] rounded-full relative shadow-sm">
-                                                <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-2 h-3 bg-[#ffe600] rounded-[50%_50%_50%_50%/60%_60%_40%_40%] animate-pulse"></div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                                {/* Middle Tier */}
-                                <div className="w-[65%] h-[60px] bg-[#BBCFCD]/80 rounded-[24px] relative z-20 -mt-4 shadow-[inset_0_-8px_0_rgba(0,0,0,0.08)] border-t-8 border-t-white flex items-center justify-center">
-                                    <span className="text-white font-bold text-[11px] font-en tracking-wider drop-shadow-md">✨ Happy Birthday</span>
-                                </div>
-                                {/* Bottom Tier */}
-                                <div className="w-[85%] h-[75px] bg-[#BBCFCD] rounded-[28px] relative z-10 -mt-4 shadow-[inset_0_-10px_0_rgba(0,0,0,0.1)] border-t-[10px] border-t-white"></div>
+                    {/* Bottom Action Bar */}
+                    <div className="flex flex-col-reverse md:flex-row items-center gap-4 bg-[#eef1ef]/30 rounded-[20px] p-2.5">
+                        
+                        {/* Trust Badges */}
+                        <div className="flex-1 flex flex-wrap justify-center md:justify-evenly items-center gap-x-3 gap-y-2 text-[12px] font-bold text-[#1b3d2e] px-2">
+                            <div className="flex items-center gap-2">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1b3d2e" strokeWidth="1.5"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                                <span className="whitespace-pre leading-snug text-[11px]">{isEn ? 'Made with\nCare' : 'صُنع بحب\nوبعناية'}</span>
+                            </div>
+                            <div className="w-[1px] h-8 bg-[#c5d5d0]/70 hidden md:block"></div>
+                            <div className="flex items-center gap-2">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1b3d2e" strokeWidth="1.5"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+                                <span className="whitespace-pre leading-snug text-[11px]">{isEn ? 'Refrigerated Delivery\nfor Quality' : 'توصيل مبرد\nلضمان الجودة'}</span>
+                            </div>
+                            <div className="w-[1px] h-8 bg-[#c5d5d0]/70 hidden md:block"></div>
+                            <div className="flex items-center gap-2">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1b3d2e" strokeWidth="1.5"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>
+                                <span className="whitespace-pre leading-snug text-[11px]">{isEn ? 'Premium\nIngredients' : 'مكونات\nفاخرة'}</span>
                             </div>
                         </div>
 
-                        <Button
-                            to={isEn ? "/en/collections" : "/collections"}
-                            variant="light"
-                            size="lg"
-                            className="text-[#234745] w-[260px] shadow-xl hover:shadow-2xl"
-                            rightIcon={<span className="text-xl">🎂</span>}
+                        {/* CTA Button - Wide, matching mockup proportions */}
+                        <Link 
+                            to={isEn ? "/en/collections/custom-cakes" : "/collections/custom-cakes"}
+                            className="py-5 bg-[#1b3d2e] hover:bg-[#264f3e] rounded-full font-black text-[19px] transition-all shadow-lg hover:shadow-xl w-full md:w-[45%] text-center shrink-0 whitespace-nowrap"
+                            style={{ color: '#ffffff' }}
                         >
                             {isEn ? 'Start Designing Now' : 'إبدأ تصميمك الان'}
-                        </Button>
-                    </div>
-
-                    {/* Right Column */}
-                    <div className="flex flex-col justify-between items-start lg:items-end h-full gap-16 lg:gap-0 lg:pt-8 lg:pb-8">
-                        {/* Top Floating Badge */}
-                        <div className="bg-[#BBCFCD]/20 backdrop-blur-sm border border-white/10 rounded-[28px] px-8 py-5 flex flex-col items-center justify-center gap-1.5 shadow-lg max-w-[160px] mx-auto lg:mx-0 ml-auto lg:ml-24 relative">
-                            <span className="text-[16px]">✏️</span>
-                            <h4 className="text-white font-bold text-[18px] tracking-tight leading-none mb-1">{isEn ? 'Your Message' : 'رسالتك عليه'}</h4>
-                            <span className="text-white/60 text-[13px] font-medium leading-none font-en">{isEn ? '100% Custom' : 'مخصص ١٠٠٪'}</span>
-                        </div>
-
-                        {/* Bottom Features List */}
-                        <div className={`text-white w-full max-w-[320px] mx-auto lg:mx-0 flex flex-col ${isEn ? 'lg:items-start text-center lg:text-left' : 'lg:items-end text-center lg:text-right'}`}>
-                            <h5 className={`font-bold text-[17px] mb-6 text-white leading-relaxed ${isEn ? 'border-l-4 lg:border-l-4 lg:border-r-0 pl-4 lg:pl-4 pr-0' : 'border-r-4 lg:border-r-0 lg:border-l-4 pr-4 lg:pr-0 lg:pl-4'} border-white`}>
-                                {isEn ? <>Choose shape, flavor, colors and toppings<br />and add your special message</> : <>اختار الشكل والنكهة والألوان والتوبينج<br />وأضف رسالتك الخاصة</>}
-                            </h5>
-
-                            <ul className={`flex flex-col gap-4 ${isEn ? 'text-left items-start' : 'text-right items-end'} w-full`}>
-                                {(isEn ? [
-                                    '6 Different Shapes',
-                                    '+10 Premium Flavors',
-                                    'Custom Message',
-                                    'Photo Printing'
-                                ] : [
-                                    '٦ أشكال مختلفة',
-                                    '+١٠ نكهة فاخرة',
-                                    'رسالة مخصصة',
-                                    'طباعة صورة'
-                                ]).map((item, index) => (
-                                    <li key={index} className={`flex items-center ${isEn ? 'justify-start' : 'justify-end'} gap-3 text-[15px] font-bold text-white/95`}>
-                                        {isEn && <div className="w-6 h-6 rounded-full bg-white flex items-center justify-center shrink-0 shadow-sm text-black text-xs font-black">✓</div>}
-                                        {item}
-                                        {!isEn && <div className="w-6 h-6 rounded-full bg-white flex items-center justify-center shrink-0 shadow-sm text-black text-xs font-black">✓</div>}
-                                    </li>
-                                ))}
-                            </ul>
-                        </div>
+                        </Link>
                     </div>
 
                 </div>
+
+                {/* Spacer for the cake image area - Second in DOM: goes LEFT in RTL, RIGHT in LTR */}
+                <div className="hidden lg:block lg:w-[40%] shrink-0"></div>
             </div>
         </section>
     );

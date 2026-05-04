@@ -12,9 +12,8 @@ export function OffersAndDiscounts() {
 
                 {/* Section Header */}
                 <div className="text-center mb-12 flex flex-col items-center">
-                    <h2 className="text-3xl md:text-[38px] font-black text-[#1a1a1a] mb-3 leading-tight">{t.homepage.offersAndDiscounts}</h2>
+                    <h2 className="text-[40px] lg:text-[56px] font-black text-[#1a1a1a] mb-3 leading-tight">{t.homepage.offersAndDiscounts}</h2>
                     <p className="text-gray-400 text-[15px] font-medium mb-4">{isEn ? 'Exclusive limited time offers' : 'أقوى العروض لفترة محدودة'}</p>
-                    <div className="w-12 h-1 bg-[#295b45] rounded-full"></div>
                 </div>
 
                 {/* Row 1: Small (right in RTL) + Large (left in RTL) */}

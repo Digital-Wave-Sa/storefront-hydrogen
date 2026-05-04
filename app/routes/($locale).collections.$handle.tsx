@@ -646,78 +646,7 @@ const COLLECTION_QUERY = `#graphql
         reverse: $reverse
       ) {
         nodes {
-          id
-          handle
-          title
-          productType
-          availableForSale
-          tags
-          variants(first: 10) {
-            nodes {
-              id
-              title
-              image {
-                url
-                altText
-                width
-                height
-              }
-              price {
-                amount
-                currencyCode
-              }
-              compareAtPrice {
-                amount
-                currencyCode
-              }
-              selectedOptions {
-                name
-                value
-              }
-              product {
-                handle
-                title
-              }
-              storeAvailability(first: 250) {
-                nodes {
-                  available
-                  location {
-                    id
-                    name
-                  }
-                }
-              }
-            }
-          }
-          featuredImage {
-            id
-            altText
-            url
-            width
-            height
-          }
-          priceRange {
-            minVariantPrice {
-              ...MoneyProductItem
-            }
-            maxVariantPrice {
-              ...MoneyProductItem
-            }
-          }
-          compareAtPriceRange {
-            minVariantPrice {
-              ...MoneyProductItem
-            }
-          }
-          visibility_start: metafield(namespace: "custom", key: "visibility_start") {
-            value
-          }
-          visibility_end: metafield(namespace: "custom", key: "visibility_end") {
-            value
-          }
-          is_limited_time: metafield(namespace: "custom", key: "is_limited_time") {
-            value
-          }
+          ...ProductItem
         }
         filters {
           id

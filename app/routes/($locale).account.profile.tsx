@@ -85,7 +85,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
     const { customer: currentCustomer } = await storefront.query(
       `#graphql
-      query getCustomerId($customerAccessToken: String!) {
+      query getProfileCustomerId($customerAccessToken: String!) {
         customer(customerAccessToken: $customerAccessToken) {
           id
         }

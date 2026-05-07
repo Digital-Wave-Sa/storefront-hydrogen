@@ -39,6 +39,7 @@ export async function loader({ context }: LoaderFunctionArgs) {
         language: storefront.i18n.language,
       },
     });
+    console.log('--- DEBUG CAKE ATTRIBUTES ---', JSON.stringify(metaobjects.nodes, null, 2));
     return { locale, cakeAttributes: metaobjects.nodes };
   } catch (error) {
     console.error('Failed to fetch cake attributes:', error);
@@ -101,6 +102,7 @@ export default function CustomCakeBuilder() {
   const [selectedColor, setSelectedColor] = useState(dynamicColors[0] || COLORS[6]); 
   const [layers, setLayers] = useState(2);
   const [selectedTopping, setSelectedTopping] = useState(dynamicToppings[0] || TOPPINGS[0]);
+  const [cakeMessage, setCakeMessage] = useState('');
 
   // --- PRICE CALCULATION ---
   const basePrice = 150.00;
@@ -192,6 +194,7 @@ export default function CustomCakeBuilder() {
                        layers={layers}
                        color={selectedColor.hex}
                        secondaryColor={selectedColor.hex}
+                       message={cakeMessage}
                      />
                   </div>
                   
@@ -253,14 +256,40 @@ export default function CustomCakeBuilder() {
                     />
                   )}
                   {currentStep > 4 && (
-                    <div className="flex flex-col items-center justify-center py-24 text-center">
-                      <div className="w-20 h-20 bg-[#234745]/5 rounded-full flex items-center justify-center mb-6 animate-spin-slow">
-                        <svg className="w-10 h-10 text-[#234745]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                        </svg>
+                    <div className="flex flex-col animate-step-enter" dir={isEn ? 'ltr' : 'rtl'}>
+                      <div className="mb-8">
+                        <h2 className="text-2xl font-bold text-[#234745] mb-2">
+                          {isEn ? 'Personalize Your Cake' : 'أضف لمستك الشخصية'}
+                        </h2>
+                        <p className="text-gray-400 text-sm">
+                          {isEn ? 'Write a custom message to be written on top of the cake with frosting.' : 'اكتب رسالة مخصصة لتُكتب على سطح الكيكة بالكريمة.'}
+                        </p>
                       </div>
-                      <h3 className="text-2xl font-black text-[#1a1a1a] mb-2">{isEn ? 'Final Review' : 'المراجعة النهائية'}</h3>
-                      <p className="text-gray-400 max-w-xs">{isEn ? 'Preparing your custom cake to be added to the cart...' : 'يتم تجهيز كيكتك المخصصة لإضافتها للسلة...'}</p>
+
+                      <div className="bg-[#F8F9FA] rounded-2xl p-6 border border-gray-100 mb-8">
+                        <label className="block text-sm font-bold text-[#234745] mb-3">
+                          {isEn ? 'Cake Message (Optional)' : 'رسالة الكيكة (اختياري)'}
+                        </label>
+                        <input 
+                          type="text" 
+                          value={cakeMessage}
+                          onChange={(e) => setCakeMessage(e.target.value)}
+                          placeholder={isEn ? "e.g., Happy Birthday Sara!" : "مثال: عيد ميلاد سعيد!"}
+                          maxLength={30}
+                          className="w-full px-4 py-4 rounded-xl border border-gray-200 focus:border-[#234745] focus:ring-1 focus:ring-[#234745] transition-all bg-white outline-none"
+                        />
+                        <p className="text-xs text-gray-400 mt-2 text-end">
+                          {cakeMessage.length}/30
+                        </p>
+                      </div>
+                      
+                      <div className="flex justify-center mt-4 p-6 bg-[#234745]/5 rounded-xl border border-[#234745]/10 border-dashed">
+                        {/* We will build the actual Add to Cart button here in Story 3.1.5 */}
+                        <div className="text-sm text-[#d4a06a] font-bold flex items-center gap-2">
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
+                          {isEn ? 'Ready for Add to Cart integration (Story 3.1.5)' : 'جاهز للربط مع السلة (القصة ٣.١.٥)'}
+                        </div>
+                      </div>
                     </div>
                   )}
                 </div>

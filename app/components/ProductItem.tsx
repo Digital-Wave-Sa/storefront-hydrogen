@@ -110,7 +110,7 @@ export function ProductItem({
                       <span>⏳</span> {isEn ? 'Limited Time' : 'لفترة محدودة'}
                   </span>
               )}
-              {!isVisibilityBlocked && product.compareAtPriceRange?.minVariantPrice && parseFloat(product.compareAtPriceRange.minVariantPrice.amount) > parseFloat(product.priceRange.minVariantPrice.amount) && (
+              {!isVisibilityBlocked && product.compareAtPriceRange?.minVariantPrice && product.priceRange?.minVariantPrice && parseFloat(product.compareAtPriceRange.minVariantPrice.amount) > parseFloat(product.priceRange.minVariantPrice.amount) && (
                   <span className="text-[9px] font-black px-2 py-1 rounded-lg shadow-sm bg-[#e74c3c] text-white flex items-center gap-1">
                       <span>🔥</span> {isEn ? 'Sale' : 'تخفيض'}
                   </span>
@@ -133,7 +133,7 @@ export function ProductItem({
           <Link to={isVisibilityBlocked ? '#' : variantUrl} prefetch="intent" onClick={isVisibilityBlocked ? (e: any) => e.preventDefault() : undefined}>
             <h4 className={`text-xl md:text-2xl font-black text-gray-800 mb-2 truncate transition-colors ${isVisibilityBlocked ? '' : 'group-hover:text-[#234745]'}`}>{product.title}</h4>
           </Link>
-          {!isVisibilityBlocked && (
+          {!isVisibilityBlocked && product.priceRange && (
             <Price 
               data={product.priceRange.minVariantPrice} 
               size="lg" 
@@ -230,7 +230,7 @@ export function ProductItem({
                       <span>⏳</span> {isEn ? 'Limited Time' : 'لفترة محدودة'}
                   </div>
               )}
-              {!isVisibilityBlocked && product.compareAtPriceRange?.minVariantPrice && parseFloat(product.compareAtPriceRange.minVariantPrice.amount) > parseFloat(product.priceRange.minVariantPrice.amount) && (
+              {!isVisibilityBlocked && product.compareAtPriceRange?.minVariantPrice && product.priceRange?.minVariantPrice && parseFloat(product.compareAtPriceRange.minVariantPrice.amount) > parseFloat(product.priceRange.minVariantPrice.amount) && (
                   <div className="text-[10px] font-black px-2.5 py-1.5 rounded-xl shadow-sm bg-[#e74c3c] text-white flex items-center gap-1.5 mt-1">
                       <span>🔥</span> {isEn ? 'Sale' : 'تخفيض'}
                   </div>
@@ -244,7 +244,7 @@ export function ProductItem({
               <h4 className={`text-[17px] font-black text-gray-800 line-clamp-1 transition-colors duration-300 ${isVisibilityBlocked ? '' : 'group-hover:text-[#234745]'}`}>{product.title}</h4>
           </Link>
 
-          {!isVisibilityBlocked && (
+          {!isVisibilityBlocked && product.priceRange && (
             <Price 
               data={product.priceRange.minVariantPrice} 
               size="md" 

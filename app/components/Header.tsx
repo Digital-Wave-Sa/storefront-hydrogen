@@ -163,8 +163,8 @@ function TopBar({
   };
 
   return (
-    <div className="w-full border-b border-[#1b3d2e]/5">
-      <div className="max-w-[1400px] mx-auto px-4 lg:px-6 h-[44px] flex items-center justify-between text-[13px] font-medium text-[#1b3d2e]">
+    <div className="w-full border-b border-[#234745]/5">
+      <div className="max-w-[1400px] mx-auto px-4 lg:px-6 h-[44px] flex items-center justify-between text-[13px] font-medium text-[#234745]">
         {/* LEFT: Language & Branch */}
         <div className="flex items-center gap-4">
           <Form action="/api/locale" method="post" className="flex items-center" reloadDocument>
@@ -178,7 +178,7 @@ function TopBar({
 
           <button 
             onClick={() => setModalOpen(true)}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-[#1b3d2e]/20 bg-white/40 text-[12px] font-bold hover:bg-white transition-all shadow-sm"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-[#234745]/20 bg-white/40 text-[12px] font-bold hover:bg-white transition-all shadow-sm"
           >
             <div className="w-1.5 h-1.5 rounded-full bg-green-500 shadow-[0_0_5px_rgba(34,197,94,0.5)]" />
             <span className="truncate max-w-[120px]">
@@ -244,7 +244,7 @@ function MiddleBar({
   const isEn = locale === 'en';
 
   return (
-    <div className="w-full py-3 lg:py-4 border-b border-[#1b3d2e]/5">
+    <div className="w-full py-3 lg:py-4 border-b border-[#234745]/5">
       <div className="max-w-[1400px] mx-auto px-4 lg:px-6">
         {/* Use 1fr auto 1fr to give the sides maximum available space while keeping logo centered */}
         <div className="grid grid-cols-[1fr_auto_1fr] items-center w-full">
@@ -253,7 +253,7 @@ function MiddleBar({
           <div className="flex items-center justify-start min-w-0">
             <button 
               onClick={() => open('mobile')} 
-              className="lg:hidden p-1 text-[#1b3d2e] hover:opacity-70 transition-opacity shrink-0"
+              className="lg:hidden p-1 text-[#234745] hover:opacity-70 transition-opacity shrink-0"
             >
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="18" x2="21" y2="18" /></svg>
             </button>
@@ -275,7 +275,7 @@ function MiddleBar({
               <GlobalSearchBar locale={locale} />
             </div>
 
-            <div className="flex items-center gap-2 md:gap-4 lg:gap-6 shrink-0 text-[#1b3d2e]">
+            <div className="flex items-center gap-2 md:gap-4 lg:gap-6 shrink-0 text-[#234745]">
               {/* Account - Desktop Only */}
               <NavLink to={isEn ? "/en/account" : "/account"} className="hidden lg:flex group items-center gap-2 hover:opacity-70 transition-all font-bold text-[13px]">
                 <span>{isEn ? 'Account' : 'حسابي'}</span>
@@ -291,7 +291,7 @@ function MiddleBar({
               {/* Search - Visible on Mobile & Medium screens */}
               <button 
                 onClick={() => open('search')} 
-                className="xl:hidden p-2 text-[#1b3d2e] hover:bg-[#1b3d2e]/5 rounded-full transition-all"
+                className="xl:hidden p-2 text-[#234745] hover:bg-[#234745]/5 rounded-full transition-all"
               >
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
               </button>
@@ -365,7 +365,7 @@ function CategoryNav({
                 px-2 xl:px-3 py-2 text-[13px] xl:text-[14px] font-bold transition-all whitespace-nowrap rounded-full
                 ${isOffers 
                   ? 'bg-[#e34242] text-white hover:bg-[#c93636] px-4 xl:px-5 shadow-sm' 
-                  : (isActive || (item.hasMega && activeMega)) ? 'text-[#1b3d2e] bg-[#1b3d2e]/5' : 'text-[#1b3d2e]/80 hover:text-[#1b3d2e] hover:bg-[#1b3d2e]/5'}
+                  : (isActive || (item.hasMega && activeMega)) ? 'text-[#234745] bg-[#234745]/5' : 'text-[#234745]/80 hover:text-[#234745] hover:bg-[#234745]/5'}
               `}
             >
               {item.title}
@@ -408,14 +408,14 @@ function ProductMegaMenu({ locale }: { locale?: string }) {
   ];
 
   return (
-    <div className="bg-white/95 backdrop-blur-xl border-y border-[#1b3d2e]/10 shadow-2xl w-full">
+    <div className="bg-white/95 backdrop-blur-xl border-y border-[#234745]/10 shadow-2xl w-full">
       <div className="max-w-[1400px] mx-auto grid grid-cols-4 gap-8 p-10">
         {categories.map((cat) => (
           <div key={cat.title} className="group cursor-pointer">
             <NavLink to={cat.url} className="block">
               <div className="relative aspect-[4/3] rounded-2xl overflow-hidden mb-6 shadow-md transition-transform duration-500 group-hover:scale-[1.03]">
                 <img src={cat.image} alt={cat.title} className="w-full h-full object-cover" />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#1b3d2e]/80 via-transparent to-transparent opacity-60 group-hover:opacity-80 transition-opacity" />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#234745]/80 via-transparent to-transparent opacity-60 group-hover:opacity-80 transition-opacity" />
                 <div className="absolute bottom-4 left-4 right-4">
                   <h3 className="text-white text-lg font-bold">{cat.title}</h3>
                 </div>
@@ -426,7 +426,7 @@ function ProductMegaMenu({ locale }: { locale?: string }) {
                 <li key={item}>
                   <NavLink 
                     to={`${cat.url}/${item.toLowerCase().replace(/ /g, '-')}`} 
-                    className="text-[#1b3d2e]/70 hover:text-[#1b3d2e] hover:translate-x-1 transition-all inline-block font-medium text-sm"
+                    className="text-[#234745]/70 hover:text-[#234745] hover:translate-x-1 transition-all inline-block font-medium text-sm"
                   >
                     {item}
                   </NavLink>
@@ -436,12 +436,12 @@ function ProductMegaMenu({ locale }: { locale?: string }) {
           </div>
         ))}
       </div>
-      <div className="bg-[#1b3d2e]/5 py-4">
+      <div className="bg-[#234745]/5 py-4">
         <div className="max-w-[1400px] mx-auto px-10 flex justify-between items-center text-sm">
-          <span className="text-[#1b3d2e]/60 font-medium">
+          <span className="text-[#234745]/60 font-medium">
             {isEn ? 'Discover our full collection of fresh delights' : 'اكتشف مجموعتنا الكاملة من الحلويات الطازجة'}
           </span>
-          <NavLink to="/collections/all" className="text-[#1b3d2e] font-bold hover:underline flex items-center gap-2">
+          <NavLink to="/collections/all" className="text-[#234745] font-bold hover:underline flex items-center gap-2">
             {isEn ? 'Shop All Products' : 'تسوق جميع المنتجات'}
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={isEn ? '' : 'rotate-180'}><line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" /></svg>
           </NavLink>
@@ -471,11 +471,11 @@ export function HeaderMenu({
       <div className="px-4 py-6 flex flex-col gap-3">
         {/* Mobile Header Links */}
         <div className="grid grid-cols-2 gap-3 mb-6">
-           <NavLink to={isEn ? "/en/account" : "/account"} onClick={onClose} className="flex flex-col items-center justify-center gap-2 p-4 bg-white rounded-2xl border border-[#1b3d2e]/5 shadow-sm text-[#1b3d2e] font-bold text-sm">
+           <NavLink to={isEn ? "/en/account" : "/account"} onClick={onClose} className="flex flex-col items-center justify-center gap-2 p-4 bg-white rounded-2xl border border-[#234745]/5 shadow-sm text-[#234745] font-bold text-sm">
              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
              {isEn ? 'Account' : 'حسابي'}
            </NavLink>
-           <NavLink to="/wishlist" onClick={onClose} className="flex flex-col items-center justify-center gap-2 p-4 bg-white rounded-2xl border border-[#1b3d2e]/5 shadow-sm text-[#1b3d2e] font-bold text-sm">
+           <NavLink to="/wishlist" onClick={onClose} className="flex flex-col items-center justify-center gap-2 p-4 bg-white rounded-2xl border border-[#234745]/5 shadow-sm text-[#234745] font-bold text-sm">
              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" /></svg>
              {isEn ? 'Wishlist' : 'المفضلة'}
            </NavLink>
@@ -490,7 +490,7 @@ export function HeaderMenu({
               prefetch="intent"
               className={({ isActive }) => `
                 flex items-center justify-between px-6 py-4 rounded-2xl text-[16px] font-bold transition-all
-                ${isActive ? 'bg-[#1b3d2e] text-white' : 'bg-white text-[#1b3d2e] shadow-sm'}
+                ${isActive ? 'bg-[#234745] text-white' : 'bg-white text-[#234745] shadow-sm'}
               `}
             >
               {item.title}

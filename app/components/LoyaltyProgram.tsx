@@ -98,7 +98,7 @@ export function LoyaltyProgram() {
                             to={isEn ? "/en/account/register" : "/account/register"}
                             variant="light"
                             size="md"
-                            className="bg-[#f5f0e8] text-[#1a1a1a] hover:bg-white"
+                            className="bg-[#FEF8EB] text-[#1a1a1a] hover:bg-white"
                             icon={<span>⭐</span>}
                         >
                             {t.homepage.joinNowForFree}

@@ -853,173 +853,17 @@ export type OrderMoneyFragment = Pick<
   'amount' | 'currencyCode'
 >;
 
-export type AddressFullFragment = Pick<
-  StorefrontAPI.MailingAddress,
-  | 'address1'
-  | 'address2'
-  | 'city'
-  | 'company'
-  | 'country'
-  | 'countryCodeV2'
-  | 'firstName'
-  | 'formatted'
-  | 'id'
-  | 'lastName'
-  | 'name'
-  | 'phone'
-  | 'province'
-  | 'provinceCode'
-  | 'zip'
->;
-
-export type DiscountApplicationFragment = {
-  value:
-    | ({__typename: 'MoneyV2'} & Pick<
-        StorefrontAPI.MoneyV2,
-        'amount' | 'currencyCode'
-      >)
-    | ({__typename: 'PricingPercentageValue'} & Pick<
-        StorefrontAPI.PricingPercentageValue,
-        'percentage'
-      >);
-};
-
-export type OrderLineProductVariantFragment = Pick<
-  StorefrontAPI.ProductVariant,
-  'id' | 'sku' | 'title'
-> & {
-  image?: StorefrontAPI.Maybe<
-    Pick<StorefrontAPI.Image, 'altText' | 'height' | 'url' | 'id' | 'width'>
-  >;
-  price: Pick<StorefrontAPI.MoneyV2, 'amount' | 'currencyCode'>;
-  product: Pick<StorefrontAPI.Product, 'handle' | 'tags'>;
-};
-
 export type OrderLineItemFullFragment = Pick<
   StorefrontAPI.OrderLineItem,
   'title' | 'quantity'
 > & {
-  discountAllocations: Array<{
-    allocatedAmount: Pick<StorefrontAPI.MoneyV2, 'amount' | 'currencyCode'>;
-    discountApplication: {
-      value:
-        | ({__typename: 'MoneyV2'} & Pick<
-            StorefrontAPI.MoneyV2,
-            'amount' | 'currencyCode'
-          >)
-        | ({__typename: 'PricingPercentageValue'} & Pick<
-            StorefrontAPI.PricingPercentageValue,
-            'percentage'
-          >);
-    };
-  }>;
-  originalTotalPrice: Pick<StorefrontAPI.MoneyV2, 'amount' | 'currencyCode'>;
   discountedTotalPrice: Pick<StorefrontAPI.MoneyV2, 'amount' | 'currencyCode'>;
   variant?: StorefrontAPI.Maybe<
-    Pick<StorefrontAPI.ProductVariant, 'id' | 'sku' | 'title'> & {
-      image?: StorefrontAPI.Maybe<
-        Pick<StorefrontAPI.Image, 'altText' | 'height' | 'url' | 'id' | 'width'>
-      >;
-      price: Pick<StorefrontAPI.MoneyV2, 'amount' | 'currencyCode'>;
-      product: Pick<StorefrontAPI.Product, 'handle' | 'tags'>;
+    Pick<StorefrontAPI.ProductVariant, 'id'> & {
+      image?: StorefrontAPI.Maybe<Pick<StorefrontAPI.Image, 'url' | 'altText'>>;
+      product: Pick<StorefrontAPI.Product, 'handle'>;
     }
   >;
-};
-
-export type OrderFragment = Pick<
-  StorefrontAPI.Order,
-  | 'id'
-  | 'name'
-  | 'orderNumber'
-  | 'statusUrl'
-  | 'processedAt'
-  | 'fulfillmentStatus'
-  | 'financialStatus'
-> & {
-  totalTaxV2?: StorefrontAPI.Maybe<
-    Pick<StorefrontAPI.MoneyV2, 'amount' | 'currencyCode'>
-  >;
-  totalPriceV2: Pick<StorefrontAPI.MoneyV2, 'amount' | 'currencyCode'>;
-  subtotalPriceV2?: StorefrontAPI.Maybe<
-    Pick<StorefrontAPI.MoneyV2, 'amount' | 'currencyCode'>
-  >;
-  shippingAddress?: StorefrontAPI.Maybe<
-    Pick<
-      StorefrontAPI.MailingAddress,
-      | 'address1'
-      | 'address2'
-      | 'city'
-      | 'company'
-      | 'country'
-      | 'countryCodeV2'
-      | 'firstName'
-      | 'formatted'
-      | 'id'
-      | 'lastName'
-      | 'name'
-      | 'phone'
-      | 'province'
-      | 'provinceCode'
-      | 'zip'
-    >
-  >;
-  customAttributes: Array<Pick<StorefrontAPI.Attribute, 'key' | 'value'>>;
-  discountApplications: {
-    nodes: Array<{
-      value:
-        | ({__typename: 'MoneyV2'} & Pick<
-            StorefrontAPI.MoneyV2,
-            'amount' | 'currencyCode'
-          >)
-        | ({__typename: 'PricingPercentageValue'} & Pick<
-            StorefrontAPI.PricingPercentageValue,
-            'percentage'
-          >);
-    }>;
-  };
-  lineItems: {
-    nodes: Array<
-      Pick<StorefrontAPI.OrderLineItem, 'title' | 'quantity'> & {
-        discountAllocations: Array<{
-          allocatedAmount: Pick<
-            StorefrontAPI.MoneyV2,
-            'amount' | 'currencyCode'
-          >;
-          discountApplication: {
-            value:
-              | ({__typename: 'MoneyV2'} & Pick<
-                  StorefrontAPI.MoneyV2,
-                  'amount' | 'currencyCode'
-                >)
-              | ({__typename: 'PricingPercentageValue'} & Pick<
-                  StorefrontAPI.PricingPercentageValue,
-                  'percentage'
-                >);
-          };
-        }>;
-        originalTotalPrice: Pick<
-          StorefrontAPI.MoneyV2,
-          'amount' | 'currencyCode'
-        >;
-        discountedTotalPrice: Pick<
-          StorefrontAPI.MoneyV2,
-          'amount' | 'currencyCode'
-        >;
-        variant?: StorefrontAPI.Maybe<
-          Pick<StorefrontAPI.ProductVariant, 'id' | 'sku' | 'title'> & {
-            image?: StorefrontAPI.Maybe<
-              Pick<
-                StorefrontAPI.Image,
-                'altText' | 'height' | 'url' | 'id' | 'width'
-              >
-            >;
-            price: Pick<StorefrontAPI.MoneyV2, 'amount' | 'currencyCode'>;
-            product: Pick<StorefrontAPI.Product, 'handle' | 'tags'>;
-          }
-        >;
-      }
-    >;
-  };
 };
 
 export type OrderQueryVariables = StorefrontAPI.Exact<{
@@ -1032,40 +876,17 @@ export type OrderQuery = {
   order?: StorefrontAPI.Maybe<
     Pick<
       StorefrontAPI.Order,
-      | 'id'
-      | 'name'
-      | 'orderNumber'
-      | 'statusUrl'
-      | 'processedAt'
-      | 'fulfillmentStatus'
-      | 'financialStatus'
+      'id' | 'name' | 'processedAt' | 'fulfillmentStatus' | 'financialStatus'
     > & {
+      order_status?: StorefrontAPI.Maybe<
+        Pick<StorefrontAPI.Metafield, 'value'>
+      >;
       totalTaxV2?: StorefrontAPI.Maybe<
         Pick<StorefrontAPI.MoneyV2, 'amount' | 'currencyCode'>
       >;
       totalPriceV2: Pick<StorefrontAPI.MoneyV2, 'amount' | 'currencyCode'>;
       subtotalPriceV2?: StorefrontAPI.Maybe<
         Pick<StorefrontAPI.MoneyV2, 'amount' | 'currencyCode'>
-      >;
-      shippingAddress?: StorefrontAPI.Maybe<
-        Pick<
-          StorefrontAPI.MailingAddress,
-          | 'address1'
-          | 'address2'
-          | 'city'
-          | 'company'
-          | 'country'
-          | 'countryCodeV2'
-          | 'firstName'
-          | 'formatted'
-          | 'id'
-          | 'lastName'
-          | 'name'
-          | 'phone'
-          | 'province'
-          | 'provinceCode'
-          | 'zip'
-        >
       >;
       customAttributes: Array<Pick<StorefrontAPI.Attribute, 'key' | 'value'>>;
       discountApplications: {
@@ -1084,41 +905,16 @@ export type OrderQuery = {
       lineItems: {
         nodes: Array<
           Pick<StorefrontAPI.OrderLineItem, 'title' | 'quantity'> & {
-            discountAllocations: Array<{
-              allocatedAmount: Pick<
-                StorefrontAPI.MoneyV2,
-                'amount' | 'currencyCode'
-              >;
-              discountApplication: {
-                value:
-                  | ({__typename: 'MoneyV2'} & Pick<
-                      StorefrontAPI.MoneyV2,
-                      'amount' | 'currencyCode'
-                    >)
-                  | ({__typename: 'PricingPercentageValue'} & Pick<
-                      StorefrontAPI.PricingPercentageValue,
-                      'percentage'
-                    >);
-              };
-            }>;
-            originalTotalPrice: Pick<
-              StorefrontAPI.MoneyV2,
-              'amount' | 'currencyCode'
-            >;
             discountedTotalPrice: Pick<
               StorefrontAPI.MoneyV2,
               'amount' | 'currencyCode'
             >;
             variant?: StorefrontAPI.Maybe<
-              Pick<StorefrontAPI.ProductVariant, 'id' | 'sku' | 'title'> & {
+              Pick<StorefrontAPI.ProductVariant, 'id'> & {
                 image?: StorefrontAPI.Maybe<
-                  Pick<
-                    StorefrontAPI.Image,
-                    'altText' | 'height' | 'url' | 'id' | 'width'
-                  >
+                  Pick<StorefrontAPI.Image, 'url' | 'altText'>
                 >;
-                price: Pick<StorefrontAPI.MoneyV2, 'amount' | 'currencyCode'>;
-                product: Pick<StorefrontAPI.Product, 'handle' | 'tags'>;
+                product: Pick<StorefrontAPI.Product, 'handle'>;
               }
             >;
           }
@@ -2822,7 +2618,7 @@ interface GeneratedQueryTypes {
     return: GetDashboardCustomerIdQuery;
     variables: GetDashboardCustomerIdQueryVariables;
   };
-  '#graphql\n  fragment OrderMoney on MoneyV2 {\n    amount\n    currencyCode\n  }\n  fragment AddressFull on MailingAddress {\n    address1\n    address2\n    city\n    company\n    country\n    countryCodeV2\n    firstName\n    formatted\n    id\n    lastName\n    name\n    phone\n    province\n    provinceCode\n    zip\n  }\n  fragment DiscountApplication on DiscountApplication {\n    value {\n      __typename\n      ... on MoneyV2 {\n        ...OrderMoney\n      }\n      ... on PricingPercentageValue {\n        percentage\n      }\n    }\n  }\n  fragment OrderLineProductVariant on ProductVariant {\n    id\n    image {\n      altText\n      height\n      url\n      id\n      width\n    }\n    price {\n      ...OrderMoney\n    }\n    product {\n      handle\n      tags\n    }\n    sku\n    title\n  }\n  fragment OrderLineItemFull on OrderLineItem {\n    title\n    quantity\n    discountAllocations {\n      allocatedAmount {\n        ...OrderMoney\n      }\n      discountApplication {\n        ...DiscountApplication\n      }\n    }\n    originalTotalPrice {\n      ...OrderMoney\n    }\n    discountedTotalPrice {\n      ...OrderMoney\n    }\n    variant {\n      ...OrderLineProductVariant\n    }\n  }\n  fragment Order on Order {\n    id\n    name\n    orderNumber\n    statusUrl\n    processedAt\n    fulfillmentStatus\n    financialStatus\n    totalTaxV2 {\n      ...OrderMoney\n    }\n    totalPriceV2 {\n      ...OrderMoney\n    }\n    subtotalPriceV2 {\n      ...OrderMoney\n    }\n    shippingAddress {\n      ...AddressFull\n    }\n    customAttributes {\n      key\n      value\n    }\n    discountApplications(first: 10) {\n      nodes {\n        ...DiscountApplication\n      }\n    }\n    lineItems(first: 100) {\n      nodes {\n        ...OrderLineItemFull\n      }\n    }\n  }\n  query Order(\n    $country: CountryCode\n    $language: LanguageCode\n    $orderId: ID!\n  ) @inContext(country: $country, language: $language) {\n    order: node(id: $orderId) {\n      ... on Order {\n        ...Order\n      }\n    }\n  }\n': {
+  '#graphql\n  fragment OrderMoney on MoneyV2 {\n    amount\n    currencyCode\n  }\n  fragment OrderLineItemFull on OrderLineItem {\n    title\n    quantity\n    discountedTotalPrice {\n      ...OrderMoney\n    }\n    variant {\n      id\n      image {\n        url\n        altText\n      }\n      product {\n        handle\n      }\n    }\n  }\n  query Order(\n    $country: CountryCode\n    $language: LanguageCode\n    $orderId: ID!\n  ) @inContext(country: $country, language: $language) {\n    order: node(id: $orderId) {\n      ... on Order {\n        id\n        name\n        processedAt\n        fulfillmentStatus\n        financialStatus\n        order_status: metafield(namespace: "custom", key: "order_status") {\n          value\n        }\n        totalTaxV2 { ...OrderMoney }\n        totalPriceV2 { ...OrderMoney }\n        subtotalPriceV2 { ...OrderMoney }\n        customAttributes {\n          key\n          value\n        }\n        discountApplications(first: 10) {\n          nodes {\n            value {\n              __typename\n              ... on MoneyV2 { ...OrderMoney }\n              ... on PricingPercentageValue { percentage }\n            }\n          }\n        }\n        lineItems(first: 100) {\n          nodes { ...OrderLineItemFull }\n        }\n      }\n    }\n  }\n': {
     return: OrderQuery;
     variables: OrderQueryVariables;
   };

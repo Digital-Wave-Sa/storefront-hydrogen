@@ -34,7 +34,7 @@ export default function NotificationPreview() {
       <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
         
         <div style={{ marginBottom: '30px', background: '#fff', padding: '20px', borderRadius: '16px', boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}>
-          <h1 style={{ margin: '0 0 20px 0', fontSize: '24px', color: '#1b3d2e' }}>Notification Template Preview</h1>
+          <h1 style={{ margin: '0 0 20px 0', fontSize: '24px', color: '#234745' }}>Notification Template Preview</h1>
           
           <div style={{ display: 'flex', gap: '20px', alignItems: 'center', flexWrap: 'wrap' }}>
             <div>
@@ -70,7 +70,7 @@ export default function NotificationPreview() {
                   padding: '10px 20px', 
                   borderRadius: '8px', 
                   border: 'none', 
-                  background: activeTab === 'email' ? '#1b3d2e' : '#eee',
+                  background: activeTab === 'email' ? '#234745' : '#eee',
                   color: activeTab === 'email' ? '#fff' : '#333',
                   cursor: 'pointer',
                   fontWeight: 'bold'
@@ -84,7 +84,7 @@ export default function NotificationPreview() {
                   padding: '10px 20px', 
                   borderRadius: '8px', 
                   border: 'none', 
-                  background: activeTab === 'sms' ? '#1b3d2e' : '#eee',
+                  background: activeTab === 'sms' ? '#234745' : '#eee',
                   color: activeTab === 'sms' ? '#fff' : '#333',
                   cursor: 'pointer',
                   fontWeight: 'bold'

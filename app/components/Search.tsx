@@ -184,7 +184,7 @@ function SearchResultsProductsGrid({ products }: Pick<SearchQuery, 'products'>) 
           return (
             <>
               <div className="flex justify-center mb-8">
-                <PreviousLink className="text-[#1b3d2e] font-black border-2 border-[#1b3d2e]/10 px-8 py-2.5 rounded-full hover:bg-gray-50 transition-all">
+                <PreviousLink className="text-[#234745] font-black border-2 border-[#234745]/10 px-8 py-2.5 rounded-full hover:bg-gray-50 transition-all">
                   {isLoading ? (isEn ? 'Loading...' : 'جاري التحميل...') : (isEn ? '↑ Load Previous' : '↑ تحميل النتائج السابقة')}
                 </PreviousLink>
               </div>
@@ -198,7 +198,7 @@ function SearchResultsProductsGrid({ products }: Pick<SearchQuery, 'products'>) 
                 ))}
               </div>
               <div className="flex justify-center mt-12">
-                <NextLink className="bg-[#1b3d2e] text-white px-16 py-4 rounded-full font-black shadow-[0_10px_30_rgba(27,61,46,0.3)] hover:shadow-[0_15px_40px_rgba(27,61,46,0.4)] hover:-translate-y-1 transition-all duration-300">
+                <NextLink className="bg-[#234745] text-white px-16 py-4 rounded-full font-black shadow-[0_10px_30_rgba(27,61,46,0.3)] hover:shadow-[0_15px_40px_rgba(27,61,46,0.4)] hover:-translate-y-1 transition-all duration-300">
                   {isLoading ? (isEn ? 'Loading...' : 'جاري التحميل...') : (isEn ? 'Browse More ↓' : 'تصفح المزيد ↓')}
                 </NextLink>
               </div>
@@ -294,7 +294,7 @@ export function NoSearchResults({ searchTerm }: { searchTerm: string }) {
       <div className="relative z-10">
         <Link
           to={isEn ? "/en" : "/"}
-          className="inline-flex items-center gap-3 bg-[#234745] text-white px-8 py-3.5 rounded-2xl font-bold hover:bg-[#1b3d2e] transition-all shadow-lg hover:shadow-xl active:scale-95"
+          className="inline-flex items-center gap-3 bg-[#234745] text-white px-8 py-3.5 rounded-2xl font-bold hover:bg-[#234745] transition-all shadow-lg hover:shadow-xl active:scale-95"
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={isEn ? '' : 'rotate-180'}><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
           {isEn ? 'Back to Shop' : 'العودة للتسوق'}

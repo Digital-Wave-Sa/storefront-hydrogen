@@ -656,7 +656,7 @@ export default function Register() {
 
             <button
               type="button"
-              className="text-sm text-gray-400 mt-6 underline text-center w-full hover:text-[#1b3d2e] transition-colors"
+              className="text-sm text-gray-400 mt-6 underline text-center w-full hover:text-[#234745] transition-colors"
               onClick={() => { setStep('mobile'); setLocalError(null); }}
             >
               {isEn ? 'Back to change number' : 'الرجوع لتغيير الرقم'}
@@ -677,7 +677,7 @@ export default function Register() {
               disabled={socialLoading !== null}
             >
               {socialLoading === 'google' ? (
-                <div className="social-loader" style={{ borderTopColor: '#1b3d2e' }}></div>
+                <div className="social-loader" style={{ borderTopColor: '#234745' }}></div>
               ) : (
                 <>
                   <svg width="20" height="20" viewBox="0 0 48 48">

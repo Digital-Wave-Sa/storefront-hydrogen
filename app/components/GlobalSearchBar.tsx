@@ -142,10 +142,10 @@ export function GlobalSearchBar({ locale, isMobile }: { locale?: string, isMobil
             setSelectedIndex(-1);
           }}
           placeholder={isEn ? "Search for a product..." : "إبحث عن منتج..."}
-          className="w-full bg-white !border-transparent !border-none !outline-none !ring-0 !rounded-full !py-3 !ps-12 !pe-5 !text-[14px] !m-0 font-medium text-[#1b3d2e] placeholder:text-gray-400 focus:!outline-none focus:!ring-0 focus:!border-transparent !shadow-sm transition-all"
+          className="w-full bg-white !border-transparent !border-none !outline-none !ring-0 !rounded-full !py-3 !ps-12 !pe-5 !text-[14px] !m-0 font-medium text-[#234745] placeholder:text-gray-400 focus:!outline-none focus:!ring-0 focus:!border-transparent !shadow-sm transition-all"
           autoComplete="off"
         />
-        <button type="submit" className="absolute start-4 top-1/2 -translate-y-1/2 text-[#1b3d2e] hover:opacity-70 transition-opacity">
+        <button type="submit" className="absolute start-4 top-1/2 -translate-y-1/2 text-[#234745] hover:opacity-70 transition-opacity">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
         </button>
       </Form>
@@ -174,7 +174,7 @@ export function GlobalSearchBar({ locale, isMobile }: { locale?: string, isMobil
                                     navigate((isEn ? "/en/search?q=" : "/search?q=") + encodeURIComponent(term));
                                     setIsOpen(false);
                                 }}
-                                className={`w-full flex items-center gap-3 px-4 py-2.5 text-[13px] font-medium text-gray-600 transition-colors text-start ${selectedIndex === idx ? 'bg-[#f5f3f1] text-[#1b3d2e]' : 'hover:bg-gray-50'}`}
+                                className={`w-full flex items-center gap-3 px-4 py-2.5 text-[13px] font-medium text-gray-600 transition-colors text-start ${selectedIndex === idx ? 'bg-[#f5f3f1] text-[#234745]' : 'hover:bg-gray-50'}`}
                             >
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-300"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
                                 {term}
@@ -222,7 +222,7 @@ export function GlobalSearchBar({ locale, isMobile }: { locale?: string, isMobil
                                 </div>
                               )}
                               <div className="flex-1 min-w-0">
-                                <p className="text-[13px] font-bold text-[#1b3d2e] truncate" dangerouslySetInnerHTML={{ __html: item.styledTitle || item.title }} />
+                                <p className="text-[13px] font-bold text-[#234745] truncate" dangerouslySetInnerHTML={{ __html: item.styledTitle || item.title }} />
                                 {item.price && (
                                   <p className="text-[13px] font-black text-[#d4a06a] mt-0.5">
                                     <Money data={item.price} />
@@ -238,7 +238,7 @@ export function GlobalSearchBar({ locale, isMobile }: { locale?: string, isMobil
                 );
               })}
               <div className="p-3 border-t border-gray-50 bg-gray-50/30">
-                <Link to={(isEn ? "/en/search?q=" : "/search?q=") + encodeURIComponent(query)} onClick={() => { addToHistory(query); setIsOpen(false); }} className="block w-full text-center text-[12px] font-bold text-[#1b3d2e] py-2 rounded-lg hover:bg-[#e8e4e1] transition-colors">
+                <Link to={(isEn ? "/en/search?q=" : "/search?q=") + encodeURIComponent(query)} onClick={() => { addToHistory(query); setIsOpen(false); }} className="block w-full text-center text-[12px] font-bold text-[#234745] py-2 rounded-lg hover:bg-[#e8e4e1] transition-colors">
                   {isEn ? `See all results for "${query}"` : `عرض جميع النتائج لـ "${query}"`}
                 </Link>
               </div>
@@ -248,7 +248,7 @@ export function GlobalSearchBar({ locale, isMobile }: { locale?: string, isMobil
               <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-3">
                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#d4a06a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /><line x1="8" y1="11" x2="14" y2="11" /></svg>
               </div>
-              <p className="text-sm font-bold text-[#1b3d2e] mb-1">{isEn ? 'No results found' : 'لم نجد أي نتائج'}</p>
+              <p className="text-sm font-bold text-[#234745] mb-1">{isEn ? 'No results found' : 'لم نجد أي نتائج'}</p>
               <p className="text-[12px] text-gray-500">{isEn ? 'Try adjusting your search' : 'حاول البحث بكلمات أخرى'}</p>
             </div>
           ) : null}

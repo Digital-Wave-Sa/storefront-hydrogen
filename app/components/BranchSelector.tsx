@@ -84,7 +84,7 @@ export function BranchSelector({ locationsPromise, locale, onSelectBranch, selec
         <div className={`relative ${className}`} ref={dropdownRef}>
             <button
                 type="button"
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#f5f3f1] border border-[#e8e4e1] text-[#1b3d2e] text-[12px] font-bold hover:bg-[#ebe8e4] transition-colors whitespace-nowrap cursor-pointer"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#f5f3f1] border border-[#e8e4e1] text-[#234745] text-[12px] font-bold hover:bg-[#ebe8e4] transition-colors whitespace-nowrap cursor-pointer"
                 onClick={() => setIsOpen(!isOpen)}
             >
                 <span className="text-gray-400 font-medium">{isEn ? 'Pickup from:' : 'استلام من:'}</span>
@@ -114,7 +114,7 @@ export function BranchSelector({ locationsPromise, locale, onSelectBranch, selec
                     <div className="flex-1 overflow-y-auto">
                         {isLoading ? (
                             <div className="p-6 text-center">
-                                <div className="inline-block w-5 h-5 border-2 border-gray-200 border-t-[#1b3d2e] rounded-full animate-spin"></div>
+                                <div className="inline-block w-5 h-5 border-2 border-gray-200 border-t-[#234745] rounded-full animate-spin"></div>
                                 <p className="mt-2 text-[12px] text-gray-400">{isEn ? 'Loading branches...' : 'جاري تحميل الفروع...'}</p>
                             </div>
                         ) : (
@@ -130,7 +130,7 @@ export function BranchSelector({ locationsPromise, locale, onSelectBranch, selec
                                         className={`w-full text-start px-4 py-3 border-b border-gray-50 flex items-center gap-3 transition-colors hover:bg-[#f5f3f1] ${isSelected ? 'bg-[#eaf5ee]' : ''}`}
                                     >
                                         {/* Store icon */}
-                                        <div className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${isSelected ? 'bg-[#1b3d2e] text-white' : 'bg-gray-100 text-gray-400'}`}>
+                                        <div className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${isSelected ? 'bg-[#234745] text-white' : 'bg-gray-100 text-gray-400'}`}>
                                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                                 <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
                                                 <polyline points="9 22 9 12 15 12 15 22" />
@@ -139,7 +139,7 @@ export function BranchSelector({ locationsPromise, locale, onSelectBranch, selec
                                         {/* Info */}
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-center gap-1.5">
-                                                <span className={`text-[13px] font-bold truncate ${isSelected ? 'text-[#1b3d2e]' : 'text-gray-800'}`}>
+                                                <span className={`text-[13px] font-bold truncate ${isSelected ? 'text-[#234745]' : 'text-gray-800'}`}>
                                                     {branch.name}
                                                 </span>
                                                 {isSelected && (

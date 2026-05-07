@@ -485,7 +485,7 @@ function ModalContent({
                             )}
                         </div>
                         <div className="flex-1 min-w-0">
-                            <h4 className="text-lg font-bold text-[#1b3d2e] mb-1 truncate">
+                            <h4 className="text-lg font-bold text-[#234745] mb-1 truncate">
                                 {isUserAddressSelected ? (currentAddress.firstName + ' ' + currentAddress.lastName) : currentBranch.name}
                             </h4>
                             <p className="text-sm text-gray-500 leading-tight line-clamp-2">
@@ -537,13 +537,13 @@ function ModalContent({
                         <div className="flex items-center gap-2 mt-3">
                             <button 
                                 onClick={() => setBranchSort('distance')}
-                                className={`px-3 py-1.5 rounded-full text-[10px] font-bold transition-all ${branchSort === 'distance' ? 'bg-[#1b3d2e] text-white' : 'bg-gray-100 text-gray-400'}`}
+                                className={`px-3 py-1.5 rounded-full text-[10px] font-bold transition-all ${branchSort === 'distance' ? 'bg-[#234745] text-white' : 'bg-gray-100 text-gray-400'}`}
                             >
                                 {isEn ? 'Nearby' : 'الأقرب'}
                             </button>
                             <button 
                                 onClick={() => setBranchSort('rating')}
-                                className={`px-3 py-1.5 rounded-full text-[10px] font-bold transition-all ${branchSort === 'rating' ? 'bg-[#1b3d2e] text-white' : 'bg-gray-100 text-gray-400'}`}
+                                className={`px-3 py-1.5 rounded-full text-[10px] font-bold transition-all ${branchSort === 'rating' ? 'bg-[#234745] text-white' : 'bg-gray-100 text-gray-400'}`}
                             >
                                 {isEn ? 'Top Rated' : 'الأعلى تقييماً'}
                             </button>
@@ -560,12 +560,12 @@ function ModalContent({
                                 addresses.map((addr: any) => (
                                     <button
                                         key={addr.id}
-                                        className={`w-full p-5 mb-3 text-start border-2 rounded-2xl transition-all ${selectedBranch === addr.id ? 'border-[#1b3d2e] bg-[#fcfaf5]' : 'border-gray-50 hover:border-gray-200 bg-white'}`}
+                                        className={`w-full p-5 mb-3 text-start border-2 rounded-2xl transition-all ${selectedBranch === addr.id ? 'border-[#234745] bg-[#fcfaf5]' : 'border-gray-50 hover:border-gray-200 bg-white'}`}
                                         onClick={() => setSelectedBranch(addr.id)}
                                     >
                                         <div className="flex justify-between items-center mb-1">
-                                            <p className="font-bold text-[#1b3d2e]">{addr.firstName} {addr.lastName}</p>
-                                            {selectedBranch === addr.id && <div className="w-2 h-2 rounded-full bg-[#1b3d2e]" />}
+                                            <p className="font-bold text-[#234745]">{addr.firstName} {addr.lastName}</p>
+                                            {selectedBranch === addr.id && <div className="w-2 h-2 rounded-full bg-[#234745]" />}
                                         </div>
                                         <p className="text-sm text-gray-500 truncate">{addr.address1}</p>
                                         <p className="text-xs text-gray-400 mt-1">{addr.city}</p>
@@ -580,7 +580,7 @@ function ModalContent({
                                     <Link 
                                         to={isEn ? "/en/account/addresses" : "/account/addresses"}
                                         onClick={onClose}
-                                        className="inline-block px-6 py-3 bg-[#1b3d2e] text-white rounded-xl font-bold text-sm"
+                                        className="inline-block px-6 py-3 bg-[#234745] text-white rounded-xl font-bold text-sm"
                                     >
                                         {isEn ? 'Add New Address' : 'إضافة عنوان جديد'}
                                     </Link>
@@ -591,7 +591,7 @@ function ModalContent({
                                     <Link 
                                         to={isEn ? "/en/account/addresses" : "/account/addresses"}
                                         onClick={onClose}
-                                        className="w-full py-4 flex items-center justify-center gap-2 border-2 border-dashed border-gray-200 rounded-2xl text-[#1b3d2e] font-bold text-sm hover:border-[#1b3d2e]/30 hover:bg-[#fcfaf5] transition-all"
+                                        className="w-full py-4 flex items-center justify-center gap-2 border-2 border-dashed border-gray-200 rounded-2xl text-[#234745] font-bold text-sm hover:border-[#234745]/30 hover:bg-[#fcfaf5] transition-all"
                                     >
                                         <span className="text-xl">+</span>
                                         {isEn ? 'Add Another Address' : 'إضافة عنوان آخر'}
@@ -628,7 +628,7 @@ function ModalContent({
                                             {branch.distance && (
                                                 <>
                                                     <span className="mx-1">•</span>
-                                                    <span className="font-bold text-[#1b3d2e]">{branch.distance}</span>
+                                                    <span className="font-bold text-[#234745]">{branch.distance}</span>
                                                 </>
                                             )}
                                         </div>

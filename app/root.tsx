@@ -121,31 +121,52 @@ export async function loader(args: Route.LoaderArgs) {
                   { key: 'Fulfillment Type', value: sessionFType }
                 ];
                 
-                let buyerIdentity = undefined;
+                let buyerIdentity: any = undefined;
+                
+                // Fetch customer data if we need it for address sync
+                let customer: any = null;
+                if (customerAccessToken?.accessToken) {
+                  const res = await storefront.query(CUSTOMER_ADDRESSES_QUERY, {
+                    variables: { customerAccessToken: customerAccessToken.accessToken },
+                    cache: storefront.CacheNone(),
+                  });
+                  customer = res.customer;
+                }
+
                 if (fType === 'pickup') {
                   const locations = criticalData.locations?.locations?.nodes || [];
                   const branch = locations.find((l: any) => l.id === selectedLocId || l.name === selectedLocName);
                   if (branch) {
-                    let firstName = '';
-                    let lastName = '';
-                    
-                    if (customerAccessToken?.accessToken) {
-                      const {customer} = await storefront.query(CUSTOMER_ADDRESSES_QUERY, {
-                        variables: { customerAccessToken: customerAccessToken.accessToken },
-                        cache: storefront.CacheNone(),
-                      });
-                      firstName = customer?.firstName || '';
-                      lastName = customer?.lastName || '';
-                    }
-
                     buyerIdentity = {
                       deliveryAddressPreferences: [{
                         deliveryAddress: {
                           address1: branch.address?.address1 || '',
                           city: branch.address?.city || '',
                           country: 'SA',
-                          firstName: firstName,
-                          lastName: lastName
+                          firstName: customer?.firstName || '',
+                          lastName: customer?.lastName || ''
+                        }
+                      }]
+                    };
+                  }
+                } else if (fType === 'delivery' && customer) {
+                  // Find the selected address from the customer's addresses
+                  const selectedAddr = customer.addresses?.nodes?.find((a: any) => 
+                    `${a.firstName} ${a.lastName}` === selectedAddrName || 
+                    a.address1 === selectedAddrName
+                  );
+                  
+                  if (selectedAddr) {
+                    buyerIdentity = {
+                      deliveryAddressPreferences: [{
+                        deliveryAddress: {
+                          address1: selectedAddr.address1,
+                          address2: selectedAddr.address2,
+                          city: selectedAddr.city,
+                          country: selectedAddr.country || 'SA',
+                          firstName: selectedAddr.firstName,
+                          lastName: selectedAddr.lastName,
+                          phone: selectedAddr.phone
                         }
                       }]
                     };

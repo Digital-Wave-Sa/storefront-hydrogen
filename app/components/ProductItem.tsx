@@ -84,7 +84,7 @@ export function ProductItem({
 
   if (view === 'list') {
     return (
-      <div className={`flex items-center gap-6 p-4 md:p-6 bg-white border border-gray-100 rounded-3xl transition-all duration-300 group relative ${isDimmed ? 'opacity-60 grayscale-[30%]' : 'hover:shadow-xl hover:border-[#1b3d2e]/20'}`}>
+      <div className={`flex items-center gap-6 p-4 md:p-6 bg-white border border-gray-100 rounded-3xl transition-all duration-300 group relative ${isDimmed ? 'opacity-60 grayscale-[30%]' : 'hover:shadow-xl hover:border-[#234745]/20'}`}>
         <Link
           key={product.id}
           prefetch="intent"
@@ -131,7 +131,7 @@ export function ProductItem({
               </span>
           </div>
           <Link to={isVisibilityBlocked ? '#' : variantUrl} prefetch="intent" onClick={isVisibilityBlocked ? (e: any) => e.preventDefault() : undefined}>
-            <h4 className={`text-xl md:text-2xl font-black text-gray-800 mb-2 truncate transition-colors ${isVisibilityBlocked ? '' : 'group-hover:text-[#1b3d2e]'}`}>{product.title}</h4>
+            <h4 className={`text-xl md:text-2xl font-black text-gray-800 mb-2 truncate transition-colors ${isVisibilityBlocked ? '' : 'group-hover:text-[#234745]'}`}>{product.title}</h4>
           </Link>
           {!isVisibilityBlocked && (
             <Price 
@@ -152,7 +152,7 @@ export function ProductItem({
                             selectedVariant: variant
                         }]} 
                         disabled={!effectiveAvailable || isOutOfStock}
-                        className="bg-[#1b3d2e] hover:bg-[#2d5e4a] text-white px-8 py-3 rounded-xl font-bold text-sm transition-all duration-300 shadow-md active:scale-95"
+                        className="bg-[#234745] hover:bg-[#2d5e4a] text-white px-8 py-3 rounded-xl font-bold text-sm transition-all duration-300 shadow-md active:scale-95"
                     >
                         {t.common.addToCart} +
                     </AddToCartButton>
@@ -188,7 +188,7 @@ export function ProductItem({
   }
 
   return (
-    <div className={`group flex flex-col bg-white rounded-[2.5rem] overflow-hidden transition-all duration-500 border border-gray-100 relative ${isDimmed ? 'opacity-60 grayscale-[30%]' : 'hover:shadow-2xl hover:shadow-[#1b3d2e]/10 hover:border-[#1b3d2e]/20 hover:-translate-y-1'}`}>
+    <div className={`group flex flex-col bg-white rounded-[2.5rem] overflow-hidden transition-all duration-500 border border-gray-100 relative ${isDimmed ? 'opacity-60 grayscale-[30%]' : 'hover:shadow-2xl hover:shadow-[#234745]/10 hover:border-[#234745]/20 hover:-translate-y-1'}`}>
       <Link
         key={product.id}
         prefetch="intent"
@@ -241,7 +241,7 @@ export function ProductItem({
         
       <div className="p-6 md:p-8 flex flex-col flex-grow text-right">
           <Link prefetch="intent" to={isVisibilityBlocked ? '#' : variantUrl} className={isVisibilityBlocked ? 'pointer-events-none' : ''}>
-              <h4 className={`text-[17px] font-black text-gray-800 line-clamp-1 transition-colors duration-300 ${isVisibilityBlocked ? '' : 'group-hover:text-[#1b3d2e]'}`}>{product.title}</h4>
+              <h4 className={`text-[17px] font-black text-gray-800 line-clamp-1 transition-colors duration-300 ${isVisibilityBlocked ? '' : 'group-hover:text-[#234745]'}`}>{product.title}</h4>
           </Link>
 
           {!isVisibilityBlocked && (
@@ -263,7 +263,7 @@ export function ProductItem({
                               selectedVariant: variant
                           }]} 
                           disabled={!effectiveAvailable || isOutOfStock}
-                          className="w-full bg-[#1b3d2e] hover:bg-[#2d5e4a] text-white py-3.5 rounded-2xl font-bold text-sm shadow-xl transition-all"
+                          className="w-full bg-[#234745] hover:bg-[#2d5e4a] text-white py-3.5 rounded-2xl font-bold text-sm shadow-xl transition-all"
                       >
                           {t.common.addToCart} +
                       </AddToCartButton>

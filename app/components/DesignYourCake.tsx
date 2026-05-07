@@ -40,7 +40,7 @@ export function DesignYourCake() {
                         <p className="text-[#9a7e6f] font-bold text-[13px] mb-4 tracking-wide">
                             {isEn ? 'Create an unforgettable moment – step by step' : 'أصنع لحظة لا تُنسى – خطوة بخطوة'}
                         </p>
-                        <h2 className="text-[36px] lg:text-[46px] font-black text-[#1b3d2e] leading-[1.15] mb-3">
+                        <h2 className="text-[36px] lg:text-[46px] font-black text-[#234745] leading-[1.15] mb-3">
                             {isEn ? 'Design a cake for your occasion' : 'صمم كيكة تناسب مناسبتك'}
                         </h2>
                         <p className="text-[#8a9e9a] font-bold text-[15px]">
@@ -64,12 +64,12 @@ export function DesignYourCake() {
                         </div>
                         
                         {/* Step 2 (Active) */}
-                        <div className="bg-white rounded-[18px] p-4 flex flex-col items-center justify-center text-center gap-2.5 min-h-[130px] border-[2px] border-[#1b3d2e] shadow-sm">
-                            <div className="w-10 h-10 rounded-full bg-[#1b3d2e] flex items-center justify-center text-white font-black text-[14px]">
+                        <div className="bg-white rounded-[18px] p-4 flex flex-col items-center justify-center text-center gap-2.5 min-h-[130px] border-[2px] border-[#234745] shadow-sm">
+                            <div className="w-10 h-10 rounded-full bg-[#234745] flex items-center justify-center text-white font-black text-[14px]">
                                 {isEn ? '2' : '٢'}
                             </div>
-                            <span className="font-black text-[#1b3d2e] text-[13px]">{isEn ? 'Choose Flavor' : 'أختر النكهة'}</span>
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#1b3d2e" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                            <span className="font-black text-[#234745] text-[13px]">{isEn ? 'Choose Flavor' : 'أختر النكهة'}</span>
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#234745" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                                 <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/>
                             </svg>
                         </div>
@@ -99,30 +99,30 @@ export function DesignYourCake() {
 
                     {/* Flavor Selector */}
                     <div className="mb-8">
-                        <h4 className={`font-black text-[#1b3d2e] text-[16px] mb-4 ${isEn ? 'text-left' : 'text-right'}`}>
+                        <h4 className={`font-black text-[#234745] text-[16px] mb-4 ${isEn ? 'text-left' : 'text-right'}`}>
                             {isEn ? 'Choose Flavor' : 'أختر النكهة'}
                         </h4>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                             {/* Active - Vanilla */}
-                            <div className="relative bg-white border-[1.5px] border-[#1b3d2e] rounded-[16px] py-3.5 px-3 flex items-center justify-center gap-2 cursor-pointer shadow-sm">
+                            <div className="relative bg-white border-[1.5px] border-[#234745] rounded-[16px] py-3.5 px-3 flex items-center justify-center gap-2 cursor-pointer shadow-sm">
                                 <img src="/images/cake-builder/vanilla.png" alt="Vanilla" className="w-9 h-9 object-contain" />
-                                <span className="font-bold text-[#1b3d2e] text-[14px]">{isEn ? 'Vanilla' : 'فانيليا'}</span>
-                                <div className={`absolute -top-1.5 ${isEn ? '-right-1.5' : '-left-1.5'} w-[22px] h-[22px] bg-[#1b3d2e] rounded-full flex items-center justify-center border-[2px] border-white shadow`}>
+                                <span className="font-bold text-[#234745] text-[14px]">{isEn ? 'Vanilla' : 'فانيليا'}</span>
+                                <div className={`absolute -top-1.5 ${isEn ? '-right-1.5' : '-left-1.5'} w-[22px] h-[22px] bg-[#234745] rounded-full flex items-center justify-center border-[2px] border-white shadow`}>
                                     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                                 </div>
                             </div>
                             {/* Chocolate */}
-                            <div className="bg-white border border-[#e5e7e6] rounded-[16px] py-3.5 px-3 flex items-center justify-center gap-2 cursor-pointer hover:border-[#1b3d2e]/40 transition-colors shadow-sm">
+                            <div className="bg-white border border-[#e5e7e6] rounded-[16px] py-3.5 px-3 flex items-center justify-center gap-2 cursor-pointer hover:border-[#234745]/40 transition-colors shadow-sm">
                                 <img src="/images/cake-builder/chocolate.png" alt="Chocolate" className="w-9 h-9 object-contain" />
                                 <span className="font-bold text-[#4a5e59] text-[14px]">{isEn ? 'Chocolate' : 'شوكولاته'}</span>
                             </div>
                             {/* Caramel */}
-                            <div className="bg-white border border-[#e5e7e6] rounded-[16px] py-3.5 px-3 flex items-center justify-center gap-2 cursor-pointer hover:border-[#1b3d2e]/40 transition-colors shadow-sm">
+                            <div className="bg-white border border-[#e5e7e6] rounded-[16px] py-3.5 px-3 flex items-center justify-center gap-2 cursor-pointer hover:border-[#234745]/40 transition-colors shadow-sm">
                                 <img src="/images/cake-builder/caramel.png" alt="Caramel" className="w-9 h-9 object-contain" />
                                 <span className="font-bold text-[#4a5e59] text-[14px]">{isEn ? 'Caramel' : 'كراميل'}</span>
                             </div>
                             {/* Red Velvet */}
-                            <div className="bg-white border border-[#e5e7e6] rounded-[16px] py-3.5 px-3 flex items-center justify-center gap-2 cursor-pointer hover:border-[#1b3d2e]/40 transition-colors shadow-sm">
+                            <div className="bg-white border border-[#e5e7e6] rounded-[16px] py-3.5 px-3 flex items-center justify-center gap-2 cursor-pointer hover:border-[#234745]/40 transition-colors shadow-sm">
                                 <img src="/images/cake-builder/redvelvet.png" alt="Red Velvet" className="w-9 h-9 object-contain" />
                                 <span className="font-bold text-[#4a5e59] text-[14px]">{isEn ? 'Red Velvet' : 'ريد فلفيت'}</span>
                             </div>
@@ -133,19 +133,19 @@ export function DesignYourCake() {
                     <div className="flex flex-col-reverse md:flex-row items-center gap-4 bg-[#eef1ef]/30 rounded-[20px] p-2.5">
                         
                         {/* Trust Badges */}
-                        <div className="flex-1 flex flex-wrap justify-center md:justify-evenly items-center gap-x-3 gap-y-2 text-[12px] font-bold text-[#1b3d2e] px-2">
+                        <div className="flex-1 flex flex-wrap justify-center md:justify-evenly items-center gap-x-3 gap-y-2 text-[12px] font-bold text-[#234745] px-2">
                             <div className="flex items-center gap-2">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1b3d2e" strokeWidth="1.5"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#234745" strokeWidth="1.5"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
                                 <span className="whitespace-pre leading-snug text-[11px]">{isEn ? 'Made with\nCare' : 'صُنع بحب\nوبعناية'}</span>
                             </div>
                             <div className="w-[1px] h-8 bg-[#c5d5d0]/70 hidden md:block"></div>
                             <div className="flex items-center gap-2">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1b3d2e" strokeWidth="1.5"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#234745" strokeWidth="1.5"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
                                 <span className="whitespace-pre leading-snug text-[11px]">{isEn ? 'Refrigerated Delivery\nfor Quality' : 'توصيل مبرد\nلضمان الجودة'}</span>
                             </div>
                             <div className="w-[1px] h-8 bg-[#c5d5d0]/70 hidden md:block"></div>
                             <div className="flex items-center gap-2">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1b3d2e" strokeWidth="1.5"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#234745" strokeWidth="1.5"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>
                                 <span className="whitespace-pre leading-snug text-[11px]">{isEn ? 'Premium\nIngredients' : 'مكونات\nفاخرة'}</span>
                             </div>
                         </div>
@@ -153,7 +153,7 @@ export function DesignYourCake() {
                         {/* CTA Button - Wide, matching mockup proportions */}
                         <Link 
                             to={isEn ? "/en/collections/custom-cakes" : "/collections/custom-cakes"}
-                            className="py-5 bg-[#1b3d2e] hover:bg-[#264f3e] rounded-full font-black text-[19px] transition-all shadow-lg hover:shadow-xl w-full md:w-[45%] text-center shrink-0 whitespace-nowrap"
+                            className="py-5 bg-[#234745] hover:bg-[#264f3e] rounded-full font-black text-[19px] transition-all shadow-lg hover:shadow-xl w-full md:w-[45%] text-center shrink-0 whitespace-nowrap"
                             style={{ color: '#ffffff' }}
                         >
                             {isEn ? 'Start Designing Now' : 'إبدأ تصميمك الان'}

@@ -42,13 +42,13 @@ export default function Blog() {
 
   return (
     <div className="blog" dir={isEn ? 'ltr' : 'rtl'}>
-      <h1 className="text-3xl font-black text-[#1b3d2e] mb-8">{blog.title}</h1>
+      <h1 className="text-3xl font-black text-[#234745] mb-8">{blog.title}</h1>
       <div className="blog-grid">
         <Pagination connection={articles}>
           {({nodes, isLoading, PreviousLink, NextLink}) => {
             return (
               <>
-                <PreviousLink className="mb-8 block text-[#1b3d2e]">
+                <PreviousLink className="mb-8 block text-[#234745]">
                   {isLoading ? (isEn ? 'Loading...' : 'جاري التحميل...') : (isEn ? '↑ Load previous' : '↑ تحميل السابقة')}
                 </PreviousLink>
                 {nodes.map((article, index) => {
@@ -60,7 +60,7 @@ export default function Blog() {
                     />
                   );
                 })}
-                <NextLink className="mt-8 block text-[#1b3d2e]">
+                <NextLink className="mt-8 block text-[#234745]">
                   {isLoading ? (isEn ? 'Loading...' : 'جاري التحميل...') : (isEn ? 'Load more ↓' : 'تحميل المزيد ↓')}
                 </NextLink>
               </>

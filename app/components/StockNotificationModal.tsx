@@ -96,7 +96,7 @@ export function StockNotificationModal({
 
                     {status === 'success' ? (
                         <>
-                            <h3 className="text-2xl font-black text-[#1b3d2e] mb-4">
+                            <h3 className="text-2xl font-black text-[#234745] mb-4">
                                 {isEn ? 'You\'re on the list!' : 'تمت إضافتك للقائمة!'}
                             </h3>
                             <p className="text-gray-500 font-bold mb-8 leading-relaxed">
@@ -110,7 +110,7 @@ export function StockNotificationModal({
                         </>
                     ) : (
                         <>
-                            <h3 className="text-2xl font-black text-[#1b3d2e] mb-2 leading-tight">
+                            <h3 className="text-2xl font-black text-[#234745] mb-2 leading-tight">
                                 {isEn ? 'Notify Me' : 'أبلغني عن التوفر'}
                             </h3>
                             <p className="text-[#A2A491] font-bold text-sm mb-8 leading-relaxed">
@@ -128,16 +128,16 @@ export function StockNotificationModal({
                                             placeholder={isEn ? "yourname@example.com" : "بريدك الإلكتروني..."}
                                             value={email}
                                             onChange={e => setEmail(e.target.value)}
-                                            className="w-full bg-gray-50 border-2 border-gray-100 rounded-2xl px-6 py-4 text-[15px] font-bold focus:outline-none focus:border-[#1b3d2e] focus:bg-white transition-all pl-14"
+                                            className="w-full bg-gray-50 border-2 border-gray-100 rounded-2xl px-6 py-4 text-[15px] font-bold focus:outline-none focus:border-[#234745] focus:bg-white transition-all pl-14"
                                         />
-                                        <div className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-[#1b3d2e] transition-colors pointer-events-none">
+                                        <div className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-[#234745] transition-colors pointer-events-none">
                                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
                                         </div>
                                     </div>
                                 ) : (
                                     <div className="mb-8 p-6 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
                                         <p className="text-[#1a1a1a] font-bold text-sm mb-2">{isEn ? 'We will notify you at:' : 'سنقوم بإبلاغك على:'}</p>
-                                        <p className="text-[#1b3d2e] font-black text-lg mb-3 break-all">{customerEmail}</p>
+                                        <p className="text-[#234745] font-black text-lg mb-3 break-all">{customerEmail}</p>
                                         <button 
                                             type="button" 
                                             onClick={() => setIsEditingEmail(true)}

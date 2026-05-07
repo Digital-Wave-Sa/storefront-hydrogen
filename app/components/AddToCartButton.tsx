@@ -10,6 +10,7 @@ export function AddToCartButton({
   onClick,
   selectedVariant,
   className,
+  style,
 }: {
   analytics?: unknown;
   children: React.ReactNode;
@@ -18,6 +19,7 @@ export function AddToCartButton({
   onClick?: () => void;
   selectedVariant?: any;
   className?: string;
+  style?: React.CSSProperties;
 }) {
   const {open} = useAside();
 
@@ -42,6 +44,7 @@ export function AddToCartButton({
             }}
             disabled={disabled ?? fetcher.state !== 'idle'}
             className={className}
+            style={style}
           >
             {fetcher.state !== 'idle' ? (
               <span className="flex items-center justify-center gap-2">

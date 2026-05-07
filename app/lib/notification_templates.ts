@@ -88,7 +88,7 @@ function getEmailTemplate(stage: OrderStage, lang: Language, data: OrderData) {
 
   const progressHtml = steps.map((s, i) => {
     const active = i <= activeIndex;
-    const color = active ? '#1b3d2e' : '#e0e0e0';
+    const color = active ? '#234745' : '#e0e0e0';
     const label = isEn 
       ? (s === 'CONFIRMED' ? 'Confirmed' : s === 'PREPARING' ? 'Preparing' : s === 'OUT_FOR_DELIVERY' ? 'Shipping' : 'Delivered')
       : (s === 'CONFIRMED' ? 'تم التأكيد' : s === 'PREPARING' ? 'التحضير' : s === 'OUT_FOR_DELIVERY' ? 'التوصيل' : 'تم التوصيل');
@@ -117,14 +117,14 @@ function getEmailTemplate(stage: OrderStage, lang: Language, data: OrderData) {
         <div style="max-width: 600px; margin: 0 auto; background: #fff; border-radius: 24px; overflow: hidden; box-shadow: 0 10px 40px rgba(27,61,46,0.05); border: 1px solid #f0eee9;">
           
           <!-- Header -->
-          <div style="background: #1b3d2e; padding: 40px 20px; text-align: center;">
+          <div style="background: #234745; padding: 40px 20px; text-align: center;">
             <img src="https://saadaldeen.com/cdn/shop/files/Logo_White.png" alt="Saadeddin" style="height: 50px; margin-bottom: 10px;">
             <div style="color: #fff; opacity: 0.6; font-size: 10px; letter-spacing: 3px; font-weight: bold; text-transform: uppercase;">Premium Quality Since 1979</div>
           </div>
 
           <!-- Body -->
           <div style="padding: 40px 30px; text-align: center;">
-            <h2 style="color: #1b3d2e; font-size: 28px; font-weight: 900; margin: 0 0 10px 0;">${stageTitles[stage]}</h2>
+            <h2 style="color: #234745; font-size: 28px; font-weight: 900; margin: 0 0 10px 0;">${stageTitles[stage]}</h2>
             <p style="color: #666; font-size: 16px; margin: 0 0 40px 0;">${isEn ? 'Hi' : 'مرحباً'} ${customerName}, ${stageMessages[stage]}</p>
 
             <!-- Progress Tracker -->
@@ -135,8 +135,8 @@ function getEmailTemplate(stage: OrderStage, lang: Language, data: OrderData) {
             <!-- Order Details Box -->
             <div style="background: #fdfaf5; border: 1.5px solid #f0eee9; border-radius: 20px; padding: 30px; text-align: ${textAlign};">
               <div style="display: flex; justify-content: space-between; margin-bottom: 20px; border-bottom: 1px dashed #f0eee9; padding-bottom: 15px;">
-                <span style="font-weight: bold; color: #1b3d2e;">${isEn ? 'Order Number' : 'رقم الطلب'}</span>
-                <span style="font-weight: 900; color: #1b3d2e;">#${orderNumber}</span>
+                <span style="font-weight: bold; color: #234745;">${isEn ? 'Order Number' : 'رقم الطلب'}</span>
+                <span style="font-weight: 900; color: #234745;">#${orderNumber}</span>
               </div>
 
               ${items ? `
@@ -144,22 +144,22 @@ function getEmailTemplate(stage: OrderStage, lang: Language, data: OrderData) {
                   ${items.map(item => `
                     <tr>
                       <td style="padding: 10px 0; color: #444; font-size: 14px;">${item.quantity}x ${item.title}</td>
-                      <td style="padding: 10px 0; text-align: ${isEn ? 'right' : 'left'}; font-weight: bold; color: #1b3d2e;">${item.price}</td>
+                      <td style="padding: 10px 0; text-align: ${isEn ? 'right' : 'left'}; font-weight: bold; color: #234745;">${item.price}</td>
                     </tr>
                   `).join('')}
                 </table>
               ` : ''}
 
-              <div style="display: flex; justify-content: space-between; padding-top: 15px; border-top: 2px solid #1b3d2e;">
-                <span style="font-weight: 900; font-size: 18px; color: #1b3d2e;">${isEn ? 'Total' : 'الإجمالي'}</span>
-                <span style="font-weight: 900; font-size: 18px; color: #1b3d2e;">${totalPrice}</span>
+              <div style="display: flex; justify-content: space-between; padding-top: 15px; border-top: 2px solid #234745;">
+                <span style="font-weight: 900; font-size: 18px; color: #234745;">${isEn ? 'Total' : 'الإجمالي'}</span>
+                <span style="font-weight: 900; font-size: 18px; color: #234745;">${totalPrice}</span>
               </div>
             </div>
 
             <!-- Tracking / Actions -->
             <div style="margin-top: 40px;">
               ${trackingUrl ? `
-                <a href="${trackingUrl}" style="background: #1b3d2e; color: #fff; padding: 18px 40px; text-decoration: none; border-radius: 14px; font-weight: 900; display: inline-block; font-size: 15px; box-shadow: 0 10px 20px rgba(27,61,46,0.2);">
+                <a href="${trackingUrl}" style="background: #234745; color: #fff; padding: 18px 40px; text-decoration: none; border-radius: 14px; font-weight: 900; display: inline-block; font-size: 15px; box-shadow: 0 10px 20px rgba(27,61,46,0.2);">
                   ${isEn ? 'TRACK YOUR ORDER' : 'تتبع طلبك الآن'}
                 </a>
               ` : ''}
@@ -175,7 +175,7 @@ function getEmailTemplate(stage: OrderStage, lang: Language, data: OrderData) {
           <!-- Footer -->
           <div style="background: #f9f9f9; padding: 30px; text-align: center; border-top: 1px solid #f0eee9;">
              <p style="color: #999; font-size: 11px; margin: 0 0 10px 0;">${isEn ? 'Sweetening your occasions since 1979' : 'نحلي مناسباتكم منذ عام 1979'}</p>
-             <div style="font-weight: bold; color: #1b3d2e; font-size: 14px;">Saadeddin Pastry | سعد الدين حلويات</div>
+             <div style="font-weight: bold; color: #234745; font-size: 14px;">Saadeddin Pastry | سعد الدين حلويات</div>
           </div>
 
         </div>

@@ -55,7 +55,7 @@ export default function FeedbackPage() {
           <div className="w-24 h-24 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-8 text-green-500">
              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
           </div>
-          <h1 className="text-3xl font-black text-[#1b3d2e] mb-4">
+          <h1 className="text-3xl font-black text-[#234745] mb-4">
             {isEn ? 'Thank You!' : 'شكراً لك!'}
           </h1>
           <p className="text-gray-500 font-medium mb-10 leading-relaxed">
@@ -66,7 +66,7 @@ export default function FeedbackPage() {
           </p>
           <button 
             onClick={() => window.location.href = isEn ? '/en' : '/'}
-            className="w-full bg-[#1b3d2e] text-white py-5 rounded-[20px] font-black text-lg hover:bg-[#d4a06a] transition-all shadow-xl active:scale-95"
+            className="w-full bg-[#234745] text-white py-5 rounded-[20px] font-black text-lg hover:bg-[#d4a06a] transition-all shadow-xl active:scale-95"
           >
             {isEn ? 'Back to Home' : 'العودة للرئيسية'}
           </button>
@@ -81,10 +81,10 @@ export default function FeedbackPage() {
         
         {/* Header Section */}
         <header className="text-center mb-16">
-          <div className="inline-block px-4 py-1.5 bg-[#1b3d2e] text-[#d4a06a] rounded-full text-[12px] font-black uppercase tracking-widest mb-6">
+          <div className="inline-block px-4 py-1.5 bg-[#234745] text-[#d4a06a] rounded-full text-[12px] font-black uppercase tracking-widest mb-6">
              {isEn ? 'Customer Feedback' : 'آراء العملاء'}
           </div>
-          <h1 className="text-4xl lg:text-5xl font-black text-[#1b3d2e] mb-6 leading-tight">
+          <h1 className="text-4xl lg:text-5xl font-black text-[#234745] mb-6 leading-tight">
             {isEn ? 'How was your experience?' : 'كيف كانت تجربتك؟'}
           </h1>
           <p className="text-gray-500 font-bold max-w-lg mx-auto leading-relaxed">
@@ -112,7 +112,7 @@ export default function FeedbackPage() {
             <section className="space-y-6">
               <div className="flex items-center gap-4 mb-2">
                 <span className="w-8 h-8 rounded-full bg-[#f8f5f2] flex items-center justify-center text-[#d4a06a] font-black text-sm">1</span>
-                <h3 className="text-xl font-black text-[#1b3d2e]">{isEn ? 'Rate the Product' : 'تقييم المنتج'}</h3>
+                <h3 className="text-xl font-black text-[#234745]">{isEn ? 'Rate the Product' : 'تقييم المنتج'}</h3>
               </div>
               <p className="text-gray-400 text-sm font-medium px-12">
                 {isEn ? 'How would you rate the quality and taste?' : 'ما هو تقييمك لجودة وطعم المنتج؟'}
@@ -134,7 +134,7 @@ export default function FeedbackPage() {
             <section className="space-y-6">
               <div className="flex items-center gap-4 mb-2">
                 <span className="w-8 h-8 rounded-full bg-[#f8f5f2] flex items-center justify-center text-[#d4a06a] font-black text-sm">2</span>
-                <h3 className="text-xl font-black text-[#1b3d2e]">{isEn ? 'Branch & Service' : 'الفرع والخدمة'}</h3>
+                <h3 className="text-xl font-black text-[#234745]">{isEn ? 'Branch & Service' : 'الفرع والخدمة'}</h3>
               </div>
               <p className="text-gray-400 text-sm font-medium px-12">
                 {isEn 
@@ -159,7 +159,7 @@ export default function FeedbackPage() {
             <section className="space-y-6">
               <div className="flex items-center gap-4 mb-2">
                 <span className="w-8 h-8 rounded-full bg-[#f8f5f2] flex items-center justify-center text-[#d4a06a] font-black text-sm">3</span>
-                <h3 className="text-xl font-black text-[#1b3d2e]">{isEn ? 'Your Comments' : 'ملاحظاتك'}</h3>
+                <h3 className="text-xl font-black text-[#234745]">{isEn ? 'Your Comments' : 'ملاحظاتك'}</h3>
               </div>
               <div className="px-12">
                 <textarea 
@@ -167,7 +167,7 @@ export default function FeedbackPage() {
                   rows={4}
                   required
                   placeholder={isEn ? "Tell us more about your experience..." : "أخبرنا المزيد عن تجربتك..."}
-                  className="w-full bg-[#fcfaf8] border-2 border-[#f0ece8] rounded-[24px] p-6 text-[#1b3d2e] font-medium placeholder-gray-300 focus:outline-none focus:border-[#d4a06a] transition-all resize-none"
+                  className="w-full bg-[#fcfaf8] border-2 border-[#f0ece8] rounded-[24px] p-6 text-[#234745] font-medium placeholder-gray-300 focus:outline-none focus:border-[#d4a06a] transition-all resize-none"
                 />
               </div>
             </section>
@@ -178,7 +178,7 @@ export default function FeedbackPage() {
             <section className="space-y-6">
               <div className="flex items-center gap-4 mb-2">
                 <span className="w-8 h-8 rounded-full bg-[#f8f5f2] flex items-center justify-center text-[#d4a06a] font-black text-sm">4</span>
-                <h3 className="text-xl font-black text-[#1b3d2e]">{isEn ? 'Photo (Optional)' : 'صورة (اختياري)'}</h3>
+                <h3 className="text-xl font-black text-[#234745]">{isEn ? 'Photo (Optional)' : 'صورة (اختياري)'}</h3>
               </div>
               <div className="px-12">
                 <div className="relative group">
@@ -188,7 +188,7 @@ export default function FeedbackPage() {
                     onChange={handleImageChange}
                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                   />
-                  <div className={`w-full h-48 border-2 border-dashed ${selectedImage ? 'border-[#1b3d2e]' : 'border-[#f0ece8]'} rounded-[24px] flex flex-col items-center justify-center gap-4 bg-[#fcfaf8] group-hover:bg-[#f8f5f2] transition-all overflow-hidden`}>
+                  <div className={`w-full h-48 border-2 border-dashed ${selectedImage ? 'border-[#234745]' : 'border-[#f0ece8]'} rounded-[24px] flex flex-col items-center justify-center gap-4 bg-[#fcfaf8] group-hover:bg-[#f8f5f2] transition-all overflow-hidden`}>
                     {selectedImage ? (
                       <img src={selectedImage} alt="Preview" className="w-full h-full object-cover" />
                     ) : (
@@ -212,7 +212,7 @@ export default function FeedbackPage() {
                 className={`w-full py-6 rounded-[24px] font-black text-xl shadow-[0_20px_40px_rgba(27,61,46,0.15)] transition-all flex items-center justify-center gap-3 active:scale-95 ${
                   productRating === 0 
                     ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
-                    : 'bg-[#1b3d2e] text-white hover:bg-[#d4a06a] hover:shadow-[0_25px_50px_rgba(27,61,46,0.25)]'
+                    : 'bg-[#234745] text-white hover:bg-[#d4a06a] hover:shadow-[0_25px_50px_rgba(27,61,46,0.25)]'
                 }`}
               >
                 {fetcher.state !== 'idle' ? (

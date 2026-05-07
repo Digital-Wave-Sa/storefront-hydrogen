@@ -65,7 +65,7 @@ export function CartLineItem({
         {/* Product Details & Controls */}
         <div className={`flex-1 flex flex-col ${layout === 'aside' ? 'gap-2' : 'md:flex-row md:items-center justify-between gap-4'} min-w-0`}>
           <div className="min-w-0">
-            <h4 className={`font-bold ${layout === 'aside' ? 'text-[15px]' : 'text-[18px] md:text-[20px]'} text-[#1b3d2e] mb-1 line-clamp-2 leading-snug`}>
+            <h4 className={`font-bold ${layout === 'aside' ? 'text-[15px]' : 'text-[18px] md:text-[20px]'} text-[#234745] mb-1 line-clamp-2 leading-snug`}>
               {product?.title || title}
               {product?.tags?.some((tag: string) => ['express', 'express-delivery'].includes(tag.toLowerCase())) && (
                 <span className="inline-flex items-center gap-1 ml-2 text-[10px] text-[#004f59] font-medium shrink-0">
@@ -94,7 +94,7 @@ export function CartLineItem({
                <CartLineQuantity line={line} />
             )}
 
-            <div className={`font-black text-[#1b3d2e] font-en ${layout === 'aside' ? 'text-[16px]' : 'text-[18px] md:text-[22px]'}`}>
+            <div className={`font-black text-[#234745] font-en ${layout === 'aside' ? 'text-[16px]' : 'text-[18px] md:text-[22px]'}`}>
                <ProductPrice price={line?.cost?.totalAmount} />
             </div>
             
@@ -115,7 +115,7 @@ export function CartLineItem({
           <span className="text-lg">🎁</span>
           <div className="min-w-0">
             <p className="text-[11px] font-bold text-[#d4a06a] uppercase tracking-wider">{attr.key}</p>
-            <p className="text-[13px] text-[#1b3d2e] font-medium leading-relaxed">{attr.value}</p>
+            <p className="text-[13px] text-[#234745] font-medium leading-relaxed">{attr.value}</p>
           </div>
         </div>
       ))}
@@ -160,14 +160,14 @@ function CartLineQuantity({line}: {line: CartLine}) {
             disabled={!!isOptimistic}
             name="decrease-quantity"
             value={prevQuantity}
-            className="w-9 h-9 flex items-center justify-center rounded-full text-[#1b3d2e] hover:bg-[#f8f5f2] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+            className="w-9 h-9 flex items-center justify-center rounded-full text-[#234745] hover:bg-[#f8f5f2] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
           </button>
         </CartLineUpdateButton>
       )}
       
-      <span className="font-bold text-[15px] text-[#1b3d2e] min-w-[32px] text-center select-none px-1">
+      <span className="font-bold text-[15px] text-[#234745] min-w-[32px] text-center select-none px-1">
         {quantity}
       </span>
 
@@ -177,7 +177,7 @@ function CartLineQuantity({line}: {line: CartLine}) {
           name="increase-quantity"
           value={nextQuantity}
           disabled={!!isOptimistic}
-          className="w-9 h-9 flex items-center justify-center rounded-full text-[#1b3d2e] hover:bg-[#f8f5f2] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+          className="w-9 h-9 flex items-center justify-center rounded-full text-[#234745] hover:bg-[#f8f5f2] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
         </button>

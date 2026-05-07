@@ -134,7 +134,7 @@ function AccountLayout({
                   <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none mb-1">
                     {isEn ? 'Available Points' : 'النقاط المتاحة'}
                   </p>
-                  <p className="text-[18px] font-black text-[#1b3d2e] leading-none font-en">
+                  <p className="text-[18px] font-black text-[#234745] leading-none font-en">
                     2,450
                   </p>
                 </div>

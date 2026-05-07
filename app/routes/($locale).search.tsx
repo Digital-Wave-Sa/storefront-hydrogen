@@ -209,7 +209,7 @@ export default function SearchPage() {
                 <div className="flex items-center gap-4">
                   <button 
                       onClick={() => setIsFilterOpen(true)}
-                      className="flex items-center gap-2.5 px-6 py-3.5 bg-[#1b3d2e] text-white rounded-2xl font-bold hover:bg-[#2d5e4a] transition-all shadow-md active:scale-95 group"
+                      className="flex items-center gap-2.5 px-6 py-3.5 bg-[#234745] text-white rounded-2xl font-bold hover:bg-[#2d5e4a] transition-all shadow-md active:scale-95 group"
                   >
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="group-hover:rotate-12 transition-transform"><path d="M22 3H2l8 9v11l4-6V12L22 3z"/></svg>
                     <span>{isEn ? 'Filter' : 'تـصـفـيـة'}</span>
@@ -259,8 +259,8 @@ function FilterSidebar({ filters, tags, collections, onClose, isEn }: { filters:
     return (
         <div className="flex flex-col h-full overflow-hidden">
             <header className="p-8 border-b border-gray-100 flex items-center justify-between shrink-0">
-                <h2 className="text-2xl font-black text-[#1b3d2e]">{isEn ? 'Filters' : 'تصفية النتائج'}</h2>
-                <button onClick={onClose} className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-[#1b3d2e] hover:bg-red-50 hover:text-red-500 transition-all font-bold text-2xl">
+                <h2 className="text-2xl font-black text-[#234745]">{isEn ? 'Filters' : 'تصفية النتائج'}</h2>
+                <button onClick={onClose} className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-[#234745] hover:bg-red-50 hover:text-red-500 transition-all font-bold text-2xl">
                     &times;
                 </button>
             </header>
@@ -304,12 +304,12 @@ function FilterForm({ filters, tags, collections, onClose, isEn }: { filters: an
                             onClick={() => setIsCollectionsOpen(!isCollectionsOpen)}
                             className="w-full flex items-center justify-between group outline-none"
                         >
-                            <h3 className="text-sm font-black text-[#1b3d2e] uppercase tracking-widest">
+                            <h3 className="text-sm font-black text-[#234745] uppercase tracking-widest">
                                 {isEn ? 'Collections' : 'المجموعات'}
                             </h3>
                             <svg 
                                 width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" 
-                                className={`text-[#1b3d2e] transition-transform duration-300 ${isCollectionsOpen ? 'rotate-180' : ''}`}
+                                className={`text-[#234745] transition-transform duration-300 ${isCollectionsOpen ? 'rotate-180' : ''}`}
                             >
                                 <polyline points="6 9 12 15 18 9"></polyline>
                             </svg>
@@ -330,10 +330,10 @@ function FilterForm({ filters, tags, collections, onClose, isEn }: { filters: an
                                         className="flex items-center justify-between cursor-pointer group mb-3 last:mb-0 transition-opacity hover:opacity-80"
                                     >
                                         <div className="flex items-center gap-3">
-                                            <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${isActive ? 'bg-[#1b3d2e] border-[#1b3d2e]' : 'border-gray-200 bg-white group-hover:border-[#1b3d2e]'}`}>
+                                            <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${isActive ? 'bg-[#234745] border-[#234745]' : 'border-gray-200 bg-white group-hover:border-[#234745]'}`}>
                                                 {isActive && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4"><polyline points="20 6 9 17 4 12"></polyline></svg>}
                                             </div>
-                                            <span className={`text-[14px] transition-all ${isActive ? 'text-[#1b3d2e] font-bold' : 'text-gray-600 font-medium group-hover:text-[#1b3d2e]'}`}>
+                                            <span className={`text-[14px] transition-all ${isActive ? 'text-[#234745] font-bold' : 'text-gray-600 font-medium group-hover:text-[#234745]'}`}>
                                                 {col.title}
                                             </span>
                                         </div>
@@ -347,7 +347,7 @@ function FilterForm({ filters, tags, collections, onClose, isEn }: { filters: an
                 {/* Custom Tags Filter */}
                 {tags && tags.length > 0 && (
                     <div className="mb-10 pb-6 border-b border-gray-100">
-                        <h3 className="text-sm font-black text-[#1b3d2e] uppercase tracking-widest mb-6">
+                        <h3 className="text-sm font-black text-[#234745] uppercase tracking-widest mb-6">
                             {isEn ? 'Tags' : 'العلامات'}
                         </h3>
                         <div className="flex flex-col">
@@ -365,10 +365,10 @@ function FilterForm({ filters, tags, collections, onClose, isEn }: { filters: an
                                         className="flex items-center justify-between cursor-pointer group mb-3 last:mb-0 transition-opacity hover:opacity-80"
                                     >
                                         <div className="flex items-center gap-3">
-                                            <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${isActive ? 'bg-[#1b3d2e] border-[#1b3d2e]' : 'border-gray-200 bg-white group-hover:border-[#1b3d2e]'}`}>
+                                            <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${isActive ? 'bg-[#234745] border-[#234745]' : 'border-gray-200 bg-white group-hover:border-[#234745]'}`}>
                                                 {isActive && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4"><polyline points="20 6 9 17 4 12"></polyline></svg>}
                                             </div>
-                                            <span className={`text-[14px] transition-all ${isActive ? 'text-[#1b3d2e] font-bold' : 'text-gray-600 font-medium group-hover:text-[#1b3d2e]'}`}>
+                                            <span className={`text-[14px] transition-all ${isActive ? 'text-[#234745] font-bold' : 'text-gray-600 font-medium group-hover:text-[#234745]'}`}>
                                                 {tag}
                                             </span>
                                         </div>
@@ -381,7 +381,7 @@ function FilterForm({ filters, tags, collections, onClose, isEn }: { filters: an
 
                 {filters.map((filter) => (
                     <div key={filter.id} className="mb-10 pb-6 border-b border-gray-100 last:border-0">
-                        <h3 className="text-sm font-black text-[#1b3d2e] uppercase tracking-widest mb-6">
+                        <h3 className="text-sm font-black text-[#234745] uppercase tracking-widest mb-6">
                             {filter.label}
                         </h3>
                         {filter.type === 'LIST' ? (
@@ -410,10 +410,10 @@ function FilterForm({ filters, tags, collections, onClose, isEn }: { filters: an
                                             className="flex items-center justify-between cursor-pointer group mb-3 last:mb-0 transition-opacity hover:opacity-80"
                                         >
                                             <div className="flex items-center gap-3">
-                                                <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${isActive ? 'bg-[#1b3d2e] border-[#1b3d2e]' : 'border-gray-200 bg-white group-hover:border-[#1b3d2e]'}`}>
+                                                <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${isActive ? 'bg-[#234745] border-[#234745]' : 'border-gray-200 bg-white group-hover:border-[#234745]'}`}>
                                                     {isActive && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4"><polyline points="20 6 9 17 4 12"></polyline></svg>}
                                                 </div>
-                                                <span className={`text-[14px] transition-all ${isActive ? 'text-[#1b3d2e] font-bold' : 'text-gray-600 font-medium group-hover:text-[#1b3d2e]'}`}>
+                                                <span className={`text-[14px] transition-all ${isActive ? 'text-[#234745] font-bold' : 'text-gray-600 font-medium group-hover:text-[#234745]'}`}>
                                                     {value.label}
                                                 </span>
                                             </div>
@@ -432,7 +432,7 @@ function FilterForm({ filters, tags, collections, onClose, isEn }: { filters: an
                                             value={minPrice}
                                             onChange={(e) => setMinPrice(e.target.value)}
                                             placeholder="0" 
-                                            className="w-full bg-white border-2 border-gray-100 rounded-xl px-4 py-3 text-sm font-bold focus:outline-none focus:border-[#1b3d2e] transition-all" 
+                                            className="w-full bg-white border-2 border-gray-100 rounded-xl px-4 py-3 text-sm font-bold focus:outline-none focus:border-[#234745] transition-all" 
                                         />
                                     </div>
                                     <div className="flex-1">
@@ -442,7 +442,7 @@ function FilterForm({ filters, tags, collections, onClose, isEn }: { filters: an
                                             value={maxPrice}
                                             onChange={(e) => setMaxPrice(e.target.value)}
                                             placeholder="500+" 
-                                            className="w-full bg-white border-2 border-gray-100 rounded-xl px-4 py-3 text-sm font-bold focus:outline-none focus:border-[#1b3d2e] transition-all" 
+                                            className="w-full bg-white border-2 border-gray-100 rounded-xl px-4 py-3 text-sm font-bold focus:outline-none focus:border-[#234745] transition-all" 
                                         />
                                     </div>
                                 </div>
@@ -455,7 +455,7 @@ function FilterForm({ filters, tags, collections, onClose, isEn }: { filters: an
             <footer className="p-8 pb-10 sticky bottom-0 z-20">
                 <button 
                   onClick={handleApply}
-                  className="w-full bg-[#1b3d2e] text-white py-5 rounded-2xl font-black text-lg shadow-[0_10px_30px_rgba(27,61,46,0.25)] hover:shadow-[0_15px_40px_rgba(27,61,46,0.35)] active:scale-95 transition-all"
+                  className="w-full bg-[#234745] text-white py-5 rounded-2xl font-black text-lg shadow-[0_10px_30px_rgba(27,61,46,0.25)] hover:shadow-[0_15px_40px_rgba(27,61,46,0.35)] active:scale-95 transition-all"
                 >
                     {isEn ? 'Apply Filters' : 'تـطـبـيـق الـفـلاتـر'}
                 </button>

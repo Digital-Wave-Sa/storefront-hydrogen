@@ -1,10 +1,27 @@
-/* @font-face {
-  font-family: 'Gotham Light';
-  src: url('/fonts/GothamLight.woff2') format('woff2'),
-    url('/fonts/GothamLight.woff') format('woff');
-  font-weight: 300;
+@font-face {
+  font-family: 'Bahij Janna';
+  src: url('/fonts/Bahij_Janna-Regular.ttf') format('truetype');
+  font-weight: 400;
   font-style: normal;
-} */
+}
+
+@font-face {
+  font-family: 'GE Dinar One';
+  src: url('/fonts/GE_Dinar_One_Medium.ttf') format('truetype');
+  font-weight: 500;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'GE Dinar One';
+  src: url('/fonts/GE-Dinar-One-Bold.otf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
+}
+
+.font-dinar {
+  font-family: 'GE Dinar One', sans-serif !important;
+}
 
 :root {
   --aside-width: 400px;
@@ -25,7 +42,7 @@
 }
 
 .font-ar {
-  font-family: 'Cairo', sans-serif !important;
+  font-family: 'Bahij Janna', 'Cairo', sans-serif !important;
 }
 
 .font-en {
@@ -717,7 +734,7 @@ button.reset:hover:not(:has(> *)) {
 
 .otp-login-header h1 {
   font-size: 28px;
-  color: #1b3d2e;
+  color: #234745;
   margin-bottom: 12px;
   font-weight: 700;
 }
@@ -750,13 +767,13 @@ button.reset:hover:not(:has(> *)) {
 }
 
 .phone-input-wrapper:focus-within {
-  border-color: #1b3d2e;
+  border-color: #234745;
   box-shadow: 0 0 0 4px rgba(27, 61, 46, 0.05);
 }
 
 .country-code {
   font-weight: 700;
-  color: #1b3d2e;
+  color: #234745;
   padding-right: 12px;
   border-right: 1.5px solid #eee;
   font-size: 16px;
@@ -769,7 +786,7 @@ button.reset:hover:not(:has(> *)) {
   padding: 14px 12px;
   font-size: 16px;
   font-weight: 600;
-  color: #1b3d2e;
+  color: #234745;
   outline: none;
   letter-spacing: 0.5px;
 }
@@ -796,13 +813,13 @@ button.reset:hover:not(:has(> *)) {
   text-align: center;
   font-size: 24px;
   font-weight: 700;
-  color: #1b3d2e;
+  color: #234745;
   background: #fdfdfd;
   transition: all 0.2s;
 }
 
 .otp-digit-input:focus {
-  border-color: #1b3d2e;
+  border-color: #234745;
   background: #fff;
   outline: none;
   box-shadow: 0 0 0 4px rgba(27, 61, 46, 0.05);
@@ -817,7 +834,7 @@ button.reset:hover:not(:has(> *)) {
 }
 
 .resend-link {
-  color: #1b3d2e;
+  color: #234745;
   font-weight: 700;
   background: none;
   border: none;
@@ -829,7 +846,7 @@ button.reset:hover:not(:has(> *)) {
 .change-number-btn {
   background: none;
   border: none;
-  color: #1b3d2e;
+  color: #234745;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
@@ -909,7 +926,7 @@ button.reset:hover:not(:has(> *)) {
 }
 
 .otp-footer a {
-  color: #1b3d2e;
+  color: #234745;
   font-weight: 600;
   text-decoration: none;
 }
@@ -929,7 +946,7 @@ button.reset:hover:not(:has(> *)) {
 }
 
 .register-link {
-  color: #1b3d2e;
+  color: #234745;
   font-weight: 700;
   text-decoration: none;
   margin-inline-start: 4px;
@@ -955,13 +972,13 @@ button.reset:hover:not(:has(> *)) {
   background: #fcfcfc;
   margin-bottom: 16px;
   transition: all 0.3s;
-  color: #1b3d2e;
+  color: #234745;
   font-weight: 500;
   outline: none;
 }
 
 .otp-input-field:focus {
-  border-color: #1b3d2e;
+  border-color: #234745;
   box-shadow: 0 0 0 4px rgba(27, 61, 46, 0.05);
   background: #fff;
 }
@@ -986,7 +1003,7 @@ button.reset:hover:not(:has(> *)) {
 }
 
 .phone-input-wrapper:focus-within {
-  border-color: #1b3d2e;
+  border-color: #234745;
   box-shadow: 0 8px 24px rgba(27, 61, 46, 0.06);
 }
 
@@ -1008,7 +1025,7 @@ button.reset:hover:not(:has(> *)) {
 
 .country-code {
   font-weight: 800;
-  color: #1b3d2e;
+  color: #234745;
   font-size: 15px;
   letter-spacing: 0.5px;
 }
@@ -1019,7 +1036,7 @@ button.reset:hover:not(:has(> *)) {
   padding: 16px 20px !important;
   font-size: 17px !important;
   font-weight: 700 !important;
-  color: #1b3d2e !important;
+  color: #234745 !important;
   flex: 1;
   outline: none !important;
   width: 100%;
@@ -1037,7 +1054,7 @@ button.reset:hover:not(:has(> *)) {
   padding: 16px 0 !important;
   font-size: 16px !important;
   font-weight: 600 !important;
-  color: #1b3d2e !important;
+  color: #234745 !important;
   outline: none !important;
 }
 
@@ -1051,7 +1068,7 @@ button.reset:hover:not(:has(> *)) {
   font-weight: 300;
   font-size: 36px;
   margin-bottom: 12px;
-  color: #1b3d2e;
+  color: #234745;
 }
 
 .otp-login-header p {
@@ -1122,11 +1139,11 @@ button.reset:hover:not(:has(> *)) {
 
 .account-nav-item:hover {
   background: #fcfaf5;
-  color: #1b3d2e;
+  color: #234745;
 }
 
 .account-nav-item.active {
-  background: #1b3d2e;
+  background: #234745;
   color: white;
 }
 
@@ -1153,7 +1170,7 @@ button.reset:hover:not(:has(> *)) {
 .account-heading {
   font-size: 28px;
   font-weight: 700;
-  color: #1b3d2e;
+  color: #234745;
   margin-bottom: 32px;
   display: flex;
   align-items: center;
@@ -1173,20 +1190,20 @@ button.reset:hover:not(:has(> *)) {
   width: 52px;
   height: 52px;
   background: #fcfaf5;
-  border: 1.5px solid #1b3d2e;
+  border: 1.5px solid #234745;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: 700;
   font-size: 20px;
-  color: #1b3d2e;
+  color: #234745;
 }
 
 .profile-info h3 {
   font-size: 17px;
   font-weight: 700;
-  color: #1b3d2e;
+  color: #234745;
   margin: 0;
   text-align: right;
 }
@@ -1223,7 +1240,7 @@ button.reset:hover:not(:has(> *)) {
 
 .type-toggle-btn.active {
   background: white;
-  color: #1b3d2e;
+  color: #234745;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
 }
 
@@ -1257,13 +1274,13 @@ button.reset:hover:not(:has(> *)) {
   font-size: 15px;
   background: #fcfcfc;
   transition: all 0.3s;
-  color: #1b3d2e;
+  color: #234745;
   font-weight: 500;
   outline: none;
 }
 
 .account-input:focus {
-  border-color: #1b3d2e;
+  border-color: #234745;
   box-shadow: 0 0 0 4px rgba(27, 61, 46, 0.05);
   background: #fff;
 }
@@ -1279,7 +1296,7 @@ button.reset:hover:not(:has(> *)) {
 }
 
 .order-item-card:hover {
-  border-color: #1b3d2e;
+  border-color: #234745;
   box-shadow: 0 5px 20px rgba(27, 61, 46, 0.04);
 }
 
@@ -1300,7 +1317,7 @@ button.reset:hover:not(:has(> *)) {
 
 .order-number strong {
   font-size: 18px;
-  color: #1b3d2e;
+  color: #234745;
 }
 
 .order-date {
@@ -1309,7 +1326,7 @@ button.reset:hover:not(:has(> *)) {
 }
 
 .view-order-link {
-  color: #1b3d2e;
+  color: #234745;
   font-weight: 700;
   font-size: 14px;
   text-decoration: none;
@@ -1359,7 +1376,7 @@ button.reset:hover:not(:has(> *)) {
 .order-total .Money {
   font-size: 20px;
   font-weight: 800;
-  color: #1b3d2e;
+  color: #234745;
 }
 
 .empty-orders-card {
@@ -1379,7 +1396,7 @@ button.reset:hover:not(:has(> *)) {
 .empty-orders-card h3 {
   font-size: 22px;
   margin-bottom: 12px;
-  color: #1b3d2e;
+  color: #234745;
 }
 
 .empty-orders-card p {
@@ -1408,12 +1425,12 @@ button.reset:hover:not(:has(> *)) {
 }
 
 .address-card:hover {
-  border-color: #1b3d2e;
+  border-color: #234745;
   box-shadow: 0 10px 30px rgba(27, 61, 46, 0.05);
 }
 
 .address-card.is-default {
-  border-color: #1b3d2e;
+  border-color: #234745;
   background: #fcfaf5;
 }
 
@@ -1421,7 +1438,7 @@ button.reset:hover:not(:has(> *)) {
   position: absolute;
   top: 20px;
   left: 20px;
-  background: #1b3d2e;
+  background: #234745;
   color: white;
   font-size: 11px;
   font-weight: 700;
@@ -1433,7 +1450,7 @@ button.reset:hover:not(:has(> *)) {
 .address-name {
   font-weight: 700;
   font-size: 16px;
-  color: #1b3d2e;
+  color: #234745;
   margin-bottom: 8px;
 }
 
@@ -1455,7 +1472,7 @@ button.reset:hover:not(:has(> *)) {
 .address-action-btn {
   font-size: 13px;
   font-weight: 600;
-  color: #1b3d2e;
+  color: #234745;
   background: none;
   border: none;
   cursor: pointer;
@@ -1488,7 +1505,7 @@ button.reset:hover:not(:has(> *)) {
 }
 
 .add-address-card:hover {
-  border-color: #1b3d2e;
+  border-color: #234745;
   background: #fcfaf5;
 }
 
@@ -1502,13 +1519,13 @@ button.reset:hover:not(:has(> *)) {
   justify-content: center;
   margin-bottom: 16px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-  color: #1b3d2e;
+  color: #234745;
   font-size: 24px;
 }
 
 .add-address-text {
   font-weight: 700;
-  color: #1b3d2e;
+  color: #234745;
 }
 
 /* Modal for Address Edit/Create */
@@ -1554,7 +1571,7 @@ button.reset:hover:not(:has(> *)) {
 .order-total .Money {
   font-size: 20px;
   font-weight: 800;
-  color: #1b3d2e;
+  color: #234745;
 }
 
 .empty-orders-card {
@@ -1574,7 +1591,7 @@ button.reset:hover:not(:has(> *)) {
 .empty-orders-card h3 {
   font-size: 22px;
   margin-bottom: 12px;
-  color: #1b3d2e;
+  color: #234745;
 }
 
 .empty-orders-card p {
@@ -1603,12 +1620,12 @@ button.reset:hover:not(:has(> *)) {
 }
 
 .address-card:hover {
-  border-color: #1b3d2e;
+  border-color: #234745;
   box-shadow: 0 10px 30px rgba(27, 61, 46, 0.05);
 }
 
 .address-card.is-default {
-  border-color: #1b3d2e;
+  border-color: #234745;
   background: #fcfaf5;
 }
 
@@ -1616,7 +1633,7 @@ button.reset:hover:not(:has(> *)) {
   position: absolute;
   top: 20px;
   left: 20px;
-  background: #1b3d2e;
+  background: #234745;
   color: white;
   font-size: 11px;
   font-weight: 700;
@@ -1628,7 +1645,7 @@ button.reset:hover:not(:has(> *)) {
 .address-name {
   font-weight: 700;
   font-size: 16px;
-  color: #1b3d2e;
+  color: #234745;
   margin-bottom: 8px;
 }
 
@@ -1650,7 +1667,7 @@ button.reset:hover:not(:has(> *)) {
 .address-action-btn {
   font-size: 13px;
   font-weight: 600;
-  color: #1b3d2e;
+  color: #234745;
   background: none;
   border: none;
   cursor: pointer;
@@ -1683,7 +1700,7 @@ button.reset:hover:not(:has(> *)) {
 }
 
 .add-address-card:hover {
-  border-color: #1b3d2e;
+  border-color: #234745;
   background: #fcfaf5;
 }
 
@@ -1697,13 +1714,13 @@ button.reset:hover:not(:has(> *)) {
   justify-content: center;
   margin-bottom: 16px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-  color: #1b3d2e;
+  color: #234745;
   font-size: 24px;
 }
 
 .add-address-text {
   font-weight: 700;
-  color: #1b3d2e;
+  color: #234745;
 }
 
 /* Modal for Address Edit/Create */
@@ -1747,7 +1764,7 @@ button.reset:hover:not(:has(> *)) {
   border-radius: 14px;
   font-size: 14px;
   font-weight: 700;
-  color: #1b3d2e;
+  color: #234745;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   opacity: 0.6;
 }
@@ -1773,7 +1790,7 @@ button.reset:hover:not(:has(> *)) {
 .order-total .Money {
   font-size: 20px;
   font-weight: 800;
-  color: #1b3d2e;
+  color: #234745;
 }
 
 .empty-orders-card {
@@ -1793,7 +1810,7 @@ button.reset:hover:not(:has(> *)) {
 .empty-orders-card h3 {
   font-size: 22px;
   margin-bottom: 12px;
-  color: #1b3d2e;
+  color: #234745;
 }
 
 .empty-orders-card p {
@@ -1822,12 +1839,12 @@ button.reset:hover:not(:has(> *)) {
 }
 
 .address-card:hover {
-  border-color: #1b3d2e;
+  border-color: #234745;
   box-shadow: 0 10px 30px rgba(27, 61, 46, 0.05);
 }
 
 .address-card.is-default {
-  border-color: #1b3d2e;
+  border-color: #234745;
   background: #fcfaf5;
 }
 
@@ -1835,7 +1852,7 @@ button.reset:hover:not(:has(> *)) {
   position: absolute;
   top: 20px;
   left: 20px;
-  background: #1b3d2e;
+  background: #234745;
   color: white;
   font-size: 11px;
   font-weight: 700;
@@ -1847,7 +1864,7 @@ button.reset:hover:not(:has(> *)) {
 .address-name {
   font-weight: 700;
   font-size: 16px;
-  color: #1b3d2e;
+  color: #234745;
   margin-bottom: 8px;
 }
 
@@ -1869,7 +1886,7 @@ button.reset:hover:not(:has(> *)) {
 .address-action-btn {
   font-size: 13px;
   font-weight: 600;
-  color: #1b3d2e;
+  color: #234745;
   background: none;
   border: none;
   cursor: pointer;
@@ -1902,7 +1919,7 @@ button.reset:hover:not(:has(> *)) {
 }
 
 .add-address-card:hover {
-  border-color: #1b3d2e;
+  border-color: #234745;
   background: #fcfaf5;
 }
 
@@ -1916,13 +1933,13 @@ button.reset:hover:not(:has(> *)) {
   justify-content: center;
   margin-bottom: 16px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-  color: #1b3d2e;
+  color: #234745;
   font-size: 24px;
 }
 
 .add-address-text {
   font-weight: 700;
-  color: #1b3d2e;
+  color: #234745;
 }
 
 /* Modal for Address Edit/Create */
@@ -1966,7 +1983,7 @@ button.reset:hover:not(:has(> *)) {
   border-radius: 14px;
   font-size: 14px;
   font-weight: 700;
-  color: #1b3d2e;
+  color: #234745;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   opacity: 0.6;
 }
@@ -2050,7 +2067,7 @@ button.reset:hover:not(:has(> *)) {
   border-radius: 14px;
   font-size: 14px;
   font-weight: 700;
-  color: #1b3d2e;
+  color: #234745;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   opacity: 0.6;
 }
@@ -2077,7 +2094,7 @@ button.reset:hover:not(:has(> *)) {
 }
 
 .dpm-search-input-wrapper:focus-within {
-  border-color: #1b3d2e;
+  border-color: #234745;
   background: #fff;
   box-shadow: 0 0 0 4px rgba(27, 61, 46, 0.05);
 }
@@ -2117,7 +2134,7 @@ button.reset:hover:not(:has(> *)) {
 
 .dpm-branch-item.selected {
   background: #fcfaf5;
-  border-color: #1b3d2e;
+  border-color: #234745;
   box-shadow: 0 10px 25px rgba(27, 61, 46, 0.04);
 }
 
@@ -2132,7 +2149,7 @@ button.reset:hover:not(:has(> *)) {
 .dpm-branch-name {
   font-size: 16px;
   font-weight: 800;
-  color: #1b3d2e;
+  color: #234745;
 }
 
 .dpm-branch-meta {
@@ -2172,7 +2189,7 @@ button.reset:hover:not(:has(> *)) {
 .dpm-confirm-btn {
   width: 100%;
   padding: 16px;
-  background: #1b3d2e;
+  background: #234745;
   color: #fff;
   border-radius: 18px;
   font-size: 16px;
@@ -2235,7 +2252,7 @@ button.reset:hover:not(:has(> *)) {
 .dpm-map-floating-icon {
   width: 48px;
   height: 48px;
-  background: #1b3d2e;
+  background: #234745;
   border-radius: 14px;
   display: flex;
   align-items: center;
@@ -2297,7 +2314,7 @@ button.reset:hover:not(:has(> *)) {
 .luxury-title {
   font-size: 26px;
   font-weight: 800;
-  color: #1b3d2e;
+  color: #234745;
   text-align: center;
   margin-bottom: 8px;
 }
@@ -2324,7 +2341,7 @@ button.reset:hover:not(:has(> *)) {
   border-radius: 12px;
   font-size: 13px;
   font-weight: 700;
-  color: #1b3d2e;
+  color: #234745;
   opacity: 0.6;
   transition: all 0.3s;
   background: transparent;
@@ -2349,14 +2366,14 @@ button.reset:hover:not(:has(> *)) {
 }
 
 .luxury-input:focus-within {
-  border-color: #1b3d2e !important;
+  border-color: #234745 !important;
   box-shadow: 0 0 0 4px rgba(27, 61, 46, 0.04);
 }
 
 .luxury-label {
   font-size: 12px;
   font-weight: 700;
-  color: #1b3d2e;
+  color: #234745;
   margin-bottom: 8px;
   display: block;
 }
@@ -2366,7 +2383,7 @@ button.reset:hover:not(:has(> *)) {
   border-radius: 16px !important;
   font-size: 16px !important;
   font-weight: 700 !important;
-  background: #1b3d2e !important;
+  background: #234745 !important;
   box-shadow: 0 10px 25px rgba(27, 61, 46, 0.15) !important;
   transition: all 0.3s !important;
 }
@@ -2420,7 +2437,7 @@ button.reset:hover:not(:has(> *)) {
 
 .luxury-social-btn:hover {
   background: #fcfaf5;
-  border-color: #1b3d2e;
+  border-color: #234745;
   transform: translateY(-2px);
 }
 
@@ -2432,7 +2449,7 @@ button.reset:hover:not(:has(> *)) {
 }
 
 .luxury-footer a {
-  color: #1b3d2e;
+  color: #234745;
   font-weight: 700;
   text-decoration: none;
 }
@@ -2463,14 +2480,14 @@ button.reset:hover:not(:has(> *)) {
   border: 2px solid #f0eee9 !important;
   font-size: 24px !important;
   font-weight: 800 !important;
-  color: #1b3d2e !important;
+  color: #234745 !important;
   text-align: center !important;
   width: 100% !important;
   background: #fff !important;
 }
 
 .luxury-digit:focus {
-  border-color: #1b3d2e !important;
+  border-color: #234745 !important;
   background: #fcfaf5 !important;
 }
 /* Animations */
@@ -2509,7 +2526,7 @@ button.reset:hover:not(:has(> *)) {
 .account-heading {
   font-size: 32px;
   font-weight: 900;
-  color: #1b3d2e;
+  color: #234745;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -2548,7 +2565,7 @@ button.reset:hover:not(:has(> *)) {
 }
 
 .search-input-wrapper input:focus {
-  border-color: #1b3d2e;
+  border-color: #234745;
   box-shadow: 0 0 0 4px rgba(27, 61, 46, 0.05);
   outline: none;
 }
@@ -2572,7 +2589,7 @@ button.reset:hover:not(:has(> *)) {
   border-radius: 16px;
   font-size: 15px;
   font-weight: 700;
-  color: #1b3d2e;
+  color: #234745;
   background: #fff;
   cursor: pointer;
 }
@@ -2602,7 +2619,7 @@ button.reset:hover:not(:has(> *)) {
 
 .order-id-label {
   font-weight: 900;
-  color: #1b3d2e;
+  color: #234745;
   font-size: 16px;
   display: block;
 }
@@ -2618,7 +2635,7 @@ button.reset:hover:not(:has(> *)) {
   align-items: center;
   gap: 8px;
   background: #fff;
-  color: #1b3d2e;
+  color: #234745;
   padding: 10px 20px;
   border-radius: 12px;
   border: 1.5px solid #eee;
@@ -2628,9 +2645,9 @@ button.reset:hover:not(:has(> *)) {
 }
 
 .view-btn-v2:hover {
-  background: #1b3d2e;
+  background: #234745;
   color: #fff;
-  border-color: #1b3d2e;
+  border-color: #234745;
   transform: translateY(-2px);
 }
 
@@ -2688,7 +2705,7 @@ button.reset:hover:not(:has(> *)) {
 .order-price-val {
   font-size: 20px;
   font-weight: 900;
-  color: #1b3d2e;
+  color: #234745;
 }
 
 /* Pagination */
@@ -2698,15 +2715,15 @@ button.reset:hover:not(:has(> *)) {
   background: #fcfaf8;
   border: 1.5px solid #f0ece8;
   border-radius: 100px;
-  color: #1b3d2e;
+  color: #234745;
   font-weight: 800;
   transition: all 0.3s ease;
 }
 
 .pagination-link:hover {
-  background: #1b3d2e;
+  background: #234745;
   color: #fff;
-  border-color: #1b3d2e;
+  border-color: #234745;
 }
 
 /* 
@@ -2735,7 +2752,7 @@ button.reset:hover:not(:has(> *)) {
 .order-title-group h1 {
   font-size: 32px;
   font-weight: 900;
-  color: #1b3d2e;
+  color: #234745;
   margin: 0;
 }
 
@@ -2771,7 +2788,7 @@ button.reset:hover:not(:has(> *)) {
 .order-card-title {
   font-size: 18px;
   font-weight: 900;
-  color: #1b3d2e;
+  color: #234745;
   margin-bottom: 20px;
 }
 
@@ -2844,7 +2861,7 @@ button.reset:hover:not(:has(> *)) {
 }
 
 .timeline-step.completed .step-label,
-.timeline-step.active .step-label { color: #1b3d2e; }
+.timeline-step.active .step-label { color: #234745; }
 
 .order-line-item {
   display: flex;
@@ -2866,7 +2883,7 @@ button.reset:hover:not(:has(> *)) {
 
 .line-item-name {
   font-weight: 800;
-  color: #1b3d2e;
+  color: #234745;
   font-size: 16px;
   display: block;
 }
@@ -2891,12 +2908,12 @@ button.reset:hover:not(:has(> *)) {
   padding-top: 20px;
   font-size: 22px;
   font-weight: 900;
-  color: #1b3d2e;
+  color: #234745;
 }
 
 .btn-reorder {
   width: 100%;
-  background: #1b3d2e;
+  background: #234745;
   color: #fff;
   padding: 16px;
   border-radius: 16px;
@@ -2920,7 +2937,7 @@ button.reset:hover:not(:has(> *)) {
 .btn-outline {
   width: 100%;
   background: #fff;
-  color: #1b3d2e;
+  color: #234745;
   padding: 14px;
   border-radius: 16px;
   font-weight: 800;
@@ -2935,6 +2952,6 @@ button.reset:hover:not(:has(> *)) {
 }
 
 .btn-outline:hover {
-  border-color: #1b3d2e;
+  border-color: #234745;
   transform: translateY(-2px);
 }

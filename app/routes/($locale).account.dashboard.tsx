@@ -187,7 +187,7 @@ export default function BranchDashboard() {
   return (
     <div className="account-dashboard-content" dir={isEn ? 'ltr' : 'rtl'}>
       <div className="mb-10">
-        <h1 className="text-3xl font-black text-[#1b3d2e] mb-2">
+        <h1 className="text-3xl font-black text-[#234745] mb-2">
           {isEn ? 'Branch Manager' : 'مدير الفروع'}
         </h1>
         <p className="text-gray-500 font-medium">

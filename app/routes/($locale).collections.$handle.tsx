@@ -177,8 +177,8 @@ export default function Collection() {
                     to={`/collections/${itemHandle}`}
                     className={`px-8 py-4 rounded-[1.5rem] font-bold text-center transition-all duration-300 shadow-sm border ${
                       isActive 
-                        ? 'bg-[#1b3d2e] text-white border-[#1b3d2e] shadow-md scale-105' 
-                        : 'bg-white text-gray-600 border-gray-100 hover:border-[#1b3d2e]/30 hover:shadow-md'
+                        ? 'bg-[#234745] text-white border-[#234745] shadow-md scale-105' 
+                        : 'bg-white text-gray-600 border-gray-100 hover:border-[#234745]/30 hover:shadow-md'
                     }`}
                   >
                     {item.title}
@@ -195,7 +195,7 @@ export default function Collection() {
           <div className="flex items-center gap-4">
             <button 
                 onClick={() => setIsFilterOpen(true)}
-                className="flex items-center gap-2.5 px-6 py-3.5 bg-[#1b3d2e] text-white rounded-2xl font-bold hover:bg-[#2d5e4a] transition-all shadow-md active:scale-95 group"
+                className="flex items-center gap-2.5 px-6 py-3.5 bg-[#234745] text-white rounded-2xl font-bold hover:bg-[#2d5e4a] transition-all shadow-md active:scale-95 group"
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="group-hover:rotate-12 transition-transform"><path d="M22 3H2l8 9v11l4-6V12L22 3z"/></svg>
               <span>{isEn ? 'Filter' : 'تـصـفـيـة'}</span>
@@ -213,7 +213,7 @@ export default function Collection() {
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 15l4 4 4-4M8 19V5M20 9l-4-4-4 4M16 5v14"/></svg>
               </span>
               <select
-                className="bg-transparent text-sm font-bold text-[#1b3d2e] cursor-pointer focus:outline-none focus:ring-0 border-none appearance-none px-2"
+                className="bg-transparent text-sm font-bold text-[#234745] cursor-pointer focus:outline-none focus:ring-0 border-none appearance-none px-2"
                 style={{ WebkitAppearance: 'none', appearance: 'none', background: 'transparent' }}
                 onChange={(e) => {
                   const [key, rev] = e.target.value.split('|');
@@ -238,7 +238,7 @@ export default function Collection() {
                 onClick={() => setView('grid')}
                 className={`flex items-center gap-2 px-5 py-2.5 rounded-xl transition-all duration-300 font-bold text-sm ${
                   view === 'grid' 
-                    ? 'bg-white text-[#1b3d2e] shadow-md border border-gray-100' 
+                    ? 'bg-white text-[#234745] shadow-md border border-gray-100' 
                     : 'text-gray-400 hover:text-gray-600'
                 }`}
               >
@@ -248,7 +248,7 @@ export default function Collection() {
                 onClick={() => setView('list')}
                 className={`flex items-center gap-2 px-5 py-2.5 rounded-xl transition-all duration-300 font-bold text-sm ${
                   view === 'list' 
-                    ? 'bg-white text-[#1b3d2e] shadow-md border border-gray-100' 
+                    ? 'bg-white text-[#234745] shadow-md border border-gray-100' 
                     : 'text-gray-400 hover:text-gray-600'
                 }`}
               >
@@ -262,13 +262,13 @@ export default function Collection() {
           {({nodes, isLoading, PreviousLink, NextLink}) => (
             <>
               <div className="flex justify-center mb-10">
-                <PreviousLink className="text-[#1b3d2e] font-black border-2 border-[#1b3d2e]/10 px-8 py-2.5 rounded-full hover:bg-gray-50 transition-all">
+                <PreviousLink className="text-[#234745] font-black border-2 border-[#234745]/10 px-8 py-2.5 rounded-full hover:bg-gray-50 transition-all">
                   {isLoading ? (isEn ? 'Loading...' : 'جاري التحميل...') : <span>{isEn ? '↑ Load Previous' : '↑ تحميل المنتجات السابقة'}</span>}
                 </PreviousLink>
               </div>
               <ProductsGrid products={nodes} view={view} />
               <div className="flex justify-center mt-16">
-                <NextLink className="bg-[#1b3d2e] text-white px-16 py-4 rounded-full font-black shadow-[0_10px_30px_rgba(27,61,46,0.3)] hover:shadow-[0_15px_40px_rgba(27,61,46,0.4)] hover:-translate-y-1 transition-all duration-300">
+                <NextLink className="bg-[#234745] text-white px-16 py-4 rounded-full font-black shadow-[0_10px_30px_rgba(27,61,46,0.3)] hover:shadow-[0_15px_40px_rgba(27,61,46,0.4)] hover:-translate-y-1 transition-all duration-300">
                   {isLoading ? (isEn ? 'Loading...' : 'جاري التحميل...') : <span>{isEn ? 'Browse More ↓' : 'تصفح المزيد ↓'}</span>}
                 </NextLink>
               </div>
@@ -313,11 +313,11 @@ function CollectionHero({ collection }: { collection: any }) {
             )}
             
             <div className="relative text-center px-4 max-w-4xl">
-                <div className="inline-flex items-center gap-2 bg-[#1b3d2e]/5 border border-[#1b3d2e]/10 text-[#1b3d2e] px-4 py-1.5 rounded-full text-[13px] font-black mb-6">
+                <div className="inline-flex items-center gap-2 bg-[#234745]/5 border border-[#234745]/10 text-[#234745] px-4 py-1.5 rounded-full text-[13px] font-black mb-6">
                     <span className="text-yellow-500 text-[15px]">⭐</span>
                     {collection.title}
                 </div>
-                <h1 className="text-5xl md:text-7xl font-black text-[#1b3d2e] mb-6 drop-shadow-sm leading-tight">
+                <h1 className="text-5xl md:text-7xl font-black text-[#234745] mb-6 drop-shadow-sm leading-tight">
                     {collection.title}
                 </h1>
                 <p className="text-gray-500 text-lg md:text-xl font-bold leading-relaxed opacity-80 max-w-2xl mx-auto">
@@ -339,8 +339,8 @@ function FilterSidebar({ filters, onClose }: { filters: any[], onClose: () => vo
     return (
         <div className="flex flex-col h-full overflow-hidden" dir="rtl">
             <header className="p-8 border-b border-gray-100 flex items-center justify-between shrink-0">
-                <h2 className="text-2xl font-black text-[#1b3d2e]">تصفية النتائج</h2>
-                <button onClick={onClose} className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-[#1b3d2e] hover:bg-red-50 hover:text-red-500 transition-all font-bold text-2xl">
+                <h2 className="text-2xl font-black text-[#234745]">تصفية النتائج</h2>
+                <button onClick={onClose} className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-[#234745] hover:bg-red-50 hover:text-red-500 transition-all font-bold text-2xl">
                     &times;
                 </button>
             </header>
@@ -383,7 +383,7 @@ function FilterForm({ filters, onClose }: { filters: any[], onClose: () => void 
                             type="text" 
                             placeholder="ما الذي تبحث عنه؟" 
                             defaultValue={typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('q') || '' : ''}
-                            className="w-full bg-white border-2 border-gray-100 rounded-2xl px-5 py-4 text-sm font-bold focus:outline-none focus:border-[#1b3d2e] transition-all"
+                            className="w-full bg-white border-2 border-gray-100 rounded-2xl px-5 py-4 text-sm font-bold focus:outline-none focus:border-[#234745] transition-all"
                             onKeyDown={(e) => {
                                 if (e.key === 'Enter') {
                                     const val = e.currentTarget.value;
@@ -428,8 +428,8 @@ function FilterForm({ filters, onClose }: { filters: any[], onClose: () => void 
                                             to={getFilterLink(value.input)}
                                             className={`px-5 py-2.5 border-2 rounded-2xl text-[14px] font-bold transition-all active:scale-95 ${
                                                 isActive 
-                                                    ? 'bg-[#1b3d2e] border-[#1b3d2e] text-white' 
-                                                    : 'bg-white border-gray-100 text-gray-700 hover:border-[#1b3d2e] hover:bg-gray-50'
+                                                    ? 'bg-[#234745] border-[#234745] text-white' 
+                                                    : 'bg-white border-gray-100 text-gray-700 hover:border-[#234745] hover:bg-gray-50'
                                             }`}
                                         >
                                             {value.label}
@@ -448,7 +448,7 @@ function FilterForm({ filters, onClose }: { filters: any[], onClose: () => void 
                                             value={minPrice}
                                             onChange={(e) => setMinPrice(e.target.value)}
                                             placeholder="٠" 
-                                            className="w-full bg-white border-2 border-gray-100 rounded-xl px-4 py-3 text-sm font-bold focus:outline-none focus:border-[#1b3d2e] transition-all" 
+                                            className="w-full bg-white border-2 border-gray-100 rounded-xl px-4 py-3 text-sm font-bold focus:outline-none focus:border-[#234745] transition-all" 
                                         />
                                     </div>
                                     <div className="flex-1">
@@ -458,7 +458,7 @@ function FilterForm({ filters, onClose }: { filters: any[], onClose: () => void 
                                             value={maxPrice}
                                             onChange={(e) => setMaxPrice(e.target.value)}
                                             placeholder="٥٠٠+" 
-                                            className="w-full bg-white border-2 border-gray-100 rounded-xl px-4 py-3 text-sm font-bold focus:outline-none focus:border-[#1b3d2e] transition-all" 
+                                            className="w-full bg-white border-2 border-gray-100 rounded-xl px-4 py-3 text-sm font-bold focus:outline-none focus:border-[#234745] transition-all" 
                                         />
                                     </div>
                                 </div>
@@ -471,7 +471,7 @@ function FilterForm({ filters, onClose }: { filters: any[], onClose: () => void 
             <footer className="p-8 pb-10 sticky bottom-0 z-20">
                 <button 
                   onClick={handleApply}
-                  className="w-full bg-[#1b3d2e] text-white py-5 rounded-2xl font-black text-lg shadow-[0_10px_30px_rgba(27,61,46,0.25)] hover:shadow-[0_15px_40px_rgba(27,61,46,0.35)] active:scale-95 transition-all"
+                  className="w-full bg-[#234745] text-white py-5 rounded-2xl font-black text-lg shadow-[0_10px_30px_rgba(27,61,46,0.25)] hover:shadow-[0_15px_40px_rgba(27,61,46,0.35)] active:scale-95 transition-all"
                 >
                     تـطـبـيـق الـفـلاتـر
                 </button>

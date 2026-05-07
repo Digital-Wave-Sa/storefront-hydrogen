@@ -31,7 +31,7 @@ export function ReviewForm({
         return (
             <div className="bg-[#295b45]/5 border border-[#295b45]/20 rounded-3xl p-8 text-center animate-fade-in">
                 <div className="text-4xl mb-4">💚</div>
-                <h4 className="text-xl font-black text-[#1b3d2e] mb-2">
+                <h4 className="text-xl font-black text-[#234745] mb-2">
                     {isEn ? 'Thank you!' : 'شكراً لك!'}
                 </h4>
                 <p className="text-gray-600 font-bold">
@@ -42,7 +42,7 @@ export function ReviewForm({
     }
 
     return (
-        <fetcher.Form method="POST" action="/api/submit-review" className="bg-white border border-gray-100 rounded-[32px] p-6 md:p-10 shadow-xl shadow-[#1b3d2e]/5">
+        <fetcher.Form method="POST" action="/api/submit-review" className="bg-white border border-gray-100 rounded-[32px] p-6 md:p-10 shadow-xl shadow-[#234745]/5">
             <input type="hidden" name="productHandle" value={productHandle} />
             <input type="hidden" name="language" value={locale} />
             <input type="hidden" name="rating" value={rating} />
@@ -50,7 +50,7 @@ export function ReviewForm({
             {selectedLocationName && <input type="hidden" name="locationName" value={selectedLocationName} />}
 
             <div className="mb-8">
-                <h3 className="text-2xl font-black text-[#1b3d2e] mb-2">
+                <h3 className="text-2xl font-black text-[#234745] mb-2">
                     {isEn ? 'Share your experience' : 'شاركنا تجربتك'}
                 </h3>
                 <p className="text-gray-400 font-bold text-sm">

@@ -478,7 +478,7 @@ export default function Product() {
             <Link to={isEn ? "/en/collections/all" : "/collections/all"} className="hover:text-[#295b45] transition-colors">{isEn ? 'Products' : 'المنتجات'}</Link> <span className="text-gray-400">/</span>
             <span className="text-[#1a1a1a] font-bold">{product.title}</span>
           </div>
-          <button onClick={() => window.history.back()} className="flex items-center gap-2 bg-[#1b3d2e] text-white px-5 py-1.5 rounded-full text-sm font-bold opacity-90 hover:opacity-100 transition-opacity">
+          <button onClick={() => window.history.back()} className="flex items-center gap-2 bg-[#234745] text-white px-5 py-1.5 rounded-full text-sm font-bold opacity-90 hover:opacity-100 transition-opacity">
             {isEn ? 'Back' : 'رجوع'}
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={isEn ? "" : "-rotate-180"}>
               <path d="M19 12H5M12 19l-7-7 7-7" />
@@ -527,9 +527,9 @@ export default function Product() {
                   <span>💵</span>
                   {isEn ? 'Cash Only' : 'كاش فقط'}
                 </span>
-                <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 w-48 p-2 bg-[#1b3d2e] text-white text-[10px] rounded-lg opacity-0 group-hover/tooltip:opacity-100 transition-opacity pointer-events-none z-20 shadow-xl">
+                <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 w-48 p-2 bg-[#234745] text-white text-[10px] rounded-lg opacity-0 group-hover/tooltip:opacity-100 transition-opacity pointer-events-none z-20 shadow-xl">
                   {isEn ? 'This product is only available via cash payment on delivery.' : 'هذا المنتج متاح فقط عن طريق الدفع نقداً عند الاستلام.'}
-                  <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-[#1b3d2e]"></div>
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-[#234745]"></div>
                 </div>
               </div>
             )}
@@ -539,9 +539,9 @@ export default function Product() {
                   <span>💳</span>
                   {isEn ? 'Paid Only' : 'دفع مسبق فقط'}
                 </span>
-                <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 w-48 p-2 bg-[#1b3d2e] text-white text-[10px] rounded-lg opacity-0 group-hover/tooltip:opacity-100 transition-opacity pointer-events-none z-20 shadow-xl">
+                <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 w-48 p-2 bg-[#234745] text-white text-[10px] rounded-lg opacity-0 group-hover/tooltip:opacity-100 transition-opacity pointer-events-none z-20 shadow-xl">
                   {isEn ? 'This product requires online payment before fulfillment.' : 'هذا المنتج يتطلب الدفع عبر الإنترنت قبل التنفيذ.'}
-                  <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-[#1b3d2e]"></div>
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-[#234745]"></div>
                 </div>
               </div>
             )}
@@ -633,7 +633,7 @@ export default function Product() {
                         📦
                     </div>
                     <div>
-                        <h3 className="text-xl font-black text-[#1b3d2e]">
+                        <h3 className="text-xl font-black text-[#234745]">
                             {isEn ? 'Inside this bundle' : 'محتويات هذه الباقة'}
                         </h3>
                         <p className="text-[12px] font-bold text-[#295b45]/60 uppercase tracking-widest mt-0.5">
@@ -960,7 +960,7 @@ export default function Product() {
                             })()
                           : []
                       }
-                      className={`w-full ${effectiveOutOfStock ? 'bg-gray-400 cursor-not-allowed opacity-75' : 'bg-[#1b3d2e] hover:bg-[#2d5e4a] active:scale-[0.98] shadow-xl shadow-green-900/10'} text-white py-4 rounded-2xl font-black text-lg transition-all flex items-center justify-center gap-3`}
+                      className={`w-full ${effectiveOutOfStock ? 'bg-gray-400 cursor-not-allowed opacity-75' : 'bg-[#234745] hover:bg-[#2d5e4a] active:scale-[0.98] shadow-xl shadow-green-900/10'} text-white py-4 rounded-2xl font-black text-lg transition-all flex items-center justify-center gap-3`}
                     >
                       {effectiveOutOfStock ? (
                         isEn ? 'Not Available at Branch' : 'غير متوفر في هذا الفرع'
@@ -1085,7 +1085,7 @@ export default function Product() {
               {activeTab === 'reviews' && parseRatingValue(product.average_rating?.value) > 0 && (
                 <div className="flex items-center gap-4 bg-[#fafafa] p-4 rounded-2xl border border-gray-100">
                     <div className={isEn ? "text-right" : "text-left"}>
-                        <div className="text-xl font-black text-[#1b3d2e] leading-tight text-center">
+                        <div className="text-xl font-black text-[#234745] leading-tight text-center">
                             {parseRatingValue(product.average_rating?.value).toFixed(1)}
                         </div>
                         <div className="text-[10px] text-gray-400 font-black uppercase tracking-widest">
@@ -1126,7 +1126,7 @@ export default function Product() {
                               <span className="w-10 h-10 rounded-xl bg-white shadow-sm flex items-center justify-center text-xl">🥗</span>
                               {isEn ? 'Nutrition Facts' : 'حقائق غذائية'}
                             </h5>
-                            <p className="text-[15px] font-bold text-[#1b3d2e]/70 leading-relaxed whitespace-pre-wrap">
+                            <p className="text-[15px] font-bold text-[#234745]/70 leading-relaxed whitespace-pre-wrap">
                               {(product as any).nutrition.value}
                             </p>
                           </div>
@@ -1164,7 +1164,7 @@ export default function Product() {
                                 <select 
                                     value={sortBy}
                                     onChange={(e) => setSortBy(e.target.value as any)}
-                                    className="bg-transparent border-none text-xs font-black text-[#1b3d2e] focus:ring-0 cursor-pointer appearance-none"
+                                    className="bg-transparent border-none text-xs font-black text-[#234745] focus:ring-0 cursor-pointer appearance-none"
                                 >
                                     <option value="newest">{isEn ? 'Newest' : 'الأحدث'}</option>
                                     <option value="highest">{isEn ? 'Highest Rated' : 'الأعلى تقييماً'}</option>
@@ -1190,14 +1190,14 @@ export default function Product() {
                                             {review.language === 'ar' ? 'العربية' : 'English'}
                                         </span>
                                     </div>
-                                    <h5 className="font-black text-[#1b3d2e] mb-4 text-xl">{review.review_title || review.title}</h5>
+                                    <h5 className="font-black text-[#234745] mb-4 text-xl">{review.review_title || review.title}</h5>
                                     <p className="text-gray-500 leading-relaxed font-bold text-[15px]">{review.review_comment || review.comment}</p>
                                 </div>
                             ))
                         ) : (
                             <div className="py-24 text-center bg-[#fafafa] rounded-[48px] border-2 border-dashed border-gray-200">
                                 <div className="text-6xl mb-8 grayscale brightness-125 opacity-40">🍰</div>
-                                <h4 className="text-2xl font-black text-[#1b3d2e]/40 mb-3">
+                                <h4 className="text-2xl font-black text-[#234745]/40 mb-3">
                                     {isEn ? 'Share the sweetness!' : 'شاركنا الحلا!'}
                                 </h4>
                                 <p className="text-gray-400 font-bold max-w-xs mx-auto">
@@ -1348,7 +1348,7 @@ function ProductGallery({ images }: { images: any[] }) {
         {/* Mobile Dots Indicator */}
         <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-2 md:hidden">
           {images.map((img, i) => (
-            <div key={img.id} className={`w-2 h-2 rounded-full transition-all duration-300 ${i === activeIndex ? 'bg-[#1b3d2e] w-4' : 'bg-gray-300'}`} />
+            <div key={img.id} className={`w-2 h-2 rounded-full transition-all duration-300 ${i === activeIndex ? 'bg-[#234745] w-4' : 'bg-gray-300'}`} />
           ))}
         </div>
       </div>
@@ -1431,7 +1431,7 @@ function ProductGallery({ images }: { images: any[] }) {
                 <button
                   key={img.id}
                   onClick={() => setActiveIndex(i)}
-                  className={`h-0.5 rounded-full transition-all duration-300 ${i === activeIndex ? 'w-8 bg-[#1b3d2e]' : 'w-4 bg-gray-300 hover:bg-gray-400'}`}
+                  className={`h-0.5 rounded-full transition-all duration-300 ${i === activeIndex ? 'w-8 bg-[#234745]' : 'w-4 bg-gray-300 hover:bg-gray-400'}`}
                 />
               ))}
             </div>
@@ -1496,8 +1496,8 @@ function ProductForm({
                       replace
                       to={variantUrl}
                       className={`px-5 py-2 rounded-full text-xs font-bold border transition-all flex items-center gap-1.5 ${isActive
-                        ? 'bg-[#1b3d2e] border-[#1b3d2e] text-white shadow-sm'
-                        : 'bg-white border-gray-200 text-gray-500 hover:border-[#1b3d2e] hover:text-[#1b3d2e]'
+                        ? 'bg-[#234745] border-[#234745] text-white shadow-sm'
+                        : 'bg-white border-gray-200 text-gray-500 hover:border-[#234745] hover:text-[#234745]'
                         } ${!isAvailable ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
                       {displayValue}

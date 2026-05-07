@@ -48,7 +48,7 @@ export default function Collections() {
                   <Link
                     key={item.id}
                     to={`/collections/${itemHandle}`}
-                    className="px-8 py-4 rounded-[1.5rem] font-bold text-center transition-all duration-300 shadow-sm border bg-white text-gray-600 border-gray-100 hover:border-[#1b3d2e]/30 hover:shadow-md"
+                    className="px-8 py-4 rounded-[1.5rem] font-bold text-center transition-all duration-300 shadow-sm border bg-white text-gray-600 border-gray-100 hover:border-[#234745]/30 hover:shadow-md"
                   >
                     {item.title}
                   </Link>
@@ -60,14 +60,14 @@ export default function Collections() {
 
         {/* Main Content */}
         <div className="flex-1 min-w-0">
-          <h1 className={`text-4xl font-black text-[#1b3d2e] mb-8 ${isEn ? 'text-left' : 'text-right'}`}>
+          <h1 className={`text-4xl font-black text-[#234745] mb-8 ${isEn ? 'text-left' : 'text-right'}`}>
             {isEn ? 'All Collections' : 'كل التصنيفات'}
           </h1>
           <Pagination connection={collections}>
             {({nodes, isLoading, PreviousLink, NextLink}) => (
               <div>
                 <div className="flex justify-center mb-10">
-                  <PreviousLink className="text-[#1b3d2e] font-black border-2 border-[#1b3d2e]/10 px-8 py-2.5 rounded-full hover:bg-gray-50 transition-all">
+                  <PreviousLink className="text-[#234745] font-black border-2 border-[#234745]/10 px-8 py-2.5 rounded-full hover:bg-gray-50 transition-all">
                     {isLoading ? (isEn ? 'Loading...' : 'جاري التحميل...') : (isEn ? '↑ Load Previous' : '↑ تحميل المنتجات السابقة')}
                   </PreviousLink>
                 </div>
@@ -75,7 +75,7 @@ export default function Collections() {
                 <CollectionsGrid collections={nodes} isEn={isEn} />
                 
                 <div className="flex justify-center mt-16">
-                  <NextLink className="bg-[#1b3d2e] text-white px-16 py-4 rounded-full font-black shadow-[0_10px_30px_rgba(27,61,46,0.3)] hover:shadow-[0_15px_40px_rgba(27,61,46,0.4)] hover:-translate-y-1 transition-all duration-300">
+                  <NextLink className="bg-[#234745] text-white px-16 py-4 rounded-full font-black shadow-[0_10px_30px_rgba(27,61,46,0.3)] hover:shadow-[0_15px_40px_rgba(27,61,46,0.4)] hover:-translate-y-1 transition-all duration-300">
                     {isLoading ? (isEn ? 'Loading...' : 'جاري التحميل...') : (isEn ? 'Load More ↓' : 'تصفح المزيد ↓')}
                   </NextLink>
                 </div>
@@ -130,12 +130,12 @@ function CollectionItem({
           />
         )}
         <div className="absolute inset-x-0 bottom-0 p-4 translate-y-full group-hover:translate-y-0 transition-transform duration-300 hidden md:block">
-            <div className="w-full bg-[#1b3d2e] text-white py-3.5 rounded-[1.5rem] font-bold text-[13px] shadow-xl hover:bg-[#2d5e4a] transition-all text-center">
+            <div className="w-full bg-[#234745] text-white py-3.5 rounded-[1.5rem] font-bold text-[13px] shadow-xl hover:bg-[#2d5e4a] transition-all text-center">
                 {isEn ? 'View Products' : 'تصفح المنتجات'}
             </div>
         </div>
       </div>
-      <h5 className="text-[17px] font-black text-gray-800 line-clamp-1 group-hover:text-[#1b3d2e] transition-colors duration-300 text-center">{collection.title}</h5>
+      <h5 className="text-[17px] font-black text-gray-800 line-clamp-1 group-hover:text-[#234745] transition-colors duration-300 text-center">{collection.title}</h5>
     </Link>
   );
 }

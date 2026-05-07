@@ -46,27 +46,51 @@ export function BestSellers({
     };
 
     return (
-        <section dir={isEn ? 'ltr' : 'rtl'} className={`w-full bg-white py-16 ${isEn ? 'font-en' : 'font-ar'}`}>
-            <div className="max-w-[1400px] mx-auto px-4 md:px-8">
+        <section 
+            dir={isEn ? 'ltr' : 'rtl'} 
+            className={`w-full relative overflow-hidden ${isEn ? 'font-en' : 'font-ar'}`}
+            style={{ background: 'linear-gradient(to bottom, #234745 0%, #234745 65%, #FEF8EB 65%, #FEF8EB 100%)' }}
+        >
+            {/* Left Decorative Pattern */}
+            <div 
+                className="absolute top-0 left-[-50px] w-[500px] h-[500px] opacity-[0.12] pointer-events-none"
+                style={{ 
+                    backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='white' stroke-width='0.5'%3E%3Cpath d='M30 0 L60 30 L30 60 L0 30 Z' opacity='0.3'/%3E%3Cpath d='M30 10 Q35 30 50 30 Q35 30 30 50 Q25 30 10 30 Q25 30 30 10' opacity='0.6'/%3E%3C/g%3E%3C/svg%3E")`,
+                    maskImage: 'radial-gradient(circle at 20% 20%, black 0%, transparent 70%)',
+                    WebkitMaskImage: 'radial-gradient(circle at 20% 20%, black 0%, transparent 70%)'
+                }}
+            />
+
+            {/* Right Decorative Pattern */}
+            <div 
+                className="absolute top-0 right-[-50px] w-[500px] h-[500px] opacity-[0.12] pointer-events-none"
+                style={{ 
+                    backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='white' stroke-width='0.5'%3E%3Cpath d='M30 0 L60 30 L30 60 L0 30 Z' opacity='0.3'/%3E%3Cpath d='M30 10 Q35 30 50 30 Q35 30 30 50 Q25 30 10 30 Q25 30 30 10' opacity='0.6'/%3E%3C/g%3E%3C/svg%3E")`,
+                    maskImage: 'radial-gradient(circle at 80% 20%, black 0%, transparent 70%)',
+                    WebkitMaskImage: 'radial-gradient(circle at 80% 20%, black 0%, transparent 70%)'
+                }}
+            />
+
+            <div className="max-w-[1400px] mx-auto px-4 md:px-8 pt-12 pb-16 relative z-10">
 
                 {/* Section Header */}
-                <div className="text-center mb-10 flex flex-col items-center">
-                    <h2 className="text-[40px] lg:text-[56px] font-black text-[#1a1a1a] mb-2 flex items-center justify-center gap-2 leading-tight">
-                        {isEn ? 'Best Sellers 🔥' : 'أفضل المبيعات 🔥'}
+                <div className="text-center mb-8">
+                    <h2 className="text-[36px] lg:text-[48px] font-black mb-2 leading-tight" style={{ color: '#ffffff' }}>
+                        {isEn ? 'Best Sellers' : 'أفضل المبيعات'}
                     </h2>
-                    <p className="text-gray-500 text-sm md:text-base mb-4">{isEn ? 'Most wanted this week' : 'الأكثر طلباً هذا الأسبوع'}</p>
-                    <div className="w-16 h-[3px] bg-[#234745] rounded-full"></div>
+                    <p className="text-sm md:text-base" style={{ color: 'rgba(255,255,255,0.6)' }}>{isEn ? 'Most wanted this week' : 'الأكثر طلباً هذا الأسبوع'}</p>
                 </div>
 
                 {/* Tabs Filter */}
-                <div className="flex flex-wrap justify-center gap-3 mb-12">
+                <div className="flex flex-wrap justify-center gap-2.5 mb-10">
                     {tabs.map((tab, idx) => (
                         <button
                             key={idx}
-                            className={`px-6 py-2 rounded-full border text-sm font-bold transition-colors ${idx === 0
-                                ? 'bg-[#234745] text-white border-[#234745]'
-                                : 'bg-white text-gray-600 border-gray-300 hover:border-[#234745] hover:text-[#234745]'
+                            className={`px-7 py-2.5 rounded-full border text-[13px] font-bold transition-all ${idx === 0
+                                ? 'border-[#234745] shadow-sm'
+                                : 'bg-white text-[#5a7a74] border-[#d5ddd9] hover:border-[#234745] hover:text-[#234745]'
                                 }`}
+                            style={idx === 0 ? { backgroundColor: '#234745', color: '#ffffff' } : undefined}
                         >
                             {tab}
                         </button>
@@ -116,7 +140,7 @@ export function BestSellers({
                                             : (idx % 2 === 0 ? 'يحتاج يومين للتجهيز' : 'قسطها على دفعتين مع تمارا');
 
                                         return (
-                                            <div key={product.id} className={`flex flex-col h-full rounded-[32px] border-0 bg-[#F9F9F9] overflow-hidden relative ${isVisibilityBlocked || (isOutOfStock && !isPreorder) ? 'product--disabled opacity-60 grayscale-[30%]' : 'group hover:shadow-[0_10px_40px_-10px_rgba(0,0,0,0.1)]'} transition-all duration-300`}>
+                                            <div key={product.id} className={`flex flex-col h-full rounded-[20px] border-0 overflow-hidden relative ${isVisibilityBlocked || (isOutOfStock && !isPreorder) ? 'product--disabled opacity-60 grayscale-[30%]' : 'group hover:shadow-[0_10px_40px_-10px_rgba(0,0,0,0.1)]'} transition-all duration-300`} style={{ backgroundColor: '#dce5df' }}>
 
                                                 {/* Top Action / Heart */}
                                                 {!isVisibilityBlocked && (
@@ -223,7 +247,7 @@ export function BestSellers({
                                                     )}
                                                 </Link>
 
-                                                <div className="bg-[#F9F9F9] p-5 lg:p-6 flex flex-col flex-grow">
+                                                <div className="p-5 lg:p-6 flex flex-col flex-grow" style={{ backgroundColor: '#ffffff' }}>
                                                     
                                                     {/* Title */}
                                                     <Link to={isVisibilityBlocked ? '#' : getProductUrl(product.handle)} onClick={isVisibilityBlocked ? (e: any) => e.preventDefault() : undefined}>
@@ -277,16 +301,13 @@ export function BestSellers({
                     </Await>
                 </Suspense>
 
-                {/* View All Button */}
-                <div className="mt-12 flex justify-center">
-                    <Button
+                <div className="mt-16 flex justify-center">
+                    <Link
                         to={isEn ? "/en/collections/all" : "/collections/all"}
-                        variant="outline"
-                        size="lg"
-                        className="px-10 border-[#234745] text-[#234745] hover:bg-[#234745] hover:text-white rounded-full font-bold"
+                        className="px-16 py-3 border-2 border-[#234745] text-[#234745] hover:bg-[#234745] hover:text-white rounded-full font-bold text-[18px] transition-all min-w-[280px] text-center"
                     >
                         {isEn ? 'View All Products' : 'عرض جميع المنتجات'}
-                    </Button>
+                    </Link>
                 </div>
 
                 {selectedProduct && (
@@ -333,7 +354,8 @@ function BestSellersAddToCart({
         return (
             <button
                 type="button"
-                className="w-full h-12 rounded-full font-bold text-[15px] bg-amber-500 text-white hover:bg-amber-600 transition-colors shadow-sm"
+                className="w-full h-12 rounded-full font-bold text-[15px] bg-amber-500 hover:bg-amber-600 transition-colors shadow-sm"
+                style={{ color: '#ffffff' }}
                 onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
@@ -369,7 +391,8 @@ function BestSellersAddToCart({
     return (
         <AddToCartButton
             lines={lines}
-            className={`w-full py-3.5 rounded-full font-bold text-[16px] transition-all shadow-sm ${isPreorder ? 'bg-[#004f59] text-white hover:bg-[#003d45]' : 'bg-[#234745] text-white hover:bg-[#1a3533] active:scale-[0.98]'}`}
+            className={`w-full py-3.5 rounded-full font-bold text-[16px] transition-all shadow-sm ${isPreorder ? 'bg-[#004f59] hover:bg-[#003d45]' : 'bg-[#234745] hover:bg-[#163529] active:scale-[0.98]'}`}
+            style={{ color: '#ffffff' }}
             disabled={isOutOfStock}
         >
             {addLabel}

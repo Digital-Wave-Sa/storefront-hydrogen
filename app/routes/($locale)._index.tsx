@@ -9,6 +9,7 @@ import {NewArrivals} from '~/components/NewArrivals';
 import {OffersAndDiscounts} from '~/components/OffersAndDiscounts';
 import {WhoAreYouGifting} from '~/components/WhoAreYouGifting';
 import {LoyaltyProgram} from '~/components/LoyaltyProgram';
+import {CorporateGifting} from '~/components/CorporateGifting';
 
 export const meta: Route.MetaFunction = () => {
   return [
@@ -123,6 +124,7 @@ export default function Homepage() {
       <BestSellers products={data.recommendedProducts} />
       <NewArrivals products={data.newArrivals} />
       <OffersAndDiscounts />
+      <CorporateGifting />
       <LoyaltyProgram />
     </div>
   );

@@ -76,12 +76,12 @@ export function Aside({
           {/* Placeholder to keep title centered */}
           <div className="w-8" />
           
-          <h3 id={id} className="text-[17px] font-black text-[#1b3d2e] tracking-tight uppercase text-center flex-1">
+          <h3 id={id} className="text-[17px] font-black text-[#234745] tracking-tight uppercase text-center flex-1">
             {heading}
           </h3>
 
           <button 
-            className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-[#f8f5f2] transition-colors text-[#1b3d2e] shrink-0" 
+            className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-[#f8f5f2] transition-colors text-[#234745] shrink-0" 
             onClick={close} 
             aria-label="Close"
           >

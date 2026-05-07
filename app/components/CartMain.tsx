@@ -110,7 +110,7 @@ export function CartMain({layout, cart: originalCart}: CartMainProps) {
     return (
       <div className="max-w-[1400px] mx-auto w-full px-4 py-8 md:py-16" dir={isEn ? 'ltr' : 'rtl'}>
         <Analytics.CartView cart={cart as any} />
-        <h1 className="text-4xl md:text-[56px] font-black text-[#1b3d2e] mb-12 tracking-tight">
+        <h1 className="text-4xl md:text-[56px] font-black text-[#234745] mb-12 tracking-tight">
           {isEn ? 'Cart' : 'السلة'}
         </h1>
 
@@ -121,7 +121,7 @@ export function CartMain({layout, cart: originalCart}: CartMainProps) {
             {cartHasItems && !isPickup && (
               <div className="bg-white rounded-[24px] p-6 border border-[#f0ece8] shadow-sm mb-2">
                 <div className="flex justify-between items-center mb-3">
-                   <p className="text-[14px] font-bold text-[#1b3d2e]">
+                   <p className="text-[14px] font-bold text-[#234745]">
                       {progress >= 100 ? (
                         <span className="text-green-600 flex items-center gap-1">
                           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
@@ -151,11 +151,11 @@ export function CartMain({layout, cart: originalCart}: CartMainProps) {
             {/* Pickup Info Alert */}
             {cartHasItems && isPickup && (
               <div className="bg-[#fcfaf8] rounded-[24px] p-6 border border-[#f0ece8] shadow-sm mb-2 flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center text-[#1b3d2e] shadow-sm">
+                <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center text-[#234745] shadow-sm">
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" /><polyline points="9 22 9 12 15 12 15 22" /></svg>
                 </div>
                 <div>
-                  <p className="text-[15px] font-black text-[#1b3d2e]">{isEn ? 'Store Pickup Selected' : 'تم اختيار الاستلام من الفرع'}</p>
+                  <p className="text-[15px] font-black text-[#234745]">{isEn ? 'Store Pickup Selected' : 'تم اختيار الاستلام من الفرع'}</p>
                   <p className="text-[13px] text-gray-500 font-medium">{isEn ? 'No delivery fees apply for pickup orders.' : 'لا يتم تطبيق رسوم توصيل على طلبات الاستلام.'}</p>
                 </div>
               </div>
@@ -213,7 +213,7 @@ export function CartMain({layout, cart: originalCart}: CartMainProps) {
       {/* Progress Bar (Only show if items exist and layout is aside AND not pickup) */}
       {cartHasItems && !isPickup && (
         <div className="px-6 py-4 bg-[#fcfaf8] border-b border-[#f0ece8]">
-          <p className="text-[13px] font-bold text-[#1b3d2e] mb-2 text-center">
+          <p className="text-[13px] font-bold text-[#234745] mb-2 text-center">
             {progress >= 100 ? (
               <span className="text-green-600 flex items-center justify-center gap-1">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
@@ -242,11 +242,11 @@ export function CartMain({layout, cart: originalCart}: CartMainProps) {
       <div className="flex-1 overflow-y-auto px-6 py-6 custom-scrollbar">
         {cartHasItems && isPickup && (
           <div className="mb-6 p-4 bg-[#fcfaf8] rounded-2xl border border-[#f0ece8] flex items-center gap-3">
-             <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-[#1b3d2e] shadow-sm shrink-0">
+             <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-[#234745] shadow-sm shrink-0">
                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" /><polyline points="9 22 9 12 15 12 15 22" /></svg>
              </div>
              <div>
-               <p className="text-[13px] font-black text-[#1b3d2e]">{isEn ? 'Store Pickup' : 'استلام من الفرع'}</p>
+               <p className="text-[13px] font-black text-[#234745]">{isEn ? 'Store Pickup' : 'استلام من الفرع'}</p>
                <p className="text-[11px] text-gray-500 font-medium">{isEn ? 'No delivery fees applied' : 'لا توجد رسوم توصيل'}</p>
              </div>
           </div>
@@ -279,7 +279,7 @@ export function CartMain({layout, cart: originalCart}: CartMainProps) {
 
       {/* Undo Toast Notification */}
       {deletedLine && (
-        <div className="absolute bottom-28 left-1/2 -translate-x-1/2 bg-[#1b3d2e] text-white px-5 py-3 rounded-xl shadow-2xl flex items-center justify-between gap-6 z-50 animate-fade-in w-[90%] max-w-[350px]">
+        <div className="absolute bottom-28 left-1/2 -translate-x-1/2 bg-[#234745] text-white px-5 py-3 rounded-xl shadow-2xl flex items-center justify-between gap-6 z-50 animate-fade-in w-[90%] max-w-[350px]">
           <div className="flex flex-col">
              <span className="text-[13px] font-bold">Item removed</span>
              <span className="text-[11px] text-gray-300 truncate max-w-[200px]">{deletedLine.merchandise.product.title}</span>
@@ -318,13 +318,13 @@ function CartEmpty({hidden = false, layout, isEn}: {hidden: boolean; layout?: Ca
       <div className="w-24 h-24 mb-6 rounded-full bg-[#fcfaf8] flex items-center justify-center border border-[#f0ece8]">
         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#d4a06a" strokeWidth="1.5"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z" /><line x1="3" y1="6" x2="21" y2="6" /><path d="M16 10a4 4 0 01-8 0" /></svg>
       </div>
-      <h3 className="text-xl font-bold text-[#1b3d2e] mb-2">{isEn ? 'Your cart is empty' : 'سلة التسوق فارغة'}</h3>
+      <h3 className="text-xl font-bold text-[#234745] mb-2">{isEn ? 'Your cart is empty' : 'سلة التسوق فارغة'}</h3>
       <p className="text-[#888] text-sm mb-8 max-w-[250px]">
         {isEn ? "Looks like you haven't added anything yet, let's get you started!" : "يبدو أنك لم تقم بإضافة أي شيء بعد، دعنا نبدأ!"}
       </p>
       <button
         onClick={close}
-        className="bg-[#1b3d2e] text-white font-bold py-3 px-8 rounded-full hover:bg-[#d4a06a] transition-colors"
+        className="bg-[#234745] text-white font-bold py-3 px-8 rounded-full hover:bg-[#d4a06a] transition-colors"
       >
         {isEn ? 'Continue Shopping' : 'مواصلة التسوق'}
       </button>

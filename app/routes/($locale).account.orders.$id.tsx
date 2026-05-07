@@ -24,7 +24,11 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
   }
 
   const { order } = await storefront.query(CUSTOMER_ORDER_QUERY, {
-    variables: { orderId },
+    variables: { 
+      orderId,
+      country: storefront.i18n.country,
+      language: storefront.i18n.language,
+    },
   });
 
   if (!order || !('lineItems' in order)) {
@@ -32,16 +36,19 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
   }
 
   const lineItems = flattenConnection(order.lineItems);
-  const discountApplications = flattenConnection(order.discountApplications);
-
+  const discountApplications = order.discountApplications?.nodes || [];
   const firstDiscount = discountApplications[0]?.value;
   const discountValue = firstDiscount?.__typename === 'MoneyV2' && firstDiscount;
   const discountPercentage = firstDiscount?.__typename === 'PricingPercentageValue' && firstDiscount?.percentage;
 
-  // Detect fulfillment type and branch from custom attributes
   const customAttributes = order.customAttributes || [];
   const fulfillmentType = customAttributes.find(a => a.key === 'fulfillment_type')?.value || 'Delivery';
   const branchName = customAttributes.find(a => a.key === 'branch_name')?.value;
+  
+  const rawMetafield = order.order_status?.value || '';
+  const metafieldValue = rawMetafield.toLowerCase().trim();
+  const isReadyManual = metafieldValue === 'ready' || metafieldValue === 'out_for_delivery';
+  const isDeliveredManual = metafieldValue === 'delivered';
 
   const locale = storefront.i18n.language.toLowerCase();
 
@@ -52,81 +59,32 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
     discountPercentage,
     fulfillmentType,
     branchName,
+    rawMetafield,
+    isReadyManual,
+    isDeliveredManual,
     locale,
   });
 }
 
 export async function action({ request, context }: ActionFunctionArgs) {
-  const { session } = context;
-  const form = await request.formData();
-  const intent = form.get('intent');
-
-  if (intent === 'reorder') {
-    const items = JSON.parse(String(form.get('items') || '[]'));
-    
-    // Use the cart context to add items
-    if (items.length > 0) {
-      await context.cart.addLines(items.map((item: any) => ({
-        merchandiseId: item.merchandiseId,
-        quantity: item.quantity,
-      })));
-      
-      return redirect('/cart', {
-        headers: {
-          'Set-Cookie': await session.commit(),
-        }
-      });
-    }
-    return data({ error: 'No items to reorder' }, { status: 400 });
-  }
-
-  if (intent === 'cancel_order') {
-    const orderId = form.get('orderId');
-    const reason = form.get('reason');
-    
-    // Cancellation logic would typically involve a call to a custom endpoint or Shopify Admin API
-    console.log(`[CANCEL REQUEST] Order: ${orderId}, Reason: ${reason}`);
-    return data({ success: true, message: 'Cancellation request sent' });
-  }
-
-  if (intent === 'modify_order') {
-    const orderId = form.get('orderId');
-    const note = form.get('note');
-    console.log(`[MODIFY REQUEST] Order: ${orderId}, Note: ${note}`);
-    return data({ success: true, message: 'Modification request sent' });
-  }
-
   return data({ error: 'Invalid intent' }, { status: 400 });
 }
 
 export default function OrderRoute() {
-  const { order, lineItems, discountValue, discountPercentage, fulfillmentType, branchName, locale } = useLoaderData<typeof loader>();
+  const { order, lineItems, discountValue, discountPercentage, fulfillmentType, branchName, rawMetafield, isReadyManual, isDeliveredManual, locale } = useLoaderData<typeof loader>();
   const isEn = locale === 'en';
   const fetcher = useFetcher<any>();
-  const actionData = fetcher.data;
 
-  const [showCancelModal, setShowCancelModal] = useState(false);
-  const [showModifyModal, setShowModifyModal] = useState(false);
+  const isPickup = fulfillmentType === 'Pickup';
+  
+  const isDelivered = order.fulfillmentStatus === 'FULFILLED' || isDeliveredManual;
+  const isReady = isReadyManual || isDelivered;
 
-  // Helper to get localized status
   const getStatusLabel = (status: string) => {
     const map: Record<string, any> = {
-      FULFILLED: { en: 'Fulfilled', ar: 'تم التوصيل' },
+      FULFILLED: { en: 'Delivered', ar: 'تم التوصيل' },
       UNFULFILLED: { en: 'Processing', ar: 'قيد التنفيذ' },
-      PARTIALLY_FULFILLED: { en: 'Partially Fulfilled', ar: 'تم التوصيل جزئياً' },
-      PENDING_FULFILLMENT: { en: 'Pending', ar: 'قيد الانتظار' },
-      RESTOCKED: { en: 'Restocked', ar: 'تم إرجاع المخزون' },
-    };
-    return map[status]?.[isEn ? 'en' : 'ar'] || status;
-  };
-
-  const getFinancialStatusLabel = (status: string) => {
-    const map: Record<string, any> = {
-      PAID: { en: 'Paid', ar: 'مدفوع' },
-      PENDING: { en: 'Pending', ar: 'قيد الانتظار' },
-      REFUNDED: { en: 'Refunded', ar: 'مسترجع' },
-      PARTIALLY_REFUNDED: { en: 'Partially Refunded', ar: 'مسترجع جزئياً' },
-      AUTHORIZED: { en: 'Authorized', ar: 'مفوض' },
+      PARTIALLY_FULFILLED: { en: 'Ready', ar: 'جاهز' },
     };
     return map[status]?.[isEn ? 'en' : 'ar'] || status;
   };
@@ -145,7 +103,6 @@ export default function OrderRoute() {
 
   return (
     <div className="order-details-container animate-fade-in" dir={isEn ? 'ltr' : 'rtl'}>
-      {/* ── HEADER SECTION ── */}
       <div className="order-header-section">
         <div className="order-title-group">
           <h1>{isEn ? `Order ${order.name}` : `طلب رقم ${order.name}`}</h1>
@@ -158,26 +115,13 @@ export default function OrderRoute() {
             })}
           </p>
           <div className="order-meta-badges">
-            <span className={`status-badge financial-${order.financialStatus?.toLowerCase()}`}>
-              {getFinancialStatusLabel(order.financialStatus!)}
-            </span>
             <span className={`status-badge fulfillment-${order.fulfillmentStatus?.toLowerCase()}`}>
               {getStatusLabel(order.fulfillmentStatus!)}
             </span>
           </div>
         </div>
-
-        <div className="order-actions-top">
-          <button className="btn-outline" onClick={() => window.print()}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <polyline points="6 9 6 2 18 2 18 9" /><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><rect x="6" y="14" width="12" height="8" />
-            </svg>
-            {isEn ? 'Print' : 'طباعة'}
-          </button>
-        </div>
       </div>
 
-      {/* ── TIMELINE ── */}
       <div className="order-timeline-card">
         <h3 className="order-card-title">{isEn ? 'Order Status' : 'حالة الطلب'}</h3>
         <div className="timeline-steps">
@@ -188,23 +132,21 @@ export default function OrderRoute() {
           />
           <TimelineStep 
             label={isEn ? 'Preparing' : 'قيد التحضير'} 
-            status={order.fulfillmentStatus === 'UNFULFILLED' ? 'active' : 'completed'} 
+            status={isReady ? 'completed' : 'active'} 
           />
           <TimelineStep 
-            label={isEn ? 'Out for Delivery' : 'جاري التوصيل'} 
-            status={order.fulfillmentStatus === 'PARTIALLY_FULFILLED' ? 'active' : (order.fulfillmentStatus === 'FULFILLED' ? 'completed' : 'pending')} 
+            label={isPickup ? (isEn ? 'Ready for Pickup' : 'جاهز للاستلام') : (isEn ? 'Out for Delivery' : 'جاري التوصيل')} 
+            status={isDelivered ? 'completed' : (isReady ? 'active' : 'pending')} 
           />
           <TimelineStep 
-            label={isEn ? 'Delivered' : 'تم التوصيل'} 
-            status={order.fulfillmentStatus === 'FULFILLED' ? 'completed' : 'pending'} 
+            label={isPickup ? (isEn ? 'Picked Up' : 'تم الاستلام') : (isEn ? 'Delivered' : 'تم التوصيل')} 
+            status={isDelivered ? 'completed' : 'pending'} 
           />
         </div>
       </div>
 
       <div className="order-grid">
-        {/* ── MAIN CONTENT ── */}
         <div className="order-main-content">
-          {/* Items Card */}
           <div className="order-card">
             <h3 className="order-card-title">{isEn ? 'Order Items' : 'أصناف الطلب'}</h3>
             <div className="order-line-items">
@@ -217,14 +159,6 @@ export default function OrderRoute() {
                     <Link to={`/products/${item.variant?.product?.handle}`} className="line-item-name">
                       {item.title}
                     </Link>
-                    <div className="line-item-variant">
-                      {item.variant?.title !== 'Default Title' ? item.variant?.title : ''}
-                      {item.variant?.product?.tags?.some((tag: string) => ['preorder', 'pre-order', 'طلب مسبق'].includes(tag.toLowerCase())) && (
-                        <span className="ml-2 inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-[#004f59]/10 text-[#004f59] text-[9px] font-black uppercase">
-                          📦 {isEn ? 'Pre-order' : 'طلب مسبق'}
-                        </span>
-                      )}
-                    </div>
                     <div className="line-item-price-qty">
                       <span>{isEn ? 'Qty: ' : 'الكمية: '}{item.quantity}</span>
                       <Money data={item.discountedTotalPrice!} />
@@ -234,172 +168,34 @@ export default function OrderRoute() {
               ))}
             </div>
           </div>
-
-          {/* Payment Summary Card */}
-          <div className="order-card">
-            <h3 className="order-card-title">{isEn ? 'Payment Summary' : 'ملخص الدفع'}</h3>
-            <div className="summary-row">
-              <span>{isEn ? 'Subtotal' : 'المجموع الفرعي'}</span>
-              <Money data={order.subtotalPriceV2!} />
-            </div>
-            {discountValue && (
-              <div className="summary-row" style={{ color: '#27ae60' }}>
-                <span>{isEn ? 'Discounts' : 'الخصومات'}</span>
-                <span>-{discountPercentage ? `${discountPercentage}%` : <Money data={discountValue} />}</span>
-              </div>
-            )}
-            <div className="summary-row">
-              <span>{isEn ? 'VAT' : 'ضريبة القيمة المضافة'}</span>
-              <Money data={order.totalTaxV2!} />
-            </div>
-            <div className="summary-row total">
-              <span>{isEn ? 'Total' : 'الإجمالي'}</span>
-              <Money data={order.totalPriceV2!} />
-            </div>
-          </div>
         </div>
 
-        {/* ── SIDEBAR ── */}
         <div className="order-sidebar">
-          {/* Fulfillment Details */}
           <div className="order-card">
             <h3 className="order-card-title">{isEn ? 'Fulfillment' : 'التوصيل والاستلام'}</h3>
             <div className="order-info-group">
-              <span className="info-label">{isEn ? 'Method' : 'الطريقة'}</span>
+              <span className="info-label">{isEn ? 'Method: ' : 'الطريقة: '}</span>
               <span className="info-value">
-                {fulfillmentType === 'Pickup' ? (isEn ? 'Self Pickup' : 'استلام من الفرع') : (isEn ? 'Home Delivery' : 'توصيل للمنزل')}
+                {isPickup ? (isEn ? 'Self Pickup' : 'استلام من الفرع') : (isEn ? 'Home Delivery' : 'توصيل للمنزل')}
               </span>
             </div>
             {branchName && (
-              <div className="order-info-group">
-                <span className="info-label">{isEn ? 'Branch' : 'الفرع'}</span>
+              <div className="order-info-group mt-2">
+                <span className="info-label">{isEn ? 'Branch: ' : 'الفرع: '}</span>
                 <span className="info-value">{branchName}</span>
               </div>
             )}
-            {order.shippingAddress && (
-              <div className="order-info-group">
-                <span className="info-label">{isEn ? 'Address' : 'العنوان'}</span>
-                <address className="info-value">
-                  {order.shippingAddress.name}<br />
-                  {order.shippingAddress.formatted.join(', ')}
-                </address>
-              </div>
-            )}
           </div>
-
-          {/* Quick Actions */}
-          <div className="order-card">
-            <h3 className="order-card-title">{isEn ? 'Actions' : 'إجراءات'}</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <button className="btn-reorder" onClick={handleReorder}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <path d="M21 2v6h-6M3 12a9 9 0 0 1 15-6.7L21 8M3 22v-6h6M21 12a9 9 0 0 1-15 6.7L3 16" />
-                </svg>
-                {isEn ? 'Reorder All Items' : 'إعادة طلب الكل'}
-              </button>
-              
-              {order.fulfillmentStatus === 'UNFULFILLED' && (
-                <>
-                  <button className="btn-outline btn-modify" onClick={() => setShowModifyModal(true)}>
-                    {isEn ? 'Request Modification' : 'طلب تعديل'}
-                  </button>
-                  <button className="btn-outline btn-cancel" onClick={() => setShowCancelModal(true)}>
-                    {isEn ? 'Cancel Order' : 'إلغاء الطلب'}
-                  </button>
-                </>
-              )}
-              
-              <Link to="/pages/contact" className="btn-outline">
-                {isEn ? 'Need Help?' : 'تحتاج مساعدة؟'}
-              </Link>
-            </div>
-          </div>
+          <button className="btn-reorder w-full" onClick={handleReorder}>
+            {isEn ? 'Reorder All Items' : 'إعادة طلب الكل'}
+          </button>
         </div>
       </div>
 
-      {/* ── CANCELLATION MODAL ── */}
-      {showCancelModal && (
-        <div className="luxury-modal-overlay">
-          <div className="luxury-modal animate-slide-up">
-            <h3 className="modal-title">{isEn ? 'Cancel Order' : 'إلغاء الطلب'}</h3>
-            <p className="modal-desc">{isEn ? 'Are you sure you want to cancel this order?' : 'هل أنت متأكد أنك تريد إلغاء هذا الطلب؟'}</p>
-            
-            <fetcher.Form method="POST" onSubmit={() => setShowCancelModal(false)}>
-              <input type="hidden" name="intent" value="cancel_order" />
-              <input type="hidden" name="orderId" value={order.id} />
-              
-              <div className="luxury-field mb-6">
-                <label className="luxury-label">{isEn ? 'Reason for cancellation' : 'سبب الإلغاء'}</label>
-                <select name="reason" className="luxury-input-field" required>
-                  <option value="">{isEn ? 'Select a reason' : 'اختر السبب'}</option>
-                  <option value="changed_mind">{isEn ? 'Changed my mind' : 'غيرت رأيي'}</option>
-                  <option value="delivery_time">{isEn ? 'Delivery time too long' : 'وقت التوصيل طويل جداً'}</option>
-                  <option value="ordered_by_mistake">{isEn ? 'Ordered by mistake' : 'تم الطلب عن طريق الخطأ'}</option>
-                  <option value="other">{isEn ? 'Other' : 'سبب آخر'}</option>
-                </select>
-              </div>
-
-              <div className="modal-actions">
-                <Button type="button" variant="secondary" onClick={() => setShowCancelModal(false)}>
-                  {isEn ? 'Go Back' : 'رجوع'}
-                </Button>
-                <Button type="submit" variant="primary" className="!bg-[#e74c3c] !border-[#e74c3c]">
-                  {isEn ? 'Confirm Cancellation' : 'تأكيد الإلغاء'}
-                </Button>
-              </div>
-            </fetcher.Form>
-          </div>
-        </div>
-      )}
-
-      {/* ── MODIFICATION MODAL ── */}
-      {showModifyModal && (
-        <div className="luxury-modal-overlay">
-          <div className="luxury-modal animate-slide-up">
-            <h3 className="modal-title">{isEn ? 'Request Modification' : 'طلب تعديل'}</h3>
-            <p className="modal-desc">{isEn ? 'Please describe what you would like to change.' : 'يرجى وصف التعديلات التي ترغب في إجرائها.'}</p>
-            
-            <fetcher.Form method="POST" onSubmit={() => setShowModifyModal(false)}>
-              <input type="hidden" name="intent" value="modify_order" />
-              <input type="hidden" name="orderId" value={order.id} />
-              
-              <div className="luxury-field mb-6">
-                <label className="luxury-label">{isEn ? 'Modification details' : 'تفاصيل التعديل'}</label>
-                <textarea name="note" rows={4} className="luxury-input-field" placeholder={isEn ? 'e.g. Change delivery address or items...' : 'مثلاً تغيير عنوان التوصيل أو الأصناف...'} required />
-              </div>
-
-              <div className="modal-actions">
-                <Button type="button" variant="secondary" onClick={() => setShowModifyModal(false)}>
-                  {isEn ? 'Cancel' : 'إلغاء'}
-                </Button>
-                <Button type="submit" variant="primary">
-                  {isEn ? 'Send Request' : 'إرسال الطلب'}
-                </Button>
-              </div>
-            </fetcher.Form>
-          </div>
-        </div>
-      )}
-
-      {/* SUCCESS MESSAGE */}
-      {actionData?.success && (
-        <div className="fixed bottom-8 right-8 bg-[#1b3d2e] text-white px-6 py-4 rounded-2xl shadow-2xl animate-fade-in z-50">
-          <p className="font-bold">{isEn ? 'Success!' : 'تم بنجاح!'}</p>
-          <p className="text-sm opacity-90">{actionData.message || (isEn ? 'Your request has been sent.' : 'تم إرسال طلبك.')}</p>
-        </div>
-      )}
-
-      <style dangerouslySetInnerHTML={{ __html: `
-        .luxury-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
-        .luxury-modal { background: white; width: 100%; max-width: 500px; padding: 32px; border-radius: 24px; box-shadow: 0 20px 50px rgba(0,0,0,0.2); }
-        .modal-title { font-family: 'Playfair Display', serif; font-size: 24px; font-weight: 900; color: #1b3d2e; margin-bottom: 12px; }
-        .modal-desc { color: #666; margin-bottom: 24px; font-size: 14px; line-height: 1.6; }
-        .modal-actions { display: grid; grid-template-cols: 1fr 1fr; gap: 16px; margin-top: 32px; }
-        .btn-modify { border-color: #d4a06a !important; color: #d4a06a !important; }
-        .btn-modify:hover { background: #fdfaf7 !important; }
-        .luxury-input-field { width: 100%; padding: 12px 16px; border: 1.5px solid #eee; border-radius: 12px; font-size: 14px; }
-        .luxury-label { font-size: 11px; font-weight: 900; color: #d4a06a; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; display: block; }
-      `}} />
+      {/* Debug Footer - Only visible during setup */}
+      <div className="mt-12 p-4 bg-gray-50 rounded-lg text-center text-xs text-gray-400 font-mono">
+        Debug: Metafield is currently [{rawMetafield}]
+      </div>
     </div>
   );
 }
@@ -423,106 +219,20 @@ const CUSTOMER_ORDER_QUERY = `#graphql
     amount
     currencyCode
   }
-  fragment AddressFull on MailingAddress {
-    address1
-    address2
-    city
-    company
-    country
-    countryCodeV2
-    firstName
-    formatted
-    id
-    lastName
-    name
-    phone
-    province
-    provinceCode
-    zip
-  }
-  fragment DiscountApplication on DiscountApplication {
-    value {
-      __typename
-      ... on MoneyV2 {
-        ...OrderMoney
-      }
-      ... on PricingPercentageValue {
-        percentage
-      }
-    }
-  }
-  fragment OrderLineProductVariant on ProductVariant {
-    id
-    image {
-      altText
-      height
-      url
-      id
-      width
-    }
-    price {
-      ...OrderMoney
-    }
-    product {
-      handle
-      tags
-    }
-    sku
-    title
-  }
   fragment OrderLineItemFull on OrderLineItem {
     title
     quantity
-    discountAllocations {
-      allocatedAmount {
-        ...OrderMoney
-      }
-      discountApplication {
-        ...DiscountApplication
-      }
-    }
-    originalTotalPrice {
-      ...OrderMoney
-    }
     discountedTotalPrice {
       ...OrderMoney
     }
     variant {
-      ...OrderLineProductVariant
-    }
-  }
-  fragment Order on Order {
-    id
-    name
-    orderNumber
-    statusUrl
-    processedAt
-    fulfillmentStatus
-    financialStatus
-    totalTaxV2 {
-      ...OrderMoney
-    }
-    totalPriceV2 {
-      ...OrderMoney
-    }
-    subtotalPriceV2 {
-      ...OrderMoney
-    }
-    shippingAddress {
-      ...AddressFull
-    }
-    customAttributes {
-      key
-      value
-    }
-    discountApplications(first: 10) {
-      nodes {
-        ...DiscountApplication
+      id
+      image {
+        url
+        altText
       }
-    }
-    lineItems(first: 100) {
-      nodes {
-        ...OrderLineItemFull
+      product {
+        handle
       }
     }
   }
@@ -533,13 +243,34 @@ const CUSTOMER_ORDER_QUERY = `#graphql
   ) @inContext(country: $country, language: $language) {
     order: node(id: $orderId) {
       ... on Order {
-        ...Order
+        id
+        name
+        processedAt
+        fulfillmentStatus
+        financialStatus
+        order_status: metafield(namespace: "custom", key: "order_status") {
+          value
+        }
+        totalTaxV2 { ...OrderMoney }
+        totalPriceV2 { ...OrderMoney }
+        subtotalPriceV2 { ...OrderMoney }
+        customAttributes {
+          key
+          value
+        }
+        discountApplications(first: 10) {
+          nodes {
+            value {
+              __typename
+              ... on MoneyV2 { ...OrderMoney }
+              ... on PricingPercentageValue { percentage }
+            }
+          }
+        }
+        lineItems(first: 100) {
+          nodes { ...OrderLineItemFull }
+        }
       }
     }
   }
 ` as const;
-
-
-
-
-

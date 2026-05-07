@@ -56,7 +56,7 @@ export default function Policy() {
         </Link>
       </div>
       <br />
-      <h1 className="text-3xl font-black text-[#1b3d2e] mb-6">{policy.title}</h1>
+      <h1 className="text-3xl font-black text-[#234745] mb-6">{policy.title}</h1>
       <div className="prose max-w-none" dangerouslySetInnerHTML={{__html: policy.body}} />
     </div>
   );

@@ -206,7 +206,7 @@ export default function PromotionsDashboard() {
     <div className="promotions-dashboard-content" dir={isEn ? 'ltr' : 'rtl'}>
       <div className="flex justify-between items-end mb-10">
         <div>
-          <h1 className="text-3xl font-black text-[#1b3d2e] mb-2">
+          <h1 className="text-3xl font-black text-[#234745] mb-2">
             {isEn ? 'Promotions' : 'العروض والقسائم'}
           </h1>
           <p className="text-gray-500 font-medium">
@@ -231,7 +231,7 @@ export default function PromotionsDashboard() {
               <input type="hidden" name="intent" value="create_voucher" />
               
               <div className="space-y-6">
-                <h3 className="text-xl font-bold text-[#1b3d2e] border-b pb-2">
+                <h3 className="text-xl font-bold text-[#234745] border-b pb-2">
                   {isEn ? 'Campaign Details' : 'تفاصيل الحملة'}
                 </h3>
                 <div className="luxury-field">
@@ -269,7 +269,7 @@ export default function PromotionsDashboard() {
               </div>
 
               <div className="space-y-6">
-                <h3 className="text-xl font-bold text-[#1b3d2e] border-b pb-2">
+                <h3 className="text-xl font-bold text-[#234745] border-b pb-2">
                   {isEn ? 'Branch & Targeting' : 'الفرع والاستهداف'}
                 </h3>
                 <div className="luxury-field">
@@ -325,7 +325,7 @@ export default function PromotionsDashboard() {
             <tbody className="divide-y">
               {priceRules.map((pr: any) => (
                 <tr key={pr.id}>
-                  <td className="px-6 py-4 font-bold text-[#1b3d2e]">{pr.discountCodes?.nodes[0]?.code || pr.title}</td>
+                  <td className="px-6 py-4 font-bold text-[#234745]">{pr.discountCodes?.nodes[0]?.code || pr.title}</td>
                   <td className="px-6 py-4">{Math.abs(parseFloat(pr.value))} {pr.valueType === 'PERCENTAGE' ? '%' : 'SAR'}</td>
                   <td className="px-6 py-4">
                     <span className="bg-green-50 text-green-500 px-2 py-1 rounded-full text-[10px] font-bold uppercase">Active</span>

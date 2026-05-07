@@ -151,8 +151,8 @@ function ToggleSwitch({ enabled, onChange, label }: { enabled: boolean; onChange
       aria-checked={enabled}
       aria-label={label}
       onClick={onChange}
-      className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-300 ease-in-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1b3d2e] focus-visible:ring-offset-2 ${
-        enabled ? 'bg-[#1b3d2e]' : 'bg-gray-200'
+      className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-300 ease-in-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#234745] focus-visible:ring-offset-2 ${
+        enabled ? 'bg-[#234745]' : 'bg-gray-200'
       }`}
     >
       <span
@@ -208,7 +208,7 @@ export default function NotificationPreferences() {
     <div dir={isEn ? 'ltr' : 'rtl'} className={isEn ? 'font-en' : 'font-ar'}>
       {/* Page Header */}
       <div className="mb-8">
-        <h1 className="text-2xl md:text-3xl font-black text-[#1b3d2e] mb-2">
+        <h1 className="text-2xl md:text-3xl font-black text-[#234745] mb-2">
           {isEn ? 'Notification Preferences' : 'إعدادات الإشعارات'}
         </h1>
         <p className="text-gray-500 text-sm font-medium">
@@ -224,7 +224,7 @@ export default function NotificationPreferences() {
           <span className="text-sm font-bold text-gray-500">{isEn ? 'Email:' : 'البريد:'}</span>
           <button
             onClick={() => enableAll('email')}
-            className="text-[11px] font-bold text-[#1b3d2e] bg-[#1b3d2e]/5 hover:bg-[#1b3d2e]/10 px-3 py-1 rounded-lg transition-colors"
+            className="text-[11px] font-bold text-[#234745] bg-[#234745]/5 hover:bg-[#234745]/10 px-3 py-1 rounded-lg transition-colors"
           >
             {isEn ? 'Enable All' : 'تفعيل الكل'}
           </button>
@@ -239,7 +239,7 @@ export default function NotificationPreferences() {
           <span className="text-sm font-bold text-gray-500">{isEn ? 'SMS:' : 'الرسائل:'}</span>
           <button
             onClick={() => enableAll('sms')}
-            className="text-[11px] font-bold text-[#1b3d2e] bg-[#1b3d2e]/5 hover:bg-[#1b3d2e]/10 px-3 py-1 rounded-lg transition-colors"
+            className="text-[11px] font-bold text-[#234745] bg-[#234745]/5 hover:bg-[#234745]/10 px-3 py-1 rounded-lg transition-colors"
           >
             {isEn ? 'Enable All' : 'تفعيل الكل'}
           </button>
@@ -284,7 +284,7 @@ export default function NotificationPreferences() {
                 {pref.icon}
               </div>
               <div className="min-w-0">
-                <p className="text-sm font-black text-[#1b3d2e] truncate">
+                <p className="text-sm font-black text-[#234745] truncate">
                   {isEn ? pref.labelEn : pref.labelAr}
                 </p>
                 <p className="text-[11px] text-gray-400 font-medium truncate hidden md:block">
@@ -320,8 +320,8 @@ export default function NotificationPreferences() {
                 }}
                 className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all ${
                   previewId === pref.id
-                    ? 'bg-[#1b3d2e] text-white shadow-md'
-                    : 'bg-gray-50 text-gray-400 hover:bg-[#1b3d2e]/10 hover:text-[#1b3d2e]'
+                    ? 'bg-[#234745] text-white shadow-md'
+                    : 'bg-gray-50 text-gray-400 hover:bg-[#234745]/10 hover:text-[#234745]'
                 }`}
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -339,7 +339,7 @@ export default function NotificationPreferences() {
         <div className="bg-white rounded-[2rem] border border-gray-100 shadow-sm overflow-hidden mb-8 animate-fade-in">
           <div className="px-6 py-4 bg-gray-50/80 border-b border-gray-100 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <span className="text-sm font-black text-[#1b3d2e]">
+              <span className="text-sm font-black text-[#234745]">
                 {isEn ? 'Template Preview' : 'معاينة القالب'}
               </span>
               <span className="text-[11px] font-bold text-gray-400 bg-gray-100 px-2.5 py-1 rounded-lg">
@@ -353,7 +353,7 @@ export default function NotificationPreferences() {
                 onClick={() => setPreviewChannel('email')}
                 className={`px-4 py-1.5 rounded-lg text-[11px] font-bold transition-all ${
                   previewChannel === 'email'
-                    ? 'bg-white text-[#1b3d2e] shadow-sm'
+                    ? 'bg-white text-[#234745] shadow-sm'
                     : 'text-gray-400 hover:text-gray-600'
                 }`}
               >
@@ -363,7 +363,7 @@ export default function NotificationPreferences() {
                 onClick={() => setPreviewChannel('sms')}
                 className={`px-4 py-1.5 rounded-lg text-[11px] font-bold transition-all ${
                   previewChannel === 'sms'
-                    ? 'bg-white text-[#1b3d2e] shadow-sm'
+                    ? 'bg-white text-[#234745] shadow-sm'
                     : 'text-gray-400 hover:text-gray-600'
                 }`}
               >
@@ -376,9 +376,9 @@ export default function NotificationPreferences() {
             {previewChannel === 'email' ? (
               <div className="bg-[#fdfaf6] rounded-2xl border border-[#f0ece8] p-6">
                 <div className="flex items-center gap-2 mb-4 pb-4 border-b border-[#f0ece8]">
-                  <div className="w-8 h-8 rounded-full bg-[#1b3d2e] flex items-center justify-center text-white text-[10px] font-bold shrink-0">SD</div>
+                  <div className="w-8 h-8 rounded-full bg-[#234745] flex items-center justify-center text-white text-[10px] font-bold shrink-0">SD</div>
                   <div>
-                    <p className="text-[11px] font-bold text-[#1b3d2e]">Saadeddin Pastry</p>
+                    <p className="text-[11px] font-bold text-[#234745]">Saadeddin Pastry</p>
                     <p className="text-[10px] text-gray-400">noreply@saadeddin.com</p>
                   </div>
                 </div>
@@ -391,7 +391,7 @@ export default function NotificationPreferences() {
                 <div className="w-[280px]">
                   <div className="bg-[#f2f2f7] rounded-2xl p-4">
                     <div className="flex items-center gap-2 mb-3">
-                      <div className="w-6 h-6 rounded-full bg-[#1b3d2e] flex items-center justify-center text-white text-[8px] font-bold">SD</div>
+                      <div className="w-6 h-6 rounded-full bg-[#234745] flex items-center justify-center text-white text-[8px] font-bold">SD</div>
                       <span className="text-[11px] font-bold text-gray-600">Saadeddin</span>
                       <span className="text-[10px] text-gray-400 ms-auto">{isEn ? 'now' : 'الآن'}</span>
                     </div>
@@ -415,7 +415,7 @@ export default function NotificationPreferences() {
           className={`px-10 py-3.5 rounded-2xl font-black text-sm shadow-md transition-all duration-300 ${
             saved
               ? 'bg-green-500 text-white shadow-green-200 scale-[1.02]'
-              : 'bg-[#1b3d2e] text-white hover:bg-[#2d5e4a] hover:-translate-y-0.5 hover:shadow-lg active:scale-95'
+              : 'bg-[#234745] text-white hover:bg-[#2d5e4a] hover:-translate-y-0.5 hover:shadow-lg active:scale-95'
           }`}
         >
           {saved
@@ -435,7 +435,7 @@ export default function NotificationPreferences() {
         <div className="flex items-start gap-3">
           <span className="text-lg shrink-0">ℹ️</span>
           <div>
-            <p className="text-sm font-bold text-[#1b3d2e] mb-1">
+            <p className="text-sm font-bold text-[#234745] mb-1">
               {isEn ? 'About Notifications' : 'حول الإشعارات'}
             </p>
             <p className="text-[12px] text-gray-500 leading-relaxed">

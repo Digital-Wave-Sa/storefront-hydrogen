@@ -76,7 +76,7 @@ export function HeroSlider() {
       {/* Navigation Arrows (Hidden on mobile, appear on hover for desktop) */}
       <button 
         onClick={prevSlide}
-        className="hidden lg:flex absolute start-8 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/80 hover:bg-white text-[#1b3d2e] rounded-full items-center justify-center shadow-lg transition-all z-10 hover:scale-110 active:scale-95 opacity-0 group-hover:opacity-100"
+        className="hidden lg:flex absolute start-8 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/80 hover:bg-white text-[#234745] rounded-full items-center justify-center shadow-lg transition-all z-10 hover:scale-110 active:scale-95 opacity-0 group-hover:opacity-100"
         aria-label="Previous slide"
       >
         {/* In LTR: points left (<). In RTL: points right (>) */}
@@ -87,7 +87,7 @@ export function HeroSlider() {
       
       <button 
         onClick={nextSlide}
-        className="hidden lg:flex absolute end-8 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/80 hover:bg-white text-[#1b3d2e] rounded-full items-center justify-center shadow-lg transition-all z-10 hover:scale-110 active:scale-95 opacity-0 group-hover:opacity-100"
+        className="hidden lg:flex absolute end-8 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/80 hover:bg-white text-[#234745] rounded-full items-center justify-center shadow-lg transition-all z-10 hover:scale-110 active:scale-95 opacity-0 group-hover:opacity-100"
         aria-label="Next slide"
       >
         {/* In LTR: points right (>). In RTL: points left (<) */}
@@ -102,7 +102,7 @@ export function HeroSlider() {
           <button
             key={index}
             onClick={() => scrollToSlide(index)}
-            className={`h-1.5 rounded-full transition-all duration-300 ${index === currentIndex ? 'w-8 bg-[#1b3d2e]' : 'w-2 bg-[#1b3d2e]/30 hover:bg-[#1b3d2e]/50'}`}
+            className={`h-1.5 rounded-full transition-all duration-300 ${index === currentIndex ? 'w-8 bg-[#234745]' : 'w-2 bg-[#234745]/30 hover:bg-[#234745]/50'}`}
             aria-label={`Go to slide ${index + 1}`}
           />
         ))}

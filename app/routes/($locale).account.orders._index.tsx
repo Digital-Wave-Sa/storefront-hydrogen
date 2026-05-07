@@ -183,7 +183,7 @@ function OrdersList({ orders, searchTerm, statusFilter, isEn }: { orders: any, s
     return (
       <div className="py-20 text-center bg-white rounded-2xl border border-dashed border-gray-200">
         <p className="text-gray-500">{isEn ? "No orders match your filters." : "لا توجد طلبات تطابق اختياراتك."}</p>
-        <Link to="/account/orders" className="text-[#1b3d2e] font-bold underline mt-4 inline-block">
+        <Link to="/account/orders" className="text-[#234745] font-bold underline mt-4 inline-block">
            {isEn ? "Clear filters" : "مسح التصفية"}
         </Link>
       </div>
@@ -247,7 +247,7 @@ function OrderCard({ order, isEn }: { order: OrderItemFragment, isEn: boolean })
            <button 
              onClick={handleReorder} 
              disabled={fetcher.state !== 'idle'}
-             className="view-btn-v2 !bg-[#1b3d2e] !text-white !border-[#1b3d2e] hover:!bg-[#d4a06a] hover:!border-[#d4a06a]"
+             className="view-btn-v2 !bg-[#234745] !text-white !border-[#234745] hover:!bg-[#d4a06a] hover:!border-[#d4a06a]"
            >
              {fetcher.state !== 'idle' ? (isEn ? 'Adding...' : 'جاري الإضافة...') : (isEn ? 'Reorder' : 'إعادة طلب')}
            </button>
@@ -309,7 +309,7 @@ function EmptyOrders({ isEn }: { isEn: boolean }) {
           <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5V6a3.75 3.75 0 10-7.5 0v4.5m11.356-1.993l1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 01-1.12-1.243l1.264-12A1.125 1.125 0 015.513 7.5h12.974c.576 0 1.059.435 1.119 1.007zM8.625 10.5a.375.375 0 11-.75 0 .375.375 0 01.75 0zm7.5 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
         </svg>
       </div>
-      <h3 className="text-2xl font-bold text-[#1b3d2e] mt-6">
+      <h3 className="text-2xl font-bold text-[#234745] mt-6">
         {isEn ? "No order history yet" : "لا توجد طلبات سابقة"}
       </h3>
       <p className="text-gray-500 max-w-sm mx-auto mt-2">

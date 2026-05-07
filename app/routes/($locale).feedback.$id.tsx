@@ -67,17 +67,17 @@ export default function FeedbackPage() {
     return (
       <PageLayout>
         <div className="min-h-[70vh] flex items-center justify-center px-4 py-20 bg-[#fdfaf6]">
-          <div className="max-w-md w-full bg-white rounded-[40px] p-10 text-center shadow-2xl shadow-[#1b3d2e]/10 border border-gray-100">
+          <div className="max-w-md w-full bg-white rounded-[40px] p-10 text-center shadow-2xl shadow-[#234745]/10 border border-gray-100">
             <div className="w-24 h-24 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-8">
               <span className="text-5xl">💚</span>
             </div>
-            <h1 className="text-3xl font-black text-[#1b3d2e] mb-4">{i18n.common.feedbackSuccess}</h1>
+            <h1 className="text-3xl font-black text-[#234745] mb-4">{i18n.common.feedbackSuccess}</h1>
             <p className="text-gray-500 font-bold mb-10 leading-relaxed">
               {i18n.common.feedbackSuccessMessage}
             </p>
             <Link 
               to={isEn ? '/en' : '/'}
-              className="inline-block bg-[#1b3d2e] text-white font-black px-10 py-4 rounded-2xl hover:bg-[#d4a06a] transition-all shadow-lg hover:shadow-[#d4a06a]/20"
+              className="inline-block bg-[#234745] text-white font-black px-10 py-4 rounded-2xl hover:bg-[#d4a06a] transition-all shadow-lg hover:shadow-[#d4a06a]/20"
             >
               {i18n.common.backToHome}
             </Link>
@@ -93,10 +93,10 @@ export default function FeedbackPage() {
         <div className="max-w-3xl mx-auto">
           {/* Header */}
           <div className="text-center mb-12">
-            <span className="inline-block bg-[#1b3d2e] text-white text-[10px] font-black uppercase tracking-[0.2em] px-4 py-1.5 rounded-full mb-4">
+            <span className="inline-block bg-[#234745] text-white text-[10px] font-black uppercase tracking-[0.2em] px-4 py-1.5 rounded-full mb-4">
               Order {order.name}
             </span>
-            <h1 className="text-4xl md:text-5xl font-black text-[#1b3d2e] mb-4 tracking-tight">
+            <h1 className="text-4xl md:text-5xl font-black text-[#234745] mb-4 tracking-tight">
               {i18n.common.feedbackTitle}
             </h1>
             <p className="text-gray-400 font-bold max-w-md mx-auto leading-relaxed">
@@ -109,9 +109,9 @@ export default function FeedbackPage() {
             <input type="hidden" name="branchName" value={order.branchName} />
 
             {/* Product Ratings */}
-            <div className="bg-white rounded-[40px] p-8 md:p-12 shadow-xl shadow-[#1b3d2e]/5 border border-gray-50 overflow-hidden relative">
-               <div className="absolute top-0 left-0 w-2 h-full bg-[#1b3d2e]"></div>
-               <h2 className="text-xl font-black text-[#1b3d2e] mb-8 flex items-center gap-3">
+            <div className="bg-white rounded-[40px] p-8 md:p-12 shadow-xl shadow-[#234745]/5 border border-gray-50 overflow-hidden relative">
+               <div className="absolute top-0 left-0 w-2 h-full bg-[#234745]"></div>
+               <h2 className="text-xl font-black text-[#234745] mb-8 flex items-center gap-3">
                  <span className="w-8 h-8 rounded-full bg-[#f5eeea] flex items-center justify-center text-sm">🛍️</span>
                  {i18n.common.rateProduct}
                </h2>
@@ -122,7 +122,7 @@ export default function FeedbackPage() {
                       <img src={item.image} alt={item.title} className="w-full h-full object-cover" />
                     </div>
                     <div className="flex-1 text-center md:text-start">
-                      <h3 className="font-black text-[#1b3d2e] mb-2">{item.title}</h3>
+                      <h3 className="font-black text-[#234745] mb-2">{item.title}</h3>
                       <InteractiveStarRating 
                         value={productRatings[item.id] || 0} 
                         onChange={(v) => setProductRatings(prev => ({...prev, [item.id]: v}))}
@@ -135,9 +135,9 @@ export default function FeedbackPage() {
             </div>
 
             {/* Branch Rating */}
-            <div className="bg-white rounded-[40px] p-8 md:p-12 shadow-xl shadow-[#1b3d2e]/5 border border-gray-50 relative overflow-hidden">
+            <div className="bg-white rounded-[40px] p-8 md:p-12 shadow-xl shadow-[#234745]/5 border border-gray-50 relative overflow-hidden">
                <div className="absolute top-0 left-0 w-2 h-full bg-[#d4a06a]"></div>
-               <h2 className="text-xl font-black text-[#1b3d2e] mb-2 flex items-center gap-3">
+               <h2 className="text-xl font-black text-[#234745] mb-2 flex items-center gap-3">
                  <span className="w-8 h-8 rounded-full bg-[#f5eeea] flex items-center justify-center text-sm">🏪</span>
                  {i18n.common.rateBranch}
                </h2>
@@ -155,12 +155,12 @@ export default function FeedbackPage() {
             </div>
 
             {/* Comments & Images */}
-            <div className="bg-white rounded-[40px] p-8 md:p-12 shadow-xl shadow-[#1b3d2e]/5 border border-gray-50 relative overflow-hidden">
+            <div className="bg-white rounded-[40px] p-8 md:p-12 shadow-xl shadow-[#234745]/5 border border-gray-50 relative overflow-hidden">
                <div className="absolute top-0 left-0 w-2 h-full bg-[#ab8e78]"></div>
                
                {/* Comments */}
                <div>
-                 <h2 className="text-xl font-black text-[#1b3d2e] mb-6 flex items-center gap-3">
+                 <h2 className="text-xl font-black text-[#234745] mb-6 flex items-center gap-3">
                    <span className="w-8 h-8 rounded-full bg-[#f5eeea] flex items-center justify-center text-sm">✍️</span>
                    {i18n.common.yourComments}
                  </h2>
@@ -168,7 +168,7 @@ export default function FeedbackPage() {
                    name="comment"
                    rows={5}
                    placeholder={i18n.common.commentsPlaceholder}
-                   className="w-full bg-[#fafafa] border border-gray-100 rounded-[24px] p-6 font-bold text-[#1b3d2e] focus:border-[#d4a06a] focus:ring-1 focus:ring-[#d4a06a] outline-none transition-all resize-none placeholder-gray-300"
+                   className="w-full bg-[#fafafa] border border-gray-100 rounded-[24px] p-6 font-bold text-[#234745] focus:border-[#d4a06a] focus:ring-1 focus:ring-[#d4a06a] outline-none transition-all resize-none placeholder-gray-300"
                  />
                </div>
             </div>
@@ -178,7 +178,7 @@ export default function FeedbackPage() {
               <button
                 type="submit"
                 disabled={fetcher.state !== 'idle'}
-                className="w-full md:w-auto min-w-[300px] bg-[#1b3d2e] text-white font-black py-5 px-12 rounded-[24px] text-lg shadow-xl shadow-[#1b3d2e]/20 hover:bg-[#d4a06a] hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50"
+                className="w-full md:w-auto min-w-[300px] bg-[#234745] text-white font-black py-5 px-12 rounded-[24px] text-lg shadow-xl shadow-[#234745]/20 hover:bg-[#d4a06a] hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50"
               >
                 {fetcher.state !== 'idle' ? (
                   <div className="flex items-center justify-center gap-3">

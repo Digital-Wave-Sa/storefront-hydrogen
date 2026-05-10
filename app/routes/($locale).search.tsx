@@ -143,17 +143,7 @@ export default function SearchPage() {
 
   useEffect(() => {
     setMounted(true);
-    if (searchTerm) {
-      sendShopifyAnalytics({
-        eventName: AnalyticsEventName.SEARCH_VIEW,
-        payload: {
-          searchTerm,
-          totalResults: searchResults.totalResults,
-          pageType: AnalyticsPageType.search,
-        },
-      });
-    }
-  }, [searchTerm, searchResults.totalResults, publish]);
+  }, []);
 
   const totalProducts = searchResults?.results?.products?.nodes?.length || 0;
   const filterOptions = searchResults?.results?.products?.productFilters || [];
@@ -168,8 +158,10 @@ export default function SearchPage() {
 
         <header className="mb-12 text-center">
           <Analytics.SearchView
-            searchTerm={searchTerm}
-            searchResults={searchResults.totalResults}
+            data={{
+              searchTerm,
+              searchResults
+            }}
           />
           <h1 className="text-4xl lg:text-5xl font-black text-[#234745] mb-4">
             {searchTerm

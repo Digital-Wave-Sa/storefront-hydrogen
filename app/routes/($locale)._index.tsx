@@ -119,9 +119,8 @@ export default function Homepage() {
       <HeroSlider />
       <ShopByOccasion collections={data.occasions} />
       <WhoAreYouGifting collections={data.occasions} />
-      <ShopByCategory />
-      <DesignYourCake />
       <BestSellers products={data.recommendedProducts} />
+      <DesignYourCake />
       <NewArrivals products={data.newArrivals} />
       <OffersAndDiscounts />
       <CorporateGifting />

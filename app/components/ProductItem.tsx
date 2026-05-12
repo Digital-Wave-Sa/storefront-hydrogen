@@ -188,7 +188,7 @@ export function ProductItem({
   }
 
   return (
-    <div className={`group flex flex-col bg-white rounded-[2.5rem] overflow-hidden transition-all duration-500 border border-gray-100 relative ${isDimmed ? 'opacity-60 grayscale-[30%]' : 'hover:shadow-2xl hover:shadow-[#234745]/10 hover:border-[#234745]/20 hover:-translate-y-1'}`}>
+    <div className={`group flex flex-col bg-white rounded-3xl overflow-hidden transition-all duration-500 relative ${isDimmed ? 'opacity-60 grayscale-[30%]' : 'hover:shadow-xl hover:shadow-[#234745]/10 hover:-translate-y-1'}`}>
       <Link
         key={product.id}
         prefetch="intent"
@@ -196,7 +196,7 @@ export function ProductItem({
         className={`block relative ${isVisibilityBlocked ? 'pointer-events-none' : ''}`}
         onClick={isVisibilityBlocked ? (e: any) => e.preventDefault() : undefined}
       >
-        <div className="w-full h-full relative">
+        <div className="w-full aspect-square relative bg-[#f9f9f9] flex items-center justify-center">
             {product.featuredImage && (
             <Image
                 alt={product.featuredImage.altText || product.title}
@@ -208,8 +208,21 @@ export function ProductItem({
             />
             )}
             
+            {/* Wishlist Heart Icon */}
+            <div className="absolute top-4 left-4 z-20">
+                <button 
+                  onClick={(e) => {
+                      e.preventDefault();
+                      // Wishlist logic here
+                  }}
+                  className="bg-white rounded-full p-1.5 text-gray-400 hover:text-red-500 shadow-sm transition-all border border-gray-100/50"
+                >
+                    <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
+                </button>
+            </div>
+            
             {/* Status Badges overlay */}
-            <div className={`absolute top-4 ${isEn ? 'right-4' : 'left-4'} z-10 flex flex-col gap-2 ${isEn ? 'items-end' : 'items-start'}`}>
+            <div className="absolute top-4 right-4 z-10 flex flex-col gap-2 items-end">
               {isVisibilityBlocked ? (
                   <span className={`text-[10px] font-black px-3 py-1.5 rounded-xl shadow-sm flex items-center gap-1.5 ${visibility.status === 'scheduled' ? 'bg-amber-500 text-white' : 'bg-red-500 text-white'}`}>
                     <span>{visibility.status === 'scheduled' ? '🕐' : '⛔'}</span>
@@ -249,7 +262,7 @@ export function ProductItem({
               data={product.priceRange.minVariantPrice} 
               size="md" 
               isEn={isEn} 
-              className="mt-1 mb-6"
+              className="mt-2 mb-6 text-[#234745]"
             />
           )}
 
@@ -263,9 +276,9 @@ export function ProductItem({
                               selectedVariant: variant
                           }]} 
                           disabled={!effectiveAvailable || isOutOfStock}
-                          className="w-full bg-[#234745] hover:bg-[#2d5e4a] text-white py-3.5 rounded-2xl font-bold text-sm shadow-xl transition-all"
+                          className="w-full bg-[#234745] hover:bg-[#2d5e4a] text-white py-3.5 rounded-full font-bold text-[13px] shadow-md transition-all"
                       >
-                          {t.common.addToCart} +
+                          {isEn ? 'Add to Cart' : 'أضف إلي السلة'}
                       </AddToCartButton>
                 ) : (
                     <button 

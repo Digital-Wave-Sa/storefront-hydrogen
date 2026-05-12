@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { type MetaFunction, type LoaderFunctionArgs } from 'react-router';
 import { useLoaderData } from 'react-router';
 import { ShapeSizeSelector, SHAPES, SIZES } from '~/components/CakeBuilder/ShapeSizeSelector';
@@ -39,7 +39,6 @@ export async function loader({ context }: LoaderFunctionArgs) {
         language: storefront.i18n.language,
       },
     });
-    console.log('--- DEBUG CAKE ATTRIBUTES ---', JSON.stringify(metaobjects.nodes, null, 2));
     return { locale, cakeAttributes: metaobjects.nodes };
   } catch (error) {
     console.error('Failed to fetch cake attributes:', error);
@@ -52,7 +51,9 @@ export default function CustomCakeBuilder() {
   const isEn = locale === 'en';
   
   const [currentStep, setCurrentStep] = useState(1);
-  const totalSteps = 5;
+  const totalSteps = 9;
+  const [isHydrated, setIsHydrated] = useState(false);
+  const [showDraftToast, setShowDraftToast] = useState(false);
 
   // --- MAP API DATA TO STATE ---
   const dynamicShapes = useMemo(() => {
@@ -93,7 +94,7 @@ export default function CustomCakeBuilder() {
 
   // --- GLOBAL CAKE STATE ---
   const [selectedShape, setSelectedShape] = useState(dynamicShapes[0]);
-  const [selectedSize, setSelectedSize] = useState(SIZES[1]); // Sizes usually fixed, can be dynamic later
+  const [selectedSize, setSelectedSize] = useState(SIZES[1]); 
   const [selectedFlavor, setSelectedFlavor] = useState({
     id: 'chocolate',
     nameEn: 'Belgian Chocolate',
@@ -103,6 +104,60 @@ export default function CustomCakeBuilder() {
   const [layers, setLayers] = useState(2);
   const [selectedTopping, setSelectedTopping] = useState(dynamicToppings[0] || TOPPINGS[0]);
   const [cakeMessage, setCakeMessage] = useState('');
+  const [selectedDecoration, setSelectedDecoration] = useState({ id: 'none', nameEn: 'None', nameAr: 'بدون' });
+  const [uploadedImage, setUploadedImage] = useState<string | null>(null);
+
+  // --- PERSISTENCE: LOAD DRAFT ---
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
+    const savedDraft = localStorage.getItem('saadeddin_cake_draft');
+    if (savedDraft) {
+      try {
+        const draft = JSON.parse(savedDraft);
+        // Map saved IDs back to objects from dynamic lists
+        const shape = dynamicShapes.find((s: any) => s.id === draft.shapeId) || dynamicShapes[0];
+        const size = SIZES.find(s => s.id === draft.sizeId) || SIZES[1];
+        const flavor = draft.flavor || selectedFlavor;
+        const color = dynamicColors.find((c: any) => c.id === draft.colorId) || dynamicColors[0];
+        const topping = dynamicToppings.find((t: any) => t.id === draft.toppingId) || dynamicToppings[0];
+
+        setSelectedShape(shape);
+        setSelectedSize(size);
+        setSelectedFlavor(flavor);
+        setLayers(draft.layers || 2);
+        setSelectedColor(color);
+        setSelectedTopping(topping);
+        setCakeMessage(draft.message || '');
+        setCurrentStep(draft.step || 1);
+        
+        setShowDraftToast(true);
+        setTimeout(() => setShowDraftToast(false), 4000);
+      } catch (e) {
+        console.error('Failed to load cake draft:', e);
+      }
+    }
+    setIsHydrated(true);
+  }, [dynamicShapes, dynamicColors, dynamicToppings]);
+
+  // --- PERSISTENCE: SAVE DRAFT ---
+  useEffect(() => {
+    if (!isHydrated || typeof window === 'undefined') return;
+
+    const draft = {
+      shapeId: selectedShape.id,
+      sizeId: selectedSize.id,
+      flavor: selectedFlavor,
+      layers,
+      colorId: selectedColor.id,
+      toppingId: selectedTopping.id,
+      message: cakeMessage,
+      step: currentStep,
+      timestamp: Date.now()
+    };
+    
+    localStorage.setItem('saadeddin_cake_draft', JSON.stringify(draft));
+  }, [selectedShape, selectedSize, selectedFlavor, layers, selectedColor, selectedTopping, cakeMessage, currentStep, isHydrated]);
 
   // --- PRICE CALCULATION ---
   const basePrice = 150.00;
@@ -117,18 +172,42 @@ export default function CustomCakeBuilder() {
   const vatAmount = subtotal * 0.15;
   const finalTotal = subtotal + vatAmount;
 
+  const steps = [
+    { id: 1, en: 'Shape', ar: 'الشكل' },
+    { id: 2, en: 'Size', ar: 'الحجم' },
+    { id: 3, en: 'Flavor', ar: 'النكهة' },
+    { id: 4, en: 'Layers', ar: 'الطبقات' },
+    { id: 5, en: 'Toppings', ar: 'الإضافات' },
+    { id: 6, en: 'Decoration', ar: 'التزيين' },
+    { id: 7, en: 'Text', ar: 'النص' },
+    { id: 8, en: 'Image', ar: 'الصورة' },
+    { id: 9, en: 'Review', ar: 'المراجعة' },
+  ];
+
   return (
     <div className="min-h-screen bg-[#FDF5E6] pt-12 pb-20" dir={isEn ? 'ltr' : 'rtl'}>
+      {/* Draft Loaded Toast */}
+      <div className={`fixed top-10 left-1/2 -translate-x-1/2 z-[100] transition-all duration-700 ${showDraftToast ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-10 pointer-events-none'}`}>
+         <div className="bg-[#234745] text-white px-8 py-4 rounded-[20px] shadow-2xl flex items-center gap-4 border border-white/20 backdrop-blur-md">
+            <div className="w-6 h-6 bg-white/20 rounded-full flex items-center justify-center">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4"><polyline points="20 6 9 17 4 12" /></svg>
+            </div>
+            <span className="font-bold text-sm tracking-wide">
+              {isEn ? 'Welcome back! We restored your cake draft.' : 'أهلاً بك مجدداً! تم استعادة مسودة الكيكة الخاصة بك.'}
+            </span>
+         </div>
+      </div>
+
       <div className="container mx-auto px-4 max-w-7xl">
         
         {/* Top Header */}
         <div className="flex flex-col md:flex-row justify-between items-center mb-12">
           <div className="text-center md:text-start">
             <h1 className="text-[32px] lg:text-[42px] font-serif text-[#234745] font-black leading-tight">
-              {isEn ? 'Customize Your Dream Cake' : 'صمم كيكة أحلامك'}
+              {isEn ? 'Step-by-Step Cake Designer' : 'مصمم الكيك خطوة بخطوة'}
             </h1>
             <p className="text-[#8B8B8B] font-medium mt-1">
-              {isEn ? 'Premium Saudi Pastries' : 'حلويات سعودية فاخرة'}
+              {isEn ? 'Premium Handcrafted Experience' : 'تجربة حرفية فاخرة'}
             </p>
           </div>
           <div className="mt-6 md:mt-0">
@@ -139,33 +218,34 @@ export default function CustomCakeBuilder() {
           </div>
         </div>
 
-        {/* Progress Tracker Bar */}
-        <div className="bg-white rounded-[24px] p-6 shadow-sm border border-gray-50 mb-10 max-w-4xl mx-auto">
-          <div className="relative mb-4">
-             <div className="absolute top-1/2 left-0 w-full h-1.5 bg-gray-100 rounded-full -translate-y-1/2"></div>
+        {/* Progress Tracker Bar - EXPANDED TO 9 STEPS */}
+        <div className="bg-white rounded-[32px] p-6 lg:p-10 shadow-[0_10px_40px_rgba(35,71,69,0.05)] border border-gray-50 mb-10 max-w-6xl mx-auto">
+          <div className="relative mb-8 px-4">
+             <div className="absolute top-1/2 left-0 w-full h-2 bg-gray-100 rounded-full -translate-y-1/2"></div>
              <div 
-               className="absolute top-1/2 left-0 h-1.5 bg-[#234745] rounded-full -translate-y-1/2 transition-all duration-700 ease-out"
+               className="absolute top-1/2 left-0 h-2 bg-[#234745] rounded-full -translate-y-1/2 transition-all duration-700 ease-out"
                style={{ width: `${((currentStep - 1) / (totalSteps - 1)) * 100}%` }}
              ></div>
           </div>
-          <div className="flex justify-between relative px-2">
-            {[1, 2, 3, 4, 5].map((step) => (
-              <div key={step} className="flex flex-col items-center">
-                <div 
-                  className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-[14px] border-4 transition-all duration-500 ${
-                    currentStep >= step 
-                      ? 'bg-[#234745] text-white border-white shadow-md' 
-                      : 'bg-white text-gray-300 border-gray-50'
+          <div className="flex justify-between relative">
+            {steps.map((step) => (
+              <div key={step.id} className="flex flex-col items-center">
+                <button 
+                   onClick={() => setCurrentStep(step.id)}
+                   className={`w-8 h-8 lg:w-10 lg:h-10 rounded-full flex items-center justify-center font-bold text-[12px] lg:text-[14px] border-4 transition-all duration-500 z-10 ${
+                    currentStep === step.id 
+                      ? 'bg-[#234745] text-white border-white shadow-xl scale-110' 
+                      : currentStep > step.id
+                        ? 'bg-[#234745] text-white border-white'
+                        : 'bg-white text-gray-300 border-gray-50'
                   }`}
                 >
-                  {step}
-                </div>
-                <span className={`text-[11px] mt-2 font-bold uppercase tracking-widest ${currentStep >= step ? 'text-[#234745]' : 'text-gray-300'}`}>
-                  {step === 1 && (isEn ? 'Shape' : 'الشكل')}
-                  {step === 2 && (isEn ? 'Flavor' : 'النكهة')}
-                  {step === 3 && (isEn ? 'Color' : 'اللون')}
-                  {step === 4 && (isEn ? 'Toppings' : 'الإضافات')}
-                  {step === 5 && (isEn ? 'Customize' : 'تخصيص')}
+                  {currentStep > step.id ? (
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4"><polyline points="20 6 9 17 4 12"/></svg>
+                  ) : step.id}
+                </button>
+                <span className={`hidden lg:block text-[10px] mt-3 font-bold uppercase tracking-[0.15em] ${currentStep >= step.id ? 'text-[#234745]' : 'text-gray-300'}`}>
+                  {isEn ? step.en : step.ar}
                 </span>
               </div>
             ))}
@@ -179,15 +259,13 @@ export default function CustomCakeBuilder() {
           <div className="lg:col-span-5">
             <div className="bg-white/80 backdrop-blur-xl rounded-[40px] p-8 shadow-[0_20px_50px_rgba(0,0,0,0.05)] border border-white sticky top-24 transition-all duration-500 hover:shadow-[0_30px_60px_rgba(35,71,69,0.08)]">
                <div className="flex items-center gap-2 mb-8">
-                  <div className="w-8 h-8 rounded-full bg-[#234745]/10 flex items-center justify-center animate-pulse">
+                  <div className="w-8 h-8 rounded-full bg-[#234745]/10 flex items-center justify-center">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="#234745" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
                   </div>
-                  <h3 className="text-xl font-bold text-[#234745]">{isEn ? 'Live Preview' : 'عرض مباشر'}</h3>
+                  <h3 className="text-xl font-bold text-[#234745]">{isEn ? 'Design Preview' : 'معاينة التصميم'}</h3>
                </div>
                
                <div className="h-[460px] bg-gradient-to-b from-[#F8F9FA] to-white rounded-[32px] flex flex-col items-center justify-center border border-gray-50 p-6 text-center relative overflow-hidden group">
-                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-from)_0%,_transparent_70%)] from-[#234745]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
-                  
                   <div className="w-full h-full relative z-10 flex flex-col items-center justify-center">
                      <CakePreview 
                        shape={selectedShape.id}
@@ -198,13 +276,21 @@ export default function CustomCakeBuilder() {
                      />
                   </div>
                   
-                  <div className="absolute bottom-10 z-10 bg-white/60 backdrop-blur-md px-6 py-2 rounded-full border border-white shadow-sm flex items-center gap-2">
-                    <p className="text-[#234745] font-bold text-sm">
-                      {isEn ? selectedFlavor.nameEn : selectedFlavor.nameAr} • {layers} {isEn ? 'Layers' : 'طبقات'}
-                    </p>
+                  <div className="absolute bottom-10 z-10 bg-white/80 backdrop-blur-md px-6 py-3 rounded-full border border-white shadow-lg flex items-center gap-3">
+                    <div className="flex flex-col items-start leading-none">
+                      <p className="text-[#234745] font-black text-sm uppercase tracking-wider">
+                        {isEn ? selectedFlavor.nameEn : selectedFlavor.nameAr}
+                      </p>
+                      <span className="text-[10px] text-gray-500 font-bold mt-1">
+                        {layers} {isEn ? 'Layers' : 'طبقات'} • {isEn ? selectedSize.nameEn : selectedSize.nameAr}
+                      </span>
+                    </div>
                     {selectedTopping.id !== 'none' && (
-                       <span className="bg-[#234745] text-white text-[10px] px-2 py-1 rounded-full whitespace-nowrap">
-                         + {isEn ? selectedTopping.nameEn : selectedTopping.nameAr}
+                       <div className="h-6 w-[1px] bg-gray-200 mx-1" />
+                    )}
+                    {selectedTopping.id !== 'none' && (
+                       <span className="bg-[#234745] text-white text-[10px] px-3 py-1.5 rounded-full font-bold">
+                         {isEn ? selectedTopping.nameEn : selectedTopping.nameAr}
                        </span>
                     )}
                   </div>
@@ -216,38 +302,93 @@ export default function CustomCakeBuilder() {
           <div className="lg:col-span-7 space-y-8">
             
             {/* Active Selection Card */}
-            <div className="bg-white rounded-[40px] p-8 lg:p-10 shadow-[0_15px_35px_rgba(0,0,0,0.03)] border border-gray-50 min-h-[500px] flex flex-col relative overflow-hidden">
+            <div className="bg-white rounded-[40px] p-8 lg:p-10 shadow-[0_15px_35px_rgba(0,0,0,0.03)] border border-gray-50 min-h-[550px] flex flex-col relative overflow-hidden">
               <div className="absolute top-0 right-0 w-32 h-32 bg-[#234745]/5 rounded-bl-[100px] -mr-10 -mt-10"></div>
               
               <div className="flex-1 relative z-10">
                 <div key={currentStep} className="animate-step-enter">
                   {currentStep === 1 && (
-                    <ShapeSizeSelector 
-                      isEn={isEn} 
-                      selectedShape={selectedShape}
-                      onShapeChange={setSelectedShape}
-                      selectedSize={selectedSize}
-                      onSizeChange={setSelectedSize}
-                    />
+                    <div className="cake-builder-step">
+                      <div className="mb-10">
+                        <h2 className="text-3xl font-black text-[#234745] mb-2">{isEn ? 'Select Shape' : 'اختر الشكل'}</h2>
+                        <p className="text-gray-400 font-medium">{isEn ? 'Pick the geometric soul of your cake' : 'اختر الروح الهندسية لكيكتك'}</p>
+                      </div>
+                      <div className="grid grid-cols-2 gap-6">
+                        {dynamicShapes.map((shape: any) => (
+                          <button
+                            key={shape.id}
+                            onClick={() => setSelectedShape(shape)}
+                            className={`flex flex-col items-center justify-center p-8 rounded-[32px] border-2 transition-all duration-300 ${
+                              selectedShape.id === shape.id 
+                                ? 'border-[#234745] bg-white shadow-xl -translate-y-1' 
+                                : 'border-gray-50 bg-white hover:border-gray-100'
+                            }`}
+                          >
+                            <div className="mb-6 scale-125">{shape.icon}</div>
+                            <span className="font-black text-[#234745] text-lg">{isEn ? shape.nameEn : shape.nameAr}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                   )}
+
                   {currentStep === 2 && (
-                    <FlavorLayerSelector 
-                      isEn={isEn} 
-                      selectedFlavor={selectedFlavor as any}
-                      onFlavorChange={setSelectedFlavor as any}
-                      layers={layers}
-                      onLayersChange={setLayers}
-                    />
+                    <div className="cake-builder-step">
+                      <div className="mb-10">
+                        <h2 className="text-3xl font-black text-[#234745] mb-2">{isEn ? 'Choose Size' : 'اختر الحجم'}</h2>
+                        <p className="text-gray-400 font-medium">{isEn ? 'How many people are celebrating?' : 'كم عدد الأشخاص المحتفلين؟'}</p>
+                      </div>
+                      <div className="grid grid-cols-1 gap-4">
+                        {SIZES.map((size) => (
+                          <button
+                            key={size.id}
+                            onClick={() => setSelectedSize(size)}
+                            className={`p-6 rounded-[24px] border-2 transition-all flex items-center justify-between ${
+                              selectedSize.id === size.id 
+                                ? 'border-[#234745] bg-[#234745]/5 shadow-sm' 
+                                : 'border-gray-50 bg-white hover:border-gray-100'
+                            }`}
+                          >
+                            <div className="text-start">
+                              <span className="font-black text-[#234745] text-lg block">{isEn ? size.nameEn : size.nameAr}</span>
+                              <span className="text-sm text-gray-500 font-bold">{isEn ? size.servesEn : size.servesAr}</span>
+                            </div>
+                            <div className="text-end">
+                               <span className="text-[#234745] font-black">{size.priceDelta > 0 ? `+${size.priceDelta} SAR` : 'Base Price'}</span>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                   )}
+
                   {currentStep === 3 && (
-                    <ColorSelector 
-                      isEn={isEn}
-                      colors={dynamicColors}
-                      selectedColor={selectedColor}
-                      onColorChange={setSelectedColor}
-                    />
+                    <div className="cake-builder-step">
+                       <FlavorLayerSelector 
+                        isEn={isEn} 
+                        selectedFlavor={selectedFlavor as any}
+                        onFlavorChange={setSelectedFlavor as any}
+                        layers={layers}
+                        onLayersChange={setLayers}
+                        onlyFlavor={true}
+                      />
+                    </div>
                   )}
+
                   {currentStep === 4 && (
+                    <div className="cake-builder-step">
+                       <FlavorLayerSelector 
+                        isEn={isEn} 
+                        selectedFlavor={selectedFlavor as any}
+                        onFlavorChange={setSelectedFlavor as any}
+                        layers={layers}
+                        onLayersChange={setLayers}
+                        onlyLayers={true}
+                      />
+                    </div>
+                  )}
+
+                  {currentStep === 5 && (
                     <ToppingsSelector 
                       isEn={isEn}
                       toppings={dynamicToppings}
@@ -255,40 +396,75 @@ export default function CustomCakeBuilder() {
                       onToppingChange={setSelectedTopping}
                     />
                   )}
-                  {currentStep > 4 && (
-                    <div className="flex flex-col animate-step-enter" dir={isEn ? 'ltr' : 'rtl'}>
-                      <div className="mb-8">
-                        <h2 className="text-2xl font-bold text-[#234745] mb-2">
-                          {isEn ? 'Personalize Your Cake' : 'أضف لمستك الشخصية'}
-                        </h2>
-                        <p className="text-gray-400 text-sm">
-                          {isEn ? 'Write a custom message to be written on top of the cake with frosting.' : 'اكتب رسالة مخصصة لتُكتب على سطح الكيكة بالكريمة.'}
-                        </p>
-                      </div>
 
-                      <div className="bg-[#F8F9FA] rounded-2xl p-6 border border-gray-100 mb-8">
-                        <label className="block text-sm font-bold text-[#234745] mb-3">
-                          {isEn ? 'Cake Message (Optional)' : 'رسالة الكيكة (اختياري)'}
-                        </label>
-                        <input 
-                          type="text" 
+                  {currentStep === 6 && (
+                    <ColorSelector 
+                      isEn={isEn}
+                      colors={dynamicColors}
+                      selectedColor={selectedColor}
+                      onColorChange={setSelectedColor}
+                      title={isEn ? 'Decorations & Colors' : 'التزيين والألوان'}
+                    />
+                  )}
+
+                  {currentStep === 7 && (
+                    <div className="cake-builder-step">
+                      <div className="mb-10">
+                        <h2 className="text-3xl font-black text-[#234745] mb-2">{isEn ? 'Custom Text' : 'نص مخصص'}</h2>
+                        <p className="text-gray-400 font-medium">{isEn ? 'Write a heartfelt message on your cake' : 'اكتب رسالة من القلب على كيكتك'}</p>
+                      </div>
+                      <div className="bg-[#F8F9FA] rounded-[32px] p-8 border border-gray-100">
+                        <textarea 
                           value={cakeMessage}
                           onChange={(e) => setCakeMessage(e.target.value)}
-                          placeholder={isEn ? "e.g., Happy Birthday Sara!" : "مثال: عيد ميلاد سعيد!"}
-                          maxLength={30}
-                          className="w-full px-4 py-4 rounded-xl border border-gray-200 focus:border-[#234745] focus:ring-1 focus:ring-[#234745] transition-all bg-white outline-none"
+                          placeholder={isEn ? "e.g., Happy 5th Birthday Sarah!" : "مثال: عيد ميلاد سعيد سارة!"}
+                          className="w-full h-40 bg-white rounded-2xl p-6 border-2 border-transparent focus:border-[#234745] outline-none text-xl font-bold text-[#234745] transition-all resize-none shadow-inner"
+                          maxLength={40}
                         />
-                        <p className="text-xs text-gray-400 mt-2 text-end">
-                          {cakeMessage.length}/30
-                        </p>
-                      </div>
-                      
-                      <div className="flex justify-center mt-4 p-6 bg-[#234745]/5 rounded-xl border border-[#234745]/10 border-dashed">
-                        {/* We will build the actual Add to Cart button here in Story 3.1.5 */}
-                        <div className="text-sm text-[#d4a06a] font-bold flex items-center gap-2">
-                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
-                          {isEn ? 'Ready for Add to Cart integration (Story 3.1.5)' : 'جاهز للربط مع السلة (القصة ٣.١.٥)'}
+                        <div className="flex justify-between mt-4">
+                           <span className="text-gray-300 text-xs font-bold uppercase tracking-widest">{isEn ? 'Frosting Text' : 'نص الكريمة'}</span>
+                           <span className={`text-xs font-bold ${cakeMessage.length > 35 ? 'text-red-400' : 'text-gray-400'}`}>{cakeMessage.length}/40</span>
                         </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {currentStep === 8 && (
+                    <div className="cake-builder-step">
+                      <div className="mb-10">
+                        <h2 className="text-3xl font-black text-[#234745] mb-2">{isEn ? 'Upload Image' : 'رفع صورة'}</h2>
+                        <p className="text-gray-400 font-medium">{isEn ? 'Add a photo for edible printing' : 'أضف صورة للطباعة الصالحة للأكل'}</p>
+                      </div>
+                      <div className="border-4 border-dashed border-gray-100 rounded-[40px] h-[300px] flex flex-col items-center justify-center p-10 group hover:border-[#234745]/30 transition-all cursor-pointer">
+                        <div className="w-20 h-20 bg-[#234745]/5 rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                           <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#234745" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                        </div>
+                        <p className="text-[#234745] font-black text-xl mb-2">{isEn ? 'Click to Upload' : 'اضغط للرفع'}</p>
+                        <p className="text-gray-400 font-medium text-sm text-center">{isEn ? 'Support JPG, PNG (Max 5MB)\nBest for round/square tops' : 'يدعم JPG, PNG (بحد أقصى ٥ ميجا)\nالأفضل للأشكال الدائرية والمربعة'}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {currentStep === 9 && (
+                    <div className="cake-builder-step">
+                      <div className="mb-10">
+                        <h2 className="text-3xl font-black text-[#234745] mb-2">{isEn ? 'Final Review' : 'المراجعة النهائية'}</h2>
+                        <p className="text-gray-400 font-medium">{isEn ? 'Check your masterpiece before checkout' : 'تحقق من تحفتك الفنية قبل الدفع'}</p>
+                      </div>
+                      <div className="space-y-4">
+                         {[
+                           { label: isEn ? 'Shape' : 'الشكل', val: isEn ? selectedShape.nameEn : selectedShape.nameAr },
+                           { label: isEn ? 'Size' : 'الحجم', val: isEn ? selectedSize.nameEn : selectedSize.nameAr },
+                           { label: isEn ? 'Flavor' : 'النكهة', val: isEn ? selectedFlavor.nameEn : selectedFlavor.nameAr },
+                           { label: isEn ? 'Layers' : 'الطبقات', val: layers },
+                           { label: isEn ? 'Topping' : 'الإضافة', val: isEn ? selectedTopping.nameEn : selectedTopping.nameAr },
+                           { label: isEn ? 'Text' : 'النص', val: cakeMessage || (isEn ? 'None' : 'بدون') },
+                         ].map(item => (
+                           <div key={item.label} className="flex justify-between items-center p-4 bg-gray-50 rounded-2xl">
+                              <span className="text-gray-400 font-bold text-xs uppercase tracking-widest">{item.label}</span>
+                              <span className="text-[#234745] font-black">{item.val}</span>
+                           </div>
+                         ))}
                       </div>
                     </div>
                   )}
@@ -300,29 +476,38 @@ export default function CustomCakeBuilder() {
                  <button 
                    onClick={() => setCurrentStep(Math.max(1, currentStep - 1))}
                    disabled={currentStep === 1}
-                   className={`p-4 rounded-2xl border-2 border-gray-50 text-[#234745] transition-all hover:bg-gray-50 ${currentStep === 1 ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
+                   className={`px-8 py-4 rounded-[20px] border-2 border-gray-100 text-[#234745] font-black transition-all hover:bg-gray-50 flex items-center gap-2 ${currentStep === 1 ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
                  >
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M15 18l-6-6 6-6"/></svg>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className={isEn ? '' : 'rotate-180'}><path d="M15 18l-6-6 6-6"/></svg>
+                    {isEn ? 'Back' : 'رجوع'}
                  </button>
                  
                  <button 
-                   onClick={() => setCurrentStep(Math.min(totalSteps, currentStep + 1))}
-                   className="bg-[#234745] hover:bg-[#d4a06a] text-white font-bold py-4 px-12 rounded-[20px] shadow-xl hover:-translate-y-1 active:scale-95 transition-all flex items-center gap-3 group"
+                   onClick={() => {
+                     if (currentStep < 9) setCurrentStep(currentStep + 1);
+                     else {
+                       // Final Action
+                       console.log('Add to cart');
+                     }
+                   }}
+                   className="bg-[#234745] hover:bg-[#d4a06a] text-white font-black py-4 px-12 rounded-[20px] shadow-xl hover:-translate-y-1 active:scale-95 transition-all flex items-center gap-3 group"
                  >
-                   <span className="text-[16px]">{isEn ? 'Next Step' : 'الخطوة التالية'}</span>
-                   <svg className={`w-5 h-5 transition-transform group-hover:translate-x-1 ${isEn ? '' : 'rotate-180'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" /></svg>
+                   <span className="text-[18px]">{currentStep === 9 ? (isEn ? 'Add to Cart' : 'أضف للسلة') : (isEn ? 'Next Step' : 'الخطوة التالية')}</span>
+                   {currentStep < 9 && (
+                     <svg className={`w-5 h-5 transition-transform group-hover:translate-x-1 ${isEn ? '' : 'rotate-180'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" /></svg>
+                   )}
                  </button>
               </div>
             </div>
 
             {/* Price Breakdown Card */}
             <div className="bg-[#234745] rounded-[40px] p-1 shadow-2xl overflow-hidden group">
-              <div className="bg-white rounded-[38px] p-8 lg:p-10 transition-all duration-500 group-hover:scale-[0.99]">
-                <div className="flex items-center gap-2 mb-8">
+              <div className="bg-white rounded-[38px] p-8 transition-all duration-500 group-hover:scale-[0.99]">
+                <div className="flex items-center gap-2 mb-6">
                    <div className="w-8 h-8 rounded-lg bg-[#234745] flex items-center justify-center text-white">
                       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2"/></svg>
                    </div>
-                   <h3 className="text-xl font-bold text-[#234745]">{isEn ? 'Price Breakdown' : 'تفاصيل السعر'}</h3>
+                   <h3 className="text-xl font-bold text-[#234745]">{isEn ? 'Order Summary' : 'ملخص الطلب'}</h3>
                 </div>
 
                 <div className="space-y-5">

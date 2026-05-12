@@ -11,6 +11,7 @@ import { AddToCartButton } from './AddToCartButton';
 
 import { StockNotificationModal } from '~/components/StockNotificationModal';
 import { StarRating, parseRatingValue } from '~/components/StarRating';
+import { useWishlist } from '~/context/WishlistContext';
 
 export function BestSellers({
     products,
@@ -30,6 +31,8 @@ export function BestSellers({
             }).catch(() => {});
         }
     }, [customer]);
+
+    const [activeTab, setActiveTab] = useState(0);
 
     const t = useI18n(locale);
     const isEn = locale === 'en';
@@ -86,11 +89,11 @@ export function BestSellers({
                     {tabs.map((tab, idx) => (
                         <button
                             key={idx}
-                            className={`px-7 py-2.5 rounded-full border text-[13px] font-bold transition-all ${idx === 0
-                                ? 'border-[#234745] shadow-sm'
-                                : 'bg-white text-[#5a7a74] border-[#d5ddd9] hover:border-[#234745] hover:text-[#234745]'
+                            onClick={() => setActiveTab(idx)}
+                            className={`px-7 py-2.5 rounded-full border text-[13px] font-bold transition-all ${activeTab === idx
+                                ? 'bg-[#BBCFCD] text-[#234745] border-[#BBCFCD]'
+                                : 'bg-transparent text-white border-white/30 hover:border-white/60'
                                 }`}
-                            style={idx === 0 ? { backgroundColor: '#234745', color: '#ffffff' } : undefined}
                         >
                             {tab}
                         </button>
@@ -139,16 +142,28 @@ export function BestSellers({
                                             ? (idx % 2 === 0 ? 'Requires 2 days preparation' : 'Pay in 2 installments with Tamara')
                                             : (idx % 2 === 0 ? 'يحتاج يومين للتجهيز' : 'قسطها على دفعتين مع تمارا');
 
+                                        const { toggleWishlist, isInWishlist } = useWishlist();
+                                        const isWishlisted = isInWishlist(product.id);
+
                                         return (
-                                            <div key={product.id} className={`flex flex-col h-full rounded-[20px] border-0 overflow-hidden relative ${isVisibilityBlocked || (isOutOfStock && !isPreorder) ? 'product--disabled opacity-60 grayscale-[30%]' : 'group hover:shadow-[0_10px_40px_-10px_rgba(0,0,0,0.1)]'} transition-all duration-300`} style={{ backgroundColor: '#dce5df' }}>
+                                            <div key={product.id} className={`flex flex-col h-full rounded-[20px] border-0 overflow-hidden relative ${isVisibilityBlocked || (isOutOfStock && !isPreorder) ? 'product--disabled grayscale-[30%]' : 'group hover:shadow-[0_10px_40px_-10px_rgba(0,0,0,0.1)]'} transition-all duration-300`} style={{ backgroundColor: '#dce5df' }}>
 
                                                 {/* Top Action / Heart */}
                                                 {!isVisibilityBlocked && (
                                                   <button
-                                                    onClick={(e) => e.preventDefault()}
-                                                    className="absolute top-4 ltr:left-4 rtl:right-auto rtl:left-4 z-10 w-10 h-10 p-0 rounded-full bg-white shadow-md text-gray-700 hover:text-[#e74c3c] flex items-center justify-center transition-colors"
+                                                    onClick={(e) => {
+                                                      e.preventDefault();
+                                                      toggleWishlist({
+                                                        id: product.id,
+                                                        title: product.title,
+                                                        handle: product.handle,
+                                                        image: product.images?.nodes?.[0],
+                                                        priceRange: product.priceRange
+                                                      });
+                                                    }}
+                                                    className={`absolute top-4 ltr:left-4 rtl:right-auto rtl:left-4 z-10 w-10 h-10 p-0 rounded-full bg-white shadow-md transition-all flex items-center justify-center ${isWishlisted ? 'text-[#e74c3c]' : 'text-gray-700 hover:text-[#e74c3c]'}`}
                                                   >
-                                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M20.8 4.6a5.5 5.5 0 00-7.7 0l-1.1 1-1.1-1a5.5 5.5 0 00-7.8 7.8l1 1 7.9 7.9 7.9-7.9 1-1a5.5 5.5 0 000-7.8z" /></svg>
+                                                    <svg width="20" height="20" viewBox="0 0 24 24" fill={isWishlisted ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.5"><path d="M20.8 4.6a5.5 5.5 0 00-7.7 0l-1.1 1-1.1-1a5.5 5.5 0 00-7.8 7.8l1 1 7.9 7.9 7.9-7.9 1-1a5.5 5.5 0 000-7.8z" /></svg>
                                                   </button>
                                                 )}
 
@@ -226,7 +241,7 @@ export function BestSellers({
                                                             alt={product.images.nodes[0]?.altText || product.title || 'Product'}
                                                             loading="lazy"
                                                             sizes="(min-width: 45em) 25vw, 50vw"
-                                                            className={`w-full h-full object-cover transition-transform duration-700 ${effectiveOutOfStock ? 'opacity-50 grayscale' : 'group-hover:scale-105'}`}
+                                                            className={`w-full h-full object-cover transition-transform duration-700 ${effectiveOutOfStock ? 'grayscale' : 'group-hover:scale-105'}`}
                                                         />
                                                     )}
 

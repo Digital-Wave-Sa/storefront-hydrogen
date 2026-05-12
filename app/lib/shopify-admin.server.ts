@@ -14,19 +14,36 @@ export async function getAdminToken(env: any): Promise<string> {
     return cachedToken;
   }
 
-  // Priority: 1. Dedicated Review Token, 2. Admin API token, 3. Private Storefront token
+  // Improved shop domain detection for Admin API
   const rawShop = env.SHOPIFY_SHOP || env.PUBLIC_STORE_DOMAIN || '';
-  const shopDomain = rawShop.includes('.') ? rawShop : `${rawShop}.myshopify.com`;
+  let shopDomain = rawShop;
+  
+  if (!shopDomain.includes('myshopify.com')) {
+    // If it's a custom domain like saadaldeen.com, we need the myshopify equivalent
+    // Usually Hydrogen apps have SHOPIFY_SHOP set to the myshopify handle
+    const handle = shopDomain.replace(/^https?:\/\//, '').split('.')[0];
+    shopDomain = `${handle}.myshopify.com`;
+  }
+  
+  console.log(`[ADMIN AUTH] Attempting auth for shop: ${shopDomain}`);
 
-  if (env.REVIEWS_ADMIN_API_TOKEN?.startsWith('shpat_')) {
-    return env.REVIEWS_ADMIN_API_TOKEN;
+  if (env.REVIEWS_ADMIN_API_TOKEN) {
+    const token = env.REVIEWS_ADMIN_API_TOKEN;
+    console.log(`[ADMIN AUTH] Found REVIEWS_ADMIN_API_TOKEN (Starts with: ${token.substring(0, 5)}...)`);
+    cachedToken = token;
+    return token;
   }
   
-  if (env.SHOPIFY_ADMIN_API_ACCESS_TOKEN?.startsWith('shpat_')) {
-    return env.SHOPIFY_ADMIN_API_ACCESS_TOKEN;
+  const adminToken = env.SHOPIFY_ADMIN_API_ACCESS_TOKEN || (env as any).SHOPIFY_ADMIN_API_ACCESS_TOKENS;
+  if (adminToken) {
+    console.log(`[ADMIN AUTH] Found Admin API Access Token (Starts with: ${adminToken.substring(0, 5)}...)`);
+    cachedToken = adminToken;
+    return adminToken;
   }
   
-  if (env.PRIVATE_STOREFRONT_API_TOKEN?.startsWith('shpat_')) {
+  if (env.PRIVATE_STOREFRONT_API_TOKEN) {
+    console.log(`[ADMIN AUTH] Falling back to PRIVATE_STOREFRONT_API_TOKEN (Starts with: ${env.PRIVATE_STOREFRONT_API_TOKEN.substring(0, 5)}...)`);
+    cachedToken = env.PRIVATE_STOREFRONT_API_TOKEN;
     return env.PRIVATE_STOREFRONT_API_TOKEN;
   }
   const clientId = env.SHOPIFY_CLIENT_ID || env.SHOPIFY_ADMIN_CLIENT_ID;

@@ -174,15 +174,26 @@ export function parseLocationToBranch(node: any): Branch {
     const computeStatus = (fromKey: string, toKey: string) => {
         let st: 'open' | 'closed' = 'closed';
         let ou = '11:00 م';
-        const hFrom = node.metafields?.find((m: any) => m?.key === fromKey)?.value;
-        const hTo = node.metafields?.find((m: any) => m?.key === toKey)?.value;
+        
+        // Try to get from aliased fields (Storefront API) or metafields array (Admin API merge)
+        const hFrom = (node as any)[fromKey]?.value || node.metafields?.find((m: any) => m?.key === fromKey)?.value;
+        const hTo = (node as any)[toKey]?.value || node.metafields?.find((m: any) => m?.key === toKey)?.value;
 
         if (hFrom && hTo) {
             ou = hTo;
             try {
-                // Force Riyadh Time (UTC+3)
-                const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Riyadh' }));
-                const currentMins = now.getHours() * 60 + now.getMinutes();
+                // Force Riyadh Time (UTC+3) using a more reliable method
+                const now = new Date();
+                const riyadhTime = new Intl.DateTimeFormat('en-US', {
+                    timeZone: 'Asia/Riyadh',
+                    hour: 'numeric',
+                    minute: 'numeric',
+                    hour12: false
+                }).formatToParts(now);
+                
+                const h = parseInt(riyadhTime.find(p => p.type === 'hour')?.value || '0', 10);
+                const m = parseInt(riyadhTime.find(p => p.type === 'minute')?.value || '0', 10);
+                const currentMins = h * 60 + m;
                 
                 const parseTime = (timeStr: string) => {
                     const arMap: {[key: string]: string} = { '٠': '0', '١': '1', '٢': '2', '٣': '3', '٤': '4', '٥': '5', '٦': '6', '٧': '7', '٨': '8', '٩': '9' };
@@ -191,30 +202,32 @@ export function parseLocationToBranch(node: any): Branch {
                     const match = normalized.match(/(\d{1,2}):(\d{2})/);
                     if (!match) return -1;
                     
-                    let h = parseInt(match[1], 10);
-                    let m = parseInt(match[2], 10);
+                    let hr = parseInt(match[1], 10);
+                    let min = parseInt(match[2], 10);
                     
-                    // Support both English (am/pm) and Arabic (ص/م)
                     const isPm = normalized.includes('pm') || normalized.includes('م');
                     const isAm = normalized.includes('am') || normalized.includes('ص');
                     
-                    if (isPm && h !== 12) h += 12;
-                    if (isAm && h === 12) h = 0;
+                    if (isPm && hr !== 12) hr += 12;
+                    if (isAm && hr === 12) hr = 0;
                     
-                    return h * 60 + m;
+                    return hr * 60 + min;
                 };
+
                 const fMins = parseTime(hFrom);
                 const tMins = parseTime(hTo);
                 
                 if (fMins !== -1 && tMins !== -1) {
                     if (tMins < fMins) {
-                        // Overnight case (e.g. 8 PM to 2 AM)
+                        // Overnight case
                         if (currentMins >= fMins || currentMins < tMins) st = 'open';
                     } else {
                         if (currentMins >= fMins && currentMins < tMins) st = 'open';
                     }
                 }
-            } catch (e) { }
+            } catch (e) {
+                console.error('[DPM] Error computing status:', e);
+            }
         }
         return { status: st, openUntil: ou };
     };
@@ -276,6 +289,7 @@ export function DeliveryPickupModal({
     const [branchSearch, setBranchSearch] = useState('');
     const [branchSort, setBranchSort] = useState<'distance' | 'rating'>('distance');
     const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null);
+    const [geoError, setGeoError] = useState<boolean>(false);
     const [isAnimating, setIsAnimating] = useState(false);
     const [adminMetafields, setAdminMetafields] = useState<any[]>([]);
     const location = useLocation();
@@ -300,9 +314,18 @@ export function DeliveryPickupModal({
             }
 
             if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition((pos) => {
-                    setUserCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-                });
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => {
+                        setUserCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+                        setGeoError(false);
+                    },
+                    (err) => {
+                        console.warn("Geolocation denied or failed:", err);
+                        setGeoError(true);
+                    }
+                );
+            } else {
+                setGeoError(true);
             }
         }
     }, [isOpen]);
@@ -400,6 +423,8 @@ export function DeliveryPickupModal({
                                     googleMapsKey={googleMapsKey}
                                     branchSort={branchSort}
                                     setBranchSort={setBranchSort}
+                                    userCoords={userCoords}
+                                    geoError={geoError}
                                 />
                             );
                         }}
@@ -427,6 +452,8 @@ function ModalContent({
     googleMapsKey,
     branchSort,
     setBranchSort,
+    userCoords,
+    geoError,
 }: any) {
     const isEn = locale === 'en';
     const [zoom, setZoom] = useState(14);
@@ -441,6 +468,13 @@ function ModalContent({
     const currentAddress = addresses.find((a: any) => a.id === selectedBranch);
     const effectiveSelectedBranch = selectedBranch || (activeTab === 'pickup' ? branches[0]?.id : (addresses[0]?.id || ''));
     
+    // Auto-select nearest branch when coords are detected and no manual selection is made yet
+    useEffect(() => {
+        if (userCoords && !selectedBranch && activeTab === 'pickup' && branches.length > 0) {
+            setSelectedBranch(branches[0].id);
+        }
+    }, [userCoords, selectedBranch, activeTab, branches, setSelectedBranch]);
+
     const currentBranch = branches.find((b: any) => b.id === effectiveSelectedBranch) || branches[0];
     const isUserAddressSelected = !!currentAddress;
 
@@ -524,6 +558,12 @@ function ModalContent({
 
                 {activeTab === 'pickup' && (
                     <div className="dpm-search-box animate-fade-in">
+                        {geoError && (
+                            <div className="text-[11px] text-[#E17A43] bg-[#E17A43]/10 px-3 py-2 rounded-[8px] font-bold mb-3 flex items-start gap-2">
+                                <svg className="w-4 h-4 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                <span>{isEn ? 'Location access denied. Please select your branch manually.' : 'تعذر تحديد الموقع. يرجى اختيار الفرع يدوياً.'}</span>
+                            </div>
+                        )}
                         <div className="dpm-search-input-wrapper">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#bbb" strokeWidth="2.5"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
                             <input

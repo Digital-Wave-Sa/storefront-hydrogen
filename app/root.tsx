@@ -20,6 +20,7 @@ import appStyles from '~/styles/app.css?url';
 import tailwindCss from './styles/tailwind.css?url';
 import {PageLayout} from './components/PageLayout';
 import {GTMAnalytics} from './components/GTMAnalytics';
+import {WishlistProvider} from './context/WishlistContext';
 
 
 export type RootLoader = typeof loader;
@@ -381,6 +382,15 @@ export function Layout({children}: {children?: React.ReactNode}) {
 
 export default function App() {
   const data = useRouteLoaderData<RootLoader>('root');
+  const [customerId, setCustomerId] = useState<string | undefined>(undefined);
+
+  useEffect(() => {
+    if (data?.customer && typeof data.customer.then === 'function') {
+      data.customer.then((res: any) => {
+        if (res?.customer?.id) setCustomerId(res.customer.id);
+      }).catch(() => {});
+    }
+  }, [data?.customer]);
 
   return (
     <Analytics.Provider
@@ -388,15 +398,17 @@ export default function App() {
       shop={data.shop}
       consent={data.consent}
     >
-      <GTMAnalytics />
-      <PageLayout {...data}>
-        <Outlet context={{ 
-          locale: data.consent.language.toLowerCase(),
-          selectedLocationId: data.selectedLocationId,
-          selectedLocationName: data.selectedLocationName,
-          fulfillmentType: data.fulfillmentType
-        }} />
-      </PageLayout>
+      <WishlistProvider customerId={customerId}>
+        <GTMAnalytics />
+        <PageLayout {...data}>
+          <Outlet context={{ 
+            locale: data.consent.language.toLowerCase(),
+            selectedLocationId: data.selectedLocationId,
+            selectedLocationName: data.selectedLocationName,
+            fulfillmentType: data.fulfillmentType
+          }} />
+        </PageLayout>
+      </WishlistProvider>
     </Analytics.Provider>
   );
 }
@@ -446,6 +458,14 @@ const LOCATIONS_QUERY = `#graphql
           value
         }
         free_delivery_threshold: metafield(namespace: "custom", key: "free_delivery_threshold") {
+          key
+          value
+        }
+        working_hours_from: metafield(namespace: "custom", key: "working_hours_from") {
+          key
+          value
+        }
+        working_hours_to: metafield(namespace: "custom", key: "working_hours_to") {
           key
           value
         }

@@ -54,6 +54,14 @@ img {
   border-radius: 4px;
 }
 
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
 /*
 * --------------------------------------------------
 * Non anchor links

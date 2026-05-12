@@ -445,6 +445,12 @@ export type LocationsQuery = {
         free_delivery_threshold?: StorefrontAPI.Maybe<
           Pick<StorefrontAPI.Metafield, 'key' | 'value'>
         >;
+        working_hours_from?: StorefrontAPI.Maybe<
+          Pick<StorefrontAPI.Metafield, 'key' | 'value'>
+        >;
+        working_hours_to?: StorefrontAPI.Maybe<
+          Pick<StorefrontAPI.Metafield, 'key' | 'value'>
+        >;
       }
     >;
   };
@@ -1723,45 +1729,6 @@ export type CatalogQuery = {
   };
 };
 
-export type CakeAttributesQueryVariables = StorefrontAPI.Exact<{
-  language?: StorefrontAPI.InputMaybe<StorefrontAPI.LanguageCode>;
-}>;
-
-export type CakeAttributesQuery = {
-  metaobjects: {
-    nodes: Array<
-      Pick<StorefrontAPI.Metaobject, 'id'> & {
-        attributeType?: StorefrontAPI.Maybe<
-          Pick<StorefrontAPI.MetaobjectField, 'value'>
-        >;
-        nameEn?: StorefrontAPI.Maybe<
-          Pick<StorefrontAPI.MetaobjectField, 'value'>
-        >;
-        nameAr?: StorefrontAPI.Maybe<
-          Pick<StorefrontAPI.MetaobjectField, 'value'>
-        >;
-        priceDelta?: StorefrontAPI.Maybe<
-          Pick<StorefrontAPI.MetaobjectField, 'value'>
-        >;
-        thumbnailUrl?: StorefrontAPI.Maybe<{
-          reference?: StorefrontAPI.Maybe<{
-            image?: StorefrontAPI.Maybe<Pick<StorefrontAPI.Image, 'url'>>;
-          }>;
-        }>;
-        hexColor?: StorefrontAPI.Maybe<
-          Pick<StorefrontAPI.MetaobjectField, 'value'>
-        >;
-        isPopular?: StorefrontAPI.Maybe<
-          Pick<StorefrontAPI.MetaobjectField, 'value'>
-        >;
-        categoryId?: StorefrontAPI.Maybe<
-          Pick<StorefrontAPI.MetaobjectField, 'value'>
-        >;
-      }
-    >;
-  };
-};
-
 export type PageQueryVariables = StorefrontAPI.Exact<{
   language?: StorefrontAPI.InputMaybe<StorefrontAPI.LanguageCode>;
   country?: StorefrontAPI.InputMaybe<StorefrontAPI.CountryCode>;
@@ -1977,6 +1944,9 @@ export type ProductFragment = Pick<
   visibility_end?: StorefrontAPI.Maybe<Pick<StorefrontAPI.Metafield, 'value'>>;
   nutrition?: StorefrontAPI.Maybe<Pick<StorefrontAPI.Metafield, 'value'>>;
   allergens?: StorefrontAPI.Maybe<Pick<StorefrontAPI.Metafield, 'value'>>;
+  calories?: StorefrontAPI.Maybe<Pick<StorefrontAPI.Metafield, 'value'>>;
+  prep_time?: StorefrontAPI.Maybe<Pick<StorefrontAPI.Metafield, 'value'>>;
+  servings?: StorefrontAPI.Maybe<Pick<StorefrontAPI.Metafield, 'value'>>;
   estimated_delivery?: StorefrontAPI.Maybe<
     Pick<StorefrontAPI.Metafield, 'value'>
   >;
@@ -2143,6 +2113,9 @@ export type ProductQuery = {
       >;
       nutrition?: StorefrontAPI.Maybe<Pick<StorefrontAPI.Metafield, 'value'>>;
       allergens?: StorefrontAPI.Maybe<Pick<StorefrontAPI.Metafield, 'value'>>;
+      calories?: StorefrontAPI.Maybe<Pick<StorefrontAPI.Metafield, 'value'>>;
+      prep_time?: StorefrontAPI.Maybe<Pick<StorefrontAPI.Metafield, 'value'>>;
+      servings?: StorefrontAPI.Maybe<Pick<StorefrontAPI.Metafield, 'value'>>;
       estimated_delivery?: StorefrontAPI.Maybe<
         Pick<StorefrontAPI.Metafield, 'value'>
       >;
@@ -2629,7 +2602,7 @@ interface GeneratedQueryTypes {
     return: GetReviewsQuery;
     variables: GetReviewsQueryVariables;
   };
-  '#graphql\n  query Locations {\n    locations(first: 100) {\n      nodes {\n        id\n        name\n        address {\n          address1\n          address2\n          city\n          country\n          latitude\n          longitude\n          phone\n        }\n        delivery_fee: metafield(namespace: "custom", key: "delivery_fee") {\n          key\n          value\n        }\n        free_delivery_threshold: metafield(namespace: "custom", key: "free_delivery_threshold") {\n          key\n          value\n        }\n      }\n    }\n  }\n': {
+  '#graphql\n  query Locations {\n    locations(first: 100) {\n      nodes {\n        id\n        name\n        address {\n          address1\n          address2\n          city\n          country\n          latitude\n          longitude\n          phone\n        }\n        delivery_fee: metafield(namespace: "custom", key: "delivery_fee") {\n          key\n          value\n        }\n        free_delivery_threshold: metafield(namespace: "custom", key: "free_delivery_threshold") {\n          key\n          value\n        }\n        working_hours_from: metafield(namespace: "custom", key: "working_hours_from") {\n          key\n          value\n        }\n        working_hours_to: metafield(namespace: "custom", key: "working_hours_to") {\n          key\n          value\n        }\n      }\n    }\n  }\n': {
     return: LocationsQuery;
     variables: LocationsQueryVariables;
   };
@@ -2701,10 +2674,6 @@ interface GeneratedQueryTypes {
     return: CatalogQuery;
     variables: CatalogQueryVariables;
   };
-  '#graphql\n  query CakeAttributes($language: LanguageCode) @inContext(language: $language) {\n    metaobjects(type: "cake_attribute", first: 250) {\n      nodes {\n        id\n        attributeType: field(key: "attribute_type") { value }\n        nameEn: field(key: "name_english") { value }\n        nameAr: field(key: "name_arabic") { value }\n        priceDelta: field(key: "price_delta") { value }\n        thumbnailUrl: field(key: "thumbnail_image") { reference { ... on MediaImage { image { url } } } }\n        hexColor: field(key: "hex_color") { value }\n        isPopular: field(key: "is_popular") { value }\n        categoryId: field(key: "category_id") { value }\n      }\n    }\n  }\n': {
-    return: CakeAttributesQuery;
-    variables: CakeAttributesQueryVariables;
-  };
   '#graphql\n  query Page(\n    $language: LanguageCode,\n    $country: CountryCode,\n    $handle: String!\n  )\n  @inContext(language: $language, country: $country) {\n    page(handle: $handle) {\n      id\n      handle\n      title\n      body\n      seo {\n        description\n        title\n      }\n    }\n  }\n': {
     return: PageQuery;
     variables: PageQueryVariables;
@@ -2725,7 +2694,7 @@ interface GeneratedQueryTypes {
     return: ProductHandleQuery;
     variables: ProductHandleQueryVariables;
   };
-  '#graphql\n  query Product(\n    $country: CountryCode\n    $handle: String!\n    $language: LanguageCode\n    $selectedOptions: [SelectedOptionInput!]!\n\n  ) @inContext(country: $country, language: $language) {\n    product(handle: $handle) {\n      ...Product\n    }\n  }\n  #graphql\n  fragment Product on Product {\n    id\n    title\n    vendor\n    handle\n    descriptionHtml\n    description\n    productType\n    isGiftCard\n    tags\n    bundle_components: metafield(namespace: "custom", key: "bundle_components") {\n      references(first: 20) {\n        nodes {\n          ... on Product {\n            id\n            title\n            handle\n            featuredImage {\n              url\n              altText\n            }\n            variants(first: 1) {\n              nodes {\n                price {\n                  amount\n                  currencyCode\n                }\n              }\n            }\n          }\n        }\n      }\n    }\n    options {\n      name\n      optionValues {\n        name\n      }\n    }\n    addons: metafield(namespace: "custom", key: "product_addons") {\n    references(first: 10) {\n      nodes {\n        ... on Product {\n          id\n          title\n          handle\n          availableForSale\n          variants(first: 1) {\n            nodes {\n              id\n              price {\n                amount\n                currencyCode\n              }\n              image {\n                url\n                altText\n                width\n                height\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n\n      # --- ADDED FOR VISIBILITY SCHEDULING ---\n    visibility_start: metafield(namespace: "custom", key: "visibility_start") {\n      value\n    }\n    visibility_end: metafield(namespace: "custom", key: "visibility_end") {\n      value\n    }\n    nutrition: metafield(namespace: "custom", key: "nutrition") {\n      value\n    }\n    allergens: metafield(namespace: "custom", key: "allergens") {\n      value\n    }\n    estimated_delivery: metafield(namespace: "custom", key: "estimated_delivery") {\n      value\n    }\n    delivery_override: metafield(namespace: "custom", key: "delivery_lead_time") {\n      value\n    }\n    average_rating: metafield(namespace: "custom", key: "average_rating") {\n      value\n    }\n    rating_count: metafield(namespace: "custom", key: "rating_count") {\n      value\n    }\n    collections(first: 10) {\n      nodes {\n        id\n        leadTime: metafield(namespace: "custom", key: "delivery_lead_time") {\n          value\n        }\n      }\n    }\n    # ---------------------------------------\n\n    selectedVariant: variantBySelectedOptions(selectedOptions: $selectedOptions) {\n      ...ProductVariant\n    }\n    variants(first: 100) {\n      nodes {\n        ...ProductVariant\n      }\n    }\n    seo {\n      description\n      title\n    }\n    images(first: 10) {\n      nodes {\n        id\n        url\n        altText\n        width\n        height\n      }\n    }\n  }\n  #graphql\n  fragment ProductVariant on ProductVariant {\n    availableForSale\n    compareAtPrice {\n      amount\n      currencyCode\n    }\n    id\n    image {\n      __typename\n      id\n      url\n      altText\n      width\n      height\n    }\n    price {\n      amount\n      currencyCode\n    }\n    product {\n      title\n      handle\n    }\n    selectedOptions {\n      name\n      value\n    }\n    sku\n    title\n    unitPrice {\n      amount\n      currencyCode\n    }\n    storeAvailability(first: 250) {\n      nodes {\n        available\n        location {\n          id\n          name\n        }\n      }\n    }\n  }\n\n\n': {
+  '#graphql\n  query Product(\n    $country: CountryCode\n    $handle: String!\n    $language: LanguageCode\n    $selectedOptions: [SelectedOptionInput!]!\n\n  ) @inContext(country: $country, language: $language) {\n    product(handle: $handle) {\n      ...Product\n    }\n  }\n  #graphql\n  fragment Product on Product {\n    id\n    title\n    vendor\n    handle\n    descriptionHtml\n    description\n    productType\n    isGiftCard\n    tags\n    bundle_components: metafield(namespace: "custom", key: "bundle_components") {\n      references(first: 20) {\n        nodes {\n          ... on Product {\n            id\n            title\n            handle\n            featuredImage {\n              url\n              altText\n            }\n            variants(first: 1) {\n              nodes {\n                price {\n                  amount\n                  currencyCode\n                }\n              }\n            }\n          }\n        }\n      }\n    }\n    options {\n      name\n      optionValues {\n        name\n      }\n    }\n    addons: metafield(namespace: "custom", key: "product_addons") {\n    references(first: 10) {\n      nodes {\n        ... on Product {\n          id\n          title\n          handle\n          availableForSale\n          variants(first: 1) {\n            nodes {\n              id\n              price {\n                amount\n                currencyCode\n              }\n              image {\n                url\n                altText\n                width\n                height\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n\n      # --- ADDED FOR VISIBILITY SCHEDULING ---\n    visibility_start: metafield(namespace: "custom", key: "visibility_start") {\n      value\n    }\n    visibility_end: metafield(namespace: "custom", key: "visibility_end") {\n      value\n    }\n    nutrition: metafield(namespace: "custom", key: "nutrition") {\n      value\n    }\n    allergens: metafield(namespace: "custom", key: "allergens") {\n      value\n    }\n    calories: metafield(namespace: "custom", key: "calories") {\n      value\n    }\n    prep_time: metafield(namespace: "custom", key: "prep_time") {\n      value\n    }\n    servings: metafield(namespace: "custom", key: "servings") {\n      value\n    }\n    estimated_delivery: metafield(namespace: "custom", key: "estimated_delivery") {\n      value\n    }\n    delivery_override: metafield(namespace: "custom", key: "delivery_lead_time") {\n      value\n    }\n    average_rating: metafield(namespace: "custom", key: "average_rating") {\n      value\n    }\n    rating_count: metafield(namespace: "custom", key: "rating_count") {\n      value\n    }\n    collections(first: 10) {\n      nodes {\n        id\n        leadTime: metafield(namespace: "custom", key: "delivery_lead_time") {\n          value\n        }\n      }\n    }\n    # ---------------------------------------\n\n    selectedVariant: variantBySelectedOptions(selectedOptions: $selectedOptions) {\n      ...ProductVariant\n    }\n    variants(first: 100) {\n      nodes {\n        ...ProductVariant\n      }\n    }\n    seo {\n      description\n      title\n    }\n    images(first: 10) {\n      nodes {\n        id\n        url\n        altText\n        width\n        height\n      }\n    }\n  }\n  #graphql\n  fragment ProductVariant on ProductVariant {\n    availableForSale\n    compareAtPrice {\n      amount\n      currencyCode\n    }\n    id\n    image {\n      __typename\n      id\n      url\n      altText\n      width\n      height\n    }\n    price {\n      amount\n      currencyCode\n    }\n    product {\n      title\n      handle\n    }\n    selectedOptions {\n      name\n      value\n    }\n    sku\n    title\n    unitPrice {\n      amount\n      currencyCode\n    }\n    storeAvailability(first: 250) {\n      nodes {\n        available\n        location {\n          id\n          name\n        }\n      }\n    }\n  }\n\n\n': {
     return: ProductQuery;
     variables: ProductQueryVariables;
   };

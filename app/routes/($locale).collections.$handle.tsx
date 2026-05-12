@@ -163,29 +163,24 @@ export default function Collection() {
 
       <div className="bg-[#FEF8EB] min-h-screen">
           <div className="px-4 md:px-8 lg:px-12 py-10 max-w-[1440px] mx-auto text-right">
-            {/* Active Filters Row */}
+            {/* Two Column PLP Layout */}
+            <div className="flex flex-col lg:flex-row gap-8 items-start">
+          
+          {/* Main Content (Left side in RTL) */}
+          <div className="flex-1 min-w-0 w-full lg:order-2">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-              <div className="flex-1 flex items-center justify-end">
-                {/* Sort Dropdown */}
-                <div className="flex items-center gap-2">
-                  <label className="text-gray-400 text-[13px] font-bold">
-                    ترتيب حسب:
-                  </label>
-                  <div className="flex items-center bg-white border border-[#234745]/10 rounded-full px-4 py-2 shadow-sm relative w-40">
-                    <select
-                      className="w-full bg-transparent text-[13px] font-bold text-gray-800 cursor-pointer focus:outline-none focus:ring-0 border-none appearance-none rtl:pl-6"
-                      style={{ WebkitAppearance: 'none', appearance: 'none' }}
-                    >
-                      <option value="COLLECTION_DEFAULT">الأكثر صلة</option>
-                      <option value="BEST_SELLING">الأكثر مبيعاً</option>
-                    </select>
-                    <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7"></path></svg>
-                  </div>
-                </div>
-              </div>
+              
+              {/* Active Filters / Mobile Filter Button */}
+              <div className="flex items-center flex-wrap gap-2 flex-1">
+                <button 
+                    onClick={() => setIsFilterOpen(true)}
+                    className="lg:hidden flex items-center gap-2.5 px-5 py-2.5 bg-white border border-gray-200 text-[#234745] rounded-xl font-bold hover:bg-gray-50 transition-all shadow-sm active:scale-95 group"
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 3H2l8 9v11l4-6V12L22 3z"/></svg>
+                  <span>{isEn ? 'Filter' : 'تـصـفـيـة'}</span>
+                </button>
 
-              {/* Active Filter Pills */}
-              <div className="flex items-center gap-2 flex-wrap justify-end flex-1">
+                 {/* Active Filter Pills */}
                  {['الحلويات العربية', 'كريمة', 'عيد الاضحى والفطر', 'خالي من الجلوتين'].map((pill, i) => (
                     <div key={i} className="flex items-center gap-2 bg-white border border-[#234745]/10 text-gray-600 px-3 py-1.5 rounded-full text-[12px] font-bold shadow-sm">
                         <span>{pill}</span>
@@ -195,50 +190,33 @@ export default function Collection() {
                     </div>
                  ))}
               </div>
-            </div>
-
-            {/* Two Column PLP Layout */}
-            <div className="flex flex-col lg:flex-row gap-8 items-start">
-          
-          {/* Main Content (Left side in RTL) */}
-          <div className="flex-1 min-w-0 w-full lg:order-2">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-              
-              {/* Active Filters / Mobile Filter Button */}
-              <div className="flex items-center flex-wrap gap-2">
-                <button 
-                    onClick={() => setIsFilterOpen(true)}
-                    className="lg:hidden flex items-center gap-2.5 px-5 py-2.5 bg-white border border-gray-200 text-[#234745] rounded-xl font-bold hover:bg-gray-50 transition-all shadow-sm active:scale-95 group"
-                >
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 3H2l8 9v11l4-6V12L22 3z"/></svg>
-                  <span>{isEn ? 'Filter' : 'تـصـفـيـة'}</span>
-                </button>
-              </div>
               
               <div className="flex items-center gap-4">
                 {/* Sort Dropdown */}
-                <div className="flex items-center bg-white border border-gray-200 rounded-xl px-4 py-2.5 shadow-sm">
-                  <label className="text-gray-400 text-sm font-bold ml-2">
+                <div className="flex items-center gap-2">
+                  <label className="text-gray-400 text-[13px] font-bold whitespace-nowrap">
                     {isEn ? 'Sort by:' : 'ترتيب حسب:'}
                   </label>
-                  <select
-                    className="bg-transparent text-sm font-bold text-gray-800 cursor-pointer focus:outline-none focus:ring-0 border-none appearance-none px-2 pr-6 rtl:pl-6"
-                    style={{ WebkitAppearance: 'none', appearance: 'none', background: 'transparent' }}
-                    onChange={(e) => {
-                      const [key, rev] = e.target.value.split('|');
-                      const params = new URLSearchParams(window.location.search);
-                      params.set('sortKey', key);
-                      params.set('reverse', rev);
-                      window.location.search = params.toString();
-                    }}
-                    defaultValue={typeof window !== 'undefined' ? `${new URLSearchParams(window.location.search).get('sortKey') || 'COLLECTION_DEFAULT'}|${new URLSearchParams(window.location.search).get('reverse') || 'false'}` : 'COLLECTION_DEFAULT|false'}
-                  >
-                    <option value="COLLECTION_DEFAULT|false">{isEn ? 'Featured' : 'الأكثر صلة'}</option>
-                    <option value="BEST_SELLING|false">{isEn ? 'Best Selling' : 'الأكثر مبيعاً'}</option>
-                    <option value="PRICE|false">{isEn ? 'Price: Low to High' : 'السعر: من الأقل للأعلى'}</option>
-                    <option value="PRICE|true">{isEn ? 'Price: High to Low' : 'السعر: من الأعلى للأقل'}</option>
-                  </select>
-                  <svg className="w-4 h-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                  <div className="flex items-center bg-white border border-[#234745]/10 rounded-full px-4 py-2 shadow-sm relative w-40">
+                    <select
+                      className="w-full bg-transparent text-[13px] font-bold text-gray-800 cursor-pointer focus:outline-none focus:ring-0 border-none appearance-none rtl:pl-6"
+                      style={{ WebkitAppearance: 'none', appearance: 'none' }}
+                      onChange={(e) => {
+                        const [key, rev] = e.target.value.split('|');
+                        const params = new URLSearchParams(window.location.search);
+                        params.set('sortKey', key);
+                        params.set('reverse', rev);
+                        window.location.search = params.toString();
+                      }}
+                      defaultValue={typeof window !== 'undefined' ? `${new URLSearchParams(window.location.search).get('sortKey') || 'COLLECTION_DEFAULT'}|${new URLSearchParams(window.location.search).get('reverse') || 'false'}` : 'COLLECTION_DEFAULT|false'}
+                    >
+                      <option value="COLLECTION_DEFAULT|false">{isEn ? 'Featured' : 'الأكثر صلة'}</option>
+                      <option value="BEST_SELLING|false">{isEn ? 'Best Selling' : 'الأكثر مبيعاً'}</option>
+                      <option value="PRICE|false">{isEn ? 'Price: Low to High' : 'السعر: من الأقل للأعلى'}</option>
+                      <option value="PRICE|true">{isEn ? 'Price: High to Low' : 'السعر: من الأعلى للأقل'}</option>
+                    </select>
+                    <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7"></path></svg>
+                  </div>
                 </div>
               </div>
             </div>
@@ -406,7 +384,7 @@ function FilterForm({ filters, onClose, isDesktop }: { filters: any[], onClose: 
                             type="text" 
                             placeholder="إبحث في المنتجات..." 
                             defaultValue={searchParams.get('q') || ''}
-                            className="w-full bg-[#A8B8B5]/30 border-none rounded-full pr-5 py-3 pl-10 text-[13px] font-bold focus:outline-none focus:ring-2 focus:ring-[#234745] transition-all text-[#234745] placeholder-[#234745]/60"
+                            className="w-full bg-[#c4d1cc] !border-0 !rounded-full pr-12 py-3 pl-5 text-[14px] font-bold focus:!outline-none focus:!ring-0 transition-all text-[#234745] placeholder-[#234745] !shadow-none outline-none appearance-none text-right"
                             onChange={(e) => {
                                 const val = e.target.value;
                                 const params = new URLSearchParams(searchParams);
@@ -415,7 +393,7 @@ function FilterForm({ filters, onClose, isDesktop }: { filters: any[], onClose: 
                                 setSearchParams(params, { preventScrollReset: true, replace: true });
                             }}
                         />
-                        <svg className="absolute left-4 top-1/2 -translate-y-1/2 text-[#234745]/60" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                        <svg className="absolute right-4 top-1/2 -translate-y-1/2 text-[#234745]" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                     </div>
                 </div>
 
@@ -477,7 +455,7 @@ function FilterForm({ filters, onClose, isDesktop }: { filters: any[], onClose: 
                                 <input type="number" value={maxPrice} onChange={(e) => setMaxPrice(e.target.value)} placeholder="إلي" className="w-full bg-white border border-gray-200 rounded-full px-4 py-2 text-sm font-bold focus:outline-none focus:border-[#234745] transition-all text-center" />
                             </div>
                         </div>
-                        <button onClick={handleApply} className="w-full bg-[#234745] text-white rounded-[8px] py-2.5 font-bold text-sm hover:bg-[#1a3533] transition-all mt-2 shadow-sm">تطبيق</button>
+                        <button onClick={handleApply} className="w-full bg-[#234745] text-white !rounded-full py-2.5 font-bold text-sm hover:bg-[#1a3533] transition-all mt-2 shadow-sm cursor-pointer">تطبيق</button>
                         <div className="flex flex-col gap-4 mt-6">
                             {[
                               { label: 'أقل من ١٠٠ ر.س', min: '', max: '100' },
@@ -485,12 +463,11 @@ function FilterForm({ filters, onClose, isDesktop }: { filters: any[], onClose: 
                               { label: '٢٠٠ - ٤٠٠ ر.س', min: '200', max: '400' },
                               { label: 'أكثر من ٤٠٠ ر.س', min: '400', max: '' }
                             ].map((preset, i) => (
-                                <label key={i} className="flex items-center justify-between cursor-pointer group">
-                                    <span className={`text-[13px] font-bold ${minPrice === preset.min && maxPrice === preset.max ? 'text-[#234745]' : 'text-[#8695A0] group-hover:text-[#234745]'} transition-colors`}>{preset.label}</span>
+                                <label key={i} className="flex items-center justify-start gap-3 cursor-pointer group">
                                     <input 
                                       type="radio" 
                                       name="price_preset" 
-                                      className="w-4 h-4 border-gray-300 text-[#234745] focus:ring-[#234745]" 
+                                      className="w-4 h-4 border-gray-300 text-[#234745] focus:ring-[#234745] cursor-pointer" 
                                       checked={minPrice === preset.min && maxPrice === preset.max}
                                       onChange={() => {
                                         setMinPrice(preset.min);
@@ -504,6 +481,7 @@ function FilterForm({ filters, onClose, isDesktop }: { filters: any[], onClose: 
                                         setSearchParams(params, { preventScrollReset: true, replace: true });
                                       }}
                                     />
+                                    <span className={`text-[13px] font-bold ${minPrice === preset.min && maxPrice === preset.max ? 'text-[#234745]' : 'text-[#8695A0] group-hover:text-[#234745]'} transition-colors`}>{preset.label}</span>
                                 </label>
                             ))}
                         </div>

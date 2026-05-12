@@ -278,7 +278,7 @@ function FilterForm({ onClose, isDesktop }: { onClose: () => void, isDesktop: bo
                             type="text" 
                             placeholder="إبحث في المنتجات..." 
                             defaultValue={searchParams.get('q') || ''}
-                            className="w-full bg-[#A8B8B5]/30 border-none rounded-full pr-5 py-3 pl-10 text-[13px] font-bold focus:outline-none focus:ring-2 focus:ring-[#234745] transition-all text-[#234745] placeholder-[#234745]/60"
+                            className="w-full bg-[#c4d1cc] !border-0 !rounded-full pr-12 py-3 pl-5 text-[14px] font-bold focus:!outline-none focus:!ring-0 transition-all text-[#234745] placeholder-[#234745] !shadow-none outline-none appearance-none text-right"
                             onChange={(e) => {
                                 const val = e.target.value;
                                 const params = new URLSearchParams(searchParams);
@@ -287,7 +287,7 @@ function FilterForm({ onClose, isDesktop }: { onClose: () => void, isDesktop: bo
                                 setSearchParams(params, { preventScrollReset: true, replace: true });
                             }}
                         />
-                        <svg className="absolute left-4 top-1/2 -translate-y-1/2 text-[#234745]/60" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                        <svg className="absolute right-4 top-1/2 -translate-y-1/2 text-[#234745]" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                     </div>
                 </div>
 
@@ -349,7 +349,7 @@ function FilterForm({ onClose, isDesktop }: { onClose: () => void, isDesktop: bo
                                 <input type="number" value={maxPrice} onChange={(e) => setMaxPrice(e.target.value)} placeholder="إلي" className="w-full bg-white border border-gray-200 rounded-full px-4 py-2 text-sm font-bold focus:outline-none focus:border-[#234745] transition-all text-center" />
                             </div>
                         </div>
-                        <button onClick={handleApply} className="w-full bg-[#234745] text-white rounded-[8px] py-2.5 font-bold text-sm hover:bg-[#1a3533] transition-all mt-2 shadow-sm">تطبيق</button>
+                        <button onClick={handleApply} className="w-full bg-[#234745] text-white !rounded-full py-2.5 font-bold text-sm hover:bg-[#1a3533] transition-all mt-2 shadow-sm cursor-pointer">تطبيق</button>
                         <div className="flex flex-col gap-4 mt-6">
                             {[
                               { label: 'أقل من ١٠٠ ر.س', min: '', max: '100' },
@@ -357,12 +357,11 @@ function FilterForm({ onClose, isDesktop }: { onClose: () => void, isDesktop: bo
                               { label: '٢٠٠ - ٤٠٠ ر.س', min: '200', max: '400' },
                               { label: 'أكثر من ٤٠٠ ر.س', min: '400', max: '' }
                             ].map((preset, i) => (
-                                <label key={i} className="flex items-center justify-between cursor-pointer group">
-                                    <span className={`text-[13px] font-bold ${minPrice === preset.min && maxPrice === preset.max ? 'text-[#234745]' : 'text-[#8695A0] group-hover:text-[#234745]'} transition-colors`}>{preset.label}</span>
+                                <label key={i} className="flex items-center justify-start gap-3 cursor-pointer group">
                                     <input 
                                       type="radio" 
                                       name="price_preset" 
-                                      className="w-4 h-4 border-gray-300 text-[#234745] focus:ring-[#234745]" 
+                                      className="w-4 h-4 border-gray-300 text-[#234745] focus:ring-[#234745] cursor-pointer" 
                                       checked={minPrice === preset.min && maxPrice === preset.max}
                                       onChange={() => {
                                         setMinPrice(preset.min);
@@ -376,6 +375,7 @@ function FilterForm({ onClose, isDesktop }: { onClose: () => void, isDesktop: bo
                                         setSearchParams(params, { preventScrollReset: true, replace: true });
                                       }}
                                     />
+                                    <span className={`text-[13px] font-bold ${minPrice === preset.min && maxPrice === preset.max ? 'text-[#234745]' : 'text-[#8695A0] group-hover:text-[#234745]'} transition-colors`}>{preset.label}</span>
                                 </label>
                             ))}
                         </div>

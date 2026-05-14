@@ -4,7 +4,7 @@ import {CartForm, Money, type OptimisticCart} from '@shopify/hydrogen';
 import {useEffect, useId, useRef, useState} from 'react';
 import {useFetcher, useRouteLoaderData, Link} from 'react-router';
 import {useAside} from '~/components/Aside';
-import {Price} from './Price';
+import {Price, SaudiRiyalSymbol} from './Price';
 
 type CartSummaryProps = {
   cart: OptimisticCart<CartApiQueryFragment | null>;
@@ -74,78 +74,138 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
     <div aria-labelledby={summaryId} className="flex flex-col gap-4">
       {layout === 'page' && (
         <>
-          {/* Promo Code Section (as separate card like design) */}
-          <CartDiscounts
-            discountCodes={cart?.discountCodes}
-            discountsHeadingId={discountsHeadingId}
-            discountCodeInputId={discountCodeInputId}
-            isEn={isEn}
-          />
-
-          {/* Order Summary Card */}
-          <div className="bg-white rounded-[24px] p-8 shadow-[0_2px_15px_rgba(0,0,0,0.03)] border border-[#f0ece8]">
-            <div className="flex items-center gap-2 mb-8">
-               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#234745" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-               <h3 className="text-[20px] font-black text-[#234745]">{isEn ? 'Order Summary' : 'ملخص الطلب'}</h3>
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col pt-6">
+            {/* Header */}
+            <div className="px-6 pb-4 border-b border-gray-200">
+               <h3 className={`text-[20px] font-black text-[#1a1a1a] ${isEn ? 'text-left' : 'text-right'}`} style={{ fontFamily: "'Bahij Janna', sans-serif" }}>
+                 {isEn ? 'Order Summary' : 'ملخص الطلب'}
+               </h3>
             </div>
 
-            <div className="space-y-6">
-                <div className="flex justify-between items-center text-[16px]">
-                   <dt className="text-gray-400 font-medium">{isEn ? 'Subtotal' : 'المجموع الفرعي'}</dt>
-                   <dd className="text-[#234745] font-black font-en">
-                     <Price data={cart?.cost?.subtotalAmount!} isEn={isEn} size="sm" />
-                   </dd>
-                </div>
+            <div className="px-6 py-6 flex flex-col gap-6">
+              {/* Promo Code Input */}
+              <CartDiscounts
+                discountCodes={cart?.discountCodes}
+                discountsHeadingId={discountsHeadingId}
+                discountCodeInputId={discountCodeInputId}
+                isEn={isEn}
+              />
 
-                <div className="flex justify-between items-start text-[16px]">
-                   <dt className="flex flex-col">
-                     <span className="text-gray-400 font-medium">{isEn ? 'Delivery charges' : 'رسوم التوصيل'}</span>
-                     <span className="text-[11px] text-gray-300 font-normal mt-1 max-w-[200px] leading-tight">
-                       {isEn ? 'Please note that specific regions and express delivery may incur extra delivery fees' : 'يرجى ملاحظة أن المناطق المحددة والتوصيل السريع قد تتطلب رسوم إضافية'}
-                     </span>
-                   </dt>
-                   <dd className="text-[#234745] font-black font-en">
-                     {isFreeDelivery ? (
-                       <span className="text-green-600 uppercase text-[12px]">{isEn ? 'Free' : 'مجاني'}</span>
-                     ) : (
-                       <Price data={{ amount: deliveryFee.toString(), currencyCode }} isEn={isEn} size="xs" />
-                     )}
-                   </dd>
-                </div>
-
-                {cart?.cost?.totalTaxAmount && (
-                  <div className="flex justify-between items-center text-[16px]">
-                    <dt className="text-gray-400 font-medium">{isEn ? 'VAT' : 'ضريبة القيمة المضافة'}</dt>
-                    <dd className="text-[#234745] font-black font-en">
-                      <Price data={cart.cost.totalTaxAmount} isEn={isEn} size="xs" />
-                    </dd>
+              {/* Breakdown */}
+              <div className="flex flex-col gap-4">
+                  <div className="flex justify-between items-center text-[15px]">
+                     <dt className="text-gray-400 font-bold">{isEn ? 'Subtotal' : 'المجموع الفرعي'}</dt>
+                     <dd className="text-[#1a1a1a] font-black font-en flex items-center gap-1 flex-row-reverse">
+                       <SaudiRiyalSymbol className="w-[18px] h-auto text-[#1a1a1a]" />
+                       <span>{subtotal.toFixed(2)}</span>
+                     </dd>
                   </div>
-                )}
 
-               <div className="pt-6 border-t border-[#f8f5f2] flex justify-between items-center">
-                  <dt className="text-[18px] font-black text-[#234745]">{isEn ? 'Total' : 'الإجمالي'}</dt>
-                  <dd className="text-[22px] font-black text-[#234745] font-en">
-                    <Price data={{ amount: calculatedTotal.toString(), currencyCode }} isEn={isEn} size="lg" />
-                  </dd>
-               </div>
+                  <div className="flex justify-between items-center text-[15px]">
+                     <dt className="text-gray-400 font-bold">{isEn ? 'Delivery Fees' : 'رسوم التوصيل'}</dt>
+                     <dd className="text-[#1a1a1a] font-bold font-en flex items-center gap-1">
+                       {isFreeDelivery ? (
+                         <span className="text-[#234745] font-black text-[15px]">{isEn ? 'Free' : 'مجاني'}</span>
+                       ) : (
+                         <div className="flex items-center gap-1 flex-row-reverse">
+                           <SaudiRiyalSymbol className="w-[18px] h-auto text-[#1a1a1a]" />
+                           <span className="font-black">{deliveryFee.toFixed(2)}</span>
+                         </div>
+                       )}
+                     </dd>
+                  </div>
+
+                  {/* Gift Wrapping Row (Mocked/Conditional for design parity) */}
+                  <div className="flex justify-between items-center text-[15px]">
+                     <dt className="text-gray-400 font-bold">{isEn ? 'Gift Wrapping' : 'تغليف الهدايا'}</dt>
+                     <dd className="text-[#1a1a1a] font-black font-en flex items-center gap-1 flex-row-reverse">
+                       <SaudiRiyalSymbol className="w-[18px] h-auto text-[#1a1a1a]" />
+                       <span>10.56</span>
+                     </dd>
+                  </div>
+
+                  {cart?.cost?.totalTaxAmount && (
+                    <div className="flex justify-between items-center text-[15px]">
+                      <dt className="text-gray-400 font-bold">{isEn ? 'VAT (15%)' : 'ضريبة القيمة المضافة (١٥٪)'}</dt>
+                      <dd className="text-[#1a1a1a] font-black font-en flex items-center gap-1 flex-row-reverse">
+                        <SaudiRiyalSymbol className="w-[18px] h-auto text-[#1a1a1a]" />
+                        <span>{parseFloat(cart.cost.totalTaxAmount.amount).toFixed(2)}</span>
+                      </dd>
+                    </div>
+                  )}
+              </div>
+
+              {/* Separator */}
+              <div className="border-t border-gray-200"></div>
+
+              {/* Total */}
+              <div className="flex justify-between items-start">
+                 <div className="flex flex-col gap-1">
+                    <dt className="text-[20px] font-black text-[#1a1a1a]" style={{ fontFamily: "'Bahij Janna', sans-serif" }}>
+                      {isEn ? 'Total' : 'الإجمالي'}
+                    </dt>
+                    <span className="text-[11px] text-gray-400 font-bold">
+                      {isEn ? 'Includes 15% VAT' : 'شامل ضريبة القيمة المضافة ١٥٪'}
+                    </span>
+                 </div>
+                 <dd className="text-[28px] font-black text-[#1a1a1a] font-en flex items-center gap-2 flex-row-reverse">
+                   <SaudiRiyalSymbol className="w-[24px] h-auto text-[#1a1a1a]" />
+                   <span>{calculatedTotal.toFixed(2)}</span>
+                 </dd>
+              </div>
+
+              {/* Buttons */}
+              <div className="flex flex-col gap-3 mt-2">
+               <CartCheckoutActions 
+                 checkoutUrl={cart?.checkoutUrl} 
+                 isEn={isEn} 
+                 disabled={!canCheckout}
+                 totalAmount={calculatedTotal}
+                 currencyCode={currencyCode}
+                 isPickup={isPickup}
+                 validationError={
+                   !isMinOrderMet ? (isEn ? `Minimum order is ${currencyCode} ${minOrderValue}` : `الحد الأدنى هو ${minOrderValue} ${currencyCode === 'SAR' ? 'ر.س' : currencyCode}`) :
+                   !isBranchSelected ? (isEn ? 'Please select a branch' : 'يرجى اختيار الفرع') :
+                   null
+                 }
+               />
+               <Link 
+                 to={isEn ? "/en" : "/"} 
+                 className="w-full h-[52px] bg-[#F9E8E8] hover:bg-[#F2DFDF] active:scale-[0.98] transition-all text-[#DF4646] rounded-3xl font-black text-[16px] flex items-center justify-center border border-[#EAA2A2]"
+                 style={{ fontFamily: "'Bahij Janna', sans-serif" }}
+               >
+                 {isEn ? 'Continue Shopping' : 'متابعة التسوق'}
+               </Link>
             </div>
-          </div>
 
-          {/* Additional Customizations (Branch/Time) */}
-          <div className="bg-white rounded-[24px] p-6 shadow-sm border border-[#f0ece8] flex flex-col gap-4">
-             <div className="flex items-center justify-between">
-                <div className="flex flex-col">
-                   <span className="text-[11px] text-gray-400 font-bold uppercase">
-                     {fulfillmentType === 'Pickup' ? (isEn ? 'Pickup Branch' : 'فرع الاستلام') : (isEn ? 'Delivery Branch' : 'فرع التوصيل')}
-                   </span>
-                   <span className="text-[14px] font-black text-[#234745]">{branch || (isEn ? 'Select Branch' : 'اختر الفرع')}</span>
+            {/* Tamara Promo Box */}
+            <div className="bg-[#FBF9F4] rounded-[16px] p-5 border border-[#F2E8D5] flex flex-col items-center text-center shadow-sm relative mt-4">
+                <div className="px-5 py-1 rounded-[10px] mb-3 inline-block" style={{ background: 'linear-gradient(90deg, #F9C3A3 0%, #D4A5E4 50%, #9BC4E5 100%)' }}>
+                   <span className="text-[#1a1a1a] font-black text-[18px] tracking-tight font-en leading-none block pt-0.5">tamara</span>
                 </div>
-                <button onClick={() => window.dispatchEvent(new CustomEvent('openDeliveryModal'))} className="text-[12px] font-bold text-[#d4a06a] hover:underline">
-                  {isEn ? 'Change' : 'تغيير'}
-                </button>
-             </div>
-             <CartTimeSlot isEn={isEn} cart={cart} />
-             <CartOrderNotes isEn={isEn} cart={cart} />
+                <h4 className="text-[15px] font-black text-[#1a1a1a] leading-tight mb-2" style={{ fontFamily: "'Bahij Janna', sans-serif" }}>
+                    {isEn ? 'Split it into 4 interest-free payments' : 'قسّطها على ٤ دفعات بدون فوائد'}
+                </h4>
+                <div className="w-full flex justify-end mt-1">
+                  <p className="text-[11px] font-bold text-gray-500">
+                      {isEn ? 'with Tamara' : 'مع تمارا'}
+                  </p>
+                </div>
+            </div>
+
+            {/* Footer Features */}
+            <div className="flex items-center justify-between mt-6 border-t border-gray-200 pt-6 px-2 pb-6">
+                <div className="flex flex-col items-center">
+                    <span className="text-[13px] font-bold text-gray-400">{isEn ? 'Guaranteed Quality' : 'جودة مضمونة'}</span>
+                </div>
+                <div className="flex flex-col items-center">
+                    <span className="text-[13px] font-bold text-gray-400">{isEn ? 'Fast Delivery' : 'توصيل سريع'}</span>
+                </div>
+                <div className="flex flex-col items-center">
+                    <span className="text-[13px] font-bold text-gray-400">{isEn ? 'Secure Payment' : 'دفع آمن ومضمون'}</span>
+                </div>
+            </div>
+            </div>
           </div>
         </>
       )}
@@ -188,23 +248,9 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
         </div>
       )}
 
-      {layout === 'page' ? (
-        <CartCheckoutActions 
-          checkoutUrl={cart?.checkoutUrl} 
-          isEn={isEn} 
-          disabled={!canCheckout}
-          totalAmount={calculatedTotal}
-          currencyCode={currencyCode}
-          isPickup={isPickup}
-          validationError={
-            !isMinOrderMet ? (isEn ? `Minimum order is ${currencyCode} ${minOrderValue}` : `الحد الأدنى هو ${minOrderValue} ${currencyCode === 'SAR' ? 'ر.س' : currencyCode}`) :
-            !isBranchSelected ? (isEn ? 'Please select a branch' : 'يرجى اختيار الفرع') :
-            null
-          }
-        />
-      ) : (
+      {layout === 'aside' ? (
         <ViewCartAction isEn={isEn} />
-      )}
+      ) : null}
     </div>
   );
 }
@@ -286,9 +332,9 @@ function CartCheckoutActions({
   isPickup?: boolean;
 }) {
   return (
-    <div className="mt-2 flex flex-col gap-3">
+    <>
       {checkoutUrl ? (
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-2 w-full">
           <a 
             href={(() => {
               if (disabled || !checkoutUrl) return '#';
@@ -318,18 +364,10 @@ function CartCheckoutActions({
             onClick={(e) => {
               if (disabled) e.preventDefault();
             }}
-            className={`w-full ${disabled ? 'bg-[#e8e4e1] cursor-not-allowed text-[#888]' : 'bg-[#234745] hover:bg-[#d4a06a] text-white shadow-xl hover:-translate-y-1'} font-bold py-6 px-10 rounded-[32px] flex items-center justify-between transition-all group`}
+            className={`w-full h-[52px] ${disabled ? 'bg-[#e8e4e1] cursor-not-allowed text-[#888]' : 'bg-[#1D3B3A] hover:bg-[#152A29] active:scale-[0.98] text-white'} font-black text-[15px] rounded-3xl flex items-center justify-center transition-all`}
+            style={{ fontFamily: "'Bahij Janna', sans-serif" }}
           >
-            <span className="text-[18px] text-white">{isEn ? 'Proceed To Checkout' : 'متابعة إتمام الطلب'}</span>
-            <div className="flex items-center gap-4 text-white">
-              <span className="text-[20px] font-black font-en">
-                 <Price data={{ amount: totalAmount.toString(), currencyCode }} isEn={isEn} size="md" />
-              </span>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className={`${isEn ? '' : 'rotate-180'} transition-transform group-hover:translate-x-1`}>
-                <line x1="5" y1="12" x2="19" y2="12"></line>
-                <polyline points="12 5 19 12 12 19"></polyline>
-              </svg>
-            </div>
+            {isEn ? 'Complete Order' : 'إتمام الطلب'}
           </a>
           {disabled && validationError && (
             <p className="text-red-500 text-[12px] font-bold text-center px-4 py-2 bg-red-50 rounded-xl border border-red-100 flex items-center justify-center gap-2">
@@ -339,13 +377,14 @@ function CartCheckoutActions({
           )}
         </div>
       ) : (
-        <div className="w-full bg-[#e8e4e1] text-[#888] py-6 px-10 rounded-[32px] flex items-center justify-center gap-2">
-          <span className="animate-pulse">{isEn ? 'Loading Checkout...' : 'جاري التحميل...'}</span>
+        <div className="w-full h-[52px] bg-[#e8e4e1] text-[#888] rounded-full flex items-center justify-center gap-2 font-black text-[15px]" style={{ fontFamily: "'Bahij Janna', sans-serif" }}>
+          <span className="animate-pulse">{isEn ? 'Loading...' : 'جاري التحميل...'}</span>
         </div>
       )}
-    </div>
+    </>
   );
 }
+
 
 // ─── NEW: LOYALTY POINTS REDEMPTION ─────────────────────────────────────────
 function LoyaltyRedemptionUI({ isEn, cart }: { isEn: boolean, cart: any }) {
@@ -456,7 +495,7 @@ function CartDiscounts({
       ?.map(({code}) => code) || [];
 
   return (
-    <section aria-label="Discounts" className="bg-white rounded-[24px] p-6 shadow-sm border border-[#f0ece8] relative">
+    <div aria-label="Discounts" className="w-full relative">
       <dl hidden={!codes.length}>
         <div>
           <dt id={discountsHeadingId} className="sr-only">Discounts</dt>
@@ -496,53 +535,27 @@ function CartDiscounts({
           {(fetcher: any) => {
             const isLoading = fetcher.state !== 'idle';
             return (
-              <>
-                {!showInput ? (
-                  <div 
-                    onClick={() => setShowInput(true)}
-                    className="flex items-center justify-between group cursor-pointer py-1"
+              <div className="flex w-full items-center justify-between border border-gray-300 rounded-[12px] overflow-hidden focus-within:border-[#1D3B3A] transition-colors p-1.5 h-[56px] relative">
+                <input
+                    type="text"
+                    name="discountCode"
+                    placeholder={isEn ? "Discount code" : "كود الخصم"}
+                    className="flex-1 bg-transparent px-4 py-2 text-[14px] text-[#1a1a1a] focus:outline-none placeholder-gray-400 font-bold w-full h-full"
+                  />
+                  <button 
+                    type="submit"
+                    disabled={isLoading}
+                    className="bg-[#1D3B3A] text-white px-6 h-full text-[14px] font-bold hover:bg-[#152A29] transition-colors rounded-[8px] flex-shrink-0"
+                    style={{ fontFamily: "'GE Dinar One', sans-serif" }}
                   >
-                    <div className="flex items-center gap-3">
-                       <div className="w-10 h-10 rounded-full bg-[#f8f5f2] flex items-center justify-center text-[#234745] transition-colors group-hover:bg-[#234745] group-hover:text-white">
-                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>
-                       </div>
-                       <span className="text-[15px] font-bold text-[#234745]">{isEn ? 'Add a promo code' : 'إضافة كود خصم'}</span>
-                    </div>
-                    <div className="text-gray-200 group-hover:text-[#d4a06a] transition-colors">
-                       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex gap-2 animate-fade-in">
-                    <input
-                        type="text"
-                        name="discountCode"
-                        autoFocus
-                        placeholder={isEn ? "Enter code" : "أدخل الكود"}
-                        className="flex-1 bg-[#fcfaf8] border border-[#f0ece8] rounded-xl px-4 py-2 text-[14px] text-[#234745] focus:outline-none focus:border-[#d4a06a]"
-                      />
-                      <button 
-                        type="submit"
-                        disabled={isLoading}
-                        className="bg-[#234745] text-white px-4 py-2 rounded-xl text-[13px] font-bold hover:bg-[#003840]"
-                      >
-                        {isLoading ? '...' : (isEn ? 'Apply' : 'تطبيق')}
-                      </button>
-                      <button 
-                        type="button"
-                        onClick={() => setShowInput(false)}
-                        className="text-gray-400 hover:text-red-500 p-2"
-                      >
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                      </button>
-                  </div>
-                )}
-              </>
+                    {isLoading ? '...' : (isEn ? 'Apply' : 'تطبيق')}
+                  </button>
+              </div>
             );
           }}
         </UpdateDiscountForm>
       </div>
-    </section>
+    </div>
   );
 }
 

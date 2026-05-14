@@ -6,6 +6,7 @@ import {useAside} from '~/components/Aside';
 import {CartLineItem, type CartLine} from '~/components/CartLineItem';
 import {CartSummary} from './CartSummary';
 import {Price, SaudiRiyalSymbol} from './Price';
+import patternBg from '~/assets/patteren-collection-header.svg';
 
 export type CartLayout = 'page' | 'aside';
 
@@ -108,13 +109,59 @@ export function CartMain({layout, cart: originalCart}: CartMainProps) {
 
   if (layout === 'page') {
     return (
-      <div className="max-w-[1400px] mx-auto w-full px-4 py-8 md:py-16" dir={isEn ? 'ltr' : 'rtl'}>
+      <div className="w-full bg-[#FEF8EB] min-h-screen" dir={isEn ? 'ltr' : 'rtl'}>
         <Analytics.CartView cart={cart as any} />
-        <h1 className="text-4xl md:text-[56px] font-black text-[#234745] mb-12 tracking-tight">
-          {isEn ? 'Cart' : 'السلة'}
-        </h1>
+        
+        {/* 1. Full-Width Styled Header */}
+        <div className="w-full bg-[#234745] relative overflow-hidden py-8"
+          style={{
+            backgroundImage: `url(${patternBg})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center'
+          }}
+        >
+          <div className="max-w-[1400px] mx-auto px-4 md:px-8 relative z-10 flex w-full justify-start">
+            <div className="flex flex-row items-center justify-start gap-6 w-full">
+               
+               {/* Back Button (Renders on the Right in RTL) */}
+               <button 
+                 onClick={() => window.history.back()} 
+                 className="flex items-center gap-2 bg-[#A8BDB5] hover:bg-[#97aaa3] text-[#1a3b3a] px-6 py-1.5 rounded-full text-[15px] font-bold transition-all shadow-sm shrink-0"
+                 style={{ fontFamily: "'GE Dinar One', sans-serif" }}
+               >
+                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={`${isEn ? 'rotate-180' : ''}`}>
+                   <path d="M5 12h14M12 5l7 7-7 7" />
+                 </svg>
+                 <span className="pt-0.5">{isEn ? 'Back' : 'رجوع'}</span>
+               </button>
 
-        <div className="lg:grid lg:grid-cols-[1fr_400px] gap-8 lg:gap-16 items-start">
+               {/* Title & Subtitle Block (Renders on the Left in RTL) */}
+               <div className={`flex flex-col ${isEn ? 'text-left' : 'text-right'}`}>
+                 <h1 className="!m-0 !mb-4 text-[38px] font-bold text-white leading-none" style={{ fontFamily: "'Bahij Janna', sans-serif" }}>
+                   {isEn ? 'Shopping Cart' : 'سلة التسوق'}
+                 </h1>
+                 <p className="!m-0 text-[16px] font-medium text-[#c4d0cc] leading-none" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
+                   {isEn ? `${cart?.totalQuantity || 0} products in your cart` : `${new Intl.NumberFormat('ar-EG').format(cart?.totalQuantity || 0)} منتجات في سلتك`}
+                 </p>
+               </div>
+               
+            </div>
+          </div>
+        </div>
+
+        {/* 2. White Breadcrumb Section */}
+        <div className="w-full bg-white border-b border-[#F2E8D5] py-4 shadow-sm mb-10">
+          <div className="max-w-[1400px] mx-auto px-4 md:px-8">
+            <div className="flex items-center gap-2 text-[14px] font-bold" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
+              <Link to={isEn ? "/en" : "/"} className="text-gray-400 hover:text-[#234745] transition-colors">{isEn ? 'Home' : 'الرئيسية'}</Link> 
+              <span className="text-gray-300">/</span>
+              <span className="text-[#234745]">{isEn ? 'Shopping Cart' : 'سلة التسوق'}</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="max-w-[1400px] mx-auto w-full px-4 md:px-8 pb-20">
+          <div className="lg:grid lg:grid-cols-[1fr_380px] gap-8 lg:gap-12 items-start">
           {/* Left Column (Items) */}
           <div className="flex flex-col gap-4">
             {/* Free Delivery Progress (Restored) */}
@@ -178,19 +225,30 @@ export function CartMain({layout, cart: originalCart}: CartMainProps) {
             <CartEmpty hidden={linesCount} layout={layout} isEn={isEn} />
             
             {cartHasItems && (
-              <ul className="flex flex-col gap-4">
-                {(cart?.lines?.nodes ?? []).map((line) => {
-                  if ('parentRelationship' in line && line.parentRelationship?.parent) return null;
-                  return (
-                    <CartLineItem
-                      key={line.id}
-                      line={line}
-                      layout={layout}
-                      childrenMap={childrenMap}
-                    />
-                  );
-                })}
-              </ul>
+              <div className="flex flex-col gap-4">
+                <div className="flex items-center justify-between border-b border-[#F2E8D5] pb-4">
+                  <h3 className="text-[18px] font-black text-[#234745]" style={{ fontFamily: "'Bahij Janna', sans-serif" }}>
+                    {isEn ? `Products (${cart?.totalQuantity || 0})` : `المنتجات (${new Intl.NumberFormat('ar-EG').format(cart?.totalQuantity || 0)})`}
+                  </h3>
+                  <button className="flex items-center gap-2 text-[#DF4646] hover:text-[#c43b3b] font-bold text-[14px] transition-colors">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                    {isEn ? 'Empty Cart' : 'إفراغ السلة'}
+                  </button>
+                </div>
+                <ul className="flex flex-col gap-4">
+                  {(cart?.lines?.nodes ?? []).map((line) => {
+                    if ('parentRelationship' in line && line.parentRelationship?.parent) return null;
+                    return (
+                      <CartLineItem
+                        key={line.id}
+                        line={line}
+                        layout={layout}
+                        childrenMap={childrenMap}
+                      />
+                    );
+                  })}
+                </ul>
+              </div>
             )}
           </div>
 
@@ -201,6 +259,7 @@ export function CartMain({layout, cart: originalCart}: CartMainProps) {
             </div>
           )}
         </div>
+      </div>
       </div>
     );
   }

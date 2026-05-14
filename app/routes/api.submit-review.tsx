@@ -1,30 +1,13 @@
 import { data, type ActionFunctionArgs } from 'react-router';
 import { adminApiQuery } from '../lib/admin.server';
+import { getAdminToken } from '~/lib/shopify-admin.server';
 
 export async function action({ request, context }: ActionFunctionArgs) {
     const { env } = context;
     
     // Standardized shop domain detection for Admin API
-    const rawShop = env.SHOPIFY_SHOP || env.PUBLIC_STORE_DOMAIN || '';
-    let shopDomain = rawShop;
-    if (!shopDomain.includes('myshopify.com')) {
-        const handle = shopDomain.replace(/^https?:\/\//, '').split('.')[0];
-        shopDomain = `${handle}.myshopify.com`;
-    }
-    
-    console.log(`[REVIEWS] Attempting review submission to: ${shopDomain}`);
-
-    // Collect all potential tokens to try
-    const potentialTokens = [
-        env.SHOPIFY_ADMIN_API_ACCESS_TOKEN,
-        (env as any).SHOPIFY_ADMIN_API_ACCESS_TOKENS,
-        env.REVIEWS_ADMIN_API_TOKEN
-    ].filter(Boolean) as string[];
-
-    if (potentialTokens.length === 0) {
-        console.error('[REVIEWS] No Admin API tokens found in environment');
-        return data({ error: 'System configuration error' }, { status: 500 });
-    }
+    const rawShop = env.SHOPIFY_SHOP || env.PUBLIC_STORE_DOMAIN || 'the-beauty-secrets-ksa';
+    const shopDomain = rawShop.includes('myshopify.com') ? rawShop : `${rawShop.split('.')[0]}.myshopify.com`;
 
     const formData = await request.formData();
     const productHandle = formData.get('productHandle') || 'general-feedback';
@@ -65,51 +48,40 @@ export async function action({ request, context }: ActionFunctionArgs) {
     const fields = [
         { key: "product_handle", value: String(productHandle) },
         { key: "customer_name", value: String(customerName) },
-        { key: "rating", value: String(rating) }, 
+        { key: "rating", value: String(parseInt(String(rating)) || 0) }, // Shopify Admin API accepts strings for Integers if they are numeric
         { key: "review_title", value: String(title || '') },
         { key: "review_comment", value: String(comment || '') },
         { key: "language", value: String(language) },
         { key: "status", value: "Pending" }
     ];
 
-    if (orderId) fields.push({ key: "order_id", value: String(orderId) });
-    if (branchRating) fields.push({ key: "branch_rating", value: String(branchRating) });
+    if (orderId || formData.get('locationId')) fields.push({ key: "location_id", value: String(orderId || formData.get('locationId')) });
     if (branchName) fields.push({ key: "location_name", value: String(branchName) });
 
-    let lastError = null;
-    for (const token of potentialTokens) {
-        try {
-            console.log(`[REVIEWS] Trying token starting with: ${token.substring(0, 5)}...`);
-            const result = await adminApiQuery(shopDomain, token, mutation, {
-                handle: reviewHandle,
-                fields: fields
-            });
+    try {
+        const token = await getAdminToken(env);
+        const result = await adminApiQuery(shopDomain, token, mutation, {
+            handle: reviewHandle,
+            fields: fields
+        });
 
-            if (result.errors) {
-                const errorMsg = result.errors[0].message;
-                if (errorMsg.includes('401')) {
-                    console.warn(`[REVIEWS] Token starting with ${token.substring(0, 5)} failed with 401. Trying next...`);
-                    lastError = errorMsg;
-                    continue; // Try next token
-                }
-                return data({ error: errorMsg }, { status: 400 });
-            }
-
-            if (result.data?.metaobjectCreate?.userErrors?.length) {
-                const errorMsg = result.data.metaobjectCreate.userErrors[0].message;
-                return data({ error: errorMsg }, { status: 400 });
-            }
-
-            console.log(`[REVIEWS] Success with token ${token.substring(0, 5)}!`);
-            return data({ success: true });
-
-        } catch (err: any) {
-            console.error(`[REVIEWS] Loop error with token ${token.substring(0, 5)}:`, err.message);
-            lastError = err.message;
+        if (result.errors) {
+            console.error('[REVIEWS] GraphQL Error:', result.errors[0].message);
+            return data({ error: result.errors[0].message }, { status: 400 });
         }
-    }
 
-    return data({ error: `Auth failed after trying ${potentialTokens.length} tokens. Last error: ${lastError}` }, { status: 401 });
+        if (result.data?.metaobjectCreate?.userErrors?.length) {
+            const errorMsg = result.data.metaobjectCreate.userErrors[0].message;
+            console.error('[REVIEWS] User Error:', errorMsg);
+            return data({ error: errorMsg }, { status: 400 });
+        }
+
+        return data({ success: true });
+
+    } catch (err: any) {
+        console.error('[REVIEWS] Submission failed:', err.message);
+        return data({ error: 'Auth or Submission failed', details: err.message }, { status: 401 });
+    }
 }
 
 

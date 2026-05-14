@@ -257,7 +257,7 @@ export function parseLocationToBranch(node: any): Branch {
         deliveryAvailable: true,
         minOrder: getMeta('minimum_order_value', 50),
         deliveryFee: getMeta('delivery_fee', 25),
-        freeDeliveryThreshold: getMeta('free_delivery_threshold', 200),
+        freeDeliveryThreshold: getMeta('free_delivery_threshold', 300),
         hoursFrom: node.metafields?.find((m: any) => m?.key === 'working_hours_from')?.value,
         hoursTo: node.metafields?.find((m: any) => m?.key === 'working_hours_to')?.value,
         badge: '',

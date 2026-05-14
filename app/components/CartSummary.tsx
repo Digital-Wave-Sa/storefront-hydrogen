@@ -23,17 +23,12 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
 
   const subtotal = Number(cart?.cost?.subtotalAmount?.amount ?? 0);
   const currencyCode = cart?.cost?.subtotalAmount?.currencyCode || 'SAR';
-  const minOrderValue = 50; // Minimum order value requirement
-  const isMinOrderMet = subtotal >= minOrderValue;
   
   const attributes = cart?.attributes || [];
   const branch = attributes.find((a: any) => a.key.toLowerCase().trim() === 'branch')?.value;
   const branchId = attributes.find((a: any) => a.key.toLowerCase().trim() === 'branch id')?.value;
   const fulfillmentType = attributes.find((a: any) => a.key.toLowerCase().trim() === 'fulfillment type')?.value;
   const timeSlot = attributes.find((a: any) => a.key.toLowerCase().trim() === 'time slot')?.value;
-  
-  const isTimeSlotSelected = !!timeSlot && timeSlot.trim() !== '';
-  const isBranchSelected = !!branch && branch.trim() !== '';
 
   // Dynamic Settings from Metafields
   const locations = rootData?.locations?.locations?.nodes || rootData?.locations?.nodes || [];
@@ -42,28 +37,35 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
     (branchId && loc.id === branchId) || 
     (branch && loc.name === branch)
   );
-  const thresholdMeta = currentBranch?.free_delivery_threshold;
-  const feeMeta = currentBranch?.delivery_fee;
+
+  const minOrderMeta = currentBranch?.min_order_value || currentBranch?.metafields?.find((m: any) => m?.key === 'minimum_order_value');
+  const minOrderValue = minOrderMeta?.value ? parseFloat(minOrderMeta.value) : 50; 
+  const isMinOrderMet = subtotal >= minOrderValue;
+  const thresholdMeta = currentBranch?.free_delivery_threshold || currentBranch?.metafields?.find((m: any) => m?.key === 'free_delivery_threshold');
+  const feeMeta = currentBranch?.delivery_fee || currentBranch?.metafields?.find((m: any) => m?.key === 'delivery_fee');
   
-  const threshold = thresholdMeta?.value ? parseFloat(thresholdMeta.value) : 430;
+  const threshold = thresholdMeta?.value ? parseFloat(thresholdMeta.value) : 300;
   const isFreeDelivery = subtotal >= threshold;
   const isPickup = fulfillmentType?.toLowerCase() === 'pickup';
   // Use 25 SAR as default if no metafield is found (matching modal default)
   const deliveryFee = (isFreeDelivery || isPickup) ? 0 : (feeMeta?.value ? parseFloat(feeMeta.value) : 25);
   const calculatedTotal = parseFloat(cart?.cost?.totalAmount?.amount || '0') + deliveryFee;
 
+  const isTimeSlotSelected = !!timeSlot && timeSlot.trim() !== '';
+  const isBranchSelected = !!branch && branch.trim() !== '';
+
   const hasPreOrderItems = cart?.lines?.nodes?.some((line: any) => 
     line.merchandise?.product?.tags?.some((tag: string) => 
-      ['preorder', 'pre-order', 'طلب مسبق'].includes(tag.toLowerCase())
+      ['preorder', 'pre-order', 'طلب مسبق'].includes(tag.toLowerCase().trim())
     )
   );
 
   const hasCashOnly = cart?.lines?.nodes?.some((line: any) => 
-    line.merchandise?.product?.tags?.some((tag: string) => tag.toLowerCase() === 'cash-only')
+    line.merchandise?.product?.tags?.some((tag: string) => tag.toLowerCase().trim() === 'cash-only')
   );
 
   const hasPrepaidOnly = cart?.lines?.nodes?.some((line: any) => 
-    line.merchandise?.product?.tags?.some((tag: string) => tag.toLowerCase() === 'prepaid-only')
+    line.merchandise?.product?.tags?.some((tag: string) => tag.toLowerCase().trim() === 'prepaid-only')
   );
 
   const canCheckout = isMinOrderMet && isBranchSelected;

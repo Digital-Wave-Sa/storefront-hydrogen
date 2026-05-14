@@ -8,6 +8,7 @@ import {getVisibilityStatus} from '~/lib/visibility';
 import {Price} from '~/components/Price';
 import {AddToCartButton} from '~/components/AddToCartButton';
 import {StockNotificationModal} from '~/components/StockNotificationModal';
+import {useWishlist} from '~/context/WishlistContext';
 
 export function ProductItem({
   product,
@@ -21,6 +22,9 @@ export function ProductItem({
   const [isNotifyModalOpen, setIsNotifyModalOpen] = useState(false);
   const { selectedLocationId, selectedLocationName } = useOutletContext<{ selectedLocationId?: string, selectedLocationName?: string }>() || {};
   
+  const { toggleWishlist, isInWishlist } = useWishlist();
+  const isWishlisted = isInWishlist(product.id);
+
   const variant = useMemo(() => {
     if (!product.variants?.nodes?.length) return undefined;
     
@@ -213,11 +217,19 @@ export function ProductItem({
                 <button 
                   onClick={(e) => {
                       e.preventDefault();
-                      // Wishlist logic here
+                      toggleWishlist({
+                        id: product.id,
+                        title: product.title,
+                        handle: product.handle,
+                        image: product.featuredImage || product.images?.nodes?.[0],
+                        priceRange: product.priceRange
+                      });
                   }}
-                  className="bg-white rounded-full p-1.5 text-gray-400 hover:text-red-500 shadow-sm transition-all border border-gray-100/50"
+                  className={`rounded-full p-2 shadow-md transition-all border flex items-center justify-center ${isWishlisted ? 'bg-white text-red-500 border-white' : 'bg-white/80 text-gray-400 hover:text-red-500 border-gray-100/50'}`}
                 >
-                    <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
+                    <svg width="18" height="18" fill={isWishlisted ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                    </svg>
                 </button>
             </div>
             

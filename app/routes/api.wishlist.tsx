@@ -1,114 +1,103 @@
 import { data, type ActionFunctionArgs, type LoaderFunctionArgs } from 'react-router';
+import { adminApiQuery } from '../lib/admin.server';
 
 export async function action({ request, context }: ActionFunctionArgs) {
-  const env = context.env as any;
-  const SHOP_HANDLE = (env.SHOPIFY_SHOP || 'the-beauty-secrets-ksa').replace('.myshopify.com', '');
-  const ADMIN_API_URL = `https://${SHOP_HANDLE}.myshopify.com/admin/api/2024-07/graphql.json`;
-  const ADMIN_TOKEN = env.SHOPIFY_ADMIN_API_ACCESS_TOKENS || env.SHOPIFY_ADMIN_API_ACCESS_TOKEN;
+  const { env } = context;
+  const rawShop = env.SHOPIFY_SHOP || env.PUBLIC_STORE_DOMAIN || 'the-beauty-secrets-ksa';
+  let shopDomain = rawShop.includes('myshopify.com') ? rawShop : `${rawShop.split('.')[0]}.myshopify.com`;
 
-  if (request.method !== 'POST') {
-    return data({ error: 'Method not allowed' }, { status: 405 });
-  }
+  const potentialTokens = [
+      (env as any).SHOPIFY_ADMIN_API_ACCESS_TOKENS,
+      env.SHOPIFY_ADMIN_API_ACCESS_TOKEN,
+      env.REVIEWS_ADMIN_API_TOKEN,
+      env.PRIVATE_STOREFRONT_API_TOKEN
+  ].filter(Boolean) as string[];
 
   const { customerId, wishlist } = await request.json();
-
-  if (!customerId || !wishlist) {
-    return data({ error: 'Missing required fields' }, { status: 400 });
-  }
-
-  const query = `#graphql
+  const mutation = `#graphql
     mutation customerUpdate($input: CustomerInput!) {
       customerUpdate(input: $input) {
-        customer {
-          id
-          metafield(namespace: "custom", key: "wishlist") {
-            value
-          }
-        }
-        userErrors {
-          field
-          message
-        }
+        customer { id }
+        userErrors { field message }
       }
     }
   `;
 
-  try {
-    const response = await fetch(ADMIN_API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Shopify-Access-Token': ADMIN_TOKEN || '',
-      },
-      body: JSON.stringify({
-        query,
-        variables: {
+  // 1. Try static tokens first
+  for (const token of potentialTokens) {
+    try {
+      const result = await adminApiQuery(shopDomain, token, mutation, {
+        input: {
+          id: customerId,
+          metafields: [{ namespace: "custom", key: "wishlist", type: "json", value: JSON.stringify(wishlist) }],
+        },
+      });
+
+      if (!result.errors && !result.data?.customerUpdate?.userErrors?.length) {
+        return data(result);
+      }
+    } catch (e: any) {}
+  }
+
+  // 2. Try OAuth exchange as ultimate fallback
+  const clientId = env.SHOPIFY_CLIENT_ID || env.SHOPIFY_ADMIN_CLIENT_ID;
+  const clientSecret = env.SHOPIFY_CLIENT_SECRET || env.SHOPIFY_ADMIN_CLIENT_SECRET;
+
+  if (clientId && clientSecret) {
+    try {
+      const authResponse = await fetch(`https://${shopDomain}/admin/oauth/access_token`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ client_id: clientId, client_secret: clientSecret, grant_type: 'client_credentials' }),
+      });
+      
+      const authData = await authResponse.json();
+      if (authData.access_token) {
+        const result = await adminApiQuery(shopDomain, authData.access_token, mutation, {
           input: {
             id: customerId,
-            metafields: [
-              {
-                namespace: "custom",
-                key: "wishlist",
-                type: "json",
-                value: JSON.stringify(wishlist),
-              },
-            ],
+            metafields: [{ namespace: "custom", key: "wishlist", type: "json", value: JSON.stringify(wishlist) }],
           },
-        },
-      }),
-    });
-
-    const result = await response.json();
-    
-    if (result.errors || result.data?.customerUpdate?.userErrors?.length > 0) {
-      console.error('[WISHLIST] Shopify sync error:', result.errors || result.data.customerUpdate.userErrors);
-    }
-    
-    return data(result);
-  } catch (error) {
-    return data({ error: 'Failed to update wishlist' }, { status: 500 });
+        });
+        return data(result);
+      }
+    } catch (e: any) {}
   }
+
+  return data({ error: 'Sync failed' }, { status: 401 });
 }
 
 export async function loader({ request, context }: LoaderFunctionArgs) {
-  const env = context.env as any;
+  const { env } = context;
   const url = new URL(request.url);
   const customerId = url.searchParams.get('customerId');
-  const SHOP_HANDLE = (env.SHOPIFY_SHOP || 'the-beauty-secrets-ksa').replace('.myshopify.com', '');
-  const ADMIN_API_URL = `https://${SHOP_HANDLE}.myshopify.com/admin/api/2024-07/graphql.json`;
-  const ADMIN_TOKEN = env.SHOPIFY_ADMIN_API_ACCESS_TOKENS || env.SHOPIFY_ADMIN_API_ACCESS_TOKEN;
+  if (!customerId) return data({ wishlist: [] });
 
-  if (!customerId) {
-    return data({ error: 'Missing customerId' }, { status: 400 });
-  }
+  const rawShop = env.SHOPIFY_SHOP || env.PUBLIC_STORE_DOMAIN || 'the-beauty-secrets-ksa';
+  let shopDomain = rawShop.includes('myshopify.com') ? rawShop : `${rawShop.split('.')[0]}.myshopify.com`;
 
   const query = `#graphql
     query getCustomerWishlist($id: ID!) {
-      customer(id: $id) {
-        metafield(namespace: "custom", key: "wishlist") {
-          value
-        }
-      }
+      customer(id: $id) { metafield(namespace: "custom", key: "wishlist") { value } }
     }
   `;
 
-  try {
-    const response = await fetch(ADMIN_API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Shopify-Access-Token': ADMIN_TOKEN || '',
-      },
-      body: JSON.stringify({
-        query,
-        variables: { id: customerId },
-      }),
-    });
+  const potentialTokens = [
+    (env as any).SHOPIFY_ADMIN_API_ACCESS_TOKENS,
+    env.SHOPIFY_ADMIN_API_ACCESS_TOKEN,
+    env.REVIEWS_ADMIN_API_TOKEN,
+    env.PRIVATE_STOREFRONT_API_TOKEN
+  ].filter(Boolean) as string[];
 
-    const result = await response.json();
-    const wishlistData = result.data?.customer?.metafield?.value;
-    return data({ wishlist: wishlistData ? JSON.parse(wishlistData) : [] });
-  } catch (error) {
-    return data({ error: 'Failed to fetch wishlist' }, { status: 500 });
+  for (const token of potentialTokens) {
+    try {
+      const result = await adminApiQuery(shopDomain, token, query, { id: customerId });
+      if (!result.errors && result.data?.customer) {
+        const wishlistData = result.data.customer.metafield?.value;
+        return data({ wishlist: wishlistData ? JSON.parse(wishlistData) : [] });
+      }
+    } catch (e) {}
   }
+
+  return data({ wishlist: [] });
 }

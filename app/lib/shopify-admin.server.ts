@@ -14,35 +14,30 @@ export async function getAdminToken(env: any): Promise<string> {
     return cachedToken;
   }
 
-  // Improved shop domain detection for Admin API
   const rawShop = env.SHOPIFY_SHOP || env.PUBLIC_STORE_DOMAIN || '';
   let shopDomain = rawShop;
   
   if (!shopDomain.includes('myshopify.com')) {
-    // If it's a custom domain like saadaldeen.com, we need the myshopify equivalent
-    // Usually Hydrogen apps have SHOPIFY_SHOP set to the myshopify handle
     const handle = shopDomain.replace(/^https?:\/\//, '').split('.')[0];
     shopDomain = `${handle}.myshopify.com`;
   }
   
-  console.log(`[ADMIN AUTH] Attempting auth for shop: ${shopDomain}`);
+  // 1. Try Primary Admin API tokens first
+  const adminToken = env.SHOPIFY_ADMIN_API_ACCESS_TOKEN || (env as any).SHOPIFY_ADMIN_API_ACCESS_TOKENS;
+  if (adminToken) {
+    cachedToken = adminToken;
+    return adminToken;
+  }
 
+  // 2. Try Review token as secondary
   if (env.REVIEWS_ADMIN_API_TOKEN) {
     const token = env.REVIEWS_ADMIN_API_TOKEN;
-    console.log(`[ADMIN AUTH] Found REVIEWS_ADMIN_API_TOKEN (Starts with: ${token.substring(0, 5)}...)`);
     cachedToken = token;
     return token;
   }
   
-  const adminToken = env.SHOPIFY_ADMIN_API_ACCESS_TOKEN || (env as any).SHOPIFY_ADMIN_API_ACCESS_TOKENS;
-  if (adminToken) {
-    console.log(`[ADMIN AUTH] Found Admin API Access Token (Starts with: ${adminToken.substring(0, 5)}...)`);
-    cachedToken = adminToken;
-    return adminToken;
-  }
-  
+  // 3. Try Private Storefront token as last resort
   if (env.PRIVATE_STOREFRONT_API_TOKEN) {
-    console.log(`[ADMIN AUTH] Falling back to PRIVATE_STOREFRONT_API_TOKEN (Starts with: ${env.PRIVATE_STOREFRONT_API_TOKEN.substring(0, 5)}...)`);
     cachedToken = env.PRIVATE_STOREFRONT_API_TOKEN;
     return env.PRIVATE_STOREFRONT_API_TOKEN;
   }
@@ -69,7 +64,7 @@ export async function getAdminToken(env: any): Promise<string> {
     try {
       data = JSON.parse(responseText);
     } catch (e) {
-      console.error(`[ADMIN AUTH] Critical Error: Shopify returned HTML instead of JSON. Check your SHOPIFY_SHOP domain. Raw response: ${responseText.substring(0, 100)}...`);
+      console.error(`[ADMIN AUTH] Critical Error: Shopify returned HTML instead of JSON. Check your SHOPIFY_SHOP domain.`);
       throw new Error('Invalid JSON response from Shopify');
     }
 
@@ -81,8 +76,6 @@ export async function getAdminToken(env: any): Promise<string> {
     cachedToken = data.access_token;
     tokenExpiry = currentTime + data.expires_in;
 
-    console.log('[ADMIN AUTH] SUCCESS! New token cached.');
-    
     return cachedToken!;
   } catch (error: any) {
     console.error('[ADMIN AUTH] Failed to obtain access token:', error.message);

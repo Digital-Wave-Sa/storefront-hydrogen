@@ -201,22 +201,35 @@ export default function CustomCakeBuilder() {
       <div className="container mx-auto px-4 max-w-7xl">
         
         {/* Top Header */}
-        <div className="flex flex-col md:flex-row justify-between items-center mb-12">
-          <div className="text-center md:text-start">
-            <h1 className="text-[32px] lg:text-[42px] font-serif text-[#234745] font-black leading-tight">
-              {isEn ? 'Step-by-Step Cake Designer' : 'مصمم الكيك خطوة بخطوة'}
-            </h1>
-            <p className="text-[#8B8B8B] font-medium mt-1">
-              {isEn ? 'Premium Handcrafted Experience' : 'تجربة حرفية فاخرة'}
-            </p>
+        <div className="flex flex-col items-center text-center mb-8">
+          <div className="flex items-center gap-[10px] mb-3 w-fit">
+            <div className="w-[85px] h-[1px] bg-[#9a7e6f]"></div>
+            <img 
+              src="/images/saadaldeen-star-vector.svg" 
+              alt="Star" 
+              style={{ width: '22.5px', height: '22.5px', filter: 'sepia(1) saturate(0.8) hue-rotate(345deg) brightness(0.7)' }} 
+            />
+            <div className="w-[85px] h-[1px] bg-[#9a7e6f]"></div>
           </div>
+          
+          <p className="text-[#9a7e6f] tracking-tight whitespace-nowrap" style={{ fontFamily: "'GE Dinar One', sans-serif", fontWeight: 500, fontSize: '16px', lineHeight: '100%', letterSpacing: '0%', textAlign: 'right', verticalAlign: 'middle', marginBottom: '20px' }}>
+            {isEn ? 'Craft a moment that lingers — Step by step' : 'أصنع لحظة لا تُنسى — خطوة بخطوة'}
+          </p>
+
+          <h1 className="text-[#234745] mb-4" style={{ fontFamily: "'Bahij Janna', sans-serif", fontWeight: 700, fontSize: '50px', lineHeight: '100%', letterSpacing: '0%', textAlign: 'center', verticalAlign: 'middle' }}>
+            {isEn ? 'Design a Cake for Your Occasion' : 'صمم كيكة تناسب مناسبتك'}
+          </h1>
+          
+          <p className="text-gray-400 font-bold text-[15px] max-w-xl">
+            {isEn ? 'Choose the size, flavor, and decoration with ease' : 'إختر الحجم والنكهة والتزيين ورسالتك الخاصة بكل سهولة'}
+          </p>
+        </div>
           <div className="mt-6 md:mt-0">
              <button className="bg-white/80 backdrop-blur-sm px-6 py-2 rounded-full border border-gray-100 shadow-sm flex items-center gap-2 text-[#234745] font-bold text-sm">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
                 {isEn ? 'العربية' : 'English'}
              </button>
           </div>
-        </div>
 
         {/* Progress Tracker Bar - EXPANDED TO 9 STEPS */}
         <div className="bg-white rounded-[32px] p-6 lg:p-10 shadow-[0_10px_40px_rgba(35,71,69,0.05)] border border-gray-50 mb-10 max-w-6xl mx-auto">

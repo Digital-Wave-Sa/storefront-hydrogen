@@ -7,6 +7,9 @@ import { AddToCartButton } from '~/components/AddToCartButton';
 import { StarRating, parseRatingValue } from '~/components/StarRating';
 import { ProductItem } from '~/components/ProductItem';
 import { ReviewForm } from '~/components/ReviewForm';
+import { useWishlist } from '~/context/WishlistContext';
+import { adminApiQuery } from '~/lib/admin.server';
+import { getAdminToken } from '~/lib/shopify-admin.server';
 import { createPortal } from 'react-dom';
 import type { MetaFunction } from 'react-router';
 import { data, redirect, type LoaderFunctionArgs } from 'react-router';
@@ -97,7 +100,8 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => {
 //   return defer({ product, variants });
 // }
 
-export async function loader({ params, request, context }: LoaderFunctionArgs) {
+export async function loader(args: LoaderFunctionArgs) {
+  const { params, request, context } = args;
   const { handle } = params;
   const { storefront } = context;
 
@@ -186,20 +190,41 @@ export async function loader({ params, request, context }: LoaderFunctionArgs) {
       return redirectToFirstVariant({ product, request });
     }
   }
-  // --- FETCH REVIEWS ---
-  // We now fetch reviews via Admin API in the root loader to avoid permission issues
-  const reviewsData = { metaobjects: { nodes: [] } };
+  // --- FETCH REVIEWS VIA ADMIN API ---
+  let reviews: any[] = [];
+  try {
+      const adminToken = await getAdminToken(args.context.env);
+      const rawShop = args.context.env.SHOPIFY_SHOP || args.context.env.PUBLIC_STORE_DOMAIN || 'the-beauty-secrets-ksa';
+      const shopDomain = rawShop.includes('myshopify.com') ? rawShop : `${rawShop.split('.')[0]}.myshopify.com`;
 
-  const allReviews = reviewsData?.metaobjects?.nodes?.map((node: any) => {
-      const f: any = {};
-      node.fields.forEach((field: any) => f[field.key] = field.value);
-      return f;
-  }) || [];
+      const reviewsQuery = `#graphql
+        query GetProductReviews {
+          metaobjects(type: "storefront_review", first: 250) {
+            nodes {
+              fields {
+                key
+                value
+              }
+            }
+          }
+        }
+      `;
 
-  const reviews = allReviews.filter((r: any) => 
-      r.product_handle === handle && 
-      (r.status === 'Approved' || r.status === 'Published')
-  );
+      const reviewsResult = await adminApiQuery(shopDomain, adminToken, reviewsQuery);
+      
+      const allReviews = reviewsResult.data?.metaobjects?.nodes?.map((node: any) => {
+          const f: any = {};
+          node.fields.forEach((field: any) => f[field.key] = field.value);
+          return f;
+      }) || [];
+
+      reviews = allReviews.filter((r: any) => 
+          r.product_handle === decodedHandle && 
+          (r.status === 'Approved' || r.status === 'Published' || !r.status)
+      );
+  } catch (err) {
+      console.error('[REVIEWS] Failed to fetch reviews:', err);
+  }
 
   // --- CALCULATE DYNAMIC RATING ---
   let dynamicRating = 0;
@@ -520,7 +545,7 @@ export default function Product() {
 
         {/* RIGHT COLUMN: Image Gallery (Takes 4 cols, Right-most in RTL) */}
         <div className="lg:col-span-4 flex flex-col gap-6 relative order-1">
-          <ProductGallery images={product.images?.nodes || (selectedVariant?.image ? [selectedVariant.image] : [])} />
+          <ProductGallery images={product.images?.nodes || (selectedVariant?.image ? [selectedVariant.image] : [])} product={product} />
         </div>
 
         {/* MIDDLE COLUMN: Details & Variants (Takes 5 cols, Center) */}
@@ -848,53 +873,57 @@ export default function Product() {
         <div className="lg:col-span-3 flex flex-col gap-6 order-3">
           <div className="sticky top-24 flex flex-col gap-6">
             
-            {/* 1. Tamara/Tabby Promo (Mockup Fidelity) */}
-            <div className="bg-[#FEF8EB] rounded-[24px] p-6 border border-[#F2E8D5] flex flex-col items-center text-center shadow-sm">
-                <div className="flex flex-col items-center gap-3">
-                    <img src="https://cdn.tamara.co/assets/svg/tamara-logo-badge-ar.svg" alt="Tamara" className="w-[110px] h-auto" />
-                    <div className="flex flex-col items-center">
-                        <h4 className="text-[17px] font-black text-[#234745] leading-tight">
-                            {isEn ? 'Split it into 4 interest-free payments' : 'قسّطها على ٤ دفعات بدون فوائد'}
-                        </h4>
-                        <p className="text-[14px] font-bold text-[#234745]/60 mt-1">
-                            {isEn ? 'with Tamara' : 'مع تمارا'}
-                        </p>
-                    </div>
+            {/* Payment & Actions Unified Box */}
+            <div className="bg-white rounded-[32px] p-6 border-[1.5px] border-gray-100 flex flex-col gap-8 shadow-sm">
+                
+                {/* 1. Payment Promo Banner */}
+                <div className="bg-[#FEF8EB] rounded-[24px] p-5 border border-[#F2E8D5] flex flex-col items-center text-center shadow-sm relative overflow-hidden">
+                   <div className="flex items-center justify-center gap-4 mb-3 w-full">
+                       {/* Logos: Mada, Visa, PayPal, Apple Pay, Mastercard */}
+                       <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/c/cf/Mada_Logo.svg/1024px-Mada_Logo.svg.png" className="h-[22px] object-contain" alt="Mada" />
+                       <img src="https://upload.wikimedia.org/wikipedia/commons/4/41/Visa_Logo.png" className="h-[18px] object-contain" alt="Visa" />
+                       <img src="https://upload.wikimedia.org/wikipedia/commons/b/b5/PayPal.svg" className="h-[20px] object-contain" alt="PayPal" />
+                       <img src="https://upload.wikimedia.org/wikipedia/commons/b/b0/Apple_Pay_logo.svg" className="h-[24px] object-contain" alt="Apple Pay" />
+                       <img src="https://upload.wikimedia.org/wikipedia/commons/2/2a/Mastercard-logo.svg" className="h-[24px] object-contain" alt="Mastercard" />
+                   </div>
+                   <h4 className="text-[19px] font-black text-[#234745] mt-1" style={{ fontFamily: "'Bahij Janna', sans-serif" }}>
+                       {isEn ? 'Split it into 4 interest-free payments' : 'قسّطها على ٤ دفعات بدون فوائد'}
+                   </h4>
                 </div>
-            </div>
 
-            {/* 2. Cart & Actions Box */}
-            <div className="bg-white rounded-[32px] p-6 border border-gray-100 shadow-[0_10px_30px_rgba(0,0,0,0.03)]">
-                {/* Quantity */}
-                <div className="flex items-center justify-between mb-8">
-                    <span className="font-black text-[#1a1a1a] text-[17px]">{isEn ? 'Quantity' : 'الكمية'}</span>
-                    <div className="flex items-center bg-gray-50 rounded-xl p-1.5 border border-gray-100 gap-4">
+                {/* 2. Quantity */}
+                <div className={`flex items-center justify-between ${isEn ? 'flex-row' : 'flex-row-reverse'}`}>
+                    <span className="font-black text-[#1a1a1a] text-[20px]" style={{ fontFamily: "'Bahij Janna', sans-serif" }}>
+                       {isEn ? 'Quantity' : 'الكمية'}
+                    </span>
+                    <div className="flex items-center gap-2">
                         <button 
                             onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                            className="w-9 h-9 flex items-center justify-center bg-white rounded-lg text-gray-400 border border-gray-200 hover:text-[#234745] hover:border-[#234745] transition-all shadow-sm"
+                            className="w-14 h-14 flex items-center justify-center bg-white rounded-[14px] text-[#A67B5B] border-[1.5px] border-gray-200 hover:border-[#234745] hover:text-[#234745] transition-all"
                         >
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M5 12h14" /></svg>
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14" /></svg>
                         </button>
-                        <span className="font-black text-[18px] text-[#1a1a1a] min-w-[20px] text-center">
+                        <div className="w-[72px] h-14 flex items-center justify-center bg-white rounded-[14px] border-[1.5px] border-gray-200 font-bold text-[22px] text-[#234745]">
                             {new Intl.NumberFormat(locale === 'en' ? 'en-US' : 'ar-EG').format(quantity)}
-                        </span>
+                        </div>
                         <button 
                             onClick={() => setQuantity(quantity + 1)}
-                            className="w-9 h-9 flex items-center justify-center bg-white rounded-lg text-gray-400 border border-gray-200 hover:text-[#234745] hover:border-[#234745] transition-all shadow-sm"
+                            className="w-14 h-14 flex items-center justify-center bg-white rounded-[14px] text-[#234745] border-[1.5px] border-gray-200 hover:border-[#234745] transition-all"
                         >
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M12 5v14M5 12h14" /></svg>
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 5v14M5 12h14" /></svg>
                         </button>
                     </div>
                 </div>
 
-                {/* Actions */}
-                <div className="flex flex-col gap-4">
+                {/* 3. Actions */}
+                <div className="flex flex-col gap-4 mt-2">
                   {isVisibilityBlocked ? (
                     <div className="w-full bg-gray-100 text-gray-400 py-5 rounded-full text-[16px] font-black flex items-center justify-center gap-2 cursor-not-allowed">
                       {isEn ? visibility.label.en : visibility.label.ar}
                     </div>
                   ) : (
                     <>
+                      {/* Add to Cart */}
                       <AddToCartButton
                         analytics={{
                           products: [
@@ -963,24 +992,29 @@ export default function Product() {
                               })()
                             : []
                         }
-                        className={`w-full h-14 ${effectiveOutOfStock ? 'bg-gray-300 cursor-not-allowed' : 'bg-[#234745] hover:bg-[#1a3533] active:scale-[0.98] shadow-xl shadow-green-900/10'} text-white rounded-full font-black text-[16px] transition-all flex items-center justify-center gap-3 group`}
+                        className={`w-full h-[64px] ${effectiveOutOfStock ? 'bg-gray-300 cursor-not-allowed' : 'bg-[#234745] hover:bg-[#1a3533] active:scale-[0.98]'} text-white rounded-[32px] font-black text-[20px] transition-all flex items-center justify-center gap-3`}
                       >
                         {effectiveOutOfStock ? (
                           isEn ? 'Out of Stock' : 'نفذت الكمية'
                         ) : (
                           <>
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="group-hover:rotate-12 transition-transform">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                                 <circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" />
                                 <path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6" />
                             </svg>
-                            <span>{isEn ? 'Add to Cart' : 'أضف إلي السلة'}</span>
+                            <span style={{ fontFamily: "'GE Dinar One', sans-serif", fontWeight: 700, fontSize: '16px', lineHeight: '100%' }}>{isEn ? 'Add to Cart' : 'أضف إلي السلة'}</span>
                           </>
                         )}
                       </AddToCartButton>
 
-                      <button className="w-full h-14 bg-white border-2 border-gray-100 hover:border-[#234745] transition-all text-[#234745] rounded-full font-black text-[16px] flex items-center justify-center gap-3">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4Z" /><line x1="3" y1="6" x2="21" y2="6" /><path d="M16 10a4 4 0 01-8 0" /></svg>
-                        <span>{isEn ? 'Buy Now' : 'اشتري الان'}</span>
+                      {/* Buy Now */}
+                      <button className="w-full h-[64px] bg-[#EEDCDC] hover:bg-[#e4d0d0] active:scale-[0.98] transition-all text-[#DF4646] rounded-[32px] flex items-center justify-center gap-3">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                           <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4Z" />
+                           <line x1="3" y1="6" x2="21" y2="6" />
+                           <path d="M16 10a4 4 0 01-8 0" />
+                        </svg>
+                        <span style={{ fontFamily: "'GE Dinar One', sans-serif", fontWeight: 700, fontSize: '16px', lineHeight: '100%' }}>{isEn ? 'Buy Now' : 'إشتري الان'}</span>
                       </button>
                     </>
                   )}
@@ -1286,11 +1320,14 @@ export default function Product() {
   );
 }
 
-function ProductGallery({ images }: { images: any[] }) {
+function ProductGallery({ images, product }: { images: any[], product: any }) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [zoomHoverProps, setZoomHoverProps] = useState({ x: 0, y: 0, show: false });
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [mounted, setMounted] = useState(false);
+
+  const { toggleWishlist, isInWishlist } = useWishlist();
+  const isWishlisted = isInWishlist(product.id);
 
   useEffect(() => {
     setMounted(true);
@@ -1325,8 +1362,20 @@ function ProductGallery({ images }: { images: any[] }) {
 
         {/* Top Heart Icon (Left Side) */}
         <div className="absolute top-6 left-6 z-20">
-          <button className="w-11 h-11 bg-white rounded-full flex items-center justify-center shadow-[0_4px_15px_rgba(0,0,0,0.08)] text-gray-400 hover:text-red-500 transition-all hover:scale-110 active:scale-95 border border-gray-50">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <button 
+            onClick={(e) => {
+              e.preventDefault();
+              toggleWishlist({
+                id: product.id,
+                title: product.title,
+                handle: product.handle,
+                image: images[0],
+                priceRange: product.priceRange
+              });
+            }}
+            className={`w-11 h-11 rounded-full flex items-center justify-center shadow-[0_4px_15px_rgba(0,0,0,0.08)] transition-all hover:scale-110 active:scale-95 border ${isWishlisted ? 'bg-white text-red-500 border-white' : 'bg-white text-gray-400 hover:text-red-500 border-gray-50'}`}
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" fill={isWishlisted ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2">
               <path d="M20.8 4.6a5.5 5.5 0 00-7.7 0l-1.1 1-1.1-1a5.5 5.5 0 00-7.8 7.8l1 1 7.9 7.9 7.9-7.9 1-1a5.5 5.5 0 000-7.8z" />
             </svg>
           </button>

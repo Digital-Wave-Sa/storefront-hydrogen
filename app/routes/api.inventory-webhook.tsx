@@ -62,7 +62,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
       }),
     });
 
-    const variantData = await findVariantRes.json();
+    const variantData = await findVariantRes.json() as any;
     const variant = variantData.data?.inventoryItem?.variant;
     const branchName = variantData.data?.location?.name || 'Your Branch';
 
@@ -100,7 +100,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
       body: JSON.stringify({ query: getSubscriptionsQuery }),
     });
 
-    const subData = await subRes.json();
+    const subData = await subRes.json() as any;
     const allSubs = subData.data?.metaobjects?.nodes || [];
 
     // Filter relevant subs (matching variant and location)

@@ -12,14 +12,22 @@ export function getLocaleFromRequest(request: Request): I18nLocale {
 
   let pathPrefix = '';
   let [language, country]: I18nFromUrl = ['AR', 'SA'];
+  
+  const validLanguages = ['EN', 'AR'];
 
   if (/^[A-Z]{2}-[A-Z]{2}$/i.test(firstPathPart)) {
-    pathPrefix = '/' + firstPathPart;
-    [language, country] = firstPathPart.split('-') as I18nFromUrl;
+    const [langPart, countryPart] = firstPathPart.split('-');
+    if (validLanguages.includes(langPart)) {
+      pathPrefix = '/' + firstPathPart;
+      language = langPart as I18nLocale['language'];
+      country = countryPart as I18nLocale['country'];
+    }
   } else if (/^[A-Z]{2}$/i.test(firstPathPart)) {
-    pathPrefix = '/' + firstPathPart;
-    language = firstPathPart.toUpperCase() as I18nLocale['language'];
-    country = 'SA'; // Default country
+    if (validLanguages.includes(firstPathPart)) {
+      pathPrefix = '/' + firstPathPart;
+      language = firstPathPart as I18nLocale['language'];
+      country = 'SA'; // Default country
+    }
   }
 
   return {language: language.toUpperCase() as I18nLocale['language'], country: country.toUpperCase() as I18nLocale['country'], pathPrefix};

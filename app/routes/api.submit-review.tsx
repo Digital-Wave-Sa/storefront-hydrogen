@@ -3,7 +3,7 @@ import { adminApiQuery } from '../lib/admin.server';
 import { getAdminToken } from '~/lib/shopify-admin.server';
 
 export async function action({ request, context }: ActionFunctionArgs) {
-    const { env } = context;
+    const env = context.env as any;
     
     // Standardized shop domain detection for Admin API
     const rawShop = env.SHOPIFY_SHOP || env.PUBLIC_STORE_DOMAIN || 'the-beauty-secrets-ksa';
@@ -63,7 +63,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
         const result = await adminApiQuery(shopDomain, token, mutation, {
             handle: reviewHandle,
             fields: fields
-        });
+        }) as any;
 
         if (result.errors) {
             console.error('[REVIEWS] GraphQL Error:', result.errors[0].message);

@@ -21,6 +21,7 @@ import tailwindCss from './styles/tailwind.css?url';
 import {PageLayout} from './components/PageLayout';
 import {GTMAnalytics} from './components/GTMAnalytics';
 import {WishlistProvider} from './context/WishlistContext';
+import {NotFound} from './components/NotFound';
 
 
 export type RootLoader = typeof loader;
@@ -415,6 +416,7 @@ export default function App() {
 
 export function ErrorBoundary() {
   const error = useRouteError();
+  const rootData = useRouteLoaderData<RootLoader>('root');
   let errorMessage = 'Unknown error';
   let errorStatus = 500;
 
@@ -425,16 +427,31 @@ export function ErrorBoundary() {
     errorMessage = error.message;
   }
 
+  // Use the NotFound component for 404 errors
+  if (errorStatus === 404) {
+    return (
+      <WishlistProvider customerId={undefined}>
+        <PageLayout {...rootData}>
+          <NotFound />
+        </PageLayout>
+      </WishlistProvider>
+    );
+  }
+
   return (
-    <div className="route-error">
-      <h1>Oops</h1>
-      <h2>{errorStatus}</h2>
-      {errorMessage && (
-        <fieldset>
-          <pre>{errorMessage}</pre>
-        </fieldset>
-      )}
-    </div>
+    <WishlistProvider customerId={undefined}>
+      <PageLayout {...rootData}>
+        <div className="route-error p-8 flex flex-col items-center justify-center min-h-[50vh]">
+          <h1 className="text-4xl font-bold mb-4">Oops</h1>
+          <h2 className="text-2xl mb-4 text-red-500">{errorStatus}</h2>
+          {errorMessage && (
+            <fieldset className="bg-red-50 p-4 border border-red-200 rounded text-red-800">
+              <pre>{errorMessage}</pre>
+            </fieldset>
+          )}
+        </div>
+      </PageLayout>
+    </WishlistProvider>
   );
 }
 

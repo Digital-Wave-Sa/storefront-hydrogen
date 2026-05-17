@@ -60,7 +60,7 @@ export async function loader({context}: Route.LoaderArgs) {
       return Response.json({locations: []}, {status: 200});
     }
 
-    const json = await res.json();
+    const json = await res.json() as any;
     
     if (json.errors) {
       return Response.json({error: json.errors, locations: []}, {status: 200});

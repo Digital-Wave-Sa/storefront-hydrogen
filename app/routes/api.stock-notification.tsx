@@ -6,7 +6,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
     }
 
     try {
-        const body = await request.json();
+        const body = await request.json() as any;
         const { email, variantId, productTitle, locationId, locationName } = body;
 
         if (!email || !variantId) {
@@ -57,7 +57,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
                 body: JSON.stringify({ query, variables }),
             });
 
-            const result = await response.json();
+            const result = await response.json() as any;
             
             if (result.errors || result.data?.metaobjectCreate?.userErrors?.length) {
                 console.error('[STOCK NOTIFICATION ERROR] Shopify Admin Error:', JSON.stringify(result, null, 2));

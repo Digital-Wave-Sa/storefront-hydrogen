@@ -2,18 +2,18 @@ import { data, type ActionFunctionArgs, type LoaderFunctionArgs } from 'react-ro
 import { adminApiQuery } from '../lib/admin.server';
 
 export async function action({ request, context }: ActionFunctionArgs) {
-  const { env } = context;
+  const env = context.env as any;
   const rawShop = env.SHOPIFY_SHOP || env.PUBLIC_STORE_DOMAIN || 'the-beauty-secrets-ksa';
   let shopDomain = rawShop.includes('myshopify.com') ? rawShop : `${rawShop.split('.')[0]}.myshopify.com`;
 
   const potentialTokens = [
-      (env as any).SHOPIFY_ADMIN_API_ACCESS_TOKENS,
+      env.SHOPIFY_ADMIN_API_ACCESS_TOKENS,
       env.SHOPIFY_ADMIN_API_ACCESS_TOKEN,
       env.REVIEWS_ADMIN_API_TOKEN,
       env.PRIVATE_STOREFRONT_API_TOKEN
   ].filter(Boolean) as string[];
 
-  const { customerId, wishlist } = await request.json();
+  const { customerId, wishlist } = await request.json() as any;
   const mutation = `#graphql
     mutation customerUpdate($input: CustomerInput!) {
       customerUpdate(input: $input) {
@@ -31,7 +31,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
           id: customerId,
           metafields: [{ namespace: "custom", key: "wishlist", type: "json", value: JSON.stringify(wishlist) }],
         },
-      });
+      }) as any;
 
       if (!result.errors && !result.data?.customerUpdate?.userErrors?.length) {
         return data(result);
@@ -51,14 +51,14 @@ export async function action({ request, context }: ActionFunctionArgs) {
         body: JSON.stringify({ client_id: clientId, client_secret: clientSecret, grant_type: 'client_credentials' }),
       });
       
-      const authData = await authResponse.json();
+      const authData = await authResponse.json() as any;
       if (authData.access_token) {
         const result = await adminApiQuery(shopDomain, authData.access_token, mutation, {
           input: {
             id: customerId,
             metafields: [{ namespace: "custom", key: "wishlist", type: "json", value: JSON.stringify(wishlist) }],
           },
-        });
+        }) as any;
         return data(result);
       }
     } catch (e: any) {}
@@ -68,7 +68,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
 }
 
 export async function loader({ request, context }: LoaderFunctionArgs) {
-  const { env } = context;
+  const env = context.env as any;
   const url = new URL(request.url);
   const customerId = url.searchParams.get('customerId');
   if (!customerId) return data({ wishlist: [] });
@@ -83,7 +83,7 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
   `;
 
   const potentialTokens = [
-    (env as any).SHOPIFY_ADMIN_API_ACCESS_TOKENS,
+    env.SHOPIFY_ADMIN_API_ACCESS_TOKENS,
     env.SHOPIFY_ADMIN_API_ACCESS_TOKEN,
     env.REVIEWS_ADMIN_API_TOKEN,
     env.PRIVATE_STOREFRONT_API_TOKEN
@@ -91,7 +91,7 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
 
   for (const token of potentialTokens) {
     try {
-      const result = await adminApiQuery(shopDomain, token, query, { id: customerId });
+      const result = await adminApiQuery(shopDomain, token, query, { id: customerId }) as any;
       if (!result.errors && result.data?.customer) {
         const wishlistData = result.data.customer.metafield?.value;
         return data({ wishlist: wishlistData ? JSON.parse(wishlistData) : [] });

@@ -1089,7 +1089,7 @@ button.reset:hover:not(:has(> *)) {
 /* Animations */
 /* Account Section Premium Styles */
 .account-page-wrapper {
-  background: #fdfaf5;
+  background: #F9F9F9;
   padding: 60px 0;
   min-height: calc(100vh - 400px);
 }
@@ -1100,7 +1100,7 @@ button.reset:hover:not(:has(> *)) {
   padding: 0 24px;
   display: grid;
   grid-template-columns: 320px 1fr;
-  gap: 32px;
+  gap: 40px;
   align-items: start;
 }
 
@@ -1113,12 +1113,14 @@ button.reset:hover:not(:has(> *)) {
 
 .account-aside {
   background: white;
-  border-radius: 20px;
-  padding: 30px;
-  border: 1.5px solid #f0eee9;
+  border-radius: 24px;
+  padding: 24px;
+  border: 1px solid #f0eee9;
   height: fit-content;
   position: sticky;
   top: 100px;
+  box-shadow: 0 15px 50px rgba(27, 61, 46, 0.04);
+  z-index: 10;
 }
 
 .account-nav {

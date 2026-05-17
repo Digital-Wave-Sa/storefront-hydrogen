@@ -164,48 +164,51 @@ function TopBar({
   };
 
   return (
-    <div className="w-full border-b border-[#234745]/5">
-      <div className="max-w-[1400px] mx-auto px-4 lg:px-6 h-[44px] flex items-center justify-between text-[13px] font-medium text-[#234745]">
+    <div className="w-full bg-[#234745] text-white">
+      <div className="max-w-[1400px] mx-auto px-4 lg:px-6 h-[40px] flex items-center justify-between text-[12px] md:text-[13px] font-medium">
+        
+        {/* RIGHT: Promo badges */}
+        <div className="hidden md:flex items-center gap-8">
+          <div className="flex items-center gap-2 hover:opacity-80 transition-opacity cursor-default">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-90"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>
+            <span className="font-bold">{isEn ? 'Guaranteed Quality' : 'جودة مضمونة'}</span>
+          </div>
+          <div className="flex items-center gap-2 hover:opacity-80 transition-opacity cursor-default">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-90"><rect x="1" y="3" width="15" height="13" /><polygon points="16 8 20 8 23 11 23 16 16 16 16 8" /><circle cx="5.5" cy="18.5" r="2.5" /><circle cx="18.5" cy="18.5" r="2.5" /></svg>
+            <span className="font-bold">{isEn ? 'Fast Delivery' : 'توصيل سريع'}</span>
+          </div>
+          <div className="flex items-center gap-2 hover:opacity-80 transition-opacity cursor-default">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-90"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
+            <span className="font-bold">{isEn ? 'Secure Payment' : 'دفع آمن ومضمون'}</span>
+          </div>
+        </div>
+
         {/* LEFT: Language & Branch */}
         <div className="flex items-center gap-4">
           <Form action="/api/locale" method="post" className="flex items-center" reloadDocument>
             <input type="hidden" name="locale" value={isEn ? 'ar' : 'en'} />
             <input type="hidden" name="returnTo" value={getReturnTo()} />
-            <button type="submit" className="flex items-center gap-1.5 hover:opacity-70 transition-opacity">
-              <span className="font-bold">{isEn ? 'العربية' : 'English'}</span>
-              <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor"><path d="M5 7l5 5 5-5H5z" /></svg>
+            <button type="submit" className="flex items-center gap-1.5 hover:opacity-80 transition-opacity font-normal text-[#FEF8EB]">
+              <span>{isEn ? 'العربية' : 'English'}</span>
+              <svg width="10" height="10" viewBox="0 0 20 20" fill="currentColor" className="opacity-70"><path d="M5 7l5 5 5-5H5z" /></svg>
             </button>
           </Form>
 
           <button 
             onClick={() => setModalOpen(true)}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-[#234745]/20 bg-white/40 text-[12px] font-bold hover:bg-white transition-all shadow-sm"
+            className="flex items-center gap-4 px-6 py-1.5 rounded-full bg-[#B2C4C0]/50 border border-[#234745]/30 text-[12px] md:text-[13px] font-bold hover:bg-[#B2C4C0]/70 transition-all text-[#234745]"
           >
-            <div className="w-1.5 h-1.5 rounded-full bg-green-500 shadow-[0_0_5px_rgba(34,197,94,0.5)]" />
-            <span className="truncate max-w-[120px]">
-              {fulfillmentType === 'delivery' && selectedAddressName 
-                ? (isEn ? `Delivery: ${selectedAddressName}` : `توصيل: ${selectedAddressName}`) 
-                : (selectedLocationName || (isEn ? 'Select Branch' : 'فرع العليا'))
-              }
-            </span>
-            <svg width="10" height="10" viewBox="0 0 20 20" fill="currentColor"><path d="M5 7l5 5 5-5H5z" /></svg>
+            <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor" className="opacity-80"><path d="M5 7l5 5 5-5H5z" /></svg>
+            <div className="relative">
+              <span className="truncate max-w-[120px]">
+                {fulfillmentType === 'delivery' && selectedAddressName 
+                  ? (isEn ? `Delivery: ${selectedAddressName}` : `توصيل: ${selectedAddressName}`) 
+                  : (selectedLocationName || (isEn ? 'Select Branch' : 'فرع العليا'))
+                }
+              </span>
+              <div className="absolute -top-1.5 -right-2.5 w-2.5 h-2.5 rounded-full bg-[#4ADE80] shadow-[0_0_8px_rgba(74,222,128,0.4)]" />
+            </div>
           </button>
-        </div>
-
-        {/* RIGHT: Promo badges */}
-        <div className="hidden md:flex items-center gap-6 opacity-80">
-          <div className="flex items-center gap-2">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-            <span className="font-bold">{isEn ? 'Guaranteed Quality' : 'جودة مضمونة'}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M5 10l-2 2h19l-2-2m-15 0l2-2h11l2 2m-13 0v10h11v-10m-13 0h13"/></svg>
-            <span className="font-bold">{isEn ? 'Fast Delivery' : 'توصيل سريع'}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-            <span className="font-bold">{isEn ? 'Secure Payment' : 'دفع آمن ومضمون'}</span>
-          </div>
         </div>
       </div>
       

@@ -98,6 +98,8 @@ export default function Acccount() {
   );
 }
 
+import {AccountProfileHeader} from '~/components/account/AccountProfileHeader';
+
 function AccountLayout({
   customer,
   isAdmin,
@@ -111,41 +113,17 @@ function AccountLayout({
 
   return (
     <div className="account-page-wrapper">
-      <div className="account-container">
-        <aside className="account-aside">
-          <div className="account-profile-summary">
-            <div className="flex items-center gap-4">
-              <div className="profile-initials">
-                {(customer.firstName?.[0] || customer.email?.[0] || 'U').toUpperCase()}
-              </div>
-              <div className="profile-info">
-                <h3>{customer.firstName ? `${customer.firstName} ${customer.lastName}` : 'أهلاً بك!'}</h3>
-                <p>{customer.email}</p>
-              </div>
-            </div>
-            
-            {/* Loyalty Points UI */}
-            <div className="mt-4 pt-4 border-t border-[#f0ece8] flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-[#fcfaf8] border border-[#f0ece8] flex items-center justify-center text-[14px]">
-                  ⭐
-                </div>
-                <div>
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none mb-1">
-                    {isEn ? 'Available Points' : 'النقاط المتاحة'}
-                  </p>
-                  <p className="text-[18px] font-black text-[#234745] leading-none font-en">
-                    2,450
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-          <AcccountMenu customer={customer} isAdmin={isAdmin} />
-        </aside>
-        <main className="account-main">
-          {children}
-        </main>
+      <div className="max-w-[1200px] mx-auto px-4 md:px-6">
+        <AccountProfileHeader customer={customer} isEn={isEn} />
+        
+        <div className="account-container !mt-0 !pt-0">
+          <nav className="account-aside">
+            <AcccountMenu customer={customer} isAdmin={isAdmin} />
+          </nav>
+          <main className="account-main">
+            {children}
+          </main>
+        </div>
       </div>
     </div>
   );
@@ -155,91 +133,119 @@ function AcccountMenu({ customer, isAdmin }: { customer: CustomerFragment; isAdm
   const isEn = useLocation().pathname.includes('/en/');
   const localePrefix = isEn ? '/en' : '';
 
-  return (
-    <nav className="account-nav" role="navigation">
-      <NavLink
-        to={`${localePrefix}/account/orders`}
-        className={({ isActive }) => `account-nav-item ${isActive ? 'active' : ''}`}
-      >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <rect x="2" y="3" width="20" height="14" rx="2" strokeLinecap="round" strokeLinejoin="round" />
-          <path d="M8 21h8" strokeLinecap="round" strokeLinejoin="round" />
-          <path d="M12 17v4" strokeLinecap="round" strokeLinejoin="round" />
+  const menuItems = [
+    {
+      to: `${localePrefix}/account`,
+      label: isEn ? 'Dashboard' : 'لوحة التحكم',
+      icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <rect x="3" y="3" width="7" height="7" rx="1" />
+          <rect x="14" y="3" width="7" height="7" rx="1" />
+          <rect x="14" y="14" width="7" height="7" rx="1" />
+          <rect x="3" y="14" width="7" height="7" rx="1" />
         </svg>
-        {isEn ? 'Orders' : 'الطلبات'}
-      </NavLink>
-
-      <NavLink
-        to={`${localePrefix}/account/profile`}
-        className={({ isActive }) => `account-nav-item ${isActive ? 'active' : ''}`}
-      >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
-          <circle cx="12" cy="7" r="4" />
+      ),
+      end: true
+    },
+    {
+      to: `${localePrefix}/account/orders`,
+      label: isEn ? 'My Orders' : 'طلباتي',
+      icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4H6z" />
+          <line x1="3" y1="6" x2="21" y2="6" />
+          <path d="M16 10a4 4 0 01-8 0" />
         </svg>
-        {isEn ? 'Profile' : 'الملف الشخصي'}
-      </NavLink>
-
-      <NavLink
-        to={`${localePrefix}/account/addresses`}
-        className={({ isActive }) => `account-nav-item ${isActive ? 'active' : ''}`}
-      >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      )
+    },
+    {
+      to: `${localePrefix}/account/wishlist`,
+      label: isEn ? 'Favorites' : 'المفضلة',
+      icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" />
+        </svg>
+      )
+    },
+    {
+      to: `${localePrefix}/account/addresses`,
+      label: isEn ? 'Addresses' : 'عناوين التوصيل',
+      icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" />
           <circle cx="12" cy="10" r="3" />
         </svg>
-        {isEn ? 'Addresses' : 'العناوين'}
-      </NavLink>
-
-      <NavLink
-        to={`${localePrefix}/account/notification-preferences`}
-        className={({ isActive }) => `account-nav-item ${isActive ? 'active' : ''}`}
-      >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" strokeLinecap="round" strokeLinejoin="round" />
-          <path d="M13.73 21a2 2 0 01-3.46 0" strokeLinecap="round" strokeLinejoin="round" />
+      )
+    },
+    {
+      to: `${localePrefix}/account/payments`,
+      label: isEn ? 'Payment Methods' : 'طرق الدفع',
+      icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <rect x="1" y="4" width="22" height="16" rx="2" />
+          <line x1="1" y1="10" x2="23" y2="10" />
         </svg>
-        {isEn ? 'Notifications' : 'الإشعارات'}
-      </NavLink>
-
-      <NavLink
-        to={`${localePrefix}/account/wishlist`}
-        className={({ isActive }) => `account-nav-item ${isActive ? 'active' : ''}`}
-      >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M20.8 4.6a5.5 5.5 0 00-7.7 0l-1.1 1-1.1-1a5.5 5.5 0 00-7.8 7.8l1 1 7.9 7.9 7.9-7.9 1-1a5.5 5.5 0 000-7.8z" />
+      )
+    },
+    {
+      to: `${localePrefix}/account/profile`,
+      label: isEn ? 'Personal Information' : 'المعلومات الشخصية',
+      icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
+          <circle cx="12" cy="7" r="4" />
         </svg>
-        {isEn ? 'Wishlist' : 'المفضلة'}
-      </NavLink>
+      )
+    },
+    {
+      to: `${localePrefix}/account/notification-preferences`,
+      label: isEn ? 'Notifications' : 'الاشعارات',
+      icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" />
+          <path d="M13.73 21a2 2 0 01-3.46 0" />
+        </svg>
+      )
+    }
+  ];
 
-      {/* Manager Tools */}
+  return (
+    <nav className="account-nav-premium" role="navigation">
+      <div className="flex flex-col gap-1">
+        {menuItems.map((item) => (
+          <NavLink
+            key={item.to}
+            to={item.to}
+            end={item.end}
+            className={({ isActive }) => `
+              flex items-center justify-between px-4 py-3.5 rounded-[14px] transition-all duration-200
+              ${isActive 
+                ? 'bg-[#FEF8EB] text-[#234745] font-bold shadow-sm' 
+                : 'text-gray-400 hover:bg-gray-50 hover:text-gray-600 font-medium'}
+            `}
+          >
+            <span className="text-[14px]">{item.label}</span>
+            <div className={`opacity-80`}>{item.icon}</div>
+          </NavLink>
+        ))}
+      </div>
+
+      <div className="mt-4 pt-4 border-t border-gray-100">
+        <Logout isEn={isEn} />
+      </div>
+
+      {/* Manager Tools (Optional section if needed) */}
       {isAdmin && (
-        <>
-          <div className="mt-8 mb-2 px-6 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-            {isEn ? 'Manager Tools' : 'أدوات الإدارة'}
-          </div>
-
-          <NavLink
+        <div className="mt-6 pt-4 border-t border-gray-100">
+           <NavLink
             to={`${localePrefix}/account/dashboard`}
-            className={({ isActive }) => `account-nav-item ${isActive ? 'active' : ''}`}
+            className="flex items-center justify-between px-4 py-3 text-gray-400 hover:text-[#d4a06a] transition-all"
           >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" /><polyline points="9 22 9 12 15 12 15 22" /></svg>
-            {isEn ? 'Branch Manager' : 'مدير الفروع'}
+            <span className="text-[12px] font-bold uppercase tracking-wider">{isEn ? 'Admin Panel' : 'لوحة الإدارة'}</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
           </NavLink>
-
-          <NavLink
-            to={`${localePrefix}/account/promotions`}
-            className={({ isActive }) => `account-nav-item ${isActive ? 'active' : ''}`}
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z" /><line x1="7" y1="7" x2="7.01" y2="7" /></svg>
-            {isEn ? 'Promotions' : 'العروض والقسائم'}
-          </NavLink>
-        </>
+        </div>
       )}
-
-      <Logout isEn={isEn} />
     </nav>
   );
 }

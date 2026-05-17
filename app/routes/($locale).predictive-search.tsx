@@ -108,7 +108,7 @@ const PREDICTIVE_SEARCH_QUERY = `#graphql
     $country: CountryCode
     $language: LanguageCode
   ) @inContext(country: $country, language: $language) {
-    predictiveSearch(query: $query, limit: $limit, types: [PRODUCT, QUERY, COLLECTION]) {
+    predictiveSearch(query: $query, limit: $limit, types: [PRODUCT, QUERY, COLLECTION], searchableFields: [TITLE, PRODUCT_TYPE, VENDOR, VARIANTS_SKU]) {
       queries {
         text
         styledText

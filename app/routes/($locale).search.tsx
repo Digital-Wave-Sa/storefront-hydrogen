@@ -75,17 +75,20 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
     };
   }
 
-  let finalQuery = searchTerm;
+  // Implement Partial-match & exact-match logic + relevance tuning for SKU and general terms
+  let baseQuery = `(${searchTerm} OR ${searchTerm}* OR sku:${searchTerm} OR sku:${searchTerm}*)`;
+  let finalQuery = baseQuery;
+
   const activeCustomTag = searchParams.get('tag');
   if (activeCustomTag) {
-    finalQuery += ` tag:${activeCustomTag}`;
+    finalQuery += ` AND tag:${activeCustomTag}`;
   }
   const activeCollection = searchParams.get('collection');
   if (activeCollection) {
     // There's no native collection filter in standard Shopify search API.
     // Instead of forcing a strict `product_type` match which often yields 0 results,
     // we inject the collection name as a search keyword to let Shopify's algorithm refine the results dynamically.
-    finalQuery += ` ${activeCollection}`;
+    finalQuery += ` AND ${activeCollection}`;
   }
 
   const { storefront } = context;

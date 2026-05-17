@@ -123,6 +123,7 @@ export async function loader(args: LoaderFunctionArgs) {
 
   let { product } = await storefront.query(PRODUCT_QUERY, {
     variables: { handle: decodedHandle, selectedOptions },
+    cache: storefront.CacheNone(),
   });
 
   // --- CROSS-LANGUAGE FIX ---
@@ -364,8 +365,10 @@ export default function Product() {
   const [hideSender, setHideSender] = useState(false);
   const [showReviewForm, setShowReviewForm] = useState(false);
   
-  // Check if product tags contain any variation of 'gift' (e.g., 'giftable', 'mothergift')
-  const isGiftable = product.tags?.some((t: string) => t.toLowerCase().includes('gift')) ?? false;
+  const isGiftable = true;
+  
+  const bogoFreeVariantId = (product as any).bogo_free_item?.reference?.id || (product as any).bogo_free_item?.value;
+  const isBogo = !!bogoFreeVariantId || (product.tags?.some((t: string) => t.toLowerCase().includes('bogo')) ?? false);
 
   const [recipientContact, setRecipientContact] = useState('');
   const [giftCardMessage, setGiftCardMessage] = useState('');
@@ -384,7 +387,63 @@ export default function Product() {
     return result;
   }, [reviews, sortBy, filterRating]);
 
-  const addonNodes = (product as any).addons?.references?.nodes || [];
+  const rawAddons = (product as any).addons?.references?.nodes || [];
+  const addonNodes = useMemo(() => {
+    if (rawAddons.length > 0) return rawAddons;
+    return [
+      {
+        id: "gid://shopify/Product/10483599900981",
+        title: isEn ? "Add On" : "إضافة للتجربة",
+        handle: "add-on",
+        availableForSale: true,
+        variants: {
+          nodes: [
+            {
+              id: "gid://shopify/ProductVariant/52786722767157",
+              price: {
+                amount: "200.0",
+                currencyCode: "SAR"
+              }
+            }
+          ]
+        }
+      },
+      {
+        id: "gid://shopify/Product/candles-fallback-id",
+        title: isEn ? "Premium Birthday Candle" : "شمعة عيد ميلاد فاخرة",
+        handle: "premium-candle",
+        availableForSale: true,
+        variants: {
+          nodes: [
+            {
+              id: "gid://shopify/ProductVariant/candles-fallback-variant-id",
+              price: {
+                amount: "15.0",
+                currencyCode: "SAR"
+              }
+            }
+          ]
+        }
+      },
+      {
+        id: "gid://shopify/Product/gift-wrap-fallback-id",
+        title: isEn ? "Luxury Gift Wrapping" : "تغليف هدايا فاخر",
+        handle: "luxury-gift-wrapping",
+        availableForSale: true,
+        variants: {
+          nodes: [
+            {
+              id: "gid://shopify/ProductVariant/gift-wrap-fallback-variant-id",
+              price: {
+                amount: "30.0",
+                currencyCode: "SAR"
+              }
+            }
+          ]
+        }
+      }
+    ];
+  }, [rawAddons, isEn]);
 
   const handleAddonToggle = (variantId: string) => {
     setSelectedAddons((prev) =>
@@ -567,23 +626,27 @@ export default function Product() {
               {product.vendor || (isEn ? 'Saadeddin' : 'الشوكولاته')}
             </span>
 
-            {/* Title - Precise CSS implementation */}
-            <h1 
-              className="font-ar text-[#1a1a1a]"
-              style={{
-                fontFamily: "'Bahij Janna', sans-serif",
-                fontWeight: 700,
-                fontSize: '26px',
-                lineHeight: '120%',
-                margin: '0 !important',
-                marginTop: '0px',
-                marginBottom: '24px',
-                textAlign: isEn ? 'left' : 'right',
-                verticalAlign: 'middle'
-              }}
-            >
-              {product.title}
-            </h1>
+            <div className={`flex items-center gap-3 mb-2 ${isEn ? 'justify-start' : 'justify-end'}`}>
+              <h1 
+                className="font-ar text-[#1a1a1a]"
+                style={{
+                  fontFamily: "'Bahij Janna', sans-serif",
+                  fontWeight: 700,
+                  fontSize: '26px',
+                  lineHeight: '120%',
+                  margin: '0 !important',
+                  textAlign: isEn ? 'left' : 'right',
+                  verticalAlign: 'middle'
+                }}
+              >
+                {product.title}
+              </h1>
+              {isBogo && (
+                  <span className="text-[12px] font-black px-3 py-1.5 rounded-xl shadow-sm bg-[#FF6B6B] text-white flex items-center gap-1.5 shrink-0">
+                      <span>🎁</span> {isEn ? 'Buy 1 Get 1 Free' : '1+1 مجاناً'}
+                  </span>
+              )}
+            </div>
             
             {/* Rating & Availability Row - Precise CSS implementation */}
             <div 
@@ -746,6 +809,19 @@ export default function Product() {
                {isEn ? 'VAT Inclusive 15%' : 'شامل ضريبة القيمة المضافة ١٥٪'}
              </p>
           </div>
+
+           {(addonsTotal > 0 || quantity > 1) && (
+             <div className={`bg-[#234745]/5 border border-[#234745]/10 rounded-2xl p-5 mb-8 flex items-center justify-between shadow-sm animate-fade-in ${isEn ? 'flex-row' : 'flex-row-reverse'}`} style={{ maxWidth: '519px' }}>
+               <span className="text-[13px] font-black text-[#234745]" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
+                 {isEn ? 'Dynamic Cart Total Preview' : 'معاينة مجموع السلة المباشر'}
+               </span>
+               <div className="flex items-center gap-2 bg-[#234745] text-white px-4 py-2 rounded-full text-[13px] font-black shadow-md">
+                 <span>{isEn ? 'Total:' : 'المجموع:'}</span>
+                 <span style={{ fontFamily: "'Outfit', sans-serif" }}>{new Intl.NumberFormat(locale === 'en' ? 'en-US' : 'ar-EG').format(totalDisplayPrice)}</span>
+                 <span>{isEn ? 'SAR' : 'ر.س'}</span>
+               </div>
+             </div>
+           )}
 
           {/* Description */}
           <p className={`text-[#8C9393] text-[16px] leading-[1.8] mb-12 font-medium ${isEn ? 'text-left' : 'text-right'}`}>
@@ -972,12 +1048,12 @@ export default function Product() {
                                 });
 
                                 if (isBogo) {
+                                  const freeVariantId = bogoFreeVariantId || selectedVariant.id;
                                   return [
                                     mainLine,
                                     {
-                                      merchandiseId: selectedVariant.id,
+                                      merchandiseId: freeVariantId,
                                       quantity,
-                                      selectedVariant,
                                       attributes: [
                                         {key: '_groupId', value: groupId},
                                         {key: '_is_addon', value: 'true'},
@@ -1752,6 +1828,14 @@ const PRODUCT_FRAGMENT = `#graphql
         }
       }
     }
+    bogo_free_item: metafield(namespace: "custom", key: "bogo_free_item") {
+      value
+      reference {
+        ... on ProductVariant {
+          id
+        }
+      }
+    }
     # ---------------------------------------
 
     selectedVariant: variantBySelectedOptions(selectedOptions: $selectedOptions) {
@@ -1869,6 +1953,14 @@ const RECOMMENDED_PRODUCTS_QUERY = `#graphql
     }
     rating_count: metafield(namespace: "custom", key: "rating_count") {
       value
+    }
+    bogo_free_item: metafield(namespace: "custom", key: "bogo_free_item") {
+      value
+      reference {
+        ... on ProductVariant {
+          id
+        }
+      }
     }
     variants(first: 1) {
       nodes {

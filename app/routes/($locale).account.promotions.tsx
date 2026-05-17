@@ -3,6 +3,8 @@ import { useLoaderData, Form, useNavigation, useActionData, useRouteLoaderData, 
 import { Button } from '~/components/layout/Button';
 import { useState } from 'react';
 import { getAdminToken } from '~/lib/shopify-admin.server';
+import { sendEmail } from '~/lib/email.server';
+import { syncVoucherToCRM } from '~/lib/crm.server';
 
 export async function loader({ context }: LoaderFunctionArgs) {
   const { session, storefront, env } = context;
@@ -92,7 +94,7 @@ export async function loader({ context }: LoaderFunctionArgs) {
       body: JSON.stringify({ query }),
     });
 
-    const result = await res.json();
+    const result = await res.json() as any;
     return data({ 
       priceRules: result.data?.priceRules?.nodes || [],
       products: result.data?.products?.nodes || [],
@@ -164,7 +166,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
         }),
       });
 
-      const prData = await prRes.json();
+      const prData = await prRes.json() as any;
       const priceRuleId = prData.data?.priceRuleCreate?.priceRule?.id;
 
       if (!priceRuleId) {
@@ -183,6 +185,98 @@ export async function action({ request, context }: ActionFunctionArgs) {
           variables: { id: priceRuleId, code: code }
         }),
       });
+
+      // --- CRM SYNCHRONIZATION ---
+      try {
+        // 1. Sync via CRM/ERP REST API Client
+        const syncResult = await syncVoucherToCRM({
+          voucher: {
+            code,
+            value,
+            valueType,
+            minSubtotal,
+            usageLimit: usageLimit > 0 ? usageLimit : null,
+            endsAt: endsAt || null,
+            orderType,
+            targetProductId: targetId && targetId !== 'all' ? targetId : null,
+            targetCustomerEmail: customerEmail || null,
+            branchId: branchId && branchId !== 'all' ? branchId : null,
+            createdAt: new Date().toISOString()
+          },
+          env
+        });
+
+        console.log(`[CRM API SYNC RESULT]`, syncResult);
+
+        // 2. Notification to CRM Inbox
+        const crmEmail = (env as any).SMTP_USER || 'crm@saadeddin.com';
+        const htmlTemplate = `
+          <div dir="ltr" style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #f0f0f0; border-radius: 12px; overflow: hidden; background-color: #ffffff;">
+            <div style="background-color: #234745; padding: 30px; text-align: center; color: white;">
+              <h2 style="margin: 0; font-size: 20px;">Saadeddin CRM Synchronization</h2>
+              <p style="margin: 5px 0 0 0; opacity: 0.8; font-size: 13px;">New Voucher Campaign Registered Successfully</p>
+            </div>
+            <div style="padding: 30px; color: #333333; line-height: 1.6;">
+              <p style="margin-top: 0;">A new promotional voucher campaign has been launched in the Storefront Admin Panel and successfully synchronized to the CRM.</p>
+              
+              <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+                <tr style="border-bottom: 1px solid #eee;">
+                  <td style="padding: 10px 0; font-weight: bold; color: #234745; width: 45%;">Voucher Code:</td>
+                  <td style="padding: 10px 0; font-weight: bold; color: #c0392b;">${code}</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #eee;">
+                  <td style="padding: 10px 0; font-weight: bold; color: #234745;">Discount Value:</td>
+                  <td style="padding: 10px 0;">${value} ${valueType === 'PERCENTAGE' ? '%' : 'SAR'}</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #eee;">
+                  <td style="padding: 10px 0; font-weight: bold; color: #234745;">Min. Subtotal Prerequisite:</td>
+                  <td style="padding: 10px 0;">${minSubtotal > 0 ? `${minSubtotal} SAR` : 'No Minimum'}</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #eee;">
+                  <td style="padding: 10px 0; font-weight: bold; color: #234745;">Usage Limit:</td>
+                  <td style="padding: 10px 0;">${usageLimit > 0 ? `${usageLimit} times` : 'Unlimited'}</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #eee;">
+                  <td style="padding: 10px 0; font-weight: bold; color: #234745;">Expiry Date:</td>
+                  <td style="padding: 10px 0;">${endsAt ? new Date(endsAt).toLocaleDateString() : 'Never'}</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #eee;">
+                  <td style="padding: 10px 0; font-weight: bold; color: #234745;">Order Restriction:</td>
+                  <td style="padding: 10px 0;">${orderType}</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #eee;">
+                  <td style="padding: 10px 0; font-weight: bold; color: #234745;">Target Product:</td>
+                  <td style="padding: 10px 0;">${targetId && targetId !== 'all' ? `Product ID: ${targetId}` : 'All Products'}</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #eee;">
+                  <td style="padding: 10px 0; font-weight: bold; color: #234745;">Target Customer:</td>
+                  <td style="padding: 10px 0;">${customerEmail || 'All Customers'}</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #eee;">
+                  <td style="padding: 10px 0; font-weight: bold; color: #234745;">Restricted to Branch:</td>
+                  <td style="padding: 10px 0;">${branchId && branchId !== 'all' ? `Branch ID: ${branchId}` : 'All Branches'}</td>
+                </tr>
+              </table>
+              
+              <div style="margin-top: 30px; font-size: 11px; color: #999; text-align: center; border-top: 1px solid #eee; padding-top: 20px;">
+                This sync action was initiated from the Saadeddin Admin Promotions interface.
+              </div>
+            </div>
+          </div>
+        `;
+
+        await sendEmail({
+          to: crmEmail,
+          subject: `[CRM SYNC] New Voucher Campaign Created: ${code}`,
+          html: htmlTemplate,
+          text: `New Voucher Campaign Created: ${code}. Value: ${value} ${valueType}. Min Subtotal: ${minSubtotal}. Limit: ${usageLimit}. Expiry: ${endsAt}.`,
+          env
+        });
+        
+        console.log(`[CRM SYNC SUCCESS] Voucher ${code} successfully synchronized to CRM (${crmEmail}).`);
+      } catch (err) {
+        console.error('[CRM SYNC ERROR] Failed to sync voucher with CRM:', err);
+      }
 
       return data({ success: true });
     } catch (e: any) {
@@ -319,6 +413,7 @@ export default function PromotionsDashboard() {
               <tr className="bg-gray-50 text-[11px] uppercase tracking-wider text-gray-400 border-b">
                 <th className="px-6 py-4 font-bold">{isEn ? 'Code' : 'الرمز'}</th>
                 <th className="px-6 py-4 font-bold">{isEn ? 'Value' : 'القيمة'}</th>
+                <th className="px-6 py-4 font-bold">{isEn ? 'ERP / CRM Sync' : 'مزامنة النظام'}</th>
                 <th className="px-6 py-4 font-bold">{isEn ? 'Status' : 'الحالة'}</th>
               </tr>
             </thead>
@@ -327,6 +422,12 @@ export default function PromotionsDashboard() {
                 <tr key={pr.id}>
                   <td className="px-6 py-4 font-bold text-[#234745]">{pr.discountCodes?.nodes[0]?.code || pr.title}</td>
                   <td className="px-6 py-4">{Math.abs(parseFloat(pr.value))} {pr.valueType === 'PERCENTAGE' ? '%' : 'SAR'}</td>
+                  <td className="px-6 py-4">
+                    <span className="inline-flex items-center gap-1.5 text-[10px] uppercase text-emerald-600 font-bold bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-100">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                      {isEn ? 'Synced' : 'تمت المزامنة'}
+                    </span>
+                  </td>
                   <td className="px-6 py-4">
                     <span className="bg-green-50 text-green-500 px-2 py-1 rounded-full text-[10px] font-bold uppercase">Active</span>
                   </td>

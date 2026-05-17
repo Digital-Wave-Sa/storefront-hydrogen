@@ -7,6 +7,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
   let shopDomain = rawShop.includes('myshopify.com') ? rawShop : `${rawShop.split('.')[0]}.myshopify.com`;
 
   const potentialTokens = [
+      env.WISHLIST_ADMIN_TOKEN,
       env.SHOPIFY_ADMIN_API_ACCESS_TOKENS,
       env.SHOPIFY_ADMIN_API_ACCESS_TOKEN,
       env.REVIEWS_ADMIN_API_TOKEN,
@@ -14,6 +15,9 @@ export async function action({ request, context }: ActionFunctionArgs) {
   ].filter(Boolean) as string[];
 
   const { customerId, wishlist } = await request.json() as any;
+  if (!customerId) {
+    return data({ wishlist, note: 'Guest wishlist, not synced to Shopify' });
+  }
   const mutation = `#graphql
     mutation customerUpdate($input: CustomerInput!) {
       customerUpdate(input: $input) {
@@ -35,8 +39,12 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
       if (!result.errors && !result.data?.customerUpdate?.userErrors?.length) {
         return data(result);
+      } else {
+        console.error('Wishlist Admin API error with token:', token.substring(0, 10), JSON.stringify(result.errors || result.data?.customerUpdate?.userErrors));
       }
-    } catch (e: any) {}
+    } catch (e: any) {
+      console.error('Wishlist sync exception with token:', token.substring(0, 10), e.message || e);
+    }
   }
 
   // 2. Try OAuth exchange as ultimate fallback
@@ -45,6 +53,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
   if (clientId && clientSecret) {
     try {
+      console.log('Attempting OAuth token exchange with clientId:', clientId.substring(0, 8));
       const authResponse = await fetch(`https://${shopDomain}/admin/oauth/access_token`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -52,6 +61,8 @@ export async function action({ request, context }: ActionFunctionArgs) {
       });
       
       const authData = await authResponse.json() as any;
+      console.log('OAuth token exchange response:', JSON.stringify(authData));
+      
       if (authData.access_token) {
         const result = await adminApiQuery(shopDomain, authData.access_token, mutation, {
           input: {
@@ -59,9 +70,16 @@ export async function action({ request, context }: ActionFunctionArgs) {
             metafields: [{ namespace: "custom", key: "wishlist", type: "json", value: JSON.stringify(wishlist) }],
           },
         }) as any;
-        return data(result);
+        
+        if (!result.errors && !result.data?.customerUpdate?.userErrors?.length) {
+          return data(result);
+        } else {
+          console.error('Wishlist Admin API error with OAuth token:', JSON.stringify(result.errors || result.data?.customerUpdate?.userErrors));
+        }
       }
-    } catch (e: any) {}
+    } catch (e: any) {
+      console.error('OAuth token exchange error:', e.message || e);
+    }
   }
 
   return data({ error: 'Sync failed' }, { status: 401 });
@@ -83,6 +101,7 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
   `;
 
   const potentialTokens = [
+    env.WISHLIST_ADMIN_TOKEN,
     env.SHOPIFY_ADMIN_API_ACCESS_TOKENS,
     env.SHOPIFY_ADMIN_API_ACCESS_TOKEN,
     env.REVIEWS_ADMIN_API_TOKEN,

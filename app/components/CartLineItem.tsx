@@ -30,6 +30,7 @@ export function CartLineItem({
   const childrenLabelId = `cart-line-children-${id}`;
   const rootData = useRouteLoaderData('root') as any;
   const isEn = rootData?.consent?.language?.toLowerCase() === 'en';
+  const isFreeItem = line.attributes?.some((attr: any) => attr.key === '_is_free' && attr.value === 'true') || false;
 
   // Filter out default title option
   const validOptions = selectedOptions?.filter((opt: any) => opt.value !== 'Default Title') || [];
@@ -128,20 +129,37 @@ export function CartLineItem({
         {/* Price & Quantity Column */}
         <div className={`flex flex-col gap-4 shrink-0 ${layout === 'aside' ? 'items-end' : 'items-end w-auto'}`}>
            <div className="flex flex-col items-end">
-             {line?.cost?.compareAtAmountPerQuantity && (
-               <div className="relative mb-1">
-                 <span className="text-gray-400 text-[13px] font-bold flex items-center gap-1 flex-row-reverse" style={{ fontFamily: "'Outfit', sans-serif" }}>
-                   <SaudiRiyalSymbol className="w-[14px] h-auto text-gray-400" />
-                   <span>{parseFloat(line.cost.compareAtAmountPerQuantity.amount).toFixed(2)}</span>
-                 </span>
-                 <div className="absolute top-1/2 left-0 right-0 h-[1.5px] bg-gray-400 -translate-y-1/2" />
-               </div>
-             )}
-             <div className={`font-black text-[#234745] font-en flex items-center gap-1.5 flex-row-reverse ${layout === 'aside' ? 'text-[16px]' : 'text-[24px]'}`} style={{ fontFamily: "'Outfit', sans-serif" }}>
-               <SaudiRiyalSymbol className="w-[22px] h-auto text-[#234745]" />
-               <span>{parseFloat(line?.cost?.totalAmount?.amount || '0').toFixed(2)}</span>
-             </div>
-           </div>
+              {isFreeItem ? (
+                <>
+                  <div className="relative mb-1">
+                    <span className="text-gray-400 text-[13px] font-bold flex items-center gap-1 flex-row-reverse" style={{ fontFamily: "'Outfit', sans-serif" }}>
+                      <SaudiRiyalSymbol className="w-[14px] h-auto text-gray-400" />
+                      <span>{parseFloat(merchandise?.price?.amount || '0').toFixed(2)}</span>
+                    </span>
+                    <div className="absolute top-1/2 left-0 right-0 h-[1.5px] bg-gray-400 -translate-y-1/2" />
+                  </div>
+                  <div className="text-emerald-600 font-extrabold text-[16px] md:text-[20px] uppercase flex items-center gap-1" style={{ fontFamily: "'Bahij Janna', sans-serif" }}>
+                    {isEn ? 'FREE' : 'مجاناً'}
+                  </div>
+                </>
+              ) : (
+                <>
+                  {line?.cost?.compareAtAmountPerQuantity && (
+                    <div className="relative mb-1">
+                      <span className="text-gray-400 text-[13px] font-bold flex items-center gap-1 flex-row-reverse" style={{ fontFamily: "'Outfit', sans-serif" }}>
+                        <SaudiRiyalSymbol className="w-[14px] h-auto text-gray-400" />
+                        <span>{parseFloat(line.cost.compareAtAmountPerQuantity.amount).toFixed(2)}</span>
+                      </span>
+                      <div className="absolute top-1/2 left-0 right-0 h-[1.5px] bg-gray-400 -translate-y-1/2" />
+                    </div>
+                  )}
+                  <div className={`font-black text-[#234745] font-en flex items-center gap-1.5 flex-row-reverse ${layout === 'aside' ? 'text-[16px]' : 'text-[24px]'}`} style={{ fontFamily: "'Outfit', sans-serif" }}>
+                    <SaudiRiyalSymbol className="w-[22px] h-auto text-[#234745]" />
+                    <span>{parseFloat(line?.cost?.totalAmount?.amount || '0').toFixed(2)}</span>
+                  </div>
+                </>
+              )}
+            </div>
 
            {/* Quantity Column */}
            {layout !== 'aside' && (

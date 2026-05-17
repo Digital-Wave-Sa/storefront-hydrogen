@@ -196,6 +196,14 @@ const RECOMMENDED_PRODUCTS_QUERY = `#graphql
     rating_count: metafield(namespace: "custom", key: "rating_count") {
       value
     }
+    bogo_free_item: metafield(namespace: "custom", key: "bogo_free_item") {
+      value
+      reference {
+        ... on ProductVariant {
+          id
+        }
+      }
+    }
     variants(first: 10) {
       nodes {
         id
@@ -287,6 +295,14 @@ const NEW_ARRIVALS_QUERY = `#graphql
     }
     rating_count: metafield(namespace: "custom", key: "rating_count") {
       value
+    }
+    bogo_free_item: metafield(namespace: "custom", key: "bogo_free_item") {
+      value
+      reference {
+        ... on ProductVariant {
+          id
+        }
+      }
     }
     variants(first: 10) {
       nodes {

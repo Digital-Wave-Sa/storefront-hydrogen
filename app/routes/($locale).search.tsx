@@ -509,6 +509,14 @@ const SEARCH_QUERY = `#graphql
     ratingCount: metafield(namespace: "reviews", key: "rating_count") {
       value
     }
+    bogo_free_item: metafield(namespace: "custom", key: "bogo_free_item") {
+      value
+      reference {
+        ... on ProductVariant {
+          id
+        }
+      }
+    }
     variants(first: 10) {
       nodes {
         id

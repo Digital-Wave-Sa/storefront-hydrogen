@@ -510,6 +510,14 @@ const PRODUCT_ITEM_FRAGMENT = `#graphql
     is_limited_time: metafield(namespace: "custom", key: "is_limited_time") {
       value
     }
+    bogo_free_item: metafield(namespace: "custom", key: "bogo_free_item") {
+      value
+      reference {
+        ... on ProductVariant {
+          id
+        }
+      }
+    }
   }
 ` as const;
 

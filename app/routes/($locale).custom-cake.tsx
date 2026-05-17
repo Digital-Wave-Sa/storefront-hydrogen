@@ -1,5 +1,5 @@
-import { useState, useMemo, useEffect } from 'react';
-import { type MetaFunction, type LoaderFunctionArgs } from 'react-router';
+import { useState, useMemo, useEffect, useCallback } from 'react';
+import { type MetaFunction, type LoaderFunctionArgs, Form } from 'react-router';
 import { useLoaderData } from 'react-router';
 import { ShapeSizeSelector, SHAPES, SIZES } from '~/components/CakeBuilder/ShapeSizeSelector';
 import { FlavorLayerSelector } from '~/components/CakeBuilder/FlavorLayerSelector';
@@ -39,6 +39,7 @@ export async function loader({ context }: LoaderFunctionArgs) {
         language: storefront.i18n.language,
       },
     });
+    
     return { locale, cakeAttributes: metaobjects.nodes };
   } catch (error) {
     console.error('Failed to fetch cake attributes:', error);
@@ -49,6 +50,8 @@ export async function loader({ context }: LoaderFunctionArgs) {
 export default function CustomCakeBuilder() {
   const { locale, cakeAttributes } = useLoaderData<typeof loader>();
   const isEn = locale === 'en';
+  const [orderState, setOrderState] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
+  const [orderError, setOrderError] = useState('');
   
   const [currentStep, setCurrentStep] = useState(1);
   const totalSteps = 9;
@@ -99,6 +102,11 @@ export default function CustomCakeBuilder() {
     id: 'chocolate',
     nameEn: 'Belgian Chocolate',
     nameAr: 'شوكولاتة بلجيكية',
+    color: '#3d2b1f',
+    secondaryColor: '#2a1d15',
+    descriptionEn: 'Rich, moist dark chocolate sponge',
+    descriptionAr: 'كيكة الشوكولاتة الداكنة الغنية والطرية',
+    image: '/images/chocolate-img.png'
   });
   const [selectedColor, setSelectedColor] = useState(dynamicColors[0] || COLORS[6]); 
   const [layers, setLayers] = useState(2);
@@ -114,7 +122,7 @@ export default function CustomCakeBuilder() {
     const savedDraft = localStorage.getItem('saadeddin_cake_draft');
     if (savedDraft) {
       try {
-        const draft = JSON.parse(savedDraft);
+        const draft = JSON.parse(savedDraft) as any;
         // Map saved IDs back to objects from dynamic lists
         const shape = dynamicShapes.find((s: any) => s.id === draft.shapeId) || dynamicShapes[0];
         const size = SIZES.find(s => s.id === draft.sizeId) || SIZES[1];
@@ -129,6 +137,7 @@ export default function CustomCakeBuilder() {
         setSelectedColor(color);
         setSelectedTopping(topping);
         setCakeMessage(draft.message || '');
+        setUploadedImage(draft.uploadedImage || null);
         setCurrentStep(draft.step || 1);
         
         setShowDraftToast(true);
@@ -153,11 +162,32 @@ export default function CustomCakeBuilder() {
       toppingId: selectedTopping.id,
       message: cakeMessage,
       step: currentStep,
+      uploadedImage,
       timestamp: Date.now()
     };
     
     localStorage.setItem('saadeddin_cake_draft', JSON.stringify(draft));
-  }, [selectedShape, selectedSize, selectedFlavor, layers, selectedColor, selectedTopping, cakeMessage, currentStep, isHydrated]);
+  }, [selectedShape, selectedSize, selectedFlavor, layers, selectedColor, selectedTopping, cakeMessage, currentStep, uploadedImage, isHydrated]);
+
+  // --- IMAGE UPLOAD HANDLERS ---
+  const handleImageUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        alert(isEn ? 'File is too large (max 5MB)' : 'الملف كبير جداً (الأقصى ٥ ميجابايت)');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setUploadedImage(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  }, [isEn]);
+
+  const handleRemoveImage = useCallback(() => {
+    setUploadedImage(null);
+  }, []);
 
   // --- PRICE CALCULATION ---
   const basePrice = 150.00;
@@ -183,6 +213,57 @@ export default function CustomCakeBuilder() {
     { id: 8, en: 'Image', ar: 'الصورة' },
     { id: 9, en: 'Review', ar: 'المراجعة' },
   ];
+
+  // --- DRAFT ORDER SUBMISSION ---
+  const handleOrderSubmit = useCallback(async () => {
+    if (orderState === 'submitting') return;
+    
+    setOrderState('submitting');
+    setOrderError('');
+
+    try {
+      const response = await fetch('/api/custom-cake-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          shape: isEn ? selectedShape.nameEn : selectedShape.nameAr,
+          size: isEn ? selectedSize.nameEn : selectedSize.nameAr,
+          flavor: isEn ? selectedFlavor.nameEn : selectedFlavor.nameAr,
+          layers,
+          color: isEn ? selectedColor.nameEn : selectedColor.nameAr,
+          topping: isEn ? selectedTopping.nameEn : selectedTopping.nameAr,
+          message: cakeMessage,
+          uploadedImage: uploadedImage ? 'yes' : null,
+          subtotal,
+          vatAmount,
+          finalTotal,
+          isEn,
+        }),
+      });
+
+      const result = await response.json() as any;
+
+      if (result.success && result.checkoutUrl) {
+        setOrderState('success');
+        // Clear draft after successful order
+        localStorage.removeItem('saadeddin_cake_draft');
+        // Redirect to Shopify checkout after brief success animation
+        setTimeout(() => {
+          window.location.href = result.checkoutUrl;
+        }, 1200);
+      } else {
+        setOrderState('error');
+        setOrderError(
+          result.error || (isEn ? 'Something went wrong. Please try again.' : 'حدث خطأ. يرجى المحاولة مرة أخرى.')
+        );
+      }
+    } catch (err: any) {
+      setOrderState('error');
+      setOrderError(
+        isEn ? 'Network error. Please check your connection.' : 'خطأ في الشبكة. يرجى التحقق من اتصالك.'
+      );
+    }
+  }, [orderState, isEn, selectedShape, selectedSize, selectedFlavor, layers, selectedColor, selectedTopping, cakeMessage, uploadedImage, subtotal, vatAmount, finalTotal]);
 
   return (
     <div className="min-h-screen bg-[#FDF5E6] pt-12 pb-20" dir={isEn ? 'ltr' : 'rtl'}>
@@ -224,11 +305,15 @@ export default function CustomCakeBuilder() {
             {isEn ? 'Choose the size, flavor, and decoration with ease' : 'إختر الحجم والنكهة والتزيين ورسالتك الخاصة بكل سهولة'}
           </p>
         </div>
-          <div className="mt-6 md:mt-0">
-             <button className="bg-white/80 backdrop-blur-sm px-6 py-2 rounded-full border border-gray-100 shadow-sm flex items-center gap-2 text-[#234745] font-bold text-sm">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-                {isEn ? 'العربية' : 'English'}
-             </button>
+          <div className="mt-6 md:mt-0 flex justify-center mb-6">
+             <Form action="/api/locale" method="post" reloadDocument>
+               <input type="hidden" name="locale" value={isEn ? 'ar' : 'en'} />
+               <input type="hidden" name="returnTo" value={isEn ? '/custom-cake' : '/en/custom-cake'} />
+               <button type="submit" className="bg-white/80 backdrop-blur-sm px-6 py-2 rounded-full border border-gray-100 shadow-sm flex items-center gap-2 text-[#234745] font-bold text-sm hover:bg-[#234745]/5 transition-all">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                  {isEn ? 'العربية' : 'English'}
+               </button>
+             </Form>
           </div>
 
         {/* Progress Tracker Bar - EXPANDED TO 9 STEPS */}
@@ -416,7 +501,6 @@ export default function CustomCakeBuilder() {
                       colors={dynamicColors}
                       selectedColor={selectedColor}
                       onColorChange={setSelectedColor}
-                      title={isEn ? 'Decorations & Colors' : 'التزيين والألوان'}
                     />
                   )}
 
@@ -448,13 +532,73 @@ export default function CustomCakeBuilder() {
                         <h2 className="text-3xl font-black text-[#234745] mb-2">{isEn ? 'Upload Image' : 'رفع صورة'}</h2>
                         <p className="text-gray-400 font-medium">{isEn ? 'Add a photo for edible printing' : 'أضف صورة للطباعة الصالحة للأكل'}</p>
                       </div>
-                      <div className="border-4 border-dashed border-gray-100 rounded-[40px] h-[300px] flex flex-col items-center justify-center p-10 group hover:border-[#234745]/30 transition-all cursor-pointer">
-                        <div className="w-20 h-20 bg-[#234745]/5 rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                           <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#234745" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        id="cake-image-upload" 
+                        className="hidden" 
+                        onChange={handleImageUpload} 
+                      />
+
+                      {uploadedImage ? (
+                        <div className="bg-white rounded-[40px] p-6 border-2 border-gray-50 shadow-lg flex flex-col items-center justify-center relative overflow-hidden group">
+                          <div className="relative w-48 h-48 rounded-2xl overflow-hidden border border-gray-100 shadow-inner mb-6">
+                            <img 
+                              src={uploadedImage} 
+                              alt="Uploaded print preview" 
+                              className="w-full h-full object-cover"
+                            />
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                              <span className="text-white font-bold text-xs uppercase tracking-widest">{isEn ? 'Preview Only' : 'معاينة فقط'}</span>
+                            </div>
+                          </div>
+
+                          <div className="flex gap-4">
+                            <button
+                              onClick={() => document.getElementById('cake-image-upload')?.click()}
+                              className="px-6 py-2.5 bg-gray-100 hover:bg-gray-200 text-[#234745] rounded-full text-xs font-bold transition-all uppercase tracking-widest"
+                            >
+                              {isEn ? 'Change Image' : 'تغيير الصورة'}
+                            </button>
+                            <button
+                              onClick={handleRemoveImage}
+                              className="px-6 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-full text-xs font-bold transition-all uppercase tracking-widest"
+                            >
+                              {isEn ? 'Remove' : 'حذف'}
+                            </button>
+                          </div>
                         </div>
-                        <p className="text-[#234745] font-black text-xl mb-2">{isEn ? 'Click to Upload' : 'اضغط للرفع'}</p>
-                        <p className="text-gray-400 font-medium text-sm text-center">{isEn ? 'Support JPG, PNG (Max 5MB)\nBest for round/square tops' : 'يدعم JPG, PNG (بحد أقصى ٥ ميجا)\nالأفضل للأشكال الدائرية والمربعة'}</p>
-                      </div>
+                      ) : (
+                        <div 
+                          onClick={() => document.getElementById('cake-image-upload')?.click()}
+                          onDragOver={(e) => e.preventDefault()}
+                          onDrop={(e) => {
+                            e.preventDefault();
+                            const file = e.dataTransfer.files?.[0];
+                            if (file && file.type.startsWith('image/')) {
+                              if (file.size > 5 * 1024 * 1024) {
+                                alert(isEn ? 'File is too large (max 5MB)' : 'الملف كبير جداً (الأقصى ٥ ميجابايت)');
+                                return;
+                              }
+                              const reader = new FileReader();
+                              reader.onloadend = () => setUploadedImage(reader.result as string);
+                              reader.readAsDataURL(file);
+                            }
+                          }}
+                          className="border-4 border-dashed border-gray-100 rounded-[40px] h-[300px] flex flex-col items-center justify-center p-10 group hover:border-[#234745]/30 transition-all cursor-pointer bg-white"
+                        >
+                          <div className="w-20 h-20 bg-[#234745]/5 rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                             <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#234745" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                          </div>
+                          <p className="text-[#234745] font-black text-xl mb-2">{isEn ? 'Click to Upload' : 'اضغط للرفع'}</p>
+                          <p className="text-gray-400 font-medium text-sm text-center whitespace-pre-line">
+                            {isEn 
+                              ? 'Support JPG, PNG (Max 5MB)\nOr drag & drop your image here' 
+                              : 'يدعم JPG, PNG (بحد أقصى ٥ ميجا)\nأو اسحب وأفلت صورتك هنا'}
+                          </p>
+                        </div>
+                      )}
                     </div>
                   )}
 
@@ -472,6 +616,7 @@ export default function CustomCakeBuilder() {
                            { label: isEn ? 'Layers' : 'الطبقات', val: layers },
                            { label: isEn ? 'Topping' : 'الإضافة', val: isEn ? selectedTopping.nameEn : selectedTopping.nameAr },
                            { label: isEn ? 'Text' : 'النص', val: cakeMessage || (isEn ? 'None' : 'بدون') },
+                           { label: isEn ? 'Printed Image' : 'صورة الطباعة', val: uploadedImage ? (isEn ? 'Uploaded' : 'تم الرفع') : (isEn ? 'None' : 'بدون') },
                          ].map(item => (
                            <div key={item.label} className="flex justify-between items-center p-4 bg-gray-50 rounded-2xl">
                               <span className="text-gray-400 font-bold text-xs uppercase tracking-widest">{item.label}</span>
@@ -495,21 +640,51 @@ export default function CustomCakeBuilder() {
                     {isEn ? 'Back' : 'رجوع'}
                  </button>
                  
-                 <button 
-                   onClick={() => {
-                     if (currentStep < 9) setCurrentStep(currentStep + 1);
-                     else {
-                       // Final Action
-                       console.log('Add to cart');
-                     }
-                   }}
-                   className="bg-[#234745] hover:bg-[#d4a06a] text-white font-black py-4 px-12 rounded-[20px] shadow-xl hover:-translate-y-1 active:scale-95 transition-all flex items-center gap-3 group"
-                 >
-                   <span className="text-[18px]">{currentStep === 9 ? (isEn ? 'Add to Cart' : 'أضف للسلة') : (isEn ? 'Next Step' : 'الخطوة التالية')}</span>
-                   {currentStep < 9 && (
-                     <svg className={`w-5 h-5 transition-transform group-hover:translate-x-1 ${isEn ? '' : 'rotate-180'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" /></svg>
-                   )}
-                 </button>
+                 {currentStep === 9 ? (
+                    <button 
+                      onClick={handleOrderSubmit}
+                      disabled={orderState === 'submitting'}
+                      className={`text-white font-black py-4 px-12 rounded-[20px] shadow-xl hover:-translate-y-1 active:scale-95 transition-all flex items-center gap-3 group ${
+                        orderState === 'success' ? 'bg-green-600' : orderState === 'error' ? 'bg-red-500 hover:bg-red-600' : 'bg-[#234745] hover:bg-[#d4a06a]'
+                      }`}
+                    >
+                      {orderState === 'submitting' ? (
+                        <span className="flex items-center gap-3">
+                          <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                          </svg>
+                          <span className="text-[18px]">{isEn ? 'Creating Order...' : 'جاري إنشاء الطلب...'}</span>
+                        </span>
+                      ) : orderState === 'success' ? (
+                        <span className="flex items-center gap-3">
+                          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
+                          <span className="text-[18px]">{isEn ? 'Redirecting to Checkout...' : 'جاري التحويل للدفع...'}</span>
+                        </span>
+                      ) : (
+                        <>
+                          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+                          <span className="text-[18px]">{isEn ? 'Order Now' : 'اطلب الآن'}</span>
+                          <span className="text-sm opacity-70 font-en">({finalTotal.toFixed(2)} SAR)</span>
+                        </>
+                      )}
+                    </button>
+                  ) : (
+                    <button 
+                      onClick={() => setCurrentStep(currentStep + 1)}
+                      className="bg-[#234745] hover:bg-[#d4a06a] text-white font-black py-4 px-12 rounded-[20px] shadow-xl hover:-translate-y-1 active:scale-95 transition-all flex items-center gap-3 group"
+                    >
+                      <span className="text-[18px]">{isEn ? 'Next Step' : 'الخطوة التالية'}</span>
+                      <svg className={`w-5 h-5 transition-transform group-hover:translate-x-1 ${isEn ? '' : 'rotate-180'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" /></svg>
+                    </button>
+                  )}
+
+                  {/* Error Message */}
+                  {orderState === 'error' && orderError && (
+                    <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-2xl text-red-600 text-sm font-bold text-center">
+                      {orderError}
+                    </div>
+                  )}
               </div>
             </div>
 

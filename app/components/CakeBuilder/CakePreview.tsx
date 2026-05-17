@@ -33,7 +33,7 @@ export function CakePreview({ shape, layers, color, secondaryColor, message }: C
           <div className="relative w-56 h-56 transition-all duration-700 ease-in-out hover:scale-105">
             {/* 1. Original Image (Luminosity / Texture Base) */}
             <img 
-              src="https://cdn.shopify.com/s/files/1/0943/4280/7861/files/plain-cake.png" 
+              src="/images/cake-builder/plain-cake.png" 
               alt="Cake Base"
               className="absolute inset-0 w-full h-full object-contain z-10"
               style={{ filter: 'contrast(1.1) brightness(0.95)' }}
@@ -46,11 +46,11 @@ export function CakePreview({ shape, layers, color, secondaryColor, message }: C
               style={{
                 backgroundColor: color,
                 mixBlendMode: 'multiply',
-                maskImage: 'url(https://cdn.shopify.com/s/files/1/0943/4280/7861/files/plain-cake.png)',
+                maskImage: 'url(/images/cake-builder/plain-cake.png)',
                 maskSize: 'contain',
                 maskRepeat: 'no-repeat',
                 maskPosition: 'center',
-                WebkitMaskImage: 'url(https://cdn.shopify.com/s/files/1/0943/4280/7861/files/plain-cake.png)',
+                WebkitMaskImage: 'url(/images/cake-builder/plain-cake.png)',
                 WebkitMaskSize: 'contain',
                 WebkitMaskRepeat: 'no-repeat',
                 WebkitMaskPosition: 'center'
@@ -64,11 +64,11 @@ export function CakePreview({ shape, layers, color, secondaryColor, message }: C
               style={{
                 backgroundColor: color,
                 mixBlendMode: 'screen',
-                maskImage: 'url(https://cdn.shopify.com/s/files/1/0943/4280/7861/files/plain-cake.png)',
+                maskImage: 'url(/images/cake-builder/plain-cake.png)',
                 maskSize: 'contain',
                 maskRepeat: 'no-repeat',
                 maskPosition: 'center',
-                WebkitMaskImage: 'url(https://cdn.shopify.com/s/files/1/0943/4280/7861/files/plain-cake.png)',
+                WebkitMaskImage: 'url(/images/cake-builder/plain-cake.png)',
                 WebkitMaskSize: 'contain',
                 WebkitMaskRepeat: 'no-repeat',
                 WebkitMaskPosition: 'center'

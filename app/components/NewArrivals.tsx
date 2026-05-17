@@ -185,6 +185,7 @@ export function NewArrivals({
                                                            <NewArrivalsAddToCart
                                                               variant={variant}
                                                               productTags={product.tags}
+                                                              bogoFreeVariantId={product.bogo_free_item?.reference?.id || product.bogo_free_item?.value || null}
                                                               isOutOfStock={isOutOfStock && !isPreorder}
                                                               notifyLabel={isPreorder ? t.common.preOrder : (isEn ? 'Notify Me' : 'أعلمني عند التوفر')}
                                                               addLabel={isPreorder ? t.common.preOrder : (isEn ? 'Add to Cart' : 'أضف إلى السلة')}
@@ -237,6 +238,7 @@ export function NewArrivals({
 function NewArrivalsAddToCart({
     variant,
     productTags,
+    bogoFreeVariantId,
     isOutOfStock,
     notifyLabel,
     addLabel,
@@ -245,6 +247,7 @@ function NewArrivalsAddToCart({
 }: {
     variant?: any;
     productTags?: string[];
+    bogoFreeVariantId?: string | null;
     isOutOfStock: boolean;
     notifyLabel: string;
     addLabel: string;
@@ -253,7 +256,7 @@ function NewArrivalsAddToCart({
 }) {
     const { setOpenAside } = useAside();
     const variantId = variant?.id;
-    const isBogo = productTags?.some((t: string) => t.toLowerCase().includes('bogo'));
+    const isBogo = !!bogoFreeVariantId || (productTags?.some((t: string) => t.toLowerCase().includes('bogo')) ?? false);
 
     if (!variantId || isOutOfStock) {
         return (
@@ -281,10 +284,10 @@ function NewArrivalsAddToCart({
     }];
 
     if (isBogo) {
+      const freeVariantId = bogoFreeVariantId || variantId;
       lines.push({
-        merchandiseId: variantId,
+        merchandiseId: freeVariantId,
         quantity: 1,
-        selectedVariant: variant,
         attributes: [
           { key: '_groupId', value: groupId },
           { key: '_is_addon', value: 'true' },

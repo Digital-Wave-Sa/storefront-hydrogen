@@ -79,6 +79,35 @@ export function ProductItem({
   const isPreorder = product.tags?.some((tag: string) => 
     ['preorder', 'pre-order', 'طلب مسبق'].includes(tag.toLowerCase())
   );
+  
+  const bogoFreeVariantId = product.bogo_free_item?.reference?.id || product.bogo_free_item?.value || null;
+  const isBogo = !!bogoFreeVariantId || (product.tags?.some((tag: string) => tag.toLowerCase().includes('bogo')) ?? false);
+
+  const cartLines = useMemo(() => {
+    if (!variant) return [];
+    const mainLine = {
+        merchandiseId: variant.id,
+        quantity: 1,
+        selectedVariant: variant
+    };
+    
+    if (isBogo) {
+        if (bogoFreeVariantId) {
+            return [
+                mainLine,
+                {
+                    merchandiseId: bogoFreeVariantId,
+                    quantity: 1,
+                    attributes: [{key: '_is_free', value: 'true'}]
+                }
+            ];
+        } else {
+            mainLine.quantity = 2;
+            return [mainLine];
+        }
+    }
+    return [mainLine];
+  }, [variant, isBogo, bogoFreeVariantId]);
 
   const effectiveAvailable = isAvailable && !isVisibilityBlocked;
   const showOutOfStock = !isAvailable && !isVisibilityBlocked;
@@ -114,7 +143,12 @@ export function ProductItem({
                       <span>⏳</span> {isEn ? 'Limited Time' : 'لفترة محدودة'}
                   </span>
               )}
-              {!isVisibilityBlocked && product.compareAtPriceRange?.minVariantPrice && product.priceRange?.minVariantPrice && parseFloat(product.compareAtPriceRange.minVariantPrice.amount) > parseFloat(product.priceRange.minVariantPrice.amount) && (
+              {!isVisibilityBlocked && isBogo && (
+                  <span className="text-[9px] font-black px-2 py-1 rounded-lg shadow-sm bg-[#FF6B6B] text-white flex items-center gap-1">
+                      <span>🎁</span> {isEn ? 'Buy 1 Get 1 Free' : '1+1 مجاناً'}
+                  </span>
+              )}
+              {!isVisibilityBlocked && !isBogo && product.compareAtPriceRange?.minVariantPrice && product.priceRange?.minVariantPrice && parseFloat(product.compareAtPriceRange.minVariantPrice.amount) > parseFloat(product.priceRange.minVariantPrice.amount) && (
                   <span className="text-[9px] font-black px-2 py-1 rounded-lg shadow-sm bg-[#e74c3c] text-white flex items-center gap-1">
                       <span>🔥</span> {isEn ? 'Sale' : 'تخفيض'}
                   </span>
@@ -150,11 +184,7 @@ export function ProductItem({
               <>
                 {effectiveAvailable ? (
                     <AddToCartButton 
-                        lines={[{
-                            merchandiseId: variant?.id,
-                            quantity: 1,
-                            selectedVariant: variant
-                        }]} 
+                        lines={cartLines as any} 
                         disabled={!effectiveAvailable || isOutOfStock}
                         className="bg-[#234745] hover:bg-[#2d5e4a] text-white px-8 py-3 rounded-xl font-bold text-sm transition-all duration-300 shadow-md active:scale-95"
                     >
@@ -255,7 +285,12 @@ export function ProductItem({
                       <span>⏳</span> {isEn ? 'Limited Time' : 'لفترة محدودة'}
                   </div>
               )}
-              {!isVisibilityBlocked && product.compareAtPriceRange?.minVariantPrice && product.priceRange?.minVariantPrice && parseFloat(product.compareAtPriceRange.minVariantPrice.amount) > parseFloat(product.priceRange.minVariantPrice.amount) && (
+              {!isVisibilityBlocked && isBogo && (
+                  <div className="text-[10px] font-black px-2.5 py-1.5 rounded-xl shadow-sm bg-[#FF6B6B] text-white flex items-center gap-1.5 mt-1">
+                      <span>🎁</span> {isEn ? 'Buy 1 Get 1 Free' : '1+1 مجاناً'}
+                  </div>
+              )}
+              {!isVisibilityBlocked && !isBogo && product.compareAtPriceRange?.minVariantPrice && product.priceRange?.minVariantPrice && parseFloat(product.compareAtPriceRange.minVariantPrice.amount) > parseFloat(product.priceRange.minVariantPrice.amount) && (
                   <div className="text-[10px] font-black px-2.5 py-1.5 rounded-xl shadow-sm bg-[#e74c3c] text-white flex items-center gap-1.5 mt-1">
                       <span>🔥</span> {isEn ? 'Sale' : 'تخفيض'}
                   </div>
@@ -282,11 +317,7 @@ export function ProductItem({
             <div className="mt-auto">
                 {effectiveAvailable ? (
                     <AddToCartButton 
-                          lines={[{
-                              merchandiseId: variant?.id,
-                              quantity: 1,
-                              selectedVariant: variant
-                          }]} 
+                          lines={cartLines as any} 
                           disabled={!effectiveAvailable || isOutOfStock}
                           className="w-full bg-[#234745] hover:bg-[#2d5e4a] text-white py-3.5 rounded-full font-bold text-[13px] shadow-md transition-all"
                       >

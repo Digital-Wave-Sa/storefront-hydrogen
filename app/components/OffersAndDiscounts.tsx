@@ -25,15 +25,17 @@ export function OffersAndDiscounts() {
                 <div className={`flex flex-col ${isEn ? 'lg:flex-row' : 'lg:flex-row-reverse'} gap-8 mb-16`}>
 
                     {/* CARD 1: LARGE CREAM (65%) */}
-                    <div className="lg:w-[65%] bg-[#FFF9ED] rounded-[40px] flex flex-col md:flex-row items-center relative overflow-hidden min-h-[460px] shadow-sm">
+                    <div className="lg:w-[65%] bg-[#EAE0D5] rounded-[40px] flex flex-col md:flex-row items-center relative overflow-hidden min-h-[460px] shadow-sm">
 
                         {/* Weave Pattern */}
                         <div
-                            className={`absolute top-0 ${isEn ? 'right-0' : 'left-0'} w-[55%] h-full opacity-[0.06] pointer-events-none`}
+                            className={`absolute top-0 ${isEn ? 'left-0' : 'right-0'} w-[55%] h-full opacity-40 pointer-events-none`}
                             style={{
-                                backgroundImage: `url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M50 0 L100 50 L50 100 L0 50 Z M50 20 L80 50 L50 80 L20 50 Z' fill='none' stroke='%23234745' stroke-width='1'/%3E%3C/svg%3E")`,
-                                maskImage: `linear-gradient(${isEn ? 'to left' : 'to right'}, black 70%, transparent 100%)`,
-                                WebkitMaskImage: `linear-gradient(${isEn ? 'to left' : 'to right'}, black 70%, transparent 100%)`
+                                backgroundImage: 'url("/images/offers-pattern.svg")',
+                                backgroundRepeat: 'repeat',
+                                backgroundSize: '300px',
+                                maskImage: `linear-gradient(${isEn ? 'to right' : 'to left'}, black 40%, transparent 100%)`,
+                                WebkitMaskImage: `linear-gradient(${isEn ? 'to right' : 'to left'}, black 40%, transparent 100%)`
                             }}
                         />
 

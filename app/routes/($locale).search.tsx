@@ -140,114 +140,132 @@ export default function SearchPage() {
 
   const { locale } = useOutletContext<{ locale: string }>();
   const isEn = locale === 'en';
-  const [isFilterOpen, setIsFilterOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
-  const {publish} = useAnalytics();
-
+  const { publish } = useAnalytics();
+  
   useEffect(() => {
-    setMounted(true);
-  }, []);
+    if (searchTerm) {
+      publish('search_viewed', {
+        searchTerm,
+        searchResults: searchResults?.results,
+      });
+    }
+  }, [searchTerm, searchResults, publish]);
 
   const totalProducts = searchResults?.results?.products?.nodes?.length || 0;
   const filterOptions = searchResults?.results?.products?.productFilters || [];
 
   return (
-    // 2. Set dynamic direction and conditional font class
-    <div
-      className={`w-full min-h-screen ${isEn ? '' : 'font-ar'} bg-[#FEF8EB] pt-12 pb-20`}
-      dir={isEn ? 'ltr' : 'rtl'}
-    >
-      <div className="max-w-[1400px] mx-auto px-6">
-
-        <header className="mb-12 text-center">
-          <Analytics.SearchView
-            data={{
-              searchTerm,
-              searchResults
-            }}
-          />
-          <h1 className="text-4xl lg:text-5xl font-black text-[#234745] mb-4">
-            {searchTerm
-              ? (isEn ? `Search results for "${searchTerm}"` : `نتائج البحث عن "${searchTerm}"`)
-              : (isEn ? 'Search' : 'البحث')
-            }
-          </h1>
-
-          {searchTerm && searchResults?.totalResults !== undefined ? (
-            <p className="text-gray-500 font-bold tracking-tight bg-white px-4 py-1.5 rounded-full inline-block shadow-sm">
-              {isEn
-                ? `Found ${searchResults.totalResults} results`
-                : `تم العثور على ${searchResults.totalResults} نتيجة`
-              }
-            </p>
-          ) : (
-            <p className="text-gray-500 font-medium tracking-tight">
-              {isEn
-                ? 'Find your favorite products from our luxury sweets'
-                : 'ابحث عن منتجاتك المفضلة من حلوياتنا الفاخرة'
-              }
-            </p>
-          )}
-        </header>
-
-        <section className="max-w-3xl mx-auto mb-16">
-          <SearchForm searchTerm={searchTerm} />
-        </section>
-
-        <section>
-          {!searchTerm || !searchResults.totalResults ? (
-            <NoSearchResults searchTerm={searchTerm} />
-          ) : (
-            <>
-              {/* Filter Bar */}
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12 bg-white p-6 rounded-[2.5rem] shadow-sm border border-gray-100">
-                <div className="flex items-center gap-4">
-                  <button 
-                      onClick={() => setIsFilterOpen(true)}
-                      className="flex items-center gap-2.5 px-6 py-3.5 bg-[#234745] text-white rounded-2xl font-bold hover:bg-[#2d5e4a] transition-all shadow-md active:scale-95 group"
-                  >
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="group-hover:rotate-12 transition-transform"><path d="M22 3H2l8 9v11l4-6V12L22 3z"/></svg>
-                    <span>{isEn ? 'Filter' : 'تـصـفـيـة'}</span>
-                  </button>
-                  <div className="h-10 w-[1px] bg-gray-100 hidden md:block"></div>
-                  <p className="text-gray-400 font-bold hidden md:block">
-                      {isEn ? `Showing ${totalProducts} products` : `يوجد ${totalProducts} منتج`}
-                  </p>
-                </div>
-              </div>
-
-              <SearchResults results={searchResults.results as any} />
-            </>
-          )}
-        </section>
-
-      </div>
-
-      {/* Filter Sidebar */}
-      {mounted && typeof document !== 'undefined' && createPortal(
-        <div className={`fixed inset-0 z-[999999] pointer-events-none transition-all duration-500 ${isFilterOpen ? 'visible' : 'invisible'}`} dir={isEn ? 'ltr' : 'rtl'}>
-            <div 
-              className={`absolute inset-0 bg-black/30 backdrop-blur-sm transition-opacity duration-500 ${isFilterOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0'}`}
-              onClick={() => setIsFilterOpen(false)}
-            />
-            <div 
-              className={`absolute top-0 bottom-0 ${isEn ? 'right-0' : 'left-0'} w-full max-w-[420px] bg-white shadow-2xl transition-transform duration-500 pointer-events-auto flex flex-col`}
-              style={{ transform: isFilterOpen ? 'translateX(0)' : (isEn ? 'translateX(100%)' : 'translateX(-100%)') }}
-            >
-                <FilterSidebar 
-                  filters={filterOptions} 
-                  tags={extractedTags}
-                  collections={globalCollections}
-                  onClose={() => setIsFilterOpen(false)} 
-                  isEn={isEn}
-                />
+    <div className={`w-full min-h-screen ${isEn ? '' : 'font-ar'} bg-[#FEF8EB] pb-20`} dir={isEn ? 'ltr' : 'rtl'}>
+      <Analytics.SearchView data={{ searchTerm, searchResults }} />
+      
+      {/* Top Header Bar */}
+      <header className="bg-[#234745] py-6 mb-10 border-b-4 border-[#2d5e4a] relative overflow-hidden">
+         {/* Subtle Pattern */}
+         <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: 'radial-gradient(#ffffff 2px, transparent 2px)', backgroundSize: '30px 30px' }}></div>
+         <div className="max-w-[1400px] mx-auto px-6 relative z-10 flex flex-col md:flex-row items-center gap-6 justify-between">
+            <div className="flex-1 w-full">
+               <SearchForm searchTerm={searchTerm} />
             </div>
-        </div>,
-        document.body
-      )}
+            <button onClick={() => window.history.back()} className="shrink-0 flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white px-8 py-4 rounded-full font-bold transition-all shadow-sm border border-white/10">
+               <span>{isEn ? 'Back' : 'رجوع'}</span>
+               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={isEn ? 'rotate-180' : ''}><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+            </button>
+         </div>
+      </header>
 
+      <div className="max-w-[1400px] mx-auto px-6">
+        {(!searchTerm && !searchResults.totalResults) ? (
+            <section className="max-w-3xl mx-auto mt-16">
+              <NoSearchResults searchTerm={searchTerm} />
+            </section>
+        ) : (
+            <div className="flex flex-col lg:flex-row gap-8">
+                {/* Static Filter Sidebar */}
+                <aside className="hidden lg:block w-[320px] shrink-0">
+                    <div className="bg-white rounded-[2rem] border border-gray-100 shadow-sm overflow-hidden sticky top-8">
+                       <FilterSidebar 
+                         filters={filterOptions} 
+                         tags={extractedTags}
+                         collections={globalCollections}
+                         onClose={() => {}} 
+                         isEn={isEn}
+                       />
+                    </div>
+                </aside>
+
+                {/* Main Content Area */}
+                <main className="flex-1">
+                    {/* Active Filters & Sorting */}
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+                        <div className="flex flex-wrap items-center gap-2">
+                           {/* Render Active Filter Chips (Mock or dynamic based on URL) */}
+                           <ActiveFilterChips isEn={isEn} />
+                        </div>
+                        
+                        <div className="flex items-center gap-3 shrink-0">
+                           <span className="text-sm font-bold text-gray-400">{isEn ? 'Sort by:' : 'ترتيب حسب:'}</span>
+                           <select className="bg-white px-6 py-2.5 rounded-full text-sm font-bold text-[#234745] border border-gray-200 outline-none shadow-sm cursor-pointer hover:border-[#234745] transition-all">
+                               <option>{isEn ? 'Most Relevant' : 'الأكثر صلة'}</option>
+                               <option>{isEn ? 'Price: Low to High' : 'السعر: من الأقل للأعلى'}</option>
+                               <option>{isEn ? 'Price: High to Low' : 'السعر: من الأعلى للأقل'}</option>
+                           </select>
+                        </div>
+                    </div>
+
+                    {!searchResults.totalResults ? (
+                        <NoSearchResults searchTerm={searchTerm} />
+                    ) : (
+                        <SearchResults results={searchResults.results as any} />
+                    )}
+                </main>
+            </div>
+        )}
+      </div>
     </div>
   );
+}
+
+function ActiveFilterChips({ isEn }: { isEn: boolean }) {
+    const [params, setParams] = useState<URLSearchParams | null>(null);
+    useEffect(() => {
+        setParams(new URLSearchParams(window.location.search));
+    }, []);
+
+    if (!params) return null;
+
+    const chips: { key: string, label: string }[] = [];
+    params.forEach((value, key) => {
+        if (key === 'q' || key === 'cursor') return;
+        
+        let label = value;
+        if (key === 'filter.v.price.min') label = isEn ? `Min: ${value} SAR` : `الأقل: ${value} ر.س`;
+        if (key === 'filter.v.price.max') label = isEn ? `Max: ${value} SAR` : `الأعلى: ${value} ر.س`;
+        if (key === 'tag') label = value;
+        if (key === 'collection') label = value;
+
+        chips.push({ key, label });
+    });
+
+    const removeFilter = (key: string) => {
+        const url = new URL(window.location.href);
+        url.searchParams.delete(key);
+        window.location.href = url.toString();
+    };
+
+    return (
+        <>
+            {chips.map(chip => (
+                <button 
+                  key={chip.key}
+                  onClick={() => removeFilter(chip.key)}
+                  className="bg-white border border-gray-200 px-4 py-1.5 rounded-full flex items-center gap-2 text-sm font-bold text-gray-600 hover:bg-red-50 hover:text-red-600 hover:border-red-100 transition-all group"
+                >
+                    <span>{chip.label}</span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="text-gray-300 group-hover:text-red-500"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                </button>
+            ))}
+        </>
+    );
 }
 
 function FilterSidebar({ filters, tags, collections, onClose, isEn }: { filters: any[], tags: string[], collections: any[], onClose: () => void, isEn?: boolean }) {
@@ -268,13 +286,30 @@ function FilterSidebar({ filters, tags, collections, onClose, isEn }: { filters:
 function FilterForm({ filters, tags, collections, onClose, isEn }: { filters: any[], tags: string[], collections: any[], onClose: () => void, isEn?: boolean }) {
     const [minPrice, setMinPrice] = useState('');
     const [maxPrice, setMaxPrice] = useState('');
-    const [isCollectionsOpen, setIsCollectionsOpen] = useState(false);
+    const [openSections, setOpenSections] = useState<{[key: string]: boolean}>({
+        'collections': true,
+        'tags': true,
+    });
 
     useEffect(() => {
         const params = new URLSearchParams(window.location.search);
         setMinPrice(params.get('filter.v.price.min') || '');
         setMaxPrice(params.get('filter.v.price.max') || '');
-    }, []);
+        
+        // Auto-open sections that have active filters
+        const initialOpen: {[key: string]: boolean} = {
+            'collections': params.has('collection'),
+            'tags': params.has('tag'),
+        };
+        filters.forEach(f => {
+            initialOpen[f.id] = f.values.some((v: any) => isFilterActive(v.input, params));
+        });
+        setOpenSections(prev => ({...prev, ...initialOpen}));
+    }, [filters]);
+
+    const toggleSection = (id: string) => {
+        setOpenSections(prev => ({...prev, [id]: !prev[id]}));
+    };
 
     const handleApply = () => {
         const params = new URLSearchParams(window.location.search);
@@ -288,29 +323,56 @@ function FilterForm({ filters, tags, collections, onClose, isEn }: { filters: an
         onClose();
     };
 
-    return (
-        <div className="flex-1 overflow-y-auto p-8 pt-4 flex flex-col">
-            <div className="flex-1">
+    const handleClearAll = () => {
+        const params = new URLSearchParams(window.location.search);
+        const q = params.get('q');
+        const url = new URL(window.location.href);
+        url.search = '';
+        if (q) url.searchParams.set('q', q);
+        window.location.href = url.toString();
+    };
 
-                {/* Custom Collections Filter Dropdown */}
+    const isFilterActive = (input: string, params: URLSearchParams) => {
+        try {
+            const filterInput = JSON.parse(input) as any;
+            if (filterInput.variantOption) {
+                return params.get(`filter.v.option.${filterInput.variantOption.name}`) === filterInput.variantOption.value;
+            } else if (filterInput.productType) {
+                return params.get('filter.v.product_type') === filterInput.productType;
+            } else if (filterInput.productVendor) {
+                return params.get('filter.v.product_vendor') === filterInput.productVendor;
+            } else if (filterInput.productMetafield) {
+                return params.get(`filter.p.m.${filterInput.productMetafield.namespace}.${filterInput.productMetafield.key}`) === filterInput.productMetafield.value;
+            } else if (filterInput.available !== undefined) {
+                return params.get('filter.v.availability') === filterInput.available.toString();
+            }
+        } catch (e) {}
+        return false;
+    };
+
+    return (
+        <div className="flex-1 overflow-y-auto p-6 flex flex-col h-full bg-[#FEF8EB]">
+            <div className="flex-1 space-y-6">
+
+                {/* Custom Collections Filter */}
                 {collections && collections.length > 0 && (
-                    <div className="mb-10 pb-6 border-b border-gray-100">
+                    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
                         <button 
-                            onClick={() => setIsCollectionsOpen(!isCollectionsOpen)}
-                            className="w-full flex items-center justify-between group outline-none"
+                            onClick={() => toggleSection('collections')}
+                            className="w-full flex items-center justify-between p-4 group outline-none bg-gray-50/50"
                         >
                             <h3 className="text-sm font-black text-[#234745] uppercase tracking-widest">
-                                {isEn ? 'Collections' : 'المجموعات'}
+                                {isEn ? 'Collections' : 'الأقسام'}
                             </h3>
                             <svg 
                                 width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" 
-                                className={`text-[#234745] transition-transform duration-300 ${isCollectionsOpen ? 'rotate-180' : ''}`}
+                                className={`text-[#234745] transition-transform duration-300 ${openSections['collections'] ? 'rotate-180' : ''}`}
                             >
                                 <polyline points="6 9 12 15 18 9"></polyline>
                             </svg>
                         </button>
                         
-                        <div className={`flex flex-col transition-all duration-300 overflow-hidden ${isCollectionsOpen ? 'mt-6 max-h-[3000px] opacity-100' : 'max-h-0 opacity-0'}`}>
+                        <div className={`flex flex-col transition-all duration-300 overflow-hidden ${openSections['collections'] ? 'p-4 max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'}`}>
                             {collections.map((col: any) => {
                                 const params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
                                 const isActive = params.get('collection') === col.title;
@@ -324,48 +386,14 @@ function FilterForm({ filters, tags, collections, onClose, isEn }: { filters: an
                                         to={`?${params.toString()}`}
                                         className="flex items-center justify-between cursor-pointer group mb-3 last:mb-0 transition-opacity hover:opacity-80"
                                     >
+                                        <span className="text-[12px] text-gray-400 font-bold"></span>
                                         <div className="flex items-center gap-3">
-                                            <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${isActive ? 'bg-[#234745] border-[#234745]' : 'border-gray-200 bg-white group-hover:border-[#234745]'}`}>
-                                                {isActive && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4"><polyline points="20 6 9 17 4 12"></polyline></svg>}
-                                            </div>
                                             <span className={`text-[14px] transition-all ${isActive ? 'text-[#234745] font-bold' : 'text-gray-600 font-medium group-hover:text-[#234745]'}`}>
                                                 {col.title}
                                             </span>
-                                        </div>
-                                    </Link>
-                                );
-                            })}
-                        </div>
-                    </div>
-                )}
-
-                {/* Custom Tags Filter */}
-                {tags && tags.length > 0 && (
-                    <div className="mb-10 pb-6 border-b border-gray-100">
-                        <h3 className="text-sm font-black text-[#234745] uppercase tracking-widest mb-6">
-                            {isEn ? 'Tags' : 'العلامات'}
-                        </h3>
-                        <div className="flex flex-col">
-                            {tags.map((tag: string) => {
-                                const params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
-                                const isActive = params.get('tag') === tag;
-                                
-                                if (isActive) params.delete('tag');
-                                else params.set('tag', tag);
-                                
-                                return (
-                                    <Link
-                                        key={tag}
-                                        to={`?${params.toString()}`}
-                                        className="flex items-center justify-between cursor-pointer group mb-3 last:mb-0 transition-opacity hover:opacity-80"
-                                    >
-                                        <div className="flex items-center gap-3">
                                             <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${isActive ? 'bg-[#234745] border-[#234745]' : 'border-gray-200 bg-white group-hover:border-[#234745]'}`}>
                                                 {isActive && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4"><polyline points="20 6 9 17 4 12"></polyline></svg>}
                                             </div>
-                                            <span className={`text-[14px] transition-all ${isActive ? 'text-[#234745] font-bold' : 'text-gray-600 font-medium group-hover:text-[#234745]'}`}>
-                                                {tag}
-                                            </span>
                                         </div>
                                     </Link>
                                 );
@@ -374,87 +402,96 @@ function FilterForm({ filters, tags, collections, onClose, isEn }: { filters: an
                     </div>
                 )}
 
+                {/* Shopify Dynamic Filters */}
                 {filters.map((filter) => (
-                    <div key={filter.id} className="mb-10 pb-6 border-b border-gray-100 last:border-0">
-                        <h3 className="text-sm font-black text-[#234745] uppercase tracking-widest mb-6">
-                            {filter.label}
-                        </h3>
-                        {filter.type === 'LIST' ? (
-                            <div className="flex flex-col">
-                                {filter.values.map((value: any) => {
-                                    const params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
-                                    const filterInput = JSON.parse(value.input) as any;
-                                    let isActive = false;
-                                    
-                                    if (filterInput.variantOption) {
-                                        isActive = params.get(`filter.v.option.${filterInput.variantOption.name}`) === filterInput.variantOption.value;
-                                    } else if (filterInput.productType) {
-                                        isActive = params.get('filter.v.product_type') === filterInput.productType;
-                                    } else if (filterInput.productVendor) {
-                                        isActive = params.get('filter.v.product_vendor') === filterInput.productVendor;
-                                    } else if (filterInput.productMetafield) {
-                                        isActive = params.get(`filter.p.m.${filterInput.productMetafield.namespace}.${filterInput.productMetafield.key}`) === filterInput.productMetafield.value;
-                                    } else if (filterInput.available !== undefined) {
-                                        isActive = params.get('filter.v.availability') === filterInput.available.toString();
-                                    }
+                    <div key={filter.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                        <button 
+                            onClick={() => toggleSection(filter.id)}
+                            className="w-full flex items-center justify-between p-4 group outline-none bg-gray-50/50"
+                        >
+                            <h3 className="text-sm font-black text-[#234745] uppercase tracking-widest">
+                                {filter.label}
+                            </h3>
+                            <svg 
+                                width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" 
+                                className={`text-[#234745] transition-transform duration-300 ${openSections[filter.id] ? 'rotate-180' : ''}`}
+                            >
+                                <polyline points="6 9 12 15 18 9"></polyline>
+                            </svg>
+                        </button>
+                        
+                        <div className={`flex flex-col transition-all duration-300 overflow-hidden ${openSections[filter.id] ? 'p-4 max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'}`}>
+                            {filter.type === 'LIST' ? (
+                                <div className="flex flex-col">
+                                    {filter.values.map((value: any) => {
+                                        const params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
+                                        const isActive = isFilterActive(value.input, params);
 
-                                    return (
-                                        <Link
-                                            key={value.id}
-                                            to={getFilterLink(value.input)}
-                                            className="flex items-center justify-between cursor-pointer group mb-3 last:mb-0 transition-opacity hover:opacity-80"
-                                        >
-                                            <div className="flex items-center gap-3">
-                                                <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${isActive ? 'bg-[#234745] border-[#234745]' : 'border-gray-200 bg-white group-hover:border-[#234745]'}`}>
-                                                    {isActive && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4"><polyline points="20 6 9 17 4 12"></polyline></svg>}
+                                        return (
+                                            <Link
+                                                key={value.id}
+                                                to={getFilterLink(value.input)}
+                                                className="flex items-center justify-between cursor-pointer group mb-3 last:mb-0 transition-opacity hover:opacity-80"
+                                            >
+                                                <span className="text-[12px] text-gray-400 font-bold">[{value.count}]</span>
+                                                <div className="flex items-center gap-3">
+                                                    <span className={`text-[14px] transition-all ${isActive ? 'text-[#234745] font-bold' : 'text-gray-600 font-medium group-hover:text-[#234745]'}`}>
+                                                        {value.label}
+                                                    </span>
+                                                    <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${isActive ? 'bg-[#234745] border-[#234745]' : 'border-gray-200 bg-white group-hover:border-[#234745]'}`}>
+                                                        {isActive && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4"><polyline points="20 6 9 17 4 12"></polyline></svg>}
+                                                    </div>
                                                 </div>
-                                                <span className={`text-[14px] transition-all ${isActive ? 'text-[#234745] font-bold' : 'text-gray-600 font-medium group-hover:text-[#234745]'}`}>
-                                                    {value.label}
-                                                </span>
-                                            </div>
-                                            <span className="text-[12px] text-gray-400 font-bold">{value.count}</span>
-                                        </Link>
-                                    );
-                                })}
-                            </div>
-                        ) : filter.type === 'PRICE_RANGE' ? (
-                            <div className="space-y-4">
-                                <div className="flex gap-4">
-                                    <div className="flex-1">
-                                        <label className="text-[10px] font-black text-gray-400 block mb-1">{isEn ? 'Min Price' : 'الحد الأدنى'}</label>
-                                        <input 
-                                            type="number" 
-                                            value={minPrice}
-                                            onChange={(e) => setMinPrice(e.target.value)}
-                                            placeholder="0" 
-                                            className="w-full bg-white border-2 border-gray-100 rounded-xl px-4 py-3 text-sm font-bold focus:outline-none focus:border-[#234745] transition-all" 
-                                        />
-                                    </div>
-                                    <div className="flex-1">
-                                        <label className="text-[10px] font-black text-gray-400 block mb-1">{isEn ? 'Max Price' : 'الحد الأقصى'}</label>
-                                        <input 
-                                            type="number" 
-                                            value={maxPrice}
-                                            onChange={(e) => setMaxPrice(e.target.value)}
-                                            placeholder="500+" 
-                                            className="w-full bg-white border-2 border-gray-100 rounded-xl px-4 py-3 text-sm font-bold focus:outline-none focus:border-[#234745] transition-all" 
-                                        />
-                                    </div>
+                                            </Link>
+                                        );
+                                    })}
                                 </div>
-                            </div>
-                        ) : null}
+                            ) : filter.type === 'PRICE_RANGE' ? (
+                                <div className="space-y-4">
+                                    <div className="flex gap-4">
+                                        <div className="flex-1">
+                                            <label className="text-[10px] font-black text-gray-400 block mb-1">{isEn ? 'Min Price' : 'الحد الأدنى'}</label>
+                                            <input 
+                                                type="number" 
+                                                value={minPrice}
+                                                onChange={(e) => setMinPrice(e.target.value)}
+                                                placeholder="0" 
+                                                className="w-full bg-white border-2 border-gray-100 rounded-xl px-4 py-3 text-sm font-bold focus:outline-none focus:border-[#234745] transition-all" 
+                                            />
+                                        </div>
+                                        <div className="flex-1">
+                                            <label className="text-[10px] font-black text-gray-400 block mb-1">{isEn ? 'Max Price' : 'الحد الأقصى'}</label>
+                                            <input 
+                                                type="number" 
+                                                value={maxPrice}
+                                                onChange={(e) => setMaxPrice(e.target.value)}
+                                                placeholder="500+" 
+                                                className="w-full bg-white border-2 border-gray-100 rounded-xl px-4 py-3 text-sm font-bold focus:outline-none focus:border-[#234745] transition-all" 
+                                            />
+                                        </div>
+                                    </div>
+                                    <button 
+                                      onClick={handleApply}
+                                      className="w-full bg-[#234745] text-white py-2 rounded-xl font-black text-sm hover:opacity-90 transition-all"
+                                    >
+                                        {isEn ? 'Apply' : 'تطبيق'}
+                                    </button>
+                                </div>
+                            ) : null}
+                        </div>
                     </div>
                 ))}
             </div>
 
-            <footer className="p-8 pb-10 sticky bottom-0 z-20">
+            {/* Clear All Filters Button */}
+            <div className="mt-6 sticky bottom-0 bg-[#FEF8EB] pt-4">
                 <button 
-                  onClick={handleApply}
-                  className="w-full bg-[#234745] text-white py-5 rounded-2xl font-black text-lg shadow-[0_10px_30px_rgba(27,61,46,0.25)] hover:shadow-[0_15px_40px_rgba(27,61,46,0.35)] active:scale-95 transition-all"
+                  onClick={handleClearAll}
+                  className="w-full bg-white text-[#234745] border-2 border-[#234745] py-3 rounded-full font-black text-sm hover:bg-[#234745] hover:text-white transition-all shadow-sm"
                 >
-                    {isEn ? 'Apply Filters' : 'تـطـبـيـق الـفـلاتـر'}
+                    {isEn ? 'Clear All Filters' : 'مسح كل الفلاتر'}
                 </button>
-            </footer>
+            </div>
         </div>
     );
 }

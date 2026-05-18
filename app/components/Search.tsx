@@ -93,26 +93,22 @@ export function SearchForm({ searchTerm }: { searchTerm: string }) {
   }, []);
 
   return (
-    <Form method="get" className="relative w-full max-w-2xl mx-auto group" dir={isEn ? 'ltr' : 'rtl'}>
+    <Form method="get" className="relative w-full group" dir={isEn ? 'ltr' : 'rtl'}>
       <input
         defaultValue={searchTerm}
         name="q"
-        placeholder={isEn ? "Search..." : "ابحث عن..."}
+        placeholder={isEn ? "Search..." : "شوكولاته..."}
         ref={inputRef}
         type="search"
-        // 2. Flip padding based on direction
-        className={`w-full bg-white border-2 border-transparent shadow-sm rounded-2xl py-5 ${isEn ? 'pl-14 pr-6' : 'pl-6 pr-14'} text-lg font-bold placeholder:text-gray-300 focus:outline-none focus:ring-4 focus:ring-[#234745]/5 focus:border-[#234745] transition-all duration-300 group-hover:shadow-md`}
+        className={`w-full bg-white shadow-sm rounded-full py-4 ${isEn ? 'pl-6 pr-14' : 'pr-6 pl-14'} text-lg font-bold placeholder:text-gray-400 focus:outline-none transition-all duration-300`}
       />
-      {/* 3. Flip Icon position */}
-      <div className={`absolute ${isEn ? 'left-6' : 'right-6'} top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#234745] transition-colors`}>
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
-      </div>
-      {/* 4. Flip Button position */}
+      
+      {/* Clear Button (native search clear button might show, but let's hide the submit button) */}
       <button
         type="submit"
-        className={`absolute ${isEn ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 bg-[#234745] text-white px-6 py-3 rounded-xl font-bold text-sm hover:opacity-90 active:scale-95 transition-all`}
+        className={`absolute ${isEn ? 'right-4' : 'left-4'} top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#234745] transition-colors p-2`}
       >
-        {isEn ? 'Search' : 'بحث'}
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
       </button>
     </Form>
   );
@@ -188,7 +184,7 @@ function SearchResultsProductsGrid({ products }: Pick<SearchQuery, 'products'>) 
                   {isLoading ? (isEn ? 'Loading...' : 'جاري التحميل...') : (isEn ? '↑ Load Previous' : '↑ تحميل النتائج السابقة')}
                 </PreviousLink>
               </div>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 lg:gap-8">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-6 lg:gap-8">
                 {nodes.map((product) => (
                   <ProductItem 
                     key={product.id} 

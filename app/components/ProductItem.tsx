@@ -321,7 +321,7 @@ export function ProductItem({
                           disabled={!effectiveAvailable || isOutOfStock}
                           className="w-full bg-[#234745] hover:bg-[#2d5e4a] text-white py-3.5 rounded-full font-bold text-[13px] shadow-md transition-all"
                       >
-                          {isEn ? 'Add to Cart' : 'أضف إلي السلة'}
+                          {isEn ? 'Add to Cart' : 'أضف إلى السلة'}
                       </AddToCartButton>
                 ) : (
                     <button 

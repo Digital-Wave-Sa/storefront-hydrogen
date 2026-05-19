@@ -6,9 +6,11 @@ interface CakePreviewProps {
   color: string;
   secondaryColor?: string;
   message?: string;
+  textColor?: string;
+  textFont?: string;
 }
 
-export function CakePreview({ shape, layers, color, secondaryColor, message }: CakePreviewProps) {
+export function CakePreview({ shape, layers, color, secondaryColor, message, textColor, textFont }: CakePreviewProps) {
   // We use CSS masking and blend modes to dye the realistic cake photo
   
   // A simple regex to detect Arabic characters
@@ -90,9 +92,9 @@ export function CakePreview({ shape, layers, color, secondaryColor, message }: C
                 <span 
                   className="text-center font-bold px-4 break-words leading-tight"
                   style={{
-                    color: '#3D2B1F', // Dark chocolate frosting color
-                    // Dynamic font based on language
-                    fontFamily: isArabic(message) ? "'Aref Ruqaa', 'Cairo', serif" : "'Dancing Script', 'Brush Script MT', cursive",
+                    color: textColor || '#3D2B1F', // Use selected color or default to dark chocolate
+                    // Dynamic font based on selection or language
+                    fontFamily: textFont === 'Script' ? "'Dancing Script', 'Brush Script MT', cursive" : textFont === 'Modern' ? "sans-serif" : isArabic(message) ? "'Aref Ruqaa', 'Cairo', serif" : "serif",
                     fontSize: isArabic(message) ? '34px' : '42px',
                     // Create a thick 3D frosting shadow effect
                     textShadow: `

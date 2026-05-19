@@ -31,7 +31,7 @@ export function Header({ header, isLoggedIn, cart, locations, customer, locale, 
   const fetcher = useFetcher();
   const locationFetcher = useFetcher();
 
-  const handleSelectBranch = async (branch: any, type: 'delivery' | 'pickup', addressName?: string) => {
+  const handleSelectBranch = async (branch: any, type: 'delivery' | 'pickup', addressName?: string, isOutOfRange?: boolean) => {
     const branchName = branch?.name || 'Main';
     const branchId = branch?.id || '';
 
@@ -44,6 +44,24 @@ export function Header({ header, isLoggedIn, cart, locations, customer, locale, 
 
     if (addressName) {
       attributes.push({ key: 'Delivery Address', value: addressName });
+    }
+    
+    if (isOutOfRange) {
+        attributes.push({ key: 'error', value: isEn ? 'Your address is outside our delivery range. You may not be able to complete checkout.' : 'عنوانك خارج نطاق التوصيل. قد لا تتمكن من إتمام الطلب.' });
+    } else {
+        attributes.push({ key: 'error', value: '' }); // clear error
+    }
+    
+    if (type === 'delivery' && typeof branch?.deliveryFee === 'number') {
+      attributes.push({ key: 'Delivery Fee', value: branch.deliveryFee.toString() });
+    }
+    
+    if (typeof branch?.freeDeliveryThreshold === 'number') {
+        attributes.push({ key: 'Free Delivery Threshold', value: branch.freeDeliveryThreshold.toString() });
+    }
+    
+    if (typeof branch?.minOrder === 'number') {
+        attributes.push({ key: 'Minimum Order Value', value: branch.minOrder.toString() });
     }
 
     // Update Buyer Identity for Pickup skip
@@ -73,7 +91,9 @@ export function Header({ header, isLoggedIn, cart, locations, customer, locale, 
 
     const formData = new FormData();
     formData.append('cartFormInput', JSON.stringify(cartFormInput));
-    fetcher.submit(formData, { method: 'POST', action: '/cart' });
+    
+    const cartAction = isEn ? '/en/cart' : '/cart';
+    fetcher.submit(formData, { method: 'POST', action: cartAction });
 
     // Update session location
     const locFormData = new FormData();

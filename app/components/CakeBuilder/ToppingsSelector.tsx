@@ -74,16 +74,44 @@ export const TOPPINGS: Topping[] = [
 interface ToppingsSelectorProps {
   isEn: boolean;
   toppings: Topping[];
-  selectedTopping: Topping;
-  onToppingChange: (topping: Topping) => void;
+  selectedToppings: Topping[];
+  onToppingsChange: (toppings: Topping[]) => void;
+  maxToppings?: number;
 }
 
-export function ToppingsSelector({ isEn, toppings, selectedTopping, onToppingChange }: ToppingsSelectorProps) {
+export function ToppingsSelector({ isEn, toppings, selectedToppings = [], onToppingsChange, maxToppings = 3 }: ToppingsSelectorProps) {
   const [activeCategory, setActiveCategory] = useState('all');
 
   const filteredToppings = activeCategory === 'all' 
     ? toppings 
     : toppings.filter(t => t.categoryId === activeCategory || t.id === 'none');
+
+  const handleToppingClick = (topping: Topping) => {
+    if (topping.id === 'none') {
+      onToppingsChange([topping]);
+      return;
+    }
+
+    const isSelected = selectedToppings.some(t => t.id === topping.id);
+    let newToppings = selectedToppings.filter(t => t.id !== 'none');
+
+    if (isSelected) {
+      newToppings = newToppings.filter(t => t.id !== topping.id);
+    } else {
+      if (newToppings.length >= maxToppings) {
+        alert(isEn ? `You can only select up to ${maxToppings} toppings!` : `يمكنك اختيار حتى ${maxToppings} إضافات فقط!`);
+        return;
+      }
+      newToppings.push(topping);
+    }
+
+    if (newToppings.length === 0) {
+      const noneTopping = toppings.find(t => t.id === 'none');
+      if (noneTopping) newToppings = [noneTopping];
+    }
+
+    onToppingsChange(newToppings);
+  };
 
   return (
     <div className="cake-builder-step animate-fade-in" dir={isEn ? 'ltr' : 'rtl'}>
@@ -92,7 +120,7 @@ export function ToppingsSelector({ isEn, toppings, selectedTopping, onToppingCha
           {isEn ? 'Select Decorations & Toppings' : 'اختر الزينة والإضافات'}
         </h2>
         <p className="text-gray-400 text-sm">
-          {isEn ? 'Add the perfect finishing touch to your cake' : 'أضف اللمسة النهائية المثالية لكيكتك'}
+          {isEn ? `Add up to ${maxToppings} toppings to your cake` : `أضف حتى ${maxToppings} إضافات لكيكتك`}
         </p>
       </div>
 
@@ -116,11 +144,11 @@ export function ToppingsSelector({ isEn, toppings, selectedTopping, onToppingCha
       {/* Toppings Grid */}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 lg:gap-5 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
         {filteredToppings.map((topping, index) => {
-          const isSelected = selectedTopping.id === topping.id;
+          const isSelected = selectedToppings.some(t => t.id === topping.id);
           return (
             <button
               key={topping.id}
-              onClick={() => onToppingChange(topping)}
+              onClick={() => handleToppingClick(topping)}
               className={`relative flex flex-col items-center justify-center p-5 rounded-[24px] border-2 transition-all duration-500 animate-stagger-fade ${
                 isSelected 
                   ? 'border-[#234745] bg-[#234745]/5 shadow-[0_10px_20px_rgba(35,71,69,0.08)] -translate-y-1' 

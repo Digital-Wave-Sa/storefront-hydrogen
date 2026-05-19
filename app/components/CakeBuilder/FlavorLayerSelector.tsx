@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-interface Flavor {
+export interface Flavor {
   id: string;
   nameEn: string;
   nameAr: string;
@@ -9,13 +9,14 @@ interface Flavor {
   descriptionEn: string;
   descriptionAr: string;
   image: string;
+  isPopular?: boolean;
 }
 
-const FLAVORS: Flavor[] = [
+export const FLAVORS: Flavor[] = [
   {
     id: 'vanilla',
-    nameEn: 'Madagascar Vanilla',
-    nameAr: 'فانيليا مدغشقر',
+    nameEn: 'Vanilla',
+    nameAr: 'فانيليا',
     color: '#fdf5e6',
     secondaryColor: '#f5deb3',
     descriptionEn: 'Light and airy with real vanilla beans',
@@ -23,34 +24,66 @@ const FLAVORS: Flavor[] = [
     image: '/images/vanilla-img.png'
   },
   {
-    id: 'chocolate',
-    nameEn: 'Belgian Chocolate',
-    nameAr: 'شوكولاتة بلجيكية',
+    id: 'choco-crunch',
+    nameEn: 'Choco Crunch',
+    nameAr: 'تشوكو كرنش',
     color: '#3d2b1f',
     secondaryColor: '#2a1d15',
-    descriptionEn: 'Rich, moist dark chocolate sponge',
-    descriptionAr: 'كيكة الشوكولاتة الداكنة الغنية والطرية',
-    image: '/images/chocolate-img.png'
-  },
-  {
-    id: 'caramel',
-    nameEn: 'Salted Caramel',
-    nameAr: 'كراميل مملح',
-    color: '#d4a06a',
-    secondaryColor: '#8b5e3c',
-    descriptionEn: 'Sweet and savory caramel delight',
-    descriptionAr: 'مزيج رائع من الكراميل المملح واللذيذ',
-    image: '/images/caramel-img.png'
+    descriptionEn: 'Rich chocolate with a satisfying crunch',
+    descriptionAr: 'شوكولاتة غنية مع قرمشة لذيذة',
+    image: '/images/chocolate-img.png',
+    isPopular: true
   },
   {
     id: 'red-velvet',
-    nameEn: 'Classic Red Velvet',
-    nameAr: 'ريد فيلفيت كلاسيك',
+    nameEn: 'Red Velvet',
+    nameAr: 'ريد فيلفيت',
     color: '#a52a2a',
     secondaryColor: '#800000',
     descriptionEn: 'Velvety texture with a hint of cocoa',
     descriptionAr: 'قوام مخملي مع لمسة من الكاكاو',
     image: '/images/velvet-img.png'
+  },
+  {
+    id: 'nutella',
+    nameEn: 'Nutella',
+    nameAr: 'نوتيلا',
+    color: '#4B3621',
+    secondaryColor: '#302214',
+    descriptionEn: 'Classic hazelnut chocolate spread flavor',
+    descriptionAr: 'نكهة شوكولاتة البندق الكلاسيكية',
+    image: '/images/chocolate-img.png'
+  },
+  {
+    id: 'fruits',
+    nameEn: 'Fruits',
+    nameAr: 'فواكه',
+    color: '#FFDAB9',
+    secondaryColor: '#FFA07A',
+    descriptionEn: 'Refreshing mix of seasonal fruits',
+    descriptionAr: 'مزيج منعش من الفواكه الموسمية',
+    image: '/images/vanilla-img.png'
+  },
+  {
+    id: 'cinnamon',
+    nameEn: 'Cinnamon',
+    nameAr: 'قرفة',
+    color: '#D2691E',
+    secondaryColor: '#8B4513',
+    descriptionEn: 'Warm and spicy cinnamon swirl',
+    descriptionAr: 'مزيج دافئ ومميز من القرفة',
+    image: '/images/caramel-img.png'
+  },
+  {
+    id: 'pistachio',
+    nameEn: 'Pistachio',
+    nameAr: 'فستق',
+    color: '#93C572',
+    secondaryColor: '#556B2F',
+    descriptionEn: 'Rich and nutty pistachio blend',
+    descriptionAr: 'مزيج غني من الفستق الحلبي',
+    image: '/images/vanilla-img.png',
+    isPopular: true
   },
 ];
 
@@ -102,6 +135,11 @@ export function FlavorLayerSelector({
                       : 'border-gray-50 bg-white hover:border-gray-100 shadow-sm'
                   }`}
                 >
+                  {flavor.isPopular && (
+                    <div className="absolute top-0 right-4 -translate-y-1/2 bg-[#d4a06a] text-white text-[10px] font-bold px-3 py-1 rounded-full shadow-sm z-10">
+                      {isEn ? '⭐ Popular' : '⭐ الأكثر طلباً'}
+                    </div>
+                  )}
                   <div className="w-14 h-14 rounded-full flex-shrink-0 relative overflow-hidden bg-gray-50 flex items-center justify-center p-1">
                     <img src={flavor.image} alt={flavor.nameEn} className="w-full h-full object-contain" />
                   </div>

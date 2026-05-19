@@ -1,5 +1,5 @@
 import {useOptimisticCart, Analytics, CartForm} from '@shopify/hydrogen';
-import {Link, useRouteLoaderData} from 'react-router';
+import {Link, useRouteLoaderData, useLocation} from 'react-router';
 import {useEffect, useState, useRef} from 'react';
 import type {CartApiQueryFragment} from 'storefrontapi.generated';
 import {useAside} from '~/components/Aside';
@@ -38,8 +38,9 @@ function getLineItemChildrenMap(lines: CartLine[]): LineItemChildrenMap {
 
 export function CartMain({layout, cart: originalCart}: CartMainProps) {
   const cart = useOptimisticCart(originalCart);
+  const location = useLocation();
+  const isEn = location.pathname.split('/')[1]?.toLowerCase() === 'en';
   const rootData = useRouteLoaderData('root') as any;
-  const isEn = rootData?.consent?.language?.toLowerCase() === 'en';
 
   const linesCount = Boolean(cart?.lines?.nodes?.length || 0);
   const cartHasItems = cart?.totalQuantity ? cart.totalQuantity > 0 : false;
@@ -98,7 +99,8 @@ export function CartMain({layout, cart: originalCart}: CartMainProps) {
   );
   
   const thresholdMeta = currentBranch?.free_delivery_threshold || currentBranch?.metafields?.find((m: any) => m?.key === 'free_delivery_threshold');
-  const threshold = thresholdMeta?.value ? parseFloat(thresholdMeta.value) : 430;
+  const thresholdAttr = cart?.attributes?.find(a => a.key.toLowerCase().trim() === 'free delivery threshold')?.value;
+  const threshold = thresholdAttr ? parseFloat(thresholdAttr) : (thresholdMeta?.value ? parseFloat(thresholdMeta.value) : 430);
   const fulfillmentType = cart?.attributes?.find(a => a.key.toLowerCase().trim() === 'fulfillment type')?.value;
   const isPickup = fulfillmentType?.toLowerCase() === 'pickup';
 

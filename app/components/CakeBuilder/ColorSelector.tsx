@@ -79,6 +79,64 @@ export function ColorSelector({ isEn, colors, selectedColor, onColorChange }: Co
             </button>
           );
         })}
+
+        {/* Custom Color Picker */}
+        <div
+          className={`group flex flex-col items-center justify-center transition-all duration-300 animate-stagger-fade`}
+          style={{ animationDelay: `${colors.length * 0.05}s` }}
+        >
+          <div 
+            className={`w-16 h-16 sm:w-20 sm:h-20 rounded-full mb-3 relative flex items-center justify-center transition-all duration-300 overflow-hidden cursor-pointer ${
+              selectedColor.id.startsWith('custom') 
+                ? 'ring-4 ring-offset-4 ring-[#234745] scale-110 shadow-lg' 
+                : 'ring-1 ring-gray-200 hover:scale-105 hover:shadow-md'
+            }`}
+            style={{ backgroundColor: selectedColor.id.startsWith('custom') ? selectedColor.hex : '#ffffff' }}
+          >
+            {/* Color Input covering the entire circle */}
+            <input 
+              type="color"
+              value={selectedColor.id.startsWith('custom') ? selectedColor.hex : '#ffffff'}
+              onChange={(e) => onColorChange({
+                id: `custom-${e.target.value}`,
+                nameEn: 'Custom Color',
+                nameAr: 'لون مخصص',
+                hex: e.target.value
+              })}
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20"
+            />
+            
+            {/* Multi-color gradient background when not selected */}
+            {!selectedColor.id.startsWith('custom') && (
+              <div 
+                className="absolute inset-0 pointer-events-none"
+                style={{
+                  background: 'conic-gradient(red, yellow, lime, aqua, blue, magenta, red)',
+                  opacity: 0.15
+                }}
+              ></div>
+            )}
+
+            {/* Glossy Overlay */}
+            <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-black/10 to-white/40 pointer-events-none z-10"></div>
+
+            {/* Plus Icon or Checkmark */}
+            {!selectedColor.id.startsWith('custom') ? (
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#234745" strokeWidth="2.5" className="relative z-10 pointer-events-none drop-shadow-sm">
+                 <line x1="12" y1="5" x2="12" y2="19" />
+                 <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+            ) : (
+              <svg className="w-8 h-8 text-white drop-shadow-md relative z-10 animate-scale-in pointer-events-none" fill="none" viewBox="0 0 24 24" stroke={selectedColor.hex.toUpperCase() === '#FFFFFF' ? '#234745' : 'currentColor'} strokeWidth="3">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            )}
+          </div>
+          
+          <span className={`text-sm font-bold text-center transition-colors ${selectedColor.id.startsWith('custom') ? 'text-[#234745]' : 'text-gray-500 group-hover:text-gray-800'}`}>
+            {isEn ? 'Custom Color' : 'لون مخصص'}
+          </span>
+        </div>
       </div>
 
       <style dangerouslySetInnerHTML={{ __html: `

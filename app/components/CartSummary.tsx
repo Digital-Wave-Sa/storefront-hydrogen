@@ -2,7 +2,7 @@ import type {CartApiQueryFragment} from 'storefrontapi.generated';
 import type {CartLayout} from '~/components/CartMain';
 import {CartForm, Money, type OptimisticCart} from '@shopify/hydrogen';
 import {useEffect, useId, useRef, useState} from 'react';
-import {useFetcher, useRouteLoaderData, Link} from 'react-router';
+import {useFetcher, useRouteLoaderData, Link, useLocation} from 'react-router';
 import {useAside} from '~/components/Aside';
 import {Price, SaudiRiyalSymbol} from './Price';
 
@@ -18,8 +18,9 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
   const giftCardHeadingId = useId();
   const giftCardInputId = useId();
 
+  const location = useLocation();
+  const isEn = location.pathname.split('/')[1]?.toLowerCase() === 'en';
   const rootData = useRouteLoaderData('root') as any;
-  const isEn = rootData?.consent?.language?.toLowerCase() === 'en';
 
   const subtotal = Number(cart?.cost?.subtotalAmount?.amount ?? 0);
   const currencyCode = cart?.cost?.subtotalAmount?.currencyCode || 'SAR';
@@ -39,16 +40,18 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
   );
 
   const minOrderMeta = currentBranch?.min_order_value || currentBranch?.metafields?.find((m: any) => m?.key === 'minimum_order_value');
-  const minOrderValue = minOrderMeta?.value ? parseFloat(minOrderMeta.value) : 50; 
+  const minOrderAttr = attributes.find((a: any) => a.key.toLowerCase().trim() === 'minimum order value')?.value;
+  const minOrderValue = minOrderAttr ? parseFloat(minOrderAttr) : (minOrderMeta?.value ? parseFloat(minOrderMeta.value) : 50); 
   const isMinOrderMet = subtotal >= minOrderValue;
   const thresholdMeta = currentBranch?.free_delivery_threshold || currentBranch?.metafields?.find((m: any) => m?.key === 'free_delivery_threshold');
   const feeMeta = currentBranch?.delivery_fee || currentBranch?.metafields?.find((m: any) => m?.key === 'delivery_fee');
-  
-  const threshold = thresholdMeta?.value ? parseFloat(thresholdMeta.value) : 300;
+  const thresholdAttr = attributes.find((a: any) => a.key.toLowerCase().trim() === 'free delivery threshold')?.value;
+  const threshold = thresholdAttr ? parseFloat(thresholdAttr) : (thresholdMeta?.value ? parseFloat(thresholdMeta.value) : 300);
   const isFreeDelivery = subtotal >= threshold;
+  const feeAttribute = attributes.find((a: any) => a.key.toLowerCase().trim() === 'delivery fee')?.value;
   const isPickup = fulfillmentType?.toLowerCase() === 'pickup';
-  // Use 25 SAR as default if no metafield is found (matching modal default)
-  const deliveryFee = (isFreeDelivery || isPickup) ? 0 : (feeMeta?.value ? parseFloat(feeMeta.value) : 25);
+  // Use dynamically calculated fee from attribute, otherwise fallback to metafield base fee or 25
+  const deliveryFee = (isFreeDelivery || isPickup) ? 0 : (feeAttribute ? parseFloat(feeAttribute) : (feeMeta?.value ? parseFloat(feeMeta.value) : 25));
   const calculatedTotal = parseFloat(cart?.cost?.totalAmount?.amount || '0') + deliveryFee;
 
   const isTimeSlotSelected = !!timeSlot && timeSlot.trim() !== '';
@@ -68,7 +71,9 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
     line.merchandise?.product?.tags?.some((tag: string) => tag.toLowerCase().trim() === 'prepaid-only')
   );
 
-  const canCheckout = isMinOrderMet && isBranchSelected;
+  const isOutOfRange = !!attributes.find((a: any) => a.key === 'error')?.value;
+
+  const canCheckout = isMinOrderMet && isBranchSelected && !isOutOfRange;
 
   return (
     <div aria-labelledby={summaryId} className="flex flex-col gap-4">
@@ -166,6 +171,7 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
                  validationError={
                    !isMinOrderMet ? (isEn ? `Minimum order is ${currencyCode} ${minOrderValue}` : `الحد الأدنى هو ${minOrderValue} ${currencyCode === 'SAR' ? 'ر.س' : currencyCode}`) :
                    !isBranchSelected ? (isEn ? 'Please select a branch' : 'يرجى اختيار الفرع') :
+                   isOutOfRange ? (isEn ? 'Address is out of delivery range' : 'العنوان خارج نطاق التوصيل') :
                    null
                  }
                />

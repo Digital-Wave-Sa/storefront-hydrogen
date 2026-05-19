@@ -3,33 +3,40 @@ import { useRouteLoaderData } from 'react-router';
 import { PageLayout } from '~/components/PageLayout';
 import patternBg from '~/assets/patteren-collection-header.svg';
 
-export const meta: MetaFunction = () => {
-  return [{ title: 'Contact Us | Saadeddin' }];
+export const meta: MetaFunction = ({ parentsData }) => {
+  const rootData = parentsData?.root as any;
+  const isEn = rootData?.consent?.language?.toLowerCase() === 'en';
+  return [
+    { title: isEn ? 'Contact Us | Saadeddin' : 'اتصل بنا | سعد الدين' },
+    { name: 'description', content: isEn ? 'Contact us for any inquiries, support, or feedback. We are here to help.' : 'اتصل بنا لأي استفسارات أو دعم أو ملاحظات. نحن هنا للمساعدة.' },
+    { property: 'og:title', content: isEn ? 'Contact Us | Saadeddin' : 'اتصل بنا | سعد الدين' },
+    { property: 'og:description', content: isEn ? 'Contact us for any inquiries, support, or feedback. We are here to help.' : 'اتصل بنا لأي استفسارات أو دعم أو ملاحظات. نحن هنا للمساعدة.' },
+  ];
 };
 
 export default function ContactPage() {
   const rootData = useRouteLoaderData('root') as any;
-  const isEn = rootData?.locale === 'en';
+  const isEn = rootData?.consent?.language?.toLowerCase() === 'en';
   return (
     <div className={`w-full min-h-screen bg-[#FEF8EB] ${isEn ? 'font-en text-left' : 'font-ar text-right'}`} dir={isEn ? 'ltr' : 'rtl'}>
       {/* Hero Section */}
-      <div className="relative w-full h-[184px] bg-[#234745] overflow-hidden flex flex-col items-center justify-center text-white px-5 md:px-[80px] py-8">
+      <div className="relative w-full min-h-[300px] bg-[#234745] overflow-hidden flex flex-col items-center justify-center text-white px-[80px] py-10">
         <div
           className="absolute inset-0 pointer-events-none opacity-100"
           style={{
             backgroundImage: `url(${patternBg})`,
-            backgroundSize: '100% 100%',
+            backgroundSize: 'cover',
             backgroundPosition: 'center'
           }}
         />
         <div className="relative z-10 text-center">
-          <p className="text-[14px] md:text-[16px] font-medium opacity-80 mb-2" style={{ fontFamily: "'Bahij Janna', sans-serif" }}>
+          <p className="text-[16px] font-medium opacity-80 mb-2" style={{ fontFamily: "'GE Dinar One', sans-serif", lineHeight: '100%' }}>
             {isEn ? 'Contact us' : 'تواصل معنا'}
           </p>
-          <h1 className="text-[32px] md:text-[44px] font-bold leading-tight" style={{ fontFamily: "'Bahij Janna', sans-serif", margin: 0 }}>
+          <h1 className="font-bold" style={{ fontSize: '50px', fontFamily: "'Bahij Janna', sans-serif", lineHeight: '1.4', color: 'rgb(254, 248, 235)', marginTop: '10px', marginBottom: '1rem' }}>
             {isEn ? "We're always here to help" : 'نحن هنا دائماً لمساعدتك'}
           </h1>
-          <p className="text-[14px] md:text-[16px] font-medium opacity-80 mt-2" style={{ fontFamily: "'Bahij Janna', sans-serif" }}>
+          <p className="text-[14px] md:text-[16px] font-medium opacity-80 mt-2" style={{ fontFamily: "'GE Dinar One', sans-serif", lineHeight: '100%' }}>
             {isEn ? 'Choose the best way to reach us' : 'اختر أفضل طريقة للتواصل معنا'}
           </p>
         </div>
@@ -40,12 +47,12 @@ export default function ContactPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-16">
           <ContactCard 
             title="WhatsApp" 
-            subtitle={isEn ? 'Response in minutes' : 'الرد خلال دقائق'} 
+            subtitle={isEn ? 'Fastest — Instant response' : 'الأسرع — رد فوري'} 
             pill={isEn ? '8 AM - 12 PM' : '٨ ص - ١٢ م'} 
           />
           <ContactCard 
             title={isEn ? 'Phone' : 'الهاتف'} 
-            subtitle={isEn ? 'General inquiries' : 'الاستفسارات العامة'} 
+            subtitle={isEn ? 'For urgent inquiries' : 'للاستفسارات العاجلة'} 
             pill={isEn ? '8 AM - 11 PM' : '٨ ص - ١١ م'} 
           />
           <ContactCard 
@@ -60,11 +67,11 @@ export default function ContactPage() {
           />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-10 lg:gap-20 items-start">
+        <div className="flex flex-col md:flex-row gap-10 lg:gap-20 items-start">
           {/* Info Column (First in code = Right in RTL) */}
-          <div className="md:col-span-5 xl:col-span-4 space-y-12">
+          <div className="w-full md:w-[55%] space-y-12">
             <section>
-              <h2 className="text-[28px] md:text-[34px] font-bold text-[#1F413F] mb-10" style={{ fontFamily: "'Bahij Janna', sans-serif" }}>
+              <h2 className="text-[28px] md:text-[38px] font-bold text-[#1F413F] mb-10" style={{ fontFamily: "'Bahij Janna', sans-serif", lineHeight: '100%' }}>
                 {isEn ? 'Contact Information' : 'معلومات التواصل'}
               </h2>
               <div className="space-y-0">
@@ -75,7 +82,7 @@ export default function ContactPage() {
             </section>
 
             <section>
-              <h2 className="text-[28px] md:text-[34px] font-bold text-[#1F413F] mb-10" style={{ fontFamily: "'Bahij Janna', sans-serif" }}>
+              <h2 className="text-[28px] md:text-[38px] font-bold text-[#1F413F] mb-10" style={{ fontFamily: "'Bahij Janna', sans-serif", lineHeight: '100%' }}>
                 {isEn ? 'Business Hours' : 'أوقات العمل'}
               </h2>
               <div className="space-y-0">
@@ -85,18 +92,18 @@ export default function ContactPage() {
             </section>
 
             <section>
-              <h2 className="text-[28px] md:text-[34px] font-bold text-[#1F413F] mb-10" style={{ fontFamily: "'Bahij Janna', sans-serif" }}>
+              <h2 className="text-[28px] md:text-[38px] font-bold text-[#1F413F] mb-10" style={{ fontFamily: "'Bahij Janna', sans-serif", lineHeight: '100%' }}>
                 {isEn ? 'Corporate Inquiries' : 'استفسارات الشركات'}
               </h2>
-              <div className="bg-[#F9F7F2] rounded-[24px] p-8 border border-gray-100 flex flex-col gap-8 shadow-sm">
+              <div className="flex flex-col" style={{ width: '100%', minHeight: '160px', gap: '24px', borderRadius: '12px', padding: '12px', border: '1px solid #BBCFCD', background: 'transparent' }}>
                 <div className="space-y-3">
-                  <h4 className="text-[18px] font-bold text-[#1F413F] leading-snug">{isEn ? 'Corporate gifts or large orders?' : 'هدايا مؤسسية أو طلبات كبيرة؟'}</h4>
-                  <p className="text-[14px] text-[#1F413F]/60 leading-relaxed">
+                  <h4 className="text-[18px] font-bold text-[#1F413F] leading-snug" style={{ fontFamily: "'Bahij Janna', sans-serif", marginTop: 0 }}>{isEn ? 'Corporate gifts or large orders?' : 'هدايا مؤسسية أو طلبات كبيرة؟'}</h4>
+                  <p className="text-[14px] text-[#1F413F]/60" style={{ fontFamily: "'GE Dinar One', sans-serif", lineHeight: '1.4', fontWeight: 500 }}>
                     {isEn ? 'Our corporate team is ready to serve you with custom price quotes and full service.' : 'فريق الشركات جاهز لخدمتك بعروض أسعار مخصصة وخدمة متكاملة'}
                   </p>
                 </div>
-                <div className="flex justify-end">
-                  <button type="button" className="bg-[#1F413F] text-white px-10 h-[48px] rounded-full font-bold text-[15px] hover:bg-[#152e2c] transition-all shadow-md">
+                <div className={`flex ${isEn ? 'justify-end' : 'justify-start'}`}>
+                  <button type="button" className="bg-[#1F413F] text-white px-10 h-[48px] rounded-full font-bold text-[15px] hover:bg-[#152e2c] transition-all shadow-md" style={{ fontFamily: "'Bahij Janna', sans-serif" }}>
                     {isEn ? 'Seasonal Gifts' : 'الهدايا الموسمية'}
                   </button>
                 </div>
@@ -105,14 +112,14 @@ export default function ContactPage() {
           </div>
 
           {/* Form Column (Second in code = Left in RTL) */}
-          <div className="md:col-span-7 xl:col-span-8 bg-white border border-[#234745] shadow-sm overflow-hidden" style={{ borderRadius: '32px' }}>
-            <div className="p-8 md:p-14">
-              <h2 className="text-[28px] md:text-[36px] font-bold text-[#1F413F] mb-12" style={{ fontFamily: "'Bahij Janna', sans-serif" }}>
+          <div className="w-full md:w-[45%] bg-white border border-[#234745] shadow-sm overflow-hidden" style={{ borderRadius: '12px' }}>
+            <div className="p-6 w-full" style={{ display: 'block', width: '100%', maxWidth: 'none' }}>
+              <h2 className="text-[26px] font-bold text-[#234745]" style={{ fontFamily: "'Bahij Janna', sans-serif", lineHeight: '100%', marginBottom: '32px' }}>
                 {isEn ? 'Send us a message' : 'أرسل لنا رسالة'}
               </h2>
 
-              <form className="space-y-10">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-10">
+              <form className="space-y-6 w-full" style={{ display: 'block', width: '100%', maxWidth: 'none' }}>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 w-full" style={{ width: '100%' }}>
                   <FormField label={isEn ? 'Full Name' : 'الاسم الكامل'} placeholder={isEn ? 'Mohamed Al-Abdali' : 'محمد العبدلي'} required isEn={isEn} />
                   <FormField label={isEn ? 'Mobile Number' : 'رقم الجوال'} placeholder={isEn ? '05X XXX XXXX' : 'رقم الجوال'} required isEn={isEn} />
                 </div>
@@ -120,12 +127,12 @@ export default function ContactPage() {
                 <FormField label={isEn ? 'Email' : 'البريد الإلكتروني'} placeholder="name@gmail.com" required type="email" isEn={isEn} />
 
                 <div className="flex flex-col gap-4">
-                  <label className={`text-[15px] font-bold text-[#1F413F] flex items-center gap-1 ${isEn ? 'flex-row' : 'flex-row-reverse'}`}>
+                  <label className="text-[15px] font-bold text-[#1F413F] flex items-center gap-1" style={{ fontFamily: "'GE Dinar One', sans-serif", lineHeight: '100%' }}>
                     <span>{isEn ? 'Subject' : 'الموضوع'}</span>
                     <span className="text-red-500 font-bold">*</span>
                   </label>
                   <div className="relative">
-                    <select className={`w-full h-[58px] px-6 rounded-2xl border border-gray-200 focus:border-[#1F413F] outline-none bg-white text-[16px] appearance-none transition-all ${isEn ? 'text-left' : 'text-right'}`} dir={isEn ? 'ltr' : 'rtl'}>
+                    <select className={`w-full h-[58px] px-6 rounded-2xl border border-gray-200 focus:border-[#1F413F] outline-none bg-white text-[16px] appearance-none transition-all ${isEn ? 'text-left' : 'text-right'}`} dir={isEn ? 'ltr' : 'rtl'} style={{ fontFamily: "'GE Dinar One', sans-serif", fontWeight: 500 }}>
                       <option>{isEn ? 'Select Subject' : 'إختر الموضوع'}</option>
                     </select>
                     <div className={`absolute top-1/2 -translate-y-1/2 pointer-events-none ${isEn ? 'right-6' : 'left-6'}`}>
@@ -137,27 +144,34 @@ export default function ContactPage() {
                 <FormField label={isEn ? 'Order Number (Optional)' : 'رقم الطلب (إختياري)'} placeholder="sd-asdqo142" isEn={isEn} />
 
                 <div className="flex flex-col gap-4">
-                  <label className={`text-[15px] font-bold text-[#1F413F] flex items-center gap-1 ${isEn ? 'flex-row' : 'flex-row-reverse'}`}>
+                  <label className="text-[15px] font-bold text-[#1F413F] flex items-center gap-1" style={{ fontFamily: "'GE Dinar One', sans-serif", lineHeight: '100%' }}>
                     <span>{isEn ? 'Message' : 'الرسالة'}</span>
                     <span className="text-red-500 font-bold">*</span>
                   </label>
                   <textarea
-                    rows={7}
                     placeholder={isEn ? 'Write your message here...' : 'إكتب رسالتك هنا...'}
-                    className={`w-full p-6 rounded-2xl border border-gray-200 focus:border-[#1F413F] outline-none bg-white text-[16px] resize-none transition-all ${isEn ? 'text-left' : 'text-right'}`}
+                    className={`w-full border border-gray-200 focus:border-[#1F413F] outline-none bg-white text-[16px] resize-none transition-all ${isEn ? 'text-left' : 'text-right'}`}
+                    style={{ 
+                      fontFamily: "'GE Dinar One', sans-serif", 
+                      fontWeight: 500,
+                      height: '96px',
+                      padding: '12px 16px',
+                      borderRadius: '12px',
+                      maxWidth: '580px'
+                    }}
                   />
                 </div>
 
                 <div className="flex flex-col gap-4">
-                  <label className={`text-[15px] font-bold text-[#1F413F] ${isEn ? 'text-left' : 'text-right'}`}>
+                  <label className={`text-[15px] font-bold text-[#1F413F] ${isEn ? 'text-left' : 'text-right'}`} style={{ fontFamily: "'GE Dinar One', sans-serif", lineHeight: '100%' }}>
                     {isEn ? 'Add Attachment (Optional)' : 'إضافة مرفق (إختياري)'}
                   </label>
                   <div 
                     className="w-full h-[140px] border-2 border-dashed rounded-2xl flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-gray-50/50 transition-all"
                     style={{ borderColor: '#D1B8A7' }}
                   >
-                    <span className="text-[16px] font-bold text-[#1F413F]">{isEn ? 'Add Attachment' : 'إضافة مرفق'}</span>
-                    <span className="text-[13px] text-gray-400">{isEn ? 'Photos or PDF — Max 5MB' : 'صور او PDF — حجم اقصى ٥ ميجابايت'}</span>
+                    <span className="text-[16px] font-bold text-[#1F413F]" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>{isEn ? 'Add Attachment' : 'إضافة مرفق'}</span>
+                    <span className="text-[13px] text-gray-400" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>{isEn ? 'Photos or PDF — Max 5MB' : 'صور او PDF — حجم اقصى ٥ ميجابايت'}</span>
                   </div>
                 </div>
 
@@ -184,10 +198,10 @@ function ContactCard({ title, subtitle, pill }: any) {
       className="bg-white p-6 md:p-10 border border-[#234745] flex flex-col items-center justify-center text-center transition-all min-h-[200px] w-full"
       style={{ borderRadius: '32px' }}
     >
-      <h3 className="text-[24px] md:text-[28px] font-bold text-[#1F413F] mb-3" style={{ fontFamily: "'Bahij Janna', sans-serif" }}>{title}</h3>
+      <h3 className="text-[24px] md:text-[28px] font-bold text-[#1F413F] mb-3" style={{ fontFamily: "'Bahij Janna', sans-serif", lineHeight: '100%' }}>{title}</h3>
       <p 
-        className="text-[14px] md:text-[15px] text-[#A8BDB5] !mb-6 font-medium leading-tight"
-        style={{ marginBottom: '24px' }}
+        className="text-[14px] md:text-[15px] text-[#A8BDB5] !mb-6 font-medium"
+        style={{ fontFamily: "'GE Dinar One', sans-serif", lineHeight: '1.4', fontWeight: 500, marginBottom: '24px' }}
       >
         {subtitle}
       </p>
@@ -195,7 +209,9 @@ function ContactCard({ title, subtitle, pill }: any) {
         className="inline-flex items-center justify-center px-8 h-[40px] font-bold bg-[#BBCFCD] text-[#1F413F] transition-colors whitespace-nowrap"
         style={{
           borderRadius: '1000px',
-          fontFamily: "'Bahij Janna', sans-serif",
+          fontFamily: "'GE Dinar One', sans-serif",
+          fontWeight: 700,
+          lineHeight: '100%',
           minWidth: '89px'
         }}
       >
@@ -207,8 +223,8 @@ function ContactCard({ title, subtitle, pill }: any) {
 
 function FormField({ label, placeholder, required, type = "text", isEn }: any) {
   return (
-    <div className={`flex flex-col gap-3 ${isEn ? 'text-left' : 'text-right'}`}>
-      <label className={`text-[14px] font-bold text-[#1F413F] flex items-center gap-1 ${isEn ? 'flex-row' : 'flex-row-reverse'}`}>
+    <div className={`flex flex-col gap-3 ${isEn ? 'text-left' : 'text-right'}`} style={{ width: '100%' }}>
+      <label className="text-[14px] font-bold text-[#1F413F] flex items-center gap-1" style={{ fontFamily: "'GE Dinar One', sans-serif", lineHeight: '100%' }}>
         <span>{label}</span>
         {required && <span className="text-red-500 font-bold">*</span>}
       </label>
@@ -216,6 +232,7 @@ function FormField({ label, placeholder, required, type = "text", isEn }: any) {
         type={type}
         placeholder={placeholder}
         className={`w-full h-[54px] px-6 rounded-xl border border-gray-200 focus:border-[#1F413F] outline-none bg-white text-[15px] transition-all placeholder:text-gray-300 ${isEn ? 'text-left' : 'text-right'}`}
+        style={{ fontFamily: "'GE Dinar One', sans-serif", fontWeight: 500 }}
       />
     </div>
   );
@@ -223,9 +240,9 @@ function FormField({ label, placeholder, required, type = "text", isEn }: any) {
 
 function InfoRow({ label, value, isEn }: any) {
   return (
-    <div className={`flex items-center justify-between py-5 border-b border-[#1F413F]/5 ${isEn ? 'flex-row' : 'flex-row-reverse'}`}>
-      <span className="text-[14px] font-bold text-gray-400/80">{label}</span>
-      <span className="text-[16px] font-bold text-[#1F413F] tracking-tight">{value}</span>
+    <div className="flex items-center justify-between py-5 border-b border-[#1F413F]/5">
+      <span className="text-[16px] font-medium text-gray-400/80" style={{ fontFamily: "'GE Dinar One', sans-serif", lineHeight: '100%' }}>{label}</span>
+      <span className="text-[16px] font-bold text-[#1F413F] tracking-tight" style={{ fontFamily: "'GE Dinar One', sans-serif", lineHeight: '100%', fontWeight: 700 }}>{value}</span>
     </div>
   );
 }

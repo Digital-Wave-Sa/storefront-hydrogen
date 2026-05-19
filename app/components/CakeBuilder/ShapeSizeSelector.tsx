@@ -1,147 +1,98 @@
 import React from 'react';
 
-export interface Shape {
-  id: string;
-  nameEn: string;
-  nameAr: string;
-  priceDelta: number;
-  icon: React.ReactNode;
-}
-
-export interface Size {
+export interface CakeBase {
   id: string;
   nameEn: string;
   nameAr: string;
   servesEn: string;
   servesAr: string;
-  priceDelta: number;
+  specsEn: string;
+  specsAr: string;
+  price: number;
+  isPopular?: boolean;
+  shapeId: string; // for the 3D preview
 }
 
-export const SHAPES: Shape[] = [
-  {
-    id: 'round',
-    nameEn: 'Round',
-    nameAr: 'دائري',
-    priceDelta: 0,
-    icon: (
-      <div className="w-16 h-16 rounded-full border-[6px] border-[#FF4D8D] flex items-center justify-center shadow-inner">
-        <div className="w-8 h-8 rounded-full bg-[#FF4D8D]/10" />
-      </div>
-    )
-  },
-  {
-    id: 'square',
-    nameEn: 'Square',
-    nameAr: 'مربع',
-    priceDelta: 0,
-    icon: (
-      <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#E0C3FC] to-[#8EC5FC] shadow-md border-2 border-white" />
-    )
-  },
-  {
-    id: 'heart',
-    nameEn: 'Heart',
-    nameAr: 'قلب',
-    priceDelta: 20,
-    icon: (
-      <div className="relative">
-        <svg width="64" height="64" viewBox="0 0 24 24" fill="#FF4D6D" stroke="none">
-          <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
-        </svg>
-        <div className="absolute top-1 right-1">
-           <svg width="12" height="12" viewBox="0 0 24 24" fill="#FFD700"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-        </div>
-      </div>
-    )
-  },
-  {
-    id: 'rectangle',
-    nameEn: 'Rectangle',
-    nameAr: 'مستطيل',
-    priceDelta: 10,
-    icon: (
-      <div className="w-20 h-14 border-2 border-gray-800 rounded-sm flex items-center justify-center">
-         <div className="w-full h-[1px] bg-gray-100" />
-      </div>
-    )
-  }
-];
-
-export const SIZES: Size[] = [
-  { id: 's', nameEn: 'Small', nameAr: 'صغير', servesEn: '4-6 People', servesAr: '٤-٦ أشخاص', priceDelta: 0 },
-  { id: 'm', nameEn: 'Medium', nameAr: 'وسط', servesEn: '8-12 People', servesAr: '٨-١٢ شخص', priceDelta: 45 },
-  { id: 'l', nameEn: 'Large', nameAr: 'كبير', servesEn: '15-20 People', servesAr: '١٥-٢٠ شخص', priceDelta: 90 },
-  { id: 'xl', nameEn: 'Extra Large', nameAr: 'كبير جداً', servesEn: '25+ People', servesAr: '+٢٥ شخص', priceDelta: 160 },
+export const CAKE_BASES: CakeBase[] = [
+  { id: 'small_standard', nameEn: 'Small Standard', nameAr: 'ستاندرد صغير', servesEn: 'Good for 5-8 people', servesAr: 'يكفي ٥-٨ أشخاص', specsEn: '1 kg | 6x3', specsAr: '١ كيلو | ٦×٣', price: 190, isPopular: true, shapeId: 'round' },
+  { id: 'mini_cake', nameEn: 'Mini Cake', nameAr: 'ميني كيك', servesEn: 'Good for 2-4 people', servesAr: 'يكفي ٢-٤ أشخاص', specsEn: '1/2 kg | 4x3', specsAr: 'نصف كيلو | ٤×٣', price: 100, shapeId: 'round' },
+  { id: 'small_heart', nameEn: 'Small Heart', nameAr: 'قلب صغير', servesEn: 'Good for 5-8 people', servesAr: 'يكفي ٥-٨ أشخاص', specsEn: '1 kg | 6x3', specsAr: '١ كيلو | ٦×٣', price: 190, shapeId: 'heart' },
+  { id: 'standard', nameEn: 'Standard', nameAr: 'ستاندرد', servesEn: 'Good for 14-18 people', servesAr: 'يكفي ١٤-١٨ شخص', specsEn: '1.8 kg | 6x5', specsAr: '١.٨ كيلو | ٦×٥', price: 270, shapeId: 'round' },
+  { id: 'heart', nameEn: 'Heart', nameAr: 'قلب', servesEn: 'Good for 10-15 people', servesAr: 'يكفي ١٠-١٥ شخص', specsEn: '1.4 kg | 8x3', specsAr: '١.٤ كيلو | ٨×٣', price: 230, shapeId: 'heart' },
+  { id: 'classic_round', nameEn: 'Classic Round', nameAr: 'دائري كلاسيكي', servesEn: 'Good for 12-16 people', servesAr: 'يكفي ١٢-١٦ شخص', specsEn: '1.6 kg | 8x3', specsAr: '١.٦ كيلو | ٨×٣', price: 250, isPopular: true, shapeId: 'round' },
+  { id: 'classic_square', nameEn: 'Classic Square', nameAr: 'مربع كلاسيكي', servesEn: 'Good for 18-22 people', servesAr: 'يكفي ١٨-٢٢ شخص', specsEn: '2 kg | 8x8x3', specsAr: '٢ كيلو | ٨×٨×٣', price: 310, shapeId: 'square' },
+  { id: 'sheet', nameEn: 'Sheet', nameAr: 'مستطيل كبير', servesEn: 'Good for 22-26 people', servesAr: 'يكفي ٢٢-٢٦ شخص', specsEn: '2.5 kg | 11x7x3', specsAr: '٢.٥ كيلو | ١١×٧×٣', price: 350, shapeId: 'rectangle' },
+  { id: 'double_barrel', nameEn: 'Double Barrel', nameAr: 'دبل باريل', servesEn: 'Good for 45-55 people', servesAr: 'يكفي ٤٥-٥٥ شخص', specsEn: '5 kg | 8x6 6x6', specsAr: '٥ كيلو | ٨×٦ ٦×٦', price: 610, shapeId: 'round' },
+  { id: 'mini_barrel', nameEn: 'Mini Barrel', nameAr: 'ميني باريل', servesEn: 'Good for 12-16 people', servesAr: 'يكفي ١٢-١٦ شخص', specsEn: '1.6 kg | 6x3 4x3', specsAr: '١.٦ كيلو | ٦×٣ ٤×٣', price: 260, shapeId: 'round' },
 ];
 
 interface ShapeSizeSelectorProps {
   isEn: boolean;
-  selectedShape: Shape;
-  onShapeChange: (shape: Shape) => void;
-  selectedSize: Size;
-  onSizeChange: (size: Size) => void;
+  selectedBase: CakeBase;
+  onBaseChange: (base: CakeBase) => void;
 }
 
 export function ShapeSizeSelector({ 
   isEn, 
-  selectedShape, 
-  onShapeChange, 
-  selectedSize, 
-  onSizeChange 
+  selectedBase, 
+  onBaseChange 
 }: ShapeSizeSelectorProps) {
   return (
     <div className="cake-builder-step animate-fade-in" dir={isEn ? 'ltr' : 'rtl'}>
       <div className="mb-8">
         <h2 className="text-2xl font-bold text-[#234745] mb-2">
-          {isEn ? 'Select Cake Shape' : 'اختر شكل الكيكة'}
+          {isEn ? 'Choose Base Cake' : 'اختر كيكة الأساس'}
         </h2>
         <p className="text-gray-400 text-sm">
-          {isEn ? 'Choose the perfect shape for your celebration' : 'اختر الشكل المثالي لاحتفالك'}
+          {isEn ? 'Select the perfect shape and size for your celebration' : 'اختر الشكل والحجم المثاليين لاحتفالك'}
         </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 mb-10">
-        {SHAPES.map((shape) => (
-          <button
-            key={shape.id}
-            onClick={() => onShapeChange(shape)}
-            className={`flex flex-col items-center justify-center p-8 rounded-[24px] border-2 transition-all duration-300 ${
-              selectedShape.id === shape.id 
-                ? 'border-[#234745] bg-white shadow-xl -translate-y-1' 
-                : 'border-gray-100 bg-white text-gray-400 hover:border-gray-200'
-            }`}
-          >
-            <div className="mb-4 h-20 flex items-center justify-center">{shape.icon}</div>
-            <span className="font-bold text-[#1a1a1a] mb-1">
-              {isEn ? shape.nameEn : shape.nameAr}
-            </span>
-            <span className="text-xs text-gray-400 font-bold">
-               +{shape.priceDelta} SAR
-            </span>
-          </button>
-        ))}
-      </div>
-
-      <div className="mb-6">
-        <h2 className="text-xl font-bold text-[#234745] mb-4">
-          {isEn ? 'Choose Size' : 'اختر الحجم'}
-        </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {SIZES.map((size) => (
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:gap-6 mb-10">
+        {CAKE_BASES.map((base) => {
+          const isSelected = selectedBase.id === base.id;
+          return (
             <button
-              key={size.id}
-              onClick={() => onSizeChange(size)}
-              className={`p-4 rounded-xl border-2 transition-all flex flex-col items-start ${
-                selectedSize.id === size.id 
-                  ? 'border-[#234745] bg-[#234745]/5 shadow-sm' 
-                  : 'border-gray-50 bg-white hover:border-gray-100'
+              key={base.id}
+              onClick={() => onBaseChange(base)}
+              className={`relative flex flex-col p-6 rounded-[24px] border-2 transition-all duration-300 text-start ${
+                isSelected 
+                  ? 'border-[#234745] bg-[#234745]/5 shadow-xl -translate-y-1' 
+                  : 'border-gray-100 bg-white hover:border-gray-200 shadow-sm hover:shadow-md'
               }`}
             >
-              <span className="font-bold text-[#1a1a1a]">{isEn ? size.nameEn : size.nameAr}</span>
-              <span className="text-[11px] text-gray-400">{isEn ? size.servesEn : size.servesAr}</span>
+              {base.isPopular && (
+                <div className="absolute top-0 right-4 -translate-y-1/2 bg-[#d4a06a] text-white text-[10px] font-bold px-3 py-1 rounded-full shadow-sm">
+                  {isEn ? '⭐ Popular' : '⭐ الأكثر طلباً'}
+                </div>
+              )}
+              
+              <div className="flex justify-between items-start w-full mb-3">
+                <span className="font-black text-[#234745] text-lg">
+                  {isEn ? base.nameEn : base.nameAr}
+                </span>
+                <span className="font-black text-[#234745] font-en whitespace-nowrap ml-2">
+                  {base.price} SAR
+                </span>
+              </div>
+              
+              <div className="space-y-1">
+                <p className="text-sm font-bold text-gray-500">
+                  {isEn ? base.servesEn : base.servesAr}
+                </p>
+                <p className="text-[11px] font-bold text-gray-400 font-en uppercase tracking-wider">
+                  {isEn ? base.specsEn : base.specsAr}
+                </p>
+              </div>
+
+              {isSelected && (
+                <div className="absolute bottom-4 right-4 w-6 h-6 bg-[#234745] rounded-full flex items-center justify-center animate-scale-in">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
+                </div>
+              )}
             </button>
-          ))}
-        </div>
+          );
+        })}
       </div>
     </div>
   );

@@ -86,7 +86,20 @@ export async function loader({context}: Route.LoaderArgs) {
         // Helper fields for common UI components
         hours_from: (loc.metafields?.nodes || []).find((m: any) => m.key === 'working_hours_from')?.value,
         hours_to: (loc.metafields?.nodes || []).find((m: any) => m.key === 'working_hours_to')?.value,
-        delivery_time: (loc.metafields?.nodes || []).find((m: any) => m.key === 'delivery_time')?.value,
+        
+        // Delivery Rules
+        delivery_available: (loc.metafields?.nodes || []).find((m: any) => m.key === 'delivery_available')?.value === 'true',
+        delivery_fee: parseFloat((loc.metafields?.nodes || []).find((m: any) => m.key === 'delivery_fee')?.value || '0'),
+        per_km_rate: parseFloat((loc.metafields?.nodes || []).find((m: any) => m.key === 'per_km_rate')?.value || '0'),
+        free_delivery_threshold: parseFloat((loc.metafields?.nodes || []).find((m: any) => m.key === 'free_delivery_threshold')?.value || '0'),
+        minimum_order_value: parseFloat((loc.metafields?.nodes || []).find((m: any) => m.key === 'minimum_order_value')?.value || '0'),
+        delivery_time_from: (loc.metafields?.nodes || []).find((m: any) => m.key === 'delivery_time_from')?.value,
+        delivery_time_to: (loc.metafields?.nodes || []).find((m: any) => m.key === 'delivery_time_to')?.value,
+        coverage_areas: (loc.metafields?.nodes || []).find((m: any) => m.key === 'coverage_areas')?.value,
+        
+        // ERP Mapping
+        ax_store_id: (loc.metafields?.nodes || []).find((m: any) => m.key === 'ax_store_id')?.value,
+        ax_branch_name: (loc.metafields?.nodes || []).find((m: any) => m.key === 'ax_branch_name')?.value,
       };
     });
 

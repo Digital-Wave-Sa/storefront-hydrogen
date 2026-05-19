@@ -2281,6 +2281,39 @@ button.reset:hover:not(:has(> *)) {
   to { transform: translateY(0); opacity: 1; }
 }
 
+/* Delivery Info Badges on Branch Cards */
+.dpm-branch-delivery-info {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed #f0ece8;
+}
+
+.dpm-info-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 8px;
+  background: #f5f3f1;
+  color: #666;
+  white-space: nowrap;
+}
+
+.dpm-info-badge--free {
+  background: #e6f4ea;
+  color: #1e7e34;
+}
+
+.dpm-info-badge--min {
+  background: #fff8e1;
+  color: #e65100;
+}
+
 @media (max-width: 900px) {
   .dpm-container {
     flex-direction: column-reverse;

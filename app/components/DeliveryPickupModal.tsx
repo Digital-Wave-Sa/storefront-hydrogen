@@ -24,8 +24,11 @@ export interface Branch {
     deliveryStatus?: 'open' | 'closed';
     deliveryOpenUntil?: string;
     deliveryAvailable: boolean;
+    deliveryRadius?: number;
     minOrder: number;
     deliveryFee: number;
+    baseDeliveryFee?: number;
+    perKmRate: number;
     freeDeliveryThreshold: number;
     hoursFrom?: string;
     hoursTo?: string;
@@ -65,6 +68,7 @@ export const FALLBACK_BRANCHES: Branch[] = [
         deliveryAvailable: true,
         minOrder: 40,
         deliveryFee: 0,
+        perKmRate: 0,
         freeDeliveryThreshold: 200,
         badge: 'طلب مسبق',
     },
@@ -81,6 +85,7 @@ export const FALLBACK_BRANCHES: Branch[] = [
         deliveryAvailable: true,
         minOrder: 40,
         deliveryFee: 0,
+        perKmRate: 0,
         freeDeliveryThreshold: 200,
         badge: 'طلب مسبق',
     },
@@ -97,6 +102,7 @@ export const FALLBACK_BRANCHES: Branch[] = [
         deliveryAvailable: true,
         minOrder: 40,
         deliveryFee: 0,
+        perKmRate: 0,
         freeDeliveryThreshold: 200,
         badge: 'طلب مسبق',
     },
@@ -113,6 +119,7 @@ export const FALLBACK_BRANCHES: Branch[] = [
         deliveryAvailable: true,
         minOrder: 40,
         deliveryFee: 0,
+        perKmRate: 0,
         freeDeliveryThreshold: 200,
         badge: 'طلب مسبق',
     },
@@ -129,6 +136,7 @@ export const FALLBACK_BRANCHES: Branch[] = [
         deliveryAvailable: true,
         minOrder: 40,
         deliveryFee: 0,
+        perKmRate: 0,
         freeDeliveryThreshold: 200,
         badge: 'طلب مسبق',
     }
@@ -252,11 +260,13 @@ export function parseLocationToBranch(node: any): Branch {
         openUntil: '11:59 م',
         pickupStatus: pickup.status,
         pickupOpenUntil: pickup.openUntil,
-        deliveryStatus: delivery.status,
         deliveryOpenUntil: delivery.openUntil,
         deliveryAvailable: true,
+        deliveryRadius: getMeta('delivery_radius', 50),
         minOrder: getMeta('minimum_order_value', 50),
         deliveryFee: getMeta('delivery_fee', 25),
+        baseDeliveryFee: getMeta('delivery_fee', 25),
+        perKmRate: getMeta('per_km_rate', 0),
         freeDeliveryThreshold: getMeta('free_delivery_threshold', 300),
         hoursFrom: node.metafields?.find((m: any) => m?.key === 'working_hours_from')?.value,
         hoursTo: node.metafields?.find((m: any) => m?.key === 'working_hours_to')?.value,
@@ -334,10 +344,9 @@ export function DeliveryPickupModal({
 
     const mergeWithAdminMeta = (nodes: any[]) => {
         if (!adminMetafields.length) {
-            console.log('[DPM] No admin metafields found to merge.');
             return nodes;
         }
-        console.log('[DPM] Merging with Admin Meta:', adminMetafields.length, 'records found');
+
         return nodes.map(n => {
             // Match by ID or name
             const al = adminMetafields.find((a: any) => 
@@ -345,8 +354,7 @@ export function DeliveryPickupModal({
                 a.name === n.name
             );
             if (al) {
-                console.log(`[DPM] Successfully merged data for: ${n.name}`);
-                return { ...n, ...al }; // Merge all helper fields like hours_from, hours_to
+                return { ...n, ...al };
             }
             return n;
         });
@@ -370,7 +378,6 @@ export function DeliveryPickupModal({
                 <Suspense fallback={<div className="dpm-loading"><div className="dpm-loading-spinner" /></div>}>
                     <Await resolve={Promise.all([locationsPromise, customerPromise])}>
                         {([locationsData, customerData]: [any, any]) => {
-                            console.log('--- LOUD DEBUG: RAW DATA FROM SHOPIFY ---', { locationsData, customerData });
                             const nodes = locationsData?.locations?.nodes || [];
                             
                             // Use Storefront API nodes as the base
@@ -390,13 +397,20 @@ export function DeliveryPickupModal({
                                 ? enrichedNodes.map((n: any) => parseLocationToBranch(n))
                                 : FALLBACK_BRANCHES;
 
-                            // Calculate distances
+                            // Calculate distances and dynamic delivery fees
                             const processedBranches = rawBranches.map(b => {
                                 if (userCoords && b.lat && b.lng) {
                                     const dist = getDistance(userCoords, { lat: b.lat, lng: b.lng });
+                                    // Dynamic fee: baseFee + (distance × perKmRate)
+                                    let dynamicFee = b.deliveryFee;
+                                    if (b.perKmRate > 0) {
+                                        dynamicFee = b.deliveryFee + (dist * b.perKmRate);
+                                        dynamicFee = Math.round(dynamicFee * 100) / 100; // round to 2 decimals
+                                    }
                                     return {
                                         ...b,
                                         distanceKm: dist,
+                                        deliveryFee: dynamicFee,
                                         distance: dist > 1 ? `${dist.toFixed(1)} km` : `${(dist * 1000).toFixed(0)} m`
                                     };
                                 }
@@ -437,6 +451,17 @@ export function DeliveryPickupModal({
 
 // ─── SUB-COMPONENTS ───────────────────────────────────────────────────────
 
+function normalizeCity(city: string): string {
+    const c = (city || '').toLowerCase().trim();
+    if (c.includes('riyadh') || c.includes('رياض')) return 'riyadh';
+    if (c.includes('abha') || c.includes('أبها') || c.includes('ابها')) return 'abha';
+    if (c.includes('jeddah') || c.includes('جدة') || c.includes('جده')) return 'jeddah';
+    if (c.includes('khamis') || c.includes('خميس') || c.includes('مشيط')) return 'khamis mushait';
+    if (c.includes('dammam') || c.includes('دمام')) return 'dammam';
+    if (c.includes('khobar') || c.includes('خبر')) return 'khobar';
+    return c;
+}
+
 function ModalContent({
     activeTab,
     setActiveTab,
@@ -465,9 +490,21 @@ function ModalContent({
     }));
 
     const addresses = customer?.addresses?.nodes || [];
-    const currentAddress = addresses.find((a: any) => a.id === selectedBranch);
-    const effectiveSelectedBranch = selectedBranch || (activeTab === 'pickup' ? branches[0]?.id : (addresses[0]?.id || ''));
     
+    // Ensure the selected branch belongs to the active tab's domain
+    let effectiveSelectedBranch = selectedBranch;
+    if (activeTab === 'delivery') {
+        const isValidAddress = addresses.some((a: any) => a.id === selectedBranch);
+        if (!isValidAddress) effectiveSelectedBranch = addresses[0]?.id || '';
+    } else {
+        const isValidBranch = branches.some((b: any) => b.id === selectedBranch);
+        if (!isValidBranch) effectiveSelectedBranch = branches[0]?.id || '';
+    }
+
+    const currentAddress = activeTab === 'delivery' ? addresses.find((a: any) => a.id === effectiveSelectedBranch) : null;
+    const currentBranch = branches.find((b: any) => b.id === effectiveSelectedBranch) || branches[0];
+    const isUserAddressSelected = activeTab === 'delivery' && !!currentAddress;
+
     // Auto-select nearest branch when coords are detected and no manual selection is made yet
     useEffect(() => {
         if (userCoords && !selectedBranch && activeTab === 'pickup' && branches.length > 0) {
@@ -475,8 +512,14 @@ function ModalContent({
         }
     }, [userCoords, selectedBranch, activeTab, branches, setSelectedBranch]);
 
-    const currentBranch = branches.find((b: any) => b.id === effectiveSelectedBranch) || branches[0];
-    const isUserAddressSelected = !!currentAddress;
+    // Auto-select first address under delivery tab when no manual selection is made yet
+    useEffect(() => {
+        if (!selectedBranch && activeTab === 'delivery' && addresses.length > 0) {
+            setSelectedBranch(addresses[0].id);
+        }
+    }, [selectedBranch, activeTab, addresses, setSelectedBranch]);
+
+
 
     const filteredBranches = branches.filter((b: any) =>
         b.name.toLowerCase().includes(branchSearch.toLowerCase()) || 
@@ -594,7 +637,6 @@ function ModalContent({
                 <div className="dpm-panel-body">
                     {activeTab === 'delivery' ? (
                         <div className="p-4 animate-fade-in">
-                            {console.log('[DPM] Rendering addresses:', { count: addresses.length, customerId: customer?.id })}
                             <h3 className="text-xs font-bold text-gray-400 mb-4 uppercase tracking-widest">{isEn ? 'Your Addresses' : 'عناوينك المسجلة'}</h3>
                             {addresses.length > 0 ? (
                                 addresses.map((addr: any) => (
@@ -673,6 +715,14 @@ function ModalContent({
                                             )}
                                         </div>
                                     </div>
+                                    {/* Pickup-specific info badges */}
+                                    <div className="dpm-branch-delivery-info">
+                                        {branch.minOrder > 0 && (
+                                            <span className="dpm-info-badge dpm-info-badge--min">
+                                                {isEn ? `Min Order: ${branch.minOrder} SAR` : `الحد الأدنى للطلب: ${branch.minOrder} ر.س`}
+                                            </span>
+                                        )}
+                                    </div>
                                 </button>
                             ))}
                         </div>
@@ -685,7 +735,7 @@ function ModalContent({
                         disabled={!effectiveSelectedBranch}
                         onClick={() => {
                                 if (isUserAddressSelected) {
-                                    const currentAddress = addresses.find((a: any) => a.id === selectedBranch);
+                                    const currentAddress = addresses.find((a: any) => a.id === effectiveSelectedBranch);
                                     
                                     // Parse coords from address2 if present (formatted as COORDS:lat,lng)
                                     let addressCoords: { lat: number; lng: number } | null = null;
@@ -696,6 +746,7 @@ function ModalContent({
 
                                     // Map address to nearest branch for stock and fees
                                     let nearestBranch = branches[0];
+                                    let isOutOfRange = false;
                                     if (addressCoords) {
                                         let minDistance = Infinity;
                                         for (const b of branches) {
@@ -707,16 +758,35 @@ function ModalContent({
                                                 }
                                             }
                                         }
+                                        if (minDistance > (nearestBranch.deliveryRadius || 50)) {
+                                            isOutOfRange = true;
+                                        }
+                                        
+                                        // Recalculate delivery fee specifically for the matched address coordinates, ignoring browser GPS
+                                        if (nearestBranch.perKmRate > 0) {
+                                            let dynamicFee = (nearestBranch.baseDeliveryFee || nearestBranch.deliveryFee) + (minDistance * nearestBranch.perKmRate);
+                                            nearestBranch = { ...nearestBranch, deliveryFee: Math.round(dynamicFee * 100) / 100 };
+                                        } else {
+                                            nearestBranch = { ...nearestBranch, deliveryFee: nearestBranch.baseDeliveryFee || nearestBranch.deliveryFee };
+                                        }
+
                                     } else {
                                         // Fallback to city match
                                         nearestBranch = branches.find((b: any) => 
-                                            b.city?.toLowerCase() === currentAddress?.city?.toLowerCase()
+                                            normalizeCity(b.city) === normalizeCity(currentAddress?.city)
                                         ) || branches[0];
+                                        
+                                        // Reset to base fee if no exact coordinates
+                                        nearestBranch = { ...nearestBranch, deliveryFee: nearestBranch.baseDeliveryFee || nearestBranch.deliveryFee };
                                     }
 
-                                    const addrName = currentAddress ? `${currentAddress.firstName} ${currentAddress.lastName}` : (isEn ? 'Home' : 'المنزل');
+                                    let addrName = isEn ? 'Home' : 'المنزل';
+                                    if (currentAddress) {
+                                        const fullName = `${currentAddress.firstName || ''} ${currentAddress.lastName || ''}`.trim();
+                                        addrName = fullName || currentAddress.address1 || addrName;
+                                    }
                                     // Set Branch to the fulfilling store, but pass addrName as the delivery destination
-                                    onSelectBranch(nearestBranch, 'delivery', addrName);
+                                    onSelectBranch(nearestBranch, 'delivery', addrName, isOutOfRange);
                                 } else if (currentBranch) {
                                     onSelectBranch(currentBranch, activeTab);
                                 }

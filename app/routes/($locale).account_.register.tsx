@@ -239,8 +239,8 @@ export async function action({ request, context }: ActionFunctionArgs) {
     const phone = String(form.get('phone') || '');
 
     try {
-      const finalFirstName = firstName;
-      const finalLastName = lastName;
+      const finalFirstName = accountType === 'company' ? form.get('companyName') as string : firstName;
+      const finalLastName = accountType === 'company' ? '(Company)' : lastName;
 
       const adminToken = await getAdminToken(env);
       const customerPayload: any = {
@@ -269,6 +269,28 @@ export async function action({ request, context }: ActionFunctionArgs) {
       const adminData = await adminResponse.json();
       if (adminData.errors) {
         throw new Error(typeof adminData.errors === 'string' ? adminData.errors : JSON.stringify(adminData.errors));
+      }
+
+      const numericalId = adminData.customer.id;
+      const metafields = [];
+      const taxRegistration = String(form.get('taxRegistration') || '');
+      const companyAddress = String(form.get('companyAddress') || '');
+
+      if (accountType === 'company') {
+        if (taxRegistration) metafields.push({ namespace: 'custom', key: 'tax_registration', value: taxRegistration, type: 'single_line_text_field' });
+        if (companyAddress) metafields.push({ namespace: 'custom', key: 'company_address', value: companyAddress, type: 'multi_line_text_field' });
+      }
+
+      if (metafields.length > 0) {
+        try {
+          await fetch(`https://${env.PUBLIC_STORE_DOMAIN}/admin/api/2024-01/customers/${numericalId}.json`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', 'X-Shopify-Access-Token': adminToken },
+            body: JSON.stringify({ customer: { id: numericalId, metafields } })
+          });
+        } catch (e) {
+          console.error('Failed to sync registration metafields:', e);
+        }
       }
 
       // Login immediately
@@ -492,15 +514,46 @@ export default function Register() {
           <Form method="POST" className="otp-form animate-fade-in">
             <input type="hidden" name="intent" value="register-email" />
             
-            <div className="register-grid">
-              <div className="luxury-field">
-                <label className="luxury-label">{isEn ? 'First Name' : 'الاسم الأول'}</label>
-                <input name="firstName" type="text" placeholder={isEn ? 'First Name' : 'الاسم الأول'} required className="luxury-input-field" />
-              </div>
-              <div className="luxury-field">
-                <label className="luxury-label">{isEn ? 'Last Name' : 'الاسم الأخير'}</label>
-                <input name="lastName" type="text" placeholder={isEn ? 'Last Name' : 'الاسم الأخير'} required className="luxury-input-field" />
-              </div>
+            <div className="type-toggle-wrapper mb-6">
+              <button type="button" className={`type-toggle-btn ${accountType === 'individual' ? 'active' : ''}`} onClick={() => setAccountType('individual')}>
+                {isEn ? 'Individual' : 'حساب فردي'}
+              </button>
+              <button type="button" className={`type-toggle-btn ${accountType === 'company' ? 'active' : ''}`} onClick={() => setAccountType('company')}>
+                {isEn ? 'Company' : 'حساب شركة'}
+              </button>
+            </div>
+            <input type="hidden" name="accountType" value={accountType} />
+
+            <div className="animate-slide-up">
+              {accountType === 'individual' ? (
+                <div className="register-grid">
+                  <div className="luxury-field">
+                    <label className="luxury-label">{isEn ? 'First Name' : 'الاسم الأول'}</label>
+                    <input name="firstName" type="text" placeholder={isEn ? 'First Name' : 'الاسم الأول'} required className="luxury-input-field" />
+                  </div>
+                  <div className="luxury-field">
+                    <label className="luxury-label">{isEn ? 'Last Name' : 'الاسم الأخير'}</label>
+                    <input name="lastName" type="text" placeholder={isEn ? 'Last Name' : 'الاسم الأخير'} required className="luxury-input-field" />
+                  </div>
+                </div>
+              ) : (
+                <div className="animate-fade-in space-y-4">
+                  <div className="luxury-field">
+                    <label className="luxury-label">{isEn ? 'Company Name' : 'اسم الشركة'}</label>
+                    <input name="companyName" type="text" placeholder={isEn ? 'Company Name' : 'اسم الشركة'} required className="luxury-input-field" />
+                  </div>
+                  <div className="register-grid">
+                    <div className="luxury-field">
+                      <label className="luxury-label">{isEn ? 'Tax ID' : 'الرقم الضريبي'}</label>
+                      <input name="taxRegistration" type="text" placeholder={isEn ? 'Tax ID' : 'الرقم الضريبي'} className="luxury-input-field" />
+                    </div>
+                    <div className="luxury-field">
+                      <label className="luxury-label">{isEn ? 'Address' : 'العنوان'}</label>
+                      <input name="companyAddress" type="text" placeholder={isEn ? 'Company Address' : 'عنوان الشركة'} className="luxury-input-field" />
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="luxury-field mt-4">

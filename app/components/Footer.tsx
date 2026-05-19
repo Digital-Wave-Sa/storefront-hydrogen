@@ -72,6 +72,7 @@ export function Footer({ footer }: { footer: Promise<FooterQuery | null>; header
               <li><NavLink to={isEn ? "/en/pages/loyalty" : "/pages/loyalty"} className="text-white/70 hover:text-white transition-colors">{isEn ? 'Loyalty Program' : 'برنامج الولاء'}</NavLink></li>
               <li><NavLink to={isEn ? "/en/collections/offers" : "/collections/offers"} className="text-white/70 hover:text-white transition-colors">{isEn ? 'Our Offers' : 'عروضنا'}</NavLink></li>
               <li><NavLink to={isEn ? "/en/pages/branches" : "/pages/branches"} className="text-white/70 hover:text-white transition-colors">{isEn ? 'Our Branches' : 'فروعنا'}</NavLink></li>
+              <li><NavLink to={isEn ? "/en/pages/about" : "/pages/about"} className="text-white/70 hover:text-white transition-colors">{isEn ? 'About Us' : 'عن سعد الدين'}</NavLink></li>
             </ul>
           </div>
 
@@ -94,7 +95,8 @@ export function Footer({ footer }: { footer: Promise<FooterQuery | null>; header
               <li><NavLink to={isEn ? "/en/pages/track-order" : "/pages/track-order"} className="text-white/70 hover:text-white transition-colors">{isEn ? 'Track Your Order' : 'تتبع طلبك'}</NavLink></li>
               <li><NavLink to={isEn ? "/en/pages/returns" : "/pages/returns"} className="text-white/70 hover:text-white transition-colors">{isEn ? 'Return Policy' : 'سياسة الاسترجاع'}</NavLink></li>
               <li><NavLink to={isEn ? "/en/pages/faq" : "/pages/faq"} className="text-white/70 hover:text-white transition-colors">{isEn ? 'FAQs' : 'الأسئلة الشائعة'}</NavLink></li>
-              <li><NavLink to={isEn ? "/en/collections/offers" : "/collections/offers"} className="text-white/70 hover:text-white transition-colors">{isEn ? 'Our Offers' : 'عروضنا'}</NavLink></li>
+              <li><NavLink to={isEn ? "/en/pages/privacy" : "/pages/privacy"} className="text-white/70 hover:text-white transition-colors">{isEn ? 'Privacy Policy' : 'سياسة الخصوصية'}</NavLink></li>
+              <li><NavLink to={isEn ? "/en/pages/terms" : "/pages/terms"} className="text-white/70 hover:text-white transition-colors">{isEn ? 'Terms of Service' : 'الشروط والأحكام'}</NavLink></li>
               <li><NavLink to={isEn ? "/en/pages/contact" : "/pages/contact"} className="text-white/70 hover:text-white transition-colors">{isEn ? 'Contact Us' : 'تواصل معنا'}</NavLink></li>
             </ul>
           </div>

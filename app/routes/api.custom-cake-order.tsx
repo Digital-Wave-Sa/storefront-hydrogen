@@ -33,7 +33,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
       return Response.json({ error: 'Invalid JSON body' }, { status: 400 });
     }
 
-    const { shape, size, flavor, layers, color, topping, message, uploadedImage, subtotal, isEn } = body;
+    const { shape, size, flavor, layers, color, topping, message, messageFont, messageColor, uploadedImage, subtotal, isEn } = body;
 
     const priceNum = Number(subtotal);
     if (!priceNum || priceNum <= 0) {
@@ -42,8 +42,8 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
     const title = isEn ? 'Custom Cake' : 'كيكة مخصصة';
     const description = isEn
-      ? `${shape} • ${size} • ${flavor} • ${layers} layers • ${color} • ${topping}${message ? ` • "${message}"` : ''}`
-      : `${shape} • ${size} • ${flavor} • ${layers} طبقات • ${color} • ${topping}${message ? ` • "${message}"` : ''}`;
+      ? `${shape} • ${size} • ${flavor} • ${layers} layers • ${color} • ${topping}${message ? ` • "${message}" (${messageFont}, ${messageColor})` : ''}`
+      : `${shape} • ${size} • ${flavor} • ${layers} طبقات • ${color} • ${topping}${message ? ` • "${message}" (${messageFont}, ${messageColor})` : ''}`;
 
     const customAttributes = [
       { key: '_cake_custom', value: 'true' },
@@ -54,6 +54,8 @@ export async function action({ request, context }: ActionFunctionArgs) {
       { key: isEn ? 'Color' : 'اللون', value: color || '-' },
       { key: isEn ? 'Topping' : 'الإضافة', value: topping || '-' },
       ...(message ? [{ key: isEn ? 'Message' : 'الرسالة', value: message }] : []),
+      ...(messageFont ? [{ key: isEn ? 'Message Font' : 'خط الرسالة', value: messageFont }] : []),
+      ...(messageColor ? [{ key: isEn ? 'Message Color' : 'لون الرسالة', value: messageColor }] : []),
       ...(uploadedImage ? [{ key: isEn ? 'Printed Image' : 'صورة الطباعة', value: 'Yes (Custom Image Uploaded)' }] : []),
     ];
 

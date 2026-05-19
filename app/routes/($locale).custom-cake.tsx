@@ -1,8 +1,8 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { type MetaFunction, type LoaderFunctionArgs, Form } from 'react-router';
 import { useLoaderData } from 'react-router';
-import { ShapeSizeSelector, SHAPES, SIZES } from '~/components/CakeBuilder/ShapeSizeSelector';
-import { FlavorLayerSelector } from '~/components/CakeBuilder/FlavorLayerSelector';
+import { ShapeSizeSelector, CAKE_BASES, type CakeBase } from '~/components/CakeBuilder/ShapeSizeSelector';
+import { FlavorLayerSelector, FLAVORS, type Flavor } from '~/components/CakeBuilder/FlavorLayerSelector';
 import { ColorSelector, COLORS } from '~/components/CakeBuilder/ColorSelector';
 import { ToppingsSelector, TOPPINGS } from '~/components/CakeBuilder/ToppingsSelector';
 import { CakePreview } from '~/components/CakeBuilder/CakePreview';
@@ -38,6 +38,7 @@ export async function loader({ context }: LoaderFunctionArgs) {
       variables: {
         language: storefront.i18n.language,
       },
+      cache: storefront.CacheShort(),
     });
     
     return { locale, cakeAttributes: metaobjects.nodes };
@@ -54,21 +55,11 @@ export default function CustomCakeBuilder() {
   const [orderError, setOrderError] = useState('');
   
   const [currentStep, setCurrentStep] = useState(1);
-  const totalSteps = 9;
+  const totalSteps = 6;
   const [isHydrated, setIsHydrated] = useState(false);
   const [showDraftToast, setShowDraftToast] = useState(false);
 
   // --- MAP API DATA TO STATE ---
-  const dynamicShapes = useMemo(() => {
-    const shapes = cakeAttributes?.filter((a: any) => a.attributeType?.value === 'Shape' || a.attributeType?.value === 'shape').map((a: any) => ({
-      id: a.id,
-      nameEn: a.nameEn?.value || 'Unknown',
-      nameAr: a.nameAr?.value || 'غير معروف',
-      priceDelta: parseFloat(a.priceDelta?.value || '0'),
-      icon: SHAPES.find(s => s.id === a.id)?.icon || SHAPES[0].icon
-    }));
-    return shapes?.length > 0 ? shapes : SHAPES;
-  }, [cakeAttributes]);
 
   const dynamicColors = useMemo(() => {
     const colors = cakeAttributes?.filter((a: any) => a.attributeType?.value === 'Color' || a.attributeType?.value === 'color').map((a: any) => ({
@@ -82,7 +73,10 @@ export default function CustomCakeBuilder() {
   }, [cakeAttributes]);
 
   const dynamicToppings = useMemo(() => {
-    const toppings = cakeAttributes?.filter((a: any) => a.attributeType?.value === 'Topping' || a.attributeType?.value === 'topping').map((a: any) => ({
+    const toppings = cakeAttributes?.filter((a: any) => {
+      const type = a.attributeType?.value?.toLowerCase()?.trim();
+      return type === 'topping' || type === 'toppings';
+    }).map((a: any) => ({
       id: a.id,
       categoryId: a.categoryId?.value || 'all',
       nameEn: a.nameEn?.value || 'Unknown',
@@ -96,22 +90,14 @@ export default function CustomCakeBuilder() {
 
 
   // --- GLOBAL CAKE STATE ---
-  const [selectedShape, setSelectedShape] = useState(dynamicShapes[0]);
-  const [selectedSize, setSelectedSize] = useState(SIZES[1]); 
-  const [selectedFlavor, setSelectedFlavor] = useState({
-    id: 'chocolate',
-    nameEn: 'Belgian Chocolate',
-    nameAr: 'شوكولاتة بلجيكية',
-    color: '#3d2b1f',
-    secondaryColor: '#2a1d15',
-    descriptionEn: 'Rich, moist dark chocolate sponge',
-    descriptionAr: 'كيكة الشوكولاتة الداكنة الغنية والطرية',
-    image: '/images/chocolate-img.png'
-  });
+  const [selectedBase, setSelectedBase] = useState<CakeBase>(CAKE_BASES[1]); 
+  const [selectedFlavor, setSelectedFlavor] = useState<Flavor>(FLAVORS[1]);
   const [selectedColor, setSelectedColor] = useState(dynamicColors[0] || COLORS[6]); 
-  const [layers, setLayers] = useState(2);
-  const [selectedTopping, setSelectedTopping] = useState(dynamicToppings[0] || TOPPINGS[0]);
+  const layers = selectedBase.id.includes('barrel') ? 3 : (selectedBase.id === 'sheet' ? 1 : 2);
+  const [selectedToppings, setSelectedToppings] = useState<any[]>([dynamicToppings[0] || TOPPINGS[0]]);
   const [cakeMessage, setCakeMessage] = useState('');
+  const [textColor, setTextColor] = useState('#FFFFFF');
+  const [textFont, setTextFont] = useState('Classic');
   const [selectedDecoration, setSelectedDecoration] = useState({ id: 'none', nameEn: 'None', nameAr: 'بدون' });
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
 
@@ -124,19 +110,21 @@ export default function CustomCakeBuilder() {
       try {
         const draft = JSON.parse(savedDraft) as any;
         // Map saved IDs back to objects from dynamic lists
-        const shape = dynamicShapes.find((s: any) => s.id === draft.shapeId) || dynamicShapes[0];
-        const size = SIZES.find(s => s.id === draft.sizeId) || SIZES[1];
-        const flavor = draft.flavor || selectedFlavor;
+        const baseId = draft.baseId || 'small_standard';
+        const base = CAKE_BASES.find((b: any) => b.id === baseId) || CAKE_BASES[1];
+        const flavorId = draft.flavor?.id || 'choco-crunch';
+        const flavor = FLAVORS.find(f => f.id === flavorId) || FLAVORS[1];
         const color = dynamicColors.find((c: any) => c.id === draft.colorId) || dynamicColors[0];
-        const topping = dynamicToppings.find((t: any) => t.id === draft.toppingId) || dynamicToppings[0];
+        const toppingIds = draft.toppingIds || [draft.toppingId];
+        const toppings = dynamicToppings.filter((t: any) => toppingIds.includes(t.id));
 
-        setSelectedShape(shape);
-        setSelectedSize(size);
+        setSelectedBase(base);
         setSelectedFlavor(flavor);
-        setLayers(draft.layers || 2);
         setSelectedColor(color);
-        setSelectedTopping(topping);
+        setSelectedToppings(toppings.length > 0 ? toppings : [dynamicToppings[0]]);
         setCakeMessage(draft.message || '');
+        setTextColor(draft.textColor || '#FFFFFF');
+        setTextFont(draft.textFont || 'Classic');
         setUploadedImage(draft.uploadedImage || null);
         setCurrentStep(draft.step || 1);
         
@@ -147,27 +135,28 @@ export default function CustomCakeBuilder() {
       }
     }
     setIsHydrated(true);
-  }, [dynamicShapes, dynamicColors, dynamicToppings]);
+  }, [dynamicColors, dynamicToppings]);
 
   // --- PERSISTENCE: SAVE DRAFT ---
   useEffect(() => {
     if (!isHydrated || typeof window === 'undefined') return;
 
     const draft = {
-      shapeId: selectedShape.id,
-      sizeId: selectedSize.id,
+      baseId: selectedBase.id,
       flavor: selectedFlavor,
       layers,
       colorId: selectedColor.id,
-      toppingId: selectedTopping.id,
+      toppingIds: selectedToppings.map(t => t.id),
       message: cakeMessage,
+      textColor,
+      textFont,
       step: currentStep,
       uploadedImage,
       timestamp: Date.now()
     };
     
     localStorage.setItem('saadeddin_cake_draft', JSON.stringify(draft));
-  }, [selectedShape, selectedSize, selectedFlavor, layers, selectedColor, selectedTopping, cakeMessage, currentStep, uploadedImage, isHydrated]);
+  }, [selectedBase, selectedFlavor, selectedColor, selectedToppings, cakeMessage, textColor, textFont, currentStep, uploadedImage, isHydrated]);
 
   // --- IMAGE UPLOAD HANDLERS ---
   const handleImageUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -190,28 +179,21 @@ export default function CustomCakeBuilder() {
   }, []);
 
   // --- PRICE CALCULATION ---
-  const basePrice = 150.00;
   const subtotal = useMemo(() => {
-    const shapeExtra = selectedShape.priceDelta || 0;
-    const sizeExtra = selectedSize.priceDelta;
-    const layersExtra = (layers - 1) * 35;
-    const toppingExtra = selectedTopping.priceDelta;
-    return basePrice + shapeExtra + sizeExtra + layersExtra + toppingExtra;
-  }, [selectedShape, selectedSize, layers, selectedTopping]);
+    const toppingExtra = selectedToppings.reduce((sum, t) => sum + (t.priceDelta || 0), 0);
+    return selectedBase.price + toppingExtra;
+  }, [selectedBase, selectedToppings]);
   
   const vatAmount = subtotal * 0.15;
   const finalTotal = subtotal + vatAmount;
 
   const steps = [
-    { id: 1, en: 'Shape', ar: 'الشكل' },
-    { id: 2, en: 'Size', ar: 'الحجم' },
-    { id: 3, en: 'Flavor', ar: 'النكهة' },
-    { id: 4, en: 'Layers', ar: 'الطبقات' },
-    { id: 5, en: 'Toppings', ar: 'الإضافات' },
-    { id: 6, en: 'Decoration', ar: 'التزيين' },
-    { id: 7, en: 'Text', ar: 'النص' },
-    { id: 8, en: 'Image', ar: 'الصورة' },
-    { id: 9, en: 'Review', ar: 'المراجعة' },
+    { id: 1, en: 'Base', ar: 'الأساس' },
+    { id: 2, en: 'Flavor', ar: 'النكهة' },
+    { id: 3, en: 'Toppings', ar: 'الإضافات' },
+    { id: 4, en: 'Decoration', ar: 'التزيين' },
+    { id: 5, en: 'Personalize', ar: 'تخصيص' },
+    { id: 6, en: 'Review', ar: 'المراجعة' },
   ];
 
   // --- DRAFT ORDER SUBMISSION ---
@@ -226,13 +208,15 @@ export default function CustomCakeBuilder() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          shape: isEn ? selectedShape.nameEn : selectedShape.nameAr,
-          size: isEn ? selectedSize.nameEn : selectedSize.nameAr,
+          shape: isEn ? selectedBase.nameEn : selectedBase.nameAr,
+          size: isEn ? selectedBase.specsEn : selectedBase.specsAr,
           flavor: isEn ? selectedFlavor.nameEn : selectedFlavor.nameAr,
           layers,
           color: isEn ? selectedColor.nameEn : selectedColor.nameAr,
-          topping: isEn ? selectedTopping.nameEn : selectedTopping.nameAr,
+          topping: selectedToppings.map(t => isEn ? t.nameEn : t.nameAr).join(', '),
           message: cakeMessage,
+          messageFont: textFont,
+          messageColor: textColor,
           uploadedImage: uploadedImage ? 'yes' : null,
           subtotal,
           vatAmount,
@@ -263,7 +247,7 @@ export default function CustomCakeBuilder() {
         isEn ? 'Network error. Please check your connection.' : 'خطأ في الشبكة. يرجى التحقق من اتصالك.'
       );
     }
-  }, [orderState, isEn, selectedShape, selectedSize, selectedFlavor, layers, selectedColor, selectedTopping, cakeMessage, uploadedImage, subtotal, vatAmount, finalTotal]);
+  }, [orderState, isEn, selectedBase, selectedFlavor, layers, selectedColor, selectedToppings, cakeMessage, textColor, textFont, uploadedImage, subtotal, vatAmount, finalTotal]);
 
   return (
     <div className="min-h-screen bg-[#FDF5E6] pt-12 pb-20" dir={isEn ? 'ltr' : 'rtl'}>
@@ -366,11 +350,13 @@ export default function CustomCakeBuilder() {
                <div className="h-[460px] bg-gradient-to-b from-[#F8F9FA] to-white rounded-[32px] flex flex-col items-center justify-center border border-gray-50 p-6 text-center relative overflow-hidden group">
                   <div className="w-full h-full relative z-10 flex flex-col items-center justify-center">
                      <CakePreview 
-                       shape={selectedShape.id}
+                       shape={selectedBase.shapeId as any}
                        layers={layers}
                        color={selectedColor.hex}
                        secondaryColor={selectedColor.hex}
                        message={cakeMessage}
+                       textColor={textColor}
+                       textFont={textFont}
                      />
                   </div>
                   
@@ -380,15 +366,15 @@ export default function CustomCakeBuilder() {
                         {isEn ? selectedFlavor.nameEn : selectedFlavor.nameAr}
                       </p>
                       <span className="text-[10px] text-gray-500 font-bold mt-1">
-                        {layers} {isEn ? 'Layers' : 'طبقات'} • {isEn ? selectedSize.nameEn : selectedSize.nameAr}
+                        {layers} {isEn ? 'Layers' : 'طبقات'} • {isEn ? selectedBase.nameEn : selectedBase.nameAr}
                       </span>
                     </div>
-                    {selectedTopping.id !== 'none' && (
+                    {selectedToppings.some(t => t.id !== 'none') && (
                        <div className="h-6 w-[1px] bg-gray-200 mx-1" />
                     )}
-                    {selectedTopping.id !== 'none' && (
-                       <span className="bg-[#234745] text-white text-[10px] px-3 py-1.5 rounded-full font-bold">
-                         {isEn ? selectedTopping.nameEn : selectedTopping.nameAr}
+                    {selectedToppings.some(t => t.id !== 'none') && (
+                       <span className="bg-[#234745] text-white text-[10px] px-3 py-1.5 rounded-full font-bold max-w-[150px] truncate">
+                         {selectedToppings.map(t => isEn ? t.nameEn : t.nameAr).join(', ')}
                        </span>
                     )}
                   </div>
@@ -406,96 +392,37 @@ export default function CustomCakeBuilder() {
               <div className="flex-1 relative z-10">
                 <div key={currentStep} className="animate-step-enter">
                   {currentStep === 1 && (
-                    <div className="cake-builder-step">
-                      <div className="mb-10">
-                        <h2 className="text-3xl font-black text-[#234745] mb-2">{isEn ? 'Select Shape' : 'اختر الشكل'}</h2>
-                        <p className="text-gray-400 font-medium">{isEn ? 'Pick the geometric soul of your cake' : 'اختر الروح الهندسية لكيكتك'}</p>
-                      </div>
-                      <div className="grid grid-cols-2 gap-6">
-                        {dynamicShapes.map((shape: any) => (
-                          <button
-                            key={shape.id}
-                            onClick={() => setSelectedShape(shape)}
-                            className={`flex flex-col items-center justify-center p-8 rounded-[32px] border-2 transition-all duration-300 ${
-                              selectedShape.id === shape.id 
-                                ? 'border-[#234745] bg-white shadow-xl -translate-y-1' 
-                                : 'border-gray-50 bg-white hover:border-gray-100'
-                            }`}
-                          >
-                            <div className="mb-6 scale-125">{shape.icon}</div>
-                            <span className="font-black text-[#234745] text-lg">{isEn ? shape.nameEn : shape.nameAr}</span>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
+                     <ShapeSizeSelector 
+                       isEn={isEn}
+                       selectedBase={selectedBase}
+                       onBaseChange={setSelectedBase}
+                     />
                   )}
 
                   {currentStep === 2 && (
-                    <div className="cake-builder-step">
-                      <div className="mb-10">
-                        <h2 className="text-3xl font-black text-[#234745] mb-2">{isEn ? 'Choose Size' : 'اختر الحجم'}</h2>
-                        <p className="text-gray-400 font-medium">{isEn ? 'How many people are celebrating?' : 'كم عدد الأشخاص المحتفلين؟'}</p>
-                      </div>
-                      <div className="grid grid-cols-1 gap-4">
-                        {SIZES.map((size) => (
-                          <button
-                            key={size.id}
-                            onClick={() => setSelectedSize(size)}
-                            className={`p-6 rounded-[24px] border-2 transition-all flex items-center justify-between ${
-                              selectedSize.id === size.id 
-                                ? 'border-[#234745] bg-[#234745]/5 shadow-sm' 
-                                : 'border-gray-50 bg-white hover:border-gray-100'
-                            }`}
-                          >
-                            <div className="text-start">
-                              <span className="font-black text-[#234745] text-lg block">{isEn ? size.nameEn : size.nameAr}</span>
-                              <span className="text-sm text-gray-500 font-bold">{isEn ? size.servesEn : size.servesAr}</span>
-                            </div>
-                            <div className="text-end">
-                               <span className="text-[#234745] font-black">{size.priceDelta > 0 ? `+${size.priceDelta} SAR` : 'Base Price'}</span>
-                            </div>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {currentStep === 3 && (
                     <div className="cake-builder-step">
                        <FlavorLayerSelector 
                         isEn={isEn} 
                         selectedFlavor={selectedFlavor as any}
                         onFlavorChange={setSelectedFlavor as any}
                         layers={layers}
-                        onLayersChange={setLayers}
+                        onLayersChange={() => {}}
                         onlyFlavor={true}
                       />
                     </div>
                   )}
 
+                  {currentStep === 3 && (
+                     <ToppingsSelector 
+                       isEn={isEn}
+                       toppings={dynamicToppings}
+                       selectedToppings={selectedToppings}
+                       onToppingsChange={setSelectedToppings}
+                       maxToppings={3}
+                     />
+                  )}
+
                   {currentStep === 4 && (
-                    <div className="cake-builder-step">
-                       <FlavorLayerSelector 
-                        isEn={isEn} 
-                        selectedFlavor={selectedFlavor as any}
-                        onFlavorChange={setSelectedFlavor as any}
-                        layers={layers}
-                        onLayersChange={setLayers}
-                        onlyLayers={true}
-                      />
-                    </div>
-                  )}
-
-                  {currentStep === 5 && (
-                    <ToppingsSelector 
-                      isEn={isEn}
-                      toppings={dynamicToppings}
-                      selectedTopping={selectedTopping}
-                      onToppingChange={setSelectedTopping}
-                    />
-                  )}
-
-                  {currentStep === 6 && (
                     <ColorSelector 
                       isEn={isEn}
                       colors={dynamicColors}
@@ -504,105 +431,155 @@ export default function CustomCakeBuilder() {
                     />
                   )}
 
-                  {currentStep === 7 && (
-                    <div className="cake-builder-step">
-                      <div className="mb-10">
-                        <h2 className="text-3xl font-black text-[#234745] mb-2">{isEn ? 'Custom Text' : 'نص مخصص'}</h2>
-                        <p className="text-gray-400 font-medium">{isEn ? 'Write a heartfelt message on your cake' : 'اكتب رسالة من القلب على كيكتك'}</p>
-                      </div>
-                      <div className="bg-[#F8F9FA] rounded-[32px] p-8 border border-gray-100">
-                        <textarea 
-                          value={cakeMessage}
-                          onChange={(e) => setCakeMessage(e.target.value)}
-                          placeholder={isEn ? "e.g., Happy 5th Birthday Sarah!" : "مثال: عيد ميلاد سعيد سارة!"}
-                          className="w-full h-40 bg-white rounded-2xl p-6 border-2 border-transparent focus:border-[#234745] outline-none text-xl font-bold text-[#234745] transition-all resize-none shadow-inner"
-                          maxLength={40}
-                        />
-                        <div className="flex justify-between mt-4">
-                           <span className="text-gray-300 text-xs font-bold uppercase tracking-widest">{isEn ? 'Frosting Text' : 'نص الكريمة'}</span>
-                           <span className={`text-xs font-bold ${cakeMessage.length > 35 ? 'text-red-400' : 'text-gray-400'}`}>{cakeMessage.length}/40</span>
+                  {currentStep === 5 && (
+                    <div className="cake-builder-step space-y-12">
+                      {/* Text Section */}
+                      <div>
+                        <div className="mb-8">
+                          <h2 className="text-3xl font-black text-[#234745] mb-2">{isEn ? 'Custom Text' : 'نص مخصص'}</h2>
+                          <p className="text-gray-400 font-medium">{isEn ? 'Write a heartfelt message on your cake' : 'اكتب رسالة من القلب على كيكتك'}</p>
                         </div>
-                      </div>
-                    </div>
-                  )}
+                        <div className="bg-[#F8F9FA] rounded-[32px] p-8 border border-gray-100">
+                          <textarea 
+                            value={cakeMessage}
+                            onChange={(e) => setCakeMessage(e.target.value)}
+                            placeholder={isEn ? "e.g., Happy 5th Birthday Sarah!" : "مثال: عيد ميلاد سعيد سارة!"}
+                            className="w-full h-32 bg-white rounded-2xl p-6 border-2 border-transparent focus:border-[#234745] outline-none text-xl font-bold text-[#234745] transition-all resize-none shadow-inner"
+                            maxLength={40}
+                            style={{ color: textColor, fontFamily: textFont === 'Script' ? 'cursive' : textFont === 'Modern' ? 'sans-serif' : 'serif' }}
+                          />
+                          <div className="flex justify-between mt-2">
+                             <span className="text-gray-300 text-xs font-bold uppercase tracking-widest">{isEn ? 'Frosting Text' : 'نص الكريمة'}</span>
+                             <span className={`text-xs font-bold ${cakeMessage.length > 35 ? 'text-red-400' : 'text-gray-400'}`}>{cakeMessage.length}/40</span>
+                          </div>
 
-                  {currentStep === 8 && (
-                    <div className="cake-builder-step">
-                      <div className="mb-10">
-                        <h2 className="text-3xl font-black text-[#234745] mb-2">{isEn ? 'Upload Image' : 'رفع صورة'}</h2>
-                        <p className="text-gray-400 font-medium">{isEn ? 'Add a photo for edible printing' : 'أضف صورة للطباعة الصالحة للأكل'}</p>
-                      </div>
-
-                      <input 
-                        type="file" 
-                        accept="image/*" 
-                        id="cake-image-upload" 
-                        className="hidden" 
-                        onChange={handleImageUpload} 
-                      />
-
-                      {uploadedImage ? (
-                        <div className="bg-white rounded-[40px] p-6 border-2 border-gray-50 shadow-lg flex flex-col items-center justify-center relative overflow-hidden group">
-                          <div className="relative w-48 h-48 rounded-2xl overflow-hidden border border-gray-100 shadow-inner mb-6">
-                            <img 
-                              src={uploadedImage} 
-                              alt="Uploaded print preview" 
-                              className="w-full h-full object-cover"
-                            />
-                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                              <span className="text-white font-bold text-xs uppercase tracking-widest">{isEn ? 'Preview Only' : 'معاينة فقط'}</span>
+                          {/* Font Selection */}
+                          <div className="mt-4">
+                            <label className="text-gray-400 font-bold text-xs uppercase tracking-widest mb-2 block">{isEn ? 'Select Font' : 'اختر الخط'}</label>
+                            <div className="flex gap-3">
+                              {['Classic', 'Modern', 'Script'].map(font => (
+                                <button
+                                  key={font}
+                                  onClick={() => setTextFont(font)}
+                                  className={`px-4 py-2 rounded-xl border-2 font-bold text-sm transition-all ${textFont === font ? 'border-[#234745] bg-[#234745] text-white' : 'border-gray-100 bg-white text-[#234745] hover:border-[#234745]/30'}`}
+                                  style={{ fontFamily: font === 'Script' ? 'cursive' : font === 'Modern' ? 'sans-serif' : 'serif' }}
+                                >
+                                  {font}
+                                </button>
+                              ))}
                             </div>
                           </div>
 
-                          <div className="flex gap-4">
-                            <button
-                              onClick={() => document.getElementById('cake-image-upload')?.click()}
-                              className="px-6 py-2.5 bg-gray-100 hover:bg-gray-200 text-[#234745] rounded-full text-xs font-bold transition-all uppercase tracking-widest"
-                            >
-                              {isEn ? 'Change Image' : 'تغيير الصورة'}
-                            </button>
-                            <button
-                              onClick={handleRemoveImage}
-                              className="px-6 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-full text-xs font-bold transition-all uppercase tracking-widest"
-                            >
-                              {isEn ? 'Remove' : 'حذف'}
-                            </button>
+                          {/* Color Selection */}
+                          <div className="mt-4">
+                            <label className="text-gray-400 font-bold text-xs uppercase tracking-widest mb-2 block">{isEn ? 'Select Color' : 'اختر اللون'}</label>
+                            <div className="flex gap-3">
+                              {[
+                                { name: 'White', hex: '#FFFFFF' },
+                                { name: 'Black', hex: '#000000' },
+                                { name: 'Pink', hex: '#FFC0CB' },
+                                { name: 'Gold', hex: '#FFD700' },
+                                { name: 'Brown', hex: '#3d2b1f' }
+                              ].map(color => (
+                                <button
+                                  key={color.hex}
+                                  onClick={() => setTextColor(color.hex)}
+                                  className={`w-10 h-10 rounded-full border-2 transition-all flex items-center justify-center ${textColor === color.hex ? 'border-[#234745] scale-110' : 'border-gray-100 hover:scale-105'}`}
+                                  style={{ backgroundColor: color.hex }}
+                                  title={color.name}
+                                >
+                                  {textColor === color.hex && (
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={color.hex === '#FFFFFF' ? '#000000' : '#FFFFFF'} strokeWidth="4">
+                                      <polyline points="20 6 9 17 4 12" />
+                                    </svg>
+                                  )}
+                                </button>
+                              ))}
+                            </div>
                           </div>
                         </div>
-                      ) : (
-                        <div 
-                          onClick={() => document.getElementById('cake-image-upload')?.click()}
-                          onDragOver={(e) => e.preventDefault()}
-                          onDrop={(e) => {
-                            e.preventDefault();
-                            const file = e.dataTransfer.files?.[0];
-                            if (file && file.type.startsWith('image/')) {
-                              if (file.size > 5 * 1024 * 1024) {
-                                alert(isEn ? 'File is too large (max 5MB)' : 'الملف كبير جداً (الأقصى ٥ ميجابايت)');
-                                return;
+                      </div>
+
+                      <div className="h-px bg-gray-100 w-full my-8"></div>
+
+                      {/* Image Section */}
+                      <div>
+                        <div className="mb-8">
+                          <h2 className="text-3xl font-black text-[#234745] mb-2">{isEn ? 'Upload Image' : 'رفع صورة'}</h2>
+                          <p className="text-gray-400 font-medium">{isEn ? 'Add a photo for edible printing' : 'أضف صورة للطباعة الصالحة للأكل'}</p>
+                        </div>
+
+                        <input 
+                          type="file" 
+                          accept="image/*" 
+                          id="cake-image-upload" 
+                          className="hidden" 
+                          onChange={handleImageUpload} 
+                        />
+
+                        {uploadedImage ? (
+                          <div className="bg-white rounded-[40px] p-6 border-2 border-gray-50 shadow-lg flex flex-col items-center justify-center relative overflow-hidden group">
+                            <div className="relative w-48 h-48 rounded-2xl overflow-hidden border border-gray-100 shadow-inner mb-6">
+                              <img 
+                                src={uploadedImage} 
+                                alt="Uploaded print preview" 
+                                className="w-full h-full object-cover"
+                              />
+                              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                <span className="text-white font-bold text-xs uppercase tracking-widest">{isEn ? 'Preview Only' : 'معاينة فقط'}</span>
+                              </div>
+                            </div>
+
+                            <div className="flex gap-4">
+                              <button
+                                onClick={() => document.getElementById('cake-image-upload')?.click()}
+                                className="px-6 py-2.5 bg-gray-100 hover:bg-gray-200 text-[#234745] rounded-full text-xs font-bold transition-all uppercase tracking-widest"
+                              >
+                                {isEn ? 'Change Image' : 'تغيير الصورة'}
+                              </button>
+                              <button
+                                onClick={handleRemoveImage}
+                                className="px-6 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-full text-xs font-bold transition-all uppercase tracking-widest"
+                              >
+                                {isEn ? 'Remove' : 'حذف'}
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div 
+                            onClick={() => document.getElementById('cake-image-upload')?.click()}
+                            onDragOver={(e) => e.preventDefault()}
+                            onDrop={(e) => {
+                              e.preventDefault();
+                              const file = e.dataTransfer.files?.[0];
+                              if (file && file.type.startsWith('image/')) {
+                                if (file.size > 5 * 1024 * 1024) {
+                                  alert(isEn ? 'File is too large (max 5MB)' : 'الملف كبير جداً (الأقصى ٥ ميجابايت)');
+                                  return;
+                                }
+                                const reader = new FileReader();
+                                reader.onloadend = () => setUploadedImage(reader.result as string);
+                                reader.readAsDataURL(file);
                               }
-                              const reader = new FileReader();
-                              reader.onloadend = () => setUploadedImage(reader.result as string);
-                              reader.readAsDataURL(file);
-                            }
-                          }}
-                          className="border-4 border-dashed border-gray-100 rounded-[40px] h-[300px] flex flex-col items-center justify-center p-10 group hover:border-[#234745]/30 transition-all cursor-pointer bg-white"
-                        >
-                          <div className="w-20 h-20 bg-[#234745]/5 rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                             <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#234745" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                            }}
+                            className="border-4 border-dashed border-gray-100 rounded-[40px] h-[300px] flex flex-col items-center justify-center p-10 group hover:border-[#234745]/30 transition-all cursor-pointer bg-white"
+                          >
+                            <div className="w-20 h-20 bg-[#234745]/5 rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                               <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#234745" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                            </div>
+                            <p className="text-[#234745] font-black text-xl mb-2">{isEn ? 'Click to Upload' : 'اضغط للرفع'}</p>
+                            <p className="text-gray-400 font-medium text-sm text-center whitespace-pre-line">
+                              {isEn 
+                                ? 'Support JPG, PNG (Max 5MB)\nOr drag & drop your image here' 
+                                : 'يدعم JPG, PNG (بحد أقصى ٥ ميجا)\nأو اسحب وأفلت صورتك هنا'}
+                            </p>
                           </div>
-                          <p className="text-[#234745] font-black text-xl mb-2">{isEn ? 'Click to Upload' : 'اضغط للرفع'}</p>
-                          <p className="text-gray-400 font-medium text-sm text-center whitespace-pre-line">
-                            {isEn 
-                              ? 'Support JPG, PNG (Max 5MB)\nOr drag & drop your image here' 
-                              : 'يدعم JPG, PNG (بحد أقصى ٥ ميجا)\nأو اسحب وأفلت صورتك هنا'}
-                          </p>
-                        </div>
-                      )}
+                        )}
+                      </div>
                     </div>
                   )}
 
-                  {currentStep === 9 && (
+                  {currentStep === 6 && (
                     <div className="cake-builder-step">
                       <div className="mb-10">
                         <h2 className="text-3xl font-black text-[#234745] mb-2">{isEn ? 'Final Review' : 'المراجعة النهائية'}</h2>
@@ -610,11 +587,11 @@ export default function CustomCakeBuilder() {
                       </div>
                       <div className="space-y-4">
                          {[
-                           { label: isEn ? 'Shape' : 'الشكل', val: isEn ? selectedShape.nameEn : selectedShape.nameAr },
-                           { label: isEn ? 'Size' : 'الحجم', val: isEn ? selectedSize.nameEn : selectedSize.nameAr },
+                           { label: isEn ? 'Base Cake' : 'كيكة الأساس', val: isEn ? selectedBase.nameEn : selectedBase.nameAr },
+                           { label: isEn ? 'Specs' : 'المواصفات', val: isEn ? selectedBase.specsEn : selectedBase.specsAr },
                            { label: isEn ? 'Flavor' : 'النكهة', val: isEn ? selectedFlavor.nameEn : selectedFlavor.nameAr },
                            { label: isEn ? 'Layers' : 'الطبقات', val: layers },
-                           { label: isEn ? 'Topping' : 'الإضافة', val: isEn ? selectedTopping.nameEn : selectedTopping.nameAr },
+                           { label: isEn ? 'Toppings' : 'الإضافات', val: selectedToppings.map(t => isEn ? t.nameEn : t.nameAr).join(', ') },
                            { label: isEn ? 'Text' : 'النص', val: cakeMessage || (isEn ? 'None' : 'بدون') },
                            { label: isEn ? 'Printed Image' : 'صورة الطباعة', val: uploadedImage ? (isEn ? 'Uploaded' : 'تم الرفع') : (isEn ? 'None' : 'بدون') },
                          ].map(item => (
@@ -640,7 +617,7 @@ export default function CustomCakeBuilder() {
                     {isEn ? 'Back' : 'رجوع'}
                  </button>
                  
-                 {currentStep === 9 ? (
+                 {currentStep === 8 ? (
                     <button 
                       onClick={handleOrderSubmit}
                       disabled={orderState === 'submitting'}
@@ -700,11 +677,12 @@ export default function CustomCakeBuilder() {
 
                 <div className="space-y-5">
                    {[
-                     { label: isEn ? 'Base Cake' : 'سعر الكيكة الأساسي', val: basePrice },
-                     ...(selectedShape.priceDelta > 0 ? [{ label: isEn ? `Shape (${selectedShape.nameEn})` : `الشكل (${selectedShape.nameAr})`, val: selectedShape.priceDelta }] : []),
-                     ...(selectedSize.priceDelta > 0 ? [{ label: isEn ? `Size Up (${selectedSize.nameEn})` : `زيادة الحجم (${selectedSize.nameAr})`, val: selectedSize.priceDelta }] : []),
+                     { label: isEn ? 'Base Cake' : 'سعر الكيكة الأساسي', val: selectedBase.price },
                      ...(layers > 1 ? [{ label: isEn ? `Extra Layers (${layers - 1})` : `طبقات إضافية (${layers - 1})`, val: (layers - 1) * 35 }] : []),
-                     ...(selectedTopping.priceDelta > 0 ? [{ label: isEn ? `Topping (${selectedTopping.nameEn})` : `إضافة (${selectedTopping.nameAr})`, val: selectedTopping.priceDelta }] : [])
+                     ...selectedToppings.filter(t => t.priceDelta > 0).map(t => ({
+                       label: isEn ? `Topping (${t.nameEn})` : `إضافة (${t.nameAr})`,
+                       val: t.priceDelta
+                     }))
                    ].map((item, i) => (
                      <div 
                        key={item.label} 

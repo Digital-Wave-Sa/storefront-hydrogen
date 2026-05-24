@@ -315,14 +315,64 @@ export function Layout({children}: {children?: React.ReactNode}) {
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-    // Small delay to ensure CSS is applied before fading in
-    const timer = setTimeout(() => setIsReady(true), 10);
-    return () => clearTimeout(timer);
+    let active = true;
+    const links = Array.from(document.querySelectorAll('link[rel="stylesheet"]')) as HTMLLinkElement[];
+    
+    if (links.length === 0) {
+      setIsReady(true);
+      return;
+    }
+
+    let loadedCount = 0;
+    const totalLinks = links.length;
+
+    const handleLoad = () => {
+      loadedCount++;
+      if (loadedCount >= totalLinks && active) {
+        setIsReady(true);
+      }
+    };
+
+    // Fallback timer to ensure page is shown even if a stylesheet fails to load
+    const fallbackTimer = setTimeout(() => {
+      if (active) {
+        setIsReady(true);
+      }
+    }, 500); // 500ms fallback
+
+    links.forEach((link) => {
+      let isLoaded = false;
+      try {
+        if (link.sheet && link.sheet.cssRules && link.sheet.cssRules.length > 0) {
+          isLoaded = true;
+        }
+      } catch (e) {
+        if (link.sheet) {
+          isLoaded = true;
+        }
+      }
+
+      if (isLoaded) {
+        handleLoad();
+      } else {
+        link.addEventListener('load', handleLoad);
+        link.addEventListener('error', handleLoad);
+      }
+    });
+
+    return () => {
+      active = false;
+      clearTimeout(fallbackTimer);
+      links.forEach((link) => {
+        link.removeEventListener('load', handleLoad);
+        link.removeEventListener('error', handleLoad);
+      });
+    };
   }, []);
 
   return (
     <html lang={locale} dir={isEn ? 'ltr' : 'rtl'} suppressHydrationWarning>
-      <head>
+      <head suppressHydrationWarning>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width,initial-scale=1" />
         <Meta />
@@ -344,6 +394,7 @@ export function Layout({children}: {children?: React.ReactNode}) {
         {data?.env?.PUBLIC_GTM_ID && data.env.PUBLIC_GTM_ID !== 'GTM-XXXXXXX' && (
           <script
             nonce={nonce}
+            suppressHydrationWarning
             dangerouslySetInnerHTML={{
               __html: `
                 (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
@@ -356,7 +407,11 @@ export function Layout({children}: {children?: React.ReactNode}) {
           />
         )}
       </head>
-      <body className={`bg-[#FEF8EB] ${isEn ? 'font-en' : 'font-ar'} ${isReady ? 'show-content' : ''}`}>
+      <body
+        className={`bg-[#FEF8EB] ${isEn ? 'font-en' : 'font-ar'} ${isReady ? 'show-content' : ''}`}
+        style={!isReady ? { opacity: 0, visibility: 'hidden', backgroundColor: '#FEF8EB' } : undefined}
+        suppressHydrationWarning
+      >
         {data?.env?.PUBLIC_GTM_ID && data.env.PUBLIC_GTM_ID !== 'GTM-XXXXXXX' && (
           <noscript>
             <iframe
@@ -371,6 +426,7 @@ export function Layout({children}: {children?: React.ReactNode}) {
         <ScrollRestoration nonce={nonce} />
         <script
           nonce={nonce}
+          suppressHydrationWarning
           dangerouslySetInnerHTML={{
             __html: `window.ENV = ${JSON.stringify(data?.env || {})};`,
           }}
@@ -495,6 +551,8 @@ const CUSTOMER_ADDRESSES_QUERY = `#graphql
   query CustomerAddresses($customerAccessToken: String!) {
     customer(customerAccessToken: $customerAccessToken) {
       id
+      email
+      tags
       firstName
       lastName
       addresses(first: 20) {

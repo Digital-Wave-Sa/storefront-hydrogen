@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { data, redirect, type ActionFunctionArgs, type LoaderFunctionArgs, type MetaFunction } from 'react-router';
 import { Form, Link, useActionData, useNavigation, useRouteLoaderData } from 'react-router';
 import { Button } from '~/components/layout/Button';
+import { SocialLogins } from '~/components/SocialLogins';
 
 export const meta: MetaFunction<typeof loader> = () => {
   return [{ title: 'Login | Saadeddin' }];
@@ -291,22 +292,7 @@ export default function Login() {
         )}
 
         {/* --- SOCIAL LOGIN --- */}
-        <div className="otp-social-login luxury-social">
-          <div className="divider">
-            <span>{isEn ? 'OR CONTINUE WITH' : 'أو المتابعة باستخدام'}</span>
-          </div>
-          <div className="social-buttons-grid">
-            <button className="luxury-social-btn google">
-               <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#EA4335" d="M12.48 10.92v3.28h7.84c-.24 1.84-.92 3.32-2.12 4.4-1.12 1.04-2.84 2.16-5.72 2.16-4.52 0-8.12-3.64-8.12-8.16s3.6-8.16 8.12-8.16c2.48 0 4.4 1 5.92 2.44l2.48-2.48C18.4 2.04 15.68 1 12.48 1 6.56 1 1.76 5.8 1.76 11.72s4.8 10.72 10.72 10.72c3.2 0 5.68-1.04 7.6-3.04 2-2 2.64-4.8 2.64-7.12 0-.48-.04-.96-.12-1.36h-10.12z"/></svg>
-            </button>
-            <button className="luxury-social-btn apple">
-               <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17.05 20.28c-.96.95-2.22 1.48-3.56 1.48-1.28 0-2.4-.44-3.32-1.32-.96-.88-1.68-2.32-1.68-4.48 0-2.12.72-3.56 1.72-4.48.96-.88 2.2-.1.12 3.48-.12.4-.48-1.36-4.24-1.36-1.52 0-2.88.64-3.88 1.68-1.2 1.28-1.8 3.08-1.8 5.4 0 2.28.6 4.12 1.8 5.48 1.04 1.16 2.4 1.76 4.04 1.76 1.48 0 2.64-.48 3.52-1.4.12-.12.24-.12.36 0 .88.92 2.04 1.4 3.52 1.4 1.64 0 3-.6 4.04-1.76 1.2-1.36 1.8-3.2 1.8-5.48 0-2.32-.6-4.12-1.8-5.4-1-1.04-2.36-1.68-3.88-1.68zM12 4c.6 0 1.2.04 1.76.12-.04.4-.04.8-.04 1.24 0 1.6.6 2.92 1.56 3.84 1 1 2.4 1.56 4.08 1.56.4 0 .84-.04 1.24-.12.08.52.12 1.08.12 1.64 0 2.16-.56 3.84-1.68 5.04-1.08 1.16-2.52 1.76-4.32 1.76s-3.24-.6-4.32-1.76c-1.12-1.2-1.68-2.88-1.68-5.04s.56-3.84 1.68-5.04C7.08 5.8 8.68 5.2 10.56 5.2c.48 0 .96.04 1.44.12V4z"/></svg>
-            </button>
-            <button className="luxury-social-btn facebook">
-               <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M22 12c0-5.52-4.48-10-10-10S2 6.48 2 12c0 4.84 3.44 8.87 8 9.8V15H8v-3h2V9.5C10 7.57 11.57 6 13.5 6H16v3h-2c-.55 0-1 .45-1 1v2h3l-.5 3h-2.5v6.8c4.56-.93 8-4.96 8-9.8z"/></svg>
-            </button>
-          </div>
-        </div>
+        <SocialLogins />
 
         <div className="luxury-footer">
           <p>

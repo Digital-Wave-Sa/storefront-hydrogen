@@ -1,132 +1,172 @@
-import { useOutletContext, Link } from 'react-router';
+import { useOutletContext, Link, useLocation } from 'react-router';
 import type { CustomerFragment } from 'storefrontapi.generated';
+
+// Currency SVG Icon provided by user
+const CurrencyIcon = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 1124.14 1256.39" className={`inline-block fill-current ${className || 'h-3.5 w-auto mb-0.5'}`}>
+    <path d="M699.62,1113.02h0c-20.06,44.48-33.32,92.75-38.4,143.37l424.51-90.24c20.06-44.47,33.31-92.75,38.4-143.37l-424.51,90.24Z" />
+    <path d="M1085.73,895.8c20.06-44.47,33.32-92.75,38.4-143.37l-330.68,70.33v-135.2l292.27-62.11c20.06-44.47,33.32-92.75,38.4-143.37l-330.68,70.27V66.13c-50.67,28.45-95.67,66.32-132.25,110.99v403.35l-132.25,28.11V0c-50.67,28.44-95.67,66.32-132.25,110.99v525.69l-295.91,62.88c-20.06,44.47-33.33,92.75-38.42,143.37l334.33-71.05v170.26l-358.3,76.14c-20.06,44.47-33.32,92.75-38.4,143.37l375.04-79.7c30.53-6.35,56.77-24.4,73.83-49.24l68.78-101.97v-.02c7.14-10.55,11.3-23.27,11.3-36.97v-149.98l132.25-28.11v270.4l424.53-90.28Z" />
+  </svg>
+);
 
 export default function AccountDashboard() {
   const { customer } = useOutletContext<{ customer: CustomerFragment }>();
-  const isEn = typeof window !== 'undefined' ? window.location.pathname.includes('/en') : false;
+  const location = useLocation();
+  const isEn = location.pathname.startsWith('/en');
 
   return (
     <div className="space-y-6 animate-fade-in" dir={isEn ? 'ltr' : 'rtl'}>
       {/* Top Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Total Spending */}
-        <div className="bg-white border border-[#f0eee9] rounded-[24px] p-8 flex flex-col items-center justify-center text-center shadow-sm">
-           <div className="flex items-center gap-2 mb-2">
-             <span className="text-[32px] md:text-[42px] font-black text-[#234745]">4.200</span>
-             <span className="text-[20px] font-bold text-[#234745] mt-2">﷼</span>
+        <div className="bg-white border border-[#9FB7AE] rounded-[12px] py-8 px-4 flex flex-col items-center justify-center text-center gap-2">
+           <div className="flex items-center justify-center gap-2" dir="ltr">
+             <span className="text-[28px] md:text-[34px] font-bold text-[#234745] leading-none" style={!isEn ? { fontFamily: '"GE Dinar One", sans-serif' } : undefined}>
+               {isEn ? '4.200' : '٤.٢٠٠'}
+             </span>
+             <span className="text-[#234745]"><CurrencyIcon className="h-6 w-auto" /></span>
            </div>
-           <p className="text-[14px] text-gray-400 font-bold uppercase tracking-widest">
+           <p className="text-[14px] text-[#A6BFB9] font-medium" style={!isEn ? { fontFamily: '"GE Dinar One", sans-serif' } : undefined}>
              {isEn ? 'Total Spending' : 'إجمالي الإنفاق'}
            </p>
         </div>
 
         {/* Total Orders */}
-        <div className="bg-white border border-[#f0eee9] rounded-[24px] p-8 flex flex-col items-center justify-center text-center shadow-sm">
-           <span className="text-[32px] md:text-[42px] font-black text-[#234745] mb-2">
-             {customer.numberOfOrders || 0}
+        <div className="bg-white border border-[#9FB7AE] rounded-[12px] py-8 px-4 flex flex-col items-center justify-center text-center gap-2">
+           <span className="text-[28px] md:text-[34px] font-bold text-[#234745] leading-none" style={!isEn ? { fontFamily: '"GE Dinar One", sans-serif' } : undefined}>
+             {customer.numberOfOrders || (isEn ? 12 : '١٢')}
            </span>
-           <p className="text-[14px] text-gray-400 font-bold uppercase tracking-widest">
+           <p className="text-[14px] text-[#A6BFB9] font-medium" style={!isEn ? { fontFamily: '"GE Dinar One", sans-serif' } : undefined}>
              {isEn ? 'Total Orders' : 'إجمالي الطلبات'}
            </p>
         </div>
       </div>
 
       {/* Last Order Card */}
-      <div className="bg-white border border-[#f0eee9] rounded-[24px] p-6 md:p-8 shadow-sm">
-        <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-          {/* Status & Actions */}
-          <div className="flex flex-col gap-4 w-full md:w-auto">
-            <div className="flex items-center gap-2 mb-1">
-              <div className="w-2.5 h-2.5 rounded-full bg-[#4ADE80] shadow-[0_0_8px_rgba(74,222,128,0.5)]" />
-              <span className="text-[14px] font-bold text-[#234745]">
-                {isEn ? 'On its way to you' : 'في الطريق إليك'}
-              </span>
-            </div>
-            <div className="flex items-center gap-3">
-              <button className="px-8 py-2.5 bg-[#234745] text-white rounded-full text-[14px] font-bold hover:opacity-90 transition-all">
-                {isEn ? 'Reorder' : 'إعادة الطلب'}
-              </button>
-              <button className="px-8 py-2.5 border border-[#234745]/20 text-[#234745] rounded-full text-[14px] font-bold hover:bg-gray-50 transition-all">
-                {isEn ? 'Track' : 'تتبع'}
-              </button>
-            </div>
-          </div>
+      {customer.orders?.nodes?.[0] && (() => {
+        const lastOrder = customer.orders.nodes[0];
+        const productCount = lastOrder.lineItems?.nodes?.length || 0;
+        const firstItem = lastOrder.lineItems?.nodes?.[0];
+        const imageUrl = firstItem?.variant?.image?.url || "https://cdn.shopify.com/s/files/1/0809/4209/4648/files/cake-slice.jpg?v=1710400000";
+        const totalAmount = lastOrder.currentTotalPrice?.amount || "0.00";
+        const orderIdEncoded = typeof btoa !== 'undefined' ? btoa(lastOrder.id) : '';
+        
+        let statusEn = 'Processing';
+        let statusAr = 'قيد المعالجة';
+        if (lastOrder.fulfillmentStatus === 'FULFILLED') {
+           statusEn = 'Delivered';
+           statusAr = 'تم التوصيل';
+        } else if (lastOrder.financialStatus === 'PAID') {
+           statusEn = 'On its way to you';
+           statusAr = 'في الطريق إليك';
+        }
 
-          {/* Order Details */}
-          <div className="flex items-center gap-6 text-right">
-            <div className="flex flex-col gap-1">
-              <h3 className="text-[16px] md:text-[18px] font-black text-[#234745]">
-                {isEn ? 'Last Order — #2026-SD-8847' : 'آخر طلب — #٢٠٢٦-SD-٨٨٤٧'}
-              </h3>
-              <p className="text-[13px] text-gray-400 font-medium">
-                {isEn ? '3 Products • 865.44 SAR' : '٣ منتجات • ٨٦٥.٤٤ ر.س'}
-              </p>
-              <div className="flex items-center justify-end gap-1.5 mt-1">
-                 <span className="text-[18px] font-black text-[#234745]">١٥٢.٥٦</span>
-                 <span className="text-[12px] font-bold text-[#234745] mt-1">﷼</span>
+        return (
+          <div className="bg-white border border-[#9FB7AE] rounded-[12px] p-6">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+              
+              {/* Order Details (First in RTL -> Right side) */}
+              <div className="flex items-center gap-4 text-start">
+                <div className="relative flex-shrink-0">
+                  <img 
+                    src={imageUrl}
+                    alt="Product" 
+                    className="w-16 h-16 md:w-20 md:h-20 rounded-[12px] object-cover border border-gray-100"
+                  />
+                  <div className="absolute -top-2 -start-2 w-6 h-6 bg-[#234745] text-white rounded-full flex items-center justify-center text-[11px] font-bold border-2 border-white">
+                    {isEn ? productCount : productCount.toLocaleString('ar-EG')}
+                  </div>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <h3 className="text-[16px] md:text-[18px] font-bold text-[#234745] leading-none" style={!isEn ? { fontFamily: '"Bahij Janna", sans-serif' } : undefined}>
+                    {isEn ? `Last Order — #${lastOrder.orderNumber}` : `آخر طلب — #${lastOrder.orderNumber.toLocaleString('ar-EG', { useGrouping: false })}`}
+                  </h3>
+                  <p className="text-[12px] text-[#A6BFB9] font-medium leading-tight">
+                    {isEn ? `${productCount} Products` : `${productCount.toLocaleString('ar-EG')} منتجات`} • {isEn ? totalAmount : parseFloat(totalAmount).toLocaleString('ar-EG')} <CurrencyIcon className="h-3 w-auto inline-block ms-1" />
+                  </p>
+                  <div className="flex items-center justify-start gap-1.5 mt-1" dir="rtl">
+                     <span className="text-[#234745]"><CurrencyIcon className="h-4 w-auto" /></span>
+                     <span className="text-[16px] font-bold text-[#234745] leading-none" style={!isEn ? { fontFamily: '"GE Dinar One", sans-serif' } : undefined}>
+                       {isEn ? totalAmount : parseFloat(totalAmount).toLocaleString('ar-EG')}
+                     </span>
+                  </div>
+                </div>
               </div>
-            </div>
-            <div className="relative">
-              <img 
-                src="https://cdn.shopify.com/s/files/1/0809/4209/4648/files/cake-slice.jpg?v=1710400000" 
-                alt="Product" 
-                className="w-20 h-20 md:w-24 md:h-24 rounded-[20px] object-cover shadow-sm border border-gray-100"
-              />
-              <div className="absolute -top-2 -left-2 w-6 h-6 bg-[#234745] text-white rounded-full flex items-center justify-center text-[10px] font-bold border-2 border-white">
-                ١
+
+              {/* Status & Actions (Second in RTL -> Left side) */}
+              <div className="flex flex-col items-end gap-3 w-full md:w-auto">
+                <div className="flex items-center gap-2">
+                  <span className="text-[13px] font-bold text-[#234745]" style={!isEn ? { fontFamily: '"Bahij Janna", sans-serif' } : undefined}>
+                    {isEn ? statusEn : statusAr}
+                  </span>
+                  <div className="w-1.5 h-1.5 rounded-full bg-[#234745]" />
+                </div>
+                <div className="flex items-center gap-2">
+                  <Link 
+                    to={isEn ? `/en/account/orders/${orderIdEncoded}` : `/account/orders/${orderIdEncoded}`}
+                    className="px-6 py-2 border border-[#234745] text-[#234745] rounded-[24px] text-[13px] font-bold hover:bg-gray-50 transition-all"
+                  >
+                    {isEn ? 'Track' : 'تتبع'}
+                  </Link>
+                  <Link 
+                    to={isEn ? `/en/account/orders/${orderIdEncoded}` : `/account/orders/${orderIdEncoded}`}
+                    className="px-6 py-2 bg-[#234745] text-white rounded-[24px] text-[13px] font-bold hover:opacity-90 transition-all"
+                  >
+                    {isEn ? 'Reorder' : 'إعادة الطلب'}
+                  </Link>
+                </div>
               </div>
+
             </div>
           </div>
-        </div>
-      </div>
+        );
+      })()}
 
       {/* Loyalty Points Section */}
-      <div className="bg-white border border-[#f0eee9] rounded-[24px] p-6 md:p-10 shadow-sm relative overflow-hidden">
-        <div className="flex flex-col gap-8">
+      <div className="bg-white border border-[#9FB7AE] rounded-[12px] p-6 relative overflow-hidden">
+        <div className="flex flex-col gap-6">
            <div className="flex items-center justify-between">
               <div className="text-right">
-                 <p className="text-[11px] text-gray-400 font-bold uppercase tracking-widest mb-4">
-                   {isEn ? 'Next Level' : 'المستوى التالي'}
-                 </p>
-                 <p className="text-[18px] md:text-[22px] font-black text-[#234745]">
-                   {isEn ? '60 points remaining' : '٦٠ نقطة متبقية'}
-                 </p>
-              </div>
-              <div className="text-right">
-                 <h2 className="text-[16px] font-black text-[#234745] mb-2">
+                 <h2 className="text-[16px] font-bold text-[#234745] mb-2" style={!isEn ? { fontFamily: '"Bahij Janna", sans-serif' } : undefined}>
                    {isEn ? 'Loyalty Points' : 'نقاط الولاء'}
                  </h2>
-                 <p className="text-[42px] md:text-[52px] font-black text-[#234745] leading-none mb-2">240</p>
-                 <p className="text-[12px] text-gray-400 font-medium">
+                 <p className="text-[36px] md:text-[46px] font-bold text-[#234745] leading-none mb-1" style={!isEn ? { fontFamily: '"GE Dinar One", sans-serif' } : undefined}>
+                   {isEn ? '240' : '٢٤٠'}
+                 </p>
+                 <p className="text-[12px] text-[#A6BFB9] font-medium">
                    {isEn ? '1 Point = ~1 Halala' : '١ نقطة = ١ هللة تقريباً'}
+                 </p>
+              </div>
+              <div className="text-left">
+                 <p className="text-[12px] text-[#A6BFB9] font-medium mb-1">
+                   {isEn ? 'Next Level' : 'المستوى التالي'}
+                 </p>
+                 <p className="text-[16px] md:text-[18px] font-bold text-[#234745]">
+                   {isEn ? '60 points remaining' : '٦٠ نقطة متبقية'}
                  </p>
               </div>
            </div>
 
            {/* Progress Bar */}
-           <div className="relative w-full h-3 bg-gray-100 rounded-full overflow-hidden">
+           <div className="relative w-full h-3 bg-[#EAF2F1] rounded-full overflow-hidden">
               <div 
                 className="absolute top-0 right-0 h-full bg-[#234745] rounded-full transition-all duration-1000"
-                style={{ width: '75%' }}
-              />
-              <div 
-                className="absolute top-0 right-0 h-full bg-[#B2C4C0] rounded-full opacity-50"
-                style={{ width: '25%' }}
+                style={{ width: '80%' }}
               />
            </div>
 
            {/* History List */}
            <div className="space-y-3">
               {[
-                { id: '#٢٠٢٦-SD-٨٨٤٧', points: '+٢٠ نقطة' },
-                { id: '#٢٠٢٦-SD-٨٨١٢', points: '+٦٠ نقطة' }
+                { idEn: '#2026-SD-8847', idAr: '#٢٠٢٦-SD-٨٨٤٧', pointsEn: '+20 Points', pointsAr: '+٢٠ نقطة' },
+                { idEn: '#2026-SD-8812', idAr: '#٢٠٢٦-SD-٨٨١٢', pointsEn: '+60 Points', pointsAr: '+٦٠ نقطة' }
               ].map((item, idx) => (
-                <div key={idx} className="flex items-center justify-between p-4 bg-[#FEF8EB] rounded-[16px] hover:scale-[1.01] transition-transform cursor-default">
-                  <span className="text-[14px] font-bold text-[#234745] opacity-60">
-                    {item.points}
+                <div key={idx} className="flex items-center justify-between p-4 bg-[#FEF8EB] rounded-[8px] hover:scale-[1.01] transition-transform cursor-default">
+                  <span className="text-[14px] font-bold text-[#234745]">
+                    {isEn ? `Order ${item.idEn}` : `طلب ${item.idAr}`}
                   </span>
-                  <span className="text-[14px] font-black text-[#234745]">
-                    {isEn ? `Order ${item.id}` : `طلب ${item.id}`}
+                  <span className="text-[14px] font-bold text-[#234745]" style={!isEn ? { fontFamily: '"GE Dinar One", sans-serif' } : undefined}>
+                    {isEn ? item.pointsEn : item.pointsAr}
                   </span>
                 </div>
               ))}

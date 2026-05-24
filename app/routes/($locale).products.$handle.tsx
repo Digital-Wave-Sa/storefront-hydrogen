@@ -309,8 +309,8 @@ export default function Product() {
     product.handle.includes('gift-card') || 
     product.productType?.toLowerCase().includes('gift card');
 
-  const isBundle = product.productType?.toLowerCase() === 'bundle' || product.tags?.some((t: string) => t.toLowerCase() === 'bundle');
   const bundleComponents = (product as any).bundle_components?.references?.nodes || [];
+  const isBundle = product.productType?.toLowerCase() === 'bundle' || product.tags?.some((t: string) => t.toLowerCase() === 'bundle') || bundleComponents.length > 0;
 
   const bundleSavings = useMemo(() => {
     if (!isBundle || !bundleComponents.length || !selectedVariant) return null;
@@ -365,7 +365,10 @@ export default function Product() {
   const [hideSender, setHideSender] = useState(false);
   const [showReviewForm, setShowReviewForm] = useState(false);
   
-  const isGiftable = true;
+  const isGiftable = product.tags?.some((t: string) => {
+    const lowerTag = t.toLowerCase();
+    return lowerTag.includes('gift') || lowerTag.includes('mother') || lowerTag.includes('father') || lowerTag.includes('friend') || lowerTag.includes('grad');
+  }) ?? false;
   
   const bogoFreeVariantId = (product as any).bogo_free_item?.reference?.id || (product as any).bogo_free_item?.value;
   const isBogo = !!bogoFreeVariantId || (product.tags?.some((t: string) => t.toLowerCase().includes('bogo')) ?? false);
@@ -389,61 +392,8 @@ export default function Product() {
 
   const rawAddons = (product as any).addons?.references?.nodes || [];
   const addonNodes = useMemo(() => {
-    if (rawAddons.length > 0) return rawAddons;
-    return [
-      {
-        id: "gid://shopify/Product/10483599900981",
-        title: isEn ? "Add On" : "إضافة للتجربة",
-        handle: "add-on",
-        availableForSale: true,
-        variants: {
-          nodes: [
-            {
-              id: "gid://shopify/ProductVariant/52786722767157",
-              price: {
-                amount: "200.0",
-                currencyCode: "SAR"
-              }
-            }
-          ]
-        }
-      },
-      {
-        id: "gid://shopify/Product/candles-fallback-id",
-        title: isEn ? "Premium Birthday Candle" : "شمعة عيد ميلاد فاخرة",
-        handle: "premium-candle",
-        availableForSale: true,
-        variants: {
-          nodes: [
-            {
-              id: "gid://shopify/ProductVariant/candles-fallback-variant-id",
-              price: {
-                amount: "15.0",
-                currencyCode: "SAR"
-              }
-            }
-          ]
-        }
-      },
-      {
-        id: "gid://shopify/Product/gift-wrap-fallback-id",
-        title: isEn ? "Luxury Gift Wrapping" : "تغليف هدايا فاخر",
-        handle: "luxury-gift-wrapping",
-        availableForSale: true,
-        variants: {
-          nodes: [
-            {
-              id: "gid://shopify/ProductVariant/gift-wrap-fallback-variant-id",
-              price: {
-                amount: "30.0",
-                currencyCode: "SAR"
-              }
-            }
-          ]
-        }
-      }
-    ];
-  }, [rawAddons, isEn]);
+    return rawAddons;
+  }, [rawAddons]);
 
   const handleAddonToggle = (variantId: string) => {
     setSelectedAddons((prev) =>
@@ -838,6 +788,51 @@ export default function Product() {
                     variants={data.product?.variants?.nodes || []}
                     isEn={isEn}
                   />
+
+                  {/* Bundle Components Section */}
+                  {isBundle && bundleComponents.length > 0 && (
+                    <div className="flex flex-col gap-5 mt-4">
+                      <div className={`flex items-center justify-between ${isEn ? 'flex-row' : 'flex-row-reverse'}`}>
+                        <h5 className={`font-black text-[#1a1a1a] text-[15px]`}>
+                          {isEn ? 'This package includes:' : 'يحتوي هذا العرض على:'}
+                        </h5>
+                        {bundleSavings && bundleSavings > 0 && (
+                           <span className="bg-[#295b45] text-white text-[11px] font-black px-3 py-1.5 rounded-full">
+                             {isEn ? 'Bundle Savings: ' : 'توفير العرض: '}
+                             {new Intl.NumberFormat(locale === 'en' ? 'en-US' : 'ar-EG').format(bundleSavings)} {isEn ? 'SAR' : 'ر.س'}
+                           </span>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {bundleComponents.map((component: any) => {
+                          const compVariant = component.variants?.nodes?.[0];
+                          const compPrice = compVariant?.price;
+                          return (
+                            <div key={component.id} className={`flex items-center gap-4 bg-white border border-gray-100 rounded-[20px] p-4 shadow-sm transition-all hover:border-[#234745]/30 ${isEn ? 'flex-row' : 'flex-row-reverse'}`}>
+                               <div className="w-16 h-16 rounded-[12px] bg-[#f0f4f2] overflow-hidden flex-shrink-0 relative">
+                                 {component.featuredImage ? (
+                                   <Image data={component.featuredImage} className="object-cover w-full h-full" sizes="64px" />
+                                 ) : (
+                                   <div className="w-full h-full flex items-center justify-center text-gray-300 text-[10px]">{isEn ? 'No Image' : 'لا توجد صورة'}</div>
+                                 )}
+                               </div>
+                               <div className={`flex flex-col flex-grow ${isEn ? 'text-left' : 'text-right'}`}>
+                                 <span className="text-[13px] font-black text-[#1a1a1a] line-clamp-2 leading-tight">
+                                   {component.title}
+                                 </span>
+                                 {compPrice && (
+                                   <div className={`flex items-center gap-1 text-[#A67B5B] text-[12px] font-bold mt-1 ${isEn ? 'justify-start' : 'justify-end'}`}>
+                                     <span>{isEn ? 'Original: ' : 'السعر الأصلي: '}</span>
+                                     <Price data={compPrice} isEn={isEn} size="xs" />
+                                   </div>
+                                 )}
+                               </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Addons Section (High Fidelity) */}
                   {addonNodes.length > 0 && (
@@ -1626,6 +1621,9 @@ function ProductForm({
         variants={variants as any}
       >
         {({ option }) => {
+          if (option.values.length === 1 && option.values[0].value === 'Default Title') {
+            return null;
+          }
           const isSize = option.name.toLowerCase() === 'size' || option.name.toLowerCase() === 'title';
           let label = isSize ? (isEn ? 'Size' : 'الحجم') : option.name;
           

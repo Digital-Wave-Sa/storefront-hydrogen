@@ -21,7 +21,7 @@ export default async function handleRequest(
     },
     scriptSrc: ["'self'", 'https://maps.googleapis.com', 'https://cdn.shopify.com'],
     frameSrc: ["'self'", 'https://www.google.com', 'https://maps.google.com'],
-    imgSrc: ["'self'", 'https://cdn.shopify.com', 'https://shopify.com', 'https://saadeddin.com', 'https://cdn.tamara.co', 'https://maps.googleapis.com', 'https://maps.gstatic.com', 'data:'],
+    imgSrc: ["'self'", 'https://cdn.shopify.com', 'https://shopify.com', 'https://saadeddin.com', 'https://cdn.tamara.co', 'https://maps.googleapis.com', 'https://maps.gstatic.com', 'https://file.lola.do', 'data:'],
     connectSrc: ["'self'", 'https://maps.googleapis.com', '*.google.com', 'https://*.google.com', 'https://cdn.tamara.co'],
     styleSrc: ["'self'", "'unsafe-inline'", 'https://cdn.shopify.com', 'https://fonts.googleapis.com'],
     fontSrc: ["'self'", 'https://cdn.shopify.com', 'https://fonts.gstatic.com', 'data:'],

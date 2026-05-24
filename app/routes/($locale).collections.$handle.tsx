@@ -103,7 +103,7 @@ export async function loader({request, params, context}: LoaderFunctionArgs) {
 export default function Collection() {
   const {collection} = useLoaderData<typeof loader>();
   const [view, setView] = useState<'grid' | 'list'>('grid');
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const q = searchParams.get('q')?.toLowerCase() || '';
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -203,12 +203,12 @@ export default function Collection() {
                       style={{ WebkitAppearance: 'none', appearance: 'none' }}
                       onChange={(e) => {
                         const [key, rev] = e.target.value.split('|');
-                        const params = new URLSearchParams(window.location.search);
+                        const params = new URLSearchParams(searchParams);
                         params.set('sortKey', key);
                         params.set('reverse', rev);
-                        window.location.search = params.toString();
+                        setSearchParams(params, { preventScrollReset: true });
                       }}
-                      defaultValue={typeof window !== 'undefined' ? `${new URLSearchParams(window.location.search).get('sortKey') || 'COLLECTION_DEFAULT'}|${new URLSearchParams(window.location.search).get('reverse') || 'false'}` : 'COLLECTION_DEFAULT|false'}
+                      value={`${searchParams.get('sortKey') || 'COLLECTION_DEFAULT'}|${searchParams.get('reverse') || 'false'}`}
                     >
                       <option value="COLLECTION_DEFAULT|false">{isEn ? 'Featured' : 'الأكثر صلة'}</option>
                       <option value="BEST_SELLING|false">{isEn ? 'Best Selling' : 'الأكثر مبيعاً'}</option>

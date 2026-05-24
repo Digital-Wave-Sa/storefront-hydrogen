@@ -3,6 +3,7 @@ import { data, redirect, type ActionFunctionArgs, type LoaderFunctionArgs, type 
 import { Form, Link, useActionData, useNavigation, useFetcher, useRouteLoaderData } from 'react-router';
 import type { CustomerCreateMutation } from 'storefrontapi.generated';
 import { Button } from '~/components/layout/Button';
+import { SocialLogins } from '~/components/SocialLogins';
 import { sendSMS } from '~/lib/sms.server';
 import { getAdminToken } from '~/lib/shopify-admin.server';
 
@@ -498,6 +499,8 @@ export default function Register() {
               {isLoading ? (isEn ? 'Checking...' : 'جاري التحقق...') : (isEn ? 'Continue' : 'استمرار')}
             </Button>
 
+            <SocialLogins />
+
             <div className="login-extras">
               <p className="no-account">
                 {isEn ? 'Already have an account? ' : 'لديك حساب بالفعل؟ '}
@@ -571,6 +574,8 @@ export default function Register() {
             <Button type="submit" variant="primary" fullWidth size="lg" className="luxury-submit mt-8" disabled={isLoading}>
               {isLoading ? (isEn ? 'Creating...' : 'جاري الإنشاء...') : (isEn ? 'Register Now' : 'سجل الآن')}
             </Button>
+
+            <SocialLogins />
 
             <div className="login-extras mt-6">
               <p className="no-account">

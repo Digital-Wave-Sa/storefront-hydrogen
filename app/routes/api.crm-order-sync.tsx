@@ -60,7 +60,12 @@ export async function action({ request, context }: ActionFunctionArgs) {
       shippingAddress.city,
       shippingAddress.province,
     ].filter(Boolean);
-    const addressString = addressParts.join(', ') || 'N/A';
+    let addressString = addressParts.join(', ') || 'N/A';
+    
+    const timeSlotAttr = cartAttributes.find((a: any) => a.name === 'Time Slot');
+    if (timeSlotAttr?.value) {
+      addressString += ` [Schedule: ${timeSlotAttr.value}]`;
+    }
 
     // Extract due date from cart attributes or use order date
     const dueDateAttr = cartAttributes.find((a: any) => a.name === 'delivery_date');

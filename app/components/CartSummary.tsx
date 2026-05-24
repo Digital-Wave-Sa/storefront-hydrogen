@@ -96,6 +96,12 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
                 isEn={isEn}
               />
 
+              {/* Time Slot Picker */}
+              <CartTimeSlot isEn={isEn} cart={cart} />
+
+              {/* Order Notes */}
+              <CartOrderNotes isEn={isEn} cart={cart} />
+
               {/* Breakdown */}
               <div className="flex flex-col gap-4">
                   <div className="flex justify-between items-center text-[15px]">
@@ -120,14 +126,7 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
                      </dd>
                   </div>
 
-                  {/* Gift Wrapping Row (Mocked/Conditional for design parity) */}
-                  <div className="flex justify-between items-center text-[15px]">
-                     <dt className="text-gray-400 font-bold">{isEn ? 'Gift Wrapping' : 'تغليف الهدايا'}</dt>
-                     <dd className="text-[#1a1a1a] font-black font-en flex items-center gap-1 flex-row-reverse">
-                       <SaudiRiyalSymbol className="w-[18px] h-auto text-[#1a1a1a]" />
-                       <span>10.56</span>
-                     </dd>
-                  </div>
+
 
                   {cart?.cost?.totalTaxAmount && (
                     <div className="flex justify-between items-center text-[15px]">
@@ -266,6 +265,8 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
 // ─── NEW: TIME SLOT PICKER ──────────────────────────────────────────────────
 function CartTimeSlot({ isEn, cart, hasError }: { isEn: boolean, cart: any, hasError?: boolean }) {
   const timeSlot = cart?.attributes?.find((a: any) => a.key === 'Time Slot')?.value || '';
+  const timeSlotAttr = cart?.attributes?.find((a: any) => a.key === 'Available Time Slots')?.value;
+  const timeSlotsArray = timeSlotAttr ? timeSlotAttr.split(',').map((s: string) => s.trim()).filter(Boolean) : [];
   
   return (
     <div className="flex flex-col gap-2">
@@ -285,9 +286,17 @@ function CartTimeSlot({ isEn, cart, hasError }: { isEn: boolean, cart: any, hasE
             className="w-full bg-[#fcfaf8] border border-[#f0ece8] rounded-xl px-4 py-3 text-[14px] text-[#234745] font-medium appearance-none focus:outline-none focus:border-[#d4a06a] focus:ring-1 focus:ring-[#d4a06a] transition-all cursor-pointer"
           >
             <option value="">{isEn ? 'Select delivery/pickup time' : 'اختر وقت التوصيل/الاستلام'}</option>
-            <option value="Morning (9 AM - 12 PM)">{isEn ? 'Morning (9 AM - 12 PM)' : 'الصباح (9 ص - 12 م)'}</option>
-            <option value="Afternoon (12 PM - 4 PM)">{isEn ? 'Afternoon (12 PM - 4 PM)' : 'المساء (12 م - 4 م)'}</option>
-            <option value="Evening (4 PM - 9 PM)">{isEn ? 'Evening (4 PM - 9 PM)' : 'الليل (4 م - 9 م)'}</option>
+            {timeSlotsArray.length > 0 ? (
+                timeSlotsArray.map((slot: string, idx: number) => (
+                    <option key={idx} value={slot}>{slot}</option>
+                ))
+            ) : (
+                <>
+                    <option value="Morning (9 AM - 12 PM)">{isEn ? 'Morning (9 AM - 12 PM)' : 'الصباح (9 ص - 12 م)'}</option>
+                    <option value="Afternoon (12 PM - 4 PM)">{isEn ? 'Afternoon (12 PM - 4 PM)' : 'المساء (12 م - 4 م)'}</option>
+                    <option value="Evening (4 PM - 9 PM)">{isEn ? 'Evening (4 PM - 9 PM)' : 'الليل (4 م - 9 م)'}</option>
+                </>
+            )}
           </select>
           <div className="absolute top-1/2 -translate-y-1/2 rtl:left-4 ltr:right-4 pointer-events-none text-[#d4a06a]">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
@@ -541,21 +550,29 @@ function CartDiscounts({
           {(fetcher: any) => {
             const isLoading = fetcher.state !== 'idle';
             return (
-              <div className="flex w-full items-center justify-between border border-gray-300 rounded-[12px] overflow-hidden focus-within:border-[#1D3B3A] transition-colors p-1.5 h-[56px] relative">
-                <input
-                    type="text"
-                    name="discountCode"
-                    placeholder={isEn ? "Discount code" : "كود الخصم"}
-                    className="flex-1 bg-transparent px-4 py-2 text-[14px] text-[#1a1a1a] focus:outline-none placeholder-gray-400 font-bold w-full h-full"
-                  />
-                  <button 
-                    type="submit"
-                    disabled={isLoading}
-                    className="bg-[#1D3B3A] text-white px-6 h-full text-[14px] font-bold hover:bg-[#152A29] transition-colors rounded-[8px] flex-shrink-0"
-                    style={{ fontFamily: "'GE Dinar One', sans-serif" }}
-                  >
-                    {isLoading ? '...' : (isEn ? 'Apply' : 'تطبيق')}
-                  </button>
+              <div className="flex flex-col gap-2 w-full">
+                <div className="flex w-full items-center justify-between border border-gray-300 rounded-[12px] overflow-hidden focus-within:border-[#1D3B3A] transition-colors p-1.5 h-[56px] relative">
+                  <input
+                      type="text"
+                      name="discountCode"
+                      placeholder={isEn ? "Discount code" : "كود الخصم"}
+                      className="flex-1 bg-transparent px-4 py-2 text-[14px] text-[#1a1a1a] focus:outline-none placeholder-gray-400 font-bold w-full h-full"
+                    />
+                    <button 
+                      type="submit"
+                      disabled={isLoading}
+                      className="bg-[#1D3B3A] text-white px-6 h-full text-[14px] font-bold hover:bg-[#152A29] transition-colors rounded-[8px] flex-shrink-0"
+                      style={{ fontFamily: "'GE Dinar One', sans-serif" }}
+                    >
+                      {isLoading ? '...' : (isEn ? 'Apply' : 'تطبيق')}
+                    </button>
+                </div>
+                {fetcher.data?.error && (
+                  <div className="text-red-500 text-xs font-bold px-3 py-2 bg-red-50 border border-red-200 rounded-lg flex items-center gap-1.5 mt-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-red-500 flex-shrink-0" />
+                    <span>{fetcher.data.error}</span>
+                  </div>
+                )}
               </div>
             );
           }}

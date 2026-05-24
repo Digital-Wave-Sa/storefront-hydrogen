@@ -3,6 +3,7 @@ import type {CartLayout, LineItemChildrenMap} from '~/components/CartMain';
 import {CartForm, Image, type OptimisticCartLine} from '@shopify/hydrogen';
 import {useVariantUrl} from '~/lib/variants';
 import {Link, useRouteLoaderData} from 'react-router';
+import {useState, useEffect} from 'react';
 import {ProductPrice} from './ProductPrice';
 import {useAside} from './Aside';
 import type {
@@ -118,10 +119,16 @@ export function CartLineItem({
                 <div className="flex items-center gap-1.5 text-[#c1c1c1] hover:text-red-500 transition-colors">
                    <CartLineRemoveButton lineIds={[id]} disabled={!!line.isOptimistic} isText isEn={isEn} />
                 </div>
-                <button className="flex items-center gap-1.5 text-[#A67B5B] hover:text-[#8e694e] text-[13px] font-bold transition-colors">
-                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 12 20 22 4 22 4 12"></polyline><rect x="2" y="7" width="20" height="5"></rect><line x1="12" y1="22" x2="12" y2="7"></line><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"></path><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"></path></svg>
-                   {isEn ? 'Make it a gift' : 'إجعلها هدية'}
-                </button>
+                {(() => {
+                  const isGiftable = product?.tags?.some((t: string) => {
+                    const lowerTag = t.toLowerCase();
+                    return lowerTag.includes('gift') || lowerTag.includes('mother') || lowerTag.includes('father') || lowerTag.includes('friend') || lowerTag.includes('grad');
+                  }) ?? false;
+
+                  return isGiftable ? (
+                    <CartLineGiftForm line={line} isEn={isEn} />
+                  ) : null;
+                })()}
              </div>
            )}
         </div>
@@ -316,4 +323,96 @@ function getUpdateKey(lineIds: string[]) {
 
 function getRemoveKey(lineIds: string[]) {
   return [CartForm.ACTIONS.LinesRemove, ...lineIds].join('-');
+}
+
+function CartLineGiftForm({ line, isEn }: { line: CartLine, isEn: boolean }) {
+  const [isOpen, setIsOpen] = useState(false);
+  
+  const isGift = line.attributes?.find((a: any) => a.key === '_isGift')?.value === 'true';
+  const existingRecipient = line.attributes?.find((a: any) => a.key === 'Recipient Name')?.value || '';
+  const existingMessage = line.attributes?.find((a: any) => a.key === 'Gift Message')?.value || '';
+  const existingHideSender = line.attributes?.find((a: any) => a.key === '_hideSender')?.value === 'Yes';
+
+  const [recipient, setRecipient] = useState(existingRecipient);
+  const [message, setMessage] = useState(existingMessage);
+  const [hideSender, setHideSender] = useState(existingHideSender);
+
+  useEffect(() => {
+    setRecipient(existingRecipient);
+    setMessage(existingMessage);
+    setHideSender(existingHideSender);
+  }, [existingRecipient, existingMessage, existingHideSender]);
+
+  const hasGift = isGift || existingRecipient || existingMessage;
+
+  // Preserve other line attributes (like _is_free, etc)
+  const currentAttributes = line.attributes || [];
+  const otherAttributes = currentAttributes
+    .filter((a: any) => !['Recipient Name', 'Gift Message', '_hideSender', '_isGift'].includes(a.key))
+    .map((a: any) => ({ key: a.key, value: a.value }));
+
+  // Filter out empty gift attributes
+  const giftAttributes = [
+    ...(hasGift || recipient || message ? [{ key: '_isGift', value: 'true' }] : []),
+    ...(recipient ? [{ key: 'Recipient Name', value: recipient }] : []),
+    ...(message ? [{ key: 'Gift Message', value: message }] : []),
+    ...(hideSender ? [{ key: '_hideSender', value: 'Yes' }] : [{ key: '_hideSender', value: 'No' }])
+  ];
+
+  const finalAttributes = [...otherAttributes, ...giftAttributes];
+
+  return (
+    <div className="flex flex-col relative">
+      <button 
+        onClick={() => setIsOpen(!isOpen)}
+        className="flex items-center gap-1.5 text-[#A67B5B] hover:text-[#8e694e] text-[13px] font-bold transition-colors"
+      >
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 12 20 22 4 22 4 12"></polyline><rect x="2" y="7" width="20" height="5"></rect><line x1="12" y1="22" x2="12" y2="7"></line><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"></path><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"></path></svg>
+        {hasGift ? (isEn ? 'Edit Gift Options' : 'تعديل خيارات الهدية') : (isEn ? 'Make it a gift' : 'إجعلها هدية')}
+      </button>
+
+      {isOpen && (
+        <div className={`absolute top-full mt-2 w-[280px] z-10 bg-[#fcfaf8] border border-[#f0ece8] p-4 rounded-xl flex flex-col gap-3 shadow-lg ${isEn ? 'left-0' : 'right-0'}`}>
+          <input 
+            type="text" 
+            placeholder={isEn ? "Recipient Name" : "اسم المستلم"} 
+            value={recipient}
+            onChange={(e) => setRecipient(e.target.value)}
+            className="w-full bg-white border border-[#f0ece8] rounded-lg px-3 py-2 text-[13px] text-[#234745] focus:outline-none focus:border-[#d4a06a] focus:ring-1 focus:ring-[#d4a06a] transition-all"
+          />
+          <textarea 
+            placeholder={isEn ? "Gift Message" : "رسالة الهدية"}
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            rows={2}
+            className="w-full bg-white border border-[#f0ece8] rounded-lg px-3 py-2 text-[13px] text-[#234745] focus:outline-none focus:border-[#d4a06a] focus:ring-1 focus:ring-[#d4a06a] transition-all resize-none"
+          />
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input 
+              type="checkbox" 
+              checked={hideSender}
+              onChange={(e) => setHideSender(e.target.checked)}
+              className="rounded text-[#234745] focus:ring-[#234745] border-gray-300"
+            />
+            <span className="text-[12px] font-bold text-gray-500">{isEn ? 'Hide my name' : 'إخفاء اسمي'}</span>
+          </label>
+
+          <CartLineUpdateButton 
+            lines={[{
+              id: line.id, 
+              attributes: finalAttributes.length > 0 ? finalAttributes : [{ key: '_cleared_gift', value: 'true' }] // Fallback if clearing all attributes
+            }]}
+          >
+            <button 
+              type="submit"
+              onClick={() => setIsOpen(false)}
+              className="mt-1 w-full bg-[#234745] text-white font-bold py-2 rounded-lg text-[13px] hover:bg-[#152a29] transition-colors"
+            >
+              {isEn ? 'Save Gift Details' : 'حفظ تفاصيل الهدية'}
+            </button>
+          </CartLineUpdateButton>
+        </div>
+      )}
+    </div>
+  );
 }

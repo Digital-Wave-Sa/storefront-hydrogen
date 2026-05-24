@@ -1089,7 +1089,7 @@ button.reset:hover:not(:has(> *)) {
 /* Animations */
 /* Account Section Premium Styles */
 .account-page-wrapper {
-  background: #F9F9F9;
+  background: #FEF8EB;
   padding: 60px 0;
   min-height: calc(100vh - 400px);
 }
@@ -1099,7 +1099,7 @@ button.reset:hover:not(:has(> *)) {
   margin: 0 auto;
   padding: 0 24px;
   display: grid;
-  grid-template-columns: 320px 1fr;
+  grid-template-columns: 302px 1fr;
   gap: 40px;
   align-items: start;
 }
@@ -1112,14 +1112,13 @@ button.reset:hover:not(:has(> *)) {
 }
 
 .account-aside {
-  background: white;
+  background: #FFFFFF;
   border-radius: 24px;
-  padding: 24px;
-  border: 1px solid #f0eee9;
+  padding: 24px 16px;
+  border: 1px solid #BBCFCD;
   height: fit-content;
   position: sticky;
   top: 100px;
-  box-shadow: 0 15px 50px rgba(27, 61, 46, 0.04);
   z-index: 10;
 }
 
@@ -1132,8 +1131,8 @@ button.reset:hover:not(:has(> *)) {
 .account-nav-item {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
+  gap: 10px;
+  padding: 13px 12px;
   border-radius: 12px;
   color: #666;
   text-decoration: none;
@@ -1148,13 +1147,13 @@ button.reset:hover:not(:has(> *)) {
 }
 
 .account-nav-item:hover {
-  background: #fcfaf5;
+  background: #FEF8EB;
   color: #234745;
 }
 
 .account-nav-item.active {
-  background: #234745;
-  color: white;
+  background: #FEF8EB;
+  color: #234745;
 }
 
 .account-nav-item.active svg {
@@ -1162,12 +1161,8 @@ button.reset:hover:not(:has(> *)) {
 }
 
 .account-main {
-  background: white;
-  border-radius: 28px;
-  padding: 48px;
-  border: 1px solid #f0eee9;
-  box-shadow: 0 10px 40px rgba(27, 61, 46, 0.03);
-  transition: all 0.3s ease;
+  background: transparent;
+  padding: 0;
   min-height: 500px;
 }
 

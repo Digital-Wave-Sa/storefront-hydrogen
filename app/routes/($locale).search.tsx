@@ -75,8 +75,9 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
     };
   }
 
-  // Implement Partial-match & exact-match logic + relevance tuning for SKU and general terms
-  let baseQuery = `(${searchTerm} OR ${searchTerm}* OR sku:${searchTerm} OR sku:${searchTerm}*)`;
+  // Wrap in quotes to prevent hyphens (e.g. in SKUs like SD-100) from being treated as NOT operators by Shopify
+  const safeTerm = `"${searchTerm}"`;
+  let baseQuery = `(${safeTerm} OR ${safeTerm}* OR sku:${safeTerm} OR sku:${safeTerm}*)`;
   let finalQuery = baseQuery;
 
   const activeCustomTag = searchParams.get('tag');

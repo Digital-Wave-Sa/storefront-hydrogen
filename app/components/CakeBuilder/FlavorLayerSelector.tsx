@@ -87,23 +87,27 @@ export const FLAVORS: Flavor[] = [
   },
 ];
 
+export interface FlavorLayerSelectorProps {
+  isEn: boolean;
+  selectedFlavor: Flavor;
+  onFlavorChange: (flavor: Flavor) => void;
+  layers: number;
+  onLayersChange: (layers: number) => void;
+  availableFlavors: Flavor[];
+  onlyFlavor?: boolean;
+  onlyLayers?: boolean;
+}
+
 export function FlavorLayerSelector({ 
   isEn, 
   selectedFlavor, 
   onFlavorChange, 
   layers, 
   onLayersChange,
+  availableFlavors,
   onlyFlavor,
   onlyLayers
-}: { 
-  isEn: boolean;
-  selectedFlavor: Flavor;
-  onFlavorChange: (flavor: Flavor) => void;
-  layers: number;
-  onLayersChange: (layers: number) => void;
-  onlyFlavor?: boolean;
-  onlyLayers?: boolean;
-}) {
+}: FlavorLayerSelectorProps) {
   return (
     <div className="cake-builder-step animate-fade-in" dir={isEn ? 'ltr' : 'rtl'}>
       {/* Step Header */}
@@ -125,7 +129,7 @@ export function FlavorLayerSelector({
         {(onlyFlavor || (!onlyFlavor && !onlyLayers)) && (
           <div className="space-y-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {FLAVORS.map((flavor) => (
+              {availableFlavors.map((flavor) => (
                 <button
                   key={flavor.id}
                   onClick={() => onFlavorChange(flavor)}

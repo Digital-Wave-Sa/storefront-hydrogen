@@ -41,6 +41,145 @@ export async function action({request, context}: Route.ActionArgs) {
       break;
     case CartForm.ACTIONS.DiscountCodesUpdate: {
       const formDiscountCode = inputs.discountCode;
+      const isEn = context.storefront.i18n.language === 'EN';
+
+      if (formDiscountCode) {
+        try {
+          const { getAdminToken } = await import('~/lib/shopify-admin.server');
+          const adminToken = await getAdminToken(context.env);
+          const shopDomain = context.env.PUBLIC_STORE_DOMAIN;
+
+          // 1. Lookup the discount code to get the price_rule_id
+          const lookupRes = await fetch(`https://${shopDomain}/admin/api/2024-01/discount_codes/lookup.json?code=${encodeURIComponent(formDiscountCode)}`, {
+            headers: { 'X-Shopify-Access-Token': adminToken }
+          });
+          const lookupJson = await lookupRes.json() as any;
+          
+          if (lookupRes.status === 303 || lookupRes.status === 200) {
+            // Shopify lookup redirects (303) to the actual discount code URL. Fetch handles redirects automatically,
+            // so we actually get the discount_code object back!
+            const priceRuleId = lookupJson?.discount_code?.price_rule_id;
+
+            if (priceRuleId) {
+              // 2. Get Price Rule Details
+              const prRes = await fetch(`https://${shopDomain}/admin/api/2024-01/price_rules/${priceRuleId}.json`, {
+                headers: { 'X-Shopify-Access-Token': adminToken }
+              });
+              const prJson = await prRes.json() as any;
+              const priceRule = prJson?.price_rule;
+
+              // 3. Get Custom Discount Rules from Shop Metafield
+              const sRes = await fetch(`https://${shopDomain}/admin/api/2024-01/graphql.json`, {
+                method: 'POST',
+                headers: { 'X-Shopify-Access-Token': adminToken, 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  query: `query { shop { metafield(namespace: "custom", key: "discount_rules") { value } } }`
+                })
+              });
+              const sData = await sRes.json() as any;
+              let customRules: any = {};
+              if (sData?.data?.shop?.metafield?.value) {
+                try { customRules = JSON.parse(sData.data.shop.metafield.value); } catch (e) {}
+              }
+              const rule = customRules[formDiscountCode.toUpperCase()] || {};
+
+              if (priceRule) {
+                const currentCart = await cart.get();
+                const cartLines = currentCart?.lines?.nodes || [];
+                const cartAttributes = currentCart?.attributes || [];
+
+                // 0) Block Discount if cart contains a BOGO (Free) item
+                const hasBogoItem = cartLines.some((line: any) => 
+                  line.attributes?.some((attr: any) => attr.key === '_is_free' && attr.value === 'true')
+                );
+                
+                if (hasBogoItem) {
+                  return data({ error: isEn ? 'Promotional codes cannot be used with BOGO offers.' : 'لا يمكن استخدام أكواد الخصم مع عروض المنتجات المجانية.' }, { status: 400 });
+                }
+
+                // 1) Product Selection Validation
+                if (priceRule.target_selection === 'entitled' && priceRule.entitled_product_ids?.length > 0) {
+                  const productIds = priceRule.entitled_product_ids.map(String);
+                  const hasTargetProduct = cartLines.some((line: any) => {
+                    const prodId = line.merchandise?.product?.id?.split('/').pop();
+                    return productIds.includes(String(prodId));
+                  });
+                  if (!hasTargetProduct) {
+                    return data({ error: isEn ? 'This discount code requires specific products to be in your cart.' : 'هذا الكود يتطلب منتجات محددة في سلتك.' }, { status: 400 });
+                  }
+                }
+
+                // 2) Customer Selection & Tag Validation
+                const customerAccessToken = await context.session.get('customerAccessToken');
+                const targetTag = rule.target_tag;
+                const targetBranch = rule.target_branch;
+                const targetOrderType = rule.order_type;
+
+                if (priceRule.customer_selection === 'prerequisite' || targetTag) {
+                  if (!customerAccessToken?.accessToken) {
+                    return data({ error: isEn ? 'You must be logged in to apply this discount.' : 'يجب عليك تسجيل الدخول لتطبيق هذا الخصم.' }, { status: 400 });
+                  }
+
+                  const customerRes = await context.storefront.query(`#graphql
+                    query getCartCustomerDetails($customerAccessToken: String!) {
+                      customer(customerAccessToken: $customerAccessToken) {
+                        id
+                        email
+                        tags
+                      }
+                    }
+                  `, {
+                    variables: { customerAccessToken: customerAccessToken.accessToken },
+                    cache: context.storefront.CacheNone()
+                  });
+                  const customer = customerRes?.customer;
+
+                  if (!customer) {
+                    return data({ error: isEn ? 'Unable to verify customer account.' : 'عذراً، لم نتمكن من التحقق من حسابك.' }, { status: 400 });
+                  }
+
+                  // Verify customer ID
+                  if (priceRule.customer_selection === 'prerequisite' && priceRule.prerequisite_customer_ids?.length > 0) {
+                    const prerequisiteIds = priceRule.prerequisite_customer_ids.map(String);
+                    const custId = customer.id.split('/').pop();
+                    if (!prerequisiteIds.includes(String(custId))) {
+                      return data({ error: isEn ? 'This discount code is not valid for your account.' : 'كود الخصم هذا غير صالح لحسابك.' }, { status: 400 });
+                    }
+                  }
+
+                  // Verify customer tag
+                  if (targetTag) {
+                    const hasTag = customer.tags?.some((t: string) => t.trim().toLowerCase() === targetTag.trim().toLowerCase());
+                    if (!hasTag) {
+                      return data({ error: isEn ? `This discount code is only for ${targetTag} members.` : `كود الخصم هذا مخصص لأعضاء ${targetTag} فقط.` }, { status: 400 });
+                    }
+                  }
+                }
+
+                // 3) Branch restriction
+                if (targetBranch) {
+                  const selectedBranchId = cartAttributes.find((a: any) => a.key.toLowerCase().trim() === 'branch id')?.value;
+                  if (selectedBranchId !== targetBranch) {
+                    return data({ error: isEn ? 'This discount is not available for the selected branch.' : 'هذا الخصم غير متاح للفرع المحدد.' }, { status: 400 });
+                  }
+                }
+
+                // 4) Order Type restriction (Pickup vs Delivery)
+                if (targetOrderType) {
+                  const fulfillmentType = cartAttributes.find((a: any) => a.key.toLowerCase().trim() === 'fulfillment type')?.value;
+                  // If fulfillment type is not set, default is DELIVERY because of the fee
+                  const safeFulfillmentType = fulfillmentType ? fulfillmentType.trim().toUpperCase() : 'DELIVERY';
+                  if (safeFulfillmentType !== targetOrderType.trim().toUpperCase()) {
+                    return data({ error: isEn ? `This discount is only valid for ${targetOrderType.toLowerCase()} orders.` : `هذا الخصم صالح لطلبات الـ ${targetOrderType === 'DELIVERY' ? 'توصيل' : 'استلام'} فقط.` }, { status: 400 });
+                  }
+                }
+              }
+            }
+          }
+        } catch (err) {
+          console.error('[CART DISCOUNT VALIDATION ERROR]', err);
+        }
+      }
 
       // User inputted discount code
       const discountCodes = (

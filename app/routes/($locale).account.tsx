@@ -34,9 +34,8 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
       });
     }
   } else {
-    if (isAccountHome) {
-      return redirect(`${localePrefix}/account/orders`);
-    }
+    // We want the dashboard (_index) to render when visiting /account
+    // so we no longer redirect to orders here.
   }
 
   try {
@@ -113,9 +112,8 @@ function AccountLayout({
 
   return (
     <div className="account-page-wrapper">
+      <AccountProfileHeader customer={customer} isEn={isEn} />
       <div className="max-w-[1200px] mx-auto px-4 md:px-6">
-        <AccountProfileHeader customer={customer} isEn={isEn} />
-        
         <div className="account-container !mt-0 !pt-0">
           <nav className="account-aside">
             <AcccountMenu customer={customer} isAdmin={isAdmin} />
@@ -209,6 +207,19 @@ function AcccountMenu({ customer, isAdmin }: { customer: CustomerFragment; isAdm
     }
   ];
 
+  if (isAdmin) {
+    menuItems.push({
+      to: `${localePrefix}/account/promotions`,
+      label: isEn ? 'Vouchers & Campaigns' : 'القسائم والحملات',
+      icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z" />
+          <line x1="7" y1="7" x2="7.01" y2="7" strokeLinecap="round" strokeWidth="3" />
+        </svg>
+      )
+    });
+  }
+
   return (
     <nav className="account-nav-premium" role="navigation">
       <div className="flex flex-col gap-1">
@@ -218,14 +229,14 @@ function AcccountMenu({ customer, isAdmin }: { customer: CustomerFragment; isAdm
             to={item.to}
             end={item.end}
             className={({ isActive }) => `
-              flex items-center justify-between px-4 py-3.5 rounded-[14px] transition-all duration-200
+              flex items-center gap-[10px] px-3 py-[13px] rounded-[12px] transition-all duration-200
               ${isActive 
-                ? 'bg-[#FEF8EB] text-[#234745] font-bold shadow-sm' 
-                : 'text-gray-400 hover:bg-gray-50 hover:text-gray-600 font-medium'}
+                ? 'bg-[#FEF8EB] text-[#234745] font-bold' 
+                : 'text-[#A6BFB9] hover:bg-gray-50 hover:text-[#234745] font-medium'}
             `}
           >
+            <div className="opacity-80 flex-shrink-0">{item.icon}</div>
             <span className="text-[14px]">{item.label}</span>
-            <div className={`opacity-80`}>{item.icon}</div>
           </NavLink>
         ))}
       </div>
@@ -266,6 +277,7 @@ function Logout({ isEn }: { isEn: boolean }) {
 export const CUSTOMER_FRAGMENT = `#graphql
   fragment Customer on Customer {
     id
+    createdAt
     tags
     acceptsMarketing
     addresses(first: 6) {
@@ -283,6 +295,30 @@ export const CUSTOMER_FRAGMENT = `#graphql
     phone
     birthdate: metafield(namespace: "custom", key: "birthdate") {
       value
+    }
+    orders(first: 1, sortKey: PROCESSED_AT, reverse: true) {
+      nodes {
+        id
+        orderNumber
+        processedAt
+        financialStatus
+        fulfillmentStatus
+        currentTotalPrice {
+          amount
+          currencyCode
+        }
+        lineItems(first: 20) {
+          nodes {
+            title
+            variant {
+              image {
+                url
+                altText
+              }
+            }
+          }
+        }
+      }
     }
   }
   fragment Address on MailingAddress {

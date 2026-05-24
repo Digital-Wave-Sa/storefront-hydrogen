@@ -29,6 +29,7 @@ export interface Branch {
     deliveryFee: number;
     baseDeliveryFee?: number;
     perKmRate: number;
+    timeSlots?: string;
     freeDeliveryThreshold: number;
     hoursFrom?: string;
     hoursTo?: string;
@@ -267,6 +268,7 @@ export function parseLocationToBranch(node: any): Branch {
         deliveryFee: getMeta('delivery_fee', 25),
         baseDeliveryFee: getMeta('delivery_fee', 25),
         perKmRate: getMeta('per_km_rate', 0),
+        timeSlots: getMeta('time_slots', ''),
         freeDeliveryThreshold: getMeta('free_delivery_threshold', 300),
         hoursFrom: node.metafields?.find((m: any) => m?.key === 'working_hours_from')?.value,
         hoursTo: node.metafields?.find((m: any) => m?.key === 'working_hours_to')?.value,

@@ -217,7 +217,8 @@ export default function LolaCakeBuilder({ cakeAttributes = [] }: { cakeAttribute
     const canvas = document.getElementById('cake-3d-canvas') as HTMLCanvasElement;
     if (canvas) {
       try {
-        cakePreviewImage = canvas.toDataURL('image/png');
+        // Use heavily compressed JPEG instead of PNG to prevent Oxygen payload & CPU limits
+        cakePreviewImage = canvas.toDataURL('image/jpeg', 0.2);
       } catch (e) {
         console.error('Failed to capture canvas screenshot:', e);
       }

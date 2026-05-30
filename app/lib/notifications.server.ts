@@ -1,6 +1,7 @@
 import { sendEmail } from './email.server';
 import { sendSMS } from './sms.server';
-import { getNotificationTemplates, OrderStage, Language } from './notification_templates';
+import { getNotificationTemplates } from './notification_templates';
+import type { OrderStage, Language } from './notification_templates';
 
 /**
  * Unified Notification Dispatcher
@@ -20,18 +21,18 @@ export async function notifyOrderUpdate({
   
   // 2. Prepare Data for Templates
   const orderData = {
-    orderNumber: order.orderNumber || order.name?.replace('#', ''),
-    customerName: `${order.customer?.firstName || ''} ${order.customer?.lastName || ''}`.trim() || 'Valued Customer',
-    trackingUrl: order.statusPageUrl || `https://${env.PUBLIC_STORE_DOMAIN}/account/orders`,
+    orderNumber: order.orderNumber || order.order_number?.toString() || order.name?.replace('#', ''),
+    customerName: `${order.customer?.firstName || order.customer?.first_name || ''} ${order.customer?.lastName || order.customer?.last_name || ''}`.trim() || 'Valued Customer',
+    trackingUrl: order.statusPageUrl || order.order_status_url || `https://${env.PUBLIC_STORE_DOMAIN}/account/orders`,
     totalPrice: order.totalPriceSet?.shopMoney?.amount ? 
       `${order.totalPriceSet.shopMoney.amount} ${order.totalPriceSet.shopMoney.currencyCode}` : 
-      'N/A',
-    items: order.lineItems?.nodes?.map((item: any) => ({
-      title: item.title,
+      (order.total_price ? `${order.total_price} ${order.currency}` : 'N/A'),
+    items: (order.lineItems?.nodes || order.line_items || []).map((item: any) => ({
+      title: item.title || item.name,
       quantity: item.quantity,
       price: item.originalTotalPriceSet?.shopMoney?.amount ? 
         `${item.originalTotalPriceSet.shopMoney.amount} ${item.originalTotalPriceSet.shopMoney.currencyCode}` : 
-        'N/A'
+        (item.price ? `${item.price} ${order.currency || 'SAR'}` : 'N/A')
     })),
     expectedDelivery: '24-48 Hours' // This can be dynamic based on branch logic
   };

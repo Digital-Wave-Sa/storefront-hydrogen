@@ -68,7 +68,10 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
   );
 
   const hasPrepaidOnly = cart?.lines?.nodes?.some((line: any) => 
-    line.merchandise?.product?.tags?.some((tag: string) => tag.toLowerCase().trim() === 'prepaid-only')
+    line.merchandise?.product?.tags?.some((tag: string) => {
+      const t = tag.toLowerCase().trim();
+      return t === 'prepaid-only' || t === 'nocod';
+    })
   );
 
   const isOutOfRange = !!attributes.find((a: any) => a.key === 'error')?.value;

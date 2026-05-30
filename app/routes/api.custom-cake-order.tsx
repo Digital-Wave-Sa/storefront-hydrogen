@@ -167,7 +167,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
       return Response.json({ error: 'Invalid JSON body' }, { status: 400 });
     }
 
-    const { shape, size, flavor, layers, color, topping, message, messageFont, messageColor, uploadedImage, subtotal, finalTotal, isEn } = body;
+    const { shape, size, flavor, layers, color, topping, message, messageFont, messageColor, uploadedImage, cakePreviewImage, subtotal, finalTotal, isEn } = body;
 
     // Use finalTotal (which already includes 15% VAT) so the checkout matches the builder
     const priceNum = Number(finalTotal || subtotal);
@@ -214,6 +214,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
     for (const token of potentialTokens) {
       try {
         let finalImageAttr = uploadedImage ? 'Yes (Processing Upload...)' : null;
+        let previewImageAttr = cakePreviewImage ? 'Yes (Processing Upload...)' : null;
         
         // If there's a base64 image payload, upload it to Shopify Files first
         if (uploadedImage && uploadedImage.startsWith('data:image')) {
@@ -222,6 +223,16 @@ export async function action({ request, context }: ActionFunctionArgs) {
             finalImageAttr = shopifyFileUrl;
           } else {
             finalImageAttr = 'Yes (Upload Failed - Base64 provided but not saved)';
+          }
+        }
+        
+        // Upload the 3D Cake Preview screenshot
+        if (cakePreviewImage && cakePreviewImage.startsWith('data:image')) {
+          const shopifyPreviewUrl = await uploadImageToShopify(shopDomain, token, cakePreviewImage);
+          if (shopifyPreviewUrl) {
+            previewImageAttr = shopifyPreviewUrl;
+          } else {
+            previewImageAttr = 'Yes (Upload Failed - Base64 provided but not saved)';
           }
         }
 
@@ -234,7 +245,8 @@ export async function action({ request, context }: ActionFunctionArgs) {
               originalUnitPrice: priceNum.toFixed(2),
               customAttributes: [
                 ...customAttributes,
-                ...(finalImageAttr ? [{ key: isEn ? 'Printed Image URL' : 'رابط صورة الطباعة', value: finalImageAttr }] : [])
+                ...(finalImageAttr ? [{ key: isEn ? 'Printed Image URL' : 'رابط صورة الطباعة', value: finalImageAttr }] : []),
+                ...(previewImageAttr ? [{ key: isEn ? 'Cake Preview Image' : 'صورة شكل الكيكة ثلاثية الأبعاد', value: previewImageAttr }] : [])
               ],
             },
           ],

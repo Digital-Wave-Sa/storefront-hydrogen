@@ -48,7 +48,7 @@ export function Hero() {
                         </svg>
                     </NavLink>
 
-                    <NavLink to={isEn ? "/en/pages/design-cake" : "/pages/design-cake"} className="bg-transparent border-[2px] border-[#234745] text-[#234745] hover:bg-[#234745] hover:text-white transition-all px-8 py-3.5 rounded-full font-bold text-base flex items-center gap-2 min-w-[160px] justify-center">
+                    <NavLink to={isEn ? "/en/custom-cake" : "/custom-cake"} className="bg-transparent border-[2px] border-[#234745] text-[#234745] hover:bg-[#234745] hover:text-white transition-all px-8 py-3.5 rounded-full font-bold text-base flex items-center gap-2 min-w-[160px] justify-center">
                         {t.common.designYourCake} 🎂
                     </NavLink>
                 </div>

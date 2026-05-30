@@ -96,7 +96,7 @@ export function NotFound() {
             { en: 'Chocolates', ar: 'شوكولاته', url: '/collections/chocolate' },
             { en: 'Arabic Sweets', ar: 'حلويات عربية', url: '/collections/arabic-sweets' },
             { en: 'Gifts', ar: 'هدايا', url: '/collections/gifts' },
-            { en: 'Custom Cakes', ar: 'كيك مخصص', url: '/collections/custom-cakes' },
+            { en: 'Custom Cakes', ar: 'كيك مخصص', url: '/custom-cake' },
             { en: 'Contact Us', ar: 'تواصل معنا', url: '/pages/contact' },
           ].map((item, index) => (
             <Link 

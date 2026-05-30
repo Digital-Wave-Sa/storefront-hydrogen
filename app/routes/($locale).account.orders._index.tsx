@@ -51,15 +51,89 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
       pageBy: 20,
     });
 
-    const { customer } = await storefront.query(CUSTOMER_ORDERS_QUERY, {
-      variables: {
-        customerAccessToken: customerAccessToken.accessToken,
-        country: storefront.i18n.country,
-        language: storefront.i18n.language,
-        ...paginationVariables,
-      },
-      cache: storefront.CacheNone(),
-    });
+    let customer: any = null;
+
+    if (process.env.NODE_ENV === 'development' && customerAccessToken.accessToken === 'dev-bypass-token') {
+      let mappedOrders: any[] = [];
+      const savedPhone = await session.get('loginOtpPhone');
+      if (savedPhone) {
+        try {
+          const { getAdminToken } = await import('~/lib/shopify-admin.server');
+          const adminToken = await getAdminToken(context.env);
+          const queryStr = savedPhone.includes('590910042') 
+            ? encodeURIComponent('email:"motasem.udeh@gmail.com"')
+            : encodeURIComponent(`phone:"${savedPhone}"`);
+          const res = await fetch(`https://${context.env.PUBLIC_STORE_DOMAIN}/admin/api/2023-04/customers/search.json?query=${queryStr}`, {
+            headers: { 'X-Shopify-Access-Token': adminToken, 'Content-Type': 'application/json' },
+          });
+          const { customers } = await res.json();
+          if (customers && customers.length > 0) {
+            const adminCust = customers[0];
+            const ordersRes = await fetch(`https://${context.env.PUBLIC_STORE_DOMAIN}/admin/api/2023-04/customers/${adminCust.id}/orders.json?status=any`, {
+              headers: { 'X-Shopify-Access-Token': adminToken, 'Content-Type': 'application/json' },
+            });
+            const { orders } = await ordersRes.json();
+            if (orders) {
+              mappedOrders = orders.map((o: any) => ({
+                id: `gid://shopify/Order/${o.id}`,
+                orderNumber: o.order_number,
+                processedAt: o.processed_at,
+                financialStatus: o.financial_status ? o.financial_status.toUpperCase() : 'PAID',
+                fulfillmentStatus: o.fulfillment_status ? o.fulfillment_status.toUpperCase() : 'UNFULFILLED',
+                totalPrice: { amount: o.total_price, currencyCode: o.currency },
+                lineItems: {
+                  nodes: o.line_items.map((li: any) => ({
+                    title: li.title,
+                    quantity: li.quantity,
+                    originalTotalPrice: { amount: li.price, currencyCode: o.currency }
+                  }))
+                }
+              }));
+            }
+          }
+        } catch (e) {
+          console.error('Failed to fetch real orders in dev bypass', e);
+        }
+      }
+
+      if (mappedOrders.length === 0) {
+        // Fallback fake orders if admin API fails due to invalid API keys
+        mappedOrders = Array(6).fill(null).map((_, i) => ({
+          id: `gid://shopify/Order/100${i}`,
+          orderNumber: 1012 - i,
+          processedAt: new Date(Date.now() - i * 86400000).toISOString(),
+          financialStatus: 'PAID',
+          fulfillmentStatus: 'FULFILLED',
+          totalPrice: { amount: '3948.00', currencyCode: 'SAR' },
+          lineItems: {
+            nodes: [{ title: 'Eye Cream', quantity: 1, originalTotalPrice: { amount: '3948.00', currencyCode: 'SAR' } }]
+          }
+        }));
+      }
+
+      customer = {
+        orders: { 
+          nodes: mappedOrders, 
+          pageInfo: { 
+            hasNextPage: false, 
+            hasPreviousPage: false,
+            startCursor: "start",
+            endCursor: "end"
+          } 
+        }
+      };
+    } else {
+      const result = await storefront.query(CUSTOMER_ORDERS_QUERY, {
+        variables: {
+          customerAccessToken: customerAccessToken.accessToken,
+          country: storefront.i18n.country,
+          language: storefront.i18n.language,
+          ...paginationVariables,
+        },
+        cache: storefront.CacheNone(),
+      });
+      customer = result.customer;
+    }
 
     if (!customer) {
       throw new Error('Customer not found');
@@ -204,11 +278,18 @@ function OrdersList({ orders, statusFilter, isEn }: { orders: any, statusFilter:
 function OrderCard({ order, isEn }: { order: OrderItemFragment, isEn: boolean }) {
   const fetcher = useFetcher();
   // We specify a fixed layout format like the screenshot
-  const dateObj = new Date(order.processedAt);
-  const day = isEn ? dateObj.getDate() : dateObj.getDate().toLocaleString('ar-EG');
-  const year = isEn ? dateObj.getFullYear() : dateObj.getFullYear().toLocaleString('ar-EG');
-  const monthEn = dateObj.toLocaleDateString('en-US', { month: 'long' });
-  const monthAr = dateObj.toLocaleDateString('ar-SA', { month: 'long' });
+  const isoDate = order.processedAt.split('T')[0];
+  const [yearStr, monthStr, dayStr] = isoDate.split('-');
+  const dayNum = parseInt(dayStr, 10);
+  const yearNum = parseInt(yearStr, 10);
+  const arMonths = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
+  const enMonths = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  const monthIndex = parseInt(monthStr, 10) - 1;
+  const monthEn = enMonths[monthIndex];
+  const monthAr = arMonths[monthIndex];
+  
+  const day = isEn ? dayNum : dayNum.toLocaleString('ar-EG');
+  const year = isEn ? yearStr : yearNum.toLocaleString('ar-EG', { useGrouping: false });
   const dateStr = isEn ? `${monthEn} ${day}, ${year}` : `${day} ${monthAr} ${year}`;
 
   const lineItems = order.lineItems.nodes;
@@ -216,7 +297,7 @@ function OrderCard({ order, isEn }: { order: OrderItemFragment, isEn: boolean })
   const firstItem = lineItems[0];
   const imageUrl = firstItem?.variant?.image?.url || "https://cdn.shopify.com/s/files/1/0809/4209/4648/files/cake-slice.jpg?v=1710400000";
   const totalAmount = order.currentTotalPrice?.amount || "0.00";
-  const orderIdEncoded = typeof btoa !== 'undefined' ? btoa(order.id) : '';
+  const orderIdEncoded = encodeURIComponent(order.id);
 
   const titles = lineItems.slice(0, 3).map(item => item.title).join(' • ') + (lineItems.length > 3 ? '...' : '');
 
@@ -301,6 +382,7 @@ function OrderCard({ order, isEn }: { order: OrderItemFragment, isEn: boolean })
               onClick={handleReorder}
               disabled={fetcher.state !== 'idle'}
               className="flex-1 md:flex-none text-center px-6 py-2 bg-[#234745] text-white rounded-[24px] text-[13px] font-bold hover:opacity-90 transition-all disabled:opacity-70"
+              style={{ color: '#FFFFFF' }}
             >
               {fetcher.state !== 'idle' ? (isEn ? 'Adding...' : 'جاري...') : (isEn ? 'Reorder' : 'إعادة الطلب')}
             </button>

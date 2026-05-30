@@ -96,6 +96,9 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
                 isEn={isEn}
               />
 
+              {/* Loyalty Redemption */}
+              <LoyaltyRedemptionUI isEn={isEn} cart={cart} />
+
               {/* Time Slot Picker */}
               <CartTimeSlot isEn={isEn} cart={cart} />
 
@@ -105,34 +108,32 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
               {/* Breakdown */}
               <div className="flex flex-col gap-4">
                   <div className="flex justify-between items-center text-[15px]">
-                     <dt className="text-gray-400 font-bold">{isEn ? 'Subtotal' : 'المجموع الفرعي'}</dt>
-                     <dd className="text-[#1a1a1a] font-black font-en flex items-center gap-1 flex-row-reverse">
-                       <SaudiRiyalSymbol className="w-[18px] h-auto text-[#1a1a1a]" />
+                     <dt className="text-[#9FB7AE] font-bold" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>{isEn ? 'Subtotal' : 'المجموع الفرعي'}</dt>
+                     <dd className="text-[#234745] font-black font-en flex items-center gap-1 flex-row-reverse">
+                       <span className="text-[16px]">﷼</span>
                        <span>{subtotal.toFixed(2)}</span>
                      </dd>
                   </div>
 
                   <div className="flex justify-between items-center text-[15px]">
-                     <dt className="text-gray-400 font-bold">{isEn ? 'Delivery Fees' : 'رسوم التوصيل'}</dt>
-                     <dd className="text-[#1a1a1a] font-bold font-en flex items-center gap-1">
+                     <dt className="text-[#9FB7AE] font-bold" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>{isEn ? 'Delivery Fees' : 'رسوم التوصيل'}</dt>
+                     <dd className="text-[#234745] font-bold font-en flex items-center gap-1">
                        {isFreeDelivery ? (
                          <span className="text-[#234745] font-black text-[15px]">{isEn ? 'Free' : 'مجاني'}</span>
                        ) : (
                          <div className="flex items-center gap-1 flex-row-reverse">
-                           <SaudiRiyalSymbol className="w-[18px] h-auto text-[#1a1a1a]" />
+                           <span className="text-[16px]">﷼</span>
                            <span className="font-black">{deliveryFee.toFixed(2)}</span>
                          </div>
                        )}
                      </dd>
                   </div>
 
-
-
                   {cart?.cost?.totalTaxAmount && (
                     <div className="flex justify-between items-center text-[15px]">
-                      <dt className="text-gray-400 font-bold">{isEn ? 'VAT (15%)' : 'ضريبة القيمة المضافة (١٥٪)'}</dt>
-                      <dd className="text-[#1a1a1a] font-black font-en flex items-center gap-1 flex-row-reverse">
-                        <SaudiRiyalSymbol className="w-[18px] h-auto text-[#1a1a1a]" />
+                      <dt className="text-[#9FB7AE] font-bold" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>{isEn ? 'VAT (15%)' : 'ضريبة القيمة المضافة (١٥٪)'}</dt>
+                      <dd className="text-[#234745] font-black font-en flex items-center gap-1 flex-row-reverse">
+                        <span className="text-[16px]">﷼</span>
                         <span>{parseFloat(cart.cost.totalTaxAmount.amount).toFixed(2)}</span>
                       </dd>
                     </div>
@@ -143,17 +144,17 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
               <div className="border-t border-gray-200"></div>
 
               {/* Total */}
-              <div className="flex justify-between items-start">
+              <div className="flex justify-between items-center">
                  <div className="flex flex-col gap-1">
-                    <dt className="text-[20px] font-black text-[#1a1a1a]" style={{ fontFamily: "'Bahij Janna', sans-serif" }}>
+                    <dt className="text-[20px] font-black text-[#234745]" style={{ fontFamily: "'Bahij Janna', sans-serif" }}>
                       {isEn ? 'Total' : 'الإجمالي'}
                     </dt>
-                    <span className="text-[11px] text-gray-400 font-bold">
+                    <span className="text-[12px] text-[#9FB7AE] font-bold">
                       {isEn ? 'Includes 15% VAT' : 'شامل ضريبة القيمة المضافة ١٥٪'}
                     </span>
                  </div>
-                 <dd className="text-[28px] font-black text-[#1a1a1a] font-en flex items-center gap-2 flex-row-reverse">
-                   <SaudiRiyalSymbol className="w-[24px] h-auto text-[#1a1a1a]" />
+                 <dd className="text-[28px] font-black text-[#234745] font-en flex items-center gap-2 flex-row-reverse">
+                   <span className="text-[24px]">﷼</span>
                    <span>{calculatedTotal.toFixed(2)}</span>
                  </dd>
               </div>
@@ -176,7 +177,7 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
                />
                <Link 
                  to={isEn ? "/en" : "/"} 
-                 className="w-full h-[52px] bg-[#F9E8E8] hover:bg-[#F2DFDF] active:scale-[0.98] transition-all text-[#DF4646] rounded-3xl font-black text-[16px] flex items-center justify-center border border-[#EAA2A2]"
+                 className="w-full h-[52px] bg-[#F9E8E8] hover:bg-[#F2DFDF] active:scale-[0.98] transition-all text-[#DF4646] rounded-[50px] font-black text-[16px] flex items-center justify-center border border-[#EAA2A2]"
                  style={{ fontFamily: "'Bahij Janna', sans-serif" }}
                >
                  {isEn ? 'Continue Shopping' : 'متابعة التسوق'}
@@ -201,13 +202,13 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
             {/* Footer Features */}
             <div className="flex items-center justify-between mt-6 border-t border-gray-200 pt-6 px-2 pb-6">
                 <div className="flex flex-col items-center">
-                    <span className="text-[13px] font-bold text-gray-400">{isEn ? 'Guaranteed Quality' : 'جودة مضمونة'}</span>
+                    <span className="text-[13px] font-bold text-[#9FB7AE]" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>{isEn ? 'Guaranteed Quality' : 'جودة مضمونة'}</span>
                 </div>
                 <div className="flex flex-col items-center">
-                    <span className="text-[13px] font-bold text-gray-400">{isEn ? 'Fast Delivery' : 'توصيل سريع'}</span>
+                    <span className="text-[13px] font-bold text-[#9FB7AE]" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>{isEn ? 'Fast Delivery' : 'توصيل سريع'}</span>
                 </div>
                 <div className="flex flex-col items-center">
-                    <span className="text-[13px] font-bold text-gray-400">{isEn ? 'Secure Payment' : 'دفع آمن ومضمون'}</span>
+                    <span className="text-[13px] font-bold text-[#9FB7AE]" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>{isEn ? 'Secure Payment' : 'دفع آمن ومضمون'}</span>
                 </div>
             </div>
             </div>
@@ -379,8 +380,8 @@ function CartCheckoutActions({
             onClick={(e) => {
               if (disabled) e.preventDefault();
             }}
-            className={`w-full h-[52px] ${disabled ? 'bg-[#e8e4e1] cursor-not-allowed text-[#888]' : 'bg-[#1D3B3A] hover:bg-[#152A29] active:scale-[0.98] text-white'} font-black text-[15px] rounded-3xl flex items-center justify-center transition-all`}
-            style={{ fontFamily: "'Bahij Janna', sans-serif" }}
+            className={`w-full h-[52px] ${disabled ? 'bg-[#e8e4e1] cursor-not-allowed text-[#888]' : 'bg-[#234745] hover:bg-[#1A3533] active:scale-[0.98] text-white'} font-bold text-[16px] rounded-[50px] flex items-center justify-center transition-all`}
+            style={{ color: '#FFFFFF', fontFamily: "'GE Dinar One', sans-serif" }}
           >
             {isEn ? 'Complete Order' : 'إتمام الطلب'}
           </a>
@@ -404,10 +405,49 @@ function CartCheckoutActions({
 // ─── NEW: LOYALTY POINTS REDEMPTION ─────────────────────────────────────────
 function LoyaltyRedemptionUI({ isEn, cart }: { isEn: boolean, cart: any }) {
   const [pointsToRedeem, setPointsToRedeem] = useState<number>(0);
+  const [isRedeeming, setIsRedeeming] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
+  
   const maxPoints = 2450; // Mock backend balance
   const pointsToCurrencyRatio = 0.05; // 1 point = 0.05 SAR
   
   const discountAmount = pointsToRedeem * pointsToCurrencyRatio;
+
+  const handleRedeem = async () => {
+    setIsRedeeming(true);
+    setErrorMsg('');
+    setSuccessMsg('');
+    try {
+      const res = await fetch('/api/loyalty-redeem', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: cart?.buyerIdentity?.customer?.id || 'guest',
+          points: pointsToRedeem
+        })
+      });
+      const data = await res.json();
+      
+      if (data.success && data.discount_code) {
+        setSuccessMsg(isEn ? `Applied discount: ${data.discount_code}` : `تم تطبيق الخصم: ${data.discount_code}`);
+        
+        // Auto-fill and submit the discount code form
+        const input = document.querySelector('input[name="discountCode"]') as HTMLInputElement;
+        const submitBtn = input?.parentElement?.querySelector('button[type="submit"]') as HTMLButtonElement;
+        
+        if (input && submitBtn) {
+          input.value = data.discount_code;
+          submitBtn.click();
+        }
+      } else {
+        setErrorMsg(data.error || 'Failed to redeem points');
+      }
+    } catch (e) {
+      setErrorMsg(isEn ? 'Network error occurred' : 'حدث خطأ في الشبكة');
+    }
+    setIsRedeeming(false);
+  };
 
   return (
     <section className="flex flex-col gap-3 mt-4 pt-4 border-t border-dashed border-[#f0ece8]">
@@ -450,21 +490,32 @@ function LoyaltyRedemptionUI({ isEn, cart }: { isEn: boolean, cart: any }) {
         </div>
 
         {/* Feedback & Apply */}
-        <div className="flex items-center justify-between border-t border-[#f0ece8] pt-3">
-          <div className="flex flex-col">
-            <span className="text-[11px] text-gray-400 font-bold uppercase tracking-widest">
-              {isEn ? 'You save' : 'أنت توفر'}
-            </span>
-            <span className="text-[16px] font-black text-[#27ae60] font-en">
-              <Price data={{ amount: discountAmount.toString(), currencyCode }} isEn={isEn} size="sm" />
-            </span>
+        <div className="flex flex-col gap-3 border-t border-[#f0ece8] pt-3">
+          <div className="flex items-center justify-between">
+            <div className="flex flex-col">
+              <span className="text-[11px] text-gray-400 font-bold uppercase tracking-widest">
+                {isEn ? 'You save' : 'أنت توفر'}
+              </span>
+              <span className="text-[16px] font-black text-[#27ae60] font-en flex items-center gap-1 flex-row-reverse">
+                <span className="text-[14px]">﷼</span>
+                <span>{discountAmount.toFixed(2)}</span>
+              </span>
+            </div>
+            <button 
+              disabled={pointsToRedeem === 0 || isRedeeming}
+              onClick={handleRedeem}
+              className="bg-[#234745] text-white font-bold px-5 py-2.5 rounded-lg text-[13px] disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#142e22] transition-colors"
+            >
+              {isRedeeming ? (isEn ? 'Redeeming...' : 'جاري الاستبدال...') : (isEn ? 'Redeem' : 'استبدال')}
+            </button>
           </div>
-          <button 
-            disabled={pointsToRedeem === 0}
-            className="bg-[#234745] text-white font-bold px-5 py-2.5 rounded-lg text-[13px] disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#142e22] transition-colors"
-          >
-            {isEn ? 'Redeem' : 'استبدال'}
-          </button>
+          
+          {errorMsg && (
+            <p className="text-red-500 text-[12px] font-bold">{errorMsg}</p>
+          )}
+          {successMsg && (
+            <p className="text-green-600 text-[12px] font-bold">{successMsg}</p>
+          )}
         </div>
       </div>
     </section>
@@ -551,17 +602,18 @@ function CartDiscounts({
             const isLoading = fetcher.state !== 'idle';
             return (
               <div className="flex flex-col gap-2 w-full">
-                <div className="flex w-full items-center justify-between border border-gray-300 rounded-[12px] overflow-hidden focus-within:border-[#1D3B3A] transition-colors p-1.5 h-[56px] relative">
+                <div className="flex w-full items-center justify-between border border-gray-300 rounded-xl overflow-hidden focus-within:border-[#234745] transition-colors p-1.5 h-[56px] relative bg-white">
                   <input
                       type="text"
                       name="discountCode"
                       placeholder={isEn ? "Discount code" : "كود الخصم"}
-                      className="flex-1 bg-transparent px-4 py-2 text-[14px] text-[#1a1a1a] focus:outline-none placeholder-gray-400 font-bold w-full h-full"
+                      className="flex-1 bg-transparent px-4 py-2 text-[14px] text-[#234745] focus:outline-none placeholder-[#9FB7AE] font-bold w-full h-full"
+                      style={{ fontFamily: "'GE Dinar One', sans-serif" }}
                     />
                     <button 
                       type="submit"
                       disabled={isLoading}
-                      className="bg-[#1D3B3A] text-white px-6 h-full text-[14px] font-bold hover:bg-[#152A29] transition-colors rounded-[8px] flex-shrink-0"
+                      className="bg-[#234745] text-white px-6 h-full text-[14px] font-bold hover:bg-[#1A3533] transition-colors rounded-[8px] flex-shrink-0"
                       style={{ fontFamily: "'GE Dinar One', sans-serif" }}
                     >
                       {isLoading ? '...' : (isEn ? 'Apply' : 'تطبيق')}

@@ -49,7 +49,7 @@ export default function AccountDashboard() {
         const firstItem = lastOrder.lineItems?.nodes?.[0];
         const imageUrl = firstItem?.variant?.image?.url || "https://cdn.shopify.com/s/files/1/0809/4209/4648/files/cake-slice.jpg?v=1710400000";
         const totalAmount = lastOrder.currentTotalPrice?.amount || "0.00";
-        const orderIdEncoded = typeof btoa !== 'undefined' ? btoa(lastOrder.id) : '';
+        const orderIdEncoded = encodeURIComponent(lastOrder.id);
         
         let statusEn = 'Processing';
         let statusAr = 'قيد المعالجة';
@@ -111,6 +111,7 @@ export default function AccountDashboard() {
                   <Link 
                     to={isEn ? `/en/account/orders/${orderIdEncoded}` : `/account/orders/${orderIdEncoded}`}
                     className="px-6 py-2 bg-[#234745] text-white rounded-[24px] text-[13px] font-bold hover:opacity-90 transition-all"
+                    style={{ color: '#FFFFFF' }}
                   >
                     {isEn ? 'Reorder' : 'إعادة الطلب'}
                   </Link>
@@ -131,7 +132,7 @@ export default function AccountDashboard() {
                    {isEn ? 'Loyalty Points' : 'نقاط الولاء'}
                  </h2>
                  <p className="text-[36px] md:text-[46px] font-bold text-[#234745] leading-none mb-1" style={!isEn ? { fontFamily: '"GE Dinar One", sans-serif' } : undefined}>
-                   {isEn ? '240' : '٢٤٠'}
+                   {isEn ? '0' : '٠'}
                  </p>
                  <p className="text-[12px] text-[#A6BFB9] font-medium">
                    {isEn ? '1 Point = ~1 Halala' : '١ نقطة = ١ هللة تقريباً'}
@@ -142,7 +143,7 @@ export default function AccountDashboard() {
                    {isEn ? 'Next Level' : 'المستوى التالي'}
                  </p>
                  <p className="text-[16px] md:text-[18px] font-bold text-[#234745]">
-                   {isEn ? '60 points remaining' : '٦٠ نقطة متبقية'}
+                   {isEn ? '300 points remaining' : '٣٠٠ نقطة متبقية'}
                  </p>
               </div>
            </div>
@@ -151,25 +152,15 @@ export default function AccountDashboard() {
            <div className="relative w-full h-3 bg-[#EAF2F1] rounded-full overflow-hidden">
               <div 
                 className="absolute top-0 right-0 h-full bg-[#234745] rounded-full transition-all duration-1000"
-                style={{ width: '80%' }}
+                style={{ width: '0%' }}
               />
            </div>
 
            {/* History List */}
            <div className="space-y-3">
-              {[
-                { idEn: '#2026-SD-8847', idAr: '#٢٠٢٦-SD-٨٨٤٧', pointsEn: '+20 Points', pointsAr: '+٢٠ نقطة' },
-                { idEn: '#2026-SD-8812', idAr: '#٢٠٢٦-SD-٨٨١٢', pointsEn: '+60 Points', pointsAr: '+٦٠ نقطة' }
-              ].map((item, idx) => (
-                <div key={idx} className="flex items-center justify-between p-4 bg-[#FEF8EB] rounded-[8px] hover:scale-[1.01] transition-transform cursor-default">
-                  <span className="text-[14px] font-bold text-[#234745]">
-                    {isEn ? `Order ${item.idEn}` : `طلب ${item.idAr}`}
-                  </span>
-                  <span className="text-[14px] font-bold text-[#234745]" style={!isEn ? { fontFamily: '"GE Dinar One", sans-serif' } : undefined}>
-                    {isEn ? item.pointsEn : item.pointsAr}
-                  </span>
-                </div>
-              ))}
+              <div className="text-center py-4 text-[#A6BFB9] text-[14px]">
+                 {isEn ? 'No recent activity.' : 'لا يوجد نشاط حديث.'}
+              </div>
            </div>
         </div>
       </div>

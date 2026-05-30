@@ -428,7 +428,7 @@ export function DeliveryPickupModal({
                                     activeTab={activeTab}
                                     setActiveTab={setActiveTab}
                                     branches={processedBranches}
-                                    customer={customerData?.customer}
+                                    customer={customerData}
                                     selectedBranch={selectedBranch}
                                     setSelectedBranch={setSelectedBranch}
                                     branchSearch={branchSearch}
@@ -491,7 +491,8 @@ function ModalContent({
         openUntil: (activeTab === 'pickup' && b.pickupOpenUntil) ? b.pickupOpenUntil : (b.deliveryOpenUntil || b.openUntil),
     }));
 
-    const addresses = customer?.addresses?.nodes || [];
+    const customerObj = customer?.customer || customer || {};
+    const addresses = customerObj?.addresses?.nodes || customerObj?.data?.customer?.addresses?.nodes || [];
     
     // Ensure the selected branch belongs to the active tab's domain
     let effectiveSelectedBranch = selectedBranch;

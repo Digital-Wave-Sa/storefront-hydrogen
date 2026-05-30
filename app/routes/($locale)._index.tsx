@@ -8,7 +8,6 @@ import {ShopByOccasion} from '~/components/ShopByOccasion';
 import {NewArrivals} from '~/components/NewArrivals';
 import {OffersAndDiscounts} from '~/components/OffersAndDiscounts';
 import {WhoAreYouGifting} from '~/components/WhoAreYouGifting';
-import {LoyaltyProgram} from '~/components/LoyaltyProgram';
 import {CorporateGifting} from '~/components/CorporateGifting';
 
 export const meta: Route.MetaFunction = () => {
@@ -120,11 +119,10 @@ export default function Homepage() {
       <ShopByOccasion collections={data.occasions} />
       <WhoAreYouGifting collections={data.occasions} />
       <BestSellers products={data.recommendedProducts} />
-      <DesignYourCake />
-      <NewArrivals products={data.newArrivals} />
-      <OffersAndDiscounts />
       <CorporateGifting />
-      <LoyaltyProgram />
+      <NewArrivals products={data.newArrivals} />
+      <DesignYourCake />
+      <OffersAndDiscounts />
     </div>
   );
 }

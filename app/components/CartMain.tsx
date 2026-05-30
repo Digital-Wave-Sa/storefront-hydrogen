@@ -123,21 +123,9 @@ export function CartMain({layout, cart: originalCart}: CartMainProps) {
           }}
         >
           <div className="max-w-[1400px] mx-auto px-4 md:px-8 relative z-10 flex w-full justify-start">
-            <div className="flex flex-row items-center justify-start gap-6 w-full">
+            <div className="flex flex-row items-center justify-between w-full">
                
-               {/* Back Button (Renders on the Right in RTL) */}
-               <button 
-                 onClick={() => window.history.back()} 
-                 className="flex items-center gap-2 bg-[#A8BDB5] hover:bg-[#97aaa3] text-[#1a3b3a] px-6 py-1.5 rounded-full text-[15px] font-bold transition-all shadow-sm shrink-0"
-                 style={{ fontFamily: "'GE Dinar One', sans-serif" }}
-               >
-                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={`${isEn ? 'rotate-180' : ''}`}>
-                   <path d="M5 12h14M12 5l7 7-7 7" />
-                 </svg>
-                 <span className="pt-0.5">{isEn ? 'Back' : 'رجوع'}</span>
-               </button>
-
-               {/* Title & Subtitle Block (Renders on the Left in RTL) */}
+               {/* Title & Subtitle Block (First in DOM = Right in RTL) */}
                <div className={`flex flex-col ${isEn ? 'text-left' : 'text-right'}`}>
                  <h1 className="!m-0 !mb-4 text-[38px] font-bold text-white leading-none" style={{ fontFamily: "'Bahij Janna', sans-serif" }}>
                    {isEn ? 'Shopping Cart' : 'سلة التسوق'}
@@ -147,6 +135,18 @@ export function CartMain({layout, cart: originalCart}: CartMainProps) {
                  </p>
                </div>
                
+               {/* Back Button (Second in DOM = Left in RTL) */}
+               <button 
+                 onClick={() => window.history.back()} 
+                 className="flex items-center gap-2 bg-[#A8BDB5] hover:bg-[#97aaa3] text-[#1a3b3a] px-6 py-2 rounded-full text-[15px] font-bold transition-all shadow-sm shrink-0"
+                 style={{ fontFamily: "'GE Dinar One', sans-serif" }}
+               >
+                 <span className="pt-0.5">{isEn ? 'Back' : 'رجوع'}</span>
+                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={`${isEn ? 'rotate-180' : ''}`}>
+                   <path d="M5 12h14M12 5l7 7-7 7" />
+                 </svg>
+               </button>
+
             </div>
           </div>
         </div>

@@ -1,18 +1,24 @@
 import type {CustomerFragment} from 'storefrontapi.generated';
 import patternBg from '~/assets/patteren-collection-header.svg';
+import { useWishlist } from '~/context/WishlistContext';
 
 export function AccountProfileHeader({
   customer,
   isEn,
+  loyaltyPoints = 0,
+  balance = 0,
 }: {
   customer: CustomerFragment;
   isEn: boolean;
+  loyaltyPoints?: number;
+  balance?: number;
 }) {
+  const { wishlist } = useWishlist();
   const initials = (customer.firstName?.[0] || customer.email?.[0] || 'U').toUpperCase();
   const joinYear = customer.createdAt ? new Date(customer.createdAt).getFullYear() : new Date().getFullYear();
   
   return (
-    <div className="relative mb-8 w-full -mt-[60px]">
+    <div className="relative mb-8 w-full">
       {/* Main Header Card */}
       <div className="profile-header-bg py-4 px-4 md:px-12 text-white relative overflow-hidden flex flex-col justify-center shadow-lg w-full" style={{ backgroundColor: '#2C4A47' }}>
         {/* Background Pattern Layer */}
@@ -71,7 +77,7 @@ export function AccountProfileHeader({
                   </p>
                 </div>
                 <div className="text-center">
-                  <p className="text-[18px] md:text-[22px] font-bold leading-none text-white mb-2">8</p>
+                  <p className="text-[18px] md:text-[22px] font-bold leading-none text-white mb-2">{wishlist?.length || 0}</p>
                   <p className="text-[11px] md:text-[12px] text-[#A6BFB9] font-medium opacity-90">
                     {isEn ? 'Wishlist' : 'مفضلة'}
                   </p>
@@ -93,7 +99,7 @@ export function AccountProfileHeader({
                   {isEn ? 'Loyalty Points' : 'نقاط الولاء'}
                 </p>
                 <p className="text-[18px] md:text-[22px] font-bold text-[#234745] leading-none flex gap-1">
-                  <span>240</span> <span>{isEn ? 'Points' : 'نقطة'}</span>
+                  <span>{loyaltyPoints}</span> <span>{isEn ? 'Points' : 'نقطة'}</span>
                 </p>
               </div>
             </div>

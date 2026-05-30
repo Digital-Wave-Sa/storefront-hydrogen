@@ -277,15 +277,58 @@ function loadDeferredData({context}: Route.LoaderArgs, customerAccessToken: any)
 
   // Fetch customer data (including addresses) for the delivery modal
   
-  const customer = customerAccessToken?.accessToken
-    ? storefront.query(CUSTOMER_ADDRESSES_QUERY, {
-        variables: { customerAccessToken: customerAccessToken.accessToken },
-        cache: storefront.CacheNone(),
-      }).catch(err => {
-        console.error('[ROOT] Customer addresses query failed:', err);
+  const customer = (process.env.NODE_ENV === 'development' && customerAccessToken?.accessToken === 'dev-bypass-token')
+    ? (async () => {
+        try {
+          const phone = await context.session.get('loginOtpPhone');
+          if (!phone) return null;
+          const env = context.env as any;
+          const rawShop = env.SHOPIFY_SHOP || env.PUBLIC_STORE_DOMAIN || 'the-beauty-secrets-ksa';
+          let shopDomain = rawShop.includes('myshopify.com') ? rawShop : `${rawShop.split('.')[0]}.myshopify.com`;
+          const token = env.SHOPIFY_ADMIN_API_ACCESS_TOKENS;
+          const cleanPhoneForSearch = phone.replace('+966', '').replace(/\D/g, '');
+          const queryStr = encodeURIComponent(`*${cleanPhoneForSearch}*`);
+          const res = await fetch(`https://${shopDomain}/admin/api/2023-04/customers/search.json?query=${queryStr}`, {
+             headers: { 'X-Shopify-Access-Token': token, 'Content-Type': 'application/json' },
+          });
+          const d = await res.json();
+          if (d?.customers && d.customers.length > 0) {
+             const adminCust = d.customers[0];
+             return { 
+                customer: { 
+                   id: `gid://shopify/Customer/${adminCust.id}`, 
+                   firstName: adminCust.first_name,
+                   lastName: adminCust.last_name,
+                   addresses: { 
+                      nodes: (adminCust.addresses || []).map((addr: any) => ({
+                         id: `gid://shopify/MailingAddress/${addr.id}`,
+                         firstName: addr.first_name,
+                         lastName: addr.last_name,
+                         address1: addr.address1,
+                         address2: addr.address2,
+                         city: addr.city,
+                         phone: addr.phone,
+                         country: addr.country,
+                         zip: addr.zip
+                      })) 
+                   } 
+                } 
+             };
+          }
+        } catch(e) {
+          console.error('[ROOT] Dev bypass customer fetch failed:', e);
+        }
         return null;
-      })
-    : Promise.resolve(null);
+      })()
+    : (customerAccessToken?.accessToken
+      ? storefront.query(CUSTOMER_ADDRESSES_QUERY, {
+          variables: { customerAccessToken: customerAccessToken.accessToken },
+          cache: storefront.CacheNone(),
+        }).catch(err => {
+          console.error('[ROOT] Customer addresses query failed:', err);
+          return null;
+        })
+      : Promise.resolve(null));
 
 
 

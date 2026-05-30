@@ -19,7 +19,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
     return data({ wishlist, note: 'Guest wishlist, not synced to Shopify' });
   }
   const mutation = `#graphql
-    mutation customerUpdate($input: CustomerInput!) {
+    mutation customerUpdateWishlist($input: CustomerInput!) {
       customerUpdate(input: $input) {
         customer { id }
         userErrors { field message }

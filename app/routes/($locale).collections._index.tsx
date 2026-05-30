@@ -126,6 +126,7 @@ function CollectionItem({
             aspectRatio="1/1"
             data={collection.image}
             loading={index < 3 ? 'eager' : undefined}
+            sizes="(min-width: 45em) 25vw, 50vw"
             className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
           />
         )}

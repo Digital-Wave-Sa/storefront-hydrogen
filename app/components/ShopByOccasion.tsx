@@ -4,7 +4,7 @@ const occasionsEn = [
     { name: 'Wedding', handle: 'wedding', image: 'https://cdn.shopify.com/s/files/1/0809/4253/0869/files/wedding_design.png?v=1711234567' },
     { name: 'Ramadan', handle: 'ramadan', image: 'https://cdn.shopify.com/s/files/1/0809/4253/0869/files/ramadan_design.png?v=1711234568' },
     { name: 'Birthdays', handle: 'birthdays', image: 'https://cdn.shopify.com/s/files/1/0809/4253/0869/files/birthday_design.png?v=1711234569' },
-    { name: 'Celebrations', handle: 'celebrations', image: 'https://cdn.shopify.com/s/files/1/0809/4253/0869/files/eid_design.png?v=1711234570' },
+    { name: 'Eid', handle: 'eid', image: 'https://cdn.shopify.com/s/files/1/0809/4253/0869/files/eid_design.png?v=1711234570' },
     { name: 'New Baby', handle: 'new-baby', image: 'https://cdn.shopify.com/s/files/1/0809/4253/0869/files/new_baby_design.png?v=1711234571' },
     { name: 'National Day', handle: 'national-day', image: 'https://cdn.shopify.com/s/files/1/0809/4253/0869/files/national_day_design.png?v=1711234572' },
     { name: 'Mother\'s Day', handle: 'mothers-day', image: 'https://cdn.shopify.com/s/files/1/0809/4253/0869/files/mothers_day_design.png?v=1711234573' },
@@ -15,7 +15,7 @@ const occasionsAr = [
     { name: 'زفاف', handle: 'wedding', image: 'https://cdn.shopify.com/s/files/1/0809/4253/0869/files/wedding_design.png?v=1711234567' },
     { name: 'رمضان', handle: 'ramadan', image: 'https://cdn.shopify.com/s/files/1/0809/4253/0869/files/ramadan_design.png?v=1711234568' },
     { name: 'أعياد الميلاد', handle: 'birthdays', image: 'https://cdn.shopify.com/s/files/1/0809/4253/0869/files/birthday_design.png?v=1711234569' },
-    { name: 'العنوان', handle: 'celebrations', image: 'https://cdn.shopify.com/s/files/1/0809/4253/0869/files/eid_design.png?v=1711234570' },
+    { name: 'العيد', handle: 'eid', image: 'https://cdn.shopify.com/s/files/1/0809/4253/0869/files/eid_design.png?v=1711234570' },
     { name: 'طفل جديد', handle: 'new-baby', image: 'https://cdn.shopify.com/s/files/1/0809/4253/0869/files/new_baby_design.png?v=1711234571' },
     { name: 'اليوم الوطني', handle: 'national-day', image: 'https://cdn.shopify.com/s/files/1/0809/4253/0869/files/national_day_design.png?v=1711234572' },
     { name: 'يوم الأم', handle: 'mothers-day', image: 'https://cdn.shopify.com/s/files/1/0809/4253/0869/files/mothers_day_design.png?v=1711234573' },
@@ -41,25 +41,38 @@ export function ShopByOccasion({ collections }: { collections?: any[] }) {
             <div className="max-w-[1400px] mx-auto px-6">
                 {/* Header */}
                 <div className="text-center mb-8 lg:mb-12">
-                    <h2 className="text-[36px] lg:text-[52px] font-black text-[#1a1a1a] mb-4 leading-none">
+                    <h2 className="text-[36px] lg:text-[50px] font-bold text-[#171717] mb-4 leading-none" style={{ fontFamily: "'Bahij Janna', sans-serif" }}>
                         {isEn ? 'What is your occasion?' : 'ما هي مناسبتك؟'}
                     </h2>
-                    <p className="text-[#8B8B8B] text-[14px] lg:text-[16px] font-bold tracking-wide">
+                    <p className="text-[#7D7D7D] text-[14px] lg:text-[16px] font-medium tracking-wide" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
                         {isEn ? 'CHOOSE THE OCCASION AND WE PICK THE BEST FOR YOU' : 'اختار المناسبة ونختار لك الأفضل'}
                     </p>
                 </div>
 
                 {/* Grid */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 lg:gap-6">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 lg:gap-6 justify-items-center">
                     {occasions.map((occasion, index) => (
                         <Link
                             key={index}
                             to={isEn ? `/en/collections/${occasion.handle}` : `/collections/${occasion.handle}`}
-                            className="group flex flex-col bg-[#F9EBEE] rounded-[40px] border border-[#EAD1D5] overflow-hidden transition-all duration-500 hover:shadow-xl hover:-translate-y-2"
+                            className="group flex flex-col bg-[#EED5D7] rounded-[20px] overflow-hidden transition-all duration-500 hover:shadow-xl hover:-translate-y-2 w-full max-w-[280px] relative shadow-sm"
+                            style={{ 
+                                aspectRatio: '280/344'
+                            }}
                         >
-                            <div className="p-3 lg:p-4 flex flex-col h-full">
+                            {/* Pattern Overlay Layer */}
+                            <div 
+                                className="absolute inset-0 z-0 opacity-[0.35] pointer-events-none"
+                                style={{
+                                    backgroundImage: `url('/images/pattern-2.svg')`,
+                                    backgroundSize: '70px',
+                                    backgroundPosition: 'center'
+                                }}
+                            />
+                            
+                            <div className="p-3 lg:p-3.5 flex flex-col h-full relative z-10">
                                 {/* Image Container */}
-                                <div className="w-full aspect-square rounded-[32px] overflow-hidden bg-white relative">
+                                <div className="w-full aspect-square rounded-[14px] overflow-hidden bg-white relative shadow-sm">
                                     <img 
                                         src={occasion.image} 
                                         alt={occasion.name}
@@ -67,17 +80,9 @@ export function ShopByOccasion({ collections }: { collections?: any[] }) {
                                     />
                                 </div>
 
-                                {/* Label Area with Diamond Pattern */}
-                                <div className="relative w-full py-6 lg:py-8 mt-auto">
-                                   {/* Subtle Pattern Mesh */}
-                                   <div 
-                                      className="absolute inset-0 opacity-[0.08] pointer-events-none"
-                                      style={{
-                                          backgroundImage: `url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M20 0 L40 20 L20 40 L0 20 Z' fill='none' stroke='%23C4A5A7' stroke-width='1'/%3E%3C/svg%3E")`,
-                                          backgroundSize: '30px'
-                                      }}
-                                   />
-                                   <h3 className="relative text-[18px] lg:text-[24px] font-black text-[#1a1a1a] z-10 px-4 text-center leading-tight">
+                                {/* Label Area */}
+                                <div className="relative w-full pt-4 pb-2 mt-auto flex-1 flex items-center justify-center">
+                                   <h3 className="relative text-[22px] lg:text-[26px] font-bold text-[#1a1a1a] z-10 px-4 text-center leading-tight" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
                                        {occasion.name}
                                    </h3>
                                 </div>

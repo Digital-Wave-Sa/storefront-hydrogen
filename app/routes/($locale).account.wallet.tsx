@@ -1,0 +1,496 @@
+import { data as json, redirect, type LoaderFunctionArgs, type ActionFunctionArgs } from 'react-router';
+import { useLoaderData, Form, useNavigation, useActionData, useLocation } from 'react-router';
+import { Button } from '~/components/layout/Button';
+
+export async function loader({ context }: LoaderFunctionArgs) {
+  const { session, storefront, env } = context;
+  const customerAccessToken = await session.get('customerAccessToken');
+
+  if (!customerAccessToken) {
+    return redirect('/account/login');
+  }
+
+  let customer: any = null;
+
+  if (process.env.NODE_ENV === 'development' && customerAccessToken.accessToken === 'dev-bypass-token') {
+    const savedPhone = await session.get('loginOtpPhone');
+    
+    if (savedPhone) {
+      try {
+        const { getAdminToken } = await import('~/lib/shopify-admin.server');
+        const adminToken = await getAdminToken(env);
+        const queryStr = savedPhone.includes('590910042') 
+          ? encodeURIComponent('email:"motasem.udeh@gmail.com"')
+          : encodeURIComponent(`phone:"${savedPhone}"`);
+        const res = await fetch(`https://${env.PUBLIC_STORE_DOMAIN}/admin/api/2023-04/customers/search.json?query=${queryStr}`, {
+          headers: { 'X-Shopify-Access-Token': adminToken, 'Content-Type': 'application/json' },
+        });
+        const { customers } = await res.json();
+        
+        if (customers && customers.length > 0) {
+          customer = {
+            id: `gid://shopify/Customer/${customers[0].id}`,
+            phone: customers[0].phone,
+            email: customers[0].email,
+            firstName: customers[0].first_name,
+            lastName: customers[0].last_name
+          };
+        }
+      } catch (e) {
+        console.error('Wallet dev bypass failed to load real customer', e);
+      }
+    }
+    
+    if (!customer) {
+      customer = {
+        id: 'gid://shopify/Customer/123456789',
+        phone: '+966500000000',
+        email: 'dev@example.com',
+        firstName: 'Dev',
+        lastName: 'User'
+      };
+    }
+  } else {
+    const result = await storefront.query(`#graphql
+      query getCustomerWallet($customerAccessToken: String!) {
+        customer(customerAccessToken: $customerAccessToken) {
+          id
+          phone
+          email
+          firstName
+          lastName
+        }
+      }
+    `, {
+      variables: { customerAccessToken: customerAccessToken.accessToken },
+      cache: storefront.CacheNone(),
+    });
+    customer = result.customer;
+  }
+
+  if (!customer) {
+    return redirect('/account/login');
+  }
+
+  const middlewareUrl = env.MIDDLEWARE_URL || 'https://wh.pryvexapls.com';
+  let balance = 0;
+  let loyaltyPoints = 0;
+  let history: any[] = [];
+
+  try {
+    const branchId = await session.get('selectedLocationId');
+    const res = await fetch(`${middlewareUrl}/wallet/balance?user_id=${encodeURIComponent(customer.id)}&phone=${encodeURIComponent(customer.phone || '')}`, {
+      headers: { 'x-branch-id': branchId || '1' }
+    });
+    const data = await res.json();
+    if (data?.success && data?.data) {
+      balance = data.data.balance || 0;
+      loyaltyPoints = data.data.loyalty_points || 0;
+      history = data.data.history || [];
+    } else if (data && data.balance !== undefined) {
+      balance = data.balance || 0;
+      history = data.history || [];
+      if (typeof data.loyalty_points === 'object' && data.loyalty_points !== null) {
+        loyaltyPoints = data.loyalty_points.points || 0;
+      } else {
+        loyaltyPoints = data.loyalty_points || 0;
+      }
+    }
+  } catch (err) {
+    console.error('Failed to fetch wallet balance from middleware:', err);
+  }
+
+
+
+  return json({
+    customer,
+    balance,
+    loyaltyPoints,
+    history
+  });
+}
+
+export async function action({ request, context }: ActionFunctionArgs) {
+  const { session, storefront, env } = context;
+  const customerAccessToken = await session.get('customerAccessToken');
+  
+  if (!customerAccessToken) {
+    return redirect('/account/login');
+  }
+
+  let customer: any = null;
+
+  if (process.env.NODE_ENV === 'development' && customerAccessToken.accessToken === 'dev-bypass-token') {
+    const savedPhone = await session.get('loginOtpPhone');
+    
+    if (savedPhone) {
+      try {
+        const { getAdminToken } = await import('~/lib/shopify-admin.server');
+        const adminToken = await getAdminToken(env);
+        const queryStr = savedPhone.includes('590910042') 
+          ? encodeURIComponent('email:"motasem.udeh@gmail.com"')
+          : encodeURIComponent(`phone:"${savedPhone}"`);
+        const res = await fetch(`https://${env.PUBLIC_STORE_DOMAIN}/admin/api/2023-04/customers/search.json?query=${queryStr}`, {
+          headers: { 'X-Shopify-Access-Token': adminToken, 'Content-Type': 'application/json' },
+        });
+        const { customers } = await res.json();
+        
+        if (customers && customers.length > 0) {
+          customer = {
+            id: `gid://shopify/Customer/${customers[0].id}`,
+            phone: customers[0].phone
+          };
+        }
+      } catch (e) {
+        console.error('Wallet action dev bypass failed to load real customer', e);
+      }
+    }
+
+    if (!customer) {
+      customer = {
+        id: 'gid://shopify/Customer/123456789',
+        phone: '+966500000000',
+      };
+    }
+  } else {
+    const result = await storefront.query(`#graphql
+      query getCustomerForVoucher($customerAccessToken: String!) {
+        customer(customerAccessToken: $customerAccessToken) {
+          id
+          phone
+        }
+      }
+    `, {
+      variables: { customerAccessToken: customerAccessToken.accessToken },
+      cache: storefront.CacheNone(),
+    });
+    customer = result.customer;
+  }
+
+  const formData = await request.formData();
+  const intent = formData.get('intent')?.toString() || 'redeem_voucher';
+  const isEn = new URL(request.url).pathname.includes('/en');
+  const middlewareUrl = env.MIDDLEWARE_URL || 'https://wh.pryvexapls.com';
+
+  if (intent === 'gift_balance') {
+    const recipientPhone = formData.get('recipientPhone')?.toString().trim();
+    const giftAmount = parseFloat(formData.get('giftAmount')?.toString() || '0');
+    const currentBalance = parseFloat(formData.get('currentBalance')?.toString() || '0');
+
+    if (!recipientPhone || giftAmount <= 0) {
+      return json({ intent: 'gift_balance', error: isEn ? 'Please enter a valid phone number and amount.' : 'يرجى إدخال رقم هاتف ومبلغ صحيحين.' }, { status: 400 });
+    }
+
+    if (giftAmount > currentBalance) {
+      return json({ intent: 'gift_balance', error: isEn ? 'Insufficient balance.' : 'رصيد غير كافٍ.' }, { status: 400 });
+    }
+
+    // PRODUCTION: Call the actual Middleware
+    // TODO: Replace with the actual Middleware URL provided by the backend developer
+    try {
+      const res = await fetch(`${middlewareUrl}/wallet/transfer`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sender_id: customer.id,
+          recipient_phone: recipientPhone,
+          amount: giftAmount,
+          message: formData.get('giftMessage')?.toString()
+        })
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+         return json({ intent: 'gift_balance', error: isEn ? 'Failed to send gift. Please verify the phone number.' : 'فشل إرسال الهدية. يرجى التحقق من رقم الهاتف.' }, { status: 400 });
+      }
+      return json({ 
+        intent: 'gift_balance',
+        success: true, 
+        giftAmount,
+        recipientPhone,
+        newBalance: data.new_balance || (currentBalance - giftAmount),
+        currency: data.currency || 'SAR'
+      });
+    } catch (err) {
+      return json({ intent: 'gift_balance', error: isEn ? 'Service unavailable.' : 'الخدمة غير متوفرة.' }, { status: 500 });
+    }
+  }
+
+  // --- REDEEM VOUCHER LOGIC ---
+  const voucherCode = formData.get('voucherCode')?.toString().trim();
+
+  if (!voucherCode) {
+    return json({ intent: 'redeem_voucher', error: isEn ? 'Please enter a voucher code.' : 'الرجاء إدخال رمز القسيمة.' }, { status: 400 });
+  }
+
+  try {
+    const res = await fetch(`${middlewareUrl}/wallet/voucher/redeem`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        voucher_code: voucherCode,
+        user_id: customer.id, // passing Shopify GID as user_id fallback
+        phone: customer.phone,
+      })
+    });
+
+    const data = await res.json();
+
+    if (!res.ok || !data.success) {
+      // Map middleware CRM reason codes to user friendly messages
+      const reason = data.data?.reason || data.message || 'unknown';
+      let friendlyError = isEn ? 'Failed to redeem voucher.' : 'فشل في استرداد القسيمة.';
+      
+      if (reason.includes('expired')) {
+        friendlyError = isEn ? 'This voucher has expired.' : 'عذراً، انتهت صلاحية هذه القسيمة.';
+      } else if (reason.includes('already_used')) {
+        friendlyError = isEn ? 'Voucher usage limit reached.' : 'تم الوصول للحد الأقصى لاستخدام القسيمة.';
+      } else if (reason.includes('min_order_not_met')) {
+        friendlyError = isEn ? 'Minimum order value not met.' : 'لم يتم الوصول للحد الأدنى للطلب.';
+      } else if (reason.includes('invalid_code')) {
+        friendlyError = isEn ? 'Invalid voucher code.' : 'رمز القسيمة غير صحيح.';
+      } else if (reason.includes('duplicate')) {
+        friendlyError = isEn ? 'You have already redeemed this voucher.' : 'لقد قمت باستخدام هذه القسيمة مسبقاً.';
+      }
+
+      return json({ intent: 'redeem_voucher', error: friendlyError }, { status: 400 });
+    }
+
+    return json({ 
+      intent: 'redeem_voucher',
+      success: true, 
+      creditedAmount: data.credited_amount || 0,
+      newBalance: data.new_balance || 0,
+      currency: data.currency || 'SAR'
+    });
+
+  } catch (err) {
+    console.error('Middleware redeem error:', err);
+    return json({ intent: 'redeem_voucher', error: isEn ? 'Service unavailable. Please try again later.' : 'الخدمة غير متوفرة. الرجاء المحاولة لاحقاً.' }, { status: 500 });
+  }
+}
+
+export default function WalletPage() {
+  const { balance, loyaltyPoints, customer, history } = useLoaderData<typeof loader>();
+  const actionData = useActionData<{ intent?: string; success?: boolean; error?: string; creditedAmount?: number; newBalance?: number; currency?: string; giftAmount?: number; recipientPhone?: string }>();
+  const navigation = useNavigation();
+  const isEn = useLocation().pathname.includes('/en');
+
+  const isSubmitting = navigation.state === 'submitting';
+
+  // If action was successful, use the new balance, otherwise use the loader balance
+  const currentBalance = actionData?.success && actionData.newBalance !== undefined 
+    ? actionData.newBalance 
+    : balance;
+
+  return (
+    <div className="wallet-page animate-fade-in" dir={isEn ? 'ltr' : 'rtl'}>
+      <div className="mb-8">
+        <h1 className="text-3xl font-black text-[#234745] mb-2">
+          {isEn ? 'Wallet & Vouchers' : 'المحفظة والقسائم'}
+        </h1>
+        <p className="text-gray-500 font-medium">
+          {isEn ? 'Manage your store balance, redeem gift vouchers, and view your loyalty points.' : 'إدارة رصيد متجرك واسترداد قسائم الهدايا وعرض نقاط الولاء الخاصة بك.'}
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+        {/* Wallet Balance Card */}
+        <div className="bg-gradient-to-br from-[#234745] to-[#1a3533] rounded-[24px] p-8 text-white relative overflow-hidden shadow-xl shadow-[#234745]/20">
+          <div className="absolute top-0 right-0 w-40 h-40 bg-white opacity-5 rounded-full -translate-y-10 translate-x-10" />
+          <div className="absolute bottom-0 left-0 w-32 h-32 bg-[#d4a06a] opacity-10 rounded-full translate-y-10 -translate-x-10" />
+          
+          <div className="relative z-10">
+            <h3 className="text-white/80 font-medium text-sm uppercase tracking-wider mb-2">
+              {isEn ? 'Current Balance' : 'الرصيد الحالي'}
+            </h3>
+            <div className="flex items-end gap-2">
+              <span className="text-5xl font-black">{currentBalance.toFixed(2)}</span>
+              <span className="text-xl font-bold text-[#d4a06a] pb-1">SAR</span>
+            </div>
+            <p className="mt-6 text-sm text-white/70">
+              {isEn ? 'Use this balance at checkout to pay for your orders.' : 'استخدم هذا الرصيد عند الدفع لتغطية طلباتك.'}
+            </p>
+          </div>
+        </div>
+
+        {/* Loyalty Points Card */}
+        <div className="bg-[#fcfaf7] border-2 border-[#f0e6d8] rounded-[24px] p-8 relative overflow-hidden">
+          <h3 className="text-[#a88a68] font-bold text-sm uppercase tracking-wider mb-2">
+            {isEn ? 'Loyalty Points' : 'نقاط الولاء'}
+          </h3>
+          <div className="flex items-end gap-2">
+            <span className="text-4xl font-black text-[#234745]">{loyaltyPoints}</span>
+            <span className="text-lg font-bold text-[#234745] pb-1">{isEn ? 'Pts' : 'نقطة'}</span>
+          </div>
+          <p className="mt-6 text-sm text-gray-500 font-medium">
+            {isEn ? 'Earn points on every order and redeem them for rewards.' : 'اكسب نقاطاً على كل طلب واستبدلها بمكافآت رائعة.'}
+          </p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Redeem Voucher Section */}
+        <div className="bg-white border border-gray-200 rounded-[24px] p-8 shadow-sm h-full flex flex-col">
+          <h2 className="text-xl font-bold text-[#234745] mb-6 border-b border-gray-100 pb-4">
+            {isEn ? 'Redeem a Gift Voucher' : 'استرداد قسيمة هدايا'}
+          </h2>
+
+          {actionData?.intent === 'redeem_voucher' && actionData?.success && (
+            <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 px-6 py-4 rounded-[16px] mb-6 flex items-center gap-3 animate-fade-in">
+              <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0 text-emerald-600">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              </div>
+              <div>
+                <p className="font-bold">
+                  {isEn ? 'Voucher Redeemed Successfully!' : 'تم استرداد القسيمة بنجاح!'}
+                </p>
+                <p className="text-sm opacity-90">
+                  {isEn ? `Added ${actionData.creditedAmount} ${actionData.currency} to your wallet.` : `تمت إضافة ${actionData.creditedAmount} ${actionData.currency} إلى محفظتك.`}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {actionData?.intent === 'redeem_voucher' && actionData?.error && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-6 py-4 rounded-[16px] mb-6 flex items-center gap-3 animate-fade-in">
+               <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 text-red-600">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              </div>
+              <p className="font-bold">{actionData.error}</p>
+            </div>
+          )}
+
+          <Form method="POST" className="flex flex-col gap-4 mt-auto" key={actionData?.intent === 'redeem_voucher' && actionData?.success ? 'success-reset-redeem' : 'form-redeem'}>
+            <input type="hidden" name="intent" value="redeem_voucher" />
+            <input 
+              type="text" 
+              name="voucherCode" 
+              placeholder={isEn ? "Enter voucher code (e.g. WELCOME50)" : "أدخل رمز القسيمة (مثال: WELCOME50)"}
+              className="w-full px-5 py-4 bg-gray-50 border-2 border-gray-100 focus:border-[#234745] focus:bg-white rounded-[16px] outline-none transition-all font-bold text-gray-700 placeholder:font-medium placeholder:text-gray-400"
+              required
+            />
+            <Button 
+              type="submit" 
+              variant="primary" 
+              disabled={isSubmitting}
+              className="w-full py-4 rounded-[16px] font-bold tracking-wide"
+            >
+              {isSubmitting && formData?.get('intent') === 'redeem_voucher' ? (isEn ? 'Verifying...' : 'جاري التحقق...') : (isEn ? 'Redeem Voucher' : 'تفعيل القسيمة')}
+            </Button>
+          </Form>
+        </div>
+
+        {/* Gift Balance to a Friend Section */}
+        <div className="bg-white border border-gray-200 rounded-[24px] p-8 shadow-sm h-full flex flex-col">
+          <h2 className="text-xl font-bold text-[#234745] mb-6 border-b border-gray-100 pb-4">
+            {isEn ? 'Gift Balance to a Friend' : 'إهداء رصيد لصديق'}
+          </h2>
+
+          {actionData?.intent === 'gift_balance' && actionData?.success && (
+            <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 px-6 py-4 rounded-[16px] mb-6 flex items-center gap-3 animate-fade-in">
+              <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0 text-emerald-600">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+              </div>
+              <div>
+                <p className="font-bold">
+                  {isEn ? 'Gift Sent Successfully!' : 'تم إرسال الهدية بنجاح!'}
+                </p>
+                <p className="text-sm opacity-90">
+                  {isEn ? `You gifted ${actionData.giftAmount} ${actionData.currency} to ${actionData.recipientPhone}.` : `قمت بإهداء ${actionData.giftAmount} ${actionData.currency} إلى ${actionData.recipientPhone}.`}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {actionData?.intent === 'gift_balance' && actionData?.error && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-6 py-4 rounded-[16px] mb-6 flex items-center gap-3 animate-fade-in">
+               <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 text-red-600">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              </div>
+              <p className="font-bold">{actionData.error}</p>
+            </div>
+          )}
+
+          <Form method="POST" className="flex flex-col gap-4 mt-auto" key={actionData?.intent === 'gift_balance' && actionData?.success ? 'success-reset-gift' : 'form-gift'}>
+            <input type="hidden" name="intent" value="gift_balance" />
+            <input type="hidden" name="currentBalance" value={currentBalance} />
+            
+            <div className="flex flex-col gap-4">
+              <input 
+                type="tel" 
+                name="recipientPhone" 
+                placeholder={isEn ? "Recipient Phone (e.g. 05...)" : "رقم هاتف المستلم (مثال: 05...)"}
+                className="w-full px-5 py-4 bg-gray-50 border-2 border-gray-100 focus:border-[#234745] focus:bg-white rounded-[16px] outline-none transition-all font-bold text-gray-700 placeholder:font-medium placeholder:text-gray-400"
+                required
+              />
+              <div className="w-full flex items-center bg-gray-50 border-2 border-gray-100 rounded-[16px] focus-within:border-[#234745] focus-within:bg-white transition-all overflow-hidden">
+                <input 
+                  type="number" 
+                  name="giftAmount"
+                  min="1"
+                  max={currentBalance}
+                  placeholder={isEn ? "Amount" : "المبلغ"}
+                  className="flex-grow w-full px-5 py-4 bg-transparent outline-none font-bold text-gray-700 placeholder:font-medium placeholder:text-gray-400 min-w-0"
+                  required
+                />
+                <span className="px-5 font-bold text-[#A6BFB9] bg-gray-50 border-l border-gray-200 rtl:border-l-0 rtl:border-r h-full flex items-center shrink-0">SAR</span>
+              </div>
+            </div>
+
+            <input 
+              type="text" 
+              name="giftMessage" 
+              placeholder={isEn ? "Personal Message (Optional)" : "رسالة شخصية (اختياري)"}
+              className="w-full px-5 py-4 bg-gray-50 border-2 border-gray-100 focus:border-[#234745] focus:bg-white rounded-[16px] outline-none transition-all font-bold text-gray-700 placeholder:font-medium placeholder:text-gray-400"
+            />
+
+            <Button 
+              type="submit" 
+              variant="secondary" 
+              disabled={isSubmitting}
+              className="w-full py-4 rounded-[16px] font-bold tracking-wide mt-2"
+            >
+              {isSubmitting && formData?.get('intent') === 'gift_balance' ? (isEn ? 'Sending...' : 'جاري الإرسال...') : (isEn ? 'Send Gift' : 'إرسال الهدية')}
+            </Button>
+          </Form>
+        </div>
+      </div>
+
+      {/* RECENT ACTIVITY (HISTORY) SECTION */}
+      <div className="mt-12 bg-white border border-gray-200 rounded-[24px] p-8 shadow-sm">
+        <h2 className="text-xl font-bold text-[#234745] mb-6 border-b border-gray-100 pb-4">
+          {isEn ? 'Recent Activity' : 'النشاط الأخير'}
+        </h2>
+        
+        {!history || history.length === 0 ? (
+          <div className="text-center py-12 text-gray-400">
+            <svg className="w-16 h-16 mx-auto mb-4 opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <p className="font-medium">{isEn ? 'No recent activity.' : 'لا يوجد نشاط حديث.'}</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {history.map((tx: any) => {
+              const isAddition = tx.amount > 0;
+              return (
+                <div key={tx.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-[16px] hover:bg-gray-100 transition-colors">
+                  <div className="flex flex-col gap-1 text-start">
+                    <span className="font-bold text-gray-700">{isEn ? tx.labelEn : tx.labelAr}</span>
+                    <span className="text-sm text-gray-500 font-medium" dir="ltr">{new Date(tx.date).toLocaleDateString(isEn ? 'en-US' : 'ar-SA', { year: 'numeric', month: 'short', day: 'numeric' })}</span>
+                  </div>
+                  <div className={`font-black text-lg ${isAddition ? 'text-emerald-600' : 'text-red-500'}`} dir="ltr">
+                    {isAddition ? '+' : ''}{tx.amount.toFixed(2)} SAR
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+    </div>
+  );
+}

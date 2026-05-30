@@ -6,34 +6,44 @@ const SLIDES = [
     id: 1, 
     image: '/hero/slide1.png', 
     url: '/collections/all',
-    title: { ar: 'احتفل بالعيد\nبأرقى الحلويات', en: 'Celebrate Eid\nwith finest sweets' },
+    title: { ar: 'نصنع لحظات\nلا تنسي', en: 'We Make Unforgettable\nMoments' },
     subtitle: { 
-        ar: 'تشكيلة العيد الحصرية — معمول وشوكولاتة وحلويات\nعربية فاخرة في أجمل صناديق الهدايا.', 
-        en: 'Exclusive Eid Collection — Maamoul, Chocolate & Premium\nArabic Sweets in elegant gift boxes.' 
+        ar: 'منذ عام ١٩١٩، نقدّم أرقى الحلويات العربية والشوكولاتة الفاخرة، لكل مناسبة تستحق الاحتفال.', 
+        en: 'Since 1919, we offer the finest Arabic sweets and premium chocolate for every occasion worth celebrating.' 
     },
-    badge: { ar: 'عيد مبارك', en: 'Eid Mubarak' }
+    badge: { ar: 'منذ 1919 . مصنوعة بحُب', en: 'Since 1919 . Made With Love' },
+    buttons: [
+      { text: { ar: 'إكتشف قصتنا', en: 'Discover Our Story' }, url: '/pages/about', type: 'outline' },
+      { text: { ar: 'العنوان', en: 'Address' }, url: '/pages/contact', type: 'filled' }
+    ]
   },
   { 
     id: 2, 
     image: '/hero/slide2.png', 
-    url: '/pages/design-cake',
-    title: { ar: 'صمم كيكتك\nكما تحب', en: 'Design Your Cake\nAs You Like' },
+    url: '/custom-cake',
+    title: { ar: 'إحتفل بالعيد\nبأرقي الحلويات', en: 'Celebrate Eid\nWith Finest Sweets' },
     subtitle: { 
-        ar: 'اختر الحجم والنكهة والتزيين — نحن نصنعها لك\nتماماً كما في مخيلتك وبحرفية سعد الدين.', 
-        en: 'Choose size, flavor & decoration — we make it for you\nexactly as imagined with Saadeddin craftsmanship.' 
+        ar: 'تشكيلة العيد الحصرية — معمول وشوكولاتة وحلويات عربية فاخرة في أجمل صناديق الهدايا.', 
+        en: 'Exclusive Eid collection — Maamoul, chocolate, and premium Arabic sweets in the most beautiful gift boxes.' 
     },
-    badge: { ar: 'صمم كيكتك', en: 'Design Now' }
+    badge: { ar: 'عيد مبارك', en: 'Eid Mubarak' },
+    buttons: [
+      { text: { ar: 'العنوان', en: 'Address' }, url: '/collections/eid', type: 'filled' }
+    ]
   },
   { 
     id: 3, 
     image: '/hero/slide3.png', 
-    url: '/collections/chocolate',
-    title: { ar: 'شوكولاتة فاخرة\nلكل مناسبة', en: 'Premium Chocolate\nFor Every Occasion' },
+    url: '/custom-cake',
+    title: { ar: 'صمم كيكتك\nكما تتخيلها', en: 'Design Your Cake\nAs You Imagine It' },
     subtitle: { 
-        ar: 'اكتشف مجموعتنا الواسعة من الشوكولاتة البلجيكية\nوالسويسرية الفاخرة المحضرة بكل حب.', 
-        en: 'Discover our wide range of Belgian & Swiss\npremium chocolates prepared with love.' 
+        ar: 'اختر الحجم والنكهة والتزيين — نصنع لك كيكة مخصصة تماماً بحرفية سعد الدين.', 
+        en: 'Choose the size, flavor, and decoration — we craft a perfectly customized cake with Saadeddin craftsmanship.' 
     },
-    badge: { ar: 'مجموعة فاخرة', en: 'Luxury Collection' }
+    badge: { ar: 'صمم كيكتك', en: 'Design Your Cake' },
+    buttons: [
+      { text: { ar: 'العنوان', en: 'Address' }, url: '/custom-cake', type: 'filled' }
+    ]
   },
 ];
 
@@ -88,7 +98,7 @@ export function HeroSlider() {
       <div 
         ref={scrollRef}
         onScroll={handleScroll}
-        className="flex overflow-x-auto snap-x snap-mandatory gap-5 lg:gap-8 px-6 lg:px-[15%] pb-10"
+        className="flex overflow-x-auto snap-x snap-mandatory gap-5 lg:gap-8 px-[max(20px,calc(50%-512px))] pb-10"
         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       >
         {SLIDES.map((slide, index) => {
@@ -96,13 +106,13 @@ export function HeroSlider() {
           return (
             <div 
               key={slide.id}
-              className="snap-center shrink-0 w-[88%] lg:w-[88%] transition-all duration-700 ease-out"
+              className="snap-center shrink-0 w-[300px] lg:w-[1024px] max-w-[90vw] transition-all duration-700 ease-out"
               style={{
                 opacity: isActive ? 1 : 0.4,
                 transform: isActive ? 'scale(1)' : 'scale(0.98)'
               }}
             >
-              <div className="relative w-full min-h-[450px] lg:min-h-[580px] h-auto rounded-[32px] lg:rounded-[48px] overflow-hidden bg-[#f8f5f2] group/slide flex flex-col">
+              <div className="relative w-full h-[448px] lg:h-[610px] rounded-[6px] lg:rounded-[20px] overflow-hidden bg-[#f8f5f2] group/slide flex flex-col">
                 {/* 1. Background Image - Stays Absolute */}
                 <img 
                   src={slide.image} 
@@ -114,72 +124,64 @@ export function HeroSlider() {
                 <div className="absolute inset-0 bg-black/20 pointer-events-none z-10" />
                 <div className={`absolute inset-0 bg-gradient-to-r ${isEn ? 'from-black/70 via-black/20 to-transparent' : 'to-black/70 via-black/20 from-transparent'} pointer-events-none opacity-90 z-10`} />
 
-                {/* 3. Top-Center Badge (Heritage) - LINES MOVED INSIDE */}
-                <div className="absolute top-6 lg:top-10 left-1/2 -translate-x-1/2 z-30 flex justify-center w-full px-10">
-                    <div className="bg-[#1a3533] px-6 lg:px-10 py-2.5 rounded-full border border-white/10 shadow-2xl flex items-center gap-4 lg:gap-6">
-                        <div className="w-6 lg:w-10 h-[1px] bg-white/40" />
-                        <span className="text-white font-bold text-[clamp(9px,0.8vw,14px)] tracking-[0.05em] lg:tracking-[0.1em] whitespace-nowrap" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
-                            {isEn ? 'SINCE 1919 . MADE WITH LOVE' : 'منذ ١٩١٩ . مصنوعة بحب'}
+                {/* 3. Top-Center Badge */}
+                <div className="absolute top-4 lg:top-10 left-1/2 -translate-x-1/2 z-30 flex justify-center w-full px-4 lg:px-10">
+                    <div className="bg-[#234745] px-4 lg:px-8 py-1 lg:py-2 rounded-full border border-[#BBCFCD] shadow-2xl flex items-center gap-2 lg:gap-4">
+                        <div className="w-4 lg:w-6 h-[1px] bg-[#BBCFCD]" />
+                        <span className="text-[#BBCFCD] font-medium text-[12px] lg:text-[16px] tracking-wide whitespace-nowrap" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
+                            {isEn ? slide.badge.en : slide.badge.ar}
                         </span>
-                        <div className="w-6 lg:w-10 h-[1px] bg-white/40" />
+                        <div className="w-4 lg:w-6 h-[1px] bg-[#BBCFCD]" />
                     </div>
                 </div>
 
-                {/* 4. Main Content Area - CENTERED VERTICALLY */}
+                {/* 4. Main Content Area */}
                 <div 
                     dir={isEn ? 'ltr' : 'rtl'}
-                    className={`relative flex-1 flex flex-col justify-center p-10 lg:p-16 text-white z-20 items-start ${isEn ? 'text-left' : 'text-right'}`}
+                    className={`relative flex-1 flex flex-col justify-end lg:justify-center p-6 lg:p-16 text-white z-20 items-center lg:items-start text-center lg:text-start`}
                 >
-                    <div className="max-w-[95%] lg:max-w-[65%] flex flex-col items-start w-full">
+                    <div className="max-w-[95%] lg:max-w-[533px] flex flex-col items-center lg:items-start w-full">
                         
-                        {/* Collection Eyebrow - REMOVED MARGIN BOTTOM */}
-                        <div className="flex items-center gap-2 lg:gap-4 mb-1 lg:mb-1">
-                            <span className="text-[clamp(11px,1vw,16px)] font-bold text-white/90 drop-shadow-md" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
-                                {isEn ? slide.badge.en : slide.badge.ar}
-                            </span>
-                            <div className="h-[1px] w-12 lg:w-20 bg-white/40" />
-                        </div>
-
                         {/* Title */}
                         <h2 
-                            className="text-[clamp(28px,4.5vw,75px)] font-black leading-[1.0] whitespace-pre-line drop-shadow-2xl"
+                            className="text-[38px] lg:text-[100px] font-bold lg:font-normal leading-[1.0] lg:leading-[0.95] whitespace-pre-line mb-4 lg:mb-8"
                             style={{ fontFamily: "'Bahij Janna', sans-serif" }}
                         >
-                            {index === 0 && !isEn ? (
-                                <>
-                                    <span className="text-white">احتفل بالعيد</span>
-                                    <br />
-                                    <span className="text-[#D0E4E2]">بأرقى الحلويات</span>
-                                </>
-                            ) : (
-                                <span className="text-white">{isEn ? slide.title.en : slide.title.ar}</span>
-                            )}
+                            <span className="text-[#FFFFFF] drop-shadow-lg">{isEn ? slide.title.en : slide.title.ar}</span>
                         </h2>
 
-                        {/* Subtitle - REDUCED LINE HEIGHT & ZERO MARGIN */}
+                        {/* Subtitle */}
                         <p 
-                            className="text-[clamp(13px,1.1vw,18px)] font-normal leading-[1.2] max-w-[600px] mt-0 lg:mt-0 whitespace-pre-line drop-shadow-lg opacity-95"
+                            className="text-[12px] lg:text-[14px] font-normal leading-[1.2] max-w-[249px] lg:max-w-[293px] mt-0 mb-4 lg:mb-8 whitespace-pre-line text-[#FFFFFF] lg:text-[#BBCFCD]"
                             style={{ fontFamily: "'GE Dinar One', sans-serif" }}
                         >
                             {isEn ? slide.subtitle.en : slide.subtitle.ar}
                         </p>
 
-                        {/* Button - REDUCED MARGIN */}
-                        <NavLink 
-                            to={slide.url}
-                            className="mt-6 lg:mt-8 bg-[#BBCFCD] hover:bg-white rounded-full flex items-center justify-center transition-all transform hover:scale-105 active:scale-95"
-                            style={{ 
-                                width: 'clamp(200px, 16vw, 277px)', 
-                                height: 'clamp(44px, 3.8vw, 52px)', 
-                                fontFamily: "'GE Dinar One', sans-serif",
-                                fontWeight: 700,
-                                fontSize: 'clamp(15px, 1.1vw, 18px)',
-                                lineHeight: '100%',
-                                color: '#234745'
-                            }}
-                        >
-                            <span>{isEn ? 'Shop Now' : 'تسوق الآن'}</span>
-                        </NavLink>
+                        {/* Buttons */}
+                        <div className="flex flex-col lg:flex-row items-center gap-[8px] w-full mt-4 lg:mt-6">
+                            {slide.buttons?.map((btn, i) => (
+                                <NavLink 
+                                    key={i}
+                                    to={btn.url}
+                                    className={`flex items-center justify-center transition-all transform hover:scale-105 active:scale-95 w-full lg:w-[277px] h-[48px] py-[12px] px-[20px] rounded-[24px] ${
+                                        btn.type === 'filled' 
+                                        ? 'bg-[#BBCFCD] text-[#234745]' 
+                                        : 'bg-transparent text-[#F9F9F9] border border-[#BBCFCD]'
+                                    }`}
+                                    style={{ 
+                                        fontFamily: "'GE Dinar One', sans-serif",
+                                        fontWeight: 700,
+                                        fontSize: '18px',
+                                        lineHeight: '100%',
+                                        textAlign: 'center',
+                                        color: btn.type === 'filled' ? '#234745' : '#F9F9F9'
+                                    }}
+                                >
+                                    <span>{isEn ? btn.text.en : btn.text.ar}</span>
+                                </NavLink>
+                            ))}
+                        </div>
                     </div>
                 </div>
               </div>
@@ -191,7 +193,7 @@ export function HeroSlider() {
       {/* Navigation Arrows */}
       <button 
         onClick={prevSlide}
-        className={`absolute start-8 lg:start-16 top-1/2 -translate-y-1/2 w-10 h-10 bg-[#9FB7AE] text-[#234745] rounded-[25px] flex items-center justify-center transition-all z-50 border border-[#9FB7AE] hover:scale-110 active:scale-95 shadow-md ${currentIndex === 0 ? 'opacity-30 cursor-not-allowed' : 'opacity-100 hover:bg-white'}`}
+        className={`absolute start-[max(4px,calc(50%-552px))] top-1/2 -translate-y-1/2 w-10 h-10 bg-[#9FB7AE] text-[#234745] rounded-[25px] flex items-center justify-center transition-all z-50 border border-[#9FB7AE] hover:scale-110 active:scale-95 shadow-md ${currentIndex === 0 ? 'opacity-30 cursor-not-allowed' : 'opacity-100 hover:bg-white'}`}
         disabled={currentIndex === 0}
       >
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className={isEn ? '' : 'rotate-180'}>
@@ -201,7 +203,7 @@ export function HeroSlider() {
       
       <button 
         onClick={nextSlide}
-        className={`absolute end-8 lg:end-16 top-1/2 -translate-y-1/2 w-10 h-10 bg-[#9FB7AE] text-[#234745] rounded-[25px] flex items-center justify-center transition-all z-50 border border-[#9FB7AE] hover:scale-110 active:scale-95 shadow-md ${currentIndex === SLIDES.length - 1 ? 'opacity-30 cursor-not-allowed' : 'opacity-100 hover:bg-white'}`}
+        className={`absolute end-[max(4px,calc(50%-552px))] top-1/2 -translate-y-1/2 w-10 h-10 bg-[#9FB7AE] text-[#234745] rounded-[25px] flex items-center justify-center transition-all z-50 border border-[#9FB7AE] hover:scale-110 active:scale-95 shadow-md ${currentIndex === SLIDES.length - 1 ? 'opacity-30 cursor-not-allowed' : 'opacity-100 hover:bg-white'}`}
         disabled={currentIndex === SLIDES.length - 1}
       >
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className={isEn ? 'rotate-180' : ''}>

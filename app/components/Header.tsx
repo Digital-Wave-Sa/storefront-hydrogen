@@ -354,7 +354,7 @@ const STATIC_NAV_AR = [
   { title: 'المنتجات', url: '/collections/all', hasMega: true },
   { title: 'المناسبات', url: '/collections/occasions' },
   { title: 'الهدايا', url: '/collections/gifts' },
-  { title: 'الكيك المخصص', url: '/pages/design-cake' },
+  { title: 'الكيك المخصص', url: '/custom-cake' },
   { title: 'العروض', url: '/collections/offers' },
 ];
 
@@ -362,7 +362,7 @@ const STATIC_NAV_EN = [
   { title: 'Products', url: '/en/collections/all', hasMega: true },
   { title: 'Occasions', url: '/en/collections/occasions' },
   { title: 'Gifts', url: '/en/collections/gifts' },
-  { title: 'Custom Cake', url: '/en/pages/design-cake' },
+  { title: 'Custom Cake', url: '/en/custom-cake' },
   { title: 'Offers', url: '/en/collections/offers' },
 ];
 
@@ -395,9 +395,10 @@ function CategoryNav({
               className={({ isActive }) => `
                 px-2 xl:px-3 py-2 text-[13px] xl:text-[14px] font-bold transition-all whitespace-nowrap rounded-full
                 ${isOffers 
-                  ? 'bg-[#e34242] text-white hover:bg-[#c93636] px-4 xl:px-5 shadow-sm' 
+                  ? 'bg-[#e34242] !text-white hover:bg-[#c93636] px-4 xl:px-5 shadow-sm' 
                   : (isActive || (item.hasMega && activeMega)) ? 'text-[#234745] bg-[#234745]/5' : 'text-[#234745]/80 hover:text-[#234745] hover:bg-[#234745]/5'}
               `}
+              style={isOffers ? { color: 'white' } : {}}
             >
               {item.title}
             </NavLink>
@@ -516,7 +517,9 @@ export function HeaderMenu({
         </div>
 
         <div className="space-y-2">
-          {NAV_ITEMS.map((item) => (
+          {NAV_ITEMS.map((item) => {
+            const isOffers = item.url.includes('offers');
+            return (
             <NavLink
               key={item.url}
               to={item.url}
@@ -524,13 +527,14 @@ export function HeaderMenu({
               prefetch="intent"
               className={({ isActive }) => `
                 flex items-center justify-between px-6 py-4 rounded-2xl text-[16px] font-bold transition-all
-                ${isActive ? 'bg-[#234745] text-white' : 'bg-white text-[#234745] shadow-sm'}
+                ${isOffers ? 'bg-[#e34242] !text-white' : isActive ? 'bg-[#234745] text-white' : 'bg-white text-[#234745] shadow-sm'}
               `}
+              style={isOffers ? { color: 'white' } : {}}
             >
               {item.title}
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className={isEn ? '' : 'rotate-180'}><polyline points="9 18 15 12 9 6" /></svg>
             </NavLink>
-          ))}
+          )})}
         </div>
       </div>
     </div>

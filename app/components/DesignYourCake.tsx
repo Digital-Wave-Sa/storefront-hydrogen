@@ -138,7 +138,7 @@ export function DesignYourCake() {
 
                         {/* CTA Button */}
                         <Link
-                            to={isEn ? "/en/collections/custom-cakes" : "/collections/custom-cakes"}
+                            to={isEn ? "/en/custom-cake" : "/custom-cake"}
                             className="py-5 bg-[#234745] hover:bg-[#264f3e] rounded-full transition-all shadow-lg hover:shadow-xl w-full md:w-[40%] text-center shrink-0 whitespace-nowrap flex items-center justify-center"
                             style={{ fontFamily: "'GE Dinar One', sans-serif", fontWeight: 700, fontSize: '16px', color: '#ffffff', lineHeight: '100%' }}
                         >

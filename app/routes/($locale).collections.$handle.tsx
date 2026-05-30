@@ -119,35 +119,33 @@ export default function Collection() {
 
   return (
     <div className="collection-page" dir={isEn ? 'ltr' : 'rtl'}>
-      <Analytics.CollectionView collection={collection} />
+      <Analytics.CollectionView data={{ collection: { id: collection.id, handle: collection.handle } }} />
       {/* SEO Structured Data */}
-      {typeof document !== 'undefined' && (
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
-              "@context": "https://schema.org",
-              "@type": "CollectionPage",
-              "name": collection.title,
-              "description": collection.description,
-              "url": `${typeof window !== 'undefined' ? window.location.origin : ''}${isEn ? `/en/collections/${collection.handle}` : `/collections/${collection.handle}`}`,
-              ...(collection.image && { "image": collection.image.url }),
-              "mainEntity": {
-                "@type": "ItemList",
-                "itemListElement": collection.products.nodes.map((product: any, index: number) => ({
-                    "@type": "ListItem",
-                    "position": index + 1,
-                    "item": {
-                      "@type": "Product",
-                      "name": product.title,
-                      "url": `${typeof window !== 'undefined' ? window.location.origin : ''}${isEn ? `/en/products/${product.handle}` : `/products/${product.handle}`}`
-                    }
-                }))
-              }
-            })
-          }}
-        />
-      )}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "CollectionPage",
+            "name": collection.title,
+            "description": collection.description,
+            "url": `https://saadeddin.com${isEn ? `/en/collections/${collection.handle}` : `/collections/${collection.handle}`}`,
+            ...(collection.image && { "image": collection.image.url }),
+            "mainEntity": {
+              "@type": "ItemList",
+              "itemListElement": collection.products.nodes.map((product: any, index: number) => ({
+                  "@type": "ListItem",
+                  "position": index + 1,
+                  "item": {
+                    "@type": "Product",
+                    "name": product.title,
+                    "url": `https://saadeddin.com${isEn ? `/en/products/${product.handle}` : `/products/${product.handle}`}`
+                  }
+              }))
+            }
+          })
+        }}
+      />
 
       {/* 1. Header Hero Section */}
       <CollectionHero collection={collection} />

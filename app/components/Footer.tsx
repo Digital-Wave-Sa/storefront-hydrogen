@@ -1,7 +1,7 @@
 import { NavLink, Await, useOutletContext } from 'react-router';
 import { Suspense } from 'react';
 import type { FooterQuery } from 'storefrontapi.generated';
-import { Button } from './layout/Button';
+import { LogoSplash } from './LogoSplash';
 
 export function Footer({ footer }: { footer: Promise<FooterQuery | null>; header: any; publicStoreDomain: string }) {
   const context = useOutletContext<{ locale?: string }>() || {};
@@ -11,164 +11,179 @@ export function Footer({ footer }: { footer: Promise<FooterQuery | null>; header
     <Suspense fallback={null}>
       <Await resolve={footer}>
         {(footerData) => {
-          const menu = footerData?.menu;
           return (
-    <footer dir={isEn ? 'ltr' : 'rtl'} className={`w-full ${isEn ? 'font-en text-left' : 'font-ar text-right'} bg-[#234745] text-white pt-14 pb-4`}>
-      <div className="max-w-[1400px] mx-auto px-6 xl:px-10">
+            <footer dir={isEn ? 'ltr' : 'rtl'} className="w-full bg-[#234745] flex flex-col items-center pt-12 pb-10" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
+              <div className="w-full max-w-[1280px] flex flex-col items-center gap-10 px-6">
+                
+                {/* Logo Section */}
+                <div style={{ width: '162px' }}>
+                  <LogoSplash />
+                </div>
 
-        {/* TOP ROW: 5 Columns */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10 lg:gap-6 mb-14">
+                {/* Columns Section */}
+                <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10 lg:gap-8 border-b border-[#BBCFCD]/50 pb-10">
+                  
+                  {/* Col 1: Future is Sweet */}
+                  <div className="flex flex-col items-start gap-4">
+                    <h3 className="font-bold text-[16px] leading-[20px] text-[#FFFFFF]">
+                      {isEn ? 'The future is sweet!' : 'المستقبل حلو!'}
+                    </h3>
+                    <p className="font-medium text-[16px] leading-[20px] text-[#D2D2D2] text-start max-w-[280px]">
+                      {isEn ? 'Since 1919, we have been offering the finest sweets and luxury chocolate with love and passion.' : 'منذ عام ١٩١٩، نقدم أجود الحلويات والشوكولاتة الفاخرة بعشق وشغف.'}
+                    </p>
+                    {/* Social Icons */}
+                    <div className="flex flex-row flex-wrap items-center gap-2 mt-2">
+                      <a href="#" aria-label="X" className="hover:opacity-80 transition-opacity">
+                        <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <rect width="40" height="40" rx="20" fill="#EED5D7"/>
+                          <g clipPath="url(#clip0_462_16121)">
+                            <mask id="mask0_462_16121" style={{ maskType: 'luminance' }} maskUnits="userSpaceOnUse" x="8" y="8" width="24" height="24">
+                              <path d="M8 8H32V32H8V8Z" fill="white"/>
+                            </mask>
+                            <g mask="url(#mask0_462_16121)">
+                              <path d="M26.9 9.12451H30.5806L22.5406 18.3371L32 30.8754H24.5943L18.7897 23.2725L12.1554 30.8754H8.47143L17.0703 21.0182L8 9.12623H15.5943L20.8331 16.0742L26.9 9.12451ZM25.6057 28.6674H27.6457L14.48 11.2177H12.2926L25.6057 28.6674Z" fill="#234745"/>
+                            </g>
+                          </g>
+                          <defs>
+                            <clipPath id="clip0_462_16121">
+                              <rect width="24" height="24" fill="white" transform="translate(8 8)"/>
+                            </clipPath>
+                          </defs>
+                        </svg>
+                      </a>
+                      <a href="#" aria-label="Snapchat" className="hover:opacity-80 transition-opacity">
+                        <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <rect width="40" height="40" rx="20" fill="#EED5D7"/>
+                          <path d="M19.8708 29.765C18.6808 29.765 17.8868 29.203 17.1778 28.708C16.6738 28.351 16.2018 28.012 15.6448 27.918C15.3795 27.8726 15.1108 27.8505 14.8418 27.852C14.3698 27.852 13.9948 27.923 13.7278 27.977C13.5578 28.007 13.4158 28.035 13.3038 28.035C13.1878 28.035 13.0408 28.003 12.9838 27.807C12.9338 27.647 12.9028 27.495 12.8718 27.348C12.7918 26.978 12.7248 26.751 12.5858 26.728C11.0968 26.501 10.2058 26.158 10.0318 25.752C10.0178 25.708 10.0008 25.662 10.0008 25.627C9.99076 25.503 10.0808 25.4 10.2058 25.377C11.3868 25.182 12.4478 24.553 13.3438 23.519C14.0398 22.716 14.3788 21.94 14.4098 21.856C14.4098 21.846 14.4188 21.846 14.4188 21.846C14.5894 21.4947 14.6234 21.1963 14.5208 20.951C14.3288 20.491 13.6958 20.295 13.2638 20.161C13.1528 20.131 13.0588 20.095 12.9788 20.068C12.6088 19.921 11.9928 19.608 12.0738 19.176C12.1318 18.864 12.5458 18.641 12.8848 18.641C12.9788 18.6397 13.0588 18.6563 13.1248 18.691C13.5048 18.864 13.8478 18.953 14.1418 18.953C14.5078 18.953 14.6818 18.815 14.7258 18.771C14.7164 18.5732 14.7048 18.3755 14.6908 18.178C14.6008 16.813 14.4988 15.119 14.9308 14.148C16.2288 11.241 18.9838 11.008 19.7998 11.008L20.1558 11H20.2058C21.0208 11 23.7758 11.227 25.0738 14.139C25.5108 15.11 25.4038 16.809 25.3138 18.169L25.3048 18.236C25.2968 18.418 25.2828 18.592 25.2748 18.771C25.3188 18.806 25.4788 18.94 25.8088 18.944C26.0948 18.936 26.4068 18.842 26.7628 18.681C26.8613 18.6383 26.9674 18.6158 27.0748 18.615C27.1998 18.615 27.3248 18.645 27.4318 18.681H27.4408C27.7398 18.793 27.9358 19.002 27.9358 19.221C27.9448 19.426 27.7838 19.738 27.0218 20.046C26.9418 20.076 26.8478 20.113 26.7368 20.139C26.3128 20.269 25.6798 20.474 25.4788 20.929C25.3678 21.169 25.4118 21.477 25.5818 21.825C25.5818 21.833 25.5908 21.833 25.5908 21.833C25.6398 21.958 26.9278 24.883 29.7948 25.36C29.8534 25.3699 29.9064 25.4006 29.9441 25.4466C29.9818 25.4926 30.0016 25.5506 29.9998 25.61C30.0004 25.6547 29.9901 25.6977 29.9688 25.739C29.7948 26.149 28.9118 26.483 27.4138 26.715C27.2758 26.737 27.2088 26.965 27.1288 27.335C27.0969 27.4892 27.0599 27.6423 27.0178 27.794C26.9728 27.941 26.8788 28.021 26.7178 28.021H26.6968C26.5542 28.0184 26.4122 28.002 26.2728 27.972C25.9062 27.894 25.5325 27.8551 25.1578 27.856C24.8891 27.8567 24.6209 27.8792 24.3558 27.923C23.8028 28.013 23.3258 28.356 22.8218 28.713C22.1038 29.203 21.3058 29.765 20.1248 29.765H19.8708Z" fill="#234745"/>
+                        </svg>
+                      </a>
+                      <a href="#" aria-label="YouTube" className="hover:opacity-80 transition-opacity">
+                        <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <rect width="40" height="40" rx="20" fill="#EED5D7"/>
+                          <path d="M18 23L23.19 20L18 17V23ZM29.56 15.17C29.69 15.64 29.78 16.27 29.84 17.07C29.91 17.87 29.94 18.56 29.94 19.16L30 20C30 22.19 29.84 23.8 29.56 24.83C29.31 25.73 28.73 26.31 27.83 26.56C27.36 26.69 26.5 26.78 25.18 26.84C23.88 26.91 22.69 26.94 21.59 26.94L20 27C15.81 27 13.2 26.84 12.17 26.56C11.27 26.31 10.69 25.73 10.44 24.83C10.31 24.36 10.22 23.73 10.16 22.93C10.09 22.13 10.06 21.44 10.06 20.84L10 20C10 17.81 10.16 16.2 10.44 15.17C10.69 14.27 11.27 13.69 12.17 13.44C12.64 13.31 13.5 13.22 14.82 13.16C16.12 13.09 17.31 13.06 18.41 13.06L20 13C24.19 13 26.8 13.16 27.83 13.44C28.73 13.69 29.31 14.27 29.56 15.17Z" fill="#234745"/>
+                        </svg>
+                      </a>
+                      <a href="#" aria-label="Facebook" className="hover:opacity-80 transition-opacity">
+                        <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <rect width="40" height="40" rx="20" fill="#EED5D7"/>
+                          <path d="M22 21.5H24.5L25.5 17.5H22V15.5C22 14.47 22 13.5 24 13.5H25.5V10.14C25.174 10.097 23.943 10 22.643 10C19.928 10 18 11.657 18 14.7V17.5H15V21.5H18V30H22V21.5Z" fill="#234745"/>
+                        </svg>
+                      </a>
+                      <a href="#" aria-label="WhatsApp" className="hover:opacity-80 transition-opacity">
+                        <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <rect width="40" height="40" rx="20" fill="#EED5D7"/>
+                          <path d="M20 8C26.6276 8 32 13.3724 32 20C32 26.6276 26.6276 32 20 32C17.8793 32.0034 15.796 31.4422 13.964 30.374L8.00482 32L9.62722 26.0384C8.55813 24.2058 7.99647 22.1216 8.00002 20C8.00002 13.3724 13.3724 8 20 8ZM15.9104 14.36L15.6704 14.3696C15.515 14.3791 15.3632 14.4199 15.224 14.4896C15.0938 14.5633 14.975 14.6555 14.8712 14.7632C14.7272 14.8988 14.6456 15.0164 14.558 15.1304C14.1142 15.7075 13.8752 16.416 13.8788 17.144C13.8812 17.732 14.0348 18.3044 14.2748 18.8396C14.7656 19.922 15.5732 21.068 16.6388 22.13C16.8956 22.3856 17.1476 22.6424 17.4188 22.8812C18.7429 24.0469 20.3207 24.8876 22.0268 25.3364L22.7084 25.4408C22.9304 25.4528 23.1524 25.436 23.3756 25.4252C23.7251 25.4071 24.0663 25.3125 24.3752 25.148C24.5324 25.067 24.6857 24.979 24.8348 24.884C24.8348 24.884 24.8864 24.8504 24.9848 24.776C25.1468 24.656 25.2464 24.5708 25.3808 24.4304C25.4804 24.3272 25.5668 24.206 25.6328 24.068C25.7264 23.8724 25.82 23.4992 25.8584 23.1884C25.8872 22.9508 25.8788 22.8212 25.8752 22.7408C25.8704 22.6124 25.7636 22.4792 25.6472 22.4228L24.9488 22.1096C24.9488 22.1096 23.9048 21.6548 23.2664 21.3644C23.1996 21.3352 23.128 21.3185 23.0552 21.3152C22.9731 21.3068 22.8901 21.316 22.8119 21.3423C22.7337 21.3686 22.662 21.4113 22.6016 21.4676C22.5956 21.4652 22.5152 21.5336 21.6476 22.5848C21.5978 22.6517 21.5292 22.7023 21.4506 22.7301C21.3719 22.7578 21.2868 22.7616 21.206 22.7408C21.1278 22.7198 21.0512 22.6934 20.9768 22.6616C20.828 22.5992 20.7764 22.5752 20.6744 22.532C19.9857 22.2314 19.348 21.8254 18.7844 21.3284C18.6332 21.1964 18.4928 21.0524 18.3488 20.9132C17.8767 20.4611 17.4653 19.9496 17.1248 19.3916L17.054 19.2776C17.0032 19.201 16.962 19.1184 16.9316 19.0316C16.886 18.8552 17.0048 18.7136 17.0048 18.7136C17.0048 18.7136 17.2964 18.3944 17.432 18.2216C17.564 18.0536 17.6756 17.8904 17.7476 17.774C17.8892 17.546 17.9336 17.312 17.8592 17.1308C17.5232 16.31 17.1752 15.4928 16.8176 14.6816C16.7468 14.5208 16.5368 14.4056 16.346 14.3828C16.2812 14.3756 16.2164 14.3684 16.1516 14.3636C15.9905 14.3556 15.829 14.3572 15.668 14.3684L15.9104 14.36Z" fill="#234745"/>
+                        </svg>
+                      </a>
+                      <a href="#" aria-label="Instagram" className="hover:opacity-80 transition-opacity">
+                        <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <rect width="40" height="39.9993" rx="19.9997" fill="#EED5D7"/>
+                          <path d="M21.2336 8C22.5835 8.0036 23.2687 8.0108 23.8603 8.0276L24.0931 8.036C24.3619 8.0456 24.627 8.0576 24.9474 8.072C26.2242 8.13199 27.0953 8.33358 27.8597 8.62997C28.6516 8.93475 29.3188 9.34753 29.986 10.0135C30.5961 10.6133 31.0683 11.3389 31.3695 12.1398C31.6659 12.9041 31.8675 13.7753 31.9275 15.0532C31.9419 15.3724 31.9539 15.6376 31.9635 15.9076L31.9707 16.1404C31.9887 16.7308 31.9959 17.4159 31.9983 18.7658L31.9995 19.661V21.2329C32.0024 22.1082 31.9932 22.9834 31.9719 23.8584L31.9647 24.0912C31.9551 24.3612 31.9431 24.6263 31.9287 24.9455C31.8687 26.2235 31.6647 27.0934 31.3695 27.859C31.0691 28.6603 30.5969 29.386 29.986 29.9853C29.386 30.5952 28.6604 31.0673 27.8597 31.3688C27.0953 31.6652 26.2242 31.8668 24.9474 31.9268C24.6627 31.9402 24.3779 31.9522 24.0931 31.9628L23.8603 31.97C23.2687 31.9868 22.5835 31.9952 21.2336 31.9976L20.3385 31.9988H18.7677C17.8921 32.0018 17.0165 31.9926 16.1411 31.9712L15.9083 31.964C15.6234 31.9532 15.3386 31.9408 15.0539 31.9268C13.7772 31.8668 12.906 31.6652 12.1405 31.3688C11.3397 31.0681 10.6144 30.5959 10.0154 29.9853C9.40467 29.3856 8.93211 28.66 8.63066 27.859C8.33428 27.0946 8.13269 26.2235 8.07269 24.9455C8.05932 24.6608 8.04732 24.376 8.03669 24.0912L8.03069 23.8584C8.00858 22.9834 7.99858 22.1082 8.00069 21.2329V18.7658C7.99734 17.8906 8.00614 17.0154 8.02709 16.1404L8.03549 15.9076C8.04509 15.6376 8.05709 15.3724 8.07149 15.0532C8.13149 13.7753 8.33308 12.9053 8.62946 12.1398C8.93078 11.3381 9.40428 10.6123 10.0166 10.0135C10.6155 9.4033 11.3403 8.93114 12.1405 8.62997C12.906 8.33358 13.776 8.13199 15.0539 8.072C15.3731 8.0576 15.6395 8.0456 15.9083 8.036L16.1411 8.0288C17.0161 8.00748 17.8913 7.99828 18.7665 8.0012L21.2336 8ZM20.0001 13.9997C18.4089 13.9997 16.8828 14.6318 15.7577 15.757C14.6325 16.8821 14.0004 18.4082 14.0004 19.9994C14.0004 21.5906 14.6325 23.1166 15.7577 24.2418C16.8828 25.367 18.4089 25.9991 20.0001 25.9991C21.5913 25.9991 23.1173 25.367 24.2425 24.2418C25.3677 23.1166 25.9998 21.5906 25.9998 19.9994C25.9998 18.4082 25.3677 16.8821 24.2425 15.757C23.1173 14.6318 21.5913 13.9997 20.0001 13.9997ZM20.0001 16.3996C20.4728 16.3995 20.9409 16.4925 21.3777 16.6734C21.8145 16.8542 22.2114 17.1193 22.5457 17.4535C22.88 17.7877 23.1453 18.1845 23.3262 18.6212C23.5072 19.058 23.6004 19.526 23.6005 19.9988C23.6006 20.4715 23.5075 20.9396 23.3267 21.3764C23.1459 21.8132 22.8808 22.2101 22.5466 22.5444C22.2123 22.8787 21.8155 23.144 21.3788 23.325C20.9421 23.5059 20.474 23.5991 20.0013 23.5992C19.0465 23.5992 18.1309 23.2199 17.4558 22.5448C16.7807 21.8697 16.4015 20.9541 16.4015 19.9994C16.4015 19.0447 16.7807 18.129 17.4558 17.4539C18.1309 16.7788 19.0465 16.3996 20.0013 16.3996M26.301 12.1998C25.9032 12.1998 25.5216 12.3578 25.2403 12.6391C24.9591 12.9204 24.801 13.3019 24.801 13.6997C24.801 14.0975 24.9591 14.479 25.2403 14.7603C25.5216 15.0416 25.9032 15.1996 26.301 15.1996C26.6988 15.1996 27.0803 15.0416 27.3616 14.7603C27.6429 14.479 27.8009 14.0975 27.8009 13.6997C27.8009 13.3019 27.6429 12.9204 27.3616 12.6391C27.0803 12.3578 26.6988 12.1998 26.301 12.1998Z" fill="#234745"/>
+                        </svg>
+                      </a>
+                    </div>
+                  </div>
 
-          {/* Column 5 (rightmost in RTL): Logo & About */}
-          <div className={`flex flex-col items-center ${isEn ? 'lg:items-start' : 'lg:items-end'} lg:col-span-1 order-first`}>
-            <div className={`mb-5 flex flex-col items-center ${isEn ? 'lg:items-start' : 'lg:items-end'}`}>
-              <img
-                src="https://saadeddin.com/cdn/shop/files/LOGO1_b5cc5efb-bb01-4475-a0bc-cfc9d2f654b1_350x.png"
-                alt="Saadeddin"
-                className="brightness-0 invert mb-3"
-                style={{ height: '65px', objectFit: 'contain' }}
-              />
-              <h3 className="text-[18px] font-bold mb-2">{isEn ? 'Future is Sweet!' : 'المستقبل حلو!'}</h3>
-              <p className={`text-[13px] leading-relaxed text-white/70 text-center ${isEn ? 'lg:text-left' : 'lg:text-right'} max-w-[280px]`}>
-                {isEn ? 'Since 1979, we have been offering the finest sweets and luxury chocolate with love and passion.' : 'منذ عام ١٩٧٩، نقدم أجود الحلويات والشوكولاتة الفاخرة بعشق وشغف.'}
-              </p>
-            </div>
+                  {/* Col 2: Quick Links */}
+                  <div className="flex flex-col items-start gap-6">
+                    <h3 className="font-bold text-[18px] leading-[22px] text-[#BBCFCD]">
+                      {isEn ? 'Quick Links' : 'روابط سريعة'}
+                    </h3>
+                    <div className="flex flex-col items-start gap-4" style={{ color: '#D2D2D2' }}>
+                      <NavLink to={isEn ? "/en" : "/"} className="font-medium text-[16px] hover:text-white transition-colors">{isEn ? 'Home' : 'الرئيسية'}</NavLink>
+                      <NavLink to={isEn ? "/en/custom-cake" : "/custom-cake"} className="font-medium text-[16px] hover:text-white transition-colors">{isEn ? 'Design Your Cake' : 'صمم كيكتك'}</NavLink>
+                      <NavLink to={isEn ? "/en/pages/loyalty" : "/pages/loyalty"} className="font-medium text-[16px] hover:text-white transition-colors">{isEn ? 'Loyalty Program' : 'برنامج الولاء'}</NavLink>
+                      <NavLink to={isEn ? "/en/collections/offers" : "/collections/offers"} className="font-medium text-[16px] hover:text-white transition-colors">{isEn ? 'Our Offers' : 'عروضنا'}</NavLink>
+                      <NavLink to={isEn ? "/en/pages/branches" : "/pages/branches"} className="font-medium text-[16px] hover:text-white transition-colors">{isEn ? 'Our Branches' : 'فروعنا'}</NavLink>
+                    </div>
+                  </div>
 
-            {/* Social Icons */}
-            <div className={`flex items-center gap-4 mt-3 justify-center ${isEn ? 'lg:justify-start' : 'lg:justify-end'} w-full`}>
-              <Button
-                to="#"
-                aria-label="Facebook"
-                variant="ghost"
-                size="sm"
-                className="w-9 h-9 p-0 rounded-full bg-white/10 hover:bg-white/20 text-white"
-                icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M14 13.5h2.5l1-4H14v-2c0-1.03 0-2 2-2h1.5V2.14c-.326-.043-1.557-.14-2.857-.14C11.928 2 10 3.657 10 6.7v2.8H7v4h3V22h4v-8.5z" /></svg>}
-              />
-              <Button
-                to="#"
-                aria-label="WhatsApp"
-                variant="ghost"
-                size="sm"
-                className="w-9 h-9 p-0 rounded-full bg-white/10 hover:bg-white/20 text-white"
-                icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M19.05 4.91A9.816 9.816 0 0012.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2 22l5.25-1.38c1.45.79 3.08 1.21 4.79 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01zM12.04 19.93c-1.48 0-2.93-.4-4.2-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a7.89 7.89 0 01-1.2-4.16c0-4.36 3.55-7.91 7.91-7.91 2.11 0 4.1.82 5.59 2.32 1.5 1.49 2.32 3.48 2.32 5.59 0 4.36-3.55 7.91-7.91 7.91zm4.34-5.93c-.24-.12-1.42-.7-1.64-.78-.22-.08-.38-.12-.54.12-.16.24-.62.78-.76.94-.14.16-.28.18-.52.06-1.54-.74-2.61-1.34-3.6-2.55-.26-.32-.03-.49.1-.61.1-.1.24-.28.36-.42.12-.14.16-.24.24-.4.08-.16.04-.3-.02-.42-.06-.12-.54-1.3-.74-1.78-.2-.48-.4-.41-.54-.42l-.46-.02c-.16 0-.42.06-.64.3-.22.24-.84.82-.84 2s.86 2.32.98 2.48c.12.16 1.68 2.57 4.08 3.55 1.4.58 1.98.62 2.74.52.42-.06 1.42-.58 1.62-1.14.2-.56.2-1.04.14-1.14-.06-.1-.22-.16-.46-.28z" /></svg>}
-              />
-              <Button
-                to="#"
-                aria-label="Instagram"
-                variant="ghost"
-                size="sm"
-                className="w-9 h-9 p-0 rounded-full bg-white/10 hover:bg-white/20 text-white"
-                icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4s1.791-4 4-4 4 1.79 4 4-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" /></svg>}
-              />
-            </div>
-          </div>
+                  {/* Col 3: Products */}
+                  <div className="flex flex-col items-start gap-6">
+                    <h3 className="font-bold text-[18px] leading-[22px] text-[#BBCFCD]">
+                      {isEn ? 'Products' : 'المنتجات'}
+                    </h3>
+                    <div className="flex flex-col items-start gap-4" style={{ color: '#D2D2D2' }}>
+                      <NavLink to={isEn ? "/en/collections/dark-chocolate" : "/collections/dark-chocolate"} className="font-medium text-[16px] hover:text-white transition-colors">{isEn ? 'Dark Chocolate' : 'الشوكولاتة الداكنة'}</NavLink>
+                      <NavLink to={isEn ? "/en/custom-cake" : "/custom-cake"} className="font-medium text-[16px] hover:text-white transition-colors">{isEn ? 'Custom Cakes' : 'الكيك المخصص'}</NavLink>
+                      <NavLink to={isEn ? "/en/collections/oriental" : "/collections/oriental"} className="font-medium text-[16px] hover:text-white transition-colors">{isEn ? 'Oriental Sweets' : 'الحلويات الشرقية'}</NavLink>
+                      <NavLink to={isEn ? "/en/collections/gift-boxes" : "/collections/gift-boxes"} className="font-medium text-[16px] hover:text-white transition-colors">{isEn ? 'Gift Boxes' : 'صناديق الهدايا'}</NavLink>
+                      <NavLink to={isEn ? "/en/collections/arabic-coffee" : "/collections/arabic-coffee"} className="font-medium text-[16px] hover:text-white transition-colors">{isEn ? 'Arabic Coffee' : 'القهوة العربية'}</NavLink>
+                    </div>
+                  </div>
 
-          {/* Column 4: Quick Links */}
-          <div className={`flex flex-col text-center ${isEn ? 'lg:text-left' : 'lg:text-right'}`}>
-            <h3 className="text-[16px] font-bold mb-6 pb-3 border-b border-white/10 text-white">{isEn ? 'Quick Links' : 'روابط سريعة'}</h3>
-            <ul className="space-y-3.5 text-[14px] font-medium">
-              <li><NavLink to={isEn ? "/en" : "/"} className="text-white/70 hover:text-white transition-colors">{isEn ? 'Home' : 'الرئيسية'}</NavLink></li>
-              <li><NavLink to={isEn ? "/en/pages/design-cake" : "/pages/design-cake"} className="text-white/70 hover:text-white transition-colors">{isEn ? 'Design Your Cake' : 'صمم كيكتك'}</NavLink></li>
-              <li><NavLink to={isEn ? "/en/pages/loyalty" : "/pages/loyalty"} className="text-white/70 hover:text-white transition-colors">{isEn ? 'Loyalty Program' : 'برنامج الولاء'}</NavLink></li>
-              <li><NavLink to={isEn ? "/en/collections/offers" : "/collections/offers"} className="text-white/70 hover:text-white transition-colors">{isEn ? 'Our Offers' : 'عروضنا'}</NavLink></li>
-              <li><NavLink to={isEn ? "/en/pages/branches" : "/pages/branches"} className="text-white/70 hover:text-white transition-colors">{isEn ? 'Our Branches' : 'فروعنا'}</NavLink></li>
-              <li><NavLink to={isEn ? "/en/pages/about" : "/pages/about"} className="text-white/70 hover:text-white transition-colors">{isEn ? 'About Us' : 'عن سعد الدين'}</NavLink></li>
-            </ul>
-          </div>
+                  {/* Col 4: Customer Service */}
+                  <div className="flex flex-col items-start gap-6">
+                    <h3 className="font-bold text-[18px] leading-[22px] text-[#BBCFCD]">
+                      {isEn ? 'Customer Service' : 'خدمة العملاء'}
+                    </h3>
+                    <div className="flex flex-col items-start gap-4" style={{ color: '#D2D2D2' }}>
+                      <NavLink to={isEn ? "/en/pages/track-order" : "/pages/track-order"} className="font-medium text-[16px] hover:text-white transition-colors">{isEn ? 'Track Your Order' : 'تتبع طلبك'}</NavLink>
+                      <NavLink to={isEn ? "/en/pages/returns" : "/pages/returns"} className="font-medium text-[16px] hover:text-white transition-colors">{isEn ? 'Return Policy' : 'سياسة الاسترجاع'}</NavLink>
+                      <NavLink to={isEn ? "/en/pages/faq" : "/pages/faq"} className="font-medium text-[16px] hover:text-white transition-colors">{isEn ? 'FAQs' : 'الأسئلة الشائعة'}</NavLink>
+                      <NavLink to={isEn ? "/en/collections/offers" : "/collections/offers"} className="font-medium text-[16px] hover:text-white transition-colors">{isEn ? 'Our Offers' : 'عروضنا'}</NavLink>
+                      <NavLink to={isEn ? "/en/pages/contact" : "/pages/contact"} className="font-medium text-[16px] hover:text-white transition-colors">{isEn ? 'Contact Us' : 'تواصل معنا'}</NavLink>
+                    </div>
+                  </div>
 
-          {/* Column 3: Products */}
-          <div className={`flex flex-col text-center ${isEn ? 'lg:text-left' : 'lg:text-right'}`}>
-            <h3 className="text-[16px] font-bold mb-6 pb-3 border-b border-white/10 text-white">{isEn ? 'Products' : 'المنتجات'}</h3>
-            <ul className="space-y-3.5 text-[14px] font-medium">
-              <li><NavLink to={isEn ? "/en/collections/dark-chocolate" : "/collections/dark-chocolate"} className="text-white/70 hover:text-white transition-colors">{isEn ? 'Dark Chocolate' : 'الشوكولاتة الداكنة'}</NavLink></li>
-              <li><NavLink to={isEn ? "/en/collections/custom-cakes" : "/collections/custom-cakes"} className="text-white/70 hover:text-white transition-colors">{isEn ? 'Custom Cakes' : 'الكيك المخصص'}</NavLink></li>
-              <li><NavLink to={isEn ? "/en/collections/oriental" : "/collections/oriental"} className="text-white/70 hover:text-white transition-colors">{isEn ? 'Oriental Sweets' : 'الحلويات الشرقية'}</NavLink></li>
-              <li><NavLink to={isEn ? "/en/collections/gift-boxes" : "/collections/gift-boxes"} className="text-white/70 hover:text-white transition-colors">{isEn ? 'Gift Boxes' : 'صناديق الهدايا'}</NavLink></li>
-              <li><NavLink to={isEn ? "/en/collections/arabic-coffee" : "/collections/arabic-coffee"} className="text-white/70 hover:text-white transition-colors">{isEn ? 'Arabic Coffee' : 'القهوة العربية'}</NavLink></li>
-            </ul>
-          </div>
+                  {/* Col 5: Contact Us */}
+                  <div className="flex flex-col items-start gap-6">
+                    <h3 className="font-bold text-[18px] leading-[22px] text-[#BBCFCD]">
+                      {isEn ? 'Contact Us' : 'تواصل معنا'}
+                    </h3>
+                    <div className="flex flex-col items-start gap-4 w-full">
+                      <p className="text-[#D2D2D2] font-medium text-[16px]" style={{ fontFamily: isEn ? 'sans-serif' : "'GE Dinar One', sans-serif" }}>{isEn ? '920000123' : '٩٢٠٠٠٠١٢٣'}</p>
+                      <p className="text-[#D2D2D2] font-medium text-[16px] font-sans" dir="ltr">info@saadeddin.com</p>
+                      <p className="text-[#D2D2D2] font-medium text-[16px] max-w-[200px]">
+                        {isEn ? 'Riyadh, Saudi Arabia' : 'الرياض، المملكة العربية السعودية'}
+                      </p>
+                      
+                      {/* App Buttons */}
+                      <div className="flex flex-col gap-3 mt-2" dir="ltr">
+                        {/* App Store */}
+                        <a href="#" className="w-[144px] h-[48px] bg-black border border-[#A6A6A6] rounded-[7.2px] flex items-center justify-center gap-[6px] hover:bg-zinc-900 transition-colors">
+                          <svg className="w-[20px] h-[24px]" viewBox="0 0 384 512" fill="white">
+                            <path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z"/>
+                          </svg>
+                          <div className="flex flex-col items-start leading-none gap-0.5 pt-0.5">
+                            <span className="text-white text-[10px]" style={{ fontFamily: "'SF Compact Text', sans-serif" }}>Download on the</span>
+                            <span className="text-white text-[20px] font-medium tracking-tight" style={{ fontFamily: "'SF Compact Display', sans-serif" }}>App Store</span>
+                          </div>
+                        </a>
+                        
+                        {/* Google Play */}
+                        <a href="#" className="w-[144px] h-[48px] bg-black border border-[#A6A6A6] rounded-[7.2px] flex items-center justify-center gap-[6px] hover:bg-zinc-900 transition-colors">
+                          <svg className="w-[20px] h-[22px]" viewBox="0 0 512 512">
+                            <path fill="#4285F4" d="M26.9 44.7c-2 2-3.1 5.3-3.1 9.4v403.8c0 4.1 1.1 7.3 3.1 9.4L29 469.5l246.3-245.8v-3.4L29 22.5l-2.1 22.2z"/>
+                            <path fill="#EA4335" d="M366.1 366.1l-90.8-90.8v-3.4L366.1 181 483 247.3c16.6 9.4 16.6 24.8 0 34.3L366.1 366.1z"/>
+                            <path fill="#FBBC04" d="M26.9 44.7L275.3 272.2 366.1 181 54.3 3.6C39.5-4.8 26.9 2.2 26.9 22.5v22.2z"/>
+                            <path fill="#34A853" d="M26.9 467.3v22.2c0 20.3 12.6 27.3 27.4 18.9L366.1 331 275.3 240.2 26.9 467.3z"/>
+                          </svg>
+                          <div className="flex flex-col items-start leading-none gap-0.5 pt-0.5">
+                            <span className="text-white text-[10px] uppercase font-medium" style={{ fontFamily: "'Product Sans', sans-serif" }}>GET IT ON</span>
+                            <span className="text-white text-[18px] font-medium tracking-tight" style={{ fontFamily: "'Product Sans', sans-serif" }}>Google Play</span>
+                          </div>
+                        </a>
+                      </div>
+                    </div>
+                  </div>
 
-          {/* Column 2: Customer Service */}
-          <div className={`flex flex-col text-center ${isEn ? 'lg:text-left' : 'lg:text-right'}`}>
-            <h3 className="text-[16px] font-bold mb-6 pb-3 border-b border-white/10 text-white">{isEn ? 'Customer Service' : 'خدمة العملاء'}</h3>
-            <ul className="space-y-3.5 text-[14px] font-medium">
-              <li><NavLink to={isEn ? "/en/pages/track-order" : "/pages/track-order"} className="text-white/70 hover:text-white transition-colors">{isEn ? 'Track Your Order' : 'تتبع طلبك'}</NavLink></li>
-              <li><NavLink to={isEn ? "/en/pages/returns" : "/pages/returns"} className="text-white/70 hover:text-white transition-colors">{isEn ? 'Return Policy' : 'سياسة الاسترجاع'}</NavLink></li>
-              <li><NavLink to={isEn ? "/en/pages/faq" : "/pages/faq"} className="text-white/70 hover:text-white transition-colors">{isEn ? 'FAQs' : 'الأسئلة الشائعة'}</NavLink></li>
-              <li><NavLink to={isEn ? "/en/pages/privacy" : "/pages/privacy"} className="text-white/70 hover:text-white transition-colors">{isEn ? 'Privacy Policy' : 'سياسة الخصوصية'}</NavLink></li>
-              <li><NavLink to={isEn ? "/en/pages/terms" : "/pages/terms"} className="text-white/70 hover:text-white transition-colors">{isEn ? 'Terms of Service' : 'الشروط والأحكام'}</NavLink></li>
-              <li><NavLink to={isEn ? "/en/pages/contact" : "/pages/contact"} className="text-white/70 hover:text-white transition-colors">{isEn ? 'Contact Us' : 'تواصل معنا'}</NavLink></li>
-            </ul>
-          </div>
+                </div>
 
-          {/* Column 1 (leftmost in RTL): Contact Info */}
-          <div className={`flex flex-col text-center ${isEn ? 'lg:text-left' : 'lg:text-right'}`}>
-            <h3 className="text-[16px] font-bold mb-6 pb-3 border-b border-white/10 text-white">{isEn ? 'Contact Us' : 'تواصل معنا'}</h3>
-            <ul className="space-y-4 text-[14px] font-medium">
-              {/* Phone */}
-              <li className={`flex items-center gap-3 justify-center ${isEn ? 'lg:justify-start' : 'lg:justify-end'}`}>
-                {isEn ? null : <span className="text-white/70 font-en tracking-wide">٩٢٠....١٢٣٤</span>}
-                <span className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center shrink-0">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="white" opacity="0.8">
-                    <path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z" />
-                  </svg>
-                </span>
-                {isEn ? <span className="text-white/70 font-en tracking-wide">920....1234</span> : null}
-              </li>
-              {/* Email */}
-              <li className={`flex items-center gap-3 justify-center ${isEn ? 'lg:justify-start' : 'lg:justify-end'}`}>
-                {isEn ? null : <a href="mailto:info@saadeddin.com" className="text-white/70 hover:text-white transition-colors font-en text-[13px]">info@saadeddin.com</a>}
-                <span className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center shrink-0">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="white" opacity="0.8">
-                    <path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z" />
-                  </svg>
-                </span>
-                {isEn ? <a href="mailto:info@saadeddin.com" className="text-white/70 hover:text-white transition-colors font-en text-[13px]">info@saadeddin.com</a> : null}
-              </li>
-              {/* Address */}
-              <li className={`flex items-start gap-3 justify-center ${isEn ? 'lg:justify-start' : 'lg:justify-end'}`}>
-                {isEn ? null : <span className="text-white/70 text-right leading-relaxed">الرياض، المملكة العربية<br />السعودية</span>}
-                <span className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center shrink-0 mt-0.5">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="white" opacity="0.8">
-                    <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
-                  </svg>
-                </span>
-                {isEn ? <span className="text-white/70 text-left leading-relaxed">Riyadh, Saudi Arabia</span> : null}
-              </li>
-            </ul>
+                {/* Bottom Bar */}
+                <div className="w-full flex flex-col md:flex-row justify-between items-center gap-4" style={{ color: '#FEF8EB' }}>
+                  <div className="flex items-center gap-8">
+                    <NavLink to={isEn ? "/en/pages/privacy" : "/pages/privacy"} className="font-medium text-[16px] hover:text-white transition-colors" style={{ color: '#FEF8EB' }}>{isEn ? 'Privacy Policy' : 'سياسة الخصوصية'}</NavLink>
+                    <span className="font-medium text-[16px]" style={{ color: '#FEF8EB' }}>.</span>
+                    <NavLink to={isEn ? "/en/pages/terms" : "/pages/terms"} className="font-medium text-[16px] hover:text-white transition-colors" style={{ color: '#FEF8EB' }}>{isEn ? 'Terms and Conditions' : 'الشروط والاحكام'}</NavLink>
+                  </div>
+                  <div className="font-medium text-[16px]" style={{ color: '#FEF8EB' }}>
+                     {isEn ? '© 2026 Saadeddin — All Rights Reserved' : '© ٢٠٢٦ سعد الدين — جميع الحقوق محفوظة'}
+                  </div>
+                </div>
 
-            {/* App Store Badges */}
-            <div className={`flex flex-col gap-2.5 mt-6 mx-auto lg:mx-0 w-max ${isEn ? 'lg:items-start' : 'lg:items-end'}`} dir="ltr">
-              <Button
-                to="#"
-                variant="ghost"
-                size="sm"
-                className="bg-white/10 hover:bg-white/20 rounded-xl px-5 py-2 flex items-center justify-between gap-3 min-w-[160px] border border-white/5"
-                rightIcon={<svg width="18" height="18" viewBox="0 0 24 24" fill="white" opacity="0.9"><path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.19 2.31-.88 3.5-.8 2.14.06 3.7.99 4.7 2.45-3.32 1.95-2.73 6.09.43 7.39-.77 1.25-1.57 2.42-2.71 3.13h-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z" /></svg>}
-              >
-                App Store
-              </Button>
-              <Button
-                to="#"
-                variant="ghost"
-                size="sm"
-                className="bg-white/10 hover:bg-white/20 rounded-xl px-5 py-2 flex items-center justify-between gap-3 min-w-[160px] border border-white/5"
-                rightIcon={<svg width="18" height="18" viewBox="0 0 24 24" fill="white" opacity="0.9"><path d="M3 20.5v-17c0-.6.3-1 .8-1.3l9.2 9.3-9.2 9.3c-.5-.3-.8-.7-.8-1.3zm13.2-5.5L5.5 21.5l8.2-8.2 2.5 1.7zm1.2-.8l-2.7-1.8 2.7-1.8c.7.4 1.1 1 1.1 1.8s-.4 1.4-1.1 1.8zM5.5 2.5l10.7 6.5-2.5 2.5L5.5 2.5z" /></svg>}
-              >
-                Google Play
-              </Button>
-            </div>
-          </div>
-
-        </div>
-
-        {/* BOTTOM ROW: Copyright */}
-        <div className="border-t border-white/10 pt-5 pb-2 text-center text-[13px] font-medium text-white/50">
-          <p>{isEn ? '© 2026 Saadeddin — All Rights Reserved' : '© ٢٠٢٦ سعد الدين — جميع الحقوق محفوظة'}</p>
-        </div>
-
-      </div>
-    </footer>
+              </div>
+            </footer>
           );
         }}
       </Await>

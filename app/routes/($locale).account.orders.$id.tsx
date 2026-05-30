@@ -16,7 +16,7 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
     return redirect('/account/orders');
   }
 
-  const orderId = atob(params.id);
+  const orderId = decodeURIComponent(params.id);
   const customerAccessToken = await session.get('customerAccessToken');
 
   if (!customerAccessToken) {
@@ -192,10 +192,7 @@ export default function OrderRoute() {
         </div>
       </div>
 
-      {/* Debug Footer - Only visible during setup */}
-      <div className="mt-12 p-4 bg-gray-50 rounded-lg text-center text-xs text-gray-400 font-mono">
-        Debug: Metafield is currently [{rawMetafield}]
-      </div>
+
     </div>
   );
 }

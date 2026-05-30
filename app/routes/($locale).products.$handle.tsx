@@ -328,17 +328,12 @@ export default function Product() {
 
   // Normalized ID comparison to avoid GID mismatch issues
   const isOutOfStock = useMemo(() => {
-    const result = getIsOutOfStock(
+    return getIsOutOfStock(
       selectedLocationId,
       selectedLocationName,
       storeAvailabilityNodes,
       product.selectedVariant?.availableForSale ?? false
     );
-    console.log(`[STOCK DEBUG] Product: ${product.title}, Tags: [${product.tags?.join(', ')}], Location: ${selectedLocationName}, Nodes Found: ${storeAvailabilityNodes.length}, Global Available: ${product.selectedVariant?.availableForSale}, RESULT: ${result ? 'OUT OF STOCK' : 'IN STOCK'}`);
-    if (result && storeAvailabilityNodes.length > 0) {
-        console.log(`[STOCK DEBUG] Nodes:`, JSON.stringify(storeAvailabilityNodes.map((n: any) => ({ loc: n.location.name, id: n.location.id, avail: n.available })), null, 2));
-    }
-    return result;
   }, [selectedLocationId, selectedLocationName, storeAvailabilityNodes, product.selectedVariant]);
 
   // Visibility scheduling — force unavailable if product is not active
@@ -492,8 +487,19 @@ export default function Product() {
       />
 
       <Analytics.ProductView
-        product={product}
-        selectedVariant={selectedVariant!}
+        data={{
+          products: [
+            {
+              id: product.id,
+              title: product.title,
+              price: selectedVariant?.price.amount || '0',
+              vendor: product.vendor,
+              variantId: selectedVariant?.id || '',
+              variantTitle: selectedVariant?.title || '',
+              quantity: 1,
+            },
+          ],
+        }}
       />
 
       {/* Visibility Alert Banner */}

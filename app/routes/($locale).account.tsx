@@ -14,7 +14,7 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
   const isLoggedIn = Boolean(customerAccessToken?.accessToken);
   
   const isAccountHome = pathname === `${localePrefix}/account` || pathname === `${localePrefix}/account/`;
-  const isPrivateRoute = new RegExp(`^${localePrefix}/account/(orders|orders/.*|profile|addresses|addresses/.*|notification-preferences|dashboard|promotions|wishlist)$`).test(pathname);
+  const isPrivateRoute = new RegExp(`^${localePrefix}/account/(orders|orders/.*|profile|addresses|addresses/.*|notification-preferences|dashboard|promotions|wishlist|wallet)$`).test(pathname);
 
   if (!isLoggedIn) {
     if (isPrivateRoute || isAccountHome) {
@@ -39,6 +39,121 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
   }
 
   try {
+    // DEV BYPASS: If we are in dev mode and have a fake token, try to fetch the REAL customer profile via Admin API
+    if (process.env.NODE_ENV === 'development' && customerAccessToken?.accessToken === 'dev-bypass-token') {
+      const savedPhone = session.get('loginOtpPhone');
+      
+      let realCustomer: any = null;
+      let tags: string[] = [];
+      let isAdmin = false;
+
+      if (savedPhone) {
+        try {
+          const { getAdminToken } = await import('~/lib/shopify-admin.server');
+          const adminToken = await getAdminToken(context.env);
+          const queryStr = savedPhone.includes('590910042') 
+            ? encodeURIComponent('email:"motasem.udeh@gmail.com"')
+            : encodeURIComponent(`phone:"${savedPhone}"`);
+          const res = await fetch(`https://${context.env.PUBLIC_STORE_DOMAIN}/admin/api/2023-04/customers/search.json?query=${queryStr}`, {
+            headers: { 'X-Shopify-Access-Token': adminToken, 'Content-Type': 'application/json' },
+          });
+          const { customers } = await res.json();
+          
+          if (customers && customers.length > 0) {
+            const adminCust = customers[0];
+            // Format the admin customer to look like the Storefront API customer fragment
+            tags = adminCust.tags ? adminCust.tags.split(',').map((t: string) => t.trim()) : [];
+            isAdmin = tags.some((tag: string) => {
+              const clean = tag.toLowerCase().replace(/[^a-z0-9]/g, '');
+              return clean === 'admin' || clean === 'branchmanager' || clean === 'manager';
+            });
+
+            realCustomer = {
+              id: `gid://shopify/Customer/${adminCust.id}`,
+              firstName: adminCust.first_name,
+              lastName: adminCust.last_name,
+              email: adminCust.email,
+              phone: adminCust.phone,
+              tags: tags,
+              numberOfOrders: adminCust.orders_count || 0,
+              addresses: {
+                nodes: (adminCust.addresses || []).map((addr: any) => ({
+                  id: `gid://shopify/MailingAddress/${addr.id}`,
+                  firstName: addr.first_name,
+                  lastName: addr.last_name,
+                  address1: addr.address1,
+                  address2: addr.address2,
+                  city: addr.city,
+                  phone: addr.phone,
+                  country: addr.country,
+                  zip: addr.zip
+                }))
+              },
+              defaultAddress: adminCust.default_address ? {
+                id: `gid://shopify/MailingAddress/${adminCust.default_address.id}`,
+                firstName: adminCust.default_address.first_name,
+                lastName: adminCust.default_address.last_name,
+                address1: adminCust.default_address.address1,
+                address2: adminCust.default_address.address2,
+                city: adminCust.default_address.city,
+                phone: adminCust.default_address.phone,
+                country: adminCust.default_address.country,
+                zip: adminCust.default_address.zip
+              } : null
+            };
+          }
+        } catch (e) {
+          console.error('Dev bypass failed to fetch real customer', e);
+        }
+      }
+
+      // Fallback to Motasem's mock if we couldn't find them in Shopify Admin API (due to invalid token)
+      const mockCustomer = realCustomer || {
+        id: 'gid://shopify/Customer/123456789',
+        firstName: 'Dev',
+        lastName: 'User',
+        email: 'dev@example.com',
+        phone: savedPhone || '+966590000000',
+        tags: ['admin'],
+        numberOfOrders: 0,
+        orders: { nodes: [] },
+        addresses: { nodes: [] },
+      };
+
+      let loyaltyPoints = 0;
+      let balance = 0;
+      try {
+        const middlewareUrl = context.env.MIDDLEWARE_URL || 'https://wh.pryvexapls.com';
+        const branchId = await context.session.get('selectedLocationId');
+        const res = await fetch(`${middlewareUrl}/wallet/balance?user_id=${encodeURIComponent(mockCustomer.id)}&phone=${encodeURIComponent(mockCustomer.phone || '')}`, {
+          headers: { 'x-branch-id': branchId || '1' }
+        });
+        const apiData = await res.json();
+        if (apiData?.success && apiData?.data) {
+          loyaltyPoints = apiData.data.loyalty_points || 0;
+          balance = apiData.data.balance || 0;
+        } else if (apiData && apiData.balance !== undefined) {
+          balance = apiData.balance || 0;
+          if (typeof apiData.loyalty_points === 'object' && apiData.loyalty_points !== null) {
+            loyaltyPoints = apiData.loyalty_points.points || 0;
+          } else {
+            loyaltyPoints = apiData.loyalty_points || 0;
+          }
+        }
+      } catch (e) {}
+
+      return data({
+        isLoggedIn: true,
+        isPrivateRoute,
+        isAccountHome,
+        customer: mockCustomer,
+        isAdmin: realCustomer ? isAdmin : true,
+        googleMapsKey: context.env.PUBLIC_GOOGLE_MAPS_KEY,
+        loyaltyPoints,
+        balance
+      });
+    }
+
     const { customer } = await storefront.query(CUSTOMER_QUERY, {
       variables: {
         customerAccessToken: customerAccessToken.accessToken,
@@ -57,6 +172,28 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
       return clean === 'admin' || clean === 'branchmanager' || clean === 'manager';
     });
 
+    let loyaltyPoints = 0;
+    let balance = 0;
+    try {
+      const middlewareUrl = context.env.MIDDLEWARE_URL || 'https://wh.pryvexapls.com';
+      const branchId = await context.session.get('selectedLocationId');
+      const res = await fetch(`${middlewareUrl}/wallet/balance?user_id=${encodeURIComponent(customer.id)}&phone=${encodeURIComponent(customer.phone || '')}`, {
+        headers: { 'x-branch-id': branchId || '1' }
+      });
+      const apiData = await res.json();
+      if (apiData?.success && apiData?.data) {
+        loyaltyPoints = apiData.data.loyalty_points || 0;
+        balance = apiData.data.balance || 0;
+      } else if (apiData && apiData.balance !== undefined) {
+        balance = apiData.balance || 0;
+        if (typeof apiData.loyalty_points === 'object' && apiData.loyalty_points !== null) {
+          loyaltyPoints = apiData.loyalty_points.points || 0;
+        } else {
+          loyaltyPoints = apiData.loyalty_points || 0;
+        }
+      }
+    } catch (e) {}
+
     return data(
       { 
         isLoggedIn, 
@@ -64,7 +201,9 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
         isAccountHome, 
         customer, 
         isAdmin,
-        googleMapsKey: context.env.PUBLIC_GOOGLE_MAPS_KEY 
+        googleMapsKey: context.env.PUBLIC_GOOGLE_MAPS_KEY,
+        loyaltyPoints,
+        balance
       },
       {
         headers: {
@@ -84,15 +223,15 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
 }
 
 export default function Acccount() {
-  const { isLoggedIn, isPrivateRoute, isAccountHome, customer, googleMapsKey, isAdmin } = useLoaderData<typeof loader>();
+  const { isLoggedIn, isPrivateRoute, isAccountHome, customer, googleMapsKey, isAdmin, loyaltyPoints, balance } = useLoaderData<typeof loader>();
 
   if (!isPrivateRoute && !isAccountHome) {
-    return <Outlet context={{ customer, googleMapsKey, isAdmin }} />;
+    return <Outlet context={{ customer, googleMapsKey, isAdmin, loyaltyPoints, balance }} />;
   }
 
   return (
-    <AccountLayout customer={customer as CustomerFragment} isAdmin={isAdmin}>
-      <Outlet context={{ customer, googleMapsKey, isAdmin }} />
+    <AccountLayout customer={customer as CustomerFragment} isAdmin={isAdmin} loyaltyPoints={loyaltyPoints} balance={balance}>
+      <Outlet context={{ customer, googleMapsKey, isAdmin, loyaltyPoints, balance }} />
     </AccountLayout>
   );
 }
@@ -102,17 +241,22 @@ import {AccountProfileHeader} from '~/components/account/AccountProfileHeader';
 function AccountLayout({
   customer,
   isAdmin,
+  loyaltyPoints,
+  balance,
   children,
 }: {
   customer: CustomerFragment;
   isAdmin: boolean;
+  loyaltyPoints?: number;
+  balance?: number;
   children: React.ReactNode;
 }) {
-  const isEn = typeof window !== 'undefined' ? window.location.pathname.includes('/en') : false;
-
+  const location = useLocation();
+  const isEn = location.pathname.includes('/en');
+  
   return (
-    <div className="account-page-wrapper">
-      <AccountProfileHeader customer={customer} isEn={isEn} />
+    <div className="account-layout">
+      <AccountProfileHeader customer={customer} isEn={isEn} loyaltyPoints={loyaltyPoints || 0} balance={balance || 0} />
       <div className="max-w-[1200px] mx-auto px-4 md:px-6">
         <div className="account-container !mt-0 !pt-0">
           <nav className="account-aside">
@@ -162,6 +306,17 @@ function AcccountMenu({ customer, isAdmin }: { customer: CustomerFragment; isAdm
       icon: (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" />
+        </svg>
+      )
+    },
+    {
+      to: `${localePrefix}/account/wallet`,
+      label: isEn ? 'Wallet & Vouchers' : 'المحفظة والقسائم',
+      icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4" />
+          <path d="M3 5v14a2 2 0 0 0 2 2h16v-5" />
+          <path d="M18 12a2 2 0 0 0 0 4h4v-4Z" />
         </svg>
       )
     },

@@ -22,7 +22,6 @@ export function AddToCartButton({
   style?: React.CSSProperties;
 }) {
   const {open} = useAside();
-  console.log('AddToCartButton lines:', lines);
 
   return (
     <CartForm 

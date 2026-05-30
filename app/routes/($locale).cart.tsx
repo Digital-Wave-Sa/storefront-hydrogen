@@ -181,6 +181,62 @@ export async function action({request, context}: Route.ActionArgs) {
         }
       }
 
+      if (formDiscountCode) {
+        // --- START MIDDLEWARE VOUCHER VALIDATION ---
+        try {
+          const currentCart = await cart.get();
+          const cartTotal = parseFloat(currentCart?.cost?.subtotalAmount?.amount || '0');
+          const cartLines = currentCart?.lines?.nodes || [];
+          const cartAttributes = currentCart?.attributes || [];
+          
+          // PRODUCTION: Call the actual Middleware
+          // TODO: Replace with the actual Middleware URL provided by the backend developer
+          const middlewareUrl = context.env.MIDDLEWARE_URL || 'https://wh.pryvexapls.com';
+          const customerAccessToken = await context.session.get('customerAccessToken');
+          
+          // Format cart items for the middleware
+          const formattedItems = cartLines.map((line: any) => ({
+            id: line.merchandise?.product?.id?.split('/').pop(),
+            quantity: line.quantity,
+            price: line.cost?.totalAmount?.amount
+          }));
+
+          const fulfillmentType = cartAttributes.find((a: any) => a.key.toLowerCase().trim() === 'fulfillment type')?.value;
+          const safeFulfillmentType = fulfillmentType ? fulfillmentType.trim().toUpperCase() : 'DELIVERY';
+          const branchId = cartAttributes.find((a: any) => a.key.toLowerCase().trim() === 'branch id')?.value;
+
+          const validationRes = await fetch(`${middlewareUrl}/wallet/voucher/validate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              code: formDiscountCode,
+              cartTotal: cartTotal,
+              items: formattedItems,
+              user_id: customerAccessToken?.accessToken || null,
+              order_type: safeFulfillmentType === 'DELIVERY' ? 'delivery' : 'pickup',
+              branch_id: branchId || null
+            })
+          });
+          const validationData = await validationRes.json();
+          
+          if (validationData.error) {
+             // Map backend error codes to frontend messages
+             const code = validationData.error.code || validationData.error;
+             if (code === 'expired') return data({ error: isEn ? 'This voucher has expired.' : 'عذراً، انتهت صلاحية هذه القسيمة.' }, { status: 400 });
+             if (code === 'min_order_not_met') return data({ error: isEn ? 'Minimum order value not met.' : 'لم يتم الوصول للحد الأدنى للطلب.' }, { status: 400 });
+             if (code === 'already_used') return data({ error: isEn ? 'Voucher usage limit reached.' : 'تم الوصول للحد الأقصى لاستخدام القسيمة.' }, { status: 400 });
+             if (code === 'invalid_products') return data({ error: isEn ? 'This voucher is not valid for the products in your cart.' : 'هذه القسيمة غير صالحة للمنتجات الموجودة في سلتك.' }, { status: 400 });
+             if (code === 'invalid_user') return data({ error: isEn ? 'This voucher is not valid for your account.' : 'هذه القسيمة غير صالحة لحسابك.' }, { status: 400 });
+             if (code === 'invalid_order_type') return data({ error: isEn ? 'This voucher is not valid for your selected order type.' : 'هذه القسيمة غير صالحة لنوع الطلب المحدد.' }, { status: 400 });
+             if (code === 'invalid_branch') return data({ error: isEn ? 'This voucher is not available for your selected branch.' : 'هذه القسيمة غير متاحة للفرع المحدد.' }, { status: 400 });
+             return data({ error: isEn ? 'Invalid voucher code.' : 'رمز القسيمة غير صحيح.' }, { status: 400 });
+          }
+        } catch (err) {
+          console.error('[MIDDLEWARE VOUCHER VALIDATION ERROR]', err);
+        }
+        // --- END MIDDLEWARE VOUCHER VALIDATION ---
+      }
+
       // User inputted discount code
       const discountCodes = (
         formDiscountCode ? [formDiscountCode] : []
@@ -246,11 +302,11 @@ export async function action({request, context}: Route.ActionArgs) {
               key: String(key),
               value: String(value || '')
             }));
-            await cart.updateAttributes(finalAttributes);
+            result = await cart.updateAttributes(finalAttributes);
         }
         if (buyerIdentity) {
             result = await cart.updateBuyerIdentity(buyerIdentity);
-        } else {
+        } else if (!result) {
             result = await cart.get();
         }
         break;
@@ -260,8 +316,8 @@ export async function action({request, context}: Route.ActionArgs) {
   }
 
   const cartId = result?.cart?.id;
-  const headers = cartId ? cart.setCartId(result.cart.id) : new Headers();
-  const {cart: cartResult, errors, warnings} = result;
+  const headers = cartId ? cart.setCartId(result?.cart?.id) : new Headers();
+  const {cart: cartResult, errors, warnings} = result || { cart: null, errors: [], warnings: [] };
 
   const redirectTo = formData.get('redirectTo') ?? null;
   if (typeof redirectTo === 'string') {

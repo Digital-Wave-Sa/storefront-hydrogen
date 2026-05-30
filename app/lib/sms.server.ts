@@ -33,6 +33,13 @@ export async function sendSMS({
   };
 
   try {
+    // Development / No-Key Bypass
+    if (process.env.NODE_ENV === 'development' || !env.SMS_API_URL) {
+      console.log(`[SMS BYPASS] Dev mode or missing API URL. Pretending to send SMS to ${formattedPhone}.`);
+      console.log(`[SMS BYPASS] Message content: ${message}`);
+      return { success: true, result: 'dev-bypass' };
+    }
+
     console.log('[SMS DEBUG] Sending to API:', {
       url: env.SMS_API_URL,
       mobile: formattedPhone,

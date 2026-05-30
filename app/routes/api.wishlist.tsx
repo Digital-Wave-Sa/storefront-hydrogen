@@ -18,7 +18,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
   if (!customerId) {
     return data({ wishlist, note: 'Guest wishlist, not synced to Shopify' });
   }
-  const mutation = `#graphql
+  const mutation = `
     mutation customerUpdateWishlist($input: CustomerInput!) {
       customerUpdate(input: $input) {
         customer { id }
@@ -94,7 +94,7 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
   const rawShop = env.SHOPIFY_SHOP || env.PUBLIC_STORE_DOMAIN || 'the-beauty-secrets-ksa';
   let shopDomain = rawShop.includes('myshopify.com') ? rawShop : `${rawShop.split('.')[0]}.myshopify.com`;
 
-  const query = `#graphql
+  const query = `
     query getCustomerWishlist($id: ID!) {
       customer(id: $id) { metafield(namespace: "custom", key: "wishlist") { value } }
     }

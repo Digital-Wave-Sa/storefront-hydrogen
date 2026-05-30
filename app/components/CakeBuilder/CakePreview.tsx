@@ -110,7 +110,7 @@ export function CakePreview({
 
   const [Cake3D, setCake3D] = useState<any>(null);
   useEffect(() => {
-    import('./Cake3DCanvas').then((mod) => {
+    import('./Cake3DCanvas.client').then((mod) => {
       setCake3D(() => mod.default);
     });
   }, []);

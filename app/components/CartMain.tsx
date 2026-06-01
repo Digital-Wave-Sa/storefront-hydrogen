@@ -123,19 +123,9 @@ export function CartMain({layout, cart: originalCart}: CartMainProps) {
           }}
         >
           <div className="max-w-[1400px] mx-auto px-4 md:px-8 relative z-10 flex w-full justify-start">
-            <div className="flex flex-row items-center justify-between w-full">
+            <div className="flex flex-row items-center justify-start gap-6 w-full">
                
-               {/* Title & Subtitle Block (First in DOM = Right in RTL) */}
-               <div className={`flex flex-col ${isEn ? 'text-left' : 'text-right'}`}>
-                 <h1 className="!m-0 !mb-4 text-[38px] font-bold text-white leading-none" style={{ fontFamily: "'Bahij Janna', sans-serif" }}>
-                   {isEn ? 'Shopping Cart' : 'سلة التسوق'}
-                 </h1>
-                 <p className="!m-0 text-[16px] font-medium text-[#c4d0cc] leading-none" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
-                   {isEn ? `${cart?.totalQuantity || 0} products in your cart` : `${new Intl.NumberFormat('ar-EG').format(cart?.totalQuantity || 0)} منتجات في سلتك`}
-                 </p>
-               </div>
-               
-               {/* Back Button (Second in DOM = Left in RTL) */}
+               {/* Back Button (First in DOM = Right in RTL) */}
                <button 
                  onClick={() => window.history.back()} 
                  className="flex items-center gap-2 bg-[#A8BDB5] hover:bg-[#97aaa3] text-[#1a3b3a] px-6 py-2 rounded-full text-[15px] font-bold transition-all shadow-sm shrink-0"
@@ -146,6 +136,16 @@ export function CartMain({layout, cart: originalCart}: CartMainProps) {
                    <path d="M5 12h14M12 5l7 7-7 7" />
                  </svg>
                </button>
+
+               {/* Title & Subtitle Block (Second in DOM = Left of button in RTL) */}
+               <div className={`flex flex-col ${isEn ? 'text-left' : 'text-right'}`}>
+                 <h1 className="!m-0 !mb-2 text-[38px] font-bold text-white leading-none" style={{ fontFamily: "'Bahij Janna', sans-serif" }}>
+                   {isEn ? 'Shopping Cart' : 'سلة التسوق'}
+                 </h1>
+                 <p className="!m-0 text-[16px] font-medium text-[#c4d0cc] leading-none" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
+                   {isEn ? `${cart?.totalQuantity || 0} products in your cart` : `${new Intl.NumberFormat('ar-EG').format(cart?.totalQuantity || 0)} منتجات في سلتك`}
+                 </p>
+               </div>
 
             </div>
           </div>

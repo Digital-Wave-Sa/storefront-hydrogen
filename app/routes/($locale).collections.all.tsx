@@ -1,8 +1,7 @@
-import {data, type LoaderFunctionArgs, type MetaFunction} from 'react-router';
-import {useLoaderData, Link, useRouteLoaderData, useNavigate, useSearchParams} from 'react-router';
+import {data, type LoaderFunctionArgs, type MetaFunction, useLoaderData, Link, useRouteLoaderData, useNavigate, useSearchParams, useSubmit, useLocation} from 'react-router';
 import {getPaginationVariables, Pagination, Image} from '@shopify/hydrogen';
 import {ProductItem} from '~/components/ProductItem';
-import {useState, useEffect} from 'react';
+import {useState, useEffect, Fragment} from 'react';
 import { createPortal } from 'react-dom';
 import patternBg from '~/assets/patteren-collection-header.svg';
 
@@ -12,26 +11,219 @@ export const meta: MetaFunction = () => {
 
 export async function loader({context, request}: LoaderFunctionArgs) {
   const {storefront} = context;
+  const url = new URL(request.url);
+  const searchParams = url.searchParams;
   const paginationVariables = getPaginationVariables(request, {
     pageBy: 12,
   });
 
-  const {products} = await storefront.query(CATALOG_QUERY, {
-    variables: {
-        ...paginationVariables,
-        country: storefront.i18n.country,
-        language: storefront.i18n.language,
-    },
-    cache: storefront.CacheNone(),
+  const filters: any[] = [];
+  searchParams.forEach((value, key) => {
+    if (key.startsWith('filter.')) {
+      const parts = key.split('.');
+      if (parts[2] === 'price') {
+        if (!parts[3]) {
+          try {
+            const priceObj = JSON.parse(value);
+            const p: any = {};
+            if (priceObj.min !== undefined) p.min = parseFloat(priceObj.min);
+            if (priceObj.max !== undefined) p.max = parseFloat(priceObj.max);
+            if (priceObj.gte !== undefined) p.min = parseFloat(priceObj.gte);
+            if (priceObj.lte !== undefined) p.max = parseFloat(priceObj.lte);
+            filters.push({ price: p });
+          } catch(e) {}
+        } else {
+          const type = parts[3]; 
+          const existing = filters.find(f => f.price);
+          if (existing) {
+            existing.price[type] = parseFloat(value);
+          } else {
+            filters.push({ price: { [type]: parseFloat(value) } });
+          }
+        }
+      } else if (parts[2] === 'option') {
+        const optionName = parts[3];
+        filters.push({ variantOption: { name: optionName, value } });
+      } else if (parts[2] === 'availability') {
+          filters.push({ available: value === 'true' });
+      } else if (parts[2] === 'product_type') {
+          filters.push({ productType: value });
+      } else if (key.startsWith('filter.p.m.')) {
+         const namespace = parts[3];
+         const k = parts[4];
+         filters.push({
+           productMetafield: { namespace, key: k, value }
+         });
+      }
+    }
   });
 
-  return data({products});
+  let sortKey = searchParams.get('sortKey') || 'RELEVANCE';
+  if (sortKey !== 'RELEVANCE' && sortKey !== 'PRICE') {
+      sortKey = 'RELEVANCE';
+  }
+  const reverse = searchParams.get('reverse') === 'true';
+  const q = searchParams.get('q') || '*';
+
+  try {
+    const response = await storefront.query(CATALOG_QUERY, {
+      variables: {
+          ...paginationVariables,
+          query: q, 
+          filters: filters.length > 0 ? filters : undefined,
+          sortKey: sortKey as any,
+          country: storefront.i18n.country,
+          language: storefront.i18n.language,
+      },
+      cache: storefront.CacheNone(),
+    });
+    
+    // Filter by selected collections manually if 'category' params exist
+    const selectedCategories = url.searchParams.getAll('category');
+    let products = response.search;
+    
+    if (selectedCategories.length > 0) {
+        try {
+            const collectionPromises = selectedCategories.map(handle => 
+                storefront.query(COLLECTION_FILTER_QUERY, {
+                    variables: {
+                        handle,
+                        country: storefront.i18n.country,
+                        language: storefront.i18n.language,
+                    },
+                    cache: storefront.CacheNone(),
+                })
+            );
+            
+            const results = await Promise.all(collectionPromises);
+            const mergedNodes: any[] = [];
+            const seenIds = new Set();
+            
+            results.forEach((res: any) => {
+                if (res.collection?.products?.nodes) {
+                    res.collection.products.nodes.forEach((node: any) => {
+                        if (!seenIds.has(node.id)) {
+                            seenIds.add(node.id);
+                            mergedNodes.push(node);
+                        }
+                    });
+                }
+            });
+            
+            // If search query exists, filter merged nodes by title
+            let finalNodes = mergedNodes;
+            if (q && q !== '*') {
+                const searchLower = q.toLowerCase();
+                finalNodes = mergedNodes.filter(n => n.title.toLowerCase().includes(searchLower));
+            }
+            
+            products = {
+                ...products,
+                nodes: finalNodes,
+                pageInfo: { hasNextPage: false, hasPreviousPage: false, startCursor: null, endCursor: null }
+            };
+        } catch(e) {
+            console.error("Failed to fetch collections", e);
+        }
+    }
+
+    if (!response.search) {
+      return data({products: null, collections: null, error: "GraphQL query returned null. " + JSON.stringify(response)});
+    }
+    
+    return data({products, collections: response.collections?.nodes || [], error: null});
+  } catch (e: any) {
+    return data({products: null, collections: null, error: e.message || String(e)});
+  }
 }
 
+const COLLECTION_FILTER_QUERY = `#graphql
+  fragment ProductItem on Product {
+    id
+    handle
+    title
+    featuredImage {
+      id
+      altText
+      url
+      width
+      height
+    }
+    priceRange {
+      minVariantPrice {
+        amount
+        currencyCode
+      }
+      maxVariantPrice {
+        amount
+        currencyCode
+      }
+    }
+    compareAtPriceRange {
+      minVariantPrice {
+        amount
+        currencyCode
+      }
+    }
+    availableForSale
+    variants(first: 10) {
+      nodes {
+        id
+        title
+        availableForSale
+        quantityAvailable
+        selectedOptions {
+          name
+          value
+        }
+        price {
+          amount
+          currencyCode
+        }
+        storeAvailability(first: 5) {
+          nodes {
+            available
+            location {
+              id
+              name
+            }
+          }
+        }
+      }
+    }
+    tags
+    bogo_free_item: metafield(namespace: "custom", key: "bogo_free_item") {
+      value
+      reference {
+        ... on ProductVariant {
+          id
+        }
+      }
+    }
+  }
+  query CollectionFilter(
+    $handle: String!
+    $country: CountryCode
+    $language: LanguageCode
+  ) @inContext(country: $country, language: $language) {
+    collection(handle: $handle) {
+      products(first: 100) {
+        nodes {
+          ...ProductItem
+        }
+      }
+    }
+  }
+` as const;
+
 export default function CollectionAll() {
-  const {products} = useLoaderData<typeof loader>();
+  const {products, collections, error} = useLoaderData<typeof loader>();
   const [view, setView] = useState<'grid' | 'list'>('grid');
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+  
+  if (!products) {
+      return <div className="p-20 text-center font-bold">Failed to load products or no products found. <br/><span className="text-red-500">{error}</span></div>;
+  }
   const q = searchParams.get('q')?.toLowerCase() || '';
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -46,10 +238,8 @@ export default function CollectionAll() {
 
   return (
     <div className="collection-page" dir={isEn ? 'ltr' : 'rtl'}>
-      {/* 1. Header Hero Section */}
       <CollectionAllHero title={isEn ? 'All Products' : 'جميع المنتجات'} productsCount={products.nodes?.length || 0} />
 
-      {/* Breadcrumb Strip */}
       <div className="bg-white border-b border-gray-100">
         <div className="px-4 md:px-8 lg:px-12 py-4 max-w-[1440px] mx-auto text-right text-[13px] font-black flex items-center gap-2">
             <span className="text-gray-400">الرئيسية</span>
@@ -60,10 +250,8 @@ export default function CollectionAll() {
 
       <div className="bg-[#FEF8EB] min-h-screen">
           <div className="px-4 md:px-8 lg:px-12 py-10 max-w-[1440px] mx-auto text-right">
-            {/* Active Filters Row */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
               <div className="flex-1 flex items-center justify-end">
-                {/* Sort Dropdown */}
                 <div className="flex items-center gap-2">
                   <label className="text-gray-400 text-[13px] font-bold">
                     {isEn ? 'Sort by:' : 'ترتيب حسب:'}
@@ -72,50 +260,46 @@ export default function CollectionAll() {
                     <select
                       className="w-full bg-transparent text-[13px] font-bold text-gray-800 cursor-pointer focus:outline-none focus:ring-0 border-none appearance-none rtl:pl-6"
                       style={{ WebkitAppearance: 'none', appearance: 'none' }}
+                      onChange={(e) => {
+                        const [key, rev] = e.target.value.split('|');
+                        const params = new URLSearchParams(searchParams);
+                        params.set('sortKey', key);
+                        params.set('reverse', rev);
+                        setSearchParams(params, { preventScrollReset: true });
+                      }}
+                      value={`${searchParams.get('sortKey') || 'RELEVANCE'}|${searchParams.get('reverse') || 'false'}`}
                     >
-                      <option value="COLLECTION_DEFAULT">{isEn ? 'Featured' : 'الأكثر صلة'}</option>
-                      <option value="BEST_SELLING">{isEn ? 'Best Selling' : 'الأكثر مبيعاً'}</option>
+                      <option value="RELEVANCE|false">{isEn ? 'Featured' : 'الأكثر صلة'}</option>
+                      <option value="PRICE|false">{isEn ? 'Price: Low to High' : 'السعر: من الأقل للأعلى'}</option>
+                      <option value="PRICE|true">{isEn ? 'Price: High to Low' : 'السعر: من الأعلى للأقل'}</option>
                     </select>
                     <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7"></path></svg>
                   </div>
                 </div>
               </div>
 
-              {/* Active Filter Pills (Demo) */}
-              <div className="flex items-center gap-2 flex-wrap justify-end flex-1">
-                 {['الحلويات العربية', 'كريمة', 'عيد الاضحى والفطر', 'خالي من الجلوتين'].map((pill, i) => (
-                    <div key={i} className="flex items-center gap-2 bg-white border border-[#234745]/10 text-gray-600 px-3 py-1.5 rounded-full text-[12px] font-bold shadow-sm">
-                        <span>{pill}</span>
-                        <button className="text-gray-400 hover:text-red-500 transition-colors">
-                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-                        </button>
-                    </div>
-                 ))}
+              <div className="flex items-center gap-2 flex-wrap justify-start flex-1">
+                 <button 
+                    onClick={() => setIsFilterOpen(true)}
+                    className="lg:hidden flex items-center gap-2.5 px-5 py-2.5 bg-white border border-gray-200 text-[#234745] rounded-xl font-bold hover:bg-gray-50 transition-all shadow-sm active:scale-95 group"
+                 >
+                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 3H2l8 9v11l4-6V12L22 3z"/></svg>
+                   <span>{isEn ? 'Filter' : 'تـصـفـيـة'}</span>
+                 </button>
+
+                 <ActiveFilterChips isEn={isEn} />
               </div>
             </div>
 
-            {/* Two Column PLP Layout */}
             <div className="flex flex-col lg:flex-row gap-8 items-start">
-          
-              {/* Main Content (Left side in RTL) */}
               <div className="flex-1 min-w-0 w-full lg:order-2">
-
                 <Pagination connection={products}>
               {({nodes, isLoading, PreviousLink, NextLink}) => {
-                const minPriceFilter = searchParams.get('filter.v.price.min');
-                const maxPriceFilter = searchParams.get('filter.v.price.max');
-                
                 const filteredNodes = nodes.filter((n: any) => {
                     if (q && !n.title.toLowerCase().includes(q)) return false;
-                    
-                    const priceStr = n.priceRange?.minVariantPrice?.amount;
-                    if (priceStr) {
-                        const price = parseFloat(priceStr);
-                        if (minPriceFilter && price < parseFloat(minPriceFilter)) return false;
-                        if (maxPriceFilter && price > parseFloat(maxPriceFilter)) return false;
-                    }
                     return true;
                 });
+
                 return (
                 <>
                   <div className="flex justify-center mb-10">
@@ -126,21 +310,10 @@ export default function CollectionAll() {
                   
                   {filteredNodes.length === 0 && (
                       <div className="py-12 text-center text-[#234745] font-bold text-lg w-full">
-                          لا توجد منتجات تطابق بحثك.
+                          {isEn ? 'No products match your search.' : 'لا توجد منتجات تطابق بحثك.'}
                       </div>
                   )}
-
-                  <div className={view === 'grid' ? "grid grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8" : "flex flex-col gap-5"}>
-                    {filteredNodes.map((product: any, index: number) => (
-                      <ProductItem
-                        key={product.id}
-                        product={product}
-                        view={view}
-                        loading={index < 8 ? 'eager' : undefined}
-                      />
-                    ))}
-                  </div>
-
+                  <ProductsGrid products={filteredNodes} view={view} />
                   <div className="flex justify-center mt-16">
                     <NextLink className="bg-[#234745] text-white px-16 py-4 rounded-full font-black shadow-[0_10px_30px_rgba(27,61,46,0.3)] hover:shadow-[0_15px_40px_rgba(27,61,46,0.4)] hover:-translate-y-1 transition-all duration-300">
                       {isLoading ? (isEn ? 'Loading...' : 'جاري التحميل...') : <span>{isEn ? 'Browse More ↓' : 'تصفح المزيد ↓'}</span>}
@@ -149,26 +322,23 @@ export default function CollectionAll() {
                 </>
               )}}
             </Pagination>
-          </div>
+              </div>
 
-          {/* Desktop Sidebar (Right side in RTL) */}
-          <div className="w-[280px] lg:w-[320px] shrink-0 md:order-1 border border-gray-200 rounded-3xl bg-white sticky top-24 self-start h-fit overflow-hidden">
-             <FilterSidebar onClose={() => {}} isDesktop={true} />
+              <div className="hidden lg:block w-72 shrink-0">
+                 <FilterSidebar filters={products.productFilters} collections={collections || []} onClose={() => {}} isDesktop={true} isEn={isEn} />
+              </div>
+            </div>
           </div>
-
-        </div>
-      </div>
       </div>
 
-      {/* Mobile Filter Sidebar */}
       {mounted && typeof document !== 'undefined' && createPortal(
         <div className={`fixed inset-0 z-[999999] pointer-events-none transition-all duration-500 ${isFilterOpen ? 'visible' : 'invisible'}`}>
             <div 
               className={`absolute inset-0 bg-black/30 backdrop-blur-sm transition-opacity duration-500 ${isFilterOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0'}`}
               onClick={() => setIsFilterOpen(false)}
             />
-            <div className={`absolute left-0 top-0 bottom-0 w-full max-w-sm bg-[#FEF8EB] shadow-2xl transition-transform duration-500 ${isFilterOpen ? 'translate-x-0 pointer-events-auto' : '-translate-x-full'}`}>
-               <FilterSidebar onClose={() => setIsFilterOpen(false)} />
+            <div className={`fixed inset-y-0 right-0 w-full max-w-sm bg-[#FEF8EB] shadow-2xl z-50 transform transition-transform duration-300 ease-in-out ${isFilterOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+               <FilterSidebar filters={products.productFilters} collections={collections || []} onClose={() => setIsFilterOpen(false)} isEn={isEn} />
             </div>
         </div>,
         document.body
@@ -179,8 +349,7 @@ export default function CollectionAll() {
 
 function CollectionAllHero({ title, productsCount }: { title: string, productsCount: number }) {
     return (
-        <section className="relative h-[160px] md:h-[180px] w-full bg-[#234745] overflow-hidden flex items-center" dir="rtl">
-            {/* Background Texture */}
+        <section className="relative h-[144px] w-full bg-[#234745] overflow-hidden flex items-center" dir="rtl">
             <div 
                 className="absolute inset-0"
                 style={{
@@ -189,247 +358,453 @@ function CollectionAllHero({ title, productsCount }: { title: string, productsCo
                     backgroundPosition: 'center',
                 }}
             />
-            
             <div className="relative z-10 w-full max-w-[1440px] mx-auto px-4 md:px-8 lg:px-12 flex items-center justify-between">
                 
-                {/* Left Side: Product Count */}
-                <div className="bg-[#FEF8EB] text-[#234745] px-6 py-2.5 rounded-full text-[14px] font-black shadow-sm shrink-0">
-                    {productsCount} منتجات
-                </div>
-
                 {/* Right Side: Title and Back Button */}
-                <div className="text-right flex flex-col items-end">
-                    <div className="flex items-center gap-4">
-                        <h1 className="text-4xl md:text-5xl font-black text-white drop-shadow-sm">
+                <div className="flex flex-col items-end gap-[8px]">
+                    <div className="flex items-center gap-[24px]" dir="ltr">
+                        <h1 className="text-[32px] md:text-[40px] font-bold text-white drop-shadow-sm text-right" style={{ fontFamily: "'GE Dinar One', sans-serif" }} dir="rtl">
                             {title}
                         </h1>
-                        <button onClick={() => window.history.back()} className="flex items-center gap-2 bg-[#A8B8B5]/30 hover:bg-[#A8B8B5]/40 text-[#234745] px-6 py-2.5 rounded-full text-[14px] font-black transition-all">
+                        <button onClick={() => window.history.back()} className="flex items-center gap-[8px] bg-[#9FB7AE] hover:bg-[#8BA19C] text-[#234745] px-6 py-2 rounded-[25px] text-[16px] font-bold transition-all" style={{ fontFamily: "'GE Dinar One', sans-serif" }} dir="rtl">
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                            </svg>
                             <span>رجوع</span>
-                            <svg className="w-4 h-4 rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
                         </button>
                     </div>
                 </div>
-                
+
+                {/* Left Side in RTL (Second child): Product Count */}
+                <div className="bg-[#FEF8EB] text-[#234745] px-6 py-2 rounded-[25px] text-[16px] font-bold shadow-sm shrink-0" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
+                    {productsCount} منتجات
+                </div>
+
             </div>
         </section>
     );
 }
 
-function FilterSidebar({ onClose, isDesktop = false }: { onClose: () => void, isDesktop?: boolean }) {
+function ActiveFilterChips({ isEn }: { isEn: boolean }) {
+    const [params, setParams] = useState<URLSearchParams | null>(null);
+    useEffect(() => {
+        setParams(new URLSearchParams(window.location.search));
+    }, []);
+
+    if (!params) return null;
+
+    const chips: { key: string, label: string }[] = [];
+    params.forEach((value, key) => {
+        if (key === 'q' || key === 'cursor' || key === 'sortKey' || key === 'reverse') return;
+        
+        let label = value;
+        if (key === 'filter.v.price.min') label = isEn ? `Min: ${value} SAR` : `الأقل: ${value} ر.س`;
+        if (key === 'filter.v.price.max') label = isEn ? `Max: ${value} SAR` : `الأعلى: ${value} ر.س`;
+
+        chips.push({ key, label });
+    });
+
+    const removeFilter = (key: string) => {
+        const url = new URL(window.location.href);
+        url.searchParams.delete(key);
+        window.location.href = url.toString();
+    };
+
     return (
-        <div className={`flex flex-col h-full ${isDesktop ? 'bg-white' : 'bg-[#FEF8EB] overflow-hidden'}`} dir="rtl">
-            {!isDesktop && (
-              <header className="p-6 border-b border-gray-100 flex items-center justify-between shrink-0">
-                  <h2 className="text-xl font-black text-[#234745]">تصفية النتائج</h2>
-                  <button onClick={onClose} className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-[#234745] hover:bg-red-50 hover:text-red-500 transition-all font-bold text-2xl">
-                      &times;
-                  </button>
-              </header>
-            )}
-            
-            <FilterForm onClose={onClose} isDesktop={isDesktop} />
-        </div>
+        <>
+            {chips.map(chip => (
+                <button 
+                  key={chip.key}
+                  onClick={() => removeFilter(chip.key)}
+                  className="bg-white border border-gray-200 px-4 py-1.5 rounded-full flex items-center gap-2 text-sm font-bold text-gray-600 hover:bg-red-50 hover:text-red-600 hover:border-red-100 transition-all group"
+                >
+                    <span>{chip.label}</span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="text-gray-300 group-hover:text-red-500"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                </button>
+            ))}
+        </>
     );
 }
 
-function FilterForm({ onClose, isDesktop }: { onClose: () => void, isDesktop: boolean }) {
-    const [searchParams, setSearchParams] = useSearchParams();
-    const navigate = useNavigate();
-
-    const [minPrice, setMinPrice] = useState(searchParams.get('filter.v.price.min') || '');
-    const [maxPrice, setMaxPrice] = useState(searchParams.get('filter.v.price.max') || '');
-    
-    // State to toggle accordions (all open by default for demo like the image)
-    const [openSections, setOpenSections] = useState<Record<string, boolean>>({
-      'الأقسام': true,
-      'السعر (ر.س)': true,
-      'المناسبة': true,
-      'النوع الغذائي': true,
+function FilterSidebar({ filters, collections, onClose, isDesktop = false, isEn }: { filters: any[], collections: any[], onClose: () => void, isDesktop?: boolean, isEn?: boolean }) {
+    const submit = useSubmit();
+    const location = useLocation();
+    const [searchQuery, setSearchQuery] = useState('');
+    const [openSections, setOpenSections] = useState<{[key: string]: boolean}>({
+        'categories': true,
+        'price': true
     });
-
-    const toggleSection = (label: string) => {
-      setOpenSections(prev => ({...prev, [label]: !prev[label]}));
-    };
+    
+    // Price state
+    const [minPrice, setMinPrice] = useState('');
+    const [maxPrice, setMaxPrice] = useState('');
 
     useEffect(() => {
-        setMinPrice(searchParams.get('filter.v.price.min') || '');
-        setMaxPrice(searchParams.get('filter.v.price.max') || '');
-    }, [searchParams]);
+        const initialOpen: {[key: string]: boolean} = {};
+        filters?.forEach(f => {
+            initialOpen[f.id] = true; 
+        });
+        setOpenSections(prev => ({...initialOpen, ...prev}));
+    }, [filters]);
 
-    const handleApply = () => {
-        const params = new URLSearchParams(searchParams);
-        if (minPrice) params.set('filter.v.price.min', minPrice);
-        else params.delete('filter.v.price.min');
-        
-        if (maxPrice) params.set('filter.v.price.max', maxPrice);
-        else params.delete('filter.v.price.max');
-        
-        setSearchParams(params, { preventScrollReset: true, replace: true });
-        if (!isDesktop) onClose();
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        setSearchQuery(params.get('q') || '');
+        const priceParam = params.get('filter.v.price');
+        if (priceParam) {
+            try {
+                const parsed = JSON.parse(priceParam);
+                if (parsed.gte) setMinPrice(parsed.gte.toString());
+                if (parsed.lte) setMaxPrice(parsed.lte.toString());
+            } catch(e) {}
+        } else {
+            setMinPrice('');
+            setMaxPrice('');
+        }
+    }, [location.search]);
+
+    const handleSearchChange = (value: string) => {
+        setSearchQuery(value);
+        const params = new URLSearchParams(window.location.search);
+        if (value.trim()) {
+            params.set('q', value);
+        } else {
+            params.delete('q');
+        }
+        submit(params, { replace: true, preventScrollReset: true });
     };
 
+    const handleSearchSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        handleSearchChange(searchQuery);
+    };
+
+    const toggleSection = (id: string) => {
+        setOpenSections(prev => ({...prev, [id]: !prev[id]}));
+    };
+
+    const toggleParamLink = (key: string, value: string) => {
+        const params = new URLSearchParams(window.location.search);
+        const currentValues = params.getAll(key);
+        if (currentValues.includes(value)) {
+            params.delete(key);
+            currentValues.filter(v => v !== value).forEach(v => params.append(key, v));
+        } else {
+            params.append(key, value);
+        }
+        submit(params, { replace: true, preventScrollReset: true });
+    };
+
+    const toggleFilterLink = (input: string) => {
+        const params = new URLSearchParams(window.location.search);
+        try {
+            const parsed = JSON.parse(input) as any;
+            let key = '';
+            let val = '';
+            if (parsed.variantOption) {
+                key = `filter.v.option.${parsed.variantOption.name}`;
+                val = parsed.variantOption.value;
+            } else if (parsed.productType) {
+                key = 'filter.v.product_type';
+                val = parsed.productType;
+            } else if (parsed.productVendor) {
+                key = 'filter.v.product_vendor';
+                val = parsed.productVendor;
+            } else if (parsed.productMetafield) {
+                key = `filter.p.m.${parsed.productMetafield.namespace}.${parsed.productMetafield.key}`;
+                val = parsed.productMetafield.value;
+            } else if (parsed.available !== undefined) {
+                 key = 'filter.v.availability';
+                 val = parsed.available.toString();
+            }
+
+            if (key) {
+                if (params.get(key) === val) {
+                    params.delete(key);
+                } else {
+                    params.set(key, val);
+                }
+            }
+            submit(params, { replace: true, preventScrollReset: true });
+        } catch(e) {}
+    };
+
+    const isFilterActive = (input: string, params: URLSearchParams) => {
+        try {
+            const filterInput = JSON.parse(input) as any;
+            if (filterInput.variantOption) {
+                return params.get(`filter.v.option.${filterInput.variantOption.name}`) === filterInput.variantOption.value;
+            } else if (filterInput.productType) {
+                return params.get('filter.v.product_type') === filterInput.productType;
+            } else if (filterInput.productVendor) {
+                return params.get('filter.v.product_vendor') === filterInput.productVendor;
+            } else if (filterInput.productMetafield) {
+                return params.get(`filter.p.m.${filterInput.productMetafield.namespace}.${filterInput.productMetafield.key}`) === filterInput.productMetafield.value;
+            } else if (filterInput.available !== undefined) {
+                return params.get('filter.v.availability') === filterInput.available.toString();
+            }
+        } catch (e) {}
+        return false;
+    };
+
+    const handlePriceApply = () => {
+        const params = new URLSearchParams(window.location.search);
+        if (minPrice || maxPrice) {
+            const priceObj: any = {};
+            if (minPrice) priceObj.gte = parseFloat(minPrice);
+            if (maxPrice) priceObj.lte = parseFloat(maxPrice);
+            params.set('filter.v.price', JSON.stringify(priceObj));
+        } else {
+            params.delete('filter.v.price');
+        }
+        submit(params, { replace: true, preventScrollReset: true });
+    };
+
+    const setPricePreset = (min: string, max: string) => {
+        setMinPrice(min);
+        setMaxPrice(max);
+        const params = new URLSearchParams(window.location.search);
+        const priceObj: any = {};
+        if (min) priceObj.gte = parseFloat(min);
+        if (max) priceObj.lte = parseFloat(max);
+        if (Object.keys(priceObj).length > 0) {
+            params.set('filter.v.price', JSON.stringify(priceObj));
+        } else {
+            params.delete('filter.v.price');
+        }
+        submit(params, { replace: true, preventScrollReset: true });
+    };
+
+    const clearPrice = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        setMinPrice('');
+        setMaxPrice('');
+        const params = new URLSearchParams(window.location.search);
+        params.delete('filter.v.price');
+        submit(params, { replace: true, preventScrollReset: true });
+    };
+
+    const handleClearAll = () => {
+        const params = new URLSearchParams(window.location.search);
+        const q = params.get('q');
+        const sortKey = params.get('sortKey');
+        const reverse = params.get('reverse');
+        
+        const newParams = new URLSearchParams();
+        if (q) newParams.set('q', q);
+        if (sortKey) newParams.set('sortKey', sortKey);
+        if (reverse) newParams.set('reverse', reverse);
+        
+        submit(newParams, { replace: true, preventScrollReset: true });
+    };
+
+    const pricePresets = [
+        { label: 'أقل من 100 ر.س', min: '', max: '100' },
+        { label: '100 - 200 ر.س', min: '100', max: '200' },
+        { label: '200 - 400 ر.س', min: '200', max: '400' },
+        { label: 'أكثر من 400 ر.س', min: '400', max: '' }
+    ];
+
+    const currentParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams();
+    
     return (
-        <div className={`flex-1 ${isDesktop ? 'p-6' : 'overflow-y-auto p-6 pt-4'} flex flex-col`}>
-            <div className="flex-1">
-                {/* Search Input at top of sidebar */}
-                <div className="mb-8">
-                    <div className="relative">
+        <div className={`flex flex-col h-full ${isDesktop ? 'bg-white border border-[#BBCFCD]/50 rounded-[24px] w-[302px] box-border py-6' : 'bg-white overflow-hidden'}`} dir="rtl">
+            {!isDesktop && (
+              <header className="p-6 border-b border-[#BBCFCD]/50 flex items-center justify-between shrink-0">
+                  <h2 className="text-xl font-black text-[#234745] font-['GE_Dinar_One']">{isEn ? 'Filters' : 'تصفية النتائج'}</h2>
+                  <button onClick={onClose} className="w-10 h-10 bg-gray-50 rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-100 transition-colors">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                  </button>
+              </header>
+            )}
+
+            {/* Content Container */}
+            <div className={`flex-1 flex flex-col items-center gap-4 ${isDesktop ? 'px-0' : 'overflow-y-auto p-4'}`}>
+                
+                {/* Search Bar */}
+                <div className="w-[270px] bg-[#BBCFCD] border border-[#BBCFCD]/50 rounded-[25px] px-4 py-3 flex flex-col justify-center">
+                    <form onSubmit={handleSearchSubmit} className="relative flex items-center gap-2">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#234745" strokeWidth="1.25" className="shrink-0">
+                            <circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        </svg>
                         <input 
                             type="text" 
-                            placeholder="إبحث في المنتجات..." 
-                            defaultValue={searchParams.get('q') || ''}
-                            className="w-full bg-[#c4d1cc] !border-0 !rounded-full pr-12 py-3 pl-5 text-[14px] font-bold focus:!outline-none focus:!ring-0 transition-all text-[#234745] placeholder-[#234745] !shadow-none outline-none appearance-none text-right"
-                            onChange={(e) => {
-                                const val = e.target.value;
-                                const params = new URLSearchParams(searchParams);
-                                if (val) params.set('q', val);
-                                else params.delete('q');
-                                setSearchParams(params, { preventScrollReset: true, replace: true });
-                            }}
+                            placeholder={isEn ? 'Search products...' : 'إبحث في المنتجات...'} 
+                            value={searchQuery}
+                            onChange={(e) => handleSearchChange(e.target.value)}
+                            className="w-full bg-transparent text-[14px] font-['GE_Dinar_One'] text-[#234745] placeholder-[#234745] focus:outline-none"
                         />
-                        <svg className="absolute right-4 top-1/2 -translate-y-1/2 text-[#234745]" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                    </div>
+                    </form>
                 </div>
 
-                {/* 1. Categories (الأقسام) */}
-                <div className="mb-6 border-b border-gray-100 pb-6">
-                    <button onClick={() => toggleSection('الأقسام')} className="w-full flex items-center justify-between group">
-                        <h3 className="text-[15px] font-black text-gray-800 tracking-wide">الأقسام</h3>
-                        <svg className={`w-4 h-4 text-gray-400 transition-transform duration-300 ${openSections['الأقسام'] ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
-                    </button>
-                    <div className={`mt-4 overflow-hidden transition-all duration-300 ${openSections['الأقسام'] ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'}`}>
-                        <div className="flex flex-col gap-3">
-                            {[
-                                { label: 'الحلويات العربية', count: '(٤٧)', active: true },
-                                { label: 'شوكولاتة', count: '(١)', active: false },
-                                { label: 'كريمة', count: '(٢)', active: true },
-                                { label: 'كنافة', count: '(٠)', active: false },
-                                { label: 'معجنات', count: '(٤)', active: false },
-                                { label: 'قهوة وتمر', count: '(١)', active: false },
-                                { label: 'كيك', count: '(٢)', active: false },
-                                { label: 'آيس كريم', count: '(٠)', active: false },
-                            ].map((item, i) => (
-                                <label key={i} className="flex items-center justify-between cursor-pointer group">
-                                    <div className="flex items-center gap-3">
-                                        <div className={`w-4 h-4 rounded-[4px] border flex items-center justify-center transition-colors ${item.active ? 'bg-[#234745] border-[#234745]' : 'border-gray-300 bg-white group-hover:border-[#234745]'}`}>
-                                            {item.active && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
-                                        </div>
-                                        <span className={`text-[13px] font-bold ${item.active ? 'text-[#234745]' : 'text-gray-500 group-hover:text-gray-800'}`}>{item.label}</span>
-                                    </div>
-                                    <span className="text-[12px] font-medium text-gray-500">{item.count}</span>
-                                </label>
-                            ))}
-                        </div>
-                    </div>
-                </div>
+                <div className="w-[302px] border-t border-[#BBCFCD]/50 my-0" />
 
-                {/* 2. Price (السعر ر.س) */}
-                <div className="mb-6 border-b border-gray-100 pb-6">
-                    <div className="flex items-center justify-between mb-4">
-                        <button onClick={() => toggleSection('السعر (ر.س)')} className="flex-1 flex items-center gap-2 group text-right">
-                            <h3 className="text-[15px] font-black text-gray-800 tracking-wide">السعر (ر.س)</h3>
-                            <svg className={`w-4 h-4 text-gray-400 transition-transform duration-300 ${openSections['السعر (ر.س)'] ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                {/* Categories - Dynamic from Collections */}
+                {collections && collections.length > 0 && (
+                    <div className="w-[270px] flex flex-col gap-4">
+                        <button type="button" onClick={() => toggleSection('categories')} className="flex items-center justify-between w-full outline-none group">
+                            <h3 className="text-[16px] font-bold font-['GE_Dinar_One'] text-[#171717]">{isEn ? 'Categories' : 'الأقسام'}</h3>
+                            <svg className={`w-4 h-4 text-[#234745] transition-transform duration-300 ${openSections['categories'] ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                            </svg>
                         </button>
-                        <button onClick={() => { 
-                            setMinPrice(''); 
-                            setMaxPrice(''); 
-                            const params = new URLSearchParams(searchParams);
-                            params.delete('filter.v.price.min');
-                            params.delete('filter.v.price.max');
-                            setSearchParams(params, { preventScrollReset: true, replace: true });
-                        }} className="text-[13px] font-black text-red-500 hover:text-red-600 transition-colors">مسح</button>
+                        <div className={`flex flex-col gap-4 transition-all duration-300 overflow-hidden ${openSections['categories'] ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'}`}>
+                            {collections.map((collection: any) => {
+                                const isActive = currentParams.getAll('category').includes(collection.handle);
+                                return (
+                                    <button type="button" key={collection.id} onClick={() => toggleParamLink('category', collection.handle)} className="flex items-center justify-between w-full outline-none group">
+                                        <div className="flex items-center gap-2">
+                                            <div className={`w-6 h-6 rounded flex items-center justify-center transition-colors ${isActive ? 'bg-[#234745]' : 'border-[1.14px] border-[#BBCFCD] bg-white group-hover:border-[#234745]'}`}>
+                                                {isActive && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><polyline points="20 6 9 17 4 12"></polyline></svg>}
+                                            </div>
+                                            <span className={`text-[16px] font-medium font-['GE_Dinar_One'] transition-colors ${isActive ? 'text-[#234745]' : 'text-[#7D7D7D] group-hover:text-[#234745]'}`}>{collection.title}</span>
+                                        </div>
+                                        <span className="text-[16px] font-medium font-['GE_Dinar_One'] text-[#7D7D7D]">&nbsp;</span>
+                                    </button>
+                                );
+                            })}
+                        </div>
                     </div>
-                    <div className={`overflow-hidden transition-all duration-300 ${openSections['السعر (ر.س)'] ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'}`}>
-                        <div className="flex gap-2 items-center mb-4">
-                            <div className="flex-1 relative">
-                                <input type="number" value={minPrice} onChange={(e) => setMinPrice(e.target.value)} placeholder="من" className="w-full bg-white border border-gray-200 rounded-full px-4 py-2 text-sm font-bold focus:outline-none focus:border-[#234745] transition-all text-center" />
+                )}
+
+                <div className="w-[302px] border-t border-[#BBCFCD]/50 my-0" />
+
+                {/* Price */}
+                <div className="w-[270px] flex flex-col gap-4">
+                    <button type="button" onClick={() => toggleSection('price')} className="flex items-center justify-between w-full outline-none group">
+                        <h3 className="text-[16px] font-bold font-['GE_Dinar_One'] text-[#171717]">{isEn ? 'Price' : 'السعر (ر.س)'}</h3>
+                        <div className="flex items-center gap-6">
+                            {(minPrice || maxPrice) && (
+                                <span onClick={clearPrice} className="text-[16px] font-bold font-['GE_Dinar_One'] text-[#E64950]">{isEn ? 'Clear' : 'مسح'}</span>
+                            )}
+                            <svg className={`w-4 h-4 text-[#234745] transition-transform duration-300 ${openSections['price'] ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </div>
+                    </button>
+                    <div className={`flex flex-col gap-4 transition-all duration-300 overflow-hidden ${openSections['price'] ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'}`}>
+                        <div className="flex items-center justify-between gap-4">
+                            <div className="flex-1 border border-[#BBCFCD] rounded-[16px] px-4 py-2 flex items-center justify-between">
+                                <span className="text-[16px] font-medium font-['GE_Dinar_One'] text-[#7D7D7D]">{isEn ? 'From' : 'من'}</span>
+                                <input type="number" value={minPrice} onChange={(e) => setMinPrice(e.target.value)} className="w-12 bg-transparent text-center focus:outline-none" />
                             </div>
-                            <span className="text-gray-400 font-bold">-</span>
-                            <div className="flex-1 relative">
-                                <input type="number" value={maxPrice} onChange={(e) => setMaxPrice(e.target.value)} placeholder="إلي" className="w-full bg-white border border-gray-200 rounded-full px-4 py-2 text-sm font-bold focus:outline-none focus:border-[#234745] transition-all text-center" />
+                            <span className="text-[16px] font-medium text-[#255441]">-</span>
+                            <div className="flex-1 border border-[#BBCFCD] rounded-[16px] px-4 py-2 flex items-center justify-between">
+                                <span className="text-[16px] font-medium font-['GE_Dinar_One'] text-[#7D7D7D]">{isEn ? 'To' : 'إلي'}</span>
+                                <input type="number" value={maxPrice} onChange={(e) => setMaxPrice(e.target.value)} className="w-12 bg-transparent text-center focus:outline-none" />
                             </div>
                         </div>
-                        <button onClick={handleApply} className="w-full bg-[#234745] text-white !rounded-full py-2.5 font-bold text-sm hover:bg-[#1a3533] transition-all mt-2 shadow-sm cursor-pointer">تطبيق</button>
-                        <div className="flex flex-col gap-4 mt-6">
-                            {[
-                              { label: 'أقل من ١٠٠ ر.س', min: '', max: '100' },
-                              { label: '١٠٠ - ٢٠٠ ر.س', min: '100', max: '200' },
-                              { label: '٢٠٠ - ٤٠٠ ر.س', min: '200', max: '400' },
-                              { label: 'أكثر من ٤٠٠ ر.س', min: '400', max: '' }
-                            ].map((preset, i) => (
-                                <label key={i} className="flex items-center justify-start gap-3 cursor-pointer group">
-                                    <input 
-                                      type="radio" 
-                                      name="price_preset" 
-                                      className="w-4 h-4 border-gray-300 text-[#234745] focus:ring-[#234745] cursor-pointer" 
-                                      checked={minPrice === preset.min && maxPrice === preset.max}
-                                      onChange={() => {
-                                        setMinPrice(preset.min);
-                                        setMaxPrice(preset.max);
-                                        // Auto apply
-                                        const params = new URLSearchParams(searchParams);
-                                        if (preset.min) params.set('filter.v.price.min', preset.min);
-                                        else params.delete('filter.v.price.min');
-                                        if (preset.max) params.set('filter.v.price.max', preset.max);
-                                        else params.delete('filter.v.price.max');
-                                        setSearchParams(params, { preventScrollReset: true, replace: true });
-                                      }}
-                                    />
-                                    <span className={`text-[13px] font-bold ${minPrice === preset.min && maxPrice === preset.max ? 'text-[#234745]' : 'text-[#8695A0] group-hover:text-[#234745]'} transition-colors`}>{preset.label}</span>
-                                </label>
-                            ))}
+                        <button type="button" onClick={handlePriceApply} className="w-[270px] bg-[#234745] text-[#FEF8EB] rounded-[25px] py-2.5 text-[16px] font-medium font-['GE_Dinar_One'] hover:opacity-90 transition-opacity">{isEn ? 'Apply' : 'تطبيق'}</button>
+                        <div className="flex flex-col gap-3 mt-2">
+                            {pricePresets.map((preset, i) => {
+                                const isActive = minPrice === preset.min && maxPrice === preset.max;
+                                return (
+                                    <button type="button" key={i} onClick={() => setPricePreset(preset.min, preset.max)} className="flex items-center justify-start gap-2 w-full outline-none group">
+                                        <div className={`w-6 h-6 rounded-full border-2 transition-colors flex items-center justify-center ${isActive ? 'border-[#234745]' : 'border-[#BBCFCD] group-hover:border-[#234745]'}`}>
+                                            {isActive && <div className="w-2.5 h-2.5 bg-[#234745] rounded-full" />}
+                                        </div>
+                                        <span className={`text-[16px] font-medium font-['GE_Dinar_One'] transition-colors ${isActive ? 'text-[#234745]' : 'text-[#7D7D7D] group-hover:text-[#234745]'}`}>{preset.label}</span>
+                                    </button>
+                                );
+                            })}
                         </div>
                     </div>
                 </div>
 
-                {/* 3. Occasion (المناسبة) */}
-                <div className="mb-6 border-b border-gray-100 pb-6">
-                    <button onClick={() => toggleSection('المناسبة')} className="w-full flex items-center justify-between group">
-                        <h3 className="text-[15px] font-black text-gray-800 tracking-wide">المناسبة</h3>
-                        <svg className={`w-4 h-4 text-gray-400 transition-transform duration-300 ${openSections['المناسبة'] ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
-                    </button>
-                    <div className={`mt-4 overflow-hidden transition-all duration-300 ${openSections['المناسبة'] ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'}`}>
-                        <div className="flex flex-col gap-3">
-                            {['عيد الفطر والاضحي', 'رمضان', 'أعياد الميلاد', 'زفاف وخطوبة', 'تخرج', 'يوم الأم', 'اليوم الوطني', 'هدايا مؤسسية'].map((item, i) => (
-                                <label key={i} className="flex items-center gap-3 cursor-pointer group">
-                                    <div className={`w-4 h-4 rounded-[4px] border flex items-center justify-center transition-colors ${i === 0 ? 'bg-[#234745] border-[#234745]' : 'border-gray-300 bg-white group-hover:border-[#234745]'}`}>
-                                        {i === 0 && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
-                                    </div>
-                                    <span className={`text-[13px] font-bold ${i === 0 ? 'text-[#234745]' : 'text-gray-500 group-hover:text-gray-800'}`}>{item}</span>
-                                </label>
-                            ))}
-                        </div>
-                    </div>
-                </div>
+                {/* Dynamic Filters from Shopify (Occasions, Dietary Types, etc) */}
+                {filters?.map((filter) => {
+                    if (filter.id === 'filter.v.price' || filter.type !== 'LIST' || filter.values.length === 0) return null;
 
-                {/* 4. Diet Type (النوع الغذائي) */}
-                <div className="mb-6 pb-6 border-b border-gray-100">
-                    <button onClick={() => toggleSection('النوع الغذائي')} className="w-full flex items-center justify-between group">
-                        <h3 className="text-[15px] font-black text-gray-800 tracking-wide">النوع الغذائي</h3>
-                        <svg className={`w-4 h-4 text-gray-400 transition-transform duration-300 ${openSections['النوع الغذائي'] ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
-                    </button>
-                    <div className={`mt-4 overflow-hidden transition-all duration-300 ${openSections['النوع الغذائي'] ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'}`}>
-                        <div className="flex flex-col gap-3">
-                            {['خالي من الجلوتين', 'مناسب للنباتيين', 'منتجات صحية', 'خالي من السكر', 'قليل الدهون'].map((item, i) => (
-                                <label key={i} className="flex items-center gap-3 cursor-pointer group">
-                                    <div className={`w-4 h-4 rounded-[4px] border flex items-center justify-center transition-colors ${i === 0 ? 'bg-[#234745] border-[#234745]' : 'border-gray-300 bg-white group-hover:border-[#234745]'}`}>
-                                        {i === 0 && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
-                                    </div>
-                                    <span className={`text-[13px] font-bold ${i === 0 ? 'text-[#234745]' : 'text-gray-500 group-hover:text-gray-800'}`}>{item}</span>
-                                </label>
-                            ))}
-                        </div>
-                    </div>
-                </div>
+                    return (
+                        <Fragment key={filter.id}>
+                            <div className="w-[302px] border-t border-[#BBCFCD]/50 my-0" />
+                            <div className="w-[270px] flex flex-col gap-4">
+                                <button type="button" onClick={() => toggleSection(filter.id)} className="flex items-center justify-between w-full outline-none group">
+                                    <h3 className="text-[16px] font-bold font-['GE_Dinar_One'] text-[#171717]">{filter.label}</h3>
+                                    <svg className={`w-4 h-4 text-[#234745] transition-transform duration-300 ${openSections[filter.id] ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                </button>
+                                <div className={`flex flex-col gap-4 transition-all duration-300 overflow-hidden ${openSections[filter.id] ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'}`}>
+                                    {filter.values.map((item: any, i: number) => {
+                                        const isActive = isFilterActive(item.input, currentParams);
+                                        return (
+                                            <button type="button" key={item.id || i} onClick={() => toggleFilterLink(item.input)} className="flex items-center justify-between w-full outline-none group">
+                                                <div className="flex items-center gap-2">
+                                                    <div className={`w-6 h-6 rounded flex items-center justify-center transition-colors ${isActive ? 'bg-[#234745]' : 'border-[1.14px] border-[#BBCFCD] bg-white group-hover:border-[#234745]'}`}>
+                                                        {isActive && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><polyline points="20 6 9 17 4 12"></polyline></svg>}
+                                                    </div>
+                                                    <span className={`text-[16px] font-medium font-['GE_Dinar_One'] transition-colors ${isActive ? 'text-[#234745]' : 'text-[#7D7D7D] group-hover:text-[#234745]'}`}>{item.label}</span>
+                                                </div>
+                                                <span className="text-[16px] font-medium font-['GE_Dinar_One'] text-[#7D7D7D]">{item.count > 0 ? `(${item.count})` : ''}</span>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        </Fragment>
+                    );
+                })}
             </div>
-            
-            <div className="mt-6">
-                <button className="w-full flex items-center justify-center border border-[#234745] text-[#234745] bg-white rounded-full py-3 font-bold text-sm hover:bg-gray-50 transition-all">
-                    مسح كل الفلاتر
+
+            <div className={`px-4 mt-6 shrink-0`}>
+                <button 
+                    type="button"
+                    onClick={handleClearAll}
+                    className="w-full border border-[#234745] text-[#234745] rounded-[25px] py-2.5 text-[16px] font-medium font-['GE_Dinar_One'] hover:bg-gray-50 transition-colors flex items-center justify-center"
+                >
+                    {isEn ? 'Clear All Filters' : 'مسح كل الفلاتر'}
                 </button>
             </div>
         </div>
     );
+}
+
+function getFilterLink(input: string) {
+    try {
+        const parsed = JSON.parse(input) as any;
+        const params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
+        
+        if (parsed.price) {
+            if (parsed.price.min) params.set('filter.v.price.min', parsed.price.min);
+            if (parsed.price.max) params.set('filter.v.price.max', parsed.price.max);
+        } else if (parsed.variantOption) {
+            params.set(`filter.v.option.${parsed.variantOption.name}`, parsed.variantOption.value);
+        } else if (parsed.productType) {
+            params.set('filter.v.product_type', parsed.productType);
+        } else if (parsed.productVendor) {
+            params.set('filter.v.product_vendor', parsed.productVendor);
+        } else if (parsed.productMetafield) {
+            params.set(`filter.p.m.${parsed.productMetafield.namespace}.${parsed.productMetafield.key}`, parsed.productMetafield.value);
+        } else if (parsed.available !== undefined) {
+             params.set('filter.v.availability', parsed.available.toString());
+        }
+        
+        return '?' + params.toString();
+    } catch(e) {
+        return '#';
+    }
+}
+
+function ProductsGrid({products, view}: {products: any[], view: 'grid' | 'list'}) {
+  const containerClasses = view === 'grid'
+    ? "grid grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8"
+    : "flex flex-col gap-5";
+
+  return (
+    <div className={containerClasses}>
+      {products.map((product: any, index: number) => {
+        return (
+          <ProductItem
+            key={product.id}
+            product={product}
+            view={view}
+            loading={index < 8 ? 'eager' : undefined}
+          />
+        );
+      })}
+    </div>
+  );
 }
 
 const PRODUCT_ITEM_FRAGMENT = `#graphql
@@ -522,17 +897,42 @@ const PRODUCT_ITEM_FRAGMENT = `#graphql
 ` as const;
 
 const CATALOG_QUERY = `#graphql
-  query Catalog(
+  query CatalogSearch(
     $country: CountryCode
     $language: LanguageCode
     $first: Int
     $last: Int
     $startCursor: String
     $endCursor: String
+    $query: String!
+    $filters: [ProductFilter!]
+    $sortKey: SearchSortKeys
   ) @inContext(country: $country, language: $language) {
-    products(first: $first, last: $last, before: $startCursor, after: $endCursor) {
+    search(
+      query: $query, 
+      first: $first, 
+      last: $last, 
+      before: $startCursor, 
+      after: $endCursor,
+      types: [PRODUCT],
+      productFilters: $filters,
+      sortKey: $sortKey
+    ) {
+      productFilters {
+        id
+        label
+        type
+        values {
+          id
+          label
+          count
+          input
+        }
+      }
       nodes {
-        ...ProductItem
+        ...on Product {
+           ...ProductItem
+        }
       }
       pageInfo {
         hasPreviousPage
@@ -541,7 +941,13 @@ const CATALOG_QUERY = `#graphql
         endCursor
       }
     }
+    collections(first: 50) {
+      nodes {
+        id
+        handle
+        title
+      }
+    }
   }
   ${PRODUCT_ITEM_FRAGMENT}
 ` as const;
-

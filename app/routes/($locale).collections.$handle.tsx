@@ -276,7 +276,7 @@ export default function Collection() {
 function CollectionHero({ collection }: { collection: any }) {
     const productsCount = collection.products?.nodes?.length || 0;
     return (
-        <section className="relative h-[160px] md:h-[180px] w-full bg-[#234745] overflow-hidden flex items-center" dir="rtl">
+        <section className="relative h-[144px] w-full bg-[#234745] overflow-hidden flex items-center" dir="rtl">
             {/* Background Texture */}
             <div 
                 className="absolute inset-0"
@@ -289,27 +289,29 @@ function CollectionHero({ collection }: { collection: any }) {
             
             <div className="relative z-10 w-full max-w-[1440px] mx-auto px-4 md:px-8 lg:px-12 flex items-center justify-between">
                 
-                {/* Left Side: Product Count */}
-                <div className="bg-[#FEF8EB] text-[#234745] px-6 py-2.5 rounded-full text-[14px] font-black shadow-sm shrink-0">
-                    {productsCount} منتجات
-                </div>
-
                 {/* Right Side: Title, Subtitle, and Back Button */}
-                <div className="text-right flex flex-col items-end">
-                    <div className="flex items-center gap-4 mb-3">
-                        <h1 className="text-4xl md:text-5xl font-black text-white drop-shadow-sm">
+                <div className="flex flex-col items-end gap-[8px]">
+                    <div className="flex items-center gap-[24px]" dir="ltr">
+                        <h1 className="text-[32px] md:text-[40px] font-bold text-white drop-shadow-sm text-right" style={{ fontFamily: "'GE Dinar One', sans-serif" }} dir="rtl">
                             {collection.title}
                         </h1>
-                        <button onClick={() => window.history.back()} className="flex items-center gap-2 bg-[#A8B8B5]/30 hover:bg-[#A8B8B5]/40 text-[#234745] px-6 py-2.5 rounded-full text-[14px] font-black transition-all">
+                        <button onClick={() => window.history.back()} className="flex items-center gap-[8px] bg-[#9FB7AE] hover:bg-[#8BA19C] text-[#234745] px-6 py-2 rounded-[25px] text-[16px] font-bold transition-all" style={{ fontFamily: "'GE Dinar One', sans-serif" }} dir="rtl">
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                            </svg>
                             <span>رجوع</span>
-                            <svg className="w-4 h-4 rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
                         </button>
                     </div>
                     {collection.description && (
-                        <p className="text-white/80 text-[13px] md:text-[14px] font-bold">
+                        <p className="text-[#9FB7AE] text-[14px] font-bold" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
                             {collection.description}
                         </p>
                     )}
+                </div>
+
+                {/* Left Side in RTL (Second child): Product Count */}
+                <div className="bg-[#FEF8EB] text-[#234745] px-6 py-2 rounded-[25px] text-[16px] font-bold shadow-sm shrink-0" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
+                    {productsCount} منتجات
                 </div>
                 
             </div>

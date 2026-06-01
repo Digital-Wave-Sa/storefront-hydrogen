@@ -159,7 +159,7 @@ export function NewArrivals({
 
                                                         {/* Price — hidden when visibility blocked */}
                                                         {!isVisibilityBlocked ? (
-                                                          <div className={`flex items-center gap-3 mb-6 mt-auto ${isEn ? 'flex-row' : 'flex-row-reverse'}`}>
+                                                          <div className="flex items-center gap-3 mb-6 mt-auto">
                                                               <Price 
                                                                 data={product.priceRange.minVariantPrice} 
                                                                 isEn={isEn} 

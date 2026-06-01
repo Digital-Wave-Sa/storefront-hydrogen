@@ -11,6 +11,7 @@ import {
   ScrollRestoration,
   useRouteLoaderData,
   useLocation,
+  useNavigation,
 } from 'react-router';
 import type {Route} from './+types/root';
 import favicon from '~/assets/favicon.svg';
@@ -22,6 +23,7 @@ import {PageLayout} from './components/PageLayout';
 import {GTMAnalytics} from './components/GTMAnalytics';
 import {WishlistProvider} from './context/WishlistContext';
 import {NotFound} from './components/NotFound';
+import {ProductSkeleton} from './components/ProductSkeleton';
 
 
 export type RootLoader = typeof loader;
@@ -483,6 +485,7 @@ export function Layout({children}: {children?: React.ReactNode}) {
 export default function App() {
   const data = useRouteLoaderData<RootLoader>('root');
   const [customerId, setCustomerId] = useState<string | undefined>(undefined);
+  const navigation = useNavigation();
 
   useEffect(() => {
     if (data?.customer && typeof data.customer.then === 'function') {
@@ -491,6 +494,8 @@ export default function App() {
       }).catch(() => {});
     }
   }, [data?.customer]);
+
+  const isNavigatingToProduct = navigation.state === 'loading' && navigation.location.pathname.includes('/products/');
 
   return (
     <Analytics.Provider
@@ -501,12 +506,16 @@ export default function App() {
       <WishlistProvider customerId={customerId}>
         <GTMAnalytics />
         <PageLayout {...data}>
-          <Outlet context={{ 
-            locale: data.consent.language.toLowerCase(),
-            selectedLocationId: data.selectedLocationId,
-            selectedLocationName: data.selectedLocationName,
-            fulfillmentType: data.fulfillmentType
-          }} />
+          {isNavigatingToProduct ? (
+            <ProductSkeleton isEn={data.consent.language.toLowerCase() === 'en'} />
+          ) : (
+            <Outlet context={{ 
+              locale: data.consent.language.toLowerCase(),
+              selectedLocationId: data.selectedLocationId,
+              selectedLocationName: data.selectedLocationName,
+              fulfillmentType: data.fulfillmentType
+            }} />
+          )}
         </PageLayout>
       </WishlistProvider>
     </Analytics.Provider>

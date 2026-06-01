@@ -24,14 +24,16 @@ export function StarRating({
     size = 'md', 
     locale = 'ar', 
     productHandle,
-    locationId 
+    locationId,
+    hideText = false
 }: { 
     rating?: string | number, 
     count?: string | number, 
     size?: 'xs' | 'sm' | 'md' | 'lg', 
     locale?: string, 
     productHandle?: string,
-    locationId?: string 
+    locationId?: string,
+    hideText?: boolean
 }) {
     const rootData = useRouteLoaderData('root') as any;
     const isEn = locale === 'en';
@@ -86,8 +88,8 @@ export function StarRating({
         return [sum / filteredReviews.length, filteredReviews.length];
     }, [rating, count, productHandle, locationId, rootData]);
 
-    const numericRating = finalRating;
-    const numericCount = finalCount;
+    const numericRating = finalRating || 0;
+    const numericCount = finalCount || 0;
     
     // Draw 5 stars filling sequentially
     const renderStars = () => {
@@ -115,7 +117,13 @@ export function StarRating({
         return stars;
     };
 
-    if (!numericRating || numericRating === 0) return null;
+    if (hideText) {
+        return (
+            <div className={`flex items-center gap-0.5 ${!isEn && 'flex-row-reverse'}`}>
+                {renderStars()}
+            </div>
+        );
+    }
 
     return (
         <div className="flex items-center gap-1.5 font-bold">

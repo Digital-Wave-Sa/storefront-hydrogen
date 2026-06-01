@@ -75,9 +75,11 @@ export default function Wishlist() {
                     {item.title}
                   </h3>
                 </Link>
-                <div className="mb-6">
-                  <Money data={item.priceRange.minVariantPrice} className="text-[#234745] font-black text-xl" />
-                </div>
+                {item.priceRange?.minVariantPrice && (
+                  <div className="mb-6">
+                    <Money data={item.priceRange.minVariantPrice} className="text-[#234745] font-black text-xl" />
+                  </div>
+                )}
                 
                 <AddToCartButton
                   lines={[{ merchandiseId: item.id, quantity: 1 }]}

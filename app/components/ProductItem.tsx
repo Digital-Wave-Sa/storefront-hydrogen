@@ -222,7 +222,7 @@ export function ProductItem({
   }
 
   return (
-    <div className={`group flex flex-col bg-white rounded-3xl overflow-hidden transition-all duration-500 relative ${isDimmed ? 'opacity-60 grayscale-[30%]' : 'hover:shadow-xl hover:shadow-[#234745]/10 hover:-translate-y-1'}`}>
+    <div className={`group flex flex-col bg-[#F9F9F9] rounded-[20px] overflow-hidden transition-all duration-300 relative ${isDimmed ? 'opacity-60 grayscale-[30%]' : 'hover:shadow-md hover:-translate-y-1'}`}>
       <Link
         key={product.id}
         prefetch="intent"
@@ -230,20 +230,20 @@ export function ProductItem({
         className={`block relative ${isVisibilityBlocked ? 'pointer-events-none' : ''}`}
         onClick={isVisibilityBlocked ? (e: any) => e.preventDefault() : undefined}
       >
-        <div className="w-full aspect-square relative bg-[#f9f9f9] flex items-center justify-center">
+        <div className="w-full aspect-[4/3] relative flex items-center justify-center bg-gray-50 overflow-hidden">
             {product.featuredImage && (
             <Image
                 alt={product.featuredImage.altText || product.title}
-                aspectRatio="1/1"
+                aspectRatio="4/3"
                 data={product.featuredImage}
                 loading={loading}
                 sizes="(min-width: 45em) 400px, 100vw"
-                className={`w-full h-full object-contain transition-transform duration-700 ${!effectiveAvailable ? 'opacity-50 grayscale' : 'group-hover:scale-110'}`}
+                className={`w-full h-full object-cover transition-transform duration-700 ${!effectiveAvailable ? 'opacity-50 grayscale' : 'group-hover:scale-105'}`}
             />
             )}
             
             {/* Wishlist Heart Icon */}
-            <div className="absolute top-4 left-4 z-20">
+            <div className={`absolute top-[16px] ${isEn ? 'right-[16px]' : 'left-[16px]'} z-20`}>
                 <button 
                   onClick={(e) => {
                       e.preventDefault();
@@ -255,43 +255,39 @@ export function ProductItem({
                         priceRange: product.priceRange
                       });
                   }}
-                  className={`rounded-full p-2 shadow-md transition-all border flex items-center justify-center ${isWishlisted ? 'bg-white text-red-500 border-white' : 'bg-white/80 text-gray-400 hover:text-red-500 border-gray-100/50'}`}
+                  className={`rounded-[25px] w-[28px] h-[28px] bg-[#FFFFFF] shadow-sm transition-all flex items-center justify-center ${isWishlisted ? 'text-red-500' : 'text-[#171717] hover:text-red-500'}`}
                 >
-                    <svg width="18" height="18" fill={isWishlisted ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                    <svg width="16" height="16" fill={isWishlisted ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                     </svg>
                 </button>
             </div>
             
             {/* Status Badges overlay */}
-            <div className="absolute top-4 right-4 z-10 flex flex-col gap-2 items-end">
+            <div className={`absolute top-[16px] ${isEn ? 'left-[16px]' : 'right-[16px]'} z-10 flex flex-col gap-2 ${isEn ? 'items-start' : 'items-end'}`}>
               {isVisibilityBlocked ? (
-                  <span className={`text-[10px] font-black px-3 py-1.5 rounded-xl shadow-sm flex items-center gap-1.5 ${visibility.status === 'scheduled' ? 'bg-amber-500 text-white' : 'bg-red-500 text-white'}`}>
+                  <span className={`text-[10px] font-black px-3 py-1.5 rounded-[8px] shadow-sm flex items-center gap-1.5 ${visibility.status === 'scheduled' ? 'bg-amber-500 text-white' : 'bg-red-500 text-white'}`}>
                     <span>{visibility.status === 'scheduled' ? '🕐' : '⛔'}</span>
                     {isEn ? visibility.label.en : visibility.label.ar}
                   </span>
               ) : (showOutOfStock || showPreorder) ? (
-                  <span className={`text-[10px] font-black px-3 py-1.5 rounded-xl shadow-sm flex items-center gap-1.5 ${showPreorder ? 'bg-blue-600 text-white' : 'bg-red-500 text-white'}`}>
+                  <span className={`text-[10px] font-black px-3 py-1.5 rounded-[8px] shadow-sm flex items-center gap-1.5 ${showPreorder ? 'bg-blue-600 text-white' : 'bg-red-500 text-white'}`}>
                     <span>{showPreorder ? '📦' : '⛔'}</span>
                     {showPreorder ? t.common.preOrder : t.common.outOfStock}
                   </span>
-              ) : (
-                  <div className="text-[10px] font-black px-2.5 py-1.5 rounded-xl shadow-sm bg-white/90 text-green-600 backdrop-blur-md">
-                    {t.common.inStock}
-                  </div>
-              )}
+              ) : null}
               {!isVisibilityBlocked && (product as any).is_limited_time?.value === 'true' && (
-                  <div className="text-[10px] font-black px-2.5 py-1.5 rounded-xl shadow-sm bg-purple-600 text-white flex items-center gap-1.5 mt-1">
+                  <div className="text-[10px] font-black px-2.5 py-1.5 rounded-[8px] shadow-sm bg-purple-600 text-white flex items-center gap-1.5">
                       <span>⏳</span> {isEn ? 'Limited Time' : 'لفترة محدودة'}
                   </div>
               )}
               {!isVisibilityBlocked && isBogo && (
-                  <div className="text-[10px] font-black px-2.5 py-1.5 rounded-xl shadow-sm bg-[#FF6B6B] text-white flex items-center gap-1.5 mt-1">
+                  <div className="text-[10px] font-black px-2.5 py-1.5 rounded-[8px] shadow-sm bg-[#FF6B6B] text-white flex items-center gap-1.5">
                       <span>🎁</span> {isEn ? 'Buy 1 Get 1 Free' : '1+1 مجاناً'}
                   </div>
               )}
               {!isVisibilityBlocked && !isBogo && product.compareAtPriceRange?.minVariantPrice && product.priceRange?.minVariantPrice && parseFloat(product.compareAtPriceRange.minVariantPrice.amount) > parseFloat(product.priceRange.minVariantPrice.amount) && (
-                  <div className="text-[10px] font-black px-2.5 py-1.5 rounded-xl shadow-sm bg-[#e74c3c] text-white flex items-center gap-1.5 mt-1">
+                  <div className="text-[10px] font-black px-2.5 py-1.5 rounded-[8px] shadow-sm bg-[#e74c3c] text-white flex items-center gap-1.5">
                       <span>🔥</span> {isEn ? 'Sale' : 'تخفيض'}
                   </div>
               )}
@@ -299,18 +295,24 @@ export function ProductItem({
         </div>
       </Link>
         
-      <div className="p-6 md:p-8 flex flex-col flex-grow text-right">
+      <div className={`p-[16px] flex flex-col flex-grow ${isEn ? 'text-left' : 'text-right'}`}>
           <Link prefetch="intent" to={isVisibilityBlocked ? '#' : variantUrl} className={isVisibilityBlocked ? 'pointer-events-none' : ''}>
-              <h4 className={`text-[17px] font-black text-gray-800 line-clamp-1 transition-colors duration-300 ${isVisibilityBlocked ? '' : 'group-hover:text-[#234745]'}`}>{product.title}</h4>
+              <h4 className={`font-bold text-[#234745] line-clamp-1 transition-colors duration-300 ${isVisibilityBlocked ? '' : 'group-hover:text-[#1a3a2d]'}`} style={{ fontFamily: "'GE Dinar One', sans-serif", fontSize: '16px', lineHeight: '20px' }}>
+                  {product.title}
+              </h4>
           </Link>
 
           {!isVisibilityBlocked && product.priceRange && (
-            <Price 
-              data={product.priceRange.minVariantPrice} 
-              size="md" 
-              isEn={isEn} 
-              className="mt-2 mb-6 text-[#234745]"
-            />
+            <div className={`mt-[8px] mb-[16px] flex ${isEn ? 'justify-start' : 'justify-start'} items-center gap-[8px]`}>
+                <div className="flex items-center text-[#255441]" style={{ fontFamily: "'GE Dinar One', sans-serif", fontSize: '18px', lineHeight: '22px', fontWeight: 'bold' }}>
+                    <Price data={product.priceRange.minVariantPrice} size="sm" isEn={isEn} />
+                </div>
+                {product.compareAtPriceRange?.minVariantPrice && parseFloat(product.compareAtPriceRange.minVariantPrice.amount) > parseFloat(product.priceRange.minVariantPrice.amount) && (
+                    <div className="flex items-center text-[#9FB7AE] line-through" style={{ fontFamily: "'GE Dinar One', sans-serif", fontSize: '14px', lineHeight: '17px', fontWeight: '500' }}>
+                        <Price data={product.compareAtPriceRange.minVariantPrice} size="sm" isEn={isEn} />
+                    </div>
+                )}
+            </div>
           )}
 
           {!isVisibilityBlocked && (
@@ -319,15 +321,17 @@ export function ProductItem({
                     <AddToCartButton 
                           lines={cartLines as any} 
                           disabled={!effectiveAvailable || isOutOfStock}
-                          className="w-full bg-[#234745] hover:bg-[#2d5e4a] text-white py-3.5 rounded-full font-bold text-[13px] shadow-md transition-all"
+                          className="w-full bg-[#234745] hover:bg-[#1a3a2d] text-[#FEF8EB] h-[40px] flex items-center justify-center rounded-[25px] font-bold transition-all"
+                          style={{ fontFamily: "'GE Dinar One', sans-serif", fontSize: '16px', lineHeight: '20px' }}
                       >
-                          {isEn ? 'Add to Cart' : 'أضف إلى السلة'}
+                          {isEn ? 'Add to Cart' : 'أضف إلي السلة'}
                       </AddToCartButton>
                 ) : (
                     <button 
                         type="button"
                         onClick={() => setIsNotifyModalOpen(true)}
-                        className="w-full h-12 rounded-2xl font-black text-sm bg-amber-500 hover:bg-amber-600 text-white shadow-lg shadow-amber-500/10 cursor-pointer relative z-30"
+                        className="w-full py-[12px] rounded-[25px] font-bold text-[16px] bg-amber-500 hover:bg-amber-600 text-white shadow-sm cursor-pointer transition-all"
+                        style={{ fontFamily: "'GE Dinar One', sans-serif" }}
                     >
                         🔔 {t.common.notifyMe}
                     </button>

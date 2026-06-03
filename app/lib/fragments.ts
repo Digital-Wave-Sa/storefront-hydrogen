@@ -22,6 +22,11 @@ export const CART_QUERY_FRAGMENT = `#graphql
         ...Money
       }
     }
+    discountAllocations {
+      discountedAmount {
+        ...Money
+      }
+    }
     merchandise {
       ... on ProductVariant {
         id
@@ -79,6 +84,11 @@ export const CART_QUERY_FRAGMENT = `#graphql
         ...Money
       }
       compareAtAmountPerQuantity {
+        ...Money
+      }
+    }
+    discountAllocations {
+      discountedAmount {
         ...Money
       }
     }
@@ -175,6 +185,11 @@ export const CART_QUERY_FRAGMENT = `#graphql
     discountCodes {
       code
       applicable
+    }
+    discountAllocations {
+      discountedAmount {
+        ...Money
+      }
     }
   }
 ` as const;

@@ -7,6 +7,8 @@ import {DesignYourCake} from '~/components/DesignYourCake';
 import {ShopByOccasion} from '~/components/ShopByOccasion';
 import {NewArrivals} from '~/components/NewArrivals';
 import {OffersAndDiscounts} from '~/components/OffersAndDiscounts';
+import {RamadanBanner} from '~/components/RamadanBanner';
+import {CustomerReviews} from '~/components/CustomerReviews';
 import {WhoAreYouGifting} from '~/components/WhoAreYouGifting';
 import {CorporateGifting} from '~/components/CorporateGifting';
 
@@ -32,7 +34,7 @@ export async function loader(args: Route.LoaderArgs) {
 }
 
 async function loadCriticalData({context}: Route.LoaderArgs) {
-  const [{collections}, occasionsResult] = await Promise.all([
+  const [{collections}, occasionsResult, configResult] = await Promise.all([
     context.storefront.query(FEATURED_COLLECTION_QUERY, {
       variables: {
         country: context.storefront.i18n.country,
@@ -48,11 +50,21 @@ async function loadCriticalData({context}: Route.LoaderArgs) {
       console.error('Failed to fetch occasions:', error);
       return { collections: { nodes: [] } };
     }),
+    context.storefront.query(HOMEPAGE_CONFIG_QUERY, {
+      variables: {
+        country: context.storefront.i18n.country,
+        language: context.storefront.i18n.language,
+      },
+    }).catch((error) => {
+      console.error('Failed to fetch homepage config:', error);
+      return { metaobjects: { nodes: [] } };
+    }),
   ]);
 
   return {
     featuredCollection: collections.nodes[0],
     occasions: occasionsResult.collections.nodes,
+    homepageConfig: configResult?.metaobjects?.nodes?.[0] || null,
   };
 }
 
@@ -122,7 +134,9 @@ export default function Homepage() {
       <CorporateGifting />
       <NewArrivals products={data.newArrivals} />
       <DesignYourCake />
-      <OffersAndDiscounts />
+      <RamadanBanner config={data.homepageConfig} />
+      <OffersAndDiscounts config={data.homepageConfig} />
+      <CustomerReviews config={data.homepageConfig} />
     </div>
   );
 }
@@ -369,4 +383,40 @@ const OCCASIONS_QUERY = `#graphql
   }
 ` as const;
 
-
+export const HOMEPAGE_CONFIG_QUERY = `#graphql
+  query HomepageConfig($country: CountryCode, $language: LanguageCode)
+    @inContext(country: $country, language: $language) {
+    metaobjects(type: "homepage_config", first: 1) {
+      nodes {
+        fields {
+          key
+          value
+          reference {
+            ... on MediaImage {
+              image {
+                url
+              }
+            }
+          }
+          references(first: 10) {
+            nodes {
+              ... on Metaobject {
+                fields {
+                  key
+                  value
+                  reference {
+                    ... on MediaImage {
+                      image {
+                        url
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+` as const;

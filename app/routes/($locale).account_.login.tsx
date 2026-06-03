@@ -43,15 +43,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
     if (cleanPhone.startsWith('0')) cleanPhone = cleanPhone.substring(1);
     const fullPhone = `+966${cleanPhone}`;
 
-    // DEV BYPASS: Skip Shopify customer search completely in development mode
-    if (process.env.NODE_ENV === 'development') {
-      session.set('loginOtpCode', '1234');
-      session.set('loginOtpPhone', fullPhone);
-      return data(
-        { success: true, step: 'otp', phone: fullPhone },
-        { headers: { 'Set-Cookie': await session.commit() } }
-      );
-    }
+
 
     try {
       const { getAdminToken } = await import('~/lib/shopify-admin.server');
@@ -86,6 +78,8 @@ export async function action({ request, context }: ActionFunctionArgs) {
         session.set('loginOtpCode', code);
         session.set('loginOtpPhone', fullPhone);
         session.set('loginCustomerEmail', customers[0].email);
+        session.set('loginCustomerId', customers[0].id);
+        session.set('loginOtpExpires', Date.now() + 5 * 60 * 1000); // 5 minutes from now
         return data(
           { success: true, step: 'otp', phone: fullPhone },
           { headers: { 'Set-Cookie': await session.commit() } }
@@ -101,17 +95,61 @@ export async function action({ request, context }: ActionFunctionArgs) {
     const otp = String(form.get('otp') || '');
     const savedCode = session.get('loginOtpCode');
 
-    if (otp === '1234' || otp === savedCode) {
-      session.unset('loginOtpCode');
-      
-      // DEV BYPASS: Inject a fake access token to bypass Shopify authentication
-      if (process.env.NODE_ENV === 'development') {
-        session.set('customerAccessToken', { accessToken: 'dev-bypass-token', expiresAt: '2099-01-01T00:00:00Z' });
+    if (otp === savedCode && savedCode) {
+      const expires = Number(session.get('loginOtpExpires'));
+      if (!expires || Date.now() > expires) {
+        return data({ error: lang === 'en' ? 'Verification code has expired. Please request a new one.' : 'انتهت صلاحية الرمز. يرجى طلب رمز جديد.' });
       }
 
-      return redirect('/account', {
-        headers: { 'Set-Cookie': await session.commit() },
-      });
+      session.unset('loginOtpCode');
+      session.unset('loginOtpExpires');
+      const email = session.get('loginCustomerEmail');
+      const customerId = session.get('loginCustomerId');
+      const savedPhone = session.get('loginOtpPhone') || '';
+      
+      try {
+        const { getAdminToken } = await import('~/lib/shopify-admin.server');
+        const adminToken = await getAdminToken(env);
+        const newPassword = Math.random().toString(36).slice(-10) + "A1!"; // ensure requirements
+        
+        // Update password via Admin API
+        await fetch(`https://${env.PUBLIC_STORE_DOMAIN}/admin/api/2023-04/customers/${customerId}.json`, {
+          method: 'PUT',
+          headers: {
+            'X-Shopify-Access-Token': adminToken,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            customer: {
+              id: customerId,
+              password: newPassword,
+              password_confirmation: newPassword
+            }
+          })
+        });
+
+        // Create access token (fallback to dummy email if customer has no email)
+        const tokenResponse = await storefront.mutate(LOGIN_MUTATION, {
+          variables: {
+            input: {
+              email: email || `${savedPhone.replace('+', '')}@example.com`,
+              password: newPassword,
+            },
+          },
+        });
+
+        const token = tokenResponse.customerAccessTokenCreate?.customerAccessToken;
+        if (token) {
+          session.set('customerAccessToken', token);
+          return redirect('/account', {
+            headers: { 'Set-Cookie': await session.commit() },
+          });
+        } else {
+           return data({ error: lang === 'en' ? 'Failed to generate token' : 'فشل إنشاء الرمز' });
+        }
+      } catch(e) {
+         return data({ error: lang === 'en' ? 'Error logging in' : 'خطأ في تسجيل الدخول' });
+      }
     }
     return data({ error: lang === 'en' ? 'Invalid code.' : 'رمز التحقق غير صحيح.' });
   }

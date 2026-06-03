@@ -6,7 +6,7 @@ export function OffersAndDiscounts() {
 
     return (
         <section
-            className={`w-full bg-[#FDF5E6] py-20 lg:py-28 ${isEn ? 'font-en' : 'font-ar'}`}
+            className={`w-full bg-[#FEF8EB] py-20 lg:py-28 ${isEn ? 'font-en' : 'font-ar'}`}
             dir={isEn ? 'ltr' : 'rtl'}
         >
             <div className="max-w-[1400px] mx-auto px-4 md:px-8">
@@ -42,7 +42,15 @@ export function OffersAndDiscounts() {
                         {/* Content Side */}
                         <div className={`w-full md:w-[45%] flex flex-col relative z-10 px-8 lg:px-14 py-12 ${isEn ? 'items-center md:items-end text-center md:text-right' : 'items-center md:items-start text-center md:text-right'}`}>
 
-                            <div className="bg-[#E75D5D] text-white px-8 py-2 rounded-[16px] text-[14px] font-bold mb-8 shadow-sm">
+                            <div 
+                                className="text-white text-[14px] font-bold mb-8 shadow-sm flex items-center justify-center"
+                                style={{
+                                    background: '#E64950',
+                                    borderRadius: '25px',
+                                    gap: '8px',
+                                    padding: '10px 12px'
+                                }}
+                            >
                                 {isEn ? 'Gift Voucher' : 'قسيمة هدية'}
                             </div>
 
@@ -61,9 +69,17 @@ export function OffersAndDiscounts() {
 
                             <Link
                                 to={isEn ? "/en/products/gift-card" : "/products/gift-card"}
-                                className="bg-[#234745] !text-white px-12 py-4 rounded-full text-[17px] transition-all min-w-[240px] text-center shadow-md mt-8 font-dinar font-bold"
+                                className="bg-[#234745] flex items-center justify-center transition-all mt-8 font-dinar font-bold"
+                                style={{
+                                    width: '261px',
+                                    height: '47px',
+                                    borderRadius: '25px',
+                                    padding: '10px 16px',
+                                    gap: '8px',
+                                    color: '#FEF8EB'
+                                }}
                             >
-                                {isEn ? 'Buy Voucher Now' : 'إشتري قسيمة الآن'}
+                                {isEn ? 'Buy Voucher Now' : 'إشتري قسيمة الان'}
                             </Link>
                         </div>
                         {/* Image Side */}
@@ -87,14 +103,18 @@ export function OffersAndDiscounts() {
                             />
                         </div>
                         <div className="relative z-10 w-full flex flex-col items-center">
-                            <h3 className="text-[26px] lg:text-[38px] font-bold text-white leading-tight mb-10 px-4 tracking-tight">
-                                {isEn ? 'Offers on our Best Products' : 'عروض وتخفيضات علي افضل منتجاتنا'}
+                            <h3 
+                                className="text-[38px] font-bold text-white text-center mb-10 tracking-tight"
+                                style={{ fontFamily: 'Bahij Janna', lineHeight: '125%' }}
+                            >
+                                {isEn ? 'Offers on our Best Products' : 'عروض وتخفضيات علي افضل منتجاتنا'}
                             </h3>
                             <Link
                                 to={isEn ? "/en/collections/offers" : "/collections/offers"}
-                                className="bg-[#FFF9ED] text-black px-12 py-4 rounded-full text-[17px] transition-all w-full max-w-[280px] text-center font-dinar font-bold"
+                                className="bg-[#FEF8EB] text-[#255441] rounded-[100px] transition-all flex items-center justify-center font-dinar font-bold"
+                                style={{ width: '245px', height: '40px', padding: '12px 80px', gap: '8px' }}
                             >
-                                {isEn ? 'Browse Now' : 'تصفح الآن'}
+                                {isEn ? 'Browse Now' : 'تصفح الان'}
                             </Link>
                         </div>
                     </div>
@@ -104,7 +124,7 @@ export function OffersAndDiscounts() {
                 <div className="flex justify-center">
                     <Link
                         to={isEn ? "/en/collections/offers" : "/collections/offers"}
-                        className="px-16 py-4 border-2 border-[#234745] text-[#234745] hover:bg-[#234745] hover:text-white rounded-full text-[17px] transition-all min-w-[320px] text-center uppercase tracking-widest shadow-sm font-dinar font-bold"
+                        className="px-16 py-4 border-2 border-[#234745] text-[#234745] hover:bg-[#234745] hover:!text-white rounded-full text-[17px] transition-all min-w-[320px] text-center uppercase tracking-widest shadow-sm font-dinar font-bold"
                     >
                         {isEn ? 'View All Offers' : 'عرض جميع العروض'}
                     </Link>

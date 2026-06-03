@@ -18,13 +18,15 @@ export async function sendSMS({
   // If it starts with '05', replace '0' with '966'
   let formattedPhone = to.replace(/\s+/g, '').replace(/\D/g, '');
   
-  // If it already starts with a supported country code, do nothing
-  if (formattedPhone.startsWith('966')) {
+  // Enforce 00966 format for the SMS provider
+  if (formattedPhone.startsWith('00966')) {
      // Already formatted properly
+  } else if (formattedPhone.startsWith('966')) {
+     formattedPhone = '00' + formattedPhone;
   } else if (formattedPhone.startsWith('05')) {
-    formattedPhone = '966' + formattedPhone.substring(1);
+    formattedPhone = '00966' + formattedPhone.substring(1);
   } else if (formattedPhone.startsWith('5') && formattedPhone.length === 9) {
-    formattedPhone = '966' + formattedPhone;
+    formattedPhone = '00966' + formattedPhone;
   }
 
   const payload = {

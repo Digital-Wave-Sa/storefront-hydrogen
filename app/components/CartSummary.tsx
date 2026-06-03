@@ -94,6 +94,7 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
               {/* Promo Code Input */}
               <CartDiscounts
                 discountCodes={cart?.discountCodes}
+                cart={cart}
                 discountsHeadingId={discountsHeadingId}
                 discountCodeInputId={discountCodeInputId}
                 isEn={isEn}
@@ -560,11 +561,13 @@ function ViewCartAction({isEn}: {isEn: boolean}) {
 
 function CartDiscounts({
   discountCodes,
+  cart,
   discountsHeadingId,
   discountCodeInputId,
   isEn,
 }: {
   discountCodes?: CartApiQueryFragment['discountCodes'];
+  cart?: any;
   discountsHeadingId: string;
   discountCodeInputId: string;
   isEn: boolean;
@@ -574,6 +577,13 @@ function CartDiscounts({
     discountCodes
       ?.filter((discount) => discount.applicable)
       ?.map(({code}) => code) || [];
+      
+  const hasLineAllocations = cart?.lines?.nodes?.some((line: any) => line?.discountAllocations?.length > 0);
+  const hasCartAllocations = cart?.discountAllocations?.length > 0;
+  const hasAllocations = hasLineAllocations || hasCartAllocations;
+  
+  // If we have allocations but no manual codes, it must be an automatic discount!
+  const hasAutomaticDiscount = hasAllocations && codes.length === 0;
 
   return (
     <div aria-label="Discounts" className="w-full relative">
@@ -610,6 +620,25 @@ function CartDiscounts({
           </UpdateDiscountForm>
         </div>
       </dl>
+
+      {/* Render Automatic Discounts */}
+      {hasAutomaticDiscount && (
+        <dl>
+          <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-xl px-4 py-3 mb-2">
+            <div className="flex items-center gap-2 text-green-700">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>
+              <div>
+                <span className="font-bold text-[14px] leading-none block">
+                  {isEn ? 'Automatic Promotion' : 'خصم تلقائي'}
+                </span>
+                <span className="text-[11px] font-medium opacity-80 block mt-0.5">
+                  {isEn ? 'Applied to your cart' : 'تم التطبيق على سلتك'}
+                </span>
+              </div>
+            </div>
+          </div>
+        </dl>
+      )}
 
       <div hidden={codes.length > 0}>
         <UpdateDiscountForm discountCodes={codes}>

@@ -64,6 +64,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
       if (result.success) {
         session.set('otpCode', code);
         session.set('otpPhone', fullPhone);
+        session.set('otpExpires', Date.now() + 5 * 60 * 1000); // 5 minutes
         return data(
           { step: 'otp' },
           { headers: { 'Set-Cookie': await session.commit() } }
@@ -81,11 +82,17 @@ export async function action({ request, context }: ActionFunctionArgs) {
     const savedCode = session.get('otpCode');
     const savedPhone = session.get('otpPhone');
 
-    if (otp !== '1234' && otp !== savedCode) {
+    if (otp !== savedCode || !savedCode) {
       return data({ error: lang === 'en' ? 'Incorrect code. Please try again.' : 'رمز التحقق غير صحيح، يرجى المحاولة مرة أخرى.' });
     }
 
+    const expires = session.get('otpExpires');
+    if (!expires || Date.now() > expires) {
+      return data({ error: lang === 'en' ? 'Verification code has expired. Please request a new one.' : 'انتهت صلاحية الرمز. يرجى طلب رمز جديد.' });
+    }
+
     session.unset('otpCode');
+    session.unset('otpExpires');
     
     // Extract Customer Details
     const accountType = String(form.get('accountType') || 'individual');
@@ -140,12 +147,15 @@ export async function action({ request, context }: ActionFunctionArgs) {
         }
       }
 
+      const newPassword = Math.random().toString(36).slice(-10) + "A1!";
       const customerPayload: any = {
         customer: {
           first_name: firstName,
           last_name: lastName,
           phone: savedPhone,
           email: email || undefined,
+          password: newPassword,
+          password_confirmation: newPassword,
           tags: accountType === 'company' ? 'verified_phone, B2B' : 'verified_phone',
           metafields
         }
@@ -169,21 +179,22 @@ export async function action({ request, context }: ActionFunctionArgs) {
         throw new Error(errorMsg);
       }
 
-      // Generate Access Token (since we bypassed email verification by using Admin API)
+      // Generate Access Token
       const tokenResponse = await storefront.mutate(CUSTOMER_ACCESS_TOKEN_CREATE_MUTATION, {
         variables: {
           input: {
             email: adminData.customer.email || `${savedPhone.replace('+', '')}@example.com`,
-            password: 'placeholder_password', // This won't actually work since we didn't set a password. We'd typically use multipass or OTP token exchange here. 
+            password: newPassword,
           },
         },
       });
       
-      // In a real OTP flow where passwords aren't used, we should use a custom Multipass approach 
-      // or redirect to login. For this demo, let's just clear session and force login since 
-      // OTP-only login usually requires a different API approach or Multipass for Shopify.
+      const token = tokenResponse.customerAccessTokenCreate?.customerAccessToken;
+      if (token) {
+        session.set('customerAccessToken', token);
+      }
       
-      return redirect(lang === 'en' ? '/en/account/login?created=true' : '/account/login?created=true', {
+      return redirect(lang === 'en' ? '/en/account' : '/account', {
         headers: {
           'Set-Cookie': await session.commit()
         }

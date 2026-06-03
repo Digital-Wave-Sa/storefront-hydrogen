@@ -405,6 +405,7 @@ export default function LolaCakeBuilder({ cakeAttributes = [] }: { cakeAttribute
             >
               {steps.map((step) => {
                 const isActive = currentStep === step.id;
+                const isCompleted = currentStep > step.id;
                 return (
                   <button
                     key={step.id}
@@ -412,18 +413,24 @@ export default function LolaCakeBuilder({ cakeAttributes = [] }: { cakeAttribute
                     className={`flex-1 min-w-[120px] p-6 rounded-3xl border transition-all flex flex-col items-center justify-center gap-4 ${
                       isActive 
                         ? 'border-[#294941] bg-[#F7EAE6]' 
-                        : 'border-[#E5E7EB] bg-white hover:border-[#294941]/50'
+                        : isCompleted
+                          ? 'border-[#294941]/30 bg-white hover:border-[#294941]'
+                          : 'border-[#E5E7EB] bg-white hover:border-[#294941]/50'
                     }`}
                   >
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-xl ${
-                      isActive ? 'bg-[#294941] text-white' : 'bg-[#A6C1B7] text-white'
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-xl transition-all duration-300 ${
+                      isActive 
+                        ? 'bg-[#294941] text-white scale-110 shadow-md' 
+                        : isCompleted
+                          ? 'bg-[#294941] text-white'
+                          : 'bg-[#A6C1B7] text-white'
                     }`}>
-                      {toArabicDigits(step.id)}
+                      {isCompleted ? <CheckIcon className="w-5 h-5" /> : toArabicDigits(step.id)}
                     </div>
                     <div className="text-sm font-bold text-center text-[#1a1a1a]">
                       {step.title}
                     </div>
-                    <step.icon className={`w-6 h-6 ${isActive ? 'text-[#294941]' : 'text-[#A6C1B7]'}`} />
+                    <step.icon className={`w-6 h-6 transition-colors duration-300 ${isActive || isCompleted ? 'text-[#294941]' : 'text-[#A6C1B7]'}`} />
                   </button>
                 );
               })}
@@ -635,7 +642,7 @@ export default function LolaCakeBuilder({ cakeAttributes = [] }: { cakeAttribute
                   scale={selections.size.scale}
                   message={selections.message}
                   flavorName={selections.flavor.name}
-                  isCutaway={isCutaway}
+                  isCutaway={currentStep === 2 && isCutaway}
                   textColor={selections.textColor}
                   textFont={selections.textFont}
                   uploadedImage={selections.uploadedImage}

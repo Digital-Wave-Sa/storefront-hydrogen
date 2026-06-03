@@ -102,8 +102,8 @@ export async function loader(args: Route.LoaderArgs) {
     const cartData = await args.context.cart.get();
     if (cartData) {
       const needsIdentity = customerAccessToken?.accessToken && !cartData.buyerIdentity?.customer;
-      const cartBranch = cartData.attributes.find(a => a.key === 'Branch')?.value;
-      const cartFType = cartData.attributes.find(a => a.key === 'Fulfillment Type')?.value;
+      const cartBranch = cartData.attributes?.find(a => a.key === 'Branch')?.value;
+      const cartFType = cartData.attributes?.find(a => a.key === 'Fulfillment Type')?.value;
       const sessionFType = fType === 'pickup' ? 'Pickup' : 'Delivery';
       
       const needsFulfillmentSync = (selectedLocName && cartBranch !== selectedLocName) || (cartFType !== sessionFType);

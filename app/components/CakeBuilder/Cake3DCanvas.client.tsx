@@ -7,8 +7,16 @@ import * as THREE from 'three';
 /**
  * SHAPE EXTRACTION LOGIC
  */
-const getCakeShape = (type, radius) => {
+const getCakeShape = (type, radius, isSlice = false) => {
   const shape = new THREE.Shape();
+  if (isSlice) {
+    // Universal slice representation for all cake shapes
+    shape.moveTo(0, 0);
+    shape.absarc(0, 0, radius, 0, Math.PI / 4, false);
+    shape.lineTo(0, 0);
+    return shape;
+  }
+  
   if (type === 'round' || type === 'circle' || type === 'standard') {
     shape.absarc(0, 0, radius, 0, Math.PI * 2, false);
   } else if (type === 'square') {
@@ -357,6 +365,53 @@ const Candles = ({ shapeConfig, yPos, count = 5 }) => {
 };
 
 /**
+ * SPONGE TEXTURE GENERATOR
+ */
+const useSpongeTexture = () => {
+  return useMemo(() => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 512;
+    const ctx = canvas.getContext('2d');
+    
+    // Fill base
+    ctx.fillStyle = '#888888'; // neutral grey for bump map
+    ctx.fillRect(0, 0, 512, 512);
+    
+    // Add noise (crumbs)
+    for (let i = 0; i < 50000; i++) {
+      const x = Math.random() * 512;
+      const y = Math.random() * 512;
+      const r = Math.random() * 3;
+      const c = Math.random() > 0.5 ? '#ffffff' : '#000000'; // high contrast for bump
+      ctx.fillStyle = c;
+      ctx.globalAlpha = Math.random() * 0.5;
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    
+    // Add bigger air bubbles (pores)
+    for (let i = 0; i < 2000; i++) {
+      const x = Math.random() * 512;
+      const y = Math.random() * 512;
+      const r = Math.random() * 6;
+      ctx.fillStyle = '#000000'; // deep holes
+      ctx.globalAlpha = Math.random() * 0.8;
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set(2, 2);
+    return texture;
+  }, []);
+};
+
+/**
  * TEXT COMPONENT (CanvasTexture based to avoid troika bugs)
  */
 const CakeText = ({ text, color, radius, font }) => {
@@ -425,6 +480,8 @@ const EdibleImage = ({ imageUrl, radius }) => {
 const CakeStack = ({ config }) => {
   const { tiers = [], toppingStyle = 'basic', customText = '', shapeType = 'circle', scale = 1.0 } = config;
   
+  const spongeBumpMap = useSpongeTexture();
+
   const TIER_HEIGHT = shapeType === 'standard' ? 1.8 : 1.2;
   const BASE_RADIUS = 3.5;
   
@@ -435,7 +492,7 @@ const CakeStack = ({ config }) => {
       const tierShrink = shapeType === 'sheet' ? 0.3 : 0.6;
       const radius = BASE_RADIUS - (index * tierShrink);
       
-      const shape = getCakeShape(shapeType, radius);
+      const shape = getCakeShape(shapeType, radius, config.isCutaway);
       
       const extrudeSettings = {
         depth: TIER_HEIGHT,
@@ -451,15 +508,51 @@ const CakeStack = ({ config }) => {
       
       return { ...tier, radius, shape, extrudeSettings, yPos };
     });
-  }, [JSON.stringify(tiers), shapeType, TIER_HEIGHT]);
+  }, [JSON.stringify(tiers), shapeType, TIER_HEIGHT, config.isCutaway]);
 
   const topTier = renderTiers[renderTiers.length - 1];
   const topSurfaceY = topTier ? topTier.yPos + TIER_HEIGHT : 0;
 
   return (
-    <group scale={[scale, scale, scale]}>
+    <group 
+      scale={[scale, scale, scale]} 
+      rotation={config.isCutaway ? [0, Math.PI / 8, 0] : [0, 0, 0]} 
+      position={config.isCutaway ? [-0.5, -0.5, 0.5] : [0, 0, 0]}
+    >
       {renderTiers.map((tier, index) => {
         let baseColor = tier.color || '#f5ebd9';
+
+        if (config.isCutaway) {
+          // Render a layered slice (Sponge -> Frosting -> Sponge -> Frosting)
+          const SPONGE_HEIGHT = TIER_HEIGHT * 0.4;
+          const FROSTING_HEIGHT = TIER_HEIGHT * 0.2;
+          const layerConfigs = [
+             { isSponge: true, depth: SPONGE_HEIGHT, y: tier.yPos },
+             { isSponge: false, depth: FROSTING_HEIGHT, y: tier.yPos + SPONGE_HEIGHT },
+             { isSponge: true, depth: SPONGE_HEIGHT, y: tier.yPos + SPONGE_HEIGHT + FROSTING_HEIGHT },
+             { isSponge: false, depth: FROSTING_HEIGHT, y: tier.yPos + SPONGE_HEIGHT * 2 + FROSTING_HEIGHT },
+          ];
+
+          return (
+            <group key={index}>
+               {layerConfigs.map((lc, i) => {
+                 const layerColor = lc.isSponge ? (config.flavorColor || '#f5deb3') : baseColor;
+                 const roughness = lc.isSponge ? 0.9 : 0.65;
+                 const clearcoat = lc.isSponge ? 0 : 0.1;
+                 const bumpMap = lc.isSponge ? spongeBumpMap : null;
+                 const bumpScale = lc.isSponge ? 0.04 : 0;
+                 
+                 return (
+                   <mesh key={i} castShadow receiveShadow position={[0, lc.y, 0]} rotation={[-Math.PI/2, 0, 0]}>
+                     <extrudeGeometry args={[tier.shape, { ...tier.extrudeSettings, depth: lc.depth, bevelSize: 0.02, bevelThickness: 0.02 }]} />
+                     <meshPhysicalMaterial attach="material-0" color={layerColor} roughness={roughness} clearcoat={clearcoat} bumpMap={bumpMap} bumpScale={bumpScale} />
+                     <meshPhysicalMaterial attach="material-1" color={layerColor} roughness={roughness} clearcoat={clearcoat} bumpMap={bumpMap} bumpScale={bumpScale} />
+                   </mesh>
+                 );
+               })}
+            </group>
+          );
+        }
 
         return (
           <group key={index} position={[0, tier.yPos, 0]}>
@@ -470,9 +563,9 @@ const CakeStack = ({ config }) => {
               {/* Material 1: Sides (Sponge Flavor if cutaway, otherwise Frosting) */}
               <meshPhysicalMaterial 
                 attach="material-1" 
-                color={config.isCutaway ? (config.flavorColor || '#f5deb3') : baseColor} 
-                roughness={config.isCutaway ? 0.9 : 0.65} 
-                clearcoat={config.isCutaway ? 0 : 0.1} 
+                color={baseColor} 
+                roughness={0.65} 
+                clearcoat={0.1} 
               />
             </mesh>
             
@@ -740,17 +833,17 @@ const CakeStack = ({ config }) => {
         );
       })}
 
-      {topTier && toppingStyle === 'sprinkles' && (
+      {!config.isCutaway && topTier && toppingStyle === 'sprinkles' && (
         <Sprinkles shapeConfig={topTier} yPos={topSurfaceY} />
       )}
 
-      {topTier && config.uploadedImage && (
+      {!config.isCutaway && topTier && config.uploadedImage && (
         <group position={[0, topSurfaceY, 0]}>
           <EdibleImage imageUrl={config.uploadedImage} radius={topTier.radius} />
         </group>
       )}
 
-      {topTier && customText && (
+      {!config.isCutaway && topTier && customText && (
         <group position={[0, topSurfaceY, 0]}>
           <CakeText 
             text={customText} 

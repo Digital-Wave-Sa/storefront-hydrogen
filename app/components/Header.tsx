@@ -114,7 +114,7 @@ export function Header({ header, isLoggedIn, cart, locations, customer, locale, 
 
   return (
     <header 
-      className={`w-full ${isEn ? 'font-en' : 'font-ar'} bg-[#FEF8EB] relative z-50`} 
+      className={`w-full ${isEn ? 'font-en' : 'font-ar'} bg-[#FEF8EB] relative z-[999999]`} 
       dir={isEn ? 'ltr' : 'rtl'}
       onMouseLeave={() => setActiveMega(null)}
     >

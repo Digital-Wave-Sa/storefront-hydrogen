@@ -375,7 +375,7 @@ export default function LolaCakeBuilder({ cakeAttributes = [] }: { cakeAttribute
         </div>
       </div>
 
-      <div className="flex flex-col-reverse lg:flex-row-reverse flex-1 h-[calc(100vh-100px)] overflow-hidden">
+      <div className="flex flex-col-reverse lg:flex-row-reverse flex-1 min-h-0 overflow-hidden">
         
         {/* LEFT COLUMN */}
         <div 
@@ -622,7 +622,7 @@ export default function LolaCakeBuilder({ cakeAttributes = [] }: { cakeAttribute
         >
 
           {/* Center Content Group (Pills + Circle) */}
-          <div className="relative z-10 flex flex-col items-center justify-center gap-6 w-full -mt-8">
+          <div className="relative z-10 flex flex-col items-center justify-center gap-2 lg:gap-4 w-full mt-0">
             
             {/* Top Pill */}
             <div className="bg-[#20584A] text-white px-6 py-2 rounded-full font-bold text-sm flex items-center gap-1.5 whitespace-nowrap shadow-sm">
@@ -632,7 +632,7 @@ export default function LolaCakeBuilder({ cakeAttributes = [] }: { cakeAttribute
             </div>
 
             {/* Circle & 3D Canvas */}
-            <div className="relative w-[70%] max-w-[480px] aspect-square rounded-full border-[18px] lg:border-[24px] border-white bg-[#EED5D7] shadow-sm flex items-center justify-center">
+            <div className="relative h-[35vh] lg:h-[50vh] w-auto aspect-square rounded-full border-[12px] lg:border-[24px] border-white bg-[#EED5D7] shadow-sm flex items-center justify-center overflow-hidden">
               <div className="absolute inset-0 z-20 flex items-center justify-center">
                 <CakePreview 
                   shape={selections.shape.id}
@@ -659,7 +659,7 @@ export default function LolaCakeBuilder({ cakeAttributes = [] }: { cakeAttribute
           </div>
 
           {/* Features Badges */}
-          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10 w-[90%] max-w-[450px]">
+          <div className="mt-2 lg:mt-4 z-10 w-[95%] lg:w-[90%] max-w-[450px] scale-90 lg:scale-100 origin-bottom">
             <div className="bg-[#F6FAF8] px-2 py-3 rounded-2xl flex items-center justify-between text-[#20584A] shadow-sm">
               
               <div className="flex items-center justify-center gap-2 flex-1">

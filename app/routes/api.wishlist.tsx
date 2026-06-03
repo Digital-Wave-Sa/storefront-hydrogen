@@ -7,7 +7,6 @@ export async function action({ request, context }: ActionFunctionArgs) {
   let shopDomain = rawShop.includes('myshopify.com') ? rawShop : `${rawShop.split('.')[0]}.myshopify.com`;
 
   const potentialTokens = [
-      env.WISHLIST_ADMIN_TOKEN,
       env.SHOPIFY_ADMIN_API_ACCESS_TOKENS,
       env.SHOPIFY_ADMIN_API_ACCESS_TOKEN,
       env.REVIEWS_ADMIN_API_TOKEN,
@@ -101,7 +100,6 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
   `;
 
   const potentialTokens = [
-    env.WISHLIST_ADMIN_TOKEN,
     env.SHOPIFY_ADMIN_API_ACCESS_TOKENS,
     env.SHOPIFY_ADMIN_API_ACCESS_TOKEN,
     env.REVIEWS_ADMIN_API_TOKEN,

@@ -153,7 +153,6 @@ export async function action({ request, context }: ActionFunctionArgs) {
     const shopDomain = rawShop.includes('myshopify.com') ? rawShop : `${rawShop.split('.')[0]}.myshopify.com`;
 
     const potentialTokens = [
-      env.WISHLIST_ADMIN_TOKEN,
       env.SHOPIFY_ADMIN_API_ACCESS_TOKENS,
       env.SHOPIFY_ADMIN_API_ACCESS_TOKEN,
       env.PRIVATE_STOREFRONT_API_TOKEN,

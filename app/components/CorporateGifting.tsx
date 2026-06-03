@@ -29,19 +29,19 @@ export function CorporateGifting() {
             dir={isEn ? 'ltr' : 'rtl'}
         >
             <div className="max-w-[1400px] mx-auto px-6 lg:px-16">
-                <div className="flex flex-col lg:flex-row items-center gap-16 lg:gap-24">
+                <div className="flex flex-col lg:flex-row-reverse items-center gap-16 lg:gap-24">
 
                     {/* Text Content */}
-                    <div className="w-full lg:w-[45%] flex flex-col items-start text-start">
+                    <div className="w-full lg:w-[35%] flex flex-col items-start text-start gap-[32px]">
                         <h2 
-                            className="text-[32px] lg:text-[46px] font-bold text-white leading-[1.2] mb-4"
-                            style={{ fontFamily: "'GE Dinar One', sans-serif" }}
+                            className="text-[32px] lg:text-[50px] font-bold text-white leading-[1.2] lg:leading-[80px]"
+                            style={{ fontFamily: "'Bahij Janna', sans-serif" }}
                         >
                             {activeContent.title}
                         </h2>
 
                         <p 
-                            className="text-white/80 text-[14px] lg:text-[16px] leading-relaxed mb-8 max-w-[500px]"
+                            className="text-[#BBCFCD] text-[14px] leading-[17px] max-w-[484px]"
                             style={{ fontFamily: "'GE Dinar One', sans-serif" }}
                         >
                             {activeContent.description}
@@ -49,7 +49,7 @@ export function CorporateGifting() {
 
                         <Link
                             to={isEn ? "/en/pages/corporate-gifting" : "/pages/corporate-gifting"}
-                            className="mt-4 lg:mt-6 bg-[#BBCFCD] hover:bg-white transition-colors duration-300 text-[#234745] px-10 py-3 rounded-full font-bold text-[16px]"
+                            className="bg-[#BBCFCD] hover:bg-white transition-colors duration-300 text-[#234745] px-[20px] py-[12px] rounded-[24px] font-bold text-[18px] leading-[22px]"
                             style={{ fontFamily: "'GE Dinar One', sans-serif" }}
                         >
                             {activeContent.button}
@@ -57,24 +57,24 @@ export function CorporateGifting() {
                     </div>
 
                     {/* Cards */}
-                    <div className="w-full lg:w-[55%] flex flex-col md:flex-row gap-4 lg:gap-6">
+                    <div className="w-full lg:w-[65%] flex flex-col md:flex-row gap-[16px] lg:gap-[32px]">
                         
                         {/* Card 1: Employees (First in RTL = Right side) */}
                         <Link
                             to={isEn ? "/en/collections/employee-gifts" : "/collections/employee-gifts"}
-                            className="group relative flex-1 aspect-[1/1.1] rounded-[16px] overflow-hidden"
+                            className="group relative flex-1 h-[264px] rounded-[20px] overflow-hidden bg-[#234745]"
                         >
                             <img
-                                src="https://images.unsplash.com/photo-1530124560676-5f76906a5960?q=80&w=800&auto=format&fit=crop"
+                                src="/images/gift-corporate-2.webp"
                                 alt={activeContent.card2}
                                 className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                             />
-                            <div className="absolute inset-0 bg-gradient-to-t from-[#111111]/90 via-[#111111]/20 to-transparent"></div>
+                            <div className="absolute inset-0 bg-gradient-to-t from-[rgba(0,0,0,0.65)] via-[rgba(0,0,0,0.3)] to-transparent opacity-90"></div>
 
-                            <div className="absolute bottom-6 left-0 right-0 text-center px-4">
+                            <div className="absolute bottom-[16px] left-0 right-0 text-center px-4">
                                 <h3 
-                                    className="text-[18px] lg:text-[22px] font-bold text-white tracking-tight"
-                                    style={{ fontFamily: "'GE Dinar One', sans-serif" }}
+                                    className="text-[26px] font-bold text-white leading-[42px]"
+                                    style={{ fontFamily: "'Bahij Janna', sans-serif" }}
                                 >
                                     {activeContent.card2}
                                 </h3>
@@ -84,19 +84,19 @@ export function CorporateGifting() {
                         {/* Card 2: Clients & Partners (Second in RTL = Left side) */}
                         <Link
                             to={isEn ? "/en/collections/corporate-clients" : "/collections/corporate-clients"}
-                            className="group relative flex-1 aspect-[1/1.1] rounded-[16px] overflow-hidden"
+                            className="group relative flex-1 h-[264px] rounded-[20px] overflow-hidden bg-[#234745]"
                         >
                             <img
-                                src="https://images.unsplash.com/photo-1511306162210-999335f6068d?q=80&w=800&auto=format&fit=crop"
+                                src="/images/gift-corporate-1.webp"
                                 alt={activeContent.card1}
                                 className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                             />
-                            <div className="absolute inset-0 bg-gradient-to-t from-[#111111]/90 via-[#111111]/20 to-transparent"></div>
+                            <div className="absolute inset-0 bg-gradient-to-t from-[rgba(0,0,0,0.65)] via-[rgba(0,0,0,0.3)] to-transparent opacity-90"></div>
 
-                            <div className="absolute bottom-6 left-0 right-0 text-center px-4">
+                            <div className="absolute bottom-[16px] left-0 right-0 text-center px-4">
                                 <h3 
-                                    className="text-[18px] lg:text-[22px] font-bold text-white tracking-tight"
-                                    style={{ fontFamily: "'GE Dinar One', sans-serif" }}
+                                    className="text-[26px] font-bold text-white leading-[42px]"
+                                    style={{ fontFamily: "'Bahij Janna', sans-serif" }}
                                 >
                                     {activeContent.card1}
                                 </h3>

@@ -356,7 +356,7 @@ const NEW_ARRIVALS_QUERY = `#graphql
   }
   query NewArrivalsProducts ($country: CountryCode, $language: LanguageCode)
     @inContext(country: $country, language: $language) {
-    products(first: 4, sortKey: CREATED_AT, reverse: true) {
+    products(first: 4, sortKey: CREATED_AT, reverse: true, query: "tag:special") {
       nodes {
         ...NewArrivalProduct
       }

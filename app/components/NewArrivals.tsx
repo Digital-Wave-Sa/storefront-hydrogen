@@ -133,7 +133,7 @@ export function NewArrivals({
                                                     {/* Product Image */}
                                                     <Link 
                                                         to={isVisibilityBlocked ? '#' : getProductUrl(product.handle)} 
-                                                        className={`relative block bg-[#F8F9F8] aspect-[4/3] w-full flex items-center justify-center p-6 overflow-hidden ${isVisibilityBlocked ? 'pointer-events-none' : ''}`}
+                                                        className={`relative block bg-[#F8F9F8] aspect-[4/3] w-full flex items-center justify-center p-0 overflow-hidden ${isVisibilityBlocked ? 'pointer-events-none' : ''}`}
                                                         onClick={isVisibilityBlocked ? (e: any) => e.preventDefault() : undefined}
                                                     >
                                                         {product.images?.nodes?.[0] && (
@@ -142,7 +142,7 @@ export function NewArrivals({
                                                                 alt={product.images.nodes[0]?.altText || product.title || 'New Arrival Product'}
                                                                 loading="lazy"
                                                                 sizes="(min-width: 45em) 25vw, 50vw"
-                                                                className={`w-full h-full object-contain transition-transform duration-500 ${effectiveOutOfStock ? 'opacity-50 grayscale' : 'group-hover:scale-105'}`}
+                                                                className={`w-full h-full object-cover transition-transform duration-500 ${effectiveOutOfStock ? 'opacity-50 grayscale' : 'group-hover:scale-105'}`}
                                                             />
                                                         )}
                                                     </Link>

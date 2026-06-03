@@ -300,32 +300,13 @@ export default function Register() {
                 </button>
               </div>
 
-              {/* Account Type Toggle */}
-              <div className="flex w-full rounded-[12px] bg-[#BBCFCD]/20 p-1 h-[40px] mt-1 mb-2">
-                <button 
-                  type="button"
-                  onClick={() => setFormData({...formData, accountType: 'individual'})}
-                  className={`flex-1 rounded-[10px] font-bold text-[14px] transition-all duration-200 ${formData.accountType === 'individual' ? 'bg-white text-[#234745] shadow-sm' : 'text-[#7D7D7D] hover:text-[#234745]'}`}
-                  style={{ fontFamily: "'GE Dinar One', sans-serif" }}
-                >
-                  {isEn ? 'Individual' : 'فرد'}
-                </button>
-                <button 
-                  type="button"
-                  onClick={() => setFormData({...formData, accountType: 'company'})}
-                  className={`flex-1 rounded-[10px] font-bold text-[14px] transition-all duration-200 ${formData.accountType === 'company' ? 'bg-white text-[#234745] shadow-sm' : 'text-[#7D7D7D] hover:text-[#234745]'}`}
-                  style={{ fontFamily: "'GE Dinar One', sans-serif" }}
-                >
-                  {isEn ? 'Corporate' : 'شركات'}
-                </button>
-              </div>
+
 
               {/* Registration Steps */}
               {step === 'input' ? (
                 <Form method="POST" className="w-full flex flex-col gap-5 w-full">
                   <input type="hidden" name="intent" value="send-otp" />
                   
-                  {formData.accountType === 'individual' ? (
                     <div className="flex flex-col gap-2 w-full">
                       <label className={`text-[12px] font-bold text-[#171717] px-1 w-full flex gap-1 ${isEn ? 'flex-row' : 'flex-row-reverse justify-end'}`} style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
                         <span className="text-[#E55C5C]">*</span>
@@ -342,59 +323,6 @@ export default function Register() {
                         style={{ fontFamily: "'GE Dinar One', sans-serif" }}
                       />
                     </div>
-                  ) : (
-                    <>
-                      {/* Company Name Input */}
-                      <div className="flex flex-col gap-2 w-full">
-                        <label className={`text-[12px] font-bold text-[#171717] px-1 w-full flex gap-1 ${isEn ? 'flex-row' : 'flex-row-reverse justify-end'}`} style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
-                          <span className="text-[#E55C5C]">*</span>
-                          <span>{isEn ? 'Company Name' : 'اسم الشركة'}</span>
-                        </label>
-                        <input
-                          name="companyName"
-                          type="text"
-                          placeholder={isEn ? "Company LLC" : "شركة التقنية المحدودة"}
-                          className="w-full bg-white border border-[#BBCFCD] rounded-[12px] px-4 py-3 h-[48px] focus:border-[#234745] outline-none text-[#171717] font-medium text-[14px] placeholder:text-[#BBCFCD] transition-colors"
-                          value={formData.companyName}
-                          onChange={(e) => setFormData({...formData, companyName: e.target.value})}
-                          required
-                          style={{ fontFamily: "'GE Dinar One', sans-serif" }}
-                        />
-                      </div>
-                      
-                      {/* Tax Registration Input */}
-                      <div className="flex flex-col gap-2 w-full">
-                        <label className={`text-[12px] font-bold text-[#171717] px-1 w-full flex gap-1 ${isEn ? 'flex-row' : 'flex-row-reverse justify-end'}`} style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
-                          <span>{isEn ? 'Tax Registration Number' : 'الرقم الضريبي'}</span>
-                        </label>
-                        <input
-                          name="taxRegistration"
-                          type="text"
-                          placeholder={isEn ? "Tax ID" : "الرقم الضريبي"}
-                          className="w-full bg-white border border-[#BBCFCD] rounded-[12px] px-4 py-3 h-[48px] focus:border-[#234745] outline-none text-[#171717] font-medium text-[14px] placeholder:text-[#BBCFCD] transition-colors"
-                          value={formData.taxRegistration}
-                          onChange={(e) => setFormData({...formData, taxRegistration: e.target.value})}
-                          style={{ fontFamily: "'GE Dinar One', sans-serif" }}
-                        />
-                      </div>
-                      
-                      {/* Company Address Input */}
-                      <div className="flex flex-col gap-2 w-full">
-                        <label className={`text-[12px] font-bold text-[#171717] px-1 w-full flex gap-1 ${isEn ? 'flex-row' : 'flex-row-reverse justify-end'}`} style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
-                          <span>{isEn ? 'Company Address' : 'عنوان الشركة'}</span>
-                        </label>
-                        <input
-                          name="companyAddress"
-                          type="text"
-                          placeholder={isEn ? "123 Business St." : "شارع الأعمال، مبنى 1"}
-                          className="w-full bg-white border border-[#BBCFCD] rounded-[12px] px-4 py-3 h-[48px] focus:border-[#234745] outline-none text-[#171717] font-medium text-[14px] placeholder:text-[#BBCFCD] transition-colors"
-                          value={formData.companyAddress}
-                          onChange={(e) => setFormData({...formData, companyAddress: e.target.value})}
-                          style={{ fontFamily: "'GE Dinar One', sans-serif" }}
-                        />
-                      </div>
-                    </>
-                  )}
 
                   {/* Phone Input */}
                   <div className="flex flex-col gap-2 w-full">
@@ -561,7 +489,7 @@ export default function Register() {
                 </div>
 
                 {/* Apple & Google Buttons */}
-                <div className="flex flex-col lg:flex-row gap-4 w-full">
+                <div className="flex flex-row gap-4 w-full" dir="ltr">
                   <button 
                     onClick={() => handleSocialClick('apple', '/api/auth/apple')}
                     disabled={loadingProvider !== null}

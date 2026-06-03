@@ -81,11 +81,17 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
                 financialStatus: o.financial_status ? o.financial_status.toUpperCase() : 'PAID',
                 fulfillmentStatus: o.fulfillment_status ? o.fulfillment_status.toUpperCase() : 'UNFULFILLED',
                 totalPrice: { amount: o.total_price, currencyCode: o.currency },
+                currentTotalPrice: { amount: o.total_price, currencyCode: o.currency },
+                statusUrl: o.order_status_url,
                 lineItems: {
                   nodes: o.line_items.map((li: any) => ({
                     title: li.title,
                     quantity: li.quantity,
-                    originalTotalPrice: { amount: li.price, currencyCode: o.currency }
+                    originalTotalPrice: { amount: li.price, currencyCode: o.currency },
+                    variant: {
+                      id: li.variant_id ? `gid://shopify/ProductVariant/${li.variant_id}` : undefined,
+                      image: null
+                    }
                   }))
                 }
               }));
@@ -96,19 +102,9 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
         }
       }
 
-      if (mappedOrders.length === 0) {
-        // Fallback fake orders if admin API fails due to invalid API keys
-        mappedOrders = Array(6).fill(null).map((_, i) => ({
-          id: `gid://shopify/Order/100${i}`,
-          orderNumber: 1012 - i,
-          processedAt: new Date(Date.now() - i * 86400000).toISOString(),
-          financialStatus: 'PAID',
-          fulfillmentStatus: 'FULFILLED',
-          totalPrice: { amount: '3948.00', currencyCode: 'SAR' },
-          lineItems: {
-            nodes: [{ title: 'Eye Cream', quantity: 1, originalTotalPrice: { amount: '3948.00', currencyCode: 'SAR' } }]
-          }
-        }));
+      if (mappedOrders.length === 0 && !savedPhone) {
+        // We leave mappedOrders empty so the UI correctly shows the Empty state
+        // if no phone was found or if the API failed.
       }
 
       customer = {
@@ -372,12 +368,23 @@ function OrderCard({ order, isEn }: { order: OrderItemFragment, isEn: boolean })
             <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: statusColor }} />
           </div>
           <div className="flex items-center gap-2 w-full md:w-auto">
-            <Link 
-              to={isEn ? `/en/account/orders/${orderIdEncoded}` : `/account/orders/${orderIdEncoded}`}
-              className="flex-1 md:flex-none text-center px-6 py-2 border border-[#234745] text-[#234745] rounded-[24px] text-[13px] font-bold hover:bg-gray-50 transition-all"
-            >
-              {isEn ? 'Track / Invoice' : 'الفاتورة'}
-            </Link>
+            {order.statusUrl ? (
+              <a 
+                href={order.statusUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 md:flex-none text-center px-6 py-2 border border-[#234745] text-[#234745] rounded-[24px] text-[13px] font-bold hover:bg-gray-50 transition-all"
+              >
+                {isEn ? 'Track / Invoice' : 'الفاتورة'}
+              </a>
+            ) : (
+              <Link 
+                to={isEn ? `/en/account/orders/${orderIdEncoded}` : `/account/orders/${orderIdEncoded}`}
+                className="flex-1 md:flex-none text-center px-6 py-2 border border-[#234745] text-[#234745] rounded-[24px] text-[13px] font-bold hover:bg-gray-50 transition-all"
+              >
+                {isEn ? 'Track / Invoice' : 'الفاتورة'}
+              </Link>
+            )}
             <button 
               onClick={handleReorder}
               disabled={fetcher.state !== 'idle'}

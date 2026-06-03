@@ -227,8 +227,7 @@ export default function Login() {
                 </Link>
               </div>
 
-              {/* Separator Line */}
-              <div className="w-full h-[1px] bg-[#BBCFCD]/50 my-2" />
+
 
               {/* Login Steps */}
               {step === 'input' ? (
@@ -237,9 +236,9 @@ export default function Login() {
                   
                   {/* Phone Input */}
                   <div className="flex flex-col gap-2 w-full">
-                    <label className={`text-[12px] font-bold text-[#171717] px-1 w-full ${isEn ? 'text-left' : 'text-right'}`} style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
-                      {isEn ? 'Mobile Number ' : 'رقم الجوال '}
+                    <label className={`text-[12px] font-bold text-[#171717] px-1 w-full flex gap-1 ${isEn ? 'flex-row' : 'flex-row-reverse justify-end'}`} style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
                       <span className="text-[#E55C5C]">*</span>
+                      <span>{isEn ? 'Mobile Number' : 'رقم الجوال'}</span>
                     </label>
                     <div className="flex flex-row items-center border border-[#BBCFCD] bg-white rounded-[12px] px-4 py-3 h-[48px] focus-within:border-[#234745] transition-colors">
                       <input
@@ -326,7 +325,7 @@ export default function Login() {
                 </div>
 
                 {/* Apple & Google Buttons */}
-                <div className="flex flex-col lg:flex-row gap-4 w-full">
+                <div className="flex flex-row gap-4 w-full" dir="ltr">
                   <button 
                     onClick={() => handleSocialClick('apple', '/api/auth/apple')}
                     disabled={loadingProvider !== null}

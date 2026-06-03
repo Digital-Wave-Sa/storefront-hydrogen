@@ -2005,7 +2005,7 @@ button.reset:hover:not(:has(> *)) {
   inset: 0;
   background: rgba(27, 61, 46, 0.15);
   backdrop-filter: blur(12px);
-  z-index: 9999;
+  z-index: 999999;
   display: flex;
   align-items: center;
   justify-content: center;

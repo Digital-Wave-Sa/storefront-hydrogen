@@ -234,35 +234,226 @@ export default function CorporatePage() {
 
             {/* 4. Product Selection */}
             <section id="products" className="w-full bg-[#FEF8EB] py-20 px-4">
-                <div className="max-w-[1200px] mx-auto">
-                    <div className="text-center mb-10">
-                        <h4 className="text-[#8B8B8B] font-bold text-[14px] mb-2">{isEn ? 'Products' : 'المنتجات'}</h4>
-                        <h2 className="text-[#1A1A1A] text-[28px] md:text-[36px] font-bold mb-4">{isEn ? 'Choose Your Selection' : 'اختر تشكيلتك'}</h2>
-                        <p className="text-[#8B8B8B] font-medium">{isEn ? 'The best products specifically designed for corporates' : 'أفضل المنتجات المصممة خصيصاً للشركات مع خيارات التخصيص'}</p>
+                <div className="max-w-[1280px] mx-auto flex flex-col gap-8">
+                    
+                    {/* Header */}
+                    <div className="flex flex-col items-center text-center gap-3">
+                        <h4 className="text-[#906B51] font-medium text-[18px] leading-[22px]">{isEn ? 'Collections' : 'التشكيلات'}</h4>
+                        <h2 className="text-[#234745] text-[36px] md:text-[50px] font-bold leading-[80px]" style={{ fontFamily: isEn ? 'inherit' : "'Bahij Janna'" }}>{isEn ? 'Choose Your Selection' : 'اختر تشكيلتك'}</h2>
+                        <p className="text-[#9FB7AE] text-[16px] md:text-[18px] font-medium leading-[22px]">{isEn ? '12 B2B collections fitting every corporate occasion and budget' : '١٢ تشكيلة B2B تناسب كل مناسبة وميزانية مؤسسية'}</p>
                     </div>
 
-                    {/* Filters mockup */}
-                    <div className="flex justify-center md:justify-end gap-4 mb-8">
-                        <select className="bg-white border border-gray-200 rounded-full px-6 py-2.5 text-[#234745] font-bold outline-none text-[14px] w-[140px]">
-                            <option>{isEn ? 'Category' : 'التصنيف'}</option>
-                        </select>
-                        <select className="bg-white border border-gray-200 rounded-full px-6 py-2.5 text-[#234745] font-bold outline-none text-[14px] w-[140px]">
-                            <option>{isEn ? 'Price' : 'السعر'}</option>
-                        </select>
+                    {/* Filters */}
+                    <div className="flex flex-row justify-end items-center gap-[12px] md:gap-[126px] mt-4 mb-4">
+                        <div className="flex flex-wrap items-center justify-end gap-[10px]">
+                            
+                            {/* Filter 1: Accept Logo? */}
+                            <div className="flex flex-row justify-between items-center px-4 py-2 w-[192px] h-[40px] border border-[#BBCFCD] rounded-[16px] bg-transparent">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#234745" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                                <span className="text-[#255441] font-medium text-[16px]">{isEn ? 'Accepts Logo?' : 'يقبل شعار؟'}</span>
+                            </div>
+
+                            {/* Filter 2: Size */}
+                            <div className="flex flex-row justify-between items-center px-4 py-2 w-[192px] h-[40px] border border-[#BBCFCD] rounded-[16px] bg-transparent">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#234745" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                                <span className="text-[#255441] font-medium text-[16px]">{isEn ? 'Size' : 'الحجم'}</span>
+                            </div>
+
+                            {/* Filter 3: All */}
+                            <div className="flex flex-row justify-between items-center px-4 py-2 w-[192px] h-[40px] border border-[#BBCFCD] rounded-[16px] bg-transparent">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#234745" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                                <span className="text-[#255441] font-medium text-[16px]">{isEn ? 'All' : 'الكل'}</span>
+                            </div>
+                        </div>
+                        <span className="text-[#234745] font-bold text-[16px] hidden md:block">{isEn ? 'Box Budget:' : 'الميزانية للعلبة:'}</span>
                     </div>
 
-                    {/* Products Grid */}
-                    {products && products.length > 0 ? (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-                            {products.map((product: any) => (
-                                <ProductItem key={product.id} product={product} />
-                            ))}
+                    {/* Products Grid - Mockup Data */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        
+                        {/* Card 1: Pistachio */}
+                        <div className="w-full max-w-[411px] mx-auto bg-[#F9F9F9] rounded-[20px] overflow-hidden flex flex-col hover:shadow-lg transition-shadow">
+                            {/* Image Header */}
+                            <div className="relative w-full h-[216px] bg-[#F6F1EC]">
+                                <img src="https://cdn.shopify.com/s/files/1/0616/1606/2642/files/cake.png" alt="Pistachio" className="w-full h-full object-cover" />
+                                {/* Top Badges */}
+                                <div className="absolute top-4 left-4 right-4 flex justify-between items-start">
+                                    <div className="flex items-center gap-2 bg-white px-3 py-1 rounded-[25px] border border-[#234745]/30">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#255441" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
+                                        <span className="text-[#255441] font-medium text-[14px]">{isEn ? 'Logo' : 'شعار'}</span>
+                                    </div>
+                                    <div className="bg-[#234745] px-3 py-1 rounded-[25px]">
+                                        <span className="text-[#FEF8EB] font-bold text-[14px]">{isEn ? 'Best Seller' : 'الأكثر طلباً'}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            {/* Card Content */}
+                            <div className="flex flex-col p-6 gap-4">
+                                <div className="flex flex-col gap-2 text-right">
+                                    <h3 className="text-[#234745] font-bold text-[16px] m-0">{isEn ? 'Premium Pistachio Collection' : 'تشكيلة الفستق الفاخرة'}</h3>
+                                    <p className="text-[#9FB7AE] font-medium text-[14px] m-0">{isEn ? 'Maamoul + Baklava + Mixed Sweets — Medium Box' : 'معمول + بقلاوة + حلوى مشكلة — علبة وسط'}</p>
+                                </div>
+
+                                {/* Pricing Box */}
+                                <div className="bg-[#FEF8EB] border border-[#BBCFCD]/50 rounded-[12px] p-4 flex flex-col gap-4">
+                                    <h4 className="text-[#906B51] font-bold text-[14px] text-right m-0 border-b border-[#BBCFCD]/30 pb-2">{isEn ? 'Wholesale Prices' : 'أسعار الجملة'}</h4>
+                                    
+                                    <div className="flex flex-col gap-3">
+                                        <div className="flex justify-between items-center">
+                                            <div className="flex items-center gap-1">
+                                                <span className="text-[#234745] font-bold text-[16px] font-['Bahij_Janna']">85</span>
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#234745" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+                                            </div>
+                                            <span className="text-[#9FB7AE] font-medium text-[14px]">{isEn ? '20 - 49 Boxes' : '٢٠–٤٩ علبة'}</span>
+                                        </div>
+                                        
+                                        <div className="flex justify-between items-center">
+                                            <div className="flex items-center gap-1">
+                                                <span className="text-[#234745] font-bold text-[16px] font-['Bahij_Janna']">78</span>
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#234745" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+                                            </div>
+                                            <span className="text-[#9FB7AE] font-medium text-[14px]">{isEn ? '50 - 99 Boxes' : '٥٠–٩٩ علبة'}</span>
+                                        </div>
+
+                                        <div className="flex justify-between items-center">
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-[#234745] font-bold text-[16px] font-['Bahij_Janna']">72</span>
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#234745" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+                                                <div className="bg-[#234745] px-2 py-0.5 rounded-[25px]">
+                                                    <span className="text-[#FEF8EB] font-bold text-[12px]">{isEn ? 'Best' : 'الأفضل'}</span>
+                                                </div>
+                                            </div>
+                                            <span className="text-[#9FB7AE] font-medium text-[14px]">{isEn ? '100+ Boxes' : '١٠٠+ علبة'}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Action Button */}
+                                <button className="w-full bg-[#234745] text-[#FEF8EB] font-bold text-[16px] py-3 rounded-[25px] hover:bg-[#1a3533] transition-colors mt-2">
+                                    {isEn ? 'Choose & Customize' : 'إختر وخصص'}
+                                </button>
+                            </div>
                         </div>
-                    ) : (
-                        <div className="text-center py-12 text-[#8B8B8B] font-bold">
-                            {isEn ? 'No corporate products found.' : 'لا توجد منتجات للشركات حالياً.'}
+
+                        {/* Card 2: Chocolates */}
+                        <div className="w-full max-w-[411px] mx-auto bg-[#F9F9F9] rounded-[20px] overflow-hidden flex flex-col hover:shadow-lg transition-shadow">
+                            <div className="relative w-full h-[216px] bg-[#F6F1EC]">
+                                <img src="https://cdn.shopify.com/s/files/1/0616/1606/2642/files/chocolate.png" alt="Chocolate" className="w-full h-full object-cover" />
+                                <div className="absolute top-4 left-4 right-4 flex justify-between items-start">
+                                    <div className="flex items-center gap-2 bg-white px-3 py-1 rounded-[25px] border border-[#234745]/30">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#255441" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
+                                        <span className="text-[#255441] font-medium text-[14px]">{isEn ? 'Logo' : 'شعار'}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div className="flex flex-col p-6 gap-4">
+                                <div className="flex flex-col gap-2 text-right">
+                                    <h3 className="text-[#234745] font-bold text-[16px] m-0">{isEn ? 'Luxury Chocolate Box' : 'صندوق الشوكولاتة الفاخر'}</h3>
+                                    <p className="text-[#9FB7AE] font-medium text-[14px] m-0">{isEn ? 'Assorted Belgian Chocolates — 24 Pieces' : 'شوكولاتة بلجيكية مشكلة — ٢٤ قطعة'}</p>
+                                </div>
+
+                                <div className="bg-[#FEF8EB] border border-[#BBCFCD]/50 rounded-[12px] p-4 flex flex-col gap-4">
+                                    <h4 className="text-[#906B51] font-bold text-[14px] text-right m-0 border-b border-[#BBCFCD]/30 pb-2">{isEn ? 'Wholesale Prices' : 'أسعار الجملة'}</h4>
+                                    
+                                    <div className="flex flex-col gap-3">
+                                        <div className="flex justify-between items-center">
+                                            <div className="flex items-center gap-1">
+                                                <span className="text-[#234745] font-bold text-[16px] font-['Bahij_Janna']">120</span>
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#234745" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+                                            </div>
+                                            <span className="text-[#9FB7AE] font-medium text-[14px]">{isEn ? '20 - 49 Boxes' : '٢٠–٤٩ علبة'}</span>
+                                        </div>
+                                        
+                                        <div className="flex justify-between items-center">
+                                            <div className="flex items-center gap-1">
+                                                <span className="text-[#234745] font-bold text-[16px] font-['Bahij_Janna']">110</span>
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#234745" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+                                            </div>
+                                            <span className="text-[#9FB7AE] font-medium text-[14px]">{isEn ? '50 - 99 Boxes' : '٥٠–٩٩ علبة'}</span>
+                                        </div>
+
+                                        <div className="flex justify-between items-center">
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-[#234745] font-bold text-[16px] font-['Bahij_Janna']">100</span>
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#234745" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+                                                <div className="bg-[#234745] px-2 py-0.5 rounded-[25px]">
+                                                    <span className="text-[#FEF8EB] font-bold text-[12px]">{isEn ? 'Best' : 'الأفضل'}</span>
+                                                </div>
+                                            </div>
+                                            <span className="text-[#9FB7AE] font-medium text-[14px]">{isEn ? '100+ Boxes' : '١٠٠+ علبة'}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <button className="w-full bg-[#234745] text-[#FEF8EB] font-bold text-[16px] py-3 rounded-[25px] hover:bg-[#1a3533] transition-colors mt-2">
+                                    {isEn ? 'Choose & Customize' : 'إختر وخصص'}
+                                </button>
+                            </div>
                         </div>
-                    )}
+
+                        {/* Card 3: Dates and Coffee */}
+                        <div className="w-full max-w-[411px] mx-auto bg-[#F9F9F9] rounded-[20px] overflow-hidden flex flex-col hover:shadow-lg transition-shadow">
+                            <div className="relative w-full h-[216px] bg-[#F6F1EC]">
+                                <img src="https://cdn.shopify.com/s/files/1/0616/1606/2642/files/dates.png" alt="Dates" className="w-full h-full object-cover" />
+                                <div className="absolute top-4 left-4 right-4 flex justify-between items-start">
+                                    <div className="flex items-center gap-2 bg-white px-3 py-1 rounded-[25px] border border-[#234745]/30">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#255441" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
+                                        <span className="text-[#255441] font-medium text-[14px]">{isEn ? 'Logo' : 'شعار'}</span>
+                                    </div>
+                                    <div className="bg-[#234745] px-3 py-1 rounded-[25px]">
+                                        <span className="text-[#FEF8EB] font-bold text-[14px]">{isEn ? 'Eid Special' : 'مناسب للعيد'}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div className="flex flex-col p-6 gap-4">
+                                <div className="flex flex-col gap-2 text-right">
+                                    <h3 className="text-[#234745] font-bold text-[16px] m-0">{isEn ? 'Dates & Arabic Coffee Collection' : 'تشكيلة التمر والقهوة العربية'}</h3>
+                                    <p className="text-[#9FB7AE] font-medium text-[14px] m-0">{isEn ? 'Medjool Dates + Arabic Coffee + Traditional Sweets' : 'تمر مجدول + قهوة عربية + حلوى تراثية'}</p>
+                                </div>
+
+                                <div className="bg-[#FEF8EB] border border-[#BBCFCD]/50 rounded-[12px] p-4 flex flex-col gap-4">
+                                    <h4 className="text-[#906B51] font-bold text-[14px] text-right m-0 border-b border-[#BBCFCD]/30 pb-2">{isEn ? 'Wholesale Prices' : 'أسعار الجملة'}</h4>
+                                    
+                                    <div className="flex flex-col gap-3">
+                                        <div className="flex justify-between items-center">
+                                            <div className="flex items-center gap-1">
+                                                <span className="text-[#234745] font-bold text-[16px] font-['Bahij_Janna']">95</span>
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#234745" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+                                            </div>
+                                            <span className="text-[#9FB7AE] font-medium text-[14px]">{isEn ? '20 - 49 Boxes' : '٢٠–٤٩ علبة'}</span>
+                                        </div>
+                                        
+                                        <div className="flex justify-between items-center">
+                                            <div className="flex items-center gap-1">
+                                                <span className="text-[#234745] font-bold text-[16px] font-['Bahij_Janna']">88</span>
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#234745" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+                                            </div>
+                                            <span className="text-[#9FB7AE] font-medium text-[14px]">{isEn ? '50 - 99 Boxes' : '٥٠–٩٩ علبة'}</span>
+                                        </div>
+
+                                        <div className="flex justify-between items-center">
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-[#234745] font-bold text-[16px] font-['Bahij_Janna']">80</span>
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#234745" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+                                                <div className="bg-[#234745] px-2 py-0.5 rounded-[25px]">
+                                                    <span className="text-[#FEF8EB] font-bold text-[12px]">{isEn ? 'Best' : 'الأفضل'}</span>
+                                                </div>
+                                            </div>
+                                            <span className="text-[#9FB7AE] font-medium text-[14px]">{isEn ? '100+ Boxes' : '١٠٠+ علبة'}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <button className="w-full bg-[#234745] text-[#FEF8EB] font-bold text-[16px] py-3 rounded-[25px] hover:bg-[#1a3533] transition-colors mt-2">
+                                    {isEn ? 'Choose & Customize' : 'إختر وخصص'}
+                                </button>
+                            </div>
+                        </div>
+
+                    </div>
                 </div>
             </section>
 

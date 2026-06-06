@@ -72,6 +72,8 @@ export const FALLBACK_BRANCHES: Branch[] = [
         perKmRate: 0,
         freeDeliveryThreshold: 200,
         badge: 'طلب مسبق',
+        rating: 4.8,
+        ratingCount: 342,
     },
     {
         id: 'fallback-2',
@@ -89,6 +91,8 @@ export const FALLBACK_BRANCHES: Branch[] = [
         perKmRate: 0,
         freeDeliveryThreshold: 200,
         badge: 'طلب مسبق',
+        rating: 4.5,
+        ratingCount: 128,
     },
     {
         id: 'fallback-3',
@@ -106,6 +110,8 @@ export const FALLBACK_BRANCHES: Branch[] = [
         perKmRate: 0,
         freeDeliveryThreshold: 200,
         badge: 'طلب مسبق',
+        rating: 4.9,
+        ratingCount: 512,
     },
     {
         id: 'fallback-4',
@@ -123,6 +129,8 @@ export const FALLBACK_BRANCHES: Branch[] = [
         perKmRate: 0,
         freeDeliveryThreshold: 200,
         badge: 'طلب مسبق',
+        rating: 4.2,
+        ratingCount: 89,
     },
     {
         id: 'fallback-5',
@@ -140,6 +148,8 @@ export const FALLBACK_BRANCHES: Branch[] = [
         perKmRate: 0,
         freeDeliveryThreshold: 200,
         badge: 'طلب مسبق',
+        rating: 4.6,
+        ratingCount: 204,
     }
 ];
 

@@ -99,14 +99,14 @@ export default function CorporatePage() {
                 {/* Background Pattern */}
                 <div 
                     className="absolute inset-0 pointer-events-none opacity-10" 
-                    style={{ backgroundImage: `url('/images/offers-pattern.svg')`, backgroundSize: '180px', backgroundPosition: 'center', backgroundRepeat: 'repeat' }} 
+                    style={{ backgroundImage: `url(${patternBg})`, backgroundSize: '180px', backgroundPosition: 'center', backgroundRepeat: 'repeat' }} 
                 />
                 
                 <h4 className="text-[#9FB7AE] text-[16px] md:text-[18px] font-bold relative z-10 mb-8">
                     {isEn ? 'Gifts that suit your company' : 'هدايا تليق بشركتك'}
                 </h4>
 
-                <h1 className="text-[#FEF8EB] text-[40px] md:text-[50px] font-bold relative z-10 mb-8 leading-none tracking-normal text-center align-middle" style={{ fontFamily: isEn ? 'inherit' : "'Bahij Janna'" }}>
+                <h1 className="text-[#FEF8EB] !text-[40px] md:!text-[50px] !font-bold relative z-10 !mb-8 !mt-0 !leading-none !tracking-normal text-center align-middle" style={{ fontFamily: isEn ? 'inherit' : "'Bahij Janna'" }}>
                     {isEn ? 'Corporate Gifts with Your Identity' : 'هدايا مؤسسية بهويتك الخاصة'}
                 </h1>
                 

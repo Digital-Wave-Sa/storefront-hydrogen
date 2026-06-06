@@ -95,48 +95,48 @@ export default function CorporatePage() {
         <div className={`min-h-screen bg-[#FEF8EB] ${isEn ? 'font-en' : "font-['GE_Dinar_One']"}`} dir={isEn ? 'ltr' : 'rtl'}>
             
             {/* 1. Hero Section */}
-            <section className="relative w-full bg-[#2E514B] flex flex-col justify-center items-center text-center px-4 pt-20 pb-28">
+            <section className="relative w-full bg-[#2A4B46] flex flex-col justify-center items-center text-center px-4 pt-20 pb-16">
                 {/* Background Pattern */}
                 <div 
-                    className="absolute inset-0 pointer-events-none opacity-20" 
-                    style={{ backgroundImage: `url('/images/offers-pattern.svg')`, backgroundSize: '200px', backgroundPosition: 'center', backgroundRepeat: 'repeat' }} 
+                    className="absolute inset-0 pointer-events-none opacity-[0.15]" 
+                    style={{ backgroundImage: `url('/images/offers-pattern.svg')`, backgroundSize: '180px', backgroundPosition: 'center', backgroundRepeat: 'repeat' }} 
                 />
                 
-                <h4 className="text-[#A2BCB3] text-[14px] md:text-[16px] font-bold relative z-10 mb-4">
+                <h4 className="text-[#76908A] text-[15px] font-bold relative z-10 mb-5">
                     {isEn ? 'Gifts that suit your company' : 'هدايا تليق بشركتك'}
                 </h4>
 
-                <h1 className="text-white text-[36px] md:text-[46px] font-bold relative z-10 mb-5 leading-tight tracking-wide">
+                <h1 className="text-white text-[38px] md:text-[46px] font-black relative z-10 mb-5 leading-tight tracking-wide">
                     {isEn ? 'Corporate Gifts with Your Identity' : 'هدايا مؤسسية بهويتك الخاصة'}
                 </h1>
                 
-                <p className="text-[#A2BCB3] text-[16px] md:text-[18px] font-medium relative z-10 mb-4 max-w-2xl">
+                <p className="text-[#76908A] text-[16px] md:text-[18px] font-medium relative z-10 mb-4 max-w-2xl">
                     {isEn ? 'Premium collections with your company logo — for employees, clients, and official occasions' : 'تشكيلات فاخرة بشعار شركتك — للموظفين والعملاء والمناسبات الرسمية'}
                 </p>
             </section>
 
             {/* Overlapping Stats Pills */}
-            <div className="w-full relative z-20 -mt-10 mb-16 px-4">
+            <div className="w-full relative z-20 -mt-[42px] mb-20 px-4">
                 <div className="max-w-[1000px] mx-auto flex flex-wrap justify-center gap-4 md:gap-5">
                     
-                    <div className="bg-[#FCF9F2] px-8 py-3 rounded-[8px] border border-[#E5DFCD] text-[#2E514B] shadow-sm flex flex-col items-center min-w-[140px]">
-                        <span className="font-bold text-[20px] mb-1 leading-none">{isEn ? '500+' : '+٥٠٠'}</span>
-                        <span className="text-[13px] opacity-70 font-medium">{isEn ? 'Companies trust us' : 'شركة تثق بنا'}</span>
+                    <div className="bg-[#FCF6E8] px-8 py-3 rounded-[6px] border border-[#E5D9C5] shadow-sm flex flex-col items-center min-w-[140px]">
+                        <span className="text-[#2A4B46] font-bold text-[22px] mb-1 leading-none">{isEn ? '500+' : '+٥٠٠'}</span>
+                        <span className="text-[#A6B5B0] text-[13px] font-medium">{isEn ? 'Companies trust us' : 'شركة تثق بنا'}</span>
                     </div>
 
-                    <div className="bg-[#FCF9F2] px-8 py-3 rounded-[8px] border border-[#E5DFCD] text-[#2E514B] shadow-sm flex flex-col items-center min-w-[140px]">
-                        <span className="font-bold text-[20px] mb-1 leading-none">{isEn ? '24 Hours' : '٢٤ ساعة'}</span>
-                        <span className="text-[13px] opacity-70 font-medium">{isEn ? 'Guaranteed response' : 'استجابة مضمونة'}</span>
+                    <div className="bg-[#FCF6E8] px-8 py-3 rounded-[6px] border border-[#E5D9C5] shadow-sm flex flex-col items-center min-w-[140px]">
+                        <span className="text-[#2A4B46] font-bold text-[22px] mb-1 leading-none">{isEn ? '24 Hours' : '٢٤ ساعة'}</span>
+                        <span className="text-[#A6B5B0] text-[13px] font-medium">{isEn ? 'Guaranteed response' : 'استجابة مضمونة'}</span>
                     </div>
 
-                    <div className="bg-[#FCF9F2] px-8 py-3 rounded-[8px] border border-[#E5DFCD] text-[#2E514B] shadow-sm flex flex-col items-center min-w-[140px]">
-                        <span className="font-bold text-[20px] mb-1 leading-none">{isEn ? '+35 Cities' : '+٣٥ مدينة'}</span>
-                        <span className="text-[13px] opacity-70 font-medium">{isEn ? 'We deliver to' : 'نوصل لها'}</span>
+                    <div className="bg-[#FCF6E8] px-8 py-3 rounded-[6px] border border-[#E5D9C5] shadow-sm flex flex-col items-center min-w-[140px]">
+                        <span className="text-[#2A4B46] font-bold text-[22px] mb-1 leading-none">{isEn ? '+35 Cities' : '+٣٥ مدينة'}</span>
+                        <span className="text-[#A6B5B0] text-[13px] font-medium">{isEn ? 'We deliver to' : 'نوصل لها'}</span>
                     </div>
 
-                    <div className="bg-[#FCF9F2] px-8 py-3 rounded-[8px] border border-[#E5DFCD] text-[#2E514B] shadow-sm flex flex-col items-center min-w-[140px]">
-                        <span className="font-bold text-[20px] mb-1 leading-none">{isEn ? '20 Boxes' : '٢٠ علبة'}</span>
-                        <span className="text-[13px] opacity-70 font-medium">{isEn ? 'Minimum order' : 'حد أدنى'}</span>
+                    <div className="bg-[#FCF6E8] px-8 py-3 rounded-[6px] border border-[#E5D9C5] shadow-sm flex flex-col items-center min-w-[140px]">
+                        <span className="text-[#2A4B46] font-bold text-[22px] mb-1 leading-none">{isEn ? '20 Boxes' : '٢٠ علبة'}</span>
+                        <span className="text-[#A6B5B0] text-[13px] font-medium">{isEn ? 'Minimum order' : 'حد أدنى'}</span>
                     </div>
 
                 </div>

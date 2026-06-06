@@ -106,7 +106,7 @@ export default function CorporatePage() {
                     {isEn ? 'Gifts that suit your company' : 'هدايا تليق بشركتك'}
                 </h4>
 
-                <h1 className="text-[#FEF8EB] text-[40px] md:text-[56px] font-bold relative z-10 mb-8 leading-tight tracking-wide" style={{ fontFamily: isEn ? 'inherit' : "'Bahij Janna'" }}>
+                <h1 className="text-[#FEF8EB] text-[40px] md:text-[50px] font-bold relative z-10 mb-8 leading-none tracking-normal text-center align-middle" style={{ fontFamily: isEn ? 'inherit' : "'Bahij Janna'" }}>
                     {isEn ? 'Corporate Gifts with Your Identity' : 'هدايا مؤسسية بهويتك الخاصة'}
                 </h1>
                 

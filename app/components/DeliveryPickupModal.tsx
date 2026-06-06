@@ -255,7 +255,10 @@ export function parseLocationToBranch(node: any): Branch {
     const pickup = computeStatus('working_hours_from', 'working_hours_to');
 
     const getMeta = (k: string, fb: any) => {
-        const v = node.metafields?.find((m: any) => m?.key === k)?.value;
+        let v = (node as any)[k]?.value;
+        if (v === undefined) {
+            v = node.metafields?.find((m: any) => m?.key === k)?.value;
+        }
         if (!v) return fb;
         if (typeof fb === 'number') {
             if (typeof v === 'string' && v.trim().startsWith('{')) {
@@ -291,12 +294,12 @@ export function parseLocationToBranch(node: any): Branch {
         perKmRate: getMeta('per_km_rate', 0),
         timeSlots: getMeta('time_slots', ''),
         freeDeliveryThreshold: getMeta('free_delivery_threshold', 300),
-        hoursFrom: node.metafields?.find((m: any) => m?.key === 'working_hours_from')?.value,
-        hoursTo: node.metafields?.find((m: any) => m?.key === 'working_hours_to')?.value,
+        hoursFrom: (node as any).working_hours_from?.value || node.metafields?.find((m: any) => m?.key === 'working_hours_from')?.value,
+        hoursTo: (node as any).working_hours_to?.value || node.metafields?.find((m: any) => m?.key === 'working_hours_to')?.value,
         badge: '',
         google_maps: getMeta('google_maps', googleMapMeta),
-        rating: getMeta('rating', 0) || (4.0 + (node.id.length % 10) / 10),
-        ratingCount: getMeta('rating_count', 0) || (100 + (node.id.length * 13) % 500),
+        rating: getMeta('rating', 0),
+        ratingCount: getMeta('rating_count', 0),
     };
 }
 

@@ -593,6 +593,14 @@ const LOCATIONS_QUERY = `#graphql
           key
           value
         }
+        rating: metafield(namespace: "custom", key: "rating") {
+          key
+          value
+        }
+        rating_count: metafield(namespace: "custom", key: "rating_count") {
+          key
+          value
+        }
       }
     }
   }

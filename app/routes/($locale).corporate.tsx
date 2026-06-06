@@ -182,35 +182,52 @@ export default function CorporatePage() {
             </section>
 
             {/* 3. How to Proceed? (Quick Order vs Custom Quote) */}
-            <section className="w-full bg-white py-20 px-4">
-                <div className="max-w-[1000px] mx-auto text-center">
-                    <h4 className="text-[#8B8B8B] font-bold text-[14px] mb-2">{isEn ? 'Take Action' : 'اتخذ خطوتك'}</h4>
-                    <h2 className="text-[#234745] text-[28px] md:text-[36px] font-bold mb-12">{isEn ? 'How would you like to proceed?' : 'كيف تريد المتابعة؟'}</h2>
+            <section className="w-full bg-white py-20 px-4 border-b border-[#9FB7AE]">
+                <div className="max-w-[1280px] mx-auto flex flex-col items-center gap-10">
+                    
+                    {/* Header */}
+                    <div className="flex flex-col items-center text-center gap-2">
+                        <h4 className="text-[#906B51] font-medium text-[18px] leading-[22px]">{isEn ? 'Choose Your Path' : 'اختر مسارك'}</h4>
+                        <h2 className="text-[#234745] text-[36px] md:text-[50px] font-bold leading-[80px]" style={{ fontFamily: isEn ? 'inherit' : "'Bahij Janna'" }}>{isEn ? 'How would you like to proceed?' : 'كيف تريد المتابعة؟'}</h2>
+                    </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8">
+                    {/* Cards Grid */}
+                    <div className="flex flex-col md:flex-row w-full gap-8 justify-center">
+                        
                         {/* Custom Quote Card */}
-                        <a href="#custom-quote" className="group border border-gray-200 rounded-[24px] p-8 lg:p-10 text-start hover:border-[#234745] transition-colors hover:shadow-xl relative overflow-hidden bg-white">
-                            <div className="flex justify-between items-start mb-6">
-                                <div className="w-14 h-14 bg-[#FEF8EB] rounded-full flex items-center justify-center group-hover:bg-[#234745] transition-colors">
-                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="stroke-[#234745] group-hover:stroke-white transition-colors" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                        <a href="#custom-quote" className="flex-1 flex flex-row justify-end items-start p-6 md:p-8 gap-6 bg-white border border-[#9FB7AE] rounded-[12px] hover:shadow-md transition-shadow group">
+                            
+                            <div className="flex flex-col justify-center items-end gap-4 flex-1">
+                                <h3 className="text-[#234745] font-bold text-[18px] leading-[22px] text-right m-0">{isEn ? 'Custom Quote' : 'عرض سعر مخصص'}</h3>
+                                <p className="text-[#9FB7AE] text-[14px] leading-[17px] font-medium text-right m-0">{isEn ? 'For large orders or special customization — an account manager will contact you' : 'للطلبات الكبيرة أو التخصيص الخاص — مدير حساب سيتواصل معك'}</p>
+                                <div className="bg-[#FEF8EB] px-4 py-2 rounded-full flex items-center justify-center mt-2 group-hover:bg-[#f6ebd4] transition-colors">
+                                    <span className="text-[#906B51] font-bold text-[14px] leading-[17px]">{isEn ? '200+ Boxes or Custom Order' : '+٢٠٠ علبة أو طلب خاص'}</span>
                                 </div>
                             </div>
-                            <h3 className="text-[22px] font-bold text-[#1A1A1A] mb-3">{isEn ? 'Custom Quote' : 'عرض مخصص'}</h3>
-                            <p className="text-[#8B8B8B] text-[15px] mb-8 font-medium">{isEn ? 'Tailored gifts and special printing — perfect for unique quantities' : 'تغليف الهدايا أو تخصيص الشركة — خيار ممتاز للكميات الخاصة'}</p>
-                            <span className="inline-block text-[#234745] font-bold text-[15px] border-b-2 border-[#234745] pb-1">{isEn ? 'Request Quote Now' : 'اطلب تسعيرة الآن'}</span>
+
+                            <div className="w-12 h-12 bg-[#BBCFCD]/50 rounded-full flex-none relative flex items-center justify-center">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="stroke-[#234745]" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                            </div>
+
                         </a>
 
                         {/* Quick Order Card */}
-                        <a href="#products" className="group border border-transparent rounded-[24px] p-8 lg:p-10 text-start transition-colors shadow-xl relative overflow-hidden bg-[#FEF8EB]">
-                            <div className="flex justify-between items-start mb-6">
-                                <div className="w-14 h-14 bg-[#BBCFCD]/40 rounded-full flex items-center justify-center group-hover:bg-[#234745] transition-colors">
-                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="stroke-[#234745] group-hover:stroke-white transition-colors" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+                        <a href="#products" className="flex-1 flex flex-row justify-end items-start p-6 md:p-8 gap-6 bg-[#FEF8EB] border border-[#234745] rounded-[12px] hover:shadow-md transition-shadow group">
+                            
+                            <div className="flex flex-col justify-center items-end gap-4 flex-1">
+                                <h3 className="text-[#234745] font-bold text-[18px] leading-[22px] text-right m-0">{isEn ? 'Self Order' : 'طلب ذاتي'}</h3>
+                                <p className="text-[#9FB7AE] text-[14px] leading-[17px] font-medium text-right m-0">{isEn ? 'Choose your products and logo and pay directly — no waiting' : 'اختر منتجاتك وشعارك وادفع مباشرة — بدون انتظار'}</p>
+                                <div className="bg-[#BBCFCD] px-4 py-2 rounded-full flex items-center justify-center mt-2 group-hover:bg-[#a5bdbb] transition-colors">
+                                    <span className="text-[#234745] font-bold text-[14px] leading-[17px]">{isEn ? '20 - 200 Boxes' : '٢٠ - ٢٠٠ علبة'}</span>
                                 </div>
                             </div>
-                            <h3 className="text-[22px] font-bold text-[#1A1A1A] mb-3">{isEn ? 'Quick Order' : 'طلب سريع'}</h3>
-                            <p className="text-[#8B8B8B] text-[15px] mb-8 font-medium">{isEn ? 'Order standard corporate products quickly — convenient choices' : 'طلب سريع لمنتجاتنا القياسية للشركات — خيار سريع ومريح'}</p>
-                            <span className="inline-block bg-[#234745] text-white px-6 py-2.5 rounded-full font-bold text-[14px] group-hover:bg-[#1a3533] transition-colors">{isEn ? 'Shop Now' : 'تسوق الآن'}</span>
+
+                            <div className="w-12 h-12 bg-[#BBCFCD]/50 rounded-full flex-none relative flex items-center justify-center">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="stroke-[#234745]" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+                            </div>
+
                         </a>
+
                     </div>
                 </div>
             </section>

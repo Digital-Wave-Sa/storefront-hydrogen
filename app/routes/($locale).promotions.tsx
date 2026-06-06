@@ -1,15 +1,8 @@
-import { json, type LoaderFunctionArgs } from '@shopify/remix-oxygen';
-import { useLoaderData } from '@remix-run/react';
-import { useTranslation } from 'react-i18next';
-
-export async function loader({ context, request }: LoaderFunctionArgs) {
-    const locale = context.storefront.i18n.language;
-    return json({ locale });
-}
+import { type LoaderFunctionArgs, useRouteLoaderData } from 'react-router';
 
 export default function PromotionsPage() {
-    const { locale } = useLoaderData<typeof loader>();
-    const { t } = useTranslation();
+    const routeData = useRouteLoaderData('root') as { locale?: string };
+    const locale = routeData?.locale || 'ar';
     const isEn = locale.toLowerCase().startsWith('en');
 
     // Default to RTL if Arabic, else LTR

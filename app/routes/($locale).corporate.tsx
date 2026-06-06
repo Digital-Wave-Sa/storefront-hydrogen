@@ -95,40 +95,52 @@ export default function CorporatePage() {
         <div className={`min-h-screen bg-[#FEF8EB] ${isEn ? 'font-en' : "font-['GE_Dinar_One']"}`} dir={isEn ? 'ltr' : 'rtl'}>
             
             {/* 1. Hero Section */}
-            <section className="relative w-full bg-[#234745] overflow-hidden flex flex-col justify-center items-center text-center px-4 pt-16 pb-20 border-b-2 border-b-[#BBCFCD]/20">
+            <section className="relative w-full bg-[#2E514B] flex flex-col justify-center items-center text-center px-4 pt-20 pb-28">
+                {/* Background Pattern */}
                 <div 
-                    className="absolute inset-0 pointer-events-none opacity-40 mix-blend-overlay" 
-                    style={{ backgroundImage: `url(${patternBg})`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' }} 
+                    className="absolute inset-0 pointer-events-none opacity-20" 
+                    style={{ backgroundImage: `url('/images/offers-pattern.svg')`, backgroundSize: '200px', backgroundPosition: 'center', backgroundRepeat: 'repeat' }} 
                 />
                 
-                <h1 className="text-[#FEF8EB] text-[32px] md:text-[46px] font-black relative z-10 mb-4 leading-tight">
+                <h4 className="text-[#A2BCB3] text-[14px] md:text-[16px] font-bold relative z-10 mb-4">
+                    {isEn ? 'Gifts that suit your company' : 'هدايا تليق بشركتك'}
+                </h4>
+
+                <h1 className="text-white text-[36px] md:text-[46px] font-bold relative z-10 mb-5 leading-tight tracking-wide">
                     {isEn ? 'Corporate Gifts with Your Identity' : 'هدايا مؤسسية بهويتك الخاصة'}
                 </h1>
                 
-                <p className="text-[#BBCFCD] text-[16px] md:text-[20px] font-medium relative z-10 mb-12 max-w-2xl">
-                    {isEn ? 'Design gifts that reflect your company\'s identity with the finest sweets and chocolates' : 'صمم هدايا تعكس هوية شركتك بأرقى أنواع الحلويات والشوكولاتة'}
+                <p className="text-[#A2BCB3] text-[16px] md:text-[18px] font-medium relative z-10 mb-4 max-w-2xl">
+                    {isEn ? 'Premium collections with your company logo — for employees, clients, and official occasions' : 'تشكيلات فاخرة بشعار شركتك — للموظفين والعملاء والمناسبات الرسمية'}
                 </p>
-
-                {/* Stats Pills */}
-                <div className="relative z-10 flex flex-wrap justify-center gap-3 md:gap-6">
-                    <div className="bg-white px-6 py-2 rounded-full font-bold text-[#234745] text-[14px] md:text-[16px] shadow-lg flex flex-col items-center leading-tight">
-                        <span className="font-black text-[18px]">30+</span>
-                        <span className="text-[12px] opacity-80">{isEn ? 'Brands' : 'علامة تجارية'}</span>
-                    </div>
-                    <div className="bg-white px-6 py-2 rounded-full font-bold text-[#234745] text-[14px] md:text-[16px] shadow-lg flex flex-col items-center leading-tight">
-                        <span className="font-black text-[18px]">+25</span>
-                        <span className="text-[12px] opacity-80">{isEn ? 'Cities covered' : 'مدينة نغطيها'}</span>
-                    </div>
-                    <div className="bg-white px-6 py-2 rounded-full font-bold text-[#234745] text-[14px] md:text-[16px] shadow-lg flex flex-col items-center leading-tight">
-                        <span className="font-black text-[18px]">48h</span>
-                        <span className="text-[12px] opacity-80">{isEn ? 'To execute' : 'ساعة للتنفيذ'}</span>
-                    </div>
-                    <div className="bg-white px-6 py-2 rounded-full font-bold text-[#234745] text-[14px] md:text-[16px] shadow-lg flex flex-col items-center leading-tight">
-                        <span className="font-black text-[18px]">99.9%</span>
-                        <span className="text-[12px] opacity-80">{isEn ? 'Satisfaction' : 'رضا العملاء'}</span>
-                    </div>
-                </div>
             </section>
+
+            {/* Overlapping Stats Pills */}
+            <div className="w-full relative z-20 -mt-10 mb-16 px-4">
+                <div className="max-w-[1000px] mx-auto flex flex-wrap justify-center gap-4 md:gap-5">
+                    
+                    <div className="bg-[#FCF9F2] px-8 py-3 rounded-[8px] border border-[#E5DFCD] text-[#2E514B] shadow-sm flex flex-col items-center min-w-[140px]">
+                        <span className="font-bold text-[20px] mb-1 leading-none">{isEn ? '500+' : '+٥٠٠'}</span>
+                        <span className="text-[13px] opacity-70 font-medium">{isEn ? 'Companies trust us' : 'شركة تثق بنا'}</span>
+                    </div>
+
+                    <div className="bg-[#FCF9F2] px-8 py-3 rounded-[8px] border border-[#E5DFCD] text-[#2E514B] shadow-sm flex flex-col items-center min-w-[140px]">
+                        <span className="font-bold text-[20px] mb-1 leading-none">{isEn ? '24 Hours' : '٢٤ ساعة'}</span>
+                        <span className="text-[13px] opacity-70 font-medium">{isEn ? 'Guaranteed response' : 'استجابة مضمونة'}</span>
+                    </div>
+
+                    <div className="bg-[#FCF9F2] px-8 py-3 rounded-[8px] border border-[#E5DFCD] text-[#2E514B] shadow-sm flex flex-col items-center min-w-[140px]">
+                        <span className="font-bold text-[20px] mb-1 leading-none">{isEn ? '+35 Cities' : '+٣٥ مدينة'}</span>
+                        <span className="text-[13px] opacity-70 font-medium">{isEn ? 'We deliver to' : 'نوصل لها'}</span>
+                    </div>
+
+                    <div className="bg-[#FCF9F2] px-8 py-3 rounded-[8px] border border-[#E5DFCD] text-[#2E514B] shadow-sm flex flex-col items-center min-w-[140px]">
+                        <span className="font-bold text-[20px] mb-1 leading-none">{isEn ? '20 Boxes' : '٢٠ علبة'}</span>
+                        <span className="text-[13px] opacity-70 font-medium">{isEn ? 'Minimum order' : 'حد أدنى'}</span>
+                    </div>
+
+                </div>
+            </div>
 
             {/* 2. How it Works */}
             <section className="w-full bg-[#294c4a] py-16 px-4 border-t-2 border-[#1e3b3a]">

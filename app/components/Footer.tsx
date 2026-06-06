@@ -105,6 +105,8 @@ export function Footer({ footer, locale }: { footer: Promise<FooterQuery | null>
                     <div className="flex flex-col items-start gap-4" style={{ color: '#D2D2D2' }}>
                       <NavLink to={isEn ? "/en/collections/dark-chocolate" : "/collections/dark-chocolate"} className="font-medium text-[16px] hover:text-white transition-colors">{isEn ? 'Dark Chocolate' : 'الشوكولاتة الداكنة'}</NavLink>
                       <NavLink to={isEn ? "/en/custom-cake" : "/custom-cake"} className="font-medium text-[16px] hover:text-white transition-colors">{isEn ? 'Custom Cakes' : 'الكيك المخصص'}</NavLink>
+                      <NavLink to={isEn ? "/en/occasions" : "/occasions"} className="font-medium text-[16px] hover:text-white transition-colors">{isEn ? 'Occasions' : 'المناسبات'}</NavLink>
+                      <NavLink to={isEn ? "/en/gifting" : "/gifting"} className="font-medium text-[16px] hover:text-white transition-colors">{isEn ? 'Gifts' : 'الهدايا'}</NavLink>
                       <NavLink to={isEn ? "/en/collections/oriental" : "/collections/oriental"} className="font-medium text-[16px] hover:text-white transition-colors">{isEn ? 'Oriental Sweets' : 'الحلويات الشرقية'}</NavLink>
                       <NavLink to={isEn ? "/en/collections/gift-boxes" : "/collections/gift-boxes"} className="font-medium text-[16px] hover:text-white transition-colors">{isEn ? 'Gift Boxes' : 'صناديق الهدايا'}</NavLink>
                       <NavLink to={isEn ? "/en/collections/arabic-coffee" : "/collections/arabic-coffee"} className="font-medium text-[16px] hover:text-white transition-colors">{isEn ? 'Arabic Coffee' : 'القهوة العربية'}</NavLink>

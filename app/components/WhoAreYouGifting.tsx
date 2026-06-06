@@ -70,6 +70,16 @@ export function WhoAreYouGifting({ collections }: { collections?: any[] }) {
                         </Link>
                     ))}
                 </div>
+
+                {/* Footer Button */}
+                <div className="mt-8 lg:mt-12 flex justify-center">
+                    <Link
+                        to={isEn ? "/en/gifting" : "/gifting"}
+                        className="px-12 py-4 rounded-full border-2 border-[#1a3533]/20 text-[#1a3533] font-bold text-[15px] lg:text-[18px] transition-all hover:bg-[#1a3533] hover:text-white hover:border-[#1a3533] active:scale-95"
+                    >
+                        {isEn ? 'Browse All Gifts' : 'تصفح كل الهدايا'}
+                    </Link>
+                </div>
             </div>
         </section>
     );

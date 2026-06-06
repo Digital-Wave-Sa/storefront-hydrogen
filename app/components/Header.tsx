@@ -373,16 +373,16 @@ function MiddleBar({
 // ─── ROW 3: CATEGORY NAV ────────────────────────────────────────────────────
 const STATIC_NAV_AR = [
   { title: 'المنتجات', url: '/collections/all', hasMega: true },
-  { title: 'المناسبات', url: '/collections/occasions' },
-  { title: 'الهدايا', url: '/collections/gifts' },
+  { title: 'المناسبات', url: '/occasions' },
+  { title: 'الهدايا', url: '/gifting' },
   { title: 'الكيك المخصص', url: '/custom-cake' },
   { title: 'العروض', url: '/collections/offers' },
 ];
 
 const STATIC_NAV_EN = [
   { title: 'Products', url: '/en/collections/all', hasMega: true },
-  { title: 'Occasions', url: '/en/collections/occasions' },
-  { title: 'Gifts', url: '/en/collections/gifts' },
+  { title: 'Occasions', url: '/en/occasions' },
+  { title: 'Gifts', url: '/en/gifting' },
   { title: 'Custom Cake', url: '/en/custom-cake' },
   { title: 'Offers', url: '/en/collections/offers' },
 ];

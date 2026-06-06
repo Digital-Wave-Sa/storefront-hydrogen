@@ -13,6 +13,8 @@ import {
 } from '@shopify/hydrogen';
 
 import { SearchForm, SearchResults, NoSearchResults } from '~/components/Search';
+import patternBg from '~/assets/patteren-collection-header.svg';
+import { FilterSidebar, ActiveFilterChips } from '~/routes/($locale).collections.all';
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
   // Simple check for English search results in title
@@ -33,52 +35,49 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
   const searchTerm = String(searchParams.get('q') || '');
 
   const filters: any[] = [];
-  for (const [key, value] of searchParams.entries()) {
+  searchParams.forEach((value, key) => {
     if (key.startsWith('filter.')) {
-      if (key === 'filter.v.price.min') {
-        filters.push({
-          price: {
-            min: parseFloat(value),
-            max: searchParams.get('filter.v.price.max') ? parseFloat(searchParams.get('filter.v.price.max')!) : undefined
+      const parts = key.split('.');
+      if (parts[2] === 'price') {
+        if (parts.length === 3) {
+          try {
+            const priceObj = JSON.parse(value);
+            const p: any = {};
+            if (priceObj.min !== undefined) p.min = parseFloat(priceObj.min);
+            if (priceObj.max !== undefined) p.max = parseFloat(priceObj.max);
+            if (priceObj.gte !== undefined) p.min = parseFloat(priceObj.gte);
+            if (priceObj.lte !== undefined) p.max = parseFloat(priceObj.lte);
+            filters.push({ price: p });
+          } catch(e) {}
+        } else {
+          const type = parts[3]; 
+          const existing = filters.find(f => f.price);
+          if (existing) {
+            existing.price[type] = parseFloat(value);
+          } else {
+            filters.push({ price: { [type]: parseFloat(value) } });
           }
-        });
-      } else if (key === 'filter.v.price.max' && !searchParams.has('filter.v.price.min')) {
-        filters.push({
-          price: { max: parseFloat(value) }
-        });
-      } else if (key === 'filter.v.product_type') {
-         filters.push({ productType: value });
-      } else if (key === 'filter.v.product_vendor') {
-         filters.push({ productVendor: value });
+        }
+      } else if (parts[2] === 'option') {
+        const optionName = parts[3];
+        filters.push({ variantOption: { name: optionName, value } });
+      } else if (parts[2] === 'availability') {
+          filters.push({ available: value === 'true' });
+      } else if (parts[2] === 'product_type') {
+          filters.push({ productType: value });
+      } else if (parts[2] === 'product_vendor') {
+          filters.push({ productVendor: value });
       } else if (key.startsWith('filter.p.m.')) {
-         const [, , , namespace, k] = key.split('.');
+         const namespace = parts[3];
+         const k = parts[4];
          filters.push({
            productMetafield: { namespace, key: k, value }
          });
-      } else if (key === 'filter.v.availability') {
-         filters.push({ available: value === 'true' });
-      } else if (key.startsWith('filter.v.option.')) {
-        filters.push({
-          variantOption: {
-            name: key.replace('filter.v.option.', ''),
-            value
-          }
-        });
       }
     }
-  }
+  });
 
-  if (!searchTerm) {
-    return {
-      searchResults: { results: null, totalResults: 0 },
-      searchTerm,
-    };
-  }
-
-  // Wrap in quotes to prevent hyphens (e.g. in SKUs like SD-100) from being treated as NOT operators by Shopify
-  const safeTerm = `"${searchTerm}"`;
-  let baseQuery = `(${safeTerm} OR ${safeTerm}* OR sku:${safeTerm} OR sku:${safeTerm}*)`;
-  let finalQuery = baseQuery;
+  let finalQuery = searchTerm ? `("${searchTerm}" OR "${searchTerm}"* OR sku:"${searchTerm}" OR sku:"${searchTerm}"*)` : "";
 
   const activeCustomTag = searchParams.get('tag');
   if (activeCustomTag) {
@@ -105,6 +104,51 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
 
   if (!searchPayload) {
     throw new Error('No search data returned from Shopify API');
+  }
+
+  // Strictly filter by selected categories if 'category' params exist
+  const selectedCategories = searchParams.getAll('category');
+  if (selectedCategories.length > 0) {
+    try {
+        const collectionPromises = selectedCategories.map(handle => 
+            storefront.query(`#graphql
+                query CollectionIds($handle: String!, $country: CountryCode, $language: LanguageCode) @inContext(country: $country, language: $language) {
+                    collection(handle: $handle) {
+                        products(first: 250) {
+                            nodes {
+                                id
+                            }
+                        }
+                    }
+                }
+            `, {
+                variables: {
+                    handle,
+                    country: storefront.i18n.country,
+                    language: storefront.i18n.language,
+                },
+                cache: storefront.CacheNone(),
+            })
+        );
+        
+        const results = await Promise.all(collectionPromises);
+        const validIds = new Set();
+        
+        results.forEach((res: any) => {
+            if (res.collection?.products?.nodes) {
+                res.collection.products.nodes.forEach((node: any) => {
+                    validIds.add(node.id);
+                });
+            }
+        });
+        
+        // Filter searchPayload products by checking if their id is in validIds
+        if (searchPayload?.products?.nodes) {
+            searchPayload.products.nodes = searchPayload.products.nodes.filter((p: any) => validIds.has(p.id));
+        }
+    } catch(e) {
+        console.error("Failed to fetch collections for search intersection", e);
+    }
   }
 
   const totalResults = 
@@ -160,368 +204,81 @@ export default function SearchPage() {
       <Analytics.SearchView data={{ searchTerm, searchResults }} />
       
       {/* Top Header Bar */}
-      <header className="bg-[#234745] py-6 mb-10 border-b-4 border-[#2d5e4a] relative overflow-hidden">
+      <header className="relative py-6 mb-10 bg-[#234745] overflow-hidden flex items-center h-[112px]">
          {/* Subtle Pattern */}
-         <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: 'radial-gradient(#ffffff 2px, transparent 2px)', backgroundSize: '30px 30px' }}></div>
-         <div className="max-w-[1400px] mx-auto px-6 relative z-10 flex flex-col md:flex-row items-center gap-6 justify-between">
+         <div 
+             className="absolute inset-0"
+             style={{
+                 backgroundImage: `url(${patternBg})`,
+                 backgroundSize: 'cover',
+                 backgroundPosition: 'center',
+             }}
+         />
+         <div className="max-w-[1440px] w-full mx-auto px-4 md:px-8 lg:px-12 relative z-10 flex flex-col md:flex-row items-center gap-6 justify-between">
+            <button onClick={() => window.history.back()} className="shrink-0 flex items-center gap-[8px] bg-[#9FB7AE] hover:bg-[#8BA19C] text-[#234745] px-8 py-3 rounded-[25px] font-bold transition-all shadow-sm" style={{ fontFamily: !isEn ? "'GE Dinar One', sans-serif" : undefined }}>
+               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={isEn ? 'rotate-180' : ''}><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+               <span className="text-[16px]">{isEn ? 'Back' : 'رجوع'}</span>
+            </button>
             <div className="flex-1 w-full">
                <SearchForm searchTerm={searchTerm} />
             </div>
-            <button onClick={() => window.history.back()} className="shrink-0 flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white px-8 py-4 rounded-full font-bold transition-all shadow-sm border border-white/10">
-               <span>{isEn ? 'Back' : 'رجوع'}</span>
-               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={isEn ? 'rotate-180' : ''}><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
-            </button>
          </div>
       </header>
 
-      <div className="max-w-[1400px] mx-auto px-6">
-        {(!searchTerm && !searchResults.totalResults) ? (
-            <section className="max-w-3xl mx-auto mt-16">
-              <NoSearchResults searchTerm={searchTerm} />
-            </section>
-        ) : (
-            <div className="flex flex-col lg:flex-row gap-8">
-                {/* Static Filter Sidebar */}
-                <aside className="hidden lg:block w-[320px] shrink-0">
-                    <div className="bg-white rounded-[2rem] border border-gray-100 shadow-sm overflow-hidden sticky top-8">
-                       <FilterSidebar 
-                         filters={filterOptions} 
-                         tags={extractedTags}
-                         collections={globalCollections}
-                         onClose={() => {}} 
-                         isEn={isEn}
-                       />
-                    </div>
-                </aside>
+      <div className="bg-[#FEF8EB] min-h-screen">
+          <div className="px-4 md:px-8 lg:px-12 py-10 max-w-[1440px] mx-auto text-right">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+              <div className="flex-1 flex items-center justify-end">
+                <div className="flex items-center gap-2">
+                  <label className="text-gray-400 text-[13px] font-bold">
+                    {isEn ? 'Sort by:' : 'ترتيب حسب:'}
+                  </label>
+                  <div className="flex items-center bg-white border border-[#234745]/10 rounded-full px-4 py-2 shadow-sm relative w-40">
+                    <select
+                      className="w-full bg-transparent text-[13px] font-bold text-gray-800 cursor-pointer focus:outline-none focus:ring-0 border-none appearance-none rtl:pl-6"
+                      style={{ WebkitAppearance: 'none', appearance: 'none' }}
+                      onChange={(e) => {
+                        const [key, rev] = e.target.value.split('|');
+                        const url = new URL(window.location.href);
+                        url.searchParams.set('sortKey', key);
+                        url.searchParams.set('reverse', rev);
+                        window.location.href = url.toString();
+                      }}
+                    >
+                      <option value="RELEVANCE|false">{isEn ? 'Featured' : 'الأكثر صلة'}</option>
+                      <option value="PRICE|false">{isEn ? 'Price: Low to High' : 'السعر: من الأقل للأعلى'}</option>
+                      <option value="PRICE|true">{isEn ? 'Price: High to Low' : 'السعر: من الأعلى للأقل'}</option>
+                    </select>
+                    <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7"></path></svg>
+                  </div>
+                </div>
+              </div>
 
-                {/* Main Content Area */}
-                <main className="flex-1">
-                    {/* Active Filters & Sorting */}
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-                        <div className="flex flex-wrap items-center gap-2">
-                           {/* Render Active Filter Chips (Mock or dynamic based on URL) */}
-                           <ActiveFilterChips isEn={isEn} />
-                        </div>
-                        
-                        <div className="flex items-center gap-3 shrink-0">
-                           <span className="text-sm font-bold text-gray-400">{isEn ? 'Sort by:' : 'ترتيب حسب:'}</span>
-                           <select className="bg-white px-6 py-2.5 rounded-full text-sm font-bold text-[#234745] border border-gray-200 outline-none shadow-sm cursor-pointer hover:border-[#234745] transition-all">
-                               <option>{isEn ? 'Most Relevant' : 'الأكثر صلة'}</option>
-                               <option>{isEn ? 'Price: Low to High' : 'السعر: من الأقل للأعلى'}</option>
-                               <option>{isEn ? 'Price: High to Low' : 'السعر: من الأعلى للأقل'}</option>
-                           </select>
-                        </div>
-                    </div>
-
-                    {!searchResults.totalResults ? (
-                        <NoSearchResults searchTerm={searchTerm} />
-                    ) : (
-                        <SearchResults results={searchResults.results as any} />
-                    )}
-                </main>
+              <div className="flex items-center gap-2 flex-wrap justify-start flex-1">
+                 <ActiveFilterChips isEn={isEn} />
+              </div>
             </div>
-        )}
+
+            <div className="flex flex-col lg:flex-row gap-8 items-start">
+              <div className="flex-1 min-w-0 w-full lg:order-2">
+                  {!searchResults.totalResults ? (
+                      <NoSearchResults searchTerm={searchTerm} />
+                  ) : (
+                      <SearchResults results={searchResults.results as any} />
+                  )}
+              </div>
+
+              <div className="hidden lg:block w-72 shrink-0">
+                 <FilterSidebar filters={filterOptions} collections={globalCollections || []} onClose={() => {}} isDesktop={true} isEn={isEn} hideSearchInput={true} />
+              </div>
+            </div>
+          </div>
       </div>
     </div>
   );
 }
 
-function ActiveFilterChips({ isEn }: { isEn: boolean }) {
-    const [params, setParams] = useState<URLSearchParams | null>(null);
-    useEffect(() => {
-        setParams(new URLSearchParams(window.location.search));
-    }, []);
 
-    if (!params) return null;
-
-    const chips: { key: string, label: string }[] = [];
-    params.forEach((value, key) => {
-        if (key === 'q' || key === 'cursor') return;
-        
-        let label = value;
-        if (key === 'filter.v.price.min') label = isEn ? `Min: ${value} SAR` : `الأقل: ${value} ر.س`;
-        if (key === 'filter.v.price.max') label = isEn ? `Max: ${value} SAR` : `الأعلى: ${value} ر.س`;
-        if (key === 'tag') label = value;
-        if (key === 'collection') label = value;
-
-        chips.push({ key, label });
-    });
-
-    const removeFilter = (key: string) => {
-        const url = new URL(window.location.href);
-        url.searchParams.delete(key);
-        window.location.href = url.toString();
-    };
-
-    return (
-        <>
-            {chips.map(chip => (
-                <button 
-                  key={chip.key}
-                  onClick={() => removeFilter(chip.key)}
-                  className="bg-white border border-gray-200 px-4 py-1.5 rounded-full flex items-center gap-2 text-sm font-bold text-gray-600 hover:bg-red-50 hover:text-red-600 hover:border-red-100 transition-all group"
-                >
-                    <span>{chip.label}</span>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="text-gray-300 group-hover:text-red-500"><path d="M18 6 6 18M6 6l12 12"/></svg>
-                </button>
-            ))}
-        </>
-    );
-}
-
-function FilterSidebar({ filters, tags, collections, onClose, isEn }: { filters: any[], tags: string[], collections: any[], onClose: () => void, isEn?: boolean }) {
-    return (
-        <div className="flex flex-col h-full overflow-hidden">
-            <header className="p-8 border-b border-gray-100 flex items-center justify-between shrink-0">
-                <h2 className="text-2xl font-black text-[#234745]">{isEn ? 'Filters' : 'تصفية النتائج'}</h2>
-                <button onClick={onClose} className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-[#234745] hover:bg-red-50 hover:text-red-500 transition-all font-bold text-2xl">
-                    &times;
-                </button>
-            </header>
-            
-            <FilterForm onClose={onClose} filters={filters} tags={tags} collections={collections} isEn={isEn} />
-        </div>
-    );
-}
-
-function FilterForm({ filters, tags, collections, onClose, isEn }: { filters: any[], tags: string[], collections: any[], onClose: () => void, isEn?: boolean }) {
-    const [minPrice, setMinPrice] = useState('');
-    const [maxPrice, setMaxPrice] = useState('');
-    const [openSections, setOpenSections] = useState<{[key: string]: boolean}>({
-        'collections': true,
-        'tags': true,
-    });
-
-    useEffect(() => {
-        const params = new URLSearchParams(window.location.search);
-        setMinPrice(params.get('filter.v.price.min') || '');
-        setMaxPrice(params.get('filter.v.price.max') || '');
-        
-        // Auto-open sections that have active filters
-        const initialOpen: {[key: string]: boolean} = {
-            'collections': params.has('collection'),
-            'tags': params.has('tag'),
-        };
-        filters.forEach(f => {
-            initialOpen[f.id] = f.values.some((v: any) => isFilterActive(v.input, params));
-        });
-        setOpenSections(prev => ({...prev, ...initialOpen}));
-    }, [filters]);
-
-    const toggleSection = (id: string) => {
-        setOpenSections(prev => ({...prev, [id]: !prev[id]}));
-    };
-
-    const handleApply = () => {
-        const params = new URLSearchParams(window.location.search);
-        if (minPrice) params.set('filter.v.price.min', minPrice);
-        else params.delete('filter.v.price.min');
-        
-        if (maxPrice) params.set('filter.v.price.max', maxPrice);
-        else params.delete('filter.v.price.max');
-        
-        window.location.search = params.toString();
-        onClose();
-    };
-
-    const handleClearAll = () => {
-        const params = new URLSearchParams(window.location.search);
-        const q = params.get('q');
-        const url = new URL(window.location.href);
-        url.search = '';
-        if (q) url.searchParams.set('q', q);
-        window.location.href = url.toString();
-    };
-
-    const isFilterActive = (input: string, params: URLSearchParams) => {
-        try {
-            const filterInput = JSON.parse(input) as any;
-            if (filterInput.variantOption) {
-                return params.get(`filter.v.option.${filterInput.variantOption.name}`) === filterInput.variantOption.value;
-            } else if (filterInput.productType) {
-                return params.get('filter.v.product_type') === filterInput.productType;
-            } else if (filterInput.productVendor) {
-                return params.get('filter.v.product_vendor') === filterInput.productVendor;
-            } else if (filterInput.productMetafield) {
-                return params.get(`filter.p.m.${filterInput.productMetafield.namespace}.${filterInput.productMetafield.key}`) === filterInput.productMetafield.value;
-            } else if (filterInput.available !== undefined) {
-                return params.get('filter.v.availability') === filterInput.available.toString();
-            }
-        } catch (e) {}
-        return false;
-    };
-
-    return (
-        <div className="flex-1 overflow-y-auto p-6 flex flex-col h-full bg-[#FEF8EB]">
-            <div className="flex-1 space-y-6">
-
-                {/* Custom Collections Filter */}
-                {collections && collections.length > 0 && (
-                    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-                        <button 
-                            onClick={() => toggleSection('collections')}
-                            className="w-full flex items-center justify-between p-4 group outline-none bg-gray-50/50"
-                        >
-                            <h3 className="text-sm font-black text-[#234745] uppercase tracking-widest">
-                                {isEn ? 'Collections' : 'الأقسام'}
-                            </h3>
-                            <svg 
-                                width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" 
-                                className={`text-[#234745] transition-transform duration-300 ${openSections['collections'] ? 'rotate-180' : ''}`}
-                            >
-                                <polyline points="6 9 12 15 18 9"></polyline>
-                            </svg>
-                        </button>
-                        
-                        <div className={`flex flex-col transition-all duration-300 overflow-hidden ${openSections['collections'] ? 'p-4 max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'}`}>
-                            {collections.map((col: any) => {
-                                const params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
-                                const isActive = params.get('collection') === col.title;
-                                
-                                if (isActive) params.delete('collection');
-                                else params.set('collection', col.title);
-
-                                return (
-                                    <Link
-                                        key={col.id}
-                                        to={`?${params.toString()}`}
-                                        className="flex items-center justify-between cursor-pointer group mb-3 last:mb-0 transition-opacity hover:opacity-80"
-                                    >
-                                        <span className="text-[12px] text-gray-400 font-bold"></span>
-                                        <div className="flex items-center gap-3">
-                                            <span className={`text-[14px] transition-all ${isActive ? 'text-[#234745] font-bold' : 'text-gray-600 font-medium group-hover:text-[#234745]'}`}>
-                                                {col.title}
-                                            </span>
-                                            <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${isActive ? 'bg-[#234745] border-[#234745]' : 'border-gray-200 bg-white group-hover:border-[#234745]'}`}>
-                                                {isActive && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4"><polyline points="20 6 9 17 4 12"></polyline></svg>}
-                                            </div>
-                                        </div>
-                                    </Link>
-                                );
-                            })}
-                        </div>
-                    </div>
-                )}
-
-                {/* Shopify Dynamic Filters */}
-                {filters.map((filter) => (
-                    <div key={filter.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-                        <button 
-                            onClick={() => toggleSection(filter.id)}
-                            className="w-full flex items-center justify-between p-4 group outline-none bg-gray-50/50"
-                        >
-                            <h3 className="text-sm font-black text-[#234745] uppercase tracking-widest">
-                                {filter.label}
-                            </h3>
-                            <svg 
-                                width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" 
-                                className={`text-[#234745] transition-transform duration-300 ${openSections[filter.id] ? 'rotate-180' : ''}`}
-                            >
-                                <polyline points="6 9 12 15 18 9"></polyline>
-                            </svg>
-                        </button>
-                        
-                        <div className={`flex flex-col transition-all duration-300 overflow-hidden ${openSections[filter.id] ? 'p-4 max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'}`}>
-                            {filter.type === 'LIST' ? (
-                                <div className="flex flex-col">
-                                    {filter.values.map((value: any) => {
-                                        const params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
-                                        const isActive = isFilterActive(value.input, params);
-
-                                        return (
-                                            <Link
-                                                key={value.id}
-                                                to={getFilterLink(value.input)}
-                                                className="flex items-center justify-between cursor-pointer group mb-3 last:mb-0 transition-opacity hover:opacity-80"
-                                            >
-                                                <span className="text-[12px] text-gray-400 font-bold">[{value.count}]</span>
-                                                <div className="flex items-center gap-3">
-                                                    <span className={`text-[14px] transition-all ${isActive ? 'text-[#234745] font-bold' : 'text-gray-600 font-medium group-hover:text-[#234745]'}`}>
-                                                        {value.label}
-                                                    </span>
-                                                    <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${isActive ? 'bg-[#234745] border-[#234745]' : 'border-gray-200 bg-white group-hover:border-[#234745]'}`}>
-                                                        {isActive && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4"><polyline points="20 6 9 17 4 12"></polyline></svg>}
-                                                    </div>
-                                                </div>
-                                            </Link>
-                                        );
-                                    })}
-                                </div>
-                            ) : filter.type === 'PRICE_RANGE' ? (
-                                <div className="space-y-4">
-                                    <div className="flex gap-4">
-                                        <div className="flex-1">
-                                            <label className="text-[10px] font-black text-gray-400 block mb-1">{isEn ? 'Min Price' : 'الحد الأدنى'}</label>
-                                            <input 
-                                                type="number" 
-                                                value={minPrice}
-                                                onChange={(e) => setMinPrice(e.target.value)}
-                                                placeholder="0" 
-                                                className="w-full bg-white border-2 border-gray-100 rounded-xl px-4 py-3 text-sm font-bold focus:outline-none focus:border-[#234745] transition-all" 
-                                            />
-                                        </div>
-                                        <div className="flex-1">
-                                            <label className="text-[10px] font-black text-gray-400 block mb-1">{isEn ? 'Max Price' : 'الحد الأقصى'}</label>
-                                            <input 
-                                                type="number" 
-                                                value={maxPrice}
-                                                onChange={(e) => setMaxPrice(e.target.value)}
-                                                placeholder="500+" 
-                                                className="w-full bg-white border-2 border-gray-100 rounded-xl px-4 py-3 text-sm font-bold focus:outline-none focus:border-[#234745] transition-all" 
-                                            />
-                                        </div>
-                                    </div>
-                                    <button 
-                                      onClick={handleApply}
-                                      className="w-full bg-[#234745] text-white py-2 rounded-xl font-black text-sm hover:opacity-90 transition-all"
-                                    >
-                                        {isEn ? 'Apply' : 'تطبيق'}
-                                    </button>
-                                </div>
-                            ) : null}
-                        </div>
-                    </div>
-                ))}
-            </div>
-
-            {/* Clear All Filters Button */}
-            <div className="mt-6 sticky bottom-0 bg-[#FEF8EB] pt-4">
-                <button 
-                  onClick={handleClearAll}
-                  className="w-full bg-white text-[#234745] border-2 border-[#234745] py-3 rounded-full font-black text-sm hover:bg-[#234745] hover:text-white transition-all shadow-sm"
-                >
-                    {isEn ? 'Clear All Filters' : 'مسح كل الفلاتر'}
-                </button>
-            </div>
-        </div>
-    );
-}
-
-function getFilterLink(input: string) {
-    try {
-        const parsed = JSON.parse(input) as any;
-        const params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
-        
-        if (parsed.price) {
-            if (parsed.price.min) params.set('filter.v.price.min', parsed.price.min);
-            if (parsed.price.max) params.set('filter.v.price.max', parsed.price.max);
-        } else if (parsed.variantOption) {
-            params.set(`filter.v.option.${parsed.variantOption.name}`, parsed.variantOption.value);
-        } else if (parsed.productType) {
-            params.set('filter.v.product_type', parsed.productType);
-        } else if (parsed.productVendor) {
-            params.set('filter.v.product_vendor', parsed.productVendor);
-        } else if (parsed.productMetafield) {
-            params.set(`filter.p.m.${parsed.productMetafield.namespace}.${parsed.productMetafield.key}`, parsed.productMetafield.value);
-        } else if (parsed.available !== undefined) {
-             params.set('filter.v.availability', parsed.available.toString());
-        }
-        
-        return '?' + params.toString();
-    } catch(e) {
-        return '#';
-    }
-}
 
 const SEARCH_QUERY = `#graphql
     fragment SearchProduct on Product {
@@ -535,6 +292,29 @@ const SEARCH_QUERY = `#graphql
     vendor
     tags
     productType
+    featuredImage {
+      id
+      altText
+      url
+      width
+      height
+    }
+    priceRange {
+      minVariantPrice {
+        amount
+        currencyCode
+      }
+      maxVariantPrice {
+        amount
+        currencyCode
+      }
+    }
+    compareAtPriceRange {
+      minVariantPrice {
+        amount
+        currencyCode
+      }
+    }
     visibility_start: metafield(namespace: "custom", key: "visibility_start") {
       value
     }

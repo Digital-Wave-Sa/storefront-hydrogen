@@ -44,7 +44,7 @@ export function DesignYourCake() {
                         <p className="text-[#9a7e6f] tracking-tight whitespace-nowrap" style={{ fontFamily: "'GE Dinar One', sans-serif", fontWeight: 500, fontSize: '16px', lineHeight: '100%', letterSpacing: '0%', textAlign: 'right', verticalAlign: 'middle', marginBottom: '20px' }}>
                             {isEn ? 'Create an unforgettable moment – step by step' : 'أصنع لحظة لا تُنسى – خطوة بخطوة'}
                         </p>
-                        <h2 className="text-[#234745] mb-2" style={{ fontFamily: "'Bahij Janna', sans-serif", fontWeight: 700, fontSize: '50px', lineHeight: '100%', letterSpacing: '0%', textAlign: 'center', verticalAlign: 'middle' }}>
+                        <h2 className="text-[#234745] mb-2 text-[36px] lg:text-[50px] font-bold leading-none text-center" style={!isEn ? { fontFamily: "'Bahij Janna', sans-serif" } : undefined}>
                             {isEn ? 'Design a cake for your occasion' : 'صمم كيكة تناسب مناسبتك'}
                         </h2>
                         <p className="text-[#8a9e9a] font-bold text-[14px]">
@@ -58,7 +58,7 @@ export function DesignYourCake() {
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
                         {/* Step 1 */}
                         <div className="bg-white/60 backdrop-blur-sm rounded-[18px] p-4 flex flex-col items-center justify-center text-center gap-2 min-h-[130px] shadow-[0_2px_10px_rgba(0,0,0,0.03)]">
-                            <div className="w-10 h-10 rounded-full bg-[#c5d5d0] flex items-center justify-center text-white font-black text-[14px]">
+                            <div className="w-10 h-10 rounded-full bg-[#c5d5d0] flex items-center justify-center text-white font-bold text-[14px]">
                                 {isEn ? '1' : '١'}
                             </div>
                             <span className="font-bold text-[#7a8e8a] text-[13px]">{isEn ? 'Choose Size' : 'اختر الحجم'}</span>
@@ -67,16 +67,16 @@ export function DesignYourCake() {
 
                         {/* Step 2 (Active) */}
                         <div className="bg-white rounded-[18px] p-4 flex flex-col items-center justify-center text-center gap-2 min-h-[130px] border-[2px] border-[#234745] shadow-sm">
-                            <div className="w-10 h-10 rounded-full bg-[#234745] flex items-center justify-center text-white font-black text-[14px]">
+                            <div className="w-10 h-10 rounded-full bg-[#234745] flex items-center justify-center text-white font-bold text-[14px]">
                                 {isEn ? '2' : '٢'}
                             </div>
-                            <span className="font-black text-[#234745] text-[13px]">{isEn ? 'Choose Flavor' : 'أختر النكهة'}</span>
+                            <span className="font-bold text-[#234745] text-[13px]">{isEn ? 'Choose Flavor' : 'أختر النكهة'}</span>
                             <img src="/images/cake-icon-2.svg" alt="Flavor" className="w-8 h-8" />
                         </div>
 
                         {/* Step 3 */}
                         <div className="bg-white/60 backdrop-blur-sm rounded-[18px] p-4 flex flex-col items-center justify-center text-center gap-2 min-h-[130px] shadow-[0_2px_10px_rgba(0,0,0,0.03)]">
-                            <div className="w-10 h-10 rounded-full bg-[#c5d5d0] flex items-center justify-center text-white font-black text-[14px]">
+                            <div className="w-10 h-10 rounded-full bg-[#c5d5d0] flex items-center justify-center text-white font-bold text-[14px]">
                                 {isEn ? '3' : '٣'}
                             </div>
                             <span className="font-bold text-[#7a8e8a] text-[13px]">{isEn ? 'Choose Decoration' : 'اختر التزيين'}</span>
@@ -85,7 +85,7 @@ export function DesignYourCake() {
 
                         {/* Step 4 */}
                         <div className="bg-white/60 backdrop-blur-sm rounded-[18px] p-4 flex flex-col items-center justify-center text-center gap-2 min-h-[130px] shadow-[0_2px_10px_rgba(0,0,0,0.03)]">
-                            <div className="w-10 h-10 rounded-full bg-[#c5d5d0] flex items-center justify-center text-white font-black text-[14px]">
+                            <div className="w-10 h-10 rounded-full bg-[#c5d5d0] flex items-center justify-center text-white font-bold text-[14px]">
                                 {isEn ? '4' : '٤'}
                             </div>
                             <span className="font-bold text-[#7a8e8a] text-[12px] leading-snug">{isEn ? 'Add Your Message' : 'أضف رسالتك الخاصة'}</span>

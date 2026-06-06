@@ -1,4 +1,4 @@
-import { Form, NavLink, Outlet, useLoaderData, useLocation } from 'react-router';
+import { Form, NavLink, Outlet, useLoaderData, useLocation, useRouteLoaderData } from 'react-router';
 import { data, redirect, type LoaderFunctionArgs } from 'react-router';
 import type { CustomerFragment } from 'storefrontapi.generated';
 
@@ -224,14 +224,16 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
 
 export default function Acccount() {
   const { isLoggedIn, isPrivateRoute, isAccountHome, customer, googleMapsKey, isAdmin, loyaltyPoints, balance } = useLoaderData<typeof loader>();
+  const rootData = useRouteLoaderData('root') as any;
+  const locale = rootData?.locale || 'ar';
 
   if (!isPrivateRoute && !isAccountHome) {
-    return <Outlet context={{ customer, googleMapsKey, isAdmin, loyaltyPoints, balance }} />;
+    return <Outlet context={{ customer, googleMapsKey, isAdmin, loyaltyPoints, balance, locale }} />;
   }
 
   return (
     <AccountLayout customer={customer as CustomerFragment} isAdmin={isAdmin} loyaltyPoints={loyaltyPoints} balance={balance}>
-      <Outlet context={{ customer, googleMapsKey, isAdmin, loyaltyPoints, balance }} />
+      <Outlet context={{ customer, googleMapsKey, isAdmin, loyaltyPoints, balance, locale }} />
     </AccountLayout>
   );
 }
@@ -257,12 +259,12 @@ function AccountLayout({
   return (
     <div className="account-layout">
       <AccountProfileHeader customer={customer} isEn={isEn} loyaltyPoints={loyaltyPoints || 0} balance={balance || 0} />
-      <div className="max-w-[1200px] mx-auto px-4 md:px-6">
-        <div className="account-container !mt-0 !pt-0">
-          <nav className="account-aside">
+      <div className="max-w-[1200px] mx-auto px-4 md:px-6 w-full">
+        <div className="grid grid-cols-1 lg:grid-cols-[302px_minmax(0,1fr)] gap-6 lg:gap-10 items-start w-full !mt-0 !pt-0">
+          <nav className="w-auto -mx-4 px-4 bg-transparent lg:mx-0 lg:w-full lg:bg-white lg:rounded-[24px] lg:py-6 lg:px-4 lg:border lg:border-[#BBCFCD] lg:sticky lg:top-[120px] z-10 min-w-0 max-w-[100vw] lg:max-w-full relative">
             <AcccountMenu customer={customer} isAdmin={isAdmin} />
           </nav>
-          <main className="account-main">
+          <main className="w-full min-w-0 max-w-[100vw] lg:max-w-full pb-20">
             {children}
           </main>
         </div>
@@ -376,43 +378,42 @@ function AcccountMenu({ customer, isAdmin }: { customer: CustomerFragment; isAdm
   }
 
   return (
-    <nav className="account-nav-premium" role="navigation">
-      <div className="flex flex-col gap-1">
-        {menuItems.map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            end={item.end}
-            className={({ isActive }) => `
-              flex items-center gap-[10px] px-3 py-[13px] rounded-[12px] transition-all duration-200
-              ${isActive 
-                ? 'bg-[#FEF8EB] text-[#234745] font-bold' 
-                : 'text-[#A6BFB9] hover:bg-gray-50 hover:text-[#234745] font-medium'}
-            `}
-          >
-            <div className="opacity-80 flex-shrink-0">{item.icon}</div>
-            <span className="text-[14px]">{item.label}</span>
-          </NavLink>
-        ))}
-      </div>
-
-      <div className="mt-4 pt-4 border-t border-gray-100">
-        <Logout isEn={isEn} />
-      </div>
-
-      {/* Manager Tools (Optional section if needed) */}
-      {isAdmin && (
-        <div className="mt-6 pt-4 border-t border-gray-100">
-           <NavLink
-            to={`${localePrefix}/account/dashboard`}
-            className="flex items-center justify-between px-4 py-3 text-gray-400 hover:text-[#d4a06a] transition-all"
-          >
-            <span className="text-[12px] font-bold uppercase tracking-wider">{isEn ? 'Admin Panel' : 'لوحة الإدارة'}</span>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
-          </NavLink>
+    <div className="w-full min-w-0 max-w-full overflow-hidden" dir={isEn ? 'ltr' : 'rtl'}>
+      <nav role="navigation">
+        <div className="account-nav">
+          {menuItems.map((item) => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              end={item.end}
+              className="account-nav-item"
+            >
+              {item.icon}
+              <span style={!isEn ? { fontFamily: '"Bahij Janna", sans-serif' } : undefined}>
+                {item.label}
+              </span>
+            </NavLink>
+          ))}
         </div>
-      )}
-    </nav>
+
+        <div className="mt-4 pt-4 border-t border-gray-100 lg:block hidden">
+          <Logout isEn={isEn} />
+        </div>
+
+        {/* Manager Tools (Optional section if needed) */}
+        {isAdmin && (
+          <div className="mt-4 lg:mt-6 pt-4 border-t border-gray-100">
+             <NavLink
+              to={`${localePrefix}/account/dashboard`}
+              className="flex items-center justify-between px-2 lg:px-4 py-2 lg:py-3 text-gray-500 hover:text-[#234745] transition-all"
+            >
+              <span className="text-[13px] font-bold tracking-wider">{isEn ? 'Admin Panel' : 'لوحة الإدارة'}</span>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
+            </NavLink>
+          </div>
+        )}
+      </nav>
+    </div>
   );
 }
 

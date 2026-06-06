@@ -35,7 +35,7 @@ export function WhoAreYouGifting({ collections }: { collections?: any[] }) {
             <div className="max-w-[1400px] mx-auto px-6">
                 {/* Header */}
                 <div className="text-center mb-12 lg:mb-16">
-                    <h2 className="text-[36px] lg:text-[52px] font-black text-[#1a1a1a] mb-4 leading-none">
+                    <h2 className="text-[36px] lg:text-[52px] font-bold text-[#1a1a1a] mb-4 leading-none">
                         {isEn ? 'Who are you gifting?' : 'بتهدي لمين؟'}
                     </h2>
                     <p className="text-[#8B8B8B] text-[14px] lg:text-[16px] font-bold tracking-wide">
@@ -62,7 +62,7 @@ export function WhoAreYouGifting({ collections }: { collections?: any[] }) {
                                 
                                 {/* Label Text Overlay */}
                                 <div className="absolute bottom-8 left-0 right-0 text-center px-4">
-                                    <h3 className="text-[24px] lg:text-[32px] font-black text-white">
+                                    <h3 className="text-[24px] lg:text-[32px] font-bold text-white">
                                         {recipient.name}
                                     </h3>
                                 </div>

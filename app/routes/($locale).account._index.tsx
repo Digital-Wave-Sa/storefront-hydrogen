@@ -22,7 +22,7 @@ export default function AccountDashboard() {
         <div className="bg-white border border-[#9FB7AE] rounded-[12px] py-8 px-4 flex flex-col items-center justify-center text-center gap-2">
            <div className="flex items-center justify-center gap-2" dir="ltr">
              <span className="text-[28px] md:text-[34px] font-bold text-[#234745] leading-none" style={!isEn ? { fontFamily: '"GE Dinar One", sans-serif' } : undefined}>
-               {isEn ? '4.200' : '٤.٢٠٠'}
+               4,200
              </span>
              <span className="text-[#234745]"><CurrencyIcon className="h-6 w-auto" /></span>
            </div>
@@ -34,7 +34,7 @@ export default function AccountDashboard() {
         {/* Total Orders */}
         <div className="bg-white border border-[#9FB7AE] rounded-[12px] py-8 px-4 flex flex-col items-center justify-center text-center gap-2">
            <span className="text-[28px] md:text-[34px] font-bold text-[#234745] leading-none" style={!isEn ? { fontFamily: '"GE Dinar One", sans-serif' } : undefined}>
-             {customer.numberOfOrders || (isEn ? 12 : '١٢')}
+             {customer.numberOfOrders || 12}
            </span>
            <p className="text-[14px] text-[#A6BFB9] font-medium" style={!isEn ? { fontFamily: '"GE Dinar One", sans-serif' } : undefined}>
              {isEn ? 'Total Orders' : 'إجمالي الطلبات'}
@@ -74,20 +74,20 @@ export default function AccountDashboard() {
                     className="w-16 h-16 md:w-20 md:h-20 rounded-[12px] object-cover border border-gray-100"
                   />
                   <div className="absolute -top-2 -start-2 w-6 h-6 bg-[#234745] text-white rounded-full flex items-center justify-center text-[11px] font-bold border-2 border-white">
-                    {isEn ? productCount : productCount.toLocaleString('ar-EG')}
+                    {productCount.toLocaleString('en-US')}
                   </div>
                 </div>
                 <div className="flex flex-col gap-1">
                   <h3 className="text-[16px] md:text-[18px] font-bold text-[#234745] leading-none" style={!isEn ? { fontFamily: '"Bahij Janna", sans-serif' } : undefined}>
-                    {isEn ? `Last Order — #${lastOrder.orderNumber}` : `آخر طلب — #${lastOrder.orderNumber.toLocaleString('ar-EG', { useGrouping: false })}`}
+                    {isEn ? `Last Order — #${lastOrder.orderNumber}` : `آخر طلب — #${lastOrder.orderNumber}`}
                   </h3>
                   <p className="text-[12px] text-[#A6BFB9] font-medium leading-tight">
-                    {isEn ? `${productCount} Products` : `${productCount.toLocaleString('ar-EG')} منتجات`} • {isEn ? totalAmount : parseFloat(totalAmount).toLocaleString('ar-EG')} <CurrencyIcon className="h-3 w-auto inline-block ms-1" />
+                    {isEn ? `${productCount} Products` : `${productCount.toLocaleString('en-US')} منتجات`} • {parseFloat(totalAmount).toLocaleString('en-US')} <CurrencyIcon className="h-3 w-auto inline-block ms-1" />
                   </p>
                   <div className="flex items-center justify-start gap-1.5 mt-1" dir="rtl">
                      <span className="text-[#234745]"><CurrencyIcon className="h-4 w-auto" /></span>
                      <span className="text-[16px] font-bold text-[#234745] leading-none" style={!isEn ? { fontFamily: '"GE Dinar One", sans-serif' } : undefined}>
-                       {isEn ? totalAmount : parseFloat(totalAmount).toLocaleString('ar-EG')}
+                       {parseFloat(totalAmount).toLocaleString('en-US')}
                      </span>
                   </div>
                 </div>
@@ -132,10 +132,10 @@ export default function AccountDashboard() {
                    {isEn ? 'Loyalty Points' : 'نقاط الولاء'}
                  </h2>
                  <p className="text-[36px] md:text-[46px] font-bold text-[#234745] leading-none mb-1" style={!isEn ? { fontFamily: '"GE Dinar One", sans-serif' } : undefined}>
-                   {isEn ? '0' : '٠'}
+                   0
                  </p>
                  <p className="text-[12px] text-[#A6BFB9] font-medium">
-                   {isEn ? '1 Point = ~1 Halala' : '١ نقطة = ١ هللة تقريباً'}
+                   {isEn ? '1 Point = ~1 Halala' : '1 نقطة = 1 هللة تقريباً'}
                  </p>
               </div>
               <div className="text-left">
@@ -143,7 +143,7 @@ export default function AccountDashboard() {
                    {isEn ? 'Next Level' : 'المستوى التالي'}
                  </p>
                  <p className="text-[16px] md:text-[18px] font-bold text-[#234745]">
-                   {isEn ? '300 points remaining' : '٣٠٠ نقطة متبقية'}
+                   {isEn ? '300 points remaining' : '300 نقطة متبقية'}
                  </p>
               </div>
            </div>

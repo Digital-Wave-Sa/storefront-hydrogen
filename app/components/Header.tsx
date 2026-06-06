@@ -31,7 +31,7 @@ export function Header({ header, isLoggedIn, cart, locations, customer, locale, 
   const fetcher = useFetcher();
   const locationFetcher = useFetcher();
 
-  const handleSelectBranch = async (branch: any, type: 'delivery' | 'pickup', addressName?: string, isOutOfRange?: boolean) => {
+  const handleSelectBranch = async (branch: any, type: 'delivery' | 'pickup', addressName?: string, isOutOfRange?: boolean, fullAddress?: any) => {
     const branchName = branch?.name || 'Main';
     const branchId = branch?.id || '';
 
@@ -68,18 +68,39 @@ export function Header({ header, isLoggedIn, cart, locations, customer, locale, 
         attributes.push({ key: 'Available Time Slots', value: branch.timeSlots });
     }
 
-    // Update Buyer Identity for Pickup skip
+    // Update Buyer Identity for Pickup skip and Delivery Pre-fill
     let buyerIdentity = undefined;
+    const resolvedCustomer = await customer;
+
     if (type === 'pickup' && branch) {
-       const resolvedCustomer = await customer;
        buyerIdentity = {
+         email: resolvedCustomer?.email || undefined,
          deliveryAddressPreferences: [{
            deliveryAddress: {
-             address1: branch.address || '',
-             city: branch.city || '',
+             address1: branch.address || 'Address',
+             city: branch.city || 'City',
              country: 'SA',
-             firstName: resolvedCustomer?.firstName || '',
-             lastName: resolvedCustomer?.lastName || ''
+             firstName: resolvedCustomer?.firstName || 'Guest',
+             lastName: resolvedCustomer?.lastName || 'User'
+           }
+         }]
+       };
+    } else if (type === 'delivery' && fullAddress) {
+       buyerIdentity = {
+         email: resolvedCustomer?.email || undefined,
+         deliveryAddressPreferences: [{
+           deliveryAddress: {
+             address1: fullAddress.address1 || 'Address',
+             address2: fullAddress.address2 || '',
+             city: fullAddress.city || 'City',
+             country: fullAddress.countryCodeV2 || fullAddress.countryCode || 
+                      (fullAddress.country?.includes('Emirates') || fullAddress.country?.includes('الإمارات') ? 'AE' : 
+                      (fullAddress.country?.includes('Saudi') || fullAddress.country?.includes('السعودية') ? 'SA' : 
+                      (fullAddress.country || 'SA'))),
+             firstName: fullAddress.firstName || resolvedCustomer?.firstName || 'Guest',
+             lastName: fullAddress.lastName || resolvedCustomer?.lastName || 'User',
+             phone: fullAddress.phone || resolvedCustomer?.phone || '',
+             zip: fullAddress.zip || ''
            }
          }]
        };
@@ -114,7 +135,7 @@ export function Header({ header, isLoggedIn, cart, locations, customer, locale, 
 
   return (
     <header 
-      className={`w-full ${isEn ? 'font-en' : 'font-ar'} bg-[#FEF8EB] relative z-[999999]`} 
+      className={`w-full ${isEn ? 'font-en' : 'font-ar'} bg-[#FEF8EB] relative z-50`} 
       dir={isEn ? 'ltr' : 'rtl'}
       onMouseLeave={() => setActiveMega(null)}
     >
@@ -319,10 +340,10 @@ function MiddleBar({
                 </div>
               </NavLink>
 
-              {/* Search - Visible on Mobile & Medium screens */}
+              {/* Search - Hidden on Mobile, Visible on Tablet */}
               <button 
                 onClick={() => open('search')} 
-                className="xl:hidden p-2 text-[#234745] hover:bg-[#234745]/5 rounded-full transition-all"
+                className="hidden md:block xl:hidden p-2 text-[#234745] hover:bg-[#234745]/5 rounded-full transition-all"
               >
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
               </button>
@@ -501,6 +522,11 @@ export function HeaderMenu({
   return (
     <div className="flex flex-col h-full bg-[#FEF8EB]">
       <div className="px-4 py-6 flex flex-col gap-3">
+        {/* Mobile Search */}
+        <div className="mb-4">
+          <GlobalSearchBar locale={locale} isMobile={true} />
+        </div>
+
         {/* Mobile Header Links */}
         <div className="grid grid-cols-2 gap-3 mb-6">
            <NavLink to={isEn ? "/en/account" : "/account"} onClick={onClose} className="flex flex-col items-center justify-center gap-2 p-4 bg-white rounded-2xl border border-[#234745]/5 shadow-sm text-[#234745] font-bold text-sm">

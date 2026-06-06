@@ -171,7 +171,7 @@ export default function Orders() {
   return (
     <div className="orders-page-container" dir={isEn ? 'ltr' : 'rtl'}>
       <div className="flex flex-col gap-6">
-        <h2 className="text-[28px] font-bold text-[#234745] text-start md:text-end" style={!isEn ? { fontFamily: '"Bahij Janna", sans-serif' } : undefined}>
+        <h2 className="text-[28px] font-bold text-[#234745] text-start" style={!isEn ? { fontFamily: '"Bahij Janna", sans-serif' } : undefined}>
           {isEn ? 'My Orders' : 'طلباتي'}
         </h2>
 
@@ -197,32 +197,34 @@ export default function Orders() {
 
 function OrdersFilters({ statusFilter, isEn, counts }: { statusFilter: string, isEn: boolean, counts: any }) {
   const tabs = [
-    { value: 'all', labelEn: `All (${counts.all})`, labelAr: `الكل (${counts.all.toLocaleString('ar-EG')})` },
-    { value: 'ACTIVE', labelEn: `Active (${counts.active})`, labelAr: `نشطة (${counts.active.toLocaleString('ar-EG')})` },
-    { value: 'FULFILLED', labelEn: `Delivered (${counts.fulfilled})`, labelAr: `مستلمة (${counts.fulfilled.toLocaleString('ar-EG')})` },
-    { value: 'CANCELLED', labelEn: `Cancelled (${counts.cancelled})`, labelAr: `ملغاة (${counts.cancelled.toLocaleString('ar-EG')})` },
+    { value: 'all', labelEn: `All (${counts.all})`, labelAr: `الكل (${counts.all})` },
+    { value: 'ACTIVE', labelEn: `Active (${counts.active})`, labelAr: `نشطة (${counts.active})` },
+    { value: 'FULFILLED', labelEn: `Delivered (${counts.fulfilled})`, labelAr: `مستلمة (${counts.fulfilled})` },
+    { value: 'CANCELLED', labelEn: `Cancelled (${counts.cancelled})`, labelAr: `ملغاة (${counts.cancelled})` },
   ];
 
   return (
-    <div className="flex flex-wrap items-center justify-start md:justify-end gap-3 mb-2" dir={isEn ? 'ltr' : 'rtl'}>
-      {tabs.map((tab) => {
-        const isActive = statusFilter === tab.value || (statusFilter === 'all' && tab.value === 'all');
-        return (
-          <form key={tab.value} method="get">
-            <input type="hidden" name="status" value={tab.value} />
-            <button 
-              type="submit"
-              className={`px-5 py-2 rounded-full text-[14px] font-bold transition-all border ${
-                isActive 
-                  ? 'bg-[#A8BDB5] text-[#1a3b3a] border-[#A8BDB5]' 
-                  : 'bg-white text-[#A8BDB5] border-[#EAF2F1] hover:border-[#A8BDB5]'
-              }`}
-            >
-              {isEn ? tab.labelEn : tab.labelAr}
-            </button>
-          </form>
-        );
-      })}
+    <div className="-mx-4 px-4 md:mx-0 md:px-0 mb-4" dir={isEn ? 'ltr' : 'rtl'}>
+      <div className="flex flex-row overflow-x-auto hide-scrollbar items-center justify-start gap-3 pb-2 w-full snap-x">
+        {tabs.map((tab) => {
+          const isActive = statusFilter === tab.value || (statusFilter === 'all' && tab.value === 'all');
+          return (
+            <form key={tab.value} method="get" className="shrink-0 snap-start">
+              <input type="hidden" name="status" value={tab.value} />
+              <button 
+                type="submit"
+                className={`px-5 py-2.5 rounded-full text-[14px] font-bold transition-all border whitespace-nowrap ${
+                  isActive 
+                    ? 'bg-[#234745] text-white border-[#234745]' 
+                    : 'bg-white text-[#A8BDB5] border-[#EAF2F1] hover:border-[#A8BDB5]'
+                }`}
+              >
+                {isEn ? tab.labelEn : tab.labelAr}
+              </button>
+            </form>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -284,14 +286,14 @@ function OrderCard({ order, isEn }: { order: OrderItemFragment, isEn: boolean })
   const monthEn = enMonths[monthIndex];
   const monthAr = arMonths[monthIndex];
   
-  const day = isEn ? dayNum : dayNum.toLocaleString('ar-EG');
-  const year = isEn ? yearStr : yearNum.toLocaleString('ar-EG', { useGrouping: false });
+  const day = dayNum;
+  const year = yearStr;
   const dateStr = isEn ? `${monthEn} ${day}, ${year}` : `${day} ${monthAr} ${year}`;
 
   const lineItems = order.lineItems.nodes;
   const productCount = lineItems.length;
   const firstItem = lineItems[0];
-  const imageUrl = firstItem?.variant?.image?.url || "https://cdn.shopify.com/s/files/1/0809/4209/4648/files/cake-slice.jpg?v=1710400000";
+  const imageUrl = firstItem?.variant?.image?.url;
   const totalAmount = order.currentTotalPrice?.amount || "0.00";
   const orderIdEncoded = encodeURIComponent(order.id);
 
@@ -331,18 +333,26 @@ function OrderCard({ order, isEn }: { order: OrderItemFragment, isEn: boolean })
         {/* Right side (Order Details in RTL) */}
         <div className="flex items-center gap-4 text-start w-full md:w-auto">
           <div className="relative flex-shrink-0">
-            <img 
-              src={imageUrl}
-              alt="Product" 
-              className="w-[90px] h-[70px] rounded-[12px] object-cover border border-gray-100"
-            />
+            {imageUrl ? (
+              <img 
+                src={imageUrl}
+                alt="Product" 
+                className="w-[90px] h-[70px] rounded-[12px] object-cover border border-gray-100"
+              />
+            ) : (
+              <div className="w-[90px] h-[70px] bg-gray-50 rounded-[12px] border border-gray-100 flex items-center justify-center">
+                <svg className="w-6 h-6 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+              </div>
+            )}
             <div className="absolute -top-2 -start-2 w-6 h-6 bg-[#234745] text-white rounded-full flex items-center justify-center text-[11px] font-bold border-2 border-white">
-              {isEn ? productCount : productCount.toLocaleString('ar-EG')}
+              {productCount.toLocaleString('en-US')}
             </div>
           </div>
           <div className="flex flex-col gap-1 items-start w-full">
             <span className="text-[11px] text-[#A6BFB9] font-medium leading-tight tracking-wider uppercase mb-1">
-              #{isEn ? order.orderNumber : order.orderNumber.toLocaleString('ar-EG', { useGrouping: false })}
+              #{order.orderNumber}
             </span>
             <h3 className="text-[14px] md:text-[15px] font-bold text-[#234745] leading-none mb-1" style={!isEn ? { fontFamily: '"Bahij Janna", sans-serif' } : undefined}>
               {titles}
@@ -353,7 +363,7 @@ function OrderCard({ order, isEn }: { order: OrderItemFragment, isEn: boolean })
             <div className="flex items-center justify-start gap-1.5 mt-1">
                <span className="text-[#234745]"><CurrencyIcon className="h-4 w-auto" /></span>
                <span className="text-[16px] font-bold text-[#234745] leading-none" style={!isEn ? { fontFamily: '"GE Dinar One", sans-serif' } : undefined}>
-                 {isEn ? totalAmount : parseFloat(totalAmount).toLocaleString('ar-EG')}
+                 {parseFloat(totalAmount).toLocaleString('en-US')}
                </span>
             </div>
           </div>
@@ -368,23 +378,12 @@ function OrderCard({ order, isEn }: { order: OrderItemFragment, isEn: boolean })
             <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: statusColor }} />
           </div>
           <div className="flex items-center gap-2 w-full md:w-auto">
-            {order.statusUrl ? (
-              <a 
-                href={order.statusUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex-1 md:flex-none text-center px-6 py-2 border border-[#234745] text-[#234745] rounded-[24px] text-[13px] font-bold hover:bg-gray-50 transition-all"
-              >
-                {isEn ? 'Track / Invoice' : 'الفاتورة'}
-              </a>
-            ) : (
               <Link 
-                to={isEn ? `/en/account/orders/${orderIdEncoded}` : `/account/orders/${orderIdEncoded}`}
+                to={isEn ? `/en/track-order/${order.orderNumber}` : `/track-order/${order.orderNumber}`}
                 className="flex-1 md:flex-none text-center px-6 py-2 border border-[#234745] text-[#234745] rounded-[24px] text-[13px] font-bold hover:bg-gray-50 transition-all"
               >
                 {isEn ? 'Track / Invoice' : 'الفاتورة'}
               </Link>
-            )}
             <button 
               onClick={handleReorder}
               disabled={fetcher.state !== 'idle'}

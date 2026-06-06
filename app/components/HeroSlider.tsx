@@ -144,16 +144,16 @@ export function HeroSlider() {
                         
                         {/* Title */}
                         <h2 
-                            className="text-[38px] lg:text-[100px] font-bold lg:font-normal leading-[1.0] lg:leading-[0.95] whitespace-pre-line mb-4 lg:mb-8"
-                            style={{ fontFamily: "'Bahij Janna', sans-serif" }}
+                            className={`font-bold lg:font-normal leading-[1.0] lg:leading-[0.95] whitespace-pre-line mb-4 lg:mb-8 ${isEn ? 'text-[38px] lg:text-[64px]' : 'text-[38px] lg:text-[100px]'}`}
+                            style={!isEn ? { fontFamily: "'Bahij Janna', sans-serif" } : undefined}
                         >
                             <span className="text-[#FFFFFF] drop-shadow-lg">{isEn ? slide.title.en : slide.title.ar}</span>
                         </h2>
 
                         {/* Subtitle */}
                         <p 
-                            className="text-[12px] lg:text-[14px] font-normal leading-[1.2] max-w-[249px] lg:max-w-[293px] mt-0 mb-4 lg:mb-8 whitespace-pre-line text-[#FFFFFF] lg:text-[#BBCFCD]"
-                            style={{ fontFamily: "'GE Dinar One', sans-serif" }}
+                            className={`font-normal leading-[1.2] max-w-[280px] lg:max-w-[400px] mt-0 mb-4 lg:mb-8 whitespace-pre-line text-[#FFFFFF] lg:text-[#BBCFCD] ${isEn ? 'text-[14px] lg:text-[16px]' : 'text-[12px] lg:text-[14px]'}`}
+                            style={!isEn ? { fontFamily: "'GE Dinar One', sans-serif" } : undefined}
                         >
                             {isEn ? slide.subtitle.en : slide.subtitle.ar}
                         </p>

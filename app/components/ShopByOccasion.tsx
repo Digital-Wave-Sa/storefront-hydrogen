@@ -41,7 +41,7 @@ export function ShopByOccasion({ collections }: { collections?: any[] }) {
             <div className="max-w-[1400px] mx-auto px-6">
                 {/* Header */}
                 <div className="text-center mb-8 lg:mb-12">
-                    <h2 className="text-[36px] lg:text-[50px] font-bold text-[#171717] mb-4 leading-none" style={{ fontFamily: "'Bahij Janna', sans-serif" }}>
+                    <h2 className="text-[36px] lg:text-[50px] font-bold text-[#171717] mb-4 leading-none" style={!isEn ? { fontFamily: "'Bahij Janna', sans-serif" } : undefined}>
                         {isEn ? 'What is your occasion?' : 'ما هي مناسبتك؟'}
                     </h2>
                     <p className="text-[#7D7D7D] text-[14px] lg:text-[16px] font-medium tracking-wide" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
@@ -95,7 +95,7 @@ export function ShopByOccasion({ collections }: { collections?: any[] }) {
                 <div className="mt-16 lg:mt-24 flex justify-center">
                     <Link
                         to={isEn ? "/en/collections" : "/collections"}
-                        className="px-12 py-4 rounded-full border-2 border-[#1a3533]/20 text-[#1a3533] font-black text-[15px] lg:text-[18px] transition-all hover:bg-[#1a3533] hover:text-white hover:border-[#1a3533] active:scale-95"
+                        className="px-12 py-4 rounded-full border-2 border-[#1a3533]/20 text-[#1a3533] font-bold text-[15px] lg:text-[18px] transition-all hover:bg-[#1a3533] hover:text-white hover:border-[#1a3533] active:scale-95"
                     >
                         {isEn ? 'Browse All Occasions' : 'تصفح كل المناسبات'}
                     </Link>

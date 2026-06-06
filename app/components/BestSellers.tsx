@@ -78,7 +78,7 @@ export function BestSellers({
 
                 {/* Section Header */}
                 <div className="text-center mb-8">
-                    <h2 className="text-[36px] lg:text-[48px] font-black mb-2 leading-tight" style={{ color: '#ffffff' }}>
+                    <h2 className="text-[36px] lg:text-[48px] font-bold mb-2 leading-tight" style={{ color: '#ffffff' }}>
                         {isEn ? 'Best Sellers' : 'أفضل المبيعات'}
                     </h2>
                     <p className="text-sm md:text-base" style={{ color: 'rgba(255,255,255,0.6)' }}>{isEn ? 'Most wanted this week' : 'الأكثر طلباً هذا الأسبوع'}</p>
@@ -247,14 +247,14 @@ export function BestSellers({
 
                                                     {/* Out of stock overlay */}
                                                     {!isVisibilityBlocked && isOutOfStock && !isPreorder && (
-                                                        <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex justify-center z-10 font-black">
+                                                        <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex justify-center z-10 font-bold">
                                                             <span className="bg-red-500 text-white px-6 py-2 rounded-full font-bold text-sm tracking-wide shadow-sm uppercase">
                                                                 {t.common.outOfStock}
                                                             </span>
                                                         </div>
                                                     )}
                                                     {showPreorder && (
-                                                        <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex justify-center z-10 font-black">
+                                                        <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex justify-center z-10 font-bold">
                                                             <span className="bg-[#004f59] text-white px-6 py-2 rounded-full font-bold text-sm tracking-wide shadow-sm uppercase">
                                                                 {t.common.preOrder}
                                                             </span>
@@ -274,7 +274,7 @@ export function BestSellers({
                                                     {/* Price Row (Side by side) */}
                                                     {!isVisibilityBlocked ? (
                                                       <div className="flex items-center gap-3 justify-start mb-6" dir={isEn ? 'ltr' : 'rtl'}>
-                                                          <div className="text-[#234745] font-black text-xl lg:text-2xl flex items-baseline gap-1">
+                                                          <div className="text-[#234745] font-bold text-xl lg:text-2xl flex items-baseline gap-1">
                                                               <Price data={product.priceRange.minVariantPrice} isEn={isEn} showSymbol={true} />
                                                           </div>
                                                           {hasDiscount && (

@@ -23,7 +23,7 @@ export function ShopByCategory() {
 
                 {/* Section Header */}
                 <div className="text-center mb-12">
-                    <h2 className="text-[40px] lg:text-[56px] font-black text-[#1a1a1a] mb-3 leading-tight">{t.homepage.shopByCategory}</h2>
+                    <h2 className="text-[40px] lg:text-[56px] font-bold text-[#1a1a1a] mb-3 leading-tight">{t.homepage.shopByCategory}</h2>
                     <p className="text-gray-500 text-sm md:text-base font-medium mb-4">{t.homepage.discoverWideRange}</p>
                 </div>
 

@@ -47,7 +47,7 @@ export function PageLayout({
     <Aside.Provider>
       <CartAside cart={cart} />
       <SearchAside />
-      <MobileMenuAside header={header} />
+      <MobileMenuAside header={header} locale={locale} />
       {header && (
         <Header
           header={header}
@@ -69,6 +69,7 @@ export function PageLayout({
         footer={footer}
         header={header}
         publicStoreDomain={publicStoreDomain}
+        locale={locale}
       />
     </Aside.Provider>
   );
@@ -172,8 +173,10 @@ function SearchAside() {
 
 function MobileMenuAside({
   header,
+  locale,
 }: {
   header: PageLayoutProps['header'];
+  locale: string;
 }) {
   const {close} = useAside();
   return (
@@ -183,6 +186,7 @@ function MobileMenuAside({
           menu={header.menu}
           viewport="mobile"
           onClose={close}
+          locale={locale}
         />
       </Aside>
     )

@@ -182,7 +182,7 @@ export function CustomerReviews({ config }: { config?: any }) {
                 
                 {/* Header */}
                 <div className="flex flex-col items-center justify-center w-full px-4 max-w-[1072px] gap-[16px] mb-[16px]">
-                    <h2 className="text-[#171717] text-[36px] md:text-[50px] font-bold leading-[48px] md:leading-[80px] text-center" style={{ fontFamily: 'Bahij Janna' }}>
+                    <h2 className="text-[#171717] text-[36px] md:text-[50px] font-bold leading-[48px] md:leading-[80px] text-center" style={!isEn ? { fontFamily: "'Bahij Janna', sans-serif" } : undefined}>
                         {isEn ? titleEn : titleAr}
                     </h2>
                     <p className="text-[#7D7D7D] font-dinar font-medium text-[16px] leading-[20px] text-center">

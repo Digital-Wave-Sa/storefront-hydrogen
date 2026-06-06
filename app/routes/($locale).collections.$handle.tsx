@@ -148,12 +148,12 @@ export default function Collection() {
       />
 
       {/* 1. Header Hero Section */}
-      <CollectionHero collection={collection} />
+      <CollectionHero collection={collection} productsCount={collection.products.nodes?.length || 0} isEn={isEn} />
 
       {/* Breadcrumb Strip */}
       <div className="bg-white border-b border-gray-100">
         <div className="px-4 md:px-8 lg:px-12 py-4 max-w-[1440px] mx-auto text-right text-[13px] font-black flex items-center gap-2">
-            <span className="text-gray-400">الرئيسية</span>
+            <span className="text-gray-400">{isEn ? 'Home' : 'الرئيسية'}</span>
             <span className="text-gray-300">/</span>
             <span className="text-gray-800">{collection.title}</span>
         </div>
@@ -179,7 +179,7 @@ export default function Collection() {
                 </button>
 
                  {/* Active Filter Pills */}
-                 {['الحلويات العربية', 'كريمة', 'عيد الاضحى والفطر', 'خالي من الجلوتين'].map((pill, i) => (
+                 {(isEn ? ['Arabic Sweets', 'Cream', 'Eid Al-Fitr & Al-Adha', 'Gluten Free'] : ['الحلويات العربية', 'كريمة', 'عيد الاضحى والفطر', 'خالي من الجلوتين']).map((pill, i) => (
                     <div key={i} className="flex items-center gap-2 bg-white border border-[#234745]/10 text-gray-600 px-3 py-1.5 rounded-full text-[12px] font-bold shadow-sm">
                         <span>{pill}</span>
                         <button className="text-gray-400 hover:text-red-500 transition-colors">
@@ -232,7 +232,7 @@ export default function Collection() {
                   
                   {filteredNodes.length === 0 && (
                       <div className="py-12 text-center text-[#234745] font-bold text-lg w-full">
-                          لا توجد منتجات تطابق بحثك.
+                          {isEn ? 'No products match your search.' : 'لا توجد منتجات تطابق بحثك.'}
                       </div>
                   )}
                   <ProductsGrid products={filteredNodes} view={view} />
@@ -248,7 +248,7 @@ export default function Collection() {
 
           {/* Desktop Sidebar (Right side in RTL) */}
           <div className="w-[320px] shrink-0 lg:order-1 border border-gray-200 rounded-3xl bg-white sticky top-24 self-start h-fit overflow-hidden">
-             <FilterSidebar filters={collection.products.filters} onClose={() => {}} isDesktop={true} />
+             <FilterSidebar filters={collection.products.filters} onClose={() => {}} isDesktop={true} isEn={isEn} />
           </div>
 
         </div>
@@ -263,8 +263,8 @@ export default function Collection() {
               className={`absolute inset-0 bg-black/30 backdrop-blur-sm transition-opacity duration-500 ${isFilterOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0'}`}
               onClick={() => setIsFilterOpen(false)}
             />
-            <div className={`absolute left-0 top-0 bottom-0 w-full max-w-sm bg-[#FEF8EB] shadow-2xl transition-transform duration-500 ${isFilterOpen ? 'translate-x-0 pointer-events-auto' : '-translate-x-full'}`}>
-               <FilterSidebar filters={collection.products.filters} onClose={() => setIsFilterOpen(false)} />
+            <div className={`absolute left-0 top-0 bottom-0 w-full max-w-sm bg-[#FEF8EB] shadow-2xl transition-transform duration-500 ${isFilterOpen ? 'translate-x-0 pointer-events-auto' : (isEn ? '-translate-x-full' : 'translate-x-full')} ${!isEn && 'right-0 left-auto'}`}>
+               <FilterSidebar filters={collection.products.filters} onClose={() => setIsFilterOpen(false)} isEn={isEn} />
             </div>
         </div>,
         document.body
@@ -273,10 +273,9 @@ export default function Collection() {
   );
 }
 
-function CollectionHero({ collection }: { collection: any }) {
-    const productsCount = collection.products?.nodes?.length || 0;
+function CollectionHero({ collection, productsCount, isEn }: { collection: any, productsCount: number, isEn: boolean }) {
     return (
-        <section className="relative h-[144px] w-full bg-[#234745] overflow-hidden flex items-center" dir="rtl">
+        <section className="relative h-[144px] w-full bg-[#234745] overflow-hidden flex items-center" dir={isEn ? 'ltr' : 'rtl'}>
             {/* Background Texture */}
             <div 
                 className="absolute inset-0"
@@ -290,17 +289,17 @@ function CollectionHero({ collection }: { collection: any }) {
             <div className="relative z-10 w-full max-w-[1440px] mx-auto px-4 md:px-8 lg:px-12 flex items-center justify-between">
                 
                 {/* Right Side: Title, Subtitle, and Back Button */}
-                <div className="flex flex-col items-end gap-[8px]">
-                    <div className="flex items-center gap-[24px]" dir="ltr">
-                        <h1 className="text-[32px] md:text-[40px] font-bold text-white drop-shadow-sm text-right" style={{ fontFamily: "'GE Dinar One', sans-serif" }} dir="rtl">
-                            {collection.title}
-                        </h1>
-                        <button onClick={() => window.history.back()} className="flex items-center gap-[8px] bg-[#9FB7AE] hover:bg-[#8BA19C] text-[#234745] px-6 py-2 rounded-[25px] text-[16px] font-bold transition-all" style={{ fontFamily: "'GE Dinar One', sans-serif" }} dir="rtl">
-                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                <div className={`flex flex-col ${isEn ? 'items-start' : 'items-end'} gap-[8px]`}>
+                    <div className="flex items-center gap-[24px]" dir={isEn ? 'ltr' : 'rtl'}>
+                        <button onClick={() => window.history.back()} className={`flex items-center gap-[8px] bg-[#9FB7AE] hover:bg-[#8BA19C] text-[#234745] px-6 py-2 rounded-[25px] text-[16px] font-bold transition-all ${isEn ? 'font-en' : ''}`} style={isEn ? {} : { fontFamily: "'GE Dinar One', sans-serif" }} dir={isEn ? 'ltr' : 'rtl'}>
+                            <svg className={`w-5 h-5 ${isEn ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
                             </svg>
-                            <span>رجوع</span>
+                            <span>{isEn ? 'Back' : 'رجوع'}</span>
                         </button>
+                        <h1 className={`text-[32px] md:text-[40px] font-bold text-white drop-shadow-sm ${isEn ? 'text-left font-en' : 'text-right'}`} style={isEn ? {} : { fontFamily: "'GE Dinar One', sans-serif" }} dir={isEn ? 'ltr' : 'rtl'}>
+                            {collection.title}
+                        </h1>
                     </div>
                     {collection.description && (
                         <p className="text-[#9FB7AE] text-[14px] font-bold" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
@@ -310,8 +309,8 @@ function CollectionHero({ collection }: { collection: any }) {
                 </div>
 
                 {/* Left Side in RTL (Second child): Product Count */}
-                <div className="bg-[#FEF8EB] text-[#234745] px-6 py-2 rounded-[25px] text-[16px] font-bold shadow-sm shrink-0" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
-                    {productsCount} منتجات
+                <div className={`bg-[#FEF8EB] text-[#234745] px-6 py-2 rounded-[25px] text-[16px] font-bold shadow-sm shrink-0 ${isEn ? 'font-en' : ''}`} style={isEn ? {} : { fontFamily: "'GE Dinar One', sans-serif" }}>
+                    {productsCount} {isEn ? 'Products' : 'منتجات'}
                 </div>
                 
             </div>
@@ -319,38 +318,35 @@ function CollectionHero({ collection }: { collection: any }) {
     );
 }
 
-function FilterSidebar({ filters, onClose, isDesktop = false }: { filters: any[], onClose: () => void, isDesktop?: boolean }) {
+function FilterSidebar({ filters, onClose, isDesktop = false, isEn }: { filters: any[], onClose: () => void, isDesktop?: boolean, isEn: boolean }) {
     return (
-        <div className={`flex flex-col h-full ${isDesktop ? 'bg-white' : 'bg-[#FEF8EB] overflow-hidden'}`} dir="rtl">
+        <div className={`flex flex-col h-full ${isDesktop ? 'bg-white' : 'bg-[#FEF8EB] overflow-hidden'}`} dir={isEn ? 'ltr' : 'rtl'}>
             {!isDesktop && (
               <header className="p-6 border-b border-gray-100 flex items-center justify-between shrink-0">
-                  <h2 className="text-xl font-black text-[#234745]">تصفية النتائج</h2>
+                  <h2 className="text-xl font-black text-[#234745]">{isEn ? 'Filter Results' : 'تصفية النتائج'}</h2>
                   <button onClick={onClose} className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-[#234745] hover:bg-red-50 hover:text-red-500 transition-all font-bold text-2xl">
                       &times;
                   </button>
               </header>
             )}
             
-            <FilterForm onClose={onClose} filters={filters} isDesktop={isDesktop} />
+            <FilterForm onClose={onClose} filters={filters} isDesktop={isDesktop} isEn={isEn} />
         </div>
     );
 }
 
-function FilterForm({ filters, onClose, isDesktop }: { filters: any[], onClose: () => void, isDesktop: boolean }) {
+function FilterForm({ filters, onClose, isDesktop, isEn }: { filters: any[], onClose: () => void, isDesktop: boolean, isEn: boolean }) {
     const [searchParams, setSearchParams] = useSearchParams();
     const navigate = useNavigate();
 
     const [minPrice, setMinPrice] = useState(searchParams.get('filter.v.price.min') || '');
     const [maxPrice, setMaxPrice] = useState(searchParams.get('filter.v.price.max') || '');
     
-    // State to toggle accordions (all open by default for demo like the image)
     const [openSections, setOpenSections] = useState<Record<string, boolean>>({
       'الأقسام': true,
       'السعر (ر.س)': true,
       'المناسبة': true,
       'النوع الغذائي': true,
-      'Product type': true,
-      'Price': true,
     });
 
     const toggleSection = (label: string) => {
@@ -377,14 +373,14 @@ function FilterForm({ filters, onClose, isDesktop }: { filters: any[], onClose: 
     return (
         <div className={`flex-1 ${isDesktop ? 'p-6' : 'overflow-y-auto p-6 pt-4'} flex flex-col`}>
             <div className="flex-1">
-                {/* Search Input at top of sidebar */}
+                {/* Search Input */}
                 <div className="mb-8">
                     <div className="relative">
                         <input 
                             type="text" 
-                            placeholder="إبحث في المنتجات..." 
+                            placeholder={isEn ? "Search products..." : "إبحث في المنتجات..."} 
                             defaultValue={searchParams.get('q') || ''}
-                            className="w-full bg-[#c4d1cc] !border-0 !rounded-full pr-12 py-3 pl-5 text-[14px] font-bold focus:!outline-none focus:!ring-0 transition-all text-[#234745] placeholder-[#234745] !shadow-none outline-none appearance-none text-right"
+                            className={`w-full bg-[#c4d1cc] !border-0 !rounded-full py-3 px-5 text-[14px] font-bold focus:!outline-none focus:!ring-0 transition-all text-[#234745] placeholder-[#234745] !shadow-none outline-none appearance-none ${isEn ? 'pl-12 text-left' : 'pr-12 text-right'}`}
                             onChange={(e) => {
                                 const val = e.target.value;
                                 const params = new URLSearchParams(searchParams);
@@ -393,34 +389,34 @@ function FilterForm({ filters, onClose, isDesktop }: { filters: any[], onClose: 
                                 setSearchParams(params, { preventScrollReset: true, replace: true });
                             }}
                         />
-                        <svg className="absolute right-4 top-1/2 -translate-y-1/2 text-[#234745]" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                        <svg className={`absolute top-1/2 -translate-y-1/2 text-[#234745] ${isEn ? 'left-4' : 'right-4'}`} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                     </div>
                 </div>
 
-                {/* 1. Categories (الأقسام) */}
+                {/* 1. Categories */}
                 <div className="mb-6 border-b border-gray-100 pb-6">
                     <button onClick={() => toggleSection('الأقسام')} className="w-full flex items-center justify-between group">
-                        <h3 className="text-[15px] font-black text-gray-800 tracking-wide">الأقسام</h3>
+                        <h3 className="text-[15px] font-black text-gray-800 tracking-wide">{isEn ? 'Categories' : 'الأقسام'}</h3>
                         <svg className={`w-4 h-4 text-gray-400 transition-transform duration-300 ${openSections['الأقسام'] ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
                     </button>
                     <div className={`mt-4 overflow-hidden transition-all duration-300 ${openSections['الأقسام'] ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'}`}>
                         <div className="flex flex-col gap-3">
                             {[
-                                { label: 'الحلويات العربية', count: '(٤٧)', active: true },
-                                { label: 'شوكولاتة', count: '(١)', active: false },
-                                { label: 'كريمة', count: '(٢)', active: true },
-                                { label: 'كنافة', count: '(٠)', active: false },
-                                { label: 'معجنات', count: '(٤)', active: false },
-                                { label: 'قهوة وتمر', count: '(١)', active: false },
-                                { label: 'كيك', count: '(٢)', active: false },
-                                { label: 'آيس كريم', count: '(٠)', active: false },
+                                { labelAr: 'الحلويات العربية', labelEn: 'Arabic Sweets', count: '(٤٧)', active: true },
+                                { labelAr: 'شوكولاتة', labelEn: 'Chocolate', count: '(١)', active: false },
+                                { labelAr: 'كريمة', labelEn: 'Cream', count: '(٢)', active: true },
+                                { labelAr: 'كنافة', labelEn: 'Kunafa', count: '(٠)', active: false },
+                                { labelAr: 'معجنات', labelEn: 'Pastries', count: '(٤)', active: false },
+                                { labelAr: 'قهوة وتمر', labelEn: 'Coffee & Dates', count: '(١)', active: false },
+                                { labelAr: 'كيك', labelEn: 'Cake', count: '(٢)', active: false },
+                                { labelAr: 'آيس كريم', labelEn: 'Ice Cream', count: '(٠)', active: false },
                             ].map((item, i) => (
                                 <label key={i} className="flex items-center justify-between cursor-pointer group">
                                     <div className="flex items-center gap-3">
                                         <div className={`w-4 h-4 rounded-[4px] border flex items-center justify-center transition-colors ${item.active ? 'bg-[#234745] border-[#234745]' : 'border-gray-300 bg-white group-hover:border-[#234745]'}`}>
                                             {item.active && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
                                         </div>
-                                        <span className={`text-[13px] font-bold ${item.active ? 'text-[#234745]' : 'text-gray-500 group-hover:text-gray-800'}`}>{item.label}</span>
+                                        <span className={`text-[13px] font-bold ${item.active ? 'text-[#234745]' : 'text-gray-500 group-hover:text-gray-800'}`}>{isEn ? item.labelEn : item.labelAr}</span>
                                     </div>
                                     <span className="text-[12px] font-medium text-gray-500">{item.count}</span>
                                 </label>
@@ -429,11 +425,11 @@ function FilterForm({ filters, onClose, isDesktop }: { filters: any[], onClose: 
                     </div>
                 </div>
 
-                {/* 2. Price (السعر ر.س) */}
+                {/* 2. Price */}
                 <div className="mb-6 border-b border-gray-100 pb-6">
                     <div className="flex items-center justify-between mb-4">
-                        <button onClick={() => toggleSection('السعر (ر.س)')} className="flex-1 flex items-center gap-2 group text-right">
-                            <h3 className="text-[15px] font-black text-gray-800 tracking-wide">السعر (ر.س)</h3>
+                        <button onClick={() => toggleSection('السعر (ر.س)')} className={`flex-1 flex items-center gap-2 group ${isEn ? 'text-left' : 'text-right'}`}>
+                            <h3 className="text-[15px] font-black text-gray-800 tracking-wide flex items-center gap-1">{isEn ? 'Price' : 'السعر'} <CurrencyIcon className="w-[18px]" /></h3>
                             <svg className={`w-4 h-4 text-gray-400 transition-transform duration-300 ${openSections['السعر (ر.س)'] ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
                         </button>
                         <button onClick={() => { 
@@ -443,25 +439,25 @@ function FilterForm({ filters, onClose, isDesktop }: { filters: any[], onClose: 
                             params.delete('filter.v.price.min');
                             params.delete('filter.v.price.max');
                             setSearchParams(params, { preventScrollReset: true, replace: true });
-                        }} className="text-[13px] font-black text-red-500 hover:text-red-600 transition-colors">مسح</button>
+                        }} className="text-[13px] font-black text-red-500 hover:text-red-600 transition-colors">{isEn ? 'Clear' : 'مسح'}</button>
                     </div>
                     <div className={`overflow-hidden transition-all duration-300 ${openSections['السعر (ر.س)'] ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'}`}>
                         <div className="flex gap-2 items-center mb-4">
                             <div className="flex-1 relative">
-                                <input type="number" value={minPrice} onChange={(e) => setMinPrice(e.target.value)} placeholder="من" className="w-full bg-white border border-gray-200 rounded-full px-4 py-2 text-sm font-bold focus:outline-none focus:border-[#234745] transition-all text-center" />
+                                <input type="number" value={minPrice} onChange={(e) => setMinPrice(e.target.value)} placeholder={isEn ? "Min" : "من"} className="w-full bg-white border border-gray-200 rounded-full px-4 py-2 text-sm font-bold focus:outline-none focus:border-[#234745] transition-all text-center" />
                             </div>
                             <span className="text-gray-400 font-bold">-</span>
                             <div className="flex-1 relative">
-                                <input type="number" value={maxPrice} onChange={(e) => setMaxPrice(e.target.value)} placeholder="إلي" className="w-full bg-white border border-gray-200 rounded-full px-4 py-2 text-sm font-bold focus:outline-none focus:border-[#234745] transition-all text-center" />
+                                <input type="number" value={maxPrice} onChange={(e) => setMaxPrice(e.target.value)} placeholder={isEn ? "Max" : "إلي"} className="w-full bg-white border border-gray-200 rounded-full px-4 py-2 text-sm font-bold focus:outline-none focus:border-[#234745] transition-all text-center" />
                             </div>
                         </div>
-                        <button onClick={handleApply} className="w-full bg-[#234745] text-white !rounded-full py-2.5 font-bold text-sm hover:bg-[#1a3533] transition-all mt-2 shadow-sm cursor-pointer">تطبيق</button>
+                        <button onClick={handleApply} className="w-full bg-[#234745] text-white !rounded-full py-2.5 font-bold text-sm hover:bg-[#1a3533] transition-all mt-2 shadow-sm cursor-pointer">{isEn ? 'Apply' : 'تطبيق'}</button>
                         <div className="flex flex-col gap-4 mt-6">
                             {[
-                              { label: 'أقل من ١٠٠ ر.س', min: '', max: '100' },
-                              { label: '١٠٠ - ٢٠٠ ر.س', min: '100', max: '200' },
-                              { label: '٢٠٠ - ٤٠٠ ر.س', min: '200', max: '400' },
-                              { label: 'أكثر من ٤٠٠ ر.س', min: '400', max: '' }
+                              { labelAr: <span className="flex items-center gap-1">أقل من ١٠٠ <CurrencyIcon className="w-[14px]" /></span>, labelEn: <span className="flex items-center gap-1">Under 100 <CurrencyIcon className="w-[14px]" /></span>, min: '', max: '100' },
+                              { labelAr: <span className="flex items-center gap-1">١٠٠ - ٢٠٠ <CurrencyIcon className="w-[14px]" /></span>, labelEn: <span className="flex items-center gap-1">100 - 200 <CurrencyIcon className="w-[14px]" /></span>, min: '100', max: '200' },
+                              { labelAr: <span className="flex items-center gap-1">٢٠٠ - ٤٠٠ <CurrencyIcon className="w-[14px]" /></span>, labelEn: <span className="flex items-center gap-1">200 - 400 <CurrencyIcon className="w-[14px]" /></span>, min: '200', max: '400' },
+                              { labelAr: <span className="flex items-center gap-1">أكثر من ٤٠٠ <CurrencyIcon className="w-[14px]" /></span>, labelEn: <span className="flex items-center gap-1">Over 400 <CurrencyIcon className="w-[14px]" /></span>, min: '400', max: '' }
                             ].map((preset, i) => (
                                 <label key={i} className="flex items-center justify-start gap-3 cursor-pointer group">
                                     <input 
@@ -472,7 +468,6 @@ function FilterForm({ filters, onClose, isDesktop }: { filters: any[], onClose: 
                                       onChange={() => {
                                         setMinPrice(preset.min);
                                         setMaxPrice(preset.max);
-                                        // Auto apply
                                         const params = new URLSearchParams(searchParams);
                                         if (preset.min) params.set('filter.v.price.min', preset.min);
                                         else params.delete('filter.v.price.min');
@@ -481,47 +476,62 @@ function FilterForm({ filters, onClose, isDesktop }: { filters: any[], onClose: 
                                         setSearchParams(params, { preventScrollReset: true, replace: true });
                                       }}
                                     />
-                                    <span className={`text-[13px] font-bold ${minPrice === preset.min && maxPrice === preset.max ? 'text-[#234745]' : 'text-[#8695A0] group-hover:text-[#234745]'} transition-colors`}>{preset.label}</span>
+                                    <span className={`text-[13px] font-bold ${minPrice === preset.min && maxPrice === preset.max ? 'text-[#234745]' : 'text-[#8695A0] group-hover:text-[#234745]'} transition-colors`}>{isEn ? preset.labelEn : preset.labelAr}</span>
                                 </label>
                             ))}
                         </div>
                     </div>
                 </div>
 
-                {/* 3. Occasion (المناسبة) */}
+                {/* 3. Occasion */}
                 <div className="mb-6 border-b border-gray-100 pb-6">
                     <button onClick={() => toggleSection('المناسبة')} className="w-full flex items-center justify-between group">
-                        <h3 className="text-[15px] font-black text-gray-800 tracking-wide">المناسبة</h3>
+                        <h3 className="text-[15px] font-black text-gray-800 tracking-wide">{isEn ? 'Occasion' : 'المناسبة'}</h3>
                         <svg className={`w-4 h-4 text-gray-400 transition-transform duration-300 ${openSections['المناسبة'] ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
                     </button>
                     <div className={`mt-4 overflow-hidden transition-all duration-300 ${openSections['المناسبة'] ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'}`}>
                         <div className="flex flex-col gap-3">
-                            {['عيد الفطر والاضحي', 'رمضان', 'أعياد الميلاد', 'زفاف وخطوبة', 'تخرج', 'يوم الأم', 'اليوم الوطني', 'هدايا مؤسسية'].map((item, i) => (
+                            {[
+                              { labelAr: 'عيد الفطر والاضحي', labelEn: 'Eid Al-Fitr & Al-Adha' },
+                              { labelAr: 'رمضان', labelEn: 'Ramadan' },
+                              { labelAr: 'أعياد الميلاد', labelEn: 'Birthdays' },
+                              { labelAr: 'زفاف وخطوبة', labelEn: 'Wedding & Engagement' },
+                              { labelAr: 'تخرج', labelEn: 'Graduation' },
+                              { labelAr: 'يوم الأم', labelEn: 'Mother\'s Day' },
+                              { labelAr: 'اليوم الوطني', labelEn: 'National Day' },
+                              { labelAr: 'هدايا مؤسسية', labelEn: 'Corporate Gifts' },
+                            ].map((item, i) => (
                                 <label key={i} className="flex items-center gap-3 cursor-pointer group">
                                     <div className={`w-4 h-4 rounded-[4px] border flex items-center justify-center transition-colors ${i === 0 ? 'bg-[#234745] border-[#234745]' : 'border-gray-300 bg-white group-hover:border-[#234745]'}`}>
                                         {i === 0 && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
                                     </div>
-                                    <span className={`text-[13px] font-bold ${i === 0 ? 'text-[#234745]' : 'text-gray-500 group-hover:text-gray-800'}`}>{item}</span>
+                                    <span className={`text-[13px] font-bold ${i === 0 ? 'text-[#234745]' : 'text-gray-500 group-hover:text-gray-800'}`}>{isEn ? item.labelEn : item.labelAr}</span>
                                 </label>
                             ))}
                         </div>
                     </div>
                 </div>
 
-                {/* 4. Diet Type (النوع الغذائي) */}
+                {/* 4. Diet Type */}
                 <div className="mb-6 pb-6 border-b border-gray-100">
                     <button onClick={() => toggleSection('النوع الغذائي')} className="w-full flex items-center justify-between group">
-                        <h3 className="text-[15px] font-black text-gray-800 tracking-wide">النوع الغذائي</h3>
+                        <h3 className="text-[15px] font-black text-gray-800 tracking-wide">{isEn ? 'Dietary Type' : 'النوع الغذائي'}</h3>
                         <svg className={`w-4 h-4 text-gray-400 transition-transform duration-300 ${openSections['النوع الغذائي'] ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
                     </button>
                     <div className={`mt-4 overflow-hidden transition-all duration-300 ${openSections['النوع الغذائي'] ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'}`}>
                         <div className="flex flex-col gap-3">
-                            {['خالي من الجلوتين', 'مناسب للنباتيين', 'منتجات صحية', 'خالي من السكر', 'قليل الدهون'].map((item, i) => (
+                            {[
+                              { labelAr: 'خالي من الجلوتين', labelEn: 'Gluten Free' },
+                              { labelAr: 'مناسب للنباتيين', labelEn: 'Vegetarian' },
+                              { labelAr: 'منتجات صحية', labelEn: 'Healthy Products' },
+                              { labelAr: 'خالي من السكر', labelEn: 'Sugar Free' },
+                              { labelAr: 'قليل الدهون', labelEn: 'Low Fat' },
+                            ].map((item, i) => (
                                 <label key={i} className="flex items-center gap-3 cursor-pointer group">
                                     <div className={`w-4 h-4 rounded-[4px] border flex items-center justify-center transition-colors ${i === 0 ? 'bg-[#234745] border-[#234745]' : 'border-gray-300 bg-white group-hover:border-[#234745]'}`}>
                                         {i === 0 && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
                                     </div>
-                                    <span className={`text-[13px] font-bold ${i === 0 ? 'text-[#234745]' : 'text-gray-500 group-hover:text-gray-800'}`}>{item}</span>
+                                    <span className={`text-[13px] font-bold ${i === 0 ? 'text-[#234745]' : 'text-gray-500 group-hover:text-gray-800'}`}>{isEn ? item.labelEn : item.labelAr}</span>
                                 </label>
                             ))}
                         </div>
@@ -534,7 +544,7 @@ function FilterForm({ filters, onClose, isDesktop }: { filters: any[], onClose: 
                   to={typeof window !== 'undefined' ? window.location.pathname : ''}
                   className="w-full flex items-center justify-center border border-[#234745] text-[#234745] bg-white rounded-full py-3 font-bold text-sm hover:bg-gray-50 transition-all"
                 >
-                    مسح كل الفلاتر
+                    {isEn ? 'Clear all filters' : 'مسح كل الفلاتر'}
                 </Link>
             </div>
         </div>
@@ -677,6 +687,15 @@ const PRODUCT_ITEM_FRAGMENT = `#graphql
     }
   }
 ` as const;
+
+function CurrencyIcon({ className = "w-[20px]" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 1124.14 1256.39" className={`inline-block fill-current h-auto text-[#234745] ${className}`}>
+      <path d="M699.62,1113.02h0c-20.06,44.48-33.32,92.75-38.4,143.37l424.51-90.24c20.06-44.47,33.31-92.75,38.4-143.37l-424.51,90.24Z"></path>
+      <path d="M1085.73,895.8c20.06-44.47,33.32-92.75,38.4-143.37l-330.68,70.33v-135.2l292.27-62.11c20.06-44.47,33.32-92.75,38.4-143.37l-330.68,70.27V66.13c-50.67,28.45-95.67,66.32-132.25,110.99v403.35l-132.25,28.11V0c-50.67,28.44-95.67,66.32-132.25,110.99v525.69l-295.91,62.88c-20.06,44.47-33.33,92.75-38.42,143.37l334.33-71.05v170.26l-358.3,76.14c-20.06,44.47-33.32,92.75-38.4,143.37l375.04-79.7c30.53-6.35,56.77-24.4,73.83-49.24l68.78-101.97v-.02c7.14-10.55,11.3-23.27,11.3-36.97v-149.98l132.25-28.11v270.4l424.53-90.28Z"></path>
+    </svg>
+  );
+}
 
 // NOTE: https://shopify.dev/docs/api/storefront/2022-04/objects/collection
 const COLLECTION_QUERY = `#graphql

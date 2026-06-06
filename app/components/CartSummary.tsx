@@ -114,7 +114,7 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
                   <div className="flex justify-between items-center text-[15px]">
                      <dt className="text-[#9FB7AE] font-bold" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>{isEn ? 'Subtotal' : 'المجموع الفرعي'}</dt>
                      <dd className="text-[#234745] font-black font-en flex items-center gap-1 flex-row-reverse">
-                       <span className="text-[16px]">﷼</span>
+                       <SaudiRiyalSymbol className="h-4 w-auto" />
                        <span>{subtotal.toFixed(2)}</span>
                      </dd>
                   </div>
@@ -126,7 +126,7 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
                          <span className="text-[#234745] font-black text-[15px]">{isEn ? 'Free' : 'مجاني'}</span>
                        ) : (
                          <div className="flex items-center gap-1 flex-row-reverse">
-                           <span className="text-[16px]">﷼</span>
+                           <SaudiRiyalSymbol className="h-4 w-auto" />
                            <span className="font-black">{deliveryFee.toFixed(2)}</span>
                          </div>
                        )}
@@ -137,7 +137,7 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
                     <div className="flex justify-between items-center text-[15px]">
                       <dt className="text-[#9FB7AE] font-bold" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>{isEn ? 'VAT (15%)' : 'ضريبة القيمة المضافة (١٥٪)'}</dt>
                       <dd className="text-[#234745] font-black font-en flex items-center gap-1 flex-row-reverse">
-                        <span className="text-[16px]">﷼</span>
+                        <SaudiRiyalSymbol className="h-4 w-auto" />
                         <span>{parseFloat(cart.cost.totalTaxAmount.amount).toFixed(2)}</span>
                       </dd>
                     </div>
@@ -158,7 +158,7 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
                     </span>
                  </div>
                  <dd className="text-[28px] font-black text-[#234745] font-en flex items-center gap-2 flex-row-reverse">
-                   <span className="text-[24px]">﷼</span>
+                   <SaudiRiyalSymbol className="h-6 w-auto" />
                    <span>{calculatedTotal.toFixed(2)}</span>
                  </dd>
               </div>
@@ -185,7 +185,7 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
                  currencyCode={currencyCode}
                  isPickup={isPickup}
                  validationError={
-                   !isMinOrderMet ? (isEn ? `Minimum order is ${currencyCode} ${minOrderValue}` : `الحد الأدنى هو ${minOrderValue} ${currencyCode === 'SAR' ? 'ر.س' : currencyCode}`) :
+                   !isMinOrderMet ? (isEn ? <span className="flex items-center gap-1">Minimum order is <SaudiRiyalSymbol className="h-3 w-auto" /> {minOrderValue}</span> : <span className="flex items-center gap-1 flex-row-reverse">الحد الأدنى هو {minOrderValue} <SaudiRiyalSymbol className="h-3 w-auto" /></span>) :
                    !isBranchSelected ? (isEn ? 'Please select a branch' : 'يرجى اختيار الفرع') :
                    isOutOfRange ? (isEn ? 'Address is out of delivery range' : 'العنوان خارج نطاق التوصيل') :
                    null
@@ -358,7 +358,7 @@ function CartCheckoutActions({
   checkoutUrl?: string; 
   isEn: boolean;
   disabled?: boolean;
-  validationError?: string | null;
+  validationError?: React.ReactNode | null;
   totalAmount: number;
   currencyCode: string;
   isPickup?: boolean;
@@ -385,7 +385,6 @@ function CartCheckoutActions({
                   url.searchParams.set('method', 'shipping');
                   // Aggressive parameters to force the 'Ship' tab
                   url.searchParams.set('checkout[delivery_strategy]', 'shipping');
-                  url.searchParams.set('checkout[shipping_address][country]', 'SA');
                 }
                 return url.toString();
               } catch(e) {
@@ -513,7 +512,7 @@ function LoyaltyRedemptionUI({ isEn, cart }: { isEn: boolean, cart: any }) {
                 {isEn ? 'You save' : 'أنت توفر'}
               </span>
               <span className="text-[16px] font-black text-[#27ae60] font-en flex items-center gap-1 flex-row-reverse">
-                <span className="text-[14px]">﷼</span>
+                <SaudiRiyalSymbol className="h-3.5 w-auto" />
                 <span>{discountAmount.toFixed(2)}</span>
               </span>
             </div>

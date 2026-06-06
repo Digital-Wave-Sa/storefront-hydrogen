@@ -45,7 +45,7 @@ export function NewArrivals({
 
                 {/* Section Header */}
                 <div className="text-center mb-10 flex flex-col items-center">
-                    <h2 className="text-[32px] lg:text-[42px] font-bold text-[#1a1a1a] mb-2 leading-tight" style={{ fontFamily: "'Bahij Janna', sans-serif" }}>
+                    <h2 className="text-[32px] lg:text-[42px] font-bold text-[#1a1a1a] mb-2 leading-tight" style={!isEn ? { fontFamily: "'Bahij Janna', sans-serif" } : undefined}>
                         {isEn ? 'Featured Collections' : 'التشكيلات المميزة'}
                     </h2>
                     <p className="text-[#8a9e9a] text-[14px] lg:text-[16px] font-medium" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
@@ -123,7 +123,7 @@ export function NewArrivals({
                                                     <div className={`absolute top-4 ${isEn ? 'right-4' : 'left-4'} z-10 flex flex-col gap-2 ${isEn ? 'items-end' : 'items-start'}`}>
                                                         {/* Sale Badge */}
                                                         {!isVisibilityBlocked && hasDiscount && (
-                                                            <span className="text-[10px] font-black px-3 py-1.5 rounded-full shadow-sm bg-[#e74c3c] text-white flex items-center gap-1.5">
+                                                            <span className="text-[10px] font-bold px-3 py-1.5 rounded-full shadow-sm bg-[#e74c3c] text-white flex items-center gap-1.5">
                                                                 <span>🔥</span>
                                                                 {isEn ? 'Sale' : 'تخفيض'}
                                                             </span>

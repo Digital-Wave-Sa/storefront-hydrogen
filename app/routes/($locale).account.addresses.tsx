@@ -190,8 +190,10 @@ export default function Addresses() {
 
         {addresses.nodes.map((address) => (
           <div key={address.id} className={`address-card ${defaultAddress?.id === address.id ? 'is-default' : ''}`}>
-            {defaultAddress?.id === address.id && <span className="address-badge">{isEn ? 'Default' : 'افتراضي'}</span>}
-            <div className="address-name">{address.firstName} {address.lastName}</div>
+            <div className="flex items-center gap-3 mb-2">
+              <div className="address-name !mb-0">{address.firstName} {address.lastName}</div>
+              {defaultAddress?.id === address.id && <span className="address-badge !relative !top-auto !left-auto !right-auto m-0 shrink-0">{isEn ? 'Default' : 'افتراضي'}</span>}
+            </div>
             <div className="address-details">
               <p>{address.address1}</p>
               <p>{address.city}</p>

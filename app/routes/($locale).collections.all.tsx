@@ -238,11 +238,11 @@ export default function CollectionAll() {
 
   return (
     <div className="collection-page" dir={isEn ? 'ltr' : 'rtl'}>
-      <CollectionAllHero title={isEn ? 'All Products' : 'جميع المنتجات'} productsCount={products.nodes?.length || 0} />
+      <CollectionAllHero title={isEn ? 'All Products' : 'جميع المنتجات'} productsCount={products.nodes?.length || 0} isEn={isEn} />
 
       <div className="bg-white border-b border-gray-100">
         <div className="px-4 md:px-8 lg:px-12 py-4 max-w-[1440px] mx-auto text-right text-[13px] font-black flex items-center gap-2">
-            <span className="text-gray-400">الرئيسية</span>
+            <span className="text-gray-400">{isEn ? 'Home' : 'الرئيسية'}</span>
             <span className="text-gray-300">/</span>
             <span className="text-gray-800">{isEn ? 'All Products' : 'جميع المنتجات'}</span>
         </div>
@@ -337,7 +337,7 @@ export default function CollectionAll() {
               className={`absolute inset-0 bg-black/30 backdrop-blur-sm transition-opacity duration-500 ${isFilterOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0'}`}
               onClick={() => setIsFilterOpen(false)}
             />
-            <div className={`fixed inset-y-0 right-0 w-full max-w-sm bg-[#FEF8EB] shadow-2xl z-50 transform transition-transform duration-300 ease-in-out ${isFilterOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+            <div className={`fixed inset-y-0 ${isEn ? 'left-0' : 'right-0'} w-full max-w-sm bg-[#FEF8EB] shadow-2xl z-50 transform transition-transform duration-300 ease-in-out ${isFilterOpen ? 'translate-x-0' : (isEn ? '-translate-x-full' : 'translate-x-full')}`}>
                <FilterSidebar filters={products.productFilters} collections={collections || []} onClose={() => setIsFilterOpen(false)} isEn={isEn} />
             </div>
         </div>,
@@ -347,9 +347,9 @@ export default function CollectionAll() {
   );
 }
 
-function CollectionAllHero({ title, productsCount }: { title: string, productsCount: number }) {
+function CollectionAllHero({ title, productsCount, isEn }: { title: string, productsCount: number, isEn: boolean }) {
     return (
-        <section className="relative h-[144px] w-full bg-[#234745] overflow-hidden flex items-center" dir="rtl">
+        <section className="relative h-[144px] w-full bg-[#234745] overflow-hidden flex items-center" dir={isEn ? 'ltr' : 'rtl'}>
             <div 
                 className="absolute inset-0"
                 style={{
@@ -361,23 +361,23 @@ function CollectionAllHero({ title, productsCount }: { title: string, productsCo
             <div className="relative z-10 w-full max-w-[1440px] mx-auto px-4 md:px-8 lg:px-12 flex items-center justify-between">
                 
                 {/* Right Side: Title and Back Button */}
-                <div className="flex flex-col items-end gap-[8px]">
-                    <div className="flex items-center gap-[24px]" dir="ltr">
-                        <h1 className="text-[32px] md:text-[40px] font-bold text-white drop-shadow-sm text-right" style={{ fontFamily: "'GE Dinar One', sans-serif" }} dir="rtl">
-                            {title}
-                        </h1>
-                        <button onClick={() => window.history.back()} className="flex items-center gap-[8px] bg-[#9FB7AE] hover:bg-[#8BA19C] text-[#234745] px-6 py-2 rounded-[25px] text-[16px] font-bold transition-all" style={{ fontFamily: "'GE Dinar One', sans-serif" }} dir="rtl">
-                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                <div className={`flex flex-col ${isEn ? 'items-start' : 'items-end'} gap-[8px]`}>
+                    <div className="flex items-center gap-[24px]" dir={isEn ? 'ltr' : 'rtl'}>
+                        <button onClick={() => window.history.back()} className={`flex items-center gap-[8px] bg-[#9FB7AE] hover:bg-[#8BA19C] text-[#234745] px-6 py-2 rounded-[25px] text-[16px] font-bold transition-all ${isEn ? 'font-en' : ''}`} style={isEn ? {} : { fontFamily: "'GE Dinar One', sans-serif" }} dir={isEn ? 'ltr' : 'rtl'}>
+                            <svg className={`w-5 h-5 ${isEn ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
                             </svg>
-                            <span>رجوع</span>
+                            <span>{isEn ? 'Back' : 'رجوع'}</span>
                         </button>
+                        <h1 className={`text-[32px] md:text-[40px] font-bold text-white drop-shadow-sm ${isEn ? 'text-left font-en' : 'text-right'}`} style={isEn ? {} : { fontFamily: "'GE Dinar One', sans-serif" }} dir={isEn ? 'ltr' : 'rtl'}>
+                            {title}
+                        </h1>
                     </div>
                 </div>
 
                 {/* Left Side in RTL (Second child): Product Count */}
-                <div className="bg-[#FEF8EB] text-[#234745] px-6 py-2 rounded-[25px] text-[16px] font-bold shadow-sm shrink-0" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
-                    {productsCount} منتجات
+                <div className={`bg-[#FEF8EB] text-[#234745] px-6 py-2 rounded-[25px] text-[16px] font-bold shadow-sm shrink-0 ${isEn ? 'font-en' : ''}`} style={isEn ? {} : { fontFamily: "'GE Dinar One', sans-serif" }}>
+                    <span className="font-en">{productsCount}</span> {isEn ? 'Products' : 'منتجات'}
                 </div>
 
             </div>
@@ -385,7 +385,7 @@ function CollectionAllHero({ title, productsCount }: { title: string, productsCo
     );
 }
 
-function ActiveFilterChips({ isEn }: { isEn: boolean }) {
+export function ActiveFilterChips({ isEn }: { isEn: boolean }) {
     const [params, setParams] = useState<URLSearchParams | null>(null);
     useEffect(() => {
         setParams(new URLSearchParams(window.location.search));
@@ -393,13 +393,13 @@ function ActiveFilterChips({ isEn }: { isEn: boolean }) {
 
     if (!params) return null;
 
-    const chips: { key: string, label: string }[] = [];
+    const chips: { key: string, label: React.ReactNode }[] = [];
     params.forEach((value, key) => {
         if (key === 'q' || key === 'cursor' || key === 'sortKey' || key === 'reverse') return;
         
-        let label = value;
-        if (key === 'filter.v.price.min') label = isEn ? `Min: ${value} SAR` : `الأقل: ${value} ر.س`;
-        if (key === 'filter.v.price.max') label = isEn ? `Max: ${value} SAR` : `الأعلى: ${value} ر.س`;
+        let label: React.ReactNode = value;
+        if (key === 'filter.v.price.min') label = <span className="flex items-center gap-1">{isEn ? `Min: ${value}` : `الأقل: ${value}`} <CurrencyIcon className="w-[14px] mt-0.5" /></span>;
+        if (key === 'filter.v.price.max') label = <span className="flex items-center gap-1">{isEn ? `Max: ${value}` : `الأعلى: ${value}`} <CurrencyIcon className="w-[14px] mt-0.5" /></span>;
 
         chips.push({ key, label });
     });
@@ -426,7 +426,7 @@ function ActiveFilterChips({ isEn }: { isEn: boolean }) {
     );
 }
 
-function FilterSidebar({ filters, collections, onClose, isDesktop = false, isEn }: { filters: any[], collections: any[], onClose: () => void, isDesktop?: boolean, isEn?: boolean }) {
+export function FilterSidebar({ filters, collections, onClose, isDesktop = false, isEn, hideSearchInput = false }: { filters: any[], collections: any[], onClose: () => void, isDesktop?: boolean, isEn?: boolean, hideSearchInput?: boolean }) {
     const submit = useSubmit();
     const location = useLocation();
     const [searchQuery, setSearchQuery] = useState('');
@@ -599,19 +599,19 @@ function FilterSidebar({ filters, collections, onClose, isDesktop = false, isEn 
     };
 
     const pricePresets = [
-        { label: 'أقل من 100 ر.س', min: '', max: '100' },
-        { label: '100 - 200 ر.س', min: '100', max: '200' },
-        { label: '200 - 400 ر.س', min: '200', max: '400' },
-        { label: 'أكثر من 400 ر.س', min: '400', max: '' }
+        { label: <span className="flex items-center gap-1">{isEn ? 'Under 100' : <span>أقل من <span className="font-en">100</span></span>} <CurrencyIcon className="w-[16px] -mt-0.5" /></span>, min: '', max: '100' },
+        { label: <span className="flex items-center gap-1">{isEn ? '100 - 200' : <span><span className="font-en">100</span> - <span className="font-en">200</span></span>} <CurrencyIcon className="w-[16px] -mt-0.5" /></span>, min: '100', max: '200' },
+        { label: <span className="flex items-center gap-1">{isEn ? '200 - 400' : <span><span className="font-en">200</span> - <span className="font-en">400</span></span>} <CurrencyIcon className="w-[16px] -mt-0.5" /></span>, min: '200', max: '400' },
+        { label: <span className="flex items-center gap-1">{isEn ? 'Over 400' : <span>أكثر من <span className="font-en">400</span></span>} <CurrencyIcon className="w-[16px] -mt-0.5" /></span>, min: '400', max: '' }
     ];
 
     const currentParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams();
     
     return (
-        <div className={`flex flex-col h-full ${isDesktop ? 'bg-white border border-[#BBCFCD]/50 rounded-[24px] w-[302px] box-border py-6' : 'bg-white overflow-hidden'}`} dir="rtl">
+        <div className={`flex flex-col h-full ${isDesktop ? 'bg-white border border-[#BBCFCD]/50 rounded-[24px] w-[302px] box-border py-6' : 'bg-white overflow-hidden'}`} dir={isEn ? 'ltr' : 'rtl'}>
             {!isDesktop && (
               <header className="p-6 border-b border-[#BBCFCD]/50 flex items-center justify-between shrink-0">
-                  <h2 className="text-xl font-black text-[#234745] font-['GE_Dinar_One']">{isEn ? 'Filters' : 'تصفية النتائج'}</h2>
+                  <h2 className={`text-xl font-black text-[#234745] ${isEn ? 'font-en' : "font-['GE_Dinar_One']"}`}>{isEn ? 'Filters' : 'تصفية النتائج'}</h2>
                   <button onClick={onClose} className="w-10 h-10 bg-gray-50 rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-100 transition-colors">
                       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                   </button>
@@ -622,28 +622,32 @@ function FilterSidebar({ filters, collections, onClose, isDesktop = false, isEn 
             <div className={`flex-1 flex flex-col items-center gap-4 ${isDesktop ? 'px-0' : 'overflow-y-auto p-4'}`}>
                 
                 {/* Search Bar */}
-                <div className="w-[270px] bg-[#BBCFCD] border border-[#BBCFCD]/50 rounded-[25px] px-4 py-3 flex flex-col justify-center">
-                    <form onSubmit={handleSearchSubmit} className="relative flex items-center gap-2">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#234745" strokeWidth="1.25" className="shrink-0">
-                            <circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                        </svg>
-                        <input 
-                            type="text" 
-                            placeholder={isEn ? 'Search products...' : 'إبحث في المنتجات...'} 
-                            value={searchQuery}
-                            onChange={(e) => handleSearchChange(e.target.value)}
-                            className="w-full bg-transparent text-[14px] font-['GE_Dinar_One'] text-[#234745] placeholder-[#234745] focus:outline-none"
-                        />
-                    </form>
-                </div>
+                {!hideSearchInput && (
+                    <>
+                        <div className="w-[270px] bg-[#BBCFCD] border border-[#BBCFCD]/50 rounded-[25px] px-4 py-3 flex flex-col justify-center">
+                            <form onSubmit={handleSearchSubmit} className="relative flex items-center gap-2">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#234745" strokeWidth="1.25" className="shrink-0">
+                                    <circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                                </svg>
+                                <input 
+                                    type="text" 
+                                    placeholder={isEn ? 'Search products...' : 'إبحث في المنتجات...'} 
+                                    value={searchQuery}
+                                    onChange={(e) => handleSearchChange(e.target.value)}
+                                    className={`w-full bg-transparent text-[14px] ${isEn ? 'font-en' : "font-['GE_Dinar_One']"} text-[#234745] placeholder-[#234745] focus:outline-none`}
+                                />
+                            </form>
+                        </div>
 
-                <div className="w-[302px] border-t border-[#BBCFCD]/50 my-0" />
+                        <div className="w-[302px] border-t border-[#BBCFCD]/50 my-0" />
+                    </>
+                )}
 
                 {/* Categories - Dynamic from Collections */}
                 {collections && collections.length > 0 && (
                     <div className="w-[270px] flex flex-col gap-4">
                         <button type="button" onClick={() => toggleSection('categories')} className="flex items-center justify-between w-full outline-none group">
-                            <h3 className="text-[16px] font-bold font-['GE_Dinar_One'] text-[#171717]">{isEn ? 'Categories' : 'الأقسام'}</h3>
+                            <h3 className={`text-[16px] font-bold ${isEn ? 'font-en' : "font-['GE_Dinar_One']"} text-[#171717]`}>{isEn ? 'Categories' : 'الأقسام'}</h3>
                             <svg className={`w-4 h-4 text-[#234745] transition-transform duration-300 ${openSections['categories'] ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                             </svg>
@@ -652,14 +656,14 @@ function FilterSidebar({ filters, collections, onClose, isDesktop = false, isEn 
                             {collections.map((collection: any) => {
                                 const isActive = currentParams.getAll('category').includes(collection.handle);
                                 return (
-                                    <button type="button" key={collection.id} onClick={() => toggleParamLink('category', collection.handle)} className="flex items-center justify-between w-full outline-none group">
+                                    <button type="button" key={collection.id} onClick={() => toggleParamLink('category', collection.handle)} className="flex items-center justify-between w-full outline-none group text-start">
                                         <div className="flex items-center gap-2">
                                             <div className={`w-6 h-6 rounded flex items-center justify-center transition-colors ${isActive ? 'bg-[#234745]' : 'border-[1.14px] border-[#BBCFCD] bg-white group-hover:border-[#234745]'}`}>
                                                 {isActive && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><polyline points="20 6 9 17 4 12"></polyline></svg>}
                                             </div>
-                                            <span className={`text-[16px] font-medium font-['GE_Dinar_One'] transition-colors ${isActive ? 'text-[#234745]' : 'text-[#7D7D7D] group-hover:text-[#234745]'}`}>{collection.title}</span>
+                                            <span className={`text-[16px] font-medium ${isEn ? 'font-en' : "font-['GE_Dinar_One']"} transition-colors ${isActive ? 'text-[#234745]' : 'text-[#7D7D7D] group-hover:text-[#234745]'}`}>{collection.title}</span>
                                         </div>
-                                        <span className="text-[16px] font-medium font-['GE_Dinar_One'] text-[#7D7D7D]">&nbsp;</span>
+                                        <span className={`text-[16px] font-medium ${isEn ? 'font-en' : "font-['GE_Dinar_One']"} text-[#7D7D7D]`}>&nbsp;</span>
                                     </button>
                                 );
                             })}
@@ -672,10 +676,10 @@ function FilterSidebar({ filters, collections, onClose, isDesktop = false, isEn 
                 {/* Price */}
                 <div className="w-[270px] flex flex-col gap-4">
                     <button type="button" onClick={() => toggleSection('price')} className="flex items-center justify-between w-full outline-none group">
-                        <h3 className="text-[16px] font-bold font-['GE_Dinar_One'] text-[#171717]">{isEn ? 'Price' : 'السعر (ر.س)'}</h3>
+                        <h3 className={`text-[16px] font-bold ${isEn ? 'font-en' : "font-['GE_Dinar_One']"} text-[#171717] flex items-center gap-1`}>{isEn ? 'Price' : 'السعر'} <CurrencyIcon className="w-[18px]" /></h3>
                         <div className="flex items-center gap-6">
                             {(minPrice || maxPrice) && (
-                                <span onClick={clearPrice} className="text-[16px] font-bold font-['GE_Dinar_One'] text-[#E64950]">{isEn ? 'Clear' : 'مسح'}</span>
+                                <span onClick={clearPrice} className={`text-[16px] font-bold ${isEn ? 'font-en' : "font-['GE_Dinar_One']"} text-[#E64950]`}>{isEn ? 'Clear' : 'مسح'}</span>
                             )}
                             <svg className={`w-4 h-4 text-[#234745] transition-transform duration-300 ${openSections['price'] ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
@@ -685,16 +689,16 @@ function FilterSidebar({ filters, collections, onClose, isDesktop = false, isEn 
                     <div className={`flex flex-col gap-4 transition-all duration-300 overflow-hidden ${openSections['price'] ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'}`}>
                         <div className="flex items-center justify-between gap-4">
                             <div className="flex-1 border border-[#BBCFCD] rounded-[16px] px-4 py-2 flex items-center justify-between">
-                                <span className="text-[16px] font-medium font-['GE_Dinar_One'] text-[#7D7D7D]">{isEn ? 'From' : 'من'}</span>
+                                <span className={`text-[16px] font-medium ${isEn ? 'font-en' : "font-['GE_Dinar_One']"} text-[#7D7D7D]`}>{isEn ? 'From' : 'من'}</span>
                                 <input type="number" value={minPrice} onChange={(e) => setMinPrice(e.target.value)} className="w-12 bg-transparent text-center focus:outline-none" />
                             </div>
                             <span className="text-[16px] font-medium text-[#255441]">-</span>
                             <div className="flex-1 border border-[#BBCFCD] rounded-[16px] px-4 py-2 flex items-center justify-between">
-                                <span className="text-[16px] font-medium font-['GE_Dinar_One'] text-[#7D7D7D]">{isEn ? 'To' : 'إلي'}</span>
+                                <span className={`text-[16px] font-medium ${isEn ? 'font-en' : "font-['GE_Dinar_One']"} text-[#7D7D7D]`}>{isEn ? 'To' : 'إلي'}</span>
                                 <input type="number" value={maxPrice} onChange={(e) => setMaxPrice(e.target.value)} className="w-12 bg-transparent text-center focus:outline-none" />
                             </div>
                         </div>
-                        <button type="button" onClick={handlePriceApply} className="w-[270px] bg-[#234745] text-[#FEF8EB] rounded-[25px] py-2.5 text-[16px] font-medium font-['GE_Dinar_One'] hover:opacity-90 transition-opacity">{isEn ? 'Apply' : 'تطبيق'}</button>
+                        <button type="button" onClick={handlePriceApply} className={`w-[270px] bg-[#234745] text-[#FEF8EB] rounded-[25px] py-2.5 text-[16px] font-medium ${isEn ? 'font-en' : "font-['GE_Dinar_One']"} hover:opacity-90 transition-opacity`}>{isEn ? 'Apply' : 'تطبيق'}</button>
                         <div className="flex flex-col gap-3 mt-2">
                             {pricePresets.map((preset, i) => {
                                 const isActive = minPrice === preset.min && maxPrice === preset.max;
@@ -703,7 +707,7 @@ function FilterSidebar({ filters, collections, onClose, isDesktop = false, isEn 
                                         <div className={`w-6 h-6 rounded-full border-2 transition-colors flex items-center justify-center ${isActive ? 'border-[#234745]' : 'border-[#BBCFCD] group-hover:border-[#234745]'}`}>
                                             {isActive && <div className="w-2.5 h-2.5 bg-[#234745] rounded-full" />}
                                         </div>
-                                        <span className={`text-[16px] font-medium font-['GE_Dinar_One'] transition-colors ${isActive ? 'text-[#234745]' : 'text-[#7D7D7D] group-hover:text-[#234745]'}`}>{preset.label}</span>
+                                        <span className={`text-[16px] font-medium ${isEn ? 'font-en' : "font-['GE_Dinar_One']"} transition-colors ${isActive ? 'text-[#234745]' : 'text-[#7D7D7D] group-hover:text-[#234745]'}`}>{preset.label}</span>
                                     </button>
                                 );
                             })}
@@ -720,7 +724,7 @@ function FilterSidebar({ filters, collections, onClose, isDesktop = false, isEn 
                             <div className="w-[302px] border-t border-[#BBCFCD]/50 my-0" />
                             <div className="w-[270px] flex flex-col gap-4">
                                 <button type="button" onClick={() => toggleSection(filter.id)} className="flex items-center justify-between w-full outline-none group">
-                                    <h3 className="text-[16px] font-bold font-['GE_Dinar_One'] text-[#171717]">{filter.label}</h3>
+                                    <h3 className={`text-[16px] font-bold ${isEn ? 'font-en' : "font-['GE_Dinar_One']"} text-[#171717]`}>{filter.label}</h3>
                                     <svg className={`w-4 h-4 text-[#234745] transition-transform duration-300 ${openSections[filter.id] ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
                                         <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                                     </svg>
@@ -729,14 +733,14 @@ function FilterSidebar({ filters, collections, onClose, isDesktop = false, isEn 
                                     {filter.values.map((item: any, i: number) => {
                                         const isActive = isFilterActive(item.input, currentParams);
                                         return (
-                                            <button type="button" key={item.id || i} onClick={() => toggleFilterLink(item.input)} className="flex items-center justify-between w-full outline-none group">
+                                            <button type="button" key={item.id || i} onClick={() => toggleFilterLink(item.input)} className="flex items-center justify-between w-full outline-none group text-start">
                                                 <div className="flex items-center gap-2">
                                                     <div className={`w-6 h-6 rounded flex items-center justify-center transition-colors ${isActive ? 'bg-[#234745]' : 'border-[1.14px] border-[#BBCFCD] bg-white group-hover:border-[#234745]'}`}>
                                                         {isActive && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><polyline points="20 6 9 17 4 12"></polyline></svg>}
                                                     </div>
-                                                    <span className={`text-[16px] font-medium font-['GE_Dinar_One'] transition-colors ${isActive ? 'text-[#234745]' : 'text-[#7D7D7D] group-hover:text-[#234745]'}`}>{item.label}</span>
+                                                    <span className={`text-[16px] font-medium ${isEn ? 'font-en' : "font-['GE_Dinar_One']"} transition-colors ${isActive ? 'text-[#234745]' : 'text-[#7D7D7D] group-hover:text-[#234745]'}`}>{item.label}</span>
                                                 </div>
-                                                <span className="text-[16px] font-medium font-['GE_Dinar_One'] text-[#7D7D7D]">{item.count > 0 ? `(${item.count})` : ''}</span>
+                                                <span className={`text-[16px] font-medium ${isEn ? 'font-en' : "font-['GE_Dinar_One']"} text-[#7D7D7D]`}>{item.count > 0 ? <>(<span className="font-en">{item.count}</span>)</> : ''}</span>
                                             </button>
                                         );
                                     })}
@@ -751,7 +755,7 @@ function FilterSidebar({ filters, collections, onClose, isDesktop = false, isEn 
                 <button 
                     type="button"
                     onClick={handleClearAll}
-                    className="w-full border border-[#234745] text-[#234745] rounded-[25px] py-2.5 text-[16px] font-medium font-['GE_Dinar_One'] hover:bg-gray-50 transition-colors flex items-center justify-center"
+                    className={`w-full border border-[#234745] text-[#234745] rounded-[25px] py-2.5 text-[16px] font-medium ${isEn ? 'font-en' : "font-['GE_Dinar_One']"} hover:bg-gray-50 transition-colors flex items-center justify-center`}
                 >
                     {isEn ? 'Clear All Filters' : 'مسح كل الفلاتر'}
                 </button>
@@ -895,6 +899,15 @@ const PRODUCT_ITEM_FRAGMENT = `#graphql
     }
   }
 ` as const;
+
+export function CurrencyIcon({className}: {className?: string}) {
+  return (
+    <svg viewBox="0 0 1124.14 1256.39" className={`inline-block fill-current h-auto text-[#234745] ${className}`}>
+      <path d="M699.62,1113.02h0c-20.06,44.48-33.32,92.75-38.4,143.37l424.51-90.24c20.06-44.47,33.31-92.75,38.4-143.37l-424.51,90.24Z"></path>
+      <path d="M1085.73,895.8c20.06-44.47,33.32-92.75,38.4-143.37l-330.68,70.33v-135.2l292.27-62.11c20.06-44.47,33.32-92.75,38.4-143.37l-330.68,70.27V66.13c-50.67,28.45-95.67,66.32-132.25,110.99v403.35l-132.25,28.11V0c-50.67,28.44-95.67,66.32-132.25,110.99v525.69l-295.91,62.88c-20.06,44.47-33.33,92.75-38.42,143.37l334.33-71.05v170.26l-358.3,76.14c-20.06,44.47-33.32,92.75-38.4,143.37l375.04-79.7c30.53-6.35,56.77-24.4,73.83-49.24l68.78-101.97v-.02c7.14-10.55,11.3-23.27,11.3-36.97v-149.98l132.25-28.11v270.4l424.53-90.28Z"></path>
+    </svg>
+  );
+}
 
 const CATALOG_QUERY = `#graphql
   query CatalogSearch(

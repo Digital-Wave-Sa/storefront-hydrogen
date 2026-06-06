@@ -13,7 +13,7 @@ export function OffersAndDiscounts() {
 
                 {/* Section Header */}
                 <div className="text-center mb-16 flex flex-col items-center">
-                    <h2 className="text-[48px] lg:text-[64px] font-black text-[#1a1a1a] mb-4 leading-none tracking-tighter">
+                    <h2 className="text-[48px] lg:text-[64px] font-bold text-[#1a1a1a] mb-4 leading-none tracking-tighter">
                         {isEn ? 'Offers & Discounts' : 'العروض والتخفيضات'}
                     </h2>
                     <p className="text-[#8B8B8B] text-[18px] lg:text-[22px] font-medium opacity-80">
@@ -40,7 +40,7 @@ export function OffersAndDiscounts() {
                         />
 
                         {/* Content Side */}
-                        <div className={`w-full md:w-[45%] flex flex-col relative z-10 px-8 lg:px-14 py-12 ${isEn ? 'items-center md:items-end text-center md:text-right' : 'items-center md:items-start text-center md:text-right'}`}>
+                        <div className={`w-full md:w-[45%] flex flex-col relative z-10 px-8 lg:px-14 py-12 items-center md:items-start text-center md:text-start`}>
 
                             <div 
                                 className="text-white text-[14px] font-bold mb-8 shadow-sm flex items-center justify-center"
@@ -54,13 +54,21 @@ export function OffersAndDiscounts() {
                                 {isEn ? 'Gift Voucher' : 'قسيمة هدية'}
                             </div>
 
-                            <div className="mb-8 space-y-1">
-                                <h3 className="text-[26px] lg:text-[38px] font-bold text-[#1a1a1a] leading-[1.2] tracking-tighter">
-                                    {isEn ? 'Gift Your Loved Ones' : 'أهدِ من تحب'}
-                                </h3>
-                                <h3 className="text-[26px] lg:text-[38px] font-bold text-[#1a1a1a] leading-[1.2] tracking-tighter">
-                                    {isEn ? 'Saadeddin Voucher' : 'قسيمة سعد الدين'}
-                                </h3>
+                            <div className="mb-8 space-y-1 w-full max-w-[400px]">
+                                {isEn ? (
+                                    <h3 className="text-[28px] lg:text-[36px] font-bold text-[#1a1a1a] leading-[1.2] tracking-tighter">
+                                        Gift Your Loved Ones Saadeddin Voucher
+                                    </h3>
+                                ) : (
+                                    <>
+                                        <h3 className="text-[26px] lg:text-[38px] font-bold text-[#1a1a1a] leading-[1.2] tracking-tighter">
+                                            أهدِ من تحب
+                                        </h3>
+                                        <h3 className="text-[26px] lg:text-[38px] font-bold text-[#1a1a1a] leading-[1.2] tracking-tighter">
+                                            قسيمة سعد الدين
+                                        </h3>
+                                    </>
+                                )}
                             </div>
 
                             <p className="text-[#8B8B8B] text-[15px] lg:text-[17px] font-medium max-w-[340px] leading-relaxed">
@@ -104,15 +112,14 @@ export function OffersAndDiscounts() {
                         </div>
                         <div className="relative z-10 w-full flex flex-col items-center">
                             <h3 
-                                className="text-[38px] font-bold text-white text-center mb-10 tracking-tight"
-                                style={{ fontFamily: 'Bahij Janna', lineHeight: '125%' }}
+                                className={`font-bold text-white text-center mb-10 tracking-tight ${isEn ? 'text-[28px] lg:text-[36px]' : 'text-[38px]'}`}
+                                style={{ fontFamily: !isEn ? "'Bahij Janna', sans-serif" : undefined, lineHeight: '125%' }}
                             >
                                 {isEn ? 'Offers on our Best Products' : 'عروض وتخفضيات علي افضل منتجاتنا'}
                             </h3>
                             <Link
                                 to={isEn ? "/en/collections/offers" : "/collections/offers"}
-                                className="bg-[#FEF8EB] text-[#255441] rounded-[100px] transition-all flex items-center justify-center font-dinar font-bold"
-                                style={{ width: '245px', height: '40px', padding: '12px 80px', gap: '8px' }}
+                                className="bg-[#FEF8EB] text-[#255441] rounded-[100px] transition-all flex items-center justify-center font-bold px-8 py-3 w-full max-w-[245px]"
                             >
                                 {isEn ? 'Browse Now' : 'تصفح الان'}
                             </Link>

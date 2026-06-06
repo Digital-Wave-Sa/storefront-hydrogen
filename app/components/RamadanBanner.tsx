@@ -14,7 +14,7 @@ export function RamadanBanner({ config }: { config?: any }) {
 
     const customTitleEn = getField('ramadan_title_en');
     const customTitleAr = getField('ramadan_title_ar');
-    const subtitleEn = getField('ramadan_subtitle_en') || 'Luxury sweets and chocolates — exclusive for the holy month of Ramadan';
+    const subtitleEn = getField('ramadan_subtitle_en') || 'Luxury sweets — exclusive for Ramadan';
     const subtitleAr = getField('ramadan_subtitle_ar') || 'حلويات وشوكولاتة فاخرة — حصرية لشهر رمضان المبارك';
     const badgeEn = getField('ramadan_badge_en') || 'Limited Offer';
     const badgeAr = getField('ramadan_badge_ar') || 'عرض محدود';
@@ -91,8 +91,8 @@ export function RamadanBanner({ config }: { config?: any }) {
                     <div className={`relative z-10 w-full md:w-[55%] flex flex-col justify-center py-12 px-8 lg:px-[126px] items-start text-start gap-[32px]`}>
                         
                         {/* Red Badge */}
-                        <div className="bg-[#E64950] rounded-[8px] flex items-center justify-center shadow-sm" style={{ width: '98px', height: '32px', padding: '4px 8px' }}>
-                            <span className="text-[#F9F9F9] font-dinar font-bold text-[12px] leading-[15px] whitespace-nowrap">
+                        <div className="bg-[#E64950] rounded-[8px] flex items-center justify-center shadow-sm min-w-[98px] px-3 h-[32px]">
+                            <span className={`text-[#F9F9F9] font-bold text-[12px] leading-[15px] whitespace-nowrap ${!isEn ? 'font-dinar' : ''}`}>
                                 ⏳ {isEn ? badgeEn : badgeAr}
                             </span>
                         </div>
@@ -101,13 +101,13 @@ export function RamadanBanner({ config }: { config?: any }) {
                         <div className={`flex flex-col gap-[16px] py-[8px] items-start`}>
                             <div className="flex items-center gap-[8px]">
                                 {!isEn && <div className="w-[48px] border-t border-[#255441]"></div>}
-                                <p className="text-[#255441] font-dinar font-medium text-[16px] leading-[20px]">
+                                <p className={`text-[#255441] font-medium text-[16px] leading-[20px] ${!isEn ? 'font-dinar' : ''}`}>
                                     {isEn ? subtitleEn : subtitleAr}
                                 </p>
                                 {isEn && <div className="w-[48px] border-t border-[#255441]"></div>}
                             </div>
                             
-                            <h2 className="text-[36px] lg:text-[50px] font-bold leading-[1.2] lg:leading-[80px] text-[#255441]" style={{ fontFamily: 'Bahij Janna' }}>
+                            <h2 className="text-[36px] lg:text-[50px] font-bold leading-[1.2] lg:leading-[80px] text-[#255441]" style={!isEn ? { fontFamily: "'Bahij Janna', sans-serif" } : undefined}>
                                 {isEn ? (
                                     customTitleEn ? customTitleEn : (
                                         <>
@@ -137,7 +137,7 @@ export function RamadanBanner({ config }: { config?: any }) {
                                 { value: timeLeft.seconds, labelEn: 'Seconds', labelAr: 'ثانية' }
                             ].map((item, index) => (
                                 <div key={index} className="w-[72px] h-[87px] bg-[#FEF8EB] border border-[#9FB7AE] rounded-[8px] flex flex-col justify-center items-center gap-[7px] p-[16px] shadow-sm box-border">
-                                    <span className="text-[#906B51] font-dinar font-bold text-[18px] leading-[22px]">
+                                    <span className={`text-[#906B51] font-bold text-[18px] leading-[22px] ${!isEn ? 'font-dinar' : ''}`}>
                                         {convertToArabicDigits(item.value)}
                                     </span>
                                     <span className="text-[#906B51] font-dinar text-[14px] leading-[17px]">

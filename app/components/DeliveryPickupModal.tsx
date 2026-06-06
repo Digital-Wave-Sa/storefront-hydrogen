@@ -49,7 +49,7 @@ interface DeliveryPickupModalProps {
     customerPromise?: Promise<any>;
     locale?: string;
     googleMapsKey?: string;
-    onSelectBranch?: (branch: any, type: Tab, addressName?: string) => void;
+    onSelectBranch?: (branch: any, type: Tab, addressName?: string, isOutOfRange?: boolean, fullAddress?: any) => void;
     selectedLocationId?: string;
     selectedAddressName?: string;
 }
@@ -246,7 +246,18 @@ export function parseLocationToBranch(node: any): Branch {
 
     const getMeta = (k: string, fb: any) => {
         const v = node.metafields?.find((m: any) => m?.key === k)?.value;
-        return v ? (typeof fb === 'number' ? parseFloat(v) : v) : fb;
+        if (!v) return fb;
+        if (typeof fb === 'number') {
+            if (typeof v === 'string' && v.trim().startsWith('{')) {
+                try {
+                    const parsed = JSON.parse(v);
+                    if (parsed.value !== undefined) return parseFloat(parsed.value);
+                } catch (e) {}
+            }
+            const num = parseFloat(v);
+            return isNaN(num) ? fb : num;
+        }
+        return v;
     };
 
     return {
@@ -263,7 +274,7 @@ export function parseLocationToBranch(node: any): Branch {
         pickupOpenUntil: pickup.openUntil,
         deliveryOpenUntil: delivery.openUntil,
         deliveryAvailable: true,
-        deliveryRadius: getMeta('delivery_radius', 50),
+        deliveryRadius: getMeta('delivery_radius', 99999),
         minOrder: getMeta('minimum_order_value', 50),
         deliveryFee: getMeta('delivery_fee', 25),
         baseDeliveryFee: getMeta('delivery_fee', 25),
@@ -421,6 +432,8 @@ export function DeliveryPickupModal({
 
                             if (branchSort === 'distance' && userCoords) {
                                 processedBranches.sort((a, b) => (a.distanceKm || 9999) - (b.distanceKm || 9999));
+                            } else if (branchSort === 'rating') {
+                                processedBranches.sort((a, b) => (b.rating || 0) - (a.rating || 0));
                             }
 
                             return (
@@ -716,6 +729,15 @@ function ModalContent({
                                                     <span className="font-bold text-[#234745]">{branch.distance}</span>
                                                 </>
                                             )}
+                                            {branch.rating > 0 && (
+                                                <>
+                                                    <span className="mx-1">•</span>
+                                                    <span className="flex items-center gap-1 font-bold text-[#F3C22F]">
+                                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>
+                                                        {branch.rating.toFixed(1)} {branch.ratingCount > 0 && <span className="text-gray-400 font-normal text-[10px]">({branch.ratingCount})</span>}
+                                                    </span>
+                                                </>
+                                            )}
                                         </div>
                                     </div>
                                     {/* Pickup-specific info badges */}
@@ -761,7 +783,7 @@ function ModalContent({
                                                 }
                                             }
                                         }
-                                        if (minDistance > (nearestBranch.deliveryRadius || 50)) {
+                                        if (minDistance > nearestBranch.deliveryRadius) {
                                             isOutOfRange = true;
                                         }
                                         
@@ -789,7 +811,7 @@ function ModalContent({
                                         addrName = fullName || currentAddress.address1 || addrName;
                                     }
                                     // Set Branch to the fulfilling store, but pass addrName as the delivery destination
-                                    onSelectBranch(nearestBranch, 'delivery', addrName, isOutOfRange);
+                                    onSelectBranch(nearestBranch, 'delivery', addrName, isOutOfRange, currentAddress);
                                 } else if (currentBranch) {
                                     onSelectBranch(currentBranch, activeTab);
                                 }

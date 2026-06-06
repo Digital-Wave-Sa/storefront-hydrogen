@@ -11,7 +11,7 @@ import {
   useRouteLoaderData,
 } from 'react-router';
 import { Button } from '~/components/layout/Button';
-
+import { useState } from 'react';
 export type ActionResponse = {
   error: string | null;
   customer: CustomerFragment | null;
@@ -43,8 +43,50 @@ export async function action({ request, context }: ActionFunctionArgs) {
   }
 
   try {
+    const intent = form.get('intent');
     const password = getPassword(form);
     const customer: CustomerUpdateInput = {};
+
+    if (intent === 'deleteAccount') {
+      const { customer: currentCustomer } = await storefront.query(
+        `#graphql
+        query getProfileCustomerId($customerAccessToken: String!) {
+          customer(customerAccessToken: $customerAccessToken) {
+            id
+          }
+        }
+      `,
+        {
+          variables: {
+            customerAccessToken: customerAccessToken.accessToken,
+          },
+        },
+      );
+      if (!currentCustomer) throw new Error('Customer not found');
+
+      const adminAccessToken = (context.env as any).SHOPIFY_ADMIN_API_ACCESS_TOKEN;
+      if (adminAccessToken) {
+        const numericalId = currentCustomer.id.split('/').pop();
+        const response = await fetch(`https://${context.env.PUBLIC_STORE_DOMAIN}/admin/api/2024-01/customers/${numericalId}.json`, {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Shopify-Access-Token': adminAccessToken,
+          },
+        });
+        if (!response.ok) {
+          throw new Error('Failed to delete account on the server.');
+        }
+      }
+      
+      session.unset('customerAccessToken');
+      return redirect('/', {
+        headers: {
+          'Set-Cookie': await session.commit(),
+        },
+      });
+    }
+
     const validInputKeys = [
       'firstName',
       'lastName',
@@ -174,194 +216,300 @@ export default function AccountProfile() {
   const navigation = useNavigation();
   const action = useActionData<ActionResponse>();
   const rootData = useRouteLoaderData('root') as any;
-  const locale = rootData?.consent?.language?.toLowerCase() || 'ar';
+  const locale = rootData?.locale || 'ar';
   const isEn = locale === 'en';
   
   const customer = action?.customer ?? loaderCustomer;
   const isLoading = navigation.state !== 'idle';
   const isCompany = customer.lastName === '(Company)';
 
-  return (
-    <div className="profile-section-container">
-      {/* Premium Profile Header */}
-      <div className="profile-header-meta">
-        <div className="profile-avatar-large">
-          {(customer.firstName?.[0] || customer.email?.[0] || 'U').toUpperCase()}
+  const [isEditing, setIsEditing] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+
+  const DeleteModal = () => (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-fade-in" dir={isEn ? 'ltr' : 'rtl'}>
+      <div className="bg-white rounded-[24px] p-8 max-w-[480px] w-[90%] flex flex-col items-center text-center shadow-xl">
+        <div className="w-[80px] h-[80px] bg-[#E64950] rounded-full flex items-center justify-center text-white text-[40px] font-bold mb-6">
+          !
         </div>
-        <div className="profile-meta-text">
-          <div className="flex justify-between items-start w-full">
-            <div>
-              <h2>{customer.firstName ? `${customer.firstName} ${isCompany ? '' : customer.lastName || ''}` : 'أهلاً بك!'}</h2>
-              <p>{isCompany ? 'حساب تجاري' : 'حساب فردي'} • {customer.email}</p>
-            </div>
-            {customer.tags?.some(tag => tag.toLowerCase() === 'admin' || tag.toLowerCase() === 'branch_manager') && (
-              <div className="flex gap-2">
-                <Link to="/account/dashboard">
-                  <Button variant="secondary" size="sm" className="border-[#d4a06a] text-[#d4a06a]">
-                    {isEn ? 'Dashboard' : 'اللوحة'}
-                  </Button>
-                </Link>
-                <Link to="/account/promotions">
-                  <Button variant="secondary" size="sm" className="border-[#d4a06a] text-[#d4a06a]">
-                    {isEn ? 'Promotions' : 'العروض'}
-                  </Button>
-                </Link>
+        <h3 className="text-[20px] font-bold text-[#171717] mb-2" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
+          {isEn ? 'Are you sure you want to permanently delete the account?' : 'هل انت متأكد من انك تريد حذف الحساب نهائياً؟'}
+        </h3>
+        <p className="text-[14px] text-[#7D7D7D] mb-8" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
+          {isEn ? 'Warning! All your data will be deleted if the account is deleted' : 'انتبه! سيتم حذف جميع البيانات الخاصة بك في حال حذف الحساب'}
+        </p>
+        <div className="flex w-full gap-4">
+          <Form method="PUT" className="w-1/2">
+            <input type="hidden" name="intent" value="deleteAccount" />
+            <button type="submit" disabled={isLoading} className="w-full bg-[#E64950] text-white rounded-[12px] h-[48px] text-[16px] font-bold hover:bg-[#c0392b] transition-colors disabled:opacity-70" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
+              {isLoading ? (isEn ? 'Deleting...' : 'جاري الحذف...') : (isEn ? 'Yes, delete' : 'نعم, حذف')}
+            </button>
+          </Form>
+          <button 
+            type="button" 
+            onClick={() => setShowDeleteModal(false)}
+            className="w-1/2 bg-[#255441] text-white rounded-[12px] h-[48px] text-[16px] font-bold hover:bg-[#1a3a2d] transition-colors" 
+            style={{ fontFamily: "'GE Dinar One', sans-serif" }}
+          >
+            {isEn ? 'No, go back' : 'لا, الرجوع'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  // If action returns a successful update, we could auto-close the form, but let's just let them stay or close manually.
+  
+  if (!isEditing) {
+    return (
+      <>
+      <div className="flex flex-col items-center w-full" dir={isEn ? 'ltr' : 'rtl'}>
+        <div className="bg-white border border-[#9FB7AE] rounded-[12px] p-8 flex flex-col gap-6 w-full max-w-[955px] box-border">
+          
+          {/* Header */}
+          <div className="flex justify-between items-center w-full">
+            <h3 className="text-[18px] font-bold text-[#171717] m-0 leading-none" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
+              {isEn ? 'Personal Information' : 'المعلومات الشخصية'}
+            </h3>
+            <button 
+              onClick={() => setIsEditing(true)}
+              className="text-[14px] font-medium text-[#255441] underline m-0 leading-none" 
+              style={{ fontFamily: "'GE Dinar One', sans-serif" }}
+            >
+              {isEn ? 'Edit' : 'تعديل'}
+            </button>
+          </div>
+
+          {/* Grid */}
+          <div className="flex flex-col gap-6 w-full">
+            {/* Row 1 */}
+            <div className="flex flex-col md:flex-row gap-6 w-full">
+              <div className="flex flex-col gap-2 flex-1">
+                <span className="text-[14px] font-medium text-[#171717] leading-none" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
+                  {isEn ? 'Full Name' : 'الإسم الكامل'}
+                </span>
+                <div className="bg-[#FEF8EB] border border-[#BBCFCD] rounded-[12px] h-[48px] px-4 flex items-center">
+                  <span className="text-[14px] font-medium text-[#9FB7AE]" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
+                    {customer.firstName} {customer.lastName !== '(Company)' ? customer.lastName : ''}
+                  </span>
+                </div>
               </div>
-            )}
+              <div className="flex flex-col gap-2 flex-1">
+                <span className="text-[14px] font-medium text-[#171717] leading-none" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
+                  {isEn ? 'Mobile Number' : 'رقم الجوال'}
+                </span>
+                <div className="bg-[#FEF8EB] border border-[#BBCFCD] rounded-[12px] h-[48px] px-4 flex items-center" dir="ltr">
+                  <span className="text-[14px] font-medium text-[#9FB7AE] w-full text-start md:text-end" style={{ fontFamily: "'GE Dinar One', sans-serif", textAlign: isEn ? 'left' : 'right' }}>
+                    {customer.phone || '-'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Row 2 */}
+            <div className="flex flex-col md:flex-row gap-6 w-full">
+              <div className="flex flex-col gap-2 flex-1">
+                <span className="text-[14px] font-medium text-[#171717] leading-none" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
+                  {isEn ? 'Email' : 'البريد الإلكتروني'}
+                </span>
+                <div className="bg-[#FEF8EB] border border-[#BBCFCD] rounded-[12px] h-[48px] px-4 flex items-center">
+                  <span className="text-[14px] font-medium text-[#9FB7AE]" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
+                    {customer.email}
+                  </span>
+                </div>
+              </div>
+              <div className="flex flex-col gap-2 flex-1">
+                <span className="text-[14px] font-medium text-[#171717] leading-none" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
+                  {isEn ? 'Date of Birth' : 'تاريخ الميلاد'}
+                </span>
+                <div className="bg-[#FEF8EB] border border-[#BBCFCD] rounded-[12px] h-[48px] px-4 flex items-center">
+                  <span className="text-[14px] font-medium text-[#9FB7AE]" style={{ fontFamily: "'GE Dinar One', sans-serif", letterSpacing: '2px' }}>
+                    {(customer as any).birthdate?.value ? (customer as any).birthdate.value.replace(/-/g, ' / ') : '-'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Row 3 */}
+            <div className="flex flex-col gap-2 w-full">
+              <span className="text-[14px] font-medium text-[#171717] leading-none" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
+                {isEn ? 'Preferred Language' : 'اللغة المفضلة'}
+              </span>
+              <div className="bg-[#FEF8EB] border border-[#BBCFCD] rounded-[12px] h-[48px] px-4 flex items-center w-full">
+                <span className="text-[14px] font-medium text-[#9FB7AE]" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
+                  {isEn ? 'English' : 'العربية'}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="border-t border-[#BBCFCD] w-full my-2"></div>
+
+          {/* Delete Button */}
+          <div className="flex justify-start items-center">
+            <button onClick={() => setShowDeleteModal(true)} type="button" className="flex items-center justify-center gap-2 border border-[#E64950] rounded-[12px] h-[48px] px-6 text-[#E64950] hover:bg-red-50 transition-colors">
+              <span className="text-[16px] font-bold leading-none" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
+                {isEn ? 'Delete Account Permanently' : 'حذف الحساب نهائياً'}
+              </span>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                 <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2M10 11v6M14 11v6"/>
+              </svg>
+            </button>
           </div>
         </div>
       </div>
+      {showDeleteModal && <DeleteModal />}
+    </>
+    );
+  }
 
-      <Form method="PUT" className="animate-fade-in" style={{ display: 'contents' }}>
-        {/* PERSONAL INFORMATION CARD */}
-        <div className="profile-card">
-          <div className="profile-card-header">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
-              <circle cx="12" cy="7" r="4" />
-            </svg>
-            <h3>المعلومات الشخصية</h3>
+  return (
+    <div className="flex flex-col items-center w-full" dir={isEn ? 'ltr' : 'rtl'}>
+      <Form method="PUT" className="animate-fade-in w-full max-w-[955px] box-border" style={{ display: 'contents' }}>
+        <div className="bg-white border border-[#9FB7AE] rounded-[12px] p-8 flex flex-col gap-6 w-full box-border">
+          
+          {/* Header */}
+          <div className="flex justify-between items-center w-full">
+            <h3 className="text-[18px] font-bold text-[#171717] m-0 leading-none" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
+              {isEn ? 'Personal Information' : 'المعلومات الشخصية'}
+            </h3>
+            <button 
+              type="button"
+              onClick={() => setIsEditing(false)}
+              className="text-[14px] font-medium text-[#255441] underline m-0 leading-none" 
+              style={{ fontFamily: "'GE Dinar One', sans-serif" }}
+            >
+              {isEn ? 'Cancel' : 'إلغاء'}
+            </button>
           </div>
 
-          <div className="profile-info-grid">
-            {isCompany ? (
-              <div className="col-span-full">
-                <label className="account-field-label" htmlFor="firstName">اسم الشركة</label>
+          {/* Grid */}
+          <div className="flex flex-col gap-6 w-full">
+            {/* Row 1 */}
+            <div className="flex flex-col md:flex-row gap-6 w-full">
+              <div className="flex flex-col gap-2 flex-1">
+                <label className="text-[14px] font-medium text-[#171717] leading-none" style={{ fontFamily: "'GE Dinar One', sans-serif" }} htmlFor="firstName">
+                  {isEn ? (isCompany ? 'Company Name' : 'Full Name') : (isCompany ? 'اسم الشركة' : 'الإسم الكامل')}
+                </label>
                 <input
                   id="firstName"
                   name="firstName"
                   type="text"
-                  placeholder="اسم الشركة"
-                  className="account-input"
+                  placeholder={isEn ? 'Full Name' : 'الإسم الكامل'}
+                  className="bg-white border border-[#BBCFCD] rounded-[12px] h-[48px] px-4 w-full text-[14px] font-medium text-[#171717] focus:outline-none focus:border-[#9FB7AE]"
+                  style={{ fontFamily: "'GE Dinar One', sans-serif" }}
                   defaultValue={customer.firstName ?? ''}
                   required
                 />
               </div>
-            ) : (
-              <>
-                <div>
-                  <label className="account-field-label" htmlFor="firstName">الاسم الأول</label>
-                  <input
-                    id="firstName"
-                    name="firstName"
-                    type="text"
-                    placeholder="الاسم الأول"
-                    className="account-input"
-                    defaultValue={customer.firstName ?? ''}
-                    minLength={2}
-                  />
-                </div>
-                <div>
-                  <label className="account-field-label" htmlFor="lastName">الاسم الأخير</label>
-                  <input
-                    id="lastName"
-                    name="lastName"
-                    type="text"
-                    placeholder="الاسم الأخير"
-                    className="account-input"
-                    defaultValue={customer.lastName ?? ''}
-                    minLength={2}
-                  />
-                </div>
-              </>
-            )}
-
-            <div>
-              <label className="account-field-label" htmlFor="email">البريد الإلكتروني</label>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                placeholder="البريد الإلكتروني"
-                className="account-input"
-                defaultValue={customer.email ?? ''}
-                required
-              />
+              <div className="flex flex-col gap-2 flex-1">
+                <label className="text-[14px] font-medium text-[#171717] leading-none" style={{ fontFamily: "'GE Dinar One', sans-serif" }} htmlFor="phone">
+                  {isEn ? 'Mobile Number' : 'رقم الجوال'}
+                </label>
+                <input
+                  id="phone"
+                  name="phone"
+                  type="tel"
+                  placeholder={isEn ? 'Mobile Number' : 'رقم الجوال'}
+                  className="bg-white border border-[#BBCFCD] rounded-[12px] h-[48px] px-4 w-full text-[14px] font-medium text-[#171717] focus:outline-none focus:border-[#9FB7AE]"
+                  style={{ fontFamily: "'GE Dinar One', sans-serif", direction: 'ltr', textAlign: isEn ? 'left' : 'right' }}
+                  defaultValue={customer.phone ?? ''}
+                />
+              </div>
             </div>
 
-            <div>
-              <label className="account-field-label" htmlFor="phone">رقم الجوال</label>
-              <input
-                id="phone"
-                name="phone"
-                type="tel"
-                placeholder="رقم الجوال"
-                className="account-input"
-                defaultValue={customer.phone ?? ''}
-                style={{ direction: 'ltr', textAlign: 'right' }}
-              />
+            {/* Row 2 */}
+            <div className="flex flex-col md:flex-row gap-6 w-full">
+              <div className="flex flex-col gap-2 flex-1">
+                <label className="text-[14px] font-medium text-[#171717] leading-none" style={{ fontFamily: "'GE Dinar One', sans-serif" }} htmlFor="email">
+                  {isEn ? 'Email' : 'البريد الإلكتروني'}
+                </label>
+                <input
+                  id="email"
+                  name="email"
+                  type="email"
+                  placeholder={isEn ? 'Email' : 'البريد الإلكتروني'}
+                  className="bg-white border border-[#BBCFCD] rounded-[12px] h-[48px] px-4 w-full text-[14px] font-medium text-[#171717] focus:outline-none focus:border-[#9FB7AE]"
+                  style={{ fontFamily: "'GE Dinar One', sans-serif" }}
+                  defaultValue={customer.email ?? ''}
+                  required
+                />
+              </div>
+              <div className="flex flex-col gap-2 flex-1">
+                <label className="text-[14px] font-medium text-[#171717] leading-none" style={{ fontFamily: "'GE Dinar One', sans-serif" }} htmlFor="birthdate">
+                  {isEn ? 'Date of Birth' : 'تاريخ الميلاد'}
+                </label>
+                <input
+                  id="birthdate"
+                  name="birthdate"
+                  type="date"
+                  className="bg-white border border-[#BBCFCD] rounded-[12px] h-[48px] px-4 w-full text-[14px] font-medium text-[#171717] focus:outline-none focus:border-[#9FB7AE]"
+                  style={{ fontFamily: "'GE Dinar One', sans-serif" }}
+                  defaultValue={(customer as any).birthdate?.value ?? ''}
+                />
+              </div>
             </div>
 
-            <div>
-              <label className="account-field-label" htmlFor="birthdate">تاريخ الميلاد (اختياري)</label>
-              <input
-                id="birthdate"
-                name="birthdate"
-                type="date"
-                className="account-input"
-                defaultValue={(customer as any).birthdate?.value ?? ''}
-              />
-              <p style={{ fontSize: '11px', color: '#888', marginTop: '6px' }}>
-                تاريخ ميلادك يساعدنا في تقديم مكافآت ونقاط إضافية لك!
+            {/* Row 3 */}
+            <div className="flex flex-col gap-2 w-full">
+              <label className="text-[14px] font-medium text-[#171717] leading-none" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
+                {isEn ? 'Preferred Language' : 'اللغة المفضلة'}
+              </label>
+              <div className="relative">
+                <select 
+                  className="appearance-none bg-white border border-[#BBCFCD] rounded-[12px] h-[48px] px-4 w-full text-[14px] font-medium text-[#171717] focus:outline-none focus:border-[#9FB7AE]"
+                  style={{ fontFamily: "'GE Dinar One', sans-serif" }}
+                  defaultValue={isEn ? 'en' : 'ar'}
+                  disabled
+                >
+                  <option value="en">English</option>
+                  <option value="ar">العربية</option>
+                </select>
+                <div className={`absolute top-0 bottom-0 flex items-center pointer-events-none ${isEn ? 'right-4' : 'left-4'}`}>
+                  <svg width="12" height="8" viewBox="0 0 12 8" fill="none" stroke="#234745" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M1 1.5L6 6.5L11 1.5" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+            
+            {/* Save Button */}
+            <div className="flex justify-end w-full mt-2">
+              <button 
+                type="submit" 
+                disabled={isLoading}
+                className="bg-[#234745] text-white rounded-[12px] h-[48px] px-8 text-[16px] font-bold hover:bg-[#1a3533] transition-colors disabled:opacity-70"
+                style={{ fontFamily: "'GE Dinar One', sans-serif", minWidth: '180px' }}
+              >
+                {isLoading ? (isEn ? 'Saving...' : 'جاري حفظ التغييرات...') : (isEn ? 'Save Changes' : 'حفظ التغييرات')}
+              </button>
+            </div>
+          </div>
+
+          <div className="border-t border-[#BBCFCD] w-full my-2"></div>
+
+          {/* Delete Button */}
+          <div className="flex justify-start items-center">
+            <button onClick={() => setShowDeleteModal(true)} type="button" className="flex items-center justify-center gap-2 border border-[#E64950] rounded-[12px] h-[48px] px-6 text-[#E64950] hover:bg-red-50 transition-colors">
+              <span className="text-[16px] font-bold leading-none" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
+                {isEn ? 'Delete Account Permanently' : 'حذف الحساب نهائياً'}
+              </span>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                 <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2M10 11v6M14 11v6"/>
+              </svg>
+            </button>
+          </div>
+          
+          {action?.error && (
+            <div className="mt-4 p-4 rounded-[12px] bg-[#ffebeb] border border-[#ffcfcf] text-[#e74c3c]">
+              <p className="m-0 text-[14px] font-semibold">
+                ⚠️ {action.error}
               </p>
             </div>
-          </div>
-        </div>
-
-        {/* SECURITY SETTINGS CARD */}
-        <div className="profile-card">
-          <div className="profile-card-header">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-              <circle cx="12" cy="11" r="3" />
-            </svg>
-            <h3>إعدادات الأمان</h3>
-          </div>
-
-          <p className="description" style={{ fontSize: '14px', color: '#888', marginBottom: '24px' }}>
-            يمكنك ترك الخانات فارغة إذا كنت لا ترغب في تغيير كلمة المرور الحالية.
-          </p>
-
-          <div className="profile-info-grid">
-            <div>
-              <label className="account-field-label" htmlFor="currentPassword">كلمة المرور الحالية</label>
-              <input
-                id="currentPassword"
-                name="currentPassword"
-                type="password"
-                placeholder="كلمة المرور الحالية"
-                className="account-input"
-                minLength={8}
-              />
-            </div>
-            <div>
-              <label className="account-field-label" htmlFor="newPassword">كلمة المرور الجديدة</label>
-              <input
-                id="newPassword"
-                name="newPassword"
-                type="password"
-                placeholder="كلمة المرور الجديدة"
-                className="account-input"
-                minLength={8}
-              />
-            </div>
-          </div>
-        </div>
-
-        {action?.error && (
-          <div className="error-card" style={{ padding: '16px', borderRadius: '12px', background: '#ffebeb', border: '1px solid #ffcfcf', color: '#e74c3c' }}>
-            <p style={{ margin: 0, fontSize: '14px', fontWeight: '600' }}>
-              ⚠️ {action.error}
-            </p>
-          </div>
-        )}
-
-        <div style={{ display: 'flex', justifyContent: 'flex-start', marginTop: '16px' }}>
-          <Button type="submit" variant="primary" size="lg" disabled={isLoading} style={{ minWidth: '220px' }}>
-            {isLoading ? 'جاري حفظ التغييرات...' : 'حفظ الملف الشخصي'}
-          </Button>
+          )}
         </div>
       </Form>
+      {showDeleteModal && <DeleteModal />}
     </div>
   );
 }

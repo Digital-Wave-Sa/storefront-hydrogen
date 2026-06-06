@@ -10,6 +10,16 @@ import {AddToCartButton} from '~/components/AddToCartButton';
 import {StockNotificationModal} from '~/components/StockNotificationModal';
 import {useWishlist} from '~/context/WishlistContext';
 
+function formatNumbers(text: string) {
+  if (!text) return text;
+  return text.split(/(\d+)/).map((part, i) => {
+    if (/^\d+$/.test(part)) {
+      return <span key={i} className="font-en">{part}</span>;
+    }
+    return part;
+  });
+}
+
 export function ProductItem({
   product,
   loading,
@@ -169,7 +179,7 @@ export function ProductItem({
               </span>
           </div>
           <Link to={isVisibilityBlocked ? '#' : variantUrl} prefetch="intent" onClick={isVisibilityBlocked ? (e: any) => e.preventDefault() : undefined}>
-            <h4 className={`text-xl md:text-2xl font-black text-gray-800 mb-2 truncate transition-colors ${isVisibilityBlocked ? '' : 'group-hover:text-[#234745]'}`}>{product.title}</h4>
+            <h4 className={`text-xl md:text-2xl font-black text-gray-800 mb-2 truncate transition-colors ${isVisibilityBlocked ? '' : 'group-hover:text-[#234745]'}`}>{formatNumbers(product.title)}</h4>
           </Link>
           {!isVisibilityBlocked && product.priceRange && (
             <Price 
@@ -298,7 +308,7 @@ export function ProductItem({
       <div className={`p-[16px] flex flex-col flex-grow ${isEn ? 'text-left' : 'text-right'}`}>
           <Link prefetch="intent" to={isVisibilityBlocked ? '#' : variantUrl} className={isVisibilityBlocked ? 'pointer-events-none' : ''}>
               <h4 className={`font-bold text-[#234745] line-clamp-1 transition-colors duration-300 ${isVisibilityBlocked ? '' : 'group-hover:text-[#1a3a2d]'}`} style={{ fontFamily: "'GE Dinar One', sans-serif", fontSize: '16px', lineHeight: '20px' }}>
-                  {product.title}
+                  {formatNumbers(product.title)}
               </h4>
           </Link>
 

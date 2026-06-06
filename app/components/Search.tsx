@@ -100,13 +100,13 @@ export function SearchForm({ searchTerm }: { searchTerm: string }) {
         placeholder={isEn ? "Search..." : "شوكولاته..."}
         ref={inputRef}
         type="search"
-        className={`w-full bg-white shadow-sm rounded-full py-4 ${isEn ? 'pl-6 pr-14' : 'pr-6 pl-14'} text-lg font-bold placeholder:text-gray-400 focus:outline-none transition-all duration-300`}
+        className={`w-full bg-white shadow-sm rounded-[25px] py-[12px] pl-6 pr-14 text-[16px] font-bold placeholder:text-gray-400 focus:outline-none transition-all duration-300 ${isEn ? 'font-en' : "font-['GE_Dinar_One']"}`}
       />
       
       {/* Clear Button (native search clear button might show, but let's hide the submit button) */}
       <button
         type="submit"
-        className={`absolute ${isEn ? 'right-4' : 'left-4'} top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#234745] transition-colors p-2`}
+        className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#234745] transition-colors p-2"
       >
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
       </button>
@@ -127,29 +127,12 @@ export function SearchResults({
         keys.map((type) => {
           const resourceResults = results[type];
 
-          if (resourceResults.nodes[0]?.__typename === 'Page') {
-            const pageResults = resourceResults as SearchQuery['pages'];
-            return resourceResults.nodes.length ? (
-              <SearchResultPageGrid key="pages" pages={pageResults} />
-            ) : null;
-          }
-
           if (resourceResults.nodes[0]?.__typename === 'Product') {
             const productResults = resourceResults as SearchQuery['products'];
             return resourceResults.nodes.length ? (
               <SearchResultsProductsGrid
                 key="products"
                 products={productResults}
-              />
-            ) : null;
-          }
-
-          if (resourceResults.nodes[0]?.__typename === 'Article') {
-            const articleResults = resourceResults as SearchQuery['articles'];
-            return resourceResults.nodes.length ? (
-              <SearchResultArticleGrid
-                key="articles"
-                articles={articleResults}
               />
             ) : null;
           }
@@ -168,12 +151,6 @@ function SearchResultsProductsGrid({ products }: Pick<SearchQuery, 'products'>) 
 
   return (
     <div className="mb-16" dir={isEn ? 'ltr' : 'rtl'}>
-      <div className="flex items-center gap-4 mb-8">
-        <h3 className="text-2xl font-black text-[#234745]">
-          {isEn ? 'Products' : 'المنتجات'}
-        </h3>
-        <div className="h-px flex-1 bg-gray-100"></div>
-      </div>
 
       <Pagination connection={products}>
         {({ nodes, isLoading, NextLink, PreviousLink }) => {
@@ -252,7 +229,7 @@ export function NoSearchResults({ searchTerm }: { searchTerm: string }) {
     : ['كيك', 'شوكولاتة', 'بقلاوة', 'هدايا', 'قهوة'];
 
   return (
-    <div className="text-center py-24 bg-white rounded-[3rem] border-2 border-dashed border-gray-100 shadow-inner relative overflow-hidden" dir={isEn ? 'ltr' : 'rtl'}>
+    <div className={`text-center py-24 bg-white rounded-[3rem] border-2 border-dashed border-gray-100 shadow-inner relative overflow-hidden ${isEn ? 'font-en' : "font-['GE_Dinar_One']"}`} dir={isEn ? 'ltr' : 'rtl'}>
       {/* Decorative background circle */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-64 bg-[#234745]/5 rounded-full blur-3xl pointer-events-none"></div>
 

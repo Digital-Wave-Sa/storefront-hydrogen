@@ -211,7 +211,7 @@ export function CartMain({layout, cart: originalCart}: CartMainProps) {
             )}
 
             {/* Dynamic Delivery Alert (Only shows if relevant) */}
-            {cartHasItems && (cart?.attributes?.find(a => a.key === 'error')?.value) && (
+            {(cart?.attributes?.find(a => a.key === 'error')?.value) && (
               <div className="bg-white rounded-2xl p-5 border border-red-100 shadow-sm flex items-start gap-4 relative animate-fade-in">
                  <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center shrink-0">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
@@ -318,6 +318,21 @@ export function CartMain({layout, cart: originalCart}: CartMainProps) {
              </div>
           </div>
         )}
+
+        {/* Dynamic Delivery Alert */}
+        {(cart?.attributes?.find(a => a.key === 'error')?.value) && (
+          <div className="mb-6 bg-white rounded-2xl p-4 border border-red-100 shadow-sm flex items-start gap-3 relative animate-fade-in">
+             <div className="w-8 h-8 rounded-full bg-red-50 flex items-center justify-center shrink-0">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+             </div>
+             <div className="flex-1 pt-1">
+                <p className="text-[13px] leading-snug text-red-600 font-medium">
+                  {cart.attributes.find(a => a.key === 'error')?.value}
+                </p>
+             </div>
+          </div>
+        )}
+
         <CartEmpty hidden={linesCount} layout={layout} isEn={isEn} />
         
         {cartHasItems && (

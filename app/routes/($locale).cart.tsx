@@ -19,8 +19,13 @@ export async function action({request, context}: Route.ActionArgs) {
   const {cart} = context;
 
   const formData = await request.formData();
+  console.log('[CART POST] Received action to /cart. FormData keys:', Array.from(formData.keys()));
+  
+  const rawInput = formData.get('cartFormInput');
+  console.log('[CART POST] raw cartFormInput:', rawInput);
 
   const {action, inputs} = CartForm.getFormInput(formData);
+  console.log('[CART POST] Parsed action:', action);
 
   if (!action) {
     throw new Error('No action provided');
@@ -305,7 +310,25 @@ export async function action({request, context}: Route.ActionArgs) {
             result = await cart.updateAttributes(finalAttributes);
         }
         if (buyerIdentity) {
-            result = await cart.updateBuyerIdentity(buyerIdentity);
+            const customerAccessToken = await context.session.get('customerAccessToken');
+            if (customerAccessToken?.accessToken) {
+                buyerIdentity.customerAccessToken = customerAccessToken.accessToken;
+            }
+            
+            let result = await cart.updateBuyerIdentity(buyerIdentity);
+
+            // Check if the update failed due to Customer Invalid error
+            const userErrors = result.cartBuyerIdentityUpdate?.userErrors || [];
+            const isCustomerError = userErrors.some((err: any) => err.message === "Customer غير صالح" || err.message === "Customer is invalid" || err.field?.includes('customerAccessToken'));
+            
+            if (isCustomerError && buyerIdentity.customerAccessToken) {
+                delete buyerIdentity.customerAccessToken;
+                result = await cart.updateBuyerIdentity(buyerIdentity);
+            }
+            
+            if (result?.errors?.length || result?.userErrors?.length) {
+                console.error('[CART BUYER IDENTITY ERROR]', result.errors || result.userErrors);
+            }
         } else if (!result) {
             result = await cart.get();
         }

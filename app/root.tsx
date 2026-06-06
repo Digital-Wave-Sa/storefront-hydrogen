@@ -211,6 +211,7 @@ export async function loader(args: Route.LoaderArgs) {
       selectedLocationName: selectedLocName,
       selectedAddressName: selectedAddrName,
       fulfillmentType: fType,
+      locale: new URL(args.request.url).pathname.split('/')[1]?.toLowerCase() === 'en' ? 'en' : 'ar',
     };
   }
 
@@ -353,9 +354,7 @@ export function Layout({children}: {children?: React.ReactNode}) {
   const data = useRouteLoaderData<RootLoader>('root');
   const location = useLocation();
   const urlLocale = location.pathname.split('/')[1]?.toLowerCase();
-  const locale = (urlLocale === 'en' || urlLocale === 'ar') 
-    ? urlLocale 
-    : (data?.consent?.language?.toLowerCase() || 'ar');
+  const locale = urlLocale === 'en' ? 'en' : 'ar';
   const isEn = locale === 'en';
   const [isReady, setIsReady] = useState(false);
 

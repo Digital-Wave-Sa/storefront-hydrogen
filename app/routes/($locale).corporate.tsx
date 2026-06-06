@@ -461,58 +461,103 @@ export default function CorporatePage() {
 
             {/* 5. Packages */}
             <section className="w-full bg-white py-20 px-4">
-                <div className="max-w-[1200px] mx-auto text-center">
-                    <h4 className="text-[#8B8B8B] font-bold text-[14px] mb-2">{isEn ? 'Packages' : 'الباقات'}</h4>
-                    <h2 className="text-[#1A1A1A] text-[28px] md:text-[36px] font-bold mb-12">{isEn ? 'Corporate Gift Packages' : 'باقات الهدايا المؤسسية'}</h2>
+                <div className="max-w-[1280px] mx-auto flex flex-col gap-8">
+                    {/* Header */}
+                    <div className="flex flex-col items-center text-center gap-3">
+                        <h4 className="text-[#906B51] font-medium text-[18px] leading-[22px]">{isEn ? 'Collections' : 'التشكيلات'}</h4>
+                        <h2 className="text-[#234745] text-[36px] md:text-[50px] font-bold leading-[80px]" style={{ fontFamily: isEn ? 'inherit' : "'Bahij Janna'" }}>{isEn ? 'Corporate Gift Packages' : 'باقات الهدايا المؤسسية'}</h2>
+                        <p className="text-[#9FB7AE] text-[16px] md:text-[18px] font-medium leading-[22px] max-w-[600px]">{isEn ? 'A curated selection of ready-made collections, fully customizable with your company\'s identity.' : 'مجموعة منتقاة من التشكيلات الجاهزة، يمكن تخصيصها بالكامل بهوية شركتك.'}</p>
+                    </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        {/* Custom Package */}
-                        <div className="bg-[#D3DFDE] rounded-[24px] p-8 flex flex-col items-center text-center hover:shadow-lg transition-shadow">
-                            <div className="bg-white text-[#234745] px-4 py-1.5 rounded-full text-[12px] font-bold mb-8 self-end">{isEn ? 'Custom' : 'مخصصة'}</div>
-                            <div className="mb-8">
-                                <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="#234745" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-4">
+                        
+                        {/* Classic Package (Right-most in RTL) */}
+                        <div className="w-full max-w-[411px] mx-auto bg-[#FEF8EB] rounded-[20px] overflow-hidden flex flex-col hover:shadow-lg transition-shadow">
+                            <div className="relative w-full h-[216px] bg-[#BBCFCD] flex items-center justify-center">
+                                <div className="absolute top-4 right-4">
+                                    <div className="bg-[#FEF8EB] px-4 py-1.5 rounded-[25px]">
+                                        <span className="text-[#234745] font-bold text-[14px]">{isEn ? 'Classic' : 'كلاسيك'}</span>
+                                    </div>
+                                </div>
+                                <svg width="80" height="80" viewBox="0 0 24 24" fill="#234745" stroke="#234745" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"><polyline points="21 8 21 21 3 21 3 8"></polyline><rect x="1" y="3" width="22" height="5"></rect><line x1="10" y1="12" x2="14" y2="12"></line></svg>
                             </div>
-                            <h3 className="text-[#234745] font-bold text-[22px] mb-3">{isEn ? 'Custom Corporate Package' : 'باقة مؤسسية مخصصة'}</h3>
-                            <p className="text-[#234745]/70 text-[14px] mb-6 font-medium leading-relaxed">
-                                {isEn ? 'Fully tailored design exactly as you want, with various box and printing options.' : 'تصميم مخصص لك كما تريد بالضبط، مع خيارات متنوعة للطباعة والعلب حسب طلبك.'}
-                            </p>
-                            <button className="text-[#234745] font-bold text-[14px] mt-auto flex items-center gap-2 group">
-                                <span>{isEn ? 'Request Details' : 'عرض التفاصيل'}</span>
-                                <span className="group-hover:translate-x-1 rtl:group-hover:-translate-x-1 transition-transform">→</span>
-                            </button>
+                            
+                            <div className="flex flex-col p-6 gap-4 flex-1">
+                                <div className="flex flex-col gap-3">
+                                    <h3 className="text-[#234745] font-bold text-[16px] text-right m-0">{isEn ? 'Classic Collection' : 'التشكيلة الكلاسيكية'}</h3>
+                                    <p className="text-[#9FB7AE] font-medium text-[16px] leading-[20px] text-right m-0 h-[40px] md:h-[60px] lg:h-[40px]">{isEn ? 'An elegant gift for various corporate occasions with premium packaging and your company logo.' : 'هدية أنيقة لمختلف المناسبات الرسمية مع تغليف فاخر وشعار شركتك.'}</p>
+                                </div>
+                                
+                                <div className="w-full border-t border-[#9FB7AE] mt-2 mb-1"></div>
+
+                                <div className="flex justify-between items-center mt-auto flex-row-reverse">
+                                    <span className="text-[#7D7D7D] font-medium text-[16px]">{isEn ? 'Starts from 20 Boxes' : 'تبدأ من ٢٠ علبة'}</span>
+                                    <div className="flex items-center gap-2 flex-row-reverse group cursor-pointer">
+                                        <span className="text-[#906B51] font-bold text-[16px]">{isEn ? 'View Details' : 'عرض التفاصيل'}</span>
+                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#906B51" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="group-hover:-translate-x-1 transition-transform"><path d="M19 12H5M5 12L12 19M5 12L12 5"></path></svg>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
-                        {/* VIP Package */}
-                        <div className="bg-[#234745] rounded-[24px] p-8 flex flex-col items-center text-center hover:shadow-xl transition-shadow transform md:-translate-y-4 shadow-2xl border-4 border-white">
-                            <div className="bg-[#EBCB8D] text-[#234745] px-4 py-1.5 rounded-full text-[12px] font-bold mb-8 self-end">{isEn ? 'VIP' : 'المميزة'}</div>
-                            <div className="mb-8">
-                                <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="#EBCB8D" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                        {/* Premium Package (Center) */}
+                        <div className="w-full max-w-[411px] mx-auto bg-[#FEF8EB] rounded-[20px] overflow-hidden flex flex-col hover:shadow-lg transition-shadow">
+                            <div className="relative w-full h-[216px] bg-[#234745] flex items-center justify-center">
+                                <div className="absolute top-4 right-4">
+                                    <div className="bg-[#FEF8EB] px-4 py-1.5 rounded-[25px]">
+                                        <span className="text-[#234745] font-bold text-[14px]">{isEn ? 'Premium' : 'المميزة'}</span>
+                                    </div>
+                                </div>
+                                <svg width="80" height="80" viewBox="0 0 24 24" fill="#C5A96A" stroke="#C5A96A" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
                             </div>
-                            <h3 className="text-[#EBCB8D] font-bold text-[22px] mb-3">{isEn ? 'VIP Royal Package' : 'باقة VIP الملكية'}</h3>
-                            <p className="text-[#BBCFCD] text-[14px] mb-6 font-medium leading-relaxed">
-                                {isEn ? 'A luxurious combination of premium sweets and fine chocolates wrapped meticulously.' : 'مزيج رائع وحصري من أفخم أنواع الحلويات والشوكولاتة الفاخرة تغلف بعناية تامة.'}
-                            </p>
-                            <button className="text-[#EBCB8D] font-bold text-[14px] mt-auto flex items-center gap-2 group">
-                                <span>{isEn ? 'Request Details' : 'عرض التفاصيل'}</span>
-                                <span className="group-hover:translate-x-1 rtl:group-hover:-translate-x-1 transition-transform">→</span>
-                            </button>
+                            
+                            <div className="flex flex-col p-6 gap-4 flex-1">
+                                <div className="flex flex-col gap-3">
+                                    <h3 className="text-[#234745] font-bold text-[16px] text-right m-0">{isEn ? 'Premium Collection' : 'التشكيلة المميزة'}</h3>
+                                    <p className="text-[#9FB7AE] font-medium text-[16px] leading-[20px] text-right m-0 h-[40px] md:h-[60px] lg:h-[40px]">{isEn ? 'A sophisticated choice for VIP clients and partners, with curated contents and striking packaging.' : 'اختيار راقٍ للعملاء وكبار الشركاء، بمحتوى مدروس وتغليف لافت.'}</p>
+                                </div>
+                                
+                                <div className="w-full border-t border-[#9FB7AE] mt-2 mb-1"></div>
+
+                                <div className="flex justify-between items-center mt-auto flex-row-reverse">
+                                    <span className="text-[#7D7D7D] font-medium text-[16px]">{isEn ? 'Starts from 20 Boxes' : 'تبدأ من ٢٠ علبة'}</span>
+                                    <div className="flex items-center gap-2 flex-row-reverse group cursor-pointer">
+                                        <span className="text-[#906B51] font-bold text-[16px]">{isEn ? 'View Details' : 'عرض التفاصيل'}</span>
+                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#906B51" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="group-hover:-translate-x-1 transition-transform"><path d="M19 12H5M5 12L12 19M5 12L12 5"></path></svg>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
-                        {/* Classic Package */}
-                        <div className="bg-[#D3DFDE] rounded-[24px] p-8 flex flex-col items-center text-center hover:shadow-lg transition-shadow">
-                            <div className="bg-white text-[#234745] px-4 py-1.5 rounded-full text-[12px] font-bold mb-8 self-end">{isEn ? 'Classic' : 'كلاسيك'}</div>
-                            <div className="mb-8">
-                                <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="#234745" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="21 8 21 21 3 21 3 8"></polyline><rect x="1" y="3" width="22" height="5"></rect><line x1="10" y1="12" x2="14" y2="12"></line></svg>
+                        {/* Custom Package (Left-most in RTL) */}
+                        <div className="w-full max-w-[411px] mx-auto bg-[#FEF8EB] rounded-[20px] overflow-hidden flex flex-col hover:shadow-lg transition-shadow">
+                            <div className="relative w-full h-[216px] bg-[#BBCFCD] flex items-center justify-center">
+                                <div className="absolute top-4 right-4">
+                                    <div className="bg-[#FEF8EB] px-4 py-1.5 rounded-[25px]">
+                                        <span className="text-[#234745] font-bold text-[14px]">{isEn ? 'Custom' : 'مخصصة'}</span>
+                                    </div>
+                                </div>
+                                <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="#234745" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg>
                             </div>
-                            <h3 className="text-[#234745] font-bold text-[22px] mb-3">{isEn ? 'Classic Package' : 'الباقة الكلاسيكية'}</h3>
-                            <p className="text-[#234745]/70 text-[14px] mb-6 font-medium leading-relaxed">
-                                {isEn ? 'An elegant gift that perfectly matches the spirit of the occasion with distinction.' : 'هدية أنيقة ومناسبة لاحتياجاتك الرسمية تتطابق مع روح وشعار مؤسستك.'}
-                            </p>
-                            <button className="text-[#234745] font-bold text-[14px] mt-auto flex items-center gap-2 group">
-                                <span>{isEn ? 'Request Details' : 'عرض التفاصيل'}</span>
-                                <span className="group-hover:translate-x-1 rtl:group-hover:-translate-x-1 transition-transform">→</span>
-                            </button>
+                            
+                            <div className="flex flex-col p-6 gap-4 flex-1">
+                                <div className="flex flex-col gap-3">
+                                    <h3 className="text-[#234745] font-bold text-[16px] text-right m-0">{isEn ? 'Custom Collection' : 'التشكيلة المخصصة'}</h3>
+                                    <p className="text-[#9FB7AE] font-medium text-[16px] leading-[20px] text-right m-0 h-[40px] md:h-[60px] lg:h-[40px]">{isEn ? 'Design your gift to reflect your identity — contents, packaging, and logo as requested.' : 'صمّم هديتك بما يعكس هويتك — محتوى وتغليف وشعار حسب طلبك.'}</p>
+                                </div>
+                                
+                                <div className="w-full border-t border-[#9FB7AE] mt-2 mb-1"></div>
+
+                                <div className="flex justify-between items-center mt-auto flex-row-reverse">
+                                    <span className="text-[#7D7D7D] font-medium text-[16px]">{isEn ? 'Custom +200 Boxes' : 'حسب الطلب +٢٠٠ علبة'}</span>
+                                    <div className="flex items-center gap-2 flex-row-reverse group cursor-pointer">
+                                        <span className="text-[#906B51] font-bold text-[16px]">{isEn ? 'View Details' : 'عرض التفاصيل'}</span>
+                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#906B51" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="group-hover:-translate-x-1 transition-transform"><path d="M19 12H5M5 12L12 19M5 12L12 5"></path></svg>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
+
                     </div>
                 </div>
             </section>

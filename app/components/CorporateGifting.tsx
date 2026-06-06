@@ -48,8 +48,8 @@ export function CorporateGifting() {
                         </p>
 
                         <Link
-                            to={isEn ? "/en/pages/corporate-gifting" : "/pages/corporate-gifting"}
-                            className="bg-[#BBCFCD] hover:bg-white transition-colors duration-300 text-[#234745] px-[20px] py-[12px] rounded-[24px] font-bold text-[18px] leading-[22px]"
+                            to={isEn ? "/en/corporate" : "/corporate"}
+                            className="bg-[#234745] hover:bg-[#1a3533] text-[#FEF8EB] px-8 py-3 rounded-[25px] font-bold transition-all shadow-sm flex items-center justify-center min-w-[160px]"
                             style={{ fontFamily: "'GE Dinar One', sans-serif" }}
                         >
                             {activeContent.button}

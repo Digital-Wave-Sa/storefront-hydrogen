@@ -95,22 +95,22 @@ export default function CorporatePage() {
         <div className={`min-h-screen bg-[#FEF8EB] ${isEn ? 'font-en' : "font-['GE_Dinar_One']"}`} dir={isEn ? 'ltr' : 'rtl'}>
             
             {/* 1. Hero Section */}
-            <section className="relative w-full bg-[#234745] flex flex-col justify-center items-center text-center px-4 pt-20 pb-16">
+            <section className="relative w-full bg-[#234745] flex flex-col justify-center items-center text-center px-4 pt-24 pb-32">
                 {/* Background Pattern */}
                 <div 
-                    className="absolute inset-0 pointer-events-none opacity-5" 
+                    className="absolute inset-0 pointer-events-none opacity-10" 
                     style={{ backgroundImage: `url('/images/offers-pattern.svg')`, backgroundSize: '180px', backgroundPosition: 'center', backgroundRepeat: 'repeat' }} 
                 />
                 
-                <h4 className="text-[#9FB7AE] text-[15px] font-bold relative z-10 mb-5">
+                <h4 className="text-[#9FB7AE] text-[16px] md:text-[18px] font-bold relative z-10 mb-8">
                     {isEn ? 'Gifts that suit your company' : 'هدايا تليق بشركتك'}
                 </h4>
 
-                <h1 className="text-[#FEF8EB] text-[38px] md:text-[50px] font-bold relative z-10 mb-5 leading-tight tracking-wide" style={{ fontFamily: isEn ? 'inherit' : "'Bahij Janna'" }}>
+                <h1 className="text-[#FEF8EB] text-[40px] md:text-[56px] font-bold relative z-10 mb-8 leading-tight tracking-wide" style={{ fontFamily: isEn ? 'inherit' : "'Bahij Janna'" }}>
                     {isEn ? 'Corporate Gifts with Your Identity' : 'هدايا مؤسسية بهويتك الخاصة'}
                 </h1>
                 
-                <p className="text-[#9FB7AE] text-[16px] md:text-[18px] font-medium relative z-10 mb-4 max-w-2xl">
+                <p className="text-[#9FB7AE] text-[16px] md:text-[20px] font-medium relative z-10 max-w-2xl">
                     {isEn ? 'Premium collections with your company logo — for employees, clients, and official occasions' : 'تشكيلات فاخرة بشعار شركتك — للموظفين والعملاء والمناسبات الرسمية'}
                 </p>
             </section>

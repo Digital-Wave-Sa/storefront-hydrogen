@@ -1,5 +1,5 @@
-import { data, type LoaderFunctionArgs, type MetaFunction, useLoaderData, Link, useRouteLoaderData } from 'react-router';
-import { useState } from 'react';
+import { data, type LoaderFunctionArgs, type MetaFunction, useLoaderData, Link, useRouteLoaderData, useSearchParams } from 'react-router';
+import { useState, useEffect } from 'react';
 import { ProductItem } from '~/components/ProductItem';
 import patternBg from '~/assets/patteren-collection-header.svg';
 
@@ -103,7 +103,15 @@ export default function OccasionsPage() {
         { id: 'new-baby', en: 'New Baby', ar: 'طفل جديد' },
     ];
 
-    const [selectedCategory, setSelectedCategory] = useState(categories[0].id);
+    const [searchParams] = useSearchParams();
+    const urlCategory = searchParams.get('category');
+    const [selectedCategory, setSelectedCategory] = useState(urlCategory || categories[0].id);
+
+    useEffect(() => {
+        if (urlCategory) {
+            setSelectedCategory(urlCategory);
+        }
+    }, [urlCategory]);
 
     // Filter products based on selected category tags
     const filteredProducts = products.filter((p: any) => {

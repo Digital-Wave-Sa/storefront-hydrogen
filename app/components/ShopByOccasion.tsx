@@ -54,7 +54,7 @@ export function ShopByOccasion({ collections }: { collections?: any[] }) {
                     {occasions.map((occasion, index) => (
                         <Link
                             key={index}
-                            to={isEn ? `/en/collections/${occasion.handle}` : `/collections/${occasion.handle}`}
+                            to={isEn ? `/en/occasions?category=${occasion.handle}` : `/occasions?category=${occasion.handle}`}
                             className="group flex flex-col bg-[#EED5D7] rounded-[20px] overflow-hidden transition-all duration-500 hover:shadow-xl hover:-translate-y-2 w-full max-w-[280px] relative shadow-sm"
                             style={{ 
                                 aspectRatio: '280/344'

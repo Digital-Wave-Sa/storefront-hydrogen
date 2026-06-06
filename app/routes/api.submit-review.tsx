@@ -76,6 +76,70 @@ export async function action({ request, context }: ActionFunctionArgs) {
             return data({ error: errorMsg }, { status: 400 });
         }
 
+        // --- UPDATE LOCATION RATING ---
+        const locId = formData.get('locationId');
+        if (locId) {
+            let formattedLocId = String(locId);
+            if (!formattedLocId.includes('gid://')) {
+                formattedLocId = `gid://shopify/Location/${formattedLocId}`;
+            }
+
+            // Use branchRating if explicitly provided, otherwise fallback to product rating
+            const submittedRating = parseFloat(String(branchRating || rating)) || 0;
+
+            if (submittedRating > 0) {
+                try {
+                    const fetchLocationQuery = `
+                        query GetLocationRating($id: ID!) {
+                          location(id: $id) {
+                            rating: metafield(namespace: "custom", key: "rating") { value }
+                            ratingCount: metafield(namespace: "custom", key: "rating_count") { value }
+                          }
+                        }
+                    `;
+                    const locResult = await adminApiQuery(shopDomain, token, fetchLocationQuery, { id: formattedLocId }) as any;
+                    
+                    if (locResult.data?.location) {
+                        const currentRating = parseFloat(locResult.data.location.rating?.value || '0');
+                        const currentCount = parseInt(locResult.data.location.ratingCount?.value || '0', 10);
+                        
+                        const newCount = currentCount + 1;
+                        const newAverage = ((currentRating * currentCount) + submittedRating) / newCount;
+                        
+                        const updateLocationMutation = `
+                            mutation UpdateLocationRating($metafields: [MetafieldsSetInput!]!) {
+                              metafieldsSet(metafields: $metafields) {
+                                userErrors { field message }
+                              }
+                            }
+                        `;
+                        
+                        await adminApiQuery(shopDomain, token, updateLocationMutation, {
+                            metafields: [
+                                {
+                                    ownerId: formattedLocId,
+                                    namespace: "custom",
+                                    key: "rating",
+                                    type: "number_decimal",
+                                    value: newAverage.toFixed(1)
+                                },
+                                {
+                                    ownerId: formattedLocId,
+                                    namespace: "custom",
+                                    key: "rating_count",
+                                    type: "number_integer",
+                                    value: newCount.toString()
+                                }
+                            ]
+                        });
+                    }
+                } catch (locErr) {
+                    console.error('[REVIEWS] Failed to update location rating:', locErr);
+                    // Do not block review submission success if branch rating fails
+                }
+            }
+        }
+
         return data({ success: true });
 
     } catch (err: any) {

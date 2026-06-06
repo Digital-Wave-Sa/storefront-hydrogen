@@ -143,31 +143,40 @@ export default function CorporatePage() {
             </div>
 
             {/* 2. How it Works */}
-            <section className="w-full bg-[#294c4a] py-16 px-4 border-t-2 border-[#1e3b3a]">
-                <div className="max-w-[1000px] mx-auto text-center">
-                    <h4 className="text-[#BBCFCD] font-bold text-[14px] mb-2">{isEn ? 'Service Workflow' : 'سير العمل'}</h4>
-                    <h2 className="text-white text-[28px] md:text-[36px] font-bold mb-4">{isEn ? 'How does the service work?' : 'كيف تعمل الخدمة؟'}</h2>
-                    <p className="text-[#BBCFCD] text-[15px] mb-12">{isEn ? 'Three simple steps to deliver your message through our gifts' : 'ثلاث خطوات بسيطة لتوصيل رسالتك عبر هدايانا لتصل لمن تحب'}</p>
+            <section className="w-full bg-[#234745] py-16 px-4">
+                <div className="max-w-[1280px] mx-auto flex flex-col items-center gap-10">
+                    
+                    {/* Header */}
+                    <div className="flex flex-col items-center text-center gap-3">
+                        <h4 className="text-[#C5A96A] font-medium text-[18px] leading-[22px]">{isEn ? 'How it works' : 'طريقة العمل'}</h4>
+                        <h2 className="text-[#FEF8EB] text-[36px] md:text-[50px] font-bold leading-tight">{isEn ? 'How does the service work?' : 'كيف تعمل الخدمة؟'}</h2>
+                        <p className="text-[#9FB7AE] text-[16px] md:text-[18px] font-medium leading-[22px]">{isEn ? 'Three simple steps from choosing your path to delivering the gift' : 'ثلاث خطوات بسبطة من اختيار المسار وحتي وصول الهدية إلي المُستلم'}</p>
+                    </div>
 
-                    <div className="flex flex-col md:flex-row justify-between gap-6 md:gap-4 relative z-10">
+                    {/* Steps Grid */}
+                    <div className="flex flex-col md:flex-row justify-center items-center w-full gap-8">
+                        
                         {/* Step 1 */}
-                        <div className="flex-1 border border-[#BBCFCD]/30 rounded-2xl p-6 relative bg-[#234745]/50 flex flex-col items-center hover:bg-[#234745] transition-colors">
-                            <div className="w-10 h-10 rounded-full bg-[#EBCB8D] text-[#234745] flex items-center justify-center font-bold text-xl mb-4">1</div>
-                            <h3 className="text-white font-bold text-[18px] mb-2">{isEn ? 'Choose Product' : 'اختر المنتج'}</h3>
-                            <p className="text-[#BBCFCD] text-[14px]">{isEn ? 'Select what suits you from our huge catalog' : 'اختر ما يناسبك من منتجاتنا في الكتالوج الخاص بك'}</p>
+                        <div className="flex-1 flex flex-col items-center p-8 gap-4 w-full md:max-w-[405px] bg-[#274D4B] border border-[#9FB7AE] rounded-[20px] text-center h-[208px] justify-center">
+                            <div className="w-12 h-12 rounded-full bg-[#C5A96A] text-[#234745] flex items-center justify-center font-bold text-[26px]">1</div>
+                            <h3 className="text-[#FEF8EB] font-bold text-[22px] md:text-[26px] leading-[42px] m-0">{isEn ? 'Choose Path' : 'اختر المسار'}</h3>
+                            <p className="text-[#9FB7AE] text-[14px] leading-[17px] m-0 max-w-[300px]">{isEn ? 'Select a ready order or a custom quote that suits your company needs.' : 'حدّد بين طلب جاهز أو عرض سعر مخصص يناسب احتياج شركتك.'}</p>
                         </div>
+
                         {/* Step 2 */}
-                        <div className="flex-1 border border-[#BBCFCD]/30 rounded-2xl p-6 relative bg-[#234745]/50 flex flex-col items-center hover:bg-[#234745] transition-colors">
-                            <div className="w-10 h-10 rounded-full bg-[#EBCB8D] text-[#234745] flex items-center justify-center font-bold text-xl mb-4">2</div>
-                            <h3 className="text-white font-bold text-[18px] mb-2">{isEn ? 'Customize Details' : 'خصص التفاصيل'}</h3>
-                            <p className="text-[#BBCFCD] text-[14px]">{isEn ? 'Add your touches and company identity' : 'أضف لمساتك الخاصة وهوية الشركة على الهدايا'}</p>
+                        <div className="flex-1 flex flex-col items-center p-8 gap-4 w-full md:max-w-[405px] bg-[#274D4B] border border-[#9FB7AE] rounded-[20px] text-center h-[208px] justify-center">
+                            <div className="w-12 h-12 rounded-full bg-[#C5A96A] text-[#234745] flex items-center justify-center font-bold text-[26px]">2</div>
+                            <h3 className="text-[#FEF8EB] font-bold text-[22px] md:text-[26px] leading-[42px] m-0">{isEn ? 'Customize Details' : 'خصص التفاصيل'}</h3>
+                            <p className="text-[#9FB7AE] text-[14px] leading-[17px] m-0 max-w-[300px]">{isEn ? 'Choose the collection, add your logo, and specify quantity and packaging.' : 'اختر التشكيلة، أضف الشعار، وحدّد الكمية والتغليف المناسب.'}</p>
                         </div>
+
                         {/* Step 3 */}
-                        <div className="flex-1 border border-[#BBCFCD]/30 rounded-2xl p-6 relative bg-[#234745]/50 flex flex-col items-center hover:bg-[#234745] transition-colors">
-                            <div className="w-10 h-10 rounded-full bg-[#EBCB8D] text-[#234745] flex items-center justify-center font-bold text-xl mb-4">3</div>
-                            <h3 className="text-white font-bold text-[18px] mb-2">{isEn ? 'Receive Gifts' : 'استلم الهدايا'}</h3>
-                            <p className="text-[#BBCFCD] text-[14px]">{isEn ? 'We prepare and deliver it with love and care' : 'نقوم بتجهيزها وتوصيلها لك بكل حب وعناية'}</p>
+                        <div className="flex-1 flex flex-col items-center p-8 gap-4 w-full md:max-w-[405px] bg-[#274D4B] border border-[#9FB7AE] rounded-[20px] text-center h-[208px] justify-center">
+                            <div className="w-12 h-12 rounded-full bg-[#C5A96A] text-[#234745] flex items-center justify-center font-bold text-[26px]">3</div>
+                            <h3 className="text-[#FEF8EB] font-bold text-[22px] md:text-[26px] leading-[42px] m-0">{isEn ? 'Receive Gifts' : 'استلم الهدايا'}</h3>
+                            <p className="text-[#9FB7AE] text-[14px] leading-[17px] m-0 max-w-[300px]">{isEn ? 'We prepare and pack within 24h and deliver to any city.' : 'نجهّز ونغلّف خلال ٢٤ ساعة ونوصل إلى أي مدينة تختارها.'}</p>
                         </div>
+
                     </div>
                 </div>
             </section>

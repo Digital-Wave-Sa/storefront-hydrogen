@@ -244,28 +244,29 @@ export default function CorporatePage() {
                     </div>
 
                     {/* Filters */}
-                    <div className="flex flex-row justify-end items-center gap-[12px] md:gap-[126px] mt-4 mb-4">
-                        <div className="flex flex-wrap items-center justify-end gap-[10px]">
+                    <div className="flex flex-row justify-between items-center mt-4 mb-8">
+                        <span className="text-[#234745] font-bold text-[16px] hidden md:block">{isEn ? 'Box Budget:' : 'الميزانية للعلبة:'}</span>
+                        <div className="flex flex-wrap items-center gap-[10px]">
                             
-                            {/* Filter 1: Accept Logo? */}
+                            {/* Filter 3: All */}
                             <div className="flex flex-row justify-between items-center px-4 py-2 w-[192px] h-[40px] border border-[#BBCFCD] rounded-[16px] bg-transparent">
+                                <span className="text-[#255441] font-medium text-[16px]">{isEn ? 'All' : 'الكل'}</span>
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#234745" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
-                                <span className="text-[#255441] font-medium text-[16px]">{isEn ? 'Accepts Logo?' : 'يقبل شعار؟'}</span>
                             </div>
 
                             {/* Filter 2: Size */}
                             <div className="flex flex-row justify-between items-center px-4 py-2 w-[192px] h-[40px] border border-[#BBCFCD] rounded-[16px] bg-transparent">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#234745" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
                                 <span className="text-[#255441] font-medium text-[16px]">{isEn ? 'Size' : 'الحجم'}</span>
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#234745" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
                             </div>
 
-                            {/* Filter 3: All */}
+                            {/* Filter 1: Accept Logo? */}
                             <div className="flex flex-row justify-between items-center px-4 py-2 w-[192px] h-[40px] border border-[#BBCFCD] rounded-[16px] bg-transparent">
+                                <span className="text-[#255441] font-medium text-[16px]">{isEn ? 'Accepts Logo?' : 'يقبل شعار؟'}</span>
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#234745" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
-                                <span className="text-[#255441] font-medium text-[16px]">{isEn ? 'All' : 'الكل'}</span>
                             </div>
+
                         </div>
-                        <span className="text-[#234745] font-bold text-[16px] hidden md:block">{isEn ? 'Box Budget:' : 'الميزانية للعلبة:'}</span>
                     </div>
 
                     {/* Products Grid - Mockup Data */}
@@ -278,12 +279,12 @@ export default function CorporatePage() {
                                 <img src="https://cdn.shopify.com/s/files/1/0616/1606/2642/files/cake.png" alt="Pistachio" className="w-full h-full object-cover" />
                                 {/* Top Badges */}
                                 <div className="absolute top-4 left-4 right-4 flex justify-between items-start">
-                                    <div className="flex items-center gap-2 bg-white px-3 py-1 rounded-[25px] border border-[#234745]/30">
-                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#255441" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
-                                        <span className="text-[#255441] font-medium text-[14px]">{isEn ? 'Logo' : 'شعار'}</span>
-                                    </div>
                                     <div className="bg-[#234745] px-3 py-1 rounded-[25px]">
                                         <span className="text-[#FEF8EB] font-bold text-[14px]">{isEn ? 'Best Seller' : 'الأكثر طلباً'}</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 bg-white px-3 py-1 rounded-[25px] border border-[#234745]/30">
+                                        <span className="text-[#255441] font-medium text-[14px]">{isEn ? 'Logo' : 'شعار'}</span>
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#255441" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
                                     </div>
                                 </div>
                             </div>
@@ -301,22 +302,23 @@ export default function CorporatePage() {
                                     
                                     <div className="flex flex-col gap-3">
                                         <div className="flex justify-between items-center">
+                                            <span className="text-[#9FB7AE] font-medium text-[14px]">{isEn ? '20 - 49 Boxes' : '٢٠–٤٩ علبة'}</span>
                                             <div className="flex items-center gap-1">
                                                 <span className="text-[#234745] font-bold text-[16px] font-['Bahij_Janna']">85</span>
                                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#234745" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
                                             </div>
-                                            <span className="text-[#9FB7AE] font-medium text-[14px]">{isEn ? '20 - 49 Boxes' : '٢٠–٤٩ علبة'}</span>
                                         </div>
                                         
                                         <div className="flex justify-between items-center">
+                                            <span className="text-[#9FB7AE] font-medium text-[14px]">{isEn ? '50 - 99 Boxes' : '٥٠–٩٩ علبة'}</span>
                                             <div className="flex items-center gap-1">
                                                 <span className="text-[#234745] font-bold text-[16px] font-['Bahij_Janna']">78</span>
                                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#234745" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
                                             </div>
-                                            <span className="text-[#9FB7AE] font-medium text-[14px]">{isEn ? '50 - 99 Boxes' : '٥٠–٩٩ علبة'}</span>
                                         </div>
 
                                         <div className="flex justify-between items-center">
+                                            <span className="text-[#9FB7AE] font-medium text-[14px]">{isEn ? '100+ Boxes' : '١٠٠+ علبة'}</span>
                                             <div className="flex items-center gap-2">
                                                 <span className="text-[#234745] font-bold text-[16px] font-['Bahij_Janna']">72</span>
                                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#234745" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
@@ -324,7 +326,6 @@ export default function CorporatePage() {
                                                     <span className="text-[#FEF8EB] font-bold text-[12px]">{isEn ? 'Best' : 'الأفضل'}</span>
                                                 </div>
                                             </div>
-                                            <span className="text-[#9FB7AE] font-medium text-[14px]">{isEn ? '100+ Boxes' : '١٠٠+ علبة'}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -341,9 +342,10 @@ export default function CorporatePage() {
                             <div className="relative w-full h-[216px] bg-[#F6F1EC]">
                                 <img src="https://cdn.shopify.com/s/files/1/0616/1606/2642/files/chocolate.png" alt="Chocolate" className="w-full h-full object-cover" />
                                 <div className="absolute top-4 left-4 right-4 flex justify-between items-start">
+                                    <div></div>
                                     <div className="flex items-center gap-2 bg-white px-3 py-1 rounded-[25px] border border-[#234745]/30">
-                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#255441" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
                                         <span className="text-[#255441] font-medium text-[14px]">{isEn ? 'Logo' : 'شعار'}</span>
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#255441" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
                                     </div>
                                 </div>
                             </div>
@@ -359,22 +361,23 @@ export default function CorporatePage() {
                                     
                                     <div className="flex flex-col gap-3">
                                         <div className="flex justify-between items-center">
+                                            <span className="text-[#9FB7AE] font-medium text-[14px]">{isEn ? '20 - 49 Boxes' : '٢٠–٤٩ علبة'}</span>
                                             <div className="flex items-center gap-1">
                                                 <span className="text-[#234745] font-bold text-[16px] font-['Bahij_Janna']">120</span>
                                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#234745" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
                                             </div>
-                                            <span className="text-[#9FB7AE] font-medium text-[14px]">{isEn ? '20 - 49 Boxes' : '٢٠–٤٩ علبة'}</span>
                                         </div>
                                         
                                         <div className="flex justify-between items-center">
+                                            <span className="text-[#9FB7AE] font-medium text-[14px]">{isEn ? '50 - 99 Boxes' : '٥٠–٩٩ علبة'}</span>
                                             <div className="flex items-center gap-1">
                                                 <span className="text-[#234745] font-bold text-[16px] font-['Bahij_Janna']">110</span>
                                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#234745" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
                                             </div>
-                                            <span className="text-[#9FB7AE] font-medium text-[14px]">{isEn ? '50 - 99 Boxes' : '٥٠–٩٩ علبة'}</span>
                                         </div>
 
                                         <div className="flex justify-between items-center">
+                                            <span className="text-[#9FB7AE] font-medium text-[14px]">{isEn ? '100+ Boxes' : '١٠٠+ علبة'}</span>
                                             <div className="flex items-center gap-2">
                                                 <span className="text-[#234745] font-bold text-[16px] font-['Bahij_Janna']">100</span>
                                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#234745" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
@@ -382,7 +385,6 @@ export default function CorporatePage() {
                                                     <span className="text-[#FEF8EB] font-bold text-[12px]">{isEn ? 'Best' : 'الأفضل'}</span>
                                                 </div>
                                             </div>
-                                            <span className="text-[#9FB7AE] font-medium text-[14px]">{isEn ? '100+ Boxes' : '١٠٠+ علبة'}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -398,12 +400,12 @@ export default function CorporatePage() {
                             <div className="relative w-full h-[216px] bg-[#F6F1EC]">
                                 <img src="https://cdn.shopify.com/s/files/1/0616/1606/2642/files/dates.png" alt="Dates" className="w-full h-full object-cover" />
                                 <div className="absolute top-4 left-4 right-4 flex justify-between items-start">
-                                    <div className="flex items-center gap-2 bg-white px-3 py-1 rounded-[25px] border border-[#234745]/30">
-                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#255441" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
-                                        <span className="text-[#255441] font-medium text-[14px]">{isEn ? 'Logo' : 'شعار'}</span>
-                                    </div>
                                     <div className="bg-[#234745] px-3 py-1 rounded-[25px]">
                                         <span className="text-[#FEF8EB] font-bold text-[14px]">{isEn ? 'Eid Special' : 'مناسب للعيد'}</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 bg-white px-3 py-1 rounded-[25px] border border-[#234745]/30">
+                                        <span className="text-[#255441] font-medium text-[14px]">{isEn ? 'Logo' : 'شعار'}</span>
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#255441" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
                                     </div>
                                 </div>
                             </div>
@@ -419,22 +421,23 @@ export default function CorporatePage() {
                                     
                                     <div className="flex flex-col gap-3">
                                         <div className="flex justify-between items-center">
+                                            <span className="text-[#9FB7AE] font-medium text-[14px]">{isEn ? '20 - 49 Boxes' : '٢٠–٤٩ علبة'}</span>
                                             <div className="flex items-center gap-1">
                                                 <span className="text-[#234745] font-bold text-[16px] font-['Bahij_Janna']">95</span>
                                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#234745" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
                                             </div>
-                                            <span className="text-[#9FB7AE] font-medium text-[14px]">{isEn ? '20 - 49 Boxes' : '٢٠–٤٩ علبة'}</span>
                                         </div>
                                         
                                         <div className="flex justify-between items-center">
+                                            <span className="text-[#9FB7AE] font-medium text-[14px]">{isEn ? '50 - 99 Boxes' : '٥٠–٩٩ علبة'}</span>
                                             <div className="flex items-center gap-1">
                                                 <span className="text-[#234745] font-bold text-[16px] font-['Bahij_Janna']">88</span>
                                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#234745" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
                                             </div>
-                                            <span className="text-[#9FB7AE] font-medium text-[14px]">{isEn ? '50 - 99 Boxes' : '٥٠–٩٩ علبة'}</span>
                                         </div>
 
                                         <div className="flex justify-between items-center">
+                                            <span className="text-[#9FB7AE] font-medium text-[14px]">{isEn ? '100+ Boxes' : '١٠٠+ علبة'}</span>
                                             <div className="flex items-center gap-2">
                                                 <span className="text-[#234745] font-bold text-[16px] font-['Bahij_Janna']">80</span>
                                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#234745" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
@@ -442,7 +445,6 @@ export default function CorporatePage() {
                                                     <span className="text-[#FEF8EB] font-bold text-[12px]">{isEn ? 'Best' : 'الأفضل'}</span>
                                                 </div>
                                             </div>
-                                            <span className="text-[#9FB7AE] font-medium text-[14px]">{isEn ? '100+ Boxes' : '١٠٠+ علبة'}</span>
                                         </div>
                                     </div>
                                 </div>

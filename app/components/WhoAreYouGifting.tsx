@@ -45,12 +45,14 @@ export function WhoAreYouGifting({ collections }: { collections?: any[] }) {
 
                 {/* Horizontal Slider */}
                 <div className="flex gap-4 lg:gap-6 overflow-x-auto hide-scrollbars snap-x snap-mandatory pb-10">
-                    {recipients.map((recipient, index) => (
-                        <Link
-                            key={index}
-                            to={isEn ? `/en/collections/${recipient.handle}` : `/collections/${recipient.handle}`}
-                            className="group flex-shrink-0 w-[280px] lg:w-[320px] relative rounded-[32px] overflow-hidden snap-center transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl"
-                        >
+                    {recipients.map((recipient, index) => {
+                        const catId = recipient.handle.replace('gifts-for-', '');
+                        return (
+                            <Link
+                                key={index}
+                                to={isEn ? `/en/gifting?category=${catId}` : `/gifting?category=${catId}`}
+                                className="group flex-shrink-0 w-[280px] lg:w-[320px] relative rounded-[32px] overflow-hidden snap-center transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl"
+                            >
                             <div className="w-full aspect-[4/5] relative">
                                 <img 
                                     src={recipient.image} 
@@ -68,7 +70,8 @@ export function WhoAreYouGifting({ collections }: { collections?: any[] }) {
                                 </div>
                             </div>
                         </Link>
-                    ))}
+                    );
+                    })}
                 </div>
 
                 {/* Footer Button */}

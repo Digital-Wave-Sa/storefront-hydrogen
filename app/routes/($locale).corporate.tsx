@@ -95,7 +95,7 @@ export default function CorporatePage() {
         <div className={`min-h-screen bg-[#FEF8EB] ${isEn ? 'font-en' : "font-['GE_Dinar_One']"}`} dir={isEn ? 'ltr' : 'rtl'}>
             
             {/* 1. Hero Section */}
-            <section className="relative w-full bg-[#234745] flex flex-col justify-center items-center text-center px-4 pt-24 pb-32">
+            <section className="relative w-full bg-[#234745] flex flex-col justify-center items-center text-center px-4 pt-24 pb-[140px] md:pb-[160px]">
                 {/* Background Pattern */}
                 <div 
                     className="absolute inset-0 pointer-events-none opacity-10" 
@@ -110,7 +110,7 @@ export default function CorporatePage() {
                     {isEn ? 'Corporate Gifts with Your Identity' : 'هدايا مؤسسية بهويتك الخاصة'}
                 </h1>
                 
-                <p className="text-[#9FB7AE] text-[16px] md:text-[20px] font-medium relative z-10 max-w-2xl">
+                <p className="text-[#9FB7AE] text-[16px] md:text-[20px] font-medium relative z-10 max-w-2xl leading-[1.6]">
                     {isEn ? 'Premium collections with your company logo — for employees, clients, and official occasions' : 'تشكيلات فاخرة بشعار شركتك — للموظفين والعملاء والمناسبات الرسمية'}
                 </p>
             </section>

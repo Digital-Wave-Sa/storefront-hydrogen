@@ -318,8 +318,8 @@ export function ProductItem({
                     <Price data={product.priceRange.minVariantPrice} size="sm" isEn={isEn} />
                 </div>
                 {product.compareAtPriceRange?.minVariantPrice && parseFloat(product.compareAtPriceRange.minVariantPrice.amount) > parseFloat(product.priceRange.minVariantPrice.amount) && (
-                    <div className="flex items-center text-[#9FB7AE] line-through" style={{ fontFamily: "'GE Dinar One', sans-serif", fontSize: '14px', lineHeight: '17px', fontWeight: '500' }}>
-                        <Price data={product.compareAtPriceRange.minVariantPrice} size="sm" isEn={isEn} />
+                    <div className="flex items-center text-[#E64950] line-through" style={{ fontFamily: "'GE Dinar One', sans-serif", fontSize: '16px', lineHeight: '20px', fontWeight: 'bold' }}>
+                        <Price data={product.compareAtPriceRange.minVariantPrice} size="md" isEn={isEn} />
                     </div>
                 )}
             </div>

@@ -798,9 +798,9 @@ export default function Product() {
                                        {component.title}
                                      </span>
                                      {compPrice && (
-                                       <div className="flex flex-row items-center gap-1 text-[#E64950] text-[16px] font-black mt-2 justify-start" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
+                                       <div className="flex flex-row items-center gap-1 text-[#906B51] text-[14px] font-bold mt-2 justify-start" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
                                          <span>{isEn ? 'Value: ' : 'القيمة: '}</span>
-                                         <Price data={compPrice} isEn={isEn} size="base" />
+                                         <Price data={compPrice} isEn={isEn} size="sm" />
                                        </div>
                                      )}
                                    </div>

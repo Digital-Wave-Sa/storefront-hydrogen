@@ -13,8 +13,7 @@ const SLIDES = [
     },
     badge: { ar: 'منذ 1919 . مصنوعة بحُب', en: 'Since 1919 . Made With Love' },
     buttons: [
-      { text: { ar: 'إكتشف قصتنا', en: 'Discover Our Story' }, url: '/pages/about', type: 'outline' },
-      { text: { ar: 'العنوان', en: 'Address' }, url: '/pages/contact', type: 'filled' }
+      { text: { ar: 'إكتشف قصتنا', en: 'Discover Our Story' }, url: '/pages/about', type: 'filled' }
     ]
   },
   { 
@@ -28,7 +27,7 @@ const SLIDES = [
     },
     badge: { ar: 'عيد مبارك', en: 'Eid Mubarak' },
     buttons: [
-      { text: { ar: 'العنوان', en: 'Address' }, url: '/collections/eid', type: 'filled' }
+      { text: { ar: 'تسوق تشكيلة العيد', en: 'Shop Eid Collection' }, url: '/collections/eid', type: 'filled' }
     ]
   },
   { 
@@ -42,7 +41,7 @@ const SLIDES = [
     },
     badge: { ar: 'صمم كيكتك', en: 'Design Your Cake' },
     buttons: [
-      { text: { ar: 'العنوان', en: 'Address' }, url: '/custom-cake', type: 'filled' }
+      { text: { ar: 'ابدأ التصميم', en: 'Start Designing' }, url: '/custom-cake', type: 'filled' }
     ]
   },
 ];

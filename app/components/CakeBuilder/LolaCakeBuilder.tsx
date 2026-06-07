@@ -133,27 +133,45 @@ export default function LolaCakeBuilder({ cakeAttributes = [] }: { cakeAttribute
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
   const minSwipeDistance = 50;
 
-  const mergedStyles = React.useMemo(() => {
-    return cakeOptions.styles.map(style => {
-      const shopifyMatch = cakeAttributes?.find(attr => {
-        if (!attr.nameEn?.value) return false;
-        const shopifyName = attr.nameEn.value.toLowerCase();
-        return style.name.toLowerCase().includes(shopifyName) || style.id.replace(/-/g, ' ') === shopifyName;
+  const mergedOptions = React.useMemo(() => {
+    const mergeCategory = (options: any[]) => {
+      return options.map(option => {
+        const shopifyMatch = cakeAttributes?.find(attr => {
+          if (!attr.nameEn?.value) return false;
+          const shopifyName = attr.nameEn.value.toLowerCase();
+          return option.name.toLowerCase().includes(shopifyName) || option.id.replace(/-/g, ' ') === shopifyName;
+        });
+        
+        let merged = { ...option };
+        if (shopifyMatch) {
+          if (shopifyMatch.thumbnailUrl?.reference?.image?.url) {
+            merged.image = shopifyMatch.thumbnailUrl.reference.image.url;
+          }
+          if (shopifyMatch.price?.value !== undefined && shopifyMatch.price?.value !== null) {
+            merged.price = parseInt(shopifyMatch.price.value, 10);
+          }
+        }
+        return merged;
       });
-      if (shopifyMatch?.thumbnailUrl?.reference?.image?.url) {
-        return { ...style, image: shopifyMatch.thumbnailUrl.reference.image.url };
-      }
-      return style;
-    });
+    };
+
+    return {
+      shapes: mergeCategory(cakeOptions.shapes),
+      sizes: mergeCategory(cakeOptions.sizes),
+      tiers: mergeCategory(cakeOptions.tiers),
+      flavors: mergeCategory(cakeOptions.flavors),
+      styles: mergeCategory(cakeOptions.styles),
+      colors: mergeCategory(cakeOptions.colors)
+    };
   }, [cakeAttributes]);
 
   const [selections, setSelections] = useState({
-    shape: cakeOptions.shapes[0],
-    size: cakeOptions.sizes[1],
-    tier: cakeOptions.tiers[0],
-    flavor: cakeOptions.flavors[0],
-    style: cakeOptions.styles[0],
-    color: cakeOptions.colors[0],
+    shape: mergedOptions.shapes[0],
+    size: mergedOptions.sizes[1],
+    tier: mergedOptions.tiers[0],
+    flavor: mergedOptions.flavors[0],
+    style: mergedOptions.styles[0],
+    color: mergedOptions.colors[0],
     message: '',
     textColor: '#4a2511',
     textFont: 'Classic',
@@ -442,15 +460,15 @@ export default function LolaCakeBuilder({ cakeAttributes = [] }: { cakeAttribute
                 <div className="animate-in fade-in duration-300 space-y-10">
                   <div>
                     <h2 className="text-2xl font-bold text-[#1a1a1a]">اختر شكل الكيكة</h2>
-                    {renderOptionsGrid('shape', cakeOptions.shapes)}
+                    {renderOptionsGrid('shape', mergedOptions.shapes)}
                   </div>
                   <div>
                     <h2 className="text-2xl font-bold text-[#1a1a1a]">اختر الحجم</h2>
-                    {renderOptionsGrid('size', cakeOptions.sizes)}
+                    {renderOptionsGrid('size', mergedOptions.sizes)}
                   </div>
                   <div>
                     <h2 className="text-2xl font-bold text-[#1a1a1a]">عدد الطبقات</h2>
-                    {renderOptionsGrid('tier', cakeOptions.tiers)}
+                    {renderOptionsGrid('tier', mergedOptions.tiers)}
                   </div>
                 </div>
               )}
@@ -467,11 +485,11 @@ export default function LolaCakeBuilder({ cakeAttributes = [] }: { cakeAttribute
                         {isCutaway ? 'إخفاء النكهة' : 'رؤية النكهة من الداخل'}
                       </button>
                     </div>
-                    {renderOptionsGrid('flavor', cakeOptions.flavors)}
+                    {renderOptionsGrid('flavor', mergedOptions.flavors)}
                   </div>
                   <div>
                     <h2 className="text-2xl font-bold text-[#1a1a1a]">لون التغليف (الكريمة)</h2>
-                    {renderOptionsGrid('color', cakeOptions.colors)}
+                    {renderOptionsGrid('color', mergedOptions.colors)}
                   </div>
                 </div>
               )}
@@ -479,7 +497,7 @@ export default function LolaCakeBuilder({ cakeAttributes = [] }: { cakeAttribute
               {currentStep === 3 && (
                 <div className="animate-in fade-in duration-300">
                   <h2 className="text-2xl font-bold text-[#1a1a1a]">اختر أسلوب التزيين</h2>
-                  {renderOptionsGrid('style', mergedStyles)}
+                  {renderOptionsGrid('style', mergedOptions.styles)}
                 </div>
               )}
 

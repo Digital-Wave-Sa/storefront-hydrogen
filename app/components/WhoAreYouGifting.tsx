@@ -26,7 +26,7 @@ export function WhoAreYouGifting({ collections }: { collections?: any[] }) {
         return {
             ...recipient,
             image: shopifyCollection?.image?.url || recipient.image,
-            name: shopifyCollection?.title || recipient.name
+            name: recipient.name
         };
     });
 

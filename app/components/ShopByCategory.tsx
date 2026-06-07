@@ -18,7 +18,7 @@ export function ShopByCategory() {
     ];
 
     return (
-        <section dir={isEn ? 'ltr' : 'rtl'} className={`w-full bg-[#fdfaf6] py-16 ${isEn ? 'font-en' : 'font-ar'}`}>
+        <section dir={isEn ? 'ltr' : 'rtl'} className={`w-full bg-[#fdfaf6] lg:py-16 ${isEn ? 'font-en' : 'font-ar'}`} style={{ paddingTop: '50px', paddingBottom: '50px' }}>
             <div className="max-w-[1400px] mx-auto px-4 md:px-8">
 
                 {/* Section Header */}

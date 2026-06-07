@@ -175,8 +175,9 @@ export function CustomerReviews({ config }: { config?: any }) {
 
     return (
         <section
-            className={`w-full bg-[#FFFFFF] py-[64px] pb-[48px] flex justify-center ${isEn ? 'font-en' : 'font-ar'}`}
+            className={`w-full bg-[#FFFFFF] lg:py-[64px] lg:pb-[48px] flex justify-center ${isEn ? 'font-en' : 'font-ar'}`}
             dir={isEn ? 'ltr' : 'rtl'}
+            style={{ paddingTop: '50px', paddingBottom: '50px' }}
         >
             <div className="w-full max-w-[1280px] flex flex-col items-center gap-[24px]">
                 

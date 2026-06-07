@@ -1,19 +1,64 @@
-import { type MetaFunction } from 'react-router';
-import { useRouteLoaderData } from 'react-router';
+import { data, type LoaderFunctionArgs, type MetaFunction } from 'react-router';
+import { useLoaderData, useRouteLoaderData } from 'react-router';
 import patternBg from '~/assets/patteren-collection-header.svg';
 
-export const meta: MetaFunction = ({ parentsData }) => {
+const PAGE_QUERY = `#graphql
+  query Page(
+    $language: LanguageCode,
+    $country: CountryCode,
+    $handle: String!
+  )
+  @inContext(language: $language, country: $country) {
+    page(handle: $handle) {
+      id
+      title
+      body
+      seo {
+        description
+        title
+      }
+    }
+  }
+` as const;
+
+export async function loader({ context }: LoaderFunctionArgs) {
+  const { page } = await context.storefront.query(PAGE_QUERY, {
+    variables: { 
+      handle: 'privacy',
+      language: context.storefront.i18n.language,
+      country: context.storefront.i18n.country,
+    },
+  });
+
+  if (!page) {
+    throw new Response('Not Found', { status: 404 });
+  }
+
+  return data({ page });
+}
+
+export const meta: MetaFunction<typeof loader> = ({ data, parentsData }) => {
   const rootData = parentsData?.root as any;
   const isEn = rootData?.consent?.language?.toLowerCase() === 'en';
+  
+  if (!data?.page) {
+    return [{ title: isEn ? 'Privacy Policy | Saadeddin' : 'سياسة الخصوصية | سعد الدين' }];
+  }
+
+  const { page } = data;
+  const title = page.seo?.title || `${page.title} | Saadeddin`;
+  const description = page.seo?.description || (page.body?.replace(/<[^>]*>?/gm, '').substring(0, 155) || '');
+
   return [
-    { title: isEn ? 'Privacy Policy | Saadeddin' : 'سياسة الخصوصية | سعد الدين' },
-    { name: 'description', content: isEn ? 'Read our privacy policy to understand how we collect, use, and protect your information.' : 'اقرأ سياسة الخصوصية الخاصة بنا لفهم كيف نجمع معلوماتك ونستخدمها ونحميها.' },
-    { property: 'og:title', content: isEn ? 'Privacy Policy | Saadeddin' : 'سياسة الخصوصية | سعد الدين' },
-    { property: 'og:description', content: isEn ? 'Read our privacy policy to understand how we collect, use, and protect your information.' : 'اقرأ سياسة الخصوصية الخاصة بنا لفهم كيف نجمع معلوماتك ونستخدمها ونحميها.' },
+    { title: title.substring(0, 60) },
+    { name: 'description', content: description.substring(0, 160) },
+    { property: 'og:title', content: title.substring(0, 60) },
+    { property: 'og:description', content: description.substring(0, 160) },
   ];
 };
 
 export default function PrivacyPage() {
+  const { page } = useLoaderData<typeof loader>();
   const rootData = useRouteLoaderData('root') as any;
   const isEn = rootData?.consent?.language?.toLowerCase() === 'en';
 
@@ -30,54 +75,20 @@ export default function PrivacyPage() {
           }}
         />
         <div className="relative z-10 text-center">
-          <p className="text-[1rem] font-medium opacity-80 mb-2" style={{ fontFamily: "'GE Dinar One', sans-serif", lineHeight: '100%' }}>
-            {isEn ? 'Legal' : 'قانوني'}
-          </p>
           <h1 className="font-bold !text-[50px]" style={{ fontFamily: "'Bahij Janna', sans-serif", fontSize: '50px', fontWeight: 700, lineHeight: '100%', color: 'rgb(254, 248, 235)', textAlign: 'center', marginTop: '10px', marginBottom: '1rem' }}>
-            {isEn ? "Privacy Policy" : 'سياسة الخصوصية'}
+            {page.title}
           </h1>
         </div>
       </div>
 
       <div className="max-w-[800px] mx-auto px-4 md:px-6 mt-10 md:mt-16 relative z-20 pb-20">
         <div className="bg-white rounded-3xl p-8 md:p-12 border border-gray-100 shadow-sm">
-          <div className="text-[#234745]/80">
-            <h2 className={`text-[22px] font-bold text-[#234745] mb-4 ${isEn ? 'text-left' : 'text-right'}`} style={{ fontFamily: "'Bahij Janna', sans-serif", lineHeight: '100%' }}>
-              {isEn ? "1. Information We Collect" : "١. المعلومات التي نجمعها"}
-            </h2>
-            <p className="mb-6 text-[16px]" style={{ fontFamily: "'GE Dinar One', sans-serif", lineHeight: '1.6' }}>
-              {isEn 
-                ? "We collect information you provide directly to us when you create an account, make a purchase, or contact us. This may include your name, email address, phone number, and delivery address."
-                : "نحن نجمع المعلومات التي تقدمها لنا مباشرة عند إنشاء حساب، أو إجراء عملية شراء، أو التواصل معنا. قد يشمل ذلك اسمك، عنوان بريدك الإلكتروني، رقم هاتفك، وعنوان التسليم."}
-            </p>
-
-            <h2 className={`text-[22px] font-bold text-[#234745] mb-4 ${isEn ? 'text-left' : 'text-right'}`} style={{ fontFamily: "'Bahij Janna', sans-serif", lineHeight: '100%' }}>
-              {isEn ? "2. How We Use Your Information" : "٢. كيف نستخدم معلوماتك"}
-            </h2>
-            <p className="mb-6 text-[16px]" style={{ fontFamily: "'GE Dinar One', sans-serif", lineHeight: '1.6' }}>
-              {isEn 
-                ? "We use the information we collect to process your orders, provide customer support, and send you updates or promotional offers (if you opt-in)."
-                : "نستخدم المعلومات التي نجمعها لمعالجة طلباتك، تقديم دعم العملاء، وإرسال تحديثات أو عروض ترويجية لك (إذا اخترت ذلك)."}
-            </p>
-
-            <h2 className={`text-[22px] font-bold text-[#234745] mb-4 ${isEn ? 'text-left' : 'text-right'}`} style={{ fontFamily: "'Bahij Janna', sans-serif", lineHeight: '100%' }}>
-              {isEn ? "3. Data Security" : "٣. أمن البيانات"}
-            </h2>
-            <p className="mb-6 text-[16px]" style={{ fontFamily: "'GE Dinar One', sans-serif", lineHeight: '1.6' }}>
-              {isEn 
-                ? "We implement a variety of security measures to maintain the safety of your personal information when you place an order or enter, submit, or access your personal information."
-                : "نحن نطبق مجموعة متنوعة من إجراءات الأمان للحفاظ على سلامة معلوماتك الشخصية عند تقديم طلب أو إدخال معلوماتك الشخصية أو إرسالها أو الوصول إليها."}
-            </p>
-
-            <h2 className={`text-[22px] font-bold text-[#234745] mb-4 ${isEn ? 'text-left' : 'text-right'}`} style={{ fontFamily: "'Bahij Janna', sans-serif", lineHeight: '100%' }}>
-              {isEn ? "4. Contact Us" : "٤. اتصل بنا"}
-            </h2>
-            <p className="text-[16px]" style={{ fontFamily: "'GE Dinar One', sans-serif", lineHeight: '1.6' }}>
-              {isEn 
-                ? "If you have any questions about our Privacy Policy, please contact us at privacy@saadeddin.com."
-                : "إذا كان لديك أي أسئلة حول سياسة الخصوصية الخاصة بنا، يرجى الاتصال بنا على privacy@saadeddin.com."}
-            </p>
-          </div>
+          {/* Dynamic Content from Shopify */}
+          <div 
+            className="text-[#234745]/80 prose prose-lg max-w-none"
+            style={{ fontFamily: isEn ? 'inherit' : "'GE Dinar One', sans-serif", lineHeight: '1.8' }}
+            dangerouslySetInnerHTML={{ __html: page.body }} 
+          />
         </div>
       </div>
     </div>

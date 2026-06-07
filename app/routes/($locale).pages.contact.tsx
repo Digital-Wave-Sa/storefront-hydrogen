@@ -48,21 +48,21 @@ export default function ContactPage() {
           <ContactCard 
             title="WhatsApp" 
             subtitle={isEn ? 'Fastest — Instant response' : 'الأسرع — رد فوري'} 
-            pill={isEn ? '8 AM - 12 PM' : '٨ ص - ١٢ م'} 
+            pill={isEn ? '7:30 AM - 4:00 PM' : '7:30 ص - 4:00 م'} 
           />
           <ContactCard 
             title={isEn ? 'Phone' : 'الهاتف'} 
             subtitle={isEn ? 'For urgent inquiries' : 'للاستفسارات العاجلة'} 
-            pill={isEn ? '8 AM - 11 PM' : '٨ ص - ١١ م'} 
+            pill={isEn ? '7:30 AM - 4:00 PM' : '7:30 ص - 4:00 م'} 
           />
           <ContactCard 
             title={isEn ? 'Email' : 'البريد الإلكتروني'} 
             subtitle={isEn ? 'Detailed requests' : 'للإستفسارات التفصيلية'} 
-            pill={isEn ? 'Response within 24h' : 'الرد خلال ٢٤ ساعة'} 
+            pill={isEn ? 'Response within 24h' : 'الرد خلال 24 ساعة'} 
           />
           <ContactCard 
             title={isEn ? 'Visit Branch' : 'زيارة فرع'} 
-            subtitle={isEn ? '117 branches everywhere' : '١١٧ فرع في كل مكان'} 
+            subtitle={isEn ? '117 branches everywhere' : '117 فرع في كل مكان'} 
             pill={isEn ? 'Search for nearest' : 'إبحث عن اقرب فرع'} 
           />
         </div>
@@ -75,9 +75,9 @@ export default function ContactPage() {
                 {isEn ? 'Contact Information' : 'معلومات التواصل'}
               </h2>
               <div className="space-y-0">
-                <InfoRow label="WhatsApp" value="+966 5X XXX XXXX" isEn={isEn} />
-                <InfoRow label={isEn ? 'Phone' : 'الهاتف'} value="9200 XXXXX" isEn={isEn} />
-                <InfoRow label={isEn ? 'Email' : 'البريد الإلكتروني'} value="hello@saadeddin.com" isEn={isEn} />
+                <InfoRow label="WhatsApp" value="+966 5X XXX XXXX" isEn={isEn} isLtrValue />
+                <InfoRow label={isEn ? 'Phone' : 'الهاتف'} value="920017070" isEn={isEn} isLtrValue />
+                <InfoRow label={isEn ? 'Email' : 'البريد الإلكتروني'} value="info@saadeddin.com" isEn={isEn} isLtrValue />
               </div>
             </section>
 
@@ -86,8 +86,7 @@ export default function ContactPage() {
                 {isEn ? 'Business Hours' : 'أوقات العمل'}
               </h2>
               <div className="space-y-0">
-                <InfoRow label={isEn ? 'Sun - Thu' : 'الأحد - الخميس'} value={isEn ? '8 AM - 11 PM' : '٨ ص - ١١ م'} isEn={isEn} />
-                <InfoRow label={isEn ? 'Fri - Sat' : 'الجمعة - السبت'} value={isEn ? '10 AM - 12 PM' : '١٠ ص - ١٢ م'} isEn={isEn} />
+                <InfoRow label={isEn ? 'Everyday' : 'يومياً'} value={isEn ? '7:30 AM - 4:00 PM' : '7:30 ص - 4:00 م'} isEn={isEn} forceSans />
               </div>
             </section>
 
@@ -124,7 +123,7 @@ export default function ContactPage() {
                   <FormField label={isEn ? 'Mobile Number' : 'رقم الجوال'} placeholder={isEn ? '05X XXX XXXX' : 'رقم الجوال'} required isEn={isEn} />
                 </div>
 
-                <FormField label={isEn ? 'Email' : 'البريد الإلكتروني'} placeholder="name@gmail.com" required type="email" isEn={isEn} />
+                <FormField label={isEn ? 'Email' : 'البريد الإلكتروني'} placeholder="name@gmail.com" required type="email" isEn={isEn} forceLtr />
 
                 <div className="flex flex-col gap-4">
                   <label className="text-[15px] font-bold text-[#1F413F] flex items-center gap-1" style={{ fontFamily: "'GE Dinar One', sans-serif", lineHeight: '100%' }}>
@@ -141,7 +140,7 @@ export default function ContactPage() {
                   </div>
                 </div>
 
-                <FormField label={isEn ? 'Order Number (Optional)' : 'رقم الطلب (إختياري)'} placeholder="sd-asdqo142" isEn={isEn} />
+                <FormField label={isEn ? 'Order Number (Optional)' : 'رقم الطلب (إختياري)'} placeholder="sd-asdqo142" isEn={isEn} forceLtr />
 
                 <div className="flex flex-col gap-4">
                   <label className="text-[15px] font-bold text-[#1F413F] flex items-center gap-1" style={{ fontFamily: "'GE Dinar One', sans-serif", lineHeight: '100%' }}>
@@ -171,7 +170,7 @@ export default function ContactPage() {
                     style={{ borderColor: '#D1B8A7' }}
                   >
                     <span className="text-[16px] font-bold text-[#1F413F]" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>{isEn ? 'Add Attachment' : 'إضافة مرفق'}</span>
-                    <span className="text-[13px] text-gray-400" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>{isEn ? 'Photos or PDF — Max 5MB' : 'صور او PDF — حجم اقصى ٥ ميجابايت'}</span>
+                    <span className="text-[13px] text-gray-400 font-sans" dir="ltr">{isEn ? 'Photos or PDF — Max 5MB' : 'صور او PDF — حجم اقصى 5 ميجابايت'}</span>
                   </div>
                 </div>
 
@@ -201,7 +200,7 @@ function ContactCard({ title, subtitle, pill }: any) {
       <h3 className="text-[24px] md:text-[28px] font-bold text-[#1F413F] mb-3" style={{ fontFamily: "'Bahij Janna', sans-serif", lineHeight: '100%' }}>{title}</h3>
       <p 
         className="text-[14px] md:text-[15px] text-[#A8BDB5] !mb-6 font-medium"
-        style={{ fontFamily: "'GE Dinar One', sans-serif", lineHeight: '1.4', fontWeight: 500, marginBottom: '24px' }}
+        style={{ fontFamily: "sans-serif", lineHeight: '1.4', fontWeight: 500, marginBottom: '24px' }}
       >
         {subtitle}
       </p>
@@ -209,11 +208,12 @@ function ContactCard({ title, subtitle, pill }: any) {
         className="inline-flex items-center justify-center px-8 h-[40px] font-bold bg-[#BBCFCD] text-[#1F413F] transition-colors whitespace-nowrap"
         style={{
           borderRadius: '1000px',
-          fontFamily: "'GE Dinar One', sans-serif",
+          fontFamily: "sans-serif",
           fontWeight: 700,
           lineHeight: '100%',
           minWidth: '89px'
         }}
+        dir="auto"
       >
         {pill}
       </div>
@@ -221,7 +221,8 @@ function ContactCard({ title, subtitle, pill }: any) {
   );
 }
 
-function FormField({ label, placeholder, required, type = "text", isEn }: any) {
+function FormField({ label, placeholder, required, type = "text", isEn, forceLtr = false }: any) {
+  const isLtrDir = isEn || forceLtr;
   return (
     <div className={`flex flex-col gap-3 ${isEn ? 'text-left' : 'text-right'}`} style={{ width: '100%' }}>
       <label className="text-[14px] font-bold text-[#1F413F] flex items-center gap-1" style={{ fontFamily: "'GE Dinar One', sans-serif", lineHeight: '100%' }}>
@@ -231,18 +232,25 @@ function FormField({ label, placeholder, required, type = "text", isEn }: any) {
       <input
         type={type}
         placeholder={placeholder}
-        className={`w-full h-[54px] px-6 rounded-xl border border-gray-200 focus:border-[#1F413F] outline-none bg-white text-[15px] transition-all placeholder:text-gray-300 ${isEn ? 'text-left' : 'text-right'}`}
-        style={{ fontFamily: "'GE Dinar One', sans-serif", fontWeight: 500 }}
+        dir={isLtrDir ? 'ltr' : 'rtl'}
+        className={`w-full h-[54px] px-6 rounded-xl border border-gray-200 focus:border-[#1F413F] outline-none bg-white text-[15px] transition-all placeholder:text-gray-300 ${isLtrDir ? 'text-left' : 'text-right'}`}
+        style={{ fontFamily: forceLtr ? "sans-serif" : "'GE Dinar One', sans-serif", fontWeight: 500 }}
       />
     </div>
   );
 }
 
-function InfoRow({ label, value, isEn }: any) {
+function InfoRow({ label, value, isEn, isLtrValue = false, forceSans = false }: any) {
   return (
     <div className="flex items-center justify-between py-5 border-b border-[#1F413F]/5">
       <span className="text-[16px] font-medium text-gray-400/80" style={{ fontFamily: "'GE Dinar One', sans-serif", lineHeight: '100%' }}>{label}</span>
-      <span className="text-[16px] font-bold text-[#1F413F] tracking-tight" style={{ fontFamily: "'GE Dinar One', sans-serif", lineHeight: '100%', fontWeight: 700 }}>{value}</span>
+      <span 
+        className={`text-[16px] font-bold text-[#1F413F] tracking-tight ${isLtrValue && !isEn ? 'text-left flex-1 pl-4' : ''}`} 
+        dir={isLtrValue ? "ltr" : "auto"} 
+        style={{ fontFamily: (isLtrValue || forceSans) ? "sans-serif" : "'GE Dinar One', sans-serif", lineHeight: '100%', fontWeight: 700 }}
+      >
+        {value}
+      </span>
     </div>
   );
 }

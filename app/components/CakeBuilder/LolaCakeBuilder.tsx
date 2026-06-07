@@ -2,10 +2,10 @@ import React, { useState } from 'react';
 import { Cake, Palette, Sparkles, MessageSquare, Layers, ArrowRight, ArrowLeft } from 'lucide-react';
 import { CakePreview } from './CakePreview';
 import { FaqModal } from './FaqModal';
+import { SaudiRiyalSymbol } from '~/components/Price';
 
 const toArabicDigits = (num: number | string) => {
-  const arabicDigits = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
-  return String(num).replace(/[0-9]/g, (w) => arabicDigits[+w]);
+  return String(num);
 };
 
 const SizeIcon = ({ className }: { className?: string }) => (
@@ -46,10 +46,10 @@ const MessageIcon = ({ className }: { className?: string }) => (
 );
 
 const steps = [
-  { id: 1, title: 'أختر الحجم', icon: SizeIcon },
-  { id: 2, title: 'أختر النكهة', icon: FlavorIcon },
-  { id: 3, title: 'أختر التزيين', icon: DecorationIcon },
-  { id: 4, title: 'أضف رسالتك الخاصة', icon: MessageIcon }
+  { id: 1, titleEn: 'Size', titleAr: 'أختر الحجم', icon: SizeIcon },
+  { id: 2, titleEn: 'Flavor', titleAr: 'أختر النكهة', icon: FlavorIcon },
+  { id: 3, titleEn: 'Decoration', titleAr: 'أختر التزيين', icon: DecorationIcon },
+  { id: 4, titleEn: 'Message', titleAr: 'أضف رسالتك الخاصة', icon: MessageIcon }
 ];
 
 const cakeOptions = {
@@ -61,9 +61,9 @@ const cakeOptions = {
     { id: 'heart', name: 'قلب (Heart)', price: 15, image: '/images/cake-builder/cake-heart.png', is3D: true }
   ],
   sizes: [
-    { id: '6-inch', name: 'صغير', persons: '٤-٦ أشخاص', price: 120, scale: 0.8 },
-    { id: '8-inch', name: 'وسط', persons: '٨-١٢ شخصاً', price: 180, scale: 1.0 },
-    { id: '10-inch', name: 'كبير', persons: '١٥-٢٠ شخصاً', price: 260, scale: 1.25 }
+    { id: '6-inch', name: 'صغير (Small)', personsAr: '٤-٦ أشخاص', personsEn: '4-6 Persons', price: 120, scale: 0.8 },
+    { id: '8-inch', name: 'وسط (Medium)', personsAr: '٨-١٢ شخصاً', personsEn: '8-12 Persons', price: 180, scale: 1.0 },
+    { id: '10-inch', name: 'كبير (Large)', personsAr: '١٥-٢٠ شخصاً', personsEn: '15-20 Persons', price: 260, scale: 1.25 }
   ],
   tiers: [
     { id: '1-tier', name: 'طبقة واحدة (Single Tier)', price: 0, count: 1 },
@@ -122,7 +122,7 @@ const cakeOptions = {
   ]
 };
 
-export default function LolaCakeBuilder({ cakeAttributes = [] }: { cakeAttributes?: any[] }) {
+export default function LolaCakeBuilder({ cakeAttributes = [], isEn = false }: { cakeAttributes?: any[], isEn?: boolean }) {
   const [currentStep, setCurrentStep] = useState(1);
   const [isFaqOpen, setIsFaqOpen] = useState(false);
   const [isCutaway, setIsCutaway] = useState(false);
@@ -303,6 +303,9 @@ export default function LolaCakeBuilder({ cakeAttributes = [] }: { cakeAttribute
     <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mt-6 w-full">
       {options.map(option => {
         const isSelected = selections[category as keyof typeof selections]?.id === option.id;
+        const nameParts = option.name.split(' (');
+        const displayName = isEn && nameParts.length > 1 ? nameParts[1].replace(')', '') : nameParts[0].trim();
+
         return (
           <div 
             key={option.id} 
@@ -357,10 +360,15 @@ export default function LolaCakeBuilder({ cakeAttributes = [] }: { cakeAttribute
               </div>
             )}
             
-            <div className="font-bold text-[#1a1a1a] text-lg">{option.name}</div>
-            {option.persons && <div className="text-[#8BA19C] text-sm mt-2">{option.persons}</div>}
-            <div className="text-[#1a1a1a] font-bold text-xl mt-4">
-              {option.price > 0 ? `${toArabicDigits(option.price)} ر.س` : 'مشمول'}
+            <div className="font-bold text-[#1a1a1a] text-lg">{displayName}</div>
+            {(option.personsAr || option.persons) && <div className="text-[#8BA19C] text-sm mt-2">{isEn ? option.personsEn : option.personsAr || option.persons}</div>}
+            <div className="text-[#1a1a1a] font-bold text-xl mt-4 flex items-center justify-center gap-1">
+              {option.price > 0 ? (
+                <>
+                  {toArabicDigits(option.price)}
+                  <SaudiRiyalSymbol className="w-auto h-4 text-[#1a1a1a]" />
+                </>
+              ) : (isEn ? 'Included' : 'مشمول')}
             </div>
           </div>
         );
@@ -369,26 +377,26 @@ export default function LolaCakeBuilder({ cakeAttributes = [] }: { cakeAttribute
   );
 
   return (
-    <div className="flex flex-col h-screen w-full font-arabic overflow-hidden bg-white" dir="rtl">
+    <div className={`flex flex-col h-screen w-full overflow-hidden bg-white ${isEn ? 'font-en' : 'font-arabic'}`} dir={isEn ? 'ltr' : 'rtl'}>
       
       {/* HEADER */}
       <div className="bg-[#294941] text-white px-10 py-5 flex items-center justify-between z-20 shrink-0">
-        <div className="flex flex-col text-right items-start">
-          <span className="text-sm font-medium mb-1 opacity-90">الإجمالي</span>
+        <div className={`flex flex-col items-start ${isEn ? 'text-left' : 'text-right'}`}>
+          <span className="text-sm font-medium mb-1 opacity-90">{isEn ? 'Total' : 'الإجمالي'}</span>
           <div className="flex items-baseline gap-1">
             <span className="text-4xl font-bold font-sans tracking-tight">
               {toArabicDigits(calculateTotal().toFixed(2))}
             </span>
-            <span className="text-xl">ر.س</span>
+            <SaudiRiyalSymbol className="w-auto h-5 ml-1" />
           </div>
         </div>
         <div className="flex items-center gap-6">
-          <h1 className="text-3xl font-bold">صمم كيكتك</h1>
+          <h1 className="text-3xl font-bold">{isEn ? 'Design Your Cake' : 'صمم كيكتك'}</h1>
           <button 
             onClick={() => window.history.back()}
             className="bg-[#A6C1B7] text-[#294941] hover:bg-[#8ca59c] transition-colors px-6 py-2.5 rounded-full flex items-center gap-2 font-bold text-lg"
           >
-            رجوع <ArrowLeft className="w-5 h-5" />
+            {isEn ? 'Back' : 'رجوع'} <ArrowLeft className={`w-5 h-5 ${isEn ? 'rotate-180' : ''}`} />
           </button>
         </div>
       </div>
@@ -405,15 +413,15 @@ export default function LolaCakeBuilder({ cakeAttributes = [] }: { cakeAttribute
           <div className="px-6 py-10 lg:px-20 lg:py-20 w-full mx-auto max-w-[800px] flex-1">
             
             {/* Tagline */}
-            <div className="flex justify-end items-center gap-2 text-[#E25555] mb-4">
-              <span className="text-sm font-bold">أصنع لحظة لا تُنسى — خطوة بخطوة</span>
+            <div className={`flex items-center gap-2 text-[#E25555] mb-4 ${isEn ? 'justify-start' : 'justify-end'}`}>
+              <span className="text-sm font-bold">{isEn ? 'Create an unforgettable moment — step by step' : 'أصنع لحظة لا تُنسى — خطوة بخطوة'}</span>
               <Sparkles className="w-4 h-4" />
             </div>
 
             {/* Title */}
-            <div className="text-right mb-12">
-              <h1 className="text-[2.5rem] font-extrabold text-[#1a1a1a] mb-2 leading-tight">صمّم كيكتك بلمستك الخاصة</h1>
-              <p className="text-[#8BA19C] text-lg">شكل، حجم، نكهة، تزيين، ورسالتك</p>
+            <div className={`mb-12 ${isEn ? 'text-left' : 'text-right'}`}>
+              <h1 className="text-[2.5rem] font-extrabold text-[#1a1a1a] mb-2 leading-tight">{isEn ? 'Design Your Custom Cake' : 'صمّم كيكتك بلمستك الخاصة'}</h1>
+              <p className="text-[#8BA19C] text-lg">{isEn ? 'Shape, size, flavor, decoration, and your message' : 'شكل، حجم، نكهة، تزيين، ورسالتك'}</p>
             </div>
 
             {/* Steps Boxes */}
@@ -446,7 +454,7 @@ export default function LolaCakeBuilder({ cakeAttributes = [] }: { cakeAttribute
                       {isCompleted ? <CheckIcon className="w-5 h-5" /> : toArabicDigits(step.id)}
                     </div>
                     <div className="text-sm font-bold text-center text-[#1a1a1a]">
-                      {step.title}
+                      {isEn ? step.titleEn : step.titleAr}
                     </div>
                     <step.icon className={`w-6 h-6 transition-colors duration-300 ${isActive || isCompleted ? 'text-[#294941]' : 'text-[#A6C1B7]'}`} />
                   </button>
@@ -459,15 +467,15 @@ export default function LolaCakeBuilder({ cakeAttributes = [] }: { cakeAttribute
               {currentStep === 1 && (
                 <div className="animate-in fade-in duration-300 space-y-10">
                   <div>
-                    <h2 className="text-2xl font-bold text-[#1a1a1a]">اختر شكل الكيكة</h2>
+                    <h2 className={`text-2xl font-bold text-[#1a1a1a] ${isEn ? 'text-left' : 'text-right'}`}>{isEn ? 'Choose Shape' : 'اختر شكل الكيكة'}</h2>
                     {renderOptionsGrid('shape', mergedOptions.shapes)}
                   </div>
                   <div>
-                    <h2 className="text-2xl font-bold text-[#1a1a1a]">اختر الحجم</h2>
+                    <h2 className={`text-2xl font-bold text-[#1a1a1a] ${isEn ? 'text-left' : 'text-right'}`}>{isEn ? 'Choose Size' : 'اختر الحجم'}</h2>
                     {renderOptionsGrid('size', mergedOptions.sizes)}
                   </div>
                   <div>
-                    <h2 className="text-2xl font-bold text-[#1a1a1a]">عدد الطبقات</h2>
+                    <h2 className={`text-2xl font-bold text-[#1a1a1a] ${isEn ? 'text-left' : 'text-right'}`}>{isEn ? 'Number of Tiers' : 'عدد الطبقات'}</h2>
                     {renderOptionsGrid('tier', mergedOptions.tiers)}
                   </div>
                 </div>
@@ -476,19 +484,19 @@ export default function LolaCakeBuilder({ cakeAttributes = [] }: { cakeAttribute
               {currentStep === 2 && (
                 <div className="animate-in fade-in duration-300 space-y-10">
                   <div>
-                    <div className="flex items-center justify-between mb-4">
-                      <h2 className="text-2xl font-bold text-[#1a1a1a]">اختر نكهة الكيك</h2>
+                    <div className={`flex items-center justify-between mb-4 ${isEn ? 'flex-row-reverse' : ''}`}>
+                      <h2 className="text-2xl font-bold text-[#1a1a1a]">{isEn ? 'Choose Flavor' : 'اختر نكهة الكيك'}</h2>
                       <button 
                         onClick={() => setIsCutaway(!isCutaway)}
                         className={`px-4 py-1.5 rounded-full text-sm font-bold transition-colors ${isCutaway ? 'bg-[#294941] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
                       >
-                        {isCutaway ? 'إخفاء النكهة' : 'رؤية النكهة من الداخل'}
+                        {isCutaway ? (isEn ? 'Hide Flavor' : 'إخفاء النكهة') : (isEn ? 'See Inside Flavor' : 'رؤية النكهة من الداخل')}
                       </button>
                     </div>
                     {renderOptionsGrid('flavor', mergedOptions.flavors)}
                   </div>
                   <div>
-                    <h2 className="text-2xl font-bold text-[#1a1a1a]">لون التغليف (الكريمة)</h2>
+                    <h2 className={`text-2xl font-bold text-[#1a1a1a] ${isEn ? 'text-left' : 'text-right'}`}>{isEn ? 'Frosting Color' : 'لون التغليف (الكريمة)'}</h2>
                     {renderOptionsGrid('color', mergedOptions.colors)}
                   </div>
                 </div>
@@ -496,20 +504,20 @@ export default function LolaCakeBuilder({ cakeAttributes = [] }: { cakeAttribute
 
               {currentStep === 3 && (
                 <div className="animate-in fade-in duration-300">
-                  <h2 className="text-2xl font-bold text-[#1a1a1a]">اختر أسلوب التزيين</h2>
+                  <h2 className={`text-2xl font-bold text-[#1a1a1a] ${isEn ? 'text-left' : 'text-right'}`}>{isEn ? 'Choose Decoration Style' : 'اختر أسلوب التزيين'}</h2>
                   {renderOptionsGrid('style', mergedOptions.styles)}
                 </div>
               )}
 
               {currentStep === 4 && (
                 <div className="animate-in fade-in duration-300 space-y-8">
-                  <div>
-                    <h2 className="text-2xl font-bold text-[#1a1a1a] mb-4">أضف رسالتك الخاصة</h2>
+                  <div className={isEn ? 'text-left' : 'text-right'}>
+                    <h2 className="text-2xl font-bold text-[#1a1a1a] mb-4">{isEn ? 'Add Your Special Message' : 'أضف رسالتك الخاصة'}</h2>
                     <div className="border border-[#E5E7EB] p-4 rounded-2xl focus-within:border-[#294941] bg-white">
                       <input 
                         type="text" 
-                        className="w-full p-4 rounded-xl border border-gray-200 bg-gray-50 text-xl text-[#1a1a1a] focus:outline-none focus:ring-1 focus:ring-[#294941]"
-                        placeholder="مثال: سنة حلوة يا جميل"
+                        className={`w-full p-4 rounded-xl border border-gray-200 bg-gray-50 text-xl text-[#1a1a1a] focus:outline-none focus:ring-1 focus:ring-[#294941] ${isEn ? 'text-left' : 'text-right'}`}
+                        placeholder={isEn ? 'Example: Happy Birthday' : 'مثال: سنة حلوة يا جميل'}
                         value={selections.message}
                         onChange={(e) => setSelections(prev => ({ ...prev, message: e.target.value }))}
                         maxLength={25}
@@ -520,9 +528,9 @@ export default function LolaCakeBuilder({ cakeAttributes = [] }: { cakeAttribute
                   {/* Text Color & Font */}
                   {selections.message && (
                     <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <h3 className="text-lg font-bold text-[#1a1a1a] mb-3">اختر لون الكتابة</h3>
-                        <div className="flex flex-wrap gap-3 bg-gray-50 p-4 rounded-xl border border-gray-100">
+                      <div className={isEn ? 'text-left' : 'text-right'}>
+                        <h3 className="text-lg font-bold text-[#1a1a1a] mb-3">{isEn ? 'Message Color' : 'اختر لون الكتابة'}</h3>
+                        <div className={`flex flex-wrap gap-3 bg-gray-50 p-4 rounded-xl border border-gray-100 ${isEn ? 'justify-start' : 'justify-start'}`}>
                           {['#4a2511', '#8b0000', '#ffffff', '#ffb6c1', '#1a1a1a'].map(color => {
                             const isSelected = selections.textColor === color;
                             return (
@@ -545,24 +553,24 @@ export default function LolaCakeBuilder({ cakeAttributes = [] }: { cakeAttribute
                           })}
                         </div>
                       </div>
-                      <div>
-                        <h3 className="text-lg font-bold text-[#1a1a1a] mb-3">خط الكتابة</h3>
+                      <div className={isEn ? 'text-left' : 'text-right'}>
+                        <h3 className="text-lg font-bold text-[#1a1a1a] mb-3">{isEn ? 'Message Font' : 'خط الكتابة'}</h3>
                         <select 
-                          className="w-full p-3 rounded-xl border border-gray-200 bg-gray-50"
+                          className={`w-full p-3 rounded-xl border border-gray-200 bg-gray-50 ${isEn ? 'text-left' : 'text-right'}`}
                           value={selections.textFont}
                           onChange={(e) => setSelections(prev => ({ ...prev, textFont: e.target.value }))}
                         >
-                          <option value="Classic">كلاسيكي (Classic)</option>
-                          <option value="Modern">عصري (Modern)</option>
-                          <option value="Handwriting">كتابة يدوية (Handwriting)</option>
+                          <option value="Classic">{isEn ? 'Classic' : 'كلاسيكي (Classic)'}</option>
+                          <option value="Modern">{isEn ? 'Modern' : 'عصري (Modern)'}</option>
+                          <option value="Handwriting">{isEn ? 'Handwriting' : 'كتابة يدوية (Handwriting)'}</option>
                         </select>
                       </div>
                     </div>
                   )}
 
                   {/* Image Upload */}
-                  <div>
-                    <h2 className="text-2xl font-bold text-[#1a1a1a] mb-4">صورة مطبوعة على الكيك</h2>
+                  <div className={isEn ? 'text-left' : 'text-right'}>
+                    <h2 className="text-2xl font-bold text-[#1a1a1a] mb-4">{isEn ? 'Printed Image on Cake' : 'صورة مطبوعة على الكيك'}</h2>
                     <div className="border-2 border-dashed border-[#A6C1B7] bg-[#F6FAF8] p-6 rounded-2xl text-center relative hover:bg-[#EEF5F2] transition-colors cursor-pointer">
                       <input 
                         type="file" 
@@ -583,15 +591,15 @@ export default function LolaCakeBuilder({ cakeAttributes = [] }: { cakeAttribute
                         {selections.uploadedImage ? (
                           <>
                             <img src={selections.uploadedImage} alt="Uploaded" className="w-24 h-24 object-cover rounded-xl shadow-sm mb-2" />
-                            <span className="text-[#294941] font-bold">تغيير الصورة</span>
+                            <span className="text-[#294941] font-bold">{isEn ? 'Change Image' : 'تغيير الصورة'}</span>
                           </>
                         ) : (
                           <>
                             <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm text-[#294941] mb-2">
                               <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
                             </div>
-                            <span className="text-[#294941] font-bold">ارفع صورة (اختياري)</span>
-                            <span className="text-sm text-[#8BA19C]">PNG, JPG حتى 5MB</span>
+                            <span className="text-[#294941] font-bold">{isEn ? 'Upload Image (Optional)' : 'ارفع صورة (اختياري)'}</span>
+                            <span className="text-sm text-[#8BA19C]">{isEn ? 'PNG, JPG up to 5MB' : 'PNG, JPG حتى 5MB'}</span>
                           </>
                         )}
                       </div>
@@ -602,31 +610,31 @@ export default function LolaCakeBuilder({ cakeAttributes = [] }: { cakeAttribute
             </div>
 
             {/* Next Button and FAQ Button */}
-            <div className="mt-12 flex items-center justify-between w-full">
+            <div className={`mt-12 flex items-center justify-between w-full ${isEn ? 'flex-row-reverse' : ''}`}>
               {currentStep < steps.length ? (
                 <button 
-                  className="inline-flex items-center gap-3 px-10 py-4 rounded-full font-bold bg-[#294941] text-white hover:bg-[#1E3A34] transition-all text-xl"
+                  className={`inline-flex items-center gap-3 px-10 py-4 rounded-full font-bold bg-[#294941] text-white hover:bg-[#1E3A34] transition-all text-xl ${isEn ? 'flex-row-reverse' : ''}`}
                   onClick={nextStep}
                 >
-                  التالي، {steps[currentStep].title}
-                  <ArrowLeft className="w-5 h-5" />
+                  {isEn ? `Next, ${steps[currentStep].titleEn}` : `التالي، ${steps[currentStep].titleAr}`}
+                  <ArrowLeft className={`w-5 h-5 ${isEn ? 'rotate-180' : ''}`} />
                 </button>
               ) : (
                 <button 
-                  className="inline-flex items-center gap-3 px-10 py-4 rounded-full font-bold bg-[#294941] text-white hover:bg-[#1E3A34] transition-all text-xl disabled:opacity-50 disabled:cursor-not-allowed"
+                  className={`inline-flex items-center gap-3 px-10 py-4 rounded-full font-bold bg-[#294941] text-white hover:bg-[#1E3A34] transition-all text-xl disabled:opacity-50 disabled:cursor-not-allowed ${isEn ? 'flex-row-reverse' : ''}`}
                   onClick={handleCheckout}
                   disabled={isSubmitting}
                 >
-                  {isSubmitting ? 'جاري التحضير...' : 'إتمام الطلب والدفع'}
-                  <ArrowLeft className="w-5 h-5" />
+                  {isSubmitting ? (isEn ? 'Preparing...' : 'جاري التحضير...') : (isEn ? 'Checkout and Pay' : 'إتمام الطلب والدفع')}
+                  <ArrowLeft className={`w-5 h-5 ${isEn ? 'rotate-180' : ''}`} />
                 </button>
               )}
               
               <button 
-                className="flex items-center gap-2 bg-[#8c6b54] text-white px-5 py-2.5 rounded-full font-bold shadow-sm hover:opacity-90 transition-opacity"
+                className={`flex items-center gap-2 bg-[#8c6b54] text-white px-5 py-2.5 rounded-full font-bold shadow-sm hover:opacity-90 transition-opacity ${isEn ? 'flex-row-reverse' : ''}`}
                 onClick={() => setIsFaqOpen(true)}
               >
-                <span>لديك سؤال؟</span>
+                <span>{isEn ? 'Have a question?' : 'لديك سؤال؟'}</span>
                 <div className="bg-[#bda061] text-white w-6 h-6 rounded-full flex items-center justify-center font-serif text-sm">?</div>
               </button>
             </div>
@@ -644,9 +652,9 @@ export default function LolaCakeBuilder({ cakeAttributes = [] }: { cakeAttribute
             
             {/* Top Pill */}
             <div className="bg-[#20584A] text-white px-6 py-2 rounded-full font-bold text-sm flex items-center gap-1.5 whitespace-nowrap shadow-sm">
-              <span>{selections.size.name.split(' (')[0]}</span>
+              <span>{isEn && selections.size.name.includes('(') ? selections.size.name.split('(')[1].replace(')', '').trim() : selections.size.name.split('(')[0].trim()}</span>
               <span>—</span>
-              <span>{toArabicDigits(selections.size.price)} ر.س</span>
+              <span className="flex items-center gap-1">{toArabicDigits(selections.size.price)} <SaudiRiyalSymbol className="w-auto h-3 text-white" /></span>
             </div>
 
             {/* Circle & 3D Canvas */}
@@ -671,7 +679,10 @@ export default function LolaCakeBuilder({ cakeAttributes = [] }: { cakeAttribute
             {/* Bottom Pill (Price) */}
             <div className="bg-white text-[#20584A] px-6 py-2 rounded-full font-bold flex items-center gap-2 whitespace-nowrap shadow-sm">
               <Layers className="w-4 h-4 text-[#20584A] mb-0.5" />
-              <span className="font-sans text-xl pt-1">{toArabicDigits(calculateTotal())}</span>
+              <span className="font-sans text-xl pt-1 flex items-center gap-1.5">
+                {toArabicDigits(calculateTotal())}
+                <SaudiRiyalSymbol className="w-auto h-4 text-[#20584A]" />
+              </span>
             </div>
             
           </div>
@@ -682,7 +693,7 @@ export default function LolaCakeBuilder({ cakeAttributes = [] }: { cakeAttribute
               
               <div className="flex items-center justify-center gap-2 flex-1">
                 <div className="text-[11px] font-bold leading-tight text-center">
-                  صنع بحب<br/>وعناية
+                  {isEn ? <span>Made with Love<br/>& Care</span> : <span>صنع بحب<br/>وعناية</span>}
                 </div>
                 <HeartIcon className="w-5 h-5 text-[#8BA19C]" />
               </div>
@@ -691,7 +702,7 @@ export default function LolaCakeBuilder({ cakeAttributes = [] }: { cakeAttribute
               
               <div className="flex items-center justify-center gap-2 flex-1">
                 <div className="text-[11px] font-bold leading-tight text-center">
-                  توصيل مبرد<br/>لضمان الجودة
+                  {isEn ? <span>Refrigerated Delivery<br/>Guaranteed</span> : <span>توصيل مبرد<br/>لضمان الجودة</span>}
                 </div>
                 <TruckIcon className="w-5 h-5 text-[#8BA19C]" />
               </div>
@@ -700,7 +711,7 @@ export default function LolaCakeBuilder({ cakeAttributes = [] }: { cakeAttribute
               
               <div className="flex items-center justify-center gap-2 flex-1">
                 <div className="text-[11px] font-bold leading-tight text-center">
-                  مكونات<br/>فاخرة
+                  {isEn ? <span>Premium<br/>Ingredients</span> : <span>مكونات<br/>فاخرة</span>}
                 </div>
                 <LeafIcon className="w-5 h-5 text-[#8BA19C]" />
               </div>

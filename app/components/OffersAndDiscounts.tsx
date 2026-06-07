@@ -6,8 +6,9 @@ export function OffersAndDiscounts() {
 
     return (
         <section
-            className={`w-full bg-[#FEF8EB] py-20 lg:py-28 ${isEn ? 'font-en' : 'font-ar'}`}
+            className={`w-full bg-[#FEF8EB] lg:py-28 ${isEn ? 'font-en' : 'font-ar'}`}
             dir={isEn ? 'ltr' : 'rtl'}
+            style={{ paddingTop: '50px', paddingBottom: '50px' }}
         >
             <div className="max-w-[1400px] mx-auto px-4 md:px-8">
 
@@ -25,7 +26,7 @@ export function OffersAndDiscounts() {
                 <div className={`flex flex-col ${isEn ? 'lg:flex-row' : 'lg:flex-row-reverse'} gap-8 mb-16`}>
 
                     {/* CARD 1: LARGE CREAM (65%) */}
-                    <div className="lg:w-[65%] bg-[#EAE0D5] rounded-[40px] flex flex-col md:flex-row items-center relative overflow-hidden min-h-[460px] shadow-sm">
+                    <div className="hidden lg:flex lg:w-[65%] bg-[#EAE0D5] rounded-[40px] flex-col md:flex-row items-center relative overflow-hidden min-h-[460px] shadow-sm">
 
                         {/* Weave Pattern */}
                         <div
@@ -102,7 +103,7 @@ export function OffersAndDiscounts() {
                     </div>
 
                     {/* CARD 2: SMALL GREEN (35%) */}
-                    <div className="lg:w-[35%] bg-[#234745] rounded-[40px] p-10 flex flex-col items-center justify-between text-center min-h-[460px] relative overflow-hidden group shadow-sm">
+                    <div className="w-full lg:w-[35%] bg-[#234745] rounded-[40px] p-10 flex flex-col items-center justify-between text-center min-h-[460px] relative overflow-hidden group shadow-sm">
                         <div className="w-full flex justify-center mb-8">
                             <img
                                 src="/images/sweets-box.png"
@@ -119,7 +120,7 @@ export function OffersAndDiscounts() {
                             </h3>
                             <Link
                                 to={isEn ? "/en/collections/offers" : "/collections/offers"}
-                                className="bg-[#FEF8EB] text-[#255441] rounded-[100px] transition-all flex items-center justify-center font-bold px-8 py-3 w-full max-w-[245px]"
+                                className="bg-[#FEF8EB] text-[#255441] rounded-[100px] transition-all flex items-center justify-center font-bold px-8 py-3 w-[90%] md:w-full md:max-w-[245px]"
                             >
                                 {isEn ? 'Browse Now' : 'تصفح الان'}
                             </Link>

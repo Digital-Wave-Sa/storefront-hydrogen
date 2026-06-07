@@ -64,21 +64,16 @@ export function RamadanBanner({ config }: { config?: any }) {
 
     return (
         <section
-            className={`w-full bg-[#FEF8EB] py-8 lg:py-16 ${isEn ? 'font-en' : 'font-ar'} flex justify-center`}
+            className={`w-full bg-[#FEF8EB] lg:py-16 ${isEn ? 'font-en' : 'font-ar'} flex justify-center`}
             dir={isEn ? 'ltr' : 'rtl'}
+            style={{ paddingTop: '50px', paddingBottom: '50px' }}
         >
             {/* Main Wrapper matching Figma 1280px width */}
             <div className="w-full max-w-[1280px] px-4 md:px-0">
                 <div className={`relative w-full h-auto md:h-[503px] rounded-none overflow-hidden flex flex-col ${isEn ? 'md:flex-row' : 'md:flex-row-reverse'} shadow-sm`}>
-                    
-                    {/* Background Halves */}
-                    <div className="absolute inset-0 z-0 flex flex-col">
-                        <div className="w-full h-[251px] md:h-1/2 bg-[#EED5D7]"></div>
-                        <div className="w-full h-auto flex-1 md:h-1/2 bg-[#906B51]"></div>
-                    </div>
 
                     {/* Left Side: Image (First in LTR, Last in RTL so it stays on the left visually) */}
-                    <div className="relative z-10 w-full md:w-[45%] h-[300px] md:h-full flex items-center justify-center p-8">
+                    <div className="relative z-10 w-full md:w-[45%] h-[260px] md:h-full flex items-center justify-center p-8 bg-[#EED5D7] pt-12">
                         <img 
                             src={imageUrl} 
                             alt={customTitleEn || "Ramadan Sweets Tray"} 
@@ -88,26 +83,29 @@ export function RamadanBanner({ config }: { config?: any }) {
                     </div>
 
                     {/* Right Side: Content */}
-                    <div className={`relative z-10 w-full md:w-[55%] flex flex-col justify-center py-12 px-8 lg:px-[126px] items-start text-start gap-[32px]`}>
+                    <div className={`relative z-10 w-full md:w-[55%] flex flex-col justify-center md:bg-[#906B51]`}>
                         
-                        {/* Red Badge */}
-                        <div className="bg-[#E64950] rounded-[8px] flex items-center justify-center shadow-sm min-w-[98px] px-3 h-[32px]">
-                            <span className={`text-[#F9F9F9] font-bold text-[12px] leading-[15px] whitespace-nowrap ${!isEn ? 'font-dinar' : ''}`}>
-                                ⏳ {isEn ? badgeEn : badgeAr}
-                            </span>
-                        </div>
-
-                        {/* Title Section */}
-                        <div className={`flex flex-col gap-[16px] py-[8px] items-start`}>
-                            <div className="flex items-center gap-[8px]">
-                                {!isEn && <div className="w-[48px] border-t border-[#255441]"></div>}
-                                <p className={`text-[#255441] font-medium text-[16px] leading-[20px] ${!isEn ? 'font-dinar' : ''}`}>
-                                    {isEn ? subtitleEn : subtitleAr}
-                                </p>
-                                {isEn && <div className="w-[48px] border-t border-[#255441]"></div>}
-                            </div>
+                        {/* Pink section on mobile, transparent on desktop */}
+                        <div className="flex flex-col items-center md:items-start text-center md:text-start bg-[#EED5D7] md:bg-transparent px-4 pb-8 md:px-8 lg:px-[126px] md:py-12 w-full gap-[16px] md:gap-[32px]">
                             
-                            <h2 className="text-[36px] lg:text-[50px] font-bold leading-[1.2] lg:leading-[80px] text-[#255441]" style={!isEn ? { fontFamily: "'Bahij Janna', sans-serif" } : undefined}>
+                            {/* Red Badge */}
+                            <div className="bg-[#E64950] rounded-[8px] flex items-center justify-center shadow-sm min-w-[98px] px-3 h-[32px] self-end md:self-auto -mt-10 md:mt-0 z-20">
+                                <span className={`text-[#F9F9F9] font-bold text-[12px] leading-[15px] whitespace-nowrap ${!isEn ? 'font-dinar' : ''}`}>
+                                    ⏳ {isEn ? badgeEn : badgeAr}
+                                </span>
+                            </div>
+
+                            {/* Title Section */}
+                            <div className={`flex flex-col gap-[16px] py-[8px] items-center md:items-start`}>
+                                <div className="flex items-center gap-[8px] w-full justify-center md:justify-start">
+                                    {!isEn && <div className="w-[48px] border-t border-[#255441]"></div>}
+                                    <p className={`text-[#255441] font-medium text-[14px] md:text-[16px] leading-[20px] ${!isEn ? 'font-dinar' : ''}`}>
+                                        {isEn ? subtitleEn : subtitleAr}
+                                    </p>
+                                    {isEn && <div className="w-[48px] border-t border-[#255441]"></div>}
+                                </div>
+                            
+                            <h2 className="text-[32px] md:text-[36px] lg:text-[50px] font-bold leading-[1.2] lg:leading-[80px] text-[#255441]" style={!isEn ? { fontFamily: "'Bahij Janna', sans-serif" } : undefined}>
                                 {isEn ? (
                                     customTitleEn ? customTitleEn : (
                                         <>
@@ -127,17 +125,21 @@ export function RamadanBanner({ config }: { config?: any }) {
                                 )}
                             </h2>
                         </div>
+                        </div>
 
-                        {/* Countdown Timer */}
-                        <div className={`flex items-center gap-[16px] flex-row`}>
+                        {/* Brown section on mobile, transparent on desktop */}
+                        <div className="flex flex-col items-center md:items-start bg-[#906B51] md:bg-transparent px-4 py-8 md:px-8 lg:px-[126px] md:py-0 md:pb-12 w-full gap-[32px]">
+                            
+                            {/* Countdown Timer */}
+                            <div className={`flex items-center justify-center gap-[10px] md:gap-[16px] flex-row w-full md:w-auto`}>
                             {[
                                 { value: timeLeft.days, labelEn: 'Days', labelAr: 'يوم' },
                                 { value: timeLeft.hours, labelEn: 'Hours', labelAr: 'ساعة' },
                                 { value: timeLeft.minutes, labelEn: 'Minutes', labelAr: 'دقيقة' },
                                 { value: timeLeft.seconds, labelEn: 'Seconds', labelAr: 'ثانية' }
                             ].map((item, index) => (
-                                <div key={index} className="w-[72px] h-[87px] bg-[#FEF8EB] border border-[#9FB7AE] rounded-[8px] flex flex-col justify-center items-center gap-[7px] p-[16px] shadow-sm box-border">
-                                    <span className={`text-[#906B51] font-bold text-[18px] leading-[22px] ${!isEn ? 'font-dinar' : ''}`}>
+                                <div key={index} className="w-[68px] h-[80px] md:w-[72px] md:h-[87px] bg-[#FEF8EB] border border-[#906B51] md:border-[#9FB7AE] rounded-[8px] flex flex-col justify-center items-center gap-[7px] p-[10px] md:p-[16px] shadow-sm box-border">
+                                    <span className={`text-[#906B51] font-bold text-[16px] md:text-[18px] leading-[22px] ${!isEn ? 'font-dinar' : ''}`}>
                                         {convertToArabicDigits(item.value)}
                                     </span>
                                     <span className="text-[#906B51] font-dinar text-[14px] leading-[17px]">
@@ -147,18 +149,19 @@ export function RamadanBanner({ config }: { config?: any }) {
                             ))}
                         </div>
 
-                        {/* CTA Button */}
-                        <Link 
-                            to={isEn ? "/en/collections/ramadan" : "/collections/ramadan"}
-                            className="bg-[#BBCFCD] text-[#234745] font-dinar font-bold text-[18px] leading-[22px] rounded-[24px] w-[224px] h-[48px] flex items-center justify-center hover:bg-[#a5bdbb] transition-colors"
-                            style={{ padding: '12px 20px', gap: '8px' }}
-                        >
-                            {isEn ? 'Shop the Collection' : 'تسوق التشكيلة الان'}
-                        </Link>
+                            {/* CTA Button */}
+                            <Link 
+                                to={isEn ? "/en/collections/ramadan" : "/collections/ramadan"}
+                                className="bg-[#BBCFCD] text-[#234745] font-dinar font-bold text-[16px] md:text-[18px] leading-[22px] rounded-[24px] w-[85%] md:w-[224px] h-[48px] flex items-center justify-center hover:bg-[#a5bdbb] transition-colors"
+                                style={{ padding: '12px 20px', gap: '8px' }}
+                            >
+                                {isEn ? 'Shop the Collection' : 'تسوق التشكيلة الان'}
+                            </Link>
 
-                    </div>
+                        </div>
 
                 </div>
+            </div>
             </div>
         </section>
     );

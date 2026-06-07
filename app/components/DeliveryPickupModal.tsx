@@ -534,12 +534,15 @@ function ModalContent({
     const currentBranch = branches.find((b: any) => b.id === effectiveSelectedBranch) || branches[0];
     const isUserAddressSelected = activeTab === 'delivery' && !!currentAddress;
 
-    // Auto-select nearest branch when coords are detected and no manual selection is made yet
+    const [hasAutoSelected, setHasAutoSelected] = useState(false);
+
+    // Auto-select nearest branch when coords are detected (once per session)
     useEffect(() => {
-        if (userCoords && !selectedBranch && activeTab === 'pickup' && branches.length > 0) {
+        if (userCoords && !hasAutoSelected && activeTab === 'pickup' && branches.length > 0) {
             setSelectedBranch(branches[0].id);
+            setHasAutoSelected(true);
         }
-    }, [userCoords, selectedBranch, activeTab, branches, setSelectedBranch]);
+    }, [userCoords, hasAutoSelected, activeTab, branches, setSelectedBranch]);
 
     // Auto-select first address under delivery tab when no manual selection is made yet
     useEffect(() => {
@@ -702,7 +705,8 @@ function ModalContent({
                                     <Link 
                                         to={isEn ? "/en/account/addresses" : "/account/addresses"}
                                         onClick={onClose}
-                                        className="w-full py-4 flex items-center justify-center gap-2 border-2 border-dashed border-gray-200 rounded-2xl text-[#234745] font-bold text-sm hover:border-[#234745]/30 hover:bg-[#fcfaf5] transition-all"
+                                        className="w-full py-4 flex items-center justify-center gap-2 border-2 border-dashed border-gray-200 rounded-2xl font-bold text-sm transition-all"
+                                        style={{ color: '#234745' }}
                                     >
                                         <span className="text-xl">+</span>
                                         {isEn ? 'Add Another Address' : 'إضافة عنوان آخر'}

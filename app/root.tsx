@@ -93,10 +93,22 @@ export async function loader(args: Route.LoaderArgs) {
   const deferredData = loadDeferredData(args, customerAccessToken);
 
   // OPTIONAL: Ensure Cart Buyer Identity and Attributes are synced
-  const selectedLocId = session.get('selectedLocationId');
-  const selectedLocName = session.get('selectedLocationName');
-  const fType = session.get('fulfillmentType');
+  let selectedLocId = session.get('selectedLocationId');
+  let selectedLocName = session.get('selectedLocationName');
+  let fType = session.get('fulfillmentType');
   const selectedAddrName = session.get('selectedAddressName');
+
+  if (!selectedLocId) {
+    const isTesting = env.PUBLIC_STORE_DOMAIN?.includes('belivagloire');
+    selectedLocId = isTesting ? 'gid://shopify/Location/114186715445' : 'gid://shopify/Location/80198500503';
+    const urlLocale = new URL(args.request.url).pathname.split('/')[1]?.toLowerCase();
+    selectedLocName = urlLocale === 'en' ? 'Olaya Branch' : 'فرع العليا';
+    fType = 'pickup';
+    
+    session.set('selectedLocationId', selectedLocId);
+    session.set('selectedLocationName', selectedLocName);
+    session.set('fulfillmentType', fType);
+  }
 
   if (customerAccessToken?.accessToken || selectedLocName || fType) {
     const cartData = await args.context.cart.get();

@@ -42,6 +42,7 @@ export async function loader({ context }: LoaderFunctionArgs) {
 }
 
 export default function CustomCakeBuilderRoute() {
-  const { cakeAttributes } = useLoaderData<typeof loader>();
-  return <LolaCakeBuilder cakeAttributes={cakeAttributes} />;
+  const { cakeAttributes, locale } = useLoaderData<typeof loader>();
+  const isEn = locale === 'en';
+  return <LolaCakeBuilder cakeAttributes={cakeAttributes} isEn={isEn} />;
 }

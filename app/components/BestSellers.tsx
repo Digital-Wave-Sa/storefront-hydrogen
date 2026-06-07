@@ -74,7 +74,7 @@ export function BestSellers({
                 }}
             />
 
-            <div className="max-w-[1400px] mx-auto px-4 md:px-8 pt-12 pb-16 relative z-10">
+            <div className="max-w-[1400px] mx-auto px-4 md:px-8 lg:pt-12 lg:pb-16 relative z-10" style={{ paddingTop: '50px', paddingBottom: '50px' }}>
 
                 {/* Section Header */}
                 <div className="text-center mb-8">
@@ -85,12 +85,12 @@ export function BestSellers({
                 </div>
 
                 {/* Tabs Filter */}
-                <div className="flex flex-wrap justify-center gap-2.5 mb-10">
+                <div className="flex gap-2.5 mb-10 overflow-x-auto hide-scrollbars snap-x snap-mandatory pb-2 -mx-4 px-4 md:mx-0 md:px-0 md:justify-center md:flex-wrap">
                     {tabs.map((tab, idx) => (
                         <button
                             key={idx}
                             onClick={() => setActiveTab(idx)}
-                            className={`px-7 py-2.5 rounded-full border text-[13px] font-bold transition-all ${activeTab === idx
+                            className={`snap-start whitespace-nowrap shrink-0 px-7 py-2.5 rounded-full border text-[13px] font-bold transition-all ${activeTab === idx
                                 ? 'bg-[#BBCFCD] text-[#234745] border-[#BBCFCD]'
                                 : 'bg-transparent text-white border-white/30 hover:border-white/60'
                                 }`}
@@ -106,7 +106,7 @@ export function BestSellers({
                         {(resolvedData) => {
                             const productNodes = (resolvedData as any).products?.nodes || [];
                             return (
-                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                                <div className="flex md:grid md:grid-cols-3 lg:grid-cols-4 gap-4 lg:gap-6 overflow-x-auto md:overflow-visible hide-scrollbars snap-x snap-mandatory pb-8 md:pb-0 -mx-4 px-4 md:mx-0 md:px-0">
                                     {productNodes.map((product: any, idx: number) => {
                                         const variant = product.variants?.nodes?.[0];
                                         const storeAvailabilityNodes = variant?.storeAvailability?.nodes || [];
@@ -146,7 +146,7 @@ export function BestSellers({
                                         const isWishlisted = isInWishlist(product.id);
 
                                         return (
-                                            <div key={product.id} className={`flex flex-col h-full rounded-[20px] border-0 overflow-hidden relative ${isVisibilityBlocked || (isOutOfStock && !isPreorder) ? 'product--disabled grayscale-[30%]' : 'group hover:shadow-[0_10px_40px_-10px_rgba(0,0,0,0.1)]'} transition-all duration-300`} style={{ backgroundColor: '#dce5df' }}>
+                                            <div key={product.id} className={`snap-start shrink-0 w-[85vw] max-w-[320px] md:max-w-none md:w-full flex flex-col h-full rounded-[20px] border-0 overflow-hidden relative ${isVisibilityBlocked || (isOutOfStock && !isPreorder) ? 'product--disabled grayscale-[30%]' : 'group hover:shadow-[0_10px_40px_-10px_rgba(0,0,0,0.1)]'} transition-all duration-300`} style={{ backgroundColor: '#dce5df' }}>
 
                                                 {/* Top Action / Heart */}
                                                 {!isVisibilityBlocked && (
@@ -317,7 +317,7 @@ export function BestSellers({
                     </Await>
                 </Suspense>
 
-                <div className="mt-16 flex justify-center">
+                <div className="mt-6 lg:mt-16 flex justify-center">
                     <Link
                         to={isEn ? "/en/collections/all" : "/collections/all"}
                         className="px-16 py-3 border-2 border-[#234745] text-[#234745] hover:bg-[#234745] hover:!text-white rounded-full font-bold text-[18px] transition-all min-w-[280px] text-center"

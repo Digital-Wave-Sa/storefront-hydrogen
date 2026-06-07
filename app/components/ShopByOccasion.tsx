@@ -37,7 +37,7 @@ export function ShopByOccasion({ collections }: { collections?: any[] }) {
     });
 
     return (
-        <section className={`w-full py-16 lg:py-24 bg-[#FEF8EB] ${isEn ? 'font-en' : 'font-ar'}`} dir={isEn ? 'ltr' : 'rtl'}>
+        <section className={`w-full lg:py-24 bg-[#FEF8EB] ${isEn ? 'font-en' : 'font-ar'}`} dir={isEn ? 'ltr' : 'rtl'} style={{ paddingTop: '50px', paddingBottom: '50px' }}>
             <div className="max-w-[1400px] mx-auto px-6">
                 {/* Header */}
                 <div className="text-center mb-8 lg:mb-12">
@@ -92,7 +92,7 @@ export function ShopByOccasion({ collections }: { collections?: any[] }) {
                 </div>
 
                 {/* Footer Button */}
-                <div className="mt-16 lg:mt-24 flex justify-center">
+                <div className="mt-8 lg:mt-12 flex justify-center">
                     <Link
                         to={isEn ? "/en/occasions" : "/occasions"}
                         className="px-12 py-4 rounded-full border-2 border-[#1a3533]/20 text-[#1a3533] font-bold text-[15px] lg:text-[18px] transition-all hover:bg-[#1a3533] hover:!text-white hover:border-[#1a3533] active:scale-95"

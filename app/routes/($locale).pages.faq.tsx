@@ -79,6 +79,19 @@ export default function FAQPage() {
     }
   ];
 
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
+
+  const filteredCategories = faqCategories
+    .filter(cat => activeCategory ? cat.title === activeCategory : true)
+    .map(cat => ({
+      ...cat,
+      items: cat.items.filter(item => 
+        item.question.toLowerCase().includes(searchQuery.toLowerCase()) || 
+        item.answer.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    })).filter(cat => cat.items.length > 0);
+
   return (
     <div className={`w-full min-h-screen bg-[#FEF8EB] ${isEn ? 'font-en text-left' : 'font-ar text-right'}`} dir={isEn ? 'ltr' : 'rtl'}>
       {/* Hero Section */}
@@ -111,6 +124,8 @@ export default function FAQPage() {
               {/* Input */}
               <input 
                 type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder={isEn ? "Search in FAQs..." : "إبحث في الأسئلة الشائعة..."}
                 className={`w-full h-[44px] bg-white text-gray-800 text-sm outline-none ${isEn ? 'pl-12 pr-28 text-left' : 'pr-12 pl-28 text-right'}`}
                 dir={isEn ? 'ltr' : 'rtl'}
@@ -128,78 +143,74 @@ export default function FAQPage() {
       <div className="max-w-[1280px] w-full mx-auto px-4 md:px-6 mt-10 md:mt-16 relative z-20 pb-20">
         {/* Categories Chips */}
         <div className="flex flex-wrap justify-center gap-3 mb-10" dir={isEn ? 'ltr' : 'rtl'}>
-          <button className="h-[40px] px-6 rounded-full font-bold text-sm bg-[#BBCFCD] text-[#234745] transition-all">
+          <button 
+            onClick={() => setActiveCategory(null)}
+            className={`h-[40px] px-6 rounded-full font-bold text-sm transition-all ${!activeCategory ? 'bg-[#BBCFCD] text-[#234745]' : 'border border-[#234745]/20 text-[#234745]/70 hover:bg-white'}`}
+          >
             {isEn ? 'All' : 'الكل'}
           </button>
-          <button className="h-[40px] px-6 rounded-full border border-[#234745]/20 font-bold text-sm text-[#234745]/70 hover:bg-white transition-all">
-            {isEn ? 'Orders & Payments' : 'الطلب والدفع'}
-          </button>
-          <button className="h-[40px] px-6 rounded-full border border-[#234745]/20 font-bold text-sm text-[#234745]/70 hover:bg-white transition-all">
-            {isEn ? 'Delivery' : 'التوصيل'}
-          </button>
-          <button className="h-[40px] px-6 rounded-full border border-[#234745]/20 font-bold text-sm text-[#234745]/70 hover:bg-white transition-all">
-            {isEn ? 'Gifts' : 'الهدايا'}
-          </button>
-          <button className="h-[40px] px-6 rounded-full border border-[#234745]/20 font-bold text-sm text-[#234745]/70 hover:bg-white transition-all">
-            {isEn ? 'Returns' : 'الإرجاع'}
-          </button>
-          <button className="h-[40px] px-6 rounded-full border border-[#234745]/20 font-bold text-sm text-[#234745]/70 hover:bg-white transition-all">
-            {isEn ? 'Account' : 'الحساب'}
-          </button>
-          <button className="h-[40px] px-6 rounded-full border border-[#234745]/20 font-bold text-sm text-[#234745]/70 hover:bg-white transition-all">
-            {isEn ? 'Products' : 'المنتجات'}
-          </button>
-          <button className="h-[40px] px-6 rounded-full border border-[#234745]/20 font-bold text-sm text-[#234745]/70 hover:bg-white transition-all">
-            {isEn ? 'Branches' : 'الفروع'}
-          </button>
+          {faqCategories.map(cat => (
+            <button 
+              key={cat.title}
+              onClick={() => setActiveCategory(cat.title)}
+              className={`h-[40px] px-6 rounded-full font-bold text-sm transition-all ${activeCategory === cat.title ? 'bg-[#BBCFCD] text-[#234745]' : 'border border-[#234745]/20 text-[#234745]/70 hover:bg-white'}`}
+            >
+              {cat.title}
+            </button>
+          ))}
         </div>
 
         {/* Most Searched Box */}
+        {!searchQuery && !activeCategory && (
         <div className="bg-white rounded-2xl border border-[#234745]/10 shadow-sm p-8 mb-12 max-w-[800px] mx-auto">
           <h2 className={`text-[26px] font-bold text-[#A07A58] flex items-center gap-2 ${isEn ? 'text-left' : 'text-right'}`} style={{ fontFamily: "'Bahij Janna', sans-serif", lineHeight: '100%', marginBottom: '40px' }}>
             {isEn ? 'Most Searched' : 'الأكثر بحثاً'}
           </h2>
           <ul className="space-y-4 text-[#234745] text-[18px]" style={{ fontFamily: "'GE Dinar One', sans-serif", fontWeight: 500, lineHeight: '100%' }} dir={isEn ? 'ltr' : 'rtl'}>
-            <li className="flex items-center gap-2 justify-start">
+            <li className="flex items-center gap-2 justify-start cursor-pointer hover:text-[#A07A58]" onClick={() => setSearchQuery(isEn ? 'track my order' : 'اتتبع طلبي')}>
               <span className="w-1.5 h-1.5 bg-[#234745] rounded-full shrink-0"></span>
               <span>{isEn ? 'How do I track my order?' : 'كيف اتتبع طلبي؟'}</span>
             </li>
-            <li className="flex items-center gap-2 justify-start">
+            <li className="flex items-center gap-2 justify-start cursor-pointer hover:text-[#A07A58]" onClick={() => setSearchQuery(isEn ? 'delivery areas' : 'مناطق التوصيل')}>
               <span className="w-1.5 h-1.5 bg-[#234745] rounded-full shrink-0"></span>
               <span>{isEn ? 'What are the available delivery areas?' : 'ما هي مناطق التوصيل المتاحة؟'}</span>
             </li>
-            <li className="flex items-center gap-2 justify-start">
-              <span className="w-1.5 h-1.5 bg-[#234745] rounded-full shrink-0"></span>
-              <span>{isEn ? 'How do I add a message to the gift?' : 'كيف اضيف رسالة للهدية؟'}</span>
-            </li>
-            <li className="flex items-center gap-2 justify-start">
+            <li className="flex items-center gap-2 justify-start cursor-pointer hover:text-[#A07A58]" onClick={() => setSearchQuery(isEn ? 'return policy' : 'سياسة الاسترجاع')}>
               <span className="w-1.5 h-1.5 bg-[#234745] rounded-full shrink-0"></span>
               <span>{isEn ? 'What is the return policy?' : 'ما هي سياسة الاسترجاع؟'}</span>
             </li>
-            <li className="flex items-center gap-2 justify-start">
+            <li className="flex items-center gap-2 justify-start cursor-pointer hover:text-[#A07A58]" onClick={() => setSearchQuery(isEn ? 'discount code' : 'كود الخصم')}>
               <span className="w-1.5 h-1.5 bg-[#234745] rounded-full shrink-0"></span>
               <span>{isEn ? 'How do I use the discount code?' : 'كيف استخدم كود الخصم؟'}</span>
             </li>
           </ul>
         </div>
+        )}
 
         <div className="max-w-[800px] mx-auto space-y-10">
-          {faqCategories.map((category, catIndex) => (
-            <div key={catIndex}>
+          {filteredCategories.length === 0 ? (
+            <div className="text-center py-10">
+              <p className="text-[20px] font-bold text-[#1F413F]" style={{ fontFamily: "'Bahij Janna', sans-serif" }}>
+                {isEn ? 'No results found for your search.' : 'لم يتم العثور على نتائج لبحثك.'}
+              </p>
+            </div>
+          ) : (
+            filteredCategories.map((category, catIndex) => (
+            <div key={category.title}>
               <h2 className={`text-[38px] font-bold text-[#234745] ${isEn ? 'text-left' : 'text-right'}`} style={{ fontFamily: "'Bahij Janna', sans-serif", lineHeight: '100%', marginBottom: '32px' }}>
                 {category.title}
               </h2>
               <div className="space-y-3">
                 {category.items.map((item, itemIndex) => {
-                  const id = `${catIndex}-${itemIndex}`;
-                  const isOpen = openId === id;
+                  const id = `${category.title}-${itemIndex}`;
+                  const isOpen = openId === id || !!searchQuery;
                   return (
                     <div 
                       key={id} 
                       className="bg-white rounded-[12px] border border-[#234745] overflow-hidden transition-all duration-300"
                     >
                       <button
-                        onClick={() => setOpenId(isOpen ? null : id)}
+                        onClick={() => setOpenId(isOpen && !searchQuery ? null : id)}
                         className="w-full flex items-center justify-between p-6 min-h-[72px] outline-none hover:bg-gray-50/50 transition-colors"
                       >
                         <h3 className={`text-[18px] font-bold text-[#234745] flex-1 ${isEn ? 'text-left' : 'text-right'}`} style={{ fontFamily: "'GE Dinar One', sans-serif", lineHeight: '1.4' }}>
@@ -248,7 +259,7 @@ export default function FAQPage() {
                 })}
               </div>
             </div>
-          ))}
+          )))}
         </div>
       </div> {/* Close max-width container */}
 

@@ -1,19 +1,64 @@
-import { type MetaFunction } from 'react-router';
-import { useRouteLoaderData } from 'react-router';
+import { data, type LoaderFunctionArgs, type MetaFunction } from 'react-router';
+import { useLoaderData, useRouteLoaderData } from 'react-router';
 import patternBg from '~/assets/patteren-collection-header.svg';
 
-export const meta: MetaFunction = ({ parentsData }) => {
+const PAGE_QUERY = `#graphql
+  query Page(
+    $language: LanguageCode,
+    $country: CountryCode,
+    $handle: String!
+  )
+  @inContext(language: $language, country: $country) {
+    page(handle: $handle) {
+      id
+      title
+      body
+      seo {
+        description
+        title
+      }
+    }
+  }
+` as const;
+
+export async function loader({ context }: LoaderFunctionArgs) {
+  const { page } = await context.storefront.query(PAGE_QUERY, {
+    variables: { 
+      handle: 'terms',
+      language: context.storefront.i18n.language,
+      country: context.storefront.i18n.country,
+    },
+  });
+
+  if (!page) {
+    throw new Response('Not Found', { status: 404 });
+  }
+
+  return data({ page });
+}
+
+export const meta: MetaFunction<typeof loader> = ({ data, parentsData }) => {
   const rootData = parentsData?.root as any;
   const isEn = rootData?.consent?.language?.toLowerCase() === 'en';
+  
+  if (!data?.page) {
+    return [{ title: isEn ? 'Terms of Service | Saadeddin' : 'الشروط والأحكام | سعد الدين' }];
+  }
+
+  const { page } = data;
+  const title = page.seo?.title || `${page.title} | Saadeddin`;
+  const description = page.seo?.description || (page.body?.replace(/<[^>]*>?/gm, '').substring(0, 155) || '');
+
   return [
-    { title: isEn ? 'Terms of Service | Saadeddin' : 'الشروط والأحكام | سعد الدين' },
-    { name: 'description', content: isEn ? 'Read our terms of service to understand the rules and regulations for using our site.' : 'اقرأ شروط الخدمة الخاصة بنا لفهم القواعد واللوائح الخاصة باستخدام موقعنا.' },
-    { property: 'og:title', content: isEn ? 'Terms of Service | Saadeddin' : 'الشروط والأحكام | سعد الدين' },
-    { property: 'og:description', content: isEn ? 'Read our terms of service to understand the rules and regulations for using our site.' : 'اقرأ شروط الخدمة الخاصة بنا لفهم القواعد واللوائح الخاصة باستخدام موقعنا.' },
+    { title: title.substring(0, 60) },
+    { name: 'description', content: description.substring(0, 160) },
+    { property: 'og:title', content: title.substring(0, 60) },
+    { property: 'og:description', content: description.substring(0, 160) },
   ];
 };
 
 export default function TermsPage() {
+  const { page } = useLoaderData<typeof loader>();
   const rootData = useRouteLoaderData('root') as any;
   const isEn = rootData?.consent?.language?.toLowerCase() === 'en';
 
@@ -30,54 +75,20 @@ export default function TermsPage() {
           }}
         />
         <div className="relative z-10 text-center">
-          <p className="text-[1rem] font-medium opacity-80 mb-2" style={{ fontFamily: "'GE Dinar One', sans-serif", lineHeight: '100%' }}>
-            {isEn ? 'Legal' : 'قانوني'}
-          </p>
           <h1 className="font-bold !text-[50px]" style={{ fontFamily: "'Bahij Janna', sans-serif", fontSize: '50px', fontWeight: 700, lineHeight: '100%', color: 'rgb(254, 248, 235)', textAlign: 'center', marginTop: '10px', marginBottom: '1rem' }}>
-            {isEn ? "Terms of Service" : 'الشروط والأحكام'}
+            {page.title}
           </h1>
         </div>
       </div>
 
       <div className="max-w-[800px] mx-auto px-4 md:px-6 mt-10 md:mt-16 relative z-20 pb-20">
         <div className="bg-white rounded-3xl p-8 md:p-12 border border-gray-100 shadow-sm">
-          <div className="text-[#234745]/80">
-            <h2 className={`text-[22px] font-bold text-[#234745] mb-4 ${isEn ? 'text-left' : 'text-right'}`} style={{ fontFamily: "'Bahij Janna', sans-serif", lineHeight: '100%' }}>
-              {isEn ? "1. Use of the Site" : "١. استخدام الموقع"}
-            </h2>
-            <p className="mb-6 text-[16px]" style={{ fontFamily: "'GE Dinar One', sans-serif", lineHeight: '1.6' }}>
-              {isEn 
-                ? "By accessing this site, you agree to comply with these Terms of Service. You may not use the site for any illegal or unauthorized purpose."
-                : "من خلال الوصول إلى هذا الموقع، فإنك توافق على الالتزام بشروط الخدمة هذه. لا يجوز لك استخدام الموقع لأي غرض غير قانوني أو غير مصرح به."}
-            </p>
-
-            <h2 className={`text-[22px] font-bold text-[#234745] mb-4 ${isEn ? 'text-left' : 'text-right'}`} style={{ fontFamily: "'Bahij Janna', sans-serif", lineHeight: '100%' }}>
-              {isEn ? "2. Orders and Payments" : "٢. الطلبات والمدفوعات"}
-            </h2>
-            <p className="mb-6 text-[16px]" style={{ fontFamily: "'GE Dinar One', sans-serif", lineHeight: '1.6' }}>
-              {isEn 
-                ? "All orders placed through the site are subject to acceptance. We reserve the right to refuse or cancel any order for any reason."
-                : "جميع الطلبات المقدمة من خلال الموقع تخضع للقبول. نحن نحتفظ بالحق في رفض أو إلغاء أي طلب لأي سبب من الأسباب."}
-            </p>
-
-            <h2 className={`text-[22px] font-bold text-[#234745] mb-4 ${isEn ? 'text-left' : 'text-right'}`} style={{ fontFamily: "'Bahij Janna', sans-serif", lineHeight: '100%' }}>
-              {isEn ? "3. Intellectual Property" : "٣. الملكية الفكرية"}
-            </h2>
-            <p className="mb-6 text-[16px]" style={{ fontFamily: "'GE Dinar One', sans-serif", lineHeight: '1.6' }}>
-              {isEn 
-                ? "All content on this site, including text, graphics, logos, and images, is the property of Saadeddin and protected by copyright laws."
-                : "جميع المحتويات الموجودة على هذا الموقع، بما في ذلك النصوص والرسومات والشعارات والصور, هي ملك لشركة سعد الدين ومحمية بموجب قوانين حقوق النشر."}
-            </p>
-
-            <h2 className={`text-[22px] font-bold text-[#234745] mb-4 ${isEn ? 'text-left' : 'text-right'}`} style={{ fontFamily: "'Bahij Janna', sans-serif", lineHeight: '100%' }}>
-              {isEn ? "4. Limitation of Liability" : "٤. حدود المسؤولية"}
-            </h2>
-            <p className="text-[16px]" style={{ fontFamily: "'GE Dinar One', sans-serif", lineHeight: '1.6' }}>
-              {isEn 
-                ? "Saadeddin shall not be liable for any direct, indirect, incidental, or consequential damages resulting from the use or inability to use the site."
-                : "لن تكون شركة سعد الدين مسؤولة عن أي أضرار مباشرة أو غير مباشرة أو عرضية أو تبعية تنتج عن استخدام أو عدم القدرة على استخدام الموقع."}
-            </p>
-          </div>
+          {/* Dynamic Content from Shopify */}
+          <div 
+            className="text-[#234745]/80 prose prose-lg max-w-none"
+            style={{ fontFamily: isEn ? 'inherit' : "'GE Dinar One', sans-serif", lineHeight: '1.8' }}
+            dangerouslySetInnerHTML={{ __html: page.body }} 
+          />
         </div>
       </div>
     </div>

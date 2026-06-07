@@ -24,7 +24,7 @@ export function GTMAnalytics() {
       if (eventName === 'begin_checkout') gtmEvent = 'begin_checkout';
       if (eventName === 'add_payment_info') gtmEvent = 'add_payment_info';
       if (eventName === 'purchase') gtmEvent = 'purchase';
-      if (eventName === 'search') gtmEvent = 'search';
+      if (eventName === 'search' || eventName === 'search_viewed') gtmEvent = 'search';
       if (eventName === 'customer_registered') gtmEvent = 'sign_up';
       if (eventName === 'customer_logged_in') gtmEvent = 'login';
       

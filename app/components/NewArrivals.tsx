@@ -40,7 +40,7 @@ export function NewArrivals({
     };
 
     return (
-        <section dir={isEn ? 'ltr' : 'rtl'} className={`w-full bg-white py-16 ${isEn ? 'font-en' : 'font-ar'}`}>
+        <section dir={isEn ? 'ltr' : 'rtl'} className={`hidden md:block w-full bg-white lg:py-16 ${isEn ? 'font-en' : 'font-ar'}`} style={{ paddingTop: '50px', paddingBottom: '50px' }}>
             <div className="max-w-[1400px] mx-auto px-4 md:px-8">
 
                 {/* Section Header */}

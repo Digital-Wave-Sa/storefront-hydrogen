@@ -25,14 +25,15 @@ export function CorporateGifting() {
 
     return (
         <section
-            className={`w-full bg-[#234745] py-16 lg:py-24 overflow-hidden ${isEn ? 'font-en' : 'font-ar'}`}
+            className={`w-full bg-[#234745] lg:py-24 overflow-hidden ${isEn ? 'font-en' : 'font-ar'}`}
             dir={isEn ? 'ltr' : 'rtl'}
+            style={{ paddingTop: '50px', paddingBottom: '50px' }}
         >
             <div className="max-w-[1400px] mx-auto px-6 lg:px-16">
-                <div className="flex flex-col lg:flex-row-reverse items-center gap-16 lg:gap-24">
+                <div className="flex flex-col-reverse lg:flex-row-reverse items-center gap-8 lg:gap-24">
 
                     {/* Text Content */}
-                    <div className="w-full lg:w-[35%] flex flex-col items-start text-start gap-[32px]">
+                    <div className="w-full lg:w-[35%] flex flex-col items-center lg:items-start text-center lg:text-start gap-6 lg:gap-[32px]">
                         <h2 
                             className="text-[32px] lg:text-[50px] font-bold text-white leading-[1.2] lg:leading-[80px]"
                             style={{ fontFamily: "'Bahij Janna', sans-serif" }}
@@ -49,7 +50,7 @@ export function CorporateGifting() {
 
                         <Link
                             to={isEn ? "/en/corporate" : "/corporate"}
-                            className="bg-[#BBCFCD] hover:bg-[#a5b9b8] text-[#234745] px-8 py-3 rounded-[25px] font-bold transition-all shadow-sm flex items-center justify-center min-w-[160px]"
+                            className="bg-[#BBCFCD] hover:bg-[#a5b9b8] text-[#234745] px-8 py-3.5 lg:py-3 rounded-[25px] font-bold transition-all shadow-sm flex items-center justify-center w-[85%] sm:w-auto sm:min-w-[200px] lg:min-w-[160px]"
                             style={{ fontFamily: "'GE Dinar One', sans-serif" }}
                         >
                             {activeContent.button}
@@ -62,7 +63,7 @@ export function CorporateGifting() {
                         {/* Card 1: Employees (First in RTL = Right side) */}
                         <Link
                             to={isEn ? "/en/collections/employee-gifts" : "/collections/employee-gifts"}
-                            className="group relative flex-1 h-[264px] rounded-[20px] overflow-hidden bg-[#234745]"
+                            className="hidden md:flex group relative flex-1 h-[300px] md:h-[264px] rounded-[20px] overflow-hidden bg-[#234745]"
                         >
                             <img
                                 src="/images/gift-corporate-2.webp"
@@ -84,7 +85,7 @@ export function CorporateGifting() {
                         {/* Card 2: Clients & Partners (Second in RTL = Left side) */}
                         <Link
                             to={isEn ? "/en/collections/corporate-clients" : "/collections/corporate-clients"}
-                            className="group relative flex-1 h-[264px] rounded-[20px] overflow-hidden bg-[#234745]"
+                            className="group relative flex-1 h-[300px] md:h-[264px] rounded-[20px] overflow-hidden bg-[#234745]"
                         >
                             <img
                                 src="/images/gift-corporate-1.webp"

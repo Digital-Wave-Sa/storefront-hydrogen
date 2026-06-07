@@ -21,7 +21,7 @@ const CAKE_ATTRIBUTES_QUERY = `#graphql
         id
         attributeType: field(key: "attribute_type") { value }
         nameEn: field(key: "name_english") { value }
-        price: field(key: "price") { value }
+        priceDelta: field(key: "price_delta") { value }
         thumbnailUrl: field(key: "thumbnail_image") { reference { ... on MediaImage { image { url } } } }
       }
     }

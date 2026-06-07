@@ -147,8 +147,8 @@ export default function LolaCakeBuilder({ cakeAttributes = [] }: { cakeAttribute
           if (shopifyMatch.thumbnailUrl?.reference?.image?.url) {
             merged.image = shopifyMatch.thumbnailUrl.reference.image.url;
           }
-          if (shopifyMatch.price?.value !== undefined && shopifyMatch.price?.value !== null) {
-            merged.price = parseInt(shopifyMatch.price.value, 10);
+          if (shopifyMatch.priceDelta?.value !== undefined && shopifyMatch.priceDelta?.value !== null) {
+            merged.price = parseInt(shopifyMatch.priceDelta.value, 10);
           }
         }
         return merged;

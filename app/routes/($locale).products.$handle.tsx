@@ -747,42 +747,64 @@ export default function Product() {
 
                   {/* Bundle Components Section */}
                   {isBundle && bundleComponents.length > 0 && (
-                    <div className="flex flex-col gap-5 mt-4">
-                      <div className={`flex items-center justify-between ${isEn ? 'flex-row' : 'flex-row-reverse'}`}>
-                        <h5 className={`font-black text-[#1a1a1a] text-[15px]`}>
-                          {isEn ? 'This package includes:' : 'يحتوي هذا العرض على:'}
-                        </h5>
+                    <div className="flex flex-col gap-6 mt-4 bg-[#FEF8EB] p-6 rounded-[24px] border border-[#BBCFCD]/50 shadow-sm relative overflow-hidden w-full" style={{ maxWidth: '519px' }}>
+                      {/* Decorative background element */}
+                      <div className="absolute -top-10 -right-10 w-40 h-40 bg-[#BBCFCD]/20 rounded-full blur-3xl pointer-events-none"></div>
+                      
+                      <div className={`flex items-center justify-between relative z-10 ${isEn ? 'flex-row' : 'flex-row-reverse'}`}>
+                        <div className={`flex items-center gap-3 ${isEn ? 'flex-row' : 'flex-row-reverse'}`}>
+                           <div className="w-10 h-10 bg-[#234745] rounded-full flex items-center justify-center shadow-sm">
+                             <span className="text-white text-[18px]">🎁</span>
+                           </div>
+                           <h5 className="font-bold text-[#234745] text-[20px]" style={{ fontFamily: "'Bahij Janna', sans-serif" }}>
+                             {isEn ? 'Bundle Includes:' : 'محتويات العرض:'}
+                           </h5>
+                        </div>
                         {bundleSavings && bundleSavings > 0 && (
-                           <span className="bg-[#295b45] text-white text-[11px] font-black px-3 py-1.5 rounded-full">
-                             {isEn ? 'Bundle Savings: ' : 'توفير العرض: '}
-                             {new Intl.NumberFormat(locale === 'en' ? 'en-US' : 'ar-EG').format(bundleSavings)} {isEn ? 'SAR' : 'ر.س'}
-                           </span>
+                           <div className="flex flex-col items-end">
+                             <span className="text-[#906B51] text-[12px] font-bold mb-1" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
+                               {isEn ? 'You Save' : 'توفير العرض'}
+                             </span>
+                             <span className="bg-[#234745] text-white text-[14px] font-bold px-3 py-1 rounded-[8px] shadow-sm" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
+                               {new Intl.NumberFormat(locale === 'en' ? 'en-US' : 'ar-EG').format(bundleSavings)} {isEn ? 'SAR' : 'ر.س'}
+                             </span>
+                           </div>
                         )}
                       </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        {bundleComponents.map((component: any) => {
+                      
+                      <div className="flex flex-col relative z-10">
+                        {bundleComponents.map((component: any, index: number) => {
                           const compVariant = component.variants?.nodes?.[0];
                           const compPrice = compVariant?.price;
                           return (
-                            <div key={component.id} className={`flex items-center gap-4 bg-white border border-gray-100 rounded-[20px] p-4 shadow-sm transition-all hover:border-[#234745]/30 ${isEn ? 'flex-row' : 'flex-row-reverse'}`}>
-                               <div className="w-16 h-16 rounded-[12px] bg-[#f0f4f2] overflow-hidden flex-shrink-0 relative">
-                                 {component.featuredImage ? (
-                                   <Image data={component.featuredImage} className="object-cover w-full h-full" sizes="64px" />
-                                 ) : (
-                                   <div className="w-full h-full flex items-center justify-center text-gray-300 text-[10px]">{isEn ? 'No Image' : 'لا توجد صورة'}</div>
-                                 )}
-                               </div>
-                               <div className={`flex flex-col flex-grow ${isEn ? 'text-left' : 'text-right'}`}>
-                                 <span className="text-[13px] font-black text-[#1a1a1a] line-clamp-2 leading-tight">
-                                   {component.title}
-                                 </span>
-                                 {compPrice && (
-                                   <div className={`flex items-center gap-1 text-[#A67B5B] text-[12px] font-bold mt-1 ${isEn ? 'justify-start' : 'justify-end'}`}>
-                                     <span>{isEn ? 'Original: ' : 'السعر الأصلي: '}</span>
-                                     <Price data={compPrice} isEn={isEn} size="xs" />
+                            <div key={component.id} className="flex flex-col w-full">
+                                {index > 0 && (
+                                    <div className="flex justify-center -my-3 z-20 relative">
+                                        <div className="w-8 h-8 bg-[#FEF8EB] rounded-full flex items-center justify-center border-2 border-[#BBCFCD] text-[#234745] font-black text-[18px] shadow-sm">
+                                            +
+                                        </div>
+                                    </div>
+                                )}
+                                <div className={`flex items-center gap-4 bg-white border border-[#BBCFCD]/30 rounded-[16px] p-4 shadow-sm transition-all hover:border-[#234745] hover:shadow-md ${isEn ? 'flex-row' : 'flex-row-reverse'}`}>
+                                   <div className="w-20 h-20 rounded-[12px] bg-[#f9f9f9] overflow-hidden flex-shrink-0 relative border border-gray-100">
+                                     {component.featuredImage ? (
+                                       <Image data={component.featuredImage} className="object-cover w-full h-full" sizes="80px" />
+                                     ) : (
+                                       <div className="w-full h-full flex items-center justify-center text-gray-300 text-[10px]">{isEn ? 'No Image' : 'لا توجد صورة'}</div>
+                                     )}
                                    </div>
-                                 )}
-                               </div>
+                                   <div className={`flex flex-col flex-grow ${isEn ? 'text-left' : 'text-right'}`}>
+                                     <span className="text-[16px] font-bold text-[#1a1a1a] line-clamp-2 leading-tight" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
+                                       {component.title}
+                                     </span>
+                                     {compPrice && (
+                                       <div className={`flex items-center gap-1 text-[#906B51] text-[14px] font-bold mt-2 ${isEn ? 'justify-start' : 'justify-end'}`} style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
+                                         <span>{isEn ? 'Value: ' : 'القيمة: '}</span>
+                                         <Price data={compPrice} isEn={isEn} size="sm" />
+                                       </div>
+                                     )}
+                                   </div>
+                                </div>
                             </div>
                           );
                         })}

@@ -256,9 +256,9 @@ export default function FeedbackAnalyticsDashboard() {
           <div className="text-gray-500 font-bold uppercase tracking-wider text-xs mb-2">{i18n.common.sentimentHealth}</div>
           <div className="text-4xl font-black text-[#234745] mb-2">{metrics.sentimentScore}%</div>
           <div className="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden flex">
-            <div style={{ width: \`\${(metrics.sentimentDistribution.positive / Math.max(metrics.totalReviews, 1)) * 100}%\` }} className="bg-green-500 h-full"></div>
-            <div style={{ width: \`\${(metrics.sentimentDistribution.neutral / Math.max(metrics.totalReviews, 1)) * 100}%\` }} className="bg-yellow-400 h-full"></div>
-            <div style={{ width: \`\${(metrics.sentimentDistribution.negative / Math.max(metrics.totalReviews, 1)) * 100}%\` }} className="bg-red-500 h-full"></div>
+            <div style={{ width: `${(metrics.sentimentDistribution.positive / Math.max(metrics.totalReviews, 1)) * 100}%` }} className="bg-green-500 h-full"></div>
+            <div style={{ width: `${(metrics.sentimentDistribution.neutral / Math.max(metrics.totalReviews, 1)) * 100}%` }} className="bg-yellow-400 h-full"></div>
+            <div style={{ width: `${(metrics.sentimentDistribution.negative / Math.max(metrics.totalReviews, 1)) * 100}%` }} className="bg-red-500 h-full"></div>
           </div>
         </div>
 
@@ -278,7 +278,7 @@ export default function FeedbackAnalyticsDashboard() {
               <div key={idx} className="relative group w-full flex flex-col items-center justify-end h-full">
                 <div 
                   className="w-full bg-[#EED5D7] hover:bg-[#d4a06a] transition-all rounded-t-sm"
-                  style={{ height: \`\${(val / maxTrend) * 100}%\`, minHeight: val > 0 ? '4px' : '0' }}
+                  style={{ height: `${(val / maxTrend) * 100}%`, minHeight: val > 0 ? '4px' : '0' }}
                 />
                 <div className="opacity-0 group-hover:opacity-100 absolute -top-8 bg-gray-800 text-white text-[10px] py-1 px-2 rounded pointer-events-none transition-opacity whitespace-nowrap z-10">
                   {trends.labels[idx]}: {val} {isEn ? 'reviews' : 'تقييم'}
@@ -303,7 +303,7 @@ export default function FeedbackAnalyticsDashboard() {
                 <span>{metrics.sentimentDistribution.positive}</span>
               </div>
               <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
-                <div className="bg-green-500 h-2 rounded-full" style={{ width: \`\${(metrics.sentimentDistribution.positive / Math.max(metrics.totalReviews, 1)) * 100}%\` }}></div>
+                <div className="bg-green-500 h-2 rounded-full" style={{ width: `${(metrics.sentimentDistribution.positive / Math.max(metrics.totalReviews, 1)) * 100}%` }}></div>
               </div>
             </div>
 
@@ -313,7 +313,7 @@ export default function FeedbackAnalyticsDashboard() {
                 <span>{metrics.sentimentDistribution.neutral}</span>
               </div>
               <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
-                <div className="bg-yellow-400 h-2 rounded-full" style={{ width: \`\${(metrics.sentimentDistribution.neutral / Math.max(metrics.totalReviews, 1)) * 100}%\` }}></div>
+                <div className="bg-yellow-400 h-2 rounded-full" style={{ width: `${(metrics.sentimentDistribution.neutral / Math.max(metrics.totalReviews, 1)) * 100}%` }}></div>
               </div>
             </div>
 
@@ -323,7 +323,7 @@ export default function FeedbackAnalyticsDashboard() {
                 <span>{metrics.sentimentDistribution.negative}</span>
               </div>
               <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
-                <div className="bg-red-500 h-2 rounded-full" style={{ width: \`\${(metrics.sentimentDistribution.negative / Math.max(metrics.totalReviews, 1)) * 100}%\` }}></div>
+                <div className="bg-red-500 h-2 rounded-full" style={{ width: `${(metrics.sentimentDistribution.negative / Math.max(metrics.totalReviews, 1)) * 100}%` }}></div>
               </div>
             </div>
           </div>
@@ -357,8 +357,8 @@ export default function FeedbackAnalyticsDashboard() {
                   <td className="py-4">
                     <div className="w-24 bg-gray-100 rounded-full h-1.5 overflow-hidden">
                       <div 
-                        className={\`h-1.5 rounded-full \${loc.rating >= 4 ? 'bg-green-500' : loc.rating >= 3 ? 'bg-yellow-400' : 'bg-red-500'}\`} 
-                        style={{ width: \`\${(loc.rating / 5) * 100}%\` }}
+                        className={`h-1.5 rounded-full ${loc.rating >= 4 ? 'bg-green-500' : loc.rating >= 3 ? 'bg-yellow-400' : 'bg-red-500'}`} 
+                        style={{ width: `${(loc.rating / 5) * 100}%` }}
                       ></div>
                     </div>
                   </td>

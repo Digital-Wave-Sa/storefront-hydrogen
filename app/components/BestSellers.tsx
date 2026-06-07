@@ -320,7 +320,7 @@ export function BestSellers({
                 <div className="mt-16 flex justify-center">
                     <Link
                         to={isEn ? "/en/collections/all" : "/collections/all"}
-                        className="px-16 py-3 border-2 border-[#234745] text-[#234745] hover:bg-[#234745] hover:text-white rounded-full font-bold text-[18px] transition-all min-w-[280px] text-center"
+                        className="px-16 py-3 border-2 border-[#234745] text-[#234745] hover:bg-[#234745] hover:!text-white rounded-full font-bold text-[18px] transition-all min-w-[280px] text-center"
                     >
                         {isEn ? 'View All Products' : 'عرض جميع المنتجات'}
                     </Link>

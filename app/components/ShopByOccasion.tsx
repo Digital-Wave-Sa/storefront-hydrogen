@@ -95,7 +95,7 @@ export function ShopByOccasion({ collections }: { collections?: any[] }) {
                 <div className="mt-16 lg:mt-24 flex justify-center">
                     <Link
                         to={isEn ? "/en/occasions" : "/occasions"}
-                        className="px-12 py-4 rounded-full border-2 border-[#1a3533]/20 text-[#1a3533] font-bold text-[15px] lg:text-[18px] transition-all hover:bg-[#1a3533] hover:text-white hover:border-[#1a3533] active:scale-95"
+                        className="px-12 py-4 rounded-full border-2 border-[#1a3533]/20 text-[#1a3533] font-bold text-[15px] lg:text-[18px] transition-all hover:bg-[#1a3533] hover:!text-white hover:border-[#1a3533] active:scale-95"
                     >
                         {isEn ? 'Browse All Occasions' : 'تصفح كل المناسبات'}
                     </Link>

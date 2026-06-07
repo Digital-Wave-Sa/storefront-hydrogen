@@ -204,7 +204,7 @@ export function NewArrivals({
                                     <div className="mt-16 flex justify-center">
                                         <Link 
                                             to={isEn ? "/en/collections" : "/collections"}
-                                            className="px-10 py-3.5 border border-[#234745] text-[#234745] rounded-full font-bold text-[15px] hover:bg-[#234745] hover:text-white transition-all duration-300"
+                                            className="px-10 py-3.5 border border-[#234745] text-[#234745] rounded-full font-bold text-[15px] hover:bg-[#234745] hover:!text-white transition-all duration-300"
                                             style={{ fontFamily: "'GE Dinar One', sans-serif" }}
                                         >
                                             {isEn ? 'View All Collections' : 'عرض جميع التشكيلات'}

@@ -111,7 +111,7 @@ export function HeroSlider() {
                 transform: isActive ? 'scale(1)' : 'scale(0.98)'
               }}
             >
-              <div className="relative w-full h-[448px] lg:h-[610px] rounded-[6px] lg:rounded-[20px] overflow-hidden bg-[#f8f5f2] group/slide flex flex-col">
+              <div className="relative w-full h-[360px] lg:h-[610px] rounded-[6px] lg:rounded-[20px] overflow-hidden bg-[#f8f5f2] group/slide flex flex-col">
                 {/* 1. Background Image - Stays Absolute */}
                 <img 
                   src={slide.image} 

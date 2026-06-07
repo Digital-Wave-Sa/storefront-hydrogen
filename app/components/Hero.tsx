@@ -10,7 +10,7 @@ export function Hero() {
     return (
         <section
             dir={isEn ? 'ltr' : 'rtl'}
-            className={`relative w-full overflow-hidden bg-[#FEF8EB] ${isEn ? 'font-en' : 'font-ar'} pt-16 pb-0`}
+            className={`relative w-full overflow-hidden bg-[#FEF8EB] ${isEn ? 'font-en' : 'font-ar'} pt-8 md:pt-16 pb-0`}
             // Added a subtle SVG pattern for the background texture shown in the image
             style={{
                 backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23e6e0d4' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
@@ -40,7 +40,7 @@ export function Hero() {
                 </p>
 
                 {/* Action Buttons */}
-                <div className="flex items-center justify-center gap-4 mb-16">
+                <div className="flex items-center justify-center gap-4 mb-8 md:mb-16">
                     <NavLink to={isEn ? "/en/collections/all" : "/collections/all"} className="bg-[#234745] hover:opacity-90 transition-colors text-white px-8 py-3.5 rounded-full font-bold text-base flex items-center gap-2 shadow-sm min-w-[160px] justify-center">
                         {t.common.shopNow}
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={isEn ? "rotate-180" : ""}>

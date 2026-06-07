@@ -714,7 +714,7 @@ export default function Product() {
                 lineHeight: '1.6'
               }}
             >
-              {product.description || (isEn ? 'Saadeddin offers the finest chocolate selection, prepared with passion and modern techniques.' : 'تشكيلة فاخرة من أجود أنواع الشوكولاتة المختارة، محضّرة بأحدث التقنيات مع محافظة تامة على الطعم الأصيل والجودة العالية.')}
+              {product.seo?.description || (product.description && product.description.length > 150 ? product.description.substring(0, 150) + '...' : product.description) || (isEn ? 'Saadeddin offers the finest chocolate selection, prepared with passion and modern techniques.' : 'تشكيلة فاخرة من أجود أنواع الشوكولاتة المختارة، محضّرة بأحدث التقنيات مع محافظة تامة على الطعم الأصيل والجودة العالية.')}
             </p>
 
             {/* Tags */}

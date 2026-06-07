@@ -14,7 +14,7 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
 
   let isAdmin = false;
 
-  if (customerAccessToken.accessToken === 'dev-bypass-token') {
+  if (process.env.NODE_ENV === 'development' && customerAccessToken.accessToken === 'dev-bypass-token') {
     isAdmin = true;
   } else {
     // Verify if user is an Admin/Manager

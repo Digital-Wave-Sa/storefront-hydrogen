@@ -32,7 +32,7 @@ export function ShopByOccasion({ collections }: { collections?: any[] }) {
         return {
             ...occasion,
             image: shopifyCollection?.image?.url || occasion.image,
-            name: shopifyCollection?.title || occasion.name
+            name: occasion.name
         };
     });
 

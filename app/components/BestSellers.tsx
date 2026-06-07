@@ -278,8 +278,8 @@ export function BestSellers({
                                                               <Price data={product.priceRange.minVariantPrice} isEn={isEn} showSymbol={true} />
                                                           </div>
                                                           {hasDiscount && (
-                                                              <div className="text-[#849f96] line-through text-sm font-bold flex gap-1 items-baseline">
-                                                                  <Price data={compareAtPrice} isEn={isEn} showSymbol={true} />
+                                                              <div className="text-[#E64950] line-through text-base font-bold flex gap-1 items-baseline">
+                                                                  <Price data={compareAtPrice} isEn={isEn} showSymbol={true} size="md" />
                                                               </div>
                                                           )}
                                                       </div>

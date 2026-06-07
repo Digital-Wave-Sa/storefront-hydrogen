@@ -167,8 +167,8 @@ export function NewArrivals({
                                                                 className="text-[#234745] font-bold"
                                                               />
                                                               {hasDiscount && (
-                                                                  <span className="text-gray-400 line-through text-xs font-en">
-                                                                      <Price data={compareAtPrice} isEn={isEn} size="xs" showSymbol={false} />
+                                                                  <span className="text-[#E64950] line-through text-sm font-bold font-en">
+                                                                      <Price data={compareAtPrice} isEn={isEn} size="sm" showSymbol={false} />
                                                                   </span>
                                                               )}
                                                           </div>

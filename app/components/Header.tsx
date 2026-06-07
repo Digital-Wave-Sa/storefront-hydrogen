@@ -316,7 +316,7 @@ function MiddleBar({
           {/* CENTER: Logo (Centered relative to the grid sides) */}
           <div className="flex justify-center px-2 lg:px-12 shrink-0">
             <NavLink to={isEn ? "/en" : "/"} prefetch="intent" className="flex items-center justify-center transition-transform hover:scale-[1.02]">
-              <img src="/logo.svg" alt="SAADEDDIN" width="150" height="40" style={{ width: '150px', maxWidth: '100%', height: 'auto' }} className="object-contain" />
+              <img src="/logo.svg" alt="SAADEDDIN" width="120" height="32" style={{ width: '120px', maxWidth: '100%', height: 'auto' }} className="object-contain" />
             </NavLink>
           </div>
 

@@ -56,28 +56,31 @@ export function AccountProfileHeader({
                 className="text-[14px] md:text-[18px] text-[#A6BFB9] font-medium flex gap-1 flex-wrap !m-0 items-center"
                 style={{ fontFamily: '"GE Dinar One", sans-serif' }}
               >
-                <span dir="ltr" className="truncate max-w-[120px] md:max-w-none">{customer.phone || customer.email}</span>
+                <span dir="ltr" className="truncate max-w-[120px] md:max-w-none font-en">{customer.phone || customer.email}</span>
                 <span>•</span>
-                <span className="whitespace-nowrap">{isEn ? `Member since ${joinYear}` : `عضو منذ ${joinYear}`}</span>
+                <span className="whitespace-nowrap">
+                  {isEn ? 'Member since ' : 'عضو منذ '}
+                  <span className="font-en">{joinYear}</span>
+                </span>
               </p>
             </div>
 
               {/* Stats Row */}
               <div className="flex items-center justify-between md:justify-start w-full md:w-auto gap-2 md:gap-14 mt-1">
                 <div className="text-center">
-                  <p className="text-[16px] md:text-[22px] font-bold leading-none text-white mb-1 md:mb-2">{customer.numberOfOrders || 0}</p>
+                  <p className="text-[16px] md:text-[22px] font-bold leading-none text-white mb-1 md:mb-2 font-en">{customer.numberOfOrders || 0}</p>
                   <p className="text-[10px] md:text-[12px] text-[#A6BFB9] font-medium opacity-90">
                     {isEn ? 'Orders' : 'طلب'}
                   </p>
                 </div>
                 <div className="text-center">
-                  <p className="text-[16px] md:text-[22px] font-bold leading-none text-white mb-1 md:mb-2">{customer.addresses?.nodes?.length || 0}</p>
+                  <p className="text-[16px] md:text-[22px] font-bold leading-none text-white mb-1 md:mb-2 font-en">{customer.addresses?.nodes?.length || 0}</p>
                   <p className="text-[10px] md:text-[12px] text-[#A6BFB9] font-medium opacity-90">
                     {isEn ? 'Addresses' : 'عنوان'}
                   </p>
                 </div>
                 <div className="text-center">
-                  <p className="text-[16px] md:text-[22px] font-bold leading-none text-white mb-1 md:mb-2">{wishlist?.length || 0}</p>
+                  <p className="text-[16px] md:text-[22px] font-bold leading-none text-white mb-1 md:mb-2 font-en">{wishlist?.length || 0}</p>
                   <p className="text-[10px] md:text-[12px] text-[#A6BFB9] font-medium opacity-90">
                     {isEn ? 'Wishlist' : 'مفضلة'}
                   </p>
@@ -99,7 +102,7 @@ export function AccountProfileHeader({
                   {isEn ? 'Loyalty Points' : 'نقاط الولاء'}
                 </p>
                 <p className="text-[16px] md:text-[22px] font-bold text-[#234745] leading-none flex gap-1">
-                  <span>{loyaltyPoints}</span> <span>{isEn ? 'Points' : 'نقطة'}</span>
+                  <span className="font-en">{loyaltyPoints}</span> <span>{isEn ? 'Points' : 'نقطة'}</span>
                 </p>
               </div>
             </div>
@@ -107,10 +110,15 @@ export function AccountProfileHeader({
             {/* 60 points text (Right in LTR, Left in RTL) */}
             <div className="flex items-center md:text-end w-full md:w-auto border-t md:border-t-0 border-[#8fa8a2] md:border-transparent pt-2 md:pt-0">
               <p className="text-[11px] md:text-[14px] text-[#335653] font-bold leading-snug">
-                {isEn 
-                  ? '60 points to get a 25 SAR coupon' 
-                  : '60 نقطة للحصول على كوبون 25 ر.س'
-                }
+                {isEn ? (
+                  <>
+                    <span className="font-en">60</span> points to get a <span className="font-en">25</span> SAR coupon
+                  </>
+                ) : (
+                  <>
+                    <span className="font-en">60</span> نقطة للحصول على كوبون <span className="font-en">25</span> ر.س
+                  </>
+                )}
               </p>
             </div>
           </div>

@@ -300,12 +300,26 @@ function MiddleBar({
           
           {/* RIGHT (in RTL) / LEFT (in LTR): Desktop Nav & Mobile Menu */}
           <div className="flex items-center justify-start min-w-0">
-            <button 
-              onClick={() => open('mobile')} 
-              className="lg:hidden p-1 text-[#234745] hover:opacity-70 transition-opacity shrink-0"
-            >
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="18" x2="21" y2="18" /></svg>
-            </button>
+            {/* MOBILE ONLY: Search and Cart */}
+            <div className="flex lg:hidden items-center gap-1 text-[#234745]">
+              <button onClick={() => open('search')} className="p-2 hover:bg-[#234745]/5 rounded-full transition-all">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
+              </button>
+              
+              <button onClick={() => open('cart')} className="group flex items-center gap-2 hover:opacity-70 transition-all relative p-2">
+                <div className="relative">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z" /><line x1="3" y1="6" x2="21" y2="6" /><path d="M16 10a4 4 0 01-8 0" /></svg>
+                  <Suspense fallback={null}>
+                    <Await resolve={cart}>{(cartData) => {
+                      const count = cartData?.totalQuantity ?? 0;
+                      if (count === 0) return null;
+                      return <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-[#e34242] text-white text-[9px] rounded-full flex items-center justify-center shadow-sm border border-white">{count}</span>
+                    }}</Await>
+                  </Suspense>
+                </div>
+              </button>
+            </div>
+
             <div className="hidden lg:block">
               <CategoryNav locale={locale} activeMega={activeMega} setActiveMega={setActiveMega} />
             </div>
@@ -348,8 +362,8 @@ function MiddleBar({
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
               </button>
 
-              {/* Cart - Always Visible */}
-              <button onClick={() => open('cart')} className="group flex items-center gap-2 hover:opacity-70 transition-all relative p-2">
+              {/* Cart - Desktop Only */}
+              <button onClick={() => open('cart')} className="hidden lg:flex group items-center gap-2 hover:opacity-70 transition-all relative p-2">
                 <div className="relative">
                   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z" /><line x1="3" y1="6" x2="21" y2="6" /><path d="M16 10a4 4 0 01-8 0" /></svg>
                   <Suspense fallback={null}>
@@ -362,6 +376,14 @@ function MiddleBar({
                 </div>
               </button>
             </div>
+
+            {/* MOBILE ONLY: Burger Menu */}
+            <button 
+              onClick={() => open('mobile')} 
+              className="lg:hidden p-1 text-[#234745] hover:opacity-70 transition-opacity shrink-0 ml-1"
+            >
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="18" x2="21" y2="18" /></svg>
+            </button>
           </div>
 
         </div>
@@ -522,10 +544,6 @@ export function HeaderMenu({
   return (
     <div className="flex flex-col h-full bg-[#FEF8EB]">
       <div className="px-4 py-6 flex flex-col gap-3">
-        {/* Mobile Search */}
-        <div className="mb-4">
-          <GlobalSearchBar locale={locale} isMobile={true} />
-        </div>
 
         {/* Mobile Header Links */}
         <div className="grid grid-cols-2 gap-3 mb-6">

@@ -751,8 +751,8 @@ export default function Product() {
                       {/* Decorative background element */}
                       <div className="absolute -top-10 -right-10 w-40 h-40 bg-[#BBCFCD]/20 rounded-full blur-3xl pointer-events-none"></div>
                       
-                      <div className={`flex items-center justify-between relative z-10 ${isEn ? 'flex-row' : 'flex-row-reverse'}`}>
-                        <div className={`flex items-center gap-3 ${isEn ? 'flex-row' : 'flex-row-reverse'}`}>
+                      <div className="flex flex-row items-center justify-between relative z-10">
+                        <div className="flex flex-row items-center gap-3">
                            <div className="w-10 h-10 bg-[#234745] rounded-full flex items-center justify-center shadow-sm">
                              <span className="text-white text-[18px]">🎁</span>
                            </div>
@@ -785,7 +785,7 @@ export default function Product() {
                                         </div>
                                     </div>
                                 )}
-                                <div className={`flex items-center gap-4 bg-white border border-[#BBCFCD]/30 rounded-[16px] p-4 shadow-sm transition-all hover:border-[#234745] hover:shadow-md ${isEn ? 'flex-row' : 'flex-row-reverse'}`}>
+                                <div className="flex flex-row items-center gap-4 bg-white border border-[#BBCFCD]/30 rounded-[16px] p-4 shadow-sm transition-all hover:border-[#234745] hover:shadow-md">
                                    <div className="w-20 h-20 rounded-[12px] bg-[#f9f9f9] overflow-hidden flex-shrink-0 relative border border-gray-100">
                                      {component.featuredImage ? (
                                        <Image data={component.featuredImage} className="object-cover w-full h-full" sizes="80px" />
@@ -793,12 +793,12 @@ export default function Product() {
                                        <div className="w-full h-full flex items-center justify-center text-gray-300 text-[10px]">{isEn ? 'No Image' : 'لا توجد صورة'}</div>
                                      )}
                                    </div>
-                                   <div className={`flex flex-col flex-grow ${isEn ? 'text-left' : 'text-right'}`}>
+                                   <div className="flex flex-col flex-grow text-start">
                                      <span className="text-[16px] font-bold text-[#1a1a1a] line-clamp-2 leading-tight" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
                                        {component.title}
                                      </span>
                                      {compPrice && (
-                                       <div className={`flex items-center gap-1 text-[#906B51] text-[14px] font-bold mt-2 ${isEn ? 'justify-start' : 'justify-end'}`} style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
+                                       <div className="flex flex-row items-center gap-1 text-[#906B51] text-[14px] font-bold mt-2 justify-start" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
                                          <span>{isEn ? 'Value: ' : 'القيمة: '}</span>
                                          <Price data={compPrice} isEn={isEn} size="sm" />
                                        </div>

@@ -49,13 +49,13 @@ export function ShopByOccasion({ collections }: { collections?: any[] }) {
                     </p>
                 </div>
 
-                {/* Grid */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 lg:gap-6 justify-items-center">
+                {/* Slider (Mobile) / Grid (Desktop) */}
+                <div className="flex md:grid md:grid-cols-4 gap-4 lg:gap-6 overflow-x-auto md:overflow-visible snap-x snap-mandatory pb-4 md:pb-0 -mx-6 px-6 md:mx-0 md:px-0" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                     {occasions.map((occasion, index) => (
                         <Link
                             key={index}
                             to={isEn ? `/en/occasions?category=${occasion.handle}` : `/occasions?category=${occasion.handle}`}
-                            className="group flex flex-col bg-[#EED5D7] rounded-[20px] overflow-hidden transition-all duration-500 hover:shadow-xl hover:-translate-y-2 w-full max-w-[280px] relative shadow-sm"
+                            className="snap-start shrink-0 w-[calc(50vw-32px)] sm:w-[220px] md:w-full max-w-[280px] group flex flex-col bg-[#EED5D7] rounded-[20px] overflow-hidden transition-all duration-500 hover:shadow-xl hover:-translate-y-2 relative shadow-sm"
                             style={{ 
                                 aspectRatio: '280/344'
                             }}

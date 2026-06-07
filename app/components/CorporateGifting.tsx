@@ -49,7 +49,7 @@ export function CorporateGifting() {
 
                         <Link
                             to={isEn ? "/en/corporate" : "/corporate"}
-                            className="bg-[#234745] hover:bg-[#1a3533] text-[#FEF8EB] px-8 py-3 rounded-[25px] font-bold transition-all shadow-sm flex items-center justify-center min-w-[160px]"
+                            className="bg-[#BBCFCD] hover:bg-[#a5b9b8] text-[#234745] px-8 py-3 rounded-[25px] font-bold transition-all shadow-sm flex items-center justify-center min-w-[160px]"
                             style={{ fontFamily: "'GE Dinar One', sans-serif" }}
                         >
                             {activeContent.button}

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Cake, Palette, Sparkles, MessageSquare, Layers, ArrowRight, ArrowLeft } from 'lucide-react';
 import { CakePreview } from './CakePreview';
 import { FaqModal } from './FaqModal';
@@ -129,8 +129,8 @@ export default function LolaCakeBuilder({ cakeAttributes = [], isEn = false }: {
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Touch gestures state
-  const [touchStart, setTouchStart] = useState<number | null>(null);
-  const [touchEnd, setTouchEnd] = useState<number | null>(null);
+  const touchStartRef = useRef<number | null>(null);
+  const touchEndRef = useRef<number | null>(null);
   const minSwipeDistance = 50;
 
   const mergedOptions = React.useMemo(() => {
@@ -191,17 +191,17 @@ export default function LolaCakeBuilder({ cakeAttributes = [], isEn = false }: {
   };
 
   const onTouchStart = (e: React.TouchEvent) => {
-    setTouchEnd(null);
-    setTouchStart(e.targetTouches[0].clientX);
+    touchEndRef.current = null;
+    touchStartRef.current = e.targetTouches[0].clientX;
   };
 
   const onTouchMove = (e: React.TouchEvent) => {
-    setTouchEnd(e.targetTouches[0].clientX);
+    touchEndRef.current = e.targetTouches[0].clientX;
   };
 
   const onTouchEndEvent = () => {
-    if (!touchStart || !touchEnd) return;
-    const distance = touchStart - touchEnd;
+    if (!touchStartRef.current || !touchEndRef.current) return;
+    const distance = touchStartRef.current - touchEndRef.current;
     const isLeftSwipe = distance > minSwipeDistance;
     const isRightSwipe = distance < -minSwipeDistance;
     

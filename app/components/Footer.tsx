@@ -17,8 +17,8 @@ export function Footer({ footer, locale }: { footer: Promise<FooterQuery | null>
                 {/* === MOBILE FOOTER (Hidden on Desktop) === */}
                 <div className="w-full flex flex-col items-center gap-6 lg:hidden border-b border-[#BBCFCD]/50 pb-8">
                   {/* Top Section */}
-                  <div style={{ width: '130px' }} className="mb-2">
-                    <LogoSplash />
+                  <div style={{ width: '120px' }} className="mb-2">
+                    <LogoSplash className="px-0" />
                   </div>
                   <h3 className="font-bold text-[18px] leading-[22px] text-[#FFFFFF] text-center">
                     {isEn ? 'The future is sweet!' : 'المستقبل حلو!'}
@@ -75,7 +75,7 @@ export function Footer({ footer, locale }: { footer: Promise<FooterQuery | null>
                 <div className="hidden lg:flex w-full flex-col items-center gap-10">
                   {/* Logo Section */}
                   <div style={{ width: '162px' }}>
-                    <LogoSplash />
+                    <LogoSplash className="px-0" />
                   </div>
                 
                   {/* Columns Section */}

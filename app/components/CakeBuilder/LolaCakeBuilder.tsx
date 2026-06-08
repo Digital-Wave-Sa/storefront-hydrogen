@@ -377,35 +377,37 @@ export default function LolaCakeBuilder({ cakeAttributes = [], isEn = false }: {
   );
 
   return (
-    <div className={`flex flex-col h-screen w-full overflow-hidden bg-white ${isEn ? 'font-en' : 'font-arabic'}`} dir={isEn ? 'ltr' : 'rtl'}>
+    <div className={`flex flex-col min-h-screen lg:h-screen w-full lg:overflow-hidden bg-white ${isEn ? 'font-en' : 'font-arabic'}`} dir={isEn ? 'ltr' : 'rtl'}>
       
       {/* HEADER */}
-      <div className="bg-[#294941] text-white px-10 py-5 flex items-center justify-between z-20 shrink-0">
-        <div className={`flex flex-col items-start ${isEn ? 'text-left' : 'text-right'}`}>
-          <span className="text-sm font-medium mb-1 opacity-90">{isEn ? 'Total' : 'الإجمالي'}</span>
+      <div className="bg-[#294941] text-white px-4 py-4 md:px-10 md:py-5 flex items-center justify-between z-20 shrink-0 gap-2 md:gap-4 shadow-md">
+        <div className={`flex flex-col items-start shrink-0 ${isEn ? 'text-left' : 'text-right'}`}>
+          <span className="text-[10px] md:text-sm font-medium mb-0.5 opacity-90">{isEn ? 'Total' : 'الإجمالي'}</span>
           <div className="flex items-baseline gap-1">
-            <span className="text-4xl font-bold font-sans tracking-tight">
+            <span className="text-xl md:text-4xl font-bold font-sans tracking-tight">
               {toArabicDigits(calculateTotal().toFixed(2))}
             </span>
-            <SaudiRiyalSymbol className="w-auto h-5 ml-1" />
+            <SaudiRiyalSymbol className="w-auto h-3 md:h-5 ml-1" />
           </div>
         </div>
-        <div className="flex items-center gap-6">
-          <h1 className="text-3xl font-bold">{isEn ? 'Design Your Cake' : 'صمم كيكتك'}</h1>
-          <button 
-            onClick={() => window.history.back()}
-            className="bg-[#A6C1B7] text-[#294941] hover:bg-[#8ca59c] transition-colors px-6 py-2.5 rounded-full flex items-center gap-2 font-bold text-lg"
-          >
-            {isEn ? 'Back' : 'رجوع'} <ArrowLeft className={`w-5 h-5 ${isEn ? 'rotate-180' : ''}`} />
-          </button>
-        </div>
+        
+        <h1 className="text-[16px] md:text-3xl font-bold text-center flex-1 leading-tight px-1 md:px-4">
+          {isEn ? 'Design Your Cake' : 'صمم كيكتك'}
+        </h1>
+        
+        <button 
+          onClick={() => window.history.back()}
+          className="bg-[#A6C1B7] text-[#294941] hover:bg-[#8ca59c] transition-colors px-3 py-1.5 md:px-6 md:py-2.5 rounded-full flex items-center gap-1 md:gap-2 font-bold text-xs md:text-lg shrink-0"
+        >
+          {isEn ? 'Back' : 'رجوع'} <ArrowLeft className={`w-3.5 h-3.5 md:w-5 md:h-5 ${isEn ? 'rotate-180' : ''}`} />
+        </button>
       </div>
 
-      <div className="flex flex-col-reverse lg:flex-row-reverse flex-1 min-h-0 overflow-hidden">
+      <div className="flex flex-col-reverse lg:flex-row-reverse flex-1 lg:min-h-0 lg:overflow-hidden">
         
         {/* LEFT COLUMN */}
         <div 
-          className="w-full lg:w-1/2 flex flex-col h-[60vh] lg:h-full bg-white overflow-y-auto custom-scrollbar relative"
+          className="w-full lg:w-1/2 flex flex-col h-auto lg:h-full bg-white lg:overflow-y-auto custom-scrollbar relative"
           onTouchStart={onTouchStart}
           onTouchMove={onTouchMove}
           onTouchEnd={onTouchEndEvent}
@@ -413,7 +415,7 @@ export default function LolaCakeBuilder({ cakeAttributes = [], isEn = false }: {
           <div className="px-6 py-10 lg:px-20 lg:py-20 w-full mx-auto max-w-[800px] flex-1">
             
             {/* Tagline */}
-            <div className={`flex items-center gap-2 text-[#E25555] mb-4 ${isEn ? 'justify-start' : 'justify-end'}`}>
+            <div className="flex items-center justify-start gap-2 text-[#E25555] mb-4">
               <span className="text-sm font-bold">{isEn ? 'Create an unforgettable moment — step by step' : 'أصنع لحظة لا تُنسى — خطوة بخطوة'}</span>
               <Sparkles className="w-4 h-4" />
             </div>
@@ -643,7 +645,7 @@ export default function LolaCakeBuilder({ cakeAttributes = [], isEn = false }: {
 
         {/* RIGHT COLUMN */}
         <div 
-          className="w-full lg:w-1/2 relative flex flex-col items-center justify-center h-[40vh] lg:h-full shrink-0 overflow-hidden bg-[#EED5D7]"
+          className="w-full lg:w-1/2 relative flex flex-col items-center justify-center py-10 lg:py-0 lg:h-full shrink-0 overflow-hidden bg-[#EED5D7]"
           style={{ backgroundImage: "url('/images/pattern.svg')", backgroundRepeat: 'repeat', backgroundSize: '600px' }}
         >
 
@@ -658,7 +660,7 @@ export default function LolaCakeBuilder({ cakeAttributes = [], isEn = false }: {
             </div>
 
             {/* Circle & 3D Canvas */}
-            <div className="relative h-[35vh] lg:h-[50vh] w-auto aspect-square rounded-full border-[12px] lg:border-[24px] border-white bg-[#EED5D7] shadow-sm flex items-center justify-center overflow-hidden">
+            <div className="relative w-[260px] h-[260px] sm:w-[320px] sm:h-[320px] lg:w-auto lg:h-[50vh] aspect-square rounded-full border-[12px] lg:border-[24px] border-white bg-[#EED5D7] shadow-sm flex items-center justify-center overflow-hidden shrink-0">
               <div className="absolute inset-0 z-20 flex items-center justify-center">
                 <CakePreview 
                   shape={selections.shape.id}

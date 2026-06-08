@@ -103,7 +103,7 @@ export default function Homepage() {
   const data = useLoaderData<typeof loader>();
 
   return (
-    <div className="home w-full bg-[#FEF8EB]">
+    <div className="home w-full bg-[#FEF8EB] overflow-x-hidden">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{

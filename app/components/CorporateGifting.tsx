@@ -25,7 +25,7 @@ export function CorporateGifting() {
 
     return (
         <section
-            className={`w-full bg-[#234745] lg:py-24 overflow-hidden ${isEn ? 'font-en' : 'font-ar'}`}
+            className={`w-full ring-1 ring-[#234745] bg-[#234745] lg:py-24 overflow-hidden ${isEn ? 'font-en' : 'font-ar'}`}
             dir={isEn ? 'ltr' : 'rtl'}
             style={{ paddingTop: '50px', paddingBottom: '50px' }}
         >

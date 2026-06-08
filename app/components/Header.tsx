@@ -247,7 +247,7 @@ function TopBar({
         </div>
 
         {/* Mobile: Show rotating 1 */}
-        <div className="md:hidden relative h-full flex items-center flex-1 overflow-hidden mr-2 md:mr-0">
+        <div className="md:hidden relative h-full flex items-center flex-1 overflow-hidden">
           {promos.map((promo, idx) => (
             <div 
               key={idx} 
@@ -262,7 +262,24 @@ function TopBar({
         </div>
 
         {/* LEFT: Language & Branch */}
-        <div className="flex items-center justify-end md:justify-start gap-3 md:gap-4 shrink-0 z-10 bg-[#234745] pl-2 shadow-[-10px_0_10px_#234745]">
+        <div className="flex items-center justify-end md:justify-start gap-3 md:gap-4 shrink-0 z-10 bg-[#234745] shadow-[-10px_0_10px_#234745]">
+          <button 
+            onClick={() => setModalOpen(true)}
+            className="flex items-center gap-2 md:gap-3 px-4 py-1.5 md:px-5 md:py-1.5 rounded-full bg-[#b9cdca] border border-[#91a7a2] text-[12px] md:text-[14px] hover:bg-[#a6bdbc] transition-all text-[#234745]"
+            style={!isEn ? { fontFamily: "'GE Dinar One', sans-serif" } : undefined}
+          >
+            <div className="relative flex items-center pt-0.5">
+              <span className="truncate max-w-[90px] md:max-w-[200px] font-medium leading-none tracking-wide">
+                {fulfillmentType === 'delivery' && selectedAddressName 
+                  ? (isEn ? `Delivery: ${selectedAddressName}` : `توصيل: ${selectedAddressName}`) 
+                  : (selectedLocationName || (isEn ? 'Select Branch' : 'فرع العليا'))
+                }
+              </span>
+              <div className="absolute -top-[6px] -right-[6px] w-[8px] h-[8px] rounded-full bg-[#3ddb6a]" />
+            </div>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 mt-[2px] opacity-90"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          </button>
+
           <Form action="/api/locale" method="post" className="flex items-center" reloadDocument>
             <input type="hidden" name="locale" value={isEn ? 'ar' : 'en'} />
             <input type="hidden" name="returnTo" value={getReturnTo()} />
@@ -271,22 +288,6 @@ function TopBar({
               <svg width="10" height="10" viewBox="0 0 20 20" fill="currentColor" className="opacity-70"><path d="M5 7l5 5 5-5H5z" /></svg>
             </button>
           </Form>
-
-          <button 
-            onClick={() => setModalOpen(true)}
-            className="flex items-center gap-1 md:gap-2 px-3 py-1 md:px-5 md:py-1.5 rounded-full bg-[#B2C4C0]/50 border border-[#234745]/30 text-[11px] md:text-[13px] font-bold hover:bg-[#B2C4C0]/70 transition-all text-[#234745]"
-          >
-            <div className="relative flex items-center">
-              <span className="truncate max-w-[90px] md:max-w-[200px]">
-                {fulfillmentType === 'delivery' && selectedAddressName 
-                  ? (isEn ? `Delivery: ${selectedAddressName}` : `توصيل: ${selectedAddressName}`) 
-                  : (selectedLocationName || (isEn ? 'Select Branch' : 'فرع العليا'))
-                }
-              </span>
-              <div className="absolute -top-0.5 -right-1.5 md:-top-1.5 md:-right-2.5 w-1.5 h-1.5 md:w-2.5 md:h-2.5 rounded-full bg-[#4ADE80] shadow-[0_0_8px_rgba(74,222,128,0.4)]" />
-            </div>
-            <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor" className="opacity-80 shrink-0"><path d="M5 7l5 5 5-5H5z" /></svg>
-          </button>
         </div>
       </div>
       

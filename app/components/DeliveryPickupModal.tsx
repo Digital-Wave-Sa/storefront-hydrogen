@@ -330,6 +330,9 @@ export function DeliveryPickupModal({
     const [adminMetafields, setAdminMetafields] = useState<any[]>([]);
     const location = useLocation();
 
+    // Memoize the combined promise to prevent Await from re-suspending on every state change (like typing in search or switching tabs)
+    const combinedPromise = useMemo(() => Promise.all([locationsPromise, customerPromise]), [locationsPromise, customerPromise]);
+
     useEffect(() => {
         if (isOpen) {
             onClose();
@@ -402,7 +405,7 @@ export function DeliveryPickupModal({
                 </button>
 
                 <Suspense fallback={<div className="dpm-loading"><div className="dpm-loading-spinner" /></div>}>
-                    <Await resolve={Promise.all([locationsPromise, customerPromise])}>
+                    <Await resolve={combinedPromise}>
                         {([locationsData, customerData]: [any, any]) => {
                             const nodes = locationsData?.locations?.nodes || [];
                             

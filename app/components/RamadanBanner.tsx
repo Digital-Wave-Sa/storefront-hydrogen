@@ -72,8 +72,14 @@ export function RamadanBanner({ config }: { config?: any }) {
             <div className="w-full max-w-[1280px] px-4 md:px-0">
                 <div className={`relative w-full h-auto md:h-[503px] rounded-none overflow-hidden flex flex-col ${isEn ? 'md:flex-row' : 'md:flex-row-reverse'} shadow-sm`}>
 
+                    {/* Absolute Background Split for Desktop */}
+                    <div className="hidden md:flex absolute inset-0 z-0 flex-col">
+                        <div className="w-full h-[50%] bg-[#EED5D7]"></div>
+                        <div className="w-full h-[50%] bg-[#906B51]"></div>
+                    </div>
+
                     {/* Left Side: Image (First in LTR, Last in RTL so it stays on the left visually) */}
-                    <div className="relative z-10 w-full md:w-[45%] h-[260px] md:h-full flex items-center justify-center p-8 bg-[#EED5D7] pt-12">
+                    <div className="relative z-10 w-full md:w-[45%] h-[260px] md:h-full flex items-center justify-center p-8 bg-[#EED5D7] md:bg-transparent pt-12">
                         <img 
                             src={imageUrl} 
                             alt={customTitleEn || "Ramadan Sweets Tray"} 
@@ -83,10 +89,10 @@ export function RamadanBanner({ config }: { config?: any }) {
                     </div>
 
                     {/* Right Side: Content */}
-                    <div className={`relative z-10 w-full md:w-[55%] flex flex-col justify-center md:bg-[#906B51]`}>
+                    <div className={`relative z-10 w-full md:w-[55%] flex flex-col md:bg-transparent`}>
                         
-                        {/* Pink section on mobile, transparent on desktop */}
-                        <div className="flex flex-col items-center md:items-start text-center md:text-start bg-[#EED5D7] md:bg-transparent px-4 pb-8 md:px-8 lg:px-[126px] md:py-12 w-full gap-[16px] md:gap-[32px]">
+                        {/* Top Half (Pink on mobile, transparent on desktop since absolute bg handles it) */}
+                        <div className="flex flex-col items-center md:items-start justify-end text-center md:text-start bg-[#EED5D7] md:bg-transparent px-4 pb-8 md:px-8 lg:px-[126px] md:pb-[30px] w-full md:h-[50%] gap-[16px] md:gap-[24px]">
                             
                             {/* Red Badge */}
                             <div className="bg-[#E64950] rounded-[8px] flex items-center justify-center shadow-sm min-w-[98px] px-3 h-[32px] self-end md:self-auto -mt-10 md:mt-0 z-20">
@@ -105,7 +111,7 @@ export function RamadanBanner({ config }: { config?: any }) {
                                     {isEn && <div className="w-[48px] border-t border-[#255441]"></div>}
                                 </div>
                             
-                            <h2 className="text-[32px] md:text-[36px] lg:text-[50px] font-bold leading-[1.2] lg:leading-[80px] text-[#255441]" style={!isEn ? { fontFamily: "'Bahij Janna', sans-serif" } : undefined}>
+                            <h2 className="text-[32px] md:text-[36px] lg:text-[50px] font-bold leading-[1.2] lg:leading-[60px] text-[#255441]" style={!isEn ? { fontFamily: "'Bahij Janna', sans-serif" } : undefined}>
                                 {isEn ? (
                                     customTitleEn ? customTitleEn : (
                                         <>
@@ -127,8 +133,8 @@ export function RamadanBanner({ config }: { config?: any }) {
                         </div>
                         </div>
 
-                        {/* Brown section on mobile, transparent on desktop */}
-                        <div className="flex flex-col items-center md:items-start bg-[#906B51] md:bg-transparent px-4 py-8 md:px-8 lg:px-[126px] md:py-0 md:pb-12 w-full gap-[32px]">
+                        {/* Bottom Half (Brown on mobile, transparent on desktop) */}
+                        <div className="flex flex-col items-center md:items-start justify-start bg-[#906B51] md:bg-transparent px-4 py-8 md:px-8 lg:px-[126px] md:py-0 md:pt-[30px] w-full md:h-[50%] gap-[32px]">
                             
                             {/* Countdown Timer */}
                             <div className={`flex items-center justify-center gap-[10px] md:gap-[16px] flex-row w-full md:w-auto`}>
@@ -160,8 +166,8 @@ export function RamadanBanner({ config }: { config?: any }) {
 
                         </div>
 
+                    </div>
                 </div>
-            </div>
             </div>
         </section>
     );

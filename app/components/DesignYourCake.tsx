@@ -104,7 +104,7 @@ export function DesignYourCake() {
                         <h4 className="text-[#234745] mb-5" style={{ fontFamily: "'GE Dinar One', sans-serif", fontWeight: 700, fontSize: '18px', lineHeight: '100%', textAlign: isEn ? 'left' : 'right' }}>
                             {isEn ? 'Choose Flavor' : 'أختر النكهة'}
                         </h4>
-                        <div className="flex overflow-x-auto md:grid md:grid-cols-4 gap-3 md:gap-4 hide-scrollbars snap-x snap-mandatory pt-3 -mt-3 pb-2 -mx-6 px-6 md:mx-0 md:px-0 md:pt-0 md:mt-0">
+                        <div className="flex overflow-x-auto md:overflow-visible md:grid md:grid-cols-4 gap-3 md:gap-4 hide-scrollbars snap-x snap-mandatory pt-3 -mt-3 pb-2 -mx-6 px-6 md:mx-0 md:px-0">
                             {/* Active - Vanilla */}
                             <div className="snap-start shrink-0 whitespace-nowrap relative bg-[#f8f9f8] border-[1.5px] border-[#234745] rounded-[50px] py-[10px] px-4 flex items-center justify-center gap-3 cursor-pointer shadow-sm">
                                 <img src="/images/vanilla-img.png" alt="Vanilla" className="w-[40px] h-[40px] object-contain" />
@@ -140,31 +140,31 @@ export function DesignYourCake() {
                     </div>
 
                     {/* Bottom Action Bar */}
-                    <div className="flex flex-col gap-4 mt-2" dir={isEn ? 'ltr' : 'rtl'}>
+                    <div className="flex flex-col lg:flex-row items-center justify-between gap-4 lg:gap-8 mt-2 lg:mt-8 w-full" dir={isEn ? 'ltr' : 'rtl'}>
 
                         {/* CTA Button */}
                         <Link
                             to={isEn ? "/en/custom-cake" : "/custom-cake"}
-                            className="py-4 md:py-5 bg-[#234745] hover:bg-[#264f3e] rounded-full transition-all shadow-lg hover:shadow-xl w-full text-center flex items-center justify-center"
+                            className="py-4 md:py-5 bg-[#234745] hover:bg-[#264f3e] rounded-full transition-all shadow-lg hover:shadow-xl w-full lg:w-auto lg:min-w-[280px] lg:px-12 text-center flex items-center justify-center"
                             style={{ fontFamily: "'GE Dinar One', sans-serif", fontWeight: 700, fontSize: '16px', color: '#ffffff', lineHeight: '100%' }}
                         >
                             {isEn ? 'Start Designing Now' : 'إبدأ تصميمك الان'}
                         </Link>
 
                         {/* Trust Badges */}
-                        <div className="flex flex-row items-center justify-evenly gap-x-1 lg:gap-x-4 text-[#234745] px-2 py-4 bg-[#f8f9f8]/90 backdrop-blur-sm rounded-[20px] w-full shadow-sm">
+                        <div className="flex flex-row items-center justify-evenly lg:justify-start gap-x-1 lg:gap-x-6 text-[#234745] px-2 py-4 lg:px-0 lg:py-0 bg-[#f8f9f8]/90 lg:bg-transparent backdrop-blur-sm lg:backdrop-blur-none rounded-[20px] lg:rounded-none w-full lg:w-auto lg:flex-1 shadow-sm lg:shadow-none">
                             <div className="flex items-center gap-2">
-                                <img src="/images/love-icon.svg" alt="Made with Care" className="w-[18px] h-[18px] object-contain" />
+                                <img src="/images/love-icon.svg" alt="Made with Care" className="w-[18px] h-[18px] lg:w-[24px] lg:h-[24px] object-contain" />
                                 <span className="whitespace-pre-line text-[11px] lg:text-[14px] leading-[1.1]" style={{ fontFamily: "'GE Dinar One', sans-serif", fontWeight: 500, textAlign: 'center' }}>{isEn ? 'Made with\nCare' : 'صُنع بحب\nوبعناية'}</span>
                             </div>
                             <div className="w-[1px] h-8 bg-[#234745]/20"></div>
                             <div className="flex items-center gap-2">
-                                <img src="/images/delivery-cake-builder.svg" alt="Fast Delivery" className="w-[18px] h-[18px] object-contain" />
+                                <img src="/images/delivery-cake-builder.svg" alt="Fast Delivery" className="w-[18px] h-[18px] lg:w-[24px] lg:h-[24px] object-contain" />
                                 <span className="whitespace-pre-line text-[11px] lg:text-[14px] leading-[1.1]" style={{ fontFamily: "'GE Dinar One', sans-serif", fontWeight: 500, textAlign: 'center' }}>{isEn ? 'Cold Delivery\nfor Quality' : 'توصيل مبرد\nلضمان الجودة'}</span>
                             </div>
                             <div className="w-[1px] h-8 bg-[#234745]/20"></div>
                             <div className="flex items-center gap-2">
-                                <img src="/images/leaf-icon-cake.svg" alt="Premium Ingredients" className="w-[20px] h-[20px] object-contain" />
+                                <img src="/images/leaf-icon-cake.svg" alt="Premium Ingredients" className="w-[20px] h-[20px] lg:w-[24px] lg:h-[24px] object-contain" />
                                 <span className="whitespace-pre-line text-[11px] lg:text-[14px] leading-[1.1]" style={{ fontFamily: "'GE Dinar One', sans-serif", fontWeight: 500, textAlign: 'center' }}>{isEn ? 'Premium\nIngredients' : 'مكونات\nفاخرة'}</span>
                             </div>
                         </div>

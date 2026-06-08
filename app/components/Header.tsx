@@ -194,11 +194,19 @@ function TopBar({
   const isEn = locale === 'en';
   const location = useLocation();
   const [modalOpen, setModalOpen] = useState(false);
+  const [currentPromoIndex, setCurrentPromoIndex] = useState(0);
 
   useEffect(() => {
     const handleOpen = () => setModalOpen(true);
     window.addEventListener('openDeliveryModal', handleOpen);
     return () => window.removeEventListener('openDeliveryModal', handleOpen);
+  }, []);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentPromoIndex((prev) => (prev + 1) % 3);
+    }, 2000);
+    return () => clearInterval(interval);
   }, []);
 
   const getReturnTo = () => {
@@ -208,32 +216,57 @@ function TopBar({
     return `/en${currentPath === '/' ? '' : currentPath}${currentSearch}`;
   };
 
+  const promos = [
+    {
+      icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-90 shrink-0 w-[14px] h-[14px] md:w-[16px] md:h-[16px]"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>,
+      text: isEn ? 'Guaranteed Quality' : 'جودة مضمونة'
+    },
+    {
+      icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-90 shrink-0 w-[15px] h-[15px] md:w-[18px] md:h-[18px]"><rect x="1" y="3" width="15" height="13" /><polygon points="16 8 20 8 23 11 23 16 16 16 16 8" /><circle cx="5.5" cy="18.5" r="2.5" /><circle cx="18.5" cy="18.5" r="2.5" /></svg>,
+      text: isEn ? 'Fast Delivery' : 'توصيل سريع'
+    },
+    {
+      icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-90 shrink-0 w-[14px] h-[14px] md:w-[16px] md:h-[16px]"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>,
+      text: isEn ? 'Secure Payment' : 'دفع آمن ومضمون'
+    }
+  ];
+
   return (
-    <div className="w-full bg-[#234745] text-white">
-      <div className="max-w-[1400px] mx-auto px-4 lg:px-6 h-[40px] flex items-center justify-between text-[12px] md:text-[13px] font-medium">
+    <div className="w-full bg-[#234745] text-white overflow-hidden">
+      <div className="max-w-[1400px] mx-auto px-4 lg:px-6 h-[40px] flex items-center justify-between text-[11px] md:text-[13px] font-medium">
         
         {/* RIGHT: Promo badges */}
+        {/* Desktop: Show all 3 */}
         <div className="hidden md:flex items-center gap-8">
-          <div className="flex items-center gap-2 hover:opacity-80 transition-opacity cursor-default">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-90"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>
-            <span className="font-bold">{isEn ? 'Guaranteed Quality' : 'جودة مضمونة'}</span>
-          </div>
-          <div className="flex items-center gap-2 hover:opacity-80 transition-opacity cursor-default">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-90"><rect x="1" y="3" width="15" height="13" /><polygon points="16 8 20 8 23 11 23 16 16 16 16 8" /><circle cx="5.5" cy="18.5" r="2.5" /><circle cx="18.5" cy="18.5" r="2.5" /></svg>
-            <span className="font-bold">{isEn ? 'Fast Delivery' : 'توصيل سريع'}</span>
-          </div>
-          <div className="flex items-center gap-2 hover:opacity-80 transition-opacity cursor-default">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-90"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
-            <span className="font-bold">{isEn ? 'Secure Payment' : 'دفع آمن ومضمون'}</span>
-          </div>
+          {promos.map((promo, idx) => (
+            <div key={idx} className="flex items-center gap-2 hover:opacity-80 transition-opacity cursor-default">
+              {promo.icon}
+              <span className="font-bold">{promo.text}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Mobile: Show rotating 1 */}
+        <div className="md:hidden relative h-full flex items-center flex-1 overflow-hidden mr-2 md:mr-0">
+          {promos.map((promo, idx) => (
+            <div 
+              key={idx} 
+              className={`absolute right-0 top-0 h-full flex items-center gap-1.5 transition-all duration-500 ease-in-out ${
+                idx === currentPromoIndex ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'
+              }`}
+            >
+              {promo.icon}
+              <span className="font-bold whitespace-nowrap">{promo.text}</span>
+            </div>
+          ))}
         </div>
 
         {/* LEFT: Language & Branch */}
-        <div className="flex items-center justify-between w-full md:w-auto md:justify-start gap-4">
+        <div className="flex items-center justify-end md:justify-start gap-3 md:gap-4 shrink-0 z-10 bg-[#234745] pl-2 shadow-[-10px_0_10px_#234745]">
           <Form action="/api/locale" method="post" className="flex items-center" reloadDocument>
             <input type="hidden" name="locale" value={isEn ? 'ar' : 'en'} />
             <input type="hidden" name="returnTo" value={getReturnTo()} />
-            <button type="submit" className="flex items-center gap-1.5 hover:opacity-80 transition-opacity font-normal text-[#FEF8EB]">
+            <button type="submit" className="flex items-center gap-1 md:gap-1.5 hover:opacity-80 transition-opacity font-normal text-[#FEF8EB]">
               <span>{isEn ? 'العربية' : 'English'}</span>
               <svg width="10" height="10" viewBox="0 0 20 20" fill="currentColor" className="opacity-70"><path d="M5 7l5 5 5-5H5z" /></svg>
             </button>
@@ -241,18 +274,18 @@ function TopBar({
 
           <button 
             onClick={() => setModalOpen(true)}
-            className="flex items-center gap-2 md:gap-4 px-4 md:px-6 py-1.5 rounded-full bg-[#B2C4C0]/50 border border-[#234745]/30 text-[12px] md:text-[13px] font-bold hover:bg-[#B2C4C0]/70 transition-all text-[#234745]"
+            className="flex items-center gap-1 md:gap-2 px-3 py-1 md:px-5 md:py-1.5 rounded-full bg-[#B2C4C0]/50 border border-[#234745]/30 text-[11px] md:text-[13px] font-bold hover:bg-[#B2C4C0]/70 transition-all text-[#234745]"
           >
-            <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor" className="opacity-80 shrink-0"><path d="M5 7l5 5 5-5H5z" /></svg>
             <div className="relative flex items-center">
-              <span className="truncate max-w-[160px] md:max-w-[200px]">
+              <span className="truncate max-w-[90px] md:max-w-[200px]">
                 {fulfillmentType === 'delivery' && selectedAddressName 
                   ? (isEn ? `Delivery: ${selectedAddressName}` : `توصيل: ${selectedAddressName}`) 
                   : (selectedLocationName || (isEn ? 'Select Branch' : 'فرع العليا'))
                 }
               </span>
-              <div className="absolute -top-1.5 -right-2.5 w-2.5 h-2.5 rounded-full bg-[#4ADE80] shadow-[0_0_8px_rgba(74,222,128,0.4)]" />
+              <div className="absolute -top-0.5 -right-1.5 md:-top-1.5 md:-right-2.5 w-1.5 h-1.5 md:w-2.5 md:h-2.5 rounded-full bg-[#4ADE80] shadow-[0_0_8px_rgba(74,222,128,0.4)]" />
             </div>
+            <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor" className="opacity-80 shrink-0"><path d="M5 7l5 5 5-5H5z" /></svg>
           </button>
         </div>
       </div>

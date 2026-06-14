@@ -22,10 +22,9 @@ export function AccountProfileHeader({
       {/* Main Header Card */}
       <div className="profile-header-bg py-4 px-4 md:px-12 text-white relative overflow-hidden flex flex-col justify-center shadow-lg w-full" style={{ backgroundColor: '#2C4A47' }}>
         {/* Background Pattern Layer */}
-        <div className="absolute inset-0 pointer-events-none" 
+        <div className="absolute inset-0 pointer-events-none bg-[length:1800px_900px] md:bg-cover" 
              style={{ 
                backgroundImage: `url(${patternBg})`,
-               backgroundSize: 'cover',
                backgroundPosition: 'center center'
              }} 
         />

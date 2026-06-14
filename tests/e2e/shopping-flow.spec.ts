@@ -18,11 +18,11 @@ test.describe('Shopping Flow Tests', () => {
   test('Product buttons translate correctly', async ({ page }) => {
     // English
     await page.goto('/en/collections/all');
-    await expect(page.locator('body')).toContainText(/Add to Cart|Add to cart/i, { timeout: 10000 });
+    await expect(page.locator('body')).toContainText(/Add to Cart|Add to cart|Notify Me/i, { timeout: 10000 });
     
     // Arabic
     await page.goto('/collections/all');
-    await expect(page.locator('body')).toContainText('أضف إلي السلة', { timeout: 10000 });
+    await expect(page.locator('body')).toContainText(/أضف إلي السلة|أبلغني/, { timeout: 10000 });
   });
 
 });

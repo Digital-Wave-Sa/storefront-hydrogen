@@ -1,6 +1,6 @@
 import { data, type LoaderFunctionArgs, type MetaFunction, useLoaderData, useRouteLoaderData, Link } from 'react-router';
 import { ProductItem } from '~/components/ProductItem';
-import patternBg from '~/assets/patteren-collection-header.svg';
+import { PageHeader } from '~/components/layout/PageHeader';
 
 export const meta: MetaFunction = () => {
     return [{ title: `Saadeddin | Corporate Gifting` }];
@@ -95,25 +95,15 @@ export default function CorporatePage() {
         <div className={`min-h-screen bg-[#FEF8EB] ${isEn ? 'font-en' : "font-['GE_Dinar_One']"}`} dir={isEn ? 'ltr' : 'rtl'}>
             
             {/* 1. Hero Section */}
-            <section className="relative w-full bg-[#234745] flex flex-col justify-center items-center text-center px-4 pt-24 pb-40 md:pb-48">
-                {/* Background Pattern */}
-                <div 
-                    className="absolute inset-0 pointer-events-none opacity-10" 
-                    style={{ backgroundImage: `url(${patternBg})`, backgroundSize: '180px', backgroundPosition: 'center', backgroundRepeat: 'repeat' }} 
-                />
-                
-                <h4 className="text-[#9FB7AE] text-[16px] md:text-[18px] font-bold relative z-10 mb-8">
-                    {isEn ? 'Gifts that suit your company' : 'هدايا تليق بشركتك'}
-                </h4>
-
-                <h1 className="text-[#FEF8EB] !text-[40px] md:!text-[50px] !font-bold relative z-10 !mb-8 !mt-0 !leading-none !tracking-normal text-center align-middle" style={{ fontFamily: isEn ? 'inherit' : "'Bahij Janna'" }}>
-                    {isEn ? 'Corporate Gifts with Your Identity' : 'هدايا مؤسسية بهويتك الخاصة'}
-                </h1>
-                
-                <p className="text-[#9FB7AE] text-[16px] md:text-[20px] font-medium relative z-10 max-w-2xl leading-[1.6]">
+            <PageHeader
+                title={isEn ? 'Corporate Gifts with Your Identity' : 'هدايا مؤسسية بهويتك الخاصة'}
+                subtitle={isEn ? 'Gifts that suit your company' : 'هدايا تليق بشركتك'}
+                isEn={isEn}
+            >
+                <p className="text-[#9FB7AE] text-[16px] md:text-[20px] font-medium relative z-10 max-w-2xl leading-[1.6] mb-12 md:mb-20 mt-4">
                     {isEn ? 'Premium collections with your company logo — for employees, clients, and official occasions' : 'تشكيلات فاخرة بشعار شركتك — للموظفين والعملاء والمناسبات الرسمية'}
                 </p>
-            </section>
+            </PageHeader>
 
             {/* Overlapping Stats Pills */}
             <div className="w-full relative z-20 -mt-[42px] mb-20 px-4">

@@ -61,13 +61,12 @@ export function CorporateGifting() {
                     <div className="w-full lg:w-[65%] flex flex-col md:flex-row gap-[16px] lg:gap-[32px]">
                         
                         {/* Card 1: Employees (First in RTL = Right side) */}
-                        <Link
-                            to={isEn ? "/en/collections/employee-gifts" : "/collections/employee-gifts"}
+                        <div
                             className="hidden md:flex group relative flex-1 h-[300px] md:h-[264px] rounded-[20px] overflow-hidden bg-[#234745]"
                         >
                             <img
                                 src="/images/gift-corporate-2.webp"
-                                alt={activeContent.card2}
+                                alt=""
                                 className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                             />
                             <div className="absolute inset-0 bg-gradient-to-t from-[rgba(0,0,0,0.65)] via-[rgba(0,0,0,0.3)] to-transparent opacity-90"></div>
@@ -80,16 +79,15 @@ export function CorporateGifting() {
                                     {activeContent.card2}
                                 </h3>
                             </div>
-                        </Link>
+                        </div>
 
                         {/* Card 2: Clients & Partners (Second in RTL = Left side) */}
-                        <Link
-                            to={isEn ? "/en/collections/corporate-clients" : "/collections/corporate-clients"}
+                        <div
                             className="group relative flex-1 h-[300px] md:h-[264px] rounded-[20px] overflow-hidden bg-[#234745]"
                         >
                             <img
                                 src="/images/gift-corporate-1.webp"
-                                alt={activeContent.card1}
+                                alt=""
                                 className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                             />
                             <div className="absolute inset-0 bg-gradient-to-t from-[rgba(0,0,0,0.65)] via-[rgba(0,0,0,0.3)] to-transparent opacity-90"></div>
@@ -102,7 +100,7 @@ export function CorporateGifting() {
                                     {activeContent.card1}
                                 </h3>
                             </div>
-                        </Link>
+                        </div>
 
                     </div>
                 </div>

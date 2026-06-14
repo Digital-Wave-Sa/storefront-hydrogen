@@ -124,7 +124,6 @@ export async function action({ request, context }: ActionFunctionArgs) {
       },
       body: JSON.stringify({
         voucher_code: voucherCode,
-        user_id: customer.id, // passing Shopify GID as user_id fallback
         phone: customer.phone,
       })
     });

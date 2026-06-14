@@ -226,7 +226,7 @@ export function CustomerReviews({ config }: { config?: any }) {
                                     <div className="w-[48px] h-[48px] rounded-full overflow-hidden shrink-0 bg-gray-100">
                                         <img 
                                             src={review.avatar} 
-                                            alt={review.name} 
+                                            alt="" 
                                             className="w-full h-full object-cover"
                                         />
                                     </div>

@@ -251,6 +251,18 @@ export default function CollectionAll() {
       <div className="bg-[#FEF8EB] min-h-screen">
           <div className="px-4 md:px-8 lg:px-12 py-10 max-w-[1440px] mx-auto text-right">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+              <div className="flex items-center gap-2 flex-wrap justify-start flex-1">
+                 <button 
+                    onClick={() => setIsFilterOpen(true)}
+                    className="lg:hidden flex items-center gap-2.5 px-5 py-2.5 bg-white border border-gray-200 text-[#234745] rounded-xl font-bold hover:bg-gray-50 transition-all shadow-sm active:scale-95 group"
+                 >
+                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 3H2l8 9v11l4-6V12L22 3z"/></svg>
+                   <span>{isEn ? 'Filter' : 'تـصـفـيـة'}</span>
+                 </button>
+
+                 <ActiveFilterChips isEn={isEn} />
+              </div>
+
               <div className="flex-1 flex items-center justify-end">
                 <div className="flex items-center gap-2">
                   <label className="text-gray-400 text-[13px] font-bold">
@@ -258,6 +270,7 @@ export default function CollectionAll() {
                   </label>
                   <div className="flex items-center bg-white border border-[#234745]/10 rounded-full px-4 py-2 shadow-sm relative w-40">
                     <select
+                      aria-label={isEn ? "Sort by" : "ترتيب حسب"}
                       className="w-full bg-transparent text-[13px] font-bold text-gray-800 cursor-pointer focus:outline-none focus:ring-0 border-none appearance-none rtl:pl-6"
                       style={{ WebkitAppearance: 'none', appearance: 'none' }}
                       onChange={(e) => {
@@ -278,17 +291,6 @@ export default function CollectionAll() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 flex-wrap justify-start flex-1">
-                 <button 
-                    onClick={() => setIsFilterOpen(true)}
-                    className="lg:hidden flex items-center gap-2.5 px-5 py-2.5 bg-white border border-gray-200 text-[#234745] rounded-xl font-bold hover:bg-gray-50 transition-all shadow-sm active:scale-95 group"
-                 >
-                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 3H2l8 9v11l4-6V12L22 3z"/></svg>
-                   <span>{isEn ? 'Filter' : 'تـصـفـيـة'}</span>
-                 </button>
-
-                 <ActiveFilterChips isEn={isEn} />
-              </div>
             </div>
 
             <div className="flex flex-col lg:flex-row gap-8 items-start">
@@ -351,10 +353,9 @@ function CollectionAllHero({ title, productsCount, isEn }: { title: string, prod
     return (
         <section className="relative h-[144px] w-full bg-[#234745] overflow-hidden flex items-center" dir={isEn ? 'ltr' : 'rtl'}>
             <div 
-                className="absolute inset-0"
+                className="absolute inset-0 bg-[length:1500px_800px] md:bg-cover"
                 style={{
                     backgroundImage: `url(${patternBg})`,
-                    backgroundSize: 'cover',
                     backgroundPosition: 'center',
                 }}
             />
@@ -690,12 +691,12 @@ export function FilterSidebar({ filters, collections, onClose, isDesktop = false
                         <div className="flex items-center justify-between gap-4">
                             <div className="flex-1 border border-[#BBCFCD] rounded-[16px] px-4 py-2 flex items-center justify-between">
                                 <span className={`text-[16px] font-medium ${isEn ? 'font-en' : "font-['GE_Dinar_One']"} text-[#7D7D7D]`}>{isEn ? 'From' : 'من'}</span>
-                                <input type="number" value={minPrice} onChange={(e) => setMinPrice(e.target.value)} className="w-12 bg-transparent text-center focus:outline-none" />
+                                <input aria-label={isEn ? "Minimum Price" : "الحد الأدنى للسعر"} type="number" value={minPrice} onChange={(e) => setMinPrice(e.target.value)} className="w-12 bg-transparent text-center focus:outline-none" />
                             </div>
                             <span className="text-[16px] font-medium text-[#255441]">-</span>
                             <div className="flex-1 border border-[#BBCFCD] rounded-[16px] px-4 py-2 flex items-center justify-between">
                                 <span className={`text-[16px] font-medium ${isEn ? 'font-en' : "font-['GE_Dinar_One']"} text-[#7D7D7D]`}>{isEn ? 'To' : 'إلي'}</span>
-                                <input type="number" value={maxPrice} onChange={(e) => setMaxPrice(e.target.value)} className="w-12 bg-transparent text-center focus:outline-none" />
+                                <input aria-label={isEn ? "Maximum Price" : "الحد الأقصى للسعر"} type="number" value={maxPrice} onChange={(e) => setMaxPrice(e.target.value)} className="w-12 bg-transparent text-center focus:outline-none" />
                             </div>
                         </div>
                         <button type="button" onClick={handlePriceApply} className={`w-[270px] bg-[#234745] text-[#FEF8EB] rounded-[25px] py-2.5 text-[16px] font-medium ${isEn ? 'font-en' : "font-['GE_Dinar_One']"} hover:opacity-90 transition-opacity`}>{isEn ? 'Apply' : 'تطبيق'}</button>

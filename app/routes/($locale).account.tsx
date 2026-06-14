@@ -122,10 +122,11 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
       const walletPromise = (async () => {
         let loyaltyPoints = 0;
         let balance = 0;
+        let history: any[] = [];
         try {
           const middlewareUrl = context.env.MIDDLEWARE_URL || 'https://wh.pryvexapls.com';
           const branchId = await context.session.get('selectedLocationId');
-          const res = await fetch(`${middlewareUrl}/wallet/balance?user_id=${encodeURIComponent(mockCustomer.id)}&phone=${encodeURIComponent(mockCustomer.phone || '')}`, {
+          const res = await fetch(`${middlewareUrl}/wallet/balance?phone=${encodeURIComponent(mockCustomer.phone || '')}`, {
             headers: { 'x-branch-id': branchId || '1' }
           });
           const apiData = await res.json();
@@ -140,8 +141,27 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
               loyaltyPoints = apiData.loyalty_points || 0;
             }
           }
+
+          const histRes = await fetch(`${middlewareUrl}/wallet/transactions?phone=${encodeURIComponent(mockCustomer.phone || '')}`, {
+            headers: { 'x-branch-id': branchId || '1' }
+          });
+          if (histRes.ok) {
+            const histData = await histRes.json();
+            if (histData?.items) {
+               history = histData.items.map((tx: any) => {
+                 const amt = parseFloat(tx.amount) || 0;
+                 return {
+                   id: tx.id,
+                   amount: tx.type === 'VOUCHER_TOP_UP' || amt > 0 ? amt : -amt,
+                   date: tx.createdAt,
+                   labelEn: tx.description || tx.type,
+                   labelAr: tx.description || tx.type
+                 };
+               });
+            }
+          }
         } catch (e) {}
-        return { loyaltyPoints, balance };
+        return { loyaltyPoints, balance, history };
       })();
 
       return data({
@@ -176,10 +196,11 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
     const walletPromise = (async () => {
       let loyaltyPoints = 0;
       let balance = 0;
+      let history: any[] = [];
       try {
         const middlewareUrl = context.env.MIDDLEWARE_URL || 'https://wh.pryvexapls.com';
         const branchId = await context.session.get('selectedLocationId');
-        const res = await fetch(`${middlewareUrl}/wallet/balance?user_id=${encodeURIComponent(customer.id)}&phone=${encodeURIComponent(customer.phone || '')}`, {
+        const res = await fetch(`${middlewareUrl}/wallet/balance?phone=${encodeURIComponent(customer.phone || '')}`, {
           headers: { 'x-branch-id': branchId || '1' }
         });
         const apiData = await res.json();
@@ -194,8 +215,27 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
             loyaltyPoints = apiData.loyalty_points || 0;
           }
         }
+
+        const histRes = await fetch(`${middlewareUrl}/wallet/transactions?phone=${encodeURIComponent(customer.phone || '')}`, {
+            headers: { 'x-branch-id': branchId || '1' }
+        });
+        if (histRes.ok) {
+          const histData = await histRes.json();
+          if (histData?.items) {
+              history = histData.items.map((tx: any) => {
+                const amt = parseFloat(tx.amount) || 0;
+                return {
+                  id: tx.id,
+                  amount: tx.type === 'VOUCHER_TOP_UP' || amt > 0 ? amt : -amt,
+                  date: tx.createdAt,
+                  labelEn: tx.description || tx.type,
+                  labelAr: tx.description || tx.type
+                };
+              });
+          }
+        }
       } catch (e) {}
-      return { loyaltyPoints, balance };
+      return { loyaltyPoints, balance, history };
     })();
 
     return data(

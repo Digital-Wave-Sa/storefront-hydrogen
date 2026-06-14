@@ -1,7 +1,7 @@
 import { type MetaFunction } from 'react-router';
 import { useRouteLoaderData } from 'react-router';
 import { useState } from 'react';
-import patternBg from '~/assets/patteren-collection-header.svg';
+import { PageHeader } from '~/components/layout/PageHeader';
 
 export const meta: MetaFunction = ({ parentsData }) => {
   const rootData = parentsData?.root as any;
@@ -95,50 +95,36 @@ export default function FAQPage() {
   return (
     <div className={`w-full min-h-screen bg-[#FEF8EB] ${isEn ? 'font-en text-left' : 'font-ar text-right'}`} dir={isEn ? 'ltr' : 'rtl'}>
       {/* Hero Section */}
-      <div className="relative w-full bg-[#234745] overflow-hidden flex flex-col items-center justify-center text-white px-[80px] py-10" style={{ minHeight: '300px' }}>
-        <div
-          className="absolute inset-0 pointer-events-none opacity-100"
-          style={{
-            backgroundImage: `url(${patternBg})`,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-            backgroundRepeat: 'no-repeat'
-          }}
-        />
-        <div className="relative z-10 text-center flex flex-col items-center w-full">
-          <p className="text-[12px] font-medium opacity-80 mb-2" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", lineHeight: '100%' }}>
-            {isEn ? 'Help' : 'المساعدة'}
-          </p>
-          <h1 className="!text-[32px] md:!text-[50px] !font-bold !mb-6 !mt-0" style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif", lineHeight: '1.4', color: '#FEF8EB' }}>
-            {isEn ? "How can we help you?" : 'كيف نستطيع مساعدتك؟'}
-          </h1>
-          
-          {/* Search Bar */}
-          <div className="relative max-w-[500px] w-full">
-            <div className="relative flex items-center bg-white rounded-full overflow-hidden shadow-md">
-              {/* Search Icon */}
-              <div className={`absolute ${isEn ? 'left-5' : 'right-5'} text-gray-400`}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-              </div>
-              
-              {/* Input */}
-              <input 
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder={isEn ? "Search in FAQs..." : "إبحث في الأسئلة الشائعة..."}
-                className={`w-full h-[44px] bg-white text-gray-800 text-sm outline-none ${isEn ? 'pl-12 pr-28 text-left' : 'pr-12 pl-28 text-right'}`}
-                dir={isEn ? 'ltr' : 'rtl'}
-              />
-              
-              {/* Search Button */}
-              <button className={`absolute ${isEn ? 'right-1' : 'left-1'} h-[36px] px-8 bg-[#234745] hover:bg-[#1a3533] text-white rounded-full font-bold text-sm transition-colors`}>
-                {isEn ? 'Search' : 'بحث'}
-              </button>
+      <PageHeader 
+        title={isEn ? "How can we help you?" : 'كيف نستطيع مساعدتك؟'}
+        subtitle={isEn ? 'Help' : 'المساعدة'}
+        isEn={isEn}
+      >
+        {/* Search Bar */}
+        <div className="relative max-w-[500px] w-full mt-2">
+          <div className="relative flex items-center bg-white rounded-full overflow-hidden shadow-md">
+            {/* Search Icon */}
+            <div className={`absolute ${isEn ? 'left-5' : 'right-5'} text-gray-400`}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
             </div>
+            
+            {/* Input */}
+            <input 
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder={isEn ? "Search in FAQs..." : "إبحث في الأسئلة الشائعة..."}
+              className={`w-full h-[44px] bg-white text-gray-800 text-sm outline-none ${isEn ? 'pl-12 pr-28 text-left' : 'pr-12 pl-28 text-right'}`}
+              dir={isEn ? 'ltr' : 'rtl'}
+            />
+            
+            {/* Search Button */}
+            <button className={`absolute ${isEn ? 'right-1' : 'left-1'} h-[36px] px-8 bg-[#234745] hover:bg-[#1a3533] text-white rounded-full font-bold text-sm transition-colors`}>
+              {isEn ? 'Search' : 'بحث'}
+            </button>
           </div>
         </div>
-      </div>
+      </PageHeader>
 
       <div className="max-w-[1280px] w-full mx-auto px-4 md:px-6 mt-10 md:mt-16 relative z-20 pb-20">
         {/* Categories Chips */}

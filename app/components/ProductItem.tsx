@@ -138,7 +138,7 @@ export function ProductItem({
             <div className="w-32 h-32 md:w-48 md:h-48 bg-gray-50 rounded-2xl overflow-hidden border border-gray-50 relative">
             {product.featuredImage && (
                 <Image
-                alt={product.featuredImage.altText || product.title}
+                alt=""
                 aspectRatio="1/1"
                 data={product.featuredImage}
                 loading={loading}
@@ -211,7 +211,7 @@ export function ProductItem({
                         🔔 {t.common.notifyMe}
                     </button>
                 )}
-                <Link to={variantUrl} className="bg-gray-100 text-gray-600 px-6 py-3 rounded-xl font-bold text-sm hover:bg-gray-200 transition-all">
+                <Link to={variantUrl} aria-label={product.title} className="bg-gray-100 text-gray-600 px-6 py-3 rounded-xl font-bold text-sm hover:bg-gray-200 transition-all">
                     {isEn ? 'Details' : 'التفاصيل'}
                 </Link>
               </>
@@ -245,7 +245,7 @@ export function ProductItem({
         <div className="w-full aspect-[4/3] relative flex items-center justify-center bg-gray-50 overflow-hidden">
             {product.featuredImage && (
             <Image
-                alt={product.featuredImage.altText || product.title}
+                alt=""
                 aspectRatio="4/3"
                 data={product.featuredImage}
                 loading={loading}
@@ -259,6 +259,7 @@ export function ProductItem({
                 <button 
                   onClick={(e) => {
                       e.preventDefault();
+                      e.stopPropagation();
                       toggleWishlist({
                         id: product.id,
                         title: product.title,
@@ -267,6 +268,7 @@ export function ProductItem({
                         priceRange: product.priceRange
                       });
                   }}
+                  aria-label={isWishlisted ? "Remove from Wishlist" : "Add to Wishlist"}
                   className={`w-10 h-10 p-0 rounded-full bg-white shadow-md transition-all flex items-center justify-center ${isWishlisted ? 'text-[#e74c3c]' : 'text-gray-700 hover:text-[#e74c3c]'}`}
                 >
                     <svg width="20" height="20" viewBox="0 0 24 24" fill={isWishlisted ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.5"><path d="M20.8 4.6a5.5 5.5 0 00-7.7 0l-1.1 1-1.1-1a5.5 5.5 0 00-7.8 7.8l1 1 7.9 7.9 7.9-7.9 1-1a5.5 5.5 0 000-7.8z" /></svg>

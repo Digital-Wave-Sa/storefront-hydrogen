@@ -7,9 +7,13 @@ export function DesignYourCake() {
 
     return (
         <section
-            className={`!p-0 relative w-full min-h-[620px] overflow-hidden bg-[url('/images/cake-builder-section-mobile.webp')] lg:bg-[url('/images/cake-builder/cake-bg.webp')] bg-cover lg:bg-[length:cover] bg-top lg:bg-[position:${isEn ? 'right_center' : 'left_center'}] ${isEn ? 'font-en' : 'font-ar'}`}
+            className={`!p-0 relative w-full min-h-[620px] overflow-hidden ${isEn ? 'font-en' : 'font-ar'}`}
             dir={isEn ? 'ltr' : 'rtl'}
         >
+            {/* Background Image Layer */}
+            <div 
+                className={`absolute inset-0 w-full h-full bg-[url('/images/cake-builder-section-mobile.webp')] lg:bg-[url('/images/cake-builder/cake-bg.webp')] bg-cover lg:bg-[length:cover] bg-top lg:bg-[position:left_center] ${isEn ? '-scale-x-100' : ''}`}
+            ></div>
             {/* Gradient overlay: Desktop */}
             <div
                 className="absolute inset-0 hidden lg:block"
@@ -60,49 +64,49 @@ export function DesignYourCake() {
                     <div className="grid grid-cols-4 gap-1.5 md:gap-3 mb-8 w-full">
                         {/* Step 1 */}
                         <div className="bg-white/60 backdrop-blur-sm rounded-[12px] md:rounded-[18px] p-1 py-3 md:p-4 flex flex-col items-center justify-center text-center gap-1.5 md:gap-2 min-h-[90px] md:min-h-[120px] shadow-[0_2px_10px_rgba(0,0,0,0.03)] border border-[#d1dbd9]/50">
-                            <div className="w-6 h-6 md:w-10 md:h-10 rounded-full bg-[#c5d5d0] flex items-center justify-center text-white font-bold text-[11px] md:text-[14px]">
+                            <div className="w-[25px] h-[25px] rounded-full bg-[#c5d5d0] flex items-center justify-center text-white font-bold text-[13px]">
                                 {isEn ? '1' : '١'}
                             </div>
                             <span className="font-bold text-[#7a8e8a] text-[10px] md:text-[13px] leading-tight flex-1 flex items-center justify-center px-0.5">{isEn ? 'Choose Size' : 'اختر الحجم'}</span>
-                            <img src="/images/cake-icon.svg" alt="Size" className="w-5 h-5 md:w-8 md:h-8 opacity-60" />
+                            <img src="/images/cake-icon.svg" alt="Size" className="w-[25px] h-[25px] opacity-60" />
                         </div>
 
                         {/* Step 2 (Active) */}
                         <div className="bg-white rounded-[12px] md:rounded-[18px] p-1 py-3 md:p-4 flex flex-col items-center justify-center text-center gap-1.5 md:gap-2 min-h-[90px] md:min-h-[120px] border-[1.5px] md:border-[2px] border-[#234745] shadow-sm">
-                            <div className="w-6 h-6 md:w-10 md:h-10 rounded-full bg-[#234745] flex items-center justify-center text-white font-bold text-[11px] md:text-[14px]">
+                            <div className="w-[25px] h-[25px] rounded-full bg-[#234745] flex items-center justify-center text-white font-bold text-[13px]">
                                 {isEn ? '2' : '٢'}
                             </div>
                             <span className="font-bold text-[#234745] text-[10px] md:text-[13px] leading-tight flex-1 flex items-center justify-center px-0.5">{isEn ? 'Choose Flavor' : 'أختر النكهة'}</span>
-                            <img src="/images/cake-icon-2.svg" alt="Flavor" className="w-5 h-5 md:w-8 md:h-8" />
+                            <img src="/images/cake-icon-2.svg" alt="Flavor" className="w-[25px] h-[25px]" />
                         </div>
 
                         {/* Step 3 */}
                         <div className="bg-white/60 backdrop-blur-sm rounded-[12px] md:rounded-[18px] p-1 py-3 md:p-4 flex flex-col items-center justify-center text-center gap-1.5 md:gap-2 min-h-[90px] md:min-h-[120px] shadow-[0_2px_10px_rgba(0,0,0,0.03)] border border-[#d1dbd9]/50">
-                            <div className="w-6 h-6 md:w-10 md:h-10 rounded-full bg-[#c5d5d0] flex items-center justify-center text-white font-bold text-[11px] md:text-[14px]">
+                            <div className="w-[25px] h-[25px] rounded-full bg-[#c5d5d0] flex items-center justify-center text-white font-bold text-[13px]">
                                 {isEn ? '3' : '٣'}
                             </div>
                             <span className="font-bold text-[#7a8e8a] text-[10px] md:text-[13px] leading-tight flex-1 flex items-center justify-center px-0.5">{isEn ? 'Choose Decoration' : 'اختر التزيين'}</span>
-                            <img src="/images/cake-icon-3.svg" alt="Decoration" className="w-5 h-5 md:w-8 md:h-8 opacity-60" />
+                            <img src="/images/cake-icon-3.svg" alt="Decoration" className="w-[25px] h-[25px] opacity-60" />
                         </div>
 
                         {/* Step 4 */}
                         <div className="bg-white/60 backdrop-blur-sm rounded-[12px] md:rounded-[18px] p-1 py-3 md:p-4 flex flex-col items-center justify-center text-center gap-1.5 md:gap-2 min-h-[90px] md:min-h-[120px] shadow-[0_2px_10px_rgba(0,0,0,0.03)] border border-[#d1dbd9]/50">
-                            <div className="w-6 h-6 md:w-10 md:h-10 rounded-full bg-[#c5d5d0] flex items-center justify-center text-white font-bold text-[11px] md:text-[14px]">
+                            <div className="w-[25px] h-[25px] rounded-full bg-[#c5d5d0] flex items-center justify-center text-white font-bold text-[13px]">
                                 {isEn ? '4' : '٤'}
                             </div>
                             <span className="font-bold text-[#7a8e8a] text-[10px] md:text-[12px] leading-tight flex-1 flex items-center justify-center px-0.5">{isEn ? 'Add Your Message' : 'أضف رسالتك الخاصة'}</span>
-                            <img src="/images/cake-icon-4.svg" alt="Message" className="w-5 h-5 md:w-8 md:h-8 opacity-60" />
+                            <img src="/images/cake-icon-4.svg" alt="Message" className="w-[25px] h-[25px] opacity-60" />
                         </div>
                     </div>
 
                     {/* Flavor Selector */}
-                    <div className="mb-8" dir={isEn ? 'ltr' : 'rtl'}>
+                    <div className="mb-2 lg:mb-4" dir={isEn ? 'ltr' : 'rtl'}>
                         <h4 className="text-[#234745] mb-5" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", fontWeight: 700, fontSize: '18px', lineHeight: '100%', textAlign: isEn ? 'left' : 'right' }}>
                             {isEn ? 'Choose Flavor' : 'أختر النكهة'}
                         </h4>
                         <div className="grid grid-cols-4 gap-1.5 md:gap-4 pt-3 -mt-3 md:pt-0 md:mt-0 pb-2 w-full">
                             {/* Active - Vanilla */}
-                            <div className="relative bg-[#f8f9f8] border-[1.5px] md:border-[2px] border-[#234745] rounded-[14px] md:rounded-[50px] py-[8px] md:py-[10px] px-1 md:px-4 flex flex-col md:flex-row items-center justify-center gap-1.5 md:gap-3 cursor-pointer shadow-sm">
+                            <div className="relative bg-[#f8f9f8] border-[1.5px] md:border-[2px] border-[#234745] rounded-[14px] md:rounded-[50px] py-[4px] md:py-[6px] px-1 md:px-4 flex flex-col md:flex-row items-center justify-center gap-1.5 md:gap-3 cursor-pointer shadow-sm">
                                 <img src="/images/vanilla-img.png" alt="Vanilla" className="w-[28px] h-[28px] md:w-[40px] md:h-[40px] object-contain" />
                                 <span className="text-[#234745] text-[10px] md:text-[16px] whitespace-nowrap" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", fontWeight: 700, lineHeight: '100%', textAlign: 'center' }}>
                                     {isEn ? 'Vanilla' : 'فانيليا'}
@@ -112,21 +116,21 @@ export function DesignYourCake() {
                                 </div>
                             </div>
                             {/* Chocolate */}
-                            <div className="bg-[#f8f9f8] border border-[#d1dbd9] rounded-[14px] md:rounded-[50px] py-[8px] md:py-[10px] px-1 md:px-4 flex flex-col md:flex-row items-center justify-center gap-1.5 md:gap-3 cursor-pointer hover:border-[#234745]/40 transition-colors">
+                            <div className="bg-[#f8f9f8] border border-[#d1dbd9] rounded-[14px] md:rounded-[50px] py-[4px] md:py-[6px] px-1 md:px-4 flex flex-col md:flex-row items-center justify-center gap-1.5 md:gap-3 cursor-pointer hover:border-[#234745]/40 transition-colors">
                                 <img src="/images/chocolate-img.png" alt="Chocolate" className="w-[28px] h-[28px] md:w-[40px] md:h-[40px] object-contain" />
                                 <span className="text-[#234745] text-[10px] md:text-[16px] whitespace-nowrap" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", fontWeight: 700, lineHeight: '100%', textAlign: 'center' }}>
                                     {isEn ? 'Chocolate' : 'شوكولاته'}
                                 </span>
                             </div>
                             {/* Caramel */}
-                            <div className="bg-[#f8f9f8] border border-[#d1dbd9] rounded-[14px] md:rounded-[50px] py-[8px] md:py-[10px] px-1 md:px-4 flex flex-col md:flex-row items-center justify-center gap-1.5 md:gap-3 cursor-pointer hover:border-[#234745]/40 transition-colors">
+                            <div className="bg-[#f8f9f8] border border-[#d1dbd9] rounded-[14px] md:rounded-[50px] py-[4px] md:py-[6px] px-1 md:px-4 flex flex-col md:flex-row items-center justify-center gap-1.5 md:gap-3 cursor-pointer hover:border-[#234745]/40 transition-colors">
                                 <img src="/images/caramel-img.png" alt="Caramel" className="w-[28px] h-[28px] md:w-[40px] md:h-[40px] object-contain" />
                                 <span className="text-[#234745] text-[10px] md:text-[16px] whitespace-nowrap" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", fontWeight: 700, lineHeight: '100%', textAlign: 'center' }}>
                                     {isEn ? 'Caramel' : 'كراميل'}
                                 </span>
                             </div>
                             {/* Red Velvet */}
-                            <div className="bg-[#f8f9f8] border border-[#d1dbd9] rounded-[14px] md:rounded-[50px] py-[8px] md:py-[10px] px-1 md:px-4 flex flex-col md:flex-row items-center justify-center gap-1.5 md:gap-3 cursor-pointer hover:border-[#234745]/40 transition-colors">
+                            <div className="bg-[#f8f9f8] border border-[#d1dbd9] rounded-[14px] md:rounded-[50px] py-[4px] md:py-[6px] px-1 md:px-4 flex flex-col md:flex-row items-center justify-center gap-1.5 md:gap-3 cursor-pointer hover:border-[#234745]/40 transition-colors">
                                 <img src="/images/velvet-img.png" alt="Red Velvet" className="w-[28px] h-[28px] md:w-[40px] md:h-[40px] object-contain" />
                                 <span className="text-[#234745] text-[10px] md:text-[16px] whitespace-nowrap" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", fontWeight: 700, lineHeight: '100%', textAlign: 'center' }}>
                                     {isEn ? 'Red Velvet' : 'ريد فلفيت'}
@@ -136,7 +140,7 @@ export function DesignYourCake() {
                     </div>
 
                     {/* Bottom Action Bar */}
-                    <div className="flex flex-col lg:flex-row items-center justify-between gap-4 lg:gap-8 mt-2 lg:mt-8 w-full" dir={isEn ? 'ltr' : 'rtl'}>
+                    <div className="flex flex-col lg:flex-row items-center justify-between gap-4 lg:gap-8 mt-2 lg:mt-4 w-full" dir={isEn ? 'ltr' : 'rtl'}>
 
                         {/* CTA Button */}
                         <Link

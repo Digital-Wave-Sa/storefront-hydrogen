@@ -1,6 +1,6 @@
 import { data, type LoaderFunctionArgs, type MetaFunction } from 'react-router';
 import { useLoaderData, useRouteLoaderData } from 'react-router';
-import patternBg from '~/assets/patteren-collection-header.svg';
+import { PageHeader } from '~/components/layout/PageHeader';
 
 const PAGE_QUERY = `#graphql
   query Page(
@@ -65,21 +65,10 @@ export default function TermsPage() {
   return (
     <div className={`w-full min-h-screen bg-[#FEF8EB] ${isEn ? 'font-en text-left' : 'font-ar text-right'}`} dir={isEn ? 'ltr' : 'rtl'}>
       {/* Hero Section */}
-      <div className="relative w-full min-h-[300px] bg-[#234745] overflow-hidden flex flex-col items-center justify-center text-white px-5 md:px-[80px] py-8">
-        <div
-          className="absolute inset-0 pointer-events-none opacity-100"
-          style={{
-            backgroundImage: `url(${patternBg})`,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center'
-          }}
-        />
-        <div className="relative z-10 text-center">
-          <h1 className="font-bold !text-[50px]" style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif", fontSize: '50px', fontWeight: 700, lineHeight: '100%', color: 'rgb(254, 248, 235)', textAlign: 'center', marginTop: '10px', marginBottom: '1rem' }}>
-            {page.title}
-          </h1>
-        </div>
-      </div>
+      <PageHeader 
+        title={page.title} 
+        isEn={isEn} 
+      />
 
       <div className="max-w-[800px] mx-auto px-4 md:px-6 mt-10 md:mt-16 relative z-20 pb-20">
         <div className="bg-white rounded-3xl p-8 md:p-12 border border-gray-100 shadow-sm">

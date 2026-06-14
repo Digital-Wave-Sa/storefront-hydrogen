@@ -104,6 +104,7 @@ export default function Homepage() {
 
   return (
     <div className="home w-full bg-[#FEF8EB] overflow-x-hidden">
+      <h1 className="sr-only">Saadeddin Pastry</h1>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{

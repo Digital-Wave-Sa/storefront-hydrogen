@@ -56,7 +56,7 @@ export function WhoAreYouGifting({ collections }: { collections?: any[] }) {
                             <div className="w-full aspect-square md:aspect-[4/5] relative">
                                 <img 
                                     src={recipient.image} 
-                                    alt={recipient.name}
+                                    alt=""
                                     className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
                                 />
                                 {/* Bottom Gradient Overlay */}

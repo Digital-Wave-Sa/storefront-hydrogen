@@ -224,6 +224,7 @@ export default function Collection() {
                   </label>
                   <div className="flex items-center bg-white border border-[#234745]/10 rounded-full px-4 py-2 shadow-sm relative w-40">
                     <select
+                      aria-label={isEn ? "Sort by" : "ترتيب حسب"}
                       className="w-full bg-transparent text-[13px] font-bold text-gray-800 cursor-pointer focus:outline-none focus:ring-0 border-none appearance-none rtl:pl-6"
                       style={{ WebkitAppearance: 'none', appearance: 'none' }}
                       onChange={(e) => {
@@ -303,12 +304,10 @@ export default function Collection() {
 function CollectionHero({ collection, productsCount, isEn }: { collection: any, productsCount: number, isEn: boolean }) {
     return (
         <section className="relative h-[144px] w-full bg-[#234745] overflow-hidden flex items-center" dir={isEn ? 'ltr' : 'rtl'}>
-            {/* Background Texture */}
             <div 
-                className="absolute inset-0"
+                className="absolute inset-0 bg-[length:1500px_800px] md:bg-cover"
                 style={{
                     backgroundImage: `url(${patternBg})`,
-                    backgroundSize: 'cover',
                     backgroundPosition: 'center',
                 }}
             />
@@ -492,11 +491,11 @@ function FilterForm({ filters, onClose, isDesktop, isEn }: { filters: any[], onC
                                 <div className={`overflow-hidden transition-all duration-300 ${isOpen ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'}`}>
                                     <div className="flex gap-2 items-center mb-4">
                                         <div className="flex-1 relative">
-                                            <input type="number" defaultValue={minPrice} onBlur={(e) => handleApplyPrice(e.target.value, maxPrice)} placeholder={isEn ? "Min" : "من"} className="w-full bg-white border border-gray-200 rounded-full px-4 py-2 text-sm font-bold focus:outline-none focus:border-[#234745] transition-all text-center" />
+                                            <input aria-label={isEn ? "Minimum Price" : "الحد الأدنى للسعر"} type="number" defaultValue={minPrice} onBlur={(e) => handleApplyPrice(e.target.value, maxPrice)} placeholder={isEn ? "Min" : "من"} className="w-full bg-white border border-gray-200 rounded-full px-4 py-2 text-sm font-bold focus:outline-none focus:border-[#234745] transition-all text-center" />
                                         </div>
                                         <span className="text-gray-400 font-bold">-</span>
                                         <div className="flex-1 relative">
-                                            <input type="number" defaultValue={maxPrice} onBlur={(e) => handleApplyPrice(minPrice, e.target.value)} placeholder={isEn ? "Max" : "إلي"} className="w-full bg-white border border-gray-200 rounded-full px-4 py-2 text-sm font-bold focus:outline-none focus:border-[#234745] transition-all text-center" />
+                                            <input aria-label={isEn ? "Maximum Price" : "الحد الأقصى للسعر"} type="number" defaultValue={maxPrice} onBlur={(e) => handleApplyPrice(minPrice, e.target.value)} placeholder={isEn ? "Max" : "إلي"} className="w-full bg-white border border-gray-200 rounded-full px-4 py-2 text-sm font-bold focus:outline-none focus:border-[#234745] transition-all text-center" />
                                         </div>
                                     </div>
                                 </div>

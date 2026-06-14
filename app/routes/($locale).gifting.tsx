@@ -1,7 +1,7 @@
 import { data, type LoaderFunctionArgs, type MetaFunction, useLoaderData, Link, useRouteLoaderData, useSearchParams } from 'react-router';
 import { useState, useEffect } from 'react';
 import { ProductItem } from '~/components/ProductItem';
-import patternBg from '~/assets/patteren-collection-header.svg';
+import { PageHeader } from '~/components/layout/PageHeader';
 
 export const meta: MetaFunction = () => {
     return [{ title: `Saadeddin | Gifting` }];
@@ -132,18 +132,11 @@ export default function GiftingPage() {
         <div className={`min-h-screen bg-white ${isEn ? 'font-en' : "font-['GE_Dinar_One']"}`} dir={isEn ? 'ltr' : 'rtl'}>
             
             {/* Hero Section */}
-            <section className="relative h-[132px] lg:h-auto w-full bg-[#234745] overflow-hidden flex flex-col justify-center items-center text-center px-4 lg:px-[80px] py-[16px] lg:py-24 gap-2 lg:gap-[8px]">
-                <div 
-                    className="absolute inset-0 pointer-events-none opacity-100" 
-                    style={{ backgroundImage: `url(${patternBg})`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' }} 
-                />
-                <h3 className="text-[#9FB7AE] text-[16px] lg:text-[18px] font-bold relative z-10">
-                    {isEn ? 'Who are you gifting?' : 'بتهدي لمين؟'}
-                </h3>
-                <h1 className="text-[#FEF8EB] text-[32px] lg:text-[40px] font-black relative z-10 leading-none">
-                    {isEn ? 'Gifts suitable for all loved ones' : 'هدايا مناسبة لكل الاحباء'}
-                </h1>
-            </section>
+            <PageHeader
+                title={isEn ? 'Gifts suitable for all loved ones' : 'هدايا مناسبة لكل الاحباء'}
+                subtitle={isEn ? 'Who are you gifting?' : 'بتهدي لمين؟'}
+                isEn={isEn}
+            />
 
             {/* Filter Pills */}
             <div className="w-full overflow-hidden">
@@ -222,7 +215,7 @@ export default function GiftingPage() {
                 </Link>
 
                 {/* Gift Voucher Banner */}
-                <Link to={isEn ? '/en/products/gift-card' : '/products/gift-card'} className="block w-full transition-transform hover:scale-[1.01]">
+                <Link to={isEn ? '/en/buy-gift-card' : '/buy-gift-card'} className="block w-full transition-transform hover:scale-[1.01]">
                     <div className="w-full bg-[#FEF8EB] rounded-[24px] flex flex-col md:flex-row items-center relative overflow-hidden min-h-[300px] lg:min-h-[340px]">
 
                         {/* Weave Pattern behind text */}

@@ -1,7 +1,7 @@
 import { useOutletContext, useRouteLoaderData } from 'react-router';
 import { useEffect, useRef, useState } from 'react';
 import type { Route } from './+types/($locale).pages.branches';
-import patternBg from '~/assets/patteren-collection-header.svg';
+import { PageHeader } from '~/components/layout/PageHeader';
 
 export const meta: Route.MetaFunction = () => {
   return [{ title: 'Our Branches | فروعنا' }];
@@ -138,48 +138,35 @@ export default function BranchesPage() {
         <div className={`w-full bg-[#FAFAFA] min-h-screen ${fontClass}`} dir={isEn ? 'ltr' : 'rtl'}>
             
             {/* ─── HERO SECTION ─────────────────────────────────────────────────── */}
-            <section className="relative bg-[#234745] text-white pt-20 pb-16 px-6 text-center overflow-hidden">
-                <div
-                    className="absolute inset-0 pointer-events-none opacity-100"
-                    style={{
-                        backgroundImage: `url(${patternBg})`,
-                        backgroundSize: 'cover',
-                        backgroundPosition: 'center',
-                        backgroundRepeat: 'no-repeat'
-                    }}
-                />
-                <div className="relative z-10 w-full flex flex-col items-center justify-center text-center">
-                    <p className="text-[#BBCFCD] text-[12px] font-bold mb-4" style={{ fontFamily: fontFam, lineHeight: '100%' }}>
-                        {isEn ? 'Our Branches' : 'فروعنا'}
-                    </p>
-                    <h1 className="text-[32px] md:text-[50px] font-bold mb-4" style={{ fontFamily: isEn ? '' : "'Bahij Janna', sans-serif", lineHeight: '100%', color: '#FEF8EB' }}>
-                        {isEn ? `${branchCount} Branches Across the Kingdom` : `${branchCount} فرع في أنحاء المملكة`}
-                    </h1>
-                    <p className="text-[#BBCFCD] text-[16px] mb-12 max-w-lg mx-auto" style={{ fontFamily: fontFam, lineHeight: '100%' }}>
-                        {isEn ? 'Search for the nearest branch or check delivery availability in your area' : 'ابحث عن أقرب فرع أو تحقق من توفر التوصيل لمنطقتك'}
-                    </p>
+            <PageHeader 
+                title={isEn ? `${branchCount} Branches Across the Kingdom` : `${branchCount} فرع في أنحاء المملكة`}
+                subtitle={isEn ? 'Our Branches' : 'فروعنا'}
+                isEn={isEn}
+            >
+                <p className="text-[#BBCFCD] text-[18px] mb-12 max-w-lg mx-auto mt-4" style={{ fontFamily: fontFam, lineHeight: '100%' }}>
+                    {isEn ? 'Search for the nearest branch or check delivery availability in your area' : 'ابحث عن أقرب فرع أو تحقق من توفر التوصيل لمنطقتك'}
+                </p>
 
-                    {/* Stats */}
-                    <div className="flex justify-center items-center gap-8 lg:gap-16 mt-8 w-full" style={{ fontFamily: fontFam }}>
-                        <div>
-                            <div className="text-2xl lg:text-3xl font-bold mb-1">{isEn ? branchCount : branchCount}</div>
-                            <div className="text-white/60 text-xs lg:text-sm">{isEn ? 'Branches' : 'فرع'}</div>
-                        </div>
-                        <div>
-                            <div className="text-2xl lg:text-3xl font-bold mb-1" dir="ltr">{isEn ? '35+' : '+٣٥'}</div>
-                            <div className="text-white/60 text-xs lg:text-sm">{isEn ? 'Cities' : 'مدينة'}</div>
-                        </div>
-                        <div>
-                            <div className="text-2xl lg:text-3xl font-bold mb-1" dir="ltr">{isEn ? '24/7' : '٢٤/٧'}</div>
-                            <div className="text-white/60 text-xs lg:text-sm">{isEn ? 'Most Branches' : 'معظم الفروع'}</div>
-                        </div>
-                        <div>
-                            <div className="text-2xl lg:text-3xl font-bold mb-1">{isEn ? '10 Min' : '١٠ دقيقة'}</div>
-                            <div className="text-white/60 text-xs lg:text-sm">{isEn ? 'Prep Time' : 'وقت التجهيز'}</div>
-                        </div>
+                {/* Stats */}
+                <div className="flex justify-center items-center gap-8 lg:gap-16 mt-4 w-full" style={{ fontFamily: fontFam }}>
+                    <div>
+                        <div className="text-2xl lg:text-3xl font-bold mb-1">{isEn ? branchCount : branchCount}</div>
+                        <div className="text-white/60 text-xs lg:text-sm">{isEn ? 'Branches' : 'فرع'}</div>
+                    </div>
+                    <div>
+                        <div className="text-2xl lg:text-3xl font-bold mb-1" dir="ltr">{isEn ? '35+' : '+٣٥'}</div>
+                        <div className="text-white/60 text-xs lg:text-sm">{isEn ? 'Cities' : 'مدينة'}</div>
+                    </div>
+                    <div>
+                        <div className="text-2xl lg:text-3xl font-bold mb-1" dir="ltr">{isEn ? '24/7' : '٢٤/٧'}</div>
+                        <div className="text-white/60 text-xs lg:text-sm">{isEn ? 'Most Branches' : 'معظم الفروع'}</div>
+                    </div>
+                    <div>
+                        <div className="text-2xl lg:text-3xl font-bold mb-1">{isEn ? '10 Min' : '١٠ دقيقة'}</div>
+                        <div className="text-white/60 text-xs lg:text-sm">{isEn ? 'Prep Time' : 'وقت التجهيز'}</div>
                     </div>
                 </div>
-            </section>
+            </PageHeader>
 
             {/* ─── SEARCH & FILTER BAR ──────────────────────────────────────────── */}
             <div className="bg-white py-6">

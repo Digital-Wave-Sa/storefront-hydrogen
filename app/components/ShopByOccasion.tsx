@@ -75,7 +75,7 @@ export function ShopByOccasion({ collections }: { collections?: any[] }) {
                                 <div className="w-full aspect-square rounded-[14px] overflow-hidden bg-white relative shadow-sm">
                                     <img 
                                         src={occasion.image} 
-                                        alt={occasion.name}
+                                        alt=""
                                         className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
                                     />
                                 </div>

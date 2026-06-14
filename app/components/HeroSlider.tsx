@@ -192,6 +192,7 @@ export function HeroSlider() {
       {/* Navigation Arrows */}
       <button 
         onClick={prevSlide}
+        aria-label={isEn ? "Previous slide" : "الشريحة السابقة"}
         className={`absolute start-[max(4px,calc(50%-552px))] top-1/2 -translate-y-1/2 w-10 h-10 bg-[#9FB7AE] text-[#234745] rounded-[25px] flex items-center justify-center transition-all z-30 border border-[#9FB7AE] hover:scale-110 active:scale-95 shadow-md ${currentIndex === 0 ? 'opacity-30 cursor-not-allowed' : 'opacity-100 hover:bg-white'}`}
         disabled={currentIndex === 0}
       >
@@ -202,6 +203,7 @@ export function HeroSlider() {
       
       <button 
         onClick={nextSlide}
+        aria-label={isEn ? "Next slide" : "الشريحة التالية"}
         className={`absolute end-[max(4px,calc(50%-552px))] top-1/2 -translate-y-1/2 w-10 h-10 bg-[#9FB7AE] text-[#234745] rounded-[25px] flex items-center justify-center transition-all z-30 border border-[#9FB7AE] hover:scale-110 active:scale-95 shadow-md ${currentIndex === SLIDES.length - 1 ? 'opacity-30 cursor-not-allowed' : 'opacity-100 hover:bg-white'}`}
         disabled={currentIndex === SLIDES.length - 1}
       >
@@ -216,6 +218,7 @@ export function HeroSlider() {
           <button
             key={index}
             onClick={() => scrollToSlide(index)}
+            aria-label={isEn ? `Go to slide ${index + 1}` : `الذهاب إلى الشريحة ${index + 1}`}
             className={`h-1.5 rounded-full transition-all duration-500 ${index === currentIndex ? 'w-10 bg-[#234745]' : 'w-3 bg-[#234745]/20 hover:bg-[#234745]/40'}`}
           />
         ))}

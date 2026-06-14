@@ -161,6 +161,7 @@ export function BestSellers({
                                                         priceRange: product.priceRange
                                                       });
                                                     }}
+                                                    aria-label={isWishlisted ? "Remove from Wishlist" : "Add to Wishlist"}
                                                     className={`absolute top-4 ltr:left-4 rtl:right-auto rtl:left-4 z-10 w-10 h-10 p-0 rounded-full bg-white shadow-md transition-all flex items-center justify-center ${isWishlisted ? 'text-[#e74c3c]' : 'text-gray-700 hover:text-[#e74c3c]'}`}
                                                   >
                                                     <svg width="20" height="20" viewBox="0 0 24 24" fill={isWishlisted ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.5"><path d="M20.8 4.6a5.5 5.5 0 00-7.7 0l-1.1 1-1.1-1a5.5 5.5 0 00-7.8 7.8l1 1 7.9 7.9 7.9-7.9 1-1a5.5 5.5 0 000-7.8z" /></svg>
@@ -232,13 +233,14 @@ export function BestSellers({
 
                                                 <Link 
                                                     to={isVisibilityBlocked ? '#' : getProductUrl(product.handle)} 
+                                                    aria-label={product.title}
                                                     className={`relative block aspect-[4/3] w-full flex items-center justify-center overflow-hidden ${isVisibilityBlocked ? 'pointer-events-none' : ''}`}
                                                     onClick={isVisibilityBlocked ? (e: any) => e.preventDefault() : undefined}
                                                 >
                                                     {product.images?.nodes?.[0] && (
                                                         <Image
                                                             data={product.images.nodes[0]}
-                                                            alt={product.images.nodes[0]?.altText || product.title || 'Product'}
+                                                            alt=""
                                                             loading="lazy"
                                                             sizes="(min-width: 45em) 25vw, 50vw"
                                                             className={`w-full h-full object-cover transition-transform duration-700 ${effectiveOutOfStock ? 'grayscale' : 'group-hover:scale-105'}`}

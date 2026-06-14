@@ -77,18 +77,18 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
     }
   });
 
-  let finalQuery = searchTerm ? `("${searchTerm}" OR "${searchTerm}"* OR sku:"${searchTerm}" OR sku:"${searchTerm}"*)` : "";
+  let finalQuery = searchTerm || "";
 
   const activeCustomTag = searchParams.get('tag');
   if (activeCustomTag) {
-    finalQuery += ` AND tag:${activeCustomTag}`;
+    finalQuery += ` tag:${activeCustomTag}`;
   }
   const activeCollection = searchParams.get('collection');
   if (activeCollection) {
     // There's no native collection filter in standard Shopify search API.
     // Instead of forcing a strict `product_type` match which often yields 0 results,
     // we inject the collection name as a search keyword to let Shopify's algorithm refine the results dynamically.
-    finalQuery += ` AND ${activeCollection}`;
+    finalQuery += ` ${activeCollection}`;
   }
 
   const { storefront } = context;
@@ -215,7 +215,7 @@ export default function SearchPage() {
              }}
          />
          <div className="max-w-[1440px] w-full mx-auto px-4 md:px-8 lg:px-12 relative z-10 flex flex-col md:flex-row items-center gap-6 justify-between">
-            <button onClick={() => window.history.back()} className="shrink-0 flex items-center gap-[8px] bg-[#9FB7AE] hover:bg-[#8BA19C] text-[#234745] px-8 py-3 rounded-[25px] font-bold transition-all shadow-sm" style={{ fontFamily: !isEn ? "'GE Dinar One', sans-serif" : undefined }}>
+            <button onClick={() => window.history.back()} className="shrink-0 flex items-center gap-[8px] bg-[#9FB7AE] hover:bg-[#8BA19C] text-white px-8 py-3 rounded-[25px] font-bold transition-all shadow-sm" style={{ fontFamily: !isEn ? "'GE Dinar One', sans-serif" : undefined }}>
                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={isEn ? 'rotate-180' : ''}><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
                <span className="text-[16px]">{isEn ? 'Back' : 'رجوع'}</span>
             </button>
@@ -228,35 +228,37 @@ export default function SearchPage() {
       <div className="bg-[#FEF8EB] min-h-screen">
           <div className="px-4 md:px-8 lg:px-12 py-10 max-w-[1440px] mx-auto text-right">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-              <div className="flex-1 flex items-center justify-end">
-                <div className="flex items-center gap-2">
-                  <label className="text-gray-400 text-[13px] font-bold">
-                    {isEn ? 'Sort by:' : 'ترتيب حسب:'}
-                  </label>
-                  <div className="flex items-center bg-white border border-[#234745]/10 rounded-full px-4 py-2 shadow-sm relative w-40">
-                    <select
-                      className="w-full bg-transparent text-[13px] font-bold text-gray-800 cursor-pointer focus:outline-none focus:ring-0 border-none appearance-none rtl:pl-6"
-                      style={{ WebkitAppearance: 'none', appearance: 'none' }}
-                      onChange={(e) => {
-                        const [key, rev] = e.target.value.split('|');
-                        const url = new URL(window.location.href);
-                        url.searchParams.set('sortKey', key);
-                        url.searchParams.set('reverse', rev);
-                        window.location.href = url.toString();
-                      }}
-                    >
-                      <option value="RELEVANCE|false">{isEn ? 'Featured' : 'الأكثر صلة'}</option>
-                      <option value="PRICE|false">{isEn ? 'Price: Low to High' : 'السعر: من الأقل للأعلى'}</option>
-                      <option value="PRICE|true">{isEn ? 'Price: High to Low' : 'السعر: من الأعلى للأقل'}</option>
-                    </select>
-                    <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7"></path></svg>
-                  </div>
-                </div>
-              </div>
-
               <div className="flex items-center gap-2 flex-wrap justify-start flex-1">
                  <ActiveFilterChips isEn={isEn} />
               </div>
+
+              {totalProducts > 0 && (
+                <div className="flex items-center justify-end">
+                  <div className="flex items-center gap-2">
+                    <label className="text-gray-400 text-[13px] font-bold">
+                      {isEn ? 'Sort by:' : 'ترتيب حسب:'}
+                    </label>
+                    <div className="flex items-center bg-white border border-[#234745]/10 rounded-full px-4 py-2 shadow-sm relative w-40">
+                      <select
+                        className="w-full bg-transparent text-[13px] font-bold text-gray-800 cursor-pointer focus:outline-none focus:ring-0 border-none appearance-none rtl:pl-6"
+                        style={{ WebkitAppearance: 'none', appearance: 'none' }}
+                        onChange={(e) => {
+                          const [key, rev] = e.target.value.split('|');
+                          const url = new URL(window.location.href);
+                          url.searchParams.set('sortKey', key);
+                          url.searchParams.set('reverse', rev);
+                          window.location.href = url.toString();
+                        }}
+                      >
+                        <option value="RELEVANCE|false">{isEn ? 'Featured' : 'الأكثر صلة'}</option>
+                        <option value="PRICE|false">{isEn ? 'Price: Low to High' : 'السعر: من الأقل للأعلى'}</option>
+                        <option value="PRICE|true">{isEn ? 'Price: High to Low' : 'السعر: من الأعلى للأقل'}</option>
+                      </select>
+                      <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7"></path></svg>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="flex flex-col lg:flex-row gap-8 items-start">

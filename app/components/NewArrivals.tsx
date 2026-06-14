@@ -111,6 +111,7 @@ export function NewArrivals({
                                                                 priceRange: product.priceRange
                                                               });
                                                             }}
+                                                            aria-label={isWishlisted ? "Remove from Wishlist" : "Add to Wishlist"}
                                                             className={`absolute top-4 ${isEn ? 'left-4' : 'right-4'} z-10 w-10 h-10 p-0 rounded-full bg-white shadow-md transition-all flex items-center justify-center ${isWishlisted ? 'text-[#e74c3c]' : 'text-gray-700 hover:text-[#e74c3c]'}`}
                                                           >
                                                               <svg width="20" height="20" viewBox="0 0 24 24" fill={isWishlisted ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.5">
@@ -133,13 +134,14 @@ export function NewArrivals({
                                                     {/* Product Image */}
                                                     <Link 
                                                         to={isVisibilityBlocked ? '#' : getProductUrl(product.handle)} 
+                                                        aria-label={product.title}
                                                         className={`relative block bg-[#F8F9F8] aspect-[4/3] w-full flex items-center justify-center p-0 overflow-hidden ${isVisibilityBlocked ? 'pointer-events-none' : ''}`}
                                                         onClick={isVisibilityBlocked ? (e: any) => e.preventDefault() : undefined}
                                                     >
                                                         {product.images?.nodes?.[0] && (
                                                             <Image
                                                                 data={product.images.nodes[0]}
-                                                                alt={product.images.nodes[0]?.altText || product.title || 'New Arrival Product'}
+                                                                alt=""
                                                                 loading="lazy"
                                                                 sizes="(min-width: 45em) 25vw, 50vw"
                                                                 className={`w-full h-full object-cover transition-transform duration-500 ${effectiveOutOfStock ? 'opacity-50 grayscale' : 'group-hover:scale-105'}`}

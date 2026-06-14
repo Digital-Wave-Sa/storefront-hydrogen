@@ -179,14 +179,41 @@ export default function Collection() {
                 </button>
 
                  {/* Active Filter Pills */}
-                 {(isEn ? ['Arabic Sweets', 'Cream', 'Eid Al-Fitr & Al-Adha', 'Gluten Free'] : ['الحلويات العربية', 'كريمة', 'عيد الاضحى والفطر', 'خالي من الجلوتين']).map((pill, i) => (
+                 {Array.from(searchParams.entries())
+                    .filter(([key]) => key.startsWith('filter.') && key !== 'filter.v.price.min' && key !== 'filter.v.price.max')
+                    .map(([key, value], i) => (
                     <div key={i} className="flex items-center gap-2 bg-white border border-[#234745]/10 text-gray-600 px-3 py-1.5 rounded-full text-[12px] font-bold shadow-sm">
-                        <span>{pill}</span>
-                        <button className="text-gray-400 hover:text-red-500 transition-colors">
+                        <span>{value}</span>
+                        <button 
+                            onClick={() => {
+                                const params = new URLSearchParams(searchParams);
+                                const allVals = params.getAll(key).filter(v => v !== value);
+                                params.delete(key);
+                                allVals.forEach(v => params.append(key, v));
+                                setSearchParams(params, { preventScrollReset: true, replace: true });
+                            }}
+                            className="text-gray-400 hover:text-red-500 transition-colors"
+                        >
                             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                         </button>
                     </div>
                  ))}
+                 {(searchParams.get('filter.v.price.min') || searchParams.get('filter.v.price.max')) && (
+                    <div className="flex items-center gap-2 bg-white border border-[#234745]/10 text-gray-600 px-3 py-1.5 rounded-full text-[12px] font-bold shadow-sm">
+                        <span dir="ltr">{searchParams.get('filter.v.price.min') || '0'} - {searchParams.get('filter.v.price.max') || '∞'} SAR</span>
+                        <button 
+                            onClick={() => {
+                                const params = new URLSearchParams(searchParams);
+                                params.delete('filter.v.price.min');
+                                params.delete('filter.v.price.max');
+                                setSearchParams(params, { preventScrollReset: true, replace: true });
+                            }}
+                            className="text-gray-400 hover:text-red-500 transition-colors"
+                        >
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
+                    </div>
+                 )}
               </div>
               
               <div className="flex items-center gap-4">
@@ -291,25 +318,20 @@ function CollectionHero({ collection, productsCount, isEn }: { collection: any, 
                 {/* Right Side: Title, Subtitle, and Back Button */}
                 <div className={`flex flex-col ${isEn ? 'items-start' : 'items-end'} gap-[8px]`}>
                     <div className="flex items-center gap-[24px]" dir={isEn ? 'ltr' : 'rtl'}>
-                        <button onClick={() => window.history.back()} className={`flex items-center gap-[8px] bg-[#9FB7AE] hover:bg-[#8BA19C] text-[#234745] px-6 py-2 rounded-[25px] text-[16px] font-bold transition-all ${isEn ? 'font-en' : ''}`} style={isEn ? {} : { fontFamily: "'GE Dinar One', sans-serif" }} dir={isEn ? 'ltr' : 'rtl'}>
+                        <button onClick={() => window.history.back()} className={`flex items-center gap-[8px] bg-[#9FB7AE] hover:bg-[#8BA19C] text-[#234745] px-6 py-2 rounded-[25px] text-[16px] font-bold transition-all ${isEn ? 'font-en' : ''}`} style={isEn ? {} : { fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }} dir={isEn ? 'ltr' : 'rtl'}>
                             <svg className={`w-5 h-5 ${isEn ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
                             </svg>
                             <span>{isEn ? 'Back' : 'رجوع'}</span>
                         </button>
-                        <h1 className={`text-[32px] md:text-[40px] font-bold text-white drop-shadow-sm ${isEn ? 'text-left font-en' : 'text-right'}`} style={isEn ? {} : { fontFamily: "'GE Dinar One', sans-serif" }} dir={isEn ? 'ltr' : 'rtl'}>
+                        <h1 className={`text-[32px] md:text-[40px] font-bold text-white drop-shadow-sm ${isEn ? 'text-left font-en' : 'text-right'}`} style={isEn ? {} : { fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }} dir={isEn ? 'ltr' : 'rtl'}>
                             {collection.title}
                         </h1>
                     </div>
-                    {collection.description && (
-                        <p className="text-[#9FB7AE] text-[14px] font-bold" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
-                            {collection.description}
-                        </p>
-                    )}
                 </div>
 
                 {/* Left Side in RTL (Second child): Product Count */}
-                <div className={`bg-[#FEF8EB] text-[#234745] px-6 py-2 rounded-[25px] text-[16px] font-bold shadow-sm shrink-0 ${isEn ? 'font-en' : ''}`} style={isEn ? {} : { fontFamily: "'GE Dinar One', sans-serif" }}>
+                <div className={`bg-[#FEF8EB] text-[#234745] px-6 py-2 rounded-[25px] text-[16px] font-bold shadow-sm shrink-0 ${isEn ? 'font-en' : ''}`} style={isEn ? {} : { fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
                     {productsCount} {isEn ? 'Products' : 'منتجات'}
                 </div>
                 
@@ -339,26 +361,22 @@ function FilterForm({ filters, onClose, isDesktop, isEn }: { filters: any[], onC
     const [searchParams, setSearchParams] = useSearchParams();
     const navigate = useNavigate();
 
-    const [minPrice, setMinPrice] = useState(searchParams.get('filter.v.price.min') || '');
-    const [maxPrice, setMaxPrice] = useState(searchParams.get('filter.v.price.max') || '');
-    
-    const [openSections, setOpenSections] = useState<Record<string, boolean>>({
-      'الأقسام': true,
-      'السعر (ر.س)': true,
-      'المناسبة': true,
-      'النوع الغذائي': true,
-    });
+    const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
 
     const toggleSection = (label: string) => {
       setOpenSections(prev => ({...prev, [label]: !prev[label]}));
     };
 
+    // Initialize open sections based on filters
     useEffect(() => {
-        setMinPrice(searchParams.get('filter.v.price.min') || '');
-        setMaxPrice(searchParams.get('filter.v.price.max') || '');
-    }, [searchParams]);
+        const initialOpens: Record<string, boolean> = {};
+        filters?.forEach(f => {
+            initialOpens[f.label] = true;
+        });
+        setOpenSections(prev => Object.keys(prev).length === 0 ? initialOpens : prev);
+    }, [filters]);
 
-    const handleApply = () => {
+    const handleApplyPrice = (minPrice: string, maxPrice: string) => {
         const params = new URLSearchParams(searchParams);
         if (minPrice) params.set('filter.v.price.min', minPrice);
         else params.delete('filter.v.price.min');
@@ -367,7 +385,68 @@ function FilterForm({ filters, onClose, isDesktop, isEn }: { filters: any[], onC
         else params.delete('filter.v.price.max');
         
         setSearchParams(params, { preventScrollReset: true, replace: true });
-        if (!isDesktop) onClose();
+    };
+
+    const toggleFilter = (inputStr: string) => {
+        try {
+            const input = JSON.parse(inputStr);
+            const params = new URLSearchParams(searchParams);
+            
+            // Reconstruct the key based on the input object
+            let key = '';
+            let val = '';
+            
+            if (input.variantOption) {
+                key = `filter.v.option.${input.variantOption.name}`;
+                val = input.variantOption.value;
+            } else if (input.productType) {
+                key = 'filter.v.product_type';
+                val = input.productType;
+            } else if (input.productVendor) {
+                key = 'filter.v.product_vendor';
+                val = input.productVendor;
+            } else if (input.productMetafield) {
+                key = `filter.p.m.${input.productMetafield.namespace}.${input.productMetafield.key}`;
+                val = input.productMetafield.value;
+            } else if (input.available !== undefined) {
+                key = 'filter.v.availability';
+                val = input.available.toString();
+            }
+
+            if (key) {
+                // If it already exists, remove it, else add it
+                if (params.getAll(key).includes(val)) {
+                    const allVals = params.getAll(key).filter(v => v !== val);
+                    params.delete(key);
+                    allVals.forEach(v => params.append(key, v));
+                } else {
+                    params.append(key, val);
+                }
+                setSearchParams(params, { preventScrollReset: true, replace: true });
+            }
+        } catch(e) {
+            console.error('Failed to parse filter input', e);
+        }
+    };
+
+    const isFilterActive = (inputStr: string) => {
+        try {
+            const input = JSON.parse(inputStr);
+            const params = new URLSearchParams(searchParams);
+            
+            if (input.variantOption) {
+                return params.getAll(`filter.v.option.${input.variantOption.name}`).includes(input.variantOption.value);
+            } else if (input.productType) {
+                return params.getAll('filter.v.product_type').includes(input.productType);
+            } else if (input.productVendor) {
+                return params.getAll('filter.v.product_vendor').includes(input.productVendor);
+            } else if (input.productMetafield) {
+                return params.getAll(`filter.p.m.${input.productMetafield.namespace}.${input.productMetafield.key}`).includes(input.productMetafield.value);
+            } else if (input.available !== undefined) {
+                return params.getAll('filter.v.availability').includes(input.available.toString());
+            }
+        } catch(e) {}
+        return false;
     };
 
     return (
@@ -393,148 +472,146 @@ function FilterForm({ filters, onClose, isDesktop, isEn }: { filters: any[], onC
                     </div>
                 </div>
 
-                {/* 1. Categories */}
-                <div className="mb-6 border-b border-gray-100 pb-6">
-                    <button onClick={() => toggleSection('الأقسام')} className="w-full flex items-center justify-between group">
-                        <h3 className="text-[15px] font-black text-gray-800 tracking-wide">{isEn ? 'Categories' : 'الأقسام'}</h3>
-                        <svg className={`w-4 h-4 text-gray-400 transition-transform duration-300 ${openSections['الأقسام'] ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
-                    </button>
-                    <div className={`mt-4 overflow-hidden transition-all duration-300 ${openSections['الأقسام'] ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'}`}>
-                        <div className="flex flex-col gap-3">
-                            {[
-                                { labelAr: 'الحلويات العربية', labelEn: 'Arabic Sweets', count: '(٤٧)', active: true },
-                                { labelAr: 'شوكولاتة', labelEn: 'Chocolate', count: '(١)', active: false },
-                                { labelAr: 'كريمة', labelEn: 'Cream', count: '(٢)', active: true },
-                                { labelAr: 'كنافة', labelEn: 'Kunafa', count: '(٠)', active: false },
-                                { labelAr: 'معجنات', labelEn: 'Pastries', count: '(٤)', active: false },
-                                { labelAr: 'قهوة وتمر', labelEn: 'Coffee & Dates', count: '(١)', active: false },
-                                { labelAr: 'كيك', labelEn: 'Cake', count: '(٢)', active: false },
-                                { labelAr: 'آيس كريم', labelEn: 'Ice Cream', count: '(٠)', active: false },
-                            ].map((item, i) => (
-                                <label key={i} className="flex items-center justify-between cursor-pointer group">
-                                    <div className="flex items-center gap-3">
-                                        <div className={`w-4 h-4 rounded-[4px] border flex items-center justify-center transition-colors ${item.active ? 'bg-[#234745] border-[#234745]' : 'border-gray-300 bg-white group-hover:border-[#234745]'}`}>
-                                            {item.active && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
+                {filters?.map((filter: any) => {
+                    if (filter.id === 'filter.p.tag' || filter.label === 'More filters' || filter.label === 'المزيد من الفلاتر') return null;
+                    const isOpen = openSections[filter.label] !== false;
+                    
+                    if (filter.type === 'PRICE_RANGE') {
+                        const minPrice = searchParams.get('filter.v.price.min') || '';
+                        const maxPrice = searchParams.get('filter.v.price.max') || '';
+                        
+                        return (
+                            <div key={filter.id} className="mb-6 border-b border-gray-100 pb-6">
+                                <div className="flex items-center justify-between mb-4">
+                                    <button onClick={() => toggleSection(filter.label)} className={`flex-1 flex items-center gap-2 group ${isEn ? 'text-left' : 'text-right'}`}>
+                                        <h3 className="text-[15px] font-black text-gray-800 tracking-wide flex items-center gap-1">{filter.label} <CurrencyIcon className="w-[18px]" /></h3>
+                                        <svg className={`w-4 h-4 text-gray-400 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                                    </button>
+                                    <button onClick={() => handleApplyPrice('', '')} className="text-[13px] font-black text-red-500 hover:text-red-600 transition-colors">{isEn ? 'Clear' : 'مسح'}</button>
+                                </div>
+                                <div className={`overflow-hidden transition-all duration-300 ${isOpen ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'}`}>
+                                    <div className="flex gap-2 items-center mb-4">
+                                        <div className="flex-1 relative">
+                                            <input type="number" defaultValue={minPrice} onBlur={(e) => handleApplyPrice(e.target.value, maxPrice)} placeholder={isEn ? "Min" : "من"} className="w-full bg-white border border-gray-200 rounded-full px-4 py-2 text-sm font-bold focus:outline-none focus:border-[#234745] transition-all text-center" />
                                         </div>
-                                        <span className={`text-[13px] font-bold ${item.active ? 'text-[#234745]' : 'text-gray-500 group-hover:text-gray-800'}`}>{isEn ? item.labelEn : item.labelAr}</span>
+                                        <span className="text-gray-400 font-bold">-</span>
+                                        <div className="flex-1 relative">
+                                            <input type="number" defaultValue={maxPrice} onBlur={(e) => handleApplyPrice(minPrice, e.target.value)} placeholder={isEn ? "Max" : "إلي"} className="w-full bg-white border border-gray-200 rounded-full px-4 py-2 text-sm font-bold focus:outline-none focus:border-[#234745] transition-all text-center" />
+                                        </div>
                                     </div>
-                                    <span className="text-[12px] font-medium text-gray-500">{item.count}</span>
-                                </label>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-
-                {/* 2. Price */}
-                <div className="mb-6 border-b border-gray-100 pb-6">
-                    <div className="flex items-center justify-between mb-4">
-                        <button onClick={() => toggleSection('السعر (ر.س)')} className={`flex-1 flex items-center gap-2 group ${isEn ? 'text-left' : 'text-right'}`}>
-                            <h3 className="text-[15px] font-black text-gray-800 tracking-wide flex items-center gap-1">{isEn ? 'Price' : 'السعر'} <CurrencyIcon className="w-[18px]" /></h3>
-                            <svg className={`w-4 h-4 text-gray-400 transition-transform duration-300 ${openSections['السعر (ر.س)'] ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
-                        </button>
-                        <button onClick={() => { 
-                            setMinPrice(''); 
-                            setMaxPrice(''); 
-                            const params = new URLSearchParams(searchParams);
-                            params.delete('filter.v.price.min');
-                            params.delete('filter.v.price.max');
-                            setSearchParams(params, { preventScrollReset: true, replace: true });
-                        }} className="text-[13px] font-black text-red-500 hover:text-red-600 transition-colors">{isEn ? 'Clear' : 'مسح'}</button>
-                    </div>
-                    <div className={`overflow-hidden transition-all duration-300 ${openSections['السعر (ر.س)'] ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'}`}>
-                        <div className="flex gap-2 items-center mb-4">
-                            <div className="flex-1 relative">
-                                <input type="number" value={minPrice} onChange={(e) => setMinPrice(e.target.value)} placeholder={isEn ? "Min" : "من"} className="w-full bg-white border border-gray-200 rounded-full px-4 py-2 text-sm font-bold focus:outline-none focus:border-[#234745] transition-all text-center" />
+                                </div>
                             </div>
-                            <span className="text-gray-400 font-bold">-</span>
-                            <div className="flex-1 relative">
-                                <input type="number" value={maxPrice} onChange={(e) => setMaxPrice(e.target.value)} placeholder={isEn ? "Max" : "إلي"} className="w-full bg-white border border-gray-200 rounded-full px-4 py-2 text-sm font-bold focus:outline-none focus:border-[#234745] transition-all text-center" />
+                        );
+                    }
+
+                    return (
+                        <div key={filter.id} className="mb-6 border-b border-gray-100 pb-6">
+                            <button onClick={() => toggleSection(filter.label)} className="w-full flex items-center justify-between group">
+                                <h3 className="text-[15px] font-black text-gray-800 tracking-wide">{filter.label}</h3>
+                                <svg className={`w-4 h-4 text-gray-400 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                            </button>
+                            <div className={`mt-4 overflow-hidden transition-all duration-300 ${isOpen ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'}`}>
+                                <div className="flex flex-col gap-3">
+                                    {filter.values.map((val: any) => {
+                                        const active = isFilterActive(val.input);
+                                        return (
+                                            <label key={val.id} className="flex items-center justify-between cursor-pointer group" onClick={() => toggleFilter(val.input)}>
+                                                <div className="flex items-center gap-3">
+                                                    <div className={`w-4 h-4 rounded-[4px] border flex items-center justify-center transition-colors ${active ? 'bg-[#234745] border-[#234745]' : 'border-gray-300 bg-white group-hover:border-[#234745]'}`}>
+                                                        {active && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
+                                                    </div>
+                                                    <span className={`text-[13px] font-bold ${active ? 'text-[#234745]' : 'text-gray-500 group-hover:text-gray-800'}`}>{val.label}</span>
+                                                </div>
+                                                <span className="text-[12px] font-medium text-gray-500">({val.count})</span>
+                                            </label>
+                                        );
+                                    })}
+                                </div>
                             </div>
                         </div>
-                        <button onClick={handleApply} className="w-full bg-[#234745] text-white !rounded-full py-2.5 font-bold text-sm hover:bg-[#1a3533] transition-all mt-2 shadow-sm cursor-pointer">{isEn ? 'Apply' : 'تطبيق'}</button>
-                        <div className="flex flex-col gap-4 mt-6">
-                            {[
-                              { labelAr: <span className="flex items-center gap-1">أقل من ١٠٠ <CurrencyIcon className="w-[14px]" /></span>, labelEn: <span className="flex items-center gap-1">Under 100 <CurrencyIcon className="w-[14px]" /></span>, min: '', max: '100' },
-                              { labelAr: <span className="flex items-center gap-1">١٠٠ - ٢٠٠ <CurrencyIcon className="w-[14px]" /></span>, labelEn: <span className="flex items-center gap-1">100 - 200 <CurrencyIcon className="w-[14px]" /></span>, min: '100', max: '200' },
-                              { labelAr: <span className="flex items-center gap-1">٢٠٠ - ٤٠٠ <CurrencyIcon className="w-[14px]" /></span>, labelEn: <span className="flex items-center gap-1">200 - 400 <CurrencyIcon className="w-[14px]" /></span>, min: '200', max: '400' },
-                              { labelAr: <span className="flex items-center gap-1">أكثر من ٤٠٠ <CurrencyIcon className="w-[14px]" /></span>, labelEn: <span className="flex items-center gap-1">Over 400 <CurrencyIcon className="w-[14px]" /></span>, min: '400', max: '' }
-                            ].map((preset, i) => (
-                                <label key={i} className="flex items-center justify-start gap-3 cursor-pointer group">
-                                    <input 
-                                      type="radio" 
-                                      name="price_preset" 
-                                      className="w-4 h-4 border-gray-300 text-[#234745] focus:ring-[#234745] cursor-pointer" 
-                                      checked={minPrice === preset.min && maxPrice === preset.max}
-                                      onChange={() => {
-                                        setMinPrice(preset.min);
-                                        setMaxPrice(preset.max);
-                                        const params = new URLSearchParams(searchParams);
-                                        if (preset.min) params.set('filter.v.price.min', preset.min);
-                                        else params.delete('filter.v.price.min');
-                                        if (preset.max) params.set('filter.v.price.max', preset.max);
-                                        else params.delete('filter.v.price.max');
-                                        setSearchParams(params, { preventScrollReset: true, replace: true });
-                                      }}
-                                    />
-                                    <span className={`text-[13px] font-bold ${minPrice === preset.min && maxPrice === preset.max ? 'text-[#234745]' : 'text-[#8695A0] group-hover:text-[#234745]'} transition-colors`}>{isEn ? preset.labelEn : preset.labelAr}</span>
+                    );
+                })}
+            </div>
+
+            {/* Custom Tag Filters */}
+            <div className="mb-6 border-b border-gray-100 pb-6 mt-6">
+                <button onClick={() => toggleSection('المناسبة')} className="w-full flex items-center justify-between group">
+                    <h3 className="text-[15px] font-black text-gray-800 tracking-wide">{isEn ? 'Occasion' : 'المناسبة'}</h3>
+                    <svg className={`w-4 h-4 text-gray-400 transition-transform duration-300 ${openSections['المناسبة'] !== false ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                </button>
+                <div className={`mt-4 overflow-hidden transition-all duration-300 ${openSections['المناسبة'] !== false ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'}`}>
+                    <div className="flex flex-col gap-3">
+                        {[
+                          { labelAr: 'عيد الفطر والاضحي', labelEn: 'Eid Al-Fitr & Al-Adha', tag: 'eid' },
+                          { labelAr: 'رمضان', labelEn: 'Ramadan', tag: 'ramadan' },
+                          { labelAr: 'أعياد الميلاد', labelEn: 'Birthdays', tag: 'birthdays' },
+                          { labelAr: 'زفاف وخطوبة', labelEn: 'Wedding & Engagement', tag: 'wedding' },
+                          { labelAr: 'تخرج', labelEn: 'Graduation', tag: 'graduation' },
+                          { labelAr: 'يوم الأم', labelEn: 'Mother\'s Day', tag: 'mothers-day' },
+                          { labelAr: 'اليوم الوطني', labelEn: 'National Day', tag: 'national-day' },
+                          { labelAr: 'طفل جديد', labelEn: 'New Baby', tag: 'new-baby' },
+                        ].map((item, i) => {
+                            const active = searchParams.getAll('filter.p.tag').includes(item.tag);
+                            return (
+                                <label key={i} className="flex items-center gap-3 cursor-pointer group" onClick={(e) => {
+                                    e.preventDefault();
+                                    const params = new URLSearchParams(searchParams);
+                                    if (active) {
+                                        const allVals = params.getAll('filter.p.tag').filter(v => v !== item.tag);
+                                        params.delete('filter.p.tag');
+                                        allVals.forEach(v => params.append('filter.p.tag', v));
+                                    } else {
+                                        params.append('filter.p.tag', item.tag);
+                                    }
+                                    setSearchParams(params, { preventScrollReset: true, replace: true });
+                                }}>
+                                    <div className={`w-4 h-4 rounded-[4px] border flex items-center justify-center transition-colors ${active ? 'bg-[#234745] border-[#234745]' : 'border-gray-300 bg-white group-hover:border-[#234745]'}`}>
+                                        {active && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
+                                    </div>
+                                    <span className={`text-[13px] font-bold ${active ? 'text-[#234745]' : 'text-gray-500 group-hover:text-gray-800'}`}>{isEn ? item.labelEn : item.labelAr}</span>
                                 </label>
-                            ))}
-                        </div>
+                            );
+                        })}
                     </div>
                 </div>
+            </div>
 
-                {/* 3. Occasion */}
-                <div className="mb-6 border-b border-gray-100 pb-6">
-                    <button onClick={() => toggleSection('المناسبة')} className="w-full flex items-center justify-between group">
-                        <h3 className="text-[15px] font-black text-gray-800 tracking-wide">{isEn ? 'Occasion' : 'المناسبة'}</h3>
-                        <svg className={`w-4 h-4 text-gray-400 transition-transform duration-300 ${openSections['المناسبة'] ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
-                    </button>
-                    <div className={`mt-4 overflow-hidden transition-all duration-300 ${openSections['المناسبة'] ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'}`}>
-                        <div className="flex flex-col gap-3">
-                            {[
-                              { labelAr: 'عيد الفطر والاضحي', labelEn: 'Eid Al-Fitr & Al-Adha' },
-                              { labelAr: 'رمضان', labelEn: 'Ramadan' },
-                              { labelAr: 'أعياد الميلاد', labelEn: 'Birthdays' },
-                              { labelAr: 'زفاف وخطوبة', labelEn: 'Wedding & Engagement' },
-                              { labelAr: 'تخرج', labelEn: 'Graduation' },
-                              { labelAr: 'يوم الأم', labelEn: 'Mother\'s Day' },
-                              { labelAr: 'اليوم الوطني', labelEn: 'National Day' },
-                              { labelAr: 'هدايا مؤسسية', labelEn: 'Corporate Gifts' },
-                            ].map((item, i) => (
-                                <label key={i} className="flex items-center gap-3 cursor-pointer group">
-                                    <div className={`w-4 h-4 rounded-[4px] border flex items-center justify-center transition-colors ${i === 0 ? 'bg-[#234745] border-[#234745]' : 'border-gray-300 bg-white group-hover:border-[#234745]'}`}>
-                                        {i === 0 && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
+            <div className="mb-6 border-b border-gray-100 pb-6">
+                <button onClick={() => toggleSection('لمن الهدية')} className="w-full flex items-center justify-between group">
+                    <h3 className="text-[15px] font-black text-gray-800 tracking-wide">{isEn ? 'Gift For' : 'لمن الهدية'}</h3>
+                    <svg className={`w-4 h-4 text-gray-400 transition-transform duration-300 ${openSections['لمن الهدية'] !== false ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                </button>
+                <div className={`mt-4 overflow-hidden transition-all duration-300 ${openSections['لمن الهدية'] !== false ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'}`}>
+                    <div className="flex flex-col gap-3">
+                        {[
+                          { labelAr: 'الأب', labelEn: 'Father', tag: 'father' },
+                          { labelAr: 'الأم', labelEn: 'Mother', tag: 'mother' },
+                          { labelAr: 'الأصدقاء', labelEn: 'Friends', tag: 'friends' },
+                          { labelAr: 'الزملاء', labelEn: 'Colleagues', tag: 'colleagues' },
+                          { labelAr: 'الأطفال', labelEn: 'Children', tag: 'children' },
+                          { labelAr: 'الشركات', labelEn: 'Companies', tag: 'companies' },
+                        ].map((item, i) => {
+                            const active = searchParams.getAll('filter.p.tag').includes(item.tag);
+                            return (
+                                <label key={i} className="flex items-center gap-3 cursor-pointer group" onClick={(e) => {
+                                    e.preventDefault();
+                                    const params = new URLSearchParams(searchParams);
+                                    if (active) {
+                                        const allVals = params.getAll('filter.p.tag').filter(v => v !== item.tag);
+                                        params.delete('filter.p.tag');
+                                        allVals.forEach(v => params.append('filter.p.tag', v));
+                                    } else {
+                                        params.append('filter.p.tag', item.tag);
+                                    }
+                                    setSearchParams(params, { preventScrollReset: true, replace: true });
+                                }}>
+                                    <div className={`w-4 h-4 rounded-[4px] border flex items-center justify-center transition-colors ${active ? 'bg-[#234745] border-[#234745]' : 'border-gray-300 bg-white group-hover:border-[#234745]'}`}>
+                                        {active && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
                                     </div>
-                                    <span className={`text-[13px] font-bold ${i === 0 ? 'text-[#234745]' : 'text-gray-500 group-hover:text-gray-800'}`}>{isEn ? item.labelEn : item.labelAr}</span>
+                                    <span className={`text-[13px] font-bold ${active ? 'text-[#234745]' : 'text-gray-500 group-hover:text-gray-800'}`}>{isEn ? item.labelEn : item.labelAr}</span>
                                 </label>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-
-                {/* 4. Diet Type */}
-                <div className="mb-6 pb-6 border-b border-gray-100">
-                    <button onClick={() => toggleSection('النوع الغذائي')} className="w-full flex items-center justify-between group">
-                        <h3 className="text-[15px] font-black text-gray-800 tracking-wide">{isEn ? 'Dietary Type' : 'النوع الغذائي'}</h3>
-                        <svg className={`w-4 h-4 text-gray-400 transition-transform duration-300 ${openSections['النوع الغذائي'] ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
-                    </button>
-                    <div className={`mt-4 overflow-hidden transition-all duration-300 ${openSections['النوع الغذائي'] ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'}`}>
-                        <div className="flex flex-col gap-3">
-                            {[
-                              { labelAr: 'خالي من الجلوتين', labelEn: 'Gluten Free' },
-                              { labelAr: 'مناسب للنباتيين', labelEn: 'Vegetarian' },
-                              { labelAr: 'منتجات صحية', labelEn: 'Healthy Products' },
-                              { labelAr: 'خالي من السكر', labelEn: 'Sugar Free' },
-                              { labelAr: 'قليل الدهون', labelEn: 'Low Fat' },
-                            ].map((item, i) => (
-                                <label key={i} className="flex items-center gap-3 cursor-pointer group">
-                                    <div className={`w-4 h-4 rounded-[4px] border flex items-center justify-center transition-colors ${i === 0 ? 'bg-[#234745] border-[#234745]' : 'border-gray-300 bg-white group-hover:border-[#234745]'}`}>
-                                        {i === 0 && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
-                                    </div>
-                                    <span className={`text-[13px] font-bold ${i === 0 ? 'text-[#234745]' : 'text-gray-500 group-hover:text-gray-800'}`}>{isEn ? item.labelEn : item.labelAr}</span>
-                                </label>
-                            ))}
-                        </div>
+                            );
+                        })}
                     </div>
                 </div>
             </div>

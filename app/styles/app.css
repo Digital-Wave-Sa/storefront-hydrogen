@@ -20,7 +20,7 @@
 }
 
 .font-dinar {
-  font-family: 'GE Dinar One', sans-serif !important;
+  font-family: 'EnglishDigits', 'GE Dinar One', sans-serif !important;
 }
 
 :root {
@@ -41,8 +41,14 @@
   display: none; /* Chrome, Safari and Opera */
 }
 
+@font-face {
+  font-family: 'EnglishDigits';
+  src: local('Arial'), local('Helvetica Neue'), local('Helvetica'), local('Segoe UI'), local('Roboto');
+  unicode-range: U+0030-0039, U+0025, U+002C, U+002E; /* 0-9, %, ,, . */
+}
+
 .font-ar {
-  font-family: 'Bahij Janna', 'Cairo', sans-serif !important;
+  font-family: 'EnglishDigits', 'Bahij Janna', 'Cairo', sans-serif !important;
 }
 
 .font-en {

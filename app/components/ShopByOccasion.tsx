@@ -41,21 +41,21 @@ export function ShopByOccasion({ collections }: { collections?: any[] }) {
             <div className="max-w-[1400px] mx-auto px-6">
                 {/* Header */}
                 <div className="text-center mb-8 lg:mb-12">
-                    <h2 className="text-[36px] lg:text-[50px] font-bold text-[#171717] mb-4 leading-none" style={!isEn ? { fontFamily: "'Bahij Janna', sans-serif" } : undefined}>
+                    <h2 className="text-[36px] lg:text-[50px] font-bold text-[#171717] mb-4 leading-none" style={!isEn ? { fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" } : undefined}>
                         {isEn ? 'What is your occasion?' : 'ما هي مناسبتك؟'}
                     </h2>
-                    <p className="text-[#7D7D7D] text-[14px] lg:text-[16px] font-medium tracking-wide" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
+                    <p className="text-[#7D7D7D] text-[14px] lg:text-[16px] font-medium tracking-wide" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
                         {isEn ? 'CHOOSE THE OCCASION AND WE PICK THE BEST FOR YOU' : 'اختار المناسبة ونختار لك الأفضل'}
                     </p>
                 </div>
 
-                {/* Slider (Mobile) / Grid (Desktop) */}
-                <div className="flex md:grid md:grid-cols-4 gap-4 lg:gap-6 overflow-x-auto md:overflow-visible snap-x snap-mandatory pb-4 md:pb-0 -mx-6 px-6 md:mx-0 md:px-0" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                {/* Slider (Mobile) / Flex (Desktop) */}
+                <div className="flex flex-nowrap md:flex-wrap justify-start md:justify-center gap-4 lg:gap-6 overflow-x-auto md:overflow-visible snap-x snap-mandatory pb-4 md:pb-0 -mx-6 px-6 md:mx-0 md:px-0" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                     {occasions.map((occasion, index) => (
                         <Link
                             key={index}
                             to={isEn ? `/en/occasions?category=${occasion.handle}` : `/occasions?category=${occasion.handle}`}
-                            className="snap-start shrink-0 w-[calc(50vw-32px)] sm:w-[220px] md:w-full max-w-[280px] group flex flex-col bg-[#EED5D7] rounded-[20px] overflow-hidden transition-all duration-500 hover:shadow-xl hover:-translate-y-2 relative shadow-sm"
+                            className="snap-start shrink-0 w-[calc(50vw-32px)] sm:w-[220px] md:w-[280px] max-w-full group flex flex-col bg-[#EED5D7] rounded-[20px] overflow-hidden transition-all duration-500 hover:shadow-xl hover:-translate-y-2 relative shadow-sm"
                             style={{ 
                                 aspectRatio: '280/344'
                             }}
@@ -82,7 +82,7 @@ export function ShopByOccasion({ collections }: { collections?: any[] }) {
 
                                 {/* Label Area */}
                                 <div className="relative w-full pt-4 pb-2 mt-auto flex-1 flex items-center justify-center">
-                                   <h3 className="relative text-[22px] lg:text-[26px] font-bold text-[#1a1a1a] z-10 px-4 text-center leading-tight" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
+                                   <h3 className="relative text-[22px] lg:text-[26px] font-bold text-[#1a1a1a] z-10 px-4 text-center leading-tight" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
                                        {occasion.name}
                                    </h3>
                                 </div>

@@ -45,10 +45,10 @@ export function NewArrivals({
 
                 {/* Section Header */}
                 <div className="text-center mb-10 flex flex-col items-center">
-                    <h2 className="text-[32px] lg:text-[42px] font-bold text-[#1a1a1a] mb-2 leading-tight" style={!isEn ? { fontFamily: "'Bahij Janna', sans-serif" } : undefined}>
+                    <h2 className="text-[32px] lg:text-[42px] font-bold text-[#1a1a1a] mb-2 leading-tight" style={!isEn ? { fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" } : undefined}>
                         {isEn ? 'Featured Collections' : 'التشكيلات المميزة'}
                     </h2>
-                    <p className="text-[#8a9e9a] text-[14px] lg:text-[16px] font-medium" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
+                    <p className="text-[#8a9e9a] text-[14px] lg:text-[16px] font-medium" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
                         {isEn ? 'Collections crafted with ultimate care, telling the story of the craft since 1919' : 'تشكيلات صنعت بعناية فائقة، تحكي قصة الحرفة منذ 1919'}
                     </p>
                 </div>
@@ -111,9 +111,9 @@ export function NewArrivals({
                                                                 priceRange: product.priceRange
                                                               });
                                                             }}
-                                                            className={`absolute top-4 ${isEn ? 'left-4' : 'right-4'} z-10 w-9 h-9 bg-white rounded-full flex items-center justify-center shadow-sm transition-colors border border-gray-100 ${isWishlisted ? 'text-[#e74c3c]' : 'text-gray-400 hover:text-[#e74c3c]'}`}
+                                                            className={`absolute top-4 ${isEn ? 'left-4' : 'right-4'} z-10 w-10 h-10 p-0 rounded-full bg-white shadow-md transition-all flex items-center justify-center ${isWishlisted ? 'text-[#e74c3c]' : 'text-gray-700 hover:text-[#e74c3c]'}`}
                                                           >
-                                                              <svg width="18" height="18" viewBox="0 0 24 24" fill={isWishlisted ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.5">
+                                                              <svg width="20" height="20" viewBox="0 0 24 24" fill={isWishlisted ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.5">
                                                                   <path d="M20.8 4.6a5.5 5.5 0 00-7.7 0l-1.1 1-1.1-1a5.5 5.5 0 00-7.8 7.8l1 1 7.9 7.9 7.9-7.9 1-1a5.5 5.5 0 000-7.8z" />
                                                               </svg>
                                                           </button>
@@ -152,14 +152,14 @@ export function NewArrivals({
                                                         
                                                         {/* Title */}
                                                         <Link to={isVisibilityBlocked ? '#' : getProductUrl(product.handle)} onClick={isVisibilityBlocked ? (e: any) => e.preventDefault() : undefined}>
-                                                            <h3 className={`text-[#1a1a1a] font-bold text-[16px] leading-snug mb-3 line-clamp-2 transition-colors ${isEn ? 'text-left' : 'text-right'} ${isVisibilityBlocked ? '' : 'hover:text-[#234745]'}`} style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
+                                                            <h3 className={`font-bold text-[#234745] line-clamp-1 transition-colors duration-300 ${isEn ? 'text-left' : 'text-right'} ${isVisibilityBlocked ? '' : 'hover:text-[#1a3a2d]'}`} style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", fontSize: '18px', lineHeight: '24px' }}>
                                                                 {product.title}
                                                             </h3>
                                                         </Link>
 
                                                         {/* Price — hidden when visibility blocked */}
                                                         {!isVisibilityBlocked ? (
-                                                          <div className="flex items-center gap-3 mb-6 mt-auto">
+                                                          <div className="mt-2 mb-4 flex items-center gap-3">
                                                               <Price 
                                                                 data={product.priceRange.minVariantPrice} 
                                                                 isEn={isEn} 
@@ -167,13 +167,13 @@ export function NewArrivals({
                                                                 className="text-[#234745] font-bold"
                                                               />
                                                               {hasDiscount && (
-                                                                  <span className="text-[#E64950] line-through text-sm font-bold font-en">
-                                                                      <Price data={compareAtPrice} isEn={isEn} size="sm" showSymbol={false} />
+                                                                  <span className="text-[#E64950] line-through">
+                                                                      <Price data={compareAtPrice} isEn={isEn} size="md" showSymbol={false} />
                                                                   </span>
                                                               )}
                                                           </div>
                                                         ) : (
-                                                          <div className="mt-auto pt-2 mb-4">
+                                                          <div className="mt-2 mb-4">
                                                             <span className={`text-sm font-bold ${visibility.status === 'scheduled' ? 'text-amber-600' : 'text-red-500'}`}>
                                                               {isEn ? visibility.label.en : visibility.label.ar}
                                                             </span>
@@ -182,16 +182,18 @@ export function NewArrivals({
 
                                                         {/* Add to Cart — only for active products */}
                                                         {!isVisibilityBlocked && (
-                                                           <NewArrivalsAddToCart
-                                                              variant={variant}
-                                                              productTags={product.tags}
-                                                              bogoFreeVariantId={product.bogo_free_item?.reference?.id || product.bogo_free_item?.value || null}
-                                                              isOutOfStock={isOutOfStock && !isPreorder}
-                                                              notifyLabel={isPreorder ? t.common.preOrder : (isEn ? 'Notify Me' : 'أعلمني عند التوفر')}
-                                                              addLabel={isPreorder ? t.common.preOrder : (isEn ? 'Add to Cart' : 'أضف إلى السلة')}
-                                                              isPreorder={isPreorder}
-                                                              onNotifyClick={() => handleNotifyClick(product.title, variant?.id)}
-                                                          />
+                                                           <div className="mt-auto">
+                                                               <NewArrivalsAddToCart
+                                                                  variant={variant}
+                                                                  productTags={product.tags}
+                                                                  bogoFreeVariantId={product.bogo_free_item?.reference?.id || product.bogo_free_item?.value || null}
+                                                                  isOutOfStock={isOutOfStock && !isPreorder}
+                                                                  notifyLabel={isPreorder ? t.common.preOrder : (isEn ? 'Notify Me' : 'أعلمني عند التوفر')}
+                                                                  addLabel={isPreorder ? t.common.preOrder : (isEn ? 'Add to Cart' : 'أضف إلى السلة')}
+                                                                  isPreorder={isPreorder}
+                                                                  onNotifyClick={() => handleNotifyClick(product.title, variant?.id)}
+                                                              />
+                                                           </div>
                                                         )}
                                                     </div>
 
@@ -205,7 +207,7 @@ export function NewArrivals({
                                         <Link 
                                             to={isEn ? "/en/collections" : "/collections"}
                                             className="px-10 py-3.5 border border-[#234745] text-[#234745] rounded-full font-bold text-[15px] hover:bg-[#234745] hover:!text-white transition-all duration-300"
-                                            style={{ fontFamily: "'GE Dinar One', sans-serif" }}
+                                            style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
                                         >
                                             {isEn ? 'View All Collections' : 'عرض جميع التشكيلات'}
                                         </Link>
@@ -267,8 +269,8 @@ function NewArrivalsAddToCart({
                     e.stopPropagation();
                     onNotifyClick?.();
                 }}
-                className="w-full py-4 rounded-full font-bold transition-all bg-amber-500 text-white hover:bg-amber-600 cursor-pointer relative z-20 text-[14px]"
-                style={{ fontFamily: "'GE Dinar One', sans-serif" }}
+                className="w-full h-[44px] flex items-center justify-center rounded-full font-bold text-[15px] bg-amber-500 text-white hover:bg-amber-600 shadow-sm transition-all duration-300 active:scale-95 relative z-20"
+                style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
             >
                 🔔 {notifyLabel}
             </button>
@@ -299,9 +301,9 @@ function NewArrivalsAddToCart({
     return (
         <AddToCartButton
             lines={lines}
-            className={`w-full py-4 rounded-full font-bold transition-all text-[15px] ${isPreorder ? 'bg-[#004f59] text-white' : 'bg-[#234745] text-white hover:bg-[#2c5452] active:scale-95'}`}
+            className={`w-full h-[44px] flex items-center justify-center rounded-full font-bold text-[15px] shadow-sm transition-all duration-300 active:scale-95 ${isPreorder ? 'bg-[#004f59] text-white hover:bg-[#003d45]' : 'bg-[#234745] text-white hover:bg-[#163529]'}`}
             disabled={isOutOfStock}
-            style={{ fontFamily: "'GE Dinar One', sans-serif" }}
+            style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
         >
             {addLabel}
         </AddToCartButton>

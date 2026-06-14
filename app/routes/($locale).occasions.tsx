@@ -261,13 +261,13 @@ export default function OccasionsPage() {
                                     <>
                                         <h3 
                                             className="text-[26px] font-bold text-[#234745]"
-                                            style={{ fontFamily: "'Bahij Janna', sans-serif", lineHeight: '100%' }}
+                                            style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif", lineHeight: '100%' }}
                                         >
                                             أهدِ من تحب
                                         </h3>
                                         <h3 
                                             className="text-[26px] font-bold text-[#234745]"
-                                            style={{ fontFamily: "'Bahij Janna', sans-serif", lineHeight: '100%' }}
+                                            style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif", lineHeight: '100%' }}
                                         >
                                             قسيمة سعد الدين
                                         </h3>

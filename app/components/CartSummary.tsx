@@ -67,16 +67,38 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
     line.merchandise?.product?.tags?.some((tag: string) => tag.toLowerCase().trim() === 'cash-only')
   );
 
-  const hasPrepaidOnly = cart?.lines?.nodes?.some((line: any) => 
+  const prepaidOnlyItems = cart?.lines?.nodes?.filter((line: any) => 
     line.merchandise?.product?.tags?.some((tag: string) => {
       const t = tag.toLowerCase().trim();
       return t === 'prepaid-only' || t === 'nocod';
     })
-  );
+  ) || [];
+  const hasPrepaidOnly = prepaidOnlyItems.length > 0;
+  const prepaidItemNamesEn = prepaidOnlyItems.map((line: any) => line.merchandise?.product?.title || line.merchandise?.title).join(', ');
+  const prepaidItemNamesAr = prepaidOnlyItems.map((line: any) => line.merchandise?.product?.title || line.merchandise?.title).join('، ');
 
   const isOutOfRange = !!attributes.find((a: any) => a.key === 'error')?.value;
 
-  const canCheckout = isMinOrderMet && isBranchSelected && !isOutOfRange;
+  const outOfStockItems = cart?.lines?.nodes?.filter((line: any) => {
+    if (!currentBranch) return false;
+    
+    const availabilityNodes = line.merchandise?.storeAvailability?.nodes || [];
+    if (availabilityNodes.length === 0) return false;
+    
+    const selectedLocId = currentBranch.id.split('/').pop();
+    const branchNode = availabilityNodes.find((node: any) => node.location?.id?.split('/').pop() === selectedLocId);
+    
+    if (branchNode && branchNode.available === false) {
+      return true;
+    }
+    return false;
+  }) || [];
+  
+  const hasOutOfStockItems = outOfStockItems.length > 0;
+  const outOfStockItemNamesEn = outOfStockItems.map((line: any) => line.merchandise?.product?.title || line.merchandise?.title).join(', ');
+  const outOfStockItemNamesAr = outOfStockItems.map((line: any) => line.merchandise?.product?.title || line.merchandise?.title).join('، ');
+
+  const canCheckout = isMinOrderMet && isBranchSelected && !isOutOfRange && !hasOutOfStockItems;
 
   return (
     <div aria-labelledby={summaryId} className="flex flex-col gap-4">
@@ -85,7 +107,7 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col pt-6">
             {/* Header */}
             <div className="px-6 pb-4 border-b border-gray-200">
-               <h3 className={`text-[20px] font-black text-[#1a1a1a] ${isEn ? 'text-left' : 'text-right'}`} style={{ fontFamily: "'Bahij Janna', sans-serif" }}>
+               <h3 className={`text-[20px] font-black text-[#1a1a1a] ${isEn ? 'text-left' : 'text-right'}`} style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" }}>
                  {isEn ? 'Order Summary' : 'ملخص الطلب'}
                </h3>
             </div>
@@ -112,7 +134,7 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
               {/* Breakdown */}
               <div className="flex flex-col gap-4">
                   <div className="flex justify-between items-center text-[15px]">
-                     <dt className="text-[#9FB7AE] font-bold" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>{isEn ? 'Subtotal' : 'المجموع الفرعي'}</dt>
+                     <dt className="text-[#9FB7AE] font-bold" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>{isEn ? 'Subtotal' : 'المجموع الفرعي'}</dt>
                      <dd className="text-[#234745] font-black font-en flex items-center gap-1 flex-row-reverse">
                        <SaudiRiyalSymbol className="h-4 w-auto" />
                        <span>{subtotal.toFixed(2)}</span>
@@ -120,7 +142,7 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
                   </div>
 
                   <div className="flex justify-between items-center text-[15px]">
-                     <dt className="text-[#9FB7AE] font-bold" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>{isEn ? 'Delivery Fees' : 'رسوم التوصيل'}</dt>
+                     <dt className="text-[#9FB7AE] font-bold" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>{isEn ? 'Delivery Fees' : 'رسوم التوصيل'}</dt>
                      <dd className="text-[#234745] font-bold font-en flex items-center gap-1">
                        {isFreeDelivery ? (
                          <span className="text-[#234745] font-black text-[15px]">{isEn ? 'Free' : 'مجاني'}</span>
@@ -135,7 +157,7 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
 
                   {cart?.cost?.totalTaxAmount && (
                     <div className="flex justify-between items-center text-[15px]">
-                      <dt className="text-[#9FB7AE] font-bold" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>{isEn ? 'VAT (15%)' : 'ضريبة القيمة المضافة (١٥٪)'}</dt>
+                      <dt className="text-[#9FB7AE] font-bold" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>{isEn ? 'VAT (15%)' : 'ضريبة القيمة المضافة (١٥٪)'}</dt>
                       <dd className="text-[#234745] font-black font-en flex items-center gap-1 flex-row-reverse">
                         <SaudiRiyalSymbol className="h-4 w-auto" />
                         <span>{parseFloat(cart.cost.totalTaxAmount.amount).toFixed(2)}</span>
@@ -150,7 +172,7 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
               {/* Total */}
               <div className="flex justify-between items-center">
                  <div className="flex flex-col gap-1">
-                    <dt className="text-[20px] font-black text-[#234745]" style={{ fontFamily: "'Bahij Janna', sans-serif" }}>
+                    <dt className="text-[20px] font-black text-[#234745]" style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" }}>
                       {isEn ? 'Total' : 'الإجمالي'}
                     </dt>
                     <span className="text-[12px] text-[#9FB7AE] font-bold">
@@ -170,13 +192,14 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
                    <svg className="w-5 h-5 text-orange-500 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                    </svg>
-                   <p className="text-orange-800 text-[13px] font-bold leading-tight" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
+                   <p className="text-orange-800 text-[13px] font-bold leading-tight" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
                      {isEn 
-                       ? 'Note: Cash on Delivery is not available because your cart contains restricted items. Please use a prepaid method at checkout.' 
-                       : 'ملاحظة: الدفع عند الاستلام غير متاح لاحتواء سلتك على منتجات تتطلب الدفع المسبق. يرجى استخدام طريقة دفع إلكترونية.'}
+                       ? `Note: Cash on Delivery is not available because your cart contains restricted items (${prepaidItemNamesEn}). Please use a prepaid method at checkout.` 
+                       : `ملاحظة: الدفع عند الاستلام غير متاح لاحتواء سلتك على منتجات تتطلب الدفع المسبق (${prepaidItemNamesAr}). يرجى استخدام طريقة دفع إلكترونية.`}
                    </p>
                  </div>
                )}
+
                <CartCheckoutActions 
                  checkoutUrl={cart?.checkoutUrl} 
                  isEn={isEn} 
@@ -194,7 +217,7 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
                <Link 
                  to={isEn ? "/en" : "/"} 
                  className="w-full h-[52px] bg-[#F9E8E8] hover:bg-[#F2DFDF] active:scale-[0.98] transition-all text-[#DF4646] rounded-[50px] font-black text-[16px] flex items-center justify-center border border-[#EAA2A2]"
-                 style={{ fontFamily: "'Bahij Janna', sans-serif" }}
+                 style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" }}
                >
                  {isEn ? 'Continue Shopping' : 'متابعة التسوق'}
                </Link>
@@ -205,7 +228,7 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
                 <div className="px-5 py-1 rounded-[10px] mb-3 inline-block" style={{ background: 'linear-gradient(90deg, #F9C3A3 0%, #D4A5E4 50%, #9BC4E5 100%)' }}>
                    <span className="text-[#1a1a1a] font-black text-[18px] tracking-tight font-en leading-none block pt-0.5">tamara</span>
                 </div>
-                <h4 className="text-[15px] font-black text-[#1a1a1a] leading-tight mb-2" style={{ fontFamily: "'Bahij Janna', sans-serif" }}>
+                <h4 className="text-[15px] font-black text-[#1a1a1a] leading-tight mb-2" style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" }}>
                     {isEn ? 'Split it into 4 interest-free payments' : 'قسّطها على ٤ دفعات بدون فوائد'}
                 </h4>
                 <div className="w-full flex justify-end mt-1">
@@ -218,13 +241,13 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
             {/* Footer Features */}
             <div className="flex items-center justify-between mt-6 border-t border-gray-200 pt-6 px-2 pb-6">
                 <div className="flex flex-col items-center">
-                    <span className="text-[13px] font-bold text-[#9FB7AE]" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>{isEn ? 'Guaranteed Quality' : 'جودة مضمونة'}</span>
+                    <span className="text-[13px] font-bold text-[#9FB7AE]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>{isEn ? 'Guaranteed Quality' : 'جودة مضمونة'}</span>
                 </div>
                 <div className="flex flex-col items-center">
-                    <span className="text-[13px] font-bold text-[#9FB7AE]" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>{isEn ? 'Fast Delivery' : 'توصيل سريع'}</span>
+                    <span className="text-[13px] font-bold text-[#9FB7AE]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>{isEn ? 'Fast Delivery' : 'توصيل سريع'}</span>
                 </div>
                 <div className="flex flex-col items-center">
-                    <span className="text-[13px] font-bold text-[#9FB7AE]" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>{isEn ? 'Secure Payment' : 'دفع آمن ومضمون'}</span>
+                    <span className="text-[13px] font-bold text-[#9FB7AE]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>{isEn ? 'Secure Payment' : 'دفع آمن ومضمون'}</span>
                 </div>
             </div>
             </div>
@@ -396,7 +419,7 @@ function CartCheckoutActions({
               if (disabled) e.preventDefault();
             }}
             className={`w-full h-[52px] ${disabled ? 'bg-[#e8e4e1] cursor-not-allowed text-[#888]' : 'bg-[#234745] hover:bg-[#1A3533] active:scale-[0.98] text-white'} font-bold text-[16px] rounded-[50px] flex items-center justify-center transition-all`}
-            style={{ color: '#FFFFFF', fontFamily: "'GE Dinar One', sans-serif" }}
+            style={{ color: '#FFFFFF', fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
           >
             {isEn ? 'Complete Order' : 'إتمام الطلب'}
           </a>
@@ -408,7 +431,7 @@ function CartCheckoutActions({
           )}
         </div>
       ) : (
-        <div className="w-full h-[52px] bg-[#e8e4e1] text-[#888] rounded-full flex items-center justify-center gap-2 font-black text-[15px]" style={{ fontFamily: "'Bahij Janna', sans-serif" }}>
+        <div className="w-full h-[52px] bg-[#e8e4e1] text-[#888] rounded-full flex items-center justify-center gap-2 font-black text-[15px]" style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" }}>
           <span className="animate-pulse">{isEn ? 'Loading...' : 'جاري التحميل...'}</span>
         </div>
       )}
@@ -651,13 +674,13 @@ function CartDiscounts({
                       name="discountCode"
                       placeholder={isEn ? "Discount code" : "كود الخصم"}
                       className="flex-1 bg-transparent px-4 py-2 text-[14px] text-[#234745] focus:outline-none placeholder-[#9FB7AE] font-bold w-full h-full"
-                      style={{ fontFamily: "'GE Dinar One', sans-serif" }}
+                      style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
                     />
                     <button 
                       type="submit"
                       disabled={isLoading}
                       className="bg-[#234745] text-white px-6 h-full text-[14px] font-bold hover:bg-[#1A3533] transition-colors rounded-[8px] flex-shrink-0"
-                      style={{ fontFamily: "'GE Dinar One', sans-serif" }}
+                      style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
                     >
                       {isLoading ? '...' : (isEn ? 'Apply' : 'تطبيق')}
                     </button>

@@ -106,10 +106,10 @@ export default function FAQPage() {
           }}
         />
         <div className="relative z-10 text-center flex flex-col items-center w-full">
-          <p className="text-[12px] font-medium opacity-80 mb-2" style={{ fontFamily: "'GE Dinar One', sans-serif", lineHeight: '100%' }}>
+          <p className="text-[12px] font-medium opacity-80 mb-2" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", lineHeight: '100%' }}>
             {isEn ? 'Help' : 'المساعدة'}
           </p>
-          <h1 className="!text-[32px] md:!text-[50px] !font-bold !mb-6 !mt-0" style={{ fontFamily: "'Bahij Janna', sans-serif", lineHeight: '1.4', color: '#FEF8EB' }}>
+          <h1 className="!text-[32px] md:!text-[50px] !font-bold !mb-6 !mt-0" style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif", lineHeight: '1.4', color: '#FEF8EB' }}>
             {isEn ? "How can we help you?" : 'كيف نستطيع مساعدتك؟'}
           </h1>
           
@@ -163,10 +163,10 @@ export default function FAQPage() {
         {/* Most Searched Box */}
         {!searchQuery && !activeCategory && (
         <div className="bg-white rounded-2xl border border-[#234745]/10 shadow-sm p-8 mb-12 max-w-[800px] mx-auto">
-          <h2 className={`text-[26px] font-bold text-[#A07A58] flex items-center gap-2 ${isEn ? 'text-left' : 'text-right'}`} style={{ fontFamily: "'Bahij Janna', sans-serif", lineHeight: '100%', marginBottom: '40px' }}>
+          <h2 className={`text-[26px] font-bold text-[#A07A58] flex items-center gap-2 ${isEn ? 'text-left' : 'text-right'}`} style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif", lineHeight: '100%', marginBottom: '40px' }}>
             {isEn ? 'Most Searched' : 'الأكثر بحثاً'}
           </h2>
-          <ul className="space-y-4 text-[#234745] text-[18px]" style={{ fontFamily: "'GE Dinar One', sans-serif", fontWeight: 500, lineHeight: '100%' }} dir={isEn ? 'ltr' : 'rtl'}>
+          <ul className="space-y-4 text-[#234745] text-[18px]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", fontWeight: 500, lineHeight: '100%' }} dir={isEn ? 'ltr' : 'rtl'}>
             <li className="flex items-center gap-2 justify-start cursor-pointer hover:text-[#A07A58]" onClick={() => setSearchQuery(isEn ? 'track my order' : 'اتتبع طلبي')}>
               <span className="w-1.5 h-1.5 bg-[#234745] rounded-full shrink-0"></span>
               <span>{isEn ? 'How do I track my order?' : 'كيف اتتبع طلبي؟'}</span>
@@ -190,14 +190,14 @@ export default function FAQPage() {
         <div className="max-w-[800px] mx-auto space-y-10">
           {filteredCategories.length === 0 ? (
             <div className="text-center py-10">
-              <p className="text-[20px] font-bold text-[#1F413F]" style={{ fontFamily: "'Bahij Janna', sans-serif" }}>
+              <p className="text-[20px] font-bold text-[#1F413F]" style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" }}>
                 {isEn ? 'No results found for your search.' : 'لم يتم العثور على نتائج لبحثك.'}
               </p>
             </div>
           ) : (
             filteredCategories.map((category, catIndex) => (
             <div key={category.title}>
-              <h2 className={`text-[38px] font-bold text-[#234745] ${isEn ? 'text-left' : 'text-right'}`} style={{ fontFamily: "'Bahij Janna', sans-serif", lineHeight: '100%', marginBottom: '32px' }}>
+              <h2 className={`text-[38px] font-bold text-[#234745] ${isEn ? 'text-left' : 'text-right'}`} style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif", lineHeight: '100%', marginBottom: '32px' }}>
                 {category.title}
               </h2>
               <div className="space-y-3">
@@ -213,7 +213,7 @@ export default function FAQPage() {
                         onClick={() => setOpenId(isOpen && !searchQuery ? null : id)}
                         className="w-full flex items-center justify-between p-6 min-h-[72px] outline-none hover:bg-gray-50/50 transition-colors"
                       >
-                        <h3 className={`text-[18px] font-bold text-[#234745] flex-1 ${isEn ? 'text-left' : 'text-right'}`} style={{ fontFamily: "'GE Dinar One', sans-serif", lineHeight: '1.4' }}>
+                        <h3 className={`text-[18px] font-bold text-[#234745] flex-1 ${isEn ? 'text-left' : 'text-right'}`} style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", lineHeight: '1.4' }}>
                           {item.question}
                         </h3>
                         <svg 
@@ -228,25 +228,25 @@ export default function FAQPage() {
                         className={`transition-all duration-300 overflow-hidden ${isOpen ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}`}
                       >
                         <div className="p-6 pt-0 text-gray-600 text-[14px] leading-relaxed border-t border-gray-100">
-                          <div className="py-3" style={{ fontFamily: "'GE Dinar One', sans-serif", fontSize: '18px', fontWeight: 500, lineHeight: '1.4', color: '#9FB7AE', textAlign: isEn ? 'left' : 'right' }}>
+                          <div className="py-3" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", fontSize: '18px', fontWeight: 500, lineHeight: '1.4', color: '#9FB7AE', textAlign: isEn ? 'left' : 'right' }}>
                             {item.answer}
                           </div>
                           
                           {/* Feedback Section */}
                           <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between" dir={isEn ? 'ltr' : 'rtl'}>
-                            <span style={{ fontFamily: "'GE Dinar One', sans-serif", fontSize: '18px', fontWeight: 500, lineHeight: '100%', color: '#9FB7AE' }}>
+                            <span style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", fontSize: '18px', fontWeight: 500, lineHeight: '100%', color: '#9FB7AE' }}>
                               {isEn ? "Did this help you?" : "هل افادك هذا؟"}
                             </span>
                             <div className="flex gap-3">
                               <button 
                                 className="px-6 py-2 border border-[#234745] rounded-full text-[#234745] hover:bg-gray-50 transition-colors"
-                                style={{ fontFamily: "'GE Dinar One', sans-serif", fontSize: '16px', fontWeight: 500 }}
+                                style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", fontSize: '16px', fontWeight: 500 }}
                               >
                                 {isEn ? "Yes" : "نعم"}
                               </button>
                               <button 
                                 className="px-6 py-2 border border-[#234745] rounded-full text-[#234745] hover:bg-gray-50 transition-colors"
-                                style={{ fontFamily: "'GE Dinar One', sans-serif", fontSize: '16px', fontWeight: 500 }}
+                                style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", fontSize: '16px', fontWeight: 500 }}
                               >
                                 {isEn ? "No" : "لا"}
                               </button>
@@ -266,10 +266,10 @@ export default function FAQPage() {
       {/* Contact CTA */}
       <div className="w-full bg-white py-16 mt-20 text-center">
         <div className="max-w-[800px] mx-auto px-4">
-          <h2 className="text-[50px] font-bold text-[#1a1a1a] mb-2" style={{ fontFamily: "'Bahij Janna', sans-serif", lineHeight: '100%' }}>
+          <h2 className="text-[50px] font-bold text-[#1a1a1a] mb-2" style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif", lineHeight: '100%' }}>
             {isEn ? "Didn't find your answer?" : "لم تجد إجابتك؟"}
           </h2>
-          <p className="text-[#9FB7AE] text-[18px]" style={{ fontFamily: "'GE Dinar One', sans-serif", lineHeight: '100%', fontWeight: 500, marginBottom: '50px' }}>
+          <p className="text-[#9FB7AE] text-[18px]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", lineHeight: '100%', fontWeight: 500, marginBottom: '50px' }}>
             {isEn ? "Our support team is ready to help you 24/7." : "فريق الدعم جاهز لمساعدتك على مدار الساعة"}
           </p>
           

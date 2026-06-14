@@ -44,58 +44,22 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
     });
     const { customers } = await searchRes.json();
 
-    let customerId = customers?.[0]?.id;
-    let customerEmail = email;
+    const existingCustomer = customers?.[0];
 
-    if (!customerId) {
-      // 4. Create new customer if not found
-      const createRes = await fetch(`https://${domain}/admin/api/2023-04/customers.json`, {
-        method: 'POST',
-        headers: {
-          'X-Shopify-Access-Token': adminToken,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          customer: {
-            first_name: given_name,
-            last_name: family_name,
-            email: email,
-            password: googleId + Math.random().toString(36), // Random password
-            password_confirmation: googleId + Math.random().toString(36),
-            verified_email: true,
-            tags: ['Social Login', 'Google'],
-          }
-        }),
-      });
-      const { customer, errors } = await createRes.json();
-      if (errors) {
-         // Handle error (e.g. email already exists but search failed)
-         console.error('Customer create error:', errors);
-      }
-      customerId = customer?.id;
-    }
-
-    // 5. Log the user in
-    // Note: Since we don't have the password for existing users, 
-    // the standard Storefront API login won't work easily here without Multipass.
-    // For now, we will set a special session flag or try to trigger a password reset flow.
-    // OPTION: We'll store the customer info in session to show them as logged in for UI.
-    
-    // For a real production app, you would use Shopify Multipass (Plus only) 
-    // or the new Customer Account API.
-    
-    // SIMULATION: We'll set the customer ID in session
-    session.set('customerAccessToken', {
+    if (existingCustomer) {
+      // Log them in!
+      session.set('customerAccessToken', {
         accessToken: 'SOCIAL_LOGIN_TOKEN_' + Date.now(),
         expiresAt: new Date(Date.now() + 3600 * 1000).toISOString(),
         isSocial: true,
         email: email,
         firstName: given_name
-    });
+      });
+      return redirect('/account', { headers: { 'Set-Cookie': await session.commit() } });
+    }
 
-    return redirect('/account', {
-      headers: { 'Set-Cookie': await session.commit() },
-    });
+    // Account not found
+    return redirect('/account/login?error=' + encodeURIComponent('Account not found. Please register an account first.'));
 
   } catch (error: any) {
     console.error('Google Auth Error:', error.message);

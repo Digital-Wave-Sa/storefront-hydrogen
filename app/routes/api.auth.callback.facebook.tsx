@@ -41,46 +41,22 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
     });
     const { customers } = await searchRes.json();
 
-    let customerId = customers?.[0]?.id;
+    const existingCustomer = customers?.[0];
 
-    if (!customerId) {
-      const createRes = await fetch(`https://${domain}/admin/api/2023-04/customers.json`, {
-        method: 'POST',
-        headers: {
-          'X-Shopify-Access-Token': adminToken,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          customer: {
-            first_name: first_name || 'Facebook User',
-            last_name: last_name || '',
-            email: finalEmail,
-            password: fbId + Math.random().toString(36), // Random password
-            password_confirmation: fbId + Math.random().toString(36),
-            verified_email: true,
-            tags: ['Social Login', 'Facebook'],
-          }
-        }),
+    if (existingCustomer) {
+      session.set('customerAccessToken', {
+          accessToken: 'SOCIAL_LOGIN_TOKEN_' + Date.now(),
+          expiresAt: new Date(Date.now() + 3600 * 1000).toISOString(),
+          isSocial: true,
+          email: finalEmail,
+          firstName: first_name || 'Facebook User'
       });
-      const { customer, errors } = await createRes.json();
-      if (errors) {
-         console.error('Customer create error via Facebook:', errors);
-      }
-      customerId = customer?.id;
+      return redirect('/account', {
+        headers: { 'Set-Cookie': await session.commit() },
+      });
     }
 
-    // 4. Set Session
-    session.set('customerAccessToken', {
-        accessToken: 'SOCIAL_LOGIN_TOKEN_' + Date.now(),
-        expiresAt: new Date(Date.now() + 3600 * 1000).toISOString(),
-        isSocial: true,
-        email: finalEmail,
-        firstName: first_name || 'Facebook User'
-    });
-
-    return redirect('/account', {
-      headers: { 'Set-Cookie': await session.commit() },
-    });
+    return redirect('/account/login?error=' + encodeURIComponent('Account not found. Please register an account first.'));
 
   } catch (error: any) {
     console.error('Facebook Auth Error:', error.message);

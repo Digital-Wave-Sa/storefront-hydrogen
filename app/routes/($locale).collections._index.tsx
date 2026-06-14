@@ -47,7 +47,7 @@ export default function Collections() {
                 return (
                   <Link
                     key={item.id}
-                    to={`/collections/${itemHandle}`}
+                    to={isEn ? `/en/collections/${itemHandle}` : `/collections/${itemHandle}`}
                     className="px-8 py-4 rounded-[1.5rem] font-bold text-center transition-all duration-300 shadow-sm border bg-white text-gray-600 border-gray-100 hover:border-[#234745]/30 hover:shadow-md"
                   >
                     {item.title}
@@ -116,7 +116,7 @@ function CollectionItem({
     <Link
       className="flex flex-col group h-full"
       key={collection.id}
-      to={`/collections/${collection.handle}`}
+      to={isEn ? `/en/collections/${collection.handle}` : `/collections/${collection.handle}`}
       prefetch="intent"
     >
       <div className="relative aspect-square bg-gray-50 rounded-[2.5rem] overflow-hidden mb-4 border border-gray-100 hover:shadow-2xl transition-all duration-500">

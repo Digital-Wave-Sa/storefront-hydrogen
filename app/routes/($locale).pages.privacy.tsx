@@ -75,7 +75,7 @@ export default function PrivacyPage() {
           }}
         />
         <div className="relative z-10 text-center">
-          <h1 className="font-bold !text-[50px]" style={{ fontFamily: "'Bahij Janna', sans-serif", fontSize: '50px', fontWeight: 700, lineHeight: '100%', color: 'rgb(254, 248, 235)', textAlign: 'center', marginTop: '10px', marginBottom: '1rem' }}>
+          <h1 className="font-bold !text-[50px]" style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif", fontSize: '50px', fontWeight: 700, lineHeight: '100%', color: 'rgb(254, 248, 235)', textAlign: 'center', marginTop: '10px', marginBottom: '1rem' }}>
             {page.title}
           </h1>
         </div>

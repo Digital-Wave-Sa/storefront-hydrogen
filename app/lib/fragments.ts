@@ -31,6 +31,15 @@ export const CART_QUERY_FRAGMENT = `#graphql
       ... on ProductVariant {
         id
         availableForSale
+        storeAvailability(first: 250) {
+          nodes {
+            available
+            location {
+              id
+              name
+            }
+          }
+        }
         compareAtPrice {
           ...Money
         }
@@ -96,6 +105,15 @@ export const CART_QUERY_FRAGMENT = `#graphql
       ... on ProductVariant {
         id
         availableForSale
+        storeAvailability(first: 250) {
+          nodes {
+            available
+            location {
+              id
+              name
+            }
+          }
+        }
         compareAtPrice {
           ...Money
         }

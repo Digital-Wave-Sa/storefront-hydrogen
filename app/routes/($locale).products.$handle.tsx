@@ -191,60 +191,184 @@ export async function loader(args: LoaderFunctionArgs) {
       return redirectToFirstVariant({ product, request });
     }
   }
-  // --- FETCH REVIEWS VIA ADMIN API ---
-  let reviews: any[] = [];
-  try {
-      const adminToken = await getAdminToken(args.context.env);
-      const rawShop = args.context.env.SHOPIFY_SHOP || args.context.env.PUBLIC_STORE_DOMAIN || 'the-beauty-secrets-ksa';
-      const shopDomain = rawShop.includes('myshopify.com') ? rawShop : `${rawShop.split('.')[0]}.myshopify.com`;
+  // --- PARALLEL FETCH FOR SECONDARY DATA ---
+  const [reviewsData, hasPurchasedResult, recommendedResult] = await Promise.all([
+    // 1. REVIEWS
+    (async () => {
+      let reviews: any[] = [];
+      let dynamicRating = 0;
+      let dynamicCount = 0;
+      try {
+          const adminToken = await getAdminToken(args.context.env);
+          const rawShop = args.context.env.SHOPIFY_SHOP || args.context.env.PUBLIC_STORE_DOMAIN || 'the-beauty-secrets-ksa';
+          const shopDomain = rawShop.includes('myshopify.com') ? rawShop : `${rawShop.split('.')[0]}.myshopify.com`;
 
-      const reviewsQuery = `#graphql
-        query GetProductReviews {
-          metaobjects(type: "storefront_review", first: 250) {
-            nodes {
-              fields {
-                key
-                value
+          const reviewsQuery = `#graphql
+            query GetProductReviews {
+              metaobjects(type: "storefront_review", first: 250) {
+                nodes {
+                  fields {
+                    key
+                    value
+                  }
+                }
               }
             }
+          `;
+
+          const reviewsResult = await adminApiQuery(shopDomain, adminToken, reviewsQuery);
+          
+          const allReviews = reviewsResult.data?.metaobjects?.nodes?.map((node: any) => {
+              const f: any = {};
+              node.fields.forEach((field: any) => f[field.key] = field.value);
+              return f;
+          }) || [];
+
+          reviews = allReviews.filter((r: any) => 
+              r.product_handle === decodedHandle && 
+              (r.status === 'Approved' || r.status === 'Published' || !r.status)
+          );
+      } catch (err) {
+          console.error('[REVIEWS] Failed to fetch reviews:', err);
+      }
+
+      if (reviews.length > 0) {
+          const sum = reviews.reduce((acc, r: any) => acc + (parseFloat(r.rating) || 0), 0);
+          dynamicRating = sum / reviews.length;
+          dynamicCount = reviews.length;
+      } else {
+          dynamicRating = parseRatingValue(product.average_rating?.value);
+          dynamicCount = parseInt(product.rating_count?.value || '0');
+      }
+      return { reviews, dynamicRating, dynamicCount };
+    })(),
+
+    // 2. HAS PURCHASED
+    (async () => {
+      let hasPurchased = false;
+      const customerAccessToken = await context.session.get('customerAccessToken');
+
+      if (customerAccessToken?.accessToken) {
+        if (process.env.NODE_ENV === 'development' && customerAccessToken.accessToken === 'dev-bypass-token') {
+          const savedPhone = await context.session.get('loginOtpPhone');
+          if (savedPhone) {
+            try {
+              const { getAdminToken } = await import('~/lib/shopify-admin.server');
+              const token = await getAdminToken(context.env);
+              const rawShop = context.env.SHOPIFY_SHOP || context.env.PUBLIC_STORE_DOMAIN || 'the-beauty-secrets-ksa';
+              const shopDomain = rawShop.includes('myshopify.com') ? rawShop : `${rawShop.split('.')[0]}.myshopify.com`;
+              const queryStr = savedPhone.includes('590910042') 
+                ? encodeURIComponent('email:"motasem.udeh@gmail.com"')
+                : encodeURIComponent(`phone:"${savedPhone}"`);
+              const res = await fetch(`https://${shopDomain}/admin/api/2023-04/customers/search.json?query=${queryStr}`, {
+                headers: { 'X-Shopify-Access-Token': token, 'Content-Type': 'application/json' },
+              });
+              const { customers } = await res.json();
+              if (customers && customers.length > 0) {
+                const adminCust = customers[0];
+                const ordersRes = await fetch(`https://${shopDomain}/admin/api/2023-04/customers/${adminCust.id}/orders.json?status=any`, {
+                  headers: { 'X-Shopify-Access-Token': token, 'Content-Type': 'application/json' },
+                });
+                const { orders } = await ordersRes.json();
+                if (orders) {
+                  hasPurchased = orders.some((o: any) => 
+                    o.line_items?.some((li: any) => li.product_id && `gid://shopify/Product/${li.product_id}` === product.id)
+                  );
+                }
+              }
+            } catch (e) {
+              console.error('[REVIEWS] Failed dev bypass order check:', e);
+            }
+          }
+        } else {
+          try {
+            const result = await storefront.query(`#graphql
+              query CustomerPurchases($customerAccessToken: String!) {
+                customer(customerAccessToken: $customerAccessToken) {
+                  orders(first: 50) {
+                    nodes {
+                      lineItems(first: 50) {
+                        nodes {
+                          variant {
+                            product {
+                              id
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            `, {
+              variables: { customerAccessToken: customerAccessToken.accessToken },
+              cache: storefront.CacheNone(),
+            });
+
+            if (result.customer?.orders?.nodes) {
+              hasPurchased = result.customer.orders.nodes.some((order: any) => 
+                order.lineItems.nodes.some((item: any) => item.variant?.product?.id === product.id)
+              );
+            }
+          } catch (e) {
+            console.error('[REVIEWS] Failed to check customer purchases:', e);
           }
         }
-      `;
+      }
+      return hasPurchased;
+    })(),
 
-      const reviewsResult = await adminApiQuery(shopDomain, adminToken, reviewsQuery);
-      
-      const allReviews = reviewsResult.data?.metaobjects?.nodes?.map((node: any) => {
-          const f: any = {};
-          node.fields.forEach((field: any) => f[field.key] = field.value);
-          return f;
-      }) || [];
+    // 3. RELATED PRODUCTS
+    (async () => {
+      let recommended: any = { products: { nodes: [] } };
 
-      reviews = allReviews.filter((r: any) => 
-          r.product_handle === decodedHandle && 
-          (r.status === 'Approved' || r.status === 'Published' || !r.status)
-      );
-  } catch (err) {
-      console.error('[REVIEWS] Failed to fetch reviews:', err);
-  }
+      if (product.related_products?.references?.nodes?.length > 0) {
+        recommended.products.nodes = product.related_products.references.nodes;
+      } else {
+        try {
+          const recommendationsResult = await storefront.query(RECOMMENDED_PRODUCTS_QUERY, {
+            variables: { productId: product.id },
+          });
+          if (recommendationsResult.productRecommendations && recommendationsResult.productRecommendations.length > 0) {
+            recommended.products.nodes = recommendationsResult.productRecommendations;
+          }
+        } catch (e) {
+          console.error('Failed to fetch productRecommendations:', e);
+        }
+      }
 
-  // --- CALCULATE DYNAMIC RATING ---
-  let dynamicRating = 0;
-  let dynamicCount = 0;
+      if (recommended.products.nodes.length === 0 && product.collections?.nodes?.[0]?.id) {
+        try {
+          const collectionResult = await storefront.query(COLLECTION_PRODUCTS_QUERY, {
+            variables: { collectionId: product.collections.nodes[0].id },
+          });
+          if (collectionResult.collection?.products?.nodes?.length > 0) {
+            recommended.products.nodes = collectionResult.collection.products.nodes.filter(
+              (p: any) => p.id !== product.id
+            ).slice(0, 4);
+          }
+        } catch (e) {
+          console.error('Failed to fetch collection fallback:', e);
+        }
+      }
 
-  if (reviews.length > 0) {
-      const sum = reviews.reduce((acc, r: any) => acc + (parseFloat(r.rating) || 0), 0);
-      dynamicRating = sum / reviews.length;
-      dynamicCount = reviews.length;
-  } else {
-      dynamicRating = parseRatingValue(product.average_rating?.value);
-      dynamicCount = parseInt(product.rating_count?.value || '0');
-  }
+      if (recommended.products.nodes.length === 0) {
+        recommended = await storefront.query(NEWEST_PRODUCTS_QUERY);
+      }
+      return recommended;
+    })()
+  ]);
 
-
-
-  const recommended = await storefront.query(RECOMMENDED_PRODUCTS_QUERY);
-
-  return data({ product, variants, visibility, reviews, dynamicRating, dynamicCount, recommended });
+  return data({ 
+    product, 
+    variants, 
+    visibility, 
+    reviews: reviewsData.reviews, 
+    dynamicRating: reviewsData.dynamicRating, 
+    dynamicCount: reviewsData.dynamicCount, 
+    recommended: recommendedResult, 
+    hasPurchased: hasPurchasedResult 
+  });
 }
 
 function redirectToFirstVariant({
@@ -273,7 +397,7 @@ function redirectToFirstVariant({
 }
 
 export default function Product() {
-  const { product, variants, visibility, dynamicRating: loaderRating, dynamicCount: loaderCount, recommended } = useLoaderData<typeof loader>();
+  const { product, variants, visibility, reviews: loaderReviews, dynamicRating: loaderRating, dynamicCount: loaderCount, recommended, hasPurchased } = useLoaderData<typeof loader>();
   const rootData = useRouteLoaderData('root') as any;
   const locale = rootData?.consent?.language?.toLowerCase() || 'ar';
   const isEn = locale === 'en';
@@ -359,6 +483,9 @@ export default function Product() {
   const [recipientName, setRecipientName] = useState('');
   const [hideSender, setHideSender] = useState(false);
   const [showReviewForm, setShowReviewForm] = useState(false);
+  const [cakeMessage, setCakeMessage] = useState('');
+  
+  const isCakeProduct = product.productType?.toLowerCase().includes('cake') || product.tags?.some((t: string) => t.toLowerCase().includes('cake')) || product.title?.toLowerCase().includes('cake') || false;
   
   const isGiftable = product.tags?.some((t: string) => {
     const lowerTag = t.toLowerCase();
@@ -419,8 +546,13 @@ export default function Product() {
       if (collectionLeadTimes.length > 0) {
         leadTimeHours = Math.max(...collectionLeadTimes);
       } else {
-        leadTimeHours = 0; // Default to same day if no config found
+        leadTimeHours = 0; // Default to 0 if no config found
       }
+    }
+
+    // If there is no lead time configured, don't show the estimated delivery date
+    if (!leadTimeHours || leadTimeHours <= 0) {
+      return null;
     }
 
     const date = new Date();
@@ -533,7 +665,7 @@ export default function Product() {
             <button 
               onClick={() => window.history.back()} 
               className={`flex items-center justify-center gap-[24px] bg-[#9FB7AE] hover:bg-[#8ca39a] text-[#234745] px-[32px] h-[48px] rounded-[100px] transition-all font-bold ${isEn ? 'flex-row' : 'flex-row-reverse'}`}
-              style={{ fontFamily: "'GE Dinar One', sans-serif", fontSize: '16px' }}
+              style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", fontSize: '16px' }}
             >
               <span className="mt-[2px]">{isEn ? 'Back' : 'رجوع'}</span>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`transition-transform ${isEn ? 'group-hover:-translate-x-1' : 'group-hover:translate-x-1'}`}>
@@ -546,7 +678,7 @@ export default function Product() {
         {/* White Breadcrumb Section */}
         <div className="w-full bg-[#FFFFFF] border-b border-[#9FB7AE] h-[56px] flex items-center">
           <div className="max-w-[1400px] w-full mx-auto px-4 md:px-8">
-            <div className="flex items-center gap-[8px]" style={{ fontFamily: "'GE Dinar One', sans-serif", fontSize: '16px', lineHeight: '20px' }}>
+            <div className="flex items-center gap-[8px]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", fontSize: '16px', lineHeight: '20px' }}>
               <Link to={isEn ? "/en" : "/"} className="!text-[#7D7D7D] font-medium hover:!text-[#234745] transition-colors">{isEn ? 'Home' : 'الرئيسية'}</Link> 
               <span className="!text-[#7D7D7D] font-medium">/</span>
               <Link to={isEn ? "/en/collections/all" : "/collections/all"} className="!text-[#7D7D7D] font-medium hover:!text-[#234745] transition-colors">{isEn ? 'Products' : 'المنتجات'}</Link> 
@@ -575,7 +707,7 @@ export default function Product() {
             <span 
               className="text-[#906B51] block mb-[16px] text-start"
               style={{
-                fontFamily: "'GE Dinar One', sans-serif",
+                fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
                 fontWeight: 700,
                 fontSize: '12px',
                 lineHeight: '15px',
@@ -588,7 +720,7 @@ export default function Product() {
               <h1 
                 className="text-[#171717] w-full"
                 style={{
-                  fontFamily: "'Bahij Janna', sans-serif",
+                  fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif",
                   fontWeight: 700,
                   fontSize: '26px',
                   lineHeight: '1.2',
@@ -614,11 +746,11 @@ export default function Product() {
               <div className="flex items-center gap-[16px]">
                   <StarRating rating={dynamicRating || 0} count={0} locale={locale} size="sm" hideText={true} />
                   <div className="flex items-center gap-[9px]">
-                     <span className="text-[#171717] text-[12px] font-bold" style={{ fontFamily: "'GE Dinar One', sans-serif", lineHeight: '100%' }}>
-                       {new Intl.NumberFormat(locale === 'en' ? 'en-US' : 'ar-EG', { minimumFractionDigits: 1 }).format(dynamicRating || 0)}
+                     <span className="text-[#171717] text-[12px] font-bold" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", lineHeight: '100%' }}>
+                       {new Intl.NumberFormat('en-US', { minimumFractionDigits: 1 }).format(dynamicRating || 0)}
                      </span>
-                     <span className="text-[#7D7D7D] text-[12px] font-normal" style={{ fontFamily: "'GE Dinar One', sans-serif", lineHeight: '100%' }}>
-                       {isEn ? `(${dynamicCount || 0} Reviews)` : `(${new Intl.NumberFormat('ar-EG').format(dynamicCount || 0)} مراجعة)`}
+                     <span className="text-[#7D7D7D] text-[12px] font-normal" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", lineHeight: '100%' }}>
+                       {isEn ? `(${dynamicCount || 0} Reviews)` : `(${new Intl.NumberFormat('en-US').format(dynamicCount || 0)} مراجعة)`}
                      </span>
                   </div>
               </div>
@@ -627,9 +759,9 @@ export default function Product() {
 
               {/* Availability */}
               <div className="flex items-center gap-[6px]">
-                 <span className="w-[6px] h-[6px] bg-[#255441] rounded-full"></span>
-                 <span className="text-[#255441] text-[12px] font-bold" style={{ fontFamily: "'GE Dinar One', sans-serif", lineHeight: '100%' }}>
-                    {isEn ? 'Available' : 'متوفر'}
+                 <span className={`w-[6px] h-[6px] rounded-full ${effectiveOutOfStock ? 'bg-[#E64950]' : 'bg-[#255441]'}`}></span>
+                 <span className={`text-[12px] font-bold ${effectiveOutOfStock ? 'text-[#E64950]' : 'text-[#255441]'}`} style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", lineHeight: '100%' }}>
+                    {effectiveOutOfStock ? (isEn ? 'Out of Stock' : 'نفذت الكمية') : (isEn ? 'Available' : 'متوفر')}
                  </span>
               </div>
             </div>
@@ -638,10 +770,10 @@ export default function Product() {
             <div className="flex flex-wrap sm:flex-nowrap items-center gap-[12px] mb-[24px] w-full">
               {/* Servings Card */}
               <div className="flex-1 min-w-[100px] h-[64px] rounded-[12px] border border-[#D2D2D2] flex flex-col items-center justify-center relative">
-                 <span className="text-[#234745] text-[16px] font-bold absolute top-[8px]" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
-                   {(product as any).servings?.value || (isEn ? '4-6' : '٤–٦')}
+                 <span className="text-[#234745] text-[16px] font-bold absolute top-[8px]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
+                   {(product as any).servings?.value || '4-6'}
                  </span>
-                 <span className="text-[#9FB7AE] text-[12px] font-bold absolute top-[36px] w-full text-center px-1 truncate" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
+                 <span className="text-[#9FB7AE] text-[12px] font-bold absolute top-[36px] w-full text-center px-1 truncate" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
                    {isEn ? 'Serves' : 'يكفي أشخاص'}
                  </span>
               </div>
@@ -649,26 +781,43 @@ export default function Product() {
               {/* Prep Time Card */}
               <div className="flex-1 min-w-[100px] h-[64px] rounded-[12px] border border-[#D2D2D2] flex flex-col items-center justify-center relative">
                  <div className="absolute top-[8px] flex items-center gap-1">
-                   <span className="text-[#234745] text-[16px] font-bold" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
-                     {new Intl.NumberFormat(locale === 'en' ? 'en-US' : 'ar-EG').format(parseInt((product as any).prep_time?.value || '20'))}
+                   <span className="text-[#234745] text-[16px] font-bold" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
+                     {new Intl.NumberFormat('en-US').format(parseInt((product as any).prep_time?.value || '20'))}
                    </span>
-                   <span className="text-[#234745] text-[16px] font-bold" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>{isEn ? 'min' : 'دقيقة'}</span>
+                   <span className="text-[#234745] text-[16px] font-bold" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>{isEn ? 'min' : 'دقيقة'}</span>
                  </div>
-                 <span className="text-[#9FB7AE] text-[12px] font-bold absolute top-[36px] w-full text-center px-1 truncate" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
+                 <span className="text-[#9FB7AE] text-[12px] font-bold absolute top-[36px] w-full text-center px-1 truncate" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
                    {isEn ? 'Prep Time' : 'وقت التجهيز'}
                  </span>
               </div>
 
               {/* Calories Card */}
               <div className="flex-1 min-w-[100px] h-[64px] rounded-[12px] border border-[#D2D2D2] flex flex-col items-center justify-center relative">
-                 <span className="text-[#234745] text-[16px] font-bold absolute top-[8px]" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
-                   {new Intl.NumberFormat(locale === 'en' ? 'en-US' : 'ar-EG').format(parseInt((product as any).calories?.value || '240'))}
+                 <span className="text-[#234745] text-[16px] font-bold absolute top-[8px]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
+                   {new Intl.NumberFormat('en-US').format(parseInt((product as any).calories?.value || '240'))}
                  </span>
-                 <span className="text-[#9FB7AE] text-[12px] font-bold absolute top-[36px] w-full text-center px-1 truncate" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
+                 <span className="text-[#9FB7AE] text-[12px] font-bold absolute top-[36px] w-full text-center px-1 truncate" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
                    {isEn ? 'Calories' : 'سعر حراري'}
                  </span>
               </div>
             </div>
+
+            {/* Estimated Delivery Date */}
+            {estimatedDeliveryDate && (
+              <div className="flex items-center gap-[16px] mb-[24px] p-[16px] bg-[#F4F9F7] rounded-[16px] w-full">
+                <div className="w-[40px] h-[40px] bg-white rounded-full flex items-center justify-center shrink-0">
+                  <span className="text-[20px]">🚚</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-[#9FB7AE] text-[12px] font-bold mb-[2px]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
+                    {isEn ? 'Estimated Delivery' : 'وقت التوصيل المتوقع'}
+                  </span>
+                  <span className="text-[#234745] text-[14px] font-bold leading-tight" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
+                    {estimatedDeliveryDate}
+                  </span>
+                </div>
+              </div>
+            )}
 
             {/* Premium Price Box */}
             <div className="w-full h-auto py-[16px] bg-[#FEF8EB] rounded-[16px] border border-[#BBCFCD]/50 flex flex-col justify-center px-[24px] mb-[24px] relative">
@@ -676,7 +825,7 @@ export default function Product() {
                  <span 
                     className="text-[#234745] font-bold" 
                     style={{ 
-                      fontFamily: "'Bahij Janna', sans-serif", 
+                      fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif", 
                       fontSize: '32px',
                       lineHeight: '1.2',
                       textAlign: isEn ? 'left' : 'right',
@@ -690,7 +839,7 @@ export default function Product() {
                <span 
                  className="text-[#9FB7AE] font-medium w-full mt-[4px]" 
                  style={{ 
-                   fontFamily: "'GE Dinar One', sans-serif",
+                   fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
                    fontSize: '14px',
                    lineHeight: '1.2',
                    textAlign: isEn ? 'left' : 'right',
@@ -705,7 +854,7 @@ export default function Product() {
             <p 
               className="text-[#7D7D7D] font-normal w-full" 
               style={{ 
-                fontFamily: "'GE Dinar One', sans-serif",
+                fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
                 fontSize: '16px',
                 textAlign: isEn ? 'left' : 'right',
                 verticalAlign: 'middle',
@@ -720,13 +869,13 @@ export default function Product() {
             {/* Tags */}
             <div className="flex flex-wrap items-center gap-[12px] mb-[24px] w-full" style={{ marginTop: '32px' }}>
               <div className="h-[40px] px-[16px] bg-[#FEF8EB] rounded-[25px] border border-[#BBCFCD]/50 flex items-center justify-center whitespace-nowrap">
-                <span className="text-[#255441] text-[14px] font-normal" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>{isEn ? 'Vegan 100%' : 'نباتي 100%'}</span>
+                <span className="text-[#255441] text-[14px] font-normal" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>{isEn ? 'Vegan 100%' : 'نباتي 100%'}</span>
               </div>
               <div className="h-[40px] px-[16px] bg-[#FEF8EB] rounded-[25px] border border-[#BBCFCD]/50 flex items-center justify-center whitespace-nowrap">
-                <span className="text-[#255441] text-[14px] font-normal" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>{isEn ? 'Lactose Free' : 'خالٍ من اللاكتوز'}</span>
+                <span className="text-[#255441] text-[14px] font-normal" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>{isEn ? 'Lactose Free' : 'خالٍ من اللاكتوز'}</span>
               </div>
               <div className="h-[40px] px-[16px] bg-[#FEF8EB] rounded-[25px] border border-[#BBCFCD]/50 flex items-center justify-center whitespace-nowrap">
-                <span className="text-[#255441] text-[14px] font-normal" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>{isEn ? 'Gluten Free' : 'خالٍ من الغلوتين'}</span>
+                <span className="text-[#255441] text-[14px] font-normal" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>{isEn ? 'Gluten Free' : 'خالٍ من الغلوتين'}</span>
               </div>
             </div>
             
@@ -756,17 +905,17 @@ export default function Product() {
                            <div className="w-10 h-10 bg-[#234745] rounded-full flex items-center justify-center shadow-sm">
                              <span className="text-white text-[18px]">🎁</span>
                            </div>
-                           <h5 className="font-bold text-[#234745] text-[20px]" style={{ fontFamily: "'Bahij Janna', sans-serif" }}>
+                           <h5 className="font-bold text-[#234745] text-[20px]" style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" }}>
                              {isEn ? 'Bundle Includes:' : 'محتويات العرض:'}
                            </h5>
                         </div>
                         {bundleSavings && bundleSavings > 0 && (
                            <div className="flex flex-col items-end">
-                             <span className="text-[#906B51] text-[12px] font-bold mb-1" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
+                             <span className="text-[#906B51] text-[12px] font-bold mb-1" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
                                {isEn ? 'You Save' : 'توفير العرض'}
                              </span>
-                             <span className="bg-[#234745] text-white text-[14px] font-bold px-3 py-1 rounded-[8px] shadow-sm" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
-                               {new Intl.NumberFormat(locale === 'en' ? 'en-US' : 'ar-EG').format(bundleSavings)} {isEn ? 'SAR' : 'ر.س'}
+                             <span className="bg-[#234745] text-white text-[14px] font-bold px-3 py-1 rounded-[8px] shadow-sm" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
+                               {new Intl.NumberFormat('en-US').format(bundleSavings)} {isEn ? 'SAR' : 'ر.س'}
                              </span>
                            </div>
                         )}
@@ -794,11 +943,11 @@ export default function Product() {
                                      )}
                                    </div>
                                    <div className="flex flex-col flex-grow text-start">
-                                     <span className="text-[16px] font-bold text-[#1a1a1a] line-clamp-2 leading-tight" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
+                                     <span className="text-[16px] font-bold text-[#1a1a1a] line-clamp-2 leading-tight" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
                                        {component.title}
                                      </span>
                                      {compPrice && (
-                                       <div className="flex flex-row items-center gap-1 text-[#906B51] text-[14px] font-bold mt-2 justify-start" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
+                                       <div className="flex flex-row items-center gap-1 text-[#906B51] text-[14px] font-bold mt-2 justify-start" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
                                          <span>{isEn ? 'Value: ' : 'القيمة: '}</span>
                                          <Price data={compPrice} isEn={isEn} size="sm" />
                                        </div>
@@ -814,8 +963,8 @@ export default function Product() {
 
                   {/* Addons Section (High Fidelity) */}
                   {addonNodes.length > 0 && (
-                    <div className="flex flex-col gap-[16px] w-full" style={{ width: '519px' }}>
-                      <h5 className="font-bold text-[#255441] text-[18px] text-start" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
+                    <div className="flex flex-col gap-[16px] w-full max-w-[519px]">
+                      <h5 className="font-bold text-[#255441] text-[18px] text-start" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
                         {isEn ? 'Add-ons' : 'إضافات'}
                       </h5>
                       <div className="flex flex-col gap-[8px]">
@@ -840,13 +989,13 @@ export default function Product() {
                                   {isSelected && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><path d="M20 6L9 17l-5-5" /></svg>}
                                 </div>
                                 
-                                <p className="text-[16px] font-bold text-[#171717]" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
+                                <p className="text-[16px] font-bold text-[#171717]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
                                   {isEn ? addon.title : (addon.title === ' متوفر الان' ? 'متوفر الان' : addon.title)}
                                 </p>
                               </div>
-                              <div className="flex items-center gap-1 text-[16px] text-[#255441] font-bold" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
+                              <div className="flex items-center gap-1 text-[16px] text-[#255441] font-bold" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
                                 <span>+</span>
-                                {new Intl.NumberFormat(locale === 'en' ? 'en-US' : 'ar-EG').format(parseFloat(variant.price.amount))} {isEn ? 'SAR' : 'ر.س'}
+                                {new Intl.NumberFormat('en-US').format(parseFloat(variant.price.amount))} {isEn ? 'SAR' : 'ر.س'}
                               </div>
                             </div>
                           );
@@ -863,13 +1012,13 @@ export default function Product() {
                          <div className="flex flex-col justify-center items-start">
                             <span 
                               className="font-bold text-[#234745] text-[18px]"
-                              style={{ fontFamily: "'Bahij Janna', sans-serif", lineHeight: '100%' }}
+                              style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif", lineHeight: '100%' }}
                             >
                                {isEn ? 'Send as a Gift' : 'أرسل كهدية'}
                             </span>
                             <span 
                               className="text-[#7D7D7D] text-[14px] mt-[8px]"
-                              style={{ fontFamily: "'GE Dinar One', sans-serif", lineHeight: '100%' }}
+                              style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", lineHeight: '100%' }}
                             >
                                {isEn ? 'Add a message and special packaging for the recipient' : 'أضف رسالة وتغليف مميز للمستلم'}
                             </span>
@@ -903,6 +1052,44 @@ export default function Product() {
                     </div>
                   )}
 
+                  {/* Cake Custom Text Section */}
+                  {isCakeProduct && (
+                    <div className="w-full mt-[8px] max-w-[519px]">
+                      <div className="bg-[#FEF8EB] border border-[#E5E5E5] rounded-[16px] p-[16px] flex flex-col items-start gap-4 shadow-sm relative overflow-hidden">
+                         <div className="absolute top-[10px] right-[-10px] opacity-10 pointer-events-none transform -rotate-12">
+                            <svg width="80" height="80" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                               <path d="M12 4.5C12 4.5 9.5 2 6 2C2.5 2 2 6 2 6C2 6 2.5 8 6 8C9.5 8 12 4.5 12 4.5Z" fill="#234745"/>
+                               <path d="M12 4.5C12 4.5 14.5 2 18 2C21.5 2 22 6 22 6C22 6 21.5 8 18 8C14.5 8 12 4.5 12 4.5Z" fill="#234745"/>
+                               <path d="M2 10H22V14H2V10Z" fill="#234745"/>
+                               <path d="M2 16H22V22H2V16Z" fill="#234745"/>
+                            </svg>
+                         </div>
+                         <div className="flex flex-col justify-center items-start z-10 w-full text-start">
+                            <span 
+                              className="font-bold text-[#234745] text-[18px]"
+                              style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif", lineHeight: '100%' }}
+                            >
+                               {isEn ? 'Custom Cake Text' : 'كتابة على الكيكة'}
+                            </span>
+                            <span 
+                              className="text-[#7D7D7D] text-[14px] mt-[8px]"
+                              style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", lineHeight: '100%' }}
+                            >
+                               {isEn ? 'What would you like us to write on the cake?' : 'ماذا تود أن نكتب على الكيكة؟'}
+                            </span>
+                         </div>
+                         <input 
+                            type="text" 
+                            value={cakeMessage} 
+                            onChange={e => setCakeMessage(e.target.value)} 
+                            className="w-full p-3 text-[14px] border border-[#BBCFCD]/50 rounded-[8px] focus:ring-[#234745] focus:border-[#234745] bg-white font-medium text-start z-10 transition-colors shadow-inner" 
+                            placeholder={isEn ? "e.g. Happy Birthday Sarah" : "مثال: عيد ميلاد سعيد سارة"} 
+                            maxLength={50}
+                         />
+                      </div>
+                    </div>
+                  )}
+
                   {/* Old Tags section removed as they are now at the top */}
                 </div>
               )}
@@ -927,14 +1114,14 @@ export default function Product() {
                          <img src="/images/icons/visa.png" className="h-[14px] object-contain" alt="Visa" />
                          <img src="/images/icons/mada.png" className="h-[24px] object-contain scale-[1.7] origin-center" alt="Mada" />
                      </div>
-                     <span className="text-[14px] font-bold text-[#234745] text-center" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
+                     <span className="text-[14px] font-bold text-[#234745] text-center" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
                          {isEn ? 'Split it into 4 interest-free payments' : 'قسّطها على ٤ دفعات بدون فوائد'}
                      </span>
                   </div>
 
                   {/* 2. Quantity */}
                   <div className="flex items-center justify-between h-[40px] w-full">
-                      <span className="font-medium text-[#171717] text-[16px]" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
+                      <span className="font-medium text-[#171717] text-[16px]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
                          {isEn ? 'Quantity' : 'الكمية'}
                       </span>
                       <div className="flex items-center gap-[8px]">
@@ -944,8 +1131,8 @@ export default function Product() {
                           >
                               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14" /></svg>
                           </button>
-                          <div className="w-[40px] h-[40px] flex items-center justify-center bg-white rounded-[8px] border border-[#BBCFCD]/50 font-medium text-[16px] text-[#255441]" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
-                              {new Intl.NumberFormat(locale === 'en' ? 'en-US' : 'ar-EG').format(quantity)}
+                          <div className="w-[40px] h-[40px] flex items-center justify-center bg-white rounded-[8px] border border-[#BBCFCD]/50 font-medium text-[16px] text-[#255441]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
+                              {new Intl.NumberFormat('en-US').format(quantity)}
                           </div>
                           <button 
                               onClick={() => setQuantity(quantity + 1)}
@@ -990,6 +1177,7 @@ export default function Product() {
                                   selectedVariant,
                                   attributes: [
                                     {key: '_groupId', value: groupId},
+                                    ...(cakeMessage ? [{key: 'Cake Message', value: cakeMessage}] : []),
                                     ...(isGiftMode ? [
                                       {key: '_isGift', value: 'true'},
                                       ...(recipientName ? [{key: 'Recipient Name', value: recipientName}] : []),
@@ -1044,7 +1232,7 @@ export default function Product() {
                                 <circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" />
                                 <path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6" />
                             </svg>
-                            <span style={{ fontFamily: "'GE Dinar One', sans-serif", fontWeight: 700, fontSize: '16px', lineHeight: '20px' }}>{isEn ? 'Add to Cart' : 'أضف إلي السلة'}</span>
+                            <span style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", fontWeight: 700, fontSize: '16px', lineHeight: '20px' }}>{isEn ? 'Add to Cart' : 'أضف إلي السلة'}</span>
                           </>
                         )}
                       </AddToCartButton>
@@ -1056,7 +1244,7 @@ export default function Product() {
                            <line x1="3" y1="6" x2="21" y2="6" />
                            <path d="M16 10a4 4 0 01-8 0" />
                         </svg>
-                        <span style={{ fontFamily: "'GE Dinar One', sans-serif", fontWeight: 700, fontSize: '16px', lineHeight: '20px' }}>{isEn ? 'Buy Now' : 'إشتري الان'}</span>
+                        <span style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", fontWeight: 700, fontSize: '16px', lineHeight: '20px' }}>{isEn ? 'Buy Now' : 'إشتري الان'}</span>
                       </button>
                     </>
                   )}
@@ -1078,19 +1266,19 @@ export default function Product() {
                   <div className={`bg-[#FEF8EB] rounded-[20px] p-[16px] border border-[#BBCFCD]/50 flex flex-col gap-0 text-start`}>
                       {/* Item 1: Free Delivery */}
                       <div className="py-[12px] flex flex-col justify-center items-center gap-[4px] text-center">
-                          <h4 className="font-bold text-[14px] text-[#234745] leading-[17px]" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>{isEn ? 'Free Delivery' : 'توصيل مجاني'}</h4>
-                          <p className="text-[12px] text-[#7D7D7D] font-normal leading-[15px]" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
+                          <h4 className="font-bold text-[14px] text-[#234745] leading-[17px]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>{isEn ? 'Free Delivery' : 'توصيل مجاني'}</h4>
+                          <p className="text-[12px] text-[#7D7D7D] font-normal leading-[15px]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
                               {isEn 
                                 ? `On orders above ${threshold} SAR` 
-                                : `للطلبات فوق ${new Intl.NumberFormat('ar-EG').format(threshold)} ر.س`}
+                                : `للطلبات فوق ${new Intl.NumberFormat('en-US').format(threshold)} ر.س`}
                           </p>
                       </div>
                       <div className="h-[1px] w-full bg-[#BBCFCD]/50"></div>
                       
                       {/* Item 2: Branch Pickup */}
                       <div className="py-[12px] flex flex-col justify-center items-center gap-[4px] text-center">
-                          <h4 className="font-bold text-[14px] text-[#234745] leading-[17px]" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>{isEn ? 'Branch Pickup' : 'استلام من الفرع'}</h4>
-                          <p className="text-[12px] text-[#7D7D7D] font-normal leading-[15px]" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
+                          <h4 className="font-bold text-[14px] text-[#234745] leading-[17px]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>{isEn ? 'Branch Pickup' : 'استلام من الفرع'}</h4>
+                          <p className="text-[12px] text-[#7D7D7D] font-normal leading-[15px]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
                               {isEn ? 'Ready in 15 minutes' : 'جاهز خلال 15 دقيقة'}
                           </p>
                       </div>
@@ -1098,8 +1286,8 @@ export default function Product() {
 
                       {/* Item 3: Guaranteed Return */}
                       <div className="py-[12px] flex flex-col justify-center items-center gap-[4px] text-center">
-                          <h4 className="font-bold text-[14px] text-[#234745] leading-[17px]" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>{isEn ? 'Guaranteed Return' : 'استرجاع مضمون'}</h4>
-                          <p className="text-[12px] text-[#7D7D7D] font-normal leading-[15px]" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
+                          <h4 className="font-bold text-[14px] text-[#234745] leading-[17px]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>{isEn ? 'Guaranteed Return' : 'استرجاع مضمون'}</h4>
+                          <p className="text-[12px] text-[#7D7D7D] font-normal leading-[15px]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
                               {isEn ? 'Within 24 hours of receipt' : 'خلال 24 ساعة من الاستلام'}
                           </p>
                       </div>
@@ -1107,8 +1295,8 @@ export default function Product() {
 
                       {/* Item 4: Secure Payment */}
                       <div className="py-[12px] flex flex-col justify-center items-center gap-[4px] text-center">
-                          <h4 className="font-bold text-[14px] text-[#234745] leading-[17px]" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>{isEn ? '100% Secure Payment' : 'دفع آمن 100%'}</h4>
-                          <p className="text-[12px] text-[#7D7D7D] font-normal leading-[15px]" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
+                          <h4 className="font-bold text-[14px] text-[#234745] leading-[17px]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>{isEn ? '100% Secure Payment' : 'دفع آمن 100%'}</h4>
+                          <p className="text-[12px] text-[#7D7D7D] font-normal leading-[15px]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
                               {isEn ? 'Encrypted and protected' : 'مدفوعات مشفرة ومحمية'}
                           </p>
                       </div>
@@ -1129,16 +1317,16 @@ export default function Product() {
                   <button 
                       onClick={() => setActiveTab('details')}
                       className={`text-[18px] transition-all flex items-center justify-center w-[128px] h-[24px] ${activeTab === 'details' ? 'text-[#255441] font-bold' : 'text-[#7D7D7D] font-medium'}`}
-                      style={{ fontFamily: "'GE Dinar One', sans-serif", lineHeight: '22px' }}
+                      style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", lineHeight: '22px' }}
                   >
                       {isEn ? 'Product Description' : 'وصف المنتج'}
                   </button>
                   <button 
                       onClick={() => setActiveTab('reviews')}
                       className={`text-[18px] transition-all flex items-center justify-center w-[128px] h-[24px] ${activeTab === 'reviews' ? 'text-[#255441] font-bold' : 'text-[#7D7D7D] font-medium'}`}
-                      style={{ fontFamily: "'GE Dinar One', sans-serif", lineHeight: '22px' }}
+                      style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", lineHeight: '22px' }}
                   >
-                      {isEn ? `Reviews (${reviews?.length || 0})` : `المراجعات (${new Intl.NumberFormat('ar-EG').format(reviews?.length || 0)})`}
+                      {isEn ? `Reviews (${reviews?.length || 0})` : `المراجعات (${new Intl.NumberFormat('en-US').format(reviews?.length || 0)})`}
                   </button>
               </div>
               
@@ -1162,7 +1350,7 @@ export default function Product() {
               <div className="w-full">
                   <div 
                     className="text-[#171717] leading-[24px] font-normal text-[16px] mb-[20px] [&>p]:mb-[16px] last:[&>p]:mb-0"
-                    style={{ fontFamily: "'GE Dinar One', sans-serif" }}
+                    style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
                     dangerouslySetInnerHTML={{ __html: product.descriptionHtml || product.description }}
                   />
                   
@@ -1207,8 +1395,8 @@ export default function Product() {
                             <div className="mt-[4px]">
                                 <StarRating rating={loaderRating} size="sm" locale={locale} hideText />
                             </div>
-                            <span className="text-[12px] text-[#7D7D7D] font-normal mt-[8px]" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
-                                {isEn ? `(${reviews?.length || 0} reviews)` : `(${new Intl.NumberFormat('ar-EG').format(reviews?.length || 0)} مراجعة)`}
+                            <span className="text-[12px] text-[#7D7D7D] font-normal mt-[8px]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
+                                {isEn ? `(${reviews?.length || 0} reviews)` : `(${new Intl.NumberFormat('en-US').format(reviews?.length || 0)} مراجعة)`}
                             </span>
                         </div>
 
@@ -1221,8 +1409,8 @@ export default function Product() {
                                     <div key={star} className="flex items-center gap-[12px]">
                                         {/* Star icon & Number */}
                                         <div className="flex items-center gap-[4px] w-[28px] justify-end">
-                                            <span className="text-[12px] font-medium text-[#7D7D7D]" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
-                                                {new Intl.NumberFormat(locale === 'en' ? 'en-US' : 'ar-EG').format(star)}
+                                            <span className="text-[12px] font-medium text-[#7D7D7D]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
+                                                {new Intl.NumberFormat('en-US').format(star)}
                                             </span>
                                             <span className="text-amber-400 text-[12px]">★</span>
                                         </div>
@@ -1237,8 +1425,8 @@ export default function Product() {
                                             />
                                         </div>
                                         {/* Count */}
-                                        <div className="w-[20px] text-[12px] font-medium text-[#7D7D7D] text-start" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
-                                            {new Intl.NumberFormat(locale === 'en' ? 'en-US' : 'ar-EG').format(count)}
+                                        <div className="w-[20px] text-[12px] font-medium text-[#7D7D7D] text-start" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
+                                            {new Intl.NumberFormat('en-US').format(count)}
                                         </div>
                                     </div>
                                 );
@@ -1248,20 +1436,29 @@ export default function Product() {
 
                     {/* Write Review Button Link */}
                     <div className="flex justify-end w-full">
-                        <button 
-                            onClick={() => setShowReviewForm(!showReviewForm)}
-                            className="text-[14px] text-[#255441] font-bold underline hover:text-[#1a3a2d] transition-colors"
-                            style={{ fontFamily: "'GE Dinar One', sans-serif" }}
-                        >
-                            {isEn ? 'Write a Review' : 'أضف مراجعة'}
-                        </button>
+                        {hasPurchased ? (
+                          <button 
+                              onClick={() => setShowReviewForm(!showReviewForm)}
+                              className="text-[14px] text-[#255441] font-bold underline hover:text-[#1a3a2d] transition-colors"
+                              style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
+                          >
+                              {isEn ? 'Write a Review' : 'أضف مراجعة'}
+                          </button>
+                        ) : (
+                          <span 
+                              className="text-[14px] text-[#7D7D7D] font-medium"
+                              style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
+                          >
+                              {isEn ? 'Only verified buyers can review' : 'فقط المشترين يمكنهم إضافة مراجعة'}
+                          </span>
+                        )}
                     </div>
 
                     {/* Review Form */}
                     {showReviewForm && (
                         <div className="bg-white p-8 rounded-[16px] border border-[#E5E5E5] shadow-sm animate-fade-in relative mb-[16px]">
                             <div className="flex justify-between items-center mb-6">
-                                <h4 className="text-[18px] font-bold text-[#234745]" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
+                                <h4 className="text-[18px] font-bold text-[#234745]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
                                     {isEn ? 'Share your experience' : 'شاركنا تجربتك'}
                                 </h4>
                                 <button onClick={() => setShowReviewForm(false)} className="text-gray-400 hover:text-red-500 transition-all">
@@ -1286,14 +1483,14 @@ export default function Product() {
                                     <div className="w-full flex justify-between items-start">
                                         {/* User Info (Right side naturally) */}
                                         <div className="flex items-center gap-[12px]">
-                                            <div className="w-[40px] h-[40px] bg-[#BBCFCD] rounded-full flex items-center justify-center text-[#255441] text-[18px] font-bold" style={{ fontFamily: "'GE Dinar One', sans-serif", paddingTop: '2px' }}>
+                                            <div className="w-[40px] h-[40px] bg-[#BBCFCD] rounded-full flex items-center justify-center text-[#255441] text-[18px] font-bold" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", paddingTop: '2px' }}>
                                                 {review.customer_name?.charAt(0).toUpperCase() || 'U'}
                                             </div>
                                             <div className="flex flex-col items-start">
-                                                <h5 className="text-[16px] font-bold text-[#255441] leading-tight" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
+                                                <h5 className="text-[16px] font-bold text-[#255441] leading-tight" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
                                                     {review.customer_name}
                                                 </h5>
-                                                <span className="text-[14px] text-[#BBCFCD] font-normal" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
+                                                <span className="text-[14px] text-[#BBCFCD] font-normal" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
                                                     {new Date(review.created_at || Date.now()).toLocaleDateString(locale === 'en' ? 'en-US' : 'ar-EG', { day: 'numeric', month: 'long', year: 'numeric' })}
                                                 </span>
                                             </div>
@@ -1307,7 +1504,7 @@ export default function Product() {
 
                                     {/* Review Comment */}
                                     <div className="w-full text-start pr-[52px]">
-                                        <p className="text-[#7D7D7D] text-[14px] font-normal leading-[24px]" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
+                                        <p className="text-[#7D7D7D] text-[14px] font-normal leading-[24px]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
                                             {review.review_comment || review.comment}
                                         </p>
                                     </div>
@@ -1319,7 +1516,7 @@ export default function Product() {
                                                 <path d="M14.6666 7.38674V8.00007C14.6658 9.43769 14.2003 10.8365 13.3395 11.9879C12.4788 13.1394 11.2688 13.9818 9.88907 14.3893C8.50931 14.7968 7.03402 14.7471 5.68417 14.2491C4.33433 13.751 3.18187 12.8315 2.40049 11.6288C1.61912 10.4261 1.25143 8.97298 1.35245 7.51004C1.45347 6.04711 2.01827 4.65089 2.96162 3.52355C3.90497 2.3962 5.17646 1.59591 6.58882 1.23846C8.00119 0.881006 9.48003 0.98592 10.8133 1.5334" stroke="#255441" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
                                                 <path d="M14.6666 2.66675L8.00001 9.34008L5.99999 7.34008" stroke="#255441" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
                                             </svg>
-                                            <span className="text-[#255441] text-[12px] font-bold" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
+                                            <span className="text-[#255441] text-[12px] font-bold" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
                                                 {isEn ? 'Verified Buyer' : 'مشتري موثق'}
                                             </span>
                                         </div>
@@ -1328,7 +1525,7 @@ export default function Product() {
                             ))
                         ) : (
                             <div className="py-12 text-center">
-                                <p className="text-gray-400 font-normal" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
+                                <p className="text-gray-400 font-normal" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
                                     {isEn ? 'No reviews yet. Be the first!' : 'لا توجد مراجعات بعد. كن أول من يقيّم!'}
                                 </p>
                             </div>
@@ -1346,14 +1543,14 @@ export default function Product() {
           <div className="flex items-center justify-between mb-[32px] w-full">
             <h2 
               className="font-bold text-[#171717] m-0"
-              style={{ fontFamily: "'Bahij Janna', sans-serif", fontSize: '50px', lineHeight: '80px' }}
+              style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif", fontSize: '50px', lineHeight: '80px' }}
             >
               {isEn ? 'Related Products' : 'منتجات ذات صلة'}
             </h2>
             <Link 
               to={isEn ? "/en/collections/all" : "/collections/all"}
               className="bg-white border border-[#D2D2D2] px-[24px] py-[8px] rounded-[25px] font-bold text-[#234745] hover:bg-gray-50 transition-all flex items-center justify-center gap-[8px]"
-              style={{ fontFamily: "'GE Dinar One', sans-serif", fontSize: '16px', lineHeight: '20px' }}
+              style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", fontSize: '16px', lineHeight: '20px' }}
             >
               <span>{isEn ? 'View All' : 'عرض الكل'}</span>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={isEn ? '' : 'rotate-180'}>
@@ -1363,7 +1560,7 @@ export default function Product() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-[24px]">
-            {recommended?.products?.nodes?.map((recProduct: any) => (
+            {recommended?.products?.nodes?.slice(0, 4).map((recProduct: any) => (
               <ProductItem 
                 key={recProduct.id} 
                 product={recProduct} 
@@ -1601,7 +1798,7 @@ function ProductForm({
     product.productType?.toLowerCase().includes('gift card');
 
   return (
-    <div className="flex flex-col gap-[16px] w-full" style={{ width: '519px' }}>
+    <div className="flex flex-col gap-[16px] w-full max-w-[519px]">
       <VariantSelector
         handle={product.handle}
         options={product.options}
@@ -1622,7 +1819,7 @@ function ProductForm({
             <div className="flex flex-col gap-[8px]" key={option.name}>
               <h5 
                 className="font-bold text-[#255441] text-[18px] text-start w-full"
-                style={{ fontFamily: "'GE Dinar One', sans-serif" }}
+                style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
               >
                 {label}
               </h5>
@@ -1649,7 +1846,7 @@ function ProductForm({
                         ? 'bg-[#234745] border-[#234745] text-white'
                         : 'bg-white border-[#BBCFCD]/50 text-[#255441] hover:border-[#234745] hover:text-[#234745]'
                         } ${!isAvailable ? 'opacity-40 cursor-not-allowed' : ''}`}
-                      style={{ fontFamily: "'GE Dinar One', sans-serif" }}
+                      style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
                     >
                       {displayValue}
                     </Link>
@@ -1812,6 +2009,14 @@ const PRODUCT_FRAGMENT = `#graphql
     rating_count: metafield(namespace: "custom", key: "rating_count") {
       value
     }
+    bogo_free_item: metafield(namespace: "custom", key: "bogo_free_item") {
+      value
+      reference {
+        ... on ProductVariant {
+          id
+        }
+      }
+    }
     collections(first: 10) {
       nodes {
         id
@@ -1820,11 +2025,12 @@ const PRODUCT_FRAGMENT = `#graphql
         }
       }
     }
-    bogo_free_item: metafield(namespace: "custom", key: "bogo_free_item") {
-      value
-      reference {
-        ... on ProductVariant {
-          id
+    related_products: metafield(namespace: "custom", key: "related_products") {
+      references(first: 4) {
+        nodes {
+          ... on Product {
+            ...ProductDetailRecommendedProduct
+          }
         }
       }
     }
@@ -1855,59 +2061,7 @@ const PRODUCT_FRAGMENT = `#graphql
   ${PRODUCT_VARIANT_FRAGMENT}
 ` as const;
 
-const PRODUCT_QUERY = `#graphql
-  query Product(
-    $country: CountryCode
-    $handle: String!
-    $language: LanguageCode
-    $selectedOptions: [SelectedOptionInput!]!
-
-  ) @inContext(country: $country, language: $language) {
-    product(handle: $handle) {
-      ...Product
-    }
-  }
-  ${PRODUCT_FRAGMENT}
-` as const;
-
-const PRODUCT_VARIANTS_FRAGMENT = `#graphql
-  fragment ProductVariants on Product {
-    variants(first: 250) {
-      nodes {
-        ...ProductVariant
-      }
-    }
-  }
-  ${PRODUCT_VARIANT_FRAGMENT}
-` as const;
-
-const REVIEWS_QUERY = `#graphql
-  query ProductReviews($type: String!) {
-    metaobjects(type: $type, first: 250) {
-      nodes {
-        fields {
-          key
-          value
-        }
-      }
-    }
-  }
-`;
-
-const VARIANTS_QUERY = `#graphql
-  ${PRODUCT_VARIANTS_FRAGMENT}
-  query ProductVariants(
-    $country: CountryCode
-    $language: LanguageCode
-    $handle: String!
-  ) @inContext(country: $country, language: $language) {
-    product(handle: $handle) {
-      ...ProductVariants
-    }
-  }
-` as const;
-
-const RECOMMENDED_PRODUCTS_QUERY = `#graphql
+const RECOMMENDED_PRODUCT_FRAGMENT = `#graphql
   fragment ProductDetailRecommendedProduct on Product {
     id
     title
@@ -1991,8 +2145,97 @@ const RECOMMENDED_PRODUCTS_QUERY = `#graphql
       }
     }
   }
-  query ProductRecommendations ($country: CountryCode, $language: LanguageCode)
-    @inContext(country: $country, language: $language) {
+`;
+
+const PRODUCT_QUERY = `#graphql
+  ${RECOMMENDED_PRODUCT_FRAGMENT}
+  query Product(
+    $country: CountryCode
+    $language: LanguageCode
+    $handle: String!
+    $selectedOptions: [SelectedOptionInput!]!
+
+  ) @inContext(country: $country, language: $language) {
+    product(handle: $handle) {
+      ...Product
+    }
+  }
+  ${PRODUCT_FRAGMENT}
+` as const;
+
+const PRODUCT_VARIANTS_FRAGMENT = `#graphql
+  fragment ProductVariants on Product {
+    variants(first: 250) {
+      nodes {
+        ...ProductVariant
+      }
+    }
+  }
+  ${PRODUCT_VARIANT_FRAGMENT}
+` as const;
+
+const REVIEWS_QUERY = `#graphql
+  query ProductReviews($type: String!) {
+    metaobjects(type: $type, first: 250) {
+      nodes {
+        fields {
+          key
+          value
+        }
+      }
+    }
+  }
+`;
+
+const VARIANTS_QUERY = `#graphql
+  ${PRODUCT_VARIANTS_FRAGMENT}
+  query ProductVariants(
+    $country: CountryCode
+    $language: LanguageCode
+    $handle: String!
+  ) @inContext(country: $country, language: $language) {
+    product(handle: $handle) {
+      ...ProductVariants
+    }
+  }
+` as const;
+
+const RECOMMENDED_PRODUCTS_QUERY = `#graphql
+  ${RECOMMENDED_PRODUCT_FRAGMENT}
+  query ProductRecommendations(
+    $country: CountryCode
+    $language: LanguageCode
+    $productId: ID!
+  ) @inContext(country: $country, language: $language) {
+    productRecommendations(productId: $productId, intent: RELATED) {
+      ...ProductDetailRecommendedProduct
+    }
+  }
+` as const;
+
+const COLLECTION_PRODUCTS_QUERY = `#graphql
+  ${RECOMMENDED_PRODUCT_FRAGMENT}
+  query CollectionProducts(
+    $country: CountryCode
+    $language: LanguageCode
+    $collectionId: ID!
+  ) @inContext(country: $country, language: $language) {
+    collection(id: $collectionId) {
+      products(first: 5) {
+        nodes {
+          ...ProductDetailRecommendedProduct
+        }
+      }
+    }
+  }
+` as const;
+
+const NEWEST_PRODUCTS_QUERY = `#graphql
+  ${RECOMMENDED_PRODUCT_FRAGMENT}
+  query NewestProducts(
+    $country: CountryCode
+    $language: LanguageCode
+  ) @inContext(country: $country, language: $language) {
     products(first: 4, sortKey: UPDATED_AT, reverse: true) {
       nodes {
         ...ProductDetailRecommendedProduct

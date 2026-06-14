@@ -470,6 +470,7 @@ export function DeliveryPickupModal({
                                     setBranchSort={setBranchSort}
                                     userCoords={userCoords}
                                     geoError={geoError}
+                                    selectedAddressName={selectedAddressName}
                                 />
                             );
                         }}
@@ -510,6 +511,7 @@ function ModalContent({
     setBranchSort,
     userCoords,
     geoError,
+    selectedAddressName,
 }: any) {
     const isEn = locale === 'en';
     const [zoom, setZoom] = useState(14);
@@ -526,7 +528,20 @@ function ModalContent({
     // Ensure the selected branch belongs to the active tab's domain
     let effectiveSelectedBranch = selectedBranch;
     if (activeTab === 'delivery') {
-        const isValidAddress = addresses.some((a: any) => a.id === selectedBranch);
+        let isValidAddress = addresses.some((a: any) => a.id === selectedBranch);
+        
+        // If we have a selectedAddressName from session but selectedBranch is a Store Location ID
+        if (!isValidAddress && selectedAddressName) {
+            const matchedAddress = addresses.find((a: any) => 
+                selectedAddressName.includes(a.address1) || 
+                selectedAddressName.includes(a.firstName)
+            );
+            if (matchedAddress) {
+                effectiveSelectedBranch = matchedAddress.id;
+                isValidAddress = true;
+            }
+        }
+        
         if (!isValidAddress) effectiveSelectedBranch = addresses[0]?.id || '';
     } else {
         const isValidBranch = branches.some((b: any) => b.id === selectedBranch);
@@ -539,13 +554,17 @@ function ModalContent({
 
     const [hasAutoSelected, setHasAutoSelected] = useState(false);
 
-    // Auto-select nearest branch when coords are detected (once per session)
+    // Auto-select nearest branch when coords are detected
     useEffect(() => {
         if (userCoords && !hasAutoSelected && activeTab === 'pickup' && branches.length > 0) {
-            setSelectedBranch(branches[0].id);
+            // Only auto-select if there isn't already a valid saved branch
+            const isValidSavedBranch = branches.some((b: any) => b.id === selectedBranch);
+            if (!isValidSavedBranch) {
+                setSelectedBranch(branches[0].id);
+            }
             setHasAutoSelected(true);
         }
-    }, [userCoords, hasAutoSelected, activeTab, branches, setSelectedBranch]);
+    }, [userCoords, hasAutoSelected, activeTab, branches, selectedBranch, setSelectedBranch]);
 
     // Auto-select first address under delivery tab when no manual selection is made yet
     useEffect(() => {
@@ -677,12 +696,12 @@ function ModalContent({
                                 addresses.map((addr: any) => (
                                     <button
                                         key={addr.id}
-                                        className={`w-full p-5 mb-3 text-start border-2 rounded-2xl transition-all ${selectedBranch === addr.id ? 'border-[#234745] bg-[#fcfaf5]' : 'border-gray-50 hover:border-gray-200 bg-white'}`}
+                                        className={`w-full p-5 mb-3 text-start border-2 rounded-2xl transition-all ${effectiveSelectedBranch === addr.id ? 'border-[#234745] bg-[#fcfaf5]' : 'border-gray-50 hover:border-gray-200 bg-white'}`}
                                         onClick={() => setSelectedBranch(addr.id)}
                                     >
                                         <div className="flex justify-between items-center mb-1">
                                             <p className="font-bold text-[#234745]">{addr.firstName} {addr.lastName}</p>
-                                            {selectedBranch === addr.id && <div className="w-2 h-2 rounded-full bg-[#234745]" />}
+                                            {effectiveSelectedBranch === addr.id && <div className="w-2 h-2 rounded-full bg-[#234745]" />}
                                         </div>
                                         <p className="text-sm text-gray-500 truncate">{addr.address1}</p>
                                         <p className="text-xs text-gray-400 mt-1">{addr.city}</p>

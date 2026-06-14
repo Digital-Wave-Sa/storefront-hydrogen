@@ -44,7 +44,7 @@ export function LoyaltyProgram() {
 
                                 {/* Points */}
                                 <div className="text-white text-[48px] lg:text-[52px] font-black leading-none mb-1 font-en tracking-tight">
-                                    {new Intl.NumberFormat(isEn ? 'en-US' : 'ar-EG').format(2456)}
+                                    {new Intl.NumberFormat('en-US').format(2456)}
                                 </div>
                                 <p className="text-[#a8d4be] text-[13px] font-medium mb-5">
                                     {isEn ? 'Available Points' : 'نقطة متاحة'}

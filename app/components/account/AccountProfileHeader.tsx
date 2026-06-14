@@ -48,13 +48,13 @@ export function AccountProfileHeader({
             <div className="mb-2 md:mb-3 flex flex-col gap-1 w-full">
               <h2 
                 className="text-[20px] md:text-[26px] font-bold leading-tight text-white !mb-0 !mt-0 truncate w-full"
-                style={{ fontFamily: '"Bahij Janna", sans-serif' }}
+                style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" }}
               >
                 {customer.firstName} {customer.lastName}
               </h2>
               <p 
                 className="text-[14px] md:text-[18px] text-[#A6BFB9] font-medium flex gap-1 flex-wrap !m-0 items-center"
-                style={{ fontFamily: '"GE Dinar One", sans-serif' }}
+                style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
               >
                 <span dir="ltr" className="truncate max-w-[120px] md:max-w-none font-en">{customer.phone || customer.email}</span>
                 <span>•</span>

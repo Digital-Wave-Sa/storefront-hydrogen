@@ -21,22 +21,22 @@ export default function AccountDashboard() {
         {/* Total Spending */}
         <div className="bg-white border border-[#9FB7AE] rounded-[12px] py-8 px-4 flex flex-col items-center justify-center text-center gap-2">
            <div className="flex items-center justify-center gap-2" dir="ltr">
-             <span className="text-[28px] md:text-[34px] font-bold text-[#234745] leading-none" style={!isEn ? { fontFamily: '"GE Dinar One", sans-serif' } : undefined}>
+             <span className="text-[28px] md:text-[34px] font-bold text-[#234745] leading-none font-en">
                4,200
              </span>
              <span className="text-[#234745]"><CurrencyIcon className="h-6 w-auto" /></span>
            </div>
-           <p className="text-[14px] text-[#A6BFB9] font-medium" style={!isEn ? { fontFamily: '"GE Dinar One", sans-serif' } : undefined}>
+           <p className="text-[14px] text-[#A6BFB9] font-medium" style={!isEn ? { fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" } : undefined}>
              {isEn ? 'Total Spending' : 'إجمالي الإنفاق'}
            </p>
         </div>
 
         {/* Total Orders */}
         <div className="bg-white border border-[#9FB7AE] rounded-[12px] py-8 px-4 flex flex-col items-center justify-center text-center gap-2">
-           <span className="text-[28px] md:text-[34px] font-bold text-[#234745] leading-none" style={!isEn ? { fontFamily: '"GE Dinar One", sans-serif' } : undefined}>
+           <span className="text-[28px] md:text-[34px] font-bold text-[#234745] leading-none font-en">
              {customer.numberOfOrders || 12}
            </span>
-           <p className="text-[14px] text-[#A6BFB9] font-medium" style={!isEn ? { fontFamily: '"GE Dinar One", sans-serif' } : undefined}>
+           <p className="text-[14px] text-[#A6BFB9] font-medium" style={!isEn ? { fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" } : undefined}>
              {isEn ? 'Total Orders' : 'إجمالي الطلبات'}
            </p>
         </div>
@@ -73,20 +73,20 @@ export default function AccountDashboard() {
                     alt="Product" 
                     className="w-16 h-16 md:w-20 md:h-20 rounded-[12px] object-cover border border-gray-100"
                   />
-                  <div className="absolute -top-2 -start-2 w-6 h-6 bg-[#234745] text-white rounded-full flex items-center justify-center text-[11px] font-bold border-2 border-white">
+                  <div className="absolute -top-2 -start-2 w-6 h-6 bg-[#234745] text-white rounded-full flex items-center justify-center text-[11px] font-bold border-2 border-white font-en">
                     {productCount.toLocaleString('en-US')}
                   </div>
                 </div>
                 <div className="flex flex-col gap-1">
-                  <h3 className="text-[16px] md:text-[18px] font-bold text-[#234745] leading-none" style={!isEn ? { fontFamily: '"Bahij Janna", sans-serif' } : undefined}>
-                    {isEn ? `Last Order — #${lastOrder.orderNumber}` : `آخر طلب — #${lastOrder.orderNumber}`}
+                  <h3 className="text-[16px] md:text-[18px] font-bold text-[#234745] leading-none flex items-center gap-1" style={!isEn ? { fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" } : undefined}>
+                    {isEn ? `Last Order — #${lastOrder.orderNumber}` : <>آخر طلب — <span className="font-en pt-1">#{lastOrder.orderNumber}</span></>}
                   </h3>
                   <p className="text-[12px] text-[#A6BFB9] font-medium leading-tight">
-                    {isEn ? `${productCount} Products` : `${productCount.toLocaleString('en-US')} منتجات`} • {parseFloat(totalAmount).toLocaleString('en-US')} <CurrencyIcon className="h-3 w-auto inline-block ms-1" />
+                    {isEn ? `${productCount} Products` : <><span className="font-en">{productCount.toLocaleString('en-US')}</span> منتجات</>} • <span className="font-en">{parseFloat(totalAmount).toLocaleString('en-US')}</span> <CurrencyIcon className="h-3 w-auto inline-block ms-1" />
                   </p>
-                  <div className="flex items-center justify-start gap-1.5 mt-1" dir="rtl">
+                  <div className="flex items-center justify-start gap-1.5 mt-1">
                      <span className="text-[#234745]"><CurrencyIcon className="h-4 w-auto" /></span>
-                     <span className="text-[16px] font-bold text-[#234745] leading-none" style={!isEn ? { fontFamily: '"GE Dinar One", sans-serif' } : undefined}>
+                     <span className="text-[16px] font-bold text-[#234745] leading-none font-en">
                        {parseFloat(totalAmount).toLocaleString('en-US')}
                      </span>
                   </div>
@@ -96,7 +96,7 @@ export default function AccountDashboard() {
               {/* Status & Actions (Second in RTL -> Left side) */}
               <div className="flex flex-col items-end gap-3 w-full md:w-auto">
                 <div className="flex items-center gap-2">
-                  <span className="text-[13px] font-bold text-[#234745]" style={!isEn ? { fontFamily: '"Bahij Janna", sans-serif' } : undefined}>
+                  <span className="text-[13px] font-bold text-[#234745]" style={!isEn ? { fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" } : undefined}>
                     {isEn ? statusEn : statusAr}
                   </span>
                   <div className="w-1.5 h-1.5 rounded-full bg-[#234745]" />
@@ -127,23 +127,23 @@ export default function AccountDashboard() {
       <div className="bg-white border border-[#9FB7AE] rounded-[12px] p-6 relative overflow-hidden">
         <div className="flex flex-col gap-6">
            <div className="flex items-center justify-between">
-              <div className="text-right">
-                 <h2 className="text-[16px] font-bold text-[#234745] mb-2" style={!isEn ? { fontFamily: '"Bahij Janna", sans-serif' } : undefined}>
+              <div className="text-start">
+                 <h2 className="text-[16px] font-bold text-[#234745] mb-2" style={!isEn ? { fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" } : undefined}>
                    {isEn ? 'Loyalty Points' : 'نقاط الولاء'}
                  </h2>
-                 <p className="text-[36px] md:text-[46px] font-bold text-[#234745] leading-none mb-1" style={!isEn ? { fontFamily: '"GE Dinar One", sans-serif' } : undefined}>
+                 <p className="text-[36px] md:text-[46px] font-bold text-[#234745] leading-none mb-1 font-en">
                    0
                  </p>
-                 <p className="text-[12px] text-[#A6BFB9] font-medium">
-                   {isEn ? '1 Point = ~1 Halala' : '1 نقطة = 1 هللة تقريباً'}
+                 <p className="text-[12px] text-[#A6BFB9] font-medium flex items-center gap-1 justify-start">
+                   {isEn ? '1 Point = ~1 Halala' : <><span className="font-en pt-0.5">1</span> نقطة = <span className="font-en pt-0.5">1</span> هللة تقريباً</>}
                  </p>
               </div>
-              <div className="text-left">
+              <div className="text-end">
                  <p className="text-[12px] text-[#A6BFB9] font-medium mb-1">
                    {isEn ? 'Next Level' : 'المستوى التالي'}
                  </p>
-                 <p className="text-[16px] md:text-[18px] font-bold text-[#234745]">
-                   {isEn ? '300 points remaining' : '300 نقطة متبقية'}
+                 <p className="text-[16px] md:text-[18px] font-bold text-[#234745] flex items-center gap-1 justify-end">
+                   {isEn ? '300 points remaining' : <><span className="font-en pt-0.5">300</span> نقطة متبقية</>}
                  </p>
               </div>
            </div>

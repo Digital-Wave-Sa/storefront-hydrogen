@@ -239,16 +239,18 @@ export function NoSearchResults({ searchTerm }: { searchTerm: string }) {
       <h2 className="relative z-10 text-3xl font-black text-[#234745] mb-4">
         {searchTerm ? (isEn ? 'No results found' : 'لم نجد أي نتائج') : (isEn ? 'Start searching' : 'ابدأ البحث')}
       </h2>
-      <p className="relative z-10 text-gray-500 max-w-md mx-auto mb-10 text-lg">
-        {searchTerm
-          ? (isEn ? `Sorry, we couldn't find any products matching "${searchTerm}". Try checking your spelling or using more general terms.` : `عذراً، لم نتمكن من العثور على أي منتج يطابق "${searchTerm}". جرب البحث بكلمات مختلفة أو عامة أكثر.`)
-          : (isEn ? 'Search for your favorite sweets, cakes, or chocolates.' : 'ابدأ البحث عن حلوياتك المفضلة، الكيك، أو الشوكولاته الفاخرة.')
-        }
-      </p>
+      <div className="relative z-10 flex justify-center mb-10">
+        <p className="text-gray-500 max-w-lg text-lg leading-relaxed" style={{ textAlign: 'center' }}>
+          {searchTerm
+            ? (isEn ? `Sorry, we couldn't find any products matching "${searchTerm}". Try checking your spelling or using more general terms.` : `عذراً، لم نتمكن من العثور على أي منتج يطابق "${searchTerm}". جرب البحث بكلمات مختلفة أو عامة أكثر.`)
+            : (isEn ? 'Search for your favorite sweets, cakes, or chocolates.' : 'ابدأ البحث عن حلوياتك المفضلة، الكيك، أو الشوكولاته الفاخرة.')
+          }
+        </p>
+      </div>
 
       {/* Popular Suggestions */}
       <div className="relative z-10 mb-12">
-        <p className="text-sm font-bold tracking-widest uppercase text-gray-400 mb-4">
+        <p className="text-sm font-bold tracking-widest uppercase text-gray-400 mb-4" style={{ textAlign: 'center' }}>
           {isEn ? 'Popular Searches' : 'عمليات بحث شائعة'}
         </p>
         <div className="flex flex-wrap justify-center gap-3 max-w-lg mx-auto">
@@ -264,10 +266,10 @@ export function NoSearchResults({ searchTerm }: { searchTerm: string }) {
         </div>
       </div>
 
-      <div className="relative z-10">
+      <div className="relative z-10 flex justify-center">
         <Link
           to={isEn ? "/en" : "/"}
-          className="inline-flex items-center gap-3 bg-[#234745] text-white px-8 py-3.5 rounded-2xl font-bold hover:bg-[#234745] transition-all shadow-lg hover:shadow-xl active:scale-95"
+          className="inline-flex items-center gap-3 bg-[#234745] !text-white px-8 py-3.5 rounded-2xl font-bold hover:bg-[#234745] transition-all shadow-lg hover:shadow-xl active:scale-95"
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={isEn ? '' : 'rotate-180'}><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
           {isEn ? 'Back to Shop' : 'العودة للتسوق'}

@@ -152,14 +152,14 @@ export async function action({ request, context }: ActionFunctionArgs) {
         namespace: "custom",
         key: "delivery_fee",
         value: deliveryFee,
-        type: "number_decimal"
+        type: "number_integer"
       },
       {
         ownerId: locationId,
         namespace: "custom",
         key: "free_delivery_threshold",
         value: threshold,
-        type: "number_decimal"
+        type: "number_integer"
       }
     ]
   };
@@ -174,6 +174,11 @@ export async function action({ request, context }: ActionFunctionArgs) {
   });
 
   const result = await res.json();
+  console.log('[BranchDashboard] Metafields Update Result:', JSON.stringify(result, null, 2));
+
+  if (result.errors) {
+    return data({ error: result.errors[0].message }, { status: 400 });
+  }
 
   if (result.data?.metafieldsSet?.userErrors?.length > 0) {
     return data({ error: result.data.metafieldsSet.userErrors[0].message }, { status: 400 });
@@ -206,6 +211,13 @@ export default function BranchDashboard() {
         <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-xl mb-6 animate-fade-in flex items-center gap-2">
            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
            {isEn ? 'Settings updated successfully!' : 'تم تحديث الإعدادات بنجاح!'}
+        </div>
+      )}
+
+      {actionData?.error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl mb-6 animate-fade-in flex items-center gap-2">
+           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+           {actionData.error}
         </div>
       )}
 

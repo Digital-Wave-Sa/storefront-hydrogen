@@ -266,25 +266,25 @@ export function BestSellers({
                                                     
                                                     {/* Title */}
                                                     <Link to={isVisibilityBlocked ? '#' : getProductUrl(product.handle)} onClick={isVisibilityBlocked ? (e: any) => e.preventDefault() : undefined}>
-                                                        <h3 className={`text-[#234745] font-black text-xl lg:text-[22px] leading-tight mb-4 line-clamp-2 transition-colors ${isVisibilityBlocked ? '' : 'hover:opacity-80'}`}>
+                                                        <h3 className={`font-bold text-[#234745] line-clamp-1 transition-colors duration-300 ${isVisibilityBlocked ? '' : 'hover:text-[#1a3a2d]'}`} style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", fontSize: '18px', lineHeight: '24px' }}>
                                                             {product.title}
                                                         </h3>
                                                     </Link>
 
                                                     {/* Price Row (Side by side) */}
                                                     {!isVisibilityBlocked ? (
-                                                      <div className="flex items-center gap-3 justify-start mb-6" dir={isEn ? 'ltr' : 'rtl'}>
-                                                          <div className="text-[#234745] font-bold text-xl lg:text-2xl flex items-baseline gap-1">
-                                                              <Price data={product.priceRange.minVariantPrice} isEn={isEn} showSymbol={true} />
+                                                      <div className="mt-2 mb-4 flex items-center gap-3 justify-start" dir={isEn ? 'ltr' : 'rtl'}>
+                                                          <div className="text-[#234745] flex items-baseline gap-1">
+                                                              <Price data={product.priceRange.minVariantPrice} isEn={isEn} showSymbol={true} size="lg" />
                                                           </div>
                                                           {hasDiscount && (
-                                                              <div className="text-[#E64950] line-through text-base font-bold flex gap-1 items-baseline">
+                                                              <div className="text-[#E64950] line-through flex gap-1 items-baseline">
                                                                   <Price data={compareAtPrice} isEn={isEn} showSymbol={true} size="md" />
                                                               </div>
                                                           )}
                                                       </div>
                                                     ) : (
-                                                      <div className="mb-6">
+                                                      <div className="mt-2 mb-4">
                                                         <span className={`text-sm font-bold ${visibility.status === 'scheduled' ? 'text-amber-600' : 'text-red-500'}`}>
                                                           {isEn ? visibility.label.en : visibility.label.ar}
                                                         </span>
@@ -372,15 +372,15 @@ function BestSellersAddToCart({
         return (
             <button
                 type="button"
-                className="w-full h-12 rounded-full font-bold text-[15px] bg-amber-500 hover:bg-amber-600 transition-colors shadow-sm"
-                style={{ color: '#ffffff' }}
+                className="w-full h-[44px] flex items-center justify-center rounded-full font-bold text-[15px] bg-amber-500 text-white hover:bg-amber-600 shadow-sm transition-all duration-300 active:scale-95"
+                style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
                 onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
                     onNotifyClick?.();
                 }}
             >
-                {notifyLabel}
+                🔔 {notifyLabel}
             </button>
         );
     }
@@ -409,8 +409,8 @@ function BestSellersAddToCart({
     return (
         <AddToCartButton
             lines={lines}
-            className={`w-full py-3.5 rounded-full font-bold text-[16px] transition-all shadow-sm ${isPreorder ? 'bg-[#004f59] hover:bg-[#003d45]' : 'bg-[#234745] hover:bg-[#163529] active:scale-[0.98]'}`}
-            style={{ color: '#ffffff' }}
+            className={`w-full h-[44px] flex items-center justify-center rounded-full font-bold text-[15px] shadow-sm transition-all duration-300 active:scale-95 ${isPreorder ? 'bg-[#004f59] text-white hover:bg-[#003d45]' : 'bg-[#234745] text-white hover:bg-[#163529]'}`}
+            style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
             disabled={isOutOfStock}
         >
             {addLabel}

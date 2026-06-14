@@ -11,7 +11,7 @@ export function Footer({ footer, locale }: { footer: Promise<FooterQuery | null>
       <Await resolve={footer}>
         {(footerData) => {
           return (
-            <footer dir={isEn ? 'ltr' : 'rtl'} className={`w-full bg-[#234745] flex flex-col items-center pt-12 pb-10 ${isEn ? 'font-en' : ''}`} style={isEn ? {} : { fontFamily: "'GE Dinar One', sans-serif" }}>
+            <footer dir={isEn ? 'ltr' : 'rtl'} className={`w-full bg-[#234745] flex flex-col items-center pt-12 pb-10 ${isEn ? 'font-en' : ''}`} style={isEn ? {} : { fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
               <div className="w-full max-w-[1280px] flex flex-col items-center gap-10 px-6">
                 
                 {/* === MOBILE FOOTER (Hidden on Desktop) === */}
@@ -169,7 +169,7 @@ export function Footer({ footer, locale }: { footer: Promise<FooterQuery | null>
                     <NavLink to={isEn ? "/en/pages/privacy" : "/pages/privacy"} className="font-medium text-[15px] md:text-[16px] hover:text-white transition-colors" style={{ color: '#FEF8EB' }}>{isEn ? 'Privacy Policy' : 'سياسة الخصوصية'}</NavLink>
                   </div>
                   <div className="font-medium text-[15px] md:text-[16px] text-center w-full md:w-auto" style={{ color: '#FEF8EB' }}>
-                     {isEn ? '© 2026 Saadeddin — All Rights Reserved' : <span>© <span className="font-sans inline-block" dir="ltr">٢٠٢٦</span> سعد الدين — جميع الحقوق محفوظة</span>}
+                     {isEn ? '© 2026 Saadeddin — All Rights Reserved' : <span>© <span className="font-sans inline-block" dir="ltr">2026</span> سعد الدين — جميع الحقوق محفوظة</span>}
                   </div>
                 </div>
 

@@ -32,13 +32,13 @@ export default function AboutPage() {
           }}
         />
         <div className="relative z-10 text-center max-w-[800px]">
-          <p className="text-[16px] font-medium opacity-80 mb-2" style={{ fontFamily: "'GE Dinar One', sans-serif", lineHeight: '100%' }}>
+          <p className="text-[16px] font-medium opacity-80 mb-2" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", lineHeight: '100%' }}>
             {isEn ? 'Since 1919' : 'منذ عام ١٩١٩'}
           </p>
-          <h1 className="font-bold" style={{ fontSize: '50px', fontFamily: "'Bahij Janna', sans-serif", lineHeight: '1.4', color: 'rgb(254, 248, 235)', marginTop: '10px', marginBottom: '1rem' }}>
+          <h1 className="font-bold" style={{ fontSize: '50px', fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif", lineHeight: '1.4', color: 'rgb(254, 248, 235)', marginTop: '10px', marginBottom: '1rem' }}>
             {isEn ? "More than a century of authentic taste" : 'أكثر من مئة عام من الطعم الأصيل'}
           </h1>
-          <p className="text-[14px] md:text-[16px] font-medium opacity-80 mt-4" style={{ fontFamily: "'GE Dinar One', sans-serif", lineHeight: '1.6' }}>
+          <p className="text-[14px] md:text-[16px] font-medium opacity-80 mt-4" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", lineHeight: '1.6' }}>
             {isEn ? 'A story that started with a stove and a secret recipe... and has become today part of the memory of every Saudi home.' : 'قصة بدأت بموقد ووصفة سرية، وأصبحت اليوم جزءاً من ذاكرة كل بيت سعودي'}
           </p>
         </div>
@@ -50,13 +50,13 @@ export default function AboutPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-10 md:gap-20 items-center">
           {/* Text Content */}
           <div className="space-y-4 text-right">
-            <p className="text-[#B5945B] text-[16px] font-bold" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
+            <p className="text-[#B5945B] text-[16px] font-bold" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
               {isEn ? "The Founder's Story" : 'قصة المؤسس'}
             </p>
-            <h2 className="text-[32px] md:text-[44px] font-bold text-[#1F413F] !mt-1" style={{ fontFamily: "'Bahij Janna', sans-serif", lineHeight: '1.2' }}>
+            <h2 className="text-[32px] md:text-[44px] font-bold text-[#1F413F] !mt-1" style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif", lineHeight: '1.2' }}>
               {isEn ? "It started with a man, a dream, and a small stove" : 'بدأت برجل وحلم وموقد صغير'}
             </h2>
-            <div className="text-[#1F413F]/80 text-[16px] space-y-2 !mt-6" style={{ fontFamily: "'GE Dinar One', sans-serif", lineHeight: '1.8' }}>
+            <div className="text-[#1F413F]/80 text-[16px] space-y-2 !mt-6" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", lineHeight: '1.8' }}>
               <p>
                 {isEn 
                   ? "In 1919, Saadeddin opened its doors for the first time in the heart of Riyadh. He had nothing in his hands but inherited family recipes and a sincere desire to make those around him happy with the finest sweets."
@@ -86,10 +86,10 @@ export default function AboutPage() {
       <div className="bg-[#fef8eb] py-16 md:py-24">
         <div className="max-w-[1400px] mx-auto px-4 md:px-[80px]">
           <div className="text-center mb-16">
-            <p className="text-[#B5945B] text-[16px] font-bold mb-2" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
+            <p className="text-[#B5945B] text-[16px] font-bold mb-2" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
               {isEn ? "A Journey Through Time" : 'رحلة عبر الزمن'}
             </p>
-            <h2 className="text-[38px] font-bold text-[#1F413F]" style={{ fontFamily: "'Bahij Janna', sans-serif" }}>
+            <h2 className="text-[38px] font-bold text-[#1F413F]" style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" }}>
               {isEn ? "Our Major Milestones" : 'محطاتنا الكبرى'}
             </h2>
           </div>
@@ -98,7 +98,7 @@ export default function AboutPage() {
           <div className="relative" dir="ltr">
             {/* SVG Connections for Desktop */}
             {/* Watermark Background */}
-            <div className="absolute inset-0 flex items-center justify-center opacity-[0.03] pointer-events-none text-[120px] md:text-[180px] font-bold text-[#1F413F]" style={{ fontFamily: "'Bahij Janna', sans-serif", letterSpacing: '0.2em' }}>
+            <div className="absolute inset-0 flex items-center justify-center opacity-[0.03] pointer-events-none text-[120px] md:text-[180px] font-bold text-[#1F413F]" style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif", letterSpacing: '0.2em' }}>
               SAADEDDIN
             </div>
 
@@ -183,10 +183,10 @@ export default function AboutPage() {
       <div className="bg-white py-16 md:py-24">
         <div className="max-w-[1400px] mx-auto px-4 md:px-[80px]">
           <div className="text-center mb-16">
-            <p className="text-[#B5945B] text-[16px] font-bold mb-2" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
+            <p className="text-[#B5945B] text-[16px] font-bold mb-2" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
               {isEn ? "Our Values" : 'قيمنا'}
             </p>
-            <h2 className="text-[38px] font-bold text-[#1F413F]" style={{ fontFamily: "'Bahij Janna', sans-serif" }}>
+            <h2 className="text-[38px] font-bold text-[#1F413F]" style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" }}>
               {isEn ? "What Guides Us in Every Decision" : 'ما يحكمنا في كل قرار'}
             </h2>
           </div>
@@ -194,60 +194,60 @@ export default function AboutPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8" dir="rtl">
             {/* Card 1 */}
             <div className="bg-white border border-[#EAF2F1] rounded-[12px] p-8 text-center flex flex-col items-center justify-center space-y-4 shadow-sm">
-              <h3 className="text-[24px] font-bold text-[#1F413F]" style={{ fontFamily: "'Bahij Janna', sans-serif" }}>
+              <h3 className="text-[24px] font-bold text-[#1F413F]" style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" }}>
                 {isEn ? "Quality First" : 'الجودة أولاً'}
               </h3>
-              <p className="text-[#1F413F]/70 text-[16px]" style={{ fontFamily: "'GE Dinar One', sans-serif", lineHeight: '1.6' }}>
+              <p className="text-[#1F413F]/70 text-[16px]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", lineHeight: '1.6' }}>
                 {isEn ? "We choose the finest ingredients and refuse any compromise on quality whatever the cost." : 'نختار أجود المكونات ونرفض أي تنازل في الجودة مهما كانت التكلفة'}
               </p>
             </div>
 
             {/* Card 2 */}
             <div className="bg-white border border-[#EAF2F1] rounded-[12px] p-8 text-center flex flex-col items-center justify-center space-y-4 shadow-sm">
-              <h3 className="text-[24px] font-bold text-[#1F413F]" style={{ fontFamily: "'Bahij Janna', sans-serif" }}>
+              <h3 className="text-[24px] font-bold text-[#1F413F]" style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" }}>
                 {isEn ? "Authenticity & Heritage" : 'الأصالة والموروث'}
               </h3>
-              <p className="text-[#1F413F]/70 text-[16px]" style={{ fontFamily: "'GE Dinar One', sans-serif", lineHeight: '1.6' }}>
+              <p className="text-[#1F413F]/70 text-[16px]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", lineHeight: '1.6' }}>
                 {isEn ? "We preserve authentic recipes while embracing renewal that does not spoil the taste." : 'نحافظ على الوصفات الأصيلة مع احتضان التجديد الذي لا يُفسد الطعم'}
               </p>
             </div>
 
             {/* Card 3 */}
             <div className="bg-white border border-[#EAF2F1] rounded-[12px] p-8 text-center flex flex-col items-center justify-center space-y-4 shadow-sm">
-              <h3 className="text-[24px] font-bold text-[#1F413F]" style={{ fontFamily: "'Bahij Janna', sans-serif" }}>
+              <h3 className="text-[24px] font-bold text-[#1F413F]" style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" }}>
                 {isEn ? "Making People Happy" : 'إسعاد الناس'}
               </h3>
-              <p className="text-[#1F413F]/70 text-[16px]" style={{ fontFamily: "'GE Dinar One', sans-serif", lineHeight: '1.6' }}>
+              <p className="text-[#1F413F]/70 text-[16px]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", lineHeight: '1.6' }}>
                 {isEn ? "Every product we make aims to add a moment of joy and a beautiful memory." : 'كل منتج نصنعه هدفه أن يضيف لحظة فرح وذكرى جميلة'}
               </p>
             </div>
 
             {/* Card 4 */}
             <div className="bg-white border border-[#EAF2F1] rounded-[12px] p-8 text-center flex flex-col items-center justify-center space-y-4 shadow-sm">
-              <h3 className="text-[24px] font-bold text-[#1F413F]" style={{ fontFamily: "'Bahij Janna', sans-serif" }}>
+              <h3 className="text-[24px] font-bold text-[#1F413F]" style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" }}>
                 {isEn ? "Sustainability" : 'الاستدامة'}
               </h3>
-              <p className="text-[#1F413F]/70 text-[16px]" style={{ fontFamily: "'GE Dinar One', sans-serif", lineHeight: '1.6' }}>
+              <p className="text-[#1F413F]/70 text-[16px]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", lineHeight: '1.6' }}>
                 {isEn ? "We work to reduce environmental impact and develop sustainable packaging by 2030." : 'نعمل على تقليل الأثر البيئي وتطوير تغليف مستدام بحلول ٢٠٣٠'}
               </p>
             </div>
 
             {/* Card 5 */}
             <div className="bg-white border border-[#EAF2F1] rounded-[12px] p-8 text-center flex flex-col items-center justify-center space-y-4 shadow-sm">
-              <h3 className="text-[24px] font-bold text-[#1F413F]" style={{ fontFamily: "'Bahij Janna', sans-serif" }}>
+              <h3 className="text-[24px] font-bold text-[#1F413F]" style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" }}>
                 {isEn ? "Community" : 'المجتمع'}
               </h3>
-              <p className="text-[#1F413F]/70 text-[16px]" style={{ fontFamily: "'GE Dinar One', sans-serif", lineHeight: '1.6' }}>
+              <p className="text-[#1F413F]/70 text-[16px]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", lineHeight: '1.6' }}>
                 {isEn ? "We support local communities and believe our success is not complete without the success of those around us." : 'ندعم المجتمعات المحلية ونؤمن بأن نجاحنا لا يكتمل إلا بنجاح من حولنا'}
               </p>
             </div>
 
             {/* Card 6 */}
             <div className="bg-white border border-[#EAF2F1] rounded-[12px] p-8 text-center flex flex-col items-center justify-center space-y-4 shadow-sm">
-              <h3 className="text-[24px] font-bold text-[#1F413F]" style={{ fontFamily: "'Bahij Janna', sans-serif" }}>
+              <h3 className="text-[24px] font-bold text-[#1F413F]" style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" }}>
                 {isEn ? "Innovation" : 'الابتكار'}
               </h3>
-              <p className="text-[#1F413F]/70 text-[16px]" style={{ fontFamily: "'GE Dinar One', sans-serif", lineHeight: '1.6' }}>
+              <p className="text-[#1F413F]/70 text-[16px]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", lineHeight: '1.6' }}>
                 {isEn ? "We develop new products every season while maintaining the ancient spirit of heritage." : 'نطور منتجات جديدة كل موسم مع الحفاظ على روح التراث العريقة'}
               </p>
             </div>
@@ -261,26 +261,26 @@ export default function AboutPage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center text-white" dir="rtl">
             {/* Stat 1 */}
             <div className="flex flex-col items-center justify-center space-y-2">
-              <p className="text-[42px] font-bold" style={{ fontFamily: "'Bahij Janna', sans-serif" }}>+١٠٠</p>
-              <p className="text-[16px] text-white/80" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>{isEn ? "Years of Excellence" : "عام من التميز"}</p>
+              <p className="text-[42px] font-bold" style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" }}>+١٠٠</p>
+              <p className="text-[16px] text-white/80" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>{isEn ? "Years of Excellence" : "عام من التميز"}</p>
             </div>
 
             {/* Stat 2 */}
             <div className="flex flex-col items-center justify-center space-y-2">
-              <p className="text-[42px] font-bold" style={{ fontFamily: "'Bahij Janna', sans-serif" }}>١١٧</p>
-              <p className="text-[16px] text-white/80" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>{isEn ? "Branches in the Kingdom" : "فرع في المملكة"}</p>
+              <p className="text-[42px] font-bold" style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" }}>١١٧</p>
+              <p className="text-[16px] text-white/80" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>{isEn ? "Branches in the Kingdom" : "فرع في المملكة"}</p>
             </div>
 
             {/* Stat 3 */}
             <div className="flex flex-col items-center justify-center space-y-2">
-              <p className="text-[42px] font-bold" style={{ fontFamily: "'Bahij Janna', sans-serif" }}>5+ مليون</p>
-              <p className="text-[16px] text-white/80" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>{isEn ? "Happy Customer" : "عميل سعيد"}</p>
+              <p className="text-[42px] font-bold" style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" }}>5+ مليون</p>
+              <p className="text-[16px] text-white/80" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>{isEn ? "Happy Customer" : "عميل سعيد"}</p>
             </div>
 
             {/* Stat 4 */}
             <div className="flex flex-col items-center justify-center space-y-2">
-              <p className="text-[42px] font-bold" style={{ fontFamily: "'Bahij Janna', sans-serif" }}>٢٠٠+</p>
-              <p className="text-[16px] text-white/80" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>{isEn ? "Premium Product" : "منتج فاخر"}</p>
+              <p className="text-[42px] font-bold" style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" }}>٢٠٠+</p>
+              <p className="text-[16px] text-white/80" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>{isEn ? "Premium Product" : "منتج فاخر"}</p>
             </div>
           </div>
         </div>
@@ -301,9 +301,9 @@ function TimelineItem({ number, year, title, desc, isEn }: any) {
       
       {/* Content Outside */}
       <div className="space-y-2 max-w-[250px]">
-        <p className="text-[#B5945B] text-[22px] font-bold" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>{year}</p>
-        <h3 className="text-[20px] font-bold text-[#1F413F]" style={{ fontFamily: "'Bahij Janna', sans-serif" }}>{title}</h3>
-        <p className="text-[#1F413F]/70 text-[14px]" style={{ fontFamily: "'GE Dinar One', sans-serif", lineHeight: '1.6' }}>
+        <p className="text-[#B5945B] text-[22px] font-bold" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>{year}</p>
+        <h3 className="text-[20px] font-bold text-[#1F413F]" style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" }}>{title}</h3>
+        <p className="text-[#1F413F]/70 text-[14px]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", lineHeight: '1.6' }}>
           {desc}
         </p>
       </div>

@@ -266,7 +266,7 @@ function TopBar({
           <button 
             onClick={() => setModalOpen(true)}
             className="flex items-center gap-2 md:gap-3 px-4 py-1.5 md:px-5 md:py-1.5 rounded-full bg-[#b9cdca] border border-[#91a7a2] text-[12px] md:text-[14px] hover:bg-[#a6bdbc] transition-all text-[#234745]"
-            style={!isEn ? { fontFamily: "'GE Dinar One', sans-serif" } : undefined}
+            style={!isEn ? { fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" } : undefined}
           >
             <div className="relative flex items-center pt-0.5">
               <span className="truncate max-w-[90px] md:max-w-[200px] font-medium leading-none tracking-wide">

@@ -5,7 +5,8 @@ import {
   type ActionFunctionArgs,
   type MetaFunction,
 } from 'react-router';
-import { Link, useLoaderData, useFetcher } from 'react-router';
+import { Suspense } from 'react';
+import { Link, useLoaderData, useFetcher, useOutletContext, useSearchParams, Await } from 'react-router';
 import { Money, Pagination, getPaginationVariables } from '@shopify/hydrogen';
 import type {
   CustomerOrdersFragment,
@@ -37,22 +38,18 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
 export async function loader({ request, context }: LoaderFunctionArgs) {
   const { session, storefront } = context;
-  const url = new URL(request.url);
-  const searchTerm = url.searchParams.get('q') || '';
-  const statusFilter = url.searchParams.get('status') || 'all';
-
   const customerAccessToken = await session.get('customerAccessToken');
+
   if (!customerAccessToken?.accessToken) {
     return redirect('/account/login');
   }
 
-  try {
-    const paginationVariables = getPaginationVariables(request, {
-      pageBy: 20,
-    });
+  const paginationVariables = getPaginationVariables(request, {
+    pageBy: 20,
+  });
 
+  const ordersPromise = (async () => {
     let customer: any = null;
-
     if (process.env.NODE_ENV === 'development' && customerAccessToken.accessToken === 'dev-bypass-token') {
       let mappedOrders: any[] = [];
       const savedPhone = await session.get('loginOtpPhone');
@@ -78,6 +75,7 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
                 id: `gid://shopify/Order/${o.id}`,
                 orderNumber: o.order_number,
                 processedAt: o.processed_at,
+                canceledAt: o.canceled_at,
                 financialStatus: o.financial_status ? o.financial_status.toUpperCase() : 'PAID',
                 fulfillmentStatus: o.fulfillment_status ? o.fulfillment_status.toUpperCase() : 'UNFULFILLED',
                 totalPrice: { amount: o.total_price, currencyCode: o.currency },
@@ -101,12 +99,6 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
           console.error('Failed to fetch real orders in dev bypass', e);
         }
       }
-
-      if (mappedOrders.length === 0 && !savedPhone) {
-        // We leave mappedOrders empty so the UI correctly shows the Empty state
-        // if no phone was found or if the API failed.
-      }
-
       customer = {
         orders: { 
           nodes: mappedOrders, 
@@ -130,23 +122,12 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
       });
       customer = result.customer;
     }
+    return customer?.orders;
+  })();
 
-    if (!customer) {
-      throw new Error('Customer not found');
-    }
-
-    return data({ 
-      customer, 
-      searchTerm, 
-      statusFilter,
-      locale: storefront.i18n.language.toLowerCase()
-    });
-  } catch (error: unknown) {
-    if (error instanceof Error) {
-      return data({ error: error.message }, { status: 400 });
-    }
-    return data({ error }, { status: 400 });
-  }
+  return data({ 
+    ordersPromise,
+  });
 }
 
 const CurrencyIcon = ({ className }: { className?: string }) => (
@@ -156,40 +137,54 @@ const CurrencyIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
-export default function Orders() {
-  const { customer, statusFilter, locale } = useLoaderData<typeof loader>();
-  const { orders } = customer;
-  const isEn = locale === 'en';
 
-  const counts = {
-    all: orders.nodes.length,
-    active: orders.nodes.filter((o: any) => o.fulfillmentStatus !== 'FULFILLED' && o.financialStatus !== 'REFUNDED').length,
-    fulfilled: orders.nodes.filter((o: any) => o.fulfillmentStatus === 'FULFILLED').length,
-    cancelled: orders.nodes.filter((o: any) => o.financialStatus === 'REFUNDED').length,
-  };
+export default function Orders() {
+  const { ordersPromise } = useLoaderData<typeof loader>();
+  const { locale } = useOutletContext<{ locale: string }>();
+  const [searchParams] = useSearchParams();
+  const statusFilter = searchParams.get('status') || 'all';
+  const isEn = locale === 'en';
 
   return (
     <div className="orders-page-container" dir={isEn ? 'ltr' : 'rtl'}>
       <div className="flex flex-col gap-6">
-        <h2 className="text-[28px] font-bold text-[#234745] text-start" style={!isEn ? { fontFamily: '"Bahij Janna", sans-serif' } : undefined}>
+        <h2 className="text-[28px] font-bold text-[#234745] text-start" style={!isEn ? { fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" } : undefined}>
           {isEn ? 'My Orders' : 'طلباتي'}
         </h2>
 
-        <OrdersFilters 
-          statusFilter={statusFilter} 
-          isEn={isEn} 
-          counts={counts}
-        />
+        <Suspense fallback={<div className="py-20 text-center text-gray-500">{isEn ? 'Loading orders...' : 'جاري تحميل الطلبات...'}</div>}>
+          <Await resolve={ordersPromise}>
+            {(orders) => {
+              const counts = {
+                all: orders?.nodes?.length || 0,
+                active: orders?.nodes?.filter((o: any) => o.fulfillmentStatus !== 'FULFILLED' && !o.canceledAt && o.financialStatus !== 'REFUNDED').length || 0,
+                fulfilled: orders?.nodes?.filter((o: any) => o.fulfillmentStatus === 'FULFILLED' && !o.canceledAt).length || 0,
+                cancelled: orders?.nodes?.filter((o: any) => o.canceledAt || o.financialStatus === 'REFUNDED').length || 0,
+                preorder: orders?.nodes?.filter((o: any) => o.lineItems?.nodes?.some((li: any) => li.variant?.product?.tags?.some((t: string) => t.toLowerCase() === 'pre-order') || li.customAttributes?.some((a: any) => a.key === '_is_preorder' && a.value === 'true'))).length || 0,
+              };
+              
+              return (
+                <>
+                  <OrdersFilters 
+                    statusFilter={statusFilter} 
+                    isEn={isEn} 
+                    counts={counts}
+                  />
 
-        {orders.nodes.length ? (
-          <OrdersList 
-            orders={orders} 
-            statusFilter={statusFilter}
-            isEn={isEn}
-          />
-        ) : (
-          <EmptyOrders isEn={isEn} />
-        )}
+                  {orders?.nodes?.length ? (
+                    <OrdersList 
+                      orders={orders} 
+                      statusFilter={statusFilter}
+                      isEn={isEn}
+                    />
+                  ) : (
+                    <EmptyOrders isEn={isEn} />
+                  )}
+                </>
+              )
+            }}
+          </Await>
+        </Suspense>
       </div>
     </div>
   );
@@ -198,6 +193,7 @@ export default function Orders() {
 function OrdersFilters({ statusFilter, isEn, counts }: { statusFilter: string, isEn: boolean, counts: any }) {
   const tabs = [
     { value: 'all', labelEn: `All (${counts.all})`, labelAr: `الكل (${counts.all})` },
+    { value: 'PREORDER', labelEn: `Pre-orders (${counts.preorder})`, labelAr: `الطلبات المسبقة (${counts.preorder})` },
     { value: 'ACTIVE', labelEn: `Active (${counts.active})`, labelAr: `نشطة (${counts.active})` },
     { value: 'FULFILLED', labelEn: `Delivered (${counts.fulfilled})`, labelAr: `مستلمة (${counts.fulfilled})` },
     { value: 'CANCELLED', labelEn: `Cancelled (${counts.cancelled})`, labelAr: `ملغاة (${counts.cancelled})` },
@@ -231,9 +227,11 @@ function OrdersFilters({ statusFilter, isEn, counts }: { statusFilter: string, i
 
 function OrdersList({ orders, statusFilter, isEn }: { orders: any, statusFilter: string, isEn: boolean }) {
   const filteredNodes = (orders.nodes || []).filter((order: OrderItemFragment) => {
-    if (statusFilter === 'ACTIVE') return order.fulfillmentStatus !== 'FULFILLED' && order.financialStatus !== 'REFUNDED';
-    if (statusFilter === 'FULFILLED') return order.fulfillmentStatus === 'FULFILLED';
-    if (statusFilter === 'CANCELLED') return order.financialStatus === 'REFUNDED';
+    const isCancelled = !!(order as any).canceledAt || order.financialStatus === 'REFUNDED';
+    if (statusFilter === 'ACTIVE') return order.fulfillmentStatus !== 'FULFILLED' && !isCancelled;
+    if (statusFilter === 'FULFILLED') return order.fulfillmentStatus === 'FULFILLED' && !isCancelled;
+    if (statusFilter === 'CANCELLED') return isCancelled;
+    if (statusFilter === 'PREORDER') return (order as any).lineItems.nodes.some((li: any) => li.variant?.product?.tags?.some((t: string) => t.toLowerCase() === 'pre-order') || li.customAttributes?.some((a: any) => a.key === '_is_preorder' && a.value === 'true'));
     return true;
   });
 
@@ -288,7 +286,9 @@ function OrderCard({ order, isEn }: { order: OrderItemFragment, isEn: boolean })
   
   const day = dayNum;
   const year = yearStr;
-  const dateStr = isEn ? `${monthEn} ${day}, ${year}` : `${day} ${monthAr} ${year}`;
+  const dateNode = isEn 
+    ? <>{monthEn} <span className="font-en">{day}</span>, <span className="font-en">{year}</span></>
+    : <><span className="font-en">{day}</span> {monthAr} <span className="font-en">{year}</span></>;
 
   const lineItems = order.lineItems.nodes;
   const productCount = lineItems.length;
@@ -316,15 +316,17 @@ function OrderCard({ order, isEn }: { order: OrderItemFragment, isEn: boolean })
   let statusAr = 'في الطريق إليك';
   let statusColor = '#234745'; // Dark green
   
-  if (order.fulfillmentStatus === 'FULFILLED') {
-     statusEn = 'Delivered';
-     statusAr = 'تم التسليم';
-     statusColor = '#234745';
-  } else if (order.financialStatus === 'REFUNDED' || order.fulfillmentStatus === 'CANCELLED') {
+  if ((order as any).canceledAt || order.financialStatus === 'REFUNDED' || order.fulfillmentStatus === 'CANCELLED') {
      statusEn = 'Cancelled';
      statusAr = 'ملغاه';
      statusColor = '#e74c3c'; // Red
+  } else if (order.fulfillmentStatus === 'FULFILLED') {
+     statusEn = 'Delivered';
+     statusAr = 'تم التسليم';
+     statusColor = '#234745';
   }
+
+  const isCancelled = !!((order as any).canceledAt || order.financialStatus === 'REFUNDED' || order.fulfillmentStatus === 'CANCELLED');
 
   return (
     <div className="bg-white border border-[#9FB7AE] rounded-[12px] p-6">
@@ -346,24 +348,24 @@ function OrderCard({ order, isEn }: { order: OrderItemFragment, isEn: boolean })
                 </svg>
               </div>
             )}
-            <div className="absolute -top-2 -start-2 w-6 h-6 bg-[#234745] text-white rounded-full flex items-center justify-center text-[11px] font-bold border-2 border-white">
+            <div className="absolute -top-2 -start-2 w-6 h-6 bg-[#234745] text-white rounded-full flex items-center justify-center text-[11px] font-bold border-2 border-white font-en">
               {productCount.toLocaleString('en-US')}
             </div>
           </div>
           <div className="flex flex-col gap-1 items-start w-full">
-            <span className="text-[11px] text-[#A6BFB9] font-medium leading-tight tracking-wider uppercase mb-1">
+            <span className="text-[11px] text-[#A6BFB9] font-medium leading-tight tracking-wider uppercase mb-1 font-en" dir="ltr">
               #{order.orderNumber}
             </span>
-            <h3 className="text-[14px] md:text-[15px] font-bold text-[#234745] leading-none mb-1" style={!isEn ? { fontFamily: '"Bahij Janna", sans-serif' } : undefined}>
+            <h3 className="text-[14px] md:text-[15px] font-bold text-[#234745] leading-none mb-1" style={!isEn ? { fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" } : undefined}>
               {titles}
             </h3>
-            <p className="text-[12px] text-[#A6BFB9] font-medium leading-tight">
-              {dateStr}
+            <p className="text-[12px] text-[#A6BFB9] font-medium leading-tight flex items-center gap-1" dir={isEn ? 'ltr' : 'rtl'}>
+              {dateNode}
             </p>
             <div className="flex items-center justify-start gap-1.5 mt-1">
                <span className="text-[#234745]"><CurrencyIcon className="h-4 w-auto" /></span>
-               <span className="text-[16px] font-bold text-[#234745] leading-none" style={!isEn ? { fontFamily: '"GE Dinar One", sans-serif' } : undefined}>
-                 {parseFloat(totalAmount).toLocaleString('en-US')}
+               <span className="text-[16px] font-bold text-[#234745] leading-none font-en" dir="ltr">
+                 {parseFloat(totalAmount).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                </span>
             </div>
           </div>
@@ -372,18 +374,24 @@ function OrderCard({ order, isEn }: { order: OrderItemFragment, isEn: boolean })
         {/* Left side (Status & Actions in RTL) */}
         <div className="flex flex-col items-start md:items-end gap-3 w-full md:w-auto mt-4 md:mt-0 border-t border-gray-100 md:border-none pt-4 md:pt-0">
           <div className="flex items-center gap-2">
-            <span className="text-[13px] font-bold" style={{ color: statusColor, ...(!isEn ? { fontFamily: '"Bahij Janna", sans-serif' } : {}) }}>
+            <span className="text-[13px] font-bold" style={{ color: statusColor, ...(!isEn ? { fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" } : {}) }}>
               {isEn ? statusEn : statusAr}
             </span>
             <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: statusColor }} />
           </div>
           <div className="flex items-center gap-2 w-full md:w-auto">
-              <Link 
-                to={isEn ? `/en/track-order/${order.orderNumber}` : `/track-order/${order.orderNumber}`}
-                className="flex-1 md:flex-none text-center px-6 py-2 border border-[#234745] text-[#234745] rounded-[24px] text-[13px] font-bold hover:bg-gray-50 transition-all"
-              >
-                {isEn ? 'Track / Invoice' : 'الفاتورة'}
-              </Link>
+              {isCancelled ? (
+                <span className="flex-1 md:flex-none text-center px-6 py-2 border border-gray-200 text-gray-400 bg-gray-50 rounded-[24px] text-[13px] font-bold cursor-not-allowed">
+                  {isEn ? 'Track / Invoice' : 'الفاتورة'}
+                </span>
+              ) : (
+                <Link 
+                  to={isEn ? `/en/track-order/${order.orderNumber}` : `/track-order/${order.orderNumber}`}
+                  className="flex-1 md:flex-none text-center px-6 py-2 border border-[#234745] text-[#234745] rounded-[24px] text-[13px] font-bold hover:bg-gray-50 transition-all"
+                >
+                  {isEn ? 'Track / Invoice' : 'الفاتورة'}
+                </Link>
+              )}
             <button 
               onClick={handleReorder}
               disabled={fetcher.state !== 'idle'}
@@ -408,7 +416,7 @@ function EmptyOrders({ isEn }: { isEn: boolean }) {
           <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5V6a3.75 3.75 0 10-7.5 0v4.5m11.356-1.993l1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 01-1.12-1.243l1.264-12A1.125 1.125 0 015.513 7.5h12.974c.576 0 1.059.435 1.119 1.007zM8.625 10.5a.375.375 0 11-.75 0 .375.375 0 01.75 0zm7.5 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
         </svg>
       </div>
-      <h3 className="text-[18px] font-bold text-[#234745] mt-4" style={!isEn ? { fontFamily: '"Bahij Janna", sans-serif' } : undefined}>
+      <h3 className="text-[18px] font-bold text-[#234745] mt-4" style={!isEn ? { fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" } : undefined}>
         {isEn ? "No order history yet" : "لا توجد طلبات سابقة"}
       </h3>
       <Link to="/collections" className="mt-6 inline-block px-8 py-3 bg-[#234745] text-white rounded-[24px] text-[13px] font-bold hover:opacity-90">
@@ -426,10 +434,15 @@ const ORDER_ITEM_FRAGMENT = `#graphql
     }
     financialStatus
     fulfillmentStatus
+    canceledAt
     id
     lineItems(first: 10) {
       nodes {
         title
+        customAttributes {
+          key
+          value
+        }
         variant {
           image {
             url

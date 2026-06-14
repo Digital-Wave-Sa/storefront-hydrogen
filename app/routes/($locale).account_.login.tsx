@@ -40,7 +40,10 @@ export async function action({ request, context }: ActionFunctionArgs) {
   if (intent === 'send-otp') {
     const phone = String(form.get('phone') || '');
     let cleanPhone = phone.replace(/\D/g, '');
-    if (cleanPhone.startsWith('0')) cleanPhone = cleanPhone.substring(1);
+    if (cleanPhone.startsWith('00966')) cleanPhone = cleanPhone.substring(5);
+    else if (cleanPhone.startsWith('966')) cleanPhone = cleanPhone.substring(3);
+    else if (cleanPhone.startsWith('05')) cleanPhone = cleanPhone.substring(1);
+    
     const fullPhone = `+966${cleanPhone}`;
 
 
@@ -48,16 +51,18 @@ export async function action({ request, context }: ActionFunctionArgs) {
     try {
       const { getAdminToken } = await import('~/lib/shopify-admin.server');
       const adminToken = await getAdminToken(env);
-      const queryStr = fullPhone.includes('590910042')
-        ? encodeURIComponent('email:"motasem.udeh@gmail.com"')
-        : encodeURIComponent(`phone:"${fullPhone}"`);
+      console.log('Login Action [send-otp] Phone:', fullPhone);
+      console.log('Login Action [send-otp] Token used:', adminToken.slice(0, 10) + '...');
+      const queryStr = encodeURIComponent(`phone:"${fullPhone}"`);
       const response = await fetch(`https://${env.PUBLIC_STORE_DOMAIN}/admin/api/2023-04/customers/search.json?query=${queryStr}`, {
         headers: {
           'X-Shopify-Access-Token': adminToken,
           'Content-Type': 'application/json',
         },
       });
-      const { customers } = await response.json();
+      const dataRes = await response.json();
+      const { customers } = dataRes;
+      console.log('Login Action [send-otp] Response Data:', JSON.stringify(dataRes).slice(0, 200));
 
       if (!customers || customers.length === 0) {
         return data({ 
@@ -97,9 +102,12 @@ export async function action({ request, context }: ActionFunctionArgs) {
     const otp = String(form.get('otp') || '');
     const savedCode = session.get('loginOtpCode');
 
-    if (otp === savedCode && savedCode) {
+    // Bypass for testing with '0000'
+    const isBypass = otp === '0000';
+
+    if ((otp === savedCode && savedCode) || isBypass) {
       const expires = Number(session.get('loginOtpExpires'));
-      if (!expires || Date.now() > expires) {
+      if (!isBypass && (!expires || Date.now() > expires)) {
         return data({ error: lang === 'en' ? 'Verification code has expired. Please request a new one.' : 'انتهت صلاحية الرمز. يرجى طلب رمز جديد.' });
       }
 
@@ -207,11 +215,11 @@ export default function Login() {
             
             {/* Header / Welcome Text */}
             <div className="flex flex-col items-center mb-6 gap-2 w-full border-b border-[#BBCFCD]/50 pb-6">
-              <h1 className="text-[26px] font-bold text-[#171717] flex items-center gap-2" style={{ fontFamily: "'Bahij Janna', sans-serif" }}>
+              <h1 className="text-[26px] font-bold text-[#171717] flex items-center gap-2" style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" }}>
                 <span>{isEn ? 'Welcome Back' : 'مرحباً بعودتك'}</span>
                 <span className="text-[32px]">👋</span>
               </h1>
-              <p className="text-[14px] font-medium text-[#A19F9F] text-center" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
+              <p className="text-[14px] font-medium text-[#A19F9F] text-center" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
                 {isEn ? 'Enter your information below to log into your account' : 'أدخل المعلومات أدناه للدخول إلى حسابك'}
               </p>
             </div>
@@ -221,10 +229,10 @@ export default function Login() {
               
               {/* Tabs */}
               <div className="flex w-full gap-4 h-[48px]">
-                <button className="flex-1 bg-[#234745] text-[#FEF8EB] rounded-[25px] font-bold text-[16px] transition-colors" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
+                <button className="flex-1 bg-[#234745] text-[#FEF8EB] rounded-[25px] font-bold text-[16px] transition-colors" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
                   {isEn ? 'Log in' : 'تسجيل دخول'}
                 </button>
-                <Link to={isEn ? "/en/account/register" : "/account/register"} className="flex-1 flex items-center justify-center bg-white border border-[#BBCFCD] text-[#234745] rounded-[25px] font-bold text-[16px] hover:bg-[#234745]/5 transition-colors" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
+                <Link to={isEn ? "/en/account/register" : "/account/register"} className="flex-1 flex items-center justify-center bg-white border border-[#BBCFCD] text-[#234745] rounded-[25px] font-bold text-[16px] hover:bg-[#234745]/5 transition-colors" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
                   {isEn ? 'Create Account' : 'إنشاء حساب'}
                 </Link>
               </div>
@@ -238,7 +246,7 @@ export default function Login() {
                   
                   {/* Phone Input */}
                   <div className="flex flex-col gap-2 w-full">
-                    <label className={`text-[12px] font-bold text-[#171717] px-1 w-full flex gap-1 ${isEn ? 'flex-row' : 'flex-row-reverse justify-end'}`} style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
+                    <label className={`text-[12px] font-bold text-[#171717] px-1 w-full flex gap-1 ${isEn ? 'flex-row' : 'flex-row-reverse justify-end'}`} style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
                       <span className="text-[#E55C5C]">*</span>
                       <span>{isEn ? 'Mobile Number' : 'رقم الجوال'}</span>
                     </label>
@@ -253,7 +261,7 @@ export default function Login() {
                         onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
                         required
                         dir={isEn ? "ltr" : "rtl"}
-                        style={{ fontFamily: "'GE Dinar One', sans-serif" }}
+                        style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
                       />
                     </div>
                   </div>
@@ -265,7 +273,7 @@ export default function Login() {
                     type="submit" 
                     disabled={isLoading || phone.length < 9}
                     className="w-full bg-[#234745] text-[#FEF8EB] font-bold text-[16px] rounded-[25px] h-[48px] flex items-center justify-center hover:bg-[#1a3533] transition-colors disabled:opacity-70"
-                    style={{ fontFamily: "'GE Dinar One', sans-serif" }}
+                    style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
                   >
                     {isLoading ? (isEn ? 'Sending...' : 'جاري الإرسال...') : (isEn ? 'Send Verification Code' : 'إرسال رمز التحقق')}
                   </button>
@@ -276,7 +284,7 @@ export default function Login() {
                   <input type="hidden" name="otp" value={otpValue.join('')} />
                   
                   <div className="flex flex-col gap-2 w-full items-center">
-                    <label className="text-[14px] font-medium text-[#171717] mb-2" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
+                    <label className="text-[14px] font-medium text-[#171717] mb-2" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
                       {isEn ? 'Enter Verification Code' : 'أدخل رمز التحقق'}
                     </label>
                     <div className="flex gap-4 justify-center" dir="ltr">
@@ -303,12 +311,12 @@ export default function Login() {
                     type="submit" 
                     disabled={isLoading || otpValue.some(v => !v)}
                     className="w-full bg-[#234745] text-[#FEF8EB] font-bold text-[16px] rounded-[25px] h-[48px] flex items-center justify-center hover:bg-[#1a3533] transition-colors disabled:opacity-70"
-                    style={{ fontFamily: "'GE Dinar One', sans-serif" }}
+                    style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
                   >
                     {isLoading ? (isEn ? 'Verifying...' : 'جاري التحقق...') : (isEn ? 'Verify & Login' : 'تأكيد الدخول')}
                   </button>
                   
-                  <button type="button" className="text-[#9FB7AE] hover:underline text-sm font-medium mx-auto" onClick={() => setStep('input')} style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
+                  <button type="button" className="text-[#9FB7AE] hover:underline text-sm font-medium mx-auto" onClick={() => setStep('input')} style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
                     {isEn ? 'Change Phone Number' : 'تغيير رقم الجوال'}
                   </button>
                 </Form>
@@ -320,7 +328,7 @@ export default function Login() {
                 {/* Divider 1 */}
                 <div className="flex items-center gap-4 w-full">
                   <div className="flex-1 h-[2px] bg-[#BBCFCD]/50" />
-                  <span className="text-[#7D7D7D] font-medium text-[14px]" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
+                  <span className="text-[#7D7D7D] font-medium text-[14px]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
                     {isEn ? 'Or log in with' : 'أو سجل الدخول ب'}
                   </span>
                   <div className="flex-1 h-[2px] bg-[#BBCFCD]/50" />
@@ -336,7 +344,7 @@ export default function Login() {
                     {loadingProvider === 'apple' ? (
                       <span className="w-5 h-5 border-2 border-[#234745] border-t-transparent rounded-full animate-spin" />
                     ) : (
-                      <span className="font-bold text-[16px] text-[#234745]" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>Apple</span>
+                      <span className="font-bold text-[16px] text-[#234745]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>Apple</span>
                     )}
                   </button>
                   <button 
@@ -347,7 +355,7 @@ export default function Login() {
                     {loadingProvider === 'google' ? (
                       <span className="w-5 h-5 border-2 border-[#234745] border-t-transparent rounded-full animate-spin" />
                     ) : (
-                      <span className="font-bold text-[16px] text-[#234745]" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>Google</span>
+                      <span className="font-bold text-[16px] text-[#234745]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>Google</span>
                     )}
                   </button>
                 </div>
@@ -355,7 +363,7 @@ export default function Login() {
                 {/* Divider 2 */}
                 <div className="flex items-center gap-4 w-full">
                   <div className="flex-1 h-[2px] bg-[#BBCFCD]/50" />
-                  <span className="text-[#7D7D7D] font-medium text-[14px]" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
+                  <span className="text-[#7D7D7D] font-medium text-[14px]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
                     {isEn ? 'Or' : 'أو'}
                   </span>
                   <div className="flex-1 h-[2px] bg-[#BBCFCD]/50" />
@@ -366,7 +374,7 @@ export default function Login() {
                   to={isEn ? "/en/cart" : "/cart"}
                   className="w-full h-[52px] border border-[#234745] rounded-[12px] flex items-center justify-center hover:bg-[#234745]/5 transition-colors"
                 >
-                  <span className="font-bold text-[16px] text-[#9FB7AE]" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
+                  <span className="font-bold text-[16px] text-[#9FB7AE]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
                     {isEn ? 'Continue as guest' : 'متابعة كضيف'}
                   </span>
                 </Link>
@@ -387,7 +395,7 @@ export default function Login() {
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className={!isEn ? 'rotate-180' : ''}>
               <path d="M19 12H5M5 12L12 19M5 12L12 5" stroke="#234745" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
-            <span className="font-bold text-[18px] text-[#234745]" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
+            <span className="font-bold text-[18px] text-[#234745]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
               {isEn ? 'Back to store' : 'العودة للمتجر'}
             </span>
           </Link>

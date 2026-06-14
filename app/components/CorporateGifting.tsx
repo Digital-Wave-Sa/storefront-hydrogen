@@ -36,14 +36,14 @@ export function CorporateGifting() {
                     <div className="w-full lg:w-[35%] flex flex-col items-center lg:items-start text-center lg:text-start gap-6 lg:gap-[32px]">
                         <h2 
                             className="text-[32px] lg:text-[50px] font-bold text-white leading-[1.2] lg:leading-[80px]"
-                            style={{ fontFamily: "'Bahij Janna', sans-serif" }}
+                            style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" }}
                         >
                             {activeContent.title}
                         </h2>
 
                         <p 
                             className="text-[#BBCFCD] text-[14px] leading-[17px] max-w-[484px]"
-                            style={{ fontFamily: "'GE Dinar One', sans-serif" }}
+                            style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
                         >
                             {activeContent.description}
                         </p>
@@ -51,7 +51,7 @@ export function CorporateGifting() {
                         <Link
                             to={isEn ? "/en/corporate" : "/corporate"}
                             className="bg-[#BBCFCD] hover:bg-[#a5b9b8] text-[#234745] px-8 py-3.5 lg:py-3 rounded-[25px] font-bold transition-all shadow-sm flex items-center justify-center w-[85%] sm:w-auto sm:min-w-[200px] lg:min-w-[160px]"
-                            style={{ fontFamily: "'GE Dinar One', sans-serif" }}
+                            style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
                         >
                             {activeContent.button}
                         </Link>
@@ -75,7 +75,7 @@ export function CorporateGifting() {
                             <div className="absolute bottom-[16px] left-0 right-0 text-center px-4">
                                 <h3 
                                     className="text-[26px] font-bold text-white leading-[42px]"
-                                    style={{ fontFamily: "'Bahij Janna', sans-serif" }}
+                                    style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" }}
                                 >
                                     {activeContent.card2}
                                 </h3>
@@ -97,7 +97,7 @@ export function CorporateGifting() {
                             <div className="absolute bottom-[16px] left-0 right-0 text-center px-4">
                                 <h3 
                                     className="text-[26px] font-bold text-white leading-[42px]"
-                                    style={{ fontFamily: "'Bahij Janna', sans-serif" }}
+                                    style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" }}
                                 >
                                     {activeContent.card1}
                                 </h3>

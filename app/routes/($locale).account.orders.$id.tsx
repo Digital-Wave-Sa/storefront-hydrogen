@@ -150,22 +150,38 @@ export default function OrderRoute() {
           <div className="order-card">
             <h3 className="order-card-title">{isEn ? 'Order Items' : 'أصناف الطلب'}</h3>
             <div className="order-line-items">
-              {lineItems.map((item, i) => (
+              {lineItems.map((item: any, i) => {
+                const isPreorder = item.variant?.product?.tags?.some((t: string) => t.toLowerCase() === 'pre-order') || item.customAttributes?.some((a: any) => a.key === '_is_preorder' && a.value === 'true');
+                const preorderDate = item.customAttributes?.find((a: any) => a.key === 'Pre-order Date' || a.key === 'Availability Date')?.value;
+                
+                return (
                 <div key={i} className="order-line-item">
                   <div className="line-item-image">
                     {item.variant?.image && <Image data={item.variant.image} width={80} height={80} />}
                   </div>
                   <div className="line-item-info">
+                    <div className="flex items-center gap-2 mb-1">
+                      {isPreorder && (
+                        <span className="px-2 py-0.5 bg-[#FEF8EB] text-[#A67B5B] border border-[#A67B5B]/30 rounded text-[11px] font-bold uppercase tracking-wide">
+                          {isEn ? 'Pre-order' : 'طلب مسبق'}
+                        </span>
+                      )}
+                    </div>
                     <Link to={`/products/${item.variant?.product?.handle}`} className="line-item-name">
                       {item.title}
                     </Link>
+                    {preorderDate && (
+                      <div className="text-[12px] text-amber-600 font-bold mb-1">
+                        {isEn ? `Available: ${preorderDate}` : `متاح: ${preorderDate}`}
+                      </div>
+                    )}
                     <div className="line-item-price-qty">
                       <span>{isEn ? 'Qty: ' : 'الكمية: '}{item.quantity}</span>
                       <Money data={item.discountedTotalPrice!} />
                     </div>
                   </div>
                 </div>
-              ))}
+              )})}
             </div>
           </div>
         </div>
@@ -219,6 +235,10 @@ const CUSTOMER_ORDER_QUERY = `#graphql
   fragment OrderLineItemFull on OrderLineItem {
     title
     quantity
+    customAttributes {
+      key
+      value
+    }
     discountedTotalPrice {
       ...OrderMoney
     }
@@ -230,6 +250,7 @@ const CUSTOMER_ORDER_QUERY = `#graphql
       }
       product {
         handle
+        tags
       }
     }
   }

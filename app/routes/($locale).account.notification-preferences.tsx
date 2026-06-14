@@ -95,11 +95,11 @@ export default function NotificationPreferences() {
   ) => (
     <div className="flex justify-between items-center py-4 w-full border-b border-[#E2E8E6] last:border-b-0">
       <div className="flex flex-col items-start text-start" style={{ textAlign: isEn ? 'left' : 'right' }}>
-        <span className="text-[14px] font-bold text-[#171717] leading-tight" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
+        <span className="text-[14px] font-bold text-[#171717] leading-tight" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
           {isEn ? titleEn : titleAr}
         </span>
         {descAr && descEn && (
-          <span className="text-[12px] font-medium text-[#9FB7AE] mt-1" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
+          <span className="text-[12px] font-medium text-[#9FB7AE] mt-1" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
             {isEn ? descEn : descAr}
           </span>
         )}
@@ -116,7 +116,7 @@ export default function NotificationPreferences() {
         
         {/* Header Section */}
         <div className="w-full flex justify-start pb-4 border-b border-[#E2E8E6]">
-          <h3 className="text-[18px] font-bold text-[#171717] m-0 leading-none" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
+          <h3 className="text-[18px] font-bold text-[#171717] m-0 leading-none" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
             {isEn ? 'Notification Preferences' : 'تفضيلات الإشعارات'}
           </h3>
         </div>
@@ -131,7 +131,7 @@ export default function NotificationPreferences() {
 
         {/* Marketing Group Header */}
         <div className="w-full flex justify-start mt-4 pb-2 border-b border-[#E2E8E6]">
-          <span className="text-[12px] font-bold text-[#8C6D62]" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
+          <span className="text-[12px] font-bold text-[#8C6D62]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
             {isEn ? 'Offers & Marketing' : 'العروض والتسويق'}
           </span>
         </div>
@@ -145,7 +145,7 @@ export default function NotificationPreferences() {
 
         {/* Channels Group Header */}
         <div className="w-full flex justify-start mt-4 pb-2 border-b border-[#E2E8E6]">
-          <span className="text-[12px] font-bold text-[#8C6D62]" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
+          <span className="text-[12px] font-bold text-[#8C6D62]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
             {isEn ? 'Channels' : 'القنوات'}
           </span>
         </div>

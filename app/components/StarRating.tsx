@@ -133,7 +133,7 @@ export function StarRating({
             <span className={`text-gray-700 ${textSizes[size]} mt-0.5`}>{numericRating.toFixed(1)}</span>
             {numericCount > 0 && (
                 <span className={`text-gray-400 ${textSizes[size]} mt-0.5`}>
-                    ({isEn ? numericCount : new Intl.NumberFormat('ar-EG').format(numericCount)})
+                    ({isEn ? numericCount : new Intl.NumberFormat('en-US').format(numericCount)})
                 </span>
             )}
         </div>

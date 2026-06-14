@@ -7,7 +7,7 @@ export function DesignYourCake() {
 
     return (
         <section
-            className={`relative w-full min-h-[620px] overflow-hidden bg-[url('/images/cake-builder-section-mobile.webp')] lg:bg-[url('/images/cake-builder/cake-bg.webp')] bg-cover lg:bg-[length:cover] bg-top lg:bg-[position:${isEn ? 'right_center' : 'left_center'}] ${isEn ? 'font-en' : 'font-ar'}`}
+            className={`!p-0 relative w-full min-h-[620px] overflow-hidden bg-[url('/images/cake-builder-section-mobile.webp')] lg:bg-[url('/images/cake-builder/cake-bg.webp')] bg-cover lg:bg-[length:cover] bg-top lg:bg-[position:${isEn ? 'right_center' : 'left_center'}] ${isEn ? 'font-en' : 'font-ar'}`}
             dir={isEn ? 'ltr' : 'rtl'}
         >
             {/* Gradient overlay: Desktop */}
@@ -44,10 +44,10 @@ export function DesignYourCake() {
                             />
                             <div className="w-[85px] h-[1px] bg-[#9a7e6f]"></div>
                         </div>
-                        <p className="text-[#9a7e6f] tracking-tight whitespace-nowrap" style={{ fontFamily: "'GE Dinar One', sans-serif", fontWeight: 500, fontSize: '16px', lineHeight: '100%', letterSpacing: '0%', textAlign: 'right', verticalAlign: 'middle', marginBottom: '20px' }}>
+                        <p className="text-[#9a7e6f] tracking-tight whitespace-nowrap" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", fontWeight: 500, fontSize: '16px', lineHeight: '100%', letterSpacing: '0%', textAlign: 'right', verticalAlign: 'middle', marginBottom: '20px' }}>
                             {isEn ? 'Create an unforgettable moment – step by step' : 'أصنع لحظة لا تُنسى – خطوة بخطوة'}
                         </p>
-                        <h2 className="text-[#234745] mb-2 text-[36px] lg:text-[50px] font-bold leading-none text-center" style={!isEn ? { fontFamily: "'Bahij Janna', sans-serif" } : undefined}>
+                        <h2 className="text-[#234745] mb-2 text-[36px] lg:text-[50px] font-bold leading-none text-center" style={!isEn ? { fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" } : undefined}>
                             {isEn ? 'Design a cake for your occasion' : 'صمم كيكة تناسب مناسبتك'}
                         </h2>
                         <p className="text-[#8a9e9a] font-bold text-[14px]">
@@ -97,14 +97,14 @@ export function DesignYourCake() {
 
                     {/* Flavor Selector */}
                     <div className="mb-8" dir={isEn ? 'ltr' : 'rtl'}>
-                        <h4 className="text-[#234745] mb-5" style={{ fontFamily: "'GE Dinar One', sans-serif", fontWeight: 700, fontSize: '18px', lineHeight: '100%', textAlign: isEn ? 'left' : 'right' }}>
+                        <h4 className="text-[#234745] mb-5" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", fontWeight: 700, fontSize: '18px', lineHeight: '100%', textAlign: isEn ? 'left' : 'right' }}>
                             {isEn ? 'Choose Flavor' : 'أختر النكهة'}
                         </h4>
                         <div className="grid grid-cols-4 gap-1.5 md:gap-4 pt-3 -mt-3 md:pt-0 md:mt-0 pb-2 w-full">
                             {/* Active - Vanilla */}
                             <div className="relative bg-[#f8f9f8] border-[1.5px] md:border-[2px] border-[#234745] rounded-[14px] md:rounded-[50px] py-[8px] md:py-[10px] px-1 md:px-4 flex flex-col md:flex-row items-center justify-center gap-1.5 md:gap-3 cursor-pointer shadow-sm">
                                 <img src="/images/vanilla-img.png" alt="Vanilla" className="w-[28px] h-[28px] md:w-[40px] md:h-[40px] object-contain" />
-                                <span className="text-[#234745] text-[10px] md:text-[16px] whitespace-nowrap" style={{ fontFamily: "'GE Dinar One', sans-serif", fontWeight: 700, lineHeight: '100%', textAlign: 'center' }}>
+                                <span className="text-[#234745] text-[10px] md:text-[16px] whitespace-nowrap" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", fontWeight: 700, lineHeight: '100%', textAlign: 'center' }}>
                                     {isEn ? 'Vanilla' : 'فانيليا'}
                                 </span>
                                 <div className={`absolute -top-1.5 md:-top-2 ${isEn ? '-right-1.5 md:-right-2' : '-left-1.5 md:-left-2'} w-[18px] h-[18px] md:w-[26px] md:h-[26px] bg-[#234745] rounded-full flex items-center justify-center border-[1.5px] md:border-[2px] border-white shadow-md z-10`}>
@@ -114,21 +114,21 @@ export function DesignYourCake() {
                             {/* Chocolate */}
                             <div className="bg-[#f8f9f8] border border-[#d1dbd9] rounded-[14px] md:rounded-[50px] py-[8px] md:py-[10px] px-1 md:px-4 flex flex-col md:flex-row items-center justify-center gap-1.5 md:gap-3 cursor-pointer hover:border-[#234745]/40 transition-colors">
                                 <img src="/images/chocolate-img.png" alt="Chocolate" className="w-[28px] h-[28px] md:w-[40px] md:h-[40px] object-contain" />
-                                <span className="text-[#234745] text-[10px] md:text-[16px] whitespace-nowrap" style={{ fontFamily: "'GE Dinar One', sans-serif", fontWeight: 700, lineHeight: '100%', textAlign: 'center' }}>
+                                <span className="text-[#234745] text-[10px] md:text-[16px] whitespace-nowrap" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", fontWeight: 700, lineHeight: '100%', textAlign: 'center' }}>
                                     {isEn ? 'Chocolate' : 'شوكولاته'}
                                 </span>
                             </div>
                             {/* Caramel */}
                             <div className="bg-[#f8f9f8] border border-[#d1dbd9] rounded-[14px] md:rounded-[50px] py-[8px] md:py-[10px] px-1 md:px-4 flex flex-col md:flex-row items-center justify-center gap-1.5 md:gap-3 cursor-pointer hover:border-[#234745]/40 transition-colors">
                                 <img src="/images/caramel-img.png" alt="Caramel" className="w-[28px] h-[28px] md:w-[40px] md:h-[40px] object-contain" />
-                                <span className="text-[#234745] text-[10px] md:text-[16px] whitespace-nowrap" style={{ fontFamily: "'GE Dinar One', sans-serif", fontWeight: 700, lineHeight: '100%', textAlign: 'center' }}>
+                                <span className="text-[#234745] text-[10px] md:text-[16px] whitespace-nowrap" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", fontWeight: 700, lineHeight: '100%', textAlign: 'center' }}>
                                     {isEn ? 'Caramel' : 'كراميل'}
                                 </span>
                             </div>
                             {/* Red Velvet */}
                             <div className="bg-[#f8f9f8] border border-[#d1dbd9] rounded-[14px] md:rounded-[50px] py-[8px] md:py-[10px] px-1 md:px-4 flex flex-col md:flex-row items-center justify-center gap-1.5 md:gap-3 cursor-pointer hover:border-[#234745]/40 transition-colors">
                                 <img src="/images/velvet-img.png" alt="Red Velvet" className="w-[28px] h-[28px] md:w-[40px] md:h-[40px] object-contain" />
-                                <span className="text-[#234745] text-[10px] md:text-[16px] whitespace-nowrap" style={{ fontFamily: "'GE Dinar One', sans-serif", fontWeight: 700, lineHeight: '100%', textAlign: 'center' }}>
+                                <span className="text-[#234745] text-[10px] md:text-[16px] whitespace-nowrap" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", fontWeight: 700, lineHeight: '100%', textAlign: 'center' }}>
                                     {isEn ? 'Red Velvet' : 'ريد فلفيت'}
                                 </span>
                             </div>
@@ -142,7 +142,7 @@ export function DesignYourCake() {
                         <Link
                             to={isEn ? "/en/custom-cake" : "/custom-cake"}
                             className="py-4 md:py-5 bg-[#234745] hover:bg-[#264f3e] rounded-full transition-all shadow-lg hover:shadow-xl w-full lg:w-auto lg:min-w-[280px] lg:px-12 text-center flex items-center justify-center"
-                            style={{ fontFamily: "'GE Dinar One', sans-serif", fontWeight: 700, fontSize: '16px', color: '#ffffff', lineHeight: '100%' }}
+                            style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", fontWeight: 700, fontSize: '16px', color: '#ffffff', lineHeight: '100%' }}
                         >
                             {isEn ? 'Start Designing Now' : 'إبدأ تصميمك الان'}
                         </Link>
@@ -151,17 +151,17 @@ export function DesignYourCake() {
                         <div className="flex flex-row items-center justify-evenly lg:justify-start gap-x-1 lg:gap-x-6 text-[#234745] px-2 py-4 lg:px-0 lg:py-0 bg-[#f8f9f8]/90 lg:bg-transparent backdrop-blur-sm lg:backdrop-blur-none rounded-[20px] lg:rounded-none w-full lg:w-auto lg:flex-1 lg:shadow-none">
                             <div className="flex items-center gap-2">
                                 <img src="/images/love-icon.svg" alt="Made with Care" className="w-[18px] h-[18px] lg:w-[24px] lg:h-[24px] object-contain" />
-                                <span className="whitespace-pre-line text-[11px] lg:text-[14px] leading-[1.1]" style={{ fontFamily: "'GE Dinar One', sans-serif", fontWeight: 500, textAlign: 'center' }}>{isEn ? 'Made with\nCare' : 'صُنع بحب\nوبعناية'}</span>
+                                <span className="whitespace-pre-line text-[11px] lg:text-[14px] leading-[1.1]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", fontWeight: 500, textAlign: 'center' }}>{isEn ? 'Made with\nCare' : 'صُنع بحب\nوبعناية'}</span>
                             </div>
                             <div className="w-[1px] h-8 bg-[#234745]/20"></div>
                             <div className="flex items-center gap-2">
                                 <img src="/images/delivery-cake-builder.svg" alt="Fast Delivery" className="w-[18px] h-[18px] lg:w-[24px] lg:h-[24px] object-contain" />
-                                <span className="whitespace-pre-line text-[11px] lg:text-[14px] leading-[1.1]" style={{ fontFamily: "'GE Dinar One', sans-serif", fontWeight: 500, textAlign: 'center' }}>{isEn ? 'Cold Delivery\nfor Quality' : 'توصيل مبرد\nلضمان الجودة'}</span>
+                                <span className="whitespace-pre-line text-[11px] lg:text-[14px] leading-[1.1]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", fontWeight: 500, textAlign: 'center' }}>{isEn ? 'Cold Delivery\nfor Quality' : 'توصيل مبرد\nلضمان الجودة'}</span>
                             </div>
                             <div className="w-[1px] h-8 bg-[#234745]/20"></div>
                             <div className="flex items-center gap-2">
                                 <img src="/images/leaf-icon-cake.svg" alt="Premium Ingredients" className="w-[20px] h-[20px] lg:w-[24px] lg:h-[24px] object-contain" />
-                                <span className="whitespace-pre-line text-[11px] lg:text-[14px] leading-[1.1]" style={{ fontFamily: "'GE Dinar One', sans-serif", fontWeight: 500, textAlign: 'center' }}>{isEn ? 'Premium\nIngredients' : 'مكونات\nفاخرة'}</span>
+                                <span className="whitespace-pre-line text-[11px] lg:text-[14px] leading-[1.1]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", fontWeight: 500, textAlign: 'center' }}>{isEn ? 'Premium\nIngredients' : 'مكونات\nفاخرة'}</span>
                             </div>
                         </div>
                     </div>

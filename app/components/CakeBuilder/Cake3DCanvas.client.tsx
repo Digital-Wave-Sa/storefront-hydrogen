@@ -364,6 +364,46 @@ const Candles = ({ shapeConfig, yPos, count = 5 }) => {
   );
 };
 
+const NumberTopper = ({ text = "20", yPos = 0 }) => {
+  const texture = useMemo(() => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 256;
+    canvas.height = 256;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, 256, 256);
+    ctx.fillStyle = '#1a1a1a';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = 'bold 160px sans-serif';
+    ctx.fillText(text, 128, 128 + 15);
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.needsUpdate = true;
+    return tex;
+  }, [text]);
+
+  return (
+    <group position={[0, yPos, 0]}>
+      {/* Stick */}
+      <mesh position={[0, 0.6, 0]} castShadow>
+        <cylinderGeometry args={[0.03, 0.03, 1.2, 8]} />
+        <meshStandardMaterial color="#ffffff" roughness={0.8} />
+      </mesh>
+      
+      {/* Circle Sign */}
+      <mesh position={[0, 1.4, 0]} rotation={[Math.PI/2, 0, 0]} castShadow>
+        <cylinderGeometry args={[0.5, 0.5, 0.06, 32]} />
+        <meshStandardMaterial color="#ffd700" metalness={0.3} roughness={0.4} />
+      </mesh>
+      
+      {/* Text Plane */}
+      <mesh position={[0, 1.4, 0.035]}>
+        <planeGeometry args={[0.8, 0.8]} />
+        <meshBasicMaterial map={texture} transparent={true} depthWrite={false} />
+      </mesh>
+    </group>
+  );
+};
+
 /**
  * SPONGE TEXTURE GENERATOR
  */
@@ -745,6 +785,9 @@ const CakeStack = ({ config }) => {
                 <PipedBorder shapeConfig={tier} yPos={TIER_HEIGHT} color="#ffffff" scale={0.14} />
                 <Drapes shapeConfig={tier} yPos={TIER_HEIGHT} color="#ffffff" depth={0.6} />
                 <Pearls shapeConfig={tier} yPos={TIER_HEIGHT} color="#a32c81" />
+                {index === renderTiers.length - 1 && (
+                  <NumberTopper text="20" yPos={TIER_HEIGHT} />
+                )}
               </>
             )}
             {toppingStyle === 'pisces-vibes' && (

@@ -129,7 +129,7 @@ export function CartMain({layout, cart: originalCart}: CartMainProps) {
                <button 
                  onClick={() => window.history.back()} 
                  className="flex items-center gap-2 bg-[#A8BDB5] hover:bg-[#97aaa3] text-[#1a3b3a] px-6 py-2 rounded-full text-[15px] font-bold transition-all shadow-sm shrink-0"
-                 style={{ fontFamily: "'GE Dinar One', sans-serif" }}
+                 style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
                >
                  <span className="pt-0.5">{isEn ? 'Back' : 'رجوع'}</span>
                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={`${isEn ? 'rotate-180' : ''}`}>
@@ -139,11 +139,11 @@ export function CartMain({layout, cart: originalCart}: CartMainProps) {
 
                {/* Title & Subtitle Block (Second in DOM = Left of button in RTL) */}
                <div className={`flex flex-col ${isEn ? 'text-left' : 'text-right'}`}>
-                 <h1 className="!m-0 !mb-2 text-[38px] font-bold text-white leading-none" style={{ fontFamily: "'Bahij Janna', sans-serif" }}>
+                 <h1 className="!m-0 !mb-2 text-[38px] font-bold text-white leading-none" style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" }}>
                    {isEn ? 'Shopping Cart' : 'سلة التسوق'}
                  </h1>
-                 <p className="!m-0 text-[16px] font-medium text-[#c4d0cc] leading-none" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
-                   {isEn ? `${cart?.totalQuantity || 0} products in your cart` : `${new Intl.NumberFormat('ar-EG').format(cart?.totalQuantity || 0)} منتجات في سلتك`}
+                 <p className="!m-0 text-[16px] font-medium text-[#c4d0cc] leading-none" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
+                   {isEn ? `${cart?.totalQuantity || 0} products in your cart` : `${new Intl.NumberFormat('en-US').format(cart?.totalQuantity || 0)} منتجات في سلتك`}
                  </p>
                </div>
 
@@ -154,7 +154,7 @@ export function CartMain({layout, cart: originalCart}: CartMainProps) {
         {/* 2. White Breadcrumb Section */}
         <div className="w-full bg-white border-b border-[#F2E8D5] py-4 shadow-sm mb-10">
           <div className="max-w-[1400px] mx-auto px-4 md:px-8">
-            <div className="flex items-center gap-2 text-[14px] font-bold" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
+            <div className="flex items-center gap-2 text-[14px] font-bold" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
               <Link to={isEn ? "/en" : "/"} className="text-gray-400 hover:text-[#234745] transition-colors">{isEn ? 'Home' : 'الرئيسية'}</Link> 
               <span className="text-gray-300">/</span>
               <span className="text-[#234745]">{isEn ? 'Shopping Cart' : 'سلة التسوق'}</span>
@@ -229,8 +229,8 @@ export function CartMain({layout, cart: originalCart}: CartMainProps) {
             {cartHasItems && (
               <div className="flex flex-col gap-4">
                 <div className="flex items-center justify-between border-b border-[#F2E8D5] pb-4">
-                  <h3 className="text-[18px] font-black text-[#234745]" style={{ fontFamily: "'Bahij Janna', sans-serif" }}>
-                    {isEn ? `Products (${cart?.totalQuantity || 0})` : `المنتجات (${new Intl.NumberFormat('ar-EG').format(cart?.totalQuantity || 0)})`}
+                  <h3 className="text-[18px] font-black text-[#234745]" style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" }}>
+                    {isEn ? `Products (${cart?.totalQuantity || 0})` : `المنتجات (${new Intl.NumberFormat('en-US').format(cart?.totalQuantity || 0)})`}
                   </h3>
                   <CartForm
                     route="/cart"
@@ -252,6 +252,7 @@ export function CartMain({layout, cart: originalCart}: CartMainProps) {
                         line={line}
                         layout={layout}
                         childrenMap={childrenMap}
+                        cart={cart}
                       />
                     );
                   })}
@@ -345,6 +346,7 @@ export function CartMain({layout, cart: originalCart}: CartMainProps) {
                   line={line}
                   layout={layout}
                   childrenMap={childrenMap}
+                  cart={cart}
                 />
               );
             })}

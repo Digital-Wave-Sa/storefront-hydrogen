@@ -111,7 +111,7 @@ export function RamadanBanner({ config }: { config?: any }) {
                                     {isEn && <div className="w-[48px] border-t border-[#255441]"></div>}
                                 </div>
                             
-                            <h2 className="text-[32px] md:text-[36px] lg:text-[50px] font-bold leading-[1.2] lg:leading-[60px] text-[#255441]" style={!isEn ? { fontFamily: "'Bahij Janna', sans-serif" } : undefined}>
+                            <h2 className="text-[32px] md:text-[36px] lg:text-[50px] font-bold leading-[1.2] lg:leading-[60px] text-[#255441]" style={!isEn ? { fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" } : undefined}>
                                 {isEn ? (
                                     customTitleEn ? customTitleEn : (
                                         <>

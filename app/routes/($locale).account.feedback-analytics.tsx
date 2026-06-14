@@ -45,151 +45,171 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
     return redirect('/account/profile');
   }
 
-  const shopDomain = env.PUBLIC_STORE_DOMAIN;
-  const adminToken = await getAdminToken(env);
+  const adminDataPromise = (async () => {
+    const shopDomain = env.PUBLIC_STORE_DOMAIN;
+    const adminToken = await getAdminToken(env);
 
-  // Fetch reviews
-  const reviewsQuery = `
-    query {
-      metaobjects(type: "storefront_review", first: 250) {
-        nodes {
-          id
-          updatedAt
-          fields {
-            key
-            value
-          }
-        }
-      }
-    }
-  `;
-
-  // Fetch locations
-  const locationsQuery = `
-    query {
-      locations(first: 100) {
-        nodes {
-          id
-          name
-          metafields(first: 50, namespace: "custom") {
-            nodes {
+    // Fetch reviews
+    const reviewsQuery = `
+      query {
+        metaobjects(type: "storefront_review", first: 250) {
+          nodes {
+            id
+            updatedAt
+            fields {
               key
               value
             }
           }
         }
       }
-    }
-  `;
+    `;
 
-  let reviewsData: any = [];
-  let locationsData: any = [];
+    // Fetch locations
+    const locationsQuery = `
+      query {
+        locations(first: 100) {
+          nodes {
+            id
+            name
+            metafields(first: 50, namespace: "custom") {
+              nodes {
+                key
+                value
+              }
+            }
+          }
+        }
+      }
+    `;
 
-  try {
-    const [revRes, locRes] = await Promise.all([
-      adminApiQuery(shopDomain, adminToken, reviewsQuery, {}) as Promise<any>,
-      adminApiQuery(shopDomain, adminToken, locationsQuery, {}) as Promise<any>
-    ]);
-    
-    if (revRes?.data?.metaobjects?.nodes) {
-      reviewsData = revRes.data.metaobjects.nodes.map((node: any) => {
-        const fields: any = {};
-        node.fields.forEach((f: any) => { fields[f.key] = f.value; });
-        return {
-          id: node.id,
-          date: new Date(node.updatedAt).toISOString(),
-          ...fields
-        };
-      });
-    }
+    let reviewsData: any = [];
+    let locationsData: any = [];
 
-    if (locRes?.data?.locations?.nodes) {
-      locationsData = locRes.data.locations.nodes.map((node: any) => {
-        return {
-          id: node.id,
-          name: node.name,
-          rating: parseFloat(node.metafields?.nodes?.find((m: any) => m.key === 'rating')?.value || '0'),
-          ratingCount: parseInt(node.metafields?.nodes?.find((m: any) => m.key === 'rating_count')?.value || '0', 10),
-        };
-      }).filter((l: any) => l.ratingCount > 0).sort((a: any, b: any) => b.rating - a.rating);
-    }
-  } catch (err) {
-    console.error('[FeedbackAnalytics] Failed to fetch data:', err);
-  }
+    try {
+      const [revRes, locRes] = await Promise.all([
+        adminApiQuery(shopDomain, adminToken, reviewsQuery, {}) as Promise<any>,
+        adminApiQuery(shopDomain, adminToken, locationsQuery, {}) as Promise<any>
+      ]);
+      
+      if (revRes?.data?.metaobjects?.nodes) {
+        reviewsData = revRes.data.metaobjects.nodes.map((node: any) => {
+          const fields: any = {};
+          node.fields.forEach((f: any) => { fields[f.key] = f.value; });
+          return {
+            id: node.id,
+            date: new Date(node.updatedAt).toISOString(),
+            ...fields
+          };
+        });
+      }
 
-  // Calculate Aggregated Metrics
-  let totalReviews = reviewsData.length;
-  let totalRatingSum = 0;
-  let positive = 0;
-  let neutral = 0;
-  let negative = 0;
-
-  // Trend Data Setup (last 30 days)
-  const trends: Record<string, { count: number, ratingSum: number }> = {};
-  const today = new Date();
-  for (let i = 29; i >= 0; i--) {
-    const d = new Date(today);
-    d.setDate(d.getDate() - i);
-    trends[d.toISOString().split('T')[0]] = { count: 0, ratingSum: 0 };
-  }
-
-  reviewsData.forEach((rev: any) => {
-    const r = parseFloat(rev.rating) || 0;
-    totalRatingSum += r;
-
-    // Sentiment Heuristic
-    let isPositive = r >= 4;
-    let isNegative = r <= 2;
-    
-    const comment = (rev.review_comment || '').toLowerCase();
-    const posWords = ['great', 'excellent', 'love', 'amazing', 'delicious', 'perfect', 'رائع', 'ممتاز', 'لذيذ', 'حب'];
-    const negWords = ['bad', 'terrible', 'worst', 'awful', 'hate', 'سيء', 'فظيع', 'مروع', 'اكره'];
-
-    if (r === 3) {
-      const hasPos = posWords.some(w => comment.includes(w));
-      const hasNeg = negWords.some(w => comment.includes(w));
-      if (hasPos && !hasNeg) isPositive = true;
-      else if (hasNeg && !hasPos) isNegative = true;
+      if (locRes?.data?.locations?.nodes) {
+        locationsData = locRes.data.locations.nodes.map((node: any) => {
+          return {
+            id: node.id,
+            name: node.name,
+            rating: parseFloat(node.metafields?.nodes?.find((m: any) => m.key === 'rating')?.value || '0'),
+            ratingCount: parseInt(node.metafields?.nodes?.find((m: any) => m.key === 'rating_count')?.value || '0', 10),
+          };
+        }).filter((l: any) => l.ratingCount > 0).sort((a: any, b: any) => b.rating - a.rating);
+      }
+    } catch (err) {
+      console.error('[FeedbackAnalytics] Failed to fetch data:', err);
     }
 
-    if (isPositive) positive++;
-    else if (isNegative) negative++;
-    else neutral++;
+    // Calculate Aggregated Metrics
+    let totalReviews = reviewsData.length;
+    let totalRatingSum = 0;
+    let positive = 0;
+    let neutral = 0;
+    let negative = 0;
 
-    // Trend
-    const dateStr = rev.date.split('T')[0];
-    if (trends[dateStr]) {
-      trends[dateStr].count++;
-      trends[dateStr].ratingSum += r;
+    // Trend Data Setup (last 30 days)
+    const trends: Record<string, { count: number, ratingSum: number }> = {};
+    const today = new Date();
+    for (let i = 29; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      trends[d.toISOString().split('T')[0]] = { count: 0, ratingSum: 0 };
     }
-  });
 
-  const averageRating = totalReviews > 0 ? (totalRatingSum / totalReviews).toFixed(1) : '0.0';
-  const sentimentScore = totalReviews > 0 ? Math.round((positive / totalReviews) * 100) : 0;
+    reviewsData.forEach((rev: any) => {
+      const r = parseFloat(rev.rating) || 0;
+      totalRatingSum += r;
 
-  // Format Trends for Chart
-  const trendLabels = Object.keys(trends).map(d => d.split('-').slice(1).join('/'));
-  const trendData = Object.values(trends).map(t => t.count);
+      // Sentiment Heuristic
+      let isPositive = r >= 4;
+      let isNegative = r <= 2;
+      
+      const comment = (rev.review_comment || '').toLowerCase();
+      const posWords = ['great', 'excellent', 'love', 'amazing', 'delicious', 'perfect', 'رائع', 'ممتاز', 'لذيذ', 'حب'];
+      const negWords = ['bad', 'terrible', 'worst', 'awful', 'hate', 'سيء', 'فظيع', 'مروع', 'اكره'];
 
-  return data({
-    reviews: reviewsData,
-    locations: locationsData,
-    metrics: {
-      totalReviews,
-      averageRating,
-      sentimentScore,
-      sentimentDistribution: { positive, neutral, negative }
-    },
-    trends: {
-      labels: trendLabels,
-      data: trendData
-    }
-  });
+      if (r === 3) {
+        const hasPos = posWords.some(w => comment.includes(w));
+        const hasNeg = negWords.some(w => comment.includes(w));
+        if (hasPos && !hasNeg) isPositive = true;
+        else if (hasNeg && !hasPos) isNegative = true;
+      }
+
+      if (isPositive) positive++;
+      else if (isNegative) negative++;
+      else neutral++;
+
+      // Trend
+      const dateStr = rev.date.split('T')[0];
+      if (trends[dateStr]) {
+        trends[dateStr].count++;
+        trends[dateStr].ratingSum += r;
+      }
+    });
+
+    const averageRating = totalReviews > 0 ? (totalRatingSum / totalReviews).toFixed(1) : '0.0';
+    const sentimentScore = totalReviews > 0 ? Math.round((positive / totalReviews) * 100) : 0;
+
+    // Format Trends for Chart
+    const trendLabels = Object.keys(trends).map(d => d.split('-').slice(1).join('/'));
+    const trendData = Object.values(trends).map(t => t.count);
+
+    return {
+      reviews: reviewsData,
+      locations: locationsData,
+      metrics: {
+        totalReviews,
+        averageRating,
+        sentimentScore,
+        sentimentDistribution: { positive, neutral, negative }
+      },
+      trends: {
+        labels: trendLabels,
+        data: trendData
+      }
+    };
+  })();
+
+  return data({ adminDataPromise });
 }
 
+import { Suspense } from 'react';
+import { Await } from 'react-router';
+
 export default function FeedbackAnalyticsDashboard() {
-  const { reviews, locations, metrics, trends } = useLoaderData<typeof loader>();
+  const { adminDataPromise } = useLoaderData<typeof loader>();
   const locale = useLocation().pathname.startsWith('/en') ? 'en' : 'ar';
+  const isEn = locale === 'en';
+
+  return (
+    <Suspense fallback={<div className="py-20 text-center text-gray-500">{isEn ? 'Loading analytics data...' : 'جاري تحميل بيانات التحليلات...'}</div>}>
+      <Await resolve={adminDataPromise}>
+        {(adminData) => <FeedbackAnalyticsDashboardContent adminData={adminData} locale={locale} />}
+      </Await>
+    </Suspense>
+  );
+}
+
+function FeedbackAnalyticsDashboardContent({ adminData, locale }: { adminData: any; locale: string }) {
+  const { reviews, locations, metrics, trends } = adminData;
   const isEn = locale === 'en';
   const i18n = useI18n(locale);
 

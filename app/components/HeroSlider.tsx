@@ -127,7 +127,7 @@ export function HeroSlider() {
                 <div className="absolute top-4 lg:top-10 left-1/2 -translate-x-1/2 z-30 flex justify-center w-full px-4 lg:px-10">
                     <div className="bg-[#234745] px-4 lg:px-8 py-1 lg:py-2 rounded-full border border-[#BBCFCD] shadow-2xl flex items-center gap-2 lg:gap-4">
                         <div className="w-4 lg:w-6 h-[1px] bg-[#BBCFCD]" />
-                        <span className="text-[#BBCFCD] font-medium text-[12px] lg:text-[16px] tracking-wide whitespace-nowrap" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
+                        <span className="text-[#BBCFCD] font-medium text-[12px] lg:text-[16px] tracking-wide whitespace-nowrap" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
                             {isEn ? slide.badge.en : slide.badge.ar}
                         </span>
                         <div className="w-4 lg:w-6 h-[1px] bg-[#BBCFCD]" />
@@ -144,7 +144,7 @@ export function HeroSlider() {
                         {/* Title */}
                         <h2 
                             className={`font-bold lg:font-normal leading-[1.0] lg:leading-[0.95] whitespace-pre-line mb-4 lg:mb-8 ${isEn ? 'text-[38px] lg:text-[64px]' : 'text-[38px] lg:text-[100px]'}`}
-                            style={!isEn ? { fontFamily: "'Bahij Janna', sans-serif" } : undefined}
+                            style={!isEn ? { fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" } : undefined}
                         >
                             <span className="text-[#FFFFFF] drop-shadow-lg">{isEn ? slide.title.en : slide.title.ar}</span>
                         </h2>
@@ -152,7 +152,7 @@ export function HeroSlider() {
                         {/* Subtitle */}
                         <p 
                             className={`font-normal leading-[1.2] max-w-[280px] lg:max-w-[400px] mt-0 mb-4 lg:mb-8 whitespace-pre-line text-[#FFFFFF] lg:text-[#BBCFCD] ${isEn ? 'text-[14px] lg:text-[16px]' : 'text-[12px] lg:text-[14px]'}`}
-                            style={!isEn ? { fontFamily: "'GE Dinar One', sans-serif" } : undefined}
+                            style={!isEn ? { fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" } : undefined}
                         >
                             {isEn ? slide.subtitle.en : slide.subtitle.ar}
                         </p>
@@ -169,7 +169,7 @@ export function HeroSlider() {
                                         : 'bg-transparent text-[#F9F9F9] border border-[#BBCFCD]'
                                     }`}
                                     style={{ 
-                                        fontFamily: "'GE Dinar One', sans-serif",
+                                        fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
                                         fontWeight: 700,
                                         fontSize: '18px',
                                         lineHeight: '100%',

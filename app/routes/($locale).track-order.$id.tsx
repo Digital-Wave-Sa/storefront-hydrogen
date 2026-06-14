@@ -124,9 +124,10 @@ export default function TrackOrderPage() {
 
     const forceEnNums = (text: string | number | undefined | null) => {
         if (text == null) return text;
-        return String(text).split(/(\d+)/).map((part, i) => 
+        const parts = String(text).split(/(\d+)/).map((part, i) => 
             /\d+/.test(part) ? <span key={i} className="font-en">{part}</span> : part
         );
+        return <span className="inline-flex items-baseline" dir="auto">{parts}</span>;
     };
 
     const getStepNumber = (step: number) => {

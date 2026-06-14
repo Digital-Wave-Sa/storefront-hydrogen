@@ -44,126 +44,132 @@ export async function loader({ context }: LoaderFunctionArgs) {
   }
 
   // 2. Fetch existing price rules (vouchers) and orders for analytics from Shopify Admin API
-  const shopDomain = env.PUBLIC_STORE_DOMAIN;
-  const adminToken = await getAdminToken(env);
+  const adminDataPromise = (async () => {
+    const shopDomain = env.PUBLIC_STORE_DOMAIN;
+    const adminToken = await getAdminToken(env);
 
-  const query = `query {
-    products(first: 50) {
-      nodes {
-        id
-        title
+    const query = `query {
+      products(first: 50) {
+        nodes {
+          id
+          title
+        }
       }
-    }
-    locations(first: 50) {
-      nodes {
-        id
-        name
+      locations(first: 50) {
+        nodes {
+          id
+          name
+        }
       }
-    }
-    orders(first: 250, reverse: true) {
-      nodes {
-        id
-        name
-        createdAt
-        totalPriceSet {
-          shopMoney {
-            amount
+      orders(first: 250, reverse: true) {
+        nodes {
+          id
+          name
+          createdAt
+          totalPriceSet {
+            shopMoney {
+              amount
+            }
+          }
+          totalDiscountsSet {
+            shopMoney {
+              amount
+            }
+          }
+          customer {
+            firstName
+            lastName
+            email
+          }
+          discountCodes(first: 5) {
+            nodes {
+              code
+            }
+          }
+          customAttributes {
+            key
+            value
           }
         }
-        totalDiscountsSet {
-          shopMoney {
-            amount
-          }
-        }
-        customer {
-          firstName
-          lastName
-          email
-        }
-        discountCodes(first: 5) {
-          nodes {
-            code
-          }
-        }
-        customAttributes {
-          key
-          value
-        }
       }
-    }
-  }`;
+    }`;
 
-  try {
-    // 1. Fetch Orders and Locations via GraphQL
-    const res = await fetch(`https://${shopDomain}/admin/api/2024-01/graphql.json`, {
-      method: 'POST',
-      headers: {
-        'X-Shopify-Access-Token': adminToken,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ query }),
-    });
-    const result = await res.json() as any;
+    try {
+      // 1. Fetch Orders and Locations via GraphQL
+      const res = await fetch(`https://${shopDomain}/admin/api/2024-01/graphql.json`, {
+        method: 'POST',
+        headers: {
+          'X-Shopify-Access-Token': adminToken,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ query }),
+      });
+      const result = await res.json() as any;
 
-    // 2. Fetch Price Rules via REST API (since GraphQL PriceRule schema is deprecated/restricted)
-    const prRes = await fetch(`https://${shopDomain}/admin/api/2024-01/price_rules.json`, {
-      method: 'GET',
-      headers: {
-        'X-Shopify-Access-Token': adminToken,
-        'Content-Type': 'application/json',
-      }
-    });
-    const prResult = await prRes.json() as any;
-    
-    // Convert REST price rules to the structure expected by the frontend
-    const priceRules = (prResult.price_rules || []).map((pr: any) => ({
-      id: pr.id,
-      title: pr.title,
-      usageCount: pr.usage_count || 0,
-      usageLimit: pr.usage_limit || null,
-      startsAt: pr.starts_at,
-      endsAt: pr.ends_at,
-      prerequisiteSubtotalRange: pr.prerequisite_subtotal_range ? {
-        greaterThanOrEqualTo: pr.prerequisite_subtotal_range.greater_than_or_equal_to
-      } : null,
-      discountCodes: {
-        nodes: [{ code: pr.title }]
-      }
-    }));
-    
-    // Parse order redemptions
-    const redemptions: any[] = [];
-    const orders = result.data?.orders?.nodes || [];
-    orders.forEach((order: any) => {
-      const codes = order.discountCodes?.nodes || [];
-      const discountAmount = parseFloat(order.totalDiscountsSet?.shopMoney?.amount || '0');
-      const orderTotal = parseFloat(order.totalPriceSet?.shopMoney?.amount || '0');
-      const branchName = order.customAttributes?.find((attr: any) => attr.key.toLowerCase() === 'branch')?.value || 'All';
+      // 2. Fetch Price Rules via REST API (since GraphQL PriceRule schema is deprecated/restricted)
+      const prRes = await fetch(`https://${shopDomain}/admin/api/2024-01/price_rules.json`, {
+        method: 'GET',
+        headers: {
+          'X-Shopify-Access-Token': adminToken,
+          'Content-Type': 'application/json',
+        }
+      });
+      const prResult = await prRes.json() as any;
       
-      codes.forEach((codeObj: any) => {
-        redemptions.push({
-          orderId: order.id,
-          orderName: order.name,
-          date: order.createdAt,
-          code: codeObj.code,
-          discountAmount: discountAmount > 0 ? discountAmount : 0,
-          orderTotal,
-          customerName: order.customer ? `${order.customer.firstName || ''} ${order.customer.lastName || ''}`.trim() : 'Guest',
-          customerEmail: order.customer?.email || 'N/A',
-          branch: branchName
+      // Convert REST price rules to the structure expected by the frontend
+      const priceRules = (prResult.price_rules || []).map((pr: any) => ({
+        id: pr.id,
+        title: pr.title,
+        value: pr.value || '0',
+        valueType: pr.value_type === 'percentage' ? 'PERCENTAGE' : 'FIXED_AMOUNT',
+        usageCount: pr.usage_count || 0,
+        usageLimit: pr.usage_limit || null,
+        startsAt: pr.starts_at,
+        endsAt: pr.ends_at,
+        prerequisiteSubtotalRange: pr.prerequisite_subtotal_range ? {
+          greaterThanOrEqualTo: pr.prerequisite_subtotal_range.greater_than_or_equal_to
+        } : null,
+        discountCodes: {
+          nodes: [{ code: pr.title }]
+        }
+      }));
+      
+      // Parse order redemptions
+      const redemptions: any[] = [];
+      const orders = result.data?.orders?.nodes || [];
+      orders.forEach((order: any) => {
+        const codes = order.discountCodes?.nodes || [];
+        const discountAmount = parseFloat(order.totalDiscountsSet?.shopMoney?.amount || '0');
+        const orderTotal = parseFloat(order.totalPriceSet?.shopMoney?.amount || '0');
+        const branchName = order.customAttributes?.find((attr: any) => attr.key.toLowerCase() === 'branch')?.value || 'All';
+        
+        codes.forEach((codeObj: any) => {
+          redemptions.push({
+            orderId: order.id,
+            orderName: order.name,
+            date: order.createdAt,
+            code: codeObj.code,
+            discountAmount: discountAmount > 0 ? discountAmount : 0,
+            orderTotal,
+            customerName: order.customer ? `${order.customer.firstName || ''} ${order.customer.lastName || ''}`.trim() : 'Guest',
+            customerEmail: order.customer?.email || 'N/A',
+            branch: branchName
+          });
         });
       });
-    });
 
-    return data({ 
-      priceRules: priceRules || [],
-      products: result.data?.products?.nodes || [],
-      locations: result.data?.locations?.nodes || [],
-      redemptions
-    });
-  } catch (e) {
-    return data({ priceRules: [], products: [], locations: [], redemptions: [] });
-  }
+      return { 
+        priceRules: priceRules || [],
+        products: result.data?.products?.nodes || [],
+        locations: result.data?.locations?.nodes || [],
+        redemptions
+      };
+    } catch (e) {
+      return { priceRules: [], products: [], locations: [], redemptions: [] };
+    }
+  })();
+
+  return data({ adminDataPromise });
 }
 
 export async function action({ request, context }: ActionFunctionArgs) {
@@ -472,8 +478,24 @@ export async function action({ request, context }: ActionFunctionArgs) {
   return data({ error: 'Unknown intent' }, { status: 400 });
 }
 
+import { Suspense } from 'react';
+import { Await } from 'react-router';
+
 export default function PromotionsDashboard() {
-  const { priceRules, products, locations, redemptions } = useLoaderData<typeof loader>();
+  const { adminDataPromise } = useLoaderData<typeof loader>();
+  const isEn = useLocation().pathname.startsWith('/en');
+
+  return (
+    <Suspense fallback={<div className="py-20 text-center text-gray-500">{isEn ? 'Loading campaign data...' : 'جاري تحميل بيانات الحملات...'}</div>}>
+      <Await resolve={adminDataPromise}>
+        {(adminData) => <PromotionsDashboardContent adminData={adminData} />}
+      </Await>
+    </Suspense>
+  );
+}
+
+function PromotionsDashboardContent({ adminData }: { adminData: any }) {
+  const { priceRules, products, locations, redemptions } = adminData;
   const actionData = useActionData<{ success?: boolean; error?: string }>();
   const navigation = useNavigation();
   const locale = useLocation().pathname.startsWith('/en') ? 'en' : 'ar';
@@ -764,14 +786,14 @@ export default function PromotionsDashboard() {
             </div>
           )}
 
-          <div className="luxury-card overflow-hidden">
-            <table className="w-full text-start">
+          <div className="luxury-card overflow-x-auto">
+            <table className="w-full text-start min-w-[700px]">
               <thead>
                 <tr className="bg-gray-50 text-[11px] uppercase tracking-wider text-gray-400 border-b">
-                  <th className="px-6 py-4 font-bold">{isEn ? 'Code' : 'الرمز'}</th>
-                  <th className="px-6 py-4 font-bold">{isEn ? 'Value' : 'القيمة'}</th>
-                  <th className="px-6 py-4 font-bold">{isEn ? 'ERP / CRM Sync' : 'مزامنة النظام'}</th>
-                  <th className="px-6 py-4 font-bold">{isEn ? 'Status' : 'الحالة'}</th>
+                  <th className="px-6 py-4 font-bold whitespace-nowrap">{isEn ? 'Code' : 'الرمز'}</th>
+                  <th className="px-6 py-4 font-bold whitespace-nowrap">{isEn ? 'Value' : 'القيمة'}</th>
+                  <th className="px-6 py-4 font-bold whitespace-nowrap">{isEn ? 'ERP / CRM Sync' : 'مزامنة النظام'}</th>
+                  <th className="px-6 py-4 font-bold whitespace-nowrap">{isEn ? 'Status' : 'الحالة'}</th>
                 </tr>
               </thead>
               <tbody className="divide-y">

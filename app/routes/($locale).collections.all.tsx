@@ -363,20 +363,20 @@ function CollectionAllHero({ title, productsCount, isEn }: { title: string, prod
                 {/* Right Side: Title and Back Button */}
                 <div className={`flex flex-col ${isEn ? 'items-start' : 'items-end'} gap-[8px]`}>
                     <div className="flex items-center gap-[24px]" dir={isEn ? 'ltr' : 'rtl'}>
-                        <button onClick={() => window.history.back()} className={`flex items-center gap-[8px] bg-[#9FB7AE] hover:bg-[#8BA19C] text-[#234745] px-6 py-2 rounded-[25px] text-[16px] font-bold transition-all ${isEn ? 'font-en' : ''}`} style={isEn ? {} : { fontFamily: "'GE Dinar One', sans-serif" }} dir={isEn ? 'ltr' : 'rtl'}>
+                        <button onClick={() => window.history.back()} className={`flex items-center gap-[8px] bg-[#9FB7AE] hover:bg-[#8BA19C] text-[#234745] px-6 py-2 rounded-[25px] text-[16px] font-bold transition-all ${isEn ? 'font-en' : ''}`} style={isEn ? {} : { fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }} dir={isEn ? 'ltr' : 'rtl'}>
                             <svg className={`w-5 h-5 ${isEn ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
                             </svg>
                             <span>{isEn ? 'Back' : 'رجوع'}</span>
                         </button>
-                        <h1 className={`text-[32px] md:text-[40px] font-bold text-white drop-shadow-sm ${isEn ? 'text-left font-en' : 'text-right'}`} style={isEn ? {} : { fontFamily: "'GE Dinar One', sans-serif" }} dir={isEn ? 'ltr' : 'rtl'}>
+                        <h1 className={`text-[32px] md:text-[40px] font-bold text-white drop-shadow-sm ${isEn ? 'text-left font-en' : 'text-right'}`} style={isEn ? {} : { fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }} dir={isEn ? 'ltr' : 'rtl'}>
                             {title}
                         </h1>
                     </div>
                 </div>
 
                 {/* Left Side in RTL (Second child): Product Count */}
-                <div className={`bg-[#FEF8EB] text-[#234745] px-6 py-2 rounded-[25px] text-[16px] font-bold shadow-sm shrink-0 ${isEn ? 'font-en' : ''}`} style={isEn ? {} : { fontFamily: "'GE Dinar One', sans-serif" }}>
+                <div className={`bg-[#FEF8EB] text-[#234745] px-6 py-2 rounded-[25px] text-[16px] font-bold shadow-sm shrink-0 ${isEn ? 'font-en' : ''}`} style={isEn ? {} : { fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
                     <span className="font-en">{productsCount}</span> {isEn ? 'Products' : 'منتجات'}
                 </div>
 

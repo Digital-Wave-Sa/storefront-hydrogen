@@ -196,15 +196,17 @@ export function ProductItem({
                     <AddToCartButton 
                         lines={cartLines as any} 
                         disabled={!effectiveAvailable || isOutOfStock}
-                        className="bg-[#234745] hover:bg-[#2d5e4a] text-white px-8 py-3 rounded-xl font-bold text-sm transition-all duration-300 shadow-md active:scale-95"
+                        className="h-[44px] px-8 flex items-center justify-center rounded-full font-bold text-[15px] bg-[#234745] text-white hover:bg-[#163529] shadow-sm transition-all duration-300 active:scale-95"
+                        style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
                     >
-                        {t.common.addToCart} +
+                        {t.common.addToCart}
                     </AddToCartButton>
                 ) : (
                     <button 
                         type="button"
                         onClick={() => setIsNotifyModalOpen(true)}
-                        className="bg-amber-500 hover:bg-amber-600 text-white px-8 py-3 rounded-xl font-bold text-sm transition-all shadow-md active:scale-95"
+                        className="h-[44px] px-8 flex items-center justify-center rounded-full font-bold text-[15px] bg-amber-500 text-white hover:bg-amber-600 shadow-sm transition-all duration-300 active:scale-95"
+                        style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
                     >
                         🔔 {t.common.notifyMe}
                     </button>
@@ -265,11 +267,9 @@ export function ProductItem({
                         priceRange: product.priceRange
                       });
                   }}
-                  className={`rounded-[25px] w-[28px] h-[28px] bg-[#FFFFFF] shadow-sm transition-all flex items-center justify-center ${isWishlisted ? 'text-red-500' : 'text-[#171717] hover:text-red-500'}`}
+                  className={`w-10 h-10 p-0 rounded-full bg-white shadow-md transition-all flex items-center justify-center ${isWishlisted ? 'text-[#e74c3c]' : 'text-gray-700 hover:text-[#e74c3c]'}`}
                 >
-                    <svg width="16" height="16" fill={isWishlisted ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                    </svg>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill={isWishlisted ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.5"><path d="M20.8 4.6a5.5 5.5 0 00-7.7 0l-1.1 1-1.1-1a5.5 5.5 0 00-7.8 7.8l1 1 7.9 7.9 7.9-7.9 1-1a5.5 5.5 0 000-7.8z" /></svg>
                 </button>
             </div>
             
@@ -307,18 +307,18 @@ export function ProductItem({
         
       <div className={`p-[16px] flex flex-col flex-grow ${isEn ? 'text-left' : 'text-right'}`}>
           <Link prefetch="intent" to={isVisibilityBlocked ? '#' : variantUrl} className={isVisibilityBlocked ? 'pointer-events-none' : ''}>
-              <h4 className={`font-bold text-[#234745] line-clamp-1 transition-colors duration-300 ${isVisibilityBlocked ? '' : 'group-hover:text-[#1a3a2d]'}`} style={{ fontFamily: "'GE Dinar One', sans-serif", fontSize: '16px', lineHeight: '20px' }}>
+              <h4 className={`font-bold text-[#234745] line-clamp-1 transition-colors duration-300 ${isVisibilityBlocked ? '' : 'group-hover:text-[#1a3a2d]'}`} style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", fontSize: '18px', lineHeight: '24px' }}>
                   {formatNumbers(product.title)}
               </h4>
           </Link>
 
           {!isVisibilityBlocked && product.priceRange && (
             <div className={`mt-[8px] mb-[16px] flex ${isEn ? 'justify-start' : 'justify-start'} items-center gap-[8px]`}>
-                <div className="flex items-center text-[#255441]" style={{ fontFamily: "'GE Dinar One', sans-serif", fontSize: '18px', lineHeight: '22px', fontWeight: 'bold' }}>
-                    <Price data={product.priceRange.minVariantPrice} size="sm" isEn={isEn} />
+                <div className="flex items-center text-[#255441]">
+                    <Price data={product.priceRange.minVariantPrice} size="lg" isEn={isEn} />
                 </div>
                 {product.compareAtPriceRange?.minVariantPrice && parseFloat(product.compareAtPriceRange.minVariantPrice.amount) > parseFloat(product.priceRange.minVariantPrice.amount) && (
-                    <div className="flex items-center text-[#E64950] line-through" style={{ fontFamily: "'GE Dinar One', sans-serif", fontSize: '16px', lineHeight: '20px', fontWeight: 'bold' }}>
+                    <div className="flex items-center text-[#E64950] line-through">
                         <Price data={product.compareAtPriceRange.minVariantPrice} size="md" isEn={isEn} />
                     </div>
                 )}
@@ -331,8 +331,8 @@ export function ProductItem({
                     <AddToCartButton 
                           lines={cartLines as any} 
                           disabled={!effectiveAvailable || isOutOfStock}
-                          className="w-full bg-[#234745] hover:bg-[#1a3a2d] text-[#FEF8EB] h-[40px] flex items-center justify-center rounded-[25px] font-bold transition-all"
-                          style={{ fontFamily: "'GE Dinar One', sans-serif", fontSize: '16px', lineHeight: '20px' }}
+                          className="w-full h-[44px] flex items-center justify-center rounded-full font-bold text-[15px] bg-[#234745] text-white hover:bg-[#163529] shadow-sm transition-all duration-300 active:scale-95"
+                          style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
                       >
                           {isEn ? 'Add to Cart' : 'أضف إلي السلة'}
                       </AddToCartButton>
@@ -340,8 +340,8 @@ export function ProductItem({
                     <button 
                         type="button"
                         onClick={() => setIsNotifyModalOpen(true)}
-                        className="w-full py-[12px] rounded-[25px] font-bold text-[16px] bg-amber-500 hover:bg-amber-600 text-white shadow-sm cursor-pointer transition-all"
-                        style={{ fontFamily: "'GE Dinar One', sans-serif" }}
+                        className="w-full h-[44px] flex items-center justify-center rounded-full font-bold text-[15px] bg-amber-500 text-white hover:bg-amber-600 shadow-sm transition-all duration-300 active:scale-95"
+                        style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
                     >
                         🔔 {t.common.notifyMe}
                     </button>

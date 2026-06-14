@@ -18,15 +18,16 @@ export async function sendSMS({
   // If it starts with '05', replace '0' with '966'
   let formattedPhone = to.replace(/\s+/g, '').replace(/\D/g, '');
   
-  // Enforce 00966 format for the SMS provider
+  // Enforce 966 format for the SMS provider (12 digits)
   if (formattedPhone.startsWith('00966')) {
-     // Already formatted properly
-  } else if (formattedPhone.startsWith('966')) {
-     formattedPhone = '00' + formattedPhone;
+     formattedPhone = formattedPhone.substring(2);
   } else if (formattedPhone.startsWith('05')) {
-    formattedPhone = '00966' + formattedPhone.substring(1);
+    formattedPhone = '966' + formattedPhone.substring(1);
   } else if (formattedPhone.startsWith('5') && formattedPhone.length === 9) {
-    formattedPhone = '00966' + formattedPhone;
+    formattedPhone = '966' + formattedPhone;
+  } else if (!formattedPhone.startsWith('966')) {
+    // If it doesn't have 966, prepend it
+    formattedPhone = '966' + formattedPhone;
   }
 
   const payload = {
@@ -71,6 +72,10 @@ export async function sendSMS({
 
     try {
       const result = JSON.parse(responseText);
+      if (result.Result === "0" || result.Result === 0) {
+        console.error('[SMS API REJECTED]', result);
+        return { success: false, error: result.Message || "SMS API rejected request" };
+      }
       console.log('[SMS SENT successfully]', result);
       return { success: true, result };
     } catch (e) {

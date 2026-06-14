@@ -1,11 +1,10 @@
-import { Form, NavLink, Outlet, useLoaderData, useLocation, useRouteLoaderData } from 'react-router';
+import { Form, NavLink, Outlet, useLoaderData, useLocation, useRouteLoaderData, Await } from 'react-router';
 import { data, redirect, type LoaderFunctionArgs } from 'react-router';
 import type { CustomerFragment } from 'storefrontapi.generated';
 
 export function shouldRevalidate() {
-  return true;
+  return false;
 }
-
 export async function loader({ request, context }: LoaderFunctionArgs) {
   const { session, storefront } = context;
   const { pathname } = new URL(request.url);
@@ -14,7 +13,7 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
   const isLoggedIn = Boolean(customerAccessToken?.accessToken);
   
   const isAccountHome = pathname === `${localePrefix}/account` || pathname === `${localePrefix}/account/`;
-  const isPrivateRoute = new RegExp(`^${localePrefix}/account/(orders|orders/.*|profile|addresses|addresses/.*|notification-preferences|dashboard|feedback-analytics|promotions|wishlist|wallet)$`).test(pathname);
+  const isPrivateRoute = new RegExp(`^${localePrefix}/account/(orders|orders/.*|profile|addresses|addresses/.*|notification-preferences|dashboard|feedback-analytics|promotions|wishlist|wallet|payments)$`).test(pathname);
 
   if (!isLoggedIn) {
     if (isPrivateRoute || isAccountHome) {
@@ -120,27 +119,30 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
         addresses: { nodes: [] },
       };
 
-      let loyaltyPoints = 0;
-      let balance = 0;
-      try {
-        const middlewareUrl = context.env.MIDDLEWARE_URL || 'https://wh.pryvexapls.com';
-        const branchId = await context.session.get('selectedLocationId');
-        const res = await fetch(`${middlewareUrl}/wallet/balance?user_id=${encodeURIComponent(mockCustomer.id)}&phone=${encodeURIComponent(mockCustomer.phone || '')}`, {
-          headers: { 'x-branch-id': branchId || '1' }
-        });
-        const apiData = await res.json();
-        if (apiData?.success && apiData?.data) {
-          loyaltyPoints = apiData.data.loyalty_points || 0;
-          balance = apiData.data.balance || 0;
-        } else if (apiData && apiData.balance !== undefined) {
-          balance = apiData.balance || 0;
-          if (typeof apiData.loyalty_points === 'object' && apiData.loyalty_points !== null) {
-            loyaltyPoints = apiData.loyalty_points.points || 0;
-          } else {
-            loyaltyPoints = apiData.loyalty_points || 0;
+      const walletPromise = (async () => {
+        let loyaltyPoints = 0;
+        let balance = 0;
+        try {
+          const middlewareUrl = context.env.MIDDLEWARE_URL || 'https://wh.pryvexapls.com';
+          const branchId = await context.session.get('selectedLocationId');
+          const res = await fetch(`${middlewareUrl}/wallet/balance?user_id=${encodeURIComponent(mockCustomer.id)}&phone=${encodeURIComponent(mockCustomer.phone || '')}`, {
+            headers: { 'x-branch-id': branchId || '1' }
+          });
+          const apiData = await res.json();
+          if (apiData?.success && apiData?.data) {
+            loyaltyPoints = apiData.data.loyalty_points || 0;
+            balance = apiData.data.balance || 0;
+          } else if (apiData && apiData.balance !== undefined) {
+            balance = apiData.balance || 0;
+            if (typeof apiData.loyalty_points === 'object' && apiData.loyalty_points !== null) {
+              loyaltyPoints = apiData.loyalty_points.points || 0;
+            } else {
+              loyaltyPoints = apiData.loyalty_points || 0;
+            }
           }
-        }
-      } catch (e) {}
+        } catch (e) {}
+        return { loyaltyPoints, balance };
+      })();
 
       return data({
         isLoggedIn: true,
@@ -149,8 +151,7 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
         customer: mockCustomer,
         isAdmin: realCustomer ? isAdmin : true,
         googleMapsKey: context.env.PUBLIC_GOOGLE_MAPS_KEY,
-        loyaltyPoints,
-        balance
+        walletPromise
       });
     }
 
@@ -172,27 +173,30 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
       return clean === 'admin' || clean === 'branchmanager' || clean === 'manager';
     });
 
-    let loyaltyPoints = 0;
-    let balance = 0;
-    try {
-      const middlewareUrl = context.env.MIDDLEWARE_URL || 'https://wh.pryvexapls.com';
-      const branchId = await context.session.get('selectedLocationId');
-      const res = await fetch(`${middlewareUrl}/wallet/balance?user_id=${encodeURIComponent(customer.id)}&phone=${encodeURIComponent(customer.phone || '')}`, {
-        headers: { 'x-branch-id': branchId || '1' }
-      });
-      const apiData = await res.json();
-      if (apiData?.success && apiData?.data) {
-        loyaltyPoints = apiData.data.loyalty_points || 0;
-        balance = apiData.data.balance || 0;
-      } else if (apiData && apiData.balance !== undefined) {
-        balance = apiData.balance || 0;
-        if (typeof apiData.loyalty_points === 'object' && apiData.loyalty_points !== null) {
-          loyaltyPoints = apiData.loyalty_points.points || 0;
-        } else {
-          loyaltyPoints = apiData.loyalty_points || 0;
+    const walletPromise = (async () => {
+      let loyaltyPoints = 0;
+      let balance = 0;
+      try {
+        const middlewareUrl = context.env.MIDDLEWARE_URL || 'https://wh.pryvexapls.com';
+        const branchId = await context.session.get('selectedLocationId');
+        const res = await fetch(`${middlewareUrl}/wallet/balance?user_id=${encodeURIComponent(customer.id)}&phone=${encodeURIComponent(customer.phone || '')}`, {
+          headers: { 'x-branch-id': branchId || '1' }
+        });
+        const apiData = await res.json();
+        if (apiData?.success && apiData?.data) {
+          loyaltyPoints = apiData.data.loyalty_points || 0;
+          balance = apiData.data.balance || 0;
+        } else if (apiData && apiData.balance !== undefined) {
+          balance = apiData.balance || 0;
+          if (typeof apiData.loyalty_points === 'object' && apiData.loyalty_points !== null) {
+            loyaltyPoints = apiData.loyalty_points.points || 0;
+          } else {
+            loyaltyPoints = apiData.loyalty_points || 0;
+          }
         }
-      }
-    } catch (e) {}
+      } catch (e) {}
+      return { loyaltyPoints, balance };
+    })();
 
     return data(
       { 
@@ -202,8 +206,7 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
         customer, 
         isAdmin,
         googleMapsKey: context.env.PUBLIC_GOOGLE_MAPS_KEY,
-        loyaltyPoints,
-        balance
+        walletPromise
       },
       {
         headers: {
@@ -223,42 +226,47 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
 }
 
 export default function Acccount() {
-  const { isLoggedIn, isPrivateRoute, isAccountHome, customer, googleMapsKey, isAdmin, loyaltyPoints, balance } = useLoaderData<typeof loader>();
+  const { isLoggedIn, isPrivateRoute, isAccountHome, customer, googleMapsKey, isAdmin, walletPromise } = useLoaderData<typeof loader>();
   const rootData = useRouteLoaderData('root') as any;
   const locale = rootData?.locale || 'ar';
 
   if (!isPrivateRoute && !isAccountHome) {
-    return <Outlet context={{ customer, googleMapsKey, isAdmin, loyaltyPoints, balance, locale }} />;
+    return <Outlet context={{ customer, googleMapsKey, isAdmin, walletPromise, locale }} />;
   }
 
   return (
-    <AccountLayout customer={customer as CustomerFragment} isAdmin={isAdmin} loyaltyPoints={loyaltyPoints} balance={balance}>
-      <Outlet context={{ customer, googleMapsKey, isAdmin, loyaltyPoints, balance, locale }} />
+    <AccountLayout customer={customer as CustomerFragment} isAdmin={isAdmin} walletPromise={walletPromise}>
+      <Outlet context={{ customer, googleMapsKey, isAdmin, walletPromise, locale }} />
     </AccountLayout>
   );
 }
 
 import {AccountProfileHeader} from '~/components/account/AccountProfileHeader';
+import { Suspense } from 'react';
 
 function AccountLayout({
   customer,
   isAdmin,
-  loyaltyPoints,
-  balance,
+  walletPromise,
   children,
 }: {
   customer: CustomerFragment;
   isAdmin: boolean;
-  loyaltyPoints?: number;
-  balance?: number;
+  walletPromise?: Promise<{loyaltyPoints: number; balance: number}>;
   children: React.ReactNode;
 }) {
   const location = useLocation();
-  const isEn = location.pathname.includes('/en');
+  const isEn = location.pathname.startsWith('/en');
   
   return (
     <div className="account-layout">
-      <AccountProfileHeader customer={customer} isEn={isEn} loyaltyPoints={loyaltyPoints || 0} balance={balance || 0} />
+      <Suspense fallback={<AccountProfileHeader customer={customer} isEn={isEn} loyaltyPoints={0} balance={0} />}>
+        <Await resolve={walletPromise}>
+          {(wallet) => (
+            <AccountProfileHeader customer={customer} isEn={isEn} loyaltyPoints={wallet?.loyaltyPoints || 0} balance={wallet?.balance || 0} />
+          )}
+        </Await>
+      </Suspense>
       <div className="max-w-[1200px] mx-auto px-4 md:px-6 w-full">
         <div className="grid grid-cols-1 lg:grid-cols-[302px_minmax(0,1fr)] gap-6 lg:gap-10 items-start w-full !mt-0 !pt-0">
           <nav className="w-auto -mx-4 px-4 bg-transparent lg:mx-0 lg:w-full lg:bg-white lg:rounded-[24px] lg:py-6 lg:px-4 lg:border lg:border-[#BBCFCD] lg:sticky lg:top-[120px] z-10 min-w-0 max-w-[100vw] lg:max-w-full relative">
@@ -274,7 +282,7 @@ function AccountLayout({
 }
 
 function AcccountMenu({ customer, isAdmin }: { customer: CustomerFragment; isAdmin: boolean }) {
-  const isEn = useLocation().pathname.includes('/en/');
+  const isEn = useLocation().pathname.startsWith('/en');
   const localePrefix = isEn ? '/en' : '';
 
   const menuItems = [
@@ -399,7 +407,7 @@ function AcccountMenu({ customer, isAdmin }: { customer: CustomerFragment; isAdm
               className="account-nav-item"
             >
               {item.icon}
-              <span style={!isEn ? { fontFamily: '"Bahij Janna", sans-serif' } : undefined}>
+              <span style={!isEn ? { fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" } : undefined}>
                 {item.label}
               </span>
             </NavLink>

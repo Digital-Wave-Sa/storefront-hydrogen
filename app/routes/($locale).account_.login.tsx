@@ -47,21 +47,47 @@ export async function action({ request, context }: ActionFunctionArgs) {
     const fullPhone = `+966${cleanPhone}`;
 
 
-
     try {
       const { getAdminToken } = await import('~/lib/shopify-admin.server');
       const adminToken = await getAdminToken(env);
-      console.log('Login Action [send-otp] Phone:', fullPhone);
-      console.log('Login Action [send-otp] Token used:', adminToken.slice(0, 10) + '...');
-      const queryStr = encodeURIComponent(`phone:"${fullPhone}"`);
-      const response = await fetch(`https://${env.PUBLIC_STORE_DOMAIN}/admin/api/2023-04/customers/search.json?query=${queryStr}`, {
+      
+      console.log('====================================');
+      console.log('[DEBUG AUTH] PUBLIC_STORE_DOMAIN:', env.PUBLIC_STORE_DOMAIN);
+      console.log('[DEBUG AUTH] Token:', adminToken ? adminToken.slice(0, 10) + '...' : 'NONE');
+      console.log('====================================');
+
+      const graphqlQuery = `
+        query {
+          customers(first: 10, query: "phone:${fullPhone}") {
+            edges {
+              node {
+                id
+                email
+                phone
+              }
+            }
+          }
+        }
+      `;
+
+      const adminDomain = env.SHOPIFY_SHOP ? `${env.SHOPIFY_SHOP.replace('.myshopify.com', '')}.myshopify.com` : env.PUBLIC_STORE_DOMAIN;
+      const response = await fetch(`https://${adminDomain}/admin/api/2023-04/graphql.json`, {
+        method: 'POST',
         headers: {
           'X-Shopify-Access-Token': adminToken,
           'Content-Type': 'application/json',
         },
+        body: JSON.stringify({ query: graphqlQuery })
       });
+      
       const dataRes = await response.json();
-      const { customers } = dataRes;
+      console.log('Login Action [send-otp] GraphQL Response:', JSON.stringify(dataRes));
+      
+      const customers = dataRes?.data?.customers?.edges?.map((e: any) => ({
+        id: e.node.id.split('/').pop(),
+        email: e.node.email,
+        phone: e.node.phone
+      })) || [];
       console.log('Login Action [send-otp] Response Data:', JSON.stringify(dataRes).slice(0, 200));
 
       if (!customers || customers.length === 0) {

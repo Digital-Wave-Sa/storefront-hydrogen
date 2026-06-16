@@ -1,8 +1,10 @@
-import { type MetaFunction, type LoaderFunctionArgs, type LinksFunction, useLoaderData } from 'react-router';
+import { type LoaderFunctionArgs, type LinksFunction, useLoaderData } from 'react-router';
 import LolaCakeBuilder from '~/components/CakeBuilder/LolaCakeBuilder';
+import { getShopTitle } from '~/lib/seo';
+import type { Route } from './+types/($locale).custom-cake';
 
-export const meta: MetaFunction = () => {
-  return [{ title: 'Customize Your Dream Cake | Saadeddin' }];
+export const meta: Route.MetaFunction = ({ matches }) => {
+  return [{ title: getShopTitle('Customize Your Dream Cake', matches) }];
 };
 
 export const links: LinksFunction = () => {

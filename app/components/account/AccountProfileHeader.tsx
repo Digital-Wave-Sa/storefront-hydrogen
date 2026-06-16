@@ -7,13 +7,14 @@ export function AccountProfileHeader({
   isEn,
   loyaltyPoints = 0,
   balance = 0,
+  wishlistCount = 0,
 }: {
   customer: CustomerFragment;
   isEn: boolean;
   loyaltyPoints?: number;
   balance?: number;
+  wishlistCount?: number;
 }) {
-  const { wishlist } = useWishlist();
   const initials = (customer.firstName?.[0] || customer.email?.[0] || 'U').toUpperCase();
   const joinYear = customer.createdAt ? new Date(customer.createdAt).getFullYear() : new Date().getFullYear();
   
@@ -79,7 +80,7 @@ export function AccountProfileHeader({
                   </p>
                 </div>
                 <div className="text-center">
-                  <p className="text-[16px] md:text-[22px] font-bold leading-none text-white mb-1 md:mb-2 font-en">{wishlist?.length || 0}</p>
+                  <p className="text-[16px] md:text-[22px] font-bold leading-none text-white mb-1 md:mb-2 font-en">{wishlistCount || 0}</p>
                   <p className="text-[10px] md:text-[12px] text-[#A6BFB9] font-medium opacity-90">
                     {isEn ? 'Wishlist' : 'مفضلة'}
                   </p>

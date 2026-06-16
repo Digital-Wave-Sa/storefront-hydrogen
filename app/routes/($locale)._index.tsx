@@ -11,10 +11,12 @@ import {RamadanBanner} from '~/components/RamadanBanner';
 import {CustomerReviews} from '~/components/CustomerReviews';
 import {WhoAreYouGifting} from '~/components/WhoAreYouGifting';
 import {CorporateGifting} from '~/components/CorporateGifting';
+import {getShopTitle} from '~/lib/seo';
 
-export const meta: Route.MetaFunction = () => {
+export const meta: Route.MetaFunction = ({matches}) => {
+  const title = getShopTitle('Premium Sweets, Cakes & Chocolate', matches);
   return [
-    {title: 'Saadeddin Pastry | Premium Sweets, Cakes & Chocolate'},
+    {title},
     {
       name: 'description',
       content:
@@ -22,7 +24,7 @@ export const meta: Route.MetaFunction = () => {
     },
     {
       property: 'og:title',
-      content: 'Saadeddin Pastry | Premium Sweets, Cakes & Chocolate',
+      content: title,
     },
   ];
 };

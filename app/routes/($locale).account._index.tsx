@@ -1,4 +1,5 @@
-import { useOutletContext, Link, useLocation } from 'react-router';
+import { Suspense } from 'react';
+import { useOutletContext, Link, useLocation, Await } from 'react-router';
 import type { CustomerFragment } from 'storefrontapi.generated';
 
 // Currency SVG Icon provided by user
@@ -10,9 +11,13 @@ const CurrencyIcon = ({ className }: { className?: string }) => (
 );
 
 export default function AccountDashboard() {
-  const { customer } = useOutletContext<{ customer: CustomerFragment }>();
+  const { customer, walletPromise } = useOutletContext<{ customer: CustomerFragment, walletPromise: Promise<any> }>();
   const location = useLocation();
   const isEn = location.pathname.startsWith('/en');
+
+  const totalSpending = customer.orders?.nodes?.reduce((acc, order) => {
+    return acc + (parseFloat(order.currentTotalPrice?.amount || "0"));
+  }, 0) || 0;
 
   return (
     <div className="space-y-6 animate-fade-in" dir={isEn ? 'ltr' : 'rtl'}>
@@ -22,7 +27,7 @@ export default function AccountDashboard() {
         <div className="bg-white border border-[#9FB7AE] rounded-[12px] py-8 px-4 flex flex-col items-center justify-center text-center gap-2">
            <div className="flex items-center justify-center gap-2" dir="ltr">
              <span className="text-[28px] md:text-[34px] font-bold text-[#234745] leading-none font-en">
-               4,200
+               {totalSpending.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
              </span>
              <span className="text-[#234745]"><CurrencyIcon className="h-6 w-auto" /></span>
            </div>
@@ -124,46 +129,83 @@ export default function AccountDashboard() {
       })()}
 
       {/* Loyalty Points Section */}
-      <div className="bg-white border border-[#9FB7AE] rounded-[12px] p-6 relative overflow-hidden">
-        <div className="flex flex-col gap-6">
-           <div className="flex items-center justify-between">
-              <div className="text-start">
-                 <h2 className="text-[16px] font-bold text-[#234745] mb-2" style={!isEn ? { fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" } : undefined}>
-                   {isEn ? 'Loyalty Points' : 'نقاط الولاء'}
-                 </h2>
-                 <p className="text-[36px] md:text-[46px] font-bold text-[#234745] leading-none mb-1 font-en">
-                   0
-                 </p>
-                 <p className="text-[12px] text-[#A6BFB9] font-medium flex items-center gap-1 justify-start">
-                   {isEn ? '1 Point = ~1 Halala' : <><span className="font-en pt-0.5">1</span> نقطة = <span className="font-en pt-0.5">1</span> هللة تقريباً</>}
-                 </p>
-              </div>
-              <div className="text-end">
-                 <p className="text-[12px] text-[#A6BFB9] font-medium mb-1">
-                   {isEn ? 'Next Level' : 'المستوى التالي'}
-                 </p>
-                 <p className="text-[16px] md:text-[18px] font-bold text-[#234745] flex items-center gap-1 justify-end">
-                   {isEn ? '300 points remaining' : <><span className="font-en pt-0.5">300</span> نقطة متبقية</>}
-                 </p>
-              </div>
-           </div>
-
-           {/* Progress Bar */}
-           <div className="relative w-full h-3 bg-[#EAF2F1] rounded-full overflow-hidden">
-              <div 
-                className="absolute top-0 right-0 h-full bg-[#234745] rounded-full transition-all duration-1000"
-                style={{ width: '0%' }}
-              />
-           </div>
-
-           {/* History List */}
-           <div className="space-y-3">
-              <div className="text-center py-4 text-[#A6BFB9] text-[14px]">
-                 {isEn ? 'No recent activity.' : 'لا يوجد نشاط حديث.'}
-              </div>
-           </div>
+      <Suspense fallback={
+        <div className="bg-white border border-[#9FB7AE] rounded-[12px] p-6 relative overflow-hidden">
+          <div className="py-8 text-center text-gray-400">Loading loyalty points...</div>
         </div>
-      </div>
+      }>
+        <Await resolve={walletPromise}>
+          {(wallet) => {
+            const points = wallet?.loyaltyPoints || 0;
+            const history = wallet?.history || [];
+            
+            // Simple level logic for demonstration
+            const nextLevelThreshold = points < 1000 ? 1000 : points < 5000 ? 5000 : 10000;
+            const remainingPoints = Math.max(0, nextLevelThreshold - points);
+            const progressPercent = Math.min(100, (points / nextLevelThreshold) * 100);
+            
+            return (
+              <div className="bg-white border border-[#9FB7AE] rounded-[12px] p-6 relative overflow-hidden">
+                <div className="flex flex-col gap-6">
+                   <div className="flex items-center justify-between">
+                      <div className="text-start">
+                         <h2 className="text-[16px] font-bold text-[#234745] mb-2" style={!isEn ? { fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" } : undefined}>
+                           {isEn ? 'Loyalty Points' : 'نقاط الولاء'}
+                         </h2>
+                         <p className="text-[36px] md:text-[46px] font-bold text-[#234745] leading-none mb-1 font-en">
+                           {points}
+                         </p>
+                         <p className="text-[12px] text-[#A6BFB9] font-medium flex items-center gap-1 justify-start">
+                           {isEn ? '1 Point = ~1 Halala' : <><span className="font-en pt-0.5">1</span> نقطة = <span className="font-en pt-0.5">1</span> هللة تقريباً</>}
+                         </p>
+                      </div>
+                      <div className="text-end">
+                         <p className="text-[12px] text-[#A6BFB9] font-medium mb-1">
+                           {isEn ? 'Next Level' : 'المستوى التالي'}
+                         </p>
+                         <p className="text-[16px] md:text-[18px] font-bold text-[#234745] flex items-center gap-1 justify-end">
+                           {isEn ? `${remainingPoints} points remaining` : <><span className="font-en pt-0.5">{remainingPoints}</span> نقطة متبقية</>}
+                         </p>
+                      </div>
+                   </div>
+
+                   {/* Progress Bar */}
+                   <div className="relative w-full h-3 bg-[#EAF2F1] rounded-full overflow-hidden">
+                      <div 
+                        className="absolute top-0 right-0 h-full bg-[#234745] rounded-full transition-all duration-1000"
+                        style={{ width: `${progressPercent}%` }}
+                      />
+                   </div>
+
+                   {/* History List */}
+                   <div className="space-y-3">
+                     {!history || history.length === 0 ? (
+                        <div className="text-center py-4 text-[#A6BFB9] text-[14px]">
+                           {isEn ? 'No recent activity.' : 'لا يوجد نشاط حديث.'}
+                        </div>
+                     ) : (
+                        history.slice(0, 3).map((tx: any) => {
+                          const isAddition = tx.amount > 0;
+                          return (
+                            <div key={tx.id} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
+                              <div className="flex flex-col text-start">
+                                <span className="text-[13px] font-bold text-[#234745]">{isEn ? tx.labelEn : tx.labelAr}</span>
+                                <span className="text-[11px] text-[#A6BFB9]" dir="ltr">{new Date(tx.date).toLocaleDateString(isEn ? 'en-US' : 'ar-SA')}</span>
+                              </div>
+                              <div className={`font-bold text-[14px] ${isAddition ? 'text-emerald-600' : 'text-red-500'}`} dir="ltr">
+                                {isAddition ? '+' : ''}{tx.amount.toFixed(2)} SAR
+                              </div>
+                            </div>
+                          );
+                        })
+                     )}
+                   </div>
+                </div>
+              </div>
+            );
+          }}
+        </Await>
+      </Suspense>
     </div>
   );
 }

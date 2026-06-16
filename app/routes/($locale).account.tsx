@@ -1,7 +1,8 @@
 import { Form, NavLink, Outlet, useLoaderData, useLocation, useRouteLoaderData, Await } from 'react-router';
 import { data, redirect, type LoaderFunctionArgs } from 'react-router';
 import type { CustomerFragment } from 'storefrontapi.generated';
-
+import { Suspense } from 'react';
+import { AccountProfileHeader } from '~/components/account/AccountProfileHeader';
 export function shouldRevalidate() {
   return false;
 }
@@ -126,23 +127,30 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
         try {
           const middlewareUrl = context.env.MIDDLEWARE_URL || 'https://wh.pryvexapls.com';
           const branchId = await context.session.get('selectedLocationId');
-          const res = await fetch(`${middlewareUrl}/wallet/balance?phone=${encodeURIComponent(mockCustomer.phone || '')}`, {
+          const res = await fetch(`${middlewareUrl}/wallet/balance?user_id=${encodeURIComponent(mockCustomer.id)}&phone=${encodeURIComponent(mockCustomer.phone || '')}`, {
             headers: { 'x-branch-id': branchId || '1' }
           });
           const apiData = await res.json();
           if (apiData?.success && apiData?.data) {
-            loyaltyPoints = apiData.data.loyalty_points || 0;
             balance = apiData.data.balance || 0;
           } else if (apiData && apiData.balance !== undefined) {
             balance = apiData.balance || 0;
-            if (typeof apiData.loyalty_points === 'object' && apiData.loyalty_points !== null) {
-              loyaltyPoints = apiData.loyalty_points.points || 0;
-            } else {
-              loyaltyPoints = apiData.loyalty_points || 0;
+          }
+
+          // Fetch Loyalty Points explicitly from CRM endpoint
+          const loyaltyRes = await fetch(`${middlewareUrl}/crm/loyalty`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-branch-id': branchId || '1' },
+            body: JSON.stringify({ phone: mockCustomer.phone || '' })
+          });
+          if (loyaltyRes.ok) {
+            const loyaltyData = await loyaltyRes.json();
+            if (loyaltyData?.success && loyaltyData?.data?.points) {
+              loyaltyPoints = loyaltyData.data.points;
             }
           }
 
-          const histRes = await fetch(`${middlewareUrl}/wallet/transactions?phone=${encodeURIComponent(mockCustomer.phone || '')}`, {
+          const histRes = await fetch(`${middlewareUrl}/wallet/transactions?user_id=${encodeURIComponent(mockCustomer.id)}&phone=${encodeURIComponent(mockCustomer.phone || '')}`, {
             headers: { 'x-branch-id': branchId || '1' }
           });
           if (histRes.ok) {
@@ -200,23 +208,37 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
       try {
         const middlewareUrl = context.env.MIDDLEWARE_URL || 'https://wh.pryvexapls.com';
         const branchId = await context.session.get('selectedLocationId');
-        const res = await fetch(`${middlewareUrl}/wallet/balance?phone=${encodeURIComponent(customer.phone || '')}`, {
+        
+        // Ensure phone number matches expected local Saudi format for CRM (replace +966 with 0)
+        let formattedPhone = customer.phone || '';
+        if (formattedPhone.startsWith('+966')) {
+          formattedPhone = '0' + formattedPhone.slice(4);
+        }
+
+        const res = await fetch(`${middlewareUrl}/wallet/balance?user_id=${encodeURIComponent(customer.id)}&phone=${encodeURIComponent(formattedPhone)}`, {
           headers: { 'x-branch-id': branchId || '1' }
         });
         const apiData = await res.json();
         if (apiData?.success && apiData?.data) {
-          loyaltyPoints = apiData.data.loyalty_points || 0;
           balance = apiData.data.balance || 0;
         } else if (apiData && apiData.balance !== undefined) {
           balance = apiData.balance || 0;
-          if (typeof apiData.loyalty_points === 'object' && apiData.loyalty_points !== null) {
-            loyaltyPoints = apiData.loyalty_points.points || 0;
-          } else {
-            loyaltyPoints = apiData.loyalty_points || 0;
+        }
+
+        // Fetch Loyalty Points explicitly from CRM endpoint
+        const loyaltyRes = await fetch(`${middlewareUrl}/crm/loyalty`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-branch-id': branchId || '1' },
+          body: JSON.stringify({ phone: formattedPhone })
+        });
+        if (loyaltyRes.ok) {
+          const loyaltyData = await loyaltyRes.json();
+          if (loyaltyData?.success && loyaltyData?.data?.points) {
+            loyaltyPoints = loyaltyData.data.points;
           }
         }
 
-        const histRes = await fetch(`${middlewareUrl}/wallet/transactions?phone=${encodeURIComponent(customer.phone || '')}`, {
+        const histRes = await fetch(`${middlewareUrl}/wallet/transactions?user_id=${encodeURIComponent(customer.id)}&phone=${encodeURIComponent(formattedPhone)}`, {
             headers: { 'x-branch-id': branchId || '1' }
         });
         if (histRes.ok) {
@@ -281,8 +303,7 @@ export default function Acccount() {
   );
 }
 
-import {AccountProfileHeader} from '~/components/account/AccountProfileHeader';
-import { Suspense } from 'react';
+import { useWishlist } from '~/context/WishlistContext';
 
 function AccountLayout({
   customer,
@@ -298,12 +319,16 @@ function AccountLayout({
   const location = useLocation();
   const isEn = location.pathname.startsWith('/en');
   
+  // Safe to use here since it's inside the WishlistProvider
+  const { wishlist } = useWishlist();
+  const wishlistCount = wishlist?.length || 0;
+  
   return (
     <div className="account-layout">
-      <Suspense fallback={<AccountProfileHeader customer={customer} isEn={isEn} loyaltyPoints={0} balance={0} />}>
+      <Suspense fallback={<AccountProfileHeader customer={customer} isEn={isEn} loyaltyPoints={0} balance={0} wishlistCount={0} />}>
         <Await resolve={walletPromise}>
           {(wallet) => (
-            <AccountProfileHeader customer={customer} isEn={isEn} loyaltyPoints={wallet?.loyaltyPoints || 0} balance={wallet?.balance || 0} />
+            <AccountProfileHeader customer={customer} isEn={isEn} loyaltyPoints={wallet?.loyaltyPoints || 0} balance={wallet?.balance || 0} wishlistCount={wishlistCount} />
           )}
         </Await>
       </Suspense>
@@ -477,7 +502,15 @@ function AcccountMenu({ customer, isAdmin }: { customer: CustomerFragment; isAdm
 
 function Logout({ isEn }: { isEn: boolean }) {
   return (
-    <Form className="account-logout" method="POST" action="/account/logout">
+    <Form 
+      className="account-logout" 
+      method="POST" 
+      action="/account/logout"
+      onSubmit={() => {
+        localStorage.removeItem('wishlist');
+        document.cookie = 'cart=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT;';
+      }}
+    >
       <button type="submit" className="account-nav-item" style={{ width: '100%', textAlign: 'start' }}>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" />
@@ -510,7 +543,7 @@ export const CUSTOMER_FRAGMENT = `#graphql
     birthdate: metafield(namespace: "custom", key: "birthdate") {
       value
     }
-    orders(first: 1, sortKey: PROCESSED_AT, reverse: true) {
+    orders(first: 50, sortKey: PROCESSED_AT, reverse: true) {
       nodes {
         id
         orderNumber

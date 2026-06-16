@@ -1,12 +1,14 @@
-import {data, type LoaderFunctionArgs, type MetaFunction, useLoaderData, Link, useRouteLoaderData, useNavigate, useSearchParams, useSubmit, useLocation} from 'react-router';
+import {data, type LoaderFunctionArgs, useLoaderData, Link, useRouteLoaderData, useNavigate, useSearchParams, useSubmit, useLocation} from 'react-router';
 import {getPaginationVariables, Pagination, Image} from '@shopify/hydrogen';
 import {ProductItem} from '~/components/ProductItem';
 import {useState, useEffect, Fragment} from 'react';
 import { createPortal } from 'react-dom';
 import patternBg from '~/assets/patteren-collection-header.svg';
+import {getShopTitle} from '~/lib/seo';
+import type { Route } from './+types/($locale).collections.all';
 
-export const meta: MetaFunction = () => {
-  return [{title: `Saadeddin | All Products`}];
+export const meta: Route.MetaFunction = ({matches}) => {
+  return [{title: getShopTitle('All Products', matches)}];
 };
 
 export async function loader({context, request}: LoaderFunctionArgs) {

@@ -1,11 +1,12 @@
 import {useLoaderData, data, type HeadersFunction} from 'react-router';
-import type {Route} from './+types/cart';
+import type {Route} from './+types/($locale).cart';
 import type {CartQueryDataReturn} from '@shopify/hydrogen';
 import {CartForm} from '@shopify/hydrogen';
 import {CartMain} from '~/components/CartMain';
+import {getShopTitle} from '~/lib/seo';
 
-export const meta: Route.MetaFunction = () => {
-  return [{title: `Hydrogen | Cart`}];
+export const meta: Route.MetaFunction = ({matches}) => {
+  return [{title: getShopTitle('Cart', matches)}];
 };
 
 export const headers: HeadersFunction = ({actionHeaders, loaderHeaders}) => {
@@ -44,6 +45,175 @@ export async function action({request, context}: Route.ActionArgs) {
     case CartForm.ACTIONS.LinesRemove:
       result = await cart.removeLines(inputs.lineIds);
       break;
+    case 'LoyaltyUpdate': {
+      const isEn = context.storefront.i18n.language === 'EN';
+      const pointsToRedeem = parseInt(inputs.points) || 0;
+      const intent = inputs.intent;
+
+      const currentCart = await cart.get();
+      if (!currentCart) {
+        return data({ error: 'Cart not found' }, { status: 400 });
+      }
+
+      if (intent === 'remove' || pointsToRedeem === 0) {
+        const appliedCode = currentCart.discountCodes?.find(dc => dc.code.startsWith('LOYALTY-'))?.code;
+        let discountCodes = currentCart.discountCodes?.map(dc => dc.code) || [];
+        if (appliedCode) {
+          discountCodes = discountCodes.filter(c => c !== appliedCode);
+        }
+        await cart.updateDiscountCodes(discountCodes);
+        result = await cart.updateAttributes([{ key: 'loyalty_points', value: '0' }]);
+        break;
+      }
+
+      // Verify User Identity
+      const customerAccessToken = await context.session.get('customerAccessToken');
+      const loginOtpPhone = await context.session.get('loginOtpPhone');
+      
+      let phone = loginOtpPhone;
+      if (!phone && customerAccessToken?.accessToken) {
+        const customerRes = await context.storefront.query(`#graphql
+          query getCustomerPhone($customerAccessToken: String!) {
+            customer(customerAccessToken: $customerAccessToken) { phone email }
+          }
+        `, { variables: { customerAccessToken: customerAccessToken.accessToken }, cache: context.storefront.CacheNone() });
+        phone = customerRes?.customer?.phone;
+        if (!phone && customerRes?.customer?.email?.includes('@saadeddin.dev')) {
+          phone = customerRes.customer.email.split('@')[0];
+        }
+      }
+
+      if (!phone) {
+        return data({ error: isEn ? 'User not authenticated' : 'غير مسجل دخول' }, { status: 401 });
+      }
+
+      const rawPhone = phone.replace(/\s+/g, '');
+      const middlewareUrl = context.env.MIDDLEWARE_URL || 'https://wh.pryvexapls.com';
+      let availablePoints = 0;
+      try {
+        const loyaltyRes = await fetch(`${middlewareUrl}/crm/loyalty`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-branch-id': '1' },
+          body: JSON.stringify({ phone: rawPhone })
+        });
+        const loyaltyData = await loyaltyRes.json();
+        availablePoints = loyaltyData?.data?.points || 0;
+      } catch (e) {
+        return data({ error: 'Failed to verify points balance' }, { status: 500 });
+      }
+
+      if (pointsToRedeem > availablePoints) {
+        return data({ error: isEn ? `Insufficient points.` : `نقاط غير كافية.` }, { status: 400 });
+      }
+
+      const cartSubtotal = parseFloat(currentCart.cost?.subtotalAmount?.amount || '0');
+      const pointsToCurrencyRatio = 0.01;
+      const discountAmount = pointsToRedeem * pointsToCurrencyRatio;
+
+      if (discountAmount > cartSubtotal && cartSubtotal > 0) {
+        return data({ error: isEn ? `Cannot exceed cart total.` : `لا يمكن تجاوز إجمالي السلة.` }, { status: 400 });
+      }
+
+      // Generate Shopify Discount Code
+      let generatedCode = '';
+      let middlewareSucceeded = false;
+      const branchId = currentCart.attributes?.find((a: any) => a.key.toLowerCase().trim() === 'branch id')?.value || '1';
+
+      console.log('[LOYALTY_MIDDLEWARE] Attempting apply via middleware with branch:', branchId);
+      try {
+        const mwRes = await fetch(`${middlewareUrl}/api/v1/cart/loyalty/apply`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${customerAccessToken?.accessToken || ''}`,
+            'x-branch-id': branchId
+          },
+          body: JSON.stringify({ pointsToRedeem })
+        });
+
+        console.log('[LOYALTY_MIDDLEWARE] Status:', mwRes.status);
+        const responseText = await mwRes.text();
+        console.log('[LOYALTY_MIDDLEWARE] Body:', responseText);
+
+        if (mwRes.ok) {
+          const mwData = JSON.parse(responseText);
+          // Check if code was returned directly or nested
+          const code = mwData?.code || mwData?.discountCode || mwData?.discount_code || mwData?.data?.code || mwData?.data?.discountCode || mwData?.data?.discount_code;
+          if (code) {
+            generatedCode = code;
+            middlewareSucceeded = true;
+            console.log('[LOYALTY_MIDDLEWARE] Successfully applied via middleware. Generated code:', generatedCode);
+          } else if (mwData?.success === true || mwData?.status === 'success') {
+            middlewareSucceeded = true;
+            console.log('[LOYALTY_MIDDLEWARE] Success reported by middleware (no explicit code returned).');
+          }
+        }
+      } catch (err: any) {
+        console.warn('[LOYALTY_MIDDLEWARE] Middleware apply request failed:', err.message);
+      }
+
+      if (!middlewareSucceeded) {
+        console.log('[LOYALTY_MIDDLEWARE] Falling back to local Admin API discount generation...');
+        try {
+          const { getAdminToken } = await import('~/lib/shopify-admin.server');
+          const adminToken = await getAdminToken(context.env);
+          const adminDomain = context.env.SHOPIFY_SHOP ? `${context.env.SHOPIFY_SHOP.replace('.myshopify.com', '')}.myshopify.com` : context.env.PUBLIC_STORE_DOMAIN;
+          
+          const priceRulePayload = {
+            price_rule: {
+              title: `Loyalty Redemption: ${pointsToRedeem} Points`,
+              target_type: "line_item",
+              target_selection: "all",
+              allocation_method: "across",
+              value_type: "fixed_amount",
+              value: `-${discountAmount.toFixed(2)}`,
+              customer_selection: "all",
+              starts_at: new Date(Date.now() - 5 * 60000).toISOString()
+            }
+          };
+
+          const prRes = await fetch(`https://${adminDomain}/admin/api/2023-04/price_rules.json`, {
+            method: 'POST',
+            headers: { 'X-Shopify-Access-Token': adminToken, 'Content-Type': 'application/json' },
+            body: JSON.stringify(priceRulePayload)
+          });
+          
+          if (!prRes.ok) {
+            const errText = await prRes.text();
+            console.error('[LOYALTY_UPDATE] Price Rule API failed:', prRes.status, errText);
+            return data({ error: 'Failed to generate discount rule' }, { status: 500 });
+          }
+          
+          const prData = await prRes.json();
+          const priceRuleId = prData.price_rule.id;
+
+          generatedCode = `LOYALTY-${pointsToRedeem}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+          const dcPayload = { discount_code: { code: generatedCode } };
+
+          const dcRes = await fetch(`https://${adminDomain}/admin/api/2023-04/price_rules/${priceRuleId}/discount_codes.json`, {
+            method: 'POST',
+            headers: { 'X-Shopify-Access-Token': adminToken, 'Content-Type': 'application/json' },
+            body: JSON.stringify(dcPayload)
+          });
+
+          if (!dcRes.ok) {
+            const errText = await dcRes.text();
+            console.error('[LOYALTY_UPDATE] Discount Code API failed:', dcRes.status, errText);
+            return data({ error: 'Failed to generate discount code' }, { status: 500 });
+          }
+        } catch (e: any) {
+          console.error('[LOYALTY_UPDATE] Internal exception:', e.message, e.stack);
+          return data({ error: 'Internal error generating discount' }, { status: 500 });
+        }
+      }
+
+      const existingCodes = currentCart.discountCodes?.map(dc => dc.code).filter(c => !c.startsWith('LOYALTY-')) || [];
+      const newCodes = [...existingCodes, generatedCode];
+
+      await cart.updateDiscountCodes(newCodes);
+      result = await cart.updateAttributes([{ key: 'loyalty_points', value: String(pointsToRedeem) }]);
+      break;
+    }
     case CartForm.ACTIONS.DiscountCodesUpdate: {
       const formDiscountCode = inputs.discountCode;
       const isEn = context.storefront.i18n.language === 'EN';

@@ -21,10 +21,12 @@ export async function action({request, context}: ActionFunctionArgs) {
     return data({error: 'Method not allowed'}, {status: 405});
   }
 
+  const headers = new Headers();
+  headers.append('Set-Cookie', await session.commit());
+  headers.append('Set-Cookie', 'cart=; Path=/; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT');
+
   return redirect('/', {
-    headers: {
-      'Set-Cookie': await session.commit(),
-    },
+    headers,
   });
 }
 

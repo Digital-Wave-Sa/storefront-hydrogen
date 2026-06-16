@@ -24,6 +24,20 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
 
   const subtotal = Number(cart?.cost?.subtotalAmount?.amount ?? 0);
   const currencyCode = cart?.cost?.subtotalAmount?.currencyCode || 'SAR';
+
+  // Calculate total discount from all discount allocations
+  const cartDiscountAmount = cart?.discountAllocations?.reduce((acc: number, allocation: any) => {
+    return acc + parseFloat(allocation?.discountedAmount?.amount || '0');
+  }, 0) || 0;
+
+  const lineDiscountAmount = cart?.lines?.nodes?.reduce((acc: number, line: any) => {
+    const lineDiscount = line?.discountAllocations?.reduce((lAcc: number, allocation: any) => {
+      return lAcc + parseFloat(allocation?.discountedAmount?.amount || '0');
+    }, 0) || 0;
+    return acc + lineDiscount;
+  }, 0) || 0;
+
+  const totalDiscount = cartDiscountAmount + lineDiscountAmount;
   
   const attributes = cart?.attributes || [];
   const branch = attributes.find((a: any) => a.key.toLowerCase().trim() === 'branch')?.value;
@@ -141,6 +155,21 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
                      </dd>
                   </div>
 
+                  {totalDiscount > 0 && (
+                    <div className="flex justify-between items-center text-[15px]">
+                      <dt className="text-green-600 font-bold" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
+                        {cart?.discountCodes?.some((dc: any) => dc.code?.startsWith('LOYALTY-'))
+                          ? (isEn ? 'Loyalty Discount' : 'خصم نقاط الولاء')
+                          : (isEn ? 'Discount' : 'الخصم')
+                        }
+                      </dt>
+                      <dd className="text-green-600 font-black font-en flex items-center gap-1 flex-row-reverse">
+                        <SaudiRiyalSymbol className="h-4 w-auto" />
+                        <span>-{totalDiscount.toFixed(2)}</span>
+                      </dd>
+                    </div>
+                  )}
+
                   <div className="flex justify-between items-center text-[15px]">
                      <dt className="text-[#9FB7AE] font-bold" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>{isEn ? 'Delivery Fees' : 'رسوم التوصيل'}</dt>
                      <dd className="text-[#234745] font-bold font-en flex items-center gap-1">
@@ -202,6 +231,7 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
 
                <CartCheckoutActions 
                  checkoutUrl={cart?.checkoutUrl} 
+                 discountCodes={cart?.discountCodes}
                  isEn={isEn} 
                  disabled={!canCheckout}
                  totalAmount={calculatedTotal}
@@ -371,6 +401,7 @@ function CartOrderNotes({ isEn, cart }: { isEn: boolean, cart: any }) {
 
 function CartCheckoutActions({
   checkoutUrl, 
+  discountCodes,
   isEn, 
   disabled, 
   validationError,
@@ -379,6 +410,7 @@ function CartCheckoutActions({
   isPickup
 }: {
   checkoutUrl?: string; 
+  discountCodes?: any[];
   isEn: boolean;
   disabled?: boolean;
   validationError?: React.ReactNode | null;
@@ -395,6 +427,14 @@ function CartCheckoutActions({
               if (disabled || !checkoutUrl) return '#';
               try {
                 const url = new URL(checkoutUrl);
+                if (discountCodes && discountCodes.length > 0) {
+                  const loyaltyCode = discountCodes.find(d => d.code?.startsWith('LOYALTY-'))?.code;
+                  const otherCode = discountCodes.find(d => d.code && !d.code.startsWith('LOYALTY-'))?.code;
+                  const codeToApply = loyaltyCode || otherCode;
+                  if (codeToApply) {
+                    url.searchParams.set('discount', codeToApply);
+                  }
+                }
                 if (isPickup) {
                   url.searchParams.set('pickup', 'true');
                   url.searchParams.set('fulfillment_type', 'pickup');
@@ -442,50 +482,54 @@ function CartCheckoutActions({
 
 // ─── NEW: LOYALTY POINTS REDEMPTION ─────────────────────────────────────────
 function LoyaltyRedemptionUI({ isEn, cart }: { isEn: boolean, cart: any }) {
-  const [pointsToRedeem, setPointsToRedeem] = useState<number>(0);
-  const [isRedeeming, setIsRedeeming] = useState(false);
-  const [errorMsg, setErrorMsg] = useState('');
-  const [successMsg, setSuccessMsg] = useState('');
+  const rootData = useRouteLoaderData('root') as any;
+  const appliedPointsStr = cart?.attributes?.find((a: any) => a.key === 'loyalty_points')?.value;
+  const initialPoints = parseInt(appliedPointsStr) || 0;
   
-  const maxPoints = 2450; // Mock backend balance
-  const pointsToCurrencyRatio = 0.05; // 1 point = 0.05 SAR
+  const [pointsToRedeem, setPointsToRedeem] = useState<number>(initialPoints);
+  const [availablePoints, setAvailablePoints] = useState<number | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const fetcher = useFetcher<any>();
   
-  const discountAmount = pointsToRedeem * pointsToCurrencyRatio;
-
-  const handleRedeem = async () => {
-    setIsRedeeming(true);
-    setErrorMsg('');
-    setSuccessMsg('');
-    try {
-      const res = await fetch('/api/loyalty-redeem', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: cart?.buyerIdentity?.customer?.id || 'guest',
-          points: pointsToRedeem
+  // Extract phone number
+  let phone = rootData?.loginOtpPhone || cart?.buyerIdentity?.phone || cart?.buyerIdentity?.customer?.phone || rootData?.customer?.phone;
+  const email = cart?.buyerIdentity?.email || cart?.buyerIdentity?.customer?.email || rootData?.customer?.email;
+  if (!phone && email && email.includes('@saadeddin.dev')) {
+    phone = email.split('@')[0];
+  }
+  
+  useEffect(() => {
+    if (phone) {
+      const rawPhone = phone.replace(/\s+/g, '');
+      fetch(`/api/loyalty-points?phone=${encodeURIComponent(rawPhone)}&t=${Date.now()}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data?.success && data?.data?.points !== undefined) {
+            setAvailablePoints(data.data.points);
+          }
         })
-      });
-      const data = await res.json();
-      
-      if (data.success && data.discount_code) {
-        setSuccessMsg(isEn ? `Applied discount: ${data.discount_code}` : `تم تطبيق الخصم: ${data.discount_code}`);
-        
-        // Auto-fill and submit the discount code form
-        const input = document.querySelector('input[name="discountCode"]') as HTMLInputElement;
-        const submitBtn = input?.parentElement?.querySelector('button[type="submit"]') as HTMLButtonElement;
-        
-        if (input && submitBtn) {
-          input.value = data.discount_code;
-          submitBtn.click();
-        }
-      } else {
-        setErrorMsg(data.error || 'Failed to redeem points');
-      }
-    } catch (e) {
-      setErrorMsg(isEn ? 'Network error occurred' : 'حدث خطأ في الشبكة');
+        .catch(() => {});
     }
-    setIsRedeeming(false);
-  };
+  }, [phone]);
+
+  const pointsToCurrencyRatio = 0.01;
+  const cartSubtotal = parseFloat(cart?.cost?.subtotalAmount?.amount || '0');
+  const maxPointsByCart = Math.floor(cartSubtotal / pointsToCurrencyRatio);
+  const maxAllowedPoints = Math.min(availablePoints || 0, maxPointsByCart);
+
+  // Sync state after fetcher finishes
+  useEffect(() => {
+    if (fetcher.state === 'idle' && fetcher.data) {
+      if (fetcher.data.error) {
+        setErrorMsg(fetcher.data.error);
+      } else if (fetcher.data.success) {
+        setErrorMsg(null);
+      }
+    }
+  }, [fetcher.state, fetcher.data]);
+
+  const discountAmount = pointsToRedeem * pointsToCurrencyRatio;
+  const hasChanges = pointsToRedeem !== initialPoints;
 
   return (
     <section className="flex flex-col gap-3 mt-4 pt-4 border-t border-dashed border-[#f0ece8]">
@@ -496,35 +540,44 @@ function LoyaltyRedemptionUI({ isEn, cart }: { isEn: boolean, cart: any }) {
             {isEn ? 'Redeem Points' : 'استبدال النقاط'}
           </span>
         </div>
-        <span className="text-[12px] font-bold text-gray-400 bg-gray-50 px-2 py-1 rounded-md border border-gray-100">
-          {isEn ? `Available: ${maxPoints}` : `المتاح: ${maxPoints}`}
-        </span>
+        {availablePoints !== null && (
+          <span className="text-[12px] font-bold text-[#A6BFB9] bg-emerald-50 px-3 py-1 rounded-[16px] border border-emerald-100 flex items-center gap-1">
+            <span className="text-emerald-700 font-en">{availablePoints}</span>
+            <span className="text-emerald-600">{isEn ? 'pts available' : 'نقطة متاحة'}</span>
+          </span>
+        )}
       </div>
 
       <div className="bg-[#fcfaf8] border border-[#f0ece8] rounded-xl p-4 flex flex-col gap-4">
-        {/* Slider & Input */}
-        <div className="flex items-center gap-4">
-          <input 
-            type="range" 
-            min="0" 
-            max={maxPoints} 
-            step="10"
-            value={pointsToRedeem}
-            onChange={(e) => setPointsToRedeem(parseInt(e.target.value))}
-            className="flex-1 accent-[#d4a06a] h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-          />
-          <input 
-            type="number"
-            min="0"
-            max={maxPoints}
-            value={pointsToRedeem}
-            onChange={(e) => {
-              let val = parseInt(e.target.value) || 0;
-              if (val > maxPoints) val = maxPoints;
-              setPointsToRedeem(val);
-            }}
-            className="w-[80px] bg-white border border-[#f0ece8] rounded-lg px-2 py-1.5 text-center text-[13px] font-bold text-[#234745] focus:outline-none focus:border-[#d4a06a]"
-          />
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-4">
+            <input 
+              type="number"
+              min="0"
+              max={maxAllowedPoints}
+              step="10"
+              value={pointsToRedeem}
+              onChange={(e) => {
+                setErrorMsg(null);
+                const val = parseInt(e.target.value) || 0;
+                // Auto-cap it to the max allowed points immediately to prevent invalid state
+                setPointsToRedeem(Math.max(0, Math.min(maxAllowedPoints, val)));
+              }}
+              className="flex-1 bg-white border border-[#f0ece8] rounded-lg px-4 py-2 text-[14px] font-bold text-[#234745] focus:outline-none focus:border-[#d4a06a] transition-colors"
+              placeholder={isEn ? "Enter points to redeem" : "أدخل عدد النقاط للاستبدال"}
+            />
+            <div className="text-[12px] font-bold text-gray-400">
+              {isEn ? 'pts' : 'نقطة'}
+            </div>
+          </div>
+          {maxPointsByCart < (availablePoints || 0) && (
+            <p className="text-[11px] text-gray-500 font-medium">
+              {isEn ? `Max redemption based on cart total: ${maxPointsByCart} pts` : `الحد الأقصى المسموح به بناءً على قيمة السلة: ${maxPointsByCart} نقطة`}
+            </p>
+          )}
+          {errorMsg && (
+            <p className="text-red-500 text-[12px] font-bold">{errorMsg}</p>
+          )}
         </div>
 
         {/* Feedback & Apply */}
@@ -539,21 +592,44 @@ function LoyaltyRedemptionUI({ isEn, cart }: { isEn: boolean, cart: any }) {
                 <span>{discountAmount.toFixed(2)}</span>
               </span>
             </div>
-            <button 
-              disabled={pointsToRedeem === 0 || isRedeeming}
-              onClick={handleRedeem}
-              className="bg-[#234745] text-white font-bold px-5 py-2.5 rounded-lg text-[13px] disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#142e22] transition-colors"
+            
+            <CartForm
+              route="/cart"
+              action="LoyaltyUpdate"
+              inputs={{
+                points: String(pointsToRedeem),
+                intent: (initialPoints > 0 && pointsToRedeem === 0) ? 'remove' : 'apply'
+              }}
             >
-              {isRedeeming ? (isEn ? 'Redeeming...' : 'جاري الاستبدال...') : (isEn ? 'Redeem' : 'استبدال')}
-            </button>
+              {(fetcher: any) => {
+                const isSubmitting = fetcher.state !== 'idle';
+                const actionError = fetcher.data?.error;
+
+                return (
+                  <div className="flex flex-col gap-2 items-end">
+                    <button 
+                      type="submit" 
+                      disabled={isSubmitting || (!hasChanges && pointsToRedeem === 0) || pointsToRedeem > maxAllowedPoints}
+                      className="bg-[#234745] text-white font-bold px-5 py-2.5 rounded-lg text-[13px] disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#142e22] transition-colors"
+                    >
+                      {isSubmitting 
+                        ? (isEn ? 'Applying...' : 'جاري التطبيق...') 
+                        : (initialPoints > 0 && pointsToRedeem === 0 
+                            ? (isEn ? 'Remove' : 'إزالة') 
+                            : (hasChanges ? (isEn ? 'Apply' : 'تطبيق') : (isEn ? 'Applied' : 'مُطبق'))
+                          )
+                      }
+                    </button>
+                    {actionError && !errorMsg && (
+                      <p className="text-red-500 text-[11px] font-bold mt-1 text-left w-full">
+                        {actionError}
+                      </p>
+                    )}
+                  </div>
+                );
+              }}
+            </CartForm>
           </div>
-          
-          {errorMsg && (
-            <p className="text-red-500 text-[12px] font-bold">{errorMsg}</p>
-          )}
-          {successMsg && (
-            <p className="text-green-600 text-[12px] font-bold">{successMsg}</p>
-          )}
         </div>
       </div>
     </section>

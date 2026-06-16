@@ -87,9 +87,10 @@ export async function loader(args: Route.LoaderArgs) {
   const criticalData = await loadCriticalData(args);
   const {storefront, env, session} = args.context;
   const customerAccessToken = await session.get('customerAccessToken');
+  const loginOtpPhone = await session.get('loginOtpPhone');
 
   // Start fetching non-critical data without blocking time to first byte
-  const deferredData = loadDeferredData(args, customerAccessToken);
+  const deferredData = loadDeferredData(args, customerAccessToken, loginOtpPhone);
 
   // OPTIONAL: Ensure Cart Buyer Identity and Attributes are synced
   let selectedLocId = session.get('selectedLocationId');
@@ -272,7 +273,7 @@ async function loadCriticalData({context}: Route.LoaderArgs) {
  * fetched after the initial page load. If it's unavailable, the page should still 200.
  * Make sure to not throw any errors here, as it will cause the page to 500.
  */
-function loadDeferredData({context}: Route.LoaderArgs, customerAccessToken: any) {
+function loadDeferredData({context}: Route.LoaderArgs, customerAccessToken: any, loginOtpPhone: string | undefined | null) {
   const {storefront, customerAccount, cart} = context;
 
   // defer the footer query (below the fold)
@@ -289,12 +290,10 @@ function loadDeferredData({context}: Route.LoaderArgs, customerAccessToken: any)
       return null;
     });
 
-  // Fetch customer data (including addresses) for the delivery modal
-  
   const customer = (process.env.NODE_ENV === 'development' && customerAccessToken?.accessToken === 'dev-bypass-token')
     ? (async () => {
         try {
-          const phone = await context.session.get('loginOtpPhone');
+          const phone = loginOtpPhone;
           if (!phone) return null;
           const env = context.env as any;
           const rawShop = env.SHOPIFY_SHOP || env.PUBLIC_STORE_DOMAIN || 'the-beauty-secrets-ksa';
@@ -349,6 +348,7 @@ function loadDeferredData({context}: Route.LoaderArgs, customerAccessToken: any)
   return {
     cart: cart.get(),
     isLoggedIn: customerAccount.isLoggedIn(),
+    loginOtpPhone,
     customer,
     footer,
     env: {

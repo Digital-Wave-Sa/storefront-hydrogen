@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { data, redirect, type ActionFunctionArgs, type LoaderFunctionArgs, type MetaFunction } from 'react-router';
-import { Form, Link, useActionData, useNavigation, useRouteLoaderData } from 'react-router';
+import { Form, Link, useActionData, useNavigation, useRouteLoaderData, useFetcher } from 'react-router';
 import { LogoSplash } from '~/components/LogoSplash';
 import { sendSMS } from '~/lib/sms.server';
 import { getAdminToken } from '~/lib/shopify-admin.server';
@@ -26,13 +26,25 @@ export async function action({ request, context }: ActionFunctionArgs) {
   // STEP 1: Check phone and send OTP
   if (intent === 'send-otp') {
     const phone = String(form.get('phone') || '');
+    const email = String(form.get('email') || '').trim();
     let cleanPhone = phone.replace(/\D/g, '');
     if (cleanPhone.startsWith('0')) cleanPhone = cleanPhone.substring(1);
     const fullPhone = `+966${cleanPhone}`;
 
+    // Cooldown Throttle Check (60 seconds)
+    const cooldown = session.get('otpCooldown');
+    if (cooldown && Date.now() < cooldown) {
+      const waitSecs = Math.ceil((cooldown - Date.now()) / 1000);
+      return data({
+        error: lang === 'en'
+          ? `Please wait ${waitSecs} seconds before requesting another code.`
+          : `يرجى الانتظار ${waitSecs} ثانية قبل طلب رمز تحقق جديد.`,
+      });
+    }
+
     try {
       const adminToken = await getAdminToken(env);
-      const queryStr = encodeURIComponent(`phone:"${fullPhone}"`);
+      const queryStr = encodeURIComponent(`phone:"${fullPhone}" OR email:"${email}"`);
       const response = await fetch(`https://${env.PUBLIC_STORE_DOMAIN}/admin/api/2023-04/customers/search.json?query=${queryStr}`, {
         headers: {
           'X-Shopify-Access-Token': adminToken,
@@ -42,11 +54,35 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
       const { customers } = await response.json();
 
+      let phoneExists = false;
+      let emailExists = false;
+
       if (customers && customers.length > 0) {
+        for (const customer of customers) {
+          const cleanCustPhone = customer.phone ? customer.phone.replace(/\D/g, '') : '';
+          const cleanTargetPhone = fullPhone.replace(/\D/g, '');
+          if (cleanCustPhone === cleanTargetPhone) {
+            phoneExists = true;
+          }
+          if (customer.email && customer.email.toLowerCase() === email.toLowerCase()) {
+            emailExists = true;
+          }
+        }
+      }
+
+      if (phoneExists) {
         return data({
           error: lang === 'en'
             ? 'This phone number is already registered. Please login.'
             : 'رقم الجوال هذا مسجل بالفعل. يرجى تسجيل الدخول.',
+        });
+      }
+
+      if (emailExists) {
+        return data({
+          error: lang === 'en'
+            ? 'This email is already registered.'
+            : 'البريد الإلكتروني هذا مسجل بالفعل.',
         });
       }
 
@@ -65,6 +101,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
         session.set('otpCode', code);
         session.set('otpPhone', fullPhone);
         session.set('otpExpires', Date.now() + 5 * 60 * 1000); // 5 minutes
+        session.set('otpCooldown', Date.now() + 60 * 1000); // 1 minute cooldown
         return data(
           { step: 'otp' },
           { headers: { 'Set-Cookie': await session.commit() } }
@@ -97,6 +134,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
     session.unset('otpCode');
     session.unset('otpExpires');
+    session.unset('otpCooldown');
     
     // Extract Customer Details
     const accountType = String(form.get('accountType') || 'individual');
@@ -247,11 +285,38 @@ export default function Register() {
   const [otpValue, setOtpValue] = useState(['', '', '', '']);
   const otpRefs = [useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null)];
 
+  const fetcher = useFetcher<typeof action>();
+  const [resendCooldown, setResendCooldown] = useState(60);
+
   useEffect(() => {
     if (actionData?.step === 'otp') {
       setStep('otp');
+      setResendCooldown(60);
     }
   }, [actionData]);
+
+  useEffect(() => {
+    if (step !== 'otp' || resendCooldown <= 0) return;
+    const timer = setInterval(() => {
+      setResendCooldown(prev => prev - 1);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [step, resendCooldown]);
+
+  const handleResend = () => {
+    if (resendCooldown > 0) return;
+
+    const submitData = new FormData();
+    submitData.append('intent', 'send-otp');
+    submitData.append('phone', formData.phone);
+    submitData.append('email', formData.email);
+    submitData.append('language', formData.language);
+
+    fetcher.submit(submitData, { method: 'POST' });
+    setResendCooldown(60);
+  };
+
+  const isResent = fetcher.data?.step === 'otp' && !fetcher.data?.error;
 
   const handleOTPChange = (index: number, value: string) => {
     if (!/^\d*$/.test(value)) return;
@@ -528,7 +593,40 @@ export default function Register() {
                     </div>
                   </div>
 
-                  {actionData?.error && <p className="text-red-500 text-sm text-center">{actionData.error}</p>}
+                  {/* Resend Cooldown UI */}
+                  <div className="flex flex-col items-center gap-1 mt-2">
+                    {resendCooldown > 0 ? (
+                      <p className="text-sm font-medium text-[#A19F9F]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
+                        {isEn 
+                          ? `Resend code in ${resendCooldown}s` 
+                          : `إعادة إرسال الرمز خلال ${resendCooldown} ثانية`}
+                      </p>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={handleResend}
+                        disabled={fetcher.state !== 'idle'}
+                        className="text-[#234745] hover:underline text-sm font-bold transition-colors disabled:opacity-50"
+                        style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
+                      >
+                        {fetcher.state !== 'idle' 
+                          ? (isEn ? 'Sending...' : 'جاري الإرسال...') 
+                          : (isEn ? 'Resend Verification Code' : 'إعادة إرسال رمز التحقق')}
+                      </button>
+                    )}
+                  </div>
+
+                  {isResent && (
+                    <p className="text-green-600 text-sm text-center font-medium mt-1">
+                      {isEn ? 'Verification code has been resent!' : 'تم إعادة إرسال رمز التحقق!'}
+                    </p>
+                  )}
+
+                  {(fetcher.data?.error || actionData?.error) && (
+                    <p className="text-red-500 text-sm text-center mt-1">
+                      {fetcher.data?.error || actionData?.error}
+                    </p>
+                  )}
 
                   <button 
                     type="submit" 

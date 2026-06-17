@@ -14,7 +14,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
   const { SHOPIFY_ADMIN_API_ACCESS_TOKEN, PUBLIC_STORE_DOMAIN } = env as any;
 
   try {
-    const payload = await request.json();
+    const payload = (await request.json()) as any;
     const { inventory_item_id, location_id, available } = payload;
 
     console.log(`[INVENTORY WEBHOOK] Processing: Item ${inventory_item_id}, Location ${location_id}, Available: ${available}`);

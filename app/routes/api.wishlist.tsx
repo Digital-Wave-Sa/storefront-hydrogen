@@ -39,7 +39,13 @@ export async function action({ request, context }: ActionFunctionArgs) {
       if (!result.errors && !result.data?.customerUpdate?.userErrors?.length) {
         return data(result);
       } else {
-        console.error('Wishlist Admin API error with token:', token.substring(0, 10), JSON.stringify(result.errors || result.data?.customerUpdate?.userErrors));
+        const errors = result.errors || result.data?.customerUpdate?.userErrors;
+        const isScopeError = JSON.stringify(errors).includes('access scope') || JSON.stringify(errors).includes('ACCESS_DENIED');
+        if (isScopeError) {
+          console.error('[WISHLIST SYNC ERROR] Token lacks required scopes. Please make sure the Shopify Admin API Access Token has "write_customers" and "read_customers" scopes configured. Details:', JSON.stringify(errors));
+        } else {
+          console.error('[WISHLIST SYNC ERROR] Wishlist Admin API error with token:', token.substring(0, 10), JSON.stringify(errors));
+        }
       }
     } catch (e: any) {
       console.error('Wishlist sync exception with token:', token.substring(0, 10), e.message || e);
@@ -73,7 +79,13 @@ export async function action({ request, context }: ActionFunctionArgs) {
         if (!result.errors && !result.data?.customerUpdate?.userErrors?.length) {
           return data(result);
         } else {
-          console.error('Wishlist Admin API error with OAuth token:', JSON.stringify(result.errors || result.data?.customerUpdate?.userErrors));
+          const errors = result.errors || result.data?.customerUpdate?.userErrors;
+          const isScopeError = JSON.stringify(errors).includes('access scope') || JSON.stringify(errors).includes('ACCESS_DENIED');
+          if (isScopeError) {
+            console.error('[WISHLIST SYNC ERROR] OAuth token lacks required scopes. Please configure the "write_customers" and "read_customers" scopes. Details:', JSON.stringify(errors));
+          } else {
+            console.error('[WISHLIST SYNC ERROR] Wishlist Admin API error with OAuth token:', JSON.stringify(errors));
+          }
         }
       }
     } catch (e: any) {

@@ -78,35 +78,7 @@ const cakeOptions = {
   ],
   styles: [
     { id: 'basic', name: 'ناعم (Smooth Minimalist)', price: 0 },
-    { id: 'sprinkles', name: 'سبرنكلز (Sprinkles)', price: 5 },
-    { id: 'birthday-candles', name: 'شموع عيد ميلاد (Birthday Candles)', price: 15 },
-    { id: 'cherry-choco', name: 'كرز وشوكولاتة (Cherry Choco)', price: 25 },
-    { id: 'retro-cherries', name: 'كرز ريترو (Retro Cherries)', price: 30 },
-    { id: 'purple-star', name: 'نجمة بنفسجية (Purple Star)', price: 35 },
-    { id: 'rose-fields', name: 'حقول الورد (Rose Fields)', price: 40 },
-    { id: 'lemon-retro', name: 'ليمون ريترو (Lemon Retro)', price: 25 },
-    { id: 'spider-retro', name: 'عنكبوت ريترو (Spider Retro)', price: 25 },
-    { id: 'witches-dont-age', name: 'الساحرات لا يشيخن (Witches Dont Age)', price: 30 },
-    { id: 'queen-of-hearts', name: 'ملكة القلوب (Queen of Hearts)', price: 35 },
-    { id: 'snoopys-day', name: 'يوم سنوبي (Snoopy\'s Day)', price: 45 },
-    { id: 'sweet-cherry', name: 'كرز حلو (Sweet Cherry)', price: 25 },
-    { id: 'aries-queen', name: 'ملكة الحمل (Aries Queen)', price: 30 },
-    { id: 'glitter-charm', name: 'سحر لامع (Glitter Charm)', price: 40 },
-    { id: 'healing', name: 'شفاء (Healing)', price: 35 },
-    { id: 'cancer-glow', name: 'توهج السرطان (Cancer Glow)', price: 35 },
-    { id: '20s-retro', name: 'ريترو العشرينات (20s Retro)', price: 40 },
-    { id: 'rip-20s', name: 'وداعاً للعشرينات (RIP 20s)', price: 40 },
-    { id: 'retro-skies', name: 'سماء ريترو (Retro Skies)', price: 30 },
-    { id: 'gemini-vibes', name: 'أجواء الجوزاء (Gemini Vibes)', price: 35 },
-    { id: 'leo-season', name: 'موسم الأسد (Leo Season)', price: 40 },
-    { id: 'pisces-vibes', name: 'أجواء الحوت (Pisces Vibes)', price: 30 },
-    { id: 'scorpio-vibes', name: 'أجواء العقرب (Scorpio Vibes)', price: 35 },
-    { id: 'libra-vibes', name: 'أجواء الميزان (Libra Vibes)', price: 35 },
-    { id: 'capricorn', name: 'الجدي (Capricorn)', price: 30 },
-    { id: 'taurus', name: 'الثور (Taurus)', price: 35 },
-    { id: 'retro-ribbons', name: 'شرائط ريترو (Retro Ribbons)', price: 30 },
-    { id: 'sweet-retro', name: 'ريترو حلو (Sweet Retro)', price: 25 },
-    { id: 'whos-33', name: 'من هو 33؟ (Who\'s 33)', price: 40 }
+    { id: 'witches-dont-age', name: 'الساحرات لا يشيخن (Witches Dont Age)', price: 30, image: '/cake/toppings/witches_dont_age/standard_front.png' }
   ],
   colors: [
     { id: 'white', name: 'أبيض كلاسيكي (White)', price: 0, color: '#fdf5e6' },
@@ -351,8 +323,8 @@ export default function LolaCakeBuilder({ cakeAttributes = [], isEn = false }: {
               </div>
             )}
             
-            {/* Show flavor image if category is flavor */}
-            {category === 'flavor' ? (
+            {/* Show image if category is flavor or if it is a style with an image */}
+            {category === 'flavor' || (category === 'style' && option.image) ? (
               <div className="w-14 h-14 rounded-full border border-gray-200 shadow-sm mb-3 flex items-center justify-center overflow-hidden relative bg-[#fafafa]">
                 <img src={option.image} alt={displayName} className="w-full h-full object-cover" />
               </div>

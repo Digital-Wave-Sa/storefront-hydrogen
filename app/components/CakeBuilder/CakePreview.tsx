@@ -16,6 +16,8 @@ interface CakePreviewProps {
   scale?: number;
   isMini?: boolean;
   uploadedImage?: string | null;
+  view?: 'front' | 'top' | 'sliced';
+  setView?: (v: 'front' | 'top' | 'sliced') => void;
 }
 
 // Map shape IDs to their 2D visual assets
@@ -77,13 +79,12 @@ export function CakePreview({
   isMini = false,
   textColor = '#4a2511',
   textFont = 'Classic',
-  uploadedImage
+  uploadedImage,
+  view = 'front',
+  setView
 }: CakePreviewProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   
-  // Local view selection: 'front' | 'top' | 'sliced'
-  const [view, setView] = useState<'front' | 'top' | 'sliced'>('front');
-
   // Check which views are supported by the active shape
   const supportedViews = useMemo(() => {
     const assets = shapeAssets[shape] || shapeAssets.standard;
@@ -96,22 +97,12 @@ export function CakePreview({
 
   // Sync view selection with isCutaway prop (from step 2 toggle)
   useEffect(() => {
-    if (isCutaway && supportedViews.sliced) {
+    if (isCutaway && supportedViews.sliced && setView) {
       setView('sliced');
-    } else if (!isCutaway && view === 'sliced') {
+    } else if (!isCutaway && view === 'sliced' && setView) {
       setView('front');
     }
-  }, [isCutaway, supportedViews]);
-
-  // Adjust view if shape changes and current view is unsupported
-  useEffect(() => {
-    if (view === 'top' && !supportedViews.top) {
-      setView('front');
-    }
-    if (view === 'sliced' && !supportedViews.sliced) {
-      setView('front');
-    }
-  }, [shape, supportedViews, view]);
+  }, [isCutaway, supportedViews, setView]);
 
   // Helper to map selected flavor to asset key
   const flavorKey = useMemo(() => {
@@ -214,10 +205,16 @@ export function CakePreview({
       // Adjust height for aspect ratios of standard/heart shapes
       if (shape === 'standard' || shape === 'circle') {
         cakeH = 560 * (578 / 500); // aspect ratio ~1.156
-        cakeY = (height - cakeH) / 2 + 10;
+        cakeY = (height - cakeH) / 2;
+        if (view !== 'top') {
+          cakeY -= 70; // Center visually in front/sliced view by offsetting empty space on top
+        }
       } else if (shape === 'heart') {
         cakeH = 560 * (521 / 500); // aspect ratio ~1.042
-        cakeY = (height - cakeH) / 2 + 10;
+        cakeY = (height - cakeH) / 2;
+        if (view !== 'top') {
+          cakeY -= 70; // Center visually in front/sliced view by offsetting empty space on top
+        }
       }
 
       // 1. Draw flavor behind the cake if view is sliced
@@ -380,8 +377,7 @@ export function CakePreview({
   }, [activeSources, view, color, message, textColor, textFont, uploadedImage, shape]);
 
   return (
-    <div dir="ltr" className="w-full h-full relative flex flex-col items-center justify-center">
-      
+    <div dir="ltr" className="w-full h-full relative flex items-center justify-center">
       {/* 2D Composited Canvas */}
       <canvas 
         ref={canvasRef} 
@@ -389,55 +385,6 @@ export function CakePreview({
         className="w-full h-full max-w-full max-h-full object-contain drop-shadow-xl"
         style={{ width: '100%', height: '100%', aspectRatio: '1/1' }}
       />
-
-      {/* Floating View Switcher controls */}
-      <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-white/90 backdrop-blur-md px-3 py-2 rounded-full shadow-lg border border-gray-100 flex items-center gap-1.5 z-30">
-        
-        <button
-          type="button"
-          onClick={() => setView('front')}
-          className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-black transition-all ${
-            view === 'front' 
-              ? 'bg-[#294941] text-white shadow-sm' 
-              : 'text-[#294941] hover:bg-gray-100'
-          }`}
-        >
-          <Eye className="w-3.5 h-3.5" />
-          <span>Front</span>
-        </button>
-
-        {supportedViews.top && (
-          <button
-            type="button"
-            onClick={() => setView('top')}
-            className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-black transition-all ${
-              view === 'top' 
-                ? 'bg-[#294941] text-white shadow-sm' 
-                : 'text-[#294941] hover:bg-gray-100'
-            }`}
-          >
-            <Compass className="w-3.5 h-3.5" />
-            <span>Top</span>
-          </button>
-        )}
-
-        {supportedViews.sliced && (
-          <button
-            type="button"
-            onClick={() => setView('sliced')}
-            className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-black transition-all ${
-              view === 'sliced' 
-                ? 'bg-[#294941] text-white shadow-sm' 
-                : 'text-[#294941] hover:bg-gray-100'
-            }`}
-          >
-            <Layers className="w-3.5 h-3.5" />
-            <span>Sliced</span>
-          </button>
-        )}
-
-      </div>
-
     </div>
   );
 }

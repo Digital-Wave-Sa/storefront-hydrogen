@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Cake, Palette, Sparkles, MessageSquare, Layers, ArrowRight, ArrowLeft } from 'lucide-react';
+import { Cake, Palette, Sparkles, MessageSquare, Layers, ArrowRight, ArrowLeft, Eye, Compass } from 'lucide-react';
 import { CakePreview } from './CakePreview';
 import { FaqModal } from './FaqModal';
 import { SaudiRiyalSymbol } from '~/components/Price';
@@ -177,6 +177,34 @@ export default function LolaCakeBuilder({ cakeAttributes = [], isEn = false }: {
     textFont: 'Classic',
     uploadedImage: null as string | null
   });
+
+  const [view, setView] = useState<'front' | 'top' | 'sliced'>('front');
+
+  const supportedViews = React.useMemo(() => {
+    const shapeId = selections.shape.id;
+    return {
+      front: true,
+      top: shapeId === 'circle' || shapeId === 'standard' || shapeId === 'heart',
+      sliced: shapeId === 'circle' || shapeId === 'standard' || shapeId === 'heart',
+    };
+  }, [selections.shape.id]);
+
+  React.useEffect(() => {
+    if (view === 'top' && !supportedViews.top) {
+      setView('front');
+    }
+    if (view === 'sliced' && !supportedViews.sliced) {
+      setView('front');
+    }
+  }, [selections.shape.id, supportedViews, view]);
+
+  React.useEffect(() => {
+    if (isCutaway && supportedViews.sliced) {
+      setView('sliced');
+    } else if (!isCutaway && view === 'sliced') {
+      setView('front');
+    }
+  }, [isCutaway, supportedViews]);
 
   const handleSelect = (category: string, item: any) => {
     setSelections(prev => ({ ...prev, [category]: item }));
@@ -664,17 +692,56 @@ export default function LolaCakeBuilder({ cakeAttributes = [], isEn = false }: {
                   textColor={selections.textColor}
                   textFont={selections.textFont}
                   uploadedImage={selections.uploadedImage}
+                  view={view}
+                  setView={setView}
                 />
               </div>
             </div>
 
-            {/* Bottom Pill (Price) */}
-            <div className="bg-white text-[#20584A] px-6 py-2 rounded-full font-bold flex items-center gap-2 whitespace-nowrap shadow-sm">
-              <Layers className="w-4 h-4 text-[#20584A] mb-0.5" />
-              <span className="font-sans text-xl pt-1 flex items-center gap-1.5">
-                {toArabicDigits(calculateTotal())}
-                <SaudiRiyalSymbol className="w-auto h-4 text-[#20584A]" />
-              </span>
+            {/* View Switcher below the circle (outside the preview area) */}
+            <div className="bg-white/95 backdrop-blur-md px-3 py-2 rounded-full shadow-md border border-gray-100 flex items-center gap-1.5 z-30">
+              <button
+                type="button"
+                onClick={() => setView('front')}
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-black transition-all cursor-pointer ${
+                  view === 'front' 
+                    ? 'bg-[#294941] text-white shadow-sm' 
+                    : 'text-[#294941] hover:bg-gray-100'
+                }`}
+              >
+                <Eye className="w-3.5 h-3.5" />
+                <span>{isEn ? 'Front' : 'جانبي'}</span>
+              </button>
+
+              {supportedViews.top && (
+                <button
+                  type="button"
+                  onClick={() => setView('top')}
+                  className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-black transition-all cursor-pointer ${
+                    view === 'top' 
+                      ? 'bg-[#294941] text-white shadow-sm' 
+                      : 'text-[#294941] hover:bg-gray-100'
+                  }`}
+                >
+                  <Compass className="w-3.5 h-3.5" />
+                  <span>{isEn ? 'Top' : 'علوي'}</span>
+                </button>
+              )}
+
+              {supportedViews.sliced && (
+                <button
+                  type="button"
+                  onClick={() => setView('sliced')}
+                  className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-black transition-all cursor-pointer ${
+                    view === 'sliced' 
+                      ? 'bg-[#294941] text-white shadow-sm' 
+                      : 'text-[#294941] hover:bg-gray-100'
+                  }`}
+                >
+                  <Layers className="w-4 h-4" />
+                  <span>{isEn ? 'Sliced' : 'مقطوع'}</span>
+                </button>
+              )}
             </div>
             
           </div>

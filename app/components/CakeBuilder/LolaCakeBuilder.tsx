@@ -179,6 +179,15 @@ export default function LolaCakeBuilder({ cakeAttributes = [], isEn = false }: {
     }
   }, [isCutaway, supportedViews]);
 
+  // Reset style/topping to basic if shape changes to square or sheet
+  React.useEffect(() => {
+    const isSquareOrSheet = selections.shape.id === 'square' || selections.shape.id === 'sheet';
+    if (isSquareOrSheet && selections.style.id !== 'basic') {
+      const basicStyle = mergedOptions.styles.find(s => s.id === 'basic') || { id: 'basic', name: 'ناعم (Smooth Minimalist)', price: 0 };
+      setSelections(prev => ({ ...prev, style: basicStyle }));
+    }
+  }, [selections.shape.id, mergedOptions.styles, selections.style.id]);
+
   const handleSelect = (category: string, item: any) => {
     setSelections(prev => ({ ...prev, [category]: item }));
   };
@@ -502,9 +511,21 @@ export default function LolaCakeBuilder({ cakeAttributes = [], isEn = false }: {
               )}
 
               {currentStep === 3 && (
-                <div className="animate-in fade-in duration-300">
+                <div className="animate-in fade-in duration-300 space-y-4">
                   <h2 className={`text-2xl font-bold text-[#1a1a1a] ${isEn ? 'text-left' : 'text-right'}`}>{isEn ? 'Choose Decoration Style' : 'اختر أسلوب التزيين'}</h2>
-                  {renderOptionsGrid('style', mergedOptions.styles)}
+                  
+                  {selections.shape.id === 'square' || selections.shape.id === 'sheet' ? (
+                    <div className={`p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-sm font-medium ${isEn ? 'text-left' : 'text-right'}`}>
+                      {isEn 
+                        ? 'Topping decorations are only available for Round, Standard, and Heart shapes.' 
+                        : 'زينة الكيك متوفرة فقط للأشكال الدائرية، الطويلة، والقلب.'}
+                    </div>
+                  ) : null}
+                  
+                  {renderOptionsGrid('style', selections.shape.id === 'square' || selections.shape.id === 'sheet' 
+                    ? mergedOptions.styles.filter(s => s.id === 'basic') 
+                    : mergedOptions.styles
+                  )}
                 </div>
               )}
 

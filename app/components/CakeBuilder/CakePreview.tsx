@@ -114,7 +114,8 @@ export function CakePreview({
         : sAssets.front;
 
     const toppingId = toppings?.[0]?.id || '';
-    const tAssets = toppingAssets[toppingId];
+    const isSquareOrSheet = shape === 'square' || shape === 'sheet';
+    const tAssets = !isSquareOrSheet ? toppingAssets[toppingId] : undefined;
     const toppingImg = tAssets
       ? (view === 'top' && tAssets.top 
           ? tAssets.top 

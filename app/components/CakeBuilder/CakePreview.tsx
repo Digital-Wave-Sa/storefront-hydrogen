@@ -234,17 +234,31 @@ export function CakePreview({
               const a = data[i + 3];
               if (a === 0) continue;
 
+              const pixelIndex = i / 4;
+              const x = pixelIndex % width;
+              const y = Math.floor(pixelIndex / width);
+
               const max = Math.max(r, g, b);
               const min = Math.min(r, g, b);
               const diff = max - min;
 
-              // Smart color filter:
-              // - White/cream frosting pixels have low saturation (low channel differences).
-              // - Purple tray has B > G and R > G with a large difference.
-              // - Shadows are very dark.
-              const isCream = r > b && g > b && diff < 35;
-              const isGrey = diff < 20;
-              const isCake = (isGrey || isCream) && max > 80;
+              // Determine if pixel is cake frosting based on view and relative vertical position
+              let isCake = false;
+              if (view === 'top') {
+                isCake = true;
+              } else {
+                const relativeY = (y - cakeY) / cakeH;
+                isCake = relativeY < 0.80;
+              }
+
+              // Exclude purple cardboard base (g < r && g < b)
+              const isPurple = g < r && g < b;
+              isCake = isCake && !isPurple && max > 70;
+
+              // For sliced view, only color the outside neutral white frosting (exclude the colored sponge cut face)
+              if (view === 'sliced') {
+                isCake = isCake && (diff < 30);
+              }
 
               if (isCake) {
                 // Apply color using multiply blend logic

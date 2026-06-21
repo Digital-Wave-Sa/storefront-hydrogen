@@ -8,7 +8,7 @@ export const meta: MetaFunction = () => {
 };
 
 const PRODUCT_ITEM_FRAGMENT = `#graphql
-  fragment ProductItem on Product {
+  fragment OccasionsProductItem on Product {
     id
     handle
     title
@@ -65,7 +65,7 @@ export async function loader({ context }: LoaderFunctionArgs) {
     query OccasionsProducts($country: CountryCode, $language: LanguageCode) @inContext(country: $country, language: $language) {
       products(first: 200, query: "tag:wedding OR tag:ramadan OR tag:birthdays OR tag:eid OR tag:new-baby OR tag:national-day OR tag:mothers-day OR tag:graduation OR tag:occasion") {
         nodes {
-          ...ProductItem
+          ...OccasionsProductItem
         }
       }
     }
@@ -168,7 +168,7 @@ export default function OccasionsPage() {
                 {displayProducts.length > 0 ? (
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 lg:gap-6">
                         {displayProducts.map((product: any) => (
-                            <ProductItem key={product.id} product={product} />
+                            <ProductItem key={product.id} product={product} loading="lazy" />
                         ))}
                     </div>
                 ) : (
@@ -290,9 +290,10 @@ export default function OccasionsPage() {
                         {/* Image Side */}
                         <div className="w-full md:w-[45%] h-full flex items-center justify-center p-8 lg:p-12 relative z-10 shrink-0">
                             <img
-                                src="/images/voucher.png"
+                                src="/images/voucher.webp"
                                 alt="Saadeddin Gift Voucher"
                                 className="w-full h-auto object-contain max-w-[400px] drop-shadow-xl"
+                                loading="lazy"
                             />
                         </div>
 

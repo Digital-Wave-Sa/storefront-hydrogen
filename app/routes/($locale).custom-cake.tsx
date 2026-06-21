@@ -9,10 +9,10 @@ export const meta: Route.MetaFunction = ({ matches }) => {
 
 export const links: LinksFunction = () => {
   return [
-    { rel: 'preload', as: 'image', href: '/images/cake-builder/cake-round.png' },
-    { rel: 'preload', as: 'image', href: '/images/cake-builder/cake-heart.png' },
-    { rel: 'preload', as: 'image', href: '/images/cake-builder/cake-square.png' },
-    { rel: 'preload', as: 'image', href: '/images/cake-builder/cake-tall.png' },
+    { rel: 'preload', as: 'image', href: '/images/cake-builder/cake-round.webp' },
+    { rel: 'preload', as: 'image', href: '/images/cake-builder/cake-heart.webp' },
+    { rel: 'preload', as: 'image', href: '/images/cake-builder/cake-square.webp' },
+    { rel: 'preload', as: 'image', href: '/images/cake-builder/cake-tall.webp' },
   ];
 };
 

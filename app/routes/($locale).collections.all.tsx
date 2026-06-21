@@ -140,7 +140,7 @@ export async function loader({context, request}: LoaderFunctionArgs) {
 }
 
 const COLLECTION_FILTER_QUERY = `#graphql
-  fragment ProductItem on Product {
+  fragment FilterProductItem on Product {
     id
     handle
     title
@@ -211,7 +211,7 @@ const COLLECTION_FILTER_QUERY = `#graphql
     collection(handle: $handle) {
       products(first: 100) {
         nodes {
-          ...ProductItem
+          ...FilterProductItem
         }
       }
     }
@@ -341,7 +341,7 @@ export default function CollectionAll() {
               className={`absolute inset-0 bg-black/30 backdrop-blur-sm transition-opacity duration-500 ${isFilterOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0'}`}
               onClick={() => setIsFilterOpen(false)}
             />
-            <div className={`fixed inset-y-0 ${isEn ? 'left-0' : 'right-0'} w-full max-w-sm bg-[#FEF8EB] shadow-2xl z-50 transform transition-transform duration-300 ease-in-out ${isFilterOpen ? 'translate-x-0' : (isEn ? '-translate-x-full' : 'translate-x-full')}`}>
+            <div className={`fixed inset-y-0 ${isEn ? 'left-0' : 'right-0'} w-full max-w-sm bg-[#FEF8EB] shadow-2xl z-50 transform transition-transform duration-300 ease-in-out pointer-events-auto ${isFilterOpen ? 'translate-x-0' : (isEn ? '-translate-x-full' : 'translate-x-full')}`}>
                <FilterSidebar filters={products.productFilters} collections={collections || []} onClose={() => setIsFilterOpen(false)} isEn={isEn} />
             </div>
         </div>,
@@ -806,7 +806,7 @@ function ProductsGrid({products, view}: {products: any[], view: 'grid' | 'list'}
             key={product.id}
             product={product}
             view={view}
-            loading={index < 8 ? 'eager' : undefined}
+            loading={index < 8 ? 'eager' : 'lazy'}
           />
         );
       })}
@@ -819,7 +819,7 @@ const PRODUCT_ITEM_FRAGMENT = `#graphql
     amount
     currencyCode
   }
-  fragment ProductItem on Product {
+  fragment AllProductItem on Product {
     id
     handle
     title
@@ -947,7 +947,7 @@ const CATALOG_QUERY = `#graphql
       }
       nodes {
         ...on Product {
-           ...ProductItem
+           ...AllProductItem
         }
       }
       pageInfo {

@@ -9,6 +9,33 @@ export function GTMAnalytics() {
   const {subscribe} = useAnalytics();
 
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      (window as any).dataLayer = (window as any).dataLayer || [];
+
+      // Fallback for search event on initial page load (Remix / React hydration race condition)
+      const url = new URL(window.location.href);
+      if (url.pathname.includes('/search')) {
+        const q = url.searchParams.get('q');
+        if (q) {
+          const hasSearchEvent = (window as any).dataLayer.some((e: any) => e.event === 'search' && e.search_term === q);
+          if (!hasSearchEvent) {
+            const eventData = {
+              event: 'search',
+              ecommerce: {
+                currency: 'SAR',
+                value: 0,
+                items: []
+              },
+              language: document.documentElement.lang || 'ar',
+              search_term: q
+            };
+            (window as any).dataLayer.push({ ecommerce: null });
+            (window as any).dataLayer.push(eventData);
+            console.log(`[GTM Fallback] DataLayer Push:`, eventData);
+          }
+        }
+      }
+    }
     // Listen to ALL analytics events from Hydrogen
     const unSubscribe = subscribe('all_events', (data: any) => {
       const {eventName, ...payload} = data;

@@ -90,7 +90,7 @@ export function CustomerReviews({ config }: { config?: any }) {
 
     const metaReviews = config?.fields?.find((f: any) => f.key === 'reviews_list')?.references?.nodes;
     
-    let reviews = hardcodedReviews.map(r => ({ ...r, cardImage: '/images/review_placeholder.png' }));
+    let reviews = hardcodedReviews.map(r => ({ ...r, cardImage: '/images/review_placeholder.webp' }));
 
     if (metaReviews && metaReviews.length > 0) {
         reviews = metaReviews.map((node: any) => {
@@ -101,7 +101,7 @@ export function CustomerReviews({ config }: { config?: any }) {
                 name: isEn ? getMetaField('customer_name_en') : getMetaField('customer_name_ar'),
                 title: isEn ? getMetaField('job_title_en') : getMetaField('job_title_ar'),
                 avatar: getMetaImage('avatar_image') || "https://ui-avatars.com/api/?name=" + (isEn ? getMetaField('customer_name_en') : getMetaField('customer_name_ar')),
-                cardImage: getMetaImage('card_image') || '/images/review_placeholder.png'
+                cardImage: getMetaImage('card_image') || '/images/review_placeholder.webp'
             };
         });
     }
@@ -211,6 +211,7 @@ export function CustomerReviews({ config }: { config?: any }) {
                                         src={review.cardImage} 
                                         alt="Review graphic" 
                                         className="w-full h-full object-cover"
+                                        loading="lazy"
                                     />
                                 </div>
                                 
@@ -228,6 +229,7 @@ export function CustomerReviews({ config }: { config?: any }) {
                                             src={review.avatar} 
                                             alt="" 
                                             className="w-full h-full object-cover"
+                                            loading="lazy"
                                         />
                                     </div>
                                     <div className="flex flex-col items-start gap-[8px] w-[208px] h-[48px] justify-center overflow-hidden">

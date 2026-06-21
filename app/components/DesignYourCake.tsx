@@ -107,7 +107,7 @@ export function DesignYourCake() {
                         <div className="grid grid-cols-4 gap-1.5 md:gap-4 pt-3 -mt-3 md:pt-0 md:mt-0 pb-2 w-full">
                             {/* Active - Vanilla */}
                             <div className="relative bg-[#f8f9f8] border-[1.5px] md:border-[2px] border-[#234745] rounded-[14px] md:rounded-[50px] py-[4px] md:py-[6px] px-1 md:px-4 flex flex-col md:flex-row items-center justify-center gap-1.5 md:gap-3 cursor-pointer shadow-sm">
-                                <img src="/images/vanilla-img.png" alt="Vanilla" className="w-[28px] h-[28px] md:w-[40px] md:h-[40px] object-contain" />
+                                <img src="/images/vanilla-img.webp" alt="Vanilla" className="w-[28px] h-[28px] md:w-[40px] md:h-[40px] object-contain" loading="lazy" />
                                 <span className="text-[#234745] text-[10px] md:text-[16px] whitespace-nowrap" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", fontWeight: 700, lineHeight: '100%', textAlign: 'center' }}>
                                     {isEn ? 'Vanilla' : 'فانيليا'}
                                 </span>
@@ -117,21 +117,21 @@ export function DesignYourCake() {
                             </div>
                             {/* Chocolate */}
                             <div className="bg-[#f8f9f8] border border-[#d1dbd9] rounded-[14px] md:rounded-[50px] py-[4px] md:py-[6px] px-1 md:px-4 flex flex-col md:flex-row items-center justify-center gap-1.5 md:gap-3 cursor-pointer hover:border-[#234745]/40 transition-colors">
-                                <img src="/images/chocolate-img.png" alt="Chocolate" className="w-[28px] h-[28px] md:w-[40px] md:h-[40px] object-contain" />
+                                <img src="/images/chocolate-img.webp" alt="Chocolate" className="w-[28px] h-[28px] md:w-[40px] md:h-[40px] object-contain" loading="lazy" />
                                 <span className="text-[#234745] text-[10px] md:text-[16px] whitespace-nowrap" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", fontWeight: 700, lineHeight: '100%', textAlign: 'center' }}>
                                     {isEn ? 'Chocolate' : 'شوكولاته'}
                                 </span>
                             </div>
                             {/* Caramel */}
                             <div className="bg-[#f8f9f8] border border-[#d1dbd9] rounded-[14px] md:rounded-[50px] py-[4px] md:py-[6px] px-1 md:px-4 flex flex-col md:flex-row items-center justify-center gap-1.5 md:gap-3 cursor-pointer hover:border-[#234745]/40 transition-colors">
-                                <img src="/images/caramel-img.png" alt="Caramel" className="w-[28px] h-[28px] md:w-[40px] md:h-[40px] object-contain" />
+                                <img src="/images/caramel-img.webp" alt="Caramel" className="w-[28px] h-[28px] md:w-[40px] md:h-[40px] object-contain" loading="lazy" />
                                 <span className="text-[#234745] text-[10px] md:text-[16px] whitespace-nowrap" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", fontWeight: 700, lineHeight: '100%', textAlign: 'center' }}>
                                     {isEn ? 'Caramel' : 'كراميل'}
                                 </span>
                             </div>
                             {/* Red Velvet */}
                             <div className="bg-[#f8f9f8] border border-[#d1dbd9] rounded-[14px] md:rounded-[50px] py-[4px] md:py-[6px] px-1 md:px-4 flex flex-col md:flex-row items-center justify-center gap-1.5 md:gap-3 cursor-pointer hover:border-[#234745]/40 transition-colors">
-                                <img src="/images/velvet-img.png" alt="Red Velvet" className="w-[28px] h-[28px] md:w-[40px] md:h-[40px] object-contain" />
+                                <img src="/images/velvet-img.webp" alt="Red Velvet" className="w-[28px] h-[28px] md:w-[40px] md:h-[40px] object-contain" loading="lazy" />
                                 <span className="text-[#234745] text-[10px] md:text-[16px] whitespace-nowrap" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", fontWeight: 700, lineHeight: '100%', textAlign: 'center' }}>
                                     {isEn ? 'Red Velvet' : 'ريد فلفيت'}
                                 </span>

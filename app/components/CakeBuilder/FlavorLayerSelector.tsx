@@ -21,7 +21,7 @@ export const FLAVORS: Flavor[] = [
     secondaryColor: '#f5deb3',
     descriptionEn: 'Light and airy with real vanilla beans',
     descriptionAr: 'خفيفة وهشة مع حبيبات الفانيليا الطبيعية',
-    image: '/images/vanilla-img.png'
+    image: '/images/vanilla-img.webp'
   },
   {
     id: 'choco-crunch',
@@ -31,7 +31,7 @@ export const FLAVORS: Flavor[] = [
     secondaryColor: '#2a1d15',
     descriptionEn: 'Rich chocolate with a satisfying crunch',
     descriptionAr: 'شوكولاتة غنية مع قرمشة لذيذة',
-    image: '/images/chocolate-img.png',
+    image: '/images/chocolate-img.webp',
     isPopular: true
   },
   {
@@ -42,7 +42,7 @@ export const FLAVORS: Flavor[] = [
     secondaryColor: '#800000',
     descriptionEn: 'Velvety texture with a hint of cocoa',
     descriptionAr: 'قوام مخملي مع لمسة من الكاكاو',
-    image: '/images/velvet-img.png'
+    image: '/images/velvet-img.webp'
   },
   {
     id: 'nutella',
@@ -52,7 +52,7 @@ export const FLAVORS: Flavor[] = [
     secondaryColor: '#302214',
     descriptionEn: 'Classic hazelnut chocolate spread flavor',
     descriptionAr: 'نكهة شوكولاتة البندق الكلاسيكية',
-    image: '/images/chocolate-img.png'
+    image: '/images/chocolate-img.webp'
   },
   {
     id: 'fruits',
@@ -62,7 +62,7 @@ export const FLAVORS: Flavor[] = [
     secondaryColor: '#FFA07A',
     descriptionEn: 'Refreshing mix of seasonal fruits',
     descriptionAr: 'مزيج منعش من الفواكه الموسمية',
-    image: '/images/vanilla-img.png'
+    image: '/images/vanilla-img.webp'
   },
   {
     id: 'cinnamon',
@@ -72,7 +72,7 @@ export const FLAVORS: Flavor[] = [
     secondaryColor: '#8B4513',
     descriptionEn: 'Warm and spicy cinnamon swirl',
     descriptionAr: 'مزيج دافئ ومميز من القرفة',
-    image: '/images/caramel-img.png'
+    image: '/images/caramel-img.webp'
   },
   {
     id: 'pistachio',
@@ -82,7 +82,7 @@ export const FLAVORS: Flavor[] = [
     secondaryColor: '#556B2F',
     descriptionEn: 'Rich and nutty pistachio blend',
     descriptionAr: 'مزيج غني من الفستق الحلبي',
-    image: '/images/vanilla-img.png',
+    image: '/images/vanilla-img.webp',
     isPopular: true
   },
 ];

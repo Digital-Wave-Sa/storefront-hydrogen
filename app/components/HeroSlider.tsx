@@ -4,7 +4,7 @@ import { NavLink } from 'react-router';
 const SLIDES = [
   { 
     id: 1, 
-    image: '/hero/slide1.png', 
+    image: '/hero/slide1.webp', 
     url: '/collections/all',
     title: { ar: 'نصنع لحظات\nلا تنسي', en: 'We Make Unforgettable\nMoments' },
     subtitle: { 
@@ -18,7 +18,7 @@ const SLIDES = [
   },
   { 
     id: 2, 
-    image: '/hero/slide2.png', 
+    image: '/hero/slide2.webp', 
     url: '/custom-cake',
     title: { ar: 'إحتفل بالعيد\nبأرقي الحلويات', en: 'Celebrate Eid\nWith Finest Sweets' },
     subtitle: { 
@@ -32,7 +32,7 @@ const SLIDES = [
   },
   { 
     id: 3, 
-    image: '/hero/slide3.png', 
+    image: '/hero/slide3.webp', 
     url: '/custom-cake',
     title: { ar: 'صمم كيكتك\nكما تتخيلها', en: 'Design Your Cake\nAs You Imagine It' },
     subtitle: { 

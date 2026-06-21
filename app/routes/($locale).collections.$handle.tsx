@@ -666,7 +666,7 @@ function ProductsGrid({products, view}: {products: any[], view: 'grid' | 'list'}
             key={product.id}
             product={product}
             view={view}
-            loading={index < 8 ? 'eager' : undefined}
+            loading={index < 8 ? 'eager' : 'lazy'}
           />
         );
       })}
@@ -680,7 +680,7 @@ const PRODUCT_ITEM_FRAGMENT = `#graphql
     amount
     currencyCode
   }
-  fragment ProductItem on Product {
+  fragment HandleProductItem on Product {
     id
     handle
     title
@@ -810,7 +810,7 @@ const COLLECTION_QUERY = `#graphql
         reverse: $reverse
       ) {
         nodes {
-          ...ProductItem
+          ...HandleProductItem
         }
         filters {
           id

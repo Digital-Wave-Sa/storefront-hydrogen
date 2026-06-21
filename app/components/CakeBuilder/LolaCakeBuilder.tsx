@@ -54,11 +54,11 @@ const steps = [
 
 const cakeOptions = {
   shapes: [
-    { id: 'circle', name: 'دائري (Circle)', price: 0, image: '/images/cake-builder/cake-round.png', is3D: true },
-    { id: 'standard', name: 'عادي طويل (Standard)', price: 5, image: '/images/cake-builder/cake-tall.png', is3D: true },
-    { id: 'square', name: 'مربع (Square)', price: 10, image: '/images/cake-builder/cake-square.png', is3D: true },
-    { id: 'sheet', name: 'مستطيل (Sheet)', price: 15, image: '/images/cake-builder/cake-square.png', is3D: true },
-    { id: 'heart', name: 'قلب (Heart)', price: 15, image: '/images/cake-builder/cake-heart.png', is3D: true }
+    { id: 'circle', name: 'دائري (Circle)', price: 0, image: '/images/cake-builder/cake-round.webp', is3D: true },
+    { id: 'standard', name: 'عادي طويل (Standard)', price: 5, image: '/images/cake-builder/cake-tall.webp', is3D: true },
+    { id: 'square', name: 'مربع (Square)', price: 10, image: '/images/cake-builder/cake-square.webp', is3D: true },
+    { id: 'sheet', name: 'مستطيل (Sheet)', price: 15, image: '/images/cake-builder/cake-square.webp', is3D: true },
+    { id: 'heart', name: 'قلب (Heart)', price: 15, image: '/images/cake-builder/cake-heart.webp', is3D: true }
   ],
   sizes: [
     { id: '6-inch', name: 'صغير (Small)', personsAr: '٤-٦ أشخاص', personsEn: '4-6 Persons', price: 120, scale: 0.8 },
@@ -71,9 +71,9 @@ const cakeOptions = {
     { id: '3-tier', name: '3 طبقات (Three Tiers)', price: 85, count: 3 }
   ],
   flavors: [
-    { id: 'vanilla', name: 'فانيلا (Vanilla)', price: 0, image: '/images/cake-builder/vanilla.png', color: '#f5deb3' },
-    { id: 'chocolate', name: 'شوكولاتة (Chocolate)', price: 5, image: '/images/cake-builder/chocolate.png', color: '#3E2723' },
-    { id: 'red-velvet', name: 'ريد فيلفيت (Red Velvet)', price: 10, image: '/images/cake-builder/redvelvet.png', color: '#8b0000' }
+    { id: 'vanilla', name: 'فانيلا (Vanilla)', price: 0, image: '/images/cake-builder/vanilla.webp', color: '#f5deb3' },
+    { id: 'chocolate', name: 'شوكولاتة (Chocolate)', price: 5, image: '/images/cake-builder/chocolate.webp', color: '#3E2723' },
+    { id: 'red-velvet', name: 'ريد فيلفيت (Red Velvet)', price: 10, image: '/images/cake-builder/redvelvet.webp', color: '#8b0000' }
   ],
   styles: [
     { id: 'basic', name: 'ناعم (Smooth Minimalist)', price: 0 },

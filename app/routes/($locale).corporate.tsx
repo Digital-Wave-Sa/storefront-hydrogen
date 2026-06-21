@@ -7,7 +7,7 @@ export const meta: MetaFunction = () => {
 };
 
 const PRODUCT_ITEM_FRAGMENT = `#graphql
-  fragment ProductItem on Product {
+  fragment CorporateProductItem on Product {
     id
     handle
     title
@@ -64,7 +64,7 @@ export async function loader({ context }: LoaderFunctionArgs) {
     query CorporateProducts($country: CountryCode, $language: LanguageCode) @inContext(country: $country, language: $language) {
       products(first: 3, query: "tag:corporate OR tag:gifting") {
         nodes {
-          ...ProductItem
+          ...CorporateProductItem
         }
       }
     }

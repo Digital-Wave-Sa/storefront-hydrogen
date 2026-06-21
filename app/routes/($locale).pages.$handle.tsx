@@ -74,7 +74,7 @@ export default function Page() {
 }
 
 const PAGE_QUERY = `#graphql
-  query Page(
+  query HandlePage(
     $language: LanguageCode,
     $country: CountryCode,
     $handle: String!

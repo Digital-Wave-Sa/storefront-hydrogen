@@ -3,7 +3,7 @@ import { useLoaderData, useRouteLoaderData } from 'react-router';
 import { PageHeader } from '~/components/layout/PageHeader';
 
 const PAGE_QUERY = `#graphql
-  query Page(
+  query TermsPage(
     $language: LanguageCode,
     $country: CountryCode,
     $handle: String!

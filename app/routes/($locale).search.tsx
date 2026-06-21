@@ -187,6 +187,13 @@ export default function SearchPage() {
   const isEn = locale === 'en';
   const { publish } = useAnalytics();
   
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+  
   useEffect(() => {
     if (searchTerm) {
       publish('search_viewed', {
@@ -229,6 +236,13 @@ export default function SearchPage() {
           <div className="px-4 md:px-8 lg:px-12 py-10 max-w-[1440px] mx-auto text-right">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
               <div className="flex items-center gap-2 flex-wrap justify-start flex-1">
+                 <button 
+                    onClick={() => setIsFilterOpen(true)}
+                    className="lg:hidden flex items-center gap-2.5 px-5 py-2.5 bg-white border border-gray-200 text-[#234745] rounded-xl font-bold hover:bg-gray-50 transition-all shadow-sm active:scale-95 group"
+                 >
+                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 3H2l8 9v11l4-6V12L22 3z"/></svg>
+                   <span>{isEn ? 'Filter' : 'تـصـفـيـة'}</span>
+                 </button>
                  <ActiveFilterChips isEn={isEn} />
               </div>
 
@@ -276,6 +290,18 @@ export default function SearchPage() {
             </div>
           </div>
       </div>
+      {mounted && typeof document !== 'undefined' && createPortal(
+        <div className={`fixed inset-0 z-[999999] pointer-events-none transition-all duration-500 ${isFilterOpen ? 'visible' : 'invisible'}`}>
+            <div 
+              className={`absolute inset-0 bg-black/30 backdrop-blur-sm transition-opacity duration-500 ${isFilterOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0'}`}
+              onClick={() => setIsFilterOpen(false)}
+            />
+            <div className={`fixed inset-y-0 ${isEn ? 'left-0' : 'right-0'} w-full max-w-sm bg-[#FEF8EB] shadow-2xl z-50 transform transition-transform duration-300 ease-in-out pointer-events-auto ${isFilterOpen ? 'translate-x-0' : (isEn ? '-translate-x-full' : 'translate-x-full')}`}>
+               <FilterSidebar filters={filterOptions} collections={globalCollections || []} onClose={() => setIsFilterOpen(false)} isEn={isEn} hideSearchInput={true} />
+            </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }

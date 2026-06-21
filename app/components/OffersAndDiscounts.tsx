@@ -94,8 +94,9 @@ export function OffersAndDiscounts() {
                         {/* Image Side */}
                         <div className="w-full md:w-[55%] h-full flex items-center justify-center p-8 lg:p-12 relative z-10">
                             <img
-                                src="/images/voucher.png"
+                                src="/images/voucher.webp"
                                 alt="Saadeddin Gift Voucher"
+                                loading="lazy"
                                 className="w-full h-auto object-contain max-w-[500px] drop-shadow-2xl"
                             />
                         </div>
@@ -106,9 +107,10 @@ export function OffersAndDiscounts() {
                     <div className="w-full lg:w-[35%] bg-[#234745] rounded-[40px] p-10 flex flex-col items-center justify-between text-center min-h-[460px] relative overflow-hidden group shadow-sm">
                         <div className="w-full flex justify-center mb-8">
                             <img
-                                src="/images/sweets-box.png"
+                                src="/images/sweets-box.webp"
                                 className="w-full h-auto object-contain max-w-[300px] transition-transform duration-1000 group-hover:scale-105 drop-shadow-2xl"
                                 alt="Luxury Sweets Box"
+                                loading="lazy"
                             />
                         </div>
                         <div className="relative z-10 w-full flex flex-col items-center">

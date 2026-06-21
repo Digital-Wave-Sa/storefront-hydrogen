@@ -215,12 +215,45 @@ export function CakePreview({
 
           // Apply selected color if not default classic white
           if (color && color.toLowerCase() !== '#fdf5e6') {
-            oCtx.globalCompositeOperation = 'source-in';
-            oCtx.fillStyle = color;
-            oCtx.fillRect(0, 0, width, height);
-            
-            oCtx.globalCompositeOperation = 'multiply';
-            oCtx.drawImage(loadedImages.shape, cakeX, cakeY, cakeW, cakeH);
+            const imgData = oCtx.getImageData(0, 0, width, height);
+            const data = imgData.data;
+
+            // Parse hex color robustly
+            let hex = color.replace('#', '');
+            if (hex.length === 3) {
+              hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+            }
+            const targetR = parseInt(hex.substring(0, 2) || '255', 16);
+            const targetG = parseInt(hex.substring(2, 4) || '255', 16);
+            const targetB = parseInt(hex.substring(4, 6) || '255', 16);
+
+            for (let i = 0; i < data.length; i += 4) {
+              const r = data[i];
+              const g = data[i + 1];
+              const b = data[i + 2];
+              const a = data[i + 3];
+              if (a === 0) continue;
+
+              const max = Math.max(r, g, b);
+              const min = Math.min(r, g, b);
+              const diff = max - min;
+
+              // Smart color filter:
+              // - White/cream frosting pixels have low saturation (low channel differences).
+              // - Purple tray has B > G and R > G with a large difference.
+              // - Shadows are very dark.
+              const isCream = r > b && g > b && diff < 35;
+              const isGrey = diff < 20;
+              const isCake = (isGrey || isCream) && max > 80;
+
+              if (isCake) {
+                // Apply color using multiply blend logic
+                data[i] = (r * targetR) / 255;
+                data[i + 1] = (g * targetG) / 255;
+                data[i + 2] = (b * targetB) / 255;
+              }
+            }
+            oCtx.putImageData(imgData, 0, 0);
           }
 
           // Blended output to main canvas

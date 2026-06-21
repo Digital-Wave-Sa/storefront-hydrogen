@@ -46,7 +46,7 @@ const MessageIcon = ({ className }: { className?: string }) => (
 );
 
 const steps = [
-  { id: 1, titleEn: 'Size', titleAr: 'أختر الحجم', icon: SizeIcon },
+  { id: 1, titleEn: 'Shape', titleAr: 'اختر الشكل', icon: Cake },
   { id: 2, titleEn: 'Flavor', titleAr: 'أختر النكهة', icon: FlavorIcon },
   { id: 3, titleEn: 'Decoration', titleAr: 'أختر التزيين', icon: DecorationIcon },
   { id: 4, titleEn: 'Message', titleAr: 'أضف رسالتك الخاصة', icon: MessageIcon }
@@ -167,8 +167,8 @@ export default function LolaCakeBuilder({ cakeAttributes = [], isEn = false }: {
 
   const [selections, setSelections] = useState({
     shape: mergedOptions.shapes[0],
-    size: mergedOptions.sizes[1],
-    tier: mergedOptions.tiers[0],
+    size: { id: 'standard', name: 'عادي (Standard)', price: 0, scale: 1.0 },
+    tier: { id: '1-tier', name: 'طبقة واحدة (Single Tier)', price: 0, count: 1 },
     flavor: mergedOptions.flavors[0],
     style: mergedOptions.styles[0],
     color: mergedOptions.colors[0],
@@ -472,14 +472,6 @@ export default function LolaCakeBuilder({ cakeAttributes = [], isEn = false }: {
                     <h2 className={`text-2xl font-bold text-[#1a1a1a] ${isEn ? 'text-left' : 'text-right'}`}>{isEn ? 'Choose Shape' : 'اختر شكل الكيكة'}</h2>
                     {renderOptionsGrid('shape', mergedOptions.shapes)}
                   </div>
-                  <div>
-                    <h2 className={`text-2xl font-bold text-[#1a1a1a] ${isEn ? 'text-left' : 'text-right'}`}>{isEn ? 'Choose Size' : 'اختر الحجم'}</h2>
-                    {renderOptionsGrid('size', mergedOptions.sizes)}
-                  </div>
-                  <div>
-                    <h2 className={`text-2xl font-bold text-[#1a1a1a] ${isEn ? 'text-left' : 'text-right'}`}>{isEn ? 'Number of Tiers' : 'عدد الطبقات'}</h2>
-                    {renderOptionsGrid('tier', mergedOptions.tiers)}
-                  </div>
                 </div>
               )}
 
@@ -652,11 +644,9 @@ export default function LolaCakeBuilder({ cakeAttributes = [], isEn = false }: {
           {/* Center Content Group (Pills + Circle) */}
           <div className="relative z-10 flex flex-col items-center justify-center gap-2 lg:gap-4 w-full mt-0">
             
-            {/* Top Pill */}
+            {/* Top Pill showing selected shape */}
             <div className="bg-[#20584A] text-white px-6 py-2 rounded-full font-bold text-sm flex items-center gap-1.5 whitespace-nowrap shadow-sm">
-              <span>{isEn && selections.size.name.includes('(') ? selections.size.name.split('(')[1].replace(')', '').trim() : selections.size.name.split('(')[0].trim()}</span>
-              <span>—</span>
-              <span className="flex items-center gap-1">{toArabicDigits(selections.size.price)} <SaudiRiyalSymbol className="w-auto h-3 text-white" /></span>
+              <span>{isEn ? selections.shape.name.split(' (')[1]?.replace(')', '') || selections.shape.name.split(' (')[0] : selections.shape.name.split(' (')[0]}</span>
             </div>
 
             {/* Circle & 3D Canvas */}

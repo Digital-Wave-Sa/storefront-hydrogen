@@ -104,15 +104,6 @@ export function CakePreview({
     }
   }, [isCutaway, supportedViews, setView]);
 
-  // Helper to map selected flavor to asset key
-  const flavorKey = useMemo(() => {
-    const fLower = flavorName.toLowerCase();
-    if (fLower.includes('chocolate')) return 'chocolate';
-    if (fLower.includes('red velvet') || fLower.includes('velvet')) return 'red-velvet';
-    if (fLower.includes('nutella')) return 'nutella';
-    return 'vanilla';
-  }, [flavorName]);
-
   // Get active image sources based on shape, view, topping
   const activeSources = useMemo(() => {
     const sAssets = shapeAssets[shape] || shapeAssets.standard;
@@ -121,8 +112,6 @@ export function CakePreview({
       : view === 'sliced' && sAssets.sliced 
         ? sAssets.sliced 
         : sAssets.front;
-
-    const flavorImg = flavorAssets[flavorKey];
 
     const toppingId = toppings?.[0]?.id || '';
     const tAssets = toppingAssets[toppingId];
@@ -136,11 +125,10 @@ export function CakePreview({
 
     return {
       shapeImg,
-      flavorImg,
       toppingImg,
       toppingId
     };
-  }, [shape, view, flavorKey, toppings]);
+  }, [shape, view, toppings]);
 
   // Render loop
   useEffect(() => {
@@ -154,12 +142,9 @@ export function CakePreview({
     canvas.width = width;
     canvas.height = height;
 
-    const { shapeImg, flavorImg, toppingImg, toppingId } = activeSources;
+    const { shapeImg, toppingImg, toppingId } = activeSources;
 
     const imagesToLoad: { key: string; src: string }[] = [];
-    if (view === 'sliced' && flavorImg) {
-      imagesToLoad.push({ key: 'flavor', src: flavorImg });
-    }
     imagesToLoad.push({ key: 'shape', src: shapeImg });
     if (toppingImg) {
       imagesToLoad.push({ key: 'topping', src: toppingImg });
@@ -215,11 +200,6 @@ export function CakePreview({
         if (view !== 'top') {
           cakeY -= 70; // Center visually in front/sliced view by offsetting empty space on top
         }
-      }
-
-      // 1. Draw flavor behind the cake if view is sliced
-      if (view === 'sliced' && loadedImages.flavor) {
-        ctx.drawImage(loadedImages.flavor, cakeX, cakeY, cakeW, cakeH);
       }
 
       // 2. Draw cake shape and apply dynamic coloring mask

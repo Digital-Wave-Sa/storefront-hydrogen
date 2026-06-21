@@ -71,9 +71,10 @@ const cakeOptions = {
     { id: '3-tier', name: '3 طبقات (Three Tiers)', price: 85, count: 3 }
   ],
   flavors: [
-    { id: 'vanilla', name: 'فانيلا (Vanilla)', price: 0, image: '/images/cake-builder/vanilla.webp', color: '#f5deb3' },
-    { id: 'chocolate', name: 'شوكولاتة (Chocolate)', price: 5, image: '/images/cake-builder/chocolate.webp', color: '#3E2723' },
-    { id: 'red-velvet', name: 'ريد فيلفيت (Red Velvet)', price: 10, image: '/images/cake-builder/redvelvet.webp', color: '#8b0000' }
+    { id: 'vanilla', name: 'فانيلا (Vanilla)', price: 0, image: '/cake/flavors/vanilla.png', color: '#f5deb3' },
+    { id: 'chocolate', name: 'شوكولاتة (Chocolate)', price: 5, image: '/cake/flavors/chocolate.png', color: '#3E2723' },
+    { id: 'red-velvet', name: 'ريد فيلفيت (Red Velvet)', price: 10, image: '/cake/flavors/red-velvet.png', color: '#8b0000' },
+    { id: 'nutella', name: 'نوتيلا (Nutella)', price: 15, image: '/cake/flavors/nutella.png', color: '#5C4033' }
   ],
   styles: [
     { id: 'basic', name: 'ناعم (Smooth Minimalist)', price: 0 },
@@ -350,8 +351,12 @@ export default function LolaCakeBuilder({ cakeAttributes = [], isEn = false }: {
               </div>
             )}
             
-            {/* Show color swatch if it is a color option */}
-            {option.color && (
+            {/* Show flavor image if category is flavor */}
+            {category === 'flavor' ? (
+              <div className="w-14 h-14 rounded-full border border-gray-200 shadow-sm mb-3 flex items-center justify-center overflow-hidden relative bg-[#fafafa]">
+                <img src={option.image} alt={displayName} className="w-full h-full object-cover" />
+              </div>
+            ) : option.color && (
               <div 
                 className="w-12 h-12 rounded-full border-2 border-gray-200 shadow-sm mb-3 flex items-center justify-center overflow-hidden relative"
                 style={

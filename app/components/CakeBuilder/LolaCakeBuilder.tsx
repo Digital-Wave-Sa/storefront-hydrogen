@@ -272,7 +272,7 @@ export default function LolaCakeBuilder({ cakeAttributes = [], isEn = false }: {
           isEn: false
         })
       });
-      const data = await response.json();
+      const data = (await response.json()) as any;
       if (data.checkoutUrl) {
         window.location.href = data.checkoutUrl;
       } else {
@@ -682,7 +682,7 @@ export default function LolaCakeBuilder({ cakeAttributes = [], isEn = false }: {
                   shape={selections.shape.id}
                   layers={selections.tier.count === 3 ? 'three' : selections.tier.count === 2 ? 'two' : 'one'}
                   color={selections.color.color}
-                  toppings={[{ id: selections.style.id, name: selections.style.id, thumbnailUrl: '' }]}
+                  toppings={[{ id: selections.style.id, name: selections.style.id }]}
                   scale={selections.size.scale}
                   message={selections.message}
                   flavorName={selections.flavor.name}

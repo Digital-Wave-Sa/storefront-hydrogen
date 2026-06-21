@@ -67,6 +67,117 @@ const toppingAssets: Record<string, { front: string; top?: string; sliced?: stri
   }
 };
 
+function checkIsCakeFrosting(
+  shape: string,
+  view: string,
+  rx: number,
+  ry: number,
+  r: number,
+  g: number,
+  b: number
+): boolean {
+  // Geometric boundaries for each shape and view
+  if (shape === 'standard' || shape === 'circle') {
+    if (view === 'top') {
+      // Circle ellipse: center (0.50, 0.54), rx=0.275, ry=0.250
+      const dx = (rx - 0.50) / 0.275;
+      const dy = (ry - 0.54) / 0.250;
+      return dx * dx + dy * dy <= 1.0;
+    } else {
+      // Front / Sliced views: cylinder frosting
+      const maxRx = view === 'sliced' ? 0.90 : 0.78;
+      if (rx < 0.22 || rx > maxRx) return false;
+      const dx = (rx - 0.50) / 0.28;
+      const bottomCurve = 0.808 + 0.102 * Math.sqrt(Math.max(0, 1.0 - dx * dx));
+      if (ry > bottomCurve) return false;
+
+      // Exclude purple board & gold logo: only at the bottom cardboard base tray region
+      if (ry >= 0.80) {
+        const isPurple = g < r && g < b && Math.max(r, g, b) < 135;
+        if (isPurple) return false;
+        const isGold = r > 180 && g > 150 && b < 120 && rx >= 0.68;
+        if (isGold) return false;
+      }
+      return true;
+    }
+  }
+
+  if (shape === 'heart') {
+    if (view === 'top') {
+      // Top view heart bounding box
+      if (rx < 0.19 || rx > 0.87 || ry < 0.09 || ry > 0.75) return false;
+      // Exclude purple board inside heart indentation by color
+      return g >= b - 10;
+    } else {
+      // Front / Sliced views
+      const maxRx = view === 'sliced' ? 0.93 : 0.87;
+      if (rx < 0.19 || rx > maxRx) return false;
+      const dx = Math.abs(rx - 0.53) / 0.34;
+      const bottomCurve = 0.86 + 0.10 * (1.0 - dx);
+      if (ry > bottomCurve) return false;
+
+      if (ry >= 0.80) {
+        const isPurple = g < r && g < b && Math.max(r, g, b) < 135;
+        if (isPurple) return false;
+        const isGold = r > 180 && g > 150 && b < 120 && rx >= 0.68;
+        if (isGold) return false;
+      }
+      return g >= b - 10;
+    }
+  }
+
+  if (shape === 'square') {
+    if (ry < 0.14 || ry > 0.93) return false;
+    let minRx = 0.11;
+    let maxRx = 0.89;
+    if (ry < 0.35) {
+      minRx = 0.11 + 2.0 * (0.35 - ry);
+      maxRx = 0.89 - 1.9 * (0.35 - ry);
+    } else if (ry > 0.66) {
+      minRx = 0.11 + 1.46 * (ry - 0.66);
+      maxRx = 0.89 - 1.54 * (ry - 0.66);
+    }
+    if (rx < minRx || rx > maxRx) return false;
+
+    if (ry >= 0.66) {
+      const isPurple = g < r && g < b && Math.max(r, g, b) < 135;
+      if (isPurple) return false;
+      const isGold = r > 180 && g > 150 && b < 120 && rx >= 0.68;
+      if (isGold) return false;
+    }
+    return g >= b - 10;
+  }
+
+  if (shape === 'sheet') {
+    if (ry < 0.16 || ry > 0.94) return false;
+    let minRx = 0.09;
+    let maxRx = 0.93;
+    if (ry < 0.40) {
+      minRx = 0.09 + 2.17 * (0.40 - ry);
+      if (ry < 0.30) {
+        maxRx = 0.82 - 1.7 * (0.30 - ry);
+      } else {
+        maxRx = 0.93 - 1.15 * (0.40 - ry);
+      }
+    } else if (ry > 0.62) {
+      minRx = 0.09 + 1.3 * (ry - 0.67);
+      maxRx = 0.93 - 1.61 * (ry - 0.62);
+    }
+    if (rx < minRx || rx > maxRx) return false;
+
+    if (ry >= 0.62) {
+      const isPurple = g < r && g < b && Math.max(r, g, b) < 135;
+      if (isPurple) return false;
+      const isGold = r > 180 && g > 150 && b < 120 && rx >= 0.68;
+      if (isGold) return false;
+    }
+    return g >= b - 10;
+  }
+
+  return false;
+}
+
+
 export function CakePreview({
   shape = 'standard',
   layers = 1,
@@ -242,22 +353,31 @@ export function CakePreview({
               const min = Math.min(r, g, b);
               const diff = max - min;
 
-              // Determine if pixel is cake frosting based on view and relative vertical position
-              let isCake = false;
-              if (view === 'top') {
-                isCake = true;
-              } else {
-                const relativeY = (y - cakeY) / cakeH;
-                isCake = relativeY < 0.80;
-              }
+              const relativeX = (x - cakeX) / cakeW;
+              const relativeY = (y - cakeY) / cakeH;
 
-              // Exclude purple cardboard base (g < r && g < b)
-              const isPurple = g < r && g < b;
-              isCake = isCake && !isPurple && max > 70;
+              // Determine if pixel is cake frosting based on view and relative vertical position
+              let isCake = checkIsCakeFrosting(shape, view, relativeX, relativeY, r, g, b);
 
               // For sliced view, only color the outside neutral white frosting (exclude the colored sponge cut face)
               if (view === 'sliced') {
-                isCake = isCake && (diff < 30);
+                let isInsideCutFace = false;
+                
+                if (shape === 'heart') {
+                  const isMainCut = (relativeX >= 0.53 && relativeX <= 0.70 && relativeY >= 0.58 && relativeY <= 0.81);
+                  const isSliceCut = (relativeX >= 0.70 && relativeX <= 0.93 && relativeY >= 0.45 && relativeY <= 0.68);
+                  const isPillar = (relativeX >= 0.70 && relativeX <= 0.75 && relativeY >= 0.68 && relativeY <= 0.81);
+                  isInsideCutFace = isMainCut || isSliceCut || isPillar;
+                } else {
+                  const isMainCut = (relativeX >= 0.50 && relativeX <= 0.65 && relativeY >= 0.53 && relativeY <= 0.77);
+                  const isSliceCut = (relativeX >= 0.65 && relativeX <= 0.90 && relativeY >= 0.44 && relativeY <= 0.63);
+                  const isPillar = (relativeX >= 0.65 && relativeX <= 0.70 && relativeY >= 0.63 && relativeY <= 0.80);
+                  isInsideCutFace = isMainCut || isSliceCut || isPillar;
+                }
+                
+                if (isInsideCutFace) {
+                  isCake = false;
+                }
               }
 
               if (isCake) {

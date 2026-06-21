@@ -8,3 +8,6 @@ node_modules
 .shopify
 .react-router
 /scratch
+/playwright-report
+/test-results
+*.tsbuildinfo

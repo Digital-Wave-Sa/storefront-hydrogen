@@ -1312,37 +1312,42 @@ export default function Product() {
         <div className="w-full max-w-[1280px] px-4 md:px-0 flex flex-col items-start gap-[24px]">
           
           {/* Tabs Header */}
-          <div className="w-full flex flex-col gap-[16px] items-start relative">
-              <div className="flex flex-row items-center gap-[48px]">
-                  <button 
-                      onClick={() => setActiveTab('details')}
-                      className={`text-[18px] transition-all flex items-center justify-center w-[128px] h-[24px] ${activeTab === 'details' ? 'text-[#255441] font-bold' : 'text-[#7D7D7D] font-medium'}`}
-                      style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", lineHeight: '22px' }}
-                  >
-                      {isEn ? 'Product Description' : 'وصف المنتج'}
-                  </button>
-                  <button 
-                      onClick={() => setActiveTab('reviews')}
-                      className={`text-[18px] transition-all flex items-center justify-center w-[128px] h-[24px] ${activeTab === 'reviews' ? 'text-[#255441] font-bold' : 'text-[#7D7D7D] font-medium'}`}
-                      style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", lineHeight: '22px' }}
-                  >
-                      {isEn ? `Reviews (${reviews?.length || 0})` : `المراجعات (${new Intl.NumberFormat('en-US').format(reviews?.length || 0)})`}
-                  </button>
-              </div>
-              
-              {/* Lines container */}
-              <div className="w-full relative h-[2px]">
-                  {/* Full width muted line */}
-                  <div className="absolute top-0 left-0 w-full border-t border-[#BBCFCD]/50"></div>
-                  {/* Active Indicator Line */}
-                  <div 
-                     className="absolute top-[-1px] border-t-[2px] border-[#234745] transition-all duration-300 w-[128px]"
-                     style={{
-                        [isEn ? 'left' : 'right']: activeTab === 'details' ? '0' : '176px'
-                     }}
-                  ></div>
-              </div>
-          </div>
+          {(() => {
+              const tabs = [
+                  { id: 'details', label: isEn ? 'Product Description' : 'وصف المنتج' },
+                  { id: 'reviews', label: isEn ? `Reviews (${reviews?.length || 0})` : `المراجعات (${new Intl.NumberFormat('en-US').format(reviews?.length || 0)})` },
+                  ...((product as any).nutrition?.value ? [{ id: 'nutrition', label: isEn ? 'Nutrition Facts' : 'حقائق غذائية' }] : [])
+              ];
+              return (
+                  <div className="w-full flex flex-col gap-[16px] items-start relative">
+                      <div className="flex flex-row items-center gap-[48px]">
+                          {tabs.map((t) => (
+                              <button 
+                                  key={t.id}
+                                  onClick={() => setActiveTab(t.id)}
+                                  className={`text-[18px] transition-all flex items-center justify-center w-[128px] h-[24px] ${activeTab === t.id ? 'text-[#255441] font-bold' : 'text-[#7D7D7D] font-medium'}`}
+                                  style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", lineHeight: '22px' }}
+                              >
+                                  {t.label}
+                              </button>
+                          ))}
+                      </div>
+                      
+                      {/* Lines container */}
+                      <div className="w-full relative h-[2px]">
+                          {/* Full width muted line */}
+                          <div className="absolute top-0 left-0 w-full border-t border-[#BBCFCD]/50"></div>
+                          {/* Active Indicator Line */}
+                          <div 
+                             className="absolute top-[-1px] border-t-[2px] border-[#234745] transition-all duration-300 w-[128px]"
+                             style={{
+                                [isEn ? 'left' : 'right']: `${tabs.findIndex(t => t.id === activeTab) * 176}px`
+                             }}
+                          ></div>
+                      </div>
+                  </div>
+              );
+          })()}
 
           {/* Tab Content */}
           <div className="w-full animate-fade-in text-start">
@@ -1354,34 +1359,34 @@ export default function Product() {
                     dangerouslySetInnerHTML={{ __html: product.descriptionHtml || product.description }}
                   />
                   
-                  {/* Metafield Info: Allergens & Nutrition */}
-                  {((product as any).allergens?.value || (product as any).nutrition?.value) && (
+                  {/* Metafield Info: Allergens Warning only */}
+                  {(product as any).allergens?.value && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        {(product as any).allergens?.value && (
-                          <div className={`p-8 bg-orange-50/50 rounded-[32px] border border-orange-100/50 ${isEn ? 'text-left' : 'text-right'}`}>
-                            <h5 className="text-[16px] font-black text-orange-800 mb-4 flex items-center gap-3">
-                              <span className="w-10 h-10 rounded-xl bg-white shadow-sm flex items-center justify-center text-xl">⚠️</span>
-                              {isEn ? 'Allergens Warning' : 'معلومات الحساسية'}
-                            </h5>
-                            <p className="text-[15px] font-bold text-orange-700/80 leading-relaxed">
-                              {(product as any).allergens.value}
-                            </p>
-                          </div>
-                        )}
-
-                        {(product as any).nutrition?.value && (
-                          <div className={`p-8 bg-[#295b45]/5 rounded-[32px] border border-[#295b45]/10 ${isEn ? 'text-left' : 'text-right'}`}>
-                            <h5 className="text-[16px] font-black text-[#295b45] mb-4 flex items-center gap-3">
-                              <span className="w-10 h-10 rounded-xl bg-white shadow-sm flex items-center justify-center text-xl">🥗</span>
-                              {isEn ? 'Nutrition Facts' : 'حقائق غذائية'}
-                            </h5>
-                            <p className="text-[15px] font-bold text-[#234745]/70 leading-relaxed whitespace-pre-wrap">
-                              {(product as any).nutrition.value}
-                            </p>
-                          </div>
-                        )}
+                       <div className={`p-8 bg-orange-50/50 rounded-[32px] border border-orange-100/50 ${isEn ? 'text-left' : 'text-right'}`}>
+                         <h5 className="text-[16px] font-black text-orange-800 mb-4 flex items-center gap-3">
+                           <span className="w-10 h-10 rounded-xl bg-white shadow-sm flex items-center justify-center text-xl">⚠️</span>
+                           {isEn ? 'Allergens Warning' : 'معلومات الحساسية'}
+                         </h5>
+                         <p className="text-[15px] font-bold text-orange-700/80 leading-relaxed">
+                           {(product as any).allergens.value}
+                         </p>
+                       </div>
                     </div>
                   )}
+              </div>
+            ) : activeTab === 'nutrition' ? (
+              <div className="w-full">
+                   {(product as any).nutrition?.value && (
+                     <div className={`p-8 bg-[#295b45]/5 rounded-[32px] border border-[#295b45]/10 max-w-2xl ${isEn ? 'text-left' : 'text-right'}`}>
+                       <h5 className="text-[16px] font-black text-[#295b45] mb-4 flex items-center gap-3">
+                         <span className="w-10 h-10 rounded-xl bg-white shadow-sm flex items-center justify-center text-xl">🥗</span>
+                         {isEn ? 'Nutrition Facts' : 'حقائق غذائية'}
+                       </h5>
+                       <p className="text-[15px] font-bold text-[#234745]/70 leading-relaxed whitespace-pre-wrap">
+                         {(product as any).nutrition.value}
+                       </p>
+                     </div>
+                   )}
               </div>
             ) : (
                 <div className="flex flex-col gap-[32px] w-full mt-[16px]">

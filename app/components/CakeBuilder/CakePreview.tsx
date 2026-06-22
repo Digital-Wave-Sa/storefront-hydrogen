@@ -88,7 +88,7 @@ function checkIsCakeFrosting(
       const maxRx = view === 'sliced' ? 0.90 : 0.78;
       if (rx < 0.22 || rx > maxRx) return false;
       const dx = (rx - 0.50) / 0.28;
-      const bottomCurve = 0.808 + 0.102 * Math.sqrt(Math.max(0, 1.0 - dx * dx));
+      const bottomCurve = 0.88 + 0.04 * Math.sqrt(Math.max(0, 1.0 - dx * dx));
       if (ry > bottomCurve) return false;
 
       // Exclude purple board & gold logo: only at the bottom cardboard base tray region
@@ -113,7 +113,7 @@ function checkIsCakeFrosting(
       const maxRx = view === 'sliced' ? 0.93 : 0.87;
       if (rx < 0.19 || rx > maxRx) return false;
       const dx = Math.abs(rx - 0.53) / 0.34;
-      const bottomCurve = 0.86 + 0.10 * (1.0 - dx);
+      const bottomCurve = 0.88 + 0.045 * Math.sqrt(Math.max(0, 1.0 - dx * dx));
       if (ry > bottomCurve) return false;
 
       if (ry >= 0.80) {

@@ -692,6 +692,7 @@ export default function LolaCakeBuilder({ cakeAttributes = [], isEn = false }: {
                   uploadedImage={selections.uploadedImage}
                   view={view}
                   setView={setView}
+                  currentStep={currentStep}
                 />
               </div>
             </div>

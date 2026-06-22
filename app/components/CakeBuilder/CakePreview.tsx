@@ -18,6 +18,7 @@ interface CakePreviewProps {
   uploadedImage?: string | null;
   view?: 'front' | 'top' | 'sliced';
   setView?: (v: 'front' | 'top' | 'sliced') => void;
+  currentStep?: number;
 }
 
 // Map shape IDs to their 2D visual assets
@@ -177,6 +178,35 @@ function checkIsCakeFrosting(
   return false;
 }
 
+function getStandardShapeAsset(view: 'front' | 'top' | 'sliced', flavorName: string): string {
+  const normFlavor = flavorName.toLowerCase();
+  
+  if (normFlavor.includes('chocolate') || normFlavor.includes('شوكولاتة')) {
+    if (view === 'front') return '/cake/flavors/chocolate/chocolate-normal-view.png';
+    if (view === 'top') return '/cake/flavors/chocolate/chocolate-top-view.png';
+    if (view === 'sliced') return '/cake/flavors/chocolate/chocolate-sliced-view.png';
+  }
+  
+  if (normFlavor.includes('red-velvet') || normFlavor.includes('red velvet') || normFlavor.includes('redvelvet') || normFlavor.includes('ريد فيلفيت')) {
+    if (view === 'front') return '/cake/flavors/redvelvet/redvelvet-normal-view.png';
+    if (view === 'top') return '/cake/flavors/redvelvet/redvelvet-top-view.png';
+    if (view === 'sliced') return '/cake/flavors/redvelvet/redvelvet-sliced.png';
+  }
+  
+  if (normFlavor.includes('nutella') || normFlavor.includes('نوتيلا')) {
+    if (view === 'front') return '/cake/flavors/nutella/nutella-normal-view.png';
+    if (view === 'top') return '/cake/flavors/nutella/nutella-top-view.png';
+    if (view === 'sliced') return '/cake/flavors/nutella/nutella-sliced.png';
+  }
+  
+  // Default to vanilla
+  if (view === 'front') return '/cake/flavors/vanilla/vanilla-normal-view.png';
+  if (view === 'top') return '/cake/flavors/vanilla/vanilla-top-view.png';
+  if (view === 'sliced') return '/cake/flavors/vanilla/vanilla-sliced-view.png';
+  
+  return '/cake/shapes/small-standard-normal-view.png';
+}
+
 
 export function CakePreview({
   shape = 'standard',
@@ -192,7 +222,8 @@ export function CakePreview({
   textFont = 'Classic',
   uploadedImage,
   view = 'front',
-  setView
+  setView,
+  currentStep = 1
 }: CakePreviewProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   
@@ -217,12 +248,25 @@ export function CakePreview({
 
   // Get active image sources based on shape, view, topping
   const activeSources = useMemo(() => {
-    const sAssets = shapeAssets[shape] || shapeAssets.standard;
-    const shapeImg = view === 'top' && sAssets.top 
-      ? sAssets.top 
-      : view === 'sliced' && sAssets.sliced 
-        ? sAssets.sliced 
-        : sAssets.front;
+    let shapeImg = '';
+    if (shape === 'standard' || shape === 'circle') {
+      if (currentStep === 1) {
+        shapeImg = view === 'top' 
+          ? '/cake/shapes/small-standard-top-view.png'
+          : view === 'sliced'
+            ? '/cake/shapes/small-standard-sliced-view.png'
+            : '/cake/shapes/small-standard-normal-view.png';
+      } else {
+        shapeImg = getStandardShapeAsset(view as 'front' | 'top' | 'sliced', flavorName);
+      }
+    } else {
+      const sAssets = shapeAssets[shape] || shapeAssets.standard;
+      shapeImg = view === 'top' && sAssets.top 
+        ? sAssets.top 
+        : view === 'sliced' && sAssets.sliced 
+          ? sAssets.sliced 
+          : sAssets.front;
+    }
 
     const toppingId = toppings?.[0]?.id || '';
     const isSquareOrSheet = shape === 'square' || shape === 'sheet';
@@ -240,7 +284,7 @@ export function CakePreview({
       toppingImg,
       toppingId
     };
-  }, [shape, view, toppings]);
+  }, [shape, view, toppings, flavorName, currentStep]);
 
   // Render loop
   useEffect(() => {

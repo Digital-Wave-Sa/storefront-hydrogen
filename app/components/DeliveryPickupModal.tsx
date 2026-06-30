@@ -35,6 +35,7 @@ export interface Branch {
     hoursTo?: string;
     hoursFromShift2?: string;
     hoursToShift2?: string;
+    workingDays?: string[];
     distance?: string;
     google_maps?: string;
     distanceKm?: number;
@@ -249,11 +250,31 @@ export function parseLocationToBranch(node: any): Branch {
                     return currentMins >= fMins && currentMins < tMins;
                 };
 
-                const openInShift1 = checkShift(hFrom, hTo);
-                const openInShift2 = hFrom2 && hTo2 ? checkShift(hFrom2, hTo2) : false;
+                const riyadhDay = new Intl.DateTimeFormat('en-US', {
+                    timeZone: 'Asia/Riyadh',
+                    weekday: 'short'
+                }).format(now);
 
-                if (openInShift1 || openInShift2) {
-                    st = 'open';
+                const workingDaysStr = node.metafields?.find((m: any) => m?.key === 'working_days')?.value || (node as any).working_days?.value || '';
+                let isWorkingDay = true;
+                if (workingDaysStr) {
+                    try {
+                        const parsedDays = JSON.parse(workingDaysStr);
+                        if (Array.isArray(parsedDays) && parsedDays.length > 0) {
+                            isWorkingDay = parsedDays.includes(riyadhDay);
+                        }
+                    } catch (e) {}
+                }
+
+                if (!isWorkingDay) {
+                    st = 'closed';
+                } else {
+                    const openInShift1 = checkShift(hFrom, hTo);
+                    const openInShift2 = hFrom2 && hTo2 ? checkShift(hFrom2, hTo2) : false;
+
+                    if (openInShift1 || openInShift2) {
+                        st = 'open';
+                    }
                 }
             } catch (e) {
                 console.error('[DPM] Error computing status:', e);
@@ -309,6 +330,13 @@ export function parseLocationToBranch(node: any): Branch {
         hoursTo: (node as any).working_hours_to?.value || node.metafields?.find((m: any) => m?.key === 'working_hours_to')?.value,
         hoursFromShift2: (node as any).working_hours_from_shift2?.value || node.metafields?.find((m: any) => m?.key === 'working_hours_from_shift2')?.value,
         hoursToShift2: (node as any).working_hours_to_shift2?.value || node.metafields?.find((m: any) => m?.key === 'working_hours_to_shift2')?.value,
+        workingDays: (() => {
+            const val = (node as any).working_days?.value || node.metafields?.find((m: any) => m?.key === 'working_days')?.value;
+            if (val) {
+                try { return JSON.parse(val); } catch (e) {}
+            }
+            return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        })(),
         badge: '',
         google_maps: getMeta('google_maps', googleMapMeta),
         rating: getMeta('rating', 0),

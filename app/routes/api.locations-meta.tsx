@@ -89,6 +89,10 @@ export async function loader({context}: Route.LoaderArgs) {
         hours_from_shift2: (loc.metafields?.nodes || []).find((m: any) => m.key === 'working_hours_from_shift2')?.value,
         hours_to_shift2: (loc.metafields?.nodes || []).find((m: any) => m.key === 'working_hours_to_shift2')?.value,
         working_days: (loc.metafields?.nodes || []).find((m: any) => m.key === 'working_days')?.value,
+        friday_hours_from: (loc.metafields?.nodes || []).find((m: any) => m.key === 'friday_working_hours_from')?.value,
+        friday_hours_to: (loc.metafields?.nodes || []).find((m: any) => m.key === 'friday_working_hours_to')?.value,
+        saturday_hours_from: (loc.metafields?.nodes || []).find((m: any) => m.key === 'saturday_working_hours_from')?.value,
+        saturday_hours_to: (loc.metafields?.nodes || []).find((m: any) => m.key === 'saturday_working_hours_to')?.value,
         
         // Delivery Rules
         delivery_available: (loc.metafields?.nodes || []).find((m: any) => m.key === 'delivery_available')?.value === 'true',

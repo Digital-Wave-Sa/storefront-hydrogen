@@ -631,6 +631,22 @@ const LOCATIONS_QUERY = `#graphql
           key
           value
         }
+        friday_working_hours_from: metafield(namespace: "custom", key: "friday_working_hours_from") {
+          key
+          value
+        }
+        friday_working_hours_to: metafield(namespace: "custom", key: "friday_working_hours_to") {
+          key
+          value
+        }
+        saturday_working_hours_from: metafield(namespace: "custom", key: "saturday_working_hours_from") {
+          key
+          value
+        }
+        saturday_working_hours_to: metafield(namespace: "custom", key: "saturday_working_hours_to") {
+          key
+          value
+        }
         rating: metafield(namespace: "custom", key: "rating") {
           key
           value

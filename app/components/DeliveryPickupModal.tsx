@@ -35,6 +35,10 @@ export interface Branch {
     hoursTo?: string;
     hoursFromShift2?: string;
     hoursToShift2?: string;
+    fridayHoursFrom?: string;
+    fridayHoursTo?: string;
+    saturdayHoursFrom?: string;
+    saturdayHoursTo?: string;
     workingDays?: string[];
     distance?: string;
     google_maps?: string;
@@ -197,9 +201,31 @@ export function parseLocationToBranch(node: any): Branch {
         let st: 'open' | 'closed' = 'closed';
         let ou = '11:00 م';
         
-        // Try to get from aliased fields (Storefront API) or metafields array (Admin API merge)
-        const hFrom = (node as any)[fromKey]?.value || node.metafields?.find((m: any) => m?.key === fromKey)?.value;
-        const hTo = (node as any)[toKey]?.value || node.metafields?.find((m: any) => m?.key === toKey)?.value;
+        let riyadhDay = 'Sun';
+        try {
+            riyadhDay = new Intl.DateTimeFormat('en-US', {
+                timeZone: 'Asia/Riyadh',
+                weekday: 'short'
+            }).format(new Date());
+        } catch(e) {}
+
+        let targetFromKey = fromKey;
+        let targetToKey = toKey;
+        if (riyadhDay === 'Fri') {
+            targetFromKey = 'friday_working_hours_from';
+            targetToKey = 'friday_working_hours_to';
+        } else if (riyadhDay === 'Sat') {
+            targetFromKey = 'saturday_working_hours_from';
+            targetToKey = 'saturday_working_hours_to';
+        }
+
+        let hFrom = (node as any)[targetFromKey]?.value || node.metafields?.find((m: any) => m?.key === targetFromKey)?.value;
+        let hTo = (node as any)[targetToKey]?.value || node.metafields?.find((m: any) => m?.key === targetToKey)?.value;
+        
+        if (!hFrom || !hTo) {
+            hFrom = (node as any)[fromKey]?.value || node.metafields?.find((m: any) => m?.key === fromKey)?.value;
+            hTo = (node as any)[toKey]?.value || node.metafields?.find((m: any) => m?.key === toKey)?.value;
+        }
         
         const hFrom2 = fromKey2 ? ((node as any)[fromKey2]?.value || node.metafields?.find((m: any) => m?.key === fromKey2)?.value) : undefined;
         const hTo2 = toKey2 ? ((node as any)[toKey2]?.value || node.metafields?.find((m: any) => m?.key === toKey2)?.value) : undefined;
@@ -330,6 +356,10 @@ export function parseLocationToBranch(node: any): Branch {
         hoursTo: (node as any).working_hours_to?.value || node.metafields?.find((m: any) => m?.key === 'working_hours_to')?.value,
         hoursFromShift2: (node as any).working_hours_from_shift2?.value || node.metafields?.find((m: any) => m?.key === 'working_hours_from_shift2')?.value,
         hoursToShift2: (node as any).working_hours_to_shift2?.value || node.metafields?.find((m: any) => m?.key === 'working_hours_to_shift2')?.value,
+        fridayHoursFrom: (node as any).friday_working_hours_from?.value || node.metafields?.find((m: any) => m?.key === 'friday_working_hours_from')?.value,
+        fridayHoursTo: (node as any).friday_working_hours_to?.value || node.metafields?.find((m: any) => m?.key === 'friday_working_hours_to')?.value,
+        saturdayHoursFrom: (node as any).saturday_working_hours_from?.value || node.metafields?.find((m: any) => m?.key === 'saturday_working_hours_from')?.value,
+        saturdayHoursTo: (node as any).saturday_working_hours_to?.value || node.metafields?.find((m: any) => m?.key === 'saturday_working_hours_to')?.value,
         workingDays: (() => {
             const val = (node as any).working_days?.value || node.metafields?.find((m: any) => m?.key === 'working_days')?.value;
             if (val) {
@@ -800,7 +830,22 @@ function ModalContent({
                                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
                                              <span>
                                                  {(() => {
-                                                     const s1 = branch.hoursFrom && branch.hoursTo ? `${branch.hoursFrom} - ${branch.hoursTo}` : '';
+                                                     const day = new Intl.DateTimeFormat('en-US', {
+                                                         timeZone: 'Asia/Riyadh',
+                                                         weekday: 'short'
+                                                     }).format(new Date());
+
+                                                     let from = branch.hoursFrom;
+                                                     let to = branch.hoursTo;
+                                                     if (day === 'Fri' && branch.fridayHoursFrom && branch.fridayHoursTo) {
+                                                         from = branch.fridayHoursFrom;
+                                                         to = branch.fridayHoursTo;
+                                                     } else if (day === 'Sat' && branch.saturdayHoursFrom && branch.saturdayHoursTo) {
+                                                         from = branch.saturdayHoursFrom;
+                                                         to = branch.saturdayHoursTo;
+                                                     }
+
+                                                     const s1 = from && to ? `${from} - ${to}` : '';
                                                      const s2 = branch.hoursFromShift2 && branch.hoursToShift2 ? `${branch.hoursFromShift2} - ${branch.hoursToShift2}` : '';
                                                      return s1 && s2 ? `${s1} & ${s2}` : s1 || (isEn ? `Until ${branch.openUntil}` : `حتى ${branch.openUntil}`);
                                                  })()}

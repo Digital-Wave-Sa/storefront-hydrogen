@@ -33,6 +33,8 @@ export interface Branch {
     freeDeliveryThreshold: number;
     hoursFrom?: string;
     hoursTo?: string;
+    hoursFromShift2?: string;
+    hoursToShift2?: string;
     distance?: string;
     google_maps?: string;
     distanceKm?: number;
@@ -190,16 +192,19 @@ export function parseLocationToBranch(node: any): Branch {
     const googleMapMeta = node.metafields?.find((m: any) => m?.key === 'google_maps')?.value || '';
     
 
-    const computeStatus = (fromKey: string, toKey: string) => {
+    const computeStatus = (fromKey: string, toKey: string, fromKey2?: string, toKey2?: string) => {
         let st: 'open' | 'closed' = 'closed';
         let ou = '11:00 م';
         
         // Try to get from aliased fields (Storefront API) or metafields array (Admin API merge)
         const hFrom = (node as any)[fromKey]?.value || node.metafields?.find((m: any) => m?.key === fromKey)?.value;
         const hTo = (node as any)[toKey]?.value || node.metafields?.find((m: any) => m?.key === toKey)?.value;
+        
+        const hFrom2 = fromKey2 ? ((node as any)[fromKey2]?.value || node.metafields?.find((m: any) => m?.key === fromKey2)?.value) : undefined;
+        const hTo2 = toKey2 ? ((node as any)[toKey2]?.value || node.metafields?.find((m: any) => m?.key === toKey2)?.value) : undefined;
 
         if (hFrom && hTo) {
-            ou = hTo;
+            ou = hTo2 || hTo;
             try {
                 // Force Riyadh Time (UTC+3) using a more reliable method
                 const now = new Date();
@@ -233,16 +238,22 @@ export function parseLocationToBranch(node: any): Branch {
                     return hr * 60 + min;
                 };
 
-                const fMins = parseTime(hFrom);
-                const tMins = parseTime(hTo);
-                
-                if (fMins !== -1 && tMins !== -1) {
+                const checkShift = (fromTime: string, toTime: string) => {
+                    const fMins = parseTime(fromTime);
+                    const tMins = parseTime(toTime);
+                    if (fMins === -1 || tMins === -1) return false;
+                    
                     if (tMins < fMins) {
-                        // Overnight case
-                        if (currentMins >= fMins || currentMins < tMins) st = 'open';
-                    } else {
-                        if (currentMins >= fMins && currentMins < tMins) st = 'open';
+                        return currentMins >= fMins || currentMins < tMins;
                     }
+                    return currentMins >= fMins && currentMins < tMins;
+                };
+
+                const openInShift1 = checkShift(hFrom, hTo);
+                const openInShift2 = hFrom2 && hTo2 ? checkShift(hFrom2, hTo2) : false;
+
+                if (openInShift1 || openInShift2) {
+                    st = 'open';
                 }
             } catch (e) {
                 console.error('[DPM] Error computing status:', e);
@@ -251,8 +262,8 @@ export function parseLocationToBranch(node: any): Branch {
         return { status: st, openUntil: ou };
     };
 
-    const delivery = computeStatus('working_hours_from', 'working_hours_to'); 
-    const pickup = computeStatus('working_hours_from', 'working_hours_to');
+    const delivery = computeStatus('working_hours_from', 'working_hours_to', 'working_hours_from_shift2', 'working_hours_to_shift2'); 
+    const pickup = computeStatus('working_hours_from', 'working_hours_to', 'working_hours_from_shift2', 'working_hours_to_shift2');
 
     const getMeta = (k: string, fb: any) => {
         let v = (node as any)[k]?.value;
@@ -296,6 +307,8 @@ export function parseLocationToBranch(node: any): Branch {
         freeDeliveryThreshold: getMeta('free_delivery_threshold', 300),
         hoursFrom: (node as any).working_hours_from?.value || node.metafields?.find((m: any) => m?.key === 'working_hours_from')?.value,
         hoursTo: (node as any).working_hours_to?.value || node.metafields?.find((m: any) => m?.key === 'working_hours_to')?.value,
+        hoursFromShift2: (node as any).working_hours_from_shift2?.value || node.metafields?.find((m: any) => m?.key === 'working_hours_from_shift2')?.value,
+        hoursToShift2: (node as any).working_hours_to_shift2?.value || node.metafields?.find((m: any) => m?.key === 'working_hours_to_shift2')?.value,
         badge: '',
         google_maps: getMeta('google_maps', googleMapMeta),
         rating: getMeta('rating', 0),
@@ -757,11 +770,13 @@ function ModalContent({
                                         </div>
                                         <div className="dpm-meta-row">
                                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
-                                            <span>
-                                                {branch.hoursFrom && branch.hoursTo 
-                                                    ? `${branch.hoursFrom} - ${branch.hoursTo}`
-                                                    : (isEn ? `Until ${branch.openUntil}` : `حتى ${branch.openUntil}`)}
-                                            </span>
+                                             <span>
+                                                 {(() => {
+                                                     const s1 = branch.hoursFrom && branch.hoursTo ? `${branch.hoursFrom} - ${branch.hoursTo}` : '';
+                                                     const s2 = branch.hoursFromShift2 && branch.hoursToShift2 ? `${branch.hoursFromShift2} - ${branch.hoursToShift2}` : '';
+                                                     return s1 && s2 ? `${s1} & ${s2}` : s1 || (isEn ? `Until ${branch.openUntil}` : `حتى ${branch.openUntil}`);
+                                                 })()}
+                                             </span>
                                             {branch.distance && (
                                                 <>
                                                     <span className="mx-1">•</span>

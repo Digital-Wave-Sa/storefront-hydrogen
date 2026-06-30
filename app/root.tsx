@@ -623,6 +623,14 @@ const LOCATIONS_QUERY = `#graphql
           key
           value
         }
+        working_hours_from_shift2: metafield(namespace: "custom", key: "working_hours_from_shift2") {
+          key
+          value
+        }
+        working_hours_to_shift2: metafield(namespace: "custom", key: "working_hours_to_shift2") {
+          key
+          value
+        }
         rating: metafield(namespace: "custom", key: "rating") {
           key
           value

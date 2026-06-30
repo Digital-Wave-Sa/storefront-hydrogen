@@ -90,6 +90,8 @@ export async function loader({ context }: LoaderFunctionArgs) {
         threshold: loc.metafields.nodes.find((m: any) => m.key === 'free_delivery_threshold')?.value || '430',
         hours_from: loc.metafields.nodes.find((m: any) => m.key === 'working_hours_from')?.value || '8:00 AM',
         hours_to: loc.metafields.nodes.find((m: any) => m.key === 'working_hours_to')?.value || '11:00 PM',
+        hours_from_shift2: loc.metafields.nodes.find((m: any) => m.key === 'working_hours_from_shift2')?.value || '',
+        hours_to_shift2: loc.metafields.nodes.find((m: any) => m.key === 'working_hours_to_shift2')?.value || '',
       };
     })
   });
@@ -102,6 +104,8 @@ export async function action({ request, context }: ActionFunctionArgs) {
   const deliveryTime = formData.get('deliveryTime') as string;
   const hoursFrom = formData.get('hoursFrom') as string;
   const hoursTo = formData.get('hoursTo') as string;
+  const hoursFromShift2 = formData.get('hoursFromShift2') as string;
+  const hoursToShift2 = formData.get('hoursToShift2') as string;
   const deliveryFee = formData.get('deliveryFee') as string;
   const threshold = formData.get('threshold') as string;
 
@@ -145,6 +149,20 @@ export async function action({ request, context }: ActionFunctionArgs) {
         namespace: "custom",
         key: "working_hours_to",
         value: hoursTo,
+        type: "single_line_text_field"
+      },
+      {
+        ownerId: locationId,
+        namespace: "custom",
+        key: "working_hours_from_shift2",
+        value: hoursFromShift2 || "",
+        type: "single_line_text_field"
+      },
+      {
+        ownerId: locationId,
+        namespace: "custom",
+        key: "working_hours_to_shift2",
+        value: hoursToShift2 || "",
         type: "single_line_text_field"
       },
       {
@@ -261,6 +279,27 @@ export default function BranchDashboard() {
                       defaultValue={loc.hours_to} 
                       className="luxury-input-field text-sm"
                       placeholder="11:00 PM"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="luxury-field">
+                    <label className="luxury-label">{isEn ? 'Shift 2 Open' : 'الوردية ٢ تفتح من'}</label>
+                    <input 
+                      name="hoursFromShift2" 
+                      defaultValue={loc.hours_from_shift2} 
+                      className="luxury-input-field text-sm"
+                      placeholder="e.g. 4:00 PM"
+                    />
+                  </div>
+                  <div className="luxury-field">
+                    <label className="luxury-label">{isEn ? 'Shift 2 Close' : 'الوردية ٢ تغلق في'}</label>
+                    <input 
+                      name="hoursToShift2" 
+                      defaultValue={loc.hours_to_shift2} 
+                      className="luxury-input-field text-sm"
+                      placeholder="e.g. 11:00 PM"
                     />
                   </div>
                 </div>

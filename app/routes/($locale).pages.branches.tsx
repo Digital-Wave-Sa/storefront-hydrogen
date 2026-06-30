@@ -214,7 +214,13 @@ export default function BranchesPage() {
                         
                         <div className="flex-1 overflow-y-auto space-y-3 pr-2 scrollbar-thin">
                             {locations.map((branch: any) => {
-                                const hours = `${branch.working_hours_from?.value || '8:00 ص'} - ${branch.working_hours_to?.value || '11:00 م'}`;
+                                const shift1 = branch.working_hours_from?.value && branch.working_hours_to?.value 
+                                    ? `${branch.working_hours_from.value} - ${branch.working_hours_to.value}`
+                                    : `${isEn ? '8:00 AM' : '8:00 ص'} - ${isEn ? '11:00 PM' : '11:00 م'}`;
+                                const shift2 = branch.working_hours_from_shift2?.value && branch.working_hours_to_shift2?.value
+                                    ? `${branch.working_hours_from_shift2.value} - ${branch.working_hours_to_shift2.value}`
+                                    : '';
+                                const hours = shift2 ? `${shift1} & ${shift2}` : shift1;
                                 
                                 return (
                                 <div key={branch.id} className="bg-[#F8F9FA] rounded-xl p-4 border border-transparent hover:border-gray-200 transition-colors">

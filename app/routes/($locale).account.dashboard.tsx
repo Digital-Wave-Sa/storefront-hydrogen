@@ -182,10 +182,12 @@ export async function action({ request, context }: ActionFunctionArgs) {
       );
     }
 
+    const filteredPayload = metafieldsPayload.filter(m => m.value !== undefined && m.value !== null && m.value !== "");
+
     // Process in safe batches of 25 metafields (5 locations at a time)
     const batchSize = 25;
-    for (let i = 0; i < metafieldsPayload.length; i += batchSize) {
-      const batch = metafieldsPayload.slice(i, i + batchSize);
+    for (let i = 0; i < filteredPayload.length; i += batchSize) {
+      const batch = filteredPayload.slice(i, i + batchSize);
       const res = await fetch(`https://${shopDomain}/admin/api/2024-01/graphql.json`, {
         method: 'POST',
         headers: {
@@ -256,7 +258,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
       { ownerId: locationId, namespace: "custom", key: "delivery_fee", value: deliveryFee, type: "number_integer" },
       { ownerId: locationId, namespace: "custom", key: "free_delivery_threshold", value: threshold, type: "number_integer" },
       { ownerId: locationId, namespace: "custom", key: "working_days", value: workingDaysJson, type: "json" }
-    ]
+    ].filter(m => m.value !== undefined && m.value !== null && m.value !== "")
   };
 
   const res = await fetch(`https://${shopDomain}/admin/api/2024-01/graphql.json`, {

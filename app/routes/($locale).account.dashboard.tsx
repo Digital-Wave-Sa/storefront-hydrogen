@@ -145,8 +145,14 @@ export async function action({ request, context }: ActionFunctionArgs) {
     const hoursTo = formData.get('hoursTo') as string;
     const hoursFromShift2 = formData.get('hoursFromShift2') as string;
     const hoursToShift2 = formData.get('hoursToShift2') as string;
+    
+    const updateDefaultTimings = formData.get('updateDefaultTimings') === 'true';
+    const updateDays = formData.getAll('updateDays') as string[];
+    const doUpdateWorkingDays = formData.get('doUpdateWorkingDays') === 'true';
     const workingDays = formData.getAll('workingDays') as string[];
     const workingDaysJson = JSON.stringify(workingDays);
+    
+    const excludeBranches = formData.getAll('excludeBranches') as string[];
 
     const query = `{
       locations(first: 100) {
@@ -165,7 +171,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
       body: JSON.stringify({ query }),
     });
     const jsonLocs = await resLocs.json();
-    const locationNodes = jsonLocs?.data?.locations?.nodes || [];
+    const locationNodes = (jsonLocs?.data?.locations?.nodes || []).filter((loc: any) => !excludeBranches.includes(loc.id));
 
     if (locationNodes.length === 0) {
       return data({ error: 'No branch locations found to update.' }, { status: 400 });
@@ -173,13 +179,25 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
     const metafieldsPayload: any[] = [];
     for (const loc of locationNodes) {
-      metafieldsPayload.push(
-        { ownerId: loc.id, namespace: "custom", key: "working_hours_from", value: hoursFrom, type: "single_line_text_field" },
-        { ownerId: loc.id, namespace: "custom", key: "working_hours_to", value: hoursTo, type: "single_line_text_field" },
-        { ownerId: loc.id, namespace: "custom", key: "working_hours_from_shift2", value: hoursFromShift2 || "", type: "single_line_text_field" },
-        { ownerId: loc.id, namespace: "custom", key: "working_hours_to_shift2", value: hoursToShift2 || "", type: "single_line_text_field" },
-        { ownerId: loc.id, namespace: "custom", key: "working_days", value: workingDaysJson, type: "json" }
-      );
+      // 1. Update Default/General hours
+      if (updateDefaultTimings) {
+        if (hoursFrom) metafieldsPayload.push({ ownerId: loc.id, namespace: "custom", key: "working_hours_from", value: hoursFrom, type: "single_line_text_field" });
+        if (hoursTo) metafieldsPayload.push({ ownerId: loc.id, namespace: "custom", key: "working_hours_to", value: hoursTo, type: "single_line_text_field" });
+        if (hoursFromShift2) metafieldsPayload.push({ ownerId: loc.id, namespace: "custom", key: "working_hours_from_shift2", value: hoursFromShift2, type: "single_line_text_field" });
+        if (hoursToShift2) metafieldsPayload.push({ ownerId: loc.id, namespace: "custom", key: "working_hours_to_shift2", value: hoursToShift2, type: "single_line_text_field" });
+      }
+
+      // 2. Update Specific Weekdays
+      for (const day of updateDays) {
+        const lowerDay = day.toLowerCase();
+        if (hoursFrom) metafieldsPayload.push({ ownerId: loc.id, namespace: "custom", key: `${lowerDay}_working_hours_from`, value: hoursFrom, type: "single_line_text_field" });
+        if (hoursTo) metafieldsPayload.push({ ownerId: loc.id, namespace: "custom", key: `${lowerDay}_working_hours_to`, value: hoursTo, type: "single_line_text_field" });
+      }
+
+      // 3. Update Operating Days
+      if (doUpdateWorkingDays) {
+        metafieldsPayload.push({ ownerId: loc.id, namespace: "custom", key: "working_days", value: workingDaysJson, type: "json" });
+      }
     }
 
     const filteredPayload = metafieldsPayload.filter(m => m.value !== undefined && m.value !== null && m.value !== "");
@@ -289,6 +307,10 @@ export default function BranchDashboard() {
   const locale = useLocation().pathname.startsWith('/en') ? 'en' : 'ar';
   const isEn = locale === 'en';
 
+  const [showExclusions, setShowExclusions] = useState(false);
+  const [excludedBranchIds, setExcludedBranchIds] = useState<string[]>([]);
+  const [updateWorkingDays, setUpdateWorkingDays] = useState(false);
+
   const daysOfWeek = [
     { key: 'Sun', labelAr: 'الأحد', labelEn: 'Sun' },
     { key: 'Mon', labelAr: 'الاثنين', labelEn: 'Mon' },
@@ -325,23 +347,23 @@ export default function BranchDashboard() {
       )}
 
       {/* ─── BULK OPERATIONS CARD ────────────────────────────────────────── */}
-      <div className="luxury-card p-6 border border-[#eee] hover:border-[#d4a06a] transition-all mb-8 bg-[#FAF9F5]">
-        <div className="flex justify-between items-start mb-4">
+      <div className="luxury-card p-6 border border-[#e2dcd5] hover:border-[#d4a06a] transition-all mb-8 bg-[#FAF9F5] shadow-sm rounded-2xl">
+        <div className="flex justify-between items-start mb-6">
           <div>
             <h3 className="text-xl font-black text-[#234745] flex items-center gap-2">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M21 12H3"/><path d="M12 3v18"/></svg>
               {isEn ? 'Bulk Timings & Holiday Planner (Ramadan / Eid)' : 'تخطيط أوقات العمل الجماعي (رمضان / الأعياد)'}
             </h3>
             <p className="text-xs text-gray-500 mt-1 font-medium">
-              {isEn ? 'Apply timings and operating days to ALL branches at once' : 'تطبيق أوقات وأيام العمل لجميع الفروع دفعة واحدة'}
+              {isEn ? 'Apply timings and operating days to all branches at once' : 'تطبيق أوقات وأيام العمل لجميع الفروع دفعة واحدة'}
             </p>
           </div>
-          <span className="bg-[#234745] text-white text-[10px] uppercase font-black px-2 py-1 rounded">
+          <span className="bg-[#234745] text-[#FEF8EB] text-[10px] uppercase font-black px-2.5 py-1 rounded-full shadow-sm shrink-0">
             {isEn ? 'Bulk Action' : 'تحديث جماعي'}
           </span>
         </div>
 
-        <Form method="POST" className="space-y-4">
+        <Form method="POST" className="space-y-5">
           <input type="hidden" name="intent" value="bulk-update-timings" />
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -368,29 +390,118 @@ export default function BranchDashboard() {
             </div>
           </div>
 
-          <div className="luxury-field">
-            <label className="luxury-label">{isEn ? 'Apply to these Days' : 'تطبيق على أيام العمل التالية'}</label>
-            <div className="flex flex-wrap gap-4 mt-1">
+          {/* 1. Target timing select checkboxes */}
+          <div className="luxury-field border-t border-[#f0ece8] pt-3.5">
+            <label className="luxury-label font-black text-gray-800 mb-2">
+              {isEn ? 'Timings to Update (Check to apply, uncheck to exclude)' : 'الأوقات المراد تحديثها (اختر للتطبيق، ألغِ للتمرير والاستبعاد)'}
+            </label>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mt-1.5">
+              <label className="flex items-center gap-2 text-xs font-bold cursor-pointer text-gray-700 bg-white p-2 rounded-xl border border-gray-200 hover:border-[#d4a06a] transition-all">
+                <input 
+                  type="checkbox" 
+                  name="updateDefaultTimings" 
+                  value="true"
+                  defaultChecked={true}
+                  className="rounded border-gray-300 text-[#d4a06a] focus:ring-[#d4a06a]" 
+                />
+                <span>{isEn ? 'Default/General Hours' : 'الأوقات العامة/الافتراضية'}</span>
+              </label>
               {daysOfWeek.map((day) => (
-                <label key={day.key} className="flex items-center gap-1.5 text-xs text-gray-700 cursor-pointer font-bold bg-white px-3 py-1.5 rounded-lg border border-gray-200">
+                <label key={day.key} className="flex items-center gap-2 text-xs font-bold cursor-pointer text-gray-700 bg-white p-2 rounded-xl border border-gray-200 hover:border-[#d4a06a] transition-all">
                   <input 
                     type="checkbox" 
-                    name="workingDays" 
+                    name="updateDays" 
                     value={day.key} 
-                    defaultChecked={true}
                     className="rounded border-gray-300 text-[#d4a06a] focus:ring-[#d4a06a]" 
                   />
-                  <span>{isEn ? day.labelEn : day.labelAr}</span>
+                  <span>{isEn ? `${day.labelEn} Overrides` : `أوقات ${day.labelAr}`}</span>
                 </label>
               ))}
             </div>
+          </div>
+
+          {/* 2. Optional Working days selector */}
+          <div className="luxury-field border-t border-[#f0ece8] pt-3.5">
+            <div className="flex items-center justify-between mb-2">
+              <label className="luxury-label mb-0">{isEn ? 'Update Operating Days (Optional)' : 'تحديث أيام العمل الفعلية للفروع (اختياري)'}</label>
+              <label className="flex items-center gap-1.5 text-xs text-[#234745] font-black cursor-pointer bg-white border border-[#234745]/20 px-2.5 py-1 rounded-full hover:bg-gray-50">
+                <input 
+                  type="checkbox" 
+                  name="doUpdateWorkingDays" 
+                  value="true"
+                  checked={updateWorkingDays}
+                  onChange={(e) => setUpdateWorkingDays(e.target.checked)}
+                  className="rounded border-gray-300 text-[#d4a06a] focus:ring-[#d4a06a]" 
+                />
+                <span>{isEn ? 'Apply operating days update' : 'تطبيق تحديث أيام العمل'}</span>
+              </label>
+            </div>
+            
+            {updateWorkingDays && (
+              <div className="flex flex-wrap gap-2.5 mt-2 animate-fade-in">
+                {daysOfWeek.map((day) => (
+                  <label key={day.key} className="flex items-center gap-1.5 text-xs text-gray-700 cursor-pointer font-bold bg-white px-3 py-1.5 rounded-xl border border-gray-200 hover:border-[#d4a06a]">
+                    <input 
+                      type="checkbox" 
+                      name="workingDays" 
+                      value={day.key} 
+                      defaultChecked={true}
+                      className="rounded border-gray-300 text-[#d4a06a] focus:ring-[#d4a06a]" 
+                    />
+                    <span>{isEn ? day.labelEn : day.labelAr}</span>
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* 3. Exclude Branches panel */}
+          <div className="luxury-field border-t border-[#f0ece8] pt-3.5">
+            <button
+              type="button"
+              onClick={() => setShowExclusions(!showExclusions)}
+              className="flex items-center gap-2 text-xs font-black text-[#234745] bg-[#ebe8e4] px-4 py-2 rounded-xl hover:bg-[#dfdad4] transition-all cursor-pointer shadow-sm"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              {isEn 
+                ? `Exclude Branches (${excludedBranchIds.length} excluded)` 
+                : `استبعاد فروع محددة (${excludedBranchIds.length} مستبعد)`
+              }
+            </button>
+            
+            {showExclusions && (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 mt-3 p-3 bg-gray-50 border border-gray-200 rounded-xl animate-fade-in">
+                {locations.map((loc: any) => {
+                  const isExcluded = excludedBranchIds.includes(loc.id);
+                  return (
+                    <label key={loc.id} className={`flex items-center gap-2 text-xs font-bold cursor-pointer p-2 rounded-xl border transition-all ${isExcluded ? 'bg-red-50 border-red-200 text-red-700 font-extrabold shadow-sm' : 'bg-white border-gray-200 text-gray-700 hover:border-[#d4a06a]'}`}>
+                      <input 
+                        type="checkbox" 
+                        name="excludeBranches" 
+                        value={loc.id}
+                        checked={isExcluded}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setExcludedBranchIds([...excludedBranchIds, loc.id]);
+                          } else {
+                            setExcludedBranchIds(excludedBranchIds.filter(id => id !== loc.id));
+                          }
+                        }}
+                        className="rounded border-gray-300 text-red-600 focus:ring-red-500" 
+                      />
+                      <span className="truncate">{loc.name}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           <Button 
             type="submit" 
             variant="primary" 
             disabled={navigation.state !== 'idle'}
-            className="w-full md:w-auto px-8 luxury-submit bg-[#d4a06a] border-none hover:bg-[#c3905a]"
+            className="w-full md:w-auto px-8 luxury-submit bg-[#d4a06a] border-none hover:bg-[#c3905a] rounded-xl shadow-sm text-sm"
           >
             {navigation.state !== 'idle' ? (isEn ? 'Applying...' : 'جاري التطبيق...') : (isEn ? 'Apply to All Branches' : 'تطبيق على جميع الفروع')}
           </Button>
@@ -398,16 +509,40 @@ export default function BranchDashboard() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {locations.map((loc: any) => (
-            <div key={loc.id} className="luxury-card p-6 border border-[#eee] hover:border-[#d4a06a] transition-all">
-              <div className="flex justify-between items-start mb-4">
-                <h3 className="text-xl font-bold text-[#2c3e50]">{loc.name}</h3>
-                <span className="bg-[#f8f1e7] text-[#d4a06a] text-[10px] uppercase font-bold px-2 py-1 rounded">
-                  {isEn ? 'Branch' : 'فرع'}
-                </span>
-              </div>
+          {locations.map((loc: any) => {
+            const activeOverrides: string[] = [];
+            if (loc.sunday_hours_from || loc.sunday_hours_to) activeOverrides.push(isEn ? 'Sun' : 'الأحد');
+            if (loc.monday_hours_from || loc.monday_hours_to) activeOverrides.push(isEn ? 'Mon' : 'الاثنين');
+            if (loc.tuesday_hours_from || loc.tuesday_hours_to) activeOverrides.push(isEn ? 'Tue' : 'الثلاثاء');
+            if (loc.wednesday_hours_from || loc.wednesday_hours_to) activeOverrides.push(isEn ? 'Wed' : 'الأربعاء');
+            if (loc.thursday_hours_from || loc.thursday_hours_to) activeOverrides.push(isEn ? 'Thu' : 'الخميس');
+            if (loc.friday_hours_from || loc.friday_hours_to) activeOverrides.push(isEn ? 'Fri' : 'الجمعة');
+            if (loc.saturday_hours_from || loc.saturday_hours_to) activeOverrides.push(isEn ? 'Sat' : 'السبت');
 
-              <Form method="POST" className="space-y-4">
+            return (
+              <div key={loc.id} className="luxury-card p-6 border border-[#e2dcd5] hover:border-[#d4a06a] transition-all bg-white rounded-2xl shadow-sm">
+                <div className="flex justify-between items-start mb-2">
+                  <div>
+                    <h3 className="text-xl font-bold text-[#234745]">{loc.name}</h3>
+                    {activeOverrides.length > 0 && (
+                      <div className="flex flex-wrap items-center gap-1.5 mt-2 animate-fade-in">
+                        <span className="text-[10px] font-bold text-gray-500 uppercase">
+                          {isEn ? 'Overrides:' : 'الاستثناءات:'}
+                        </span>
+                        {activeOverrides.map(day => (
+                          <span key={day} className="bg-[#f0ece8] text-[#d4a06a] text-[9.5px] font-black px-2 py-0.5 rounded-full shadow-sm">
+                            {day}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <span className="bg-[#FAF9F5] text-[#234745] border border-[#234745]/10 text-[10px] uppercase font-black px-2.5 py-1 rounded-full shrink-0">
+                    {isEn ? 'Branch' : 'فرع'}
+                  </span>
+                </div>
+
+                <Form method="POST" className="space-y-4 mt-4">
                 <input type="hidden" name="locationId" value={loc.id} />
                 
                 <div className="luxury-field">
@@ -608,7 +743,8 @@ export default function BranchDashboard() {
                 </Button>
               </Form>
             </div>
-          ))}
+          );
+        })}
       </div>
       <style dangerouslySetInnerHTML={{ __html: `
         .luxury-card { background: #fff; border-radius: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.02); }

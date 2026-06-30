@@ -321,6 +321,8 @@ function loadDeferredData({context}: Route.LoaderArgs, customerAccessToken: any,
       PUBLIC_GOOGLE_PLACES_KEY: context.env.PUBLIC_GOOGLE_PLACES_KEY,
       PUBLIC_GOOGLE_GEOCODING_KEY: context.env.PUBLIC_GOOGLE_GEOCODING_KEY,
       PUBLIC_GOOGLE_DISTANCE_MATRIX_KEY: context.env.PUBLIC_GOOGLE_DISTANCE_MATRIX_KEY,
+      PUBLIC_GTM_ID: context.env.PUBLIC_GTM_ID,
+      PUBLIC_GA4_MEASUREMENT_ID: context.env.PUBLIC_GA4_MEASUREMENT_ID,
     },
   };
 }

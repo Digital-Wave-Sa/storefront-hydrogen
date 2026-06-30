@@ -54,11 +54,6 @@ export async function action({ request, context }: ActionFunctionArgs) {
     try {
       const { getAdminToken } = await import('~/lib/shopify-admin.server');
       const adminToken = await getAdminToken(env);
-      
-      console.log('====================================');
-      console.log('[DEBUG AUTH] PUBLIC_STORE_DOMAIN:', env.PUBLIC_STORE_DOMAIN);
-      console.log('[DEBUG AUTH] Token:', adminToken ? adminToken.slice(0, 10) + '...' : 'NONE');
-      console.log('====================================');
 
       const graphqlQuery = `
         query {
@@ -83,43 +78,51 @@ export async function action({ request, context }: ActionFunctionArgs) {
         },
         body: JSON.stringify({ query: graphqlQuery })
       });
-      
+
       const dataRes = await response.json();
-      console.log('Login Action [send-otp] GraphQL Response:', JSON.stringify(dataRes));
-      
       const customers = dataRes?.data?.customers?.edges?.map((e: any) => ({
         id: e.node.id.split('/').pop(),
         email: e.node.email,
         phone: e.node.phone
       })) || [];
-      console.log('Login Action [send-otp] Response Data:', JSON.stringify(dataRes).slice(0, 200));
 
-      if (!customers || customers.length === 0) {
-        return data({ 
+      // Only block if Admin API responded successfully with empty results
+      if (response.ok && dataRes?.data && customers.length === 0) {
+        return data({
           error: lang === 'en' ? 'Account not found. Please register.' : 'الحساب غير موجود. يرجى إنشاء حساب جديد.',
-          notRegistered: true 
+          notRegistered: true
         });
       }
 
-      // The custom API sends the OTP via SMS itself when requestOtp is called.
-      // We just need to call it and show the OTP input form.
+      // Try to send OTP via Custom CRM API
       try {
         const api = new SaadeddinApi(env);
         await api.requestOtp(fullPhone);
       } catch (otpErr: any) {
         console.error('Custom API OTP request failed:', otpErr);
-        return data({ error: otpErr.message || (lang === 'en' ? 'Failed to request OTP from server.' : 'فشل طلب رمز التحقق من الخادم.') });
+        // If the error indicates account doesn't exist, show that message
+        const msg = otpErr.message || '';
+        if (msg.toLowerCase().includes('not found') || msg.includes('غير موجود')) {
+          return data({
+            error: lang === 'en' ? 'Account not found. Please register.' : 'الحساب غير موجود. يرجى إنشاء حساب جديد.',
+            notRegistered: true
+          });
+        }
+        return data({ error: lang === 'en' ? 'Failed to send verification code. Please try again.' : 'فشل إرسال رمز التحقق. يرجى المحاولة مرة أخرى.' });
       }
 
       session.set('loginOtpPhone', fullPhone);
-      session.set('loginCustomerEmail', customers[0].email);
-      session.set('loginCustomerId', customers[0].id);
+      if (customers.length > 0) {
+        session.set('loginCustomerEmail', customers[0].email);
+        session.set('loginCustomerId', customers[0].id);
+      }
       return data(
         { success: true, step: 'otp', phone: fullPhone },
         { headers: { 'Set-Cookie': await session.commit() } }
       );
-    } catch (e) {
-      return data({ error: 'Error processing login request' }, { status: 500 });
+    } catch (e: any) {
+      console.error('[Login] send-otp error:', e);
+      return data({ error: lang === 'en' ? 'An unexpected error occurred. Please try again.' : 'حدث خطأ غير متوقع. يرجى المحاولة مرة أخرى.' });
     }
   }
 
@@ -177,52 +180,55 @@ export async function action({ request, context }: ActionFunctionArgs) {
       }
     }
 
-    // Step 2: Log into Shopify so storefront features work
+    // Step 2: Try to create a Shopify session (best-effort, non-fatal)
     try {
       const { getAdminToken } = await import('~/lib/shopify-admin.server');
       const adminToken = await getAdminToken(env);
       const newPassword = Math.random().toString(36).slice(-10) + 'A1!';
+      const customerId = session.get('loginCustomerId');
+      const email = session.get('loginCustomerEmail');
 
-      // Update customer password via Admin API
-      await fetch(`https://${env.PUBLIC_STORE_DOMAIN}/admin/api/2023-04/customers/${customerId}.json`, {
-        method: 'PUT',
-        headers: {
-          'X-Shopify-Access-Token': adminToken,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          customer: { id: customerId, password: newPassword, password_confirmation: newPassword }
-        })
-      });
-
-      // Get Shopify storefront access token
-      const tokenResponse = await storefront.mutate(LOGIN_MUTATION, {
-        variables: {
-          input: {
-            email: email || `${savedPhone.replace('+', '')}@example.com`,
-            password: newPassword,
+      if (customerId && adminToken) {
+        // Update customer password via Admin API
+        const updateRes = await fetch(`https://${env.PUBLIC_STORE_DOMAIN}/admin/api/2023-04/customers/${customerId}.json`, {
+          method: 'PUT',
+          headers: {
+            'X-Shopify-Access-Token': adminToken,
+            'Content-Type': 'application/json',
           },
-        },
-      });
-
-      const token = tokenResponse.customerAccessTokenCreate?.customerAccessToken;
-
-      if (token) {
-        session.set('customerAccessToken', token);
-        session.set('saadeddinToken', saadeddinToken);
-        session.unset('loginOtpPhone');
-        session.unset('loginCustomerEmail');
-        session.unset('loginCustomerId');
-        return redirect('/account', {
-          headers: { 'Set-Cookie': await session.commit() },
+          body: JSON.stringify({
+            customer: { id: customerId, password: newPassword, password_confirmation: newPassword }
+          })
         });
-      } else {
-        return data({ error: lang === 'en' ? 'Failed to create session. Please try again.' : 'فشل إنشاء الجلسة. يرجى المحاولة مرة أخرى.' });
+
+        if (updateRes.ok) {
+          // Get Shopify storefront access token
+          const tokenResponse = await storefront.mutate(LOGIN_MUTATION, {
+            variables: {
+              input: {
+                email: email || `${savedPhone.replace('+', '')}@example.com`,
+                password: newPassword,
+              },
+            },
+          });
+          const token = tokenResponse.customerAccessTokenCreate?.customerAccessToken;
+          if (token) session.set('customerAccessToken', token);
+        } else {
+          console.warn('[Login] Shopify Admin password update returned non-OK:', updateRes.status);
+        }
       }
-    } catch (e: any) {
-      console.error('[Login] Shopify login step failed:', e);
-      return data({ error: lang === 'en' ? 'Login error. Please try again.' : 'خطأ في تسجيل الدخول. يرجى المحاولة مرة أخرى.' });
+    } catch (shopifyErr) {
+      console.warn('[Login] Shopify session creation failed (non-fatal):', shopifyErr);
     }
+
+    // Always set the CRM token and redirect regardless of Shopify session
+    session.set('saadeddinToken', saadeddinToken);
+    session.unset('loginOtpPhone');
+    session.unset('loginCustomerEmail');
+    session.unset('loginCustomerId');
+    return redirect(lang === 'en' ? '/en/account' : '/account', {
+      headers: { 'Set-Cookie': await session.commit() },
+    });
   }
 
   return data({ error: 'Invalid request' });

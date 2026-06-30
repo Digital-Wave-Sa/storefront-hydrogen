@@ -46,47 +46,50 @@ export async function action({ request, context }: ActionFunctionArgs) {
     }
 
     try {
-      const adminToken = await getAdminToken(env);
-      const queryStr = encodeURIComponent(`phone:"${fullPhone}" OR email:"${email}"`);
-      const response = await fetch(`https://${env.PUBLIC_STORE_DOMAIN}/admin/api/2023-04/customers/search.json?query=${queryStr}`, {
-        headers: {
-          'X-Shopify-Access-Token': adminToken,
-          'Content-Type': 'application/json',
-        },
-      });
+      // Try to check for duplicate accounts via Admin API — skip silently if token is invalid
+      try {
+        const adminToken = await getAdminToken(env);
+        const queryStr = encodeURIComponent(`phone:"${fullPhone}" OR email:"${email}"`);
+        const response = await fetch(`https://${env.PUBLIC_STORE_DOMAIN}/admin/api/2023-04/customers/search.json?query=${queryStr}`, {
+          headers: {
+            'X-Shopify-Access-Token': adminToken,
+            'Content-Type': 'application/json',
+          },
+        });
 
-      const { customers } = await response.json();
+        if (response.ok) {
+          const { customers } = await response.json();
+          let phoneExists = false;
+          let emailExists = false;
 
-      let phoneExists = false;
-      let emailExists = false;
-
-      if (customers && customers.length > 0) {
-        for (const customer of customers) {
-          const cleanCustPhone = customer.phone ? customer.phone.replace(/\D/g, '') : '';
-          const cleanTargetPhone = fullPhone.replace(/\D/g, '');
-          if (cleanCustPhone === cleanTargetPhone) {
-            phoneExists = true;
+          if (customers && customers.length > 0) {
+            for (const customer of customers) {
+              const cleanCustPhone = customer.phone ? customer.phone.replace(/\D/g, '') : '';
+              const cleanTargetPhone = fullPhone.replace(/\D/g, '');
+              if (cleanCustPhone === cleanTargetPhone) phoneExists = true;
+              if (customer.email && customer.email.toLowerCase() === email.toLowerCase()) emailExists = true;
+            }
           }
-          if (customer.email && customer.email.toLowerCase() === email.toLowerCase()) {
-            emailExists = true;
+
+          if (phoneExists) {
+            return data({
+              error: lang === 'en'
+                ? 'This phone number is already registered. Please login.'
+                : 'رقم الجوال هذا مسجل بالفعل. يرجى تسجيل الدخول.',
+            });
           }
+          if (emailExists) {
+            return data({
+              error: lang === 'en'
+                ? 'This email is already registered.'
+                : 'البريد الإلكتروني هذا مسجل بالفعل.',
+            });
+          }
+        } else {
+          console.warn('[Register] Admin API returned non-OK status during duplicate check:', response.status);
         }
-      }
-
-      if (phoneExists) {
-        return data({
-          error: lang === 'en'
-            ? 'This phone number is already registered. Please login.'
-            : 'رقم الجوال هذا مسجل بالفعل. يرجى تسجيل الدخول.',
-        });
-      }
-
-      if (emailExists) {
-        return data({
-          error: lang === 'en'
-            ? 'This email is already registered.'
-            : 'البريد الإلكتروني هذا مسجل بالفعل.',
-        });
+      } catch (adminCheckErr) {
+        console.warn('[Register] Admin API duplicate check skipped due to error:', adminCheckErr);
       }
 
       // Generate and Send OTP
@@ -103,16 +106,17 @@ export async function action({ request, context }: ActionFunctionArgs) {
       if (result.success) {
         session.set('otpCode', code);
         session.set('otpPhone', fullPhone);
-        session.set('otpExpires', Date.now() + 5 * 60 * 1000); // 5 minutes
-        session.set('otpCooldown', Date.now() + 60 * 1000); // 1 minute cooldown
+        session.set('otpExpires', Date.now() + 5 * 60 * 1000);
+        session.set('otpCooldown', Date.now() + 60 * 1000);
         return data(
           { step: 'otp' },
           { headers: { 'Set-Cookie': await session.commit() } }
         );
       }
       return data({ error: lang === 'en' ? 'Failed to send SMS. Please try again.' : 'فشل إرسال الرمز. يرجى المحاولة مرة أخرى.' });
-    } catch (e) {
-      return data({ error: lang === 'en' ? 'Error checking phone status' : 'خطأ في التحقق من الرقم' }, { status: 500 });
+    } catch (e: any) {
+      console.error('[Register] OTP send-otp error:', e);
+      return data({ error: lang === 'en' ? 'An unexpected error occurred. Please try again.' : 'حدث خطأ غير متوقع. يرجى المحاولة مرة أخرى.' });
     }
   }
 
@@ -162,80 +166,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
     const companyAddress = String(form.get('companyAddress') || '');
     
     try {
-      const adminToken = await getAdminToken(env);
-      
-      const metafields = [
-        {
-          namespace: 'custom',
-          key: 'preferred_language',
-          value: language,
-          type: 'single_line_text_field'
-        }
-      ];
-
-      if (accountType === 'company') {
-        if (taxRegistration) {
-          metafields.push({
-            namespace: 'custom',
-            key: 'tax_registration',
-            value: taxRegistration,
-            type: 'single_line_text_field'
-          });
-        }
-        if (companyAddress) {
-          metafields.push({
-            namespace: 'custom',
-            key: 'company_address',
-            value: companyAddress,
-            type: 'single_line_text_field'
-          });
-        }
-      }
-
-      const newPassword = Math.random().toString(36).slice(-10) + "A1!";
-      const customerPayload: any = {
-        customer: {
-          first_name: firstName,
-          last_name: lastName,
-          phone: savedPhone,
-          email: email || undefined,
-          password: newPassword,
-          password_confirmation: newPassword,
-          tags: accountType === 'company' ? 'verified_phone, B2B' : 'verified_phone',
-          metafields
-        }
-      };
-
-      const adminResponse = await fetch(`https://${env.PUBLIC_STORE_DOMAIN}/admin/api/2024-01/customers.json`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Shopify-Access-Token': adminToken,
-        },
-        body: JSON.stringify(customerPayload)
-      });
-
-      const adminData = await adminResponse.json();
-
-      if (adminData.errors) {
-        const errorMsg = typeof adminData.errors === 'string' 
-          ? adminData.errors 
-          : Object.entries(adminData.errors).map(([k, v]) => `${k} ${v}`).join(', ');
-        throw new Error(errorMsg);
-      }
-
-      // Generate Access Token
-      const tokenResponse = await storefront.mutate(CUSTOMER_ACCESS_TOKEN_CREATE_MUTATION, {
-        variables: {
-          input: {
-            email: adminData.customer.email || `${savedPhone.replace('+', '')}@example.com`,
-            password: newPassword,
-          },
-        },
-      });
-      
-      const token = tokenResponse.customerAccessTokenCreate?.customerAccessToken;
-      
+      // Step 1: Register with Custom CRM API first
       let saadeddinToken = null;
       try {
         const api = new SaadeddinApi(env);
@@ -251,29 +182,78 @@ export async function action({ request, context }: ActionFunctionArgs) {
         if (customRegister?.token) {
           saadeddinToken = customRegister.token;
         } else {
-          throw new Error(lang === 'en' ? 'Failed to retrieve custom API token.' : 'فشل الحصول على رمز الواجهة البرمجية.');
+          throw new Error(lang === 'en' ? 'Failed to retrieve CRM token.' : 'فشل الحصول على رمز النظام.');
         }
       } catch (apiErr: any) {
-        console.error('[Register] Failed to register with Custom API:', apiErr);
-        return data({ error: apiErr.message || (lang === 'en' ? 'Registration failed on custom backend.' : 'فشل التسجيل في النظام الخلفي المخصص.') });
+        console.error('[Register] Custom CRM API registration failed:', apiErr);
+        return data({ error: lang === 'en' ? 'Registration failed. This account may already exist.' : 'فشل التسجيل. قد يكون هذا الحساب موجوداً بالفعل.' });
       }
 
-      if (token) {
-        session.set('customerAccessToken', token);
-        if (saadeddinToken) {
-          session.set('saadeddinToken', saadeddinToken);
+      // Step 2: Create customer in Shopify Admin (best effort — skip if token is invalid)
+      const newPassword = Math.random().toString(36).slice(-10) + 'A1!';
+      let shopifyCustomerEmail = email || `${savedPhone.replace(/\D/g, '')}@saadeddin.placeholder`;
+      let token = null;
+
+      try {
+        const adminToken = await getAdminToken(env);
+        const metafields = [
+          { namespace: 'custom', key: 'preferred_language', value: language, type: 'single_line_text_field' }
+        ];
+        if (accountType === 'company') {
+          if (taxRegistration) metafields.push({ namespace: 'custom', key: 'tax_registration', value: taxRegistration, type: 'single_line_text_field' });
+          if (companyAddress) metafields.push({ namespace: 'custom', key: 'company_address', value: companyAddress, type: 'single_line_text_field' });
         }
-        session.unset('socialProfile'); // Clear it after success
+
+        const customerPayload: any = {
+          customer: {
+            first_name: firstName,
+            last_name: lastName,
+            phone: savedPhone,
+            email: shopifyCustomerEmail,
+            password: newPassword,
+            password_confirmation: newPassword,
+            tags: accountType === 'company' ? 'verified_phone, B2B' : 'verified_phone',
+            metafields
+          }
+        };
+
+        const adminResponse = await fetch(`https://${env.PUBLIC_STORE_DOMAIN}/admin/api/2024-01/customers.json`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-Shopify-Access-Token': adminToken },
+          body: JSON.stringify(customerPayload)
+        });
+
+        if (adminResponse.ok) {
+          const adminData = await adminResponse.json();
+          if (adminData.customer) {
+            shopifyCustomerEmail = adminData.customer.email || shopifyCustomerEmail;
+            // Generate Shopify Storefront Access Token
+            const tokenResponse = await storefront.mutate(CUSTOMER_ACCESS_TOKEN_CREATE_MUTATION, {
+              variables: { input: { email: shopifyCustomerEmail, password: newPassword } },
+            });
+            token = tokenResponse.customerAccessTokenCreate?.customerAccessToken || null;
+          } else {
+            console.warn('[Register] Shopify customer creation returned errors:', adminData.errors);
+          }
+        } else {
+          console.warn('[Register] Shopify Admin API returned non-OK status:', adminResponse.status);
+        }
+      } catch (shopifyErr) {
+        console.warn('[Register] Shopify Admin API failed (non-fatal):', shopifyErr);
       }
-      
+
+      // Step 3: Save tokens and redirect
+      if (token) session.set('customerAccessToken', token);
+      session.set('saadeddinToken', saadeddinToken);
+      session.unset('socialProfile');
+
       return redirect(lang === 'en' ? '/en/account' : '/account', {
-        headers: {
-          'Set-Cookie': await session.commit()
-        }
+        headers: { 'Set-Cookie': await session.commit() }
       });
 
     } catch (error: any) {
-      return data({ error: error.message });
+      console.error('[Register] Unexpected error:', error);
+      return data({ error: lang === 'en' ? 'An unexpected error occurred. Please try again.' : 'حدث خطأ غير متوقع. يرجى المحاولة مرة أخرى.' });
     }
   }
 

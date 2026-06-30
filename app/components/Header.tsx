@@ -187,6 +187,151 @@ function TopBar({
   const [modalOpen, setModalOpen] = useState(false);
   const [currentPromoIndex, setCurrentPromoIndex] = useState(0);
 
+  const [branches, setBranches] = useState<any[]>([]);
+  const [isOpenBranch, setIsOpenBranch] = useState(true);
+
+  // 1. Resolve locations promise
+  useEffect(() => {
+    if (!locations) return;
+    let cancelled = false;
+    locations.then((data: any) => {
+      if (cancelled) return;
+      setBranches(data?.locations?.nodes || []);
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [locations]);
+
+  // 2. Compute branch open status dynamically
+  useEffect(() => {
+    if (!selectedLocationId || !branches.length) {
+      setIsOpenBranch(true); // default open if not loaded
+      return;
+    }
+    const activeBranchNode = branches.find((b: any) => b.id === selectedLocationId);
+    if (!activeBranchNode) return;
+
+    const checkOpenStatus = () => {
+        const getMetaVal = (key: string) => {
+            return activeBranchNode[key]?.value || activeBranchNode.metafields?.find((m: any) => m?.key === key)?.value;
+        };
+
+        let riyadhDay = 'Sun';
+        try {
+            riyadhDay = new Intl.DateTimeFormat('en-US', {
+                timeZone: 'Asia/Riyadh',
+                weekday: 'short'
+            }).format(new Date());
+        } catch(e) {}
+
+        let targetFromKey = 'working_hours_from';
+        let targetToKey = 'working_hours_to';
+        if (riyadhDay === 'Sun') {
+            targetFromKey = 'sunday_working_hours_from';
+            targetToKey = 'sunday_working_hours_to';
+        } else if (riyadhDay === 'Mon') {
+            targetFromKey = 'monday_working_hours_from';
+            targetToKey = 'monday_working_hours_to';
+        } else if (riyadhDay === 'Tue') {
+            targetFromKey = 'tuesday_working_hours_from';
+            targetToKey = 'tuesday_working_hours_to';
+        } else if (riyadhDay === 'Wed') {
+            targetFromKey = 'wednesday_working_hours_from';
+            targetToKey = 'wednesday_working_hours_to';
+        } else if (riyadhDay === 'Thu') {
+            targetFromKey = 'thursday_working_hours_from';
+            targetToKey = 'thursday_working_hours_to';
+        } else if (riyadhDay === 'Fri') {
+            targetFromKey = 'friday_working_hours_from';
+            targetToKey = 'friday_working_hours_to';
+        } else if (riyadhDay === 'Sat') {
+            targetFromKey = 'saturday_working_hours_from';
+            targetToKey = 'saturday_working_hours_to';
+        }
+
+        let hFrom = getMetaVal(targetFromKey);
+        let hTo = getMetaVal(targetToKey);
+        
+        if (!hFrom || !hTo) {
+            hFrom = getMetaVal('working_hours_from');
+            hTo = getMetaVal('working_hours_to');
+        }
+
+        const hFrom2 = getMetaVal('working_hours_from_shift2');
+        const hTo2 = getMetaVal('working_hours_to_shift2');
+
+        const workingDaysStr = getMetaVal('working_days');
+        let isWorkingDay = true;
+        if (workingDaysStr) {
+            try {
+                const parsedDays = JSON.parse(workingDaysStr);
+                if (Array.isArray(parsedDays) && parsedDays.length > 0) {
+                    isWorkingDay = parsedDays.includes(riyadhDay);
+                }
+            } catch (e) {}
+        }
+
+        if (!isWorkingDay) {
+            return false;
+        }
+
+        if (!hFrom || !hTo) {
+            return true; // default open if not set
+        }
+
+        try {
+            const now = new Date();
+            const riyadhTime = new Intl.DateTimeFormat('en-US', {
+                timeZone: 'Asia/Riyadh',
+                hour: 'numeric',
+                minute: 'numeric',
+                hour12: false
+            }).formatToParts(now);
+            
+            const h = parseInt(riyadhTime.find(p => p.type === 'hour')?.value || '0', 10);
+            const m = parseInt(riyadhTime.find(p => p.type === 'minute')?.value || '0', 10);
+            const currentMins = h * 60 + m;
+            
+            const parseTime = (timeStr: string) => {
+                const arMap: {[key: string]: string} = { '٠': '0', '١': '1', '٢': '2', '٣': '3', '٤': '4', '٥': '5', '٦': '6', '٧': '7', '٨': '8', '٩': '9' };
+                let normalized = String(timeStr).trim().toLowerCase().replace(/[٠-٩]/g, d => arMap[d]);
+                
+                const match = normalized.match(/(\d{1,2}):(\d{2})/);
+                if (!match) return -1;
+                
+                let hr = parseInt(match[1], 10);
+                let min = parseInt(match[2], 10);
+                
+                const isPm = normalized.includes('pm') || normalized.includes('م');
+                const isAm = normalized.includes('am') || normalized.includes('ص');
+                
+                if (isPm && hr !== 12) hr += 12;
+                if (isAm && hr === 12) hr = 0;
+                
+                return hr * 60 + min;
+            };
+
+            const checkShift = (fromTime: string, toTime: string) => {
+                const fMins = parseTime(fromTime);
+                const tMins = parseTime(toTime);
+                if (fMins === -1 || tMins === -1) return false;
+                
+                if (tMins < fMins) {
+                    return currentMins >= fMins || currentMins < tMins;
+                }
+                return currentMins >= fMins && currentMins < tMins;
+            };
+
+            const open1 = checkShift(hFrom, hTo);
+            const open2 = hFrom2 && hTo2 ? checkShift(hFrom2, hTo2) : false;
+            return open1 || open2;
+        } catch (e) {
+            return true;
+        }
+    };
+
+    setIsOpenBranch(checkOpenStatus());
+  }, [selectedLocationId, branches]);
+
   useEffect(() => {
     const handleOpen = () => setModalOpen(true);
     window.addEventListener('openDeliveryModal', handleOpen);
@@ -213,20 +358,18 @@ function TopBar({
       text: isEn ? 'Guaranteed Quality' : 'جودة مضمونة'
     },
     {
-      icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-90 shrink-0 w-[15px] h-[15px] md:w-[18px] md:h-[18px]"><rect x="1" y="3" width="15" height="13" /><polygon points="16 8 20 8 23 11 23 16 16 16 16 8" /><circle cx="5.5" cy="18.5" r="2.5" /><circle cx="18.5" cy="18.5" r="2.5" /></svg>,
-      text: isEn ? 'Fast Delivery' : 'توصيل سريع'
+      icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-90 shrink-0 w-[14px] h-[14px] md:w-[16px] md:h-[16px]"><rect x="1" y="3" width="15" height="13" default-x="1" rx="2" ry="2" /><line x1="16" y1="8" x2="20" y2="8" /><line x1="16" y1="12" x2="23" y2="12" /><line x1="1" y1="12" x2="16" y2="12" /></svg>,
+      text: isEn ? 'Express Delivery' : 'توصيل سريع'
     },
     {
-      icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-90 shrink-0 w-[14px] h-[14px] md:w-[16px] md:h-[16px]"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>,
-      text: isEn ? 'Secure Payment' : 'دفع آمن ومضمون'
+      icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-90 shrink-0 w-[14px] h-[14px] md:w-[16px] md:h-[16px]"><circle cx="12" cy="12" r="10" /><path d="M12 8l-4 4h8z" /></svg>,
+      text: isEn ? 'Click & Collect' : 'استلام من الفرع'
     }
   ];
 
   return (
-    <div className="w-full bg-[#234745] text-white overflow-hidden">
-      <div className="max-w-[1400px] mx-auto px-4 lg:px-6 h-[40px] flex items-center justify-between text-[11px] md:text-[13px] font-medium">
-        
-        {/* RIGHT: Promo badges */}
+    <>
+      <div className="w-full bg-[#234745] text-[#FEF8EB] h-[36px] flex items-center justify-between px-4 md:px-12 text-[11px] md:text-[13px] border-b border-[#2e5653] font-bold">
         {/* Desktop: Show all 3 */}
         <div className="hidden md:flex items-center gap-8">
           {promos.map((promo, idx) => (
@@ -253,7 +396,7 @@ function TopBar({
         </div>
 
         {/* LEFT: Language & Branch */}
-        <div className="flex items-center justify-end md:justify-start gap-3 md:gap-4 shrink-0 z-10 bg-[#234745] shadow-[-10px_0_10px_#234745]">
+        <div className="flex items-center justify-end md:justify-start gap-3 md:gap-4 shrink-0 z-10">
           <button 
             onClick={() => setModalOpen(true)}
             className="flex items-center gap-2 md:gap-3 px-4 py-1.5 md:px-5 md:py-1.5 rounded-full bg-[#b9cdca] border border-[#91a7a2] text-[12px] md:text-[14px] hover:bg-[#a6bdbc] transition-all text-[#234745]"
@@ -268,7 +411,7 @@ function TopBar({
                       : (isEn ? 'Select Your Branch' : 'اختر الفرع'))
                 }
               </span>
-              <div className="absolute -top-[6px] -right-[6px] w-[8px] h-[8px] rounded-full bg-[#3ddb6a]" />
+              <div className={`absolute -top-[6px] -right-[6px] w-[8px] h-[8px] rounded-full transition-colors duration-300 ${isOpenBranch ? 'bg-[#3ddb6a]' : 'bg-[#ef4444]'}`} />
             </div>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 mt-[2px] opacity-90"><polyline points="6 9 12 15 18 9"></polyline></svg>
           </button>
@@ -296,7 +439,7 @@ function TopBar({
         selectedLocationId={selectedLocationId}
         selectedAddressName={selectedAddressName}
       />
-    </div>
+    </>
   );
 }
 

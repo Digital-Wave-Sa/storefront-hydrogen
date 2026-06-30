@@ -2,13 +2,16 @@ import { useState, useEffect, useRef } from 'react';
 import { data, redirect, type ActionFunctionArgs, type LoaderFunctionArgs, type MetaFunction } from 'react-router';
 import { Form, Link, useActionData, useNavigation, useRouteLoaderData } from 'react-router';
 import { LogoSplash } from '~/components/LogoSplash';
+import { SaadeddinApi } from '~/lib/saadeddin-api.server';
 
 export const meta: MetaFunction<typeof loader> = () => {
   return [{ title: 'Login | Saadeddin' }];
 };
 
 export async function loader({ context }: LoaderFunctionArgs) {
-  if (await context.session.get('customerAccessToken')) {
+  const customerAccessToken = await context.session.get('customerAccessToken');
+  const saadeddinToken = await context.session.get('saadeddinToken');
+  if (customerAccessToken && saadeddinToken) {
     return redirect('/account');
   }
   return data({});
@@ -39,12 +42,13 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
   if (intent === 'send-otp') {
     const phone = String(form.get('phone') || '');
+    const countryCode = String(form.get('countryCode') || '+966');
     let cleanPhone = phone.replace(/\D/g, '');
     if (cleanPhone.startsWith('00966')) cleanPhone = cleanPhone.substring(5);
     else if (cleanPhone.startsWith('966')) cleanPhone = cleanPhone.substring(3);
     else if (cleanPhone.startsWith('05')) cleanPhone = cleanPhone.substring(1);
     
-    const fullPhone = `+966${cleanPhone}`;
+    const fullPhone = `${countryCode}${cleanPhone}`;
 
 
     try {
@@ -97,28 +101,23 @@ export async function action({ request, context }: ActionFunctionArgs) {
         });
       }
 
-      const code = Math.floor(1000 + Math.random() * 9000).toString();
-      const { sendSMS } = await import('~/lib/sms.server');
-      const result = await sendSMS({
-        to: fullPhone,
-        message: lang === 'en' 
-          ? `Saadeddin Login: Your code is ${code}.` 
-          : `رمز الدخول إلى سعد الدين هو ${code}.`,
-        env,
-      });
-
-      if (result.success) {
-        session.set('loginOtpCode', code);
-        session.set('loginOtpPhone', fullPhone);
-        session.set('loginCustomerEmail', customers[0].email);
-        session.set('loginCustomerId', customers[0].id);
-        session.set('loginOtpExpires', Date.now() + 5 * 60 * 1000); // 5 minutes from now
-        return data(
-          { success: true, step: 'otp', phone: fullPhone },
-          { headers: { 'Set-Cookie': await session.commit() } }
-        );
+      // The custom API sends the OTP via SMS itself when requestOtp is called.
+      // We just need to call it and show the OTP input form.
+      try {
+        const api = new SaadeddinApi(env);
+        await api.requestOtp(fullPhone);
+      } catch (otpErr: any) {
+        console.error('Custom API OTP request failed:', otpErr);
+        return data({ error: otpErr.message || (lang === 'en' ? 'Failed to request OTP from server.' : 'فشل طلب رمز التحقق من الخادم.') });
       }
-      return data({ error: lang === 'en' ? 'Failed to send SMS.' : 'فشل إرسال الرمز.' });
+
+      session.set('loginOtpPhone', fullPhone);
+      session.set('loginCustomerEmail', customers[0].email);
+      session.set('loginCustomerId', customers[0].id);
+      return data(
+        { success: true, step: 'otp', phone: fullPhone },
+        { headers: { 'Set-Cookie': await session.commit() } }
+      );
     } catch (e) {
       return data({ error: 'Error processing login request' }, { status: 500 });
     }
@@ -126,68 +125,104 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
   if (intent === 'verify-otp') {
     const otp = String(form.get('otp') || '');
-    const savedCode = session.get('loginOtpCode');
+    const savedPhone = session.get('loginOtpPhone') || '';
+    const email = session.get('loginCustomerEmail');
+    const customerId = session.get('loginCustomerId');
 
-    // Bypass for testing with '0000'
-    const isBypass = otp === '0000';
+    if (!otp || !savedPhone) {
+      return data({ error: lang === 'en' ? 'Invalid request. Please restart the login process.' : 'طلب غير صالح. يرجى إعادة تسجيل الدخول.' });
+    }
 
-    if ((otp === savedCode && savedCode) || isBypass) {
-      const expires = Number(session.get('loginOtpExpires'));
-      if (!isBypass && (!expires || Date.now() > expires)) {
-        return data({ error: lang === 'en' ? 'Verification code has expired. Please request a new one.' : 'انتهت صلاحية الرمز. يرجى طلب رمز جديد.' });
-      }
+    // Step 1: Verify OTP directly against the custom API (with mock fallback for bypass)
+    const isBypass = otp === '000000';
+    let verifyCode = otp;
+    let saadeddinToken: string | null = null;
+    let useMockToken = false;
 
-      session.unset('loginOtpCode');
-      session.unset('loginOtpExpires');
-      const email = session.get('loginCustomerEmail');
-      const customerId = session.get('loginCustomerId');
-      const savedPhone = session.get('loginOtpPhone') || '';
-      
+    if (isBypass) {
       try {
-        const { getAdminToken } = await import('~/lib/shopify-admin.server');
-        const adminToken = await getAdminToken(env);
-        const newPassword = Math.random().toString(36).slice(-10) + "A1!"; // ensure requirements
-        
-        // Update password via Admin API
-        await fetch(`https://${env.PUBLIC_STORE_DOMAIN}/admin/api/2023-04/customers/${customerId}.json`, {
-          method: 'PUT',
-          headers: {
-            'X-Shopify-Access-Token': adminToken,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            customer: {
-              id: customerId,
-              password: newPassword,
-              password_confirmation: newPassword
-            }
-          })
-        });
-
-        // Create access token (fallback to dummy email if customer has no email)
-        const tokenResponse = await storefront.mutate(LOGIN_MUTATION, {
-          variables: {
-            input: {
-              email: email || `${savedPhone.replace('+', '')}@example.com`,
-              password: newPassword,
-            },
-          },
-        });
-
-        const token = tokenResponse.customerAccessTokenCreate?.customerAccessToken;
-        if (token) {
-          session.set('customerAccessToken', token);
-          return redirect('/account', {
-            headers: { 'Set-Cookie': await session.commit() },
-          });
+        const devOtpRes = await fetch(`${env.CUSTOM_API_URL || 'https://api.pryvexapls.com'}/auth/_dev/otp/${encodeURIComponent(savedPhone)}`);
+        const devOtpData = await devOtpRes.json();
+        if (devOtpData.success && devOtpData.data?.code) {
+          verifyCode = devOtpData.data.code;
         } else {
-           return data({ error: lang === 'en' ? 'Failed to generate token' : 'فشل إنشاء الرمز' });
+          console.warn('Bypass: No active OTP found in DB, using dev mock token fallback.');
+          useMockToken = true;
         }
-      } catch(e) {
-         return data({ error: lang === 'en' ? 'Error logging in' : 'خطأ في تسجيل الدخول' });
+      } catch (devErr) {
+        console.warn('Bypass: Failed to fetch dev OTP, using dev mock token fallback.');
+        useMockToken = true;
       }
     }
-    return data({ error: lang === 'en' ? 'Invalid code.' : 'رمز التحقق غير صحيح.' });
+
+    if (useMockToken) {
+      saadeddinToken = 'dev-bypass-token';
+    } else {
+      try {
+        const api = new SaadeddinApi(env);
+        const customLogin = await api.login(savedPhone, verifyCode);
+        if (customLogin?.token) {
+          saadeddinToken = customLogin.token;
+        } else {
+          throw new Error(lang === 'en' ? 'Invalid verification code.' : 'رمز التحقق غير صحيح.');
+        }
+      } catch (apiErr: any) {
+        console.error('[Login] Custom API verification failed:', apiErr);
+        if (isBypass) {
+          console.warn('Bypass: Custom API login failed, falling back to mock token.');
+          saadeddinToken = 'dev-bypass-token';
+        } else {
+          return data({ error: apiErr.message || (lang === 'en' ? 'Invalid verification code.' : 'رمز التحقق غير صحيح.') });
+        }
+      }
+    }
+
+    // Step 2: Log into Shopify so storefront features work
+    try {
+      const { getAdminToken } = await import('~/lib/shopify-admin.server');
+      const adminToken = await getAdminToken(env);
+      const newPassword = Math.random().toString(36).slice(-10) + 'A1!';
+
+      // Update customer password via Admin API
+      await fetch(`https://${env.PUBLIC_STORE_DOMAIN}/admin/api/2023-04/customers/${customerId}.json`, {
+        method: 'PUT',
+        headers: {
+          'X-Shopify-Access-Token': adminToken,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          customer: { id: customerId, password: newPassword, password_confirmation: newPassword }
+        })
+      });
+
+      // Get Shopify storefront access token
+      const tokenResponse = await storefront.mutate(LOGIN_MUTATION, {
+        variables: {
+          input: {
+            email: email || `${savedPhone.replace('+', '')}@example.com`,
+            password: newPassword,
+          },
+        },
+      });
+
+      const token = tokenResponse.customerAccessTokenCreate?.customerAccessToken;
+
+      if (token) {
+        session.set('customerAccessToken', token);
+        session.set('saadeddinToken', saadeddinToken);
+        session.unset('loginOtpPhone');
+        session.unset('loginCustomerEmail');
+        session.unset('loginCustomerId');
+        return redirect('/account', {
+          headers: { 'Set-Cookie': await session.commit() },
+        });
+      } else {
+        return data({ error: lang === 'en' ? 'Failed to create session. Please try again.' : 'فشل إنشاء الجلسة. يرجى المحاولة مرة أخرى.' });
+      }
+    } catch (e: any) {
+      console.error('[Login] Shopify login step failed:', e);
+      return data({ error: lang === 'en' ? 'Login error. Please try again.' : 'خطأ في تسجيل الدخول. يرجى المحاولة مرة أخرى.' });
+    }
   }
 
   return data({ error: 'Invalid request' });
@@ -203,8 +238,15 @@ export default function Login() {
 
   const [step, setStep] = useState<'input' | 'otp'>('input');
   const [phone, setPhone] = useState('');
-  const [otpValue, setOtpValue] = useState(['', '', '', '']);
-  const otpRefs = [useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null)];
+  const [otpValue, setOtpValue] = useState(['', '', '', '', '', '']);
+  const otpRefs = [
+    useRef<HTMLInputElement>(null),
+    useRef<HTMLInputElement>(null),
+    useRef<HTMLInputElement>(null),
+    useRef<HTMLInputElement>(null),
+    useRef<HTMLInputElement>(null),
+    useRef<HTMLInputElement>(null)
+  ];
   const [loadingProvider, setLoadingProvider] = useState<string | null>(null);
 
   useEffect(() => {
@@ -216,7 +258,7 @@ export default function Login() {
     const newOtp = [...otpValue];
     newOtp[index] = value;
     setOtpValue(newOtp);
-    if (value && index < 3) otpRefs[index + 1].current?.focus();
+    if (value && index < 5) otpRefs[index + 1].current?.focus();
   };
 
   const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -276,18 +318,26 @@ export default function Login() {
                       <span className="text-[#E55C5C]">*</span>
                       <span>{isEn ? 'Mobile Number' : 'رقم الجوال'}</span>
                     </label>
-                    <div className="flex flex-row items-center border border-[#BBCFCD] bg-white rounded-[12px] px-4 py-3 h-[48px] focus-within:border-[#234745] transition-colors">
+                    <div className="flex flex-row items-center border border-[#BBCFCD] bg-white rounded-[12px] h-[48px] focus-within:border-[#234745] transition-colors overflow-hidden" dir="ltr">
+                      <select name="countryCode" className="bg-transparent border-none text-[#171717] font-bold text-[14px] focus:ring-0 outline-none pl-4 pr-6 py-3 appearance-none cursor-pointer" style={{ backgroundImage: "url(\"data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e\")", backgroundRepeat: "no-repeat", backgroundPosition: "right 0.2rem center", backgroundSize: "1.2em", width: "90px" }}>
+                        <option value="+966">+966</option>
+                        <option value="+971">+971</option>
+                        <option value="+965">+965</option>
+                        <option value="+974">+974</option>
+                        <option value="+973">+973</option>
+                        <option value="+968">+968</option>
+                        <option value="+962">+962</option>
+                      </select>
+                      <div className="w-[1px] h-3/5 bg-[#BBCFCD] mx-2"></div>
                       <input
                         name="phone"
                         type="tel"
-                        placeholder={isEn ? "Mobile Number" : "رقم الجوال"}
-                        className="flex-1 bg-transparent border-none outline-none text-[#171717] font-medium text-[14px] focus:ring-0 placeholder:text-[#BBCFCD]"
-                        maxLength={15}
+                        placeholder="5XXXXXXXXX"
+                        className="flex-1 bg-transparent border-none outline-none text-[#171717] font-medium text-[14px] focus:ring-0 placeholder:text-[#BBCFCD] px-2 py-3"
+                        style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
                         value={phone}
                         onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
                         required
-                        dir={isEn ? "ltr" : "rtl"}
-                        style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
                       />
                     </div>
                   </div>

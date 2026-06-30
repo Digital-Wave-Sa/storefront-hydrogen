@@ -7,16 +7,30 @@ import { Price } from '~/components/Price';
 export async function loader({ request, params, context }: LoaderFunctionArgs) {
   const url = new URL(request.url);
   const orderId = url.searchParams.get('order');
-  const branchName = url.searchParams.get('branch');
+  const branchNameQuery = url.searchParams.get('branch');
   
-  // We can optionally fetch order data here if orderId is provided to show the products
-  // For now, let's assume a generic feedback form with an optional product selection
+  const sessionLocationId = await context.session.get('selectedLocationId');
+  const sessionLocationName = await context.session.get('selectedLocationName');
+
+  // Fallback branch mapping to Shopify Location IDs
+  const branchMap: Record<string, string> = {
+    'Olaya Branch': '114186715445',
+    'فرع العليا': '114186715445',
+    'Al Olaya': '114186715445',
+    'Abha': '114219352373',
+    'فرع أبها': '114219352373',
+    'Dubai, UAE': '107332763957',
+    'فرع دبي': '107332763957'
+  };
+
+  const branchName = branchNameQuery || sessionLocationName || 'Olaya Branch';
+  const locationId = sessionLocationId || branchMap[branchName] || '114186715445'; // default to Olaya if unmapped
   
-  return data({ orderId, branchName });
+  return data({ orderId, branchName, locationId });
 }
 
 export default function FeedbackPage() {
-  const { orderId, branchName } = useLoaderData<typeof loader>();
+  const { orderId, branchName, locationId } = useLoaderData<typeof loader>();
   const rootData = useRouteLoaderData('root') as any;
   const isEn = rootData?.consent?.language?.toLowerCase() === 'en';
   
@@ -76,48 +90,53 @@ export default function FeedbackPage() {
   }
 
   return (
-    <div className={`min-h-screen bg-[#FEF8EB] py-12 lg:py-24 px-6 ${isEn ? '' : 'font-ar'}`} dir={isEn ? 'ltr' : 'rtl'}>
-      <div className="max-w-2xl mx-auto">
+    <div className={`min-h-screen bg-[#FAF6F0] py-16 px-4 relative overflow-hidden ${isEn ? '' : 'font-ar'}`} dir={isEn ? 'ltr' : 'rtl'}>
+      {/* Decorative background shapes */}
+      <div className="absolute top-0 right-0 w-80 h-80 bg-[#d4a06a]/10 rounded-full filter blur-[100px] pointer-events-none"></div>
+      <div className="absolute bottom-0 left-0 w-80 h-80 bg-[#234745]/5 rounded-full filter blur-[100px] pointer-events-none"></div>
+
+      <div className="max-w-xl mx-auto relative z-10">
         
-        {/* Header Section */}
-        <header className="text-center mb-16">
-          <div className="inline-block px-4 py-1.5 bg-[#234745] text-[#d4a06a] rounded-full text-[12px] font-black uppercase tracking-widest mb-6">
-             {isEn ? 'Customer Feedback' : 'آراء العملاء'}
+        {/* Main Card */}
+        <div className="bg-white rounded-3xl border border-[#EADFC9] shadow-[0_20px_50px_rgba(35,71,69,0.06)] overflow-hidden">
+          
+          {/* Header Banner */}
+          <div className="bg-[#234745] px-6 py-12 flex flex-col items-center justify-center text-center relative">
+            <div className="absolute inset-0 bg-[radial-gradient(#d4a06a_1px,transparent_1.5px)] [background-size:16px_16px] opacity-10"></div>
+            <span className="inline-block bg-[#d4a06a]/20 text-[#d4a06a] border border-[#d4a06a]/30 text-[10px] font-black tracking-widest px-4 py-1.5 rounded-full mb-3 uppercase tracking-[0.15em]">
+              {isEn ? 'Customer Feedback' : 'آراء العملاء'}
+            </span>
+            <h1 className="text-3xl font-black text-white tracking-tight mb-2">
+              {isEn ? 'How was your experience?' : 'كيف كانت تجربتك؟'}
+            </h1>
+            <p className="text-center text-white/70 text-xs font-medium w-full max-w-md mx-auto leading-relaxed">
+              {isEn 
+                ? 'We value your opinion on our products and service. Please take a moment to share your thoughts.'
+                : 'نحن نقدر رأيك في منتجاتنا وخدماتنا. يرجى تخصيص لحظة لمشاركة أفكارك معنا.'
+              }
+            </p>
           </div>
-          <h1 className="text-4xl lg:text-5xl font-black text-[#234745] mb-6 leading-tight">
-            {isEn ? 'How was your experience?' : 'كيف كانت تجربتك؟'}
-          </h1>
-          <p className="text-gray-500 font-bold max-w-lg mx-auto leading-relaxed">
-            {isEn 
-              ? 'We value your opinion on our products and service. Please take a moment to share your thoughts.'
-              : 'نحن نقدر رأيك في منتجاتنا وخدماتنا. يرجى تخصيص لحظة لمشاركة أفكارك معنا.'
-            }
-          </p>
-        </header>
 
-        {/* Feedback Form */}
-        <fetcher.Form 
-          ref={formRef}
-          method="post" 
-          action="/api/submit-review"
-          className="bg-white rounded-[40px] p-8 lg:p-12 shadow-[0_30px_70px_rgba(35,71,69,0.08)] border border-white"
-        >
-          <input type="hidden" name="orderId" value={orderId || ''} />
-          <input type="hidden" name="branchName" value={branchName || ''} />
-          <input type="hidden" name="language" value={isEn ? 'en' : 'ar'} />
+          <fetcher.Form 
+            ref={formRef}
+            method="post" 
+            action="/api/submit-review"
+            className="p-6 md:p-10 space-y-8"
+          >
+            <input type="hidden" name="orderId" value={orderId || ''} />
+            <input type="hidden" name="branchName" value={branchName || ''} />
+            <input type="hidden" name="locationId" value={locationId || ''} />
+            <input type="hidden" name="language" value={isEn ? 'en' : 'ar'} />
 
-          <div className="space-y-12">
-            
             {/* 1. Product Rating */}
-            <section className="space-y-6">
-              <div className="flex items-center gap-4 mb-2">
-                <span className="w-8 h-8 rounded-full bg-[#f8f5f2] flex items-center justify-center text-[#d4a06a] font-black text-sm">1</span>
-                <h3 className="text-xl font-black text-[#234745]">{isEn ? 'Rate the Product' : 'تقييم المنتج'}</h3>
-              </div>
-              <p className="text-gray-400 text-sm font-medium px-12">
+            <div className="space-y-3">
+              <label className="block text-[11px] font-black uppercase tracking-wider text-gray-400">
+                {isEn ? '1. Rate the Product' : '١. تقييم المنتج'}
+              </label>
+              <p className="text-gray-500 text-xs font-medium leading-relaxed">
                 {isEn ? 'How would you rate the quality and taste?' : 'ما هو تقييمك لجودة وطعم المنتج؟'}
               </p>
-              <div className="flex justify-center py-4">
+              <div className="mt-5 p-4 rounded-2xl bg-[#FCFAF7] border border-[#EADFC9]/40 flex justify-center">
                 <StarRating 
                   value={productRating} 
                   onChange={setProductRating} 
@@ -126,23 +145,27 @@ export default function FeedbackPage() {
                 />
                 <input type="hidden" name="rating" value={productRating} />
               </div>
-            </section>
+            </div>
 
-            <div className="h-px bg-gray-100 w-full" />
-
-            {/* 2. Branch/Service Rating */}
-            <section className="space-y-6">
-              <div className="flex items-center gap-4 mb-2">
-                <span className="w-8 h-8 rounded-full bg-[#f8f5f2] flex items-center justify-center text-[#d4a06a] font-black text-sm">2</span>
-                <h3 className="text-xl font-black text-[#234745]">{isEn ? 'Branch & Service' : 'الفرع والخدمة'}</h3>
+            {/* 2. Branch Rating */}
+            <div className="pt-6 border-t border-[#EADFC9]/30 space-y-3">
+              <div className="flex justify-between items-baseline">
+                <label className="block text-[11px] font-black uppercase tracking-wider text-gray-400">
+                  {isEn ? '2. Branch & Service' : '٢. الفرع والخدمة'}
+                </label>
+                {branchName && (
+                  <span className="text-xs font-extrabold text-[#d4a06a] bg-[#d4a06a]/10 px-2 py-0.5 rounded">
+                    {branchName}
+                  </span>
+                )}
               </div>
-              <p className="text-gray-400 text-sm font-medium px-12">
+              <p className="text-gray-500 text-xs font-medium leading-relaxed">
                 {isEn 
                   ? `How was your experience at ${branchName || 'the branch'}?` 
                   : `كيف كانت تجربتك في ${branchName || 'الفرع'}؟`
                 }
               </p>
-              <div className="flex justify-center py-4">
+              <div className="mt-5 p-4 rounded-2xl bg-[#FCFAF7] border border-[#EADFC9]/40 flex justify-center">
                 <StarRating 
                   value={branchRating} 
                   onChange={setBranchRating} 
@@ -151,76 +174,69 @@ export default function FeedbackPage() {
                 />
                 <input type="hidden" name="branchRating" value={branchRating} />
               </div>
-            </section>
+            </div>
 
-            <div className="h-px bg-gray-100 w-full" />
+            {/* 3. Comments */}
+            <div className="pt-6 border-t border-[#EADFC9]/30 space-y-3">
+              <label className="block text-[11px] font-black uppercase tracking-wider text-gray-400">
+                {isEn ? '3. Your Comments' : '٣. ملاحظاتك'}
+              </label>
+              <textarea 
+                name="comment"
+                rows={4}
+                required
+                placeholder={isEn ? "Tell us more about your experience..." : "أخبرنا المزيد عن تجربتك..."}
+                className="w-full bg-[#FCFAF7] border border-[#EADFC9] rounded-2xl p-4 text-sm font-bold text-[#234745] focus:bg-white focus:border-[#234745] focus:ring-1 focus:ring-[#234745] outline-none transition-all duration-200 resize-none placeholder-gray-400"
+              />
+            </div>
 
-            {/* 3. Detailed Comments */}
-            <section className="space-y-6">
-              <div className="flex items-center gap-4 mb-2">
-                <span className="w-8 h-8 rounded-full bg-[#f8f5f2] flex items-center justify-center text-[#d4a06a] font-black text-sm">3</span>
-                <h3 className="text-xl font-black text-[#234745]">{isEn ? 'Your Comments' : 'ملاحظاتك'}</h3>
-              </div>
-              <div className="px-12">
-                <textarea 
-                  name="comment"
-                  rows={4}
-                  required
-                  placeholder={isEn ? "Tell us more about your experience..." : "أخبرنا المزيد عن تجربتك..."}
-                  className="w-full bg-[#fcfaf8] border-2 border-[#f0ece8] rounded-[24px] p-6 text-[#234745] font-medium placeholder-gray-300 focus:outline-none focus:border-[#d4a06a] transition-all resize-none"
+            {/* 4. Photo Upload */}
+            <div className="pt-6 border-t border-[#EADFC9]/30 space-y-3">
+              <label className="block text-[11px] font-black uppercase tracking-wider text-gray-400">
+                {isEn ? '4. Photo (Optional)' : '٤. صورة (اختياري)'}
+              </label>
+              <div className="relative group">
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  onChange={handleImageChange}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                 />
-              </div>
-            </section>
-
-            <div className="h-px bg-gray-100 w-full" />
-
-            {/* 4. Image Upload */}
-            <section className="space-y-6">
-              <div className="flex items-center gap-4 mb-2">
-                <span className="w-8 h-8 rounded-full bg-[#f8f5f2] flex items-center justify-center text-[#d4a06a] font-black text-sm">4</span>
-                <h3 className="text-xl font-black text-[#234745]">{isEn ? 'Photo (Optional)' : 'صورة (اختياري)'}</h3>
-              </div>
-              <div className="px-12">
-                <div className="relative group">
-                  <input 
-                    type="file" 
-                    accept="image/*" 
-                    onChange={handleImageChange}
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                  />
-                  <div className={`w-full h-48 border-2 border-dashed ${selectedImage ? 'border-[#234745]' : 'border-[#f0ece8]'} rounded-[24px] flex flex-col items-center justify-center gap-4 bg-[#fcfaf8] group-hover:bg-[#f8f5f2] transition-all overflow-hidden`}>
-                    {selectedImage ? (
-                      <img src={selectedImage} alt="Preview" className="w-full h-full object-cover" />
-                    ) : (
-                      <>
-                        <div className="w-14 h-14 rounded-full bg-white flex items-center justify-center text-[#d4a06a] shadow-sm">
-                          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
-                        </div>
-                        <p className="text-gray-400 font-bold text-sm">{isEn ? 'Click to upload a photo' : 'اضغط لرفع صورة'}</p>
-                      </>
-                    )}
-                  </div>
+                <div className={`w-full h-32 border-2 border-dashed ${selectedImage ? 'border-[#234745]' : 'border-[#EADFC9]'} rounded-2xl flex flex-col items-center justify-center gap-2 bg-[#FCFAF7] group-hover:bg-[#FCFAF7]/80 transition-all overflow-hidden`}>
+                  {selectedImage ? (
+                    <img src={selectedImage} alt="Preview" className="w-full h-full object-cover" />
+                  ) : (
+                    <>
+                      <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-[#d4a06a] shadow-sm border border-[#EADFC9]/20">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+                      </div>
+                      <p className="text-gray-400 font-bold text-xs">{isEn ? 'Click to upload a photo' : 'اضغط لرفع صورة'}</p>
+                    </>
+                  )}
                 </div>
               </div>
-            </section>
+            </div>
 
             {/* Submit Button */}
-            <div className="pt-8">
+            <div className="pt-4">
               <button 
                 type="submit"
                 disabled={fetcher.state !== 'idle' || productRating === 0}
-                className={`w-full py-6 rounded-[24px] font-black text-xl shadow-[0_20px_40px_rgba(27,61,46,0.15)] transition-all flex items-center justify-center gap-3 active:scale-95 ${
+                className={`w-full py-4 rounded-2xl font-black text-sm tracking-wider uppercase transition-all flex items-center justify-center gap-2 active:scale-98 ${
                   productRating === 0 
-                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
-                    : 'bg-[#234745] text-white hover:bg-[#d4a06a] hover:shadow-[0_25px_50px_rgba(27,61,46,0.25)]'
+                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200 shadow-none' 
+                    : 'bg-[#234745] text-white hover:bg-[#1a3533] hover:shadow-lg hover:shadow-[#234745]/10'
                 }`}
               >
                 {fetcher.state !== 'idle' ? (
-                  <span className="animate-pulse">{isEn ? 'Submitting...' : 'جاري الإرسال...'}</span>
+                  <>
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                    <span>{isEn ? 'Submitting...' : 'جاري الإرسال...'}</span>
+                  </>
                 ) : (
                   <>
                     <span>{isEn ? 'Submit Feedback' : 'إرسال الملاحظات'}</span>
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className={isEn ? '' : 'rotate-180'}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className={isEn ? '' : 'rotate-180'}>
                       <line x1="5" y1="12" x2="19" y2="12"></line>
                       <polyline points="12 5 19 12 12 19"></polyline>
                     </svg>
@@ -228,14 +244,14 @@ export default function FeedbackPage() {
                 )}
               </button>
               {productRating === 0 && (
-                <p className="text-center text-red-400 text-xs font-bold mt-4 animate-bounce">
+                <p className="text-center text-red-400 text-xs font-bold mt-3 animate-pulse">
                   {isEn ? 'Please provide a star rating to continue' : 'يرجى تقديم تقييم بالنجوم للمتابعة'}
                 </p>
               )}
             </div>
 
-          </div>
-        </fetcher.Form>
+          </fetcher.Form>
+        </div>
 
       </div>
     </div>
@@ -249,7 +265,7 @@ function StarRating({ value, onChange, hoverValue, onHoverChange }: {
   onHoverChange: (v: number) => void;
 }) {
   return (
-    <div className="flex items-center gap-2 lg:gap-4">
+    <div className="flex items-center gap-1.5">
       {[1, 2, 3, 4, 5].map((star) => {
         const isActive = (hoverValue || value) >= star;
         return (
@@ -259,18 +275,14 @@ function StarRating({ value, onChange, hoverValue, onHoverChange }: {
             onClick={() => onChange(star)}
             onMouseEnter={() => onHoverChange(star)}
             onMouseLeave={() => onHoverChange(0)}
-            className={`w-12 h-12 lg:w-16 lg:h-16 flex items-center justify-center transition-all duration-300 transform ${isActive ? 'scale-110' : 'scale-100'}`}
+            className="w-10 h-10 flex items-center justify-center transition-transform duration-150 active:scale-75 hover:scale-110 focus:outline-none"
           >
             <svg 
-              width="100%" 
-              height="100%" 
+              width="28" 
+              height="28" 
               viewBox="0 0 24 24" 
-              fill={isActive ? '#d4a06a' : 'none'} 
-              stroke={isActive ? '#d4a06a' : '#f0ece8'} 
-              strokeWidth="2" 
-              strokeLinecap="round" 
-              strokeLinejoin="round"
-              className="drop-shadow-sm"
+              fill={isActive ? '#d4a06a' : '#EADFC9'} 
+              className="transition-colors duration-150"
             >
               <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
             </svg>

@@ -12,6 +12,8 @@ import {
   useRouteLoaderData,
   useLocation,
   useNavigation,
+  useFetcher,
+  data,
 } from 'react-router';
 import type {Route} from './+types/root';
 import {FOOTER_QUERY, HEADER_QUERY} from '~/lib/fragments';
@@ -22,6 +24,8 @@ import {PageLayout} from './components/PageLayout';
 import {GTMAnalytics} from './components/GTMAnalytics';
 import {WishlistProvider} from './context/WishlistContext';
 import {NotFound} from './components/NotFound';
+import {ServerError} from './components/ServerError';
+import {CookieConsentBanner} from './components/CookieConsentBanner';
 import {ProductSkeleton} from './components/ProductSkeleton';
 
 
@@ -97,8 +101,29 @@ export async function loader(args: Route.LoaderArgs) {
   let selectedLocName = session.get('selectedLocationName');
   let fType = session.get('fulfillmentType');
   const selectedAddrName = session.get('selectedAddressName');
+  const manualLocationSelection = session.get('manualLocationSelection');
 
-  if (!selectedLocId) {
+  const clientCountry = args.request.headers.get('cf-ipcountry') || 
+                       args.request.headers.get('x-buyer-country') || 
+                       args.request.headers.get('x-oxygen-buyer-country') || 
+                       'SA';
+  const isInternationalUserSession = session.get('isInternationalUser') === 'true';
+  const isSA = !isInternationalUserSession && (clientCountry.toUpperCase() === 'SA');
+  const isDefaultLoc = selectedLocId === 'gid://shopify/Location/80198500503' || 
+                       selectedLocId === 'gid://shopify/Location/114186715445';
+  const hasManualSelection = manualLocationSelection === 'true';
+
+  if (!isSA && !hasManualSelection && (isDefaultLoc || !selectedLocId)) {
+    const urlLocale = new URL(args.request.url).pathname.split('/')[1]?.toLowerCase();
+    selectedLocId = '';
+    selectedLocName = urlLocale === 'en' ? 'Select Your Branch' : 'اختر الفرع';
+    fType = 'pickup';
+    
+    session.set('selectedLocationId', selectedLocId);
+    session.set('selectedLocationName', selectedLocName);
+    session.set('fulfillmentType', fType);
+    session.set('isInternationalUser', 'true');
+  } else if (selectedLocId === undefined || selectedLocId === null) {
     const isTesting = env.PUBLIC_STORE_DOMAIN?.includes('belivagloire');
     selectedLocId = isTesting ? 'gid://shopify/Location/114186715445' : 'gid://shopify/Location/80198500503';
     const urlLocale = new URL(args.request.url).pathname.split('/')[1]?.toLowerCase();
@@ -111,99 +136,33 @@ export async function loader(args: Route.LoaderArgs) {
   }
 
   if (customerAccessToken?.accessToken || selectedLocName || fType) {
-    const cartData = await args.context.cart.get();
+    let cartData = null;
+    try {
+      cartData = await args.context.cart.get();
+    } catch (error) {
+      console.error('[ROOT] Cart retrieval failed:', error);
+    }
     if (cartData) {
       const needsIdentity = customerAccessToken?.accessToken && !cartData.buyerIdentity?.customer;
       const cartBranch = cartData.attributes?.find(a => a.key === 'Branch')?.value;
-      const cartFType = cartData.attributes?.find(a => a.key === 'Fulfillment Type')?.value;
-      const sessionFType = fType === 'pickup' ? 'Pickup' : 'Delivery';
-      
-      const needsFulfillmentSync = (selectedLocName && cartBranch !== selectedLocName) || (cartFType !== sessionFType);
-      
-      if (needsIdentity || needsFulfillmentSync) {
-        args.context.waitUntil(
-          (async () => {
-            try {
-              if (needsIdentity) {
-                await args.context.cart.updateBuyerIdentity({
-                  customerAccessToken: customerAccessToken.accessToken,
-                });
-              }
-              
-              if (needsFulfillmentSync) {
-                const attributes = [
-                  { key: 'Branch', value: selectedLocName || '' },
-                  { key: 'Branch ID', value: selectedLocId || '' },
-                  { key: 'Fulfillment Type', value: sessionFType }
-                ];
-                
-                let buyerIdentity: any = undefined;
-                
-                // Fetch customer data if we need it for address sync
-                let customer: any = null;
-                if (customerAccessToken?.accessToken) {
-                  const res = await storefront.query(CUSTOMER_ADDRESSES_QUERY, {
-                    variables: { customerAccessToken: customerAccessToken.accessToken },
-                    cache: storefront.CacheNone(),
-                  });
-                  customer = res.customer;
-                }
-
-                if (fType === 'pickup') {
-                  const locations = criticalData.locations?.locations?.nodes || [];
-                  const branch = locations.find((l: any) => l.id === selectedLocId || l.name === selectedLocName);
-                  if (branch) {
-                    buyerIdentity = {
-                      deliveryAddressPreferences: [{
-                        deliveryAddress: {
-                          address1: branch.address?.address1 || '',
-                          city: branch.address?.city || '',
-                          country: 'SA',
-                          firstName: customer?.firstName || '',
-                          lastName: customer?.lastName || ''
-                        }
-                      }]
-                    };
-                  }
-                } else if (fType === 'delivery' && customer) {
-                  // Find the selected address from the customer's addresses
-                  const selectedAddr = customer.addresses?.nodes?.find((a: any) => 
-                    `${a.firstName} ${a.lastName}` === selectedAddrName || 
-                    a.address1 === selectedAddrName
-                  );
-                  
-                  if (selectedAddr) {
-                    buyerIdentity = {
-                      deliveryAddressPreferences: [{
-                        deliveryAddress: {
-                          address1: selectedAddr.address1,
-                          address2: selectedAddr.address2,
-                          city: selectedAddr.city,
-                          country: selectedAddr.country || 'SA',
-                          firstName: selectedAddr.firstName,
-                          lastName: selectedAddr.lastName,
-                          phone: selectedAddr.phone
-                        }
-                      }]
-                    };
-                  }
-                }
-
-                await args.context.cart.updateAttributes(attributes);
-                if (buyerIdentity) {
-                  await args.context.cart.updateBuyerIdentity(buyerIdentity);
-                }
-              }
-            } catch (error) {
-              console.error('[ROOT] Cart sync failed:', error);
-            }
-          })()
-        );
+      if (needsIdentity) {
+        try {
+          await args.context.cart.updateBuyerIdentity({
+            customerAccessToken: customerAccessToken.accessToken,
+          });
+        } catch (error) {
+          console.error('[ROOT] Cart identity sync failed:', error);
+        }
       }
     }
   }
 
-    return {
+    const headers = new Headers();
+    if (session.isPending) {
+      headers.append('Set-Cookie', await session.commit());
+    }
+
+    return data({
       ...deferredData,
       ...criticalData,
       publicStoreDomain: env.PUBLIC_STORE_DOMAIN,
@@ -223,8 +182,11 @@ export async function loader(args: Route.LoaderArgs) {
       selectedLocationName: selectedLocName,
       selectedAddressName: selectedAddrName,
       fulfillmentType: fType,
+      manualLocationSelection: manualLocationSelection,
       locale: new URL(args.request.url).pathname.split('/')[1]?.toLowerCase() === 'en' ? 'en' : 'ar',
-    };
+    }, {
+      headers
+    });
   }
 
 /**
@@ -346,7 +308,10 @@ function loadDeferredData({context}: Route.LoaderArgs, customerAccessToken: any,
 
 
   return {
-    cart: cart.get(),
+    cart: cart.get().catch((err) => {
+      console.error('[ROOT] Deferred cart fetch failed:', err);
+      return null;
+    }),
     isLoggedIn: customerAccount.isLoggedIn(),
     loginOtpPhone,
     customer,
@@ -425,11 +390,22 @@ export function Layout({children}: {children?: React.ReactNode}) {
     };
   }, []);
 
+  const canonicalUrl = `https://saadeddin.com${location.pathname === '/' ? '' : location.pathname}`;
+  const isEnPath = location.pathname.startsWith('/en');
+  const arPath = isEnPath ? location.pathname.replace(/^\/en/, '') || '/' : location.pathname;
+  const enPath = isEnPath ? location.pathname : `/en${location.pathname === '/' ? '' : location.pathname}`;
+  const arUrl = `https://saadeddin.com${arPath}`;
+  const enUrl = `https://saadeddin.com${enPath}`;
+
   return (
     <html lang={locale} dir={isEn ? 'ltr' : 'rtl'} className="overflow-x-hidden" suppressHydrationWarning>
       <head suppressHydrationWarning>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <link rel="canonical" href={canonicalUrl} />
+        <link rel="alternate" hrefLang="ar" href={arUrl} />
+        <link rel="alternate" hrefLang="en" href={enUrl} />
+        <link rel="alternate" hrefLang="x-default" href={arUrl} />
         <Meta />
         <Links />
         {/* Critical CSS to prevent FOUC */}
@@ -445,7 +421,27 @@ export function Layout({children}: {children?: React.ReactNode}) {
             transition: opacity 0.4s ease-in-out, visibility 0.4s;
           }
         `}} />
-        {/* Google Tag Manager Preparation */}
+        {/* GA4 Consent Mode v2 — deny all by default until user consents */}
+        <script
+          nonce={nonce}
+          suppressHydrationWarning
+          dangerouslySetInnerHTML={{
+            __html: `
+              window.dataLayer = window.dataLayer || [];
+              function gtag(){window.dataLayer.push(arguments);}
+              gtag('consent', 'default', {
+                ad_storage: 'denied',
+                analytics_storage: 'denied',
+                ad_user_data: 'denied',
+                ad_personalization: 'denied',
+                functionality_storage: 'granted',
+                security_storage: 'granted',
+                wait_for_update: 500
+              });
+            `,
+          }}
+        />
+        {/* Google Tag Manager — loads after consent defaults are set */}
         {data?.env?.PUBLIC_GTM_ID && data.env.PUBLIC_GTM_ID !== 'GTM-XXXXXXX' && (
           <script
             nonce={nonce}
@@ -496,6 +492,7 @@ export default function App() {
   const data = useRouteLoaderData<RootLoader>('root');
   const [customerId, setCustomerId] = useState<string | undefined>(undefined);
   const navigation = useNavigation();
+  const locationFetcher = useFetcher();
 
   useEffect(() => {
     if (data?.customer && typeof data.customer.then === 'function') {
@@ -504,6 +501,33 @@ export default function App() {
       }).catch(() => {});
     }
   }, [data?.customer]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const isSaTz = tz === 'Asia/Riyadh' || tz === 'Asia/Jeddah' || tz === 'Asia/Kuwait' || tz === 'Asia/Aden';
+      const isDefaultLoc = data?.selectedLocationId === 'gid://shopify/Location/80198500503' || 
+                           data?.selectedLocationId === 'gid://shopify/Location/114186715445';
+      const hasManualSelection = data?.manualLocationSelection === 'true';
+      
+      if (!isSaTz && isDefaultLoc && !hasManualSelection && locationFetcher.state === 'idle') {
+        const locale = data?.consent?.language?.toLowerCase() || 'ar';
+        const formData = new FormData();
+        formData.append('locationId', '');
+        formData.append('branchName', locale === 'en' ? 'Select Your Branch' : 'اختر الفرع');
+        formData.append('fulfillmentType', 'pickup');
+        formData.append('isInternational', 'true');
+        
+        locationFetcher.submit(formData, {
+          method: 'POST',
+          action: '/api/location-id',
+        });
+      }
+    } catch (e) {
+      console.warn('Timezone detection failed:', e);
+    }
+  }, [data?.selectedLocationId, data?.consent?.language, data?.manualLocationSelection, locationFetcher]);
 
   const isNavigatingToProduct = navigation.state === 'loading' && navigation.location.pathname.includes('/products/');
 
@@ -515,6 +539,7 @@ export default function App() {
     >
       <WishlistProvider customerId={customerId}>
         <GTMAnalytics />
+        <CookieConsentBanner locale={data?.consent?.language?.toLowerCase() === 'en' ? 'en' : 'ar'} />
         <PageLayout {...data}>
           {isNavigatingToProduct ? (
             <ProductSkeleton isEn={data.consent.language.toLowerCase() === 'en'} />
@@ -559,15 +584,7 @@ export function ErrorBoundary() {
   return (
     <WishlistProvider customerId={undefined}>
       <PageLayout {...rootData}>
-        <div className="route-error p-8 flex flex-col items-center justify-center min-h-[50vh]">
-          <h1 className="text-4xl font-bold mb-4">Oops</h1>
-          <h2 className="text-2xl mb-4 text-red-500">{errorStatus}</h2>
-          {errorMessage && (
-            <fieldset className="bg-red-50 p-4 border border-red-200 rounded text-red-800">
-              <pre>{errorMessage}</pre>
-            </fieldset>
-          )}
-        </div>
+        <ServerError error={error} status={errorStatus} />
       </PageLayout>
     </WishlistProvider>
   );

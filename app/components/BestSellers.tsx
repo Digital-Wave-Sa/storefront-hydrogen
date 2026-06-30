@@ -6,7 +6,7 @@ import { Button } from './layout/Button';
 import { useI18n } from '~/lib/i18n';
 import { useAside } from '~/components/Aside';
 import { getVisibilityStatus } from '~/lib/visibility';
-import { getIsOutOfStock } from '~/lib/stock';
+import { getIsOutOfStock, shouldHideProduct } from '~/lib/stock';
 import { AddToCartButton } from './AddToCartButton';
 
 import { StockNotificationModal } from '~/components/StockNotificationModal';
@@ -105,9 +105,10 @@ export function BestSellers({
                     <Await resolve={products}>
                         {(resolvedData) => {
                             const productNodes = (resolvedData as any).products?.nodes || [];
+                            const visibleProducts = productNodes.filter((p: any) => !shouldHideProduct(p, selectedLocationId, selectedLocationName));
                             return (
                                 <div className="flex md:grid md:grid-cols-3 lg:grid-cols-4 gap-4 lg:gap-6 overflow-x-auto md:overflow-visible hide-scrollbars snap-x snap-mandatory pb-8 md:pb-0 -mx-4 px-4 md:mx-0 md:px-0">
-                                    {productNodes.map((product: any, idx: number) => {
+                                    {visibleProducts.map((product: any, idx: number) => {
                                         const variant = product.variants?.nodes?.[0];
                                         const storeAvailabilityNodes = variant?.storeAvailability?.nodes || [];
                                         
@@ -135,7 +136,7 @@ export function BestSellers({
                                         const compareAtPrice = product.compareAtPriceRange?.minVariantPrice;
                                         const price = product.priceRange?.minVariantPrice;
                                         const hasDiscount = compareAtPrice && price && parseFloat(compareAtPrice.amount) > parseFloat(price.amount);
-                                        const isLimitedTime = product.is_limited_time?.value === 'true';
+                                        const isLimitedTime = !!product.is_limited_time?.value;
 
                                         // Mock some dynamic text just for matching the UI design identically
                                         const tagText = isEn 
@@ -188,7 +189,7 @@ export function BestSellers({
                                                     {!isVisibilityBlocked && isLimitedTime && (
                                                         <span className="text-[11px] font-bold px-3 py-1.5 rounded-full shadow-sm bg-purple-600 text-white flex items-center gap-1.5">
                                                             <span>⏳</span>
-                                                            {isEn ? 'Limited Time' : 'لفترة محدودة'}
+                                                            {product.is_limited_time.value}
                                                         </span>
                                                     )}
 

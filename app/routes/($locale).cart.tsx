@@ -468,11 +468,23 @@ export async function action({request, context}: Route.ActionArgs) {
         const {attributes, buyerIdentity} = inputs;
         if (attributes) {
             const updates = (Array.isArray(attributes) ? attributes : Object.values(attributes || {})) as any[];
+            const branchAttr = updates.find(a => a.key === 'Branch')?.value;
+            const branchIdAttr = updates.find(a => a.key === 'Branch ID')?.value;
+            const fTypeAttr = updates.find(a => a.key === 'Fulfillment Type')?.value;
+
+            if (branchAttr) context.session.set('selectedLocationName', branchAttr);
+            if (branchIdAttr) context.session.set('selectedLocationId', branchIdAttr);
+            if (fTypeAttr) {
+                context.session.set('fulfillmentType', fTypeAttr.toLowerCase() === 'pickup' ? 'pickup' : 'delivery');
+            }
+            context.session.set('manualLocationSelection', 'true');
+
+            const updatesList = updates as any[];
             const currentCart = await cart.get();
             const existing = currentCart?.attributes || [];
             const mergedMap = new Map();
             existing.forEach((a: any) => { if (a.key) mergedMap.set(a.key, a.value); });
-            updates.forEach((a: any) => { if (a.key) mergedMap.set(a.key, a.value); });
+            updatesList.forEach((a: any) => { if (a.key) mergedMap.set(a.key, a.value); });
             const finalAttributes = Array.from(mergedMap.entries()).map(([key, value]) => ({
               key: String(key),
               value: String(value || '')
@@ -485,6 +497,14 @@ export async function action({request, context}: Route.ActionArgs) {
                 buyerIdentity.customerAccessToken = customerAccessToken.accessToken;
             }
             
+            if (buyerIdentity.deliveryAddressPreferences?.[0]?.deliveryAddress) {
+                const addr = buyerIdentity.deliveryAddressPreferences[0].deliveryAddress;
+                const addressName = addr.address1 || addr.address2;
+                if (addressName) {
+                    context.session.set('selectedAddressName', addressName);
+                }
+            }
+
             let result = await cart.updateBuyerIdentity(buyerIdentity);
 
             // Check if the update failed due to Customer Invalid error
@@ -510,6 +530,11 @@ export async function action({request, context}: Route.ActionArgs) {
 
   const cartId = result?.cart?.id;
   const headers = cartId ? cart.setCartId(result?.cart?.id) : new Headers();
+  
+  if (context.session.isPending) {
+    headers.append('Set-Cookie', await context.session.commit());
+  }
+
   const {cart: cartResult, errors, warnings} = result || { cart: null, errors: [], warnings: [] };
 
   const redirectTo = formData.get('redirectTo') ?? null;
@@ -533,7 +558,12 @@ export async function action({request, context}: Route.ActionArgs) {
 
 export async function loader({context}: Route.LoaderArgs) {
   const {cart} = context;
-  return await cart.get();
+  try {
+    return await cart.get();
+  } catch (err) {
+    console.error('Failed to get cart in cart loader:', err);
+    return null;
+  }
 }
 
 export default function Cart() {

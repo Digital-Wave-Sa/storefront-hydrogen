@@ -26,12 +26,22 @@ export async function action({ request, context }: ActionFunctionArgs) {
     console.log(`║  NOTIFICATION WEBHOOK: ${topic}              `);
     console.log(`╚══════════════════════════════════════════╝`);
 
-    let stage: 'CONFIRMED' | 'OUT_FOR_DELIVERY' | null = null;
+    let stage: 'CONFIRMED' | 'OUT_FOR_DELIVERY' | 'DELIVERED' | null = null;
+
+    const isDelivered = payload.fulfillments?.some((f: any) => f.shipment_status === 'delivered') || 
+                        payload.fulfillment_status === 'fulfilled' && (
+                          payload.tags?.toLowerCase().includes('delivered') || 
+                          payload.tags?.toLowerCase().includes('تم التوصيل')
+                        );
 
     if (topic === 'orders/create') {
       stage = 'CONFIRMED';
     } else if (topic === 'orders/fulfilled') {
-      stage = 'OUT_FOR_DELIVERY';
+      stage = isDelivered ? 'DELIVERED' : 'OUT_FOR_DELIVERY';
+    } else if (topic === 'orders/updated') {
+      if (isDelivered) {
+        stage = 'DELIVERED';
+      }
     }
 
     if (stage) {

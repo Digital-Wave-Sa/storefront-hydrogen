@@ -133,7 +133,11 @@ export function ProductItem({
           prefetch="intent"
           to={isVisibilityBlocked ? '#' : variantUrl}
           className={`shrink-0 ${isVisibilityBlocked ? 'pointer-events-none' : ''}`}
-          onClick={isVisibilityBlocked ? (e: any) => e.preventDefault() : undefined}
+          onClick={isVisibilityBlocked ? (e: any) => e.preventDefault() : () => {
+            if (typeof window !== 'undefined' && (window as any).__ga4SelectItem) {
+              (window as any).__ga4SelectItem(product, '', 'Product List');
+            }
+          }}
         >
             <div className="w-32 h-32 md:w-48 md:h-48 bg-gray-50 rounded-2xl overflow-hidden border border-gray-50 relative">
             {product.featuredImage && (
@@ -148,9 +152,9 @@ export function ProductItem({
             )}
             {/* Promo Badges (List View) */}
             <div className={`absolute top-2 ${isEn ? 'right-2' : 'left-2'} z-10 flex flex-col gap-1 ${isEn ? 'items-end' : 'items-start'}`}>
-              {!isVisibilityBlocked && (product as any).is_limited_time?.value === 'true' && (
+              {!isVisibilityBlocked && (product as any).is_limited_time?.value && (
                   <span className="text-[9px] font-black px-2 py-1 rounded-lg shadow-sm bg-purple-600 text-white flex items-center gap-1">
-                      <span>⏳</span> {isEn ? 'Limited Time' : 'لفترة محدودة'}
+                      <span>⏳</span> {(product as any).is_limited_time.value}
                   </span>
               )}
               {!isVisibilityBlocked && isBogo && (
@@ -240,7 +244,11 @@ export function ProductItem({
         prefetch="intent"
         to={isVisibilityBlocked ? '#' : variantUrl}
         className={`block relative ${isVisibilityBlocked ? 'pointer-events-none' : ''}`}
-        onClick={isVisibilityBlocked ? (e: any) => e.preventDefault() : undefined}
+        onClick={isVisibilityBlocked ? (e: any) => e.preventDefault() : () => {
+          if (typeof window !== 'undefined' && (window as any).__ga4SelectItem) {
+            (window as any).__ga4SelectItem(product, '', 'Product List');
+          }
+        }}
       >
         <div className="w-full aspect-[4/3] relative flex items-center justify-center bg-gray-50 overflow-hidden">
             {product.featuredImage && (
@@ -288,9 +296,9 @@ export function ProductItem({
                     {showPreorder ? t.common.preOrder : t.common.outOfStock}
                   </span>
               ) : null}
-              {!isVisibilityBlocked && (product as any).is_limited_time?.value === 'true' && (
+              {!isVisibilityBlocked && (product as any).is_limited_time?.value && (
                   <div className="text-[10px] font-black px-2.5 py-1.5 rounded-[8px] shadow-sm bg-purple-600 text-white flex items-center gap-1.5">
-                      <span>⏳</span> {isEn ? 'Limited Time' : 'لفترة محدودة'}
+                      <span>⏳</span> {(product as any).is_limited_time.value}
                   </div>
               )}
               {!isVisibilityBlocked && isBogo && (

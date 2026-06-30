@@ -5,7 +5,7 @@ import { Price } from './Price';
 import { useI18n } from '~/lib/i18n';
 import { useAside } from '~/components/Aside';
 import { getVisibilityStatus } from '~/lib/visibility';
-import { getIsOutOfStock } from '~/lib/stock';
+import { getIsOutOfStock, shouldHideProduct } from '~/lib/stock';
 import { AddToCartButton } from './AddToCartButton';
 import { StockNotificationModal } from '~/components/StockNotificationModal';
 import { StarRating, parseRatingValue } from '~/components/StarRating';
@@ -58,10 +58,11 @@ export function NewArrivals({
                     <Await resolve={products}>
                         {(resolvedData) => {
                             const productNodes = (resolvedData as any).products?.nodes || [];
+                            const visibleProducts = productNodes.filter((p: any) => !shouldHideProduct(p, selectedLocationId, selectedLocationName));
                             return (
                                 <>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                                            {productNodes.slice(0, 4).map((product: any, idx: number) => {
+                                            {visibleProducts.slice(0, 4).map((product: any, idx: number) => {
                                                 const variant = product.variants?.nodes?.[0];
                                                 const storeAvailabilityNodes = variant?.storeAvailability?.nodes || [];
                                                 
@@ -91,7 +92,7 @@ export function NewArrivals({
                                                 const compareAtPrice = product.compareAtPriceRange?.minVariantPrice;
                                                 const price = product.priceRange?.minVariantPrice;
                                                 const hasDiscount = compareAtPrice && price && parseFloat(compareAtPrice.amount) > parseFloat(price.amount);
-                                                const isLimitedTime = product.is_limited_time?.value === 'true';
+                                                const isLimitedTime = !!product.is_limited_time?.value;
 
                                                 const tagText = isEn 
                                                     ? (idx % 2 === 0 ? '⏱ Requires 2 days prep' : 'Pay in 2 with Tamara')
@@ -122,6 +123,13 @@ export function NewArrivals({
 
                                                     {/* Status Badges Overlay (Stacking) */}
                                                     <div className={`absolute top-4 ${isEn ? 'right-4' : 'left-4'} z-10 flex flex-col gap-2 ${isEn ? 'items-end' : 'items-start'}`}>
+                                                        {/* Limited Time Badge */}
+                                                        {!isVisibilityBlocked && isLimitedTime && (
+                                                            <span className="text-[10px] font-bold px-3 py-1.5 rounded-full shadow-sm bg-purple-600 text-white flex items-center gap-1.5">
+                                                                <span>⏳</span>
+                                                                {product.is_limited_time.value}
+                                                            </span>
+                                                        )}
                                                         {/* Sale Badge */}
                                                         {!isVisibilityBlocked && hasDiscount && (
                                                             <span className="text-[10px] font-bold px-3 py-1.5 rounded-full shadow-sm bg-[#e74c3c] text-white flex items-center gap-1.5">

@@ -12,6 +12,7 @@ import { Image, Money, Pagination } from '@shopify/hydrogen';
 import React, { useRef, useEffect, useState } from 'react';
 import { Price } from './Price';
 import { ProductItem } from './ProductItem';
+import { shouldHideProduct } from '~/lib/stock';
 import { useAside } from './Aside';
 
 import type {
@@ -106,6 +107,7 @@ export function SearchForm({ searchTerm }: { searchTerm: string }) {
       {/* Clear Button (native search clear button might show, but let's hide the submit button) */}
       <button
         type="submit"
+        aria-label={isEn ? 'Search' : 'بحث'}
         className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#234745] transition-colors p-2"
       >
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
@@ -148,12 +150,14 @@ function SearchResultsProductsGrid({ products }: Pick<SearchQuery, 'products'>) 
   const rootData = useRouteLoaderData('root') as any;
   const locale = rootData?.consent?.language?.toLowerCase() || 'ar';
   const isEn = locale === 'en';
+  const { selectedLocationId, selectedLocationName } = useOutletContext<{ selectedLocationId?: string, selectedLocationName?: string }>() || {};
 
   return (
     <div className="mb-16" dir={isEn ? 'ltr' : 'rtl'}>
 
       <Pagination connection={products}>
         {({ nodes, isLoading, NextLink, PreviousLink }) => {
+          const visibleNodes = nodes.filter((node: any) => !shouldHideProduct(node, selectedLocationId, selectedLocationName));
           return (
             <>
               <div className="flex justify-center mb-8">
@@ -162,7 +166,7 @@ function SearchResultsProductsGrid({ products }: Pick<SearchQuery, 'products'>) 
                 </PreviousLink>
               </div>
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-6 lg:gap-8">
-                {nodes.map((product) => (
+                {visibleNodes.map((product) => (
                   <ProductItem 
                     key={product.id} 
                     product={product} 

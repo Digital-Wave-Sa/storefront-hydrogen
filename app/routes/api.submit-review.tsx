@@ -55,7 +55,10 @@ export async function action({ request, context }: ActionFunctionArgs) {
         { key: "status", value: "Pending" }
     ];
 
-    if (orderId || formData.get('locationId')) fields.push({ key: "location_id", value: String(orderId || formData.get('locationId')) });
+    const finalLocationId = formData.get('locationId') || formData.get('location_id');
+    if (finalLocationId) {
+        fields.push({ key: "location_id", value: String(finalLocationId) });
+    }
     if (branchName) fields.push({ key: "location_name", value: String(branchName) });
 
     try {

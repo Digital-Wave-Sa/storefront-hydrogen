@@ -2,7 +2,7 @@ import type {CartApiQueryFragment} from 'storefrontapi.generated';
 import type {CartLayout} from '~/components/CartMain';
 import {CartForm, Money, type OptimisticCart} from '@shopify/hydrogen';
 import {useEffect, useId, useRef, useState} from 'react';
-import {useFetcher, useRouteLoaderData, Link, useLocation} from 'react-router';
+import {useFetcher, useRouteLoaderData, Link, useLocation, Form} from 'react-router';
 import {useAside} from '~/components/Aside';
 import {Price, SaudiRiyalSymbol} from './Price';
 
@@ -38,7 +38,18 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
   }, 0) || 0;
 
   const totalDiscount = cartDiscountAmount + lineDiscountAmount;
+  const subtotalBeforeDiscounts = subtotal + lineDiscountAmount;
+
+  // Split loyalty discount from other discounts
+  const appliedPointsStr = cart?.attributes?.find((a: any) => a.key === 'loyalty_points')?.value;
+  const loyaltyPointsRedeemed = parseInt(appliedPointsStr) || 0;
+  const expectedLoyaltyDiscount = loyaltyPointsRedeemed * 0.01;
+  const hasLoyaltyDiscount = cart?.discountCodes?.some((dc: any) => dc.code?.startsWith('LOYALTY-')) && expectedLoyaltyDiscount > 0;
   
+  const loyaltyDiscountDisplay = hasLoyaltyDiscount ? expectedLoyaltyDiscount : 0;
+  // Make sure we don't show negative other discounts due to floating point math
+  const otherDiscountDisplay = Math.max(0, totalDiscount - loyaltyDiscountDisplay);
+
   const attributes = cart?.attributes || [];
   const branch = attributes.find((a: any) => a.key.toLowerCase().trim() === 'branch')?.value;
   const branchId = attributes.find((a: any) => a.key.toLowerCase().trim() === 'branch id')?.value;
@@ -99,13 +110,11 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
     const availabilityNodes = line.merchandise?.storeAvailability?.nodes || [];
     if (availabilityNodes.length === 0) return false;
     
-    const selectedLocId = currentBranch.id.split('/').pop();
-    const branchNode = availabilityNodes.find((node: any) => node.location?.id?.split('/').pop() === selectedLocId);
-    
-    if (branchNode && branchNode.available === false) {
-      return true;
-    }
-    return false;
+    const currentBranchAvailability = availabilityNodes.find((node: any) => 
+      node.location?.name === currentBranch.name || node.location?.id === currentBranch.id
+    );
+
+    return currentBranchAvailability && !currentBranchAvailability.available;
   }) || [];
   
   const hasOutOfStockItems = outOfStockItems.length > 0;
@@ -151,21 +160,30 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
                      <dt className="text-[#9FB7AE] font-bold" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>{isEn ? 'Subtotal' : 'المجموع الفرعي'}</dt>
                      <dd className="text-[#234745] font-black font-en flex items-center gap-1 flex-row-reverse">
                        <SaudiRiyalSymbol className="h-4 w-auto" />
-                       <span>{subtotal.toFixed(2)}</span>
+                       <span>{subtotalBeforeDiscounts.toFixed(2)}</span>
                      </dd>
                   </div>
 
-                  {totalDiscount > 0 && (
+                  {otherDiscountDisplay > 0 && (
                     <div className="flex justify-between items-center text-[15px]">
                       <dt className="text-green-600 font-bold" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
-                        {cart?.discountCodes?.some((dc: any) => dc.code?.startsWith('LOYALTY-'))
-                          ? (isEn ? 'Loyalty Discount' : 'خصم نقاط الولاء')
-                          : (isEn ? 'Discount' : 'الخصم')
-                        }
+                        {isEn ? 'Discount' : 'الخصم'}
                       </dt>
                       <dd className="text-green-600 font-black font-en flex items-center gap-1 flex-row-reverse">
                         <SaudiRiyalSymbol className="h-4 w-auto" />
-                        <span>-{totalDiscount.toFixed(2)}</span>
+                        <span>-{otherDiscountDisplay.toFixed(2)}</span>
+                      </dd>
+                    </div>
+                  )}
+
+                  {loyaltyDiscountDisplay > 0 && (
+                    <div className="flex justify-between items-center text-[15px]">
+                      <dt className="text-green-600 font-bold" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
+                        {isEn ? 'Loyalty Discount' : 'خصم نقاط الولاء'}
+                      </dt>
+                      <dd className="text-green-600 font-black font-en flex items-center gap-1 flex-row-reverse">
+                        <SaudiRiyalSymbol className="h-4 w-auto" />
+                        <span>-{loyaltyDiscountDisplay.toFixed(2)}</span>
                       </dd>
                     </div>
                   )}
@@ -420,61 +438,24 @@ function CartCheckoutActions({
 }) {
   return (
     <>
-      {checkoutUrl ? (
-        <div className="flex flex-col gap-2 w-full">
-          <a 
-            href={(() => {
-              if (disabled || !checkoutUrl) return '#';
-              try {
-                const url = new URL(checkoutUrl);
-                if (discountCodes && discountCodes.length > 0) {
-                  const loyaltyCode = discountCodes.find(d => d.code?.startsWith('LOYALTY-'))?.code;
-                  const otherCode = discountCodes.find(d => d.code && !d.code.startsWith('LOYALTY-'))?.code;
-                  const codeToApply = loyaltyCode || otherCode;
-                  if (codeToApply) {
-                    url.searchParams.set('discount', codeToApply);
-                  }
-                }
-                if (isPickup) {
-                  url.searchParams.set('pickup', 'true');
-                  url.searchParams.set('fulfillment_type', 'pickup');
-                  // Secret parameters to hint the checkout to select the pickup tab
-                  url.searchParams.set('delivery_method', 'pickup_at_location');
-                  url.searchParams.set('method', 'pickup');
-                } else {
-                  url.searchParams.set('pickup', 'false');
-                  url.searchParams.set('fulfillment_type', 'delivery');
-                  url.searchParams.set('delivery_method', 'shipping');
-                  url.searchParams.set('method', 'shipping');
-                  // Aggressive parameters to force the 'Ship' tab
-                  url.searchParams.set('checkout[delivery_strategy]', 'shipping');
-                }
-                return url.toString();
-              } catch(e) {
-                return checkoutUrl;
-              }
-            })()}
-            target="_self"
-            onClick={(e) => {
-              if (disabled) e.preventDefault();
-            }}
+      <div className="flex flex-col gap-2 w-full">
+        <Form action="/checkout/initiate" method="post" className="w-full">
+          <button 
+            type="submit"
+            disabled={disabled}
             className={`w-full h-[52px] ${disabled ? 'bg-[#e8e4e1] cursor-not-allowed text-[#888]' : 'bg-[#234745] hover:bg-[#1A3533] active:scale-[0.98] text-white'} font-bold text-[16px] rounded-[50px] flex items-center justify-center transition-all`}
-            style={{ color: '#FFFFFF', fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
+            style={{ color: disabled ? '#888' : '#FFFFFF', fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
           >
             {isEn ? 'Complete Order' : 'إتمام الطلب'}
-          </a>
-          {disabled && validationError && (
-            <p className="text-red-500 text-[12px] font-bold text-center px-4 py-2 bg-red-50 rounded-xl border border-red-100 flex items-center justify-center gap-2">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
-              {validationError}
-            </p>
-          )}
-        </div>
-      ) : (
-        <div className="w-full h-[52px] bg-[#e8e4e1] text-[#888] rounded-full flex items-center justify-center gap-2 font-black text-[15px]" style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" }}>
-          <span className="animate-pulse">{isEn ? 'Loading...' : 'جاري التحميل...'}</span>
-        </div>
-      )}
+          </button>
+        </Form>
+        {disabled && validationError && (
+          <p className="text-red-500 text-[12px] font-bold text-center px-4 py-2 bg-red-50 rounded-xl border border-red-100 flex items-center justify-center gap-2">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+            {validationError}
+          </p>
+        )}
+      </div>
     </>
   );
 }

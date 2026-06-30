@@ -14,17 +14,30 @@ import {CorporateGifting} from '~/components/CorporateGifting';
 import {getShopTitle} from '~/lib/seo';
 
 export const meta: Route.MetaFunction = ({matches}) => {
-  const title = getShopTitle('Premium Sweets, Cakes & Chocolate', matches);
+  const rootMatch = matches.find((m) => m.id === 'root');
+  const rootData = rootMatch?.data as any;
+  const isEn = rootData?.consent?.language?.toLowerCase() === 'en';
+
+  const titleText = isEn ? 'Premium Sweets, Cakes & Chocolate' : 'حلويات، كيك وشوكولاتة فاخرة';
+  const description = isEn 
+    ? 'Discover Saadeddin Pastry - The destination for premium Arabic sweets, European cakes, and fine chocolate. Freshly prepared daily with the finest ingredients.'
+    : 'اكتشف حلويات سعد الدين - وجهتك للحلويات العربية الفاخرة، الكيك الأوروبي، والشوكولاتة الراقية. تُحضر طازجة يومياً بأجود المكونات.';
+
+  const title = getShopTitle(titleText, matches);
+
   return [
     {title},
     {
       name: 'description',
-      content:
-        'Discover Saadeddin Pastry - The destination for premium Arabic sweets, European cakes, and fine chocolate. Freshly prepared daily with the finest ingredients.',
+      content: description,
     },
     {
       property: 'og:title',
       content: title,
+    },
+    {
+      property: 'og:description',
+      content: description,
     },
   ];
 };

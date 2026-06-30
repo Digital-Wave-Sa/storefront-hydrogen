@@ -9,7 +9,7 @@ export async function loader({ params, context }: Route.LoaderArgs) {
   const locale = params.locale || 'ar';
   
   // In a real scenario, we would fetch order details here using the Admin API
-  // For now, we'll mock the order data
+  // For now, we'll mock the order data with Olaya Branch Location ID
   return {
     orderId: id,
     locale,
@@ -23,7 +23,8 @@ export async function loader({ params, context }: Route.LoaderArgs) {
           handle: 'pistachio-chocolate'
         }
       ],
-      branchName: locale === 'en' ? 'Olaya Branch' : 'فرع العليا'
+      branchName: locale === 'en' ? 'Olaya Branch' : 'فرع العليا',
+      locationId: '114186715445'
     }
   };
 }
@@ -89,40 +90,48 @@ export default function FeedbackPage() {
 
   return (
     <PageLayout>
-      <div className="bg-[#fdfaf6] min-h-screen py-12 md:py-20 px-4" dir={isEn ? 'ltr' : 'rtl'}>
-        <div className="max-w-3xl mx-auto">
-          {/* Header */}
-          <div className="text-center mb-12">
-            <span className="inline-block bg-[#234745] text-white text-[10px] font-black uppercase tracking-[0.2em] px-4 py-1.5 rounded-full mb-4">
-              Order {order.name}
-            </span>
-            <h1 className="text-4xl md:text-5xl font-black text-[#234745] mb-4 tracking-tight">
-              {i18n.common.feedbackTitle}
-            </h1>
-            <p className="text-gray-400 font-bold max-w-md mx-auto leading-relaxed">
-              {i18n.common.feedbackSubtitle}
-            </p>
-          </div>
+      <div className="min-h-screen bg-[#FAF6F0] py-16 px-4 relative overflow-hidden" dir={isEn ? 'ltr' : 'rtl'}>
+        {/* Fine gold mesh patterns / background accents */}
+        <div className="absolute top-0 right-0 w-80 h-80 bg-[#d4a06a]/10 rounded-full filter blur-[100px] pointer-events-none"></div>
+        <div className="absolute bottom-0 left-0 w-80 h-80 bg-[#234745]/5 rounded-full filter blur-[100px] pointer-events-none"></div>
 
-          <fetcher.Form method="POST" className="space-y-8">
-            <input type="hidden" name="orderId" value={orderId} />
-            <input type="hidden" name="branchName" value={order.branchName} />
+        <div className="max-w-xl mx-auto relative z-10">
+          
+          {/* Main Card */}
+          <div className="bg-white rounded-3xl border border-[#EADFC9] shadow-[0_20px_50px_rgba(35,71,69,0.06)] overflow-hidden">
+            
+            {/* Header Banner */}
+            <div className="bg-[#234745] px-6 py-12 text-center relative">
+              <div className="absolute inset-0 bg-[radial-gradient(#d4a06a_1px,transparent_1.5px)] [background-size:16px_16px] opacity-10"></div>
+              <span className="inline-block bg-[#d4a06a]/20 text-[#d4a06a] border border-[#d4a06a]/30 text-[10px] font-black tracking-widest px-3.5 py-1 rounded-full mb-3 uppercase font-mono">
+                {isEn ? `Order ${order.name}` : `طلب ${order.name}`}
+              </span>
+              <h1 className="text-3xl font-black text-white tracking-tight mb-2">
+                {i18n.common.feedbackTitle}
+              </h1>
+              <p className="text-white/70 text-xs font-medium max-w-sm mx-auto leading-relaxed">
+                {i18n.common.feedbackSubtitle}
+              </p>
+            </div>
 
-            {/* Product Ratings */}
-            <div className="bg-white rounded-[40px] p-8 md:p-12 shadow-xl shadow-[#234745]/5 border border-gray-50 overflow-hidden relative">
-               <div className="absolute top-0 left-0 w-2 h-full bg-[#234745]"></div>
-               <h2 className="text-xl font-black text-[#234745] mb-8 flex items-center gap-3">
-                 <span className="w-8 h-8 rounded-full bg-[#f5eeea] flex items-center justify-center text-sm">🛍️</span>
-                 {i18n.common.rateProduct}
-               </h2>
-               
-               {order.items.map((item) => (
-                 <div key={item.id} className="flex flex-col md:flex-row items-center gap-6 p-6 rounded-3xl bg-[#fafafa] border border-gray-100">
-                    <div className="w-24 h-24 rounded-2xl overflow-hidden bg-gray-200 shrink-0 shadow-sm">
+            <fetcher.Form method="POST" className="p-6 md:p-10 space-y-8">
+              <input type="hidden" name="orderId" value={orderId} />
+              <input type="hidden" name="branchName" value={order.branchName} />
+              <input type="hidden" name="locationId" value={order.locationId} />
+
+              {/* Product Rating section */}
+              <div className="space-y-4">
+                <label className="block text-[11px] font-black uppercase tracking-wider text-gray-400">
+                  {i18n.common.rateProduct}
+                </label>
+                
+                {order.items.map((item) => (
+                  <div key={item.id} className="flex items-center gap-4 p-4 rounded-2xl bg-[#FCFAF7] border border-[#EADFC9]/40 hover:border-[#d4a06a]/40 transition-all duration-300">
+                    <div className="w-16 h-16 rounded-xl overflow-hidden bg-gray-100 shrink-0 border border-[#EADFC9]/30">
                       <img src={item.image} alt={item.title} className="w-full h-full object-cover" />
                     </div>
-                    <div className="flex-1 text-center md:text-start">
-                      <h3 className="font-black text-[#234745] mb-2">{item.title}</h3>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-extrabold text-[#234745] text-sm truncate mb-1.5">{item.title}</h3>
                       <InteractiveStarRating 
                         value={productRatings[item.id] || 0} 
                         onChange={(v) => setProductRatings(prev => ({...prev, [item.id]: v}))}
@@ -130,67 +139,63 @@ export default function FeedbackPage() {
                       />
                       <input type="hidden" name={`product_${item.id}_rating`} value={productRatings[item.id] || 0} />
                     </div>
-                 </div>
-               ))}
-            </div>
+                  </div>
+                ))}
+              </div>
 
-            {/* Branch Rating */}
-            <div className="bg-white rounded-[40px] p-8 md:p-12 shadow-xl shadow-[#234745]/5 border border-gray-50 relative overflow-hidden">
-               <div className="absolute top-0 left-0 w-2 h-full bg-[#d4a06a]"></div>
-               <h2 className="text-xl font-black text-[#234745] mb-2 flex items-center gap-3">
-                 <span className="w-8 h-8 rounded-full bg-[#f5eeea] flex items-center justify-center text-sm">🏪</span>
-                 {i18n.common.rateBranch}
-               </h2>
-               <p className="text-gray-400 font-bold text-sm mb-8 ms-11">{order.branchName}</p>
-               
-               <div className="ms-11">
-                 <InteractiveStarRating 
+              {/* Branch Rating Section */}
+              <div className="pt-6 border-t border-[#EADFC9]/30 space-y-3">
+                <div className="flex justify-between items-baseline">
+                  <label className="block text-[11px] font-black uppercase tracking-wider text-gray-400">
+                    {i18n.common.rateBranch}
+                  </label>
+                  <span className="text-xs font-extrabold text-[#d4a06a] bg-[#d4a06a]/10 px-2 py-0.5 rounded">
+                    {order.branchName}
+                  </span>
+                </div>
+                <div className="p-4 rounded-2xl bg-[#FCFAF7] border border-[#EADFC9]/40 flex justify-center">
+                  <InteractiveStarRating 
                     value={branchRating} 
                     onChange={setBranchRating}
                     isEn={isEn}
                     size="lg"
-                 />
-                 <input type="hidden" name="branch_rating" value={branchRating} />
-               </div>
-            </div>
+                  />
+                  <input type="hidden" name="branch_rating" value={branchRating} />
+                </div>
+              </div>
 
-            {/* Comments & Images */}
-            <div className="bg-white rounded-[40px] p-8 md:p-12 shadow-xl shadow-[#234745]/5 border border-gray-50 relative overflow-hidden">
-               <div className="absolute top-0 left-0 w-2 h-full bg-[#ab8e78]"></div>
-               
-               {/* Comments */}
-               <div>
-                 <h2 className="text-xl font-black text-[#234745] mb-6 flex items-center gap-3">
-                   <span className="w-8 h-8 rounded-full bg-[#f5eeea] flex items-center justify-center text-sm">✍️</span>
-                   {i18n.common.yourComments}
-                 </h2>
-                 <textarea 
-                   name="comment"
-                   rows={5}
-                   placeholder={i18n.common.commentsPlaceholder}
-                   className="w-full bg-[#fafafa] border border-gray-100 rounded-[24px] p-6 font-bold text-[#234745] focus:border-[#d4a06a] focus:ring-1 focus:ring-[#d4a06a] outline-none transition-all resize-none placeholder-gray-300"
-                 />
-               </div>
-            </div>
+              {/* Comments Box */}
+              <div className="pt-6 border-t border-[#EADFC9]/30 space-y-3">
+                <label className="block text-[11px] font-black uppercase tracking-wider text-gray-400">
+                  {i18n.common.yourComments}
+                </label>
+                <textarea 
+                  name="comment"
+                  rows={4}
+                  placeholder={i18n.common.commentsPlaceholder}
+                  className="w-full bg-[#FCFAF7] border border-[#EADFC9] rounded-2xl p-4 text-sm font-bold text-[#234745] focus:bg-white focus:border-[#234745] focus:ring-1 focus:ring-[#234745] outline-none transition-all duration-200 resize-none placeholder-gray-400"
+                />
+              </div>
 
-            {/* Submit Button */}
-            <div className="pt-8 text-center">
-              <button
-                type="submit"
-                disabled={fetcher.state !== 'idle'}
-                className="w-full md:w-auto min-w-[300px] bg-[#234745] text-white font-black py-5 px-12 rounded-[24px] text-lg shadow-xl shadow-[#234745]/20 hover:bg-[#d4a06a] hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50"
-              >
-                {fetcher.state !== 'idle' ? (
-                  <div className="flex items-center justify-center gap-3">
-                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                    {isEn ? 'SUBMITTING...' : 'جاري الإرسال...'}
-                  </div>
-                ) : (
-                  i18n.common.submitFeedback
-                )}
-              </button>
-            </div>
-          </fetcher.Form>
+              {/* Submit Action */}
+              <div className="pt-4">
+                <button
+                  type="submit"
+                  disabled={fetcher.state !== 'idle'}
+                  className="w-full bg-[#234745] hover:bg-[#1a3533] text-white font-black py-4 px-6 rounded-2xl text-sm tracking-wider uppercase transition-all duration-200 hover:shadow-lg hover:shadow-[#234745]/10 disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {fetcher.state !== 'idle' ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                      <span>{isEn ? 'SENDING...' : 'جاري الإرسال...'}</span>
+                    </>
+                  ) : (
+                    <span>{isEn ? 'SUBMIT REVIEW' : 'إرسال التقييم'}</span>
+                  )}
+                </button>
+              </div>
+            </fetcher.Form>
+          </div>
         </div>
       </div>
     </PageLayout>
@@ -211,10 +216,10 @@ function InteractiveStarRating({
   const [hover, setHover] = useState(0);
   const activeValue = hover || value;
   
-  const iconSize = size === 'lg' ? 44 : 32;
+  const iconSize = size === 'lg' ? 36 : 24;
 
   return (
-    <div className={`flex items-center gap-2 ${!isEn && 'flex-row-reverse justify-end'}`}>
+    <div className={`flex items-center gap-1.5 ${!isEn && 'flex-row-reverse justify-end'}`}>
       {[1, 2, 3, 4, 5].map((star) => (
         <button
           key={star}
@@ -222,21 +227,21 @@ function InteractiveStarRating({
           onClick={() => onChange(star)}
           onMouseEnter={() => setHover(star)}
           onMouseLeave={() => setHover(0)}
-          className="transition-transform active:scale-90 hover:scale-110"
+          className="transition-transform active:scale-75 hover:scale-110 focus:outline-none"
         >
           <svg 
             width={iconSize} 
             height={iconSize} 
             viewBox="0 0 24 24" 
-            fill={activeValue >= star ? '#f39c12' : '#e5e7eb'} 
-            className="transition-colors duration-200 drop-shadow-sm"
+            fill={activeValue >= star ? '#d4a06a' : '#EADFC9'} 
+            className="transition-colors duration-150"
           >
             <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" />
           </svg>
         </button>
       ))}
       {value > 0 && (
-        <span className={`mx-2 font-black text-[#f39c12] ${size === 'lg' ? 'text-xl' : 'text-sm'}`}>
+        <span className={`mx-2 font-bold text-[#d4a06a] ${size === 'lg' ? 'text-lg' : 'text-xs'}`}>
           {value}/5
         </span>
       )}
@@ -244,11 +249,57 @@ function InteractiveStarRating({
   );
 }
 
-export async function action({ request, context }: Route.ActionArgs) {
+export async function action({ request, context, params }: Route.ActionArgs) {
   const formData = await request.formData();
-  
-  // Logic to save to Shopify Metaobjects would go here
-  await new Promise(resolve => setTimeout(resolve, 1500));
-  
+  const orderId = formData.get('orderId');
+  const branchName = formData.get('branchName');
+  const locationId = formData.get('locationId') || '114186715445';
+  const branchRating = formData.get('branch_rating');
+  const comment = formData.get('comment');
+  const language = params.locale || 'ar';
+
+  // Find all rated products
+  const productRatings: Record<string, number> = {};
+  for (const [key, value] of formData.entries()) {
+    if (key.startsWith('product_') && key.endsWith('_rating')) {
+      const productId = key.replace('product_', '').replace('_rating', '');
+      productRatings[productId] = parseInt(String(value)) || 0;
+    }
+  }
+
+  // Submit a review metafield/metaobject entry for each product
+  const promises = Object.entries(productRatings).map(async ([productId, rating]) => {
+    // In our mock loader, product ID 1 maps to pistachio-chocolate
+    const productHandle = productId === '1' ? 'pistachio-chocolate' : 'general-feedback';
+    
+    const apiSubmitData = new FormData();
+    apiSubmitData.append('productHandle', productHandle);
+    apiSubmitData.append('customerName', 'Verified Customer');
+    apiSubmitData.append('orderId', String(orderId));
+    apiSubmitData.append('rating', String(rating));
+    apiSubmitData.append('branchRating', String(branchRating));
+    apiSubmitData.append('branchName', String(branchName));
+    apiSubmitData.append('locationId', String(locationId));
+    apiSubmitData.append('title', 'Order Feedback');
+    apiSubmitData.append('comment', String(comment));
+    apiSubmitData.append('language', language);
+
+    const { action: submitAction } = await import('./api.submit-review');
+    
+    const mockRequest = new Request('http://localhost:3000/api/submit-review', {
+      method: 'POST',
+      body: apiSubmitData
+    });
+    
+    try {
+      const response = await submitAction({ request: mockRequest, context, params: {} });
+      return response;
+    } catch (err) {
+      console.error('Failed to submit product review:', productId, err);
+      return null;
+    }
+  });
+
+  await Promise.all(promises);
   return { success: true };
 }

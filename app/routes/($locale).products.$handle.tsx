@@ -1086,6 +1086,14 @@ export default function Product() {
                             placeholder={isEn ? "e.g. Happy Birthday Sarah" : "مثال: عيد ميلاد سعيد سارة"} 
                             maxLength={50}
                          />
+                         <div className="flex items-center gap-2 mt-2 z-10">
+                            <span className="text-[12px] text-[#d4a06a] font-semibold text-start">
+                              {isEn 
+                                ? '⚠️ Note: If you do not enter a message, the cake will be prepared plain without any writing.' 
+                                : '⚠️ ملاحظة: إذا لم تقم بكتابة أي رسالة، سيتم تحضير الكيكة سادة بدون أي كتابة.'
+                              }
+                            </span>
+                          </div>
                       </div>
                     </div>
                   )}

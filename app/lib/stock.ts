@@ -55,3 +55,38 @@ export function getIsOutOfStock(
   // it is considered Out of Stock at that specific location.
   return true;
 }
+
+/**
+ * Checks if a product should be hidden entirely from the storefront.
+ * A product is hidden if its hide_if_unavailable metafield is 'true'
+ * and it is out of stock at the selected location/globally.
+ */
+export function shouldHideProduct(
+  product: any,
+  selectedLocationId: string | undefined | null,
+  selectedLocationName: string | undefined | null
+): boolean {
+  if (!product) return false;
+
+  const hideIfUnavailable = product.hide_if_unavailable?.value === 'true';
+  if (!hideIfUnavailable) return false;
+
+  const variants = product.variants?.nodes || [];
+  if (variants.length === 0) {
+    return !product.availableForSale;
+  }
+
+  // A product is out of stock if ALL of its variants are out of stock
+  const anyVariantAvailable = variants.some((v: any) => {
+    const isOutOfStock = getIsOutOfStock(
+      selectedLocationId,
+      selectedLocationName,
+      v.storeAvailability?.nodes || [],
+      v.availableForSale !== undefined ? v.availableForSale : product.availableForSale
+    );
+    return !isOutOfStock;
+  });
+
+  return !anyVariantAvailable;
+}
+

@@ -11,7 +11,8 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
   const { pathname } = new URL(request.url);
   const localePrefix = /^\/([a-z]{2})\//.test(pathname + '/') ? `/${pathname.split('/')[1]}` : '';
   const customerAccessToken = await session.get('customerAccessToken');
-  const isLoggedIn = Boolean(customerAccessToken?.accessToken);
+  console.log("AT TOP, TOKEN IS:", JSON.stringify(customerAccessToken));
+  const isLoggedIn = Boolean(customerAccessToken?.accessToken || (typeof customerAccessToken === 'string' ? customerAccessToken : null));
   
   const isAccountHome = pathname === `${localePrefix}/account` || pathname === `${localePrefix}/account/`;
   const isPrivateRoute = new RegExp(`^${localePrefix}/account/(orders|orders/.*|profile|addresses|addresses/.*|notification-preferences|dashboard|feedback-analytics|promotions|wishlist|wallet|payments)$`).test(pathname);
@@ -183,9 +184,10 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
       });
     }
 
+    console.log("TOKEN IS:", JSON.stringify(customerAccessToken));
     const { customer } = await storefront.query(CUSTOMER_QUERY, {
       variables: {
-        customerAccessToken: customerAccessToken.accessToken,
+        customerAccessToken: typeof customerAccessToken === 'string' ? customerAccessToken : customerAccessToken?.accessToken,
       },
       cache: storefront.CacheNone(),
     });

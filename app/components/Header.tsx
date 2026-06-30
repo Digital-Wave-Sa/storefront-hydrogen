@@ -106,25 +106,16 @@ export function Header({ header, isLoggedIn, cart, locations, customer, locale, 
        };
     }
 
-    const cartFormInput = {
-      action: 'FulfillmentUpdate',
-      inputs: {
-        attributes,
-        buyerIdentity
-      }
-    };
-
-    const formData = new FormData();
-    formData.append('cartFormInput', JSON.stringify(cartFormInput));
-    
-    const cartAction = isEn ? '/en/cart' : '/cart';
-    fetcher.submit(formData, { method: 'POST', action: cartAction });
-
-    // Update session location
+    // Update session location and sync cart in one request to prevent race conditions
     const locFormData = new FormData();
     locFormData.append('locationId', branchId);
     locFormData.append('branchName', branchName);
     locFormData.append('fulfillmentType', type);
+    locFormData.append('manualLocationSelection', 'true');
+    locFormData.append('attributes', JSON.stringify(attributes));
+    if (buyerIdentity) {
+      locFormData.append('buyerIdentity', JSON.stringify(buyerIdentity));
+    }
     if (addressName) {
       locFormData.append('addressName', addressName);
     }
@@ -272,7 +263,9 @@ function TopBar({
               <span className="truncate max-w-[90px] md:max-w-[200px] font-medium leading-none tracking-wide">
                 {fulfillmentType === 'delivery' && selectedAddressName 
                   ? (isEn ? `Delivery: ${selectedAddressName}` : `توصيل: ${selectedAddressName}`) 
-                  : (selectedLocationName || (isEn ? 'Select Branch' : 'فرع العليا'))
+                  : (selectedLocationId && selectedLocationName 
+                      ? selectedLocationName 
+                      : (isEn ? 'Select Your Branch' : 'اختر الفرع'))
                 }
               </span>
               <div className="absolute -top-[6px] -right-[6px] w-[8px] h-[8px] rounded-full bg-[#3ddb6a]" />
@@ -454,7 +447,7 @@ function CategoryNav({
               className={({ isActive }) => `
                 px-2 xl:px-3 py-2 text-[13px] xl:text-[14px] font-bold transition-all whitespace-nowrap rounded-full
                 ${isOffers 
-                  ? 'bg-[#e34242] !text-white hover:bg-[#c93636] px-4 xl:px-5 shadow-sm' 
+                  ? 'bg-[#b91c1c] !text-white hover:bg-[#991b1b] px-4 xl:px-5 shadow-sm' 
                   : (isActive || (item.hasMega && activeMega)) ? 'text-[#234745] bg-[#234745]/5' : 'text-[#234745]/80 hover:text-[#234745] hover:bg-[#234745]/5'}
               `}
               style={isOffers ? { color: 'white' } : {}}
@@ -587,7 +580,7 @@ export function HeaderMenu({
               prefetch="intent"
               className={({ isActive }) => `
                 flex items-center justify-between px-6 py-4 rounded-2xl text-[16px] font-bold transition-all
-                ${isOffers ? 'bg-[#e34242] !text-white' : isActive ? 'bg-[#234745] text-white' : 'bg-white text-[#234745] shadow-sm'}
+                ${isOffers ? 'bg-[#b91c1c] !text-white' : isActive ? 'bg-[#234745] text-white' : 'bg-white text-[#234745] shadow-sm'}
               `}
               style={isOffers ? { color: 'white' } : {}}
             >

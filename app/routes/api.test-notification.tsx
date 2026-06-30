@@ -6,6 +6,7 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
   const email = url.searchParams.get('email');
   const phone = url.searchParams.get('phone');
   const lang = url.searchParams.get('lang') || 'EN'; // 'EN' or 'AR'
+  const stage = url.searchParams.get('stage') || 'CONFIRMED';
 
   if (!email || !phone) {
     return Response.json({ 
@@ -43,10 +44,10 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
   };
 
   try {
-    // Send CONFIRMED template
+    // Send dynamic stage template
     const results = await notifyOrderUpdate({
       order: mockOrder,
-      stage: 'CONFIRMED',
+      stage: stage as any,
       env: context.env
     });
 

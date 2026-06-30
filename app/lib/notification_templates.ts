@@ -158,13 +158,31 @@ function getEmailTemplate(stage: OrderStage, lang: Language, data: OrderData) {
 
             <!-- Tracking / Actions -->
             <div style="margin-top: 40px;">
-              ${trackingUrl ? `
-                <a href="${trackingUrl}" style="background: #234745; color: #fff; padding: 18px 40px; text-decoration: none; border-radius: 14px; font-weight: 900; display: inline-block; font-size: 15px; box-shadow: 0 10px 20px rgba(27,61,46,0.2);">
-                  ${isEn ? 'TRACK YOUR ORDER' : 'تتبع طلبك الآن'}
-                </a>
-              ` : ''}
+              ${(() => {
+                if (stage === 'DELIVERED') {
+                  let fUrl = '';
+                  try {
+                    const parsedUrl = new URL(trackingUrl || 'https://localhost:3000');
+                    fUrl = `${parsedUrl.protocol}//${parsedUrl.host}${isEn ? '/en' : ''}/feedback/${orderNumber}`;
+                  } catch (e) {
+                    fUrl = `http://localhost:3000${isEn ? '/en' : ''}/feedback/${orderNumber}`;
+                  }
+                  return `
+                    <a href="${fUrl}" style="background: #d4a06a; color: #fff; padding: 18px 40px; text-decoration: none; border-radius: 14px; font-weight: 900; display: inline-block; font-size: 15px; box-shadow: 0 10px 20px rgba(212,160,106,0.2);">
+                      ${isEn ? 'SHARE YOUR EXPERIENCE' : 'شاركنا تجربتك ورأيك'}
+                    </a>
+                  `;
+                } else if (trackingUrl) {
+                  return `
+                    <a href="${trackingUrl}" style="background: #234745; color: #fff; padding: 18px 40px; text-decoration: none; border-radius: 14px; font-weight: 900; display: inline-block; font-size: 15px; box-shadow: 0 10px 20px rgba(27,61,46,0.2);">
+                      ${isEn ? 'TRACK YOUR ORDER' : 'تتبع طلبك الآن'}
+                    </a>
+                  `;
+                }
+                return '';
+              })()}
               
-              ${expectedDelivery ? `
+              ${expectedDelivery && stage !== 'DELIVERED' ? `
                 <p style="color: #888; font-size: 12px; margin-top: 20px;">
                    ${isEn ? 'Estimated Delivery' : 'وقت التوصيل المتوقع'}: <strong>${expectedDelivery}</strong>
                 </p>

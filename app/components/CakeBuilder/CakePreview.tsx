@@ -78,7 +78,8 @@ function checkIsCakeFrosting(
   b: number
 ): boolean {
   // Geometric boundaries for each shape and view
-  if (shape === 'standard' || shape === 'circle') {
+  const isRoundShape = shape === 'standard' || shape === 'circle' || shape === 'classic_round' || shape === 'mini_cake' || shape === 'small_standard';
+  if (isRoundShape) {
     if (view === 'top') {
       // Circle ellipse: center (0.50, 0.54), rx=0.275, ry=0.250
       const dx = (rx - 0.50) / 0.275;
@@ -229,13 +230,12 @@ export function CakePreview({
   
   // Check which views are supported by the active shape
   const supportedViews = useMemo(() => {
-    const assets = shapeAssets[shape] || shapeAssets.standard;
     return {
       front: true,
-      top: !!assets.top,
-      sliced: !!assets.sliced,
+      top: false,
+      sliced: false,
     };
-  }, [shape]);
+  }, []);
 
   // Sync view selection with isCutaway prop (from step 2 toggle)
   useEffect(() => {
@@ -249,13 +249,19 @@ export function CakePreview({
   // Get active image sources based on shape, view, topping
   const activeSources = useMemo(() => {
     let shapeImg = '';
-    if (shape === 'standard' || shape === 'circle') {
-      if (currentStep === 1) {
-        shapeImg = view === 'top' 
-          ? '/cake/shapes/small-standard-top-view.png'
-          : view === 'sliced'
-            ? '/cake/shapes/small-standard-sliced-view.png'
-            : '/cake/shapes/small-standard-normal-view.png';
+    const isRoundShape = shape === 'standard' || shape === 'circle' || shape === 'classic_round' || shape === 'mini_cake' || shape === 'small_standard';
+    
+    if (isRoundShape) {
+      if (view === 'front') {
+        if (shape === 'classic_round') {
+          shapeImg = '/cake/shapes/classic-round.png';
+        } else if (shape === 'standard') {
+          shapeImg = '/cake/shapes/standard.png';
+        } else if (shape === 'mini_cake') {
+          shapeImg = '/cake/shapes/mini-cake.png';
+        } else {
+          shapeImg = '/cake/shapes/small-standard.png';
+        }
       } else {
         shapeImg = getStandardShapeAsset(view as 'front' | 'top' | 'sliced', flavorName);
       }
@@ -269,18 +275,39 @@ export function CakePreview({
     }
 
     const toppingId = toppings?.[0]?.id || '';
-    const isSquareOrSheet = shape === 'square' || shape === 'sheet';
-    const tAssets = !isSquareOrSheet ? toppingAssets[toppingId] : undefined;
-    const toppingImg = tAssets
-      ? (view === 'top' && tAssets.top 
-          ? tAssets.top 
-          : view === 'sliced' && tAssets.sliced 
-            ? tAssets.sliced 
-            : tAssets.front)
-      : undefined;
+    let toppingImg = undefined;
+    if (toppingId === 'witches-dont-age' || toppingId === 'witches_dont_age') {
+      if (view === 'front') {
+        if (shape === 'classic_round') {
+          toppingImg = '/cake/toppings/witches_dont_age/standard_front-classic-round.png';
+        } else if (shape === 'standard') {
+          toppingImg = '/cake/toppings/witches_dont_age/standard_front-standard.png';
+        } else if (shape === 'mini_cake') {
+          toppingImg = '/cake/toppings/witches_dont_age/mini-cake.png';
+        } else if (shape === 'small_standard') {
+          toppingImg = '/cake/toppings/witches_dont_age/small-standard.png';
+        } else {
+          toppingImg = '/cake/toppings/witches_dont_age/standard_front.png';
+        }
+      }
+    }
+
+    let tintImg = undefined;
+    if (view === 'front') {
+      if (shape === 'classic_round') {
+        tintImg = '/cake/shapes/classic-round-tint.png';
+      } else if (shape === 'standard') {
+        tintImg = '/cake/shapes/standard-tint.png';
+      } else if (shape === 'mini_cake') {
+        tintImg = '/cake/shapes/mini-cake-tint.png';
+      } else if (shape === 'small_standard') {
+        tintImg = '/cake/shapes/small-standard-normal-view-tint.png';
+      }
+    }
 
     return {
       shapeImg,
+      tintImg,
       toppingImg,
       toppingId
     };
@@ -298,10 +325,13 @@ export function CakePreview({
     canvas.width = width;
     canvas.height = height;
 
-    const { shapeImg, toppingImg, toppingId } = activeSources;
+    const { shapeImg, tintImg, toppingImg, toppingId } = activeSources;
 
     const imagesToLoad: { key: string; src: string }[] = [];
     imagesToLoad.push({ key: 'shape', src: shapeImg });
+    if (tintImg) {
+      imagesToLoad.push({ key: 'tint', src: tintImg });
+    }
     if (toppingImg) {
       imagesToLoad.push({ key: 'topping', src: toppingImg });
     }
@@ -344,7 +374,8 @@ export function CakePreview({
       let cakeY = (height - cakeH) / 2;
 
       // Adjust height for aspect ratios of standard/heart shapes
-      if (shape === 'standard' || shape === 'circle') {
+      const isRoundShape = shape === 'standard' || shape === 'circle' || shape === 'classic_round' || shape === 'mini_cake' || shape === 'small_standard';
+      if (isRoundShape) {
         cakeH = 560 * (578 / 500); // aspect ratio ~1.156
         cakeY = (height - cakeH) / 2;
         if (view !== 'top') {
@@ -366,76 +397,91 @@ export function CakePreview({
         const oCtx = offscreen.getContext('2d');
         
         if (oCtx) {
-          oCtx.drawImage(loadedImages.shape, cakeX, cakeY, cakeW, cakeH);
+          if (loadedImages.tint) {
+            // Draw the base shape on the main canvas directly (uncolored, keeping shadows/board)
+            ctx.drawImage(loadedImages.shape, cakeX, cakeY, cakeW, cakeH);
+            
+            // Draw the tint layer on the offscreen canvas to color it
+            oCtx.drawImage(loadedImages.tint, cakeX, cakeY, cakeW, cakeH);
+            
+            if (color && color.toLowerCase() !== '#fdf5e6') {
+              const imgData = oCtx.getImageData(0, 0, width, height);
+              const data = imgData.data;
 
-          // Apply selected color if not default classic white
-          if (color && color.toLowerCase() !== '#fdf5e6') {
-            const imgData = oCtx.getImageData(0, 0, width, height);
-            const data = imgData.data;
-
-            // Parse hex color robustly
-            let hex = color.replace('#', '');
-            if (hex.length === 3) {
-              hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
-            }
-            const targetR = parseInt(hex.substring(0, 2) || '255', 16);
-            const targetG = parseInt(hex.substring(2, 4) || '255', 16);
-            const targetB = parseInt(hex.substring(4, 6) || '255', 16);
-
-            for (let i = 0; i < data.length; i += 4) {
-              const r = data[i];
-              const g = data[i + 1];
-              const b = data[i + 2];
-              const a = data[i + 3];
-              if (a === 0) continue;
-
-              const pixelIndex = i / 4;
-              const x = pixelIndex % width;
-              const y = Math.floor(pixelIndex / width);
-
-              const max = Math.max(r, g, b);
-              const min = Math.min(r, g, b);
-              const diff = max - min;
-
-              const relativeX = (x - cakeX) / cakeW;
-              const relativeY = (y - cakeY) / cakeH;
-
-              // Determine if pixel is cake frosting based on view and relative vertical position
-              let isCake = checkIsCakeFrosting(shape, view, relativeX, relativeY, r, g, b);
-
-              // For sliced view, only color the outside neutral white frosting (exclude the colored sponge cut face)
-              if (view === 'sliced') {
-                let isInsideCutFace = false;
-                
-                if (shape === 'heart') {
-                  const isMainCut = (relativeX >= 0.53 && relativeX <= 0.70 && relativeY >= 0.58 && relativeY <= 0.81);
-                  const isSliceCut = (relativeX >= 0.70 && relativeX <= 0.93 && relativeY >= 0.45 && relativeY <= 0.68);
-                  const isPillar = (relativeX >= 0.70 && relativeX <= 0.75 && relativeY >= 0.68 && relativeY <= 0.81);
-                  isInsideCutFace = isMainCut || isSliceCut || isPillar;
-                } else {
-                  const isMainCut = (relativeX >= 0.50 && relativeX <= 0.65 && relativeY >= 0.53 && relativeY <= 0.77);
-                  const isSliceCut = (relativeX >= 0.65 && relativeX <= 0.90 && relativeY >= 0.44 && relativeY <= 0.63);
-                  const isPillar = (relativeX >= 0.65 && relativeX <= 0.70 && relativeY >= 0.63 && relativeY <= 0.80);
-                  isInsideCutFace = isMainCut || isSliceCut || isPillar;
-                }
-                
-                if (isInsideCutFace) {
-                  isCake = false;
-                }
+              let hex = color.replace('#', '');
+              if (hex.length === 3) {
+                hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
               }
+              const targetR = parseInt(hex.substring(0, 2) || '255', 16);
+              const targetG = parseInt(hex.substring(2, 4) || '255', 16);
+              const targetB = parseInt(hex.substring(4, 6) || '255', 16);
 
-              if (isCake) {
-                // Apply color using multiply blend logic
+              for (let i = 0; i < data.length; i += 4) {
+                const r = data[i];
+                const g = data[i + 1];
+                const b = data[i + 2];
+                const a = data[i + 3];
+                if (a === 0) continue;
+
+                // Color the frosting tint layer using multiply blend logic
                 data[i] = (r * targetR) / 255;
                 data[i + 1] = (g * targetG) / 255;
                 data[i + 2] = (b * targetB) / 255;
               }
+              oCtx.putImageData(imgData, 0, 0);
             }
-            oCtx.putImageData(imgData, 0, 0);
-          }
+            
+            // Draw the colored frosting tint layer on top of the main canvas
+            ctx.drawImage(offscreen, 0, 0);
+            
+          } else {
+            // FALLBACK: Color the shape image directly
+            oCtx.drawImage(loadedImages.shape, cakeX, cakeY, cakeW, cakeH);
 
-          // Blended output to main canvas
-          ctx.drawImage(offscreen, 0, 0);
+            // Apply selected color if not default classic white
+            if (color && color.toLowerCase() !== '#fdf5e6') {
+              const imgData = oCtx.getImageData(0, 0, width, height);
+              const data = imgData.data;
+
+              // Parse hex color robustly
+              let hex = color.replace('#', '');
+              if (hex.length === 3) {
+                hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+              }
+              const targetR = parseInt(hex.substring(0, 2) || '255', 16);
+              const targetG = parseInt(hex.substring(2, 4) || '255', 16);
+              const targetB = parseInt(hex.substring(4, 6) || '255', 16);
+
+              for (let i = 0; i < data.length; i += 4) {
+                const r = data[i];
+                const g = data[i + 1];
+                const b = data[i + 2];
+                const a = data[i + 3];
+                if (a === 0) continue;
+
+                const pixelIndex = i / 4;
+                const x = pixelIndex % width;
+                const y = Math.floor(pixelIndex / width);
+
+                const relativeX = (x - cakeX) / cakeW;
+                const relativeY = (y - cakeY) / cakeH;
+
+                // Determine if pixel is cake frosting based on view and relative vertical position
+                let isCake = checkIsCakeFrosting(shape, view, relativeX, relativeY, r, g, b);
+
+                if (isCake) {
+                  // Apply color using multiply blend logic
+                  data[i] = (r * targetR) / 255;
+                  data[i + 1] = (g * targetG) / 255;
+                  data[i + 2] = (b * targetB) / 255;
+                }
+              }
+              oCtx.putImageData(imgData, 0, 0);
+            }
+
+            // Blended output to main canvas
+            ctx.drawImage(offscreen, 0, 0);
+          }
         } else {
           ctx.drawImage(loadedImages.shape, cakeX, cakeY, cakeW, cakeH);
         }

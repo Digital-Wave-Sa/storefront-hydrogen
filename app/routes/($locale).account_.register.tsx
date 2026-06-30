@@ -4,6 +4,7 @@ import { Form, Link, useActionData, useNavigation, useRouteLoaderData, useFetche
 import { LogoSplash } from '~/components/LogoSplash';
 import { sendSMS } from '~/lib/sms.server';
 import { getAdminToken } from '~/lib/shopify-admin.server';
+import { SaadeddinApi } from '~/lib/saadeddin-api.server';
 
 export const meta: MetaFunction<typeof loader> = () => {
   return [{ title: 'Create Account | Saadeddin' }];
@@ -11,7 +12,8 @@ export const meta: MetaFunction<typeof loader> = () => {
 
 export async function loader({ context, request }: LoaderFunctionArgs) {
   const customerAccessToken = await context.session.get('customerAccessToken');
-  if (customerAccessToken) {
+  const saadeddinToken = await context.session.get('saadeddinToken');
+  if (customerAccessToken && saadeddinToken) {
     return redirect('/account');
   }
   return data({});
@@ -26,10 +28,11 @@ export async function action({ request, context }: ActionFunctionArgs) {
   // STEP 1: Check phone and send OTP
   if (intent === 'send-otp') {
     const phone = String(form.get('phone') || '');
+    const countryCode = String(form.get('countryCode') || '+966');
     const email = String(form.get('email') || '').trim();
     let cleanPhone = phone.replace(/\D/g, '');
     if (cleanPhone.startsWith('0')) cleanPhone = cleanPhone.substring(1);
-    const fullPhone = `+966${cleanPhone}`;
+    const fullPhone = `${countryCode}${cleanPhone}`;
 
     // Cooldown Throttle Check (60 seconds)
     const cooldown = session.get('otpCooldown');
@@ -232,8 +235,34 @@ export async function action({ request, context }: ActionFunctionArgs) {
       });
       
       const token = tokenResponse.customerAccessTokenCreate?.customerAccessToken;
+      
+      let saadeddinToken = null;
+      try {
+        const api = new SaadeddinApi(env);
+        const registerPayload = {
+          accountType: accountType === 'company' ? 'COMPANY' : 'INDIVIDUAL',
+          phone: savedPhone,
+          name: fullName,
+          email: email,
+          companyName: companyName || undefined,
+          taxNumber: taxRegistration || undefined
+        };
+        const customRegister = await api.register(registerPayload);
+        if (customRegister?.token) {
+          saadeddinToken = customRegister.token;
+        } else {
+          throw new Error(lang === 'en' ? 'Failed to retrieve custom API token.' : 'فشل الحصول على رمز الواجهة البرمجية.');
+        }
+      } catch (apiErr: any) {
+        console.error('[Register] Failed to register with Custom API:', apiErr);
+        return data({ error: apiErr.message || (lang === 'en' ? 'Registration failed on custom backend.' : 'فشل التسجيل في النظام الخلفي المخصص.') });
+      }
+
       if (token) {
         session.set('customerAccessToken', token);
+        if (saadeddinToken) {
+          session.set('saadeddinToken', saadeddinToken);
+        }
         session.unset('socialProfile'); // Clear it after success
       }
       
@@ -464,18 +493,26 @@ export default function Register() {
                       <span className="text-[#E55C5C]">*</span>
                       <span>{isEn ? 'Mobile Number' : 'رقم الجوال'}</span>
                     </label>
-                    <div className="flex flex-row items-center border border-[#BBCFCD] bg-white rounded-[12px] px-4 py-3 h-[48px] focus-within:border-[#234745] transition-colors">
+                    <div className="flex flex-row items-center border border-[#BBCFCD] bg-white rounded-[12px] h-[48px] focus-within:border-[#234745] transition-colors overflow-hidden" dir="ltr">
+                      <select name="countryCode" className="bg-transparent border-none text-[#171717] font-bold text-[14px] focus:ring-0 outline-none pl-4 pr-6 py-3 appearance-none cursor-pointer" style={{ backgroundImage: "url(\"data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e\")", backgroundRepeat: "no-repeat", backgroundPosition: "right 0.2rem center", backgroundSize: "1.2em", width: "90px" }}>
+                        <option value="+966">+966</option>
+                        <option value="+971">+971</option>
+                        <option value="+965">+965</option>
+                        <option value="+974">+974</option>
+                        <option value="+973">+973</option>
+                        <option value="+968">+968</option>
+                        <option value="+962">+962</option>
+                      </select>
+                      <div className="w-[1px] h-3/5 bg-[#BBCFCD] mx-2"></div>
                       <input
                         name="phone"
                         type="tel"
-                        placeholder={isEn ? "Mobile Number" : "رقم الجوال"}
-                        className="flex-1 bg-transparent border-none outline-none text-[#171717] font-medium text-[14px] focus:ring-0 placeholder:text-[#BBCFCD]"
-                        maxLength={10}
+                        placeholder="5XXXXXXXXX"
+                        className="flex-1 bg-transparent border-none outline-none text-[#171717] font-medium text-[14px] focus:ring-0 placeholder:text-[#BBCFCD] px-2 py-3"
+                        style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
                         value={formData.phone}
                         onChange={(e) => setFormData({...formData, phone: e.target.value.replace(/\D/g, '')})}
                         required
-                        dir={isEn ? "ltr" : "rtl"}
-                        style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
                       />
                     </div>
                   </div>

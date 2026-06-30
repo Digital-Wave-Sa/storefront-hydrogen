@@ -54,11 +54,10 @@ const steps = [
 
 const cakeOptions = {
   shapes: [
-    { id: 'circle', name: 'دائري (Circle)', price: 0, image: '/images/cake-builder/cake-round.webp', is3D: true },
-    { id: 'standard', name: 'عادي طويل (Standard)', price: 5, image: '/images/cake-builder/cake-tall.webp', is3D: true },
-    { id: 'square', name: 'مربع (Square)', price: 10, image: '/images/cake-builder/cake-square.webp', is3D: true },
-    { id: 'sheet', name: 'مستطيل (Sheet)', price: 15, image: '/images/cake-builder/cake-square.webp', is3D: true },
-    { id: 'heart', name: 'قلب (Heart)', price: 15, image: '/images/cake-builder/cake-heart.webp', is3D: true }
+    { id: 'classic_round', name: 'دائري كلاسيكي (Classic Round)', price: 250, image: '/images/cake-builder/cake-round.webp', is3D: true },
+    { id: 'standard', name: 'ستاندرد (Standard)', price: 270, image: '/images/cake-builder/cake-tall.webp', is3D: true },
+    { id: 'mini_cake', name: 'ميني كيك (Mini Cake)', price: 100, image: '/images/cake-builder/cake-round.webp', is3D: true },
+    { id: 'small_standard', name: 'ستاندرد صغير (Small Standard)', price: 190, image: '/images/cake-builder/cake-tall.webp', is3D: true }
   ],
   sizes: [
     { id: '6-inch', name: 'صغير (Small)', personsAr: '٤-٦ أشخاص', personsEn: '4-6 Persons', price: 120, scale: 0.8 },
@@ -83,15 +82,15 @@ const cakeOptions = {
   colors: [
     { id: 'white', name: 'أبيض كلاسيكي (White)', price: 0, color: '#fdf5e6' },
     { id: 'pink', name: 'وردي لولا (Lola Pink)', price: 0, color: '#ffb6c1' },
-    { id: 'magenta', name: 'ماجنتا (Magenta)', price: 10, color: '#a32c81' },
-    { id: 'red', name: 'أحمر مخملي (Red)', price: 5, color: '#dc143c' },
-    { id: 'orange', name: 'برتقالي (Orange)', price: 5, color: '#ff8c00' },
-    { id: 'yellow', name: 'أصفر (Yellow)', price: 5, color: '#ffd700' },
-    { id: 'green', name: 'أخضر نعناعي (Green)', price: 5, color: '#98fb98' },
-    { id: 'blue', name: 'أزرق سماوي (Blue)', price: 5, color: '#87ceeb' },
-    { id: 'purple', name: 'لافندر (Purple)', price: 5, color: '#e6e6fa' },
-    { id: 'black', name: 'أسود ليلي (Black)', price: 15, color: '#1a1a1a' },
-    { id: 'custom', name: 'لون مخصص (Custom)', price: 20, color: '#4a90e2', isCustom: true }
+    { id: 'magenta', name: 'ماجنتا (Magenta)', price: 0, color: '#a32c81' },
+    { id: 'red', name: 'أحمر مخملي (Red)', price: 0, color: '#dc143c' },
+    { id: 'orange', name: 'برتقالي (Orange)', price: 0, color: '#ff8c00' },
+    { id: 'yellow', name: 'أصفر (Yellow)', price: 0, color: '#ffd700' },
+    { id: 'green', name: 'أخضر نعناعي (Green)', price: 0, color: '#98fb98' },
+    { id: 'blue', name: 'أزرق سماوي (Blue)', price: 0, color: '#87ceeb' },
+    { id: 'purple', name: 'لافندر (Purple)', price: 0, color: '#e6e6fa' },
+    { id: 'black', name: 'أسود ليلي (Black)', price: 0, color: '#1a1a1a' },
+    { id: 'custom', name: 'لون مخصص (Custom)', price: 0, color: '#4a90e2', isCustom: true }
   ]
 };
 
@@ -134,7 +133,7 @@ export default function LolaCakeBuilder({ cakeAttributes = [], isEn = false }: {
       tiers: mergeCategory(cakeOptions.tiers),
       flavors: mergeCategory(cakeOptions.flavors),
       styles: mergeCategory(cakeOptions.styles),
-      colors: mergeCategory(cakeOptions.colors)
+      colors: mergeCategory(cakeOptions.colors).map(c => ({ ...c, price: 0 }))
     };
   }, [cakeAttributes]);
 
@@ -154,13 +153,12 @@ export default function LolaCakeBuilder({ cakeAttributes = [], isEn = false }: {
   const [view, setView] = useState<'front' | 'top' | 'sliced'>('front');
 
   const supportedViews = React.useMemo(() => {
-    const shapeId = selections.shape.id;
     return {
       front: true,
-      top: shapeId === 'circle' || shapeId === 'standard' || shapeId === 'heart',
-      sliced: shapeId === 'circle' || shapeId === 'standard' || shapeId === 'heart',
+      top: false,
+      sliced: false,
     };
-  }, [selections.shape.id]);
+  }, []);
 
   React.useEffect(() => {
     if (view === 'top' && !supportedViews.top) {
@@ -169,7 +167,7 @@ export default function LolaCakeBuilder({ cakeAttributes = [], isEn = false }: {
     if (view === 'sliced' && !supportedViews.sliced) {
       setView('front');
     }
-  }, [selections.shape.id, supportedViews, view]);
+  }, [supportedViews, view]);
 
   React.useEffect(() => {
     if (isCutaway && supportedViews.sliced) {
@@ -187,6 +185,12 @@ export default function LolaCakeBuilder({ cakeAttributes = [], isEn = false }: {
       setSelections(prev => ({ ...prev, style: basicStyle }));
     }
   }, [selections.shape.id, mergedOptions.styles, selections.style.id]);
+
+  // Automatically switch views based on the active step
+  React.useEffect(() => {
+    setView('front');
+    setIsCutaway(false);
+  }, [currentStep]);
 
   const handleSelect = (category: string, item: any) => {
     setSelections(prev => ({ ...prev, [category]: item }));
@@ -374,16 +378,20 @@ export default function LolaCakeBuilder({ cakeAttributes = [], isEn = false }: {
               </div>
             )}
             
-            <div className="font-bold text-[#1a1a1a] text-lg">{displayName}</div>
+            {category !== 'color' && (
+              <div className="font-bold text-[#1a1a1a] text-lg">{displayName}</div>
+            )}
             {(option.personsAr || option.persons) && <div className="text-[#8BA19C] text-sm mt-2">{isEn ? option.personsEn : option.personsAr || option.persons}</div>}
-            <div className="text-[#1a1a1a] font-bold text-xl mt-4 flex items-center justify-center gap-1">
-              {option.price > 0 ? (
-                <>
-                  {toArabicDigits(option.price)}
-                  <SaudiRiyalSymbol className="w-auto h-4 text-[#1a1a1a]" />
-                </>
-              ) : (isEn ? 'Included' : 'مشمول')}
-            </div>
+            {category !== 'color' && (
+              <div className="text-[#1a1a1a] font-bold text-xl mt-4 flex items-center justify-center gap-1">
+                {option.price > 0 ? (
+                  <>
+                    {toArabicDigits(option.price)}
+                    <SaudiRiyalSymbol className="w-auto h-4 text-[#1a1a1a]" />
+                  </>
+                ) : (isEn ? 'Included' : 'مشمول')}
+              </div>
+            )}
           </div>
         );
       })}
@@ -494,12 +502,6 @@ export default function LolaCakeBuilder({ cakeAttributes = [], isEn = false }: {
                   <div>
                     <div className={`flex items-center justify-between mb-4 ${isEn ? 'flex-row-reverse' : ''}`}>
                       <h2 className="text-2xl font-bold text-[#1a1a1a]">{isEn ? 'Choose Flavor' : 'اختر نكهة الكيك'}</h2>
-                      <button 
-                        onClick={() => setIsCutaway(!isCutaway)}
-                        className={`px-4 py-1.5 rounded-full text-sm font-bold transition-colors ${isCutaway ? 'bg-[#294941] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
-                      >
-                        {isCutaway ? (isEn ? 'Hide Flavor' : 'إخفاء النكهة') : (isEn ? 'See Inside Flavor' : 'رؤية النكهة من الداخل')}
-                      </button>
                     </div>
                     {renderOptionsGrid('flavor', mergedOptions.flavors)}
                   </div>
@@ -698,50 +700,52 @@ export default function LolaCakeBuilder({ cakeAttributes = [], isEn = false }: {
             </div>
 
             {/* View Switcher below the circle (outside the preview area) */}
-            <div className="bg-white/95 backdrop-blur-md px-3 py-2 rounded-full shadow-md border border-gray-100 flex items-center gap-1.5 z-30">
-              <button
-                type="button"
-                onClick={() => setView('front')}
-                className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-black transition-all cursor-pointer ${
-                  view === 'front' 
-                    ? 'bg-[#294941] text-white shadow-sm' 
-                    : 'text-[#294941] hover:bg-gray-100'
-                }`}
-              >
-                <Eye className="w-3.5 h-3.5" />
-                <span>{isEn ? 'Front' : 'جانبي'}</span>
-              </button>
-
-              {supportedViews.top && (
+            {Object.values(supportedViews).filter(Boolean).length > 1 && (
+              <div className="bg-white/95 backdrop-blur-md px-3 py-2 rounded-full shadow-md border border-gray-100 flex items-center gap-1.5 z-30">
                 <button
                   type="button"
-                  onClick={() => setView('top')}
+                  onClick={() => setView('front')}
                   className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-black transition-all cursor-pointer ${
-                    view === 'top' 
+                    view === 'front' 
                       ? 'bg-[#294941] text-white shadow-sm' 
                       : 'text-[#294941] hover:bg-gray-100'
                   }`}
                 >
-                  <Compass className="w-3.5 h-3.5" />
-                  <span>{isEn ? 'Top' : 'علوي'}</span>
+                  <Eye className="w-3.5 h-3.5" />
+                  <span>{isEn ? 'Front' : 'جانبي'}</span>
                 </button>
-              )}
 
-              {supportedViews.sliced && (
-                <button
-                  type="button"
-                  onClick={() => setView('sliced')}
-                  className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-black transition-all cursor-pointer ${
-                    view === 'sliced' 
-                      ? 'bg-[#294941] text-white shadow-sm' 
-                      : 'text-[#294941] hover:bg-gray-100'
-                  }`}
-                >
-                  <Layers className="w-4 h-4" />
-                  <span>{isEn ? 'Sliced' : 'مقطوع'}</span>
-                </button>
-              )}
-            </div>
+                {supportedViews.top && (
+                  <button
+                    type="button"
+                    onClick={() => setView('top')}
+                    className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-black transition-all cursor-pointer ${
+                      view === 'top' 
+                        ? 'bg-[#294941] text-white shadow-sm' 
+                        : 'text-[#294941] hover:bg-gray-100'
+                    }`}
+                  >
+                    <Compass className="w-3.5 h-3.5" />
+                    <span>{isEn ? 'Top' : 'علوي'}</span>
+                  </button>
+                )}
+
+                {supportedViews.sliced && (
+                  <button
+                    type="button"
+                    onClick={() => setView('sliced')}
+                    className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-black transition-all cursor-pointer ${
+                      view === 'sliced' 
+                        ? 'bg-[#294941] text-white shadow-sm' 
+                        : 'text-[#294941] hover:bg-gray-100'
+                    }`}
+                  >
+                    <Layers className="w-4 h-4" />
+                    <span>{isEn ? 'Sliced' : 'مقطوع'}</span>
+                  </button>
+                )}
+              </div>
+            )}
             
           </div>
 

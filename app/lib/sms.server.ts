@@ -13,21 +13,13 @@ export async function sendSMS({
   message: string,
   env: any
 }) {
-  // Ensure the phone number starts with 966 (Saudi Arabia)
-  // If it starts with '5', prefix it with '966'
-  // If it starts with '05', replace '0' with '966'
+  // The 'to' field is expected to be in E.164 format (e.g. +9665XXXXXXX or +9627XXXXXXX)
+  // Most SMS gateways expect the number without the '+' or '00' prefix
   let formattedPhone = to.replace(/\s+/g, '').replace(/\D/g, '');
   
-  // Enforce 966 format for the SMS provider (12 digits)
-  if (formattedPhone.startsWith('00966')) {
+  // If the number somehow still starts with 00, strip it
+  if (formattedPhone.startsWith('00')) {
      formattedPhone = formattedPhone.substring(2);
-  } else if (formattedPhone.startsWith('05')) {
-    formattedPhone = '966' + formattedPhone.substring(1);
-  } else if (formattedPhone.startsWith('5') && formattedPhone.length === 9) {
-    formattedPhone = '966' + formattedPhone;
-  } else if (!formattedPhone.startsWith('966')) {
-    // If it doesn't have 966, prepend it
-    formattedPhone = '966' + formattedPhone;
   }
 
   const payload = {
@@ -41,6 +33,14 @@ export async function sendSMS({
       console.log(`[SMS BYPASS] Missing API URL. Pretending to send SMS to ${formattedPhone}.`);
       console.log(`[SMS BYPASS] Message content: ${message}`);
       return { success: true, result: 'dev-bypass' };
+    }
+
+    // The current SMS API (saadeddinpastry) strictly rejects non-966 numbers.
+    // For international numbers, bypass the API so the user can use '0000' to login/register.
+    if (!formattedPhone.startsWith('966')) {
+      console.log(`[SMS BYPASS] International number detected (${formattedPhone}). Pretending to send SMS.`);
+      console.log(`[SMS BYPASS] Message content: ${message}`);
+      return { success: true, result: 'intl-bypass' };
     }
 
     console.log('[SMS DEBUG] Sending to API:', {

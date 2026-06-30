@@ -190,15 +190,19 @@ function TopBar({
   const [branches, setBranches] = useState<any[]>([]);
   const [isOpenBranch, setIsOpenBranch] = useState(true);
 
-  // 1. Resolve locations promise
+  // 1. Resolve locations promise or use direct object
   useEffect(() => {
     if (!locations) return;
-    let cancelled = false;
-    locations.then((data: any) => {
-      if (cancelled) return;
-      setBranches(data?.locations?.nodes || []);
-    }).catch(() => {});
-    return () => { cancelled = true; };
+    if (typeof (locations as any).then === 'function') {
+      let cancelled = false;
+      locations.then((data: any) => {
+        if (cancelled) return;
+        setBranches(data?.locations?.nodes || []);
+      }).catch(() => {});
+      return () => { cancelled = true; };
+    } else {
+      setBranches((locations as any)?.locations?.nodes || []);
+    }
   }, [locations]);
 
   // 2. Compute branch open status dynamically

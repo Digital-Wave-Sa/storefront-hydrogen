@@ -39,6 +39,16 @@ export interface Branch {
     fridayHoursTo?: string;
     saturdayHoursFrom?: string;
     saturdayHoursTo?: string;
+    sundayHoursFrom?: string;
+    sundayHoursTo?: string;
+    mondayHoursFrom?: string;
+    mondayHoursTo?: string;
+    tuesdayHoursFrom?: string;
+    tuesdayHoursTo?: string;
+    wednesdayHoursFrom?: string;
+    wednesdayHoursTo?: string;
+    thursdayHoursFrom?: string;
+    thursdayHoursTo?: string;
     workingDays?: string[];
     distance?: string;
     google_maps?: string;
@@ -211,7 +221,22 @@ export function parseLocationToBranch(node: any): Branch {
 
         let targetFromKey = fromKey;
         let targetToKey = toKey;
-        if (riyadhDay === 'Fri') {
+        if (riyadhDay === 'Sun') {
+            targetFromKey = 'sunday_working_hours_from';
+            targetToKey = 'sunday_working_hours_to';
+        } else if (riyadhDay === 'Mon') {
+            targetFromKey = 'monday_working_hours_from';
+            targetToKey = 'monday_working_hours_to';
+        } else if (riyadhDay === 'Tue') {
+            targetFromKey = 'tuesday_working_hours_from';
+            targetToKey = 'tuesday_working_hours_to';
+        } else if (riyadhDay === 'Wed') {
+            targetFromKey = 'wednesday_working_hours_from';
+            targetToKey = 'wednesday_working_hours_to';
+        } else if (riyadhDay === 'Thu') {
+            targetFromKey = 'thursday_working_hours_from';
+            targetToKey = 'thursday_working_hours_to';
+        } else if (riyadhDay === 'Fri') {
             targetFromKey = 'friday_working_hours_from';
             targetToKey = 'friday_working_hours_to';
         } else if (riyadhDay === 'Sat') {
@@ -360,6 +385,16 @@ export function parseLocationToBranch(node: any): Branch {
         fridayHoursTo: (node as any).friday_working_hours_to?.value || node.metafields?.find((m: any) => m?.key === 'friday_working_hours_to')?.value,
         saturdayHoursFrom: (node as any).saturday_working_hours_from?.value || node.metafields?.find((m: any) => m?.key === 'saturday_working_hours_from')?.value,
         saturdayHoursTo: (node as any).saturday_working_hours_to?.value || node.metafields?.find((m: any) => m?.key === 'saturday_working_hours_to')?.value,
+        sundayHoursFrom: (node as any).sunday_working_hours_from?.value || node.metafields?.find((m: any) => m?.key === 'sunday_working_hours_from')?.value,
+        sundayHoursTo: (node as any).sunday_working_hours_to?.value || node.metafields?.find((m: any) => m?.key === 'sunday_working_hours_to')?.value,
+        mondayHoursFrom: (node as any).monday_working_hours_from?.value || node.metafields?.find((m: any) => m?.key === 'monday_working_hours_from')?.value,
+        mondayHoursTo: (node as any).monday_working_hours_to?.value || node.metafields?.find((m: any) => m?.key === 'monday_working_hours_to')?.value,
+        tuesdayHoursFrom: (node as any).tuesday_working_hours_from?.value || node.metafields?.find((m: any) => m?.key === 'tuesday_working_hours_from')?.value,
+        tuesdayHoursTo: (node as any).tuesday_working_hours_to?.value || node.metafields?.find((m: any) => m?.key === 'tuesday_working_hours_to')?.value,
+        wednesdayHoursFrom: (node as any).wednesday_working_hours_from?.value || node.metafields?.find((m: any) => m?.key === 'wednesday_working_hours_from')?.value,
+        wednesdayHoursTo: (node as any).wednesday_working_hours_to?.value || node.metafields?.find((m: any) => m?.key === 'wednesday_working_hours_to')?.value,
+        thursdayHoursFrom: (node as any).thursday_working_hours_from?.value || node.metafields?.find((m: any) => m?.key === 'thursday_working_hours_from')?.value,
+        thursdayHoursTo: (node as any).thursday_working_hours_to?.value || node.metafields?.find((m: any) => m?.key === 'thursday_working_hours_to')?.value,
         workingDays: (() => {
             const val = (node as any).working_days?.value || node.metafields?.find((m: any) => m?.key === 'working_days')?.value;
             if (val) {
@@ -837,7 +872,22 @@ function ModalContent({
 
                                                      let from = branch.hoursFrom;
                                                      let to = branch.hoursTo;
-                                                     if (day === 'Fri' && branch.fridayHoursFrom && branch.fridayHoursTo) {
+                                                     if (day === 'Sun' && branch.sundayHoursFrom && branch.sundayHoursTo) {
+                                                         from = branch.sundayHoursFrom;
+                                                         to = branch.sundayHoursTo;
+                                                     } else if (day === 'Mon' && branch.mondayHoursFrom && branch.mondayHoursTo) {
+                                                         from = branch.mondayHoursFrom;
+                                                         to = branch.mondayHoursTo;
+                                                     } else if (day === 'Tue' && branch.tuesdayHoursFrom && branch.tuesdayHoursTo) {
+                                                         from = branch.tuesdayHoursFrom;
+                                                         to = branch.tuesdayHoursTo;
+                                                     } else if (day === 'Wed' && branch.wednesdayHoursFrom && branch.wednesdayHoursTo) {
+                                                         from = branch.wednesdayHoursFrom;
+                                                         to = branch.wednesdayHoursTo;
+                                                     } else if (day === 'Thu' && branch.thursdayHoursFrom && branch.thursdayHoursTo) {
+                                                         from = branch.thursdayHoursFrom;
+                                                         to = branch.thursdayHoursTo;
+                                                     } else if (day === 'Fri' && branch.fridayHoursFrom && branch.fridayHoursTo) {
                                                          from = branch.fridayHoursFrom;
                                                          to = branch.fridayHoursTo;
                                                      } else if (day === 'Sat' && branch.saturdayHoursFrom && branch.saturdayHoursTo) {

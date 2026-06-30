@@ -96,6 +96,16 @@ export async function loader({ context }: LoaderFunctionArgs) {
         friday_hours_to: loc.metafields.nodes.find((m: any) => m.key === 'friday_working_hours_to')?.value || '',
         saturday_hours_from: loc.metafields.nodes.find((m: any) => m.key === 'saturday_working_hours_from')?.value || '',
         saturday_hours_to: loc.metafields.nodes.find((m: any) => m.key === 'saturday_working_hours_to')?.value || '',
+        sunday_hours_from: loc.metafields.nodes.find((m: any) => m.key === 'sunday_working_hours_from')?.value || '',
+        sunday_hours_to: loc.metafields.nodes.find((m: any) => m.key === 'sunday_working_hours_to')?.value || '',
+        monday_hours_from: loc.metafields.nodes.find((m: any) => m.key === 'monday_working_hours_from')?.value || '',
+        monday_hours_to: loc.metafields.nodes.find((m: any) => m.key === 'monday_working_hours_to')?.value || '',
+        tuesday_hours_from: loc.metafields.nodes.find((m: any) => m.key === 'tuesday_working_hours_from')?.value || '',
+        tuesday_hours_to: loc.metafields.nodes.find((m: any) => m.key === 'tuesday_working_hours_to')?.value || '',
+        wednesday_hours_from: loc.metafields.nodes.find((m: any) => m.key === 'wednesday_working_hours_from')?.value || '',
+        wednesday_hours_to: loc.metafields.nodes.find((m: any) => m.key === 'wednesday_working_hours_to')?.value || '',
+        thursday_hours_from: loc.metafields.nodes.find((m: any) => m.key === 'thursday_working_hours_from')?.value || '',
+        thursday_hours_to: loc.metafields.nodes.find((m: any) => m.key === 'thursday_working_hours_to')?.value || '',
         working_days: (() => {
           const val = loc.metafields.nodes.find((m: any) => m.key === 'working_days')?.value;
           if (val) {
@@ -207,6 +217,16 @@ export async function action({ request, context }: ActionFunctionArgs) {
   const fridayHoursTo = formData.get('fridayHoursTo') as string;
   const saturdayHoursFrom = formData.get('saturdayHoursFrom') as string;
   const saturdayHoursTo = formData.get('saturdayHoursTo') as string;
+  const sundayHoursFrom = formData.get('sundayHoursFrom') as string;
+  const sundayHoursTo = formData.get('sundayHoursTo') as string;
+  const mondayHoursFrom = formData.get('mondayHoursFrom') as string;
+  const mondayHoursTo = formData.get('mondayHoursTo') as string;
+  const tuesdayHoursFrom = formData.get('tuesdayHoursFrom') as string;
+  const tuesdayHoursTo = formData.get('tuesdayHoursTo') as string;
+  const wednesdayHoursFrom = formData.get('wednesdayHoursFrom') as string;
+  const wednesdayHoursTo = formData.get('wednesdayHoursTo') as string;
+  const thursdayHoursFrom = formData.get('thursdayHoursFrom') as string;
+  const thursdayHoursTo = formData.get('thursdayHoursTo') as string;
   const deliveryFee = formData.get('deliveryFee') as string;
   const threshold = formData.get('threshold') as string;
   const workingDays = formData.getAll('workingDays') as string[];
@@ -223,6 +243,16 @@ export async function action({ request, context }: ActionFunctionArgs) {
       { ownerId: locationId, namespace: "custom", key: "friday_working_hours_to", value: fridayHoursTo || "", type: "single_line_text_field" },
       { ownerId: locationId, namespace: "custom", key: "saturday_working_hours_from", value: saturdayHoursFrom || "", type: "single_line_text_field" },
       { ownerId: locationId, namespace: "custom", key: "saturday_working_hours_to", value: saturdayHoursTo || "", type: "single_line_text_field" },
+      { ownerId: locationId, namespace: "custom", key: "sunday_working_hours_from", value: sundayHoursFrom || "", type: "single_line_text_field" },
+      { ownerId: locationId, namespace: "custom", key: "sunday_working_hours_to", value: sundayHoursTo || "", type: "single_line_text_field" },
+      { ownerId: locationId, namespace: "custom", key: "monday_working_hours_from", value: mondayHoursFrom || "", type: "single_line_text_field" },
+      { ownerId: locationId, namespace: "custom", key: "monday_working_hours_to", value: mondayHoursTo || "", type: "single_line_text_field" },
+      { ownerId: locationId, namespace: "custom", key: "tuesday_working_hours_from", value: tuesdayHoursFrom || "", type: "single_line_text_field" },
+      { ownerId: locationId, namespace: "custom", key: "tuesday_working_hours_to", value: tuesdayHoursTo || "", type: "single_line_text_field" },
+      { ownerId: locationId, namespace: "custom", key: "wednesday_working_hours_from", value: wednesdayHoursFrom || "", type: "single_line_text_field" },
+      { ownerId: locationId, namespace: "custom", key: "wednesday_working_hours_to", value: wednesdayHoursTo || "", type: "single_line_text_field" },
+      { ownerId: locationId, namespace: "custom", key: "thursday_working_hours_from", value: thursdayHoursFrom || "", type: "single_line_text_field" },
+      { ownerId: locationId, namespace: "custom", key: "thursday_working_hours_to", value: thursdayHoursTo || "", type: "single_line_text_field" },
       { ownerId: locationId, namespace: "custom", key: "delivery_fee", value: deliveryFee, type: "number_integer" },
       { ownerId: locationId, namespace: "custom", key: "free_delivery_threshold", value: threshold, type: "number_integer" },
       { ownerId: locationId, namespace: "custom", key: "working_days", value: workingDaysJson, type: "json" }
@@ -430,47 +460,97 @@ export default function BranchDashboard() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="luxury-field">
-                    <label className="luxury-label">{isEn ? 'Friday Open From' : 'الجمعة يفتح من'}</label>
-                    <input 
-                      name="fridayHoursFrom" 
-                      defaultValue={loc.friday_hours_from} 
-                      className="luxury-input-field text-sm"
-                      placeholder="e.g. 1:00 PM"
-                    />
-                  </div>
-                  <div className="luxury-field">
-                    <label className="luxury-label">{isEn ? 'Friday Close At' : 'الجمعة يغلق في'}</label>
-                    <input 
-                      name="fridayHoursTo" 
-                      defaultValue={loc.friday_hours_to} 
-                      className="luxury-input-field text-sm"
-                      placeholder="e.g. 11:00 PM"
-                    />
-                  </div>
-                </div>
+                <details className="border border-[#eee] rounded-xl p-3 bg-gray-50 mt-4">
+                  <summary className="cursor-pointer font-bold text-xs text-[#234745] hover:text-[#d4a06a] outline-none select-none">
+                    {isEn ? '⚙️ Day-by-Day Custom Timings (Optional)' : '⚙️ أوقات عمل مخصصة لكل يوم (اختياري)'}
+                  </summary>
+                  
+                  <div className="mt-4 space-y-4">
+                    {/* Sunday */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="luxury-field">
+                        <label className="luxury-label">{isEn ? 'Sunday Open From' : 'الأحد يفتح من'}</label>
+                        <input name="sundayHoursFrom" defaultValue={loc.sunday_hours_from} className="luxury-input-field text-xs" placeholder="8:00 AM" />
+                      </div>
+                      <div className="luxury-field">
+                        <label className="luxury-label">{isEn ? 'Sunday Close At' : 'الأحد يغلق في'}</label>
+                        <input name="sundayHoursTo" defaultValue={loc.sunday_hours_to} className="luxury-input-field text-xs" placeholder="11:00 PM" />
+                      </div>
+                    </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="luxury-field">
-                    <label className="luxury-label">{isEn ? 'Saturday Open From' : 'السبت يفتح من'}</label>
-                    <input 
-                      name="saturdayHoursFrom" 
-                      defaultValue={loc.saturday_hours_from} 
-                      className="luxury-input-field text-sm"
-                      placeholder="e.g. 8:00 AM"
-                    />
+                    {/* Monday */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="luxury-field">
+                        <label className="luxury-label">{isEn ? 'Monday Open From' : 'الاثنين يفتح من'}</label>
+                        <input name="mondayHoursFrom" defaultValue={loc.monday_hours_from} className="luxury-input-field text-xs" placeholder="8:00 AM" />
+                      </div>
+                      <div className="luxury-field">
+                        <label className="luxury-label">{isEn ? 'Monday Close At' : 'الاثنين يغلق في'}</label>
+                        <input name="mondayHoursTo" defaultValue={loc.monday_hours_to} className="luxury-input-field text-xs" placeholder="11:00 PM" />
+                      </div>
+                    </div>
+
+                    {/* Tuesday */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="luxury-field">
+                        <label className="luxury-label">{isEn ? 'Tuesday Open From' : 'الثلاثاء يفتح من'}</label>
+                        <input name="tuesdayHoursFrom" defaultValue={loc.tuesday_hours_from} className="luxury-input-field text-xs" placeholder="8:00 AM" />
+                      </div>
+                      <div className="luxury-field">
+                        <label className="luxury-label">{isEn ? 'Tuesday Close At' : 'الثلاثاء يغلق في'}</label>
+                        <input name="tuesdayHoursTo" defaultValue={loc.tuesday_hours_to} className="luxury-input-field text-xs" placeholder="11:00 PM" />
+                      </div>
+                    </div>
+
+                    {/* Wednesday */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="luxury-field">
+                        <label className="luxury-label">{isEn ? 'Wednesday Open From' : 'الأربعاء يفتح من'}</label>
+                        <input name="wednesdayHoursFrom" defaultValue={loc.wednesday_hours_from} className="luxury-input-field text-xs" placeholder="8:00 AM" />
+                      </div>
+                      <div className="luxury-field">
+                        <label className="luxury-label">{isEn ? 'Wednesday Close At' : 'الأربعاء يغلق في'}</label>
+                        <input name="wednesdayHoursTo" defaultValue={loc.wednesday_hours_to} className="luxury-input-field text-xs" placeholder="11:00 PM" />
+                      </div>
+                    </div>
+
+                    {/* Thursday */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="luxury-field">
+                        <label className="luxury-label">{isEn ? 'Thursday Open From' : 'الخميس يفتح من'}</label>
+                        <input name="thursdayHoursFrom" defaultValue={loc.thursday_hours_from} className="luxury-input-field text-xs" placeholder="8:00 AM" />
+                      </div>
+                      <div className="luxury-field">
+                        <label className="luxury-label">{isEn ? 'Thursday Close At' : 'الخميس يغلق في'}</label>
+                        <input name="thursdayHoursTo" defaultValue={loc.thursday_hours_to} className="luxury-input-field text-xs" placeholder="11:00 PM" />
+                      </div>
+                    </div>
+
+                    {/* Friday */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="luxury-field">
+                        <label className="luxury-label">{isEn ? 'Friday Open From' : 'الجمعة يفتح من'}</label>
+                        <input name="fridayHoursFrom" defaultValue={loc.friday_hours_from} className="luxury-input-field text-xs" placeholder="1:00 PM" />
+                      </div>
+                      <div className="luxury-field">
+                        <label className="luxury-label">{isEn ? 'Friday Close At' : 'الجمعة يغلق في'}</label>
+                        <input name="fridayHoursTo" defaultValue={loc.friday_hours_to} className="luxury-input-field text-xs" placeholder="11:00 PM" />
+                      </div>
+                    </div>
+
+                    {/* Saturday */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="luxury-field">
+                        <label className="luxury-label">{isEn ? 'Saturday Open From' : 'السبت يفتح من'}</label>
+                        <input name="saturdayHoursFrom" defaultValue={loc.saturday_hours_from} className="luxury-input-field text-xs" placeholder="8:00 AM" />
+                      </div>
+                      <div className="luxury-field">
+                        <label className="luxury-label">{isEn ? 'Saturday Close At' : 'السبت يغلق في'}</label>
+                        <input name="saturdayHoursTo" defaultValue={loc.saturday_hours_to} className="luxury-input-field text-xs" placeholder="11:00 PM" />
+                      </div>
+                    </div>
                   </div>
-                  <div className="luxury-field">
-                    <label className="luxury-label">{isEn ? 'Saturday Close At' : 'السبت يغلق في'}</label>
-                    <input 
-                      name="saturdayHoursTo" 
-                      defaultValue={loc.saturday_hours_to} 
-                      className="luxury-input-field text-sm"
-                      placeholder="e.g. 11:00 PM"
-                    />
-                  </div>
-                </div>
+                </details>
 
                 <div className="luxury-field">
                   <label className="luxury-label">{isEn ? 'Working Days' : 'أيام العمل'}</label>

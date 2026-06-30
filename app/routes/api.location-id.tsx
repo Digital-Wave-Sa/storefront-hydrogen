@@ -64,7 +64,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
             
             if (!buyerIdentity && typeof fulfillmentType === 'string' && fulfillmentType === 'delivery' && typeof addressName === 'string') {
                 const CUSTOMER_ADDRESSES_QUERY = `#graphql
-                  query CustomerAddresses($customerAccessToken: String!) {
+                  query CustomerAddressesForLocationId($customerAccessToken: String!) {
                     customer(customerAccessToken: $customerAccessToken) {
                       addresses(first: 250) {
                         nodes {

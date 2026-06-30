@@ -631,6 +631,46 @@ const LOCATIONS_QUERY = `#graphql
           key
           value
         }
+        sunday_working_hours_from: metafield(namespace: "custom", key: "sunday_working_hours_from") {
+          key
+          value
+        }
+        sunday_working_hours_to: metafield(namespace: "custom", key: "sunday_working_hours_to") {
+          key
+          value
+        }
+        monday_working_hours_from: metafield(namespace: "custom", key: "monday_working_hours_from") {
+          key
+          value
+        }
+        monday_working_hours_to: metafield(namespace: "custom", key: "monday_working_hours_to") {
+          key
+          value
+        }
+        tuesday_working_hours_from: metafield(namespace: "custom", key: "tuesday_working_hours_from") {
+          key
+          value
+        }
+        tuesday_working_hours_to: metafield(namespace: "custom", key: "tuesday_working_hours_to") {
+          key
+          value
+        }
+        wednesday_working_hours_from: metafield(namespace: "custom", key: "wednesday_working_hours_from") {
+          key
+          value
+        }
+        wednesday_working_hours_to: metafield(namespace: "custom", key: "wednesday_working_hours_to") {
+          key
+          value
+        }
+        thursday_working_hours_from: metafield(namespace: "custom", key: "thursday_working_hours_from") {
+          key
+          value
+        }
+        thursday_working_hours_to: metafield(namespace: "custom", key: "thursday_working_hours_to") {
+          key
+          value
+        }
         friday_working_hours_from: metafield(namespace: "custom", key: "friday_working_hours_from") {
           key
           value

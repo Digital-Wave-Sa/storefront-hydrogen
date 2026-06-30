@@ -93,6 +93,16 @@ export async function loader({context}: Route.LoaderArgs) {
         friday_hours_to: (loc.metafields?.nodes || []).find((m: any) => m.key === 'friday_working_hours_to')?.value,
         saturday_hours_from: (loc.metafields?.nodes || []).find((m: any) => m.key === 'saturday_working_hours_from')?.value,
         saturday_hours_to: (loc.metafields?.nodes || []).find((m: any) => m.key === 'saturday_working_hours_to')?.value,
+        sunday_hours_from: (loc.metafields?.nodes || []).find((m: any) => m.key === 'sunday_working_hours_from')?.value,
+        sunday_hours_to: (loc.metafields?.nodes || []).find((m: any) => m.key === 'sunday_working_hours_to')?.value,
+        monday_hours_from: (loc.metafields?.nodes || []).find((m: any) => m.key === 'monday_working_hours_from')?.value,
+        monday_hours_to: (loc.metafields?.nodes || []).find((m: any) => m.key === 'monday_working_hours_to')?.value,
+        tuesday_hours_from: (loc.metafields?.nodes || []).find((m: any) => m.key === 'tuesday_working_hours_from')?.value,
+        tuesday_hours_to: (loc.metafields?.nodes || []).find((m: any) => m.key === 'tuesday_working_hours_to')?.value,
+        wednesday_hours_from: (loc.metafields?.nodes || []).find((m: any) => m.key === 'wednesday_working_hours_from')?.value,
+        wednesday_hours_to: (loc.metafields?.nodes || []).find((m: any) => m.key === 'wednesday_working_hours_to')?.value,
+        thursday_hours_from: (loc.metafields?.nodes || []).find((m: any) => m.key === 'thursday_working_hours_from')?.value,
+        thursday_hours_to: (loc.metafields?.nodes || []).find((m: any) => m.key === 'thursday_working_hours_to')?.value,
         
         // Delivery Rules
         delivery_available: (loc.metafields?.nodes || []).find((m: any) => m.key === 'delivery_available')?.value === 'true',

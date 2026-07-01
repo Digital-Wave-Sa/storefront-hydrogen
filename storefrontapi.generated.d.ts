@@ -3616,6 +3616,36 @@ export type NewestProductsQuery = {
   };
 };
 
+export type GetPromotionalProductsQueryVariables = StorefrontAPI.Exact<{
+  country?: StorefrontAPI.InputMaybe<StorefrontAPI.CountryCode>;
+  language?: StorefrontAPI.InputMaybe<StorefrontAPI.LanguageCode>;
+}>;
+
+export type GetPromotionalProductsQuery = {
+  products: {
+    nodes: Array<
+      Pick<
+        StorefrontAPI.Product,
+        'id' | 'handle' | 'title' | 'availableForSale'
+      > & {
+        featuredImage?: StorefrontAPI.Maybe<
+          Pick<StorefrontAPI.Image, 'url' | 'altText' | 'width' | 'height'>
+        >;
+        variants: {
+          nodes: Array<
+            Pick<StorefrontAPI.ProductVariant, 'id'> & {
+              price: Pick<StorefrontAPI.MoneyV2, 'amount' | 'currencyCode'>;
+              compareAtPrice?: StorefrontAPI.Maybe<
+                Pick<StorefrontAPI.MoneyV2, 'amount' | 'currencyCode'>
+              >;
+            }
+          >;
+        };
+      }
+    >;
+  };
+};
+
 export type CollectionIdsQueryVariables = StorefrontAPI.Exact<{
   handle: StorefrontAPI.Scalars['String']['input'];
   country?: StorefrontAPI.InputMaybe<StorefrontAPI.CountryCode>;
@@ -4062,6 +4092,10 @@ interface GeneratedQueryTypes {
   '#graphql\n  #graphql\n  fragment ProductDetailRecommendedProduct on Product {\n    id\n    title\n    handle\n    availableForSale\n    compareAtPriceRange {\n      minVariantPrice {\n        amount\n        currencyCode\n      }\n    }\n    priceRange {\n      minVariantPrice {\n        amount\n        currencyCode\n      }\n    }\n    images(first: 1) {\n      nodes {\n        id\n        url\n        altText\n        width\n        height\n      }\n    }\n    visibility_start: metafield(namespace: "custom", key: "visibility_start") {\n      value\n    }\n    visibility_end: metafield(namespace: "custom", key: "visibility_end") {\n      value\n    }\n    average_rating: metafield(namespace: "custom", key: "average_rating") {\n      value\n    }\n    rating_count: metafield(namespace: "custom", key: "rating_count") {\n      value\n    }\n    bogo_free_item: metafield(namespace: "custom", key: "bogo_free_item") {\n      value\n      reference {\n        ... on ProductVariant {\n          id\n        }\n      }\n    }\n    variants(first: 1) {\n      nodes {\n        id\n        title\n        image {\n          url\n          altText\n          width\n          height\n        }\n        price {\n          amount\n          currencyCode\n        }\n        compareAtPrice {\n          amount\n          currencyCode\n        }\n        selectedOptions {\n          name\n          value\n        }\n        product {\n          handle\n          title\n        }\n        storeAvailability(first: 250) {\n          nodes {\n            available\n            location {\n              id\n            }\n          }\n        }\n      }\n    }\n  }\n\n  query NewestProducts(\n    $country: CountryCode\n    $language: LanguageCode\n  ) @inContext(country: $country, language: $language) {\n    products(first: 4, sortKey: UPDATED_AT, reverse: true) {\n      nodes {\n        ...ProductDetailRecommendedProduct\n      }\n    }\n  }\n': {
     return: NewestProductsQuery;
     variables: NewestProductsQueryVariables;
+  };
+  '#graphql\n  query getPromotionalProducts($country: CountryCode, $language: LanguageCode) {\n    products(first: 8) {\n      nodes {\n        id\n        handle\n        title\n        availableForSale\n        featuredImage {\n          url\n          altText\n          width\n          height\n        }\n        variants(first: 1) {\n          nodes {\n            id\n            price {\n              amount\n              currencyCode\n            }\n            compareAtPrice {\n              amount\n              currencyCode\n            }\n          }\n        }\n      }\n    }\n  }\n': {
+    return: GetPromotionalProductsQuery;
+    variables: GetPromotionalProductsQueryVariables;
   };
   '#graphql\n                query CollectionIds($handle: String!, $country: CountryCode, $language: LanguageCode) @inContext(country: $country, language: $language) {\n                    collection(handle: $handle) {\n                        products(first: 250) {\n                            nodes {\n                                id\n                            }\n                        }\n                    }\n                }\n            ': {
     return: CollectionIdsQuery;

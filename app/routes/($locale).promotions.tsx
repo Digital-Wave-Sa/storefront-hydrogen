@@ -213,8 +213,8 @@ export default function PromotionsPage() {
       <div className="max-w-[1240px] mx-auto px-4 mt-6 md:mt-10 flex flex-col gap-8">
         
         {/* 2. Hero Offer Card */}
-        <section className="w-full bg-[#FEF8EB]/30 rounded-[24px] border border-[#EBE3D5] p-5 md:p-8 flex flex-col lg:flex-row items-center gap-8 shadow-sm">
-          {/* Left Side: Table Image */}
+        <section className="w-full bg-[#FEF8EB]/30 rounded-[24px] border border-[#EBE3D5] p-5 md:p-8 flex flex-col lg:flex-row items-center gap-8 shadow-sm" dir="ltr">
+          {/* Left Side: Table Image (Always Left) */}
           <div className="w-full lg:w-1/2 h-[260px] sm:h-[350px] lg:h-[400px] rounded-[20px] overflow-hidden shadow-sm">
             <img 
               src="/images/promotions/promotions-1st-section.webp" 
@@ -223,8 +223,8 @@ export default function PromotionsPage() {
             />
           </div>
 
-          {/* Right Side: Promotion Details */}
-          <div className="w-full lg:w-1/2 flex flex-col items-start rtl:items-end text-start rtl:text-end gap-5">
+          {/* Right Side: Promotion Details (Always Right) */}
+          <div className="w-full lg:w-1/2 flex flex-col items-start rtl:items-end text-start rtl:text-end gap-5" dir={direction}>
             {/* Tag Badge */}
             <div className="bg-[#E24D55] px-3 py-1 rounded-[6px] flex items-center gap-1.5 self-start rtl:self-end">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-white">
@@ -234,36 +234,25 @@ export default function PromotionsPage() {
               <span className="text-white font-bold text-[12px] tracking-wide">{isEn ? 'LIMITED OFFER' : 'عرض محدود'}</span>
             </div>
 
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-2 w-full">
               <h2 className="text-[#234745] text-[32px] md:text-[40px] font-bold leading-tight">
                 {isEn ? 'Big Season Sales' : 'تخفيضات الموسم الكبيرة'}
               </h2>
               <p className="text-[#906B51] text-[15px] font-medium leading-relaxed">
-                {isEn ? 'Discounts up to 40% on our best products for a limited time' : 'خصومات حتى ٤٠٪ على أفضل منتجاتنا لفترة محدودة'}
+                {isEn ? (
+                  <>Discounts up to <span style={{ fontFamily: "'EnglishDigits', sans-serif" }}>40%</span> on our best products for a limited time</>
+                ) : (
+                  <>خصومات حتى <span style={{ fontFamily: "'EnglishDigits', sans-serif" }}>40%</span> على أفضل منتجاتنا لفترة محدودة</>
+                )}
               </p>
             </div>
 
             {/* Timer and Promo Code Block */}
-            <div className="flex flex-row flex-wrap items-center justify-between rtl:flex-row-reverse w-full gap-4 mt-2">
-              {/* Live Timer digits */}
-              <div className="flex items-center gap-2">
-                <div className="flex flex-col items-center justify-center w-[54px] h-[60px] bg-white border border-[#E1ECE9] rounded-[10px] shadow-sm">
-                  <span className="text-[#234745] font-bold text-[20px] leading-none">{timeLeft.hours}</span>
-                  <span className="text-[#9FB7AE] text-[10px] font-bold mt-1">{isEn ? 'Hours' : 'ساعة'}</span>
-                </div>
-                <div className="flex flex-col items-center justify-center w-[54px] h-[60px] bg-white border border-[#E1ECE9] rounded-[10px] shadow-sm">
-                  <span className="text-[#234745] font-bold text-[20px] leading-none">{timeLeft.minutes}</span>
-                  <span className="text-[#9FB7AE] text-[10px] font-bold mt-1">{isEn ? 'Mins' : 'دقيقة'}</span>
-                </div>
-                <div className="flex flex-col items-center justify-center w-[54px] h-[60px] bg-white border border-[#E1ECE9] rounded-[10px] shadow-sm">
-                  <span className="text-[#234745] font-bold text-[20px] leading-none">{timeLeft.seconds}</span>
-                  <span className="text-[#9FB7AE] text-[10px] font-bold mt-1">{isEn ? 'Secs' : 'ثانية'}</span>
-                </div>
-              </div>
-
-              {/* Promo Code Badge */}
-              <div className="flex items-center justify-between w-[150px] h-[60px] bg-white border border-[#E1ECE9] rounded-[10px] px-3 shadow-sm">
-                <span className="text-[#234745] font-bold text-[15px] tracking-wider">SAAD20</span>
+            <div className="flex flex-row flex-wrap items-center justify-between w-full gap-4 mt-2">
+              
+              {/* Promo Code Badge (Left side in RTL) */}
+              <div className="flex items-center justify-between w-[150px] h-[60px] bg-white border border-[#E1ECE9] rounded-[10px] px-3 shadow-sm" dir="ltr">
+                <span className="text-[#234745] font-bold text-[15px] tracking-wider" style={{ fontFamily: "'EnglishDigits', sans-serif" }}>SAAD20</span>
                 <button 
                   onClick={handleCopyCode}
                   className="text-[#906B51] text-[11px] font-bold px-2 py-1.5 bg-[#FEF8EB] hover:bg-[#FDF0D5] rounded-[6px] border border-[#F5EAD4] transition-colors"
@@ -271,12 +260,29 @@ export default function PromotionsPage() {
                   {isEn ? 'Copy' : 'نسخ الكود'}
                 </button>
               </div>
+
+              {/* Live Timer digits (Right side in RTL) */}
+              <div className="flex items-center gap-2" dir="ltr">
+                <div className="flex flex-col items-center justify-center w-[54px] h-[60px] bg-white border border-[#E1ECE9] rounded-[10px] shadow-sm">
+                  <span className="text-[#234745] font-bold text-[20px] leading-none" style={{ fontFamily: "'EnglishDigits', sans-serif" }}>{timeLeft.hours}</span>
+                  <span className="text-[#9FB7AE] text-[10px] font-bold mt-1">{isEn ? 'Hours' : 'ساعة'}</span>
+                </div>
+                <div className="flex flex-col items-center justify-center w-[54px] h-[60px] bg-white border border-[#E1ECE9] rounded-[10px] shadow-sm">
+                  <span className="text-[#234745] font-bold text-[20px] leading-none" style={{ fontFamily: "'EnglishDigits', sans-serif" }}>{timeLeft.minutes}</span>
+                  <span className="text-[#9FB7AE] text-[10px] font-bold mt-1">{isEn ? 'Mins' : 'دقيقة'}</span>
+                </div>
+                <div className="flex flex-col items-center justify-center w-[54px] h-[60px] bg-white border border-[#E1ECE9] rounded-[10px] shadow-sm">
+                  <span className="text-[#234745] font-bold text-[20px] leading-none" style={{ fontFamily: "'EnglishDigits', sans-serif" }}>{timeLeft.seconds}</span>
+                  <span className="text-[#9FB7AE] text-[10px] font-bold mt-1">{isEn ? 'Secs' : 'ثانية'}</span>
+                </div>
+              </div>
+
             </div>
 
             {/* Shop now button */}
             <Link 
               to="/collections/all" 
-              className="inline-flex items-center justify-center px-8 h-[48px] bg-[#BBCFCD] hover:bg-[#ACC4C2] text-[#234745] font-bold text-[15px] rounded-full shadow-sm mt-3 transition-colors self-start rtl:self-end"
+              className="inline-flex items-center justify-center px-8 h-[48px] bg-[#BBCFCD] hover:bg-[#ACC4C2] text-[#234745] font-bold text-[15px] rounded-full shadow-sm mt-3 transition-colors self-start rtl:self-start"
             >
               {isEn ? 'Shop Now' : 'تسوق الآن'}
             </Link>

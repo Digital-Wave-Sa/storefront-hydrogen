@@ -376,101 +376,6 @@ export default function AccountProfile() {
     }
   };
 
-  const DeleteModal = () => (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-fade-in" dir={isEn ? 'ltr' : 'rtl'}>
-      <div className="bg-white rounded-[24px] p-8 max-w-[480px] w-[90%] flex flex-col items-center text-center shadow-xl">
-        <div className="w-[80px] h-[80px] bg-[#E64950] rounded-full flex items-center justify-center text-white text-[40px] font-bold mb-6">
-          !
-        </div>
-        <h3 className="text-[20px] font-bold text-[#171717] mb-2" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
-          {isEn ? 'Are you sure you want to permanently delete the account?' : 'هل انت متأكد من انك تريد حذف الحساب نهائياً؟'}
-        </h3>
-        <p className="text-[14px] text-[#7D7D7D] mb-8" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
-          {isEn ? 'Warning! All your data will be deleted if the account is deleted' : 'انتبه! سيتم حذف جميع البيانات الخاصة بك في حال حذف الحساب'}
-        </p>
-        <div className="flex w-full gap-4">
-          <Form method="PUT" className="w-1/2">
-            <input type="hidden" name="intent" value="deleteAccount" />
-            <button type="submit" disabled={isLoading} className="w-full bg-[#E64950] text-white rounded-[12px] h-[48px] text-[16px] font-bold hover:bg-[#c0392b] transition-colors disabled:opacity-70" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
-              {isLoading ? (isEn ? 'Deleting...' : 'جاري الحذف...') : (isEn ? 'Yes, delete' : 'نعم, حذف')}
-            </button>
-          </Form>
-          <button 
-            type="button" 
-            onClick={() => setShowDeleteModal(false)}
-            className="w-1/2 bg-[#255441] text-white rounded-[12px] h-[48px] text-[16px] font-bold hover:bg-[#1a3a2d] transition-colors" 
-            style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
-          >
-            {isEn ? 'No, go back' : 'لا, الرجوع'}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-
-  const OtpModal = () => (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-fade-in" dir={isEn ? 'ltr' : 'rtl'}>
-      <div className="bg-white rounded-[24px] p-8 max-w-[480px] w-[90%] flex flex-col items-center text-center shadow-xl">
-        <div className="w-[80px] h-[80px] bg-[#234745] rounded-full flex items-center justify-center text-white mb-6">
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <rect x="5" y="2" width="14" height="20" rx="2" ry="2"/>
-            <line x1="12" y1="18" x2="12.01" y2="18"/>
-          </svg>
-        </div>
-        <h3 className="text-[20px] font-bold text-[#171717] mb-2" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
-          {isEn ? 'Verify Mobile Number' : 'التحقق من رقم الجوال'}
-        </h3>
-        <p className="text-[14px] text-[#7D7D7D] mb-6" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
-          {isEn 
-            ? `Please enter the 6-digit verification code sent to ${selectedCountryCode}${enteredPhone}` 
-            : `الرجاء إدخال رمز التحقق المكون من 6 أرقام المرسل إلى ${selectedCountryCode}${enteredPhone}`}
-        </p>
-
-        {/* 6 OTP Inputs */}
-        <div className="flex gap-2 justify-center mb-6" dir="ltr">
-          {otpRefs.map((ref, i) => (
-            <input
-              key={i}
-              ref={ref}
-              type="text"
-              pattern="\d*"
-              maxLength={1}
-              value={otpValue[i]}
-              onChange={(e) => handleOTPChange(i, e.target.value)}
-              onKeyDown={(e) => handleKeyDown(i, e)}
-              className="w-[45px] h-[55px] border border-[#BBCFCD] focus:border-[#234745] rounded-[8px] text-center text-[20px] font-bold outline-none"
-              style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
-            />
-          ))}
-        </div>
-
-        {otpError && (
-          <p className="text-red-500 text-sm font-bold mb-4">{otpError}</p>
-        )}
-
-        <div className="flex w-full gap-4">
-          <button 
-            type="button" 
-            onClick={verifyOtpAndSubmit}
-            disabled={fetcher.state !== 'idle' || otpValue.join('').length < 6}
-            className="w-1/2 bg-[#234745] text-white rounded-[12px] h-[48px] text-[16px] font-bold hover:bg-[#1a3533] transition-colors disabled:opacity-50"
-            style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
-          >
-            {fetcher.state !== 'idle' ? (isEn ? 'Verifying...' : 'جاري التحقق...') : (isEn ? 'Verify' : 'تأكيد')}
-          </button>
-          <button 
-            type="button" 
-            onClick={() => setShowOtpModal(false)}
-            className="w-1/2 bg-gray-100 text-gray-700 rounded-[12px] h-[48px] text-[16px] font-bold hover:bg-gray-200 transition-colors" 
-            style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
-          >
-            {isEn ? 'Cancel' : 'إلغاء'}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-  
   if (!isEditing) {
     return (
       <>
@@ -592,7 +497,38 @@ export default function AccountProfile() {
           </div>
         </div>
       </div>
-      {showDeleteModal && <DeleteModal />}
+      
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-fade-in" dir={isEn ? 'ltr' : 'rtl'}>
+          <div className="bg-white rounded-[24px] p-8 max-w-[480px] w-[90%] flex flex-col items-center text-center shadow-xl">
+            <div className="w-[80px] h-[80px] bg-[#E64950] rounded-full flex items-center justify-center text-white text-[40px] font-bold mb-6">
+              !
+            </div>
+            <h3 className="text-[20px] font-bold text-[#171717] mb-2" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
+              {isEn ? 'Are you sure you want to permanently delete the account?' : 'هل انت متأكد من انك تريد حذف الحساب نهائياً؟'}
+            </h3>
+            <p className="text-[14px] text-[#7D7D7D] mb-8" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
+              {isEn ? 'Warning! All your data will be deleted if the account is deleted' : 'انتبه! سيتم حذف جميع البيانات الخاصة بك في حال حذف الحساب'}
+            </p>
+            <div className="flex w-full gap-4">
+              <Form method="PUT" className="w-1/2">
+                <input type="hidden" name="intent" value="deleteAccount" />
+                <button type="submit" disabled={isLoading} className="w-full bg-[#E64950] text-white rounded-[12px] h-[48px] text-[16px] font-bold hover:bg-[#c0392b] transition-colors disabled:opacity-70" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
+                  {isLoading ? (isEn ? 'Deleting...' : 'جاري الحذف...') : (isEn ? 'Yes, delete' : 'نعم, حذف')}
+                </button>
+              </Form>
+              <button 
+                type="button" 
+                onClick={() => setShowDeleteModal(false)}
+                className="w-1/2 bg-[#255441] text-white rounded-[12px] h-[48px] text-[16px] font-bold hover:bg-[#1a3a2d] transition-colors" 
+                style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
+              >
+                {isEn ? 'No, go back' : 'لا, الرجوع'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
     );
   }
@@ -778,8 +714,101 @@ export default function AccountProfile() {
           )}
         </div>
       </Form>
-      {showDeleteModal && <DeleteModal />}
-      {showOtpModal && <OtpModal />}
+
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-fade-in" dir={isEn ? 'ltr' : 'rtl'}>
+          <div className="bg-white rounded-[24px] p-8 max-w-[480px] w-[90%] flex flex-col items-center text-center shadow-xl">
+            <div className="w-[80px] h-[80px] bg-[#E64950] rounded-full flex items-center justify-center text-white text-[40px] font-bold mb-6">
+              !
+            </div>
+            <h3 className="text-[20px] font-bold text-[#171717] mb-2" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
+              {isEn ? 'Are you sure you want to permanently delete the account?' : 'هل انت متأكد من انك تريد حذف الحساب نهائياً؟'}
+            </h3>
+            <p className="text-[14px] text-[#7D7D7D] mb-8" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
+              {isEn ? 'Warning! All your data will be deleted if the account is deleted' : 'انتبه! سيتم حذف جميع البيانات الخاصة بك في حال حذف الحساب'}
+            </p>
+            <div className="flex w-full gap-4">
+              <Form method="PUT" className="w-1/2">
+                <input type="hidden" name="intent" value="deleteAccount" />
+                <button type="submit" disabled={isLoading} className="w-full bg-[#E64950] text-white rounded-[12px] h-[48px] text-[16px] font-bold hover:bg-[#c0392b] transition-colors disabled:opacity-70" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
+                  {isLoading ? (isEn ? 'Deleting...' : 'جاري الحذف...') : (isEn ? 'Yes, delete' : 'نعم, حذف')}
+                </button>
+              </Form>
+              <button 
+                type="button" 
+                onClick={() => setShowDeleteModal(false)}
+                className="w-1/2 bg-[#255441] text-white rounded-[12px] h-[48px] text-[16px] font-bold hover:bg-[#1a3a2d] transition-colors" 
+                style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
+              >
+                {isEn ? 'No, go back' : 'لا, الرجوع'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showOtpModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-fade-in" dir={isEn ? 'ltr' : 'rtl'}>
+          <div className="bg-white rounded-[24px] p-8 max-w-[480px] w-[90%] flex flex-col items-center text-center shadow-xl">
+            <div className="w-[80px] h-[80px] bg-[#234745] rounded-full flex items-center justify-center text-white mb-6">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="5" y="2" width="14" height="20" rx="2" ry="2"/>
+                <line x1="12" y1="18" x2="12.01" y2="18"/>
+              </svg>
+            </div>
+            <h3 className="text-[20px] font-bold text-[#171717] mb-2" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
+              {isEn ? 'Verify Mobile Number' : 'التحقق من رقم الجوال'}
+            </h3>
+            <p className="text-[14px] text-[#7D7D7D] mb-6" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
+              {isEn 
+                ? `Please enter the 6-digit verification code sent to ${selectedCountryCode}${enteredPhone}` 
+                : `الرجاء إدخال رمز التحقق المكون من 6 أرقام المرسل إلى ${selectedCountryCode}${enteredPhone}`}
+            </p>
+
+            {/* 6 OTP Inputs */}
+            <div className="flex gap-2 justify-center mb-6" dir="ltr">
+              {otpRefs.map((ref, i) => (
+                <input
+                  key={i}
+                  ref={ref}
+                  type="text"
+                  pattern="\d*"
+                  maxLength={1}
+                  value={otpValue[i]}
+                  onChange={(e) => handleOTPChange(i, e.target.value)}
+                  onKeyDown={(e) => handleKeyDown(i, e)}
+                  className="w-[45px] h-[55px] border border-[#BBCFCD] focus:border-[#234745] rounded-[8px] text-center text-[20px] font-bold outline-none"
+                  style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
+                />
+              ))}
+            </div>
+
+            {otpError && (
+              <p className="text-red-500 text-sm font-bold mb-4">{otpError}</p>
+            )}
+
+            <div className="flex w-full gap-4">
+              <button 
+                type="button" 
+                onClick={verifyOtpAndSubmit}
+                disabled={fetcher.state !== 'idle' || otpValue.join('').length < 6}
+                className="w-1/2 bg-[#234745] text-white rounded-[12px] h-[48px] text-[16px] font-bold hover:bg-[#1a3533] transition-colors disabled:opacity-50"
+                style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
+              >
+                {fetcher.state !== 'idle' ? (isEn ? 'Verifying...' : 'جاري التحقق...') : (isEn ? 'Verify' : 'تأكيد')}
+              </button>
+              <button 
+                type="button" 
+                onClick={() => setShowOtpModal(false)}
+                className="w-1/2 bg-gray-100 text-gray-700 rounded-[12px] h-[48px] text-[16px] font-bold hover:bg-gray-200 transition-colors" 
+                style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
+              >
+                {isEn ? 'Cancel' : 'إلغاء'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

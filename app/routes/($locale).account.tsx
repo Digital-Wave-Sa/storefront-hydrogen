@@ -130,21 +130,77 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
           const middlewareUrl = context.env.MIDDLEWARE_URL || 'https://api.pryvexapls.com';
           const branchId = await context.session.get('selectedLocationId');
           const isLocal = new URL(request.url).host.includes('localhost') || new URL(request.url).host.includes('127.0.0.1');
-          const baseGiftCardUrl = isLocal ? 'http://localhost:3000' : middlewareUrl;
 
           let formattedPhone = mockCustomer.phone || '';
           if (formattedPhone.startsWith('+966')) {
             formattedPhone = '0' + formattedPhone.slice(4);
           }
 
-          // Fetch gift cards and total balance
-          const cardsRes = await fetch(`${baseGiftCardUrl}/gift-cards/by-phone/${encodeURIComponent(formattedPhone)}`);
-          if (cardsRes.ok) {
-            const cardsData = await cardsRes.json();
-            if (cardsData?.success && cardsData?.data) {
-              cards = cardsData.data.cards || [];
-              balance = cardsData.data.totalBalance || 0;
+          if (isLocal) {
+            const globalGiftCards = (globalThis as any).__giftCards || new Map();
+            const targetPhone = formattedPhone.replace(/\D/g, '');
+            for (const card of globalGiftCards.values()) {
+              if (card.phone && card.phone.replace(/\D/g, '') === targetPhone) {
+                cards.push({
+                  code: card.code,
+                  currentBalance: card.currentBalance,
+                  status: card.status,
+                });
+                balance += card.currentBalance;
+              }
             }
+
+            history = cards.flatMap((card: any) => {
+              const fullCard = globalGiftCards.get(card.code);
+              return (fullCard?.transactions || []).map((tx: any) => {
+                const amt = parseFloat(tx.amount || '0');
+                return {
+                  id: tx.id,
+                  amount: tx.operation === 'REDEEM' || tx.operation === 'VOID' ? -amt : amt,
+                  date: tx.timestamp,
+                  labelEn: `${tx.operation} - ${card.code}`,
+                  labelAr: `${tx.operation === 'REDEEM' ? 'استرداد' : tx.operation === 'TOPUP' ? 'شحن' : tx.operation === 'ACTIVATE' ? 'تفعيل' : 'إنشاء'} - ${card.code}`
+                };
+              });
+            }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+          } else {
+            const baseGiftCardUrl = middlewareUrl;
+            // Fetch gift cards and total balance
+            const cardsRes = await fetch(`${baseGiftCardUrl}/gift-cards/by-phone/${encodeURIComponent(formattedPhone)}`);
+            if (cardsRes.ok) {
+              const cardsData = await cardsRes.json();
+              if (cardsData?.success && cardsData?.data) {
+                cards = cardsData.data.cards || [];
+                balance = cardsData.data.totalBalance || 0;
+              }
+            }
+
+            // Fetch transactions for all active gift cards concurrently
+            const historyPromises = cards.map(async (card: any) => {
+              try {
+                const txRes = await fetch(`${baseGiftCardUrl}/gift-cards/${card.code}/transactions`);
+                if (txRes.ok) {
+                  const txData = await txRes.json();
+                  return (txData?.data?.transactions || []).map((tx: any) => {
+                    const amt = parseFloat(tx.amount || '0');
+                    return {
+                      id: tx.id,
+                      amount: tx.operation === 'REDEEM' || tx.operation === 'VOID' ? -amt : amt,
+                      date: tx.timestamp,
+                      labelEn: `${tx.operation} - ${card.code}`,
+                      labelAr: `${tx.operation === 'REDEEM' ? 'استرداد' : tx.operation === 'TOPUP' ? 'شحن' : tx.operation === 'ACTIVATE' ? 'تفعيل' : 'إنشاء'} - ${card.code}`
+                    };
+                  });
+                }
+              } catch (e) {}
+              return [];
+            });
+
+            const historyResults = await Promise.all(historyPromises);
+            history = historyResults
+              .flat()
+              .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
           }
 
           // Fetch Loyalty Points explicitly from CRM endpoint
@@ -159,33 +215,6 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
               loyaltyPoints = loyaltyData.data.points;
             }
           }
-
-          // Fetch transactions for all active gift cards concurrently
-          const historyPromises = cards.map(async (card: any) => {
-            try {
-              const txRes = await fetch(`${baseGiftCardUrl}/gift-cards/${card.code}/transactions`);
-              if (txRes.ok) {
-                const txData = await txRes.json();
-                return (txData?.data?.transactions || []).map((tx: any) => {
-                  const amt = parseFloat(tx.amount || '0');
-                  return {
-                    id: tx.id,
-                    amount: tx.operation === 'REDEEM' || tx.operation === 'VOID' ? -amt : amt,
-                    date: tx.timestamp,
-                    labelEn: `${tx.operation} - ${card.code}`,
-                    labelAr: `${tx.operation === 'REDEEM' ? 'استرداد' : tx.operation === 'TOPUP' ? 'شحن' : tx.operation === 'ACTIVATE' ? 'تفعيل' : 'إنشاء'} - ${card.code}`
-                  };
-                });
-              }
-            } catch (e) {}
-            return [];
-          });
-
-          const historyResults = await Promise.all(historyPromises);
-          history = historyResults
-            .flat()
-            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-
         } catch (e) {}
         return { loyaltyPoints, balance, history, cards };
       })();
@@ -229,7 +258,6 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
         const middlewareUrl = context.env.MIDDLEWARE_URL || 'https://api.pryvexapls.com';
         const branchId = await context.session.get('selectedLocationId');
         const isLocal = new URL(request.url).host.includes('localhost') || new URL(request.url).host.includes('127.0.0.1');
-        const baseGiftCardUrl = isLocal ? 'http://localhost:3000' : middlewareUrl;
         
         // Ensure phone number matches expected local Saudi format for CRM (replace +966 with 0)
         let formattedPhone = customer.phone || '';
@@ -237,14 +265,71 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
           formattedPhone = '0' + formattedPhone.slice(4);
         }
 
-        // Fetch gift cards and total balance
-        const cardsRes = await fetch(`${baseGiftCardUrl}/gift-cards/by-phone/${encodeURIComponent(formattedPhone)}`);
-        if (cardsRes.ok) {
-          const cardsData = await cardsRes.json();
-          if (cardsData?.success && cardsData?.data) {
-            cards = cardsData.data.cards || [];
-            balance = cardsData.data.totalBalance || 0;
+        if (isLocal) {
+          const globalGiftCards = (globalThis as any).__giftCards || new Map();
+          const targetPhone = formattedPhone.replace(/\D/g, '');
+          for (const card of globalGiftCards.values()) {
+            if (card.phone && card.phone.replace(/\D/g, '') === targetPhone) {
+              cards.push({
+                code: card.code,
+                currentBalance: card.currentBalance,
+                status: card.status,
+              });
+              balance += card.currentBalance;
+            }
           }
+
+          history = cards.flatMap((card: any) => {
+            const fullCard = globalGiftCards.get(card.code);
+            return (fullCard?.transactions || []).map((tx: any) => {
+              const amt = parseFloat(tx.amount || '0');
+              return {
+                id: tx.id,
+                amount: tx.operation === 'REDEEM' || tx.operation === 'VOID' ? -amt : amt,
+                date: tx.timestamp,
+                labelEn: `${tx.operation} - ${card.code}`,
+                labelAr: `${tx.operation === 'REDEEM' ? 'استرداد' : tx.operation === 'TOPUP' ? 'شحن' : tx.operation === 'ACTIVATE' ? 'تفعيل' : 'إنشاء'} - ${card.code}`
+              };
+            });
+          }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+        } else {
+          const baseGiftCardUrl = middlewareUrl;
+          // Fetch gift cards and total balance
+          const cardsRes = await fetch(`${baseGiftCardUrl}/gift-cards/by-phone/${encodeURIComponent(formattedPhone)}`);
+          if (cardsRes.ok) {
+            const cardsData = await cardsRes.json();
+            if (cardsData?.success && cardsData?.data) {
+              cards = cardsData.data.cards || [];
+              balance = cardsData.data.totalBalance || 0;
+            }
+          }
+
+          // Fetch transactions for all active gift cards concurrently
+          const historyPromises = cards.map(async (card: any) => {
+            try {
+              const txRes = await fetch(`${baseGiftCardUrl}/gift-cards/${card.code}/transactions`);
+              if (txRes.ok) {
+                const txData = await txRes.json();
+                return (txData?.data?.transactions || []).map((tx: any) => {
+                  const amt = parseFloat(tx.amount || '0');
+                  return {
+                    id: tx.id,
+                    amount: tx.operation === 'REDEEM' || tx.operation === 'VOID' ? -amt : amt,
+                    date: tx.timestamp,
+                    labelEn: `${tx.operation} - ${card.code}`,
+                    labelAr: `${tx.operation === 'REDEEM' ? 'استرداد' : tx.operation === 'TOPUP' ? 'شحن' : tx.operation === 'ACTIVATE' ? 'تفعيل' : 'إنشاء'} - ${card.code}`
+                  };
+                });
+              }
+            } catch (e) {}
+            return [];
+          });
+
+          const historyResults = await Promise.all(historyPromises);
+          history = historyResults
+            .flat()
+            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
         }
 
         // Fetch Loyalty Points explicitly from CRM endpoint
@@ -259,32 +344,6 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
             loyaltyPoints = loyaltyData.data.points;
           }
         }
-
-        // Fetch transactions for all active gift cards concurrently
-        const historyPromises = cards.map(async (card: any) => {
-          try {
-            const txRes = await fetch(`${baseGiftCardUrl}/gift-cards/${card.code}/transactions`);
-            if (txRes.ok) {
-              const txData = await txRes.json();
-              return (txData?.data?.transactions || []).map((tx: any) => {
-                const amt = parseFloat(tx.amount || '0');
-                return {
-                  id: tx.id,
-                  amount: tx.operation === 'REDEEM' || tx.operation === 'VOID' ? -amt : amt,
-                  date: tx.timestamp,
-                  labelEn: `${tx.operation} - ${card.code}`,
-                  labelAr: `${tx.operation === 'REDEEM' ? 'استرداد' : tx.operation === 'TOPUP' ? 'شحن' : tx.operation === 'ACTIVATE' ? 'تفعيل' : 'إنشاء'} - ${card.code}`
-                };
-              });
-            }
-          } catch (e) {}
-          return [];
-        });
-
-        const historyResults = await Promise.all(historyPromises);
-        history = historyResults
-          .flat()
-          .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
       } catch (e) {}
       return { loyaltyPoints, balance, history, cards };

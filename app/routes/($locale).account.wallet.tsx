@@ -123,55 +123,95 @@ export async function action({ request, context }: ActionFunctionArgs) {
   }
 
   try {
-    // First, check details to see how much balance the card has
-    const detailsRes = await fetch(`${baseGiftCardUrl}/gift-cards/${voucherCode}`);
-    if (!detailsRes.ok) {
-      return json({ intent: 'redeem_voucher', error: isEn ? 'Invalid voucher code.' : 'رمز القسيمة غير صحيح.' }, { status: 400 });
-    }
-    const detailsData = await detailsRes.json();
-    const balanceBeforeActivation = detailsData?.data?.currentBalance || 0;
-
-    // Call POST /gift-cards/:code/activate to bind it
-    const res = await fetch(`${baseGiftCardUrl}/gift-cards/${voucherCode}/activate`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        phone: formattedPhone,
-      })
-    });
-
-    const data = await res.json();
-
-    if (!res.ok || !data.success) {
-      const reason = data.error || 'unknown';
-      let friendlyError = isEn ? 'Failed to activate voucher.' : 'فشل في تفعيل القسيمة.';
-      
-      if (reason.includes('Already activated') || reason.includes('already_used')) {
-        friendlyError = isEn ? 'This voucher has already been activated.' : 'تم تفعيل هذه القسيمة بالفعل مسبقاً.';
-      } else if (reason.includes('not found') || reason.includes('invalid_code')) {
-        friendlyError = isEn ? 'Invalid voucher code.' : 'رمز القسيمة غير صحيح.';
+    let balanceBeforeActivation = 0;
+    
+    if (isLocal) {
+      const globalGiftCards = (globalThis as any).__giftCards || new Map();
+      const card = globalGiftCards.get(voucherCode);
+      if (!card) {
+        return json({ intent: 'redeem_voucher', error: isEn ? 'Invalid voucher code.' : 'رمز القسيمة غير صحيح.' }, { status: 400 });
+      }
+      if (card.status !== 'inactive' || card.phone) {
+        return json({ intent: 'redeem_voucher', error: isEn ? 'This voucher has already been activated.' : 'تم تفعيل هذه القسيمة بالفعل مسبقاً.' }, { status: 400 });
       }
 
-      return json({ intent: 'redeem_voucher', error: friendlyError }, { status: 400 });
-    }
+      balanceBeforeActivation = card.currentBalance;
+      card.phone = formattedPhone;
+      card.status = 'active';
+      card.transactions.push({
+        id: `tx-${Date.now()}`,
+        operation: 'ACTIVATE',
+        timestamp: new Date().toISOString()
+      });
 
-    // Retrieve new aggregated balance for the user
-    let newBalance = balanceBeforeActivation;
-    const balanceRes = await fetch(`${baseGiftCardUrl}/gift-cards/by-phone/${encodeURIComponent(formattedPhone)}`);
-    if (balanceRes.ok) {
-      const balanceData = await balanceRes.json();
-      newBalance = balanceData?.data?.totalBalance || 0;
-    }
+      // Calculate new aggregated balance in-memory
+      let newBalance = 0;
+      const targetPhone = formattedPhone.replace(/\D/g, '');
+      for (const c of globalGiftCards.values()) {
+        if (c.phone && c.phone.replace(/\D/g, '') === targetPhone) {
+          newBalance += c.currentBalance;
+        }
+      }
 
-    return json({ 
-      intent: 'redeem_voucher',
-      success: true, 
-      creditedAmount: balanceBeforeActivation,
-      newBalance,
-      currency: 'SAR'
-    });
+      return json({ 
+        intent: 'redeem_voucher',
+        success: true, 
+        creditedAmount: balanceBeforeActivation,
+        newBalance,
+        currency: 'SAR'
+      });
+
+    } else {
+      // First, check details to see how much balance the card has
+      const detailsRes = await fetch(`${baseGiftCardUrl}/gift-cards/${voucherCode}`);
+      if (!detailsRes.ok) {
+        return json({ intent: 'redeem_voucher', error: isEn ? 'Invalid voucher code.' : 'رمز القسيمة غير صحيح.' }, { status: 400 });
+      }
+      const detailsData = await detailsRes.json();
+      balanceBeforeActivation = detailsData?.data?.currentBalance || 0;
+
+      // Call POST /gift-cards/:code/activate to bind it
+      const res = await fetch(`${baseGiftCardUrl}/gift-cards/${voucherCode}/activate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          phone: formattedPhone,
+        })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        const reason = data.error || 'unknown';
+        let friendlyError = isEn ? 'Failed to activate voucher.' : 'فشل في تفعيل القسيمة.';
+        
+        if (reason.includes('Already activated') || reason.includes('already_used')) {
+          friendlyError = isEn ? 'This voucher has already been activated.' : 'تم تفعيل هذه القسيمة بالفعل مسبقاً.';
+        } else if (reason.includes('not found') || reason.includes('invalid_code')) {
+          friendlyError = isEn ? 'Invalid voucher code.' : 'رمز القسيمة غير صحيح.';
+        }
+
+        return json({ intent: 'redeem_voucher', error: friendlyError }, { status: 400 });
+      }
+
+      // Retrieve new aggregated balance for the user
+      let newBalance = balanceBeforeActivation;
+      const balanceRes = await fetch(`${baseGiftCardUrl}/gift-cards/by-phone/${encodeURIComponent(formattedPhone)}`);
+      if (balanceRes.ok) {
+        const balanceData = await balanceRes.json();
+        newBalance = balanceData?.data?.totalBalance || 0;
+      }
+
+      return json({ 
+        intent: 'redeem_voucher',
+        success: true, 
+        creditedAmount: balanceBeforeActivation,
+        newBalance,
+        currency: 'SAR'
+      });
+    }
 
   } catch (err) {
     console.error('Middleware activate error:', err);

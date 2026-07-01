@@ -213,7 +213,7 @@ export default function PromotionsPage() {
       <div className="max-w-[1280px] mx-auto px-4 mt-6 md:mt-10 flex flex-col gap-8">
         
         {/* 2. Hero Offer Card */}
-        <section className="w-full bg-[#FEF8EB]/30 rounded-[24px] border border-[#906B51] p-5 md:p-8 flex flex-col lg:flex-row items-center gap-8 shadow-sm lg:h-[503px] box-border" dir="ltr">
+        <section className="w-full bg-white rounded-[24px] border border-[#906B51] p-5 md:p-8 flex flex-col lg:flex-row items-center gap-8 shadow-sm lg:h-[503px] box-border" dir="ltr">
           {/* Left Side: Table Image (Always Left) */}
           <div className="w-full lg:w-1/2 h-[260px] sm:h-[350px] lg:h-[439px] rounded-[20px] overflow-hidden shadow-sm">
             <img 
@@ -236,12 +236,11 @@ export default function PromotionsPage() {
 
             <div className="flex flex-col gap-2 w-full text-start">
               <h2 
-                className="text-[#234745] text-[32px] md:text-[50px] font-bold text-center w-full"
+                className="text-[#234745] text-[32px] md:text-[50px] font-bold text-start w-full"
                 style={{ 
                   fontFamily: isEn ? 'inherit' : "'Bahij Janna', sans-serif",
                   fontWeight: 700,
                   lineHeight: '100%',
-                  textAlign: 'center',
                 }}
               >
                 {isEn ? 'Big Season Sales' : 'تخفيضات الموسم الكبيرة'}
@@ -256,7 +255,7 @@ export default function PromotionsPage() {
             </div>
 
             {/* Timer and Promo Code Block */}
-            <div className="flex flex-row flex-wrap items-center justify-between w-full gap-4 mt-2">
+            <div className="flex flex-row flex-wrap items-center justify-start w-full gap-4 mt-2">
               
               {/* Live Timer digits */}
               <div className="flex items-center gap-2">

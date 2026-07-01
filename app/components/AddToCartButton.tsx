@@ -23,6 +23,43 @@ export function AddToCartButton({
 }) {
   const {open} = useAside();
 
+  const fireAddToCartEvent = () => {
+    try {
+      if (typeof window === 'undefined') return;
+      const w = window as any;
+      w.dataLayer = w.dataLayer || [];
+
+      // Only fire if user has given consent
+      const consent = localStorage.getItem('saadeddin_cookie_consent');
+      if (consent !== 'accepted') return;
+
+      const variant = selectedVariant;
+      if (!variant) return;
+
+      const price = parseFloat(variant.price?.amount || '0');
+      const currency = variant.price?.currencyCode || 'SAR';
+
+      w.dataLayer.push({ ecommerce: null }); // clear previous
+      w.dataLayer.push({
+        event: 'add_to_cart',
+        ecommerce: {
+          currency,
+          value: price,
+          items: [{
+            item_id: variant.sku || variant.id?.split('/').pop() || '',
+            item_name: variant.product?.title || (analytics as any)?.productTitle || '',
+            item_variant: variant.title !== 'Default Title' ? variant.title : undefined,
+            price,
+            quantity: lines[0]?.quantity || 1,
+            currency,
+          }],
+        },
+      });
+    } catch (e) {
+      // fail silently — analytics should never break the cart
+    }
+  };
+
   return (
     <CartForm 
       route="/cart" 
@@ -39,6 +76,7 @@ export function AddToCartButton({
           <button
             type="submit"
             onClick={(e) => {
+              fireAddToCartEvent();
               if (onClick) onClick();
               open('cart');
             }}
@@ -63,3 +101,4 @@ export function AddToCartButton({
     </CartForm>
   );
 }
+

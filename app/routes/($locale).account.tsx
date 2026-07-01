@@ -132,6 +132,9 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
           const isLocal = new URL(request.url).host.includes('localhost') || new URL(request.url).host.includes('127.0.0.1');
 
           let formattedPhone = mockCustomer.phone || '';
+          if (isLocal && !formattedPhone) {
+            formattedPhone = '0501234567';
+          }
           if (formattedPhone.startsWith('+966')) {
             formattedPhone = '0' + formattedPhone.slice(4);
           }
@@ -261,6 +264,9 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
         
         // Ensure phone number matches expected local Saudi format for CRM (replace +966 with 0)
         let formattedPhone = customer.phone || '';
+        if (isLocal && !formattedPhone) {
+          formattedPhone = '0501234567';
+        }
         if (formattedPhone.startsWith('+966')) {
           formattedPhone = '0' + formattedPhone.slice(4);
         }

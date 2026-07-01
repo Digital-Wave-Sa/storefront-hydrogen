@@ -70,6 +70,9 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
   // Format customer phone to match backend expectation
   let formattedPhone = customer.phone || '';
+  if (isLocal && !formattedPhone) {
+    formattedPhone = '0501234567';
+  }
   if (formattedPhone.startsWith('+966')) {
     formattedPhone = '0' + formattedPhone.slice(4);
   }

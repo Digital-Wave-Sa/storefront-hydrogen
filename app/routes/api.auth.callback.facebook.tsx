@@ -1,4 +1,5 @@
 import { redirect, type LoaderFunctionArgs } from 'react-router';
+import { getAdminToken } from '~/lib/shopify-admin.server';
 
 /** Derive a consistent password from a user's unique social ID + server secret */
 async function derivePassword(userId: string, secret: string): Promise<string> {
@@ -43,7 +44,7 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
     const finalEmail = email || `${fbId}@facebook.social.saadeddin.com`;
 
     // 3. Search and/or Create Shopify Customer using Shopify Admin API
-    const adminToken = env.SHOPIFY_ADMIN_API_ACCESS_TOKEN || env.SHOPIFY_ADMIN_API_ACCESS_TOKENS;
+    const adminToken = await getAdminToken(env);
     const domain = env.PUBLIC_STORE_DOMAIN;
 
     const searchRes = await fetch(`https://${domain}/admin/api/2023-04/customers/search.json?query=email:${finalEmail}`, {

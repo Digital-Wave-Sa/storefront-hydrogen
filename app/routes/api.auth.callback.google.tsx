@@ -1,4 +1,5 @@
 import { redirect, type LoaderFunctionArgs } from 'react-router';
+import { getAdminToken } from '~/lib/shopify-admin.server';
 
 /** Derive a consistent password from a user's unique social ID + server secret */
 async function derivePassword(userId: string, secret: string): Promise<string> {
@@ -47,7 +48,7 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
 
     // 3. Derive a DETERMINISTIC password from the user's Google ID + server secret
     //    This ensures the same customer always has the same password on every login attempt.
-    const adminToken = env.SHOPIFY_ADMIN_API_ACCESS_TOKEN;
+    const adminToken = await getAdminToken(env);
     const domain = env.PUBLIC_STORE_DOMAIN;
     const stablePassword = await derivePassword(googleId, env.SESSION_SECRET || 'saadeddin-social');
 

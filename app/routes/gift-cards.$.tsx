@@ -41,7 +41,7 @@ if (giftCards.size === 0) {
     status: 'active',
     transactions: [
       { id: 'tx-init-2', operation: 'CREATE', amount: 100, timestamp: new Date().toISOString() },
-      { id: 'tx-init-3', operation: 'ACTIVATE', timestamp: new Date().toISOString() }
+      { id: 'tx-init-3', operation: 'ACTIVATE', amount: 100, timestamp: new Date().toISOString() }
     ]
   });
 }
@@ -199,6 +199,7 @@ export async function action({ request }: ActionFunctionArgs) {
     card.transactions.push({
       id: `tx-${Date.now()}`,
       operation: 'ACTIVATE',
+      amount: card.currentBalance,
       timestamp: new Date().toISOString()
     });
 

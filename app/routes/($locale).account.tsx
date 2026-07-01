@@ -155,16 +155,18 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
 
             history = cards.flatMap((card: any) => {
               const fullCard = globalGiftCards.get(card.code);
-              return (fullCard?.transactions || []).map((tx: any) => {
-                const amt = parseFloat(tx.amount || '0');
-                return {
-                  id: tx.id,
-                  amount: tx.operation === 'REDEEM' || tx.operation === 'VOID' ? -amt : amt,
-                  date: tx.timestamp,
-                  labelEn: `${tx.operation} - ${card.code}`,
-                  labelAr: `${tx.operation === 'REDEEM' ? 'استرداد' : tx.operation === 'TOPUP' ? 'شحن' : tx.operation === 'ACTIVATE' ? 'تفعيل' : 'إنشاء'} - ${card.code}`
-                };
-              });
+              return (fullCard?.transactions || [])
+                .filter((tx: any) => tx.operation !== 'CREATE')
+                .map((tx: any) => {
+                  const amt = parseFloat(tx.amount || '0');
+                  return {
+                    id: tx.id,
+                    amount: tx.operation === 'REDEEM' || tx.operation === 'VOID' ? -amt : amt,
+                    date: tx.timestamp,
+                    labelEn: `${tx.operation} - ${card.code}`,
+                    labelAr: `${tx.operation === 'REDEEM' ? 'استرداد' : tx.operation === 'TOPUP' ? 'شحن' : 'تفعيل'} - ${card.code}`
+                  };
+                });
             }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
           } else {
@@ -185,16 +187,18 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
                 const txRes = await fetch(`${baseGiftCardUrl}/gift-cards/${card.code}/transactions`);
                 if (txRes.ok) {
                   const txData = await txRes.json();
-                  return (txData?.data?.transactions || []).map((tx: any) => {
-                    const amt = parseFloat(tx.amount || '0');
-                    return {
-                      id: tx.id,
-                      amount: tx.operation === 'REDEEM' || tx.operation === 'VOID' ? -amt : amt,
-                      date: tx.timestamp,
-                      labelEn: `${tx.operation} - ${card.code}`,
-                      labelAr: `${tx.operation === 'REDEEM' ? 'استرداد' : tx.operation === 'TOPUP' ? 'شحن' : tx.operation === 'ACTIVATE' ? 'تفعيل' : 'إنشاء'} - ${card.code}`
-                    };
-                  });
+                  return (txData?.data?.transactions || [])
+                    .filter((tx: any) => tx.operation !== 'CREATE')
+                    .map((tx: any) => {
+                      const amt = parseFloat(tx.amount || '0');
+                      return {
+                        id: tx.id,
+                        amount: tx.operation === 'REDEEM' || tx.operation === 'VOID' ? -amt : amt,
+                        date: tx.timestamp,
+                        labelEn: `${tx.operation} - ${card.code}`,
+                        labelAr: `${tx.operation === 'REDEEM' ? 'استرداد' : tx.operation === 'TOPUP' ? 'شحن' : 'تفعيل'} - ${card.code}`
+                      };
+                    });
                 }
               } catch (e) {}
               return [];

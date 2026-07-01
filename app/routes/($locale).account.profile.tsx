@@ -1,7 +1,7 @@
 import type { CustomerFragment } from 'storefrontapi.generated';
 import type { CustomerUpdateInput } from '@shopify/hydrogen/storefront-api-types';
 import type { ActionFunctionArgs, LoaderFunctionArgs } from 'react-router';
-import { data, redirect, type MetaFunction, useFetcher } from 'react-router';
+import { data, redirect, type MetaFunction, useFetcher, useSubmit } from 'react-router';
 import {
   Form,
   Link,
@@ -48,7 +48,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
       try {
         const api = new SaadeddinApi(context.env);
         await api.requestOtp(phone);
-        return data({ success: true });
+        return data({ success: true, otpSent: true });
       } catch (e: any) {
         return data({ error: e.message || (lang === 'en' ? 'Failed to send OTP.' : 'فشل إرسال رمز التحقق.') }, { status: 400 });
       }
@@ -60,13 +60,13 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
       // Allow developer bypass code 000000 for local testing
       if (otp === '000000') {
-        return data({ success: true });
+        return data({ success: true, verified: true });
       }
 
       try {
         const api = new SaadeddinApi(context.env);
         await api.verifyOtp(phone, otp);
-        return data({ success: true });
+        return data({ success: true, verified: true });
       } catch (e: any) {
         return data({ error: e.message || (lang === 'en' ? 'Invalid verification code.' : 'رمز التحقق غير صحيح.') }, { status: 400 });
       }
@@ -298,6 +298,7 @@ export default function AccountProfile() {
 
   const fetcher = useFetcher<any>();
   const formRef = useRef<HTMLFormElement>(null);
+  const submit = useSubmit();
 
   const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
 
@@ -310,20 +311,20 @@ export default function AccountProfile() {
 
   // Handle OTP verification result
   useEffect(() => {
-    if (fetcher.state === 'idle' && fetcher.data) {
-      if (fetcher.data.success) {
+    if (fetcher.state === 'idle' && fetcher.data && showOtpModal) {
+      if (fetcher.data.verified) {
         setShowOtpModal(false);
         setOtpError(null);
         setOtpValue(['', '', '', '', '', '']);
-        // Complete the profile update submission
+        // Complete the profile update submission using react-router's SPA submit
         if (formRef.current) {
-          formRef.current.submit();
+          submit(formRef.current);
         }
       } else if (fetcher.data.error) {
         setOtpError(fetcher.data.error);
       }
     }
-  }, [fetcher.state, fetcher.data]);
+  }, [fetcher.state, fetcher.data, showOtpModal]);
 
   const handleOTPChange = (index: number, val: string) => {
     if (val.length > 1) val = val[val.length - 1];
@@ -369,9 +370,9 @@ export default function AccountProfile() {
       // Must verify via OTP
       startOtpVerification();
     } else {
-      // Normal submit
+      // Normal submit using react-router SPA submit
       if (formRef.current) {
-        formRef.current.submit();
+        submit(formRef.current);
       }
     }
   };

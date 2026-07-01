@@ -299,6 +299,7 @@ export default function AccountProfile() {
   const fetcher = useFetcher<any>();
   const formRef = useRef<HTMLFormElement>(null);
   const submit = useSubmit();
+  const isPhoneVerifiedRef = useRef(false);
 
   const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
 
@@ -307,12 +308,14 @@ export default function AccountProfile() {
     const updatedParsed = parsePhoneNumber(customer.phone);
     setSelectedCountryCode(updatedParsed.countryCode);
     setEnteredPhone(updatedParsed.number);
+    isPhoneVerifiedRef.current = false;
   }, [customer]);
 
   // Handle OTP verification result
   useEffect(() => {
     if (fetcher.state === 'idle' && fetcher.data && showOtpModal) {
       if (fetcher.data.verified) {
+        isPhoneVerifiedRef.current = true;
         setShowOtpModal(false);
         setOtpError(null);
         setOtpValue(['', '', '', '', '', '']);
@@ -360,20 +363,16 @@ export default function AccountProfile() {
   };
 
   const handleProfileSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
     // Determine if phone number changed
     let cleanOriginal = (customer.phone || '').replace(/\D/g, '');
     let cleanNew = `${selectedCountryCode}${enteredPhone}`.replace(/\D/g, '');
 
-    if (cleanOriginal !== cleanNew) {
+    if (cleanOriginal !== cleanNew && !isPhoneVerifiedRef.current) {
+      e.preventDefault();
       // Must verify via OTP
       startOtpVerification();
     } else {
-      // Normal submit using react-router SPA submit
-      if (formRef.current) {
-        submit(formRef.current);
-      }
+      // Normal submit using react-router SPA submit (triggers standard action update)
     }
   };
 

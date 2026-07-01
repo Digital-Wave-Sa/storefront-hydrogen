@@ -255,6 +255,7 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
                  totalAmount={calculatedTotal}
                  currencyCode={currencyCode}
                  isPickup={isPickup}
+                 cart={cart}
                  validationError={
                    !isMinOrderMet ? (isEn ? <span className="flex items-center gap-1">Minimum order is <SaudiRiyalSymbol className="h-3 w-auto" /> {minOrderValue}</span> : <span className="flex items-center gap-1 flex-row-reverse">الحد الأدنى هو {minOrderValue} <SaudiRiyalSymbol className="h-3 w-auto" /></span>) :
                    !isBranchSelected ? (isEn ? 'Please select a branch' : 'يرجى اختيار الفرع') :
@@ -425,7 +426,8 @@ function CartCheckoutActions({
   validationError,
   totalAmount,
   currencyCode,
-  isPickup
+  isPickup,
+  cart,
 }: {
   checkoutUrl?: string; 
   discountCodes?: any[];
@@ -435,7 +437,40 @@ function CartCheckoutActions({
   totalAmount: number;
   currencyCode: string;
   isPickup?: boolean;
+  cart?: any;
 }) {
+  const fireBeginCheckout = () => {
+    try {
+      if (typeof window === 'undefined') return;
+      const consent = localStorage.getItem('saadeddin_cookie_consent');
+      if (consent !== 'accepted') return;
+      const w = window as any;
+      w.dataLayer = w.dataLayer || [];
+      const lines = cart?.lines?.nodes || [];
+      const items = lines.map((line: any, i: number) => ({
+        item_id: line.merchandise?.sku || line.merchandise?.id?.split('/').pop() || '',
+        item_name: line.merchandise?.product?.title || '',
+        item_variant: line.merchandise?.title !== 'Default Title' ? line.merchandise?.title : undefined,
+        price: parseFloat(line.merchandise?.price?.amount || '0'),
+        quantity: line.quantity || 1,
+        index: i,
+        currency: currencyCode,
+      }));
+      w.dataLayer.push({ ecommerce: null });
+      w.dataLayer.push({
+        event: 'begin_checkout',
+        ecommerce: {
+          currency: currencyCode,
+          value: totalAmount,
+          coupon: discountCodes?.[0]?.code || undefined,
+          items,
+        },
+      });
+    } catch (e) {
+      // fail silently
+    }
+  };
+
   return (
     <>
       <div className="flex flex-col gap-2 w-full">
@@ -443,6 +478,7 @@ function CartCheckoutActions({
           <button 
             type="submit"
             disabled={disabled}
+            onClick={fireBeginCheckout}
             className={`w-full h-[52px] ${disabled ? 'bg-[#e8e4e1] cursor-not-allowed text-[#888]' : 'bg-[#234745] hover:bg-[#1A3533] active:scale-[0.98] text-white'} font-bold text-[16px] rounded-[50px] flex items-center justify-center transition-all`}
             style={{ color: disabled ? '#888' : '#FFFFFF', fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
           >
@@ -459,6 +495,7 @@ function CartCheckoutActions({
     </>
   );
 }
+
 
 
 // ─── NEW: LOYALTY POINTS REDEMPTION ─────────────────────────────────────────

@@ -64,7 +64,15 @@ export async function action({ request, context }: ActionFunctionArgs) {
   const formData = await request.formData();
   const intent = formData.get('intent')?.toString() || 'redeem_voucher';
   const isEn = new URL(request.url).pathname.includes('/en');
-  const middlewareUrl = env.MIDDLEWARE_URL || 'https://wh.pryvexapls.com';
+  const middlewareUrl = env.MIDDLEWARE_URL || 'https://api.pryvexapls.com';
+  const isLocal = new URL(request.url).host.includes('localhost') || new URL(request.url).host.includes('127.0.0.1');
+  const baseGiftCardUrl = isLocal ? 'http://localhost:3000' : middlewareUrl;
+
+  // Format customer phone to match backend expectation
+  let formattedPhone = customer.phone || '';
+  if (formattedPhone.startsWith('+966')) {
+    formattedPhone = '0' + formattedPhone.slice(4);
+  }
 
   if (intent === 'gift_balance') {
     const recipientPhone = formData.get('recipientPhone')?.toString().trim();
@@ -79,8 +87,6 @@ export async function action({ request, context }: ActionFunctionArgs) {
       return json({ intent: 'gift_balance', error: isEn ? 'Insufficient balance.' : 'رصيد غير كافٍ.' }, { status: 400 });
     }
 
-    // PRODUCTION: Call the actual Middleware
-    // TODO: Replace with the actual Middleware URL provided by the backend developer
     try {
       const res = await fetch(`${middlewareUrl}/wallet/transfer`, {
         method: 'POST',
@@ -109,57 +115,66 @@ export async function action({ request, context }: ActionFunctionArgs) {
     }
   }
 
-  // --- REDEEM VOUCHER LOGIC ---
-  const voucherCode = formData.get('voucherCode')?.toString().trim();
+  // --- REDEEM (ACTIVATE) VOUCHER LOGIC ---
+  const voucherCode = formData.get('voucherCode')?.toString().trim().toUpperCase();
 
   if (!voucherCode) {
     return json({ intent: 'redeem_voucher', error: isEn ? 'Please enter a voucher code.' : 'الرجاء إدخال رمز القسيمة.' }, { status: 400 });
   }
 
   try {
-    const res = await fetch(`${middlewareUrl}/wallet/voucher/redeem`, {
+    // First, check details to see how much balance the card has
+    const detailsRes = await fetch(`${baseGiftCardUrl}/gift-cards/${voucherCode}`);
+    if (!detailsRes.ok) {
+      return json({ intent: 'redeem_voucher', error: isEn ? 'Invalid voucher code.' : 'رمز القسيمة غير صحيح.' }, { status: 400 });
+    }
+    const detailsData = await detailsRes.json();
+    const balanceBeforeActivation = detailsData?.data?.currentBalance || 0;
+
+    // Call POST /gift-cards/:code/activate to bind it
+    const res = await fetch(`${baseGiftCardUrl}/gift-cards/${voucherCode}/activate`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        voucher_code: voucherCode,
-        phone: customer.phone,
+        phone: formattedPhone,
       })
     });
 
     const data = await res.json();
 
     if (!res.ok || !data.success) {
-      // Map middleware CRM reason codes to user friendly messages
-      const reason = data.data?.reason || data.message || 'unknown';
-      let friendlyError = isEn ? 'Failed to redeem voucher.' : 'فشل في استرداد القسيمة.';
+      const reason = data.error || 'unknown';
+      let friendlyError = isEn ? 'Failed to activate voucher.' : 'فشل في تفعيل القسيمة.';
       
-      if (reason.includes('expired')) {
-        friendlyError = isEn ? 'This voucher has expired.' : 'عذراً، انتهت صلاحية هذه القسيمة.';
-      } else if (reason.includes('already_used')) {
-        friendlyError = isEn ? 'Voucher usage limit reached.' : 'تم الوصول للحد الأقصى لاستخدام القسيمة.';
-      } else if (reason.includes('min_order_not_met')) {
-        friendlyError = isEn ? 'Minimum order value not met.' : 'لم يتم الوصول للحد الأدنى للطلب.';
-      } else if (reason.includes('invalid_code')) {
+      if (reason.includes('Already activated') || reason.includes('already_used')) {
+        friendlyError = isEn ? 'This voucher has already been activated.' : 'تم تفعيل هذه القسيمة بالفعل مسبقاً.';
+      } else if (reason.includes('not found') || reason.includes('invalid_code')) {
         friendlyError = isEn ? 'Invalid voucher code.' : 'رمز القسيمة غير صحيح.';
-      } else if (reason.includes('duplicate')) {
-        friendlyError = isEn ? 'You have already redeemed this voucher.' : 'لقد قمت باستخدام هذه القسيمة مسبقاً.';
       }
 
       return json({ intent: 'redeem_voucher', error: friendlyError }, { status: 400 });
     }
 
+    // Retrieve new aggregated balance for the user
+    let newBalance = balanceBeforeActivation;
+    const balanceRes = await fetch(`${baseGiftCardUrl}/gift-cards/by-phone/${encodeURIComponent(formattedPhone)}`);
+    if (balanceRes.ok) {
+      const balanceData = await balanceRes.json();
+      newBalance = balanceData?.data?.totalBalance || 0;
+    }
+
     return json({ 
       intent: 'redeem_voucher',
       success: true, 
-      creditedAmount: data.credited_amount || 0,
-      newBalance: data.new_balance || 0,
-      currency: data.currency || 'SAR'
+      creditedAmount: balanceBeforeActivation,
+      newBalance,
+      currency: 'SAR'
     });
 
   } catch (err) {
-    console.error('Middleware redeem error:', err);
+    console.error('Middleware activate error:', err);
     return json({ intent: 'redeem_voucher', error: isEn ? 'Service unavailable. Please try again later.' : 'الخدمة غير متوفرة. الرجاء المحاولة لاحقاً.' }, { status: 500 });
   }
 }
@@ -191,10 +206,12 @@ export default function WalletPage() {
       </div>
     }>
       <Await resolve={walletPromise}>
-        {({ balance, loyaltyPoints, history }) => {
+        {({ balance, loyaltyPoints, history, cards }) => {
           const currentBalance = actionData?.success && actionData.newBalance !== undefined 
             ? actionData.newBalance 
             : balance;
+
+          const activeCards = cards || [];
 
           return (
             <div className="wallet-page animate-fade-in" dir={isEn ? 'ltr' : 'rtl'}>
@@ -242,6 +259,37 @@ export default function WalletPage() {
                 </div>
               </div>
 
+              {/* Active Gift Cards Section */}
+              {activeCards.length > 0 && (
+                <div className="mb-10 animate-fade-in">
+                  <h2 className="text-xl font-bold text-[#234745] mb-6">
+                    {isEn ? 'My Activated Gift Cards' : 'بطاقات الهدايا النشطة'}
+                  </h2>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {activeCards.map((card: any) => (
+                      <div key={card.code} className="bg-gradient-to-br from-[#234745] to-[#2D5A57] rounded-[20px] p-6 text-white shadow-md relative overflow-hidden border border-[#d4a06a]/20">
+                        <div className="absolute top-0 right-0 w-24 h-24 bg-white opacity-5 rounded-full -translate-y-8 translate-x-8" />
+                        <div className="flex justify-between items-start mb-4">
+                          <div>
+                            <span className="text-xs text-white/60 block uppercase font-bold tracking-wider">{isEn ? 'Card Code' : 'رمز البطاقة'}</span>
+                            <span className="font-mono text-lg font-bold tracking-wider select-all">{card.code}</span>
+                          </div>
+                          <span className={`text-[10px] px-2 py-1 rounded-full font-bold uppercase tracking-wider ${card.status === 'active' ? 'bg-[#d4a06a] text-white' : 'bg-red-500/20 text-red-300'}`}>
+                            {card.status}
+                          </span>
+                        </div>
+                        <div className="mt-4 pt-4 border-t border-white/10 flex justify-between items-end">
+                          <div>
+                            <span className="text-xs text-white/60 block">{isEn ? 'Balance' : 'الرصيد'}</span>
+                            <span className="text-2xl font-black">{parseFloat(card.currentBalance).toFixed(2)} <span className="text-sm font-bold text-[#d4a06a]">SAR</span></span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Redeem Voucher Section */}
                 <div className="bg-white border border-gray-200 rounded-[24px] p-8 shadow-sm h-full flex flex-col">
@@ -256,10 +304,10 @@ export default function WalletPage() {
                       </div>
                       <div>
                         <p className="font-bold">
-                          {isEn ? 'Voucher Redeemed Successfully!' : 'تم استرداد القسيمة بنجاح!'}
+                          {isEn ? 'Voucher Activated Successfully!' : 'تم تفعيل القسيمة بنجاح!'}
                         </p>
                         <p className="text-sm opacity-90">
-                          {isEn ? `Added ${actionData.creditedAmount} ${actionData.currency} to your wallet.` : `تمت إضافة ${actionData.creditedAmount} ${actionData.currency} إلى محفظتك.`}
+                          {isEn ? `Bound ${actionData.creditedAmount} ${actionData.currency} voucher to your phone.` : `تم ربط قسيمة بقيمة ${actionData.creditedAmount} ${actionData.currency} برقم هاتفك.`}
                         </p>
                       </div>
                     </div>
@@ -279,7 +327,7 @@ export default function WalletPage() {
                     <input 
                       type="text" 
                       name="voucherCode" 
-                      placeholder={isEn ? "Enter voucher code (e.g. WELCOME50)" : "أدخل رمز القسيمة (مثال: WELCOME50)"}
+                      placeholder={isEn ? "Enter voucher code (e.g. GC-WELCOME50)" : "أدخل رمز القسيمة (مثال: GC-WELCOME50)"}
                       className="w-full px-5 py-4 bg-gray-50 border-2 border-gray-100 focus:border-[#234745] focus:bg-white rounded-[16px] outline-none transition-all font-bold text-gray-700 placeholder:font-medium placeholder:text-gray-400"
                       required
                     />

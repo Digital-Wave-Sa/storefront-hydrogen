@@ -125,24 +125,33 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
         let loyaltyPoints = 0;
         let balance = 0;
         let history: any[] = [];
+        let cards: any[] = [];
         try {
-          const middlewareUrl = context.env.MIDDLEWARE_URL || 'https://wh.pryvexapls.com';
+          const middlewareUrl = context.env.MIDDLEWARE_URL || 'https://api.pryvexapls.com';
           const branchId = await context.session.get('selectedLocationId');
-          const res = await fetch(`${middlewareUrl}/wallet/balance?user_id=${encodeURIComponent(mockCustomer.id)}&phone=${encodeURIComponent(mockCustomer.phone || '')}`, {
-            headers: { 'x-branch-id': branchId || '1' }
-          });
-          const apiData = await res.json();
-          if (apiData?.success && apiData?.data) {
-            balance = apiData.data.balance || 0;
-          } else if (apiData && apiData.balance !== undefined) {
-            balance = apiData.balance || 0;
+          const isLocal = new URL(request.url).host.includes('localhost') || new URL(request.url).host.includes('127.0.0.1');
+          const baseGiftCardUrl = isLocal ? 'http://localhost:3000' : middlewareUrl;
+
+          let formattedPhone = mockCustomer.phone || '';
+          if (formattedPhone.startsWith('+966')) {
+            formattedPhone = '0' + formattedPhone.slice(4);
+          }
+
+          // Fetch gift cards and total balance
+          const cardsRes = await fetch(`${baseGiftCardUrl}/gift-cards/by-phone/${encodeURIComponent(formattedPhone)}`);
+          if (cardsRes.ok) {
+            const cardsData = await cardsRes.json();
+            if (cardsData?.success && cardsData?.data) {
+              cards = cardsData.data.cards || [];
+              balance = cardsData.data.totalBalance || 0;
+            }
           }
 
           // Fetch Loyalty Points explicitly from CRM endpoint
           const loyaltyRes = await fetch(`${middlewareUrl}/crm/loyalty`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'x-branch-id': branchId || '1' },
-            body: JSON.stringify({ phone: mockCustomer.phone || '' })
+            body: JSON.stringify({ phone: formattedPhone })
           });
           if (loyaltyRes.ok) {
             const loyaltyData = await loyaltyRes.json();
@@ -151,26 +160,34 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
             }
           }
 
-          const histRes = await fetch(`${middlewareUrl}/wallet/transactions?user_id=${encodeURIComponent(mockCustomer.id)}&phone=${encodeURIComponent(mockCustomer.phone || '')}`, {
-            headers: { 'x-branch-id': branchId || '1' }
+          // Fetch transactions for all active gift cards concurrently
+          const historyPromises = cards.map(async (card: any) => {
+            try {
+              const txRes = await fetch(`${baseGiftCardUrl}/gift-cards/${card.code}/transactions`);
+              if (txRes.ok) {
+                const txData = await txRes.json();
+                return (txData?.data?.transactions || []).map((tx: any) => {
+                  const amt = parseFloat(tx.amount || '0');
+                  return {
+                    id: tx.id,
+                    amount: tx.operation === 'REDEEM' || tx.operation === 'VOID' ? -amt : amt,
+                    date: tx.timestamp,
+                    labelEn: `${tx.operation} - ${card.code}`,
+                    labelAr: `${tx.operation === 'REDEEM' ? 'استرداد' : tx.operation === 'TOPUP' ? 'شحن' : tx.operation === 'ACTIVATE' ? 'تفعيل' : 'إنشاء'} - ${card.code}`
+                  };
+                });
+              }
+            } catch (e) {}
+            return [];
           });
-          if (histRes.ok) {
-            const histData = await histRes.json();
-            if (histData?.items) {
-               history = histData.items.map((tx: any) => {
-                 const amt = parseFloat(tx.amount) || 0;
-                 return {
-                   id: tx.id,
-                   amount: tx.type === 'VOUCHER_TOP_UP' || amt > 0 ? amt : -amt,
-                   date: tx.createdAt,
-                   labelEn: tx.description || tx.type,
-                   labelAr: tx.description || tx.type
-                 };
-               });
-            }
-          }
+
+          const historyResults = await Promise.all(historyPromises);
+          history = historyResults
+            .flat()
+            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
         } catch (e) {}
-        return { loyaltyPoints, balance, history };
+        return { loyaltyPoints, balance, history, cards };
       })();
 
       return data({
@@ -207,9 +224,12 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
       let loyaltyPoints = 0;
       let balance = 0;
       let history: any[] = [];
+      let cards: any[] = [];
       try {
-        const middlewareUrl = context.env.MIDDLEWARE_URL || 'https://wh.pryvexapls.com';
+        const middlewareUrl = context.env.MIDDLEWARE_URL || 'https://api.pryvexapls.com';
         const branchId = await context.session.get('selectedLocationId');
+        const isLocal = new URL(request.url).host.includes('localhost') || new URL(request.url).host.includes('127.0.0.1');
+        const baseGiftCardUrl = isLocal ? 'http://localhost:3000' : middlewareUrl;
         
         // Ensure phone number matches expected local Saudi format for CRM (replace +966 with 0)
         let formattedPhone = customer.phone || '';
@@ -217,14 +237,14 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
           formattedPhone = '0' + formattedPhone.slice(4);
         }
 
-        const res = await fetch(`${middlewareUrl}/wallet/balance?user_id=${encodeURIComponent(customer.id)}&phone=${encodeURIComponent(formattedPhone)}`, {
-          headers: { 'x-branch-id': branchId || '1' }
-        });
-        const apiData = await res.json();
-        if (apiData?.success && apiData?.data) {
-          balance = apiData.data.balance || 0;
-        } else if (apiData && apiData.balance !== undefined) {
-          balance = apiData.balance || 0;
+        // Fetch gift cards and total balance
+        const cardsRes = await fetch(`${baseGiftCardUrl}/gift-cards/by-phone/${encodeURIComponent(formattedPhone)}`);
+        if (cardsRes.ok) {
+          const cardsData = await cardsRes.json();
+          if (cardsData?.success && cardsData?.data) {
+            cards = cardsData.data.cards || [];
+            balance = cardsData.data.totalBalance || 0;
+          }
         }
 
         // Fetch Loyalty Points explicitly from CRM endpoint
@@ -240,26 +260,34 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
           }
         }
 
-        const histRes = await fetch(`${middlewareUrl}/wallet/transactions?user_id=${encodeURIComponent(customer.id)}&phone=${encodeURIComponent(formattedPhone)}`, {
-            headers: { 'x-branch-id': branchId || '1' }
-        });
-        if (histRes.ok) {
-          const histData = await histRes.json();
-          if (histData?.items) {
-              history = histData.items.map((tx: any) => {
-                const amt = parseFloat(tx.amount) || 0;
+        // Fetch transactions for all active gift cards concurrently
+        const historyPromises = cards.map(async (card: any) => {
+          try {
+            const txRes = await fetch(`${baseGiftCardUrl}/gift-cards/${card.code}/transactions`);
+            if (txRes.ok) {
+              const txData = await txRes.json();
+              return (txData?.data?.transactions || []).map((tx: any) => {
+                const amt = parseFloat(tx.amount || '0');
                 return {
                   id: tx.id,
-                  amount: tx.type === 'VOUCHER_TOP_UP' || amt > 0 ? amt : -amt,
-                  date: tx.createdAt,
-                  labelEn: tx.description || tx.type,
-                  labelAr: tx.description || tx.type
+                  amount: tx.operation === 'REDEEM' || tx.operation === 'VOID' ? -amt : amt,
+                  date: tx.timestamp,
+                  labelEn: `${tx.operation} - ${card.code}`,
+                  labelAr: `${tx.operation === 'REDEEM' ? 'استرداد' : tx.operation === 'TOPUP' ? 'شحن' : tx.operation === 'ACTIVATE' ? 'تفعيل' : 'إنشاء'} - ${card.code}`
                 };
               });
-          }
-        }
+            }
+          } catch (e) {}
+          return [];
+        });
+
+        const historyResults = await Promise.all(historyPromises);
+        history = historyResults
+          .flat()
+          .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
       } catch (e) {}
-      return { loyaltyPoints, balance, history };
+      return { loyaltyPoints, balance, history, cards };
     })();
 
     return data(

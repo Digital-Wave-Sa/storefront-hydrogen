@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { type LoaderFunctionArgs, useLoaderData, useRouteLoaderData, Link } from 'react-router';
 import { AddToCartButton } from '~/components/AddToCartButton';
 import { useWishlist } from '~/context/WishlistContext';
+import { PageHeader } from '~/components/layout/PageHeader';
 
 // GraphQL query to fetch promotional products
 const PROMOTIONS_QUERY = `#graphql
@@ -202,24 +203,11 @@ export default function PromotionsPage() {
       )}
 
       {/* 1. Header Section */}
-      <section className="relative w-full h-[132px] bg-[#1E3A37] flex flex-col justify-center items-center overflow-hidden">
-        {/* Background Pattern - Overlapping diamond structure */}
-        <div className="absolute inset-0 opacity-[0.04] flex items-center justify-center pointer-events-none">
-          <svg width="100%" height="100%" viewBox="0 0 1440 132" preserveAspectRatio="none">
-            <pattern id="header-diamond-pattern" x="0" y="0" width="60" height="60" patternUnits="userSpaceOnUse">
-              <path d="M30 0 L60 30 L30 60 L0 30 Z" fill="none" stroke="#FFFFFF" strokeWidth="1.5" />
-            </pattern>
-            <rect width="100%" height="100%" fill="url(#header-diamond-pattern)" />
-          </svg>
-        </div>
-        
-        <div className="relative z-10 flex flex-col items-center gap-1">
-          <span className="text-[#9FB7AE] font-bold text-[14px] tracking-wide">{isEn ? 'OFFERS' : 'عروض'}</span>
-          <h1 className="text-white text-[28px] md:text-[34px] font-bold tracking-tight">
-            {isEn ? 'Limited Offers You Shouldn\'t Miss' : 'عروض محدودة لا تفوتك'}
-          </h1>
-        </div>
-      </section>
+      <PageHeader
+        title={isEn ? "Limited Offers You Shouldn't Miss" : "عروض محدودة لا تفوتك"}
+        subtitle={isEn ? "Offers" : "عروض"}
+        isEn={isEn}
+      />
 
       {/* Main Container */}
       <div className="max-w-[1240px] mx-auto px-4 mt-6 md:mt-10 flex flex-col gap-8">

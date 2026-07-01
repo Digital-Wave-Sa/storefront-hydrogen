@@ -210,12 +210,12 @@ export default function PromotionsPage() {
       />
 
       {/* Main Container */}
-      <div className="max-w-[1240px] mx-auto px-4 mt-6 md:mt-10 flex flex-col gap-8">
+      <div className="max-w-[1280px] mx-auto px-4 mt-6 md:mt-10 flex flex-col gap-8">
         
         {/* 2. Hero Offer Card */}
-        <section className="w-full bg-[#FEF8EB]/30 rounded-[24px] border border-[#EBE3D5] p-5 md:p-8 flex flex-col lg:flex-row items-center gap-8 shadow-sm" dir="ltr">
+        <section className="w-full bg-[#FEF8EB]/30 rounded-[24px] border border-[#906B51] p-5 md:p-8 flex flex-col lg:flex-row items-center gap-8 shadow-sm lg:h-[503px] box-border" dir="ltr">
           {/* Left Side: Table Image (Always Left) */}
-          <div className="w-full lg:w-1/2 h-[260px] sm:h-[350px] lg:h-[400px] rounded-[20px] overflow-hidden shadow-sm">
+          <div className="w-full lg:w-1/2 h-[260px] sm:h-[350px] lg:h-[439px] rounded-[20px] overflow-hidden shadow-sm">
             <img 
               src="/images/promotions/promotions-1st-section.webp" 
               alt="Season Specials" 

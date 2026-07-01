@@ -1,4 +1,14 @@
-import { data, redirect, type LoaderFunctionArgs } from 'react-router';
+import { redirect, type LoaderFunctionArgs } from 'react-router';
+
+/** Derive a consistent password from a user's unique social ID + server secret */
+async function derivePassword(userId: string, secret: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(`social:${userId}:${secret}`);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  return hashHex.slice(0, 24) + 'Aa1!';
+}
 
 export async function loader({ context, request }: LoaderFunctionArgs) {
   const { env, session, storefront } = context;
@@ -42,7 +52,7 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
     const { customers } = await searchRes.json();
 
     const existingCustomer = customers?.[0];
-    const tempPassword = Math.random().toString(36).slice(-10) + 'A1!';
+    const stablePassword = await derivePassword(fbId, env.SESSION_SECRET || 'saadeddin-social');
     let customerEmail = finalEmail;
 
     if (existingCustomer) {
@@ -53,8 +63,8 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
         body: JSON.stringify({
           customer: {
             id: existingCustomer.id,
-            password: tempPassword,
-            password_confirmation: tempPassword
+            password: stablePassword,
+            password_confirmation: stablePassword
           }
         })
       });
@@ -72,9 +82,10 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
             first_name: first_name || 'Social',
             last_name: last_name || 'User',
             email: finalEmail,
-            password: tempPassword,
-            password_confirmation: tempPassword,
-            tags: 'social_login'
+            password: stablePassword,
+            password_confirmation: stablePassword,
+            tags: 'social_login,facebook_login',
+            verified_email: true
           }
         })
       });
@@ -88,7 +99,7 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
 
     // 4. Generate REAL storefront access token
     const storefrontTokenResponse = await storefront.mutate(CUSTOMER_ACCESS_TOKEN_CREATE_MUTATION, {
-      variables: { input: { email: customerEmail, password: tempPassword } },
+      variables: { input: { email: customerEmail, password: stablePassword } },
     });
     const token = storefrontTokenResponse.customerAccessTokenCreate?.customerAccessToken;
 

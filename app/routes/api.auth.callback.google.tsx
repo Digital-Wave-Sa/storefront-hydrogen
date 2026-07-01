@@ -1,4 +1,14 @@
-import { data, redirect, type LoaderFunctionArgs } from 'react-router';
+import { redirect, type LoaderFunctionArgs } from 'react-router';
+
+/** Derive a consistent password from a user's unique social ID + server secret */
+async function derivePassword(userId: string, secret: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(`social:${userId}:${secret}`);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  return hashHex.slice(0, 24) + 'Aa1!';
+}
 
 export async function loader({ context, request }: LoaderFunctionArgs) {
   const { env, session, storefront } = context;
@@ -35,17 +45,18 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
 
     if (!email) throw new Error('No email returned from Google');
 
-    // 3. Check if customer exists in Shopify via Admin API
+    // 3. Derive a DETERMINISTIC password from the user's Google ID + server secret
+    //    This ensures the same customer always has the same password on every login attempt.
     const adminToken = env.SHOPIFY_ADMIN_API_ACCESS_TOKEN;
     const domain = env.PUBLIC_STORE_DOMAIN;
+    const stablePassword = await derivePassword(googleId, env.SESSION_SECRET || 'saadeddin-social');
 
-    const searchRes = await fetch(`https://${domain}/admin/api/2023-04/customers/search.json?query=email:${email}`, {
+    const searchRes = await fetch(`https://${domain}/admin/api/2023-04/customers/search.json?query=email:${encodeURIComponent(email)}`, {
       headers: { 'X-Shopify-Access-Token': adminToken },
     });
     const { customers } = await searchRes.json();
 
     const existingCustomer = customers?.[0];
-    const tempPassword = Math.random().toString(36).slice(-10) + 'A1!';
     let finalEmail = email;
 
     if (existingCustomer) {
@@ -56,8 +67,8 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
         body: JSON.stringify({
           customer: {
             id: existingCustomer.id,
-            password: tempPassword,
-            password_confirmation: tempPassword
+            password: stablePassword,
+            password_confirmation: stablePassword
           }
         })
       });
@@ -75,9 +86,10 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
             first_name: given_name || 'Social',
             last_name: family_name || 'User',
             email: email,
-            password: tempPassword,
-            password_confirmation: tempPassword,
-            tags: 'social_login'
+            password: stablePassword,
+            password_confirmation: stablePassword,
+            tags: 'social_login,google_login',
+            verified_email: true
           }
         })
       });
@@ -91,7 +103,7 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
 
     // 4. Generate REAL storefront access token
     const storefrontTokenResponse = await storefront.mutate(CUSTOMER_ACCESS_TOKEN_CREATE_MUTATION, {
-      variables: { input: { email: finalEmail, password: tempPassword } },
+      variables: { input: { email: finalEmail, password: stablePassword } },
     });
     const token = storefrontTokenResponse.customerAccessTokenCreate?.customerAccessToken;
 

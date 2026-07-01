@@ -1,5 +1,15 @@
 import { redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from 'react-router';
 
+/** Derive a consistent password from a user's unique social ID + server secret */
+async function derivePassword(userId: string, secret: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(`social:${userId}:${secret}`);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  return hashHex.slice(0, 24) + 'Aa1!';
+}
+
 function parseJwt(token: string) {
   try {
     const base64Url = token.split('.')[1];
@@ -56,7 +66,7 @@ async function handleAppleAuth(formData: FormData, context: any) {
   const { customers } = await searchRes.json();
 
   const existingCustomer = customers?.[0];
-  const tempPassword = Math.random().toString(36).slice(-10) + 'A1!';
+  const stablePassword = await derivePassword(appleUserId, env.SESSION_SECRET || 'saadeddin-social');
   let customerEmail = finalEmail;
 
   if (existingCustomer) {
@@ -67,8 +77,8 @@ async function handleAppleAuth(formData: FormData, context: any) {
       body: JSON.stringify({
         customer: {
           id: existingCustomer.id,
-          password: tempPassword,
-          password_confirmation: tempPassword
+          password: stablePassword,
+          password_confirmation: stablePassword
         }
       })
     });
@@ -86,9 +96,10 @@ async function handleAppleAuth(formData: FormData, context: any) {
           first_name: firstName,
           last_name: lastName,
           email: finalEmail,
-          password: tempPassword,
-          password_confirmation: tempPassword,
-          tags: 'social_login'
+          password: stablePassword,
+          password_confirmation: stablePassword,
+          tags: 'social_login,apple_login',
+          verified_email: true
         }
       })
     });
@@ -102,7 +113,7 @@ async function handleAppleAuth(formData: FormData, context: any) {
 
   // 4. Generate REAL storefront access token
   const tokenResponse = await storefront.mutate(CUSTOMER_ACCESS_TOKEN_CREATE_MUTATION, {
-    variables: { input: { email: customerEmail, password: tempPassword } },
+      variables: { input: { email: customerEmail, password: stablePassword } },
   });
   const token = tokenResponse.customerAccessTokenCreate?.customerAccessToken;
 

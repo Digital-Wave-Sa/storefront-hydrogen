@@ -5,6 +5,7 @@ import { LogoSplash } from '~/components/LogoSplash';
 import { sendSMS } from '~/lib/sms.server';
 import { getAdminToken } from '~/lib/shopify-admin.server';
 import { SaadeddinApi } from '~/lib/saadeddin-api.server';
+import { SocialLogins } from '~/components/SocialLogins';
 
 export const meta: MetaFunction<typeof loader> = () => {
   return [{ title: 'Create Account | Saadeddin' }];
@@ -376,7 +377,8 @@ export default function Register() {
 
               {/* Registration Steps */}
               {step === 'input' ? (
-                <Form method="POST" className="w-full flex flex-col gap-5 w-full">
+                <>
+                  <Form method="POST" className="w-full flex flex-col gap-5 w-full">
                   <input type="hidden" name="intent" value="send-otp" />
                   
                   {/* Account Type Toggle */}
@@ -574,6 +576,8 @@ export default function Register() {
                     {isLoading ? (isEn ? 'Sending...' : 'جاري الإرسال...') : (isEn ? 'Create account and send verification code' : 'إنشاء حساب وإرسال رمز التحقق')}
                   </button>
                 </Form>
+                <SocialLogins />
+              </>
               ) : (
                 <Form method="POST" className="w-full flex flex-col gap-6">
                   <input type="hidden" name="intent" value="register-with-otp" />

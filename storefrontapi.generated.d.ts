@@ -3834,6 +3834,22 @@ export type SearchQuery = {
   };
 };
 
+export type CustomerAccessTokenCreateSocialMutationVariables =
+  StorefrontAPI.Exact<{
+    input: StorefrontAPI.CustomerAccessTokenCreateInput;
+  }>;
+
+export type CustomerAccessTokenCreateSocialMutation = {
+  customerAccessTokenCreate?: StorefrontAPI.Maybe<{
+    customerAccessToken?: StorefrontAPI.Maybe<
+      Pick<StorefrontAPI.CustomerAccessToken, 'accessToken' | 'expiresAt'>
+    >;
+    customerUserErrors: Array<
+      Pick<StorefrontAPI.CustomerUserError, 'code' | 'field' | 'message'>
+    >;
+  }>;
+};
+
 export type CustomerAddressesForLocationIdQueryVariables = StorefrontAPI.Exact<{
   customerAccessToken: StorefrontAPI.Scalars['String']['input'];
 }>;
@@ -4101,6 +4117,10 @@ interface GeneratedMutationTypes {
   '#graphql\n  mutation customerReset(\n    $id: ID!,\n    $input: CustomerResetInput!\n    $country: CountryCode\n    $language: LanguageCode\n  ) @inContext(country: $country, language: $language) {\n    customerReset(id: $id, input: $input) {\n      customerAccessToken {\n        accessToken\n        expiresAt\n      }\n      customerUserErrors {\n        code\n        field\n        message\n      }\n    }\n  }\n': {
     return: CustomerResetMutation;
     variables: CustomerResetMutationVariables;
+  };
+  '#graphql\n  mutation customerAccessTokenCreateSocial($input: CustomerAccessTokenCreateInput!) {\n    customerAccessTokenCreate(input: $input) {\n      customerAccessToken { accessToken expiresAt }\n      customerUserErrors { code field message }\n    }\n  }\n': {
+    return: CustomerAccessTokenCreateSocialMutation;
+    variables: CustomerAccessTokenCreateSocialMutationVariables;
   };
 }
 

@@ -17,7 +17,7 @@ function parseJwt(token: string) {
 }
 
 async function handleAppleAuth(formData: FormData, context: any) {
-  const { env, session } = context;
+  const { env, session, storefront } = context;
   const idToken = formData.get('id_token') as string;
   const userJson = formData.get('user') as string; 
 
@@ -56,22 +56,73 @@ async function handleAppleAuth(formData: FormData, context: any) {
   const { customers } = await searchRes.json();
 
   const existingCustomer = customers?.[0];
+  const tempPassword = Math.random().toString(36).slice(-10) + 'A1!';
+  let customerEmail = finalEmail;
 
   if (existingCustomer) {
-    session.set('customerAccessToken', {
-        accessToken: 'SOCIAL_LOGIN_TOKEN_' + Date.now(),
-        expiresAt: new Date(Date.now() + 3600 * 1000).toISOString(),
-        isSocial: true,
-        email: finalEmail,
-        firstName: firstName
+    // Update password via Admin API
+    const updateRes = await fetch(`https://${domain}/admin/api/2024-01/customers/${existingCustomer.id}.json`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'X-Shopify-Access-Token': adminToken },
+      body: JSON.stringify({
+        customer: {
+          id: existingCustomer.id,
+          password: tempPassword,
+          password_confirmation: tempPassword
+        }
+      })
     });
-    return redirect('/account', {
-      headers: { 'Set-Cookie': await session.commit() },
+    if (!updateRes.ok) {
+      throw new Error('Failed to synchronize credentials.');
+    }
+    customerEmail = existingCustomer.email || finalEmail;
+  } else {
+    // Create new customer via Admin API
+    const createRes = await fetch(`https://${domain}/admin/api/2024-01/customers.json`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Shopify-Access-Token': adminToken },
+      body: JSON.stringify({
+        customer: {
+          first_name: firstName,
+          last_name: lastName,
+          email: finalEmail,
+          password: tempPassword,
+          password_confirmation: tempPassword,
+          tags: 'social_login'
+        }
+      })
     });
+    if (!createRes.ok) {
+      const errData = await createRes.json().catch(() => ({}));
+      throw new Error(errData.errors ? JSON.stringify(errData.errors) : 'Failed to register social account.');
+    }
+    const createData = await createRes.json();
+    customerEmail = createData.customer?.email || finalEmail;
   }
 
-  return redirect('/account/login?error=' + encodeURIComponent('Account not found. Please register an account first.'));
+  // 4. Generate REAL storefront access token
+  const tokenResponse = await storefront.mutate(CUSTOMER_ACCESS_TOKEN_CREATE_MUTATION, {
+    variables: { input: { email: customerEmail, password: tempPassword } },
+  });
+  const token = tokenResponse.customerAccessTokenCreate?.customerAccessToken;
+
+  if (token) {
+    session.set('customerAccessToken', token);
+    return redirect('/account', { headers: { 'Set-Cookie': await session.commit() } });
+  } else {
+    const errors = tokenResponse.customerAccessTokenCreate?.customerUserErrors;
+    throw new Error(errors?.[0]?.message || 'Failed to authenticate social session.');
+  }
 }
+
+const CUSTOMER_ACCESS_TOKEN_CREATE_MUTATION = `#graphql
+  mutation customerAccessTokenCreateSocial($input: CustomerAccessTokenCreateInput!) {
+    customerAccessTokenCreate(input: $input) {
+      customerAccessToken { accessToken expiresAt }
+      customerUserErrors { code field message }
+    }
+  }
+`;
 
 export async function action({ request, context }: ActionFunctionArgs) {
   try {

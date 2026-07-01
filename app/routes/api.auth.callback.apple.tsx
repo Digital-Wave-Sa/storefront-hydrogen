@@ -108,6 +108,7 @@ async function handleAppleAuth(formData: FormData, context: any) {
 
   if (token) {
     session.set('customerAccessToken', token);
+    session.set('saadeddinToken', 'social-login-' + Date.now());
     return redirect('/account', { headers: { 'Set-Cookie': await session.commit() } });
   } else {
     const errors = tokenResponse.customerAccessTokenCreate?.customerUserErrors;

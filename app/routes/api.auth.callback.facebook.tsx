@@ -94,6 +94,7 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
 
     if (token) {
       session.set('customerAccessToken', token);
+      session.set('saadeddinToken', 'social-login-' + Date.now());
       return redirect('/account', { headers: { 'Set-Cookie': await session.commit() } });
     } else {
       const errors = storefrontTokenResponse.customerAccessTokenCreate?.customerUserErrors;

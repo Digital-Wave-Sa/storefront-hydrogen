@@ -224,9 +224,9 @@ export default function PromotionsPage() {
           </div>
 
           {/* Right Side: Promotion Details (Always Right) */}
-          <div className="w-full lg:w-1/2 flex flex-col items-start rtl:items-end text-start rtl:text-end gap-5" dir={direction}>
+          <div className="w-full lg:w-1/2 flex flex-col items-start gap-5" dir={direction}>
             {/* Tag Badge */}
-            <div className="bg-[#E24D55] px-3 py-1 rounded-[6px] flex items-center gap-1.5 self-start rtl:self-end">
+            <div className="bg-[#E24D55] px-3 py-1 rounded-[6px] flex items-center gap-1.5 self-start">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-white">
                 <circle cx="12" cy="12" r="10" />
                 <polyline points="12 6 12 12 16 14" />
@@ -234,8 +234,16 @@ export default function PromotionsPage() {
               <span className="text-white font-bold text-[12px] tracking-wide">{isEn ? 'LIMITED OFFER' : 'عرض محدود'}</span>
             </div>
 
-            <div className="flex flex-col gap-2 w-full">
-              <h2 className="text-[#234745] text-[32px] md:text-[40px] font-bold leading-tight">
+            <div className="flex flex-col gap-2 w-full text-start">
+              <h2 
+                className="text-[#234745] text-[32px] md:text-[50px] font-bold text-center w-full"
+                style={{ 
+                  fontFamily: isEn ? 'inherit' : "'Bahij Janna', sans-serif",
+                  fontWeight: 700,
+                  lineHeight: '100%',
+                  textAlign: 'center',
+                }}
+              >
                 {isEn ? 'Big Season Sales' : 'تخفيضات الموسم الكبيرة'}
               </h2>
               <p className="text-[#906B51] text-[15px] font-medium leading-relaxed">
@@ -250,19 +258,8 @@ export default function PromotionsPage() {
             {/* Timer and Promo Code Block */}
             <div className="flex flex-row flex-wrap items-center justify-between w-full gap-4 mt-2">
               
-              {/* Promo Code Badge (Left side in RTL) */}
-              <div className="flex items-center justify-between w-[150px] h-[60px] bg-white border border-[#E1ECE9] rounded-[10px] px-3 shadow-sm" dir="ltr">
-                <span className="text-[#234745] font-bold text-[15px] tracking-wider" style={{ fontFamily: "'EnglishDigits', sans-serif" }}>SAAD20</span>
-                <button 
-                  onClick={handleCopyCode}
-                  className="text-[#906B51] text-[11px] font-bold px-2 py-1.5 bg-[#FEF8EB] hover:bg-[#FDF0D5] rounded-[6px] border border-[#F5EAD4] transition-colors"
-                >
-                  {isEn ? 'Copy' : 'نسخ الكود'}
-                </button>
-              </div>
-
-              {/* Live Timer digits (Right side in RTL) */}
-              <div className="flex items-center gap-2" dir="ltr">
+              {/* Live Timer digits */}
+              <div className="flex items-center gap-2">
                 <div className="flex flex-col items-center justify-center w-[54px] h-[60px] bg-white border border-[#E1ECE9] rounded-[10px] shadow-sm">
                   <span className="text-[#234745] font-bold text-[20px] leading-none" style={{ fontFamily: "'EnglishDigits', sans-serif" }}>{timeLeft.hours}</span>
                   <span className="text-[#9FB7AE] text-[10px] font-bold mt-1">{isEn ? 'Hours' : 'ساعة'}</span>
@@ -277,12 +274,23 @@ export default function PromotionsPage() {
                 </div>
               </div>
 
+              {/* Promo Code Badge */}
+              <div className="flex items-center justify-between w-[150px] h-[60px] bg-white border border-[#E1ECE9] rounded-[10px] px-3 shadow-sm">
+                <span className="text-[#234745] font-bold text-[15px] tracking-wider" style={{ fontFamily: "'EnglishDigits', sans-serif" }}>SAAD20</span>
+                <button 
+                  onClick={handleCopyCode}
+                  className="text-[#906B51] text-[11px] font-bold px-2 py-1.5 bg-[#FEF8EB] hover:bg-[#FDF0D5] rounded-[6px] border border-[#F5EAD4] transition-colors"
+                >
+                  {isEn ? 'Copy' : 'نسخ الكود'}
+                </button>
+              </div>
+
             </div>
 
             {/* Shop now button */}
             <Link 
               to="/collections/all" 
-              className="inline-flex items-center justify-center px-8 h-[48px] bg-[#BBCFCD] hover:bg-[#ACC4C2] text-[#234745] font-bold text-[15px] rounded-full shadow-sm mt-3 transition-colors self-start rtl:self-start"
+              className="inline-flex items-center justify-center px-8 h-[48px] bg-[#BBCFCD] hover:bg-[#ACC4C2] text-[#234745] font-bold text-[15px] rounded-full shadow-sm mt-3 transition-colors"
             >
               {isEn ? 'Shop Now' : 'تسوق الآن'}
             </Link>

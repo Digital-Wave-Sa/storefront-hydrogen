@@ -12,6 +12,7 @@ import {
 } from 'react-router';
 import { Button } from '~/components/layout/Button';
 import { useState } from 'react';
+import { SaadeddinApi } from '~/lib/saadeddin-api.server';
 export type ActionResponse = {
   error: string | null;
   customer: CustomerFragment | null;
@@ -140,7 +141,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
     const birthdate = form.get('birthdate');
     if (birthdate) {
-      // SYNC WITH CRM / ADMIN API
+      // 1. Sync with Shopify Admin API
       try {
         const adminAccessToken = (context.env as any).SHOPIFY_ADMIN_API_ACCESS_TOKEN;
         if (adminAccessToken) {
@@ -167,7 +168,18 @@ export async function action({ request, context }: ActionFunctionArgs) {
           });
         }
       } catch (e) {
-        console.error('Failed to sync birthdate:', e);
+        console.error('Failed to sync birthdate with Shopify:', e);
+      }
+
+      // 2. Sync with Custom CRM API to drive birthday-bonus enrollment
+      try {
+        const saadeddinToken = await context.session.get('saadeddinToken');
+        if (saadeddinToken) {
+          const api = new SaadeddinApi(context.env, saadeddinToken);
+          await api.updateProfile({ birthDate: birthdate as string });
+        }
+      } catch (e) {
+        console.error('Failed to sync birthdate with custom CRM:', e);
       }
     }
 

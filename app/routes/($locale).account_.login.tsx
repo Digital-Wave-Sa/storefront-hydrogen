@@ -3,6 +3,7 @@ import { data, redirect, type ActionFunctionArgs, type LoaderFunctionArgs, type 
 import { Form, Link, useActionData, useNavigation, useRouteLoaderData } from 'react-router';
 import { LogoSplash } from '~/components/LogoSplash';
 import { SaadeddinApi } from '~/lib/saadeddin-api.server';
+import { SocialLogins } from '~/components/SocialLogins';
 
 export const meta: MetaFunction<typeof loader> = () => {
   return [{ title: 'Login | Saadeddin' }];
@@ -406,41 +407,7 @@ export default function Login() {
 
               {/* Social Logins Section */}
               <div className="w-full flex flex-col gap-4 mt-2">
-                
-                {/* Divider 1 */}
-                <div className="flex items-center gap-4 w-full">
-                  <div className="flex-1 h-[2px] bg-[#BBCFCD]/50" />
-                  <span className="text-[#7D7D7D] font-medium text-[14px]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
-                    {isEn ? 'Or log in with' : 'أو سجل الدخول ب'}
-                  </span>
-                  <div className="flex-1 h-[2px] bg-[#BBCFCD]/50" />
-                </div>
-
-                {/* Apple & Google Buttons */}
-                <div className="flex flex-row gap-4 w-full" dir="ltr">
-                  <button 
-                    onClick={() => handleSocialClick('apple', '/api/auth/apple')}
-                    disabled={loadingProvider !== null}
-                    className="flex-1 h-[52px] border border-[#234745] rounded-[12px] flex items-center justify-center gap-2 hover:bg-[#234745]/5 transition-colors"
-                  >
-                    {loadingProvider === 'apple' ? (
-                      <span className="w-5 h-5 border-2 border-[#234745] border-t-transparent rounded-full animate-spin" />
-                    ) : (
-                      <span className="font-bold text-[16px] text-[#234745]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>Apple</span>
-                    )}
-                  </button>
-                  <button 
-                    onClick={() => handleSocialClick('google', '/api/auth/google')}
-                    disabled={loadingProvider !== null}
-                    className="flex-1 h-[52px] border border-[#234745] rounded-[12px] flex items-center justify-center gap-2 hover:bg-[#234745]/5 transition-colors"
-                  >
-                    {loadingProvider === 'google' ? (
-                      <span className="w-5 h-5 border-2 border-[#234745] border-t-transparent rounded-full animate-spin" />
-                    ) : (
-                      <span className="font-bold text-[16px] text-[#234745]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>Google</span>
-                    )}
-                  </button>
-                </div>
+                <SocialLogins />
 
                 {/* Divider 2 */}
                 <div className="flex items-center gap-4 w-full">

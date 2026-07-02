@@ -219,7 +219,7 @@ export default function PromotionsPage() {
           className="w-full rounded-[24px] border border-[#906B51] flex flex-col lg:flex-row items-center gap-6 lg:h-[503px] p-5 lg:p-6"
         >
           {/* Left Side: Table Image — inset with card padding, rounded corners */}
-          <div className="w-full lg:w-[45%] h-[260px] sm:h-[360px] lg:h-full self-stretch flex-shrink-0 rounded-[16px] overflow-hidden">
+          <div className="w-full lg:w-[45%] h-[260px] sm:h-[360px] lg:h-[455px] flex-shrink-0 rounded-[16px] overflow-hidden">
             <img
               src="/images/promotions/promotions-1st-section.webp"
               alt="Season Specials"

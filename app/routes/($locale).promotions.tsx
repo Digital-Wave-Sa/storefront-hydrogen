@@ -172,29 +172,29 @@ export default function PromotionsPage() {
   // Map real Shopify products to matching structures, or fallback to mock list
   const displayProducts = products && products.length > 0
     ? products.map((prod: any, idx: number) => {
-        const variant = prod.variants?.nodes?.[0];
-        const price = variant?.price?.amount ? Math.round(parseFloat(variant.price.amount)).toString() : '0';
-        const comparePrice = variant?.compareAtPrice?.amount ? Math.round(parseFloat(variant.compareAtPrice.amount)).toString() : '';
-        const mockFallback = mockProducts[idx % mockProducts.length];
-        return {
-          id: prod.id,
-          title: isEn ? prod.title : (mockFallback.title || prod.title),
-          price,
-          comparePrice: comparePrice || (parseFloat(price) < parseFloat(mockFallback.price) ? mockFallback.comparePrice : ''),
-          tag: mockFallback.tag,
-          image: prod.featuredImage?.url || mockFallback.image,
-          availableForSale: prod.availableForSale,
-          variantId: variant?.id,
-          handle: prod.handle
-        };
-      })
+      const variant = prod.variants?.nodes?.[0];
+      const price = variant?.price?.amount ? Math.round(parseFloat(variant.price.amount)).toString() : '0';
+      const comparePrice = variant?.compareAtPrice?.amount ? Math.round(parseFloat(variant.compareAtPrice.amount)).toString() : '';
+      const mockFallback = mockProducts[idx % mockProducts.length];
+      return {
+        id: prod.id,
+        title: isEn ? prod.title : (mockFallback.title || prod.title),
+        price,
+        comparePrice: comparePrice || (parseFloat(price) < parseFloat(mockFallback.price) ? mockFallback.comparePrice : ''),
+        tag: mockFallback.tag,
+        image: prod.featuredImage?.url || mockFallback.image,
+        availableForSale: prod.availableForSale,
+        variantId: variant?.id,
+        handle: prod.handle
+      };
+    })
     : mockProducts;
 
   const direction = isEn ? 'ltr' : 'rtl';
 
   return (
     <div className="w-full bg-[#FFFFFF] min-h-screen pb-20" dir={direction} style={{ fontFamily: isEn ? 'inherit' : "'GE Dinar One', 'Bahij Janna', sans-serif" }}>
-      
+
       {/* Toast Notification */}
       {showToast && (
         <div className="fixed bottom-10 left-1/2 transform -translate-x-1/2 bg-[#234745] text-white px-6 py-3 rounded-full shadow-lg z-50 animate-fade-in font-bold text-[14px]">
@@ -211,15 +211,15 @@ export default function PromotionsPage() {
 
       {/* Main Container */}
       <div className="max-w-[1280px] mx-auto px-4 mt-6 md:mt-10 flex flex-col gap-8">
-        
+
         {/* 2. Hero Offer Card */}
         <section
           dir="ltr"
           style={{ boxSizing: 'border-box', background: '#FEF8EB' }}
-          className="w-full rounded-[24px] border border-[#906B51] flex flex-col lg:flex-row items-stretch gap-6 p-5 lg:p-6"
+          className="w-full rounded-[24px] border border-[#906B51] flex flex-col lg:flex-row items-stretch gap-6 p-5 lg:p-8"
         >
           {/* Left Side: Table Image — inset with card padding, rounded corners */}
-          <div className="w-full lg:w-[45%] h-[260px] sm:h-[360px] lg:h-[455px] flex-shrink-0 rounded-[16px] overflow-hidden">
+          <div className="w-full lg:w-[45%] h-[260px] sm:h-[260px] lg:h-[350px] flex-shrink-0 rounded-[16px] overflow-hidden">
             <img
               src="/images/promotions/promotions-1st-section.webp"
               alt="Season Specials"
@@ -230,7 +230,7 @@ export default function PromotionsPage() {
           {/* Right Side: Promotion Details */}
           <div
             dir={direction}
-            className="flex-1 flex flex-col justify-center gap-5 px-4 lg:px-6 py-2"
+            className="flex-1 flex flex-col justify-center gap-5 py-2"
           >
             {/* Tag Badge — aligned to start (right in RTL) */}
             <div className="flex">
@@ -318,66 +318,115 @@ export default function PromotionsPage() {
         </section>
 
         {/* 3. BOGO Banner (Buy 1 Get 1 Free) */}
-        <section className="w-full bg-[#F5E2E4] rounded-[24px] overflow-hidden p-6 md:p-10 flex flex-col md:flex-row items-center justify-between relative gap-6">
-          {/* Left Side: Chocolate Bar Illustration */}
-          <div className="w-[120px] h-[120px] flex items-center justify-center flex-shrink-0">
-            {/* Custom vector-styled flat chocolate bar */}
-            <svg width="100" height="110" viewBox="0 0 100 110" fill="none" xmlns="http://www.w3.org/2000/svg" className="drop-shadow-md">
-              {/* Chocolate Base blocks */}
-              <rect x="15" y="10" width="70" height="90" rx="8" fill="#84543F" />
-              {/* Individual squares */}
-              <rect x="23" y="18" width="16" height="16" rx="3" fill="#693C29" />
-              <rect x="43" y="18" width="16" height="16" rx="3" fill="#693C29" />
-              <rect x="63" y="18" width="16" height="16" rx="3" fill="#693C29" />
-              
-              <rect x="23" y="38" width="16" height="16" rx="3" fill="#693C29" />
-              <rect x="43" y="38" width="16" height="16" rx="3" fill="#693C29" />
-              <rect x="63" y="38" width="16" height="16" rx="3" fill="#693C29" />
+        <section
+          dir="ltr"
+          className="w-full bg-[#ECD9DA] rounded-[24px] p-6 md:p-10 flex flex-col md:flex-row items-center justify-between gap-8 relative overflow-hidden"
+        >
+          {/* Left Side: Chocolate Bar Illustration (Always Left) */}
+          <div className="w-[180px] h-[150px] flex items-center justify-center flex-shrink-0 relative">
+            <div className="transform rotate-[-38deg] drop-shadow-[0_8px_16px_rgba(0,0,0,0.12)]">
+              <svg width="120" height="150" viewBox="0 0 120 150" fill="none" xmlns="http://www.w3.org/2000/svg">
+                {/* Chocolate Base */}
+                <rect x="15" y="10" width="90" height="130" rx="8" fill="#784A34" />
+                
+                {/* Row 1 */}
+                <rect x="22" y="17" width="34" height="24" rx="4" fill="#603722" />
+                <rect x="25" y="19" width="28" height="18" rx="2" fill="#6A3F28" />
+                <rect x="64" y="17" width="34" height="24" rx="4" fill="#603722" />
+                <rect x="67" y="19" width="28" height="18" rx="2" fill="#6A3F28" />
+                
+                {/* Row 2 */}
+                <rect x="22" y="47" width="34" height="24" rx="4" fill="#603722" />
+                <rect x="25" y="49" width="28" height="18" rx="2" fill="#6A3F28" />
+                <rect x="64" y="47" width="34" height="24" rx="4" fill="#603722" />
+                <rect x="67" y="49" width="28" height="18" rx="2" fill="#6A3F28" />
+                
+                {/* Row 3 */}
+                <rect x="22" y="77" width="34" height="24" rx="4" fill="#603722" />
+                <rect x="25" y="79" width="28" height="18" rx="2" fill="#6A3F28" />
+                <rect x="64" y="77" width="34" height="24" rx="4" fill="#603722" />
+                <rect x="67" y="79" width="28" height="18" rx="2" fill="#6A3F28" />
+                
+                {/* Row 4 */}
+                <rect x="22" y="107" width="34" height="24" rx="4" fill="#603722" />
+                <rect x="64" y="107" width="34" height="24" rx="4" fill="#603722" />
 
-              <rect x="23" y="58" width="16" height="16" rx="3" fill="#693C29" />
-              <rect x="43" y="58" width="16" height="16" rx="3" fill="#693C29" />
-              <rect x="63" y="58" width="16" height="16" rx="3" fill="#693C29" />
+                {/* Torn foil layer (Silver/White) */}
+                <path d="M10 75 L110 50 L110 145 L10 145 Z" fill="#E2E8F0" />
+                <path d="M10 75 L30 70 L50 78 L70 68 L90 73 L110 50 L110 60 L10 85 Z" fill="#CBD5E1" />
 
-              <rect x="23" y="78" width="16" height="16" rx="3" fill="#693C29" />
-              <rect x="43" y="78" width="16" height="16" rx="3" fill="#693C29" />
-              <rect x="63" y="78" width="16" height="16" rx="3" fill="#693C29" />
-
-              {/* Wrapped paper (cutout effect) */}
-              <path d="M12 50 C20 45, 30 55, 45 45 C60 52, 70 48, 88 50 L88 102 C88 105, 85 108, 80 108 L20 108 C15 108, 12 105, 12 102 Z" fill="#E62C4E" />
-              <path d="M12 60 C25 55, 35 68, 55 58 C70 65, 80 58, 88 60 L88 102 C88 105, 85 108, 80 108 L20 108 C15 108, 12 105, 12 102 Z" fill="#FFFFFF" />
-            </svg>
-          </div>
-
-          {/* Right Side: Copy/Text details */}
-          <div className="flex-1 flex flex-col items-center md:items-start text-center md:text-start gap-2.5">
-            {/* Green Badge */}
-            <div className="bg-[#2E5E4E] px-3 py-1 rounded-[15px] flex items-center gap-1">
-              <span className="text-white text-[11px] font-bold">🎁 {isEn ? '1+1 Free' : '١+١ مجاناً'}</span>
-            </div>
-            
-            <h3 className="text-[#1A1A1A] text-[26px] md:text-[32px] font-bold leading-tight">
-              {isEn ? 'Buy One Get One Free' : 'اشتري واحد واحصل على الثاني مجاناً'}
-            </h3>
-            <p className="text-[#7D7D7D] text-[14px] font-medium">
-              {isEn ? 'On all dark chocolate types — Today only!' : 'على جميع أنواع الشوكولاتة الداكنة — اليوم فقط!'}
-            </p>
-          </div>
-
-          {/* Button and shoppers count */}
-          <div className="flex flex-col sm:flex-row items-center gap-4 self-center md:self-end">
-            <span className="text-[#E63946] text-[12px] font-bold animate-pulse">
-              {isEn ? '243 people shopping now' : '٢٤٣ شخص يتسوق الآن'}
-            </span>
-            <Link 
-              to="/collections/all" 
-              className="inline-flex items-center gap-2 px-6 h-[44px] bg-[#BBCFCD] hover:bg-[#ACC4C2] text-[#234745] font-bold text-[14px] rounded-full transition-colors"
-            >
-              <span>{isEn ? 'Shop Offer' : 'تسوق العرض'}</span>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="rotate-180 rtl:rotate-0">
-                <line x1="5" y1="12" x2="19" y2="12" />
-                <polyline points="12 5 19 12 12 19" />
+                {/* Red Wrapper */}
+                <path d="M10 82 L110 57 L110 145 L10 145 Z" fill="#C41230" />
+                {/* White diagonal stripe */}
+                <path d="M10 102 L110 77 L110 97 L10 122 Z" fill="#FFFFFF" />
               </svg>
-            </Link>
+            </div>
+          </div>
+
+          {/* Right Side: Promotion Details (Always Right) */}
+          <div
+            dir={direction}
+            className="flex-1 flex flex-col gap-4 text-start w-full"
+          >
+            {/* Green Badge */}
+            <div className="flex">
+              <div className="bg-[#1F3E35] px-3.5 py-1.5 rounded-full flex items-center gap-1.5">
+                <span className="text-white text-[12px] font-bold flex items-center gap-1">
+                  <span>🎁</span>
+                  <span style={{ fontFamily: "'EnglishDigits', sans-serif" }}>1 + 1</span>
+                  <span>{isEn ? ' Free' : ' مجاناً'}</span>
+                </span>
+              </div>
+            </div>
+
+            {/* Title + Subtitle */}
+            <div className="flex flex-col gap-2">
+              <h3
+                className="text-[#1F3E35] text-[26px] md:text-[34px] font-bold leading-tight"
+                style={{
+                  fontFamily: isEn ? 'inherit' : "'Bahij Janna', sans-serif",
+                  fontWeight: 700,
+                }}
+              >
+                {isEn ? 'Buy One Get One Free' : 'اشتري واحد واحصل على الثاني مجاناً'}
+              </h3>
+              <p className="text-[#7A605C] text-[14px] md:text-[15px] font-semibold leading-relaxed">
+                {isEn ? 'On all dark chocolate types — Today only!' : 'على جميع أنواع الشوكولاتة الداكنة — اليوم فقط!'}
+              </p>
+            </div>
+
+            {/* Action Row: Button + Shoppers Count */}
+            <div className="flex flex-row items-center gap-4 mt-2">
+              {/* Button */}
+              <Link
+                to="/collections/all"
+                className="inline-flex items-center gap-2 px-8 h-[48px] bg-[#BBCFCD] hover:bg-[#ACC4C2] text-[#234745] font-bold text-[14px] rounded-full transition-colors flex-shrink-0"
+              >
+                {isEn ? (
+                  <>
+                    <span>Shop Offer</span>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="5" y1="12" x2="19" y2="12" />
+                      <polyline points="12 5 19 12 12 19" />
+                    </svg>
+                  </>
+                ) : (
+                  <>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
+                      <line x1="19" y1="12" x2="5" y2="12" />
+                      <polyline points="12 19 5 12 12 5" />
+                    </svg>
+                    <span>تسوق العرض</span>
+                  </>
+                )}
+              </Link>
+              
+              {/* Shoppers Count (Standard English digits) */}
+              <span className="text-[#D61C4E] text-[13px] font-semibold whitespace-nowrap">
+                <span style={{ fontFamily: "'EnglishDigits', sans-serif" }} className="font-bold">243</span>
+                <span>{isEn ? ' people shopping now' : ' شخص يتسوق الآن'}</span>
+              </span>
+            </div>
           </div>
         </section>
 
@@ -397,8 +446,8 @@ export default function PromotionsPage() {
                 {isEn ? 'More than 20 products with exceptional prices' : 'أكثر من ٢٠ منتج بأسعار استثنائية'}
               </p>
             </div>
-            <Link 
-              to="/collections/all" 
+            <Link
+              to="/collections/all"
               className="px-6 h-[40px] inline-flex items-center justify-center bg-[#234745] hover:bg-[#1a3533] text-white font-bold text-[13px] rounded-full transition-colors"
             >
               {isEn ? 'Shop Now' : 'تسوق الآن'}
@@ -419,8 +468,8 @@ export default function PromotionsPage() {
                 {isEn ? 'Subscribe now and get 15% discount on your first order' : 'اشترك الآن واحصل على خصم 15% على طلبك الأول من سعد الدين'}
               </p>
             </div>
-            <Link 
-              to="/collections/all" 
+            <Link
+              to="/collections/all"
               className="px-6 h-[40px] inline-flex items-center justify-center bg-[#BBCFCD] hover:bg-[#ACC4C2] text-[#234745] font-bold text-[13px] rounded-full transition-colors"
             >
               {isEn ? 'Get Discount' : 'احصل على الخصم'}
@@ -451,17 +500,17 @@ export default function PromotionsPage() {
                   {/* Top Badges */}
                   <div className="absolute top-4 left-4 right-4 flex justify-between items-center z-10">
                     {/* Wishlist Heart Icon */}
-                    <button 
+                    <button
                       type="button"
                       onClick={() => toggleWishlist(prod)}
                       className="w-[36px] h-[36px] bg-white rounded-full flex items-center justify-center shadow-md hover:scale-105 transition-transform active:scale-95"
                     >
-                      <svg 
-                        width="18" 
-                        height="18" 
-                        viewBox="0 0 24 24" 
-                        fill={isSelected ? '#E24D55' : 'none'} 
-                        stroke={isSelected ? '#E24D55' : '#7D7D7D'} 
+                      <svg
+                        width="18"
+                        height="18"
+                        viewBox="0 0 24 24"
+                        fill={isSelected ? '#E24D55' : 'none'}
+                        stroke={isSelected ? '#E24D55' : '#7D7D7D'}
                         strokeWidth="2.5"
                       >
                         <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
@@ -478,16 +527,16 @@ export default function PromotionsPage() {
                   <div className="w-full aspect-square rounded-[18px] overflow-hidden bg-gray-50 mb-3">
                     {prod.handle ? (
                       <Link to={`/products/${prod.handle}`}>
-                        <img 
-                          src={prod.image} 
-                          alt={prod.title} 
+                        <img
+                          src={prod.image}
+                          alt={prod.title}
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                         />
                       </Link>
                     ) : (
-                      <img 
-                        src={prod.image} 
-                        alt={prod.title} 
+                      <img
+                        src={prod.image}
+                        alt={prod.title}
                         className="w-full h-full object-cover"
                       />
                     )}
@@ -522,7 +571,7 @@ export default function PromotionsPage() {
                           {isEn ? 'Add to Cart' : 'أضف إلي السلة'}
                         </AddToCartButton>
                       ) : (
-                        <button 
+                        <button
                           disabled
                           className="w-full h-[40px] bg-[#BBCFCD] text-[#234745] font-bold text-[13px] rounded-[12px] cursor-not-allowed opacity-50 flex items-center justify-center"
                         >

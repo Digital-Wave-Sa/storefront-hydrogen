@@ -216,10 +216,10 @@ export default function PromotionsPage() {
         <section
           dir="ltr"
           style={{ boxSizing: 'border-box', background: '#FEF8EB' }}
-          className="w-full rounded-[24px] border border-[#906B51] flex flex-col lg:flex-row items-stretch gap-0 lg:h-[503px] overflow-hidden"
+          className="w-full rounded-[24px] border border-[#906B51] flex flex-col lg:flex-row items-center gap-6 lg:h-[503px] p-5 lg:p-6"
         >
-          {/* Left Side: Table Image — flush to card edges, fills full height */}
-          <div className="w-full lg:w-[45%] h-[260px] sm:h-[360px] lg:h-full flex-shrink-0 overflow-hidden">
+          {/* Left Side: Table Image — inset with card padding, rounded corners */}
+          <div className="w-full lg:w-[45%] h-[260px] sm:h-[360px] lg:h-full self-stretch flex-shrink-0 rounded-[16px] overflow-hidden">
             <img
               src="/images/promotions/promotions-1st-section.webp"
               alt="Season Specials"
@@ -230,7 +230,7 @@ export default function PromotionsPage() {
           {/* Right Side: Promotion Details */}
           <div
             dir={direction}
-            className="flex-1 flex flex-col justify-center gap-5 px-8 py-8 lg:py-12"
+            className="flex-1 flex flex-col justify-center gap-5 px-4 lg:px-6 py-2"
           >
             {/* Tag Badge — aligned to start (right in RTL) */}
             <div className="flex">

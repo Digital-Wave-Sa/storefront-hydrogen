@@ -216,7 +216,7 @@ export default function PromotionsPage() {
         <section
           dir="ltr"
           style={{ boxSizing: 'border-box', background: '#FEF8EB' }}
-          className="w-full rounded-[24px] border border-[#906B51] flex flex-col lg:flex-row items-center gap-6 lg:h-[503px] p-5 lg:p-6"
+          className="w-full rounded-[24px] border border-[#906B51] flex flex-col lg:flex-row items-stretch gap-6 p-5 lg:p-6"
         >
           {/* Left Side: Table Image — inset with card padding, rounded corners */}
           <div className="w-full lg:w-[45%] h-[260px] sm:h-[360px] lg:h-[455px] flex-shrink-0 rounded-[16px] overflow-hidden">

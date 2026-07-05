@@ -497,35 +497,35 @@ export default function PromotionsPage() {
             {displayProducts.map((prod: any) => {
               const isSelected = isInWishlist(prod.id);
               return (
-                <div key={prod.id} className="bg-white border border-[#EBE3D5] rounded-[24px] p-3 flex flex-col justify-between hover:shadow-md transition-shadow relative group">
+                <div key={prod.id} className="bg-white border border-[#EBE3D5] rounded-[24px] overflow-hidden flex flex-col justify-between hover:shadow-md transition-shadow relative group">
                   {/* Top Badges */}
-                  <div className="absolute top-4 left-4 right-4 flex justify-between items-center z-10">
+                  <div className="absolute top-3 left-3 right-3 flex justify-between items-center z-10">
                     {/* Wishlist Heart Icon */}
                     <button
                       type="button"
                       onClick={() => toggleWishlist(prod)}
-                      className="w-[36px] h-[36px] bg-white rounded-full flex items-center justify-center shadow-md hover:scale-105 transition-transform active:scale-95"
+                      className="w-[40px] h-[40px] bg-white rounded-full flex items-center justify-center shadow-md hover:scale-105 transition-transform active:scale-95"
                     >
                       <svg
                         width="18"
                         height="18"
                         viewBox="0 0 24 24"
                         fill={isSelected ? '#E24D55' : 'none'}
-                        stroke={isSelected ? '#E24D55' : '#7D7D7D'}
-                        strokeWidth="2.5"
+                        stroke={isSelected ? '#E24D55' : '#1A1A1A'}
+                        strokeWidth="2"
                       >
                         <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
                       </svg>
                     </button>
 
                     {/* Tag Badge */}
-                    <div className="bg-[#BFA169] text-white font-bold text-[10px] md:text-[11px] px-2.5 py-1 rounded-[50px]">
+                    <div className="bg-[#C5A96A] text-white font-bold text-[11px] px-3.5 py-1.5 rounded-full shadow-sm">
                       {prod.tag}
                     </div>
                   </div>
 
-                  {/* Product Image */}
-                  <div className="w-full aspect-square rounded-[18px] overflow-hidden bg-gray-50 mb-3">
+                  {/* Product Image (Flush to top/left/right) */}
+                  <div className="w-full aspect-[4/3] overflow-hidden bg-gray-50">
                     {prod.handle ? (
                       <Link to={`/products/${prod.handle}`}>
                         <img
@@ -544,37 +544,41 @@ export default function PromotionsPage() {
                   </div>
 
                   {/* Details & Button */}
-                  <div className="flex flex-col gap-2">
-                    <h4 className="text-[#171717] text-[14px] md:text-[16px] font-bold text-start line-clamp-1">
+                  <div className="p-4 md:p-5 flex flex-col gap-3 w-full">
+                    <h4 className="text-[#171717] text-[16px] md:text-[18px] font-bold text-start line-clamp-1">
                       {prod.title}
                     </h4>
 
                     {/* Prices */}
-                    <div className="flex items-center gap-2 text-start font-bold">
-                      <span className="text-[#234745] text-[15px] md:text-[17px]">
-                        <span style={{ fontFamily: "'EnglishDigits', sans-serif" }}>{prod.price}</span> {isEn ? 'SAR' : 'ر.س'}
+                    <div className="flex items-center gap-2 text-start font-bold" dir={direction}>
+                      {/* Price */}
+                      <span className="text-[#234745] text-[18px] md:text-[20px] flex items-center gap-1">
+                        <span style={{ fontFamily: "'EnglishDigits', sans-serif" }}>{prod.price}</span>
+                        <span className="text-[14px] font-normal">{isEn ? 'SAR' : 'ر.س'}</span>
                       </span>
+                      {/* Compare Price */}
                       {prod.comparePrice && (
-                        <span className="text-[#7D7D7D] text-[12px] md:text-[13px] line-through font-normal">
-                          <span style={{ fontFamily: "'EnglishDigits', sans-serif" }}>{prod.comparePrice}</span> {isEn ? 'SAR' : 'ر.س'}
+                        <span className="text-[#9FB7AE] text-[13px] md:text-[14px] line-through font-normal flex items-center gap-1">
+                          <span style={{ fontFamily: "'EnglishDigits', sans-serif" }}>{prod.comparePrice}</span>
+                          <span className="text-[11px]">{isEn ? 'SAR' : 'ر.س'}</span>
                         </span>
                       )}
                     </div>
 
                     {/* Add to Cart Button */}
-                    <div className="w-full mt-1.5">
+                    <div className="w-full mt-1">
                       {prod.variantId ? (
                         <AddToCartButton
                           lines={[{ merchandiseId: prod.variantId, quantity: 1 }]}
                           disabled={!prod.availableForSale}
-                          className="w-full h-[40px] bg-[#234745] hover:bg-[#1a3533] text-white font-bold text-[13px] rounded-[50px] transition-colors flex items-center justify-center"
+                          className="w-full h-[48px] bg-[#234745] hover:bg-[#1a3533] text-white font-bold text-[14px] rounded-[50px] transition-colors flex items-center justify-center"
                         >
                           {isEn ? 'Add to Cart' : 'أضف إلي السلة'}
                         </AddToCartButton>
                       ) : (
                         <button
                           disabled
-                          className="w-full h-[40px] bg-[#BBCFCD] text-[#234745] font-bold text-[13px] rounded-[50px] cursor-not-allowed opacity-50 flex items-center justify-center"
+                          className="w-full h-[48px] bg-[#BBCFCD] text-[#234745] font-bold text-[14px] rounded-[50px] cursor-not-allowed opacity-50 flex items-center justify-center"
                         >
                           {isEn ? 'Out of Stock' : 'نفذت الكمية'}
                         </button>

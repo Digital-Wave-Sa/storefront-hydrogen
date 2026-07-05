@@ -191,24 +191,24 @@ export default function PromotionsPage() {
   // Map real Shopify products to matching structures, or fallback to mock list
   const displayProducts = products && products.length > 0
     ? products
-        .filter((prod: any) => isBogoProduct(prod.tags || []))
-        .map((prod: any, idx: number) => {
-          const variant = prod.variants?.nodes?.[0];
-          const price = variant?.price?.amount ? Math.round(parseFloat(variant.price.amount)).toString() : '0';
-          const comparePrice = variant?.compareAtPrice?.amount ? Math.round(parseFloat(variant.compareAtPrice.amount)).toString() : '';
-          const mockFallback = mockProducts[idx % mockProducts.length];
-          return {
-            id: prod.id,
-            title: isEn ? prod.title : (mockFallback.title || prod.title),
-            price,
-            comparePrice: comparePrice || (parseFloat(price) < parseFloat(mockFallback.price) ? mockFallback.comparePrice : ''),
-            tag: mockFallback.tag,
-            image: prod.featuredImage?.url || mockFallback.image,
-            availableForSale: prod.availableForSale,
-            variantId: variant?.id,
-            handle: prod.handle
-          };
-        })
+      .filter((prod: any) => isBogoProduct(prod.tags || []))
+      .map((prod: any, idx: number) => {
+        const variant = prod.variants?.nodes?.[0];
+        const price = variant?.price?.amount ? Math.round(parseFloat(variant.price.amount)).toString() : '0';
+        const comparePrice = variant?.compareAtPrice?.amount ? Math.round(parseFloat(variant.compareAtPrice.amount)).toString() : '';
+        const mockFallback = mockProducts[idx % mockProducts.length];
+        return {
+          id: prod.id,
+          title: isEn ? prod.title : (mockFallback.title || prod.title),
+          price,
+          comparePrice: comparePrice || (parseFloat(price) < parseFloat(mockFallback.price) ? mockFallback.comparePrice : ''),
+          tag: mockFallback.tag,
+          image: prod.featuredImage?.url || mockFallback.image,
+          availableForSale: prod.availableForSale,
+          variantId: variant?.id,
+          handle: prod.handle
+        };
+      })
     : mockProducts.filter((prod: any) => isBogoProduct(prod.tags || []));
 
   const direction = isEn ? 'ltr' : 'rtl';
@@ -235,20 +235,11 @@ export default function PromotionsPage() {
 
         {/* 2. Hero Offer Card */}
         <section
-          dir="ltr"
+          dir={direction}
           style={{ boxSizing: 'border-box', background: '#FEF8EB' }}
           className="w-full rounded-[24px] border border-[#906B51] flex flex-col lg:flex-row items-stretch gap-6 p-5 lg:p-8"
         >
-          {/* Left Side: Table Image — inset with card padding, rounded corners */}
-          <div className="w-full lg:w-[45%] h-[260px] sm:h-[260px] lg:h-[350px] flex-shrink-0 rounded-[16px] overflow-hidden">
-            <img
-              src="/images/promotions/promotions-1st-section.webp"
-              alt="Season Specials"
-              className="w-full h-full object-cover object-center"
-            />
-          </div>
-
-          {/* Right Side: Promotion Details */}
+          {/* Left Side: Promotion Details */}
           <div
             dir={direction}
             className="flex-1 flex flex-col justify-center gap-5 py-2"
@@ -269,11 +260,10 @@ export default function PromotionsPage() {
             {/* Title + Subtitle */}
             <div className="flex flex-col gap-2">
               <h2
-                className="text-[#234745] font-bold leading-[100%]"
+                className="text-[#234745] text-[26px] md:text-[34px] font-bold leading-[100%]"
                 style={{
                   fontFamily: isEn ? 'inherit' : "'Bahij Janna', sans-serif",
                   fontWeight: 700,
-                  fontSize: '50px',
                   lineHeight: '100%',
                 }}
               >
@@ -327,64 +317,35 @@ export default function PromotionsPage() {
             </div>
 
             {/* Shop Now Button */}
-            <div className="flex">
+            <div className="flex w-full sm:w-auto">
               <Link
                 to="/collections/all"
-                className="inline-flex items-center justify-center px-10 h-[50px] bg-[#BBCFCD] hover:bg-[#ACC4C2] font-bold text-[15px] rounded-full transition-colors !text-[#234745] [font-family:'GE_Dinar_One',sans-serif]"
+                className="inline-flex items-center justify-center w-full sm:w-auto px-10 h-[50px] bg-[#BBCFCD] hover:bg-[#ACC4C2] font-bold text-[15px] rounded-full transition-colors !text-[#234745] [font-family:'GE_Dinar_One',sans-serif]"
               >
                 {isEn ? 'Shop Now' : 'تسوق الآن'}
               </Link>
             </div>
           </div>
+
+          {/* Right Side: Table Image — inset with card padding, rounded corners */}
+          <div className="w-full lg:w-[45%] h-[260px] sm:h-[260px] lg:h-[350px] flex-shrink-0 rounded-[16px] overflow-hidden">
+            <img
+              src="/images/promotions/promotions-1st-section.webp"
+              alt="Season Specials"
+              className="w-full h-full object-cover object-center"
+            />
+          </div>
+
+
         </section>
 
         {/* 3. BOGO Banner (Buy 1 Get 1 Free) */}
         <section
-          dir="ltr"
+          dir={direction}
           className="w-full bg-[#EED5D7] rounded-[24px] p-6 md:p-10 flex flex-col md:flex-row items-center justify-between gap-8 relative overflow-hidden"
         >
-          {/* Left Side: Chocolate Bar Illustration (Always Left) */}
-          <div className="w-[180px] h-[150px] flex items-center justify-center flex-shrink-0 relative">
-            <div className="transform rotate-[-38deg] drop-shadow-[0_8px_16px_rgba(0,0,0,0.12)]">
-              <svg width="120" height="150" viewBox="0 0 120 150" fill="none" xmlns="http://www.w3.org/2000/svg">
-                {/* Chocolate Base */}
-                <rect x="15" y="10" width="90" height="130" rx="8" fill="#784A34" />
 
-                {/* Row 1 */}
-                <rect x="22" y="17" width="34" height="24" rx="4" fill="#603722" />
-                <rect x="25" y="19" width="28" height="18" rx="2" fill="#6A3F28" />
-                <rect x="64" y="17" width="34" height="24" rx="4" fill="#603722" />
-                <rect x="67" y="19" width="28" height="18" rx="2" fill="#6A3F28" />
-
-                {/* Row 2 */}
-                <rect x="22" y="47" width="34" height="24" rx="4" fill="#603722" />
-                <rect x="25" y="49" width="28" height="18" rx="2" fill="#6A3F28" />
-                <rect x="64" y="47" width="34" height="24" rx="4" fill="#603722" />
-                <rect x="67" y="49" width="28" height="18" rx="2" fill="#6A3F28" />
-
-                {/* Row 3 */}
-                <rect x="22" y="77" width="34" height="24" rx="4" fill="#603722" />
-                <rect x="25" y="79" width="28" height="18" rx="2" fill="#6A3F28" />
-                <rect x="64" y="77" width="34" height="24" rx="4" fill="#603722" />
-                <rect x="67" y="79" width="28" height="18" rx="2" fill="#6A3F28" />
-
-                {/* Row 4 */}
-                <rect x="22" y="107" width="34" height="24" rx="4" fill="#603722" />
-                <rect x="64" y="107" width="34" height="24" rx="4" fill="#603722" />
-
-                {/* Torn foil layer (Silver/White) */}
-                <path d="M10 75 L110 50 L110 145 L10 145 Z" fill="#E2E8F0" />
-                <path d="M10 75 L30 70 L50 78 L70 68 L90 73 L110 50 L110 60 L10 85 Z" fill="#CBD5E1" />
-
-                {/* Red Wrapper */}
-                <path d="M10 82 L110 57 L110 145 L10 145 Z" fill="#C41230" />
-                {/* White diagonal stripe */}
-                <path d="M10 102 L110 77 L110 97 L10 122 Z" fill="#FFFFFF" />
-              </svg>
-            </div>
-          </div>
-
-          {/* Right Side: Promotion Details (Always Right) */}
+          {/* Left Side: Promotion Details (Always Right) */}
           <div
             dir={direction}
             className="flex-1 flex flex-col gap-4 text-start w-full"
@@ -449,6 +410,49 @@ export default function PromotionsPage() {
               </span>
             </div>
           </div>
+
+
+          {/* Right Side: Chocolate Bar Illustration (Always Left) */}
+          <div className="w-[180px] h-[150px] flex items-center justify-center flex-shrink-0 relative">
+            <div className="transform rotate-[-38deg] drop-shadow-[0_8px_16px_rgba(0,0,0,0.12)]">
+              <svg width="120" height="150" viewBox="0 0 120 150" fill="none" xmlns="http://www.w3.org/2000/svg">
+                {/* Chocolate Base */}
+                <rect x="15" y="10" width="90" height="130" rx="8" fill="#784A34" />
+
+                {/* Row 1 */}
+                <rect x="22" y="17" width="34" height="24" rx="4" fill="#603722" />
+                <rect x="25" y="19" width="28" height="18" rx="2" fill="#6A3F28" />
+                <rect x="64" y="17" width="34" height="24" rx="4" fill="#603722" />
+                <rect x="67" y="19" width="28" height="18" rx="2" fill="#6A3F28" />
+
+                {/* Row 2 */}
+                <rect x="22" y="47" width="34" height="24" rx="4" fill="#603722" />
+                <rect x="25" y="49" width="28" height="18" rx="2" fill="#6A3F28" />
+                <rect x="64" y="47" width="34" height="24" rx="4" fill="#603722" />
+                <rect x="67" y="49" width="28" height="18" rx="2" fill="#6A3F28" />
+
+                {/* Row 3 */}
+                <rect x="22" y="77" width="34" height="24" rx="4" fill="#603722" />
+                <rect x="25" y="79" width="28" height="18" rx="2" fill="#6A3F28" />
+                <rect x="64" y="77" width="34" height="24" rx="4" fill="#603722" />
+                <rect x="67" y="79" width="28" height="18" rx="2" fill="#6A3F28" />
+
+                {/* Row 4 */}
+                <rect x="22" y="107" width="34" height="24" rx="4" fill="#603722" />
+                <rect x="64" y="107" width="34" height="24" rx="4" fill="#603722" />
+
+                {/* Torn foil layer (Silver/White) */}
+                <path d="M10 75 L110 50 L110 145 L10 145 Z" fill="#E2E8F0" />
+                <path d="M10 75 L30 70 L50 78 L70 68 L90 73 L110 50 L110 60 L10 85 Z" fill="#CBD5E1" />
+
+                {/* Red Wrapper */}
+                <path d="M10 82 L110 57 L110 145 L10 145 Z" fill="#C41230" />
+                {/* White diagonal stripe */}
+                <path d="M10 102 L110 77 L110 97 L10 122 Z" fill="#FFFFFF" />
+              </svg>
+            </div>
+          </div>
+
         </section>
 
         {/* 4. Two Grid Cards Side-by-Side */}
@@ -460,7 +464,7 @@ export default function PromotionsPage() {
               <div className="w-[20px] h-[1px] bg-white/50"></div>
             </div>
             <div>
-              <h3 className="text-white text-[28px] md:text-[34px] font-bold leading-tight mb-2">
+              <h3 className="text-white text-[26px] md:text-[34px] font-bold leading-tight mb-2">
                 {isEn ? <><span style={{ fontFamily: "'EnglishDigits', sans-serif" }}>25%</span> on Gift Boxes</> : <><span style={{ fontFamily: "'EnglishDigits', sans-serif" }}>25%</span> على صناديق الهدايا</>}
               </h3>
               <p className="text-white/80 text-[14px] font-semibold !mb-6">
@@ -482,7 +486,7 @@ export default function PromotionsPage() {
               <div className="w-[20px] h-[1px] bg-[#234745]"></div>
             </div>
             <div>
-              <h3 className="text-[#1A1A1A] text-[28px] md:text-[34px] font-bold leading-tight mb-2">
+              <h3 className="text-[#1A1A1A] text-[26px] md:text-[34px] font-bold leading-tight mb-2">
                 {isEn ? <><span style={{ fontFamily: "'EnglishDigits', sans-serif" }}>40%</span> on all chocolate</> : <>خصم <span style={{ fontFamily: "'EnglishDigits', sans-serif" }}>40%</span> على الشوكولاتة</>}
               </h3>
               <p className="text-[#7D7D7D] text-[14px] font-semibold mb-6">
@@ -524,11 +528,11 @@ export default function PromotionsPage() {
             </h2>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+          <div className="flex flex-row overflow-x-auto gap-4 md:grid md:grid-cols-4 md:gap-6 pb-4 md:pb-0 snap-x snap-mandatory hide-scrollbars">
             {displayProducts.map((prod: any) => {
               const isSelected = isInWishlist(prod.id);
               return (
-                <div key={prod.id} className="bg-white border border-[#EBE3D5] rounded-[24px] overflow-hidden flex flex-col justify-between hover:shadow-md transition-shadow relative group">
+                <div key={prod.id} className="bg-white border border-[#EBE3D5] rounded-[24px] overflow-hidden flex flex-col justify-between hover:shadow-md transition-shadow relative group w-[220px] sm:w-[260px] md:w-auto flex-shrink-0 md:flex-shrink snap-start">
                   {/* Top Badges */}
                   <div className="absolute top-3 left-3 right-3 flex justify-between items-center z-10">
                     {/* Wishlist Heart Icon */}

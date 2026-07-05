@@ -102,7 +102,7 @@ export default function PromotionsPage() {
       title: isEn ? 'Maamoul with Pistachio' : 'معمول بالفستق',
       price: '56',
       comparePrice: '60',
-      tag: isEn ? '5% Off' : '٥٪ خصم',
+      tag: isEn ? '5% Off' : '5% خصم',
       image: 'https://cdn.shopify.com/s/files/1/0616/1606/2642/files/cake.png',
       availableForSale: true,
       variantId: 'mock-var-2'
@@ -142,7 +142,7 @@ export default function PromotionsPage() {
       title: isEn ? 'Maamoul with Pistachio' : 'معمول بالفستق',
       price: '56',
       comparePrice: '60',
-      tag: isEn ? '5% Off' : '٥٪ خصم',
+      tag: isEn ? '5% Off' : '5% خصم',
       image: 'https://cdn.shopify.com/s/files/1/0616/1606/2642/files/cake.png',
       availableForSale: true,
       variantId: 'mock-var-6'
@@ -193,7 +193,7 @@ export default function PromotionsPage() {
   const direction = isEn ? 'ltr' : 'rtl';
 
   return (
-    <div className="w-full bg-[#FFFFFF] min-h-screen pb-20" dir={direction} style={{ fontFamily: isEn ? 'inherit' : "'GE Dinar One', 'Bahij Janna', sans-serif" }}>
+    <div className="w-full bg-[#FEF8EB] min-h-screen pb-20" dir={direction} style={{ fontFamily: isEn ? 'inherit' : "'EnglishDigits', 'GE Dinar One', 'Bahij Janna', sans-serif" }}>
 
       {/* Toast Notification */}
       {showToast && (
@@ -273,32 +273,32 @@ export default function PromotionsPage() {
               {/* Timer: Hours | Minutes | Seconds — in RTL renders right-to-left naturally */}
               <div className="flex items-center gap-2" suppressHydrationWarning>
                 {/* Hours */}
-                <div className="flex flex-col items-center justify-center w-[60px] h-[64px] bg-white border border-[#E1ECE9] rounded-[10px]">
+                <div className="flex flex-col items-center justify-center w-[60px] h-[64px] border border-[#9FB7AE] rounded-[10px]">
                   <span suppressHydrationWarning className="text-[#234745] font-bold text-[22px] leading-none" style={{ fontFamily: "'EnglishDigits', sans-serif" }}>{timeLeft.hours}</span>
-                  <span className="text-[#9FB7AE] text-[11px] font-semibold mt-1">{isEn ? 'Hours' : 'ساعة'}</span>
+                  <span className="text-[#234745] text-[11px] font-semibold mt-1">{isEn ? 'Hours' : 'ساعة'}</span>
                 </div>
                 {/* Minutes */}
-                <div className="flex flex-col items-center justify-center w-[60px] h-[64px] bg-white border border-[#E1ECE9] rounded-[10px]">
+                <div className="flex flex-col items-center justify-center w-[60px] h-[64px] border border-[#9FB7AE] rounded-[10px]">
                   <span suppressHydrationWarning className="text-[#234745] font-bold text-[22px] leading-none" style={{ fontFamily: "'EnglishDigits', sans-serif" }}>{timeLeft.minutes}</span>
-                  <span className="text-[#9FB7AE] text-[11px] font-semibold mt-1">{isEn ? 'Mins' : 'دقيقة'}</span>
+                  <span className="text-[#234745] text-[11px] font-semibold mt-1">{isEn ? 'Mins' : 'دقيقة'}</span>
                 </div>
                 {/* Seconds */}
-                <div className="flex flex-col items-center justify-center w-[60px] h-[64px] bg-white border border-[#E1ECE9] rounded-[10px]">
+                <div className="flex flex-col items-center justify-center w-[60px] h-[64px] border border-[#9FB7AE] rounded-[10px]">
                   <span suppressHydrationWarning className="text-[#234745] font-bold text-[22px] leading-none" style={{ fontFamily: "'EnglishDigits', sans-serif" }}>{timeLeft.seconds}</span>
-                  <span className="text-[#9FB7AE] text-[11px] font-semibold mt-1">{isEn ? 'Secs' : 'ثانية'}</span>
+                  <span className="text-[#234745] text-[11px] font-semibold mt-1">{isEn ? 'Secs' : 'ثانية'}</span>
                 </div>
               </div>
 
               {/* Promo Code Box — always LTR inside so SAAD20 is left, button is right */}
               <div
                 dir="ltr"
-                className="flex items-center justify-between h-[64px] bg-white border border-[#E1ECE9] rounded-[10px] px-3 gap-2"
+                className="flex items-center justify-between h-[64px] border border-[#9FB7AE] rounded-[10px] px-3 gap-2"
                 style={{ minWidth: '160px' }}
               >
                 <span className="text-[#234745] font-bold text-[15px] tracking-widest" style={{ fontFamily: "'EnglishDigits', sans-serif" }}>SAAD20</span>
                 <button
                   onClick={handleCopyCode}
-                  className="text-[#906B51] text-[11px] font-bold px-2 py-1.5 bg-[#FEF8EB] hover:bg-[#FDF0D5] rounded-[6px] border border-[#F5EAD4] transition-colors whitespace-nowrap"
+                  className="text-[#906B51] text-[11px] font-bold px-2 py-1.5 hover:bg-[#FDF0D5] rounded-[6px] border border-[#F5EAD4] transition-colors whitespace-nowrap"
                 >
                   {isEn ? 'Copy' : 'نسخ الكود'}
                 </button>
@@ -309,7 +309,7 @@ export default function PromotionsPage() {
             <div className="flex">
               <Link
                 to="/collections/all"
-                className="inline-flex items-center justify-center px-10 h-[50px] bg-[#BBCFCD] hover:bg-[#ACC4C2] text-[#234745] font-bold text-[15px] rounded-full transition-colors"
+                className="inline-flex items-center justify-center px-10 h-[50px] bg-[#BBCFCD] hover:bg-[#ACC4C2] font-bold text-[15px] rounded-full transition-colors !text-[#234745] [font-family:'GE_Dinar_One',sans-serif]"
               >
                 {isEn ? 'Shop Now' : 'تسوق الآن'}
               </Link>
@@ -320,7 +320,7 @@ export default function PromotionsPage() {
         {/* 3. BOGO Banner (Buy 1 Get 1 Free) */}
         <section
           dir="ltr"
-          className="w-full bg-[#ECD9DA] rounded-[24px] p-6 md:p-10 flex flex-col md:flex-row items-center justify-between gap-8 relative overflow-hidden"
+          className="w-full bg-[#EED5D7] rounded-[24px] p-6 md:p-10 flex flex-col md:flex-row items-center justify-between gap-8 relative overflow-hidden"
         >
           {/* Left Side: Chocolate Bar Illustration (Always Left) */}
           <div className="w-[180px] h-[150px] flex items-center justify-center flex-shrink-0 relative">
@@ -328,25 +328,25 @@ export default function PromotionsPage() {
               <svg width="120" height="150" viewBox="0 0 120 150" fill="none" xmlns="http://www.w3.org/2000/svg">
                 {/* Chocolate Base */}
                 <rect x="15" y="10" width="90" height="130" rx="8" fill="#784A34" />
-                
+
                 {/* Row 1 */}
                 <rect x="22" y="17" width="34" height="24" rx="4" fill="#603722" />
                 <rect x="25" y="19" width="28" height="18" rx="2" fill="#6A3F28" />
                 <rect x="64" y="17" width="34" height="24" rx="4" fill="#603722" />
                 <rect x="67" y="19" width="28" height="18" rx="2" fill="#6A3F28" />
-                
+
                 {/* Row 2 */}
                 <rect x="22" y="47" width="34" height="24" rx="4" fill="#603722" />
                 <rect x="25" y="49" width="28" height="18" rx="2" fill="#6A3F28" />
                 <rect x="64" y="47" width="34" height="24" rx="4" fill="#603722" />
                 <rect x="67" y="49" width="28" height="18" rx="2" fill="#6A3F28" />
-                
+
                 {/* Row 3 */}
                 <rect x="22" y="77" width="34" height="24" rx="4" fill="#603722" />
                 <rect x="25" y="79" width="28" height="18" rx="2" fill="#6A3F28" />
                 <rect x="64" y="77" width="34" height="24" rx="4" fill="#603722" />
                 <rect x="67" y="79" width="28" height="18" rx="2" fill="#6A3F28" />
-                
+
                 {/* Row 4 */}
                 <rect x="22" y="107" width="34" height="24" rx="4" fill="#603722" />
                 <rect x="64" y="107" width="34" height="24" rx="4" fill="#603722" />
@@ -382,7 +382,7 @@ export default function PromotionsPage() {
             {/* Title + Subtitle */}
             <div className="flex flex-col gap-2">
               <h3
-                className="text-[#1F3E35] text-[26px] md:text-[34px] font-bold leading-tight"
+                className="text-[#171717] text-[26px] md:text-[34px] font-bold leading-tight ![line-height:normal]"
                 style={{
                   fontFamily: isEn ? 'inherit' : "'Bahij Janna', sans-serif",
                   fontWeight: 700,
@@ -390,7 +390,7 @@ export default function PromotionsPage() {
               >
                 {isEn ? 'Buy One Get One Free' : 'اشتري واحد واحصل على الثاني مجاناً'}
               </h3>
-              <p className="text-[#7A605C] text-[14px] md:text-[15px] font-semibold leading-relaxed">
+              <p className="text-[#7D7D7D] text-[14px] md:text-[15px] font-medium leading-relaxed [font-family:'GE Dinar One',sans-serif]">
                 {isEn ? 'On all dark chocolate types — Today only!' : 'على جميع أنواع الشوكولاتة الداكنة — اليوم فقط!'}
               </p>
             </div>
@@ -400,7 +400,7 @@ export default function PromotionsPage() {
               {/* Button */}
               <Link
                 to="/collections/all"
-                className="inline-flex items-center gap-2 px-8 h-[48px] bg-[#BBCFCD] hover:bg-[#ACC4C2] text-[#234745] font-bold text-[14px] rounded-full transition-colors flex-shrink-0"
+                className="inline-flex items-center gap-2 px-8 h-[48px] bg-[#BBCFCD] hover:bg-[#ACC4C2] !text-[#234745] font-bold text-[14px] rounded-full transition-colors flex-shrink-0"
               >
                 {isEn ? (
                   <>
@@ -412,15 +412,15 @@ export default function PromotionsPage() {
                   </>
                 ) : (
                   <>
+                    <span>تسوق العرض</span>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
                       <line x1="19" y1="12" x2="5" y2="12" />
                       <polyline points="12 19 5 12 12 5" />
                     </svg>
-                    <span>تسوق العرض</span>
                   </>
                 )}
               </Link>
-              
+
               {/* Shoppers Count (Standard English digits) */}
               <span className="text-[#D61C4E] text-[13px] font-semibold whitespace-nowrap">
                 <span style={{ fontFamily: "'EnglishDigits', sans-serif" }} className="font-bold">243</span>
@@ -431,56 +431,57 @@ export default function PromotionsPage() {
         </section>
 
         {/* 4. Two Grid Cards Side-by-Side */}
-        <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Left card: 40% Chocolate */}
-          <div className="bg-[#D3E1DF] rounded-[24px] p-6 md:p-8 flex flex-col items-start text-start justify-between min-h-[220px] shadow-sm relative overflow-hidden">
-            <div className="flex items-center gap-2 mb-4 self-start">
-              <span className="text-[#234745] font-bold text-[11px] uppercase tracking-wider">{isEn ? 'Seasonal Offer' : 'عرض موسمي'}</span>
-              <div className="w-[20px] h-[1px] bg-[#234745]"></div>
-            </div>
-            <div>
-              <h3 className="text-[#1A1A1A] text-[28px] md:text-[34px] font-bold leading-tight mb-2">
-                {isEn ? '40% on all chocolate' : 'خصم 40% على الشوكولاتة'}
-              </h3>
-              <p className="text-[#6D8A85] text-[14px] font-semibold mb-6">
-                {isEn ? 'More than 20 products with exceptional prices' : 'أكثر من ٢٠ منتج بأسعار استثنائية'}
-              </p>
-            </div>
-            <Link
-              to="/collections/all"
-              className="px-6 h-[40px] inline-flex items-center justify-center bg-[#234745] hover:bg-[#1a3533] text-white font-bold text-[13px] rounded-full transition-colors"
-            >
-              {isEn ? 'Shop Now' : 'تسوق الآن'}
-            </Link>
-          </div>
-
-          {/* Right card: 25% Gifts */}
+        <section dir={direction} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Left card: 25% Gifts */}
           <div className="bg-[#E64C53] rounded-[24px] p-6 md:p-8 flex flex-col items-start text-start justify-between min-h-[220px] shadow-sm relative overflow-hidden">
-            <div className="flex items-center gap-2 mb-4 self-start">
+            <div className="flex items-center gap-2 !mb-6 self-start">
               <span className="text-white/80 font-bold text-[11px] uppercase tracking-wider">{isEn ? 'Special Partner' : 'شريك مميز'}</span>
               <div className="w-[20px] h-[1px] bg-white/50"></div>
             </div>
             <div>
               <h3 className="text-white text-[28px] md:text-[34px] font-bold leading-tight mb-2">
-                {isEn ? '25% on Gift Boxes' : '25% على صناديق الهدايا'}
+                {isEn ? <><span style={{ fontFamily: "'EnglishDigits', sans-serif" }}>25%</span> on Gift Boxes</> : <><span style={{ fontFamily: "'EnglishDigits', sans-serif" }}>25%</span> على صناديق الهدايا</>}
               </h3>
-              <p className="text-white/80 text-[14px] font-semibold mb-6">
-                {isEn ? 'Subscribe now and get 15% discount on your first order' : 'اشترك الآن واحصل على خصم 15% على طلبك الأول من سعد الدين'}
+              <p className="text-white/80 text-[14px] font-semibold !mb-6">
+                {isEn ? <>Subscribe now and get <span style={{ fontFamily: "'EnglishDigits', sans-serif" }}>15%</span> discount on your first order</> : <>اشترك الآن واحصل على خصم <span style={{ fontFamily: "'EnglishDigits', sans-serif" }}>15%</span> على طلبك الأول من سعد الدين</>}
               </p>
             </div>
             <Link
               to="/collections/all"
-              className="px-6 h-[40px] inline-flex items-center justify-center bg-[#BBCFCD] hover:bg-[#ACC4C2] text-[#234745] font-bold text-[13px] rounded-full transition-colors"
+              className="px-6 h-[40px] inline-flex items-center justify-center bg-[#BBCFCD] hover:bg-[#ACC4C2] !text-[#234745] font-bold text-[13px] rounded-full transition-colors"
             >
               {isEn ? 'Get Discount' : 'احصل على الخصم'}
             </Link>
           </div>
+
+          {/* Right card: 40% Chocolate */}
+          <div className="bg-[#D3E1DF] rounded-[24px] p-6 md:p-8 flex flex-col items-start text-start justify-between min-h-[220px] shadow-sm relative overflow-hidden">
+            <div className="flex items-center gap-2 self-start">
+              <span className="text-[#234745] font-bold text-[11px] uppercase tracking-wider">{isEn ? 'Seasonal Offer' : 'عرض موسمي'}</span>
+              <div className="w-[20px] h-[1px] bg-[#234745]"></div>
+            </div>
+            <div>
+              <h3 className="text-[#1A1A1A] text-[28px] md:text-[34px] font-bold leading-tight mb-2">
+                {isEn ? <><span style={{ fontFamily: "'EnglishDigits', sans-serif" }}>40%</span> on all chocolate</> : <>خصم <span style={{ fontFamily: "'EnglishDigits', sans-serif" }}>40%</span> على الشوكولاتة</>}
+              </h3>
+              <p className="text-[#7D7D7D] text-[14px] font-semibold mb-6">
+                {isEn ? <>More than <span style={{ fontFamily: "'EnglishDigits', sans-serif" }}>20</span> products with exceptional prices</> : <>أكثر من <span style={{ fontFamily: "'EnglishDigits', sans-serif" }}>20</span> منتج بأسعار استثنائية</>}
+              </p>
+            </div>
+            <Link
+              to="/collections/all"
+              className="px-6 h-[40px] inline-flex items-center justify-center bg-[#234745] hover:bg-[#1a3533] !text-white font-bold text-[13px] rounded-full transition-colors"
+            >
+              {isEn ? 'Shop Now' : 'تسوق الآن'}
+            </Link>
+          </div>
+
         </section>
 
         {/* 5. Horizontal Gold Banner */}
-        <section className="w-full bg-[#C5A86D] rounded-[16px] p-4 flex items-center justify-center shadow-sm">
-          <h3 className="text-white text-[18px] md:text-[22px] font-bold text-center">
-            {isEn ? '25% on gift boxes for orders over 200 SAR' : '25% على صناديق الهدايا للطلبات فوق 200 ر.س'}
+        <section className="w-full bg-[#C5A96A] rounded-[16px] p-6 flex items-center justify-center shadow-sm ">
+          <h3 className="text-[#234745] text-[18px] md:text-[30px] font-bold text-center">
+            {isEn ? <><span style={{ fontFamily: "'EnglishDigits', sans-serif" }}>25%</span> on gift boxes for orders over <span style={{ fontFamily: "'EnglishDigits', sans-serif" }}>200</span> SAR</> : <><span style={{ fontFamily: "'EnglishDigits', sans-serif" }}>25%</span> على صناديق الهدايا للطلبات فوق <span style={{ fontFamily: "'EnglishDigits', sans-serif" }}>200</span> ر.س</>}
           </h3>
         </section>
 
@@ -518,7 +519,7 @@ export default function PromotionsPage() {
                     </button>
 
                     {/* Tag Badge */}
-                    <div className="bg-[#BFA169] text-white font-bold text-[10px] md:text-[11px] px-2.5 py-1 rounded-[6px] shadow-sm">
+                    <div className="bg-[#BFA169] text-white font-bold text-[10px] md:text-[11px] px-2.5 py-1 rounded-[50px]">
                       {prod.tag}
                     </div>
                   </div>
@@ -551,11 +552,11 @@ export default function PromotionsPage() {
                     {/* Prices */}
                     <div className="flex items-center gap-2 text-start font-bold">
                       <span className="text-[#234745] text-[15px] md:text-[17px]">
-                        {prod.price} {isEn ? 'SAR' : 'ر.س'}
+                        <span style={{ fontFamily: "'EnglishDigits', sans-serif" }}>{prod.price}</span> {isEn ? 'SAR' : 'ر.س'}
                       </span>
                       {prod.comparePrice && (
                         <span className="text-[#7D7D7D] text-[12px] md:text-[13px] line-through font-normal">
-                          {prod.comparePrice} {isEn ? 'SAR' : 'ر.س'}
+                          <span style={{ fontFamily: "'EnglishDigits', sans-serif" }}>{prod.comparePrice}</span> {isEn ? 'SAR' : 'ر.س'}
                         </span>
                       )}
                     </div>
@@ -566,14 +567,14 @@ export default function PromotionsPage() {
                         <AddToCartButton
                           lines={[{ merchandiseId: prod.variantId, quantity: 1 }]}
                           disabled={!prod.availableForSale}
-                          className="w-full h-[40px] bg-[#234745] hover:bg-[#1a3533] text-white font-bold text-[13px] rounded-[12px] transition-colors flex items-center justify-center"
+                          className="w-full h-[40px] bg-[#234745] hover:bg-[#1a3533] text-white font-bold text-[13px] rounded-[50px] transition-colors flex items-center justify-center"
                         >
                           {isEn ? 'Add to Cart' : 'أضف إلي السلة'}
                         </AddToCartButton>
                       ) : (
                         <button
                           disabled
-                          className="w-full h-[40px] bg-[#BBCFCD] text-[#234745] font-bold text-[13px] rounded-[12px] cursor-not-allowed opacity-50 flex items-center justify-center"
+                          className="w-full h-[40px] bg-[#BBCFCD] text-[#234745] font-bold text-[13px] rounded-[50px] cursor-not-allowed opacity-50 flex items-center justify-center"
                         >
                           {isEn ? 'Out of Stock' : 'نفذت الكمية'}
                         </button>

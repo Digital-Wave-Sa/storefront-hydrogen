@@ -3,6 +3,7 @@ import { type LoaderFunctionArgs, useLoaderData, useRouteLoaderData, Link } from
 import { AddToCartButton } from '~/components/AddToCartButton';
 import { useWishlist } from '~/context/WishlistContext';
 import { PageHeader } from '~/components/layout/PageHeader';
+import { SaudiRiyalSymbol } from '~/components/Price';
 
 // GraphQL query to fetch promotional products
 const PROMOTIONS_QUERY = `#graphql
@@ -480,8 +481,18 @@ export default function PromotionsPage() {
 
         {/* 5. Horizontal Gold Banner */}
         <section className="w-full bg-[#C5A96A] rounded-[16px] p-6 flex items-center justify-center shadow-sm ">
-          <h3 className="text-[#234745] text-[18px] md:text-[30px] font-bold text-center">
-            {isEn ? <><span style={{ fontFamily: "'EnglishDigits', sans-serif" }}>25%</span> on gift boxes for orders over <span style={{ fontFamily: "'EnglishDigits', sans-serif" }}>200</span> SAR</> : <><span style={{ fontFamily: "'EnglishDigits', sans-serif" }}>25%</span> على صناديق الهدايا للطلبات فوق <span style={{ fontFamily: "'EnglishDigits', sans-serif" }}>200</span> ر.س</>}
+          <h3 className="text-[#234745] text-[18px] md:text-[30px] font-bold text-center flex items-center justify-center flex-wrap gap-1.5 leading-none">
+            {isEn ? (
+              <>
+                <span style={{ fontFamily: "'EnglishDigits', sans-serif" }}>25%</span> on gift boxes for orders over <span style={{ fontFamily: "'EnglishDigits', sans-serif" }}>200</span>
+                <SaudiRiyalSymbol className="h-[20px] md:h-[28px] w-auto text-[#234745] mb-0.5" />
+              </>
+            ) : (
+              <>
+                <span style={{ fontFamily: "'EnglishDigits', sans-serif" }}>25%</span> على صناديق الهدايا للطلبات فوق <span style={{ fontFamily: "'EnglishDigits', sans-serif" }}>200</span>
+                <SaudiRiyalSymbol className="h-[20px] md:h-[28px] w-auto text-[#234745] mb-0.5" />
+              </>
+            )}
           </h3>
         </section>
 
@@ -550,18 +561,22 @@ export default function PromotionsPage() {
                     </h4>
 
                     {/* Prices */}
-                    <div className="flex items-center gap-2 text-start font-bold" dir={direction}>
+                    <div className="flex items-center gap-3 text-start font-bold">
                       {/* Price */}
-                      <span className="text-[#234745] text-[18px] md:text-[20px] flex items-center gap-1">
-                        <span style={{ fontFamily: "'EnglishDigits', sans-serif" }}>{prod.price}</span>
-                        <span className="text-[14px] font-normal">{isEn ? 'SAR' : 'ر.س'}</span>
-                      </span>
+                      <div className={`flex items-center gap-1 text-[#234745] ${isEn ? 'flex-row' : 'flex-row-reverse'}`} dir="ltr">
+                        <span className="text-[18px] md:text-[20px]" style={{ fontFamily: "'EnglishDigits', sans-serif" }}>
+                          {prod.price}
+                        </span>
+                        <SaudiRiyalSymbol className="h-[14px] w-auto text-[#234745] mb-0.5" />
+                      </div>
                       {/* Compare Price */}
                       {prod.comparePrice && (
-                        <span className="text-[#9FB7AE] text-[13px] md:text-[14px] line-through font-normal flex items-center gap-1">
-                          <span style={{ fontFamily: "'EnglishDigits', sans-serif" }}>{prod.comparePrice}</span>
-                          <span className="text-[11px]">{isEn ? 'SAR' : 'ر.س'}</span>
-                        </span>
+                        <div className={`flex items-center gap-1 text-[#9FB7AE] ${isEn ? 'flex-row' : 'flex-row-reverse'}`} dir="ltr">
+                          <span className="text-[13px] md:text-[14px] line-through font-normal" style={{ fontFamily: "'EnglishDigits', sans-serif" }}>
+                            {prod.comparePrice}
+                          </span>
+                          <SaudiRiyalSymbol className="h-[11px] w-auto text-[#9FB7AE] mb-0.5" />
+                        </div>
                       )}
                     </div>
 

@@ -13,6 +13,7 @@ const PROMOTIONS_QUERY = `#graphql
         id
         handle
         title
+        tags
         availableForSale
         featuredImage {
           url
@@ -93,10 +94,11 @@ export default function PromotionsPage() {
       title: isEn ? 'Chocolate Pieces Selection' : 'تشكيلة قطع شوكولاتة',
       price: '188',
       comparePrice: '200',
-      tag: isEn ? 'Most Wanted' : 'الاكثر طلباً',
+      tag: isEn ? 'Most Wanted' : 'الأكثر طلباً',
       image: 'https://cdn.shopify.com/s/files/1/0616/1606/2642/files/cake.png',
       availableForSale: true,
-      variantId: 'mock-var-1'
+      variantId: 'mock-var-1',
+      tags: ['BOGO', '1+1']
     },
     {
       id: 'mock-2',
@@ -106,37 +108,41 @@ export default function PromotionsPage() {
       tag: isEn ? '5% Off' : '5% خصم',
       image: 'https://cdn.shopify.com/s/files/1/0616/1606/2642/files/cake.png',
       availableForSale: true,
-      variantId: 'mock-var-2'
+      variantId: 'mock-var-2',
+      tags: ['BOGO', '1+1']
     },
     {
       id: 'mock-3',
       title: isEn ? 'Mixed Baklava' : 'بقلاوة مشكلة',
       price: '219',
       comparePrice: '240',
-      tag: isEn ? 'Most Wanted' : 'الاكثر طلباً',
+      tag: isEn ? 'Most Wanted' : 'الأكثر طلباً',
       image: 'https://cdn.shopify.com/s/files/1/0616/1606/2642/files/cake.png',
       availableForSale: true,
-      variantId: 'mock-var-3'
+      variantId: 'mock-var-3',
+      tags: ['BOGO', '1+1']
     },
     {
       id: 'mock-4',
       title: isEn ? 'Product Name' : 'اسم المنتج',
       price: '188',
       comparePrice: '200',
-      tag: isEn ? 'Most Wanted' : 'الاكثر طلباً',
+      tag: isEn ? 'Most Wanted' : 'الأكثر طلباً',
       image: 'https://cdn.shopify.com/s/files/1/0616/1606/2642/files/cake.png',
       availableForSale: true,
-      variantId: 'mock-var-4'
+      variantId: 'mock-var-4',
+      tags: ['BOGO', '1+1']
     },
     {
       id: 'mock-5',
       title: isEn ? 'Chocolate Pieces Selection' : 'تشكيلة قطع شوكولاتة',
       price: '188',
       comparePrice: '200',
-      tag: isEn ? 'Most Wanted' : 'الاكثر طلباً',
+      tag: isEn ? 'Most Wanted' : 'الأكثر طلباً',
       image: 'https://cdn.shopify.com/s/files/1/0616/1606/2642/files/cake.png',
       availableForSale: true,
-      variantId: 'mock-var-5'
+      variantId: 'mock-var-5',
+      tags: ['BOGO', '1+1']
     },
     {
       id: 'mock-6',
@@ -146,50 +152,64 @@ export default function PromotionsPage() {
       tag: isEn ? '5% Off' : '5% خصم',
       image: 'https://cdn.shopify.com/s/files/1/0616/1606/2642/files/cake.png',
       availableForSale: true,
-      variantId: 'mock-var-6'
+      variantId: 'mock-var-6',
+      tags: ['BOGO', '1+1']
     },
     {
       id: 'mock-7',
       title: isEn ? 'Mixed Baklava' : 'بقلاوة مشكلة',
       price: '219',
       comparePrice: '240',
-      tag: isEn ? 'Most Wanted' : 'الاكثر طلباً',
+      tag: isEn ? 'Most Wanted' : 'الأكثر طلباً',
       image: 'https://cdn.shopify.com/s/files/1/0616/1606/2642/files/cake.png',
       availableForSale: true,
-      variantId: 'mock-var-7'
+      variantId: 'mock-var-7',
+      tags: ['BOGO', '1+1']
     },
     {
       id: 'mock-8',
       title: isEn ? 'Product Name' : 'اسم المنتج',
       price: '188',
       comparePrice: '200',
-      tag: isEn ? 'Most Wanted' : 'الاكثر طلباً',
+      tag: isEn ? 'Most Wanted' : 'الأكثر طلباً',
       image: 'https://cdn.shopify.com/s/files/1/0616/1606/2642/files/cake.png',
       availableForSale: true,
-      variantId: 'mock-var-8'
+      variantId: 'mock-var-8',
+      tags: ['BOGO', '1+1']
     }
   ];
 
+  // Helper check to filter BOGO/1+1 products
+  const isBogoProduct = (tagsList: string[]) => {
+    if (!tagsList) return false;
+    return tagsList.some((t: string) => {
+      const ut = t.toUpperCase();
+      return ut.includes('BOGO') || ut.includes('1+1') || ut.includes('FREE') || ut.includes('مجانا');
+    });
+  };
+
   // Map real Shopify products to matching structures, or fallback to mock list
   const displayProducts = products && products.length > 0
-    ? products.map((prod: any, idx: number) => {
-      const variant = prod.variants?.nodes?.[0];
-      const price = variant?.price?.amount ? Math.round(parseFloat(variant.price.amount)).toString() : '0';
-      const comparePrice = variant?.compareAtPrice?.amount ? Math.round(parseFloat(variant.compareAtPrice.amount)).toString() : '';
-      const mockFallback = mockProducts[idx % mockProducts.length];
-      return {
-        id: prod.id,
-        title: isEn ? prod.title : (mockFallback.title || prod.title),
-        price,
-        comparePrice: comparePrice || (parseFloat(price) < parseFloat(mockFallback.price) ? mockFallback.comparePrice : ''),
-        tag: mockFallback.tag,
-        image: prod.featuredImage?.url || mockFallback.image,
-        availableForSale: prod.availableForSale,
-        variantId: variant?.id,
-        handle: prod.handle
-      };
-    })
-    : mockProducts;
+    ? products
+        .filter((prod: any) => isBogoProduct(prod.tags || []))
+        .map((prod: any, idx: number) => {
+          const variant = prod.variants?.nodes?.[0];
+          const price = variant?.price?.amount ? Math.round(parseFloat(variant.price.amount)).toString() : '0';
+          const comparePrice = variant?.compareAtPrice?.amount ? Math.round(parseFloat(variant.compareAtPrice.amount)).toString() : '';
+          const mockFallback = mockProducts[idx % mockProducts.length];
+          return {
+            id: prod.id,
+            title: isEn ? prod.title : (mockFallback.title || prod.title),
+            price,
+            comparePrice: comparePrice || (parseFloat(price) < parseFloat(mockFallback.price) ? mockFallback.comparePrice : ''),
+            tag: mockFallback.tag,
+            image: prod.featuredImage?.url || mockFallback.image,
+            availableForSale: prod.availableForSale,
+            variantId: variant?.id,
+            handle: prod.handle
+          };
+        })
+    : mockProducts.filter((prod: any) => isBogoProduct(prod.tags || []));
 
   const direction = isEn ? 'ltr' : 'rtl';
 
@@ -571,11 +591,11 @@ export default function PromotionsPage() {
                       </div>
                       {/* Compare Price */}
                       {prod.comparePrice && (
-                        <div className={`flex items-center gap-1 text-[#9FB7AE] ${isEn ? 'flex-row' : 'flex-row-reverse'}`} dir="ltr">
-                          <span className="text-[13px] md:text-[14px] line-through font-normal" style={{ fontFamily: "'EnglishDigits', sans-serif" }}>
+                        <div className={`flex items-center gap-1 text-[#E64950] ${isEn ? 'flex-row' : 'flex-row-reverse'}`} dir="ltr">
+                          <span className="text-lg md:text-[14px] line-through font-black" style={{ fontFamily: "'EnglishDigits', sans-serif" }}>
                             {prod.comparePrice}
                           </span>
-                          <SaudiRiyalSymbol className="h-[11px] w-auto text-[#9FB7AE] mb-0.5" />
+                          <SaudiRiyalSymbol className="h-[11px] w-auto text-[#E64950] mb-0.5" />
                         </div>
                       )}
                     </div>

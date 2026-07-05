@@ -3626,7 +3626,7 @@ export type GetPromotionalProductsQuery = {
     nodes: Array<
       Pick<
         StorefrontAPI.Product,
-        'id' | 'handle' | 'title' | 'availableForSale'
+        'id' | 'handle' | 'title' | 'tags' | 'availableForSale'
       > & {
         featuredImage?: StorefrontAPI.Maybe<
           Pick<StorefrontAPI.Image, 'url' | 'altText' | 'width' | 'height'>
@@ -4093,7 +4093,7 @@ interface GeneratedQueryTypes {
     return: NewestProductsQuery;
     variables: NewestProductsQueryVariables;
   };
-  '#graphql\n  query getPromotionalProducts($country: CountryCode, $language: LanguageCode) {\n    products(first: 8) {\n      nodes {\n        id\n        handle\n        title\n        availableForSale\n        featuredImage {\n          url\n          altText\n          width\n          height\n        }\n        variants(first: 1) {\n          nodes {\n            id\n            price {\n              amount\n              currencyCode\n            }\n            compareAtPrice {\n              amount\n              currencyCode\n            }\n          }\n        }\n      }\n    }\n  }\n': {
+  '#graphql\n  query getPromotionalProducts($country: CountryCode, $language: LanguageCode) {\n    products(first: 8) {\n      nodes {\n        id\n        handle\n        title\n        tags\n        availableForSale\n        featuredImage {\n          url\n          altText\n          width\n          height\n        }\n        variants(first: 1) {\n          nodes {\n            id\n            price {\n              amount\n              currencyCode\n            }\n            compareAtPrice {\n              amount\n              currencyCode\n            }\n          }\n        }\n      }\n    }\n  }\n': {
     return: GetPromotionalProductsQuery;
     variables: GetPromotionalProductsQueryVariables;
   };

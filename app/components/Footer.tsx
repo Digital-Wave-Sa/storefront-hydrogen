@@ -219,26 +219,26 @@ function SocialIcons() {
 function AppButtons() {
   return (
     <>
-      <a href="#" className="w-full sm:flex-1 max-w-[200px] sm:max-w-[165px] h-[48px] bg-black border border-[#A6A6A6] rounded-[7.2px] flex items-center justify-center gap-[6px] hover:bg-zinc-900 transition-colors">
-        <svg className="w-[20px] h-[24px]" viewBox="0 0 384 512" fill="white">
+      <a href="#" className="w-[135px] sm:w-[140px] h-[40px] bg-black border border-[#A6A6A6] rounded-[6px] flex items-center justify-start pl-3.5 gap-[6px] hover:bg-zinc-900 transition-colors" dir="ltr">
+        <svg className="w-[16px] h-[20px]" viewBox="0 0 384 512" fill="white">
           <path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z" />
         </svg>
-        <div className="flex flex-col items-start leading-none gap-0.5 pt-0.5">
-          <span className="text-white text-[10px]" style={{ fontFamily: "'SF Compact Text', sans-serif" }}>Download on the</span>
-          <span className="text-white text-[20px] font-medium tracking-tight" style={{ fontFamily: "'SF Compact Display', sans-serif" }}>App Store</span>
+        <div className="flex flex-col items-start leading-[1.1] pt-0.5">
+          <span className="text-white/80 text-[7px]" style={{ fontFamily: "'SF Compact Text', sans-serif" }}>Download on the</span>
+          <span className="text-white text-[13px] sm:text-[14px] font-bold tracking-tight" style={{ fontFamily: "'SF Compact Display', sans-serif" }}>App Store</span>
         </div>
       </a>
 
-      <a href="#" className="w-full sm:flex-1 max-w-[200px] sm:max-w-[165px] h-[48px] bg-black border border-[#A6A6A6] rounded-[7.2px] flex items-center justify-center gap-[6px] hover:bg-zinc-900 transition-colors">
-        <svg className="w-[20px] h-[22px]" viewBox="0 0 512 512">
+      <a href="#" className="w-[135px] sm:w-[140px] h-[40px] bg-black border border-[#A6A6A6] rounded-[6px] flex items-center justify-start pl-3.5 gap-[6px] hover:bg-zinc-900 transition-colors" dir="ltr">
+        <svg className="w-[16px] h-[18px]" viewBox="0 0 512 512">
           <path fill="#4285F4" d="M26.9 44.7c-2 2-3.1 5.3-3.1 9.4v403.8c0 4.1 1.1 7.3 3.1 9.4L29 469.5l246.3-245.8v-3.4L29 22.5l-2.1 22.2z" />
           <path fill="#EA4335" d="M366.1 366.1l-90.8-90.8v-3.4L366.1 181 483 247.3c16.6 9.4 16.6 24.8 0 34.3L366.1 366.1z" />
           <path fill="#FBBC04" d="M26.9 44.7L275.3 272.2 366.1 181 54.3 3.6C39.5-4.8 26.9 2.2 26.9 22.5v22.2z" />
           <path fill="#34A853" d="M26.9 467.3v22.2c0 20.3 12.6 27.3 27.4 18.9L366.1 331 275.3 240.2 26.9 467.3z" />
         </svg>
-        <div className="flex flex-col items-start leading-none gap-0.5 pt-0.5">
-          <span className="text-white text-[10px] uppercase font-medium" style={{ fontFamily: "'Product Sans', sans-serif" }}>GET IT ON</span>
-          <span className="text-white text-[18px] font-medium tracking-tight" style={{ fontFamily: "'Product Sans', sans-serif" }}>Google Play</span>
+        <div className="flex flex-col items-start leading-[1.1] pt-0.5">
+          <span className="text-white/80 text-[6.5px] uppercase font-medium" style={{ fontFamily: "'Product Sans', sans-serif" }}>GET IT ON</span>
+          <span className="text-white text-[12px] sm:text-[13px] font-bold tracking-tight" style={{ fontFamily: "'Product Sans', sans-serif" }}>Google Play</span>
         </div>
       </a>
     </>

@@ -3,6 +3,7 @@ import { data, redirect, type LoaderFunctionArgs } from 'react-router';
 import type { CustomerFragment } from 'storefrontapi.generated';
 import { Suspense } from 'react';
 import { AccountProfileHeader } from '~/components/account/AccountProfileHeader';
+import { getMockPoints } from '~/lib/mock-loyalty.server';
 export function shouldRevalidate() {
   return false;
 }
@@ -211,17 +212,7 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
           }
 
           // Fetch Loyalty Points explicitly from CRM endpoint
-          const loyaltyRes = await fetch(`${middlewareUrl}/crm/loyalty`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'x-branch-id': branchId || '1' },
-            body: JSON.stringify({ phone: formattedPhone })
-          });
-          if (loyaltyRes.ok) {
-            const loyaltyData = await loyaltyRes.json();
-            if (loyaltyData?.success && loyaltyData?.data?.points) {
-              loyaltyPoints = loyaltyData.data.points;
-            }
-          }
+          loyaltyPoints = getMockPoints(formattedPhone);
         } catch (e) {}
         return { loyaltyPoints, balance, history, cards };
       })();
@@ -343,18 +334,7 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
         }
 
         // Fetch Loyalty Points explicitly from CRM endpoint
-        const loyaltyRes = await fetch(`${middlewareUrl}/crm/loyalty`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-branch-id': branchId || '1' },
-          body: JSON.stringify({ phone: formattedPhone })
-        });
-        if (loyaltyRes.ok) {
-          const loyaltyData = await loyaltyRes.json();
-          if (loyaltyData?.success && loyaltyData?.data?.points) {
-            loyaltyPoints = loyaltyData.data.points;
-          }
-        }
-
+        loyaltyPoints = getMockPoints(formattedPhone);
       } catch (e) {}
       return { loyaltyPoints, balance, history, cards };
     })();

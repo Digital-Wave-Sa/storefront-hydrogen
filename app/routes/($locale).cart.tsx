@@ -4,6 +4,7 @@ import type {CartQueryDataReturn} from '@shopify/hydrogen';
 import {CartForm} from '@shopify/hydrogen';
 import {CartMain} from '~/components/CartMain';
 import {getShopTitle} from '~/lib/seo';
+import { getMockPoints, redeemMockPoints, refundMockPoints } from '~/lib/mock-loyalty.server';
 
 export const meta: Route.MetaFunction = ({matches}) => {
   return [{title: getShopTitle('Cart', matches)}];
@@ -55,17 +56,6 @@ export async function action({request, context}: Route.ActionArgs) {
         return data({ error: 'Cart not found' }, { status: 400 });
       }
 
-      if (intent === 'remove' || pointsToRedeem === 0) {
-        const appliedCode = currentCart.discountCodes?.find(dc => dc.code.startsWith('LOYALTY-'))?.code;
-        let discountCodes = currentCart.discountCodes?.map(dc => dc.code) || [];
-        if (appliedCode) {
-          discountCodes = discountCodes.filter(c => c !== appliedCode);
-        }
-        await cart.updateDiscountCodes(discountCodes);
-        result = await cart.updateAttributes([{ key: 'loyalty_points', value: '0' }]);
-        break;
-      }
-
       // Verify User Identity
       const customerAccessToken = await context.session.get('customerAccessToken');
       const loginOtpPhone = await context.session.get('loginOtpPhone');
@@ -88,21 +78,40 @@ export async function action({request, context}: Route.ActionArgs) {
       }
 
       const rawPhone = phone.replace(/\s+/g, '');
-      const middlewareUrl = context.env.MIDDLEWARE_URL || 'https://wh.pryvexapls.com';
-      let availablePoints = 0;
-      try {
-        const loyaltyRes = await fetch(`${middlewareUrl}/crm/loyalty`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-branch-id': '1' },
-          body: JSON.stringify({ phone: rawPhone })
-        });
-        const loyaltyData = await loyaltyRes.json();
-        availablePoints = loyaltyData?.data?.points || 0;
-      } catch (e) {
-        return data({ error: 'Failed to verify points balance' }, { status: 500 });
+
+      if (intent === 'remove' || pointsToRedeem === 0) {
+        const appliedCode = currentCart.discountCodes?.find(dc => dc.code.startsWith('LOYALTY-'))?.code;
+        let discountCodes = currentCart.discountCodes?.map(dc => dc.code) || [];
+        if (appliedCode) {
+          discountCodes = discountCodes.filter(c => c !== appliedCode);
+        }
+
+        // Refund any previous redeemed points
+        const appliedPointsAttr = currentCart.attributes?.find((a: any) => a.key === 'loyalty_points')?.value;
+        const appliedPoints = parseInt(appliedPointsAttr || '0') || 0;
+        if (appliedPoints > 0) {
+          refundMockPoints(rawPhone, appliedPoints);
+        }
+
+        await cart.updateDiscountCodes(discountCodes);
+        result = await cart.updateAttributes([{ key: 'loyalty_points', value: '0' }]);
+        break;
       }
 
+      // Refund previous redeemed points first (before validating new one)
+      const appliedPointsAttr = currentCart.attributes?.find((a: any) => a.key === 'loyalty_points')?.value;
+      const appliedPoints = parseInt(appliedPointsAttr || '0') || 0;
+      if (appliedPoints > 0) {
+        refundMockPoints(rawPhone, appliedPoints);
+      }
+
+      // Validate availability from the mock registry
+      const availablePoints = getMockPoints(rawPhone);
       if (pointsToRedeem > availablePoints) {
+        // Rollback previous deduction if new validation fails
+        if (appliedPoints > 0) {
+          redeemMockPoints(rawPhone, appliedPoints);
+        }
         return data({ error: isEn ? `Insufficient points.` : `نقاط غير كافية.` }, { status: 400 });
       }
 
@@ -111,6 +120,10 @@ export async function action({request, context}: Route.ActionArgs) {
       const discountAmount = pointsToRedeem * pointsToCurrencyRatio;
 
       if (discountAmount > cartSubtotal && cartSubtotal > 0) {
+        // Rollback previous deduction if subtotal check fails
+        if (appliedPoints > 0) {
+          redeemMockPoints(rawPhone, appliedPoints);
+        }
         return data({ error: isEn ? `Cannot exceed cart total.` : `لا يمكن تجاوز إجمالي السلة.` }, { status: 400 });
       }
 
@@ -118,6 +131,7 @@ export async function action({request, context}: Route.ActionArgs) {
       let generatedCode = '';
       let middlewareSucceeded = false;
       const branchId = currentCart.attributes?.find((a: any) => a.key.toLowerCase().trim() === 'branch id')?.value || '1';
+      const middlewareUrl = context.env.MIDDLEWARE_URL || 'https://wh.pryvexapls.com';
 
       console.log('[LOYALTY_MIDDLEWARE] Attempting apply via middleware with branch:', branchId);
       try {
@@ -137,7 +151,6 @@ export async function action({request, context}: Route.ActionArgs) {
 
         if (mwRes.ok) {
           const mwData = JSON.parse(responseText);
-          // Check if code was returned directly or nested
           const code = mwData?.code || mwData?.discountCode || mwData?.discount_code || mwData?.data?.code || mwData?.data?.discountCode || mwData?.data?.discount_code;
           if (code) {
             generatedCode = code;
@@ -181,6 +194,10 @@ export async function action({request, context}: Route.ActionArgs) {
           if (!prRes.ok) {
             const errText = await prRes.text();
             console.error('[LOYALTY_UPDATE] Price Rule API failed:', prRes.status, errText);
+            // Rollback previous deduction if API fails
+            if (appliedPoints > 0) {
+              redeemMockPoints(rawPhone, appliedPoints);
+            }
             return data({ error: 'Failed to generate discount rule' }, { status: 500 });
           }
           
@@ -199,13 +216,24 @@ export async function action({request, context}: Route.ActionArgs) {
           if (!dcRes.ok) {
             const errText = await dcRes.text();
             console.error('[LOYALTY_UPDATE] Discount Code API failed:', dcRes.status, errText);
+            // Rollback previous deduction if API fails
+            if (appliedPoints > 0) {
+              redeemMockPoints(rawPhone, appliedPoints);
+            }
             return data({ error: 'Failed to generate discount code' }, { status: 500 });
           }
         } catch (e: any) {
           console.error('[LOYALTY_UPDATE] Internal exception:', e.message, e.stack);
+          // Rollback previous deduction if API fails
+          if (appliedPoints > 0) {
+            redeemMockPoints(rawPhone, appliedPoints);
+          }
           return data({ error: 'Internal error generating discount' }, { status: 500 });
         }
       }
+
+      // Deduct the points statefully from the mock CRM
+      redeemMockPoints(rawPhone, pointsToRedeem);
 
       const existingCodes = currentCart.discountCodes?.map(dc => dc.code).filter(c => !c.startsWith('LOYALTY-')) || [];
       const newCodes = [...existingCodes, generatedCode];

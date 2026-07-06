@@ -43,30 +43,30 @@ export function Footer({ footer, locale }: { footer: Promise<FooterQuery | null>
                   <div className="w-full grid grid-cols-2 gap-x-4 gap-y-6 text-[#D2D2D2]">
                     {/* Right Column (First in DOM in RTL) */}
                     <div className="flex flex-col gap-4 items-start">
-                      <NavLink to={isEn ? "/en" : "/"} className="font-medium text-[15px]">{isEn ? 'Home' : 'الرئيسية'}</NavLink>
-                      <NavLink to={isEn ? "/en/pages/loyalty" : "/pages/loyalty"} className="font-medium text-[15px]">{isEn ? 'Loyalty Program' : 'برنامج الولاء'}</NavLink>
-                      <NavLink to={isEn ? "/en/pages/branches" : "/pages/branches"} className="font-medium text-[15px]">{isEn ? 'Our Branches' : 'فروعنا'}</NavLink>
-                      <NavLink to={isEn ? "/en/pages/track-order" : "/pages/track-order"} className="font-medium text-[15px]">{isEn ? 'Track Your Order' : 'تتبع طلبك'}</NavLink>
-                      <NavLink to={isEn ? "/en/pages/returns" : "/pages/returns"} className="font-medium text-[15px]">{isEn ? 'Return Policy' : 'سياسة الاسترجاع'}</NavLink>
-                      <NavLink to={isEn ? "/en/pages/faq" : "/pages/faq"} className="font-medium text-[15px]">{isEn ? 'FAQs' : 'الأسئلة الشائعة'}</NavLink>
-                      <NavLink to={isEn ? "/en/pages/contact" : "/pages/contact"} className="font-medium text-[15px]">{isEn ? 'Contact Us' : 'تواصل معنا'}</NavLink>
+                      <NavLink to={isEn ? "/en" : "/"} className="font-medium hover:text-white transition-colors" style={{ fontSize: 'clamp(13px, 4vw, 15px)' }}>{isEn ? 'Home' : 'الرئيسية'}</NavLink>
+                      <NavLink to={isEn ? "/en/pages/loyalty" : "/pages/loyalty"} className="font-medium hover:text-white transition-colors" style={{ fontSize: 'clamp(13px, 4vw, 15px)' }}>{isEn ? 'Loyalty Program' : 'برنامج الولاء'}</NavLink>
+                      <NavLink to={isEn ? "/en/pages/branches" : "/pages/branches"} className="font-medium hover:text-white transition-colors" style={{ fontSize: 'clamp(13px, 4vw, 15px)' }}>{isEn ? 'Our Branches' : 'فروعنا'}</NavLink>
+                      <NavLink to={isEn ? "/en/pages/track-order" : "/pages/track-order"} className="font-medium hover:text-white transition-colors" style={{ fontSize: 'clamp(13px, 4vw, 15px)' }}>{isEn ? 'Track Your Order' : 'تتبع طلبك'}</NavLink>
+                      <NavLink to={isEn ? "/en/pages/returns" : "/pages/returns"} className="font-medium hover:text-white transition-colors" style={{ fontSize: 'clamp(13px, 4vw, 15px)' }}>{isEn ? 'Return Policy' : 'سياسة الاسترجاع'}</NavLink>
+                      <NavLink to={isEn ? "/en/pages/faq" : "/pages/faq"} className="font-medium hover:text-white transition-colors" style={{ fontSize: 'clamp(13px, 4vw, 15px)' }}>{isEn ? 'FAQs' : 'الأسئلة الشائعة'}</NavLink>
+                      <NavLink to={isEn ? "/en/pages/contact" : "/pages/contact"} className="font-medium hover:text-white transition-colors" style={{ fontSize: 'clamp(13px, 4vw, 15px)' }}>{isEn ? 'Contact Us' : 'تواصل معنا'}</NavLink>
                     </div>
 
                     {/* Left Column (Second in DOM in RTL) */}
                     <div className="flex flex-col gap-4 items-start">
-                      <NavLink to={isEn ? "/en/custom-cake" : "/custom-cake"} className="font-medium text-[15px]">{isEn ? 'Design Your Cake' : 'صمم كيكتك'}</NavLink>
-                      <NavLink to={isEn ? "/en/collections/offers" : "/collections/offers"} className="font-medium text-[15px]">{isEn ? 'Our Offers' : 'عروضنا'}</NavLink>
-                      <span className="font-medium text-[15px] cursor-default">{isEn ? 'Customer Service' : 'خدمة العملاء'}</span>
-                      <span className="font-medium text-[15px] font-sans cursor-default" dir="ltr">920017070</span>
-                      <span className="font-medium text-[15px] font-sans cursor-default" dir="ltr">info@saadeddin.com</span>
-                      <span className="font-medium text-[15px] max-w-[140px] leading-snug cursor-default">
+                      <NavLink to={isEn ? "/en/custom-cake" : "/custom-cake"} className="font-medium hover:text-white transition-colors" style={{ fontSize: 'clamp(13px, 4vw, 15px)' }}>{isEn ? 'Design Your Cake' : 'صمم كيكتك'}</NavLink>
+                      <NavLink to={isEn ? "/en/collections/offers" : "/collections/offers"} className="font-medium hover:text-white transition-colors" style={{ fontSize: 'clamp(13px, 4vw, 15px)' }}>{isEn ? 'Our Offers' : 'عروضنا'}</NavLink>
+                      <span className="font-medium cursor-default" style={{ fontSize: 'clamp(13px, 4vw, 15px)' }}>{isEn ? 'Customer Service' : 'خدمة العملاء'}</span>
+                      <span className="font-medium font-sans cursor-default" dir="ltr" style={{ fontSize: 'clamp(13px, 4vw, 15px)' }}>920017070</span>
+                      <span className="font-medium font-sans cursor-default break-all" dir="ltr" style={{ fontSize: 'clamp(11px, 3.5vw, 15px)' }}>info@saadeddin.com</span>
+                      <span className="font-medium leading-snug cursor-default" style={{ fontSize: 'clamp(12px, 3.8vw, 15px)', maxWidth: '140px' }}>
                         {isEn ? 'Riyadh, Saudi Arabia' : 'الرياض، المملكة العربية السعودية'}
                       </span>
                     </div>
                   </div>
 
-                  {/* App Buttons (Row on mobile) */}
-                  <div className="flex flex-row justify-center gap-3 mt-6 w-full" dir="ltr">
+                  {/* App Buttons (Row on mobile, stacked on very narrow screens) */}
+                  <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-6 w-full max-w-[280px] sm:max-w-none mx-auto" dir="ltr">
                     <AppButtons />
                   </div>
                 </div>
@@ -163,7 +163,7 @@ export function Footer({ footer, locale }: { footer: Promise<FooterQuery | null>
 
                 {/* Bottom Bar */}
                 <div className="w-full flex flex-col md:flex-row justify-between items-center gap-6 md:gap-4" style={{ color: '#FEF8EB' }}>
-                  <div className="flex items-center gap-8 md:gap-8 justify-center w-full md:w-auto mt-4 md:mt-0">
+                  <div className="flex items-center gap-4 sm:gap-8 justify-center w-full md:w-auto mt-4 md:mt-0">
                     <NavLink to={isEn ? "/en/pages/terms" : "/pages/terms"} className="font-medium text-[15px] md:text-[16px] hover:text-white transition-colors" style={{ color: '#FEF8EB' }}>{isEn ? 'Terms and Conditions' : 'الشروط والاحكام'}</NavLink>
                     <span className="font-medium text-[15px] md:text-[16px]" style={{ color: '#FEF8EB' }}>.</span>
                     <NavLink to={isEn ? "/en/pages/privacy" : "/pages/privacy"} className="font-medium text-[15px] md:text-[16px] hover:text-white transition-colors" style={{ color: '#FEF8EB' }}>{isEn ? 'Privacy Policy' : 'سياسة الخصوصية'}</NavLink>
@@ -219,7 +219,7 @@ function SocialIcons() {
 function AppButtons() {
   return (
     <>
-      <a href="#" className="flex-1 max-w-[150px] h-[48px] bg-black border border-[#A6A6A6] rounded-[7.2px] flex items-center justify-center gap-[6px] hover:bg-zinc-900 transition-colors">
+      <a href="#" className="w-full sm:flex-1 max-w-[200px] sm:max-w-[150px] h-[48px] bg-black border border-[#A6A6A6] rounded-[7.2px] flex items-center justify-center gap-[6px] hover:bg-zinc-900 transition-colors">
         <svg className="w-[20px] h-[24px]" viewBox="0 0 384 512" fill="white">
           <path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z"/>
         </svg>
@@ -229,7 +229,7 @@ function AppButtons() {
         </div>
       </a>
       
-      <a href="#" className="flex-1 max-w-[150px] h-[48px] bg-black border border-[#A6A6A6] rounded-[7.2px] flex items-center justify-center gap-[6px] hover:bg-zinc-900 transition-colors">
+      <a href="#" className="w-full sm:flex-1 max-w-[200px] sm:max-w-[150px] h-[48px] bg-black border border-[#A6A6A6] rounded-[7.2px] flex items-center justify-center gap-[6px] hover:bg-zinc-900 transition-colors">
         <svg className="w-[20px] h-[22px]" viewBox="0 0 512 512">
           <path fill="#4285F4" d="M26.9 44.7c-2 2-3.1 5.3-3.1 9.4v403.8c0 4.1 1.1 7.3 3.1 9.4L29 469.5l246.3-245.8v-3.4L29 22.5l-2.1 22.2z"/>
           <path fill="#EA4335" d="M366.1 366.1l-90.8-90.8v-3.4L366.1 181 483 247.3c16.6 9.4 16.6 24.8 0 34.3L366.1 366.1z"/>

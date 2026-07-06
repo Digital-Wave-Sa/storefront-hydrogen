@@ -11,15 +11,15 @@ import { getMockPoints } from '~/lib/mock-loyalty.server';
  */
 export async function loader({ request, context }: LoaderFunctionArgs) {
   const url = new URL(request.url);
-  const phone = url.searchParams.get('phone');
+  const identifier = url.searchParams.get('phone') || url.searchParams.get('email') || url.searchParams.get('identifier');
 
-  console.log(`[API Loyalty Points GET] Retrieving points locally for: ${phone}`);
+  console.log(`[API Loyalty Points GET] Retrieving points locally for: ${identifier}`);
 
-  if (!phone) {
-    return Response.json({ success: false, error: 'Phone number is required' }, { status: 400 });
+  if (!identifier) {
+    return Response.json({ success: false, error: 'Identifier is required' }, { status: 400 });
   }
 
-  const points = getMockPoints(phone);
+  const points = getMockPoints(identifier);
   return Response.json({ success: true, data: { points } }, {
     headers: {
       'Cache-Control': 'private, max-age=60, stale-while-revalidate=300',
@@ -34,15 +34,15 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
   try {
     const body = await request.json() as any;
-    const phone = body?.phone;
+    const identifier = body?.phone || body?.email || body?.identifier;
 
-    console.log(`[API Loyalty Points POST] Retrieving points locally for: ${phone}`);
+    console.log(`[API Loyalty Points POST] Retrieving points locally for: ${identifier}`);
 
-    if (!phone) {
-      return Response.json({ success: false, error: 'Phone number is required' }, { status: 400 });
+    if (!identifier) {
+      return Response.json({ success: false, error: 'Identifier is required' }, { status: 400 });
     }
 
-    const points = getMockPoints(phone);
+    const points = getMockPoints(identifier);
     return Response.json({ success: true, data: { points } });
   } catch (error: any) {
     return Response.json({ success: false, error: error.message }, { status: 500 });

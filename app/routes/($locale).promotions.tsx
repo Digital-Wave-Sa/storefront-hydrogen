@@ -214,7 +214,7 @@ export default function PromotionsPage() {
   const direction = isEn ? 'ltr' : 'rtl';
 
   return (
-    <div className="w-full bg-[#FEF8EB] min-h-screen pb-20" dir={direction} style={{ fontFamily: isEn ? 'inherit' : "'EnglishDigits', 'GE Dinar One', 'Bahij Janna', sans-serif" }}>
+    <div className="w-full bg-[#FEF8EB] min-h-screen pb-12" dir={direction} style={{ fontFamily: isEn ? 'inherit' : "'EnglishDigits', 'GE Dinar One', 'Bahij Janna', sans-serif" }}>
 
       {/* Toast Notification */}
       {showToast && (
@@ -231,7 +231,7 @@ export default function PromotionsPage() {
       />
 
       {/* Main Container */}
-      <div className="max-w-[1280px] mx-auto px-4 mt-6 md:mt-10 flex flex-col gap-8">
+      <div className="max-w-[1280px] mx-auto px-4 mt-12 md:mt-8 flex flex-col gap-8">
 
         {/* 2. Hero Offer Card */}
         <section

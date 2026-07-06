@@ -1,6 +1,6 @@
 import { Suspense } from 'react';
 import { data as json, redirect, type LoaderFunctionArgs, type ActionFunctionArgs } from 'react-router';
-import { useLoaderData, Form, useNavigation, useActionData, useLocation, Await } from 'react-router';
+import { useLoaderData, Form, useNavigation, useActionData, useLocation, Await, useRouteLoaderData } from 'react-router';
 import { Button } from '~/components/layout/Button';
 
 // The loader has been removed because WalletPage relies entirely on data from the parent AccountLayout (via useOutletContext)
@@ -229,6 +229,7 @@ export default function WalletPage() {
   const actionData = useActionData<{ intent?: string; success?: boolean; error?: string; creditedAmount?: number; newBalance?: number; currency?: string; giftAmount?: number; recipientPhone?: string }>();
   const navigation = useNavigation();
   const isEn = useLocation().pathname.includes('/en');
+  const rootData = useRouteLoaderData('root') as any;
 
   const isSubmitting = navigation.state === 'submitting';
 
@@ -287,19 +288,45 @@ export default function WalletPage() {
                   </div>
                 </div>
 
-                {/* Loyalty Points Card */}
-                <div className="bg-[#fcfaf7] border-2 border-[#f0e6d8] rounded-[24px] p-8 relative overflow-hidden">
-                  <h3 className="text-[#a88a68] font-bold text-sm uppercase tracking-wider mb-2">
-                    {isEn ? 'Loyalty Points' : 'نقاط الولاء'}
-                  </h3>
-                  <div className="flex items-end gap-2">
-                    <span className="text-4xl font-black text-[#234745]">{loyaltyPoints}</span>
-                    <span className="text-lg font-bold text-[#234745] pb-1">{isEn ? 'Pts' : 'نقطة'}</span>
-                  </div>
-                  <p className="mt-6 text-sm text-gray-500 font-medium">
-                    {isEn ? 'Earn points on every order and redeem them for rewards.' : 'اكسب نقاطاً على كل طلب واستبدلها بمكافآت رائعة.'}
-                  </p>
-                </div>
+                 {/* Loyalty Points Card */}
+                 <div className="bg-[#fcfaf7] border-2 border-[#f0e6d8] rounded-[24px] p-8 relative overflow-hidden flex flex-col justify-between">
+                   <div>
+                     <h3 className="text-[#a88a68] font-bold text-sm uppercase tracking-wider mb-2">
+                       {rootData?.env?.PUBLIC_SMILE_CHANNEL_KEY ? (isEn ? 'Smile Rewards & Points' : 'نقاط ومكافآت Smile') : (isEn ? 'Loyalty Points' : 'نقاط الولاء')}
+                     </h3>
+                     <div className="flex items-end gap-2">
+                       <span className="text-4xl font-black text-[#234745]">
+                         {rootData?.env?.PUBLIC_SMILE_CHANNEL_KEY ? 'Smile' : loyaltyPoints}
+                       </span>
+                       {(!rootData?.env?.PUBLIC_SMILE_CHANNEL_KEY) && (
+                         <span className="text-lg font-bold text-[#234745] pb-1">{isEn ? 'Pts' : 'نقطة'}</span>
+                       )}
+                     </div>
+                     <p className="mt-4 text-sm text-gray-500 font-medium">
+                       {rootData?.env?.PUBLIC_SMILE_CHANNEL_KEY 
+                         ? (isEn ? 'Earn points on every order and redeem them for rewards using Smile.io.' : 'اكسب نقاطاً على كل طلب واستبدلها بمكافآت رائعة عبر Smile.io.')
+                         : (isEn ? 'Earn points on every order and redeem them for rewards.' : 'اكسب نقاطاً على كل طلب واستبدلها بمكافآت رائعة.')}
+                     </p>
+                   </div>
+                   {rootData?.env?.PUBLIC_SMILE_CHANNEL_KEY && (
+                     <button
+                       type="button"
+                       onClick={() => {
+                         if (typeof window !== 'undefined' && (window as any).Smile) {
+                           (window as any).Smile.show();
+                         } else {
+                           alert(isEn 
+                             ? "Smile.io widget is loading or not active yet. Please verify your PUBLIC_SMILE_CHANNEL_KEY." 
+                             : "أداة Smile.io قيد التحميل أو غير نشطة بعد. يرجى التحقق من مفتاح PUBLIC_SMILE_CHANNEL_KEY."
+                           );
+                         }
+                       }}
+                       className="mt-6 w-full py-3 bg-[#234745] hover:bg-[#1a3533] text-white font-bold rounded-xl text-xs transition-colors text-center uppercase tracking-wider"
+                     >
+                       {isEn ? 'Open Rewards Panel' : 'فتح لوحة المكافآت'}
+                     </button>
+                   )}
+                 </div>
               </div>
 
               {/* Active Gift Cards Section */}

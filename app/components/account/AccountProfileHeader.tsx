@@ -1,6 +1,7 @@
 import type {CustomerFragment} from 'storefrontapi.generated';
 import patternBg from '~/assets/patteren-collection-header.svg';
 import { useWishlist } from '~/context/WishlistContext';
+import { useRouteLoaderData } from 'react-router';
 
 export function AccountProfileHeader({
   customer,
@@ -17,6 +18,7 @@ export function AccountProfileHeader({
 }) {
   const initials = (customer.firstName?.[0] || customer.email?.[0] || 'U').toUpperCase();
   const joinYear = customer.createdAt ? new Date(customer.createdAt).getFullYear() : new Date().getFullYear();
+  const rootData = useRouteLoaderData('root') as any;
   
   return (
     <div className="relative mb-8 w-full">
@@ -99,25 +101,50 @@ export function AccountProfileHeader({
               </svg>
               <div className="text-start">
                 <p className="text-[10px] md:text-[11px] text-[#335653] font-bold mb-0.5">
-                  {isEn ? 'Loyalty Points' : 'نقاط الولاء'}
+                  {rootData?.env?.PUBLIC_SMILE_CHANNEL_KEY ? (isEn ? 'Smile Rewards' : 'مكافآت Smile') : (isEn ? 'Loyalty Points' : 'نقاط الولاء')}
                 </p>
-                <p className="text-[16px] md:text-[22px] font-bold text-[#234745] leading-none flex gap-1">
-                  <span className="font-en">{loyaltyPoints}</span> <span>{isEn ? 'Points' : 'نقطة'}</span>
-                </p>
+                <div className="text-[16px] md:text-[22px] font-bold text-[#234745] leading-none flex gap-1">
+                  {rootData?.env?.PUBLIC_SMILE_CHANNEL_KEY ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (typeof window !== 'undefined' && (window as any).Smile) {
+                          (window as any).Smile.show();
+                        } else {
+                          alert(isEn 
+                            ? "Smile.io widget is loading or not active yet. Please verify your PUBLIC_SMILE_CHANNEL_KEY." 
+                            : "أداة Smile.io قيد التحميل أو غير نشطة بعد. يرجى التحقق من مفتاح PUBLIC_SMILE_CHANNEL_KEY."
+                          );
+                        }
+                      }}
+                      className="underline text-[12px] md:text-[14px] hover:text-[#1a3533] transition-colors"
+                    >
+                      {isEn ? 'Open Rewards Panel' : 'فتح لوحة المكافآت'}
+                    </button>
+                  ) : (
+                    <>
+                      <span className="font-en">{loyaltyPoints}</span> <span>{isEn ? 'Points' : 'نقطة'}</span>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
 
             {/* 60 points text (Right in LTR, Left in RTL) */}
             <div className="flex items-center md:text-end w-full md:w-auto border-t md:border-t-0 border-[#8fa8a2] md:border-transparent pt-2 md:pt-0">
               <p className="text-[11px] md:text-[14px] text-[#335653] font-bold leading-snug">
-                {isEn ? (
-                  <>
-                    <span className="font-en">60</span> points to get a <span className="font-en">25</span> SAR coupon
-                  </>
+                {rootData?.env?.PUBLIC_SMILE_CHANNEL_KEY ? (
+                  isEn ? 'Earn points and get rewards on every purchase!' : 'اكسب نقاطاً واحصل على مكافآت مع كل عملية شراء!'
                 ) : (
-                  <>
-                    <span className="font-en">60</span> نقطة للحصول على كوبون <span className="font-en">25</span> ر.س
-                  </>
+                  isEn ? (
+                    <>
+                      <span className="font-en">60</span> points to get a <span className="font-en">25</span> SAR coupon
+                    </>
+                  ) : (
+                    <>
+                      <span className="font-en">60</span> نقطة للحصول على كوبون <span className="font-en">25</span> ر.س
+                    </>
+                  )
                 )}
               </p>
             </div>

@@ -146,7 +146,36 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
               />
 
               {/* Loyalty Redemption */}
-              <LoyaltyRedemptionUI isEn={isEn} cart={cart} />
+              {rootData?.env?.PUBLIC_SMILE_CHANNEL_KEY ? (
+                <div className="flex flex-col gap-2 mt-4 pt-4 border-t border-dashed border-[#f0ece8]">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (typeof window !== 'undefined' && (window as any).Smile) {
+                        (window as any).Smile.show();
+                      } else {
+                        alert(isEn 
+                          ? "Smile.io widget is loading or PUBLIC_SMILE_CHANNEL_KEY is not configured yet." 
+                          : "أداة Smile.io قيد التحميل أو لم يتم إعداد مفتاح PUBLIC_SMILE_CHANNEL_KEY بعد."
+                        );
+                      }
+                    }}
+                    className="w-full flex items-center justify-between bg-[#fcfaf8] hover:bg-[#f6f2eb] border border-[#f0ece8] rounded-xl p-4 text-[#234745] transition-colors"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-xl">🎁</span>
+                      <span className="font-bold text-[14px]">
+                        {isEn ? 'Smile Rewards & Points' : 'نقاط ومكافآت Smile'}
+                      </span>
+                    </div>
+                    <span className="text-[12px] font-bold text-[#d4a06a]">
+                      {isEn ? 'View rewards' : 'عرض المكافآت'} &rarr;
+                    </span>
+                  </button>
+                </div>
+              ) : (
+                <LoyaltyRedemptionUI isEn={isEn} cart={cart} />
+              )}
 
               {/* Time Slot Picker */}
               <CartTimeSlot isEn={isEn} cart={cart} />

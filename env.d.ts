@@ -28,5 +28,6 @@ declare global {
     PUBLIC_GOOGLE_DISTANCE_MATRIX_KEY: string;
     PUBLIC_GTM_ID: string;
     PUBLIC_GA4_MEASUREMENT_ID: string;
+    PUBLIC_SMILE_CHANNEL_KEY: string;
   }
 }

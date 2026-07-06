@@ -323,6 +323,7 @@ function loadDeferredData({context}: Route.LoaderArgs, customerAccessToken: any,
       PUBLIC_GOOGLE_DISTANCE_MATRIX_KEY: context.env.PUBLIC_GOOGLE_DISTANCE_MATRIX_KEY,
       PUBLIC_GTM_ID: context.env.PUBLIC_GTM_ID,
       PUBLIC_GA4_MEASUREMENT_ID: context.env.PUBLIC_GA4_MEASUREMENT_ID,
+      PUBLIC_SMILE_CHANNEL_KEY: context.env.PUBLIC_SMILE_CHANNEL_KEY,
     },
   };
 }
@@ -503,6 +504,32 @@ export default function App() {
       }).catch(() => {});
     }
   }, [data?.customer]);
+  
+  // Dynamically load Smile.io widget script on the client side
+  useEffect(() => {
+    if (typeof window === 'undefined' || !data?.env?.PUBLIC_SMILE_CHANNEL_KEY) return;
+
+    // Check if script already exists to avoid duplicate tags
+    let script = document.getElementById('smile-loader') as HTMLScriptElement | null;
+    
+    if (script) {
+      if (customerId) {
+        script.setAttribute('data-customer-id', customerId);
+      }
+      return;
+    }
+
+    script = document.createElement('script');
+    script.id = 'smile-loader';
+    script.src = 'https://js.smile.io/v1/smile-loader.js';
+    script.async = true;
+    script.setAttribute('data-channel-key', data.env.PUBLIC_SMILE_CHANNEL_KEY);
+    if (customerId) {
+      script.setAttribute('data-customer-id', customerId);
+    }
+    
+    document.head.appendChild(script);
+  }, [data?.env?.PUBLIC_SMILE_CHANNEL_KEY, customerId]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;

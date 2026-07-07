@@ -722,6 +722,78 @@ const LOCATIONS_QUERY = `#graphql
           key
           value
         }
+        delivery_time_from: metafield(namespace: "custom", key: "delivery_time_from") {
+          key
+          value
+        }
+        delivery_time_to: metafield(namespace: "custom", key: "delivery_time_to") {
+          key
+          value
+        }
+        delivery_time_from_shift2: metafield(namespace: "custom", key: "delivery_time_from_shift2") {
+          key
+          value
+        }
+        delivery_time_to_shift2: metafield(namespace: "custom", key: "delivery_time_to_shift2") {
+          key
+          value
+        }
+        sunday_delivery_time_from: metafield(namespace: "custom", key: "sunday_delivery_time_from") {
+          key
+          value
+        }
+        sunday_delivery_time_to: metafield(namespace: "custom", key: "sunday_delivery_time_to") {
+          key
+          value
+        }
+        monday_delivery_time_from: metafield(namespace: "custom", key: "monday_delivery_time_from") {
+          key
+          value
+        }
+        monday_delivery_time_to: metafield(namespace: "custom", key: "monday_delivery_time_to") {
+          key
+          value
+        }
+        tuesday_delivery_time_from: metafield(namespace: "custom", key: "tuesday_delivery_time_from") {
+          key
+          value
+        }
+        tuesday_delivery_time_to: metafield(namespace: "custom", key: "tuesday_delivery_time_to") {
+          key
+          value
+        }
+        wednesday_delivery_time_from: metafield(namespace: "custom", key: "wednesday_delivery_time_from") {
+          key
+          value
+        }
+        wednesday_delivery_time_to: metafield(namespace: "custom", key: "wednesday_delivery_time_to") {
+          key
+          value
+        }
+        thursday_delivery_time_from: metafield(namespace: "custom", key: "thursday_delivery_time_from") {
+          key
+          value
+        }
+        thursday_delivery_time_to: metafield(namespace: "custom", key: "thursday_delivery_time_to") {
+          key
+          value
+        }
+        friday_delivery_time_from: metafield(namespace: "custom", key: "friday_delivery_time_from") {
+          key
+          value
+        }
+        friday_delivery_time_to: metafield(namespace: "custom", key: "friday_delivery_time_to") {
+          key
+          value
+        }
+        saturday_delivery_time_from: metafield(namespace: "custom", key: "saturday_delivery_time_from") {
+          key
+          value
+        }
+        saturday_delivery_time_to: metafield(namespace: "custom", key: "saturday_delivery_time_to") {
+          key
+          value
+        }
       }
     }
   }

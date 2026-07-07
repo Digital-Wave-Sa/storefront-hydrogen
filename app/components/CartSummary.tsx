@@ -191,7 +191,7 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
               )}
 
               {/* Time Slot Picker */}
-              <CartTimeSlot isEn={isEn} cart={cart} currentBranch={currentBranch} />
+              <CartTimeSlot isEn={isEn} cart={cart} currentBranch={currentBranch} isPickup={isPickup} />
 
               {/* Order Notes */}
               <CartOrderNotes isEn={isEn} cart={cart} />
@@ -422,38 +422,37 @@ function formatHour(h: number, isEn: boolean): string {
   return `${displayHour} ${period}`;
 }
 
-function generateDynamicSlots(branch: any, isEn: boolean): string[] {
+function generateDynamicSlots(branch: any, isEn: boolean, isPickup: boolean): string[] {
   // Get Saudi current day of the week
   const riyadhDateStr = new Intl.DateTimeFormat('en-US', {
     timeZone: 'Asia/Riyadh',
     weekday: 'short'
   }).format(new Date());
 
-  let fromStr = branch?.hoursFrom;
-  let toStr = branch?.hoursTo;
+  const prefix = isPickup ? 'working_hours' : 'delivery_time';
+  const dayKey = riyadhDateStr.toLowerCase(); // 'sun', 'mon', 'tue', etc.
+  const dayFromKey = `${dayKey}_${prefix}_from`;
+  const dayToKey = `${dayKey}_${prefix}_to`;
 
-  // Search through all daily hour definitions
-  if (riyadhDateStr === 'Sun' && branch?.sundayHoursFrom) {
-    fromStr = branch.sundayHoursFrom; toStr = branch.sundayHoursTo;
-  } else if (riyadhDateStr === 'Mon' && branch?.mondayHoursFrom) {
-    fromStr = branch.mondayHoursFrom; toStr = branch.mondayHoursTo;
-  } else if (riyadhDateStr === 'Tue' && branch?.tuesdayHoursFrom) {
-    fromStr = branch.tuesdayHoursFrom; toStr = branch.tuesdayHoursTo;
-  } else if (riyadhDateStr === 'Wed' && branch?.wednesdayHoursFrom) {
-    fromStr = branch.wednesdayHoursFrom; toStr = branch.wednesdayHoursTo;
-  } else if (riyadhDateStr === 'Thu' && branch?.thursdayHoursFrom) {
-    fromStr = branch.thursdayHoursFrom; toStr = branch.thursdayHoursTo;
-  } else if (riyadhDateStr === 'Fri' && branch?.fridayHoursFrom) {
-    fromStr = branch.fridayHoursFrom; toStr = branch.fridayHoursTo;
-  } else if (riyadhDateStr === 'Sat' && branch?.saturdayHoursFrom) {
-    fromStr = branch.saturdayHoursFrom; toStr = branch.saturdayHoursTo;
-  }
+  const shift2FromKey = `${prefix}_from_shift2`;
+  const shift2ToKey = `${prefix}_to_shift2`;
 
-  // Parse start and end hours, default to 10:00 (10 AM) to 22:00 (10 PM) if not defined
-  const startHour = parseHourString(fromStr || '10:00');
-  const endHour = parseHourString(toStr || '22:00');
+  const standardFromKey = `${prefix}_from`;
+  const standardToKey = `${prefix}_to`;
 
-  // Also get the current hour in Riyadh time to hide past slots for today
+  let fromStr = branch?.[dayFromKey]?.value || branch?.[standardFromKey]?.value;
+  let toStr = branch?.[dayToKey]?.value || branch?.[standardToKey]?.value;
+
+  let shift2FromStr = branch?.[shift2FromKey]?.value;
+  let shift2ToStr = branch?.[shift2ToKey]?.value;
+
+  const startHour1 = parseHourString(fromStr || (isPickup ? '09:00' : '10:00'));
+  const endHour1 = parseHourString(toStr || (isPickup ? '22:00' : '19:00'));
+
+  const startHour2 = shift2FromStr ? parseHourString(shift2FromStr) : null;
+  const endHour2 = shift2ToStr ? parseHourString(shift2ToStr) : null;
+
+  // Riyadh hour check to filter past slots today
   const riyadhHourStr = new Intl.DateTimeFormat('en-US', {
     timeZone: 'Asia/Riyadh',
     hour: 'numeric',
@@ -464,42 +463,62 @@ function generateDynamicSlots(branch: any, isEn: boolean): string[] {
   const slots: string[] = [];
   const interval = 2; // 2-hour interval slots for precise scheduling
 
-  for (let h = startHour; h < endHour; h += interval) {
-    let nextH = h + interval;
-    if (nextH > endHour) {
-      nextH = endHour;
-    }
-    
-    // Hide slots that are already in the past today
-    // We add 1 hour buffer so they can't order a slot that is too close to current time
-    if (h > currentRiyadhHour + 1) {
+  const buildSlotsForRange = (start: number, end: number, isTomorrow: boolean) => {
+    const list: string[] = [];
+    for (let h = start; h < end; h += interval) {
+      let nextH = h + interval;
+      if (nextH > end) {
+        nextH = end;
+      }
+      
+      const dayPrefix = isTomorrow ? (isEn ? 'Tomorrow: ' : 'غداً: ') : '';
       const fromFormatted = formatHour(h, isEn);
       const toFormatted = formatHour(nextH, isEn);
-      slots.push(`${fromFormatted} - ${toFormatted}`);
+      list.push(`${dayPrefix}${fromFormatted} - ${toFormatted}`);
     }
+    return list;
+  };
+
+  const filterPastSlots = (slotsList: string[]) => {
+    return slotsList.filter(slot => {
+      const parts = slot.split(' - ');
+      if (parts.length === 0) return true;
+      const startStr = parts[0].replace('غداً:', '').replace('Tomorrow:', '').trim();
+      const startHourNum = parseHourString(startStr);
+      return startHourNum > currentRiyadhHour + 1;
+    });
+  };
+
+  // Today shift 1 slots
+  let todayShift1 = buildSlotsForRange(startHour1, endHour1, false);
+  todayShift1 = filterPastSlots(todayShift1);
+  slots.push(...todayShift1);
+
+  // Today shift 2 slots (if split shift is active)
+  if (startHour2 !== null && endHour2 !== null) {
+    let todayShift2 = buildSlotsForRange(startHour2, endHour2, false);
+    todayShift2 = filterPastSlots(todayShift2);
+    slots.push(...todayShift2);
   }
 
-  // If all slots for today are in the past (e.g. it is late at night),
-  // we show tomorrow's slots
+  // If all slots for today are in the past, compile tomorrow's slots
   if (slots.length === 0) {
-    for (let h = startHour; h < endHour; h += interval) {
-      let nextH = h + interval;
-      if (nextH > endHour) nextH = endHour;
-      const fromFormatted = formatHour(h, isEn);
-      const toFormatted = formatHour(nextH, isEn);
-      const dayPrefix = isEn ? 'Tomorrow: ' : 'غداً: ';
-      slots.push(`${dayPrefix}${fromFormatted} - ${toFormatted}`);
+    // Tomorrow Shift 1
+    slots.push(...buildSlotsForRange(startHour1, endHour1, true));
+    // Tomorrow Shift 2
+    if (startHour2 !== null && endHour2 !== null) {
+      slots.push(...buildSlotsForRange(startHour2, endHour2, true));
     }
   }
 
   return slots;
 }
 
-function CartTimeSlot({ isEn, cart, currentBranch, hasError }: { isEn: boolean, cart: any, currentBranch: any, hasError?: boolean }) {
+function CartTimeSlot({ isEn, cart, currentBranch, isPickup, hasError }: { isEn: boolean, cart: any, currentBranch: any, isPickup: boolean, hasError?: boolean }) {
   const timeSlot = cart?.attributes?.find((a: any) => a.key === 'Time Slot')?.value || '';
   
   // Dynamically calculate time slots based on the fulfilling branch's active hours
-  const dynamicTimeSlots = generateDynamicSlots(currentBranch, isEn);
+  const dynamicTimeSlots = generateDynamicSlots(currentBranch, isEn, isPickup);
 
   return (
     <div className="flex flex-col gap-2">

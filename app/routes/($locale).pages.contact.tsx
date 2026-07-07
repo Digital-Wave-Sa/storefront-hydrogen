@@ -32,50 +32,84 @@ export async function action({ request, context }: ActionFunctionArgs) {
     };
   }
 
-  const contactSubject = `New Contact Form Message: ${subject} (${fullName})`;
-  const contactText = `
-    Name: ${fullName}
-    Mobile: ${mobile}
-    Email: ${email}
-    Subject: ${subject}
-    Order Number: ${orderNumber || 'N/A'}
-    Message: ${message}
-  `;
-  const contactHtml = `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 8px;">
-      <h2 style="color: #234745; border-bottom: 2px solid #234745; padding-bottom: 10px; margin-top: 0;">New Contact Form Submission</h2>
-      <p style="margin: 15px 0;"><strong>Name:</strong> ${fullName}</p>
-      <p style="margin: 15px 0;"><strong>Mobile:</strong> ${mobile}</p>
-      <p style="margin: 15px 0;"><strong>Email:</strong> ${email}</p>
-      <p style="margin: 15px 0;"><strong>Subject:</strong> ${subject}</p>
-      <p style="margin: 15px 0;"><strong>Order Number:</strong> ${orderNumber || 'N/A'}</p>
-      <div style="margin: 20px 0; padding: 15px; background-color: #fcfcfc; border-left: 4px solid #234745; font-style: italic;">
-        <strong>Message:</strong><br/>
-        ${String(message).replace(/\n/g, '<br/>')}
-      </div>
-      <p style="font-size: 11px; color: #999; margin-top: 30px; border-top: 1px solid #eee; padding-top: 10px;">Submitted from Saadeddin contact page.</p>
-    </div>
+  const query = `
+    mutation draftOrderCreate($input: DraftOrderInput!) {
+      draftOrderCreate(input: $input) {
+        draftOrder {
+          id
+        }
+        userErrors {
+          field
+          message
+        }
+      }
+    }
   `;
 
+  const variables = {
+    input: {
+      note: `Name: ${fullName}\nMobile: ${mobile}\nEmail: ${email}\nSubject: ${subject}\nOrder Number: ${orderNumber || 'N/A'}\nMessage: ${message}`,
+      tags: ["Contact Form", `Subject: ${subject}`],
+      email: email,
+      customAttributes: [
+        { key: "Full Name", value: fullName },
+        { key: "Mobile", value: mobile },
+        { key: "Subject", value: subject },
+        { key: "Order Number", value: orderNumber || 'N/A' }
+      ],
+      lineItems: [
+        {
+          title: `Contact Form Message: ${subject}`,
+          quantity: 1,
+          originalUnitPrice: "0.00"
+        }
+      ]
+    }
+  };
+
   try {
-    const { sendEmail } = await import('~/lib/email.server');
-    await sendEmail({
-      to: context.env.CONTACT_RECEIVER_EMAIL || 'info@saadeddin.com',
-      subject: contactSubject,
-      text: contactText,
-      html: contactHtml,
-      env: context.env
+    const { getAdminToken } = await import('~/lib/shopify-admin.server');
+    const adminToken = await getAdminToken(context.env);
+    
+    const rawShop = context.env.SHOPIFY_SHOP || context.env.PUBLIC_STORE_DOMAIN || '';
+    let shopDomain = rawShop;
+    if (!shopDomain.includes('myshopify.com')) {
+      const handle = shopDomain.replace(/^https?:\/\//, '').split('.')[0];
+      shopDomain = `${handle}.myshopify.com`;
+    }
+
+    const response = await fetch(`https://${shopDomain}/admin/api/2023-04/graphql.json`, {
+      method: 'POST',
+      headers: {
+        'X-Shopify-Access-Token': adminToken,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ query, variables })
     });
+
+    const resText = await response.text();
+    console.log('[SHOPIFY DRAFT ORDER CREATE RESP]', resText);
+    const resData = JSON.parse(resText);
+    const errors = resData?.data?.draftOrderCreate?.userErrors;
+
+    if (errors && errors.length > 0) {
+      console.error('[SHOPIFY DRAFT ORDER CREATE ERRORS]', errors);
+      throw new Error(errors[0].message);
+    }
 
     return {
       success: true,
-      message: isEn ? 'Your message has been sent successfully!' : 'تم إرسال رسالتك بنجاح!'
+      message: isEn 
+        ? 'Your message has been submitted successfully and saved to our records!' 
+        : 'تم تقديم رسالتك بنجاح وحفظها في سجلاتنا!'
     };
   } catch (error: any) {
     console.error('[CONTACT ACTION ERROR]', error);
     return {
       success: false,
-      error: isEn ? 'Something went wrong. Please try again later.' : 'حدث خطأ ما. يرجى المحاولة مرة أخرى لاحقاً.'
+      error: isEn 
+        ? 'Something went wrong. Please try again later.' 
+        : 'حدث خطأ ما. يرجى المحاولة مرة أخرى لاحقاً.'
     };
   }
 }

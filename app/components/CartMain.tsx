@@ -43,7 +43,7 @@ export function CartMain({layout, cart: originalCart}: CartMainProps) {
   const rootData = useRouteLoaderData('root') as any;
 
   const linesCount = Boolean(cart?.lines?.nodes?.length || 0);
-  const cartHasItems = cart?.totalQuantity ? cart.totalQuantity > 0 : false;
+  const cartHasItems = linesCount;
   const childrenMap = getLineItemChildrenMap(cart?.lines?.nodes ?? []);
 
   // --- UNDO REMOVED ITEM LOGIC ---

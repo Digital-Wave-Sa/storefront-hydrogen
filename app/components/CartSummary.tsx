@@ -687,6 +687,17 @@ function LoyaltyRedemptionUI({ isEn, cart }: { isEn: boolean, cart: any }) {
     }
   }, [customerIdentifier]);
 
+  // Sync state after fetcher finishes
+  useEffect(() => {
+    if (fetcher.state === 'idle' && fetcher.data) {
+      if (fetcher.data.error) {
+        setErrorMsg(fetcher.data.error);
+      } else if (fetcher.data.success) {
+        setErrorMsg(null);
+      }
+    }
+  }, [fetcher.state, fetcher.data]);
+
   if (!customerIdentifier) {
     return (
       <section className="flex flex-col gap-3 mt-4 pt-4 border-t border-dashed border-[#f0ece8]">
@@ -716,16 +727,6 @@ function LoyaltyRedemptionUI({ isEn, cart }: { isEn: boolean, cart: any }) {
   const pointsToCurrencyRatio = 0.01;
   const cartSubtotal = parseFloat(cart?.cost?.subtotalAmount?.amount || '0');
 
-  // Sync state after fetcher finishes
-  useEffect(() => {
-    if (fetcher.state === 'idle' && fetcher.data) {
-      if (fetcher.data.error) {
-        setErrorMsg(fetcher.data.error);
-      } else if (fetcher.data.success) {
-        setErrorMsg(null);
-      }
-    }
-  }, [fetcher.state, fetcher.data]);
 
   const milestones = [
     { points: 1000, value: 10, labelEn: '10 SAR Coupon', labelAr: 'كوبون 10 ر.س' },

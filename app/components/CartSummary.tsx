@@ -576,12 +576,12 @@ function LoyaltyRedemptionUI({ isEn, cart }: { isEn: boolean, cart: any }) {
               ? 'Log in to view and redeem your loyalty points.' 
               : 'سجل الدخول لعرض واستبدال نقاط الولاء الخاصة بك.'}
           </p>
-          <NavLink
+          <Link
             to={isEn ? "/en/account/login" : "/account/login"}
             className="inline-block bg-[#234745] text-white font-bold px-4 py-2 rounded-lg text-[12px] hover:bg-[#142e22] transition-colors"
           >
             {isEn ? 'Log In' : 'تسجيل الدخول'}
-          </NavLink>
+          </Link>
         </div>
       </section>
     );

@@ -191,7 +191,7 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
               )}
 
               {/* Time Slot Picker */}
-              <CartTimeSlot isEn={isEn} cart={cart} currentBranch={currentBranch} isPickup={isPickup} />
+              <CartTimeSlot isEn={isEn} cart={cart} currentBranch={currentBranch} />
 
               {/* Order Notes */}
               <CartOrderNotes isEn={isEn} cart={cart} />
@@ -422,78 +422,38 @@ function formatHour(h: number, isEn: boolean): string {
   return `${displayHour} ${period}`;
 }
 
-function getBranchHours(branch: any, type: 'delivery' | 'pickup', dayOfWeek: string) {
-  let fromVal = '';
-  let toVal = '';
-  let fromShift2Val = '';
-  let toShift2Val = '';
-
-  const prefix = type === 'delivery' ? 'delivery_time' : 'working_hours';
-
-  const dayLower = dayOfWeek.toLowerCase();
-  const dayNamesMap: Record<string, string> = {
-    sun: 'sunday',
-    mon: 'monday',
-    tue: 'tuesday',
-    wed: 'wednesday',
-    thu: 'thursday',
-    fri: 'friday',
-    sat: 'saturday'
-  };
-  const fullDayName = dayNamesMap[dayLower] || 'sunday';
-
-  const dayFromKey = `${fullDayName}_${prefix}_from`;
-  const dayToKey = `${fullDayName}_${prefix}_to`;
-  const dayFromShift2Key = `${fullDayName}_${prefix}_from_shift2`;
-  const dayToShift2Key = `${fullDayName}_${prefix}_to_shift2`;
-
-  // Read day-specific primary hours
-  fromVal = branch?.[dayFromKey]?.value || '';
-  toVal = branch?.[dayToKey]?.value || '';
-
-  // Read day-specific shift 2 hours
-  fromShift2Val = branch?.[dayFromShift2Key]?.value || '';
-  toShift2Val = branch?.[dayToShift2Key]?.value || '';
-
-  // Fallbacks: If day-specific is not set, fall back to general location hours
-  if (!fromVal || !toVal) {
-    const generalFromKey = `${prefix}_from`;
-    const generalToKey = `${prefix}_to`;
-    fromVal = branch?.[generalFromKey]?.value || '';
-    toVal = branch?.[generalToKey]?.value || '';
-  }
-
-  if (!fromShift2Val || !toShift2Val) {
-    const generalFromShift2Key = `${prefix}_from_shift2`;
-    const generalToShift2Key = `${prefix}_to_shift2`;
-    fromShift2Val = branch?.[generalFromShift2Key]?.value || '';
-    toShift2Val = branch?.[generalToShift2Key]?.value || '';
-  }
-
-  return {
-    from: fromVal,
-    to: toVal,
-    fromShift2: fromShift2Val,
-    toShift2: toShift2Val
-  };
-}
-
-function generateDynamicSlots(branch: any, type: 'delivery' | 'pickup', isEn: boolean): string[] {
+function generateDynamicSlots(branch: any, isEn: boolean): string[] {
   // Get Saudi current day of the week
   const riyadhDateStr = new Intl.DateTimeFormat('en-US', {
     timeZone: 'Asia/Riyadh',
     weekday: 'short'
   }).format(new Date());
 
-  const hours = getBranchHours(branch, type, riyadhDateStr);
+  let fromStr = branch?.hoursFrom;
+  let toStr = branch?.hoursTo;
 
-  const startHour1 = parseHourString(hours.from || '10:00');
-  const endHour1 = parseHourString(hours.to || '22:00');
+  // Search through all daily hour definitions
+  if (riyadhDateStr === 'Sun' && branch?.sundayHoursFrom) {
+    fromStr = branch.sundayHoursFrom; toStr = branch.sundayHoursTo;
+  } else if (riyadhDateStr === 'Mon' && branch?.mondayHoursFrom) {
+    fromStr = branch.mondayHoursFrom; toStr = branch.mondayHoursTo;
+  } else if (riyadhDateStr === 'Tue' && branch?.tuesdayHoursFrom) {
+    fromStr = branch.tuesdayHoursFrom; toStr = branch.tuesdayHoursTo;
+  } else if (riyadhDateStr === 'Wed' && branch?.wednesdayHoursFrom) {
+    fromStr = branch.wednesdayHoursFrom; toStr = branch.wednesdayHoursTo;
+  } else if (riyadhDateStr === 'Thu' && branch?.thursdayHoursFrom) {
+    fromStr = branch.thursdayHoursFrom; toStr = branch.thursdayHoursTo;
+  } else if (riyadhDateStr === 'Fri' && branch?.fridayHoursFrom) {
+    fromStr = branch.fridayHoursFrom; toStr = branch.fridayHoursTo;
+  } else if (riyadhDateStr === 'Sat' && branch?.saturdayHoursFrom) {
+    fromStr = branch.saturdayHoursFrom; toStr = branch.saturdayHoursTo;
+  }
 
-  const startHour2 = hours.fromShift2 && hours.toShift2 ? parseHourString(hours.fromShift2) : 0;
-  const endHour2 = hours.fromShift2 && hours.toShift2 ? parseHourString(hours.toShift2) : 0;
+  // Parse start and end hours, default to 10:00 (10 AM) to 22:00 (10 PM) if not defined
+  const startHour = parseHourString(fromStr || '10:00');
+  const endHour = parseHourString(toStr || '22:00');
 
-  // Get current hour in Riyadh time
+  // Also get the current hour in Riyadh time to hide past slots for today
   const riyadhHourStr = new Intl.DateTimeFormat('en-US', {
     timeZone: 'Asia/Riyadh',
     hour: 'numeric',
@@ -502,60 +462,44 @@ function generateDynamicSlots(branch: any, type: 'delivery' | 'pickup', isEn: bo
   const currentRiyadhHour = parseInt(riyadhHourStr) || 0;
 
   const slots: string[] = [];
-  const interval = 2; // 2-hour interval slots
+  const interval = 2; // 2-hour interval slots for precise scheduling
 
-  const addSlotsForRange = (start: number, end: number, isTomorrow: boolean) => {
-    for (let h = start; h < end; h += interval) {
-      let nextH = h + interval;
-      if (nextH > end) nextH = end;
-
-      // Filter out past slots for today
-      if (!isTomorrow && h <= currentRiyadhHour + 1) {
-        continue;
-      }
-
+  for (let h = startHour; h < endHour; h += interval) {
+    let nextH = h + interval;
+    if (nextH > endHour) {
+      nextH = endHour;
+    }
+    
+    // Hide slots that are already in the past today
+    // We add 1 hour buffer so they can't order a slot that is too close to current time
+    if (h > currentRiyadhHour + 1) {
       const fromFormatted = formatHour(h, isEn);
       const toFormatted = formatHour(nextH, isEn);
-      const prefix = isTomorrow ? (isEn ? 'Tomorrow: ' : 'غداً: ') : '';
-      slots.push(`${prefix}${fromFormatted} - ${toFormatted}`);
+      slots.push(`${fromFormatted} - ${toFormatted}`);
     }
-  };
-
-  // Add today's slots
-  addSlotsForRange(startHour1, endHour1, false);
-  if (startHour2 && endHour2) {
-    addSlotsForRange(startHour2, endHour2, false);
   }
 
-  // If no slots are left for today, generate tomorrow's slots
+  // If all slots for today are in the past (e.g. it is late at night),
+  // we show tomorrow's slots
   if (slots.length === 0) {
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const tomorrowDayStr = new Intl.DateTimeFormat('en-US', {
-      timeZone: 'Asia/Riyadh',
-      weekday: 'short'
-    }).format(tomorrow);
-
-    const tomorrowHours = getBranchHours(branch, type, tomorrowDayStr);
-    const tStartHour1 = parseHourString(tomorrowHours.from || '10:00');
-    const tEndHour1 = parseHourString(tomorrowHours.to || '22:00');
-    const tStartHour2 = tomorrowHours.fromShift2 && tomorrowHours.toShift2 ? parseHourString(tomorrowHours.fromShift2) : 0;
-    const tEndHour2 = tomorrowHours.fromShift2 && tomorrowHours.toShift2 ? parseHourString(tomorrowHours.toShift2) : 0;
-
-    addSlotsForRange(tStartHour1, tEndHour1, true);
-    if (tStartHour2 && tEndHour2) {
-      addSlotsForRange(tStartHour2, tEndHour2, true);
+    for (let h = startHour; h < endHour; h += interval) {
+      let nextH = h + interval;
+      if (nextH > endHour) nextH = endHour;
+      const fromFormatted = formatHour(h, isEn);
+      const toFormatted = formatHour(nextH, isEn);
+      const dayPrefix = isEn ? 'Tomorrow: ' : 'غداً: ';
+      slots.push(`${dayPrefix}${fromFormatted} - ${toFormatted}`);
     }
   }
 
   return slots;
 }
 
-function CartTimeSlot({ isEn, cart, currentBranch, isPickup, hasError }: { isEn: boolean, cart: any, currentBranch: any, isPickup: boolean, hasError?: boolean }) {
+function CartTimeSlot({ isEn, cart, currentBranch, hasError }: { isEn: boolean, cart: any, currentBranch: any, hasError?: boolean }) {
   const timeSlot = cart?.attributes?.find((a: any) => a.key === 'Time Slot')?.value || '';
   
   // Dynamically calculate time slots based on the fulfilling branch's active hours
-  const dynamicTimeSlots = generateDynamicSlots(currentBranch, isPickup ? 'pickup' : 'delivery', isEn);
+  const dynamicTimeSlots = generateDynamicSlots(currentBranch, isEn);
 
   return (
     <div className="flex flex-col gap-2">

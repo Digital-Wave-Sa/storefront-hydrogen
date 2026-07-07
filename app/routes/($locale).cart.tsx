@@ -36,15 +36,38 @@ export async function action({request, context}: Route.ActionArgs) {
   let status = 200;
   let result: CartQueryDataReturn;
 
+  // Helper: retry a cart mutation up to `maxRetries` times with exponential backoff
+  // when Shopify returns a throttle error.
+  async function withRetry<T>(fn: () => Promise<T>, maxRetries = 3): Promise<T> {
+    let lastError: any;
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        return await fn();
+      } catch (err: any) {
+        lastError = err;
+        const isThrottled =
+          err?.message?.toLowerCase().includes('throttled') ||
+          err?.status === 429 ||
+          String(err).toLowerCase().includes('throttled');
+        if (!isThrottled || attempt >= maxRetries - 1) throw err;
+        // Exponential backoff: 300ms, 900ms, 2700ms …
+        const delay = 300 * Math.pow(3, attempt);
+        console.warn(`[CART] Throttled by Shopify, retrying in ${delay}ms (attempt ${attempt + 1}/${maxRetries})`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+    throw lastError;
+  }
+
   switch (action) {
     case CartForm.ACTIONS.LinesAdd:
-      result = await cart.addLines(inputs.lines);
+      result = await withRetry(() => cart.addLines(inputs.lines));
       break;
     case CartForm.ACTIONS.LinesUpdate:
-      result = await cart.updateLines(inputs.lines);
+      result = await withRetry(() => cart.updateLines(inputs.lines));
       break;
     case CartForm.ACTIONS.LinesRemove:
-      result = await cart.removeLines(inputs.lineIds);
+      result = await withRetry(() => cart.removeLines(inputs.lineIds));
       break;
     case 'LoyaltyUpdate': {
       const isEn = context.storefront.i18n.language === 'EN';

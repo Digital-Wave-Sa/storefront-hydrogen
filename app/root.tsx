@@ -714,14 +714,6 @@ const LOCATIONS_QUERY = `#graphql
           key
           value
         }
-        rating: metafield(namespace: "custom", key: "rating") {
-          key
-          value
-        }
-        rating_count: metafield(namespace: "custom", key: "rating_count") {
-          key
-          value
-        }
         delivery_time_from: metafield(namespace: "custom", key: "delivery_time_from") {
           key
           value
@@ -791,6 +783,14 @@ const LOCATIONS_QUERY = `#graphql
           value
         }
         saturday_delivery_time_to: metafield(namespace: "custom", key: "saturday_delivery_time_to") {
+          key
+          value
+        }
+        rating: metafield(namespace: "custom", key: "rating") {
+          key
+          value
+        }
+        rating_count: metafield(namespace: "custom", key: "rating_count") {
           key
           value
         }

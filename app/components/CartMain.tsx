@@ -37,13 +37,13 @@ function getLineItemChildrenMap(lines: CartLine[]): LineItemChildrenMap {
 }
 
 export function CartMain({layout, cart: originalCart}: CartMainProps) {
-  const cart = originalCart;
+  const cart = useOptimisticCart(originalCart);
   const location = useLocation();
   const isEn = location.pathname.split('/')[1]?.toLowerCase() === 'en';
   const rootData = useRouteLoaderData('root') as any;
 
   const linesCount = Boolean(cart?.lines?.nodes?.length || 0);
-  const cartHasItems = linesCount;
+  const cartHasItems = cart?.totalQuantity ? cart.totalQuantity > 0 : false;
   const childrenMap = getLineItemChildrenMap(cart?.lines?.nodes ?? []);
 
   // --- UNDO REMOVED ITEM LOGIC ---

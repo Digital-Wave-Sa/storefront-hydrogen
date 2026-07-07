@@ -422,37 +422,78 @@ function formatHour(h: number, isEn: boolean): string {
   return `${displayHour} ${period}`;
 }
 
-function generateDynamicSlots(branch: any, isEn: boolean, isPickup: boolean): string[] {
+function getBranchHours(branch: any, type: 'delivery' | 'pickup', dayOfWeek: string) {
+  let fromVal = '';
+  let toVal = '';
+  let fromShift2Val = '';
+  let toShift2Val = '';
+
+  const prefix = type === 'delivery' ? 'delivery_time' : 'working_hours';
+
+  const dayLower = dayOfWeek.toLowerCase();
+  const dayNamesMap: Record<string, string> = {
+    sun: 'sunday',
+    mon: 'monday',
+    tue: 'tuesday',
+    wed: 'wednesday',
+    thu: 'thursday',
+    fri: 'friday',
+    sat: 'saturday'
+  };
+  const fullDayName = dayNamesMap[dayLower] || 'sunday';
+
+  const dayFromKey = `${fullDayName}_${prefix}_from`;
+  const dayToKey = `${fullDayName}_${prefix}_to`;
+  const dayFromShift2Key = `${fullDayName}_${prefix}_from_shift2`;
+  const dayToShift2Key = `${fullDayName}_${prefix}_to_shift2`;
+
+  // Read day-specific primary hours
+  fromVal = branch?.[dayFromKey]?.value || '';
+  toVal = branch?.[dayToKey]?.value || '';
+
+  // Read day-specific shift 2 hours
+  fromShift2Val = branch?.[dayFromShift2Key]?.value || '';
+  toShift2Val = branch?.[dayToShift2Key]?.value || '';
+
+  // Fallbacks: If day-specific is not set, fall back to general location hours
+  if (!fromVal || !toVal) {
+    const generalFromKey = `${prefix}_from`;
+    const generalToKey = `${prefix}_to`;
+    fromVal = branch?.[generalFromKey]?.value || '';
+    toVal = branch?.[generalToKey]?.value || '';
+  }
+
+  if (!fromShift2Val || !toShift2Val) {
+    const generalFromShift2Key = `${prefix}_from_shift2`;
+    const generalToShift2Key = `${prefix}_to_shift2`;
+    fromShift2Val = branch?.[generalFromShift2Key]?.value || '';
+    toShift2Val = branch?.[generalToShift2Key]?.value || '';
+  }
+
+  return {
+    from: fromVal,
+    to: toVal,
+    fromShift2: fromShift2Val,
+    toShift2: toShift2Val
+  };
+}
+
+function generateDynamicSlots(branch: any, type: 'delivery' | 'pickup', isEn: boolean): string[] {
   // Get Saudi current day of the week
   const riyadhDateStr = new Intl.DateTimeFormat('en-US', {
     timeZone: 'Asia/Riyadh',
     weekday: 'short'
   }).format(new Date());
 
-  const prefix = isPickup ? 'working_hours' : 'delivery_time';
-  const dayKey = riyadhDateStr.toLowerCase(); // 'sun', 'mon', 'tue', etc.
-  const dayFromKey = `${dayKey}_${prefix}_from`;
-  const dayToKey = `${dayKey}_${prefix}_to`;
+  const hours = getBranchHours(branch, type, riyadhDateStr);
 
-  const shift2FromKey = `${prefix}_from_shift2`;
-  const shift2ToKey = `${prefix}_to_shift2`;
+  const startHour1 = parseHourString(hours.from || '10:00');
+  const endHour1 = parseHourString(hours.to || '22:00');
 
-  const standardFromKey = `${prefix}_from`;
-  const standardToKey = `${prefix}_to`;
+  const startHour2 = hours.fromShift2 && hours.toShift2 ? parseHourString(hours.fromShift2) : 0;
+  const endHour2 = hours.fromShift2 && hours.toShift2 ? parseHourString(hours.toShift2) : 0;
 
-  let fromStr = branch?.[dayFromKey]?.value || branch?.[standardFromKey]?.value;
-  let toStr = branch?.[dayToKey]?.value || branch?.[standardToKey]?.value;
-
-  let shift2FromStr = branch?.[shift2FromKey]?.value;
-  let shift2ToStr = branch?.[shift2ToKey]?.value;
-
-  const startHour1 = parseHourString(fromStr || (isPickup ? '09:00' : '10:00'));
-  const endHour1 = parseHourString(toStr || (isPickup ? '22:00' : '19:00'));
-
-  const startHour2 = shift2FromStr ? parseHourString(shift2FromStr) : null;
-  const endHour2 = shift2ToStr ? parseHourString(shift2ToStr) : null;
-
-  // Riyadh hour check to filter past slots today
+  // Get current hour in Riyadh time
   const riyadhHourStr = new Intl.DateTimeFormat('en-US', {
     timeZone: 'Asia/Riyadh',
     hour: 'numeric',
@@ -461,53 +502,49 @@ function generateDynamicSlots(branch: any, isEn: boolean, isPickup: boolean): st
   const currentRiyadhHour = parseInt(riyadhHourStr) || 0;
 
   const slots: string[] = [];
-  const interval = 2; // 2-hour interval slots for precise scheduling
+  const interval = 2; // 2-hour interval slots
 
-  const buildSlotsForRange = (start: number, end: number, isTomorrow: boolean) => {
-    const list: string[] = [];
+  const addSlotsForRange = (start: number, end: number, isTomorrow: boolean) => {
     for (let h = start; h < end; h += interval) {
       let nextH = h + interval;
-      if (nextH > end) {
-        nextH = end;
+      if (nextH > end) nextH = end;
+
+      // Filter out past slots for today
+      if (!isTomorrow && h <= currentRiyadhHour + 1) {
+        continue;
       }
-      
-      const dayPrefix = isTomorrow ? (isEn ? 'Tomorrow: ' : 'غداً: ') : '';
+
       const fromFormatted = formatHour(h, isEn);
       const toFormatted = formatHour(nextH, isEn);
-      list.push(`${dayPrefix}${fromFormatted} - ${toFormatted}`);
+      const prefix = isTomorrow ? (isEn ? 'Tomorrow: ' : 'غداً: ') : '';
+      slots.push(`${prefix}${fromFormatted} - ${toFormatted}`);
     }
-    return list;
   };
 
-  const filterPastSlots = (slotsList: string[]) => {
-    return slotsList.filter(slot => {
-      const parts = slot.split(' - ');
-      if (parts.length === 0) return true;
-      const startStr = parts[0].replace('غداً:', '').replace('Tomorrow:', '').trim();
-      const startHourNum = parseHourString(startStr);
-      return startHourNum > currentRiyadhHour + 1;
-    });
-  };
-
-  // Today shift 1 slots
-  let todayShift1 = buildSlotsForRange(startHour1, endHour1, false);
-  todayShift1 = filterPastSlots(todayShift1);
-  slots.push(...todayShift1);
-
-  // Today shift 2 slots (if split shift is active)
-  if (startHour2 !== null && endHour2 !== null) {
-    let todayShift2 = buildSlotsForRange(startHour2, endHour2, false);
-    todayShift2 = filterPastSlots(todayShift2);
-    slots.push(...todayShift2);
+  // Add today's slots
+  addSlotsForRange(startHour1, endHour1, false);
+  if (startHour2 && endHour2) {
+    addSlotsForRange(startHour2, endHour2, false);
   }
 
-  // If all slots for today are in the past, compile tomorrow's slots
+  // If no slots are left for today, generate tomorrow's slots
   if (slots.length === 0) {
-    // Tomorrow Shift 1
-    slots.push(...buildSlotsForRange(startHour1, endHour1, true));
-    // Tomorrow Shift 2
-    if (startHour2 !== null && endHour2 !== null) {
-      slots.push(...buildSlotsForRange(startHour2, endHour2, true));
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowDayStr = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'Asia/Riyadh',
+      weekday: 'short'
+    }).format(tomorrow);
+
+    const tomorrowHours = getBranchHours(branch, type, tomorrowDayStr);
+    const tStartHour1 = parseHourString(tomorrowHours.from || '10:00');
+    const tEndHour1 = parseHourString(tomorrowHours.to || '22:00');
+    const tStartHour2 = tomorrowHours.fromShift2 && tomorrowHours.toShift2 ? parseHourString(tomorrowHours.fromShift2) : 0;
+    const tEndHour2 = tomorrowHours.fromShift2 && tomorrowHours.toShift2 ? parseHourString(tomorrowHours.toShift2) : 0;
+
+    addSlotsForRange(tStartHour1, tEndHour1, true);
+    if (tStartHour2 && tEndHour2) {
+      addSlotsForRange(tStartHour2, tEndHour2, true);
     }
   }
 
@@ -518,7 +555,7 @@ function CartTimeSlot({ isEn, cart, currentBranch, isPickup, hasError }: { isEn:
   const timeSlot = cart?.attributes?.find((a: any) => a.key === 'Time Slot')?.value || '';
   
   // Dynamically calculate time slots based on the fulfilling branch's active hours
-  const dynamicTimeSlots = generateDynamicSlots(currentBranch, isEn, isPickup);
+  const dynamicTimeSlots = generateDynamicSlots(currentBranch, isPickup ? 'pickup' : 'delivery', isEn);
 
   return (
     <div className="flex flex-col gap-2">
@@ -687,17 +724,6 @@ function LoyaltyRedemptionUI({ isEn, cart }: { isEn: boolean, cart: any }) {
     }
   }, [customerIdentifier]);
 
-  // Sync state after fetcher finishes
-  useEffect(() => {
-    if (fetcher.state === 'idle' && fetcher.data) {
-      if (fetcher.data.error) {
-        setErrorMsg(fetcher.data.error);
-      } else if (fetcher.data.success) {
-        setErrorMsg(null);
-      }
-    }
-  }, [fetcher.state, fetcher.data]);
-
   if (!customerIdentifier) {
     return (
       <section className="flex flex-col gap-3 mt-4 pt-4 border-t border-dashed border-[#f0ece8]">
@@ -727,6 +753,16 @@ function LoyaltyRedemptionUI({ isEn, cart }: { isEn: boolean, cart: any }) {
   const pointsToCurrencyRatio = 0.01;
   const cartSubtotal = parseFloat(cart?.cost?.subtotalAmount?.amount || '0');
 
+  // Sync state after fetcher finishes
+  useEffect(() => {
+    if (fetcher.state === 'idle' && fetcher.data) {
+      if (fetcher.data.error) {
+        setErrorMsg(fetcher.data.error);
+      } else if (fetcher.data.success) {
+        setErrorMsg(null);
+      }
+    }
+  }, [fetcher.state, fetcher.data]);
 
   const milestones = [
     { points: 1000, value: 10, labelEn: '10 SAR Coupon', labelAr: 'كوبون 10 ر.س' },

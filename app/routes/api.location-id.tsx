@@ -45,9 +45,8 @@ export async function action({ request, context }: ActionFunctionArgs) {
                 { key: 'Fulfillment Type', value: typeof fulfillmentType === 'string' ? (fulfillmentType === 'pickup' ? 'Pickup' : 'Delivery') : 'Pickup' }
             ];
         }
-        let cartResult: any = null;
-        cartResult = await context.cart.updateAttributes(attributes);
- 
+        await context.cart.updateAttributes(attributes);
+
         // Sync Buyer Identity if needed
         if (customerAccessToken) {
             const tokenStr = typeof customerAccessToken === 'string' ? customerAccessToken : customerAccessToken?.accessToken;
@@ -112,32 +111,22 @@ export async function action({ request, context }: ActionFunctionArgs) {
                     }
                 }
             }
- 
+
             if (buyerIdentity) {
-                cartResult = await context.cart.updateBuyerIdentity(buyerIdentity);
+                await context.cart.updateBuyerIdentity(buyerIdentity);
             } else {
-                cartResult = await context.cart.updateBuyerIdentity({ customerAccessToken: tokenStr });
+                await context.cart.updateBuyerIdentity({ customerAccessToken: tokenStr });
             }
         }
- 
-        // If mutations modified the cart ID, ensure we set the cart cookie header in response
-        const headers = new Headers();
-        headers.append('Set-Cookie', await context.session.commit());
-        
-        const finalCartId = cartResult?.cart?.id;
-        if (finalCartId) {
-            const cartCookieHeader = context.cart.setCartId(finalCartId);
-            const cartCookie = cartCookieHeader.get('Set-Cookie');
-            if (cartCookie) {
-                headers.append('Set-Cookie', cartCookie);
-            }
-        }
- 
-        return data({ success: true }, { headers });
     } catch (e) {
         console.error('[LOCATION API] Cart sync failed:', e);
-        return data({ success: false, error: String(e) }, { status: 500 });
     }
+
+    return data({ success: true }, {
+        headers: {
+            'Set-Cookie': await context.session.commit(),
+        },
+    });
 }
 
 

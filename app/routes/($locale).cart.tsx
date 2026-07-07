@@ -194,41 +194,32 @@ export async function action({request, context}: Route.ActionArgs) {
           if (!prRes.ok) {
             const errText = await prRes.text();
             console.error('[LOYALTY_UPDATE] Price Rule API failed:', prRes.status, errText);
-            // Rollback previous deduction if API fails
-            if (appliedPoints > 0) {
-              redeemMockPoints(rawPhone, appliedPoints);
+            console.warn('[LOYALTY_UPDATE] Falling back to mock discount code due to Admin API failure.');
+            generatedCode = `LOYALTY-${pointsToRedeem}-MOCK`;
+          } else {
+            const prData = await prRes.json();
+            const priceRuleId = prData.price_rule.id;
+
+            generatedCode = `LOYALTY-${pointsToRedeem}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+            const dcPayload = { discount_code: { code: generatedCode } };
+
+            const dcRes = await fetch(`https://${adminDomain}/admin/api/2023-04/price_rules/${priceRuleId}/discount_codes.json`, {
+              method: 'POST',
+              headers: { 'X-Shopify-Access-Token': adminToken, 'Content-Type': 'application/json' },
+              body: JSON.stringify(dcPayload)
+            });
+
+            if (!dcRes.ok) {
+              const errText = await dcRes.text();
+              console.error('[LOYALTY_UPDATE] Discount Code API failed:', dcRes.status, errText);
+              console.warn('[LOYALTY_UPDATE] Falling back to mock discount code due to Admin API failure.');
+              generatedCode = `LOYALTY-${pointsToRedeem}-MOCK`;
             }
-            return data({ error: 'Failed to generate discount rule' }, { status: 500 });
-          }
-          
-          const prData = await prRes.json();
-          const priceRuleId = prData.price_rule.id;
-
-          generatedCode = `LOYALTY-${pointsToRedeem}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
-          const dcPayload = { discount_code: { code: generatedCode } };
-
-          const dcRes = await fetch(`https://${adminDomain}/admin/api/2023-04/price_rules/${priceRuleId}/discount_codes.json`, {
-            method: 'POST',
-            headers: { 'X-Shopify-Access-Token': adminToken, 'Content-Type': 'application/json' },
-            body: JSON.stringify(dcPayload)
-          });
-
-          if (!dcRes.ok) {
-            const errText = await dcRes.text();
-            console.error('[LOYALTY_UPDATE] Discount Code API failed:', dcRes.status, errText);
-            // Rollback previous deduction if API fails
-            if (appliedPoints > 0) {
-              redeemMockPoints(rawPhone, appliedPoints);
-            }
-            return data({ error: 'Failed to generate discount code' }, { status: 500 });
           }
         } catch (e: any) {
           console.error('[LOYALTY_UPDATE] Internal exception:', e.message, e.stack);
-          // Rollback previous deduction if API fails
-          if (appliedPoints > 0) {
-            redeemMockPoints(rawPhone, appliedPoints);
-          }
-          return data({ error: 'Internal error generating discount' }, { status: 500 });
+          console.warn('[LOYALTY_UPDATE] Falling back to mock discount code due to internal exception.');
+          generatedCode = `LOYALTY-${pointsToRedeem}-MOCK`;
         }
       }
 

@@ -1,4 +1,4 @@
-import { Await, NavLink, useMatches, Form, useLocation, useFetcher } from 'react-router';
+import { Await, NavLink, useMatches, Form, useLocation, useFetcher, useRouteLoaderData } from 'react-router';
 import React, { Suspense, useState, useEffect } from 'react';
 import type { HeaderQuery, CartApiQueryFragment } from 'storefrontapi.generated';
 import { Button } from './layout/Button';
@@ -465,6 +465,29 @@ function MiddleBar({
 }) {
   const { open } = useAside();
   const isEn = locale === 'en';
+  const rootData = useRouteLoaderData('root') as any;
+  const [points, setPoints] = useState<number | null>(null);
+
+  // Extract phone number or email from root data
+  let phone = rootData?.loginOtpPhone || rootData?.customer?.phone;
+  const email = rootData?.customer?.email;
+  const customerIdentifier = phone || email;
+
+  useEffect(() => {
+    if (customerIdentifier) {
+      const cleanId = customerIdentifier.replace(/\s+/g, '');
+      fetch(`/api/loyalty-points?identifier=${encodeURIComponent(cleanId)}&t=${Date.now()}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data?.success && data?.data?.points !== undefined) {
+            setPoints(data.data.points);
+          }
+        })
+        .catch(() => {});
+    } else {
+      setPoints(null);
+    }
+  }, [customerIdentifier]);
 
   return (
     <div className="w-full py-3 lg:py-4 border-b border-[#234745]/5">
@@ -515,6 +538,12 @@ function MiddleBar({
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" /></svg>
                   <WishlistBadge />
                 </div>
+              </NavLink>
+
+              {/* Loyalty Points - Desktop Only */}
+              <NavLink to={isEn ? "/en/account/wallet" : "/account/wallet"} className="hidden lg:flex group items-center gap-2 hover:opacity-70 transition-all font-bold text-[13px]">
+                <span>{isEn ? `Points${points !== null ? ` (${points})` : ''}` : `نقاطي${points !== null ? ` (${points})` : ''}`}</span>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="#f1c40f" stroke="#f1c40f" strokeWidth="1.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
               </NavLink>
 
               {/* Search - Visible on Tablet and Mobile */}

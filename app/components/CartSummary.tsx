@@ -51,9 +51,22 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
   const otherDiscountDisplay = Math.max(0, totalDiscount - loyaltyDiscountDisplay);
 
   const attributes = cart?.attributes || [];
-  const branch = attributes.find((a: any) => a.key.toLowerCase().trim() === 'branch')?.value;
-  const branchId = attributes.find((a: any) => a.key.toLowerCase().trim() === 'branch id')?.value;
-  const fulfillmentType = attributes.find((a: any) => a.key.toLowerCase().trim() === 'fulfillment type')?.value;
+  
+  // Fallbacks to session values if cart attributes are not written or cleared
+  const sessionBranchName = rootData?.selectedLocationName;
+  const isBranchPlaceholder = !sessionBranchName || 
+                              sessionBranchName.includes('اختر') || 
+                              sessionBranchName.toLowerCase().includes('select');
+  
+  const attrBranch = attributes.find((a: any) => a.key.toLowerCase().trim() === 'branch')?.value;
+  const branch = attrBranch || (!isBranchPlaceholder ? sessionBranchName : undefined);
+  
+  const attrBranchId = attributes.find((a: any) => a.key.toLowerCase().trim() === 'branch id')?.value;
+  const branchId = attrBranchId || (!isBranchPlaceholder ? rootData?.selectedLocationId : undefined);
+  
+  const attrFulfillmentType = attributes.find((a: any) => a.key.toLowerCase().trim() === 'fulfillment type')?.value;
+  const fulfillmentType = attrFulfillmentType || rootData?.fulfillmentType;
+  
   const timeSlot = attributes.find((a: any) => a.key.toLowerCase().trim() === 'time slot')?.value;
 
   // Dynamic Settings from Metafields

@@ -45,27 +45,27 @@ export function Header({ header, isLoggedIn, cart, locations, customer, locale, 
     if (addressName) {
       attributes.push({ key: 'Delivery Address', value: addressName });
     }
-    
+
     if (isOutOfRange) {
-        attributes.push({ key: 'error', value: isEn ? 'Your address is outside our delivery range. You may not be able to complete checkout.' : 'عنوانك خارج نطاق التوصيل. قد لا تتمكن من إتمام الطلب.' });
+      attributes.push({ key: 'error', value: isEn ? 'Your address is outside our delivery range. You may not be able to complete checkout.' : 'عنوانك خارج نطاق التوصيل. قد لا تتمكن من إتمام الطلب.' });
     } else {
-        attributes.push({ key: 'error', value: '' }); // clear error
+      attributes.push({ key: 'error', value: '' }); // clear error
     }
-    
+
     if (type === 'delivery' && typeof branch?.deliveryFee === 'number') {
       attributes.push({ key: 'Delivery Fee', value: branch.deliveryFee.toString() });
     }
-    
+
     if (typeof branch?.freeDeliveryThreshold === 'number') {
-        attributes.push({ key: 'Free Delivery Threshold', value: branch.freeDeliveryThreshold.toString() });
+      attributes.push({ key: 'Free Delivery Threshold', value: branch.freeDeliveryThreshold.toString() });
     }
-    
+
     if (typeof branch?.minOrder === 'number') {
-        attributes.push({ key: 'Minimum Order Value', value: branch.minOrder.toString() });
+      attributes.push({ key: 'Minimum Order Value', value: branch.minOrder.toString() });
     }
-    
+
     if (branch?.timeSlots) {
-        attributes.push({ key: 'Available Time Slots', value: branch.timeSlots });
+      attributes.push({ key: 'Available Time Slots', value: branch.timeSlots });
     }
 
     // Update Buyer Identity for Pickup skip and Delivery Pre-fill
@@ -73,37 +73,37 @@ export function Header({ header, isLoggedIn, cart, locations, customer, locale, 
     const resolvedCustomer = await customer;
 
     if (type === 'pickup' && branch) {
-       buyerIdentity = {
-         email: resolvedCustomer?.email || undefined,
-         deliveryAddressPreferences: [{
-           deliveryAddress: {
-             address1: branch.address || 'Address',
-             city: branch.city || 'City',
-             country: 'SA',
-             firstName: resolvedCustomer?.firstName || 'Guest',
-             lastName: resolvedCustomer?.lastName || 'User'
-           }
-         }]
-       };
+      buyerIdentity = {
+        email: resolvedCustomer?.email || undefined,
+        deliveryAddressPreferences: [{
+          deliveryAddress: {
+            address1: branch.address || 'Address',
+            city: branch.city || 'City',
+            country: 'SA',
+            firstName: resolvedCustomer?.firstName || 'Guest',
+            lastName: resolvedCustomer?.lastName || 'User'
+          }
+        }]
+      };
     } else if (type === 'delivery' && fullAddress) {
-       buyerIdentity = {
-         email: resolvedCustomer?.email || undefined,
-         deliveryAddressPreferences: [{
-           deliveryAddress: {
-             address1: fullAddress.address1 || 'Address',
-             address2: fullAddress.address2 || '',
-             city: fullAddress.city || 'City',
-             country: fullAddress.countryCodeV2 || fullAddress.countryCode || 
-                      (fullAddress.country?.includes('Emirates') || fullAddress.country?.includes('الإمارات') ? 'AE' : 
-                      (fullAddress.country?.includes('Saudi') || fullAddress.country?.includes('السعودية') ? 'SA' : 
-                      (fullAddress.country || 'SA'))),
-             firstName: fullAddress.firstName || resolvedCustomer?.firstName || 'Guest',
-             lastName: fullAddress.lastName || resolvedCustomer?.lastName || 'User',
-             phone: fullAddress.phone || resolvedCustomer?.phone || '',
-             zip: fullAddress.zip || ''
-           }
-         }]
-       };
+      buyerIdentity = {
+        email: resolvedCustomer?.email || undefined,
+        deliveryAddressPreferences: [{
+          deliveryAddress: {
+            address1: fullAddress.address1 || 'Address',
+            address2: fullAddress.address2 || '',
+            city: fullAddress.city || 'City',
+            country: fullAddress.countryCodeV2 || fullAddress.countryCode ||
+              (fullAddress.country?.includes('Emirates') || fullAddress.country?.includes('الإمارات') ? 'AE' :
+                (fullAddress.country?.includes('Saudi') || fullAddress.country?.includes('السعودية') ? 'SA' :
+                  (fullAddress.country || 'SA'))),
+            firstName: fullAddress.firstName || resolvedCustomer?.firstName || 'Guest',
+            lastName: fullAddress.lastName || resolvedCustomer?.lastName || 'User',
+            phone: fullAddress.phone || resolvedCustomer?.phone || '',
+            zip: fullAddress.zip || ''
+          }
+        }]
+      };
     }
 
     // Update session location and sync cart in one request to prevent race conditions
@@ -125,33 +125,33 @@ export function Header({ header, isLoggedIn, cart, locations, customer, locale, 
   const [activeMega, setActiveMega] = useState<string | null>(null);
 
   return (
-    <header 
-      className={`w-full ${isEn ? 'font-en' : 'font-ar'} bg-[#FEF8EB] relative z-50`} 
+    <header
+      className={`w-full ${isEn ? 'font-en' : 'font-ar'} bg-[#FEF8EB] relative z-50`}
       dir={isEn ? 'ltr' : 'rtl'}
       onMouseLeave={() => setActiveMega(null)}
     >
-      <TopBar 
-        locale={locale} 
-        locations={locations} 
+      <TopBar
+        locale={locale}
+        locations={locations}
         customer={customer}
         googleMapsKey={googleMapsKey}
-        selectedLocationName={selectedLocationName} 
+        selectedLocationName={selectedLocationName}
         selectedAddressName={selectedAddressName}
         selectedLocationId={selectedLocationId}
-        fulfillmentType={fulfillmentType} 
-        onSelectBranch={handleSelectBranch} 
+        fulfillmentType={fulfillmentType}
+        onSelectBranch={handleSelectBranch}
       />
-      <MiddleBar 
-        isLoggedIn={isLoggedIn} 
-        cart={cart} 
-        locale={locale} 
+      <MiddleBar
+        isLoggedIn={isLoggedIn}
+        cart={cart}
+        locale={locale}
         menu={menu}
         activeMega={activeMega}
         setActiveMega={setActiveMega}
       />
-      
+
       {/* FULL WIDTH MEGA MENU */}
-      <div 
+      <div
         className={`absolute top-full left-0 w-full transition-all duration-300 origin-top z-[60] 
           ${activeMega ? 'opacity-100 visible translate-y-0' : 'opacity-0 invisible -translate-y-2'}`}
       >
@@ -161,26 +161,26 @@ export function Header({ header, isLoggedIn, cart, locations, customer, locale, 
   );
 }
 
-function TopBar({ 
-  locale, 
-  locations, 
-  customer, 
-  googleMapsKey, 
-  selectedLocationName, 
-  selectedAddressName, 
-  selectedLocationId, 
-  fulfillmentType, 
-  onSelectBranch 
-}: { 
-  locale?: string, 
-  locations?: Promise<any>, 
-  customer?: Promise<any>, 
-  googleMapsKey?: string, 
-  selectedLocationName?: string, 
-  selectedAddressName?: string, 
-  selectedLocationId?: string, 
-  fulfillmentType?: string, 
-  onSelectBranch: any 
+function TopBar({
+  locale,
+  locations,
+  customer,
+  googleMapsKey,
+  selectedLocationName,
+  selectedAddressName,
+  selectedLocationId,
+  fulfillmentType,
+  onSelectBranch
+}: {
+  locale?: string,
+  locations?: Promise<any>,
+  customer?: Promise<any>,
+  googleMapsKey?: string,
+  selectedLocationName?: string,
+  selectedAddressName?: string,
+  selectedLocationId?: string,
+  fulfillmentType?: string,
+  onSelectBranch: any
 }) {
   const isEn = locale === 'en';
   const location = useLocation();
@@ -198,7 +198,7 @@ function TopBar({
       locations.then((data: any) => {
         if (cancelled) return;
         setBranches(data?.locations?.nodes || []);
-      }).catch(() => {});
+      }).catch(() => { });
       return () => { cancelled = true; };
     } else {
       setBranches((locations as any)?.locations?.nodes || []);
@@ -215,122 +215,122 @@ function TopBar({
     if (!activeBranchNode) return;
 
     const checkOpenStatus = () => {
-        const getMetaVal = (key: string) => {
-            return activeBranchNode[key]?.value || activeBranchNode.metafields?.find((m: any) => m?.key === key)?.value;
+      const getMetaVal = (key: string) => {
+        return activeBranchNode[key]?.value || activeBranchNode.metafields?.find((m: any) => m?.key === key)?.value;
+      };
+
+      let riyadhDay = 'Sun';
+      try {
+        riyadhDay = new Intl.DateTimeFormat('en-US', {
+          timeZone: 'Asia/Riyadh',
+          weekday: 'short'
+        }).format(new Date());
+      } catch (e) { }
+
+      let targetFromKey = 'working_hours_from';
+      let targetToKey = 'working_hours_to';
+      if (riyadhDay === 'Sun') {
+        targetFromKey = 'sunday_working_hours_from';
+        targetToKey = 'sunday_working_hours_to';
+      } else if (riyadhDay === 'Mon') {
+        targetFromKey = 'monday_working_hours_from';
+        targetToKey = 'monday_working_hours_to';
+      } else if (riyadhDay === 'Tue') {
+        targetFromKey = 'tuesday_working_hours_from';
+        targetToKey = 'tuesday_working_hours_to';
+      } else if (riyadhDay === 'Wed') {
+        targetFromKey = 'wednesday_working_hours_from';
+        targetToKey = 'wednesday_working_hours_to';
+      } else if (riyadhDay === 'Thu') {
+        targetFromKey = 'thursday_working_hours_from';
+        targetToKey = 'thursday_working_hours_to';
+      } else if (riyadhDay === 'Fri') {
+        targetFromKey = 'friday_working_hours_from';
+        targetToKey = 'friday_working_hours_to';
+      } else if (riyadhDay === 'Sat') {
+        targetFromKey = 'saturday_working_hours_from';
+        targetToKey = 'saturday_working_hours_to';
+      }
+
+      let hFrom = getMetaVal(targetFromKey);
+      let hTo = getMetaVal(targetToKey);
+
+      if (!hFrom || !hTo) {
+        hFrom = getMetaVal('working_hours_from');
+        hTo = getMetaVal('working_hours_to');
+      }
+
+      const hFrom2 = getMetaVal('working_hours_from_shift2');
+      const hTo2 = getMetaVal('working_hours_to_shift2');
+
+      const workingDaysStr = getMetaVal('working_days');
+      let isWorkingDay = true;
+      if (workingDaysStr) {
+        try {
+          const parsedDays = JSON.parse(workingDaysStr);
+          if (Array.isArray(parsedDays) && parsedDays.length > 0) {
+            isWorkingDay = parsedDays.includes(riyadhDay);
+          }
+        } catch (e) { }
+      }
+
+      if (!isWorkingDay) {
+        return false;
+      }
+
+      if (!hFrom || !hTo) {
+        return true; // default open if not set
+      }
+
+      try {
+        const now = new Date();
+        const riyadhTime = new Intl.DateTimeFormat('en-US', {
+          timeZone: 'Asia/Riyadh',
+          hour: 'numeric',
+          minute: 'numeric',
+          hour12: false
+        }).formatToParts(now);
+
+        const h = parseInt(riyadhTime.find(p => p.type === 'hour')?.value || '0', 10);
+        const m = parseInt(riyadhTime.find(p => p.type === 'minute')?.value || '0', 10);
+        const currentMins = h * 60 + m;
+
+        const parseTime = (timeStr: string) => {
+          const arMap: { [key: string]: string } = { '٠': '0', '١': '1', '٢': '2', '٣': '3', '٤': '4', '٥': '5', '٦': '6', '٧': '7', '٨': '8', '٩': '9' };
+          let normalized = String(timeStr).trim().toLowerCase().replace(/[٠-٩]/g, d => arMap[d]);
+
+          const match = normalized.match(/(\d{1,2}):(\d{2})/);
+          if (!match) return -1;
+
+          let hr = parseInt(match[1], 10);
+          let min = parseInt(match[2], 10);
+
+          const isPm = normalized.includes('pm') || normalized.includes('م');
+          const isAm = normalized.includes('am') || normalized.includes('ص');
+
+          if (isPm && hr !== 12) hr += 12;
+          if (isAm && hr === 12) hr = 0;
+
+          return hr * 60 + min;
         };
 
-        let riyadhDay = 'Sun';
-        try {
-            riyadhDay = new Intl.DateTimeFormat('en-US', {
-                timeZone: 'Asia/Riyadh',
-                weekday: 'short'
-            }).format(new Date());
-        } catch(e) {}
+        const checkShift = (fromTime: string, toTime: string) => {
+          const fMins = parseTime(fromTime);
+          const tMins = parseTime(toTime);
+          if (fMins === -1 || tMins === -1) return false;
 
-        let targetFromKey = 'working_hours_from';
-        let targetToKey = 'working_hours_to';
-        if (riyadhDay === 'Sun') {
-            targetFromKey = 'sunday_working_hours_from';
-            targetToKey = 'sunday_working_hours_to';
-        } else if (riyadhDay === 'Mon') {
-            targetFromKey = 'monday_working_hours_from';
-            targetToKey = 'monday_working_hours_to';
-        } else if (riyadhDay === 'Tue') {
-            targetFromKey = 'tuesday_working_hours_from';
-            targetToKey = 'tuesday_working_hours_to';
-        } else if (riyadhDay === 'Wed') {
-            targetFromKey = 'wednesday_working_hours_from';
-            targetToKey = 'wednesday_working_hours_to';
-        } else if (riyadhDay === 'Thu') {
-            targetFromKey = 'thursday_working_hours_from';
-            targetToKey = 'thursday_working_hours_to';
-        } else if (riyadhDay === 'Fri') {
-            targetFromKey = 'friday_working_hours_from';
-            targetToKey = 'friday_working_hours_to';
-        } else if (riyadhDay === 'Sat') {
-            targetFromKey = 'saturday_working_hours_from';
-            targetToKey = 'saturday_working_hours_to';
-        }
+          if (tMins < fMins) {
+            return currentMins >= fMins || currentMins < tMins;
+          }
+          return currentMins >= fMins && currentMins < tMins;
+        };
 
-        let hFrom = getMetaVal(targetFromKey);
-        let hTo = getMetaVal(targetToKey);
-        
-        if (!hFrom || !hTo) {
-            hFrom = getMetaVal('working_hours_from');
-            hTo = getMetaVal('working_hours_to');
-        }
-
-        const hFrom2 = getMetaVal('working_hours_from_shift2');
-        const hTo2 = getMetaVal('working_hours_to_shift2');
-
-        const workingDaysStr = getMetaVal('working_days');
-        let isWorkingDay = true;
-        if (workingDaysStr) {
-            try {
-                const parsedDays = JSON.parse(workingDaysStr);
-                if (Array.isArray(parsedDays) && parsedDays.length > 0) {
-                    isWorkingDay = parsedDays.includes(riyadhDay);
-                }
-            } catch (e) {}
-        }
-
-        if (!isWorkingDay) {
-            return false;
-        }
-
-        if (!hFrom || !hTo) {
-            return true; // default open if not set
-        }
-
-        try {
-            const now = new Date();
-            const riyadhTime = new Intl.DateTimeFormat('en-US', {
-                timeZone: 'Asia/Riyadh',
-                hour: 'numeric',
-                minute: 'numeric',
-                hour12: false
-            }).formatToParts(now);
-            
-            const h = parseInt(riyadhTime.find(p => p.type === 'hour')?.value || '0', 10);
-            const m = parseInt(riyadhTime.find(p => p.type === 'minute')?.value || '0', 10);
-            const currentMins = h * 60 + m;
-            
-            const parseTime = (timeStr: string) => {
-                const arMap: {[key: string]: string} = { '٠': '0', '١': '1', '٢': '2', '٣': '3', '٤': '4', '٥': '5', '٦': '6', '٧': '7', '٨': '8', '٩': '9' };
-                let normalized = String(timeStr).trim().toLowerCase().replace(/[٠-٩]/g, d => arMap[d]);
-                
-                const match = normalized.match(/(\d{1,2}):(\d{2})/);
-                if (!match) return -1;
-                
-                let hr = parseInt(match[1], 10);
-                let min = parseInt(match[2], 10);
-                
-                const isPm = normalized.includes('pm') || normalized.includes('م');
-                const isAm = normalized.includes('am') || normalized.includes('ص');
-                
-                if (isPm && hr !== 12) hr += 12;
-                if (isAm && hr === 12) hr = 0;
-                
-                return hr * 60 + min;
-            };
-
-            const checkShift = (fromTime: string, toTime: string) => {
-                const fMins = parseTime(fromTime);
-                const tMins = parseTime(toTime);
-                if (fMins === -1 || tMins === -1) return false;
-                
-                if (tMins < fMins) {
-                    return currentMins >= fMins || currentMins < tMins;
-                }
-                return currentMins >= fMins && currentMins < tMins;
-            };
-
-            const open1 = checkShift(hFrom, hTo);
-            const open2 = hFrom2 && hTo2 ? checkShift(hFrom2, hTo2) : false;
-            return open1 || open2;
-        } catch (e) {
-            return true;
-        }
+        const open1 = checkShift(hFrom, hTo);
+        const open2 = hFrom2 && hTo2 ? checkShift(hFrom2, hTo2) : false;
+        return open1 || open2;
+      } catch (e) {
+        return true;
+      }
     };
 
     setIsOpenBranch(checkOpenStatus());
@@ -387,11 +387,10 @@ function TopBar({
         {/* Mobile: Show rotating 1 */}
         <div className="md:hidden relative h-full flex items-center flex-1 overflow-hidden">
           {promos.map((promo, idx) => (
-            <div 
-              key={idx} 
-              className={`absolute right-0 top-0 h-full flex items-center gap-1.5 transition-all duration-500 ease-in-out ${
-                idx === currentPromoIndex ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'
-              }`}
+            <div
+              key={idx}
+              className={`absolute right-0 top-0 h-full flex items-center gap-1.5 transition-all duration-500 ease-in-out ${idx === currentPromoIndex ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'
+                }`}
             >
               {promo.icon}
               <span className="font-bold whitespace-nowrap">{promo.text}</span>
@@ -401,18 +400,18 @@ function TopBar({
 
         {/* LEFT: Language & Branch */}
         <div className="flex items-center justify-end md:justify-start gap-3 md:gap-4 shrink-0 z-10">
-          <button 
+          <button
             onClick={() => setModalOpen(true)}
             className="flex items-center gap-2 md:gap-3 px-4 py-1.5 md:px-5 md:py-1.5 rounded-full bg-[#b9cdca] border border-[#91a7a2] text-[12px] md:text-[14px] hover:bg-[#a6bdbc] transition-all text-[#234745]"
             style={!isEn ? { fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" } : undefined}
           >
             <div className="relative flex items-center pt-0.5">
               <span className="truncate max-w-[90px] md:max-w-[200px] font-medium leading-none tracking-wide">
-                {fulfillmentType === 'delivery' && selectedAddressName 
-                  ? (isEn ? `Delivery: ${selectedAddressName}` : `توصيل: ${selectedAddressName}`) 
-                  : (selectedLocationId && selectedLocationName 
-                      ? selectedLocationName 
-                      : (isEn ? 'Select Your Branch' : 'اختر الفرع'))
+                {fulfillmentType === 'delivery' && selectedAddressName
+                  ? (isEn ? `Delivery: ${selectedAddressName}` : `توصيل: ${selectedAddressName}`)
+                  : (selectedLocationId && selectedLocationName
+                    ? selectedLocationName
+                    : (isEn ? 'Select Your Branch' : 'اختر الفرع'))
                 }
               </span>
               <div className={`absolute -top-[6px] -right-[6px] w-[8px] h-[8px] rounded-full transition-colors duration-300 ${isOpenBranch ? 'bg-[#3ddb6a]' : 'bg-[#ef4444]'}`} />
@@ -430,7 +429,7 @@ function TopBar({
           </Form>
         </div>
       </div>
-      
+
       <DeliveryPickupModal
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
@@ -448,17 +447,17 @@ function TopBar({
 }
 
 // ─── ROW 2: MAIN BAR ────────────────────────────────────────────────────────
-function MiddleBar({ 
-  isLoggedIn, 
-  cart, 
+function MiddleBar({
+  isLoggedIn,
+  cart,
   locale,
   menu,
   activeMega,
   setActiveMega
-}: { 
-  isLoggedIn: boolean | Promise<boolean>; 
-  cart: HeaderProps['cart']; 
-  locale?: string, 
+}: {
+  isLoggedIn: boolean | Promise<boolean>;
+  cart: HeaderProps['cart'];
+  locale?: string,
   menu: any,
   activeMega: string | null,
   setActiveMega: (v: string | null) => void
@@ -483,7 +482,7 @@ function MiddleBar({
             setPoints(data.data.points);
           }
         })
-        .catch(() => {});
+        .catch(() => { });
     } else {
       setPoints(null);
     }
@@ -494,12 +493,12 @@ function MiddleBar({
       <div className="max-w-[1400px] mx-auto px-4 lg:px-6">
         {/* Use 1fr auto 1fr to give the sides maximum available space while keeping logo centered */}
         <div className="grid grid-cols-[1fr_auto_1fr] items-center w-full">
-          
+
           {/* RIGHT (in RTL) / LEFT (in LTR): Desktop Nav & Mobile Menu */}
           <div className="flex items-center justify-start min-w-0">
             {/* MOBILE ONLY: Burger Menu */}
-            <button 
-              onClick={() => open('mobile')} 
+            <button
+              onClick={() => open('mobile')}
               aria-label={isEn ? "Open Menu" : "فتح القائمة"}
               className="lg:hidden p-1 text-[#234745] hover:opacity-70 transition-opacity shrink-0"
             >
@@ -524,6 +523,21 @@ function MiddleBar({
               <GlobalSearchBar locale={locale} />
             </div>
 
+            {/* Loyalty Points - Desktop Only */}
+            <NavLink to={isEn ? "/en/account/wallet" : "/account/wallet"} className="hidden lg:flex group items-center gap-2 hover:opacity-70 transition-all font-bold text-[13px]">
+              <span>{isEn ? `Points${points !== null ? ` (${points})` : ''}` : `نقاطي${points !== null ? ` (${points})` : ''}`}</span>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="#f1c40f" stroke="#f1c40f" strokeWidth="1.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+            </NavLink>
+
+            {/* Wishlist - Desktop Only */}
+            <NavLink to={isEn ? "/en/account/wishlist" : "/account/wishlist"} className="hidden lg:flex group items-center gap-2 hover:opacity-70 transition-all font-bold text-[13px]">
+              <span>{isEn ? 'Wishlist' : 'المفضلة'}</span>
+              <div className="relative">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" /></svg>
+                <WishlistBadge />
+              </div>
+            </NavLink>
+
             <div className="flex items-center gap-2 md:gap-4 lg:gap-6 shrink-0 text-[#234745]">
               {/* Account - Desktop Only */}
               <NavLink to={isEn ? "/en/account" : "/account"} className="hidden lg:flex group items-center gap-2 hover:opacity-70 transition-all font-bold text-[13px]">
@@ -531,24 +545,9 @@ function MiddleBar({
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
               </NavLink>
 
-              {/* Wishlist - Desktop Only */}
-              <NavLink to={isEn ? "/en/account/wishlist" : "/account/wishlist"} className="hidden lg:flex group items-center gap-2 hover:opacity-70 transition-all font-bold text-[13px]">
-                <span>{isEn ? 'Wishlist' : 'المفضلة'}</span>
-                <div className="relative">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" /></svg>
-                  <WishlistBadge />
-                </div>
-              </NavLink>
-
-              {/* Loyalty Points - Desktop Only */}
-              <NavLink to={isEn ? "/en/account/wallet" : "/account/wallet"} className="hidden lg:flex group items-center gap-2 hover:opacity-70 transition-all font-bold text-[13px]">
-                <span>{isEn ? `Points${points !== null ? ` (${points})` : ''}` : `نقاطي${points !== null ? ` (${points})` : ''}`}</span>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="#f1c40f" stroke="#f1c40f" strokeWidth="1.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
-              </NavLink>
-
               {/* Search - Visible on Tablet and Mobile */}
-              <button 
-                onClick={() => open('search')} 
+              <button
+                onClick={() => open('search')}
                 aria-label={isEn ? "Search" : "بحث"}
                 className="xl:hidden p-2 text-[#234745] hover:bg-[#234745]/5 rounded-full transition-all"
               >
@@ -558,7 +557,7 @@ function MiddleBar({
               {/* Cart - Always Visible */}
               <button onClick={() => open('cart')} aria-label="Cart" className="group flex items-center gap-2 hover:opacity-70 transition-all relative p-2">
                 <div className="relative">
-                  <svg width="22" height="22" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12.5132 14.1798C12.8761 14.1798 13.2241 14.324 13.4808 14.5806C13.7374 14.8372 13.8816 15.1853 13.8816 15.5482C13.8816 15.9111 13.7374 16.2592 13.4808 16.5158C13.2241 16.7725 12.8761 16.9166 12.5132 16.9166C12.1502 16.9166 11.8022 16.7725 11.5455 16.5158C11.2889 16.2592 11.1447 15.9111 11.1447 15.5482C11.1447 15.1853 11.2889 14.8372 11.5455 14.5806C11.8022 14.324 12.1502 14.1798 12.5132 14.1798ZM12.5132 14.864C12.3317 14.864 12.1577 14.9361 12.0293 15.0644C11.901 15.1927 11.8289 15.3667 11.8289 15.5482C11.8289 15.7297 11.901 15.9037 12.0293 16.032C12.1577 16.1603 12.3317 16.2324 12.5132 16.2324C12.6946 16.2324 12.8687 16.1603 12.997 16.032C13.1253 15.9037 13.1974 15.7297 13.1974 15.5482C13.1974 15.3667 13.1253 15.1927 12.997 15.0644C12.8687 14.9361 12.6946 14.864 12.5132 14.864ZM6.35526 14.1798C6.71819 14.1798 7.06625 14.324 7.32288 14.5806C7.57951 14.8372 7.72368 15.1853 7.72368 15.5482C7.72368 15.9111 7.57951 16.2592 7.32288 16.5158C7.06625 16.7725 6.71819 16.9166 6.35526 16.9166C5.99234 16.9166 5.64427 16.7725 5.38764 16.5158C5.13101 16.2592 4.98684 15.9111 4.98684 15.5482C4.98684 15.1853 5.13101 14.8372 5.38764 14.5806C5.64427 14.324 5.99234 14.1798 6.35526 14.1798ZM6.35526 14.864C6.1738 14.864 5.99977 14.9361 5.87145 15.0644C5.74314 15.1927 5.67105 15.3667 5.67105 15.5482C5.67105 15.7297 5.74314 15.9037 5.87145 16.032C5.99977 16.1603 6.1738 16.2324 6.35526 16.2324C6.53673 16.2324 6.71076 16.1603 6.83907 16.032C6.96739 15.9037 7.03947 15.7297 7.03947 15.5482C7.03947 15.3667 6.96739 15.1927 6.83907 15.0644C6.71076 14.9361 6.53673 14.864 6.35526 14.864ZM13.8816 5.96926H4.48737L6.23211 10.0745H11.8289C12.0547 10.0745 12.2532 9.96505 12.3763 9.80084L14.4289 7.06399C14.5179 6.94768 14.5658 6.80399 14.5658 6.65347C14.5658 6.472 14.4937 6.29797 14.3654 6.16966C14.2371 6.04134 14.063 5.96926 13.8816 5.96926ZM11.8289 10.7587H6.26632L5.73947 11.8261L5.67105 12.1272C5.67105 12.3086 5.74314 12.4826 5.87145 12.611C5.99977 12.7393 6.1738 12.8114 6.35526 12.8114H13.8816V13.4956H6.35526C5.99234 13.4956 5.64427 13.3514 5.38764 13.0948C5.13101 12.8381 4.98684 12.4901 4.98684 12.1272C4.98664 11.895 5.0455 11.6666 5.15789 11.4635L5.65053 10.4577L3.16684 4.60084H2.25V3.91663H3.61842L4.2 5.28505H13.8816C14.2445 5.28505 14.5926 5.42922 14.8492 5.68585C15.1058 5.94248 15.25 6.29054 15.25 6.65347C15.25 6.99557 15.1337 7.28294 14.9421 7.51557L12.9511 10.1772C12.7047 10.5261 12.2942 10.7587 11.8289 10.7587Z" fill="currentColor"/></svg>
+                  <svg width="22" height="22" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12.5132 14.1798C12.8761 14.1798 13.2241 14.324 13.4808 14.5806C13.7374 14.8372 13.8816 15.1853 13.8816 15.5482C13.8816 15.9111 13.7374 16.2592 13.4808 16.5158C13.2241 16.7725 12.8761 16.9166 12.5132 16.9166C12.1502 16.9166 11.8022 16.7725 11.5455 16.5158C11.2889 16.2592 11.1447 15.9111 11.1447 15.5482C11.1447 15.1853 11.2889 14.8372 11.5455 14.5806C11.8022 14.324 12.1502 14.1798 12.5132 14.1798ZM12.5132 14.864C12.3317 14.864 12.1577 14.9361 12.0293 15.0644C11.901 15.1927 11.8289 15.3667 11.8289 15.5482C11.8289 15.7297 11.901 15.9037 12.0293 16.032C12.1577 16.1603 12.3317 16.2324 12.5132 16.2324C12.6946 16.2324 12.8687 16.1603 12.997 16.032C13.1253 15.9037 13.1974 15.7297 13.1974 15.5482C13.1974 15.3667 13.1253 15.1927 12.997 15.0644C12.8687 14.9361 12.6946 14.864 12.5132 14.864ZM6.35526 14.1798C6.71819 14.1798 7.06625 14.324 7.32288 14.5806C7.57951 14.8372 7.72368 15.1853 7.72368 15.5482C7.72368 15.9111 7.57951 16.2592 7.32288 16.5158C7.06625 16.7725 6.71819 16.9166 6.35526 16.9166C5.99234 16.9166 5.64427 16.7725 5.38764 16.5158C5.13101 16.2592 4.98684 15.9111 4.98684 15.5482C4.98684 15.1853 5.13101 14.8372 5.38764 14.5806C5.64427 14.324 5.99234 14.1798 6.35526 14.1798ZM6.35526 14.864C6.1738 14.864 5.99977 14.9361 5.87145 15.0644C5.74314 15.1927 5.67105 15.3667 5.67105 15.5482C5.67105 15.7297 5.74314 15.9037 5.87145 16.032C5.99977 16.1603 6.1738 16.2324 6.35526 16.2324C6.53673 16.2324 6.71076 16.1603 6.83907 16.032C6.96739 15.9037 7.03947 15.7297 7.03947 15.5482C7.03947 15.3667 6.96739 15.1927 6.83907 15.0644C6.71076 14.9361 6.53673 14.864 6.35526 14.864ZM13.8816 5.96926H4.48737L6.23211 10.0745H11.8289C12.0547 10.0745 12.2532 9.96505 12.3763 9.80084L14.4289 7.06399C14.5179 6.94768 14.5658 6.80399 14.5658 6.65347C14.5658 6.472 14.4937 6.29797 14.3654 6.16966C14.2371 6.04134 14.063 5.96926 13.8816 5.96926ZM11.8289 10.7587H6.26632L5.73947 11.8261L5.67105 12.1272C5.67105 12.3086 5.74314 12.4826 5.87145 12.611C5.99977 12.7393 6.1738 12.8114 6.35526 12.8114H13.8816V13.4956H6.35526C5.99234 13.4956 5.64427 13.3514 5.38764 13.0948C5.13101 12.8381 4.98684 12.4901 4.98684 12.1272C4.98664 11.895 5.0455 11.6666 5.15789 11.4635L5.65053 10.4577L3.16684 4.60084H2.25V3.91663H3.61842L4.2 5.28505H13.8816C14.2445 5.28505 14.5926 5.42922 14.8492 5.68585C15.1058 5.94248 15.25 6.29054 15.25 6.65347C15.25 6.99557 15.1337 7.28294 14.9421 7.51557L12.9511 10.1772C12.7047 10.5261 12.2942 10.7587 11.8289 10.7587Z" fill="currentColor" /></svg>
                   <Suspense fallback={null}>
                     <Await resolve={cart}>{(cartData) => {
                       const count = cartData?.totalQuantity ?? 0;
@@ -594,14 +593,14 @@ const STATIC_NAV_EN = [
   { title: 'Offers', url: '/en/collections/offers' },
 ];
 
-function CategoryNav({ 
-  locale, 
-  activeMega, 
-  setActiveMega 
-}: { 
-  locale?: string, 
-  activeMega: string | null, 
-  setActiveMega: (v: string | null) => void 
+function CategoryNav({
+  locale,
+  activeMega,
+  setActiveMega
+}: {
+  locale?: string,
+  activeMega: string | null,
+  setActiveMega: (v: string | null) => void
 }) {
   const isEn = locale === 'en';
   const NAV_ITEMS = isEn ? STATIC_NAV_EN : STATIC_NAV_AR;
@@ -611,8 +610,8 @@ function CategoryNav({
       {NAV_ITEMS.map((item) => {
         const isOffers = item.url.includes('offers');
         return (
-          <div 
-            key={item.url} 
+          <div
+            key={item.url}
             className="h-full flex items-center"
             onMouseEnter={() => item.hasMega ? setActiveMega('products') : setActiveMega(null)}
           >
@@ -622,8 +621,8 @@ function CategoryNav({
               end={item.url === '/' || item.url === '/en'}
               className={({ isActive }) => `
                 px-2 xl:px-3 py-2 text-[13px] xl:text-[14px] font-bold transition-all whitespace-nowrap rounded-full
-                ${isOffers 
-                  ? 'bg-[#b91c1c] !text-white hover:bg-[#991b1b] px-4 xl:px-5 shadow-sm' 
+                ${isOffers
+                  ? 'bg-[#b91c1c] !text-white hover:bg-[#991b1b] px-4 xl:px-5 shadow-sm'
                   : (isActive || (item.hasMega && activeMega)) ? 'text-[#234745] bg-[#234745]/5' : 'text-[#234745]/80 hover:text-[#234745] hover:bg-[#234745]/5'}
               `}
               style={isOffers ? { color: 'white' } : {}}
@@ -639,7 +638,7 @@ function CategoryNav({
 
 function ProductMegaMenu({ locale }: { locale?: string }) {
   const isEn = locale === 'en';
-  
+
   const categories = [
     {
       title: isEn ? 'Oriental Sweets' : 'حلويات شرقية',
@@ -684,8 +683,8 @@ function ProductMegaMenu({ locale }: { locale?: string }) {
             <ul className="space-y-3">
               {cat.items.map((item) => (
                 <li key={item}>
-                  <NavLink 
-                    to={`${cat.url}/${item.toLowerCase().replace(/ /g, '-')}`} 
+                  <NavLink
+                    to={`${cat.url}/${item.toLowerCase().replace(/ /g, '-')}`}
                     className="text-[#234745]/70 hover:text-[#234745] hover:translate-x-1 transition-all inline-block font-medium text-sm"
                   >
                     {item}
@@ -732,38 +731,39 @@ export function HeaderMenu({
 
         {/* Mobile Header Links */}
         <div className="grid grid-cols-2 gap-3 mb-6">
-           <NavLink to={isEn ? "/en/account" : "/account"} onClick={onClose} className="flex flex-col items-center justify-center gap-2 p-4 bg-white rounded-2xl border border-[#234745]/5 shadow-sm text-[#234745] font-bold text-sm">
-             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
-             {isEn ? 'Account' : 'حسابي'}
-           </NavLink>
-           <NavLink to={isEn ? "/en/account/wishlist" : "/account/wishlist"} onClick={onClose} className="flex flex-col items-center justify-center gap-2 p-4 bg-white rounded-2xl border border-[#234745]/5 shadow-sm text-[#234745] font-bold text-sm">
-             <div className="relative">
-               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" /></svg>
-               <WishlistBadge />
-             </div>
-             {isEn ? 'Wishlist' : 'المفضلة'}
-           </NavLink>
+          <NavLink to={isEn ? "/en/account" : "/account"} onClick={onClose} className="flex flex-col items-center justify-center gap-2 p-4 bg-white rounded-2xl border border-[#234745]/5 shadow-sm text-[#234745] font-bold text-sm">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
+            {isEn ? 'Account' : 'حسابي'}
+          </NavLink>
+          <NavLink to={isEn ? "/en/account/wishlist" : "/account/wishlist"} onClick={onClose} className="flex flex-col items-center justify-center gap-2 p-4 bg-white rounded-2xl border border-[#234745]/5 shadow-sm text-[#234745] font-bold text-sm">
+            <div className="relative">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" /></svg>
+              <WishlistBadge />
+            </div>
+            {isEn ? 'Wishlist' : 'المفضلة'}
+          </NavLink>
         </div>
 
         <div className="space-y-2">
           {NAV_ITEMS.map((item) => {
             const isOffers = item.url.includes('offers');
             return (
-            <NavLink
-              key={item.url}
-              to={item.url}
-              onClick={onClose}
-              prefetch="intent"
-              className={({ isActive }) => `
+              <NavLink
+                key={item.url}
+                to={item.url}
+                onClick={onClose}
+                prefetch="intent"
+                className={({ isActive }) => `
                 flex items-center justify-between px-6 py-4 rounded-2xl text-[16px] font-bold transition-all
                 ${isOffers ? 'bg-[#b91c1c] !text-white' : isActive ? 'bg-[#234745] text-white' : 'bg-white text-[#234745] shadow-sm'}
               `}
-              style={isOffers ? { color: 'white' } : {}}
-            >
-              {item.title}
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className={isEn ? '' : 'rotate-180'}><polyline points="9 18 15 12 9 6" /></svg>
-            </NavLink>
-          )})}
+                style={isOffers ? { color: 'white' } : {}}
+              >
+                {item.title}
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className={isEn ? '' : 'rotate-180'}><polyline points="9 18 15 12 9 6" /></svg>
+              </NavLink>
+            )
+          })}
         </div>
       </div>
     </div>

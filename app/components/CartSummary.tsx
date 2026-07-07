@@ -589,10 +589,6 @@ function LoyaltyRedemptionUI({ isEn, cart }: { isEn: boolean, cart: any }) {
 
   const pointsToCurrencyRatio = 0.01;
   const cartSubtotal = parseFloat(cart?.cost?.subtotalAmount?.amount || '0');
-  const maxPointsByCart = Math.floor(cartSubtotal / pointsToCurrencyRatio);
-  const maxAllowedPoints = availablePoints !== null 
-    ? Math.min(availablePoints, maxPointsByCart) 
-    : maxPointsByCart;
 
   // Sync state after fetcher finishes
   useEffect(() => {
@@ -605,8 +601,12 @@ function LoyaltyRedemptionUI({ isEn, cart }: { isEn: boolean, cart: any }) {
     }
   }, [fetcher.state, fetcher.data]);
 
-  const discountAmount = pointsToRedeem * pointsToCurrencyRatio;
-  const hasChanges = pointsToRedeem !== initialPoints;
+  const milestones = [
+    { points: 1000, value: 10, labelEn: '10 SAR Coupon', labelAr: 'كوبون 10 ر.س' },
+    { points: 2000, value: 20, labelEn: '20 SAR Coupon', labelAr: 'كوبون 20 ر.س' },
+    { points: 5000, value: 50, labelEn: '50 SAR Coupon', labelAr: 'كوبون 50 ر.س' },
+    { points: 10000, value: 100, labelEn: '100 SAR Coupon', labelAr: 'كوبون 100 ر.س' },
+  ];
 
   return (
     <section className="flex flex-col gap-3 mt-4 pt-4 border-t border-dashed border-[#f0ece8]">
@@ -625,89 +625,82 @@ function LoyaltyRedemptionUI({ isEn, cart }: { isEn: boolean, cart: any }) {
         )}
       </div>
 
-      <div className="bg-[#fcfaf8] border border-[#f0ece8] rounded-xl p-4 flex flex-col gap-4">
-        <div className="flex flex-col gap-2">
-          <div className="flex items-center gap-4">
-            <input 
-              type="number"
-              min="0"
-              max={maxAllowedPoints}
-              step="10"
-              value={pointsToRedeem}
-              onChange={(e) => {
-                setErrorMsg(null);
-                const val = parseInt(e.target.value) || 0;
-                // Auto-cap it to the max allowed points immediately to prevent invalid state
-                setPointsToRedeem(Math.max(0, Math.min(maxAllowedPoints, val)));
-              }}
-              className="flex-1 bg-white border border-[#f0ece8] rounded-lg px-4 py-2 text-[14px] font-bold text-[#234745] focus:outline-none focus:border-[#d4a06a] transition-colors"
-              placeholder={isEn ? "Enter points to redeem" : "أدخل عدد النقاط للاستبدال"}
-            />
-            <div className="text-[12px] font-bold text-gray-400">
-              {isEn ? 'pts' : 'نقطة'}
-            </div>
-          </div>
-          {maxPointsByCart < (availablePoints || 0) && (
-            <p className="text-[11px] text-gray-500 font-medium">
-              {isEn ? `Max redemption based on cart total: ${maxPointsByCart} pts` : `الحد الأقصى المسموح به بناءً على قيمة السلة: ${maxPointsByCart} نقطة`}
-            </p>
-          )}
-          {errorMsg && (
-            <p className="text-red-500 text-[12px] font-bold">{errorMsg}</p>
-          )}
-        </div>
+      {errorMsg && (
+        <p className="text-red-500 text-[12px] font-bold mb-1">{errorMsg}</p>
+      )}
 
-        {/* Feedback & Apply */}
-        <div className="flex flex-col gap-3 border-t border-[#f0ece8] pt-3">
-          <div className="flex items-center justify-between">
-            <div className="flex flex-col">
-              <span className="text-[11px] text-gray-400 font-bold uppercase tracking-widest">
-                {isEn ? 'You save' : 'أنت توفر'}
-              </span>
-              <span className="text-[16px] font-black text-[#27ae60] font-en flex items-center gap-1 flex-row-reverse">
-                <SaudiRiyalSymbol className="h-3.5 w-auto" />
-                <span>{discountAmount.toFixed(2)}</span>
-              </span>
-            </div>
-            
-            <CartForm
-              route="/cart"
-              action="LoyaltyUpdate"
-              inputs={{
-                points: String(pointsToRedeem),
-                intent: (initialPoints > 0 && pointsToRedeem === 0) ? 'remove' : 'apply'
-              }}
+      <div className="grid grid-cols-2 gap-3">
+        {milestones.map((m) => {
+          const isApplied = initialPoints === m.points;
+          const hasEnoughPoints = (availablePoints !== null ? availablePoints : 2500) >= m.points;
+          const withinCartTotal = cartSubtotal >= m.value;
+          const isAllowedToRedeem = hasEnoughPoints && withinCartTotal;
+          
+          return (
+            <div 
+              key={m.points}
+              className={`border rounded-xl p-3 flex flex-col justify-between gap-3 transition-all ${
+                isApplied 
+                  ? 'border-[#27ae60] bg-emerald-50/30 shadow-sm' 
+                  : 'border-[#f0ece8] bg-[#fcfaf8] hover:border-[#d4a06a]/40'
+              }`}
             >
-              {(fetcher: any) => {
-                const isSubmitting = fetcher.state !== 'idle';
-                const actionError = fetcher.data?.error;
+              <div className="flex flex-col gap-0.5">
+                <span className="text-[13px] font-black text-[#234745]">
+                  {isEn ? m.labelEn : m.labelAr}
+                </span>
+                <span className="text-[11px] text-gray-400 font-bold font-en">
+                  {m.points.toLocaleString()} {isEn ? 'pts' : 'نقطة'}
+                </span>
+              </div>
 
-                return (
-                  <div className="flex flex-col gap-2 items-end">
-                    <button 
-                      type="submit" 
-                      disabled={isSubmitting || (!hasChanges && pointsToRedeem === 0) || pointsToRedeem > maxAllowedPoints}
-                      className="bg-[#234745] text-white font-bold px-5 py-2.5 rounded-lg text-[13px] disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#142e22] transition-colors"
-                    >
-                      {isSubmitting 
-                        ? (isEn ? 'Applying...' : 'جاري التطبيق...') 
-                        : (initialPoints > 0 && pointsToRedeem === 0 
-                            ? (isEn ? 'Remove' : 'إزالة') 
-                            : (hasChanges ? (isEn ? 'Apply' : 'تطبيق') : (isEn ? 'Applied' : 'مُطبق'))
-                          )
-                      }
-                    </button>
-                    {actionError && !errorMsg && (
-                      <p className="text-red-500 text-[11px] font-bold mt-1 text-left w-full">
-                        {actionError}
-                      </p>
-                    )}
-                  </div>
-                );
-              }}
-            </CartForm>
-          </div>
-        </div>
+              <CartForm
+                route="/cart"
+                action="LoyaltyUpdate"
+                inputs={{
+                  points: isApplied ? '0' : String(m.points),
+                  intent: isApplied ? 'remove' : 'apply'
+                }}
+                className="w-full"
+              >
+                {(fetcher: any) => {
+                  const isSubmitting = fetcher.state !== 'idle';
+                  const actionError = fetcher.data?.error;
+                  
+                  return (
+                    <div className="w-full">
+                      <button
+                        type="submit"
+                        disabled={isSubmitting || (!isApplied && !isAllowedToRedeem)}
+                        className={`w-full text-center py-2 rounded-lg text-[12px] font-bold transition-all ${
+                          isApplied
+                            ? 'bg-[#e74c3c] hover:bg-[#c0392b] text-white shadow-sm'
+                            : 'bg-[#234745] hover:bg-[#142e22] text-white disabled:opacity-30 disabled:bg-[#234745] disabled:cursor-not-allowed'
+                        }`}
+                      >
+                        {isSubmitting
+                          ? (isEn ? 'Processing...' : 'جاري المعالجة...')
+                          : isApplied
+                            ? (isEn ? 'Remove' : 'إزالة')
+                            : !hasEnoughPoints
+                              ? (isEn ? 'Need Points' : 'نقاط غير كافية')
+                              : !withinCartTotal
+                                ? (isEn ? 'Cart Too Small' : 'قيمة السلة قليلة')
+                                : (isEn ? 'Redeem' : 'استبدال')
+                        }
+                      </button>
+                      {actionError && (
+                        <p className="text-red-500 text-[10px] font-bold mt-1 text-center">
+                          {actionError}
+                        </p>
+                      )}
+                    </div>
+                  );
+                }}
+              </CartForm>
+            </div>
+          );
+        })}
       </div>
     </section>
   );

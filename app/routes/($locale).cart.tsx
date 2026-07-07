@@ -578,7 +578,24 @@ export async function action({request, context}: Route.ActionArgs) {
 export async function loader({context}: Route.LoaderArgs) {
   const {cart} = context;
   try {
-    return await cart.get();
+    const res = await cart.get();
+    console.log('[CART LOADER DEBUG] Cart lines count:', res?.lines?.nodes?.length);
+    console.log('[CART LOADER DEBUG] Cart details:', JSON.stringify({
+      id: res?.id,
+      totalQuantity: res?.totalQuantity,
+      subtotalAmount: res?.cost?.subtotalAmount,
+      lines: res?.lines?.nodes?.map((n: any) => ({
+        id: n.id,
+        quantity: n.quantity,
+        cost: n.cost,
+        merchandise: {
+          id: n.merchandise?.id,
+          title: n.merchandise?.title,
+          price: n.merchandise?.price
+        }
+      }))
+    }, null, 2));
+    return res;
   } catch (err) {
     console.error('Failed to get cart in cart loader:', err);
     return null;

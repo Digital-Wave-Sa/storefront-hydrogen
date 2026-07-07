@@ -32,11 +32,12 @@ export async function action({ request, context }: ActionFunctionArgs) {
     };
   }
 
-  const query = `
-    mutation draftOrderCreate($input: DraftOrderInput!) {
-      draftOrderCreate(input: $input) {
-        draftOrder {
+  const createMutation = `
+    mutation metaobjectCreate($metaobject: MetaobjectCreateInput!) {
+      metaobjectCreate(metaobject: $metaobject) {
+        metaobject {
           id
+          handle
         }
         userErrors {
           field
@@ -46,26 +47,61 @@ export async function action({ request, context }: ActionFunctionArgs) {
     }
   `;
 
-  const variables = {
-    input: {
-      note: `Name: ${fullName}\nMobile: ${mobile}\nEmail: ${email}\nSubject: ${subject}\nOrder Number: ${orderNumber || 'N/A'}\nMessage: ${message}`,
-      tags: ["Contact Form", `Subject: ${subject}`],
-      email: email,
-      customAttributes: [
-        { key: "Full Name", value: fullName },
-        { key: "Mobile", value: mobile },
-        { key: "Subject", value: subject },
-        { key: "Order Number", value: orderNumber || 'N/A' }
-      ],
-      lineItems: [
-        {
-          title: `Contact Form Message: ${subject}`,
-          quantity: 1,
-          originalUnitPrice: "0.00"
+  const defMutation = `
+    mutation metaobjectDefinitionCreate($definition: MetaobjectDefinitionCreateInput!) {
+      metaobjectDefinitionCreate(definition: $definition) {
+        createdDefinition {
+          id
+          type
         }
+        userErrors {
+          field
+          message
+        }
+      }
+    }
+  `;
+
+  const entryVariables = {
+    metaobject: {
+      type: "contact_submission",
+      fields: [
+        { key: "full_name", value: fullName },
+        { key: "mobile", value: mobile },
+        { key: "email", value: email },
+        { key: "subject", value: subject },
+        { key: "order_number", value: orderNumber || "" },
+        { key: "message", value: message }
       ]
     }
   };
+
+  const defVariables = {
+    definition: {
+      name: "Contact Submission",
+      type: "contact_submission",
+      fieldDefinitions: [
+        { name: "Full Name", key: "full_name", type: "single_line_text_field" },
+        { name: "Mobile", key: "mobile", type: "single_line_text_field" },
+        { name: "Email", key: "email", type: "single_line_text_field" },
+        { name: "Subject", key: "subject", type: "single_line_text_field" },
+        { name: "Order Number", key: "order_number", type: "single_line_text_field" },
+        { name: "Message", key: "message", type: "multi_line_text_field" }
+      ]
+    }
+  };
+
+  async function executeQuery(query: string, variables: any, adminToken: string, shopDomain: string) {
+    const response = await fetch(`https://${shopDomain}/admin/api/2023-04/graphql.json`, {
+      method: 'POST',
+      headers: {
+        'X-Shopify-Access-Token': adminToken,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ query, variables })
+    });
+    return response.json();
+  }
 
   try {
     const { getAdminToken } = await import('~/lib/shopify-admin.server');
@@ -78,23 +114,44 @@ export async function action({ request, context }: ActionFunctionArgs) {
       shopDomain = `${handle}.myshopify.com`;
     }
 
-    const response = await fetch(`https://${shopDomain}/admin/api/2023-04/graphql.json`, {
-      method: 'POST',
-      headers: {
-        'X-Shopify-Access-Token': adminToken,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ query, variables })
-    });
+    // 1. Try to create the metaobject entry
+    let res = await executeQuery(createMutation, entryVariables, adminToken, shopDomain) as any;
+    console.log('[METAOBJECT CREATE RESP]', JSON.stringify(res));
 
-    const resText = await response.text();
-    console.log('[SHOPIFY DRAFT ORDER CREATE RESP]', resText);
-    const resData = JSON.parse(resText);
-    const errors = resData?.data?.draftOrderCreate?.userErrors;
+    let userErrors = res?.data?.metaobjectCreate?.userErrors;
+    const errors = res?.errors;
 
-    if (errors && errors.length > 0) {
-      console.error('[SHOPIFY DRAFT ORDER CREATE ERRORS]', errors);
-      throw new Error(errors[0].message);
+    // Detect if definition is missing
+    const isMissingDefinition = 
+      (errors && errors.some((e: any) => e.message && (e.message.includes('not found') || e.message.includes('type') || e.message.includes('invalid') || e.message.includes('type "contact_submission"')))) ||
+      (userErrors && userErrors.some((e: any) => e.message && (e.message.includes('not found') || e.message.includes('type') || e.message.includes('invalid') || e.message.includes('type "contact_submission"'))));
+
+    if (isMissingDefinition) {
+      console.log('[METAOBJECT] Definition "contact_submission" not found. Creating definition first...');
+      
+      // 2. Create the definition
+      const defRes = await executeQuery(defMutation, defVariables, adminToken, shopDomain) as any;
+      console.log('[METAOBJECT DEF CREATE RESP]', JSON.stringify(defRes));
+
+      const defErrors = defRes?.data?.metaobjectDefinitionCreate?.userErrors;
+      if (defErrors && defErrors.length > 0) {
+        // If it's already taken, we can ignore and proceed
+        const isAlreadyTaken = defErrors.some((e: any) => e.message && (e.message.includes('taken') || e.message.includes('already exists')));
+        if (!isAlreadyTaken) {
+          console.error('[METAOBJECT DEF CREATE ERRORS]', defErrors);
+          throw new Error(defErrors[0].message);
+        }
+      }
+
+      // 3. Retry creating the metaobject entry
+      res = await executeQuery(createMutation, entryVariables, adminToken, shopDomain);
+      console.log('[METAOBJECT RETRY RESP]', JSON.stringify(res));
+      userErrors = res?.data?.metaobjectCreate?.userErrors;
+    }
+
+    if (userErrors && userErrors.length > 0) {
+      console.error('[METAOBJECT CREATE ERRORS]', userErrors);
+      throw new Error(userErrors[0].message);
     }
 
     return {

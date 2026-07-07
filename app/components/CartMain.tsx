@@ -37,7 +37,7 @@ function getLineItemChildrenMap(lines: CartLine[]): LineItemChildrenMap {
 }
 
 export function CartMain({layout, cart: originalCart}: CartMainProps) {
-  const cart = useOptimisticCart(originalCart);
+  const cart = originalCart;
   const location = useLocation();
   const isEn = location.pathname.split('/')[1]?.toLowerCase() === 'en';
   const rootData = useRouteLoaderData('root') as any;

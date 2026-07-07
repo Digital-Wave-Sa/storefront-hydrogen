@@ -224,7 +224,6 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
     // Always set the CRM token and redirect regardless of Shopify session
     session.set('saadeddinToken', saadeddinToken);
-    session.unset('loginOtpPhone');
     session.unset('loginCustomerEmail');
     session.unset('loginCustomerId');
     return redirect(lang === 'en' ? '/en/account' : '/account', {

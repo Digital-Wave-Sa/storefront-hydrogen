@@ -31,15 +31,6 @@ export const CART_QUERY_FRAGMENT = `#graphql
       ... on ProductVariant {
         id
         availableForSale
-        storeAvailability(first: 250) {
-          nodes {
-            available
-            location {
-              id
-              name
-            }
-          }
-        }
         compareAtPrice {
           ...Money
         }
@@ -54,7 +45,6 @@ export const CART_QUERY_FRAGMENT = `#graphql
           altText
           width
           height
-
         }
         product {
           handle
@@ -105,15 +95,6 @@ export const CART_QUERY_FRAGMENT = `#graphql
       ... on ProductVariant {
         id
         availableForSale
-        storeAvailability(first: 250) {
-          nodes {
-            available
-            location {
-              id
-              name
-            }
-          }
-        }
         compareAtPrice {
           ...Money
         }
@@ -176,8 +157,6 @@ export const CART_QUERY_FRAGMENT = `#graphql
     lines(first: $numCartLines) {
       nodes {
         ...CartLine
-      }
-      nodes {
         ...CartLineComponent
       }
     }
@@ -211,6 +190,7 @@ export const CART_QUERY_FRAGMENT = `#graphql
     }
   }
 ` as const;
+
 
 const MENU_FRAGMENT = `#graphql
   fragment MenuItem on MenuItem {

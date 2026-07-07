@@ -59,6 +59,7 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
 
     const existingCustomer = customers?.[0];
     let finalEmail = email;
+    let customerPhone = '';
 
     if (existingCustomer) {
       // Update password via Admin API
@@ -77,6 +78,7 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
         throw new Error('Failed to synchronize credentials.');
       }
       finalEmail = existingCustomer.email || email;
+      customerPhone = existingCustomer.phone || '';
     } else {
       // Create new customer via Admin API
       const createRes = await fetch(`https://${domain}/admin/api/2024-01/customers.json`, {
@@ -100,6 +102,7 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
       }
       const createData = await createRes.json();
       finalEmail = createData.customer?.email || email;
+      customerPhone = createData.customer?.phone || '';
     }
 
     // 4. Generate REAL storefront access token
@@ -111,7 +114,9 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
     if (token) {
       session.set('customerAccessToken', token);
       session.set('saadeddinToken', 'social-login-' + Date.now());
-      return redirect('/account', { headers: { 'Set-Cookie': await session.commit() } });
+      
+      const targetRedirect = customerPhone ? '/account' : '/account/verify-phone';
+      return redirect(targetRedirect, { headers: { 'Set-Cookie': await session.commit() } });
     } else {
       const errors = storefrontTokenResponse.customerAccessTokenCreate?.customerUserErrors;
       throw new Error(errors?.[0]?.message || 'Failed to authenticate social session.');

@@ -64,7 +64,8 @@ export function CartLineItem({
   // NORMAL LAYOUT
   return (
     <li key={id} className={`group flex flex-col ${layout === 'aside' ? 'p-4 border-b border-gray-100 bg-white' : 'py-6 border-b border-gray-200 last:border-0'} relative gap-4`}>
-      <div className={`flex ${layout === 'aside' ? 'items-start gap-4' : 'items-start gap-6 w-full'} ${isOutOfStock ? 'opacity-40 pointer-events-none select-none' : ''} transition-opacity`}>
+      {/* 1. Desktop Layout (hidden on mobile screen sizes for main page cart) */}
+      <div className={`${layout === 'aside' ? 'hidden' : 'hidden md:flex'} items-start gap-6 w-full ${isOutOfStock ? 'opacity-40 pointer-events-none select-none' : ''} transition-opacity`}>
         
         {/* Product Image */}
         <Link
@@ -253,7 +254,142 @@ export function CartLineItem({
               </div>
            )}
         </div>
+      </div>
 
+      {/* 2. Mobile/Aside Layout */}
+      <div className={`${layout === 'aside' ? 'flex' : 'flex md:hidden'} flex-col w-full gap-4 ${isOutOfStock ? 'opacity-40 pointer-events-none select-none' : ''} transition-opacity`}>
+        {/* Top Section: Image on one side, Info on the opposite side */}
+        <div className="flex items-start gap-4 w-full">
+          {/* Image */}
+          <Link
+            prefetch="intent"
+            to={lineItemUrl}
+            onClick={() => {
+              if (layout === 'aside') close();
+            }}
+            className="flex-shrink-0 w-[90px] h-[90px] bg-[#f8f5f2] rounded-2xl overflow-hidden"
+          >
+            {image ? (
+              <Image
+                alt={title}
+                aspectRatio="1/1"
+                data={image}
+                height={90}
+                loading="lazy"
+                width={90}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-gray-300">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" /></svg>
+              </div>
+            )}
+          </Link>
+
+          {/* Details */}
+          <div className={`flex-1 min-w-0 ${isEn ? 'text-left' : 'text-right'}`}>
+            <span className="text-[12px] font-bold text-[#A67B5B] block mb-1" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
+              {product?.vendor || (isEn ? 'Saadeddin' : 'الكيك المخصص')}
+            </span>
+            <h4 className="font-bold text-[15px] text-[#1a1a1a] mb-1.5 leading-snug line-clamp-2" style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" }}>
+              {product?.title || title}
+            </h4>
+
+            {/* Options */}
+            {(validOptions.length > 0 || (line.attributes?.filter((a: any) => a.value && !a.key.startsWith('_')).length || 0) > 0) && (
+              <div className={`flex flex-wrap gap-1.5 mb-3 ${isEn ? 'justify-start' : 'justify-start'}`}>
+                {validOptions.map((o: any) => (
+                  <span key={o.name} className="px-2.5 py-0.5 bg-white border border-[#BBCFCD]/40 text-[#8B8B8B] rounded-full text-[11px] font-bold">
+                    {isEn ? `${o.name}: ${o.value}` : `${o.name === 'Size' ? 'حجم' : o.name}: ${o.value}`}
+                  </span>
+                ))}
+                {line.attributes
+                  ?.filter((a: any) => a.value && !a.key.startsWith('_'))
+                  .map((a: any) => {
+                    const isCakeMsg = a.key === 'Cake Message';
+                    const isGiftMsg = a.key === 'Gift Message';
+                    const isRecipient = a.key === 'Recipient Name';
+                    const isNote = a.key === 'Order Note';
+                    
+                    let keyName = a.key;
+                    if (!isEn) {
+                      if (isCakeMsg) keyName = 'كتابة على الكيكة';
+                      else if (isGiftMsg) keyName = 'رسالة إهداء';
+                      else if (isRecipient) keyName = 'اسم المستلم';
+                      else if (isNote) keyName = 'ملاحظة الطلب';
+                    }
+
+                    return (
+                      <span key={a.key} className="px-2.5 py-0.5 bg-[#FEF8EB] border border-[#A67B5B]/20 text-[#A67B5B] rounded-full text-[11px] font-bold truncate max-w-[150px]">
+                        {keyName}: {a.value}
+                      </span>
+                    );
+                  })
+                }
+              </div>
+            )}
+
+            {/* Action Row: Delete, Save for Later, Gift */}
+            <div className={`flex items-center gap-4 text-[12px] text-gray-400 mt-2 ${isEn ? 'justify-start' : 'justify-start'}`}>
+              <div className="flex items-center gap-1.5 text-[#c1c1c1] hover:text-[#DF4646] transition-colors">
+                <CartLineRemoveButton lineIds={[id]} disabled={!!line.isOptimistic} isText isEn={isEn} />
+              </div>
+              <button className="flex items-center gap-1.5 hover:text-[#234745] transition-colors font-bold text-[13px] text-[#c1c1c1]">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" /></svg>
+                <span>{isEn ? 'Save for later' : 'حفظ لاحقاً'}</span>
+              </button>
+              {(() => {
+                const isGiftable = product?.tags?.some((t: string) => {
+                  const lowerTag = t.toLowerCase();
+                  return lowerTag.includes('gift') || lowerTag.includes('mother') || lowerTag.includes('father') || lowerTag.includes('friend') || lowerTag.includes('grad');
+                }) ?? false;
+
+                return isGiftable ? (
+                  <CartLineGiftForm line={line} isEn={isEn} />
+                ) : null;
+              })()}
+            </div>
+          </div>
+        </div>
+
+        {/* Separator line */}
+        <div className="w-full border-t border-dashed border-[#BBCFCD]/20" />
+
+        {/* Bottom Section: Price & Quantity Rows */}
+        <div className="flex flex-col gap-3 w-full">
+          {/* Price Row */}
+          <div className="flex items-center justify-between w-full h-[24px]">
+            <span className="text-[14px] font-bold text-[#1a1a1a]">{isEn ? 'Price' : 'السعر'}</span>
+            <div className="flex items-center gap-1.5 flex-row-reverse">
+              {isFreeItem ? (
+                <span className="text-emerald-600 font-extrabold text-[16px] uppercase">
+                  {isEn ? 'FREE' : 'مجاناً'}
+                </span>
+              ) : (
+                <>
+                  <SaudiRiyalSymbol className="w-[18px] h-auto text-[#234745]" />
+                  <span className="font-black text-[#234745] text-[18px]" style={{ fontFamily: "'Outfit', sans-serif" }}>
+                    {parseFloat(line?.cost?.totalAmount?.amount || '0').toFixed(2)}
+                  </span>
+                  {line?.cost?.compareAtAmountPerQuantity && (
+                    <span className="text-gray-400 text-[12px] font-bold line-through flex items-center gap-0.5 flex-row-reverse mr-2" style={{ fontFamily: "'Outfit', sans-serif" }}>
+                      <SaudiRiyalSymbol className="w-[11px] h-auto text-gray-400" />
+                      {parseFloat(line.cost.compareAtAmountPerQuantity.amount).toFixed(2)}
+                    </span>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Quantity Row */}
+          <div className="flex items-center justify-between w-full">
+            <span className="text-[14px] font-bold text-[#1a1a1a]">{isEn ? 'Quantity' : 'الكمية'}</span>
+            <div dir="ltr">
+              <CartLineQuantity line={line} />
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Out of Stock Caution Card (Main Cart Page Only) */}
@@ -376,14 +512,14 @@ function CartLineQuantity({line}: {line: CartLine}) {
             disabled={!!isOptimistic}
             name="decrease-quantity"
             value={prevQuantity}
-            className="w-10 h-10 flex items-center justify-center bg-white rounded-lg text-[#A67B5B] border border-[#E9EBD8] hover:border-[#234745] transition-all"
+            className="w-10 h-10 flex items-center justify-center bg-white rounded-lg text-[#234745] border border-gray-200 hover:border-[#234745] transition-all"
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14" strokeLinecap="round" strokeLinejoin="round" /></svg>
           </button>
         </CartLineUpdateButton>
       )}
       
-      <div className="w-10 h-10 flex items-center justify-center bg-white rounded-lg border border-[#E9EBD8] font-bold text-[16px] text-[#1a1a1a]" style={{ fontFamily: "'Outfit', sans-serif" }}>
+      <div className="w-10 h-10 flex items-center justify-center bg-white rounded-lg border border-gray-200 font-bold text-[16px] text-[#1a1a1a]" style={{ fontFamily: "'Outfit', sans-serif" }}>
         {quantity}
       </div>
 
@@ -393,7 +529,7 @@ function CartLineQuantity({line}: {line: CartLine}) {
           name="increase-quantity"
           value={nextQuantity}
           disabled={!!isOptimistic}
-          className="w-10 h-10 flex items-center justify-center bg-white rounded-lg text-[#234745] border border-[#E9EBD8] hover:border-[#234745] transition-all"
+          className="w-10 h-10 flex items-center justify-center bg-white rounded-lg text-[#234745] border border-gray-200 hover:border-[#234745] transition-all"
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 5v14M5 12h14" strokeLinecap="round" strokeLinejoin="round" /></svg>
         </button>
@@ -447,7 +583,7 @@ function CartLineRemoveButton({
         <button 
           disabled={disabled} 
           type="submit"
-          className="w-10 h-10 flex items-center justify-center bg-white rounded-lg text-[#A67B5B] border border-gray-200 hover:border-[#234745] transition-all"
+          className="w-10 h-10 flex items-center justify-center bg-white rounded-lg text-[#234745] border border-gray-200 hover:border-[#234745] transition-all"
           aria-label="Remove item"
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14" /></svg>

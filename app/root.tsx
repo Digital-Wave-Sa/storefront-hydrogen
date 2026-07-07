@@ -142,19 +142,6 @@ export async function loader(args: Route.LoaderArgs) {
     } catch (error) {
       console.error('[ROOT] Cart retrieval failed:', error);
     }
-    if (cartData) {
-      const needsIdentity = customerAccessToken?.accessToken && !cartData.buyerIdentity?.customer;
-      const cartBranch = cartData.attributes?.find(a => a.key === 'Branch')?.value;
-      if (needsIdentity) {
-        try {
-          await args.context.cart.updateBuyerIdentity({
-            customerAccessToken: customerAccessToken.accessToken,
-          });
-        } catch (error) {
-          console.error('[ROOT] Cart identity sync failed:', error);
-        }
-      }
-    }
   }
 
     const headers = new Headers();
@@ -196,7 +183,7 @@ export async function loader(args: Route.LoaderArgs) {
 async function loadCriticalData({context}: Route.LoaderArgs) {
   const {storefront} = context;
 
-  const [header, locations, reviews] = await Promise.all([
+  const [header, locations, reviews, megaMenuData] = await Promise.all([
     storefront.query(HEADER_QUERY, {
       cache: storefront.CacheLong(),
       variables: {
@@ -204,7 +191,7 @@ async function loadCriticalData({context}: Route.LoaderArgs) {
       },
     }),
     storefront.query(LOCATIONS_QUERY, {
-      cache: storefront.CacheNone(),
+      cache: storefront.CacheLong(),
     }).catch(() => null),
     storefront.query(`#graphql
       query GetReviews {
@@ -219,15 +206,25 @@ async function loadCriticalData({context}: Route.LoaderArgs) {
         }
       }
     `, {
-      cache: storefront.CacheNone(),
+      cache: storefront.CacheLong(),
     }).then(res => ({ nodes: res.metaobjects?.nodes || [] }))
       .catch((e: Error) => {
         console.error('[ROOT] Storefront Review Fetch Failed:', e.message);
         return { nodes: [] };
-      })
+      }),
+    storefront.query(MEGAMENU_COLLECTIONS_QUERY, {
+      cache: storefront.CacheLong(),
+      variables: {
+        country: storefront.i18n.country,
+        language: storefront.i18n.language,
+      },
+    }).catch((error) => {
+      console.error('Failed to fetch megamenu data:', error);
+      return { collections: { nodes: [] } };
+    }),
   ]);
 
-  return {header, locations, reviews};
+  return {header, locations, reviews, megaMenuData};
 }
 
 /**
@@ -393,6 +390,22 @@ export function Layout({children}: {children?: React.ReactNode}) {
     };
   }, []);
 
+  useEffect(() => {
+    if (typeof window === 'undefined' || !data?.env?.PUBLIC_GTM_ID || data.env.PUBLIC_GTM_ID === 'GTM-XXXXXXX') return;
+
+    window.dataLayer = window.dataLayer || [];
+    window.dataLayer.push({ 'gtm.start': new Date().getTime(), event: 'gtm.js' });
+    
+    let script = document.getElementById('gtm-loader') as HTMLScriptElement | null;
+    if (!script) {
+      script = document.createElement('script');
+      script.id = 'gtm-loader';
+      script.src = `https://www.googletagmanager.com/gtm.js?id=${data.env.PUBLIC_GTM_ID}`;
+      script.async = true;
+      document.head.appendChild(script);
+    }
+  }, [data?.env?.PUBLIC_GTM_ID]);
+
   const canonicalUrl = `https://saadeddin.com${location.pathname === '/' ? '' : location.pathname}`;
   const isEnPath = location.pathname.startsWith('/en');
   const arPath = isEnPath ? location.pathname.replace(/^\/en/, '') || '/' : location.pathname;
@@ -444,22 +457,6 @@ export function Layout({children}: {children?: React.ReactNode}) {
             `,
           }}
         />
-        {/* Google Tag Manager — loads after consent defaults are set */}
-        {data?.env?.PUBLIC_GTM_ID && data.env.PUBLIC_GTM_ID !== 'GTM-XXXXXXX' && (
-          <script
-            nonce={nonce}
-            suppressHydrationWarning
-            dangerouslySetInnerHTML={{
-              __html: `
-                (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
-                new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
-                j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
-                'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-                })(window,document,'script','dataLayer','${data.env.PUBLIC_GTM_ID}');
-              `,
-            }}
-          />
-        )}
       </head>
       <body
         className={`bg-[#FEF8EB] overflow-x-hidden w-full ${isEn ? 'font-en' : 'font-ar'} ${isReady ? 'show-content' : ''}`}
@@ -642,6 +639,22 @@ const LOCATIONS_QUERY = `#graphql
           key
           value
         }
+        delivery_hours_from: metafield(namespace: "custom", key: "delivery_hours_from") {
+          key
+          value
+        }
+        delivery_hours_to: metafield(namespace: "custom", key: "delivery_hours_to") {
+          key
+          value
+        }
+        delivery_hours_from_shift2: metafield(namespace: "custom", key: "delivery_hours_from_shift2") {
+          key
+          value
+        }
+        delivery_hours_to_shift2: metafield(namespace: "custom", key: "delivery_hours_to_shift2") {
+          key
+          value
+        }
         working_hours_from: metafield(namespace: "custom", key: "working_hours_from") {
           key
           value
@@ -732,6 +745,7 @@ const CUSTOMER_ADDRESSES_QUERY = `#graphql
     customer(customerAccessToken: $customerAccessToken) {
       id
       email
+      phone
       tags
       firstName
       lastName
@@ -747,6 +761,29 @@ const CUSTOMER_ADDRESSES_QUERY = `#graphql
           phone
         }
       }
-    }
   }
 `;
+
+const MEGAMENU_COLLECTIONS_QUERY = `#graphql
+  query MegaMenuCollections($country: CountryCode, $language: LanguageCode)
+    @inContext(country: $country, language: $language) {
+    collections(first: 4) {
+      nodes {
+        id
+        title
+        handle
+        image {
+          url
+          altText
+        }
+        products(first: 4) {
+          nodes {
+            id
+            title
+            handle
+          }
+        }
+      }
+    }
+  }
+` as const;

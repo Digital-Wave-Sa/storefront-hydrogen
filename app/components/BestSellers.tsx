@@ -401,6 +401,7 @@ function BestSellersAddToCart({
       lines.push({
         merchandiseId: freeVariantId,
         quantity: 1,
+        selectedVariant: variant,
         attributes: [
           { key: '_groupId', value: groupId },
           { key: '_is_addon', value: 'true' },

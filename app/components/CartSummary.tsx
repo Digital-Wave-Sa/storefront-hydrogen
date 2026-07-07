@@ -190,8 +190,10 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
                 <LoyaltyRedemptionUI isEn={isEn} cart={cart} />
               )}
 
-              {/* Time Slot Picker */}
-              <CartTimeSlot isEn={isEn} cart={cart} currentBranch={currentBranch} />
+              {/* Time Slot Picker — Only show for delivery */}
+              {!isPickup && (
+                <CartTimeSlot isEn={isEn} cart={cart} currentBranch={currentBranch} />
+              )}
 
               {/* Order Notes */}
               <CartOrderNotes isEn={isEn} cart={cart} />
@@ -422,36 +424,75 @@ function formatHour(h: number, isEn: boolean): string {
   return `${displayHour} ${period}`;
 }
 
-function generateDynamicSlots(branch: any, isEn: boolean): string[] {
+function generateDynamicSlots(branch: any, isEn: boolean, fulfillmentType: string = 'delivery'): string[] {
+  const isDelivery = fulfillmentType === 'delivery';
+
+  // Helper to extract a metafield's value
+  const getMeta = (key: string) => {
+    if (!branch) return undefined;
+    if (branch[key]?.value) return branch[key].value;
+    if (typeof branch[key] === 'string') return branch[key];
+    const meta = branch.metafields?.find((m: any) => m?.key === key);
+    return meta?.value;
+  };
+
   // Get Saudi current day of the week
   const riyadhDateStr = new Intl.DateTimeFormat('en-US', {
     timeZone: 'Asia/Riyadh',
     weekday: 'short'
   }).format(new Date());
 
-  let fromStr = branch?.hoursFrom;
-  let toStr = branch?.hoursTo;
+  // Determine Shift 1 Open/Close keys
+  let fromKey = 'working_hours_from';
+  let toKey = 'working_hours_to';
+  let fromKey2 = 'working_hours_from_shift2';
+  let toKey2 = 'working_hours_to_shift2';
 
-  // Search through all daily hour definitions
-  if (riyadhDateStr === 'Sun' && branch?.sundayHoursFrom) {
-    fromStr = branch.sundayHoursFrom; toStr = branch.sundayHoursTo;
-  } else if (riyadhDateStr === 'Mon' && branch?.mondayHoursFrom) {
-    fromStr = branch.mondayHoursFrom; toStr = branch.mondayHoursTo;
-  } else if (riyadhDateStr === 'Tue' && branch?.tuesdayHoursFrom) {
-    fromStr = branch.tuesdayHoursFrom; toStr = branch.tuesdayHoursTo;
-  } else if (riyadhDateStr === 'Wed' && branch?.wednesdayHoursFrom) {
-    fromStr = branch.wednesdayHoursFrom; toStr = branch.wednesdayHoursTo;
-  } else if (riyadhDateStr === 'Thu' && branch?.thursdayHoursFrom) {
-    fromStr = branch.thursdayHoursFrom; toStr = branch.thursdayHoursTo;
-  } else if (riyadhDateStr === 'Fri' && branch?.fridayHoursFrom) {
-    fromStr = branch.fridayHoursFrom; toStr = branch.fridayHoursTo;
-  } else if (riyadhDateStr === 'Sat' && branch?.saturdayHoursFrom) {
-    fromStr = branch.saturdayHoursFrom; toStr = branch.saturdayHoursTo;
+  if (isDelivery) {
+    // If delivery hours exist, we use them. Otherwise we fall back to working_hours.
+    const hasDeliveryHrs = getMeta('delivery_hours_from');
+    if (hasDeliveryHrs) {
+      fromKey = 'delivery_hours_from';
+      toKey = 'delivery_hours_to';
+      fromKey2 = 'delivery_hours_from_shift2';
+      toKey2 = 'delivery_hours_to_shift2';
+    }
   }
 
-  // Parse start and end hours, default to 10:00 (10 AM) to 22:00 (10 PM) if not defined
-  const startHour = parseHourString(fromStr || '10:00');
-  const endHour = parseHourString(toStr || '22:00');
+  // Handle day-specific keys
+  let dayFromKey = fromKey;
+  let dayToKey = toKey;
+  const lowerDay = riyadhDateStr.toLowerCase(); // 'sun', 'mon', etc.
+  
+  if (isDelivery) {
+    const hasDayDelivery = getMeta(`${lowerDay}_delivery_hours_from`);
+    if (hasDayDelivery) {
+      dayFromKey = `${lowerDay}_delivery_hours_from`;
+      dayToKey = `${lowerDay}_delivery_hours_to`;
+    } else {
+      const hasDayWorking = getMeta(`${lowerDay}_working_hours_from`);
+      if (hasDayWorking) {
+        dayFromKey = `${lowerDay}_working_hours_from`;
+        dayToKey = `${lowerDay}_working_hours_to`;
+      }
+    }
+  } else {
+    const hasDayWorking = getMeta(`${lowerDay}_working_hours_from`);
+    if (hasDayWorking) {
+      dayFromKey = `${lowerDay}_working_hours_from`;
+      dayToKey = `${lowerDay}_working_hours_to`;
+    }
+  }
+
+  const fromStr = getMeta(dayFromKey) || getMeta(fromKey) || '10:00';
+  const toStr = getMeta(dayToKey) || getMeta(toKey) || '22:00';
+  const fromStr2 = getMeta(fromKey2);
+  const toStr2 = getMeta(toKey2);
+
+  const startHour1 = parseHourString(fromStr);
+  const endHour1 = parseHourString(toStr);
+  const startHour2 = fromStr2 ? parseHourString(fromStr2) : null;
+  const endHour2 = toStr2 ? parseHourString(toStr2) : null;
 
   // Also get the current hour in Riyadh time to hide past slots for today
   const riyadhHourStr = new Intl.DateTimeFormat('en-US', {
@@ -464,31 +505,40 @@ function generateDynamicSlots(branch: any, isEn: boolean): string[] {
   const slots: string[] = [];
   const interval = 2; // 2-hour interval slots for precise scheduling
 
-  for (let h = startHour; h < endHour; h += interval) {
-    let nextH = h + interval;
-    if (nextH > endHour) {
-      nextH = endHour;
-    }
-    
-    // Hide slots that are already in the past today
-    // We add 1 hour buffer so they can't order a slot that is too close to current time
-    if (h > currentRiyadhHour + 1) {
+  const addSlotsForWindow = (start: number, end: number, isTomorrow: boolean) => {
+    for (let h = start; h < end; h += interval) {
+      let nextH = h + interval;
+      if (nextH > end) nextH = end;
+      
       const fromFormatted = formatHour(h, isEn);
       const toFormatted = formatHour(nextH, isEn);
-      slots.push(`${fromFormatted} - ${toFormatted}`);
+      const label = `${fromFormatted} - ${toFormatted}`;
+      
+      if (isTomorrow) {
+        slots.push(label);
+      } else {
+        // Hide slots that are already in the past today
+        // We add 1 hour buffer so they can't order a slot that is too close to current time
+        if (h > currentRiyadhHour + 1) {
+          slots.push(label);
+        }
+      }
     }
+  };
+
+  // 1. Try adding today's slots for Shift 1
+  addSlotsForWindow(startHour1, endHour1, false);
+
+  // 2. Try adding today's slots for Shift 2
+  if (startHour2 !== null && endHour2 !== null) {
+    addSlotsForWindow(startHour2, endHour2, false);
   }
 
-  // If all slots for today are in the past (e.g. it is late at night),
-  // we show tomorrow's slots
+  // 3. If all slots for today are in the past, show tomorrow's slots
   if (slots.length === 0) {
-    for (let h = startHour; h < endHour; h += interval) {
-      let nextH = h + interval;
-      if (nextH > endHour) nextH = endHour;
-      const fromFormatted = formatHour(h, isEn);
-      const toFormatted = formatHour(nextH, isEn);
-      const dayPrefix = isEn ? 'Tomorrow: ' : 'غداً: ';
-      slots.push(`${dayPrefix}${fromFormatted} - ${toFormatted}`);
+    addSlotsForWindow(startHour1, endHour1, true);
+    if (startHour2 !== null && endHour2 !== null) {
+      addSlotsForWindow(startHour2, endHour2, true);
     }
   }
 
@@ -497,14 +547,15 @@ function generateDynamicSlots(branch: any, isEn: boolean): string[] {
 
 function CartTimeSlot({ isEn, cart, currentBranch, hasError }: { isEn: boolean, cart: any, currentBranch: any, hasError?: boolean }) {
   const timeSlot = cart?.attributes?.find((a: any) => a.key === 'Time Slot')?.value || '';
+  const fulfillmentType = cart?.attributes?.find((a: any) => a.key === 'Fulfillment Type')?.value || 'delivery';
   
   // Dynamically calculate time slots based on the fulfilling branch's active hours
-  const dynamicTimeSlots = generateDynamicSlots(currentBranch, isEn);
+  const dynamicTimeSlots = generateDynamicSlots(currentBranch, isEn, fulfillmentType);
 
   return (
     <div className="flex flex-col gap-2">
       <label className="text-[13px] font-bold text-[#234745] px-1">
-        {isEn ? 'Schedule Order' : 'جدولة الطلب'}
+        {isEn ? 'Preferred Delivery Time' : 'وقت التوصيل المفضل'}
       </label>
       <CartForm route="/cart" action={'AttributesUpdate' as any}>
         <input type="hidden" name="attributes[0][key]" value="Time Slot" />
@@ -518,7 +569,7 @@ function CartTimeSlot({ isEn, cart, currentBranch, hasError }: { isEn: boolean, 
             }}
             className="w-full bg-[#fcfaf8] border border-[#f0ece8] rounded-xl px-4 py-3 text-[14px] text-[#234745] font-medium appearance-none focus:outline-none focus:border-[#d4a06a] focus:ring-1 focus:ring-[#d4a06a] transition-all cursor-pointer"
           >
-            <option value="">{isEn ? 'Select delivery/pickup time' : 'اختر وقت التوصيل/الاستلام'}</option>
+            <option value="">{isEn ? 'Select preferred delivery time' : 'اختر وقت التوصيل المفضل'}</option>
             {dynamicTimeSlots.map((slot: string, idx: number) => (
                 <option key={idx} value={slot}>{slot}</option>
             ))}
@@ -645,9 +696,36 @@ function LoyaltyRedemptionUI({ isEn, cart }: { isEn: boolean, cart: any }) {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const fetcher = useFetcher<any>();
   
+  const [customerInfo, setCustomerInfo] = useState<{ phone?: string, email?: string }>({});
+
+  useEffect(() => {
+    if (rootData?.customer) {
+      Promise.resolve(rootData.customer).then((res: any) => {
+        const cust = res?.customer;
+        if (cust) {
+          setCustomerInfo({
+            phone: cust.phone,
+            email: cust.email,
+          });
+        }
+      }).catch(() => {});
+    }
+  }, [rootData?.customer]);
+
+  // Sync state after fetcher finishes
+  useEffect(() => {
+    if (fetcher.state === 'idle' && fetcher.data) {
+      if (fetcher.data.error) {
+        setErrorMsg(fetcher.data.error);
+      } else if (fetcher.data.success) {
+        setErrorMsg(null);
+      }
+    }
+  }, [fetcher.state, fetcher.data]);
+
   // Extract phone number or email
-  let phone = rootData?.loginOtpPhone || cart?.buyerIdentity?.phone || cart?.buyerIdentity?.customer?.phone || rootData?.customer?.phone;
-  const email = cart?.buyerIdentity?.email || cart?.buyerIdentity?.customer?.email || rootData?.customer?.email;
+  let phone = rootData?.loginOtpPhone || cart?.buyerIdentity?.phone || cart?.buyerIdentity?.customer?.phone || customerInfo.phone;
+  const email = cart?.buyerIdentity?.email || cart?.buyerIdentity?.customer?.email || customerInfo.email;
   if (!phone && email && email.includes('@saadeddin.dev')) {
     phone = email.split('@')[0];
   }
@@ -696,17 +774,6 @@ function LoyaltyRedemptionUI({ isEn, cart }: { isEn: boolean, cart: any }) {
 
   const pointsToCurrencyRatio = 0.01;
   const cartSubtotal = parseFloat(cart?.cost?.subtotalAmount?.amount || '0');
-
-  // Sync state after fetcher finishes
-  useEffect(() => {
-    if (fetcher.state === 'idle' && fetcher.data) {
-      if (fetcher.data.error) {
-        setErrorMsg(fetcher.data.error);
-      } else if (fetcher.data.success) {
-        setErrorMsg(null);
-      }
-    }
-  }, [fetcher.state, fetcher.data]);
 
   const milestones = [
     { points: 1000, value: 10, labelEn: '10 SAR Coupon', labelAr: 'كوبون 10 ر.س' },

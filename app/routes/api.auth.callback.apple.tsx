@@ -69,6 +69,7 @@ async function handleAppleAuth(formData: FormData, context: any) {
   const existingCustomer = customers?.[0];
   const stablePassword = await derivePassword(appleUserId, env.SESSION_SECRET || 'saadeddin-social');
   let customerEmail = finalEmail;
+  let customerPhone = '';
 
   if (existingCustomer) {
     // Update password via Admin API
@@ -87,6 +88,7 @@ async function handleAppleAuth(formData: FormData, context: any) {
       throw new Error('Failed to synchronize credentials.');
     }
     customerEmail = existingCustomer.email || finalEmail;
+    customerPhone = existingCustomer.phone || '';
   } else {
     // Create new customer via Admin API
     const createRes = await fetch(`https://${domain}/admin/api/2024-01/customers.json`, {
@@ -110,6 +112,7 @@ async function handleAppleAuth(formData: FormData, context: any) {
     }
     const createData = await createRes.json();
     customerEmail = createData.customer?.email || finalEmail;
+    customerPhone = createData.customer?.phone || '';
   }
 
   // 4. Generate REAL storefront access token
@@ -121,7 +124,9 @@ async function handleAppleAuth(formData: FormData, context: any) {
   if (token) {
     session.set('customerAccessToken', token);
     session.set('saadeddinToken', 'social-login-' + Date.now());
-    return redirect('/account', { headers: { 'Set-Cookie': await session.commit() } });
+    
+    const targetRedirect = customerPhone ? '/account' : '/account/verify-phone';
+    return redirect(targetRedirect, { headers: { 'Set-Cookie': await session.commit() } });
   } else {
     const errors = tokenResponse.customerAccessTokenCreate?.customerUserErrors;
     throw new Error(errors?.[0]?.message || 'Failed to authenticate social session.');

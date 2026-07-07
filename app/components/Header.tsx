@@ -21,11 +21,12 @@ type HeaderProps = {
   selectedAddressName?: string;
   fulfillmentType?: 'delivery' | 'pickup';
   publicStoreDomain?: string;
+  megaMenuData?: any;
 };
 type Viewport = 'desktop' | 'mobile';
 
 // ─── MAIN HEADER ────────────────────────────────────────────────────────────
-export function Header({ header, isLoggedIn, cart, locations, customer, locale, googleMapsKey, selectedLocationId, selectedLocationName, selectedAddressName, fulfillmentType }: HeaderProps) {
+export function Header({ header, isLoggedIn, cart, locations, customer, locale, googleMapsKey, selectedLocationId, selectedLocationName, selectedAddressName, fulfillmentType, megaMenuData }: HeaderProps) {
   const { shop, menu } = header;
   const isEn = locale === 'en';
   const fetcher = useFetcher();
@@ -155,7 +156,7 @@ export function Header({ header, isLoggedIn, cart, locations, customer, locale, 
         className={`absolute top-full left-0 w-full transition-all duration-300 origin-top z-[60] 
           ${activeMega ? 'opacity-100 visible translate-y-0' : 'opacity-0 invisible -translate-y-2'}`}
       >
-        {activeMega === 'products' && <ProductMegaMenu locale={locale} />}
+        {activeMega === 'products' && <ProductMegaMenu locale={locale} megaMenuData={megaMenuData} />}
       </div>
     </header>
   );
@@ -467,9 +468,25 @@ function MiddleBar({
   const rootData = useRouteLoaderData('root') as any;
   const [points, setPoints] = useState<number | null>(null);
 
+  const [customerInfo, setCustomerInfo] = useState<{ phone?: string, email?: string }>({});
+
+  useEffect(() => {
+    if (rootData?.customer) {
+      Promise.resolve(rootData.customer).then((res: any) => {
+        const cust = res?.customer;
+        if (cust) {
+          setCustomerInfo({
+            phone: cust.phone,
+            email: cust.email,
+          });
+        }
+      }).catch(() => {});
+    }
+  }, [rootData?.customer]);
+
   // Extract phone number or email from root data
-  let phone = rootData?.loginOtpPhone || rootData?.customer?.phone;
-  const email = rootData?.customer?.email;
+  let phone = rootData?.loginOtpPhone || customerInfo.phone;
+  const email = customerInfo.email;
   const customerIdentifier = phone || email;
 
   useEffect(() => {
@@ -491,46 +508,36 @@ function MiddleBar({
   return (
     <div className="w-full py-3 lg:py-4 border-b border-[#234745]/5">
       <div className="max-w-[1400px] mx-auto px-4 lg:px-6">
-        {/* Use 1fr auto 1fr to give the sides maximum available space while keeping logo centered */}
-        <div className="grid grid-cols-[1fr_auto_1fr] items-center w-full">
+        
+        {/* 1. Desktop Header Layout (hidden on mobile screen sizes) */}
+        <div className="hidden lg:grid grid-cols-[1fr_auto_1fr] items-center w-full">
 
-          {/* RIGHT (in RTL) / LEFT (in LTR): Desktop Nav & Mobile Menu */}
+          {/* RIGHT (in RTL) / LEFT (in LTR): Desktop Nav */}
           <div className="flex items-center justify-start min-w-0">
-            {/* MOBILE ONLY: Burger Menu */}
-            <button
-              onClick={() => open('mobile')}
-              aria-label={isEn ? "Open Menu" : "فتح القائمة"}
-              className="lg:hidden p-1 text-[#234745] hover:opacity-70 transition-opacity shrink-0"
-            >
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="18" x2="21" y2="18" /></svg>
-            </button>
-
-            <div className="hidden lg:block">
-              <CategoryNav locale={locale} activeMega={activeMega} setActiveMega={setActiveMega} />
-            </div>
+            <CategoryNav locale={locale} activeMega={activeMega} setActiveMega={setActiveMega} />
           </div>
 
-          {/* CENTER: Logo (Centered relative to the grid sides) */}
-          <div className="flex justify-center px-2 lg:px-12 shrink-0">
+          {/* CENTER: Logo */}
+          <div className="flex justify-center px-12 shrink-0">
             <NavLink to={isEn ? "/en" : "/"} prefetch="intent" className="flex items-center justify-center transition-transform hover:scale-[1.02]">
               <img src="/logo.svg" alt="SAADEDDIN" width="120" height="32" style={{ width: '120px', maxWidth: '100%', height: 'auto' }} className="object-contain" />
             </NavLink>
           </div>
 
           {/* LEFT (in RTL) / RIGHT (in LTR): Icons & Search */}
-          <div className="flex items-center gap-3 lg:gap-6 justify-end">
+          <div className="flex items-center gap-6 justify-end">
             <div className="flex-1 max-w-[280px] hidden xl:block">
               <GlobalSearchBar locale={locale} />
             </div>
 
-            {/* Loyalty Points - Desktop Only */}
-            <NavLink to={isEn ? "/en/account/wallet" : "/account/wallet"} className="hidden lg:flex group items-center gap-2 hover:opacity-70 transition-all font-bold text-[13px]">
+            {/* Loyalty Points */}
+            <NavLink to={isEn ? "/en/account/wallet" : "/account/wallet"} className="flex group items-center gap-2 hover:opacity-70 transition-all font-bold text-[13px]">
               <span>{isEn ? `Points${points !== null ? ` (${points})` : ''}` : `نقاطي${points !== null ? ` (${points})` : ''}`}</span>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="#f1c40f" stroke="#f1c40f" strokeWidth="1.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
             </NavLink>
 
-            {/* Wishlist - Desktop Only */}
-            <NavLink to={isEn ? "/en/account/wishlist" : "/account/wishlist"} className="hidden lg:flex group items-center gap-2 hover:opacity-70 transition-all font-bold text-[13px]">
+            {/* Wishlist */}
+            <NavLink to={isEn ? "/en/account/wishlist" : "/account/wishlist"} className="flex group items-center gap-2 hover:opacity-70 transition-all font-bold text-[13px]">
               <span>{isEn ? 'Wishlist' : 'المفضلة'}</span>
               <div className="relative">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" /></svg>
@@ -538,23 +545,14 @@ function MiddleBar({
               </div>
             </NavLink>
 
-            <div className="flex items-center gap-2 md:gap-4 lg:gap-6 shrink-0 text-[#234745]">
-              {/* Account - Desktop Only */}
-              <NavLink to={isEn ? "/en/account" : "/account"} className="hidden lg:flex group items-center gap-2 hover:opacity-70 transition-all font-bold text-[13px]">
+            <div className="flex items-center gap-6 shrink-0 text-[#234745]">
+              {/* Account */}
+              <NavLink to={isEn ? "/en/account" : "/account"} className="flex group items-center gap-2 hover:opacity-70 transition-all font-bold text-[13px]">
                 <span>{isEn ? 'Account' : 'حسابي'}</span>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
               </NavLink>
 
-              {/* Search - Visible on Tablet and Mobile */}
-              <button
-                onClick={() => open('search')}
-                aria-label={isEn ? "Search" : "بحث"}
-                className="xl:hidden p-2 text-[#234745] hover:bg-[#234745]/5 rounded-full transition-all"
-              >
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
-              </button>
-
-              {/* Cart - Always Visible */}
+              {/* Cart */}
               <button onClick={() => open('cart')} aria-label="Cart" className="group flex items-center gap-2 hover:opacity-70 transition-all relative p-2">
                 <div className="relative">
                   <svg width="22" height="22" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12.5132 14.1798C12.8761 14.1798 13.2241 14.324 13.4808 14.5806C13.7374 14.8372 13.8816 15.1853 13.8816 15.5482C13.8816 15.9111 13.7374 16.2592 13.4808 16.5158C13.2241 16.7725 12.8761 16.9166 12.5132 16.9166C12.1502 16.9166 11.8022 16.7725 11.5455 16.5158C11.2889 16.2592 11.1447 15.9111 11.1447 15.5482C11.1447 15.1853 11.2889 14.8372 11.5455 14.5806C11.8022 14.324 12.1502 14.1798 12.5132 14.1798ZM12.5132 14.864C12.3317 14.864 12.1577 14.9361 12.0293 15.0644C11.901 15.1927 11.8289 15.3667 11.8289 15.5482C11.8289 15.7297 11.901 15.9037 12.0293 16.032C12.1577 16.1603 12.3317 16.2324 12.5132 16.2324C12.6946 16.2324 12.8687 16.1603 12.997 16.032C13.1253 15.9037 13.1974 15.7297 13.1974 15.5482C13.1974 15.3667 13.1253 15.1927 12.997 15.0644C12.8687 14.9361 12.6946 14.864 12.5132 14.864ZM6.35526 14.1798C6.71819 14.1798 7.06625 14.324 7.32288 14.5806C7.57951 14.8372 7.72368 15.1853 7.72368 15.5482C7.72368 15.9111 7.57951 16.2592 7.32288 16.5158C7.06625 16.7725 6.71819 16.9166 6.35526 16.9166C5.99234 16.9166 5.64427 16.7725 5.38764 16.5158C5.13101 16.2592 4.98684 15.9111 4.98684 15.5482C4.98684 15.1853 5.13101 14.8372 5.38764 14.5806C5.64427 14.324 5.99234 14.1798 6.35526 14.1798ZM6.35526 14.864C6.1738 14.864 5.99977 14.9361 5.87145 15.0644C5.74314 15.1927 5.67105 15.3667 5.67105 15.5482C5.67105 15.7297 5.74314 15.9037 5.87145 16.032C5.99977 16.1603 6.1738 16.2324 6.35526 16.2324C6.53673 16.2324 6.71076 16.1603 6.83907 16.032C6.96739 15.9037 7.03947 15.7297 7.03947 15.5482C7.03947 15.3667 6.96739 15.1927 6.83907 15.0644C6.71076 14.9361 6.53673 14.864 6.35526 14.864ZM13.8816 5.96926H4.48737L6.23211 10.0745H11.8289C12.0547 10.0745 12.2532 9.96505 12.3763 9.80084L14.4289 7.06399C14.5179 6.94768 14.5658 6.80399 14.5658 6.65347C14.5658 6.472 14.4937 6.29797 14.3654 6.16966C14.2371 6.04134 14.063 5.96926 13.8816 5.96926ZM11.8289 10.7587H6.26632L5.73947 11.8261L5.67105 12.1272C5.67105 12.3086 5.74314 12.4826 5.87145 12.611C5.99977 12.7393 6.1738 12.8114 6.35526 12.8114H13.8816V13.4956H6.35526C5.99234 13.4956 5.64427 13.3514 5.38764 13.0948C5.13101 12.8381 4.98684 12.4901 4.98684 12.1272C4.98664 11.895 5.0455 11.6666 5.15789 11.4635L5.65053 10.4577L3.16684 4.60084H2.25V3.91663H3.61842L4.2 5.28505H13.8816C14.2445 5.28505 14.5926 5.42922 14.8492 5.68585C15.1058 5.94248 15.25 6.29054 15.25 6.65347C15.25 6.99557 15.1337 7.28294 14.9421 7.51557L12.9511 10.1772C12.7047 10.5261 12.2942 10.7587 11.8289 10.7587Z" fill="currentColor" /></svg>
@@ -569,8 +567,65 @@ function MiddleBar({
               </button>
             </div>
           </div>
-
         </div>
+
+        {/* 2. Mobile Header Layout (lg:hidden, forced LTR layout matching mockup exactly) */}
+        <div className="lg:hidden flex items-center justify-between w-full px-1" dir="ltr">
+          {/* LEFT GROUP: Account, Wishlist, Loyalty Star */}
+          <div className="flex items-center gap-2">
+            {/* Account */}
+            <NavLink to={isEn ? "/en/account" : "/account"} className="text-[#234745] hover:opacity-70 transition-opacity p-0.5">
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
+            </NavLink>
+
+            {/* Wishlist */}
+            <NavLink to={isEn ? "/en/account/wishlist" : "/account/wishlist"} className="text-[#234745] hover:opacity-70 transition-opacity p-0.5 relative">
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" /></svg>
+              <WishlistBadge />
+            </NavLink>
+
+            {/* Loyalty Star */}
+            <NavLink to={isEn ? "/en/account/wallet" : "/account/wallet"} className="text-[#234745] hover:opacity-70 transition-opacity p-0.5 relative">
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="#f1c40f" stroke="#f1c40f" strokeWidth="1.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+              {points !== null && (
+                <span className="absolute -top-1 -right-1.5 bg-[#234745] text-white text-[8px] font-bold px-1 rounded-full">{points}</span>
+              )}
+            </NavLink>
+          </div>
+
+          {/* CENTER GROUP: Logo */}
+          <div className="flex items-center justify-center flex-1 max-w-[150px] px-1">
+            <NavLink to={isEn ? "/en" : "/"} prefetch="intent" className="transition-transform hover:scale-[1.02] flex items-center justify-center">
+              <img src="/logo.svg" alt="SAADEDDIN" className="h-[34px] w-auto object-contain" />
+            </NavLink>
+          </div>
+
+          {/* RIGHT GROUP: Cart, Search, Menu */}
+          <div className="flex items-center gap-2">
+            {/* Cart */}
+            <button onClick={() => open('cart')} aria-label="Cart" className="text-[#234745] hover:opacity-70 transition-opacity p-0.5 relative">
+              <svg width="19" height="19" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12.5132 14.1798C12.8761 14.1798 13.2241 14.324 13.4808 14.5806C13.7374 14.8372 13.8816 15.1853 13.8816 15.5482C13.8816 15.9111 13.7374 16.2592 13.4808 16.5158C13.2241 16.7725 12.8761 16.9166 12.5132 16.9166C12.1502 16.9166 11.8022 16.7725 11.5455 16.5158C11.2889 16.2592 11.1447 15.9111 11.1447 15.5482C11.1447 15.1853 11.2889 14.8372 11.5455 14.5806C11.8022 14.324 12.1502 14.1798 12.5132 14.1798ZM12.5132 14.864C12.3317 14.864 12.1577 14.9361 12.0293 15.0644C11.901 15.1927 11.8289 15.3667 11.8289 15.5482C11.8289 15.7297 11.901 15.9037 12.0293 16.032C12.1577 16.1603 12.3317 16.2324 12.5132 16.2324C12.6946 16.2324 12.8687 16.1603 12.997 16.032C13.1253 15.9037 13.1974 15.7297 13.1974 15.5482C13.1974 15.3667 13.1253 15.1927 12.997 15.0644C12.8687 14.9361 12.6946 14.864 12.5132 14.864ZM6.35526 14.1798C6.71819 14.1798 7.06625 14.324 7.32288 14.5806C7.57951 14.8372 7.72368 15.1853 7.72368 15.5482C7.72368 15.9111 7.57951 16.2592 7.32288 16.5158C7.06625 16.7725 6.71819 16.9166 6.35526 16.9166C5.99234 16.9166 5.64427 16.7725 5.38764 16.5158C5.13101 16.2592 4.98684 15.9111 4.98684 15.5482C4.98684 15.1853 5.13101 14.8372 5.38764 14.5806C5.64427 14.324 5.99234 14.1798 6.35526 14.1798ZM6.35526 14.864C6.1738 14.864 5.99977 14.9361 5.87145 15.0644C5.74314 15.1927 5.67105 15.3667 5.67105 15.5482C5.67105 15.7297 5.74314 15.9037 5.87145 16.032C5.99977 16.1603 6.1738 16.2324 6.35526 16.2324C6.53673 16.2324 6.71076 16.1603 6.83907 16.032C6.96739 15.9037 7.03947 15.7297 7.03947 15.5482C7.03947 15.3667 6.96739 15.1927 6.83907 15.0644C6.71076 14.9361 6.53673 14.864 6.35526 14.864ZM13.8816 5.96926H4.48737L6.23211 10.0745H11.8289C12.0547 10.0745 12.2532 9.96505 12.3763 9.80084L14.4289 7.06399C14.5179 6.94768 14.5658 6.80399 14.5658 6.65347C14.5658 6.472 14.4937 6.29797 14.3654 6.16966C14.2371 6.04134 14.063 5.96926 13.8816 5.96926ZM11.8289 10.7587H6.26632L5.73947 11.8261L5.67105 12.1272C5.67105 12.3086 5.74314 12.4826 5.87145 12.611C5.99977 12.7393 6.1738 12.8114 6.35526 12.8114H13.8816V13.4956H6.35526C5.99234 13.4956 5.64427 13.3514 5.38764 13.0948C5.13101 12.8381 4.98684 12.4901 4.98684 12.1272C4.98664 11.895 5.0455 11.6666 5.15789 11.4635L5.65053 10.4577L3.16684 4.60084H2.25V3.91663H3.61842L4.2 5.28505H13.8816C14.2445 5.28505 14.5926 5.42922 14.8492 5.68585C15.1058 5.94248 15.25 6.29054 15.25 6.65347C15.25 6.99557 15.1337 7.28294 14.9421 7.51557L12.9511 10.1772C12.7047 10.5261 12.2942 10.7587 11.8289 10.7587Z" fill="currentColor" /></svg>
+              <Suspense fallback={null}>
+                <Await resolve={cart}>{(cartData) => {
+                  const count = cartData?.totalQuantity ?? 0;
+                  if (count === 0) return null;
+                  return <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-[#e34242] text-white text-[9px] rounded-full flex items-center justify-center shadow-sm border border-white">{count}</span>
+                }}</Await>
+              </Suspense>
+            </button>
+
+            {/* Search */}
+            <button onClick={() => open('search')} aria-label={isEn ? "Search" : "بحث"} className="text-[#234745] hover:opacity-70 transition-opacity p-0.5">
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
+            </button>
+
+            {/* Menu Hamburger */}
+            <button onClick={() => open('mobile')} aria-label={isEn ? "Open Menu" : "فتح القائمة"} className="text-[#234745] hover:opacity-70 transition-opacity p-0.5">
+              <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="18" x2="21" y2="18" /></svg>
+            </button>
+          </div>
+        </div>
+
       </div>
     </div>
   );
@@ -636,33 +691,58 @@ function CategoryNav({
   );
 }
 
-function ProductMegaMenu({ locale }: { locale?: string }) {
+function ProductMegaMenu({ locale, megaMenuData }: { locale?: string; megaMenuData?: any }) {
   const isEn = locale === 'en';
 
-  const categories = [
+  const collections = megaMenuData?.collections?.nodes || [];
+  
+  const categories = collections.length > 0 ? collections.map((col: any) => {
+    const colUrl = isEn ? `/en/collections/${col.handle}` : `/collections/${col.handle}`;
+    return {
+      title: col.title,
+      image: col.image?.url || 'https://cdn.shopify.com/s/files/1/0943/4280/7861/files/category-baklava.jpg?v=1730000000',
+      items: col.products?.nodes?.map((p: any) => ({
+        title: p.title,
+        url: isEn ? `/en/products/${p.handle}` : `/products/${p.handle}`
+      })) || [],
+      url: colUrl
+    };
+  }) : [
     {
       title: isEn ? 'Oriental Sweets' : 'حلويات شرقية',
       image: 'https://cdn.shopify.com/s/files/1/0943/4280/7861/files/category-baklava.jpg?v=1730000000',
-      items: isEn ? ['Baklava', 'Maamoul', 'Kunafa', 'Basbousa'] : ['بقلاوة', 'معمول', 'كنافة', 'بسبوسة'],
-      url: '/collections/oriental-sweets'
+      items: (isEn ? ['Baklava', 'Maamoul', 'Kunafa', 'Basbousa'] : ['بقلاوة', 'معمول', 'كنافة', 'بسبوسة']).map(name => ({
+        title: name,
+        url: `${isEn ? '/en' : ''}/collections/oriental-sweets/${name.toLowerCase().replace(/ /g, '-')}`
+      })),
+      url: isEn ? '/en/collections/oriental-sweets' : '/collections/oriental-sweets'
     },
     {
       title: isEn ? 'Premium Chocolates' : 'شوكولاتة فاخرة',
       image: 'https://cdn.shopify.com/s/files/1/0943/4280/7861/files/category-choco.jpg?v=1730000001',
-      items: isEn ? ['Truffles', 'Pralines', 'Gift Boxes', 'Wrapped Choco'] : ['ترافلز', 'برالين', 'صناديق هدايا', 'شوكولاتة مغلفة'],
-      url: '/collections/chocolates'
+      items: (isEn ? ['Truffles', 'Pralines', 'Gift Boxes', 'Wrapped Choco'] : ['ترافلز', 'برالين', 'صناديق هدايا', 'شوكولاتة مغلفة']).map(name => ({
+        title: name,
+        url: `${isEn ? '/en' : ''}/collections/chocolates/${name.toLowerCase().replace(/ /g, '-')}`
+      })),
+      url: isEn ? '/en/collections/chocolates' : '/collections/chocolates'
     },
     {
       title: isEn ? 'Cakes & Pastries' : 'كيك وحلويات غربية',
       image: 'https://cdn.shopify.com/s/files/1/0943/4280/7861/files/category-cakes.jpg?v=1730000002',
-      items: isEn ? ['Occasion Cakes', 'Mini Cakes', 'Macarons', 'Éclairs'] : ['كيك المناسبات', 'ميني كيك', 'ماكرون', 'اكلير'],
-      url: '/collections/cakes'
+      items: (isEn ? ['Occasion Cakes', 'Mini Cakes', 'Macarons', 'Éclairs'] : ['كيك المناسبات', 'ميني كيك', 'ماكرون', 'اكلير']).map(name => ({
+        title: name,
+        url: `${isEn ? '/en' : ''}/collections/cakes/${name.toLowerCase().replace(/ /g, '-')}`
+      })),
+      url: isEn ? '/en/collections/cakes' : '/collections/cakes'
     },
     {
       title: isEn ? 'Ice Cream' : 'آيس كريم',
       image: 'https://cdn.shopify.com/s/files/1/0943/4280/7861/files/category-icecream.jpg?v=1730000003',
-      items: isEn ? ['Gelato', 'Sorbet', 'Party Tubs', 'Stick Ice Cream'] : ['جيلاتو', 'سوربيه', 'عبوات الحفلات', 'آيس كريم ستيك'],
-      url: '/collections/ice-cream'
+      items: (isEn ? ['Gelato', 'Sorbet', 'Party Tubs', 'Stick Ice Cream'] : ['جيلاتو', 'سوربيه', 'عبوات الحفلات', 'آيس كريم ستيك']).map(name => ({
+        title: name,
+        url: `${isEn ? '/en' : ''}/collections/ice-cream/${name.toLowerCase().replace(/ /g, '-')}`
+      })),
+      url: isEn ? '/en/collections/ice-cream' : '/collections/ice-cream'
     }
   ];
 
@@ -682,12 +762,12 @@ function ProductMegaMenu({ locale }: { locale?: string }) {
             </NavLink>
             <ul className="space-y-3">
               {cat.items.map((item) => (
-                <li key={item}>
+                <li key={item.title}>
                   <NavLink
-                    to={`${cat.url}/${item.toLowerCase().replace(/ /g, '-')}`}
+                    to={item.url}
                     className="text-[#234745]/70 hover:text-[#234745] hover:translate-x-1 transition-all inline-block font-medium text-sm"
                   >
-                    {item}
+                    {item.title}
                   </NavLink>
                 </li>
               ))}

@@ -4,7 +4,6 @@ import type {CartQueryDataReturn} from '@shopify/hydrogen';
 import {CartForm} from '@shopify/hydrogen';
 import {CartMain} from '~/components/CartMain';
 import {getShopTitle} from '~/lib/seo';
-import { getMockPoints, redeemMockPoints, refundMockPoints } from '~/lib/mock-loyalty.server';
 
 export const meta: Route.MetaFunction = ({matches}) => {
   return [{title: getShopTitle('Cart', matches)}];
@@ -19,8 +18,10 @@ export const headers: HeadersFunction = ({actionHeaders, loaderHeaders}) => {
 
 export async function action({request, context}: Route.ActionArgs) {
   const {cart} = context;
+  const isEn = context.storefront.i18n.language === 'EN';
 
-  const formData = await request.formData();
+  try {
+    const formData = await request.formData();
   console.log('[CART POST] Received action to /cart. FormData keys:', Array.from(formData.keys()));
   
   const rawInput = formData.get('cartFormInput');
@@ -38,21 +39,53 @@ export async function action({request, context}: Route.ActionArgs) {
 
   // Helper: retry a cart mutation up to `maxRetries` times with exponential backoff
   // when Shopify returns a throttle error.
-  async function withRetry<T>(fn: () => Promise<T>, maxRetries = 3): Promise<T> {
+  async function withRetry<T>(fn: () => Promise<T>, maxRetries = 4): Promise<T> {
     let lastError: any;
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       try {
-        return await fn();
+        const res = await fn();
+        
+        // Check for throttle errors in resolved GraphQL response
+        const hasThrottleError = 
+          (res && typeof res === 'object' && Array.isArray((res as any).errors) && 
+            (res as any).errors.some((e: any) => e?.message && String(e.message).toLowerCase().includes('throttled'))) ||
+          (res && typeof res === 'object' && Array.isArray((res as any).userErrors) && 
+            (res as any).userErrors.some((e: any) => e?.message && String(e.message).toLowerCase().includes('throttled')));
+            
+        if (hasThrottleError) {
+          console.warn(`[CART] Mutation attempt ${attempt + 1}/${maxRetries} resolved with throttle errors. Throwing to retry...`);
+          throw new Error('Throttled');
+        }
+        
+        return res;
       } catch (err: any) {
         lastError = err;
-        const isThrottled =
-          err?.message?.toLowerCase().includes('throttled') ||
-          err?.status === 429 ||
-          String(err).toLowerCase().includes('throttled');
-        if (!isThrottled || attempt >= maxRetries - 1) throw err;
-        // Exponential backoff: 300ms, 900ms, 2700ms …
-        const delay = 300 * Math.pow(3, attempt);
-        console.warn(`[CART] Throttled by Shopify, retrying in ${delay}ms (attempt ${attempt + 1}/${maxRetries})`);
+        
+        // Robust throttle detection
+        const errStr = String(err).toLowerCase();
+        let isThrottled = errStr.includes('throttled') || err?.status === 429;
+        
+        if (err && typeof err === 'object') {
+          if (err.message && String(err.message).toLowerCase().includes('throttled')) {
+            isThrottled = true;
+          }
+          if (Array.isArray(err.errors)) {
+            isThrottled = isThrottled || err.errors.some((e: any) => e?.message && String(e.message).toLowerCase().includes('throttled'));
+          }
+          if (Array.isArray(err.graphQLErrors)) {
+            isThrottled = isThrottled || err.graphQLErrors.some((e: any) => e?.message && String(e.message).toLowerCase().includes('throttled'));
+          }
+        }
+
+        console.warn(`[CART] Mutation attempt ${attempt + 1}/${maxRetries} failed. isThrottled: ${isThrottled}. Error:`, err?.message || err);
+        
+        if (!isThrottled || attempt >= maxRetries - 1) {
+          throw err;
+        }
+        
+        // Exponential backoff: 500ms, 1500ms, 4500ms …
+        const delay = 500 * Math.pow(3, attempt);
+        console.warn(`[CART] Throttled by Shopify, retrying in ${delay}ms...`);
         await new Promise(resolve => setTimeout(resolve, delay));
       }
     }
@@ -109,32 +142,15 @@ export async function action({request, context}: Route.ActionArgs) {
           discountCodes = discountCodes.filter(c => c !== appliedCode);
         }
 
-        // Refund any previous redeemed points
-        const appliedPointsAttr = currentCart.attributes?.find((a: any) => a.key === 'loyalty_points')?.value;
-        const appliedPoints = parseInt(appliedPointsAttr || '0') || 0;
-        if (appliedPoints > 0) {
-          refundMockPoints(rawPhone, appliedPoints);
-        }
-
         await cart.updateDiscountCodes(discountCodes);
         result = await cart.updateAttributes([{ key: 'loyalty_points', value: '0' }]);
         break;
       }
 
-      // Refund previous redeemed points first (before validating new one)
-      const appliedPointsAttr = currentCart.attributes?.find((a: any) => a.key === 'loyalty_points')?.value;
-      const appliedPoints = parseInt(appliedPointsAttr || '0') || 0;
-      if (appliedPoints > 0) {
-        refundMockPoints(rawPhone, appliedPoints);
-      }
-
       // Validate availability from the mock registry
+      const { getMockPoints } = await import('~/lib/mock-loyalty.server');
       const availablePoints = getMockPoints(rawPhone);
       if (pointsToRedeem > availablePoints) {
-        // Rollback previous deduction if new validation fails
-        if (appliedPoints > 0) {
-          redeemMockPoints(rawPhone, appliedPoints);
-        }
         return data({ error: isEn ? `Insufficient points.` : `نقاط غير كافية.` }, { status: 400 });
       }
 
@@ -143,10 +159,6 @@ export async function action({request, context}: Route.ActionArgs) {
       const discountAmount = pointsToRedeem * pointsToCurrencyRatio;
 
       if (discountAmount > cartSubtotal && cartSubtotal > 0) {
-        // Rollback previous deduction if subtotal check fails
-        if (appliedPoints > 0) {
-          redeemMockPoints(rawPhone, appliedPoints);
-        }
         return data({ error: isEn ? `Cannot exceed cart total.` : `لا يمكن تجاوز إجمالي السلة.` }, { status: 400 });
       }
 
@@ -246,8 +258,7 @@ export async function action({request, context}: Route.ActionArgs) {
         }
       }
 
-      // Deduct the points statefully from the mock CRM
-      redeemMockPoints(rawPhone, pointsToRedeem);
+
 
       const existingCodes = currentCart.discountCodes?.map(dc => dc.code).filter(c => !c.startsWith('LOYALTY-')) || [];
       const newCodes = [...existingCodes, generatedCode];
@@ -596,6 +607,40 @@ export async function action({request, context}: Route.ActionArgs) {
     },
     {status, headers},
   );
+  } catch (err: any) {
+    console.error('[CART ACTION EXCEPTION]', err);
+    const isThrottled = String(err).toLowerCase().includes('throttled') || err?.status === 429;
+    const errMsg = isThrottled
+      ? (isEn ? 'The shop is currently busy. Resetting session, please try again.' : 'المتجر مشغول حالياً. تم إعادة تعيين الجلسة، يرجى المحاولة مرة أخرى.')
+      : (isEn ? 'An error occurred while updating the cart. Please try again.' : 'حدث خطأ أثناء تحديث السلة. يرجى المحاولة مرة أخرى.');
+      
+    // Auto-recovery: clear the throttled cart ID from the session so the next attempt starts fresh
+    if (isThrottled) {
+      context.session.set('cartId', '');
+    }
+
+    const headers = new Headers();
+    if (context.session.isPending || isThrottled) {
+      try {
+        headers.append('Set-Cookie', await context.session.commit());
+      } catch (e) {
+        console.error('[CART] Failed to commit session on error:', e);
+      }
+    }
+      
+    return data(
+      {
+        cart: null,
+        errors: [{ message: errMsg }],
+        warnings: [],
+        error: errMsg,
+      },
+      {
+        status: isThrottled ? 429 : 400,
+        headers,
+      }
+    );
+  }
 }
 
 export async function loader({context}: Route.LoaderArgs) {

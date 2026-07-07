@@ -90,6 +90,21 @@ export async function action({ request, context }: ActionFunctionArgs) {
       });
     }
 
+    // Deduct loyalty points if they were applied in the cart
+    const loyaltyPointsAttr = cartAttributes.find((a: any) => a.name === 'loyalty_points' || a.key === 'loyalty_points');
+    if (loyaltyPointsAttr?.value) {
+      const pointsToRedeem = parseInt(loyaltyPointsAttr.value) || 0;
+      if (pointsToRedeem > 0) {
+        try {
+          const { redeemMockPoints } = await import('~/lib/mock-loyalty.server');
+          redeemMockPoints(customerPhone, pointsToRedeem);
+          console.log(`[CRM Webhook] Statefully deducted ${pointsToRedeem} points for ${customerPhone} on Order completion.`);
+        } catch (e: any) {
+          console.error('[CRM Webhook] Failed to deduct points:', e.message);
+        }
+      }
+    }
+
     // Sync to CRM
     const result = await syncOrderToCRM({
       orderName: payload.name || `#${payload.order_number}`,

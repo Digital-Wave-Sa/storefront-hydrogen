@@ -25,6 +25,7 @@ interface PageLayoutProps {
   children?: React.ReactNode;
   locations?: Promise<any>;
   customer?: Promise<any>;
+  megaMenuData?: any;
 }
 
 export function PageLayout({
@@ -36,6 +37,7 @@ export function PageLayout({
   publicStoreDomain,
   locations,
   customer,
+  megaMenuData,
 }: PageLayoutProps) {
   const rootData = useRouteLoaderData('root') as any;
   const location = useLocation();
@@ -63,6 +65,7 @@ export function PageLayout({
           selectedLocationName={rootData?.selectedLocationName}
           selectedAddressName={rootData?.selectedAddressName}
           fulfillmentType={rootData?.fulfillmentType}
+          megaMenuData={megaMenuData}
         />
       )}
       <main>{children}</main>

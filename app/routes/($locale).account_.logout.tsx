@@ -34,6 +34,7 @@ export async function action({request, context}: ActionFunctionArgs) {
 
   // 2. Unset Custom Token
   session.unset('saadeddinToken');
+  session.unset('loginOtpPhone');
 
   // 3. Unset Shopify Token
   session.unset('customerAccessToken');

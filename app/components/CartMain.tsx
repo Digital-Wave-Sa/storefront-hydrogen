@@ -118,7 +118,7 @@ export function CartMain({layout, cart: originalCart}: CartMainProps) {
         <div className="w-full bg-[#234745] relative overflow-hidden py-8"
           style={{
             backgroundImage: `url(${patternBg})`,
-            backgroundSize: 'cover',
+            backgroundSize: '1600px 800px',
             backgroundPosition: 'center'
           }}
         >
@@ -127,7 +127,7 @@ export function CartMain({layout, cart: originalCart}: CartMainProps) {
                
                {/* Back Button (First in DOM = Right in RTL) */}
                <button 
-                 onClick={() => window.history.back()} 
+                 onClick={() => { if (typeof window !== 'undefined') window.history.back(); }} 
                  className="flex items-center gap-2 bg-[#A8BDB5] hover:bg-[#97aaa3] text-[#1a3b3a] px-6 py-2 rounded-full text-[15px] font-bold transition-all shadow-sm shrink-0"
                  style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
                >

@@ -27,13 +27,6 @@ export type CartLineFragment = Pick<
     StorefrontAPI.ProductVariant,
     'id' | 'availableForSale' | 'requiresShipping' | 'title'
   > & {
-    storeAvailability: {
-      nodes: Array<
-        Pick<StorefrontAPI.StoreAvailability, 'available'> & {
-          location: Pick<StorefrontAPI.Location, 'id' | 'name'>;
-        }
-      >;
-    };
     compareAtPrice?: StorefrontAPI.Maybe<
       Pick<StorefrontAPI.MoneyV2, 'currencyCode' | 'amount'>
     >;
@@ -77,13 +70,6 @@ export type CartLineComponentFragment = Pick<
     StorefrontAPI.ProductVariant,
     'id' | 'availableForSale' | 'requiresShipping' | 'title'
   > & {
-    storeAvailability: {
-      nodes: Array<
-        Pick<StorefrontAPI.StoreAvailability, 'available'> & {
-          location: Pick<StorefrontAPI.Location, 'id' | 'name'>;
-        }
-      >;
-    };
     compareAtPrice?: StorefrontAPI.Maybe<
       Pick<StorefrontAPI.MoneyV2, 'currencyCode' | 'amount'>
     >;
@@ -126,13 +112,6 @@ export type CartLineComponentFragment = Pick<
         StorefrontAPI.ProductVariant,
         'id' | 'availableForSale' | 'requiresShipping' | 'title'
       > & {
-        storeAvailability: {
-          nodes: Array<
-            Pick<StorefrontAPI.StoreAvailability, 'available'> & {
-              location: Pick<StorefrontAPI.Location, 'id' | 'name'>;
-            }
-          >;
-        };
         compareAtPrice?: StorefrontAPI.Maybe<
           Pick<StorefrontAPI.MoneyV2, 'currencyCode' | 'amount'>
         >;
@@ -206,13 +185,6 @@ export type CartApiQueryFragment = Pick<
             StorefrontAPI.ProductVariant,
             'id' | 'availableForSale' | 'requiresShipping' | 'title'
           > & {
-            storeAvailability: {
-              nodes: Array<
-                Pick<StorefrontAPI.StoreAvailability, 'available'> & {
-                  location: Pick<StorefrontAPI.Location, 'id' | 'name'>;
-                }
-              >;
-            };
             compareAtPrice?: StorefrontAPI.Maybe<
               Pick<StorefrontAPI.MoneyV2, 'currencyCode' | 'amount'>
             >;
@@ -261,13 +233,6 @@ export type CartApiQueryFragment = Pick<
             StorefrontAPI.ProductVariant,
             'id' | 'availableForSale' | 'requiresShipping' | 'title'
           > & {
-            storeAvailability: {
-              nodes: Array<
-                Pick<StorefrontAPI.StoreAvailability, 'available'> & {
-                  location: Pick<StorefrontAPI.Location, 'id' | 'name'>;
-                }
-              >;
-            };
             compareAtPrice?: StorefrontAPI.Maybe<
               Pick<StorefrontAPI.MoneyV2, 'currencyCode' | 'amount'>
             >;
@@ -316,13 +281,6 @@ export type CartApiQueryFragment = Pick<
                 StorefrontAPI.ProductVariant,
                 'id' | 'availableForSale' | 'requiresShipping' | 'title'
               > & {
-                storeAvailability: {
-                  nodes: Array<
-                    Pick<StorefrontAPI.StoreAvailability, 'available'> & {
-                      location: Pick<StorefrontAPI.Location, 'id' | 'name'>;
-                    }
-                  >;
-                };
                 compareAtPrice?: StorefrontAPI.Maybe<
                   Pick<StorefrontAPI.MoneyV2, 'currencyCode' | 'amount'>
                 >;
@@ -478,138 +436,6 @@ export type FooterQuery = {
           >;
         }
       >;
-    }
-  >;
-};
-
-export type GetReviewsQueryVariables = StorefrontAPI.Exact<{
-  [key: string]: never;
-}>;
-
-export type GetReviewsQuery = {
-  metaobjects: {
-    nodes: Array<
-      Pick<StorefrontAPI.Metaobject, 'id'> & {
-        fields: Array<Pick<StorefrontAPI.MetaobjectField, 'key' | 'value'>>;
-      }
-    >;
-  };
-};
-
-export type LocationsQueryVariables = StorefrontAPI.Exact<{
-  [key: string]: never;
-}>;
-
-export type LocationsQuery = {
-  locations: {
-    nodes: Array<
-      Pick<StorefrontAPI.Location, 'id' | 'name'> & {
-        address: Pick<
-          StorefrontAPI.LocationAddress,
-          | 'address1'
-          | 'address2'
-          | 'city'
-          | 'country'
-          | 'latitude'
-          | 'longitude'
-          | 'phone'
-        >;
-        delivery_fee?: StorefrontAPI.Maybe<
-          Pick<StorefrontAPI.Metafield, 'key' | 'value'>
-        >;
-        free_delivery_threshold?: StorefrontAPI.Maybe<
-          Pick<StorefrontAPI.Metafield, 'key' | 'value'>
-        >;
-        working_hours_from?: StorefrontAPI.Maybe<
-          Pick<StorefrontAPI.Metafield, 'key' | 'value'>
-        >;
-        working_hours_to?: StorefrontAPI.Maybe<
-          Pick<StorefrontAPI.Metafield, 'key' | 'value'>
-        >;
-        working_hours_from_shift2?: StorefrontAPI.Maybe<
-          Pick<StorefrontAPI.Metafield, 'key' | 'value'>
-        >;
-        working_hours_to_shift2?: StorefrontAPI.Maybe<
-          Pick<StorefrontAPI.Metafield, 'key' | 'value'>
-        >;
-        sunday_working_hours_from?: StorefrontAPI.Maybe<
-          Pick<StorefrontAPI.Metafield, 'key' | 'value'>
-        >;
-        sunday_working_hours_to?: StorefrontAPI.Maybe<
-          Pick<StorefrontAPI.Metafield, 'key' | 'value'>
-        >;
-        monday_working_hours_from?: StorefrontAPI.Maybe<
-          Pick<StorefrontAPI.Metafield, 'key' | 'value'>
-        >;
-        monday_working_hours_to?: StorefrontAPI.Maybe<
-          Pick<StorefrontAPI.Metafield, 'key' | 'value'>
-        >;
-        tuesday_working_hours_from?: StorefrontAPI.Maybe<
-          Pick<StorefrontAPI.Metafield, 'key' | 'value'>
-        >;
-        tuesday_working_hours_to?: StorefrontAPI.Maybe<
-          Pick<StorefrontAPI.Metafield, 'key' | 'value'>
-        >;
-        wednesday_working_hours_from?: StorefrontAPI.Maybe<
-          Pick<StorefrontAPI.Metafield, 'key' | 'value'>
-        >;
-        wednesday_working_hours_to?: StorefrontAPI.Maybe<
-          Pick<StorefrontAPI.Metafield, 'key' | 'value'>
-        >;
-        thursday_working_hours_from?: StorefrontAPI.Maybe<
-          Pick<StorefrontAPI.Metafield, 'key' | 'value'>
-        >;
-        thursday_working_hours_to?: StorefrontAPI.Maybe<
-          Pick<StorefrontAPI.Metafield, 'key' | 'value'>
-        >;
-        friday_working_hours_from?: StorefrontAPI.Maybe<
-          Pick<StorefrontAPI.Metafield, 'key' | 'value'>
-        >;
-        friday_working_hours_to?: StorefrontAPI.Maybe<
-          Pick<StorefrontAPI.Metafield, 'key' | 'value'>
-        >;
-        saturday_working_hours_from?: StorefrontAPI.Maybe<
-          Pick<StorefrontAPI.Metafield, 'key' | 'value'>
-        >;
-        saturday_working_hours_to?: StorefrontAPI.Maybe<
-          Pick<StorefrontAPI.Metafield, 'key' | 'value'>
-        >;
-        rating?: StorefrontAPI.Maybe<
-          Pick<StorefrontAPI.Metafield, 'key' | 'value'>
-        >;
-        rating_count?: StorefrontAPI.Maybe<
-          Pick<StorefrontAPI.Metafield, 'key' | 'value'>
-        >;
-      }
-    >;
-  };
-};
-
-export type CustomerAddressesQueryVariables = StorefrontAPI.Exact<{
-  customerAccessToken: StorefrontAPI.Scalars['String']['input'];
-}>;
-
-export type CustomerAddressesQuery = {
-  customer?: StorefrontAPI.Maybe<
-    Pick<
-      StorefrontAPI.Customer,
-      'id' | 'email' | 'tags' | 'firstName' | 'lastName'
-    > & {
-      addresses: {
-        nodes: Array<
-          Pick<
-            StorefrontAPI.MailingAddress,
-            | 'id'
-            | 'address1'
-            | 'address2'
-            | 'city'
-            | 'country'
-            | 'firstName'
-            | 'lastName'
-            | 'phone'
-          >
-        >;
-      };
     }
   >;
 };
@@ -1564,6 +1390,31 @@ export type CustomerResetMutation = {
   customerReset?: StorefrontAPI.Maybe<{
     customerAccessToken?: StorefrontAPI.Maybe<
       Pick<StorefrontAPI.CustomerAccessToken, 'accessToken' | 'expiresAt'>
+    >;
+    customerUserErrors: Array<
+      Pick<StorefrontAPI.CustomerUserError, 'code' | 'field' | 'message'>
+    >;
+  }>;
+};
+
+export type GetCustomerPhoneVerifyPhoneQueryVariables = StorefrontAPI.Exact<{
+  customerAccessToken: StorefrontAPI.Scalars['String']['input'];
+}>;
+
+export type GetCustomerPhoneVerifyPhoneQuery = {
+  customer?: StorefrontAPI.Maybe<Pick<StorefrontAPI.Customer, 'id' | 'phone'>>;
+};
+
+export type CustomerPhoneUpdateVerifyPhoneMutationVariables =
+  StorefrontAPI.Exact<{
+    customerAccessToken: StorefrontAPI.Scalars['String']['input'];
+    customer: StorefrontAPI.CustomerUpdateInput;
+  }>;
+
+export type CustomerPhoneUpdateVerifyPhoneMutation = {
+  customerUpdate?: StorefrontAPI.Maybe<{
+    customer?: StorefrontAPI.Maybe<
+      Pick<StorefrontAPI.Customer, 'id' | 'phone'>
     >;
     customerUserErrors: Array<
       Pick<StorefrontAPI.CustomerUserError, 'code' | 'field' | 'message'>
@@ -3913,18 +3764,6 @@ interface GeneratedQueryTypes {
     return: FooterQuery;
     variables: FooterQueryVariables;
   };
-  '#graphql\n      query GetReviews {\n        metaobjects(type: "storefront_review", first: 250) {\n          nodes {\n            id\n            fields {\n              key\n              value\n            }\n          }\n        }\n      }\n    ': {
-    return: GetReviewsQuery;
-    variables: GetReviewsQueryVariables;
-  };
-  '#graphql\n  query Locations {\n    locations(first: 100) {\n      nodes {\n        id\n        name\n        address {\n          address1\n          address2\n          city\n          country\n          latitude\n          longitude\n          phone\n        }\n        delivery_fee: metafield(namespace: "custom", key: "delivery_fee") {\n          key\n          value\n        }\n        free_delivery_threshold: metafield(namespace: "custom", key: "free_delivery_threshold") {\n          key\n          value\n        }\n        working_hours_from: metafield(namespace: "custom", key: "working_hours_from") {\n          key\n          value\n        }\n        working_hours_to: metafield(namespace: "custom", key: "working_hours_to") {\n          key\n          value\n        }\n        working_hours_from_shift2: metafield(namespace: "custom", key: "working_hours_from_shift2") {\n          key\n          value\n        }\n        working_hours_to_shift2: metafield(namespace: "custom", key: "working_hours_to_shift2") {\n          key\n          value\n        }\n        sunday_working_hours_from: metafield(namespace: "custom", key: "sunday_working_hours_from") {\n          key\n          value\n        }\n        sunday_working_hours_to: metafield(namespace: "custom", key: "sunday_working_hours_to") {\n          key\n          value\n        }\n        monday_working_hours_from: metafield(namespace: "custom", key: "monday_working_hours_from") {\n          key\n          value\n        }\n        monday_working_hours_to: metafield(namespace: "custom", key: "monday_working_hours_to") {\n          key\n          value\n        }\n        tuesday_working_hours_from: metafield(namespace: "custom", key: "tuesday_working_hours_from") {\n          key\n          value\n        }\n        tuesday_working_hours_to: metafield(namespace: "custom", key: "tuesday_working_hours_to") {\n          key\n          value\n        }\n        wednesday_working_hours_from: metafield(namespace: "custom", key: "wednesday_working_hours_from") {\n          key\n          value\n        }\n        wednesday_working_hours_to: metafield(namespace: "custom", key: "wednesday_working_hours_to") {\n          key\n          value\n        }\n        thursday_working_hours_from: metafield(namespace: "custom", key: "thursday_working_hours_from") {\n          key\n          value\n        }\n        thursday_working_hours_to: metafield(namespace: "custom", key: "thursday_working_hours_to") {\n          key\n          value\n        }\n        friday_working_hours_from: metafield(namespace: "custom", key: "friday_working_hours_from") {\n          key\n          value\n        }\n        friday_working_hours_to: metafield(namespace: "custom", key: "friday_working_hours_to") {\n          key\n          value\n        }\n        saturday_working_hours_from: metafield(namespace: "custom", key: "saturday_working_hours_from") {\n          key\n          value\n        }\n        saturday_working_hours_to: metafield(namespace: "custom", key: "saturday_working_hours_to") {\n          key\n          value\n        }\n        rating: metafield(namespace: "custom", key: "rating") {\n          key\n          value\n        }\n        rating_count: metafield(namespace: "custom", key: "rating_count") {\n          key\n          value\n        }\n      }\n    }\n  }\n': {
-    return: LocationsQuery;
-    variables: LocationsQueryVariables;
-  };
-  '#graphql\n  query CustomerAddresses($customerAccessToken: String!) {\n    customer(customerAccessToken: $customerAccessToken) {\n      id\n      email\n      tags\n      firstName\n      lastName\n      addresses(first: 20) {\n        nodes {\n          id\n          address1\n          address2\n          city\n          country\n          firstName\n          lastName\n          phone\n        }\n      }\n    }\n  }\n': {
-    return: CustomerAddressesQuery;
-    variables: CustomerAddressesQueryVariables;
-  };
   '#graphql\n  fragment FeaturedCollection on Collection {\n    id\n    title\n    image {\n      id\n      url\n      altText\n      width\n      height\n    }\n    handle\n  }\n  query FeaturedCollection($country: CountryCode, $language: LanguageCode)\n    @inContext(country: $country, language: $language) {\n    collections(first: 1, sortKey: UPDATED_AT, reverse: true) {\n      nodes {\n        ...FeaturedCollection\n      }\n    }\n  }\n': {
     return: FeaturedCollectionQuery;
     variables: FeaturedCollectionQueryVariables;
@@ -3976,6 +3815,10 @@ interface GeneratedQueryTypes {
   '#graphql\n      query getCustomerForVoucher($customerAccessToken: String!) {\n        customer(customerAccessToken: $customerAccessToken) {\n          id\n          phone\n        }\n      }\n    ': {
     return: GetCustomerForVoucherQuery;
     variables: GetCustomerForVoucherQueryVariables;
+  };
+  '#graphql\n  query getCustomerPhoneVerifyPhone($customerAccessToken: String!) {\n    customer(customerAccessToken: $customerAccessToken) {\n      id\n      phone\n    }\n  }\n': {
+    return: GetCustomerPhoneVerifyPhoneQuery;
+    variables: GetCustomerPhoneVerifyPhoneQueryVariables;
   };
   '#graphql\n  query Article(\n    $articleHandle: String!\n    $blogHandle: String!\n    $country: CountryCode\n    $language: LanguageCode\n  ) @inContext(language: $language, country: $country) {\n    blog(handle: $blogHandle) {\n      articleByHandle(handle: $articleHandle) {\n        title\n        contentHtml\n        publishedAt\n        author: authorV2 {\n          name\n        }\n        image {\n          id\n          altText\n          url\n          width\n          height\n        }\n        seo {\n          description\n          title\n        }\n      }\n    }\n  }\n': {
     return: ArticleQuery;
@@ -4151,6 +3994,10 @@ interface GeneratedMutationTypes {
   '#graphql\n  mutation customerReset(\n    $id: ID!,\n    $input: CustomerResetInput!\n    $country: CountryCode\n    $language: LanguageCode\n  ) @inContext(country: $country, language: $language) {\n    customerReset(id: $id, input: $input) {\n      customerAccessToken {\n        accessToken\n        expiresAt\n      }\n      customerUserErrors {\n        code\n        field\n        message\n      }\n    }\n  }\n': {
     return: CustomerResetMutation;
     variables: CustomerResetMutationVariables;
+  };
+  '#graphql\n  mutation customerPhoneUpdateVerifyPhone($customerAccessToken: String!, $customer: CustomerUpdateInput!) {\n    customerUpdate(customerAccessToken: $customerAccessToken, customer: $customer) {\n      customer {\n        id\n        phone\n      }\n      customerUserErrors {\n        code\n        field\n        message\n      }\n    }\n  }\n': {
+    return: CustomerPhoneUpdateVerifyPhoneMutation;
+    variables: CustomerPhoneUpdateVerifyPhoneMutationVariables;
   };
   '#graphql\n  mutation customerAccessTokenCreateSocial($input: CustomerAccessTokenCreateInput!) {\n    customerAccessTokenCreate(input: $input) {\n      customerAccessToken { accessToken expiresAt }\n      customerUserErrors { code field message }\n    }\n  }\n': {
     return: CustomerAccessTokenCreateSocialMutation;

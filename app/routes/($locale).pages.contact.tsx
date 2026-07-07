@@ -1,5 +1,5 @@
-import { type MetaFunction } from 'react-router';
-import { useRouteLoaderData } from 'react-router';
+import { type MetaFunction, type ActionFunctionArgs } from 'react-router';
+import { useRouteLoaderData, useActionData, Form, useNavigation } from 'react-router';
 import { PageLayout } from '~/components/PageLayout';
 import patternBg from '~/assets/patteren-collection-header.svg';
 
@@ -14,9 +14,78 @@ export const meta: MetaFunction = ({ parentsData }) => {
   ];
 };
 
+export async function action({ request, context }: ActionFunctionArgs) {
+  const formData = await request.formData();
+  const fullName = formData.get('fullName');
+  const mobile = formData.get('mobile');
+  const email = formData.get('email');
+  const subject = formData.get('subject');
+  const orderNumber = formData.get('orderNumber');
+  const message = formData.get('message');
+
+  const isEn = context.storefront.i18n.language === 'EN';
+
+  if (!fullName || !mobile || !email || !subject || !message) {
+    return {
+      success: false,
+      error: isEn ? 'Please fill all required fields.' : 'يرجى ملء جميع الحقول المطلوبة.'
+    };
+  }
+
+  const contactSubject = `New Contact Form Message: ${subject} (${fullName})`;
+  const contactText = `
+    Name: ${fullName}
+    Mobile: ${mobile}
+    Email: ${email}
+    Subject: ${subject}
+    Order Number: ${orderNumber || 'N/A'}
+    Message: ${message}
+  `;
+  const contactHtml = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 8px;">
+      <h2 style="color: #234745; border-bottom: 2px solid #234745; padding-bottom: 10px; margin-top: 0;">New Contact Form Submission</h2>
+      <p style="margin: 15px 0;"><strong>Name:</strong> ${fullName}</p>
+      <p style="margin: 15px 0;"><strong>Mobile:</strong> ${mobile}</p>
+      <p style="margin: 15px 0;"><strong>Email:</strong> ${email}</p>
+      <p style="margin: 15px 0;"><strong>Subject:</strong> ${subject}</p>
+      <p style="margin: 15px 0;"><strong>Order Number:</strong> ${orderNumber || 'N/A'}</p>
+      <div style="margin: 20px 0; padding: 15px; background-color: #fcfcfc; border-left: 4px solid #234745; font-style: italic;">
+        <strong>Message:</strong><br/>
+        ${String(message).replace(/\n/g, '<br/>')}
+      </div>
+      <p style="font-size: 11px; color: #999; margin-top: 30px; border-top: 1px solid #eee; padding-top: 10px;">Submitted from Saadeddin contact page.</p>
+    </div>
+  `;
+
+  try {
+    const { sendEmail } = await import('~/lib/email.server');
+    await sendEmail({
+      to: context.env.CONTACT_RECEIVER_EMAIL || 'info@saadeddin.com',
+      subject: contactSubject,
+      text: contactText,
+      html: contactHtml,
+      env: context.env
+    });
+
+    return {
+      success: true,
+      message: isEn ? 'Your message has been sent successfully!' : 'تم إرسال رسالتك بنجاح!'
+    };
+  } catch (error: any) {
+    console.error('[CONTACT ACTION ERROR]', error);
+    return {
+      success: false,
+      error: isEn ? 'Something went wrong. Please try again later.' : 'حدث خطأ ما. يرجى المحاولة مرة أخرى لاحقاً.'
+    };
+  }
+}
+
 export default function ContactPage() {
   const rootData = useRouteLoaderData('root') as any;
   const isEn = rootData?.consent?.language?.toLowerCase() === 'en';
+  const actionData = useActionData<typeof action>();
+  const navigation = useNavigation();
+  const isSubmitting = navigation.state === 'submitting';
   return (
     <div className={`w-full min-h-screen bg-[#FEF8EB] ${isEn ? 'font-en text-left' : 'font-ar text-right'}`} dir={isEn ? 'ltr' : 'rtl'}>
       {/* Hero Section */}
@@ -113,75 +182,125 @@ export default function ContactPage() {
           {/* Form Column (Second in code = Left in RTL) */}
           <div className="w-full md:w-[45%] bg-white border border-[#234745] shadow-sm overflow-hidden" style={{ borderRadius: '12px' }}>
             <div className="p-6 w-full" style={{ display: 'block', width: '100%', maxWidth: 'none' }}>
-              <h2 className="text-[26px] font-bold text-[#234745]" style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif", lineHeight: '100%', marginBottom: '32px' }}>
-                {isEn ? 'Send us a message' : 'أرسل لنا رسالة'}
-              </h2>
-
-              <form className="space-y-6 w-full" style={{ display: 'block', width: '100%', maxWidth: 'none' }}>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 w-full" style={{ width: '100%' }}>
-                  <FormField label={isEn ? 'Full Name' : 'الاسم الكامل'} placeholder={isEn ? 'Mohamed Al-Abdali' : 'محمد العبدلي'} required isEn={isEn} />
-                  <FormField label={isEn ? 'Mobile Number' : 'رقم الجوال'} placeholder={isEn ? '05X XXX XXXX' : 'رقم الجوال'} required isEn={isEn} />
-                </div>
-
-                <FormField label={isEn ? 'Email' : 'البريد الإلكتروني'} placeholder="name@gmail.com" required type="email" isEn={isEn} forceLtr />
-
-                <div className="flex flex-col gap-4">
-                  <label className="text-[15px] font-bold text-[#1F413F] flex items-center gap-1" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", lineHeight: '100%' }}>
-                    <span>{isEn ? 'Subject' : 'الموضوع'}</span>
-                    <span className="text-red-500 font-bold">*</span>
-                  </label>
-                  <div className="relative">
-                    <select className={`w-full h-[58px] px-6 rounded-2xl border border-gray-200 focus:border-[#1F413F] outline-none bg-white text-[16px] appearance-none transition-all ${isEn ? 'text-left' : 'text-right'}`} dir={isEn ? 'ltr' : 'rtl'} style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", fontWeight: 500 }}>
-                      <option>{isEn ? 'Select Subject' : 'إختر الموضوع'}</option>
-                    </select>
-                    <div className={`absolute top-1/2 -translate-y-1/2 pointer-events-none ${isEn ? 'right-6' : 'left-6'}`}>
-                      <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor" className="opacity-30"><path d="M5 7l5 5 5-5H5z" /></svg>
-                    </div>
+              {actionData?.success === true ? (
+                <div className="p-10 w-full text-center flex flex-col items-center justify-center gap-6" style={{ minHeight: '400px' }}>
+                  <div className="w-20 h-20 bg-green-50 rounded-full flex items-center justify-center text-green-600 shadow-md">
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
                   </div>
-                </div>
-
-                <FormField label={isEn ? 'Order Number (Optional)' : 'رقم الطلب (إختياري)'} placeholder="sd-asdqo142" isEn={isEn} forceLtr />
-
-                <div className="flex flex-col gap-4">
-                  <label className="text-[15px] font-bold text-[#1F413F] flex items-center gap-1" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", lineHeight: '100%' }}>
-                    <span>{isEn ? 'Message' : 'الرسالة'}</span>
-                    <span className="text-red-500 font-bold">*</span>
-                  </label>
-                  <textarea
-                    placeholder={isEn ? 'Write your message here...' : 'إكتب رسالتك هنا...'}
-                    className={`w-full border border-gray-200 focus:border-[#1F413F] outline-none bg-white text-[16px] resize-none transition-all ${isEn ? 'text-left' : 'text-right'}`}
-                    style={{ 
-                      fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", 
-                      fontWeight: 500,
-                      height: '96px',
-                      padding: '12px 16px',
-                      borderRadius: '12px',
-                      maxWidth: '580px'
+                  <h2 className="text-[28px] font-bold text-[#234745]" style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" }}>
+                    {isEn ? 'Thank you!' : 'شكراً لك!'}
+                  </h2>
+                  <p className="text-[16px] text-gray-500 max-w-[400px] leading-relaxed" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", fontWeight: 500 }}>
+                    {actionData.message}
+                  </p>
+                  <button
+                    onClick={() => {
+                      if (typeof window !== 'undefined') {
+                        window.location.reload();
+                      }
                     }}
-                  />
-                </div>
-
-                <div className="flex flex-col gap-4">
-                  <label className={`text-[15px] font-bold text-[#1F413F] ${isEn ? 'text-left' : 'text-right'}`} style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", lineHeight: '100%' }}>
-                    {isEn ? 'Add Attachment (Optional)' : 'إضافة مرفق (إختياري)'}
-                  </label>
-                  <div 
-                    className="w-full h-[140px] border-2 border-dashed rounded-2xl flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-gray-50/50 transition-all"
-                    style={{ borderColor: '#D1B8A7' }}
+                    className="bg-[#234745] text-white px-10 h-[54px] rounded-full font-bold text-[16px] hover:bg-[#1a3533] transition-all shadow-lg"
+                    style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" }}
                   >
-                    <span className="text-[16px] font-bold text-[#1F413F]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>{isEn ? 'Add Attachment' : 'إضافة مرفق'}</span>
-                    <span className="text-[13px] text-gray-400 font-sans" dir="ltr">{isEn ? 'Photos or PDF — Max 5MB' : 'صور او PDF — حجم اقصى 5 ميجابايت'}</span>
-                  </div>
+                    {isEn ? 'Send another message' : 'إرسال رسالة أخرى'}
+                  </button>
                 </div>
+              ) : (
+                <>
+                  <h2 className="text-[26px] font-bold text-[#234745]" style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif", lineHeight: '100%', marginBottom: '32px' }}>
+                    {isEn ? 'Send us a message' : 'أرسل لنا رسالة'}
+                  </h2>
 
-                <button 
-                  type="button" 
-                  className="w-full h-[64px] bg-[#234745] text-white rounded-full font-bold text-[18px] hover:bg-[#1a3533] transition-all mt-6 shadow-xl shadow-[#234745]/20"
-                  style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" }}
-                >
-                  {isEn ? 'Send Message' : 'إرسال الرسالة'}
-                </button>
-              </form>
+                  {actionData?.success === false && (
+                    <div className="mb-6 p-4 rounded-xl bg-red-50 text-red-800 border border-red-200 text-center font-bold text-[15px]" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
+                      {actionData.error}
+                    </div>
+                  )}
+
+                  <Form method="post" className="space-y-6 w-full" style={{ display: 'block', width: '100%', maxWidth: 'none' }}>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 w-full" style={{ width: '100%' }}>
+                      <FormField name="fullName" label={isEn ? 'Full Name' : 'الاسم الكامل'} placeholder={isEn ? 'Mohamed Al-Abdali' : 'محمد العبدلي'} required isEn={isEn} />
+                      <FormField name="mobile" label={isEn ? 'Mobile Number' : 'رقم الجوال'} placeholder={isEn ? '05X XXX XXXX' : 'رقم الجوال'} required isEn={isEn} />
+                    </div>
+
+                    <FormField name="email" label={isEn ? 'Email' : 'البريد الإلكتروني'} placeholder="name@gmail.com" required type="email" isEn={isEn} forceLtr />
+
+                    <div className="flex flex-col gap-4">
+                      <label className="text-[15px] font-bold text-[#1F413F] flex items-center gap-1" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", lineHeight: '100%' }}>
+                        <span>{isEn ? 'Subject' : 'الموضوع'}</span>
+                        <span className="text-red-500 font-bold">*</span>
+                      </label>
+                      <div className="relative">
+                        <select name="subject" required className={`w-full h-[58px] px-6 rounded-2xl border border-gray-200 focus:border-[#1F413F] outline-none bg-white text-[16px] appearance-none transition-all ${isEn ? 'text-left' : 'text-right'}`} dir={isEn ? 'ltr' : 'rtl'} style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", fontWeight: 500 }}>
+                          <option value="">{isEn ? 'Select Subject' : 'إختر الموضوع'}</option>
+                          <option value="Inquiry">{isEn ? 'Inquiry' : 'استفسار'}</option>
+                          <option value="Sales">{isEn ? 'Sales' : 'مبيعات'}</option>
+                          <option value="Recruitment">{isEn ? 'Recruitment' : 'توظيف'}</option>
+                          <option value="Complaint">{isEn ? 'Complaint' : 'شكوى'}</option>
+                          <option value="Special Order">{isEn ? 'Special Order' : 'طلبية خاصة'}</option>
+                          <option value="Catering">{isEn ? 'Catering' : 'كاتيرنج'}</option>
+                          <option value="Service Proposal">{isEn ? 'Service Proposal' : 'عرض خدمة'}</option>
+                          <option value="Other">{isEn ? 'Other' : 'اخرى'}</option>
+                        </select>
+                        <div className={`absolute top-1/2 -translate-y-1/2 pointer-events-none ${isEn ? 'right-6' : 'left-6'}`}>
+                          <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor" className="opacity-30"><path d="M5 7l5 5 5-5H5z" /></svg>
+                        </div>
+                      </div>
+                    </div>
+
+                    <FormField name="orderNumber" label={isEn ? 'Order Number (Optional)' : 'رقم الطلب (إختياري)'} placeholder="sd-asdqo142" isEn={isEn} forceLtr />
+
+                    <div className="flex flex-col gap-4">
+                      <label className="text-[15px] font-bold text-[#1F413F] flex items-center gap-1" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", lineHeight: '100%' }}>
+                        <span>{isEn ? 'Message' : 'الرسالة'}</span>
+                        <span className="text-red-500 font-bold">*</span>
+                      </label>
+                      <textarea
+                        name="message"
+                        required
+                        placeholder={isEn ? 'Write your message here...' : 'إكتب رسالتك هنا...'}
+                        className={`w-full border border-gray-200 focus:border-[#1F413F] outline-none bg-white text-[16px] resize-none transition-all ${isEn ? 'text-left' : 'text-right'}`}
+                        style={{ 
+                          fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", 
+                          fontWeight: 500,
+                          height: '96px',
+                          padding: '12px 16px',
+                          borderRadius: '12px',
+                          maxWidth: '580px'
+                        }}
+                      />
+                    </div>
+
+                    <div className="flex flex-col gap-4">
+                      <label className={`text-[15px] font-bold text-[#1F413F] ${isEn ? 'text-left' : 'text-right'}`} style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", lineHeight: '100%' }}>
+                        {isEn ? 'Add Attachment (Optional)' : 'إضافة مرفق (إختياري)'}
+                      </label>
+                      <div 
+                        className="w-full h-[140px] border-2 border-dashed rounded-2xl flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-gray-50/50 transition-all"
+                        style={{ borderColor: '#D1B8A7' }}
+                      >
+                        <span className="text-[16px] font-bold text-[#1F413F]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>{isEn ? 'Add Attachment' : 'إضافة مرفق'}</span>
+                        <span className="text-[13px] text-gray-400 font-sans" dir="ltr">{isEn ? 'Photos or PDF — Max 5MB' : 'صور او PDF — حجم اقصى 5 ميجابايت'}</span>
+                      </div>
+                    </div>
+
+                    <button 
+                      type="submit" 
+                      disabled={isSubmitting}
+                      className="w-full h-[64px] bg-[#234745] text-white rounded-full font-bold text-[18px] hover:bg-[#1a3533] disabled:opacity-50 transition-all mt-6 shadow-xl shadow-[#234745]/20 flex items-center justify-center gap-2"
+                      style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" }}
+                    >
+                      {isSubmitting ? (
+                        <span>{isEn ? 'Sending...' : 'جاري الإرسال...'}</span>
+                      ) : (
+                        <span>{isEn ? 'Send Message' : 'إرسال الرسالة'}</span>
+                      )}
+                    </button>
+                  </Form>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -221,7 +340,7 @@ function ContactCard({ title, subtitle, pill }: any) {
   );
 }
 
-function FormField({ label, placeholder, required, type = "text", isEn, forceLtr = false }: any) {
+function FormField({ label, placeholder, required, type = "text", isEn, forceLtr = false, name }: any) {
   const isLtrDir = isEn || forceLtr;
   return (
     <div className={`flex flex-col gap-3 ${isEn ? 'text-left' : 'text-right'}`} style={{ width: '100%' }}>
@@ -231,7 +350,9 @@ function FormField({ label, placeholder, required, type = "text", isEn, forceLtr
       </label>
       <input
         type={type}
+        name={name}
         placeholder={placeholder}
+        required={required}
         dir={isLtrDir ? 'ltr' : 'rtl'}
         className={`w-full h-[54px] px-6 rounded-xl border border-gray-200 focus:border-[#1F413F] outline-none bg-white text-[15px] transition-all placeholder:text-gray-300 ${isLtrDir ? 'text-left' : 'text-right'}`}
         style={{ fontFamily: forceLtr ? "sans-serif" : "'GE Dinar One', sans-serif", fontWeight: 500 }}

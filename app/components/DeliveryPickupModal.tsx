@@ -465,7 +465,6 @@ export function DeliveryPickupModal({
                         setGeoError(false);
                     },
                     (err) => {
-                        console.warn("Geolocation denied or failed:", err);
                         setGeoError(true);
                     }
                 );

@@ -1,8 +1,12 @@
 import { Link, useOutletContext } from 'react-router';
 
-export function OffersAndDiscounts() {
+export function OffersAndDiscounts({ config }: { config?: any }) {
     const { locale } = useOutletContext<{ locale: string }>();
     const isEn = locale === 'en';
+
+    // Parse Metaobject config
+    const showField = config?.fields?.find((f: any) => f.key === 'show_offers_section')?.value;
+    if (showField === 'false') return null;
 
     return (
         <section

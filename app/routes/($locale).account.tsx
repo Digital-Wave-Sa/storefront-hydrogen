@@ -240,6 +240,17 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
       throw new Error('Customer not found');
     }
 
+    const isVerifyPhoneRoute = pathname === `${localePrefix}/account/verify-phone` || pathname === `${localePrefix}/account/verify-phone/`;
+    const isLogoutRoute = pathname === `${localePrefix}/account/logout` || pathname === `${localePrefix}/account/logout/`;
+
+    if (!customer.phone && !isVerifyPhoneRoute && !isLogoutRoute) {
+      return redirect(`${localePrefix}/account/verify-phone`, {
+        headers: {
+          'Set-Cookie': await session.commit(),
+        },
+      });
+    }
+
     const tags = customer?.tags || [];
 
     const isAdmin = tags.some((tag: string) => {

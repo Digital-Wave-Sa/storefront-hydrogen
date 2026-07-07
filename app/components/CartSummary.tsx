@@ -191,7 +191,7 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
               )}
 
               {/* Time Slot Picker */}
-              <CartTimeSlot isEn={isEn} cart={cart} />
+              <CartTimeSlot isEn={isEn} cart={cart} currentBranch={currentBranch} />
 
               {/* Order Notes */}
               <CartOrderNotes isEn={isEn} cart={cart} />
@@ -394,11 +394,113 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
 
 
 // ─── NEW: TIME SLOT PICKER ──────────────────────────────────────────────────
-function CartTimeSlot({ isEn, cart, hasError }: { isEn: boolean, cart: any, hasError?: boolean }) {
-  const timeSlot = cart?.attributes?.find((a: any) => a.key === 'Time Slot')?.value || '';
-  const timeSlotAttr = cart?.attributes?.find((a: any) => a.key === 'Available Time Slots')?.value;
-  const timeSlotsArray = timeSlotAttr ? timeSlotAttr.split(',').map((s: string) => s.trim()).filter(Boolean) : [];
+function parseHourString(hourStr: string): number {
+  if (!hourStr) return 9; // Default fallback
+  const clean = hourStr.toUpperCase().trim();
+  // Check if it has PM/AM
+  const isPm = clean.includes('PM');
+  const isAm = clean.includes('AM');
+  const num = parseInt(clean.replace(/\D/g, ''));
+  if (isNaN(num)) return 9;
   
+  if (isPm && num < 12) return num + 12;
+  if (isAm && num === 12) return 0;
+  
+  // If it is 24h format (e.g., "19:00" -> 19)
+  if (clean.includes(':')) {
+    const parts = clean.split(':');
+    const h = parseInt(parts[0]);
+    return isNaN(h) ? 9 : h;
+  }
+  return num;
+}
+
+function formatHour(h: number, isEn: boolean): string {
+  const period = h >= 12 ? (isEn ? 'PM' : 'م') : (isEn ? 'AM' : 'ص');
+  let displayHour = h % 12;
+  if (displayHour === 0) displayHour = 12;
+  return `${displayHour} ${period}`;
+}
+
+function generateDynamicSlots(branch: any, isEn: boolean): string[] {
+  // Get Saudi current day of the week
+  const riyadhDateStr = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Riyadh',
+    weekday: 'short'
+  }).format(new Date());
+
+  let fromStr = branch?.hoursFrom;
+  let toStr = branch?.hoursTo;
+
+  // Search through all daily hour definitions
+  if (riyadhDateStr === 'Sun' && branch?.sundayHoursFrom) {
+    fromStr = branch.sundayHoursFrom; toStr = branch.sundayHoursTo;
+  } else if (riyadhDateStr === 'Mon' && branch?.mondayHoursFrom) {
+    fromStr = branch.mondayHoursFrom; toStr = branch.mondayHoursTo;
+  } else if (riyadhDateStr === 'Tue' && branch?.tuesdayHoursFrom) {
+    fromStr = branch.tuesdayHoursFrom; toStr = branch.tuesdayHoursTo;
+  } else if (riyadhDateStr === 'Wed' && branch?.wednesdayHoursFrom) {
+    fromStr = branch.wednesdayHoursFrom; toStr = branch.wednesdayHoursTo;
+  } else if (riyadhDateStr === 'Thu' && branch?.thursdayHoursFrom) {
+    fromStr = branch.thursdayHoursFrom; toStr = branch.thursdayHoursTo;
+  } else if (riyadhDateStr === 'Fri' && branch?.fridayHoursFrom) {
+    fromStr = branch.fridayHoursFrom; toStr = branch.fridayHoursTo;
+  } else if (riyadhDateStr === 'Sat' && branch?.saturdayHoursFrom) {
+    fromStr = branch.saturdayHoursFrom; toStr = branch.saturdayHoursTo;
+  }
+
+  // Parse start and end hours, default to 10:00 (10 AM) to 22:00 (10 PM) if not defined
+  const startHour = parseHourString(fromStr || '10:00');
+  const endHour = parseHourString(toStr || '22:00');
+
+  // Also get the current hour in Riyadh time to hide past slots for today
+  const riyadhHourStr = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Riyadh',
+    hour: 'numeric',
+    hour12: false
+  }).format(new Date());
+  const currentRiyadhHour = parseInt(riyadhHourStr) || 0;
+
+  const slots: string[] = [];
+  const interval = 2; // 2-hour interval slots for precise scheduling
+
+  for (let h = startHour; h < endHour; h += interval) {
+    let nextH = h + interval;
+    if (nextH > endHour) {
+      nextH = endHour;
+    }
+    
+    // Hide slots that are already in the past today
+    // We add 1 hour buffer so they can't order a slot that is too close to current time
+    if (h > currentRiyadhHour + 1) {
+      const fromFormatted = formatHour(h, isEn);
+      const toFormatted = formatHour(nextH, isEn);
+      slots.push(`${fromFormatted} - ${toFormatted}`);
+    }
+  }
+
+  // If all slots for today are in the past (e.g. it is late at night),
+  // we show tomorrow's slots
+  if (slots.length === 0) {
+    for (let h = startHour; h < endHour; h += interval) {
+      let nextH = h + interval;
+      if (nextH > endHour) nextH = endHour;
+      const fromFormatted = formatHour(h, isEn);
+      const toFormatted = formatHour(nextH, isEn);
+      const dayPrefix = isEn ? 'Tomorrow: ' : 'غداً: ';
+      slots.push(`${dayPrefix}${fromFormatted} - ${toFormatted}`);
+    }
+  }
+
+  return slots;
+}
+
+function CartTimeSlot({ isEn, cart, currentBranch, hasError }: { isEn: boolean, cart: any, currentBranch: any, hasError?: boolean }) {
+  const timeSlot = cart?.attributes?.find((a: any) => a.key === 'Time Slot')?.value || '';
+  
+  // Dynamically calculate time slots based on the fulfilling branch's active hours
+  const dynamicTimeSlots = generateDynamicSlots(currentBranch, isEn);
+
   return (
     <div className="flex flex-col gap-2">
       <label className="text-[13px] font-bold text-[#234745] px-1">
@@ -417,17 +519,9 @@ function CartTimeSlot({ isEn, cart, hasError }: { isEn: boolean, cart: any, hasE
             className="w-full bg-[#fcfaf8] border border-[#f0ece8] rounded-xl px-4 py-3 text-[14px] text-[#234745] font-medium appearance-none focus:outline-none focus:border-[#d4a06a] focus:ring-1 focus:ring-[#d4a06a] transition-all cursor-pointer"
           >
             <option value="">{isEn ? 'Select delivery/pickup time' : 'اختر وقت التوصيل/الاستلام'}</option>
-            {timeSlotsArray.length > 0 ? (
-                timeSlotsArray.map((slot: string, idx: number) => (
-                    <option key={idx} value={slot}>{slot}</option>
-                ))
-            ) : (
-                <>
-                    <option value="Morning (9 AM - 12 PM)">{isEn ? 'Morning (9 AM - 12 PM)' : 'الصباح (9 ص - 12 م)'}</option>
-                    <option value="Afternoon (12 PM - 4 PM)">{isEn ? 'Afternoon (12 PM - 4 PM)' : 'المساء (12 م - 4 م)'}</option>
-                    <option value="Evening (4 PM - 9 PM)">{isEn ? 'Evening (4 PM - 9 PM)' : 'الليل (4 م - 9 م)'}</option>
-                </>
-            )}
+            {dynamicTimeSlots.map((slot: string, idx: number) => (
+                <option key={idx} value={slot}>{slot}</option>
+            ))}
           </select>
           <div className="absolute top-1/2 -translate-y-1/2 rtl:left-4 ltr:right-4 pointer-events-none text-[#d4a06a]">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"></polyline></svg>

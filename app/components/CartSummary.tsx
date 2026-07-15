@@ -134,7 +134,31 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
   const outOfStockItemNamesEn = outOfStockItems.map((line: any) => line.merchandise?.product?.title || line.merchandise?.title).join(', ');
   const outOfStockItemNamesAr = outOfStockItems.map((line: any) => line.merchandise?.product?.title || line.merchandise?.title).join('، ');
 
-  const canCheckout = isMinOrderMet && isBranchSelected && !isOutOfRange && !hasOutOfStockItems;
+  const selectedDate = attributes.find((a: any) => a.key === 'delivery_date')?.value || '';
+  const dynamicTimeSlots = selectedDate ? generateDynamicSlots(currentBranch, isEn, fulfillmentType, selectedDate) : [];
+  const isTimeSlotInvalid = !!timeSlot && !dynamicTimeSlots.includes(timeSlot);
+
+  const canCheckout = isMinOrderMet && isBranchSelected && !isOutOfRange && !hasOutOfStockItems && !isTimeSlotInvalid && !!selectedDate && !!timeSlot;
+
+  const branchHoursStr = (() => {
+    if (!currentBranch) return '';
+    const getMeta = (key: string) => {
+      if (currentBranch[key]?.value) return currentBranch[key].value;
+      if (typeof currentBranch[key] === 'string') return currentBranch[key];
+      const meta = currentBranch.metafields?.find((m: any) => m?.key === key);
+      return meta?.value;
+    };
+    const dateObj = selectedDate ? new Date(selectedDate) : new Date();
+    const weekday = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Riyadh', weekday: 'short' }).format(dateObj).toLowerCase();
+    const fromStr = getMeta(`${weekday}_working_hours_from`) || getMeta('working_hours_from') || '10:00';
+    const toStr = getMeta(`${weekday}_working_hours_to`) || getMeta('working_hours_to') || '22:00';
+    const fromStr2 = getMeta('working_hours_from_shift2');
+    const toStr2 = getMeta('working_hours_to_shift2');
+    const shift1 = `${fromStr} - ${toStr}`;
+    const shift2 = fromStr2 && toStr2 ? ` & ${fromStr2} - ${toStr2}` : '';
+    return (shift1 + shift2).replace(/[٠-٩]/g, (d) => String.fromCharCode(d.charCodeAt(0) - 1632));
+  })();
+
 
   return (
     <div aria-labelledby={summaryId} className="flex flex-col gap-4">
@@ -190,10 +214,9 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
                 <LoyaltyRedemptionUI isEn={isEn} cart={cart} />
               )}
 
-              {/* Time Slot Picker — Only show for delivery */}
-              {!isPickup && (
-                <CartTimeSlot isEn={isEn} cart={cart} currentBranch={currentBranch} />
-              )}
+              {/* Date & Time Slot Picker required for all orders (Delivery and Pickup) */}
+              <CartCalendarPicker isEn={isEn} cart={cart} currentBranch={currentBranch} />
+
 
               {/* Order Notes */}
               <CartOrderNotes isEn={isEn} cart={cart} />
@@ -278,6 +301,26 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
 
               {/* Buttons */}
               <div className="flex flex-col gap-3 mt-2">
+                {isTimeSlotInvalid && (
+                  <div className="bg-red-50 border border-red-200 p-3 rounded-lg flex items-start gap-2 mb-1">
+                    <span className="text-base leading-none mt-0.5">⚠️</span>
+                    <p className="text-red-800 text-[13px] font-bold leading-tight" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
+                      {isEn ? (
+                        <>
+                          Your selected {isPickup ? 'pickup' : 'delivery'} time ({timeSlot}) is outside the working hours of {currentBranch?.name || 'this branch'}.
+                          {branchHoursStr && <><br />Working hours on this day: <strong>{branchHoursStr}</strong>. Please select a valid window.</>}
+                        </>
+                      ) : (
+                        <>
+                          وقت {isPickup ? 'الاستلام' : 'التوصيل'} المحدد ({timeSlot}) خارج ساعات عمل فرع {currentBranch?.name || 'هذا الفرع'}.
+                          {branchHoursStr && <><br />ساعات العمل في هذا اليوم: <strong>{branchHoursStr}</strong>. يرجى اختيار فترة صالحة.</>}
+                        </>
+                      )}
+                    </p>
+                  </div>
+                )}
+
+
                {hasPrepaidOnly && (
                  <div className="bg-orange-50 border border-orange-200 p-3 rounded-lg flex items-start gap-2 mb-1">
                    <svg className="w-5 h-5 text-orange-500 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -304,6 +347,9 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
                    !isMinOrderMet ? (isEn ? <span className="flex items-center gap-1">Minimum order is <SaudiRiyalSymbol className="h-3 w-auto" /> {minOrderValue}</span> : <span className="flex items-center gap-1 flex-row-reverse">الحد الأدنى هو {minOrderValue} <SaudiRiyalSymbol className="h-3 w-auto" /></span>) :
                    !isBranchSelected ? (isEn ? 'Please select a branch' : 'يرجى اختيار الفرع') :
                    isOutOfRange ? (isEn ? 'Address is out of delivery range' : 'العنوان خارج نطاق التوصيل') :
+                   !selectedDate ? (isPickup ? (isEn ? 'Please select pickup date' : 'يرجى اختيار تاريخ الاستلام') : (isEn ? 'Please select delivery date' : 'يرجى اختيار تاريخ التوصيل')) :
+                   !timeSlot ? (isPickup ? (isEn ? 'Please select pickup window' : 'يرجى اختيار فترة الاستلام') : (isEn ? 'Please select delivery window' : 'يرجى اختيار فترة التوصيل')) :
+                   isTimeSlotInvalid ? (isPickup ? (isEn ? 'Time slot is outside working hours' : 'وقت الاستلام خارج ساعات العمل') : (isEn ? 'Delivery time is outside working hours' : 'وقت التوصيل خارج ساعات العمل')) :
                    null
                  }
                />
@@ -424,7 +470,7 @@ function formatHour(h: number, isEn: boolean): string {
   return `${displayHour} ${period}`;
 }
 
-function generateDynamicSlots(branch: any, isEn: boolean, fulfillmentType: string = 'delivery'): string[] {
+function generateDynamicSlots(branch: any, isEn: boolean, fulfillmentType: string = 'delivery', targetDateStr?: string): string[] {
   const isDelivery = fulfillmentType === 'delivery';
 
   // Helper to extract a metafield's value
@@ -494,6 +540,23 @@ function generateDynamicSlots(branch: any, isEn: boolean, fulfillmentType: strin
   const startHour2 = fromStr2 ? parseHourString(fromStr2) : null;
   const endHour2 = toStr2 ? parseHourString(toStr2) : null;
 
+  // Check if targetDateStr is Riyadh "today"
+  const todayStr = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Riyadh',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).format(new Date()); // e.g. "07/14/2026"
+
+  let isToday = true;
+  if (targetDateStr) {
+    const parts = targetDateStr.split('-'); // "YYYY-MM-DD"
+    if (parts.length === 3) {
+      const formattedTarget = `${parts[1]}/${parts[2]}/${parts[0]}`;
+      isToday = formattedTarget === todayStr;
+    }
+  }
+
   // Also get the current hour in Riyadh time to hide past slots for today
   const riyadhHourStr = new Intl.DateTimeFormat('en-US', {
     timeZone: 'Asia/Riyadh',
@@ -517,9 +580,14 @@ function generateDynamicSlots(branch: any, isEn: boolean, fulfillmentType: strin
       if (isTomorrow) {
         slots.push(label);
       } else {
-        // Hide slots that are already in the past today
-        // We add 1 hour buffer so they can't order a slot that is too close to current time
-        if (h > currentRiyadhHour + 1) {
+        if (isToday) {
+          // Hide slots that are already in the past today
+          // We add 1 hour buffer so they can't order a slot that is too close to current time
+          if (h > currentRiyadhHour + 1) {
+            slots.push(label);
+          }
+        } else {
+          // Future date: all slots are available
           slots.push(label);
         }
       }
@@ -535,7 +603,7 @@ function generateDynamicSlots(branch: any, isEn: boolean, fulfillmentType: strin
   }
 
   // 3. If all slots for today are in the past, show tomorrow's slots
-  if (slots.length === 0) {
+  if (slots.length === 0 && isToday) {
     addSlotsForWindow(startHour1, endHour1, true);
     if (startHour2 !== null && endHour2 !== null) {
       addSlotsForWindow(startHour2, endHour2, true);
@@ -1146,5 +1214,330 @@ function UpdateGiftCardForm({
         return children;
       }}
     </CartForm>
+  );
+}
+
+function CartCalendarPicker({
+  isEn,
+  cart,
+  currentBranch,
+}: {
+  isEn: boolean;
+  cart: any;
+  currentBranch: any;
+}) {
+  const fetcher = useFetcher();
+  const selectedDate = cart?.attributes?.find((a: any) => a.key === 'delivery_date')?.value || '';
+  const selectedTimeSlot = cart?.attributes?.find((a: any) => a.key === 'Time Slot')?.value || '';
+  const fulfillmentType = cart?.attributes?.find((a: any) => a.key === 'Fulfillment Type')?.value || 'delivery';
+  const isPickup = fulfillmentType?.toLowerCase() === 'pickup';
+
+  // Optimistic UI states
+  const [localSelectedDate, setLocalSelectedDate] = useState(selectedDate);
+  const [localTimeSlot, setLocalTimeSlot] = useState(selectedTimeSlot);
+
+  // Sync state with cart when fetcher is idle
+  useEffect(() => {
+    if (fetcher.state === 'idle') {
+      setLocalSelectedDate(selectedDate);
+      setLocalTimeSlot(selectedTimeSlot);
+    }
+  }, [selectedDate, selectedTimeSlot, fetcher.state]);
+
+  // 1. Calculate max prep days
+  const maxPrepDays = cart?.lines?.nodes?.reduce((max: number, line: any) => {
+      const tags = line.merchandise?.product?.tags || [];
+      const prepTag = tags.find((t: string) => t.startsWith('prep-days-') || t.startsWith('prep-'));
+      if (prepTag) {
+          const days = parseInt(prepTag.replace(/\D/g, ''));
+          if (!isNaN(days) && days > max) return days;
+      }
+      return max;
+  }, 0) || 0;
+
+  // 2. Track current displayed month
+  const [displayedMonth, setDisplayedMonth] = useState(() => {
+      const initial = selectedDate ? new Date(selectedDate) : new Date();
+      return isNaN(initial.getTime()) ? new Date() : initial;
+  });
+
+  // 3. Helper to format date in YYYY-MM-DD
+  const formatYYYYMMDD = (date: Date) => {
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, '0');
+      const d = String(date.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+  };
+
+  // 4. Generate calendar grid days
+  const year = displayedMonth.getFullYear();
+  const month = displayedMonth.getMonth();
+
+  const firstDayIndex = new Date(year, month, 1).getDay();
+  const totalDays = new Date(year, month + 1, 0).getDate();
+
+  const prevMonthTotalDays = new Date(year, month, 0).getDate();
+
+  const calendarDays: { date: Date; isCurrentMonth: boolean }[] = [];
+
+  // Previous month fallback padding days
+  for (let i = firstDayIndex - 1; i >= 0; i--) {
+      calendarDays.push({
+          date: new Date(year, month - 1, prevMonthTotalDays - i),
+          isCurrentMonth: false,
+      });
+  }
+
+  // Current month days
+  for (let i = 1; i <= totalDays; i++) {
+      calendarDays.push({
+          date: new Date(year, month, i),
+          isCurrentMonth: true,
+      });
+  }
+
+  // Next month padding days to fill 42 cells grid
+  const remainingCells = 42 - calendarDays.length;
+  for (let i = 1; i <= remainingCells; i++) {
+      calendarDays.push({
+          date: new Date(year, month + 1, i),
+          isCurrentMonth: false,
+      });
+  }
+
+  // 5. Date validation checks
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const maxFutureDate = new Date();
+  maxFutureDate.setDate(today.getDate() + 30); // 30 days maximum booking limit
+
+  const minAvailableDate = new Date();
+  minAvailableDate.setDate(today.getDate() + maxPrepDays);
+  minAvailableDate.setHours(0, 0, 0, 0);
+
+  // Check branch closed days
+  const isBranchClosedOn = (date: Date) => {
+      if (!currentBranch) return false;
+      const openDays = currentBranch.workingDays;
+      if (!openDays || !Array.isArray(openDays) || openDays.length === 0) return false;
+      const weekday = new Intl.DateTimeFormat('en-US', {
+          timeZone: 'Asia/Riyadh',
+          weekday: 'short'
+      }).format(date);
+      return !openDays.includes(weekday);
+  };
+
+  const isDateDisabled = (date: Date) => {
+      date.setHours(0, 0, 0, 0);
+      if (date < today) return true;
+      if (date < minAvailableDate) return true;
+      if (date > maxFutureDate) return true;
+      if (isBranchClosedOn(date)) return true;
+      return false;
+  };
+
+  // 6. Navigation
+  const handlePrevMonth = () => {
+      setDisplayedMonth(new Date(year, month - 1, 1));
+  };
+
+  const handleNextMonth = () => {
+      setDisplayedMonth(new Date(year, month + 1, 1));
+  };
+
+  // 7. Time slot generation based on selected date
+  const dynamicTimeSlots = localSelectedDate ? generateDynamicSlots(currentBranch, isEn, fulfillmentType, localSelectedDate) : [];
+
+  const isTimeSlotInvalid = localTimeSlot && !dynamicTimeSlots.includes(localTimeSlot);
+
+  const getBranchHoursStr = () => {
+    if (!currentBranch) return '';
+    const getMeta = (key: string) => {
+      if (currentBranch[key]?.value) return currentBranch[key].value;
+      if (typeof currentBranch[key] === 'string') return currentBranch[key];
+      const meta = currentBranch.metafields?.find((m: any) => m?.key === key);
+      return meta?.value;
+    };
+    
+    const dateObj = localSelectedDate ? new Date(localSelectedDate) : new Date();
+    const weekday = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'Asia/Riyadh',
+      weekday: 'short'
+    }).format(dateObj).toLowerCase();
+    
+    const dayFromKey = `${weekday}_working_hours_from`;
+    const dayToKey = `${weekday}_working_hours_to`;
+    
+    const fromStr = getMeta(dayFromKey) || getMeta('working_hours_from') || '10:00';
+    const toStr = getMeta(dayToKey) || getMeta('working_hours_to') || '22:00';
+    
+    const fromStr2 = getMeta('working_hours_from_shift2');
+    const toStr2 = getMeta('working_hours_to_shift2');
+    
+    const forceEnglishDigits = (str: string) => {
+      return str.replace(/[٠-٩]/g, (d) => String.fromCharCode(d.charCodeAt(0) - 1632));
+    };
+    
+    const shift1 = `${fromStr} - ${toStr}`;
+    const shift2 = fromStr2 && toStr2 ? ` & ${fromStr2} - ${toStr2}` : '';
+    return forceEnglishDigits(shift1 + shift2);
+  };
+
+  const branchHoursStr = getBranchHoursStr();
+
+  // Month names
+  const monthNameEn = displayedMonth.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+  const monthNameAr = displayedMonth.toLocaleString('ar-EG', { month: 'long', year: 'numeric' });
+  const monthLabel = isEn ? monthNameEn : monthNameAr;
+
+  const weekdaysEn = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+  const weekdaysAr = ['ح', 'ن', 'ث', 'ر', 'خ', 'ج', 'س'];
+  const weekdays = isEn ? weekdaysEn : weekdaysAr;
+
+  return (
+      <div className="bg-[#fcfaf8] border border-[#f0ece8] rounded-2xl p-4 flex flex-col gap-4 select-none">
+          <div className="flex flex-col gap-1">
+              <span className="text-[13px] font-bold text-[#234745] px-1">
+                  {isPickup ? (isEn ? 'Preferred Pickup Date & Time' : 'تاريخ ووقت الاستلام المفضل') : (isEn ? 'Preferred Delivery Date & Time' : 'تاريخ ووقت التوصيل المفضل')}
+              </span>
+              {maxPrepDays > 0 && (
+                  <span className="text-[11px] text-[#c98e54] font-medium px-1 flex items-center gap-1">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                      {isEn 
+                          ? `Items require ${maxPrepDays} days prep time` 
+                          : `الأصناف تتطلب تحضير لمدة ${maxPrepDays} أيام`}
+                  </span>
+              )}
+          </div>
+
+          {/* Visual Calendar */}
+          <div className="flex flex-col gap-3">
+              {/* Header Navigation */}
+              <div className="flex justify-between items-center px-1">
+                  <button 
+                      type="button" 
+                      onClick={handlePrevMonth}
+                      disabled={displayedMonth.getMonth() === today.getMonth() && displayedMonth.getFullYear() === today.getFullYear()}
+                      className="p-1.5 rounded-lg border border-[#f0ece8] text-[#234745] disabled:opacity-30 disabled:cursor-not-allowed hover:bg-[#fcfaf8] transition-all"
+                  >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+                  </button>
+                  <span className="font-bold text-[14px] text-[#234745]">{monthLabel}</span>
+                  <button 
+                      type="button" 
+                      onClick={handleNextMonth}
+                      className="p-1.5 rounded-lg border border-[#f0ece8] text-[#234745] hover:bg-[#fcfaf8] transition-all"
+                  >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+                  </button>
+              </div>
+
+              {/* Weekday Labels */}
+              <div className="grid grid-cols-7 text-center text-[12px] font-bold text-[#9FB7AE]">
+                  {weekdays.map((d, i) => (
+                      <span key={i} className="py-1">{d}</span>
+                  ))}
+              </div>
+
+              {/* Day Cells Grid */}
+              <div className="grid grid-cols-7 gap-1 text-center">
+                  {calendarDays.map((cell, idx) => {
+                      const dateStr = formatYYYYMMDD(cell.date);
+                      const disabled = isDateDisabled(cell.date);
+                      const isSelected = localSelectedDate === dateStr;
+                      const isTodayCell = formatYYYYMMDD(today) === dateStr;
+
+                      return (
+                          <button
+                              key={idx}
+                              type="button"
+                              disabled={disabled}
+                              onClick={() => {
+                                  setLocalSelectedDate(dateStr);
+                                  setLocalTimeSlot(''); // Reset slot locally
+                                  
+                                  const formData = new FormData();
+                                  formData.append('action', 'AttributesUpdate');
+                                  formData.append('attributes[0][key]', 'delivery_date');
+                                  formData.append('attributes[0][value]', dateStr);
+                                  formData.append('attributes[1][key]', 'Time Slot');
+                                  formData.append('attributes[1][value]', '');
+                                  fetcher.submit(formData, { method: 'POST', action: '/cart' });
+                              }}
+                              className={`
+                                  py-2 rounded-xl text-[13px] font-medium transition-all relative
+                                  ${!cell.isCurrentMonth ? 'text-gray-300' : 'text-[#234745]'}
+                                  ${disabled ? 'opacity-25 cursor-not-allowed bg-transparent' : 'hover:bg-[#f3ece6] cursor-pointer'}
+                                  ${isSelected ? '!bg-[#234745] !text-white font-bold shadow-md scale-105' : ''}
+                                  ${isTodayCell && !isSelected ? 'border border-[#d4a06a] text-[#d4a06a]' : ''}
+                              `}
+                          >
+                              {cell.date.getDate()}
+                          </button>
+                      );
+                  })}
+              </div>
+          </div>
+
+          {/* Time Slot Picker (Only visible after selecting a date) */}
+          {localSelectedDate && (
+              <div className="flex flex-col gap-2 border-t border-[#f0ece8] pt-4">
+                  <label className="text-[13px] font-bold text-[#234745] px-1">
+                      {isPickup ? (isEn ? 'Preferred Pickup Window' : 'فترة الاستلام المفضلة') : (isEn ? 'Preferred Delivery Window' : 'فترة التوصيل المفضلة')}
+                  </label>
+                  <div className="relative">
+                      <select 
+                          value={localTimeSlot}
+                          onChange={(e) => {
+                              const newVal = e.target.value;
+                              setLocalTimeSlot(newVal); // Instant local feedback
+                              
+                              const payload = {
+                                  action: 'AttributesUpdate',
+                                  inputs: {
+                                      attributes: [
+                                          { key: 'Time Slot', value: newVal }
+                                      ]
+                                  }
+                              };
+                              const formData = new FormData();
+                              formData.append('cartFormInput', JSON.stringify(payload));
+                              fetcher.submit(formData, { method: 'POST', action: '/cart' });
+                          }}
+                          className="w-full bg-[#fcfaf8] border border-[#f0ece8] rounded-xl px-4 py-3 text-[14px] text-[#234745] font-medium appearance-none focus:outline-none focus:border-[#d4a06a] focus:ring-1 focus:ring-[#d4a06a] transition-all cursor-pointer"
+                      >
+                          <option value="">{isPickup ? (isEn ? 'Select preferred pickup window' : 'اختر فترة الاستلام المفضلة') : (isEn ? 'Select preferred delivery window' : 'اختر فترة التوصيل المفضلة')}</option>
+                          {dynamicTimeSlots.map((slot: string, idx: number) => (
+                              <option key={idx} value={slot}>{slot}</option>
+                          ))}
+                      </select>
+                      <div className="absolute top-1/2 -translate-y-1/2 rtl:left-4 ltr:right-4 pointer-events-none text-[#d4a06a]">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                      </div>
+                  </div>
+                  {isTimeSlotInvalid && (
+                      <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-xl text-[12px] text-red-800 font-bold leading-relaxed flex items-start gap-2">
+                          <span className="text-base leading-none">⚠️</span>
+                          <div>
+                              {isEn ? (
+                                  <>
+                                      Your selected {isPickup ? 'pickup' : 'delivery'} time (<span className="underline">{localTimeSlot}</span>) is outside the working hours of <strong>{currentBranch?.name || 'this branch'}</strong>.
+                                      <br />
+                                      Working hours on this day: <strong>{branchHoursStr}</strong>. Please select a different time window.
+                                  </>
+                              ) : (
+                                  <>
+                                      وقت {isPickup ? 'الاستلام' : 'التوصيل'} المحدد (<span className="underline">{localTimeSlot}</span>) خارج ساعات عمل فرع <strong>{currentBranch?.name || 'هذا الفرع'}</strong>.
+                                      <br />
+                                      ساعات العمل في هذا اليوم: <strong>{branchHoursStr}</strong>. يرجى اختيار فترة {isPickup ? 'الاستلام' : 'التوصيل'} الأخرى.
+                                  </>
+                              )}
+                          </div>
+                      </div>
+                  )}
+              </div>
+          )}
+      </div>
   );
 }

@@ -148,7 +148,7 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
       const meta = currentBranch.metafields?.find((m: any) => m?.key === key);
       return meta?.value;
     };
-    const dateObj = selectedDate ? new Date(selectedDate) : new Date();
+    const dateObj = selectedDate ? new Date(selectedDate + 'T12:00:00') : new Date();
     const weekday = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Riyadh', weekday: 'short' }).format(dateObj).toLowerCase();
     const fromStr = getMeta(`${weekday}_working_hours_from`) || getMeta('working_hours_from') || '10:00';
     const toStr = getMeta(`${weekday}_working_hours_to`) || getMeta('working_hours_to') || '22:00';
@@ -482,11 +482,13 @@ function generateDynamicSlots(branch: any, isEn: boolean, fulfillmentType: strin
     return meta?.value;
   };
 
-  // Get Saudi current day of the week
+  // Determine the weekday of the TARGET date (not always today)
+  // so future dates use the correct day-specific working hours
+  const targetDateObj = targetDateStr ? new Date(targetDateStr + 'T12:00:00') : new Date();
   const riyadhDateStr = new Intl.DateTimeFormat('en-US', {
     timeZone: 'Asia/Riyadh',
     weekday: 'short'
-  }).format(new Date());
+  }).format(targetDateObj);
 
   // Determine Shift 1 Open/Close keys
   let fromKey = 'working_hours_from';
@@ -505,7 +507,7 @@ function generateDynamicSlots(branch: any, isEn: boolean, fulfillmentType: strin
     }
   }
 
-  // Handle day-specific keys
+  // Handle day-specific keys based on the TARGET date's weekday
   let dayFromKey = fromKey;
   let dayToKey = toKey;
   const lowerDay = riyadhDateStr.toLowerCase(); // 'sun', 'mon', etc.
@@ -1257,7 +1259,7 @@ function CartCalendarPicker({
 
   // 2. Track current displayed month
   const [displayedMonth, setDisplayedMonth] = useState(() => {
-      const initial = selectedDate ? new Date(selectedDate) : new Date();
+      const initial = selectedDate ? new Date(selectedDate + 'T12:00:00') : new Date();
       return isNaN(initial.getTime()) ? new Date() : initial;
   });
 
@@ -1360,7 +1362,7 @@ function CartCalendarPicker({
       return meta?.value;
     };
     
-    const dateObj = localSelectedDate ? new Date(localSelectedDate) : new Date();
+    const dateObj = localSelectedDate ? new Date(localSelectedDate + 'T12:00:00') : new Date();
     const weekday = new Intl.DateTimeFormat('en-US', {
       timeZone: 'Asia/Riyadh',
       weekday: 'short'
@@ -1493,16 +1495,11 @@ function CartCalendarPicker({
                               const newVal = e.target.value;
                               setLocalTimeSlot(newVal); // Instant local feedback
                               
-                              const payload = {
-                                  action: 'AttributesUpdate',
-                                  inputs: {
-                                      attributes: [
-                                          { key: 'Time Slot', value: newVal }
-                                      ]
-                                  }
-                              };
+                              // Use the same flat FormData format as the date selection
                               const formData = new FormData();
-                              formData.append('cartFormInput', JSON.stringify(payload));
+                              formData.append('action', 'AttributesUpdate');
+                              formData.append('attributes[0][key]', 'Time Slot');
+                              formData.append('attributes[0][value]', newVal);
                               fetcher.submit(formData, { method: 'POST', action: '/cart' });
                           }}
                           className="w-full bg-[#fcfaf8] border border-[#f0ece8] rounded-xl px-4 py-3 text-[14px] text-[#234745] font-medium appearance-none focus:outline-none focus:border-[#d4a06a] focus:ring-1 focus:ring-[#d4a06a] transition-all cursor-pointer"

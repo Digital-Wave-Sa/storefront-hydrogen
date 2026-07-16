@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Cake, Palette, Sparkles, MessageSquare, Layers, ArrowRight, ArrowLeft, Eye, Compass } from 'lucide-react';
+import { Cake, Palette, Sparkles, MessageSquare, Layers, ArrowRight, ArrowLeft, Eye, Compass, Clock, Check } from 'lucide-react';
 import { CakePreview } from './CakePreview';
 import { FaqModal } from './FaqModal';
 import { SaudiRiyalSymbol } from '~/components/Price';
@@ -49,7 +49,8 @@ const steps = [
   { id: 1, titleEn: 'Shape', titleAr: 'اختر الشكل', icon: Cake },
   { id: 2, titleEn: 'Flavor', titleAr: 'أختر النكهة', icon: FlavorIcon },
   { id: 3, titleEn: 'Decoration', titleAr: 'أختر التزيين', icon: DecorationIcon },
-  { id: 4, titleEn: 'Message', titleAr: 'أضف رسالتك الخاصة', icon: MessageIcon }
+  { id: 4, titleEn: 'Message', titleAr: 'أضف رسالتك الخاصة', icon: MessageIcon },
+  { id: 5, titleEn: 'Time', titleAr: 'وقت التحضير', icon: Clock }
 ];
 
 const cakeOptions = {
@@ -93,6 +94,11 @@ const cakeOptions = {
     { id: 'custom', name: 'لون مخصص (Custom)', price: 0, color: '#4a90e2', isCustom: true }
   ]
 };
+
+const prepTimeOptions = [
+  { id: '24h', nameEn: 'Express Preparation (Ready in 24 Hours)', nameAr: 'تحضير سريع (جاهز خلال 24 ساعة)', price: 0, descEn: 'Your cake will be ready for pickup or delivery starting 24 hours from now.', descAr: 'ستكون الكيكة جاهزة للاستلام أو التوصيل بعد 24 ساعة من الآن.' },
+  { id: '48h', nameEn: 'Standard Preparation (Ready in 48 Hours)', nameAr: 'تحضير عادي (جاهز خلال 48 ساعة)', price: 0, descEn: 'Your cake will be ready for pickup or delivery starting 48 hours from now.', descAr: 'ستكون الكيكة جاهزة للاستلام أو التوصيل بعد 48 ساعة من الآن.' }
+];
 
 export default function LolaCakeBuilder({ cakeAttributes = [], toppingDesigns = [], isEn = false }: { cakeAttributes?: any[], toppingDesigns?: any[], isEn?: boolean }) {
   const [currentStep, setCurrentStep] = useState(1);
@@ -209,7 +215,8 @@ export default function LolaCakeBuilder({ cakeAttributes = [], toppingDesigns = 
     message: '',
     textColor: '#4a2511',
     textFont: 'Classic',
-    uploadedImage: null as string | null
+    uploadedImage: null as string | null,
+    prepTime: prepTimeOptions[1]
   });
 
   const [savedSelections, setSavedSelections] = useState<any | null>(null);
@@ -242,6 +249,7 @@ export default function LolaCakeBuilder({ cakeAttributes = [], toppingDesigns = 
         const flavor = mergedOptions.flavors.find(f => f.id === savedSelections.flavorId) || mergedOptions.flavors[0];
         const style = mergedOptions.styles.find(s => s.id === savedSelections.styleId) || mergedOptions.styles[0];
         const color = cakeOptions.colors.find(c => c.id === savedSelections.colorId) || selections.color;
+        const prepTime = prepTimeOptions.find(p => p.id === savedSelections.prepTimeId) || prepTimeOptions[1];
         
         setSelections({
           shape,
@@ -253,7 +261,8 @@ export default function LolaCakeBuilder({ cakeAttributes = [], toppingDesigns = 
           message: savedSelections.message || '',
           textColor: savedSelections.textColor || '#4a2511',
           textFont: savedSelections.textFont || 'Classic',
-          uploadedImage: savedSelections.uploadedImage || null
+          uploadedImage: savedSelections.uploadedImage || null,
+          prepTime
         });
       } else {
         setSelections(prev => ({
@@ -279,7 +288,8 @@ export default function LolaCakeBuilder({ cakeAttributes = [], toppingDesigns = 
         message: selections.message,
         textColor: selections.textColor,
         textFont: selections.textFont,
-        uploadedImage: selections.uploadedImage
+        uploadedImage: selections.uploadedImage,
+        prepTimeId: selections.prepTime?.id
       };
       try {
         localStorage.setItem('custom_cake_selections', JSON.stringify(dataToSave));
@@ -381,6 +391,7 @@ export default function LolaCakeBuilder({ cakeAttributes = [], toppingDesigns = 
     if (selections.style && !isNaN(Number(selections.style.price))) total += Number(selections.style.price);
     if (selections.color && !isNaN(Number(selections.color.price))) total += Number(selections.color.price);
     if (selections.uploadedImage && !isNaN(photoPrintPrice)) total += photoPrintPrice;
+    if (selections.prepTime && !isNaN(Number(selections.prepTime.price))) total += Number(selections.prepTime.price);
     console.log('[DEBUG Price] shape:', selections.shape?.name, selections.shape?.price, 'size:', selections.size?.name, selections.size?.price, 'flavor:', selections.flavor?.name, selections.flavor?.price, 'style:', selections.style?.name, selections.style?.price, 'total:', total);
     return total;
   };
@@ -415,9 +426,10 @@ export default function LolaCakeBuilder({ cakeAttributes = [], toppingDesigns = 
           messageFont: selections.textFont,
           messageColor: selections.textColor,
           uploadedImage: selections.uploadedImage,
+          prepTime: isEn ? selections.prepTime.nameEn : selections.prepTime.nameAr,
           cakePreviewImage, // Send the screenshot
           finalTotal: calculateTotal(),
-          isEn: false
+          isEn: isEn
         })
       });
       const data = (await response.json()) as any;
@@ -805,6 +817,57 @@ export default function LolaCakeBuilder({ cakeAttributes = [], toppingDesigns = 
                           </>
                         )}
                       </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {currentStep === 5 && (
+                <div className="animate-in fade-in duration-300 space-y-6">
+                  <div className={isEn ? 'text-left' : 'text-right'}>
+                    <h2 className="text-2xl font-bold text-[#1a1a1a] mb-2">
+                      {isEn ? 'Select Preparation & Time' : 'اختر وقت التجهيز والاستلام'}
+                    </h2>
+                    <p className="text-[#8BA19C] text-sm mb-6">
+                      {isEn 
+                        ? 'Custom cakes require a minimum of 24 hours of preparation time. Please select one of the options below:' 
+                        : 'تحتاج الكيكات المخصصة إلى 24 ساعة كحد أدنى للتجهيز والتحضير. يرجى اختيار أحد الخيارات التالية:'}
+                    </p>
+                    
+                    <div className="flex flex-col gap-4 w-full">
+                      {prepTimeOptions.map(option => {
+                        const isSelected = selections.prepTime?.id === option.id;
+                        return (
+                          <div 
+                            key={option.id}
+                            className={`p-6 rounded-2xl border transition-all cursor-pointer relative flex flex-col justify-start gap-2 ${
+                              isSelected 
+                                ? 'border-[#294941] bg-[#F6FAF8]' 
+                                : 'border-[#E5E7EB] bg-white hover:border-[#294941]/50'
+                            }`}
+                            onClick={() => setSelections(prev => ({ ...prev, prepTime: option }))}
+                          >
+                            <div className={`absolute top-5 ${isEn ? 'right-5' : 'left-5'} w-6 h-6 rounded-full flex items-center justify-center border transition-all ${
+                              isSelected 
+                                ? 'bg-[#294941] border-[#294941] text-white' 
+                                : 'border-gray-300 bg-white text-transparent'
+                            }`}>
+                              <Check className="w-4 h-4 stroke-[3]" />
+                            </div>
+                            <div className="font-bold text-[#1a1a1a] text-lg pr-6 pl-6">
+                              {isEn ? option.nameEn : option.nameAr}
+                            </div>
+                            <div className="text-[#8BA19C] text-sm pr-6 pl-6">
+                              {isEn ? option.descEn : option.descAr}
+                            </div>
+                            {option.price > 0 && (
+                              <div className="text-[#294941] font-bold text-md mt-1 pr-6 pl-6">
+                                +{toArabicDigits(option.price)} <SaudiRiyalSymbol className="w-auto h-3.5 inline-block text-[#294941]" />
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 </div>

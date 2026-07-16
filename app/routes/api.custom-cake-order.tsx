@@ -273,7 +273,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
       return Response.json({ error: 'Invalid JSON body' }, { status: 400 });
     }
 
-    const { shape, size, flavor, layers, color, topping, message, messageFont, messageColor, uploadedImage, cakePreviewImage, subtotal, finalTotal, isEn } = body;
+    const { shape, size, flavor, layers, color, topping, message, messageFont, messageColor, uploadedImage, cakePreviewImage, prepTime, subtotal, finalTotal, isEn } = body;
 
     // Use finalTotal (which already includes 15% VAT) so the checkout matches the builder
     const priceNum = Number(finalTotal || subtotal);
@@ -282,8 +282,8 @@ export async function action({ request, context }: ActionFunctionArgs) {
     }
 
     const description = isEn
-      ? `${shape} • ${size} • ${flavor} • ${layers} layers • ${color} • ${topping}${message ? ` • "${message}" (${messageFont}, ${messageColor})` : ''}`
-      : `${shape} • ${size} • ${flavor} • ${layers} طبقات • ${color} • ${topping}${message ? ` • "${message}" (${messageFont}, ${messageColor})` : ''}`;
+      ? `${shape} • ${size} • ${flavor} • ${layers} layers • ${color} • ${topping}${prepTime ? ` • Prep: ${prepTime}` : ''}${message ? ` • "${message}" (${messageFont}, ${messageColor})` : ''}`
+      : `${shape} • ${size} • ${flavor} • ${layers} طبقات • ${color} • ${topping}${prepTime ? ` • تجهيز: ${prepTime}` : ''}${message ? ` • "${message}" (${messageFont}, ${messageColor})` : ''}`;
 
     const customAttributes = [
       { key: '_cake_custom', value: 'true' },
@@ -293,6 +293,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
       { key: isEn ? 'Layers' : 'الطبقات', value: String(layers || 1) },
       { key: isEn ? 'Color' : 'اللون', value: color || '-' },
       { key: isEn ? 'Topping' : 'الإضافة', value: topping || '-' },
+      { key: isEn ? 'Preparation Option' : 'خيار التحضير', value: prepTime || '-' },
       ...(message ? [{ key: isEn ? 'Message' : 'الرسالة', value: message }] : []),
       ...(messageFont ? [{ key: isEn ? 'Message Font' : 'خط الرسالة', value: messageFont }] : []),
       ...(messageColor ? [{ key: isEn ? 'Message Color' : 'لون الرسالة', value: messageColor }] : []),

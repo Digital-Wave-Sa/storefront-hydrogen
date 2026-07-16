@@ -249,7 +249,7 @@ function loadDeferredData({context}: Route.LoaderArgs, customerAccessToken: any,
       return null;
     });
 
-  const customer = (process.env.NODE_ENV === 'development' && customerAccessToken?.accessToken === 'dev-bypass-token')
+  const customer = (customerAccessToken?.accessToken === 'dev-bypass-token')
     ? (async () => {
         try {
           const phone = loginOtpPhone;

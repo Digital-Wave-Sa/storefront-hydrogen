@@ -226,7 +226,16 @@ export async function action({ request, context }: ActionFunctionArgs) {
       }
 
       // 5. Save tokens in session and redirect to /account
-      if (token) session.set('customerAccessToken', token);
+      if (token) {
+        session.set('customerAccessToken', token);
+      } else {
+        if (isBypass) {
+          session.set('customerAccessToken', {
+            accessToken: 'dev-bypass-token',
+            expiresAt: new Date(Date.now() + 86400 * 1000).toISOString()
+          });
+        }
+      }
       session.set('saadeddinToken', saadeddinToken);
       session.unset('otpPhone');
       session.unset('socialProfile');

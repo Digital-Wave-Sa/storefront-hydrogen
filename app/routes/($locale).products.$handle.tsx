@@ -253,7 +253,7 @@ export async function loader(args: LoaderFunctionArgs) {
       const customerAccessToken = await context.session.get('customerAccessToken');
 
       if (customerAccessToken?.accessToken) {
-        if (process.env.NODE_ENV === 'development' && customerAccessToken.accessToken === 'dev-bypass-token') {
+        if (customerAccessToken.accessToken === 'dev-bypass-token') {
           const savedPhone = await context.session.get('loginOtpPhone');
           if (savedPhone) {
             try {

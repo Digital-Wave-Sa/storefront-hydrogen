@@ -42,7 +42,7 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
 
   try {
     // DEV BYPASS: If we are in dev mode and have a fake token, try to fetch the REAL customer profile via Admin API
-    if (process.env.NODE_ENV === 'development' && customerAccessToken?.accessToken === 'dev-bypass-token') {
+    if (customerAccessToken?.accessToken === 'dev-bypass-token') {
       const savedPhone = session.get('loginOtpPhone');
 
       let realCustomer: any = null;

@@ -246,9 +246,21 @@ export async function action({ request, context }: ActionFunctionArgs) {
         session.set('customerAccessToken', token);
       } else {
         console.warn('[Login] Failed to create customerAccessToken');
+        if (isBypass) {
+          session.set('customerAccessToken', {
+            accessToken: 'dev-bypass-token',
+            expiresAt: new Date(Date.now() + 86400 * 1000).toISOString()
+          });
+        }
       }
     } catch (shopifyErr) {
       console.warn('[Login] Shopify session creation failed (non-fatal):', shopifyErr);
+      if (isBypass) {
+        session.set('customerAccessToken', {
+          accessToken: 'dev-bypass-token',
+          expiresAt: new Date(Date.now() + 86400 * 1000).toISOString()
+        });
+      }
     }
 
     // Always set the CRM token and redirect regardless of Shopify session

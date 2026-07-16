@@ -15,7 +15,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
   let customer: any = null;
 
-  if (process.env.NODE_ENV === 'development' && customerAccessToken.accessToken === 'dev-bypass-token') {
+  if (customerAccessToken.accessToken === 'dev-bypass-token') {
     const savedPhone = await session.get('loginOtpPhone');
     
     if (savedPhone) {

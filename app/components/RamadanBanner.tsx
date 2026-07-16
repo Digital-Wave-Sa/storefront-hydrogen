@@ -80,9 +80,9 @@ export function RamadanBanner({ config }: { config?: any }) {
 
                     {/* Left Side: Image (First in LTR, Last in RTL so it stays on the left visually) */}
                     <div className="relative z-10 w-full md:w-[45%] h-[260px] md:h-full flex items-center justify-center p-8 bg-[#EED5D7] md:bg-transparent pt-12">
-                        <img 
-                            src={imageUrl} 
-                            alt={customTitleEn || "Ramadan Sweets Tray"} 
+                        <img
+                            src={imageUrl}
+                            alt={customTitleEn || "Ramadan Sweets Tray"}
                             className="w-full max-w-[490px] h-auto object-contain"
                             style={{ maxWidth: '489.6px', maxHeight: '400px' }}
                         />
@@ -90,10 +90,10 @@ export function RamadanBanner({ config }: { config?: any }) {
 
                     {/* Right Side: Content */}
                     <div className={`relative z-10 w-full md:w-[55%] flex flex-col md:bg-transparent`}>
-                        
+
                         {/* Top Half (Pink on mobile, transparent on desktop since absolute bg handles it) */}
                         <div className="flex flex-col items-center md:items-start justify-end text-center md:text-start bg-[#EED5D7] md:bg-transparent px-4 pb-8 md:px-8 lg:px-[126px] md:pb-[30px] w-full md:h-[50%] gap-[16px] md:gap-[24px]">
-                            
+
                             {/* Red Badge */}
                             <div className="bg-[#E64950] rounded-[8px] flex items-center justify-center shadow-sm min-w-[98px] px-3 h-[32px] self-end md:self-auto -mt-10 md:mt-0 z-20">
                                 <span className={`text-[#F9F9F9] font-bold text-[12px] leading-[15px] whitespace-nowrap ${!isEn ? 'font-dinar' : ''}`}>
@@ -110,55 +110,55 @@ export function RamadanBanner({ config }: { config?: any }) {
                                     </p>
                                     {isEn && <div className="w-[48px] border-t border-[#255441]"></div>}
                                 </div>
-                            
-                            <h2 className="text-[32px] md:text-[36px] lg:text-[50px] font-bold leading-[1.2] lg:leading-[60px] text-[#255441]" style={!isEn ? { fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" } : undefined}>
-                                {isEn ? (
-                                    customTitleEn ? customTitleEn : (
-                                        <>
-                                            <span className="text-[#C5A96A]">Golden </span>
-                                            <span>Ramadan </span>
-                                            <span className="text-[#C5A96A]">Collection</span>
-                                        </>
-                                    )
-                                ) : (
-                                    customTitleAr ? customTitleAr : (
-                                        <>
-                                            <span className="text-[#C5A96A]">تشكيلة </span>
-                                            <span>رمضان </span>
-                                            <span className="text-[#C5A96A]">الذهبية</span>
-                                        </>
-                                    )
-                                )}
-                            </h2>
-                        </div>
+
+                                <h2 className="text-[32px] md:text-[36px] lg:text-[50px] font-bold leading-[1.2] lg:leading-[60px] text-[#255441]" style={!isEn ? { fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" } : undefined}>
+                                    {isEn ? (
+                                        customTitleEn ? customTitleEn : (
+                                            <>
+                                                <span className="text-[#C5A96A]">Golden </span>
+                                                <span>Ramadan </span>
+                                                <span className="text-[#C5A96A]">Collection</span>
+                                            </>
+                                        )
+                                    ) : (
+                                        customTitleAr ? customTitleAr : (
+                                            <>
+                                                <span className="text-[#C5A96A]">تشكيلة </span>
+                                                <span>رمضان </span>
+                                                <span className="text-[#C5A96A]">الذهبية</span>
+                                            </>
+                                        )
+                                    )}
+                                </h2>
+                            </div>
                         </div>
 
                         {/* Bottom Half (Brown on mobile, transparent on desktop) */}
                         <div className="flex flex-col items-center md:items-start justify-start bg-[#906B51] md:bg-transparent px-4 py-8 md:px-8 lg:px-[126px] md:py-0 md:pt-[30px] w-full md:h-[50%] gap-[32px]">
-                            
+
                             {/* Countdown Timer */}
                             <div className={`flex items-center justify-center gap-[10px] md:gap-[16px] flex-row w-full md:w-auto`}>
-                            {[
-                                { value: timeLeft.days, labelEn: 'Days', labelAr: 'يوم' },
-                                { value: timeLeft.hours, labelEn: 'Hours', labelAr: 'ساعة' },
-                                { value: timeLeft.minutes, labelEn: 'Minutes', labelAr: 'دقيقة' },
-                                { value: timeLeft.seconds, labelEn: 'Seconds', labelAr: 'ثانية' }
-                            ].map((item, index) => (
-                                <div key={index} className="w-[68px] h-[80px] md:w-[72px] md:h-[87px] bg-[#FEF8EB] border border-[#906B51] md:border-[#9FB7AE] rounded-[8px] flex flex-col justify-center items-center gap-[7px] p-[10px] md:p-[16px] shadow-sm box-border">
-                                    <span className={`text-[#906B51] font-bold text-[16px] md:text-[18px] leading-[22px] ${!isEn ? 'font-dinar' : ''}`}>
-                                        {convertToArabicDigits(item.value)}
-                                    </span>
-                                    <span className="text-[#906B51] font-dinar text-[14px] leading-[17px]">
-                                        {isEn ? item.labelEn : item.labelAr}
-                                    </span>
-                                </div>
-                            ))}
-                        </div>
+                                {[
+                                    { value: timeLeft.days, labelEn: 'Days', labelAr: 'يوم' },
+                                    { value: timeLeft.hours, labelEn: 'Hours', labelAr: 'ساعة' },
+                                    { value: timeLeft.minutes, labelEn: 'Minutes', labelAr: 'دقيقة' },
+                                    { value: timeLeft.seconds, labelEn: 'Seconds', labelAr: 'ثانية' }
+                                ].map((item, index) => (
+                                    <div key={index} className="w-[68px] h-[80px] md:w-[72px] md:h-[87px] bg-[#FEF8EB] border border-[#906B51] md:border-[#9FB7AE] rounded-[8px] flex flex-col justify-center items-center gap-[7px] p-[10px] md:p-[16px] shadow-sm box-border">
+                                        <span className={`text-[#906B51] font-bold text-[16px] md:text-[18px] leading-[22px] ${!isEn ? 'font-dinar' : ''}`}>
+                                            {convertToArabicDigits(item.value)}
+                                        </span>
+                                        <span className="text-[#906B51] font-dinar text-[14px] leading-[17px]">
+                                            {isEn ? item.labelEn : item.labelAr}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
 
                             {/* CTA Button */}
-                            <Link 
+                            <Link
                                 to={isEn ? "/en/collections/ramadan" : "/collections/ramadan"}
-                                className="bg-[#BBCFCD] text-[#234745] font-dinar font-bold text-[16px] md:text-[18px] leading-[22px] rounded-[24px] w-[85%] md:w-[224px] h-[48px] flex items-center justify-center hover:bg-[#a5bdbb] transition-colors"
+                                className="bg-[#BBCFCD] !text-[#234745] font-dinar font-bold text-[16px] md:text-[18px] leading-[22px] rounded-[24px] w-[85%] md:w-[224px] h-[48px] flex items-center justify-center hover:bg-[#a5bdbb] transition-colors"
                                 style={{ padding: '12px 20px', gap: '8px' }}
                             >
                                 {isEn ? 'Shop the Collection' : 'تسوق التشكيلة الان'}

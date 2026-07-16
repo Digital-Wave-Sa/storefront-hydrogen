@@ -3,14 +3,12 @@ import { useRouteLoaderData, useActionData, Form, useNavigation } from 'react-ro
 import { PageLayout } from '~/components/PageLayout';
 import patternBg from '~/assets/patteren-collection-header.svg';
 
-export const meta: MetaFunction = ({ parentsData }) => {
-  const rootData = parentsData?.root as any;
-  const isEn = rootData?.consent?.language?.toLowerCase() === 'en';
+export const meta: MetaFunction = () => {
   return [
-    { title: isEn ? 'Contact Us | Saadeddin' : 'اتصل بنا | سعد الدين' },
-    { name: 'description', content: isEn ? 'Contact us for any inquiries, support, or feedback. We are here to help.' : 'اتصل بنا لأي استفسارات أو دعم أو ملاحظات. نحن هنا للمساعدة.' },
-    { property: 'og:title', content: isEn ? 'Contact Us | Saadeddin' : 'اتصل بنا | سعد الدين' },
-    { property: 'og:description', content: isEn ? 'Contact us for any inquiries, support, or feedback. We are here to help.' : 'اتصل بنا لأي استفسارات أو دعم أو ملاحظات. نحن هنا للمساعدة.' },
+    { title: 'Contact Us | Saadeddin | اتصل بنا | سعد الدين' },
+    { name: 'description', content: 'Contact us for any inquiries, support, or feedback. We are here to help. | اتصل بنا لأي استفسارات أو دعم أو ملاحظات. نحن هنا للمساعدة.' },
+    { property: 'og:title', content: 'Contact Us | Saadeddin' },
+    { property: 'og:description', content: 'Contact us for any inquiries, support, or feedback. We are here to help.' },
   ];
 };
 
@@ -261,7 +259,7 @@ export default function ContactPage() {
                     {isEn ? 'Our corporate team is ready to serve you with custom price quotes and full service.' : 'فريق الشركات جاهز لخدمتك بعروض أسعار مخصصة وخدمة متكاملة'}
                   </p>
                 </div>
-                <div className={`flex ${isEn ? 'justify-end' : 'justify-start'}`}>
+                <div className="flex justify-start">
                   <button type="button" className="bg-[#1F413F] text-white px-10 h-[48px] rounded-full font-bold text-[15px] hover:bg-[#152e2c] transition-all shadow-md" style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" }}>
                     {isEn ? 'Seasonal Gifts' : 'الهدايا الموسمية'}
                   </button>
@@ -364,18 +362,7 @@ export default function ContactPage() {
                       />
                     </div>
 
-                    <div className="flex flex-col gap-4">
-                      <label className={`text-[15px] font-bold text-[#1F413F] ${isEn ? 'text-left' : 'text-right'}`} style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", lineHeight: '100%' }}>
-                        {isEn ? 'Add Attachment (Optional)' : 'إضافة مرفق (إختياري)'}
-                      </label>
-                      <div 
-                        className="w-full h-[140px] border-2 border-dashed rounded-2xl flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-gray-50/50 transition-all"
-                        style={{ borderColor: '#D1B8A7' }}
-                      >
-                        <span className="text-[16px] font-bold text-[#1F413F]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>{isEn ? 'Add Attachment' : 'إضافة مرفق'}</span>
-                        <span className="text-[13px] text-gray-400 font-sans" dir="ltr">{isEn ? 'Photos or PDF — Max 5MB' : 'صور او PDF — حجم اقصى 5 ميجابايت'}</span>
-                      </div>
-                    </div>
+
 
                     <button 
                       type="submit" 

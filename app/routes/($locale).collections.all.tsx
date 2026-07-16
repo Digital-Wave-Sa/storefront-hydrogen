@@ -26,7 +26,7 @@ export async function loader({context, request}: LoaderFunctionArgs) {
       if (parts[2] === 'price') {
         if (!parts[3]) {
           try {
-            const priceObj = JSON.parse(value);
+            const priceObj = JSON.parse(value) as any;
             const p: any = {};
             if (priceObj.min !== undefined) p.min = parseFloat(priceObj.min);
             if (priceObj.max !== undefined) p.max = parseFloat(priceObj.max);
@@ -252,47 +252,53 @@ export default function CollectionAll() {
 
       <div className="bg-[#FEF8EB] min-h-screen">
           <div className="px-4 md:px-8 lg:px-12 py-10 max-w-[1440px] mx-auto text-right">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-              <div className="flex items-center gap-2 flex-wrap justify-start flex-1">
-                 <button 
-                    onClick={() => setIsFilterOpen(true)}
-                    className="lg:hidden flex items-center gap-2.5 px-5 py-2.5 bg-white border border-gray-200 text-[#234745] rounded-xl font-bold hover:bg-gray-50 transition-all shadow-sm active:scale-95 group"
-                 >
-                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 3H2l8 9v11l4-6V12L22 3z"/></svg>
-                   <span>{isEn ? 'Filter' : 'تـصـفـيـة'}</span>
-                 </button>
-
-                 <ActiveFilterChips isEn={isEn} />
-              </div>
-
-              <div className="flex-1 flex items-center justify-end">
-                <div className="flex items-center gap-2">
-                  <label className="text-gray-400 text-[13px] font-bold">
-                    {isEn ? 'Sort by:' : 'ترتيب حسب:'}
-                  </label>
-                  <div className="flex items-center bg-white border border-[#234745]/10 rounded-full px-4 py-2 shadow-sm relative w-40">
-                    <select
-                      aria-label={isEn ? "Sort by" : "ترتيب حسب"}
-                      className="w-full bg-transparent text-[13px] font-bold text-gray-800 cursor-pointer focus:outline-none focus:ring-0 border-none appearance-none rtl:pl-6"
-                      style={{ WebkitAppearance: 'none', appearance: 'none' }}
-                      onChange={(e) => {
-                        const [key, rev] = e.target.value.split('|');
-                        const params = new URLSearchParams(searchParams);
-                        params.set('sortKey', key);
-                        params.set('reverse', rev);
-                        setSearchParams(params, { preventScrollReset: true });
-                      }}
-                      value={`${searchParams.get('sortKey') || 'RELEVANCE'}|${searchParams.get('reverse') || 'false'}`}
-                    >
-                      <option value="RELEVANCE|false">{isEn ? 'Featured' : 'الأكثر صلة'}</option>
-                      <option value="PRICE|false">{isEn ? 'Price: Low to High' : 'السعر: من الأقل للأعلى'}</option>
-                      <option value="PRICE|true">{isEn ? 'Price: High to Low' : 'السعر: من الأعلى للأقل'}</option>
-                    </select>
-                    <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7"></path></svg>
-                  </div>
+            {/* Filter controls row */}
+            <div className="flex items-center justify-between gap-2 mb-5 w-full">
+              {/* Left Side: Sort by dropdown */}
+              <div className="flex items-center gap-1.5 md:gap-2">
+                <label className="text-[#9CA3AF] text-[12px] md:text-[14px] font-medium whitespace-nowrap" style={{ fontFamily: !isEn ? "'GE Dinar One', sans-serif" : undefined }}>
+                  {isEn ? 'Sort by:' : 'ترتيب حسب:'}
+                </label>
+                <div className="flex items-center bg-white border border-[#BBCFCD]/60 rounded-xl px-2 py-2 flex items-center relative w-[115px] md:w-[180px] shadow-sm">
+                  <select
+                    aria-label={isEn ? "Sort by" : "ترتيب حسب"}
+                    className="w-full bg-transparent text-[12px] md:text-[14px] font-bold text-[#234745] cursor-pointer focus:outline-none focus:ring-0 border-none appearance-none rtl:pl-5 rtl:pr-1 ltr:pr-5 ltr:pl-1"
+                    style={{ WebkitAppearance: 'none', appearance: 'none', fontFamily: !isEn ? "'GE Dinar One', sans-serif" : undefined }}
+                    onChange={(e) => {
+                      const [key, rev] = e.target.value.split('|');
+                      const params = new URLSearchParams(searchParams);
+                      params.set('sortKey', key);
+                      params.set('reverse', rev);
+                      setSearchParams(params, { preventScrollReset: true });
+                    }}
+                    value={`${searchParams.get('sortKey') || 'RELEVANCE'}|${searchParams.get('reverse') || 'false'}`}
+                  >
+                    <option value="RELEVANCE|false">{isEn ? 'Featured' : 'الأكثر صلة'}</option>
+                    <option value="PRICE|false">{isEn ? 'Price: Low to High' : 'السعر: من الأقل للأعلى'}</option>
+                    <option value="PRICE|true">{isEn ? 'Price: High to Low' : 'السعر: من الأعلى للأقل'}</option>
+                  </select>
+                  {/* Chevron down arrow on the left for RTL, right for LTR */}
+                  <svg className={`absolute ${isEn ? 'right-2' : 'left-2'} top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#234745] pointer-events-none`} fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7"></path></svg>
                 </div>
               </div>
 
+              {/* Right Side: Filter Button (visible on mobile/tablet) */}
+              <button 
+                 onClick={() => setIsFilterOpen(true)}
+                 className="lg:hidden flex items-center gap-1.5 px-3.5 py-2 bg-white border border-[#BBCFCD]/60 text-[#234745] rounded-xl font-bold hover:bg-gray-50 transition-all shadow-sm active:scale-95 group whitespace-nowrap text-[12px] md:text-[14px]"
+                 style={{ fontFamily: !isEn ? "'GE Dinar One', sans-serif" : undefined }}
+              >
+                 {/* Funnel outline icon matching the screenshot (placed first so in RTL it renders on the right) */}
+                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="text-[#234745] shrink-0">
+                   <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                 </svg>
+                 <span>{isEn ? 'Filter' : 'تصفية'}</span>
+              </button>
+            </div>
+
+            {/* Filter chips row (visible when filters are active) */}
+            <div className="flex items-center gap-2.5 flex-wrap justify-start mb-8 w-full">
+              <ActiveFilterChips isEn={isEn} collections={collections} />
             </div>
 
             <div className="flex flex-col lg:flex-row gap-8 items-start">
@@ -388,29 +394,64 @@ function CollectionAllHero({ title, productsCount, isEn }: { title: string, prod
     );
 }
 
-export function ActiveFilterChips({ isEn }: { isEn: boolean }) {
+export function ActiveFilterChips({ isEn, collections }: { isEn: boolean, collections?: any[] }) {
+    const location = useLocation();
+    const submit = useSubmit();
     const [params, setParams] = useState<URLSearchParams | null>(null);
+    
     useEffect(() => {
-        setParams(new URLSearchParams(window.location.search));
-    }, []);
+        setParams(new URLSearchParams(location.search));
+    }, [location.search]);
 
     if (!params) return null;
 
     const chips: { key: string, label: React.ReactNode }[] = [];
     params.forEach((value, key) => {
-        if (key === 'q' || key === 'cursor' || key === 'sortKey' || key === 'reverse') return;
+        if (key === 'q' || key === 'cursor' || key === 'sortKey' || key === 'reverse' || key === 'category') return;
         
         let label: React.ReactNode = value;
-        if (key === 'filter.v.price.min') label = <span className="flex items-center gap-1">{isEn ? `Min: ${value}` : `الأقل: ${value}`} <CurrencyIcon className="w-[14px] mt-0.5" /></span>;
-        if (key === 'filter.v.price.max') label = <span className="flex items-center gap-1">{isEn ? `Max: ${value}` : `الأعلى: ${value}`} <CurrencyIcon className="w-[14px] mt-0.5" /></span>;
+        if (key === 'filter.v.price') {
+            try {
+                const parsed = JSON.parse(value) as any;
+                if (parsed.gte !== undefined && parsed.lte !== undefined) {
+                    label = isEn 
+                      ? `Price: ${parsed.gte} - ${parsed.lte} SAR` 
+                      : `السعر: ${parsed.gte} - ${parsed.lte} ر.س`;
+                } else if (parsed.gte !== undefined) {
+                    label = isEn 
+                      ? `Price: Over ${parsed.gte} SAR` 
+                      : `السعر: أكثر من ${parsed.gte} ر.س`;
+                } else if (parsed.lte !== undefined) {
+                    label = isEn 
+                      ? `Price: Under ${parsed.lte} SAR` 
+                      : `السعر: أقل من ${parsed.lte} ر.س`;
+                }
+            } catch(e) {}
+        } else if (key.startsWith('filter.v.option.')) {
+            label = value;
+        }
 
         chips.push({ key, label });
     });
 
-    const removeFilter = (key: string) => {
-        const url = new URL(window.location.href);
-        url.searchParams.delete(key);
-        window.location.href = url.toString();
+    // Also include categories
+    params.getAll('category').forEach(value => {
+        const found = collections?.find((c: any) => c.handle === value);
+        const label = found ? found.title : value.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        chips.push({ key: `category|${value}`, label });
+    });
+
+    const removeFilter = (itemKey: string) => {
+        const newParams = new URLSearchParams(window.location.search);
+        if (itemKey.startsWith('category|')) {
+            const val = itemKey.split('|')[1];
+            const categories = newParams.getAll('category');
+            newParams.delete('category');
+            categories.filter(c => c !== val).forEach(c => newParams.append('category', c));
+        } else {
+            newParams.delete(itemKey);
+        }
+        submit(newParams, { replace: true, preventScrollReset: true });
     };
 
     return (
@@ -419,10 +460,20 @@ export function ActiveFilterChips({ isEn }: { isEn: boolean }) {
                 <button 
                   key={chip.key}
                   onClick={() => removeFilter(chip.key)}
-                  className="bg-white border border-gray-200 px-4 py-1.5 rounded-full flex items-center gap-2 text-sm font-bold text-gray-600 hover:bg-red-50 hover:text-red-600 hover:border-red-100 transition-all group"
+                  className="bg-white border border-[#BBCFCD]/60 px-[16px] py-[10px] rounded-full flex items-center gap-2.5 text-[14px] font-bold text-[#234745] hover:border-[#234745] hover:bg-gray-50 transition-all group shadow-sm"
+                  style={{ fontFamily: !isEn ? "'GE Dinar One', sans-serif" : undefined }}
                 >
-                    <span>{chip.label}</span>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="text-gray-300 group-hover:text-red-500"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                    {isEn ? (
+                        <>
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="text-[#234745]/70 group-hover:text-[#234745] shrink-0 transition-colors"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                            <span>{chip.label}</span>
+                        </>
+                    ) : (
+                        <>
+                            <span>{chip.label}</span>
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="text-[#234745]/70 group-hover:text-[#234745] shrink-0 transition-colors"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                        </>
+                    )}
                 </button>
             ))}
         </>
@@ -456,7 +507,7 @@ export function FilterSidebar({ filters, collections, onClose, isDesktop = false
         const priceParam = params.get('filter.v.price');
         if (priceParam) {
             try {
-                const parsed = JSON.parse(priceParam);
+                const parsed = JSON.parse(priceParam) as any;
                 if (parsed.gte) setMinPrice(parsed.gte.toString());
                 if (parsed.lte) setMaxPrice(parsed.lte.toString());
             } catch(e) {}
@@ -602,10 +653,10 @@ export function FilterSidebar({ filters, collections, onClose, isDesktop = false
     };
 
     const pricePresets = [
-        { label: <span className="flex items-center gap-1">{isEn ? 'Under 100' : <span>أقل من <span className="font-en">100</span></span>} <CurrencyIcon className="w-[16px] -mt-0.5" /></span>, min: '', max: '100' },
-        { label: <span className="flex items-center gap-1">{isEn ? '100 - 200' : <span><span className="font-en">100</span> - <span className="font-en">200</span></span>} <CurrencyIcon className="w-[16px] -mt-0.5" /></span>, min: '100', max: '200' },
-        { label: <span className="flex items-center gap-1">{isEn ? '200 - 400' : <span><span className="font-en">200</span> - <span className="font-en">400</span></span>} <CurrencyIcon className="w-[16px] -mt-0.5" /></span>, min: '200', max: '400' },
-        { label: <span className="flex items-center gap-1">{isEn ? 'Over 400' : <span>أكثر من <span className="font-en">400</span></span>} <CurrencyIcon className="w-[16px] -mt-0.5" /></span>, min: '400', max: '' }
+        { label: isEn ? 'Under 100 SAR' : 'أقل من 100 ر.س', min: '', max: '100' },
+        { label: isEn ? '100 - 200 SAR' : '100 - 200 ر.س', min: '100', max: '200' },
+        { label: isEn ? '200 - 400 SAR' : '200 - 400 ر.س', min: '200', max: '400' },
+        { label: isEn ? 'Over 400 SAR' : 'أكثر من 400 ر.س', min: '400', max: '' }
     ];
 
     const currentParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams();
@@ -614,9 +665,14 @@ export function FilterSidebar({ filters, collections, onClose, isDesktop = false
         <div className={`flex flex-col h-full ${isDesktop ? 'bg-white border border-[#BBCFCD]/50 rounded-[24px] w-[302px] box-border py-6' : 'bg-white overflow-hidden'}`} dir={isEn ? 'ltr' : 'rtl'}>
             {!isDesktop && (
               <header className="p-6 border-b border-[#BBCFCD]/50 flex items-center justify-between shrink-0">
-                  <h2 className={`text-xl font-black text-[#234745] ${isEn ? 'font-en' : "font-['GE_Dinar_One']"}`}>{isEn ? 'Filters' : 'تصفية النتائج'}</h2>
-                  <button onClick={onClose} className="w-10 h-10 bg-gray-50 rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-100 transition-colors">
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                  <h2 className={`text-xl font-black text-[#234745] ${isEn ? 'font-en' : "font-['GE_Dinar_One']"}`}>{isEn ? 'Filters' : 'التصفية'}</h2>
+                  {/* Circled cross close button matching screenshot */}
+                  <button onClick={onClose} className="w-8 h-8 rounded-full flex items-center justify-center text-[#7D7D7D] hover:bg-gray-100 transition-colors shrink-0">
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                          <circle cx="12" cy="12" r="10" />
+                          <line x1="15" y1="9" x2="9" y2="15" />
+                          <line x1="9" y1="9" x2="15" y2="15" />
+                      </svg>
                   </button>
               </header>
             )}
@@ -627,18 +683,19 @@ export function FilterSidebar({ filters, collections, onClose, isDesktop = false
                 {/* Search Bar */}
                 {!hideSearchInput && (
                     <>
-                        <div className="w-[270px] bg-[#BBCFCD] border border-[#BBCFCD]/50 rounded-[25px] px-4 py-3 flex flex-col justify-center">
-                            <form onSubmit={handleSearchSubmit} className="relative flex items-center gap-2">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#234745" strokeWidth="1.25" className="shrink-0">
-                                    <circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                                </svg>
+                        <div className="w-[270px] bg-[#BBCFCD]/40 rounded-[25px] px-4 py-2 flex items-center justify-between">
+                            <form onSubmit={handleSearchSubmit} className={`w-full flex items-center ${isEn ? 'flex-row' : 'flex-row-reverse'} gap-2`}>
                                 <input 
                                     type="text" 
                                     placeholder={isEn ? 'Search products...' : 'إبحث في المنتجات...'} 
                                     value={searchQuery}
                                     onChange={(e) => handleSearchChange(e.target.value)}
-                                    className={`w-full bg-transparent text-[14px] ${isEn ? 'font-en' : "font-['GE_Dinar_One']"} text-[#234745] placeholder-[#234745] focus:outline-none`}
+                                    className={`flex-1 min-w-0 bg-transparent text-[14px] ${isEn ? 'font-en text-left' : "font-['GE_Dinar_One'] text-right"} text-[#234745] placeholder-[#234745]/70 focus:outline-none`}
                                 />
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#234745" strokeWidth="1.5" className="shrink-0">
+                                    <circle cx="11" cy="11" r="8"></circle>
+                                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                                </svg>
                             </form>
                         </div>
 
@@ -666,7 +723,9 @@ export function FilterSidebar({ filters, collections, onClose, isDesktop = false
                                             </div>
                                             <span className={`text-[16px] font-medium ${isEn ? 'font-en' : "font-['GE_Dinar_One']"} transition-colors ${isActive ? 'text-[#234745]' : 'text-[#7D7D7D] group-hover:text-[#234745]'}`}>{collection.title}</span>
                                         </div>
-                                        <span className={`text-[16px] font-medium ${isEn ? 'font-en' : "font-['GE_Dinar_One']"} text-[#7D7D7D]`}>&nbsp;</span>
+                                        <span className={`text-[16px] font-medium ${isEn ? 'font-en text-[#7D7D7D]' : "font-['GE_Dinar_One'] text-[#7D7D7D]"}`}>
+                                            {collection.products?.totalCount !== undefined ? `(${collection.products.totalCount})` : ''}
+                                        </span>
                                     </button>
                                 );
                             })}
@@ -679,7 +738,7 @@ export function FilterSidebar({ filters, collections, onClose, isDesktop = false
                 {/* Price */}
                 <div className="w-[270px] flex flex-col gap-4">
                     <button type="button" onClick={() => toggleSection('price')} className="flex items-center justify-between w-full outline-none group">
-                        <h3 className={`text-[16px] font-bold ${isEn ? 'font-en' : "font-['GE_Dinar_One']"} text-[#171717] flex items-center gap-1`}>{isEn ? 'Price' : 'السعر'} <CurrencyIcon className="w-[18px]" /></h3>
+                        <h3 className={`text-[16px] font-bold ${isEn ? 'font-en' : "font-['GE_Dinar_One']"} text-[#171717] flex items-center gap-1`}>{isEn ? 'Price (SAR)' : 'السعر (ر.س)'}</h3>
                         <div className="flex items-center gap-6">
                             {(minPrice || maxPrice) && (
                                 <span onClick={clearPrice} className={`text-[16px] font-bold ${isEn ? 'font-en' : "font-['GE_Dinar_One']"} text-[#E64950]`}>{isEn ? 'Clear' : 'مسح'}</span>
@@ -743,7 +802,7 @@ export function FilterSidebar({ filters, collections, onClose, isDesktop = false
                                                     </div>
                                                     <span className={`text-[16px] font-medium ${isEn ? 'font-en' : "font-['GE_Dinar_One']"} transition-colors ${isActive ? 'text-[#234745]' : 'text-[#7D7D7D] group-hover:text-[#234745]'}`}>{item.label}</span>
                                                 </div>
-                                                <span className={`text-[16px] font-medium ${isEn ? 'font-en' : "font-['GE_Dinar_One']"} text-[#7D7D7D]`}>{item.count > 0 ? <>(<span className="font-en">{item.count}</span>)</> : ''}</span>
+                                                <span className={`text-[16px] font-medium ${isEn ? 'font-en text-[#7D7D7D]' : "font-['GE_Dinar_One'] text-[#7D7D7D]"}`}>{item.count > 0 ? <>(<span className="font-en">{item.count}</span>)</> : ''}</span>
                                             </button>
                                         );
                                     })}
@@ -754,13 +813,21 @@ export function FilterSidebar({ filters, collections, onClose, isDesktop = false
                 })}
             </div>
 
-            <div className={`px-4 mt-6 shrink-0`}>
+            {/* Bottom side-by-side action buttons matching the mockup drawer layout */}
+            <div className="p-6 border-t border-[#BBCFCD]/50 flex items-center justify-between gap-4 shrink-0 bg-white w-full" dir={isEn ? 'ltr' : 'rtl'}>
                 <button 
                     type="button"
                     onClick={handleClearAll}
-                    className={`w-full border border-[#234745] text-[#234745] rounded-[25px] py-2.5 text-[16px] font-medium ${isEn ? 'font-en' : "font-['GE_Dinar_One']"} hover:bg-gray-50 transition-colors flex items-center justify-center`}
+                    className={`flex-1 border border-[#234745] text-[#234745] rounded-[25px] py-2.5 text-[16px] font-medium ${isEn ? 'font-en' : "font-['GE_Dinar_One']"} hover:bg-gray-50 transition-colors flex items-center justify-center`}
                 >
-                    {isEn ? 'Clear All Filters' : 'مسح كل الفلاتر'}
+                    {isEn ? 'Clear All' : 'مسح كل الفلاتر'}
+                </button>
+                <button 
+                    type="button"
+                    onClick={onClose}
+                    className={`flex-1 bg-[#234745] text-[#FEF8EB] rounded-[25px] py-2.5 text-[16px] font-medium ${isEn ? 'font-en' : "font-['GE_Dinar_One']"} hover:opacity-90 transition-opacity flex items-center justify-center`}
+                >
+                    {isEn ? 'Apply' : 'تطبيق'}
                 </button>
             </div>
         </div>
@@ -795,7 +862,7 @@ function getFilterLink(input: string) {
 
 function ProductsGrid({products, view}: {products: any[], view: 'grid' | 'list'}) {
   const containerClasses = view === 'grid'
-    ? "grid grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8"
+    ? "grid grid-cols-2 lg:grid-cols-3 gap-[10px] md:gap-6 lg:gap-8"
     : "flex flex-col gap-5";
 
   return (

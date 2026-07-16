@@ -123,7 +123,7 @@ export function ProductItem({
   const showOutOfStock = !isAvailable && !isVisibilityBlocked;
   const showPreorder = isPreorder && !isVisibilityBlocked && isAvailable;
 
-  const isDimmed = isVisibilityBlocked || showOutOfStock;
+  const isDimmed = isVisibilityBlocked;
 
   if (view === 'list') {
     return (
@@ -147,7 +147,8 @@ export function ProductItem({
                 data={product.featuredImage}
                 loading={loading}
                 sizes="200px"
-                className={`w-full h-full object-contain transition-transform duration-500 ${!effectiveAvailable ? 'opacity-50 grayscale' : 'group-hover:scale-110'}`}
+                className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-110"
+                style={{ opacity: isVisibilityBlocked ? 0.5 : (showOutOfStock ? 0.4 : 1), filter: isVisibilityBlocked ? 'grayscale(1)' : 'none' }}
                 />
             )}
             {/* Promo Badges (List View) */}
@@ -183,15 +184,17 @@ export function ProductItem({
               </span>
           </div>
           <Link to={isVisibilityBlocked ? '#' : variantUrl} prefetch="intent" onClick={isVisibilityBlocked ? (e: any) => e.preventDefault() : undefined}>
-            <h4 className={`text-xl md:text-2xl font-black text-gray-800 mb-2 truncate transition-colors ${isVisibilityBlocked ? '' : 'group-hover:text-[#234745]'}`}>{formatNumbers(product.title)}</h4>
+            <h4 className={`text-xl md:text-2xl font-black text-gray-800 mb-2 truncate transition-colors ${isVisibilityBlocked ? '' : 'group-hover:text-[#234745]'}`} style={{ opacity: showOutOfStock ? 0.4 : 1 }}>{formatNumbers(product.title)}</h4>
           </Link>
           {!isVisibilityBlocked && product.priceRange && (
-            <Price 
-              data={product.priceRange.minVariantPrice} 
-              size="lg" 
-              isEn={isEn} 
-              className="mt-1"
-            />
+            <div style={{ opacity: showOutOfStock ? 0.4 : 1 }}>
+              <Price 
+                data={product.priceRange.minVariantPrice} 
+                size="lg" 
+                isEn={isEn} 
+                className="mt-1"
+              />
+            </div>
           )}
           <div className="mt-4 flex items-center justify-end gap-3">
             {!isVisibilityBlocked && (
@@ -209,10 +212,10 @@ export function ProductItem({
                     <button 
                         type="button"
                         onClick={() => setIsNotifyModalOpen(true)}
-                        className="h-[44px] px-8 flex items-center justify-center rounded-full font-bold text-[15px] bg-amber-500 text-white hover:bg-amber-600 shadow-sm transition-all duration-300 active:scale-95"
+                        className="h-[44px] px-8 flex items-center justify-center rounded-full font-bold text-[15px] bg-[#234745] text-white hover:bg-[#163529] shadow-sm transition-all duration-300 active:scale-95"
                         style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
                     >
-                        🔔 {t.common.notifyMe}
+                        {isEn ? 'Notify Me' : 'أبلغني عن التوفر'}
                     </button>
                 )}
                 <Link to={variantUrl} aria-label={product.title} className="bg-gray-100 text-gray-600 px-6 py-3 rounded-xl font-bold text-sm hover:bg-gray-200 transition-all">
@@ -258,12 +261,13 @@ export function ProductItem({
                 data={product.featuredImage}
                 loading={loading}
                 sizes="(min-width: 45em) 400px, 100vw"
-                className={`w-full h-full object-cover transition-transform duration-700 ${!effectiveAvailable ? 'opacity-50 grayscale' : 'group-hover:scale-105'}`}
+                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                style={{ opacity: isVisibilityBlocked ? 0.5 : (showOutOfStock ? 0.4 : 1), filter: isVisibilityBlocked ? 'grayscale(1)' : 'none' }}
             />
             )}
             
             {/* Wishlist Heart Icon */}
-            <div className={`absolute top-[16px] ${isEn ? 'right-[16px]' : 'left-[16px]'} z-20`}>
+            <div className={`absolute top-2 md:top-4 ${isEn ? 'right-2 md:right-4' : 'left-2 md:left-4'} z-20`}>
                 <button 
                   onClick={(e) => {
                       e.preventDefault();
@@ -277,25 +281,26 @@ export function ProductItem({
                       });
                   }}
                   aria-label={isWishlisted ? "Remove from Wishlist" : "Add to Wishlist"}
-                  className={`w-10 h-10 p-0 rounded-full bg-white shadow-md transition-all flex items-center justify-center ${isWishlisted ? 'text-[#e74c3c]' : 'text-gray-700 hover:text-[#e74c3c]'}`}
+                  className={`w-7 h-7 md:w-10 md:h-10 p-0 rounded-full bg-white shadow-md transition-all flex items-center justify-center ${isWishlisted ? 'text-[#e74c3c]' : 'text-gray-700 hover:text-[#e74c3c]'}`}
                 >
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill={isWishlisted ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.5"><path d="M20.8 4.6a5.5 5.5 0 00-7.7 0l-1.1 1-1.1-1a5.5 5.5 0 00-7.8 7.8l1 1 7.9 7.9 7.9-7.9 1-1a5.5 5.5 0 000-7.8z" /></svg>
+                    <svg className="w-3.5 h-3.5 md:w-5 md:h-5" viewBox="0 0 24 24" fill={isWishlisted ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.5"><path d="M20.8 4.6a5.5 5.5 0 00-7.7 0l-1.1 1-1.1-1a5.5 5.5 0 00-7.8 7.8l1 1 7.9 7.9 7.9-7.9 1-1a5.5 5.5 0 000-7.8z" /></svg>
                 </button>
             </div>
             
-            {/* Status Badges overlay */}
+            {/* Status Badges overlay — corner badges (promo/visibility) */}
             <div className={`absolute top-[16px] ${isEn ? 'left-[16px]' : 'right-[16px]'} z-10 flex flex-col gap-2 ${isEn ? 'items-start' : 'items-end'}`}>
-              {isVisibilityBlocked ? (
+              {isVisibilityBlocked && (
                   <span className={`text-[10px] font-black px-3 py-1.5 rounded-[8px] shadow-sm flex items-center gap-1.5 ${visibility.status === 'scheduled' ? 'bg-amber-500 text-white' : 'bg-red-500 text-white'}`}>
                     <span>{visibility.status === 'scheduled' ? '🕐' : '⛔'}</span>
                     {isEn ? visibility.label.en : visibility.label.ar}
                   </span>
-              ) : (showOutOfStock || showPreorder) ? (
-                  <span className={`text-[10px] font-black px-3 py-1.5 rounded-[8px] shadow-sm flex items-center gap-1.5 ${showPreorder ? 'bg-blue-600 text-white' : 'bg-red-500 text-white'}`}>
-                    <span>{showPreorder ? '📦' : '⛔'}</span>
-                    {showPreorder ? t.common.preOrder : t.common.outOfStock}
+              )}
+              {!isVisibilityBlocked && showPreorder && (
+                  <span className="text-[10px] font-black px-3 py-1.5 rounded-[8px] shadow-sm flex items-center gap-1.5 bg-blue-600 text-white">
+                    <span>📦</span>
+                    {t.common.preOrder}
                   </span>
-              ) : null}
+              )}
               {!isVisibilityBlocked && (product as any).is_limited_time?.value && (
                   <div className="text-[10px] font-black px-2.5 py-1.5 rounded-[8px] shadow-sm bg-purple-600 text-white flex items-center gap-1.5">
                       <span>⏳</span> {(product as any).is_limited_time.value}
@@ -312,18 +317,36 @@ export function ProductItem({
                   </div>
               )}
             </div>
+
+            {/* Out of Stock — centered pill overlay at bottom of image */}
+            {!isVisibilityBlocked && showOutOfStock && (
+              <div className="absolute bottom-[20px] left-1/2 -translate-x-1/2 z-10 pointer-events-none">
+                <span
+                  className="flex items-center justify-center px-6 h-[40px] rounded-full font-bold text-[14px] whitespace-nowrap"
+                  style={{
+                    background: 'rgba(187, 207, 205, 0.72)',
+                    backdropFilter: 'blur(6px)',
+                    WebkitBackdropFilter: 'blur(6px)',
+                    color: '#ffffff',
+                    fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
+                  }}
+                >
+                  {isEn ? 'Out of Stock' : 'نفذت الكمية'}
+                </span>
+              </div>
+            )}
         </div>
       </Link>
         
-      <div className={`p-[16px] flex flex-col flex-grow ${isEn ? 'text-left' : 'text-right'}`}>
+      <div className={`p-3 md:p-4 flex flex-col flex-grow ${isEn ? 'text-left' : 'text-right'}`}>
           <Link prefetch="intent" to={isVisibilityBlocked ? '#' : variantUrl} className={isVisibilityBlocked ? 'pointer-events-none' : ''}>
-              <h4 className={`font-bold text-[#234745] line-clamp-1 transition-colors duration-300 ${isVisibilityBlocked ? '' : 'group-hover:text-[#1a3a2d]'}`} style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", fontSize: '18px', lineHeight: '24px' }}>
+              <h4 className={`font-bold text-[#234745] text-[16px] md:text-[18px] line-clamp-1 transition-colors duration-300 ${isVisibilityBlocked ? '' : 'group-hover:text-[#1a3a2d]'}`} style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", lineHeight: '24px', opacity: showOutOfStock ? 0.4 : 1 }}>
                   {formatNumbers(product.title)}
               </h4>
           </Link>
 
           {!isVisibilityBlocked && product.priceRange && (
-            <div className={`mt-[8px] mb-[16px] flex ${isEn ? 'justify-start' : 'justify-start'} items-center gap-[8px]`}>
+            <div className={`mt-[8px] mb-[16px] flex ${isEn ? 'justify-start' : 'justify-start'} items-center gap-[8px]`} style={{ opacity: showOutOfStock ? 0.4 : 1 }}>
                 <div className="flex items-center text-[#255441]">
                     <Price data={product.priceRange.minVariantPrice} size="lg" isEn={isEn} />
                 </div>
@@ -341,7 +364,7 @@ export function ProductItem({
                     <AddToCartButton 
                           lines={cartLines as any} 
                           disabled={!effectiveAvailable || isOutOfStock}
-                          className="w-full h-[44px] flex items-center justify-center rounded-full font-bold text-[15px] bg-[#234745] text-white hover:bg-[#163529] shadow-sm transition-all duration-300 active:scale-95"
+                          className="w-full h-[40px] md:h-[44px] px-2 md:px-4 flex items-center justify-center rounded-full font-bold text-[12px] md:text-[15px] bg-[#234745] text-white hover:bg-[#163529] shadow-sm transition-all duration-300 active:scale-95"
                           style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
                       >
                           {isEn ? 'Add to Cart' : 'أضف إلي السلة'}
@@ -350,10 +373,10 @@ export function ProductItem({
                     <button 
                         type="button"
                         onClick={() => setIsNotifyModalOpen(true)}
-                        className="w-full h-[44px] flex items-center justify-center rounded-full font-bold text-[15px] bg-amber-500 text-white hover:bg-amber-600 shadow-sm transition-all duration-300 active:scale-95"
+                        className="w-full h-[40px] md:h-[44px] px-2 md:px-4 flex items-center justify-center rounded-full font-bold text-[12px] md:text-[15px] bg-[#234745] text-white hover:bg-[#163529] shadow-sm transition-all duration-300 active:scale-95"
                         style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
                     >
-                        🔔 {t.common.notifyMe}
+                        {isEn ? 'Notify Me' : 'أبلغني عن التوفر'}
                     </button>
                 )}
             </div>

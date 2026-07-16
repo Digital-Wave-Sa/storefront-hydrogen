@@ -1,3 +1,4 @@
+// @ts-ignore - route types generated during build
 import type {Route} from './+types/$';
 
 export async function loader({request}: Route.LoaderArgs) {

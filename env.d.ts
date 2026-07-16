@@ -29,5 +29,8 @@ declare global {
     PUBLIC_GTM_ID: string;
     PUBLIC_GA4_MEASUREMENT_ID: string;
     PUBLIC_SMILE_CHANNEL_KEY: string;
+    SHOPIFY_SHOP: string;
+    MIDDLEWARE_URL: string;
+    CUSTOM_API_URL: string;
   }
 }

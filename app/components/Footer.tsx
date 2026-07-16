@@ -82,7 +82,7 @@ export function Footer({ footer, locale }: { footer: Promise<FooterQuery | null>
                   <div className="w-full grid grid-cols-5 gap-8 border-b border-[#BBCFCD]/50 pb-10">
 
                     {/* Col 1: Future is Sweet */}
-                    <div className="flex flex-col items-start gap-4">
+                    <div className="flex flex-col items-start gap-2">
                       <h3 className="font-bold text-[16px] leading-[20px] text-[#FFFFFF]">
                         {isEn ? 'The future is sweet!' : 'المستقبل حلو!'}
                       </h3>
@@ -100,12 +100,13 @@ export function Footer({ footer, locale }: { footer: Promise<FooterQuery | null>
                       <h3 className="font-bold text-[18px] leading-[22px] text-[#BBCFCD]">
                         {isEn ? 'Quick Links' : 'روابط سريعة'}
                       </h3>
-                      <div className="flex flex-col items-start gap-4" style={{ color: '#D2D2D2' }}>
+                      <div className="flex flex-col items-start gap-2" style={{ color: '#D2D2D2' }}>
                         <NavLink to={isEn ? "/en" : "/"} className="font-medium text-[16px] hover:text-white transition-colors">{isEn ? 'Home' : 'الرئيسية'}</NavLink>
                         <NavLink to={isEn ? "/en/custom-cake" : "/custom-cake"} className="font-medium text-[16px] hover:text-white transition-colors">{isEn ? 'Design Your Cake' : 'صمم كيكتك'}</NavLink>
                         <NavLink to={isEn ? "/en/pages/loyalty" : "/pages/loyalty"} className="font-medium text-[16px] hover:text-white transition-colors">{isEn ? 'Loyalty Program' : 'برنامج الولاء'}</NavLink>
                         <NavLink to={isEn ? "/en/collections/offers" : "/collections/offers"} className="font-medium text-[16px] hover:text-white transition-colors">{isEn ? 'Our Offers' : 'عروضنا'}</NavLink>
                         <NavLink to={isEn ? "/en/pages/branches" : "/pages/branches"} className="font-medium text-[16px] hover:text-white transition-colors">{isEn ? 'Our Branches' : 'فروعنا'}</NavLink>
+                        <NavLink to={isEn ? "/en/quality-policy" : "/quality-policy"} className="font-medium text-[16px] hover:text-white transition-colors">{isEn ? 'Quality Policy' : 'سياسة الجودة'}</NavLink>
                       </div>
                     </div>
 
@@ -114,7 +115,7 @@ export function Footer({ footer, locale }: { footer: Promise<FooterQuery | null>
                       <h3 className="font-bold text-[18px] leading-[22px] text-[#BBCFCD]">
                         {isEn ? 'Products' : 'المنتجات'}
                       </h3>
-                      <div className="flex flex-col items-start gap-4" style={{ color: '#D2D2D2' }}>
+                      <div className="flex flex-col items-start gap-2" style={{ color: '#D2D2D2' }}>
                         <NavLink to={isEn ? "/en/collections/dark-chocolate" : "/collections/dark-chocolate"} className="font-medium text-[16px] hover:text-white transition-colors">{isEn ? 'Dark Chocolate' : 'الشوكولاتة الداكنة'}</NavLink>
                         <NavLink to={isEn ? "/en/custom-cake" : "/custom-cake"} className="font-medium text-[16px] hover:text-white transition-colors">{isEn ? 'Custom Cakes' : 'الكيك المخصص'}</NavLink>
                         <NavLink to={isEn ? "/en/occasions" : "/occasions"} className="font-medium text-[16px] hover:text-white transition-colors">{isEn ? 'Occasions' : 'المناسبات'}</NavLink>
@@ -130,7 +131,7 @@ export function Footer({ footer, locale }: { footer: Promise<FooterQuery | null>
                       <h3 className="font-bold text-[18px] leading-[22px] text-[#BBCFCD]">
                         {isEn ? 'Customer Service' : 'خدمة العملاء'}
                       </h3>
-                      <div className="flex flex-col items-start gap-4" style={{ color: '#D2D2D2' }}>
+                      <div className="flex flex-col items-start gap-2" style={{ color: '#D2D2D2' }}>
                         <NavLink to={isEn ? "/en/pages/track-order" : "/pages/track-order"} className="font-medium text-[16px] hover:text-white transition-colors">{isEn ? 'Track Your Order' : 'تتبع طلبك'}</NavLink>
                         <NavLink to={isEn ? "/en/pages/returns" : "/pages/returns"} className="font-medium text-[16px] hover:text-white transition-colors">{isEn ? 'Return Policy' : 'سياسة الاسترجاع'}</NavLink>
                         <NavLink to={isEn ? "/en/pages/faq" : "/pages/faq"} className="font-medium text-[16px] hover:text-white transition-colors">{isEn ? 'FAQs' : 'الأسئلة الشائعة'}</NavLink>
@@ -144,7 +145,7 @@ export function Footer({ footer, locale }: { footer: Promise<FooterQuery | null>
                       <h3 className="font-bold text-[18px] leading-[22px] text-[#BBCFCD]">
                         {isEn ? 'Contact Us' : 'تواصل معنا'}
                       </h3>
-                      <div className="flex flex-col items-start gap-4 w-full">
+                      <div className="flex flex-col items-start gap-2 w-full">
                         <p className="text-[#D2D2D2] font-medium text-[16px] font-sans" dir="ltr">920017070</p>
                         <p className="text-[#D2D2D2] font-medium text-[16px] font-sans" dir="ltr">info@saadeddin.com</p>
                         <p className="text-[#D2D2D2] font-medium text-[16px] max-w-[200px]">
@@ -165,8 +166,6 @@ export function Footer({ footer, locale }: { footer: Promise<FooterQuery | null>
                 <div className="w-full flex flex-col md:flex-row justify-between items-center gap-6 md:gap-4" style={{ color: '#FEF8EB' }}>
                   <div className="flex items-center gap-2 sm:gap-8 justify-center w-full md:w-auto mt-4 md:mt-0">
                     <NavLink to={isEn ? "/en/pages/terms" : "/pages/terms"} className="font-medium text-[14px] md:text-[16px] hover:text-white transition-colors" style={{ color: '#FEF8EB' }}>{isEn ? 'Terms and Conditions' : 'الشروط والاحكام'}</NavLink>
-                    <span className="font-medium text-[15px] md:text-[16px]" style={{ color: '#FEF8EB' }}>.</span>
-                    <NavLink to={isEn ? "/en/pages/privacy" : "/pages/privacy"} className="font-medium text-[14px] md:text-[16px] hover:text-white transition-colors" style={{ color: '#FEF8EB' }}>{isEn ? 'Privacy Policy' : 'سياسة الخصوصية'}</NavLink>
                   </div>
                   <div className="font-medium text-[15px] md:text-[16px] text-center w-full md:w-auto" style={{ color: '#FEF8EB' }}>
                     {isEn ? '© 2026 Saadeddin — All Rights Reserved' : <span>© <span className="font-sans inline-block" dir="ltr">2026</span> سعد الدين — جميع الحقوق محفوظة</span>}
@@ -220,17 +219,17 @@ function AppButtons() {
   return (
     <>
       <a href="#" className="hover:opacity-90 transition-opacity shrink-0">
-        <img 
-          src="/images/icons/App_Store_Badge.svg" 
-          alt="Download on the App Store" 
-          className="h-[40px] w-auto block" 
+        <img
+          src="/images/icons/App_Store_Badge.svg"
+          alt="Download on the App Store"
+          className="h-[40px] w-auto block"
         />
       </a>
       <a href="#" className="hover:opacity-90 transition-opacity shrink-0">
-        <img 
-          src="/images/icons/Google_Play_Store_badge.svg" 
-          alt="Get it on Google Play" 
-          className="h-[40px] w-auto block" 
+        <img
+          src="/images/icons/Google_Play_Store_badge.svg"
+          alt="Get it on Google Play"
+          className="h-[40px] w-auto block"
         />
       </a>
     </>

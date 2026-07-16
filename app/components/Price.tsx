@@ -41,17 +41,17 @@ export function Price({ data, className = '', isEn = false, showSymbol = true, s
   const sizeClasses = {
     xs: 'text-xs',
     sm: 'text-sm font-bold',
-    md: 'text-lg font-black',
-    lg: 'text-2xl font-black',
-    xl: 'text-4xl font-black'
+    md: 'text-[15px] md:text-lg font-black',
+    lg: 'text-[18px] md:text-2xl font-black',
+    xl: 'text-2xl md:text-4xl font-black'
   };
 
   const symbolSizeClasses = {
     xs: 'h-2 w-auto',
     sm: 'h-2.5 w-auto',
-    md: 'h-3.5 w-auto mb-0.5',
-    lg: 'h-5 w-auto mb-1',
-    xl: 'h-7 w-auto mb-1.5'
+    md: 'h-[12px] md:h-3.5 w-auto mb-0.5',
+    lg: 'h-[16px] md:h-5 w-auto mb-1',
+    xl: 'h-[20px] md:h-7 w-auto mb-1.5'
   };
 
   return (

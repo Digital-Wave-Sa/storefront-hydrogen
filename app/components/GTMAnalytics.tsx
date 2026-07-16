@@ -200,7 +200,7 @@ export function GTMAnalytics() {
 
   // ── Hydrogen analytics subscription ───────────────────────────────────
   useEffect(() => {
-    const unsubscribe = subscribe('all_events', (data: any) => {
+    const unsubscribe = subscribe('all_events' as `custom_${string}`, (data: any) => {
       if (getStoredConsent() !== 'accepted') return;
 
       const { eventName, ...payload } = data;

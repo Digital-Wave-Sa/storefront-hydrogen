@@ -141,6 +141,113 @@ async function uploadImageToShopify(shopDomain: string, token: string, base64Dat
   }
 }
 
+interface PriceSkuMapping {
+  price: number;
+  sku: string;
+}
+
+const priceSkuMappings: PriceSkuMapping[] = [
+  { price: 50, sku: '381747' },
+  { price: 55, sku: '381748' },
+  { price: 60, sku: '381749' },
+  { price: 65, sku: '381750' },
+  { price: 70, sku: '381751' },
+  { price: 75, sku: '381752' },
+  { price: 80, sku: '381753' },
+  { price: 85, sku: '381754' },
+  { price: 90, sku: '381755' },
+  { price: 95, sku: '381756' },
+  { price: 100, sku: '381757' },
+  { price: 125, sku: '381726' },
+  { price: 150, sku: '381681' },
+  { price: 175, sku: '381682' },
+  { price: 200, sku: '381683' },
+  { price: 225, sku: '381684' },
+  { price: 250, sku: '381685' },
+  { price: 275, sku: '381686' },
+  { price: 300, sku: '381687' },
+  { price: 325, sku: '381688' },
+  { price: 350, sku: '381689' },
+  { price: 375, sku: '381690' },
+  { price: 400, sku: '381691' },
+  { price: 425, sku: '381692' },
+  { price: 450, sku: '381693' },
+  { price: 475, sku: '381694' },
+  { price: 500, sku: '381695' },
+  { price: 550, sku: '381696' },
+  { price: 600, sku: '381697' },
+  { price: 650, sku: '381698' },
+  { price: 700, sku: '381699' },
+  { price: 750, sku: '381700' },
+  { price: 800, sku: '381701' },
+  { price: 850, sku: '381702' },
+  { price: 900, sku: '381703' },
+  { price: 950, sku: '381704' },
+  { price: 1000, sku: '381705' },
+  { price: 1050, sku: '381706' },
+  { price: 1100, sku: '381707' },
+  { price: 1150, sku: '381708' },
+  { price: 1200, sku: '381709' },
+  { price: 1250, sku: '381710' },
+  { price: 1300, sku: '381711' },
+  { price: 1350, sku: '381712' },
+  { price: 1400, sku: '381713' },
+  { price: 1450, sku: '381714' },
+  { price: 1500, sku: '381715' },
+  { price: 1550, sku: '381716' },
+  { price: 1600, sku: '381717' },
+  { price: 1650, sku: '381718' },
+  { price: 1700, sku: '381719' },
+  { price: 1750, sku: '381720' },
+  { price: 1800, sku: '381721' },
+  { price: 1850, sku: '381722' },
+  { price: 1900, sku: '381723' },
+  { price: 1950, sku: '381724' },
+  { price: 2000, sku: '381725' },
+  { price: 2100, sku: '381727' },
+  { price: 2200, sku: '381728' },
+  { price: 2300, sku: '381729' },
+  { price: 2400, sku: '381730' },
+  { price: 2500, sku: '381731' },
+  { price: 2600, sku: '381732' },
+  { price: 2700, sku: '381733' },
+  { price: 2800, sku: '381734' },
+  { price: 2900, sku: '381735' },
+  { price: 3000, sku: '381736' },
+  { price: 3100, sku: '381737' },
+  { price: 3200, sku: '381738' },
+  { price: 3300, sku: '381739' },
+  { price: 3400, sku: '381740' },
+  { price: 3500, sku: '381741' },
+  { price: 3600, sku: '381742' },
+  { price: 3700, sku: '381743' },
+  { price: 3800, sku: '381744' },
+  { price: 3900, sku: '381745' },
+  { price: 4000, sku: '381746' },
+  { price: 4500, sku: '381758' },
+  { price: 5000, sku: '381759' },
+  { price: 5500, sku: '381760' },
+  { price: 6000, sku: '381761' },
+  { price: 6500, sku: '381762' },
+  { price: 7000, sku: '381763' },
+  { price: 12000, sku: '381787' }
+];
+
+function getClosestPriceAndSku(targetPrice: number): PriceSkuMapping {
+  let closest = priceSkuMappings[0];
+  let minDiff = Math.abs(targetPrice - closest.price);
+
+  for (let i = 1; i < priceSkuMappings.length; i++) {
+    const diff = Math.abs(targetPrice - priceSkuMappings[i].price);
+    if (diff < minDiff) {
+      minDiff = diff;
+      closest = priceSkuMappings[i];
+    }
+  }
+
+  return closest;
+}
+
 /**
  * POST /api/custom-cake-order
  * Creates a Shopify Draft Order with the exact calculated price for a custom cake,
@@ -174,7 +281,6 @@ export async function action({ request, context }: ActionFunctionArgs) {
       return Response.json({ error: 'Invalid price' }, { status: 400 });
     }
 
-    const title = isEn ? 'Custom Cake' : 'كيكة مخصصة';
     const description = isEn
       ? `${shape} • ${size} • ${flavor} • ${layers} layers • ${color} • ${topping}${message ? ` • "${message}" (${messageFont}, ${messageColor})` : ''}`
       : `${shape} • ${size} • ${flavor} • ${layers} طبقات • ${color} • ${topping}${message ? ` • "${message}" (${messageFont}, ${messageColor})` : ''}`;
@@ -235,11 +341,17 @@ export async function action({ request, context }: ActionFunctionArgs) {
           }
         }
 
+        // Get the closest SKU category mapping from the excel sheet definition
+        const closestMapping = getClosestPriceAndSku(priceNum);
+        const displayPrice = Number.isInteger(priceNum) ? priceNum : priceNum.toFixed(2);
+        const resolvedTitle = `طلبية خاصة فئة ${displayPrice} ريال`;
+
         // Update the custom attributes with the final image URL or status
         const draftOrderInput = {
           lineItems: [
             {
-              title,
+              title: resolvedTitle,
+              sku: closestMapping.sku,
               quantity: 1,
               originalUnitPrice: priceNum.toFixed(2),
               customAttributes: [

@@ -38,7 +38,7 @@ function loadPreferences(): NotificationPreferencesState {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
-      return { ...DEFAULT_PREFERENCES, ...JSON.parse(saved) };
+      return { ...DEFAULT_PREFERENCES, ...JSON.parse(saved) as any };
     }
   } catch {}
   return DEFAULT_PREFERENCES;

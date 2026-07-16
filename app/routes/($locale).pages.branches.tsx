@@ -4,7 +4,7 @@ import type { Route } from './+types/($locale).pages.branches';
 import { PageHeader } from '~/components/layout/PageHeader';
 
 export const meta: Route.MetaFunction = () => {
-  return [{ title: 'Our Branches | فروعنا' }];
+    return [{ title: 'Our Branches | فروعنا' }];
 };
 
 // ─── MOCK DATA ─────────────────────────────────────────────────────────────
@@ -34,17 +34,43 @@ export default function BranchesPage() {
     const { locale } = useOutletContext<{ locale: string }>();
     const rootData = useRouteLoaderData<any>('root');
     const locations = rootData?.locations?.locations?.nodes || [];
-    
+
     const isEn = locale === 'en';
     const fontClass = isEn ? 'font-en' : 'font-ar';
     const fontFam = isEn ? "'Inter', sans-serif" : "'GE Dinar One', sans-serif";
-    
+
     const branchCount = locations.length > 0 ? locations.length : 117;
     const googleMapsKey = rootData?.env?.PUBLIC_GOOGLE_MAPS_KEY || (typeof window !== 'undefined' ? (window as any).ENV?.PUBLIC_GOOGLE_MAPS_KEY : undefined);
-    
+
     const mapRef = useRef<HTMLDivElement>(null);
     const [mapError, setMapError] = useState<string>('');
     const [mapLoaded, setMapLoaded] = useState(false);
+
+    const [selectedBranch, setSelectedBranch] = useState<any>(null);
+    const mapInstanceRef = useRef<any>(null);
+
+    const forceEnglishDigits = (str: string) => {
+        if (!str) return '';
+        return str.replace(/[٠-٩]/g, (d) => String.fromCharCode(d.charCodeAt(0) - 1632));
+    };
+
+    useEffect(() => {
+        if (locations.length > 0 && !selectedBranch) {
+            setSelectedBranch(locations[0]);
+        }
+    }, [locations, selectedBranch]);
+
+    const handleBranchClick = (branch: any) => {
+        setSelectedBranch(branch);
+        if (mapInstanceRef.current) {
+            const lat = parseFloat(branch.address?.latitude);
+            const lng = parseFloat(branch.address?.longitude);
+            if (!isNaN(lat) && !isNaN(lng)) {
+                mapInstanceRef.current.setCenter({ lat, lng });
+                mapInstanceRef.current.setZoom(15);
+            }
+        }
+    };
 
     useEffect(() => {
         if (!googleMapsKey || typeof window === 'undefined') {
@@ -55,7 +81,7 @@ export default function BranchesPage() {
         const initMap = () => {
             try {
                 if (!mapRef.current || !(window as any).google) return;
-                
+
                 const map = new (window as any).google.maps.Map(mapRef.current, {
                     center: { lat: 24.7136, lng: 46.6753 }, // Riyadh default
                     zoom: 5,
@@ -70,11 +96,11 @@ export default function BranchesPage() {
                 locations.forEach((loc: any) => {
                     const lat = parseFloat(loc.address?.latitude);
                     const lng = parseFloat(loc.address?.longitude);
-                    
+
                     if (!isNaN(lat) && !isNaN(lng)) {
                         hasValidCoords = true;
                         const position = { lat, lng };
-                        
+
                         const marker = new (window as any).google.maps.Marker({
                             position,
                             map,
@@ -99,9 +125,9 @@ export default function BranchesPage() {
 
                 if (hasValidCoords) {
                     map.fitBounds(bounds);
-                    const listener = (window as any).google.maps.event.addListener(map, "idle", () => { 
-                        if (map.getZoom() > 14) map.setZoom(14); 
-                        (window as any).google.maps.event.removeListener(listener); 
+                    const listener = (window as any).google.maps.event.addListener(map, "idle", () => {
+                        if (map.getZoom() > 14) map.setZoom(14);
+                        (window as any).google.maps.event.removeListener(listener);
                     });
                 }
                 setMapLoaded(true);
@@ -116,7 +142,7 @@ export default function BranchesPage() {
             if (!document.getElementById(scriptId)) {
                 // Define the global callback function that Google Maps uses
                 (window as any).initBranchesMap = initMap;
-                
+
                 const script = document.createElement('script');
                 script.id = scriptId;
                 // Add the callback parameter to the URL
@@ -136,9 +162,9 @@ export default function BranchesPage() {
 
     return (
         <div className={`w-full bg-[#FAFAFA] min-h-screen ${fontClass}`} dir={isEn ? 'ltr' : 'rtl'}>
-            
+
             {/* ─── HERO SECTION ─────────────────────────────────────────────────── */}
-            <PageHeader 
+            <PageHeader
                 title={isEn ? `${branchCount} Branches Across the Kingdom` : `${branchCount} فرع في أنحاء المملكة`}
                 subtitle={isEn ? 'Our Branches' : 'فروعنا'}
                 isEn={isEn}
@@ -174,10 +200,10 @@ export default function BranchesPage() {
                     {/* Search Input */}
                     <div className="w-full lg:w-[450px] flex items-center bg-white border border-gray-300 rounded-full p-1 relative shrink-0">
                         <div className="pl-4 pr-3 text-gray-400">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8" /><path d="M21 21l-4.35-4.35" /></svg>
                         </div>
-                        <input 
-                            type="text" 
+                        <input
+                            type="text"
                             placeholder={isEn ? 'Search for city or neighborhood...' : 'إبحث عن مدينة أو حي...'}
                             className="w-full py-2 bg-transparent text-sm outline-none text-gray-700"
                             style={{ fontFamily: fontFam }}
@@ -190,7 +216,7 @@ export default function BranchesPage() {
                     {/* Filter Pills */}
                     <div className="flex-1 overflow-x-auto scrollbar-hide flex items-center justify-end gap-2 lg:gap-3 w-full" dir={isEn ? 'ltr' : 'rtl'}>
                         {cities.map((city, idx) => (
-                            <button 
+                            <button
                                 key={idx}
                                 className={`whitespace-nowrap px-5 py-2 rounded-full text-[13px] font-bold transition-colors border ${idx === 0 ? 'bg-[#BBCFCD] border-[#BBCFCD] text-[#234745]' : 'bg-white border-gray-300 text-gray-500 hover:border-gray-400'}`}
                                 style={{ fontFamily: fontFam }}
@@ -205,58 +231,80 @@ export default function BranchesPage() {
             {/* ─── MAP & LIST LAYOUT ────────────────────────────────────────────── */}
             <div className="max-w-[1400px] mx-auto px-4 lg:px-6 py-6 mb-12">
                 <div className="flex flex-col lg:flex-row gap-6 h-auto lg:h-[800px]">
-                    
+
                     {/* List Area (First in DOM so it's on the right in RTL) */}
                     <div className="w-full lg:w-[400px] flex flex-col h-full bg-white border border-gray-300 rounded-[20px] p-4 shrink-0">
                         <div className="mb-4 text-[#1a1a1a] font-bold text-[14px] flex items-center justify-start px-2" style={{ fontFamily: fontFam }}>
                             <span>{isEn ? `Showing ${locations.length} Branches` : `عرض ${locations.length} فروع`}</span>
                         </div>
-                        
+
                         <div className="flex-1 overflow-y-auto space-y-3 pr-2 scrollbar-thin">
                             {locations.map((branch: any) => {
-                                const shift1 = branch.working_hours_from?.value && branch.working_hours_to?.value 
+                                const rawShift1 = branch.working_hours_from?.value && branch.working_hours_to?.value
                                     ? `${branch.working_hours_from.value} - ${branch.working_hours_to.value}`
                                     : `${isEn ? '8:00 AM' : '8:00 ص'} - ${isEn ? '11:00 PM' : '11:00 م'}`;
-                                const shift2 = branch.working_hours_from_shift2?.value && branch.working_hours_to_shift2?.value
+                                const rawShift2 = branch.working_hours_from_shift2?.value && branch.working_hours_to_shift2?.value
                                     ? `${branch.working_hours_from_shift2.value} - ${branch.working_hours_to_shift2.value}`
                                     : '';
-                                const hours = shift2 ? `${shift1} & ${shift2}` : shift1;
-                                
+                                const hours = forceEnglishDigits(rawShift2 ? `${rawShift1} & ${rawShift2}` : rawShift1);
+                                const isSelected = selectedBranch?.id === branch.id;
+
                                 return (
-                                <div key={branch.id} className="bg-[#F8F9FA] rounded-xl p-4 border border-transparent hover:border-gray-200 transition-colors">
-                                    <div className="flex justify-between items-start mb-1">
-                                        <h3 className="font-bold text-[14px] text-[#234745]" style={{ fontFamily: fontFam }}>
-                                            {branch.name}
-                                        </h3>
-                                        <span className="px-3 py-1 rounded-full text-[10px] font-bold bg-[#E2E8F0] text-gray-600" style={{ fontFamily: fontFam }}>
-                                            {isEn ? 'Open Now' : 'مفتوح الآن'}
-                                        </span>
-                                    </div>
-                                    <p className="text-gray-500 text-[12px] mb-2 leading-relaxed" style={{ fontFamily: fontFam }}>
-                                        {branch.address?.address1} {branch.address?.city ? `, ${branch.address.city}` : ''}
-                                    </p>
-                                    <div className="flex items-center gap-1.5 text-gray-400 text-[11px] mb-4 font-medium" style={{ fontFamily: fontFam }}>
-                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                                        <span dir="ltr">{hours}</span>
-                                    </div>
-                                    
-                                    <div className="flex items-center justify-end gap-2">
-                                        {branch.address?.phone && (
-                                            <a href={`tel:${branch.address.phone}`} className="text-center bg-white border border-gray-400 text-gray-700 px-5 py-1.5 rounded-full text-[12px] font-bold hover:bg-gray-50 transition-colors" style={{ fontFamily: fontFam }}>
-                                                {isEn ? 'Call' : 'اتصال'}
+                                    <div
+                                        key={branch.id}
+                                        onClick={() => handleBranchClick(branch)}
+                                        className={`bg-[#F8F9FA] rounded-xl p-4 border transition-all cursor-pointer ${isSelected ? 'border-[#234745] bg-[#F1F5F4]' : 'border-transparent hover:border-gray-200'}`}
+                                    >
+                                        <div className="flex justify-between items-start mb-1">
+                                            <h3 className="font-bold text-[14px] text-[#234745]" style={{ fontFamily: fontFam }}>
+                                                {branch.name}
+                                            </h3>
+                                            <span className="px-3 py-1 rounded-full text-[10px] font-bold bg-[#E2E8F0] text-gray-600" style={{ fontFamily: fontFam }}>
+                                                {isEn ? 'Open Now' : 'مفتوح الآن'}
+                                            </span>
+                                        </div>
+                                        <p className="text-gray-500 text-[12px] mb-2 leading-relaxed" style={{ fontFamily: fontFam }}>
+                                            {branch.address?.address1} {branch.address?.city ? `, ${branch.address.city}` : ''}
+                                        </p>
+                                        <div className="flex items-center gap-1.5 text-gray-400 text-[11px] mb-4 font-medium" style={{ fontFamily: fontFam }}>
+                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
+                                            <span dir="ltr">{hours}</span>
+                                        </div>
+
+                                        <div className="flex items-center justify-end gap-2">
+                                            {branch.address?.phone && (
+                                                <a
+                                                    href={`tel:${branch.address.phone}`}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                    className="text-center bg-white border border-gray-400 text-gray-700 px-5 py-1.5 rounded-full text-[12px] font-bold hover:bg-gray-50 transition-colors cursor-pointer"
+                                                    style={{ fontFamily: fontFam }}
+                                                >
+                                                    {isEn ? 'Call' : 'اتصال'}
+                                                </a>
+                                            )}
+                                            {!branch.address?.phone && (
+                                                <button
+                                                    onClick={(e) => e.stopPropagation()}
+                                                    className="bg-white border border-gray-400 text-gray-700 px-5 py-1.5 rounded-full text-[12px] font-bold hover:bg-gray-50 transition-colors"
+                                                    style={{ fontFamily: fontFam }}
+                                                >
+                                                    {isEn ? 'Call' : 'اتصال'}
+                                                </button>
+                                            )}
+                                            <a
+                                                href={`https://www.google.com/maps/dir/?api=1&destination=${branch.address?.latitude || ''},${branch.address?.longitude || ''}`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                onClick={(e) => e.stopPropagation()}
+                                                className="bg-[#234745] hover:bg-[#1a3533] !text-white px-5 py-1.5 rounded-full text-[12px] font-bold transition-colors inline-block text-center cursor-pointer"
+                                                style={{ fontFamily: fontFam }}
+                                            >
+                                                {isEn ? 'Directions' : 'الإتجاهات'}
                                             </a>
-                                        )}
-                                        {!branch.address?.phone && (
-                                            <button className="bg-white border border-gray-400 text-gray-700 px-5 py-1.5 rounded-full text-[12px] font-bold hover:bg-gray-50 transition-colors" style={{ fontFamily: fontFam }}>
-                                                {isEn ? 'Call' : 'اتصال'}
-                                            </button>
-                                        )}
-                                        <button className="bg-[#234745] hover:bg-[#1a3533] text-white px-5 py-1.5 rounded-full text-[12px] font-bold transition-colors" style={{ fontFamily: fontFam }}>
-                                            {isEn ? 'Directions' : 'الإتجاهات'}
-                                        </button>
+                                        </div>
                                     </div>
-                                </div>
-                            )})}
+                                )
+                            })}
                         </div>
                     </div>
 
@@ -274,20 +322,36 @@ export default function BranchesPage() {
                         )}
                         {/* Interactive Native Google Map */}
                         <div ref={mapRef} style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} />
-                        
+
                         {/* Static Floating Card matching mockup */}
-                        <div className="absolute bottom-6 left-6 lg:bottom-10 lg:left-10 bg-white rounded-[16px] shadow-lg p-5 w-[300px] z-30" style={{ fontFamily: fontFam }}>
-                            <h4 className="font-bold text-[14px] text-[#1a1a1a] mb-1 text-right">فرع الدمام مول</h4>
-                            <p className="text-[12px] text-gray-500 mb-4 text-right">الدمام مول، طريق الملك فهد</p>
-                            <div className="flex gap-2">
-                                <button className="flex-1 bg-white border border-gray-400 text-gray-700 py-1.5 rounded-full text-[12px] font-bold hover:bg-gray-50 transition-colors">
-                                    اتصال
-                                </button>
-                                <button className="flex-1 bg-[#234745] hover:bg-[#1a3533] text-white py-1.5 rounded-full text-[12px] font-bold transition-colors">
-                                    الإتجاهات
-                                </button>
+                        {selectedBranch && (
+                            <div className="absolute bottom-6 left-6 lg:bottom-10 lg:left-10 bg-white rounded-[16px] shadow-lg p-5 w-[300px] z-30" style={{ fontFamily: fontFam }}>
+                                <h4 className="font-bold text-[14px] text-[#1a1a1a] mb-1 text-start">{selectedBranch.name}</h4>
+                                <p className="text-[12px] text-gray-500 mb-4 text-start">{selectedBranch.address?.address1 || ''}</p>
+                                <div className="flex gap-2">
+                                    {selectedBranch.address?.phone ? (
+                                        <a
+                                            href={`tel:${selectedBranch.address.phone}`}
+                                            className="flex-1 text-center bg-white border border-gray-400 text-gray-700 py-1.5 rounded-full text-[12px] font-bold hover:bg-gray-50 transition-colors"
+                                        >
+                                            {isEn ? 'Call' : 'اتصال'}
+                                        </a>
+                                    ) : (
+                                        <button className="flex-1 bg-white border border-gray-400 text-gray-700 py-1.5 rounded-full text-[12px] font-bold hover:bg-gray-50 transition-colors cursor-not-allowed">
+                                            {isEn ? 'Call' : 'اتصال'}
+                                        </button>
+                                    )}
+                                    <a
+                                        href={`https://www.google.com/maps/dir/?api=1&destination=${selectedBranch.address?.latitude || ''},${selectedBranch.address?.longitude || ''}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex-1 text-center bg-[#234745] hover:bg-[#1a3533] !text-white py-1.5 rounded-full text-[12px] font-bold transition-colors block cursor-pointer"
+                                    >
+                                        {isEn ? 'Directions' : 'الإتجاهات'}
+                                    </a>
+                                </div>
                             </div>
-                        </div>
+                        )}
                     </div>
 
                 </div>

@@ -84,14 +84,14 @@ function SearchResultsPredictiveArticles({
   term,
   articles,
   closeSearch,
-}: PartialPredictiveSearchResult<'articles'>) {
+}: {term: any; articles: any[]; closeSearch: any}) {
   if (!articles.length) return null;
 
   return (
     <div className="predictive-search-result" key="articles">
       <h5>Articles</h5>
       <ul>
-        {articles.map((article) => {
+        {(articles as any[]).map((article: any) => {
           const articleUrl = urlWithTrackingParams({
             baseUrl: `/blogs/${article.blog.handle}/${article.handle}`,
             trackingParams: article.trackingParameters,
@@ -135,7 +135,7 @@ function SearchResultsPredictiveCollections({
         {collections.map((collection) => {
           const collectionUrl = urlWithTrackingParams({
             baseUrl: `/collections/${collection.handle}`,
-            trackingParams: collection.trackingParameters,
+            trackingParams: (collection as any).trackingParameters,
             term: term.current,
           });
 
@@ -166,14 +166,14 @@ function SearchResultsPredictivePages({
   term,
   pages,
   closeSearch,
-}: PartialPredictiveSearchResult<'pages'>) {
+}: {term: any; pages: any[]; closeSearch: any}) {
   if (!pages.length) return null;
 
   return (
     <div className="predictive-search-result" key="pages">
       <h5>Pages</h5>
       <ul>
-        {pages.map((page) => {
+        {(pages as any[]).map((page: any) => {
           const pageUrl = urlWithTrackingParams({
             baseUrl: `/pages/${page.handle}`,
             trackingParams: page.trackingParameters,
@@ -209,12 +209,12 @@ function SearchResultsPredictiveProducts({
         {products.map((product) => {
           const productUrl = urlWithTrackingParams({
             baseUrl: `/products/${product.handle}`,
-            trackingParams: product.trackingParameters,
+            trackingParams: (product as any).trackingParameters,
             term: term.current,
           });
 
-          const price = product?.selectedOrFirstAvailableVariant?.price;
-          const image = product?.selectedOrFirstAvailableVariant?.image;
+          const price = (product as any)?.selectedOrFirstAvailableVariant?.price;
+          const image = (product as any)?.selectedOrFirstAvailableVariant?.image;
           return (
             <li className="predictive-search-result-item" key={product.id}>
               <Link to={productUrl} onClick={closeSearch}>

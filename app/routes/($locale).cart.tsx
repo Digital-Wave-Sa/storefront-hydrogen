@@ -27,7 +27,9 @@ export async function action({request, context}: Route.ActionArgs) {
   const rawInput = formData.get('cartFormInput');
   console.log('[CART POST] raw cartFormInput:', rawInput);
 
-  const {action, inputs} = CartForm.getFormInput(formData);
+  const {action: rawAction, inputs: rawInputs} = CartForm.getFormInput(formData);
+  const action = rawAction as any;
+  const inputs = rawInputs as any;
   console.log('[CART POST] Parsed action:', action);
 
   if (!action) {
@@ -35,7 +37,7 @@ export async function action({request, context}: Route.ActionArgs) {
   }
 
   let status = 200;
-  let result: CartQueryDataReturn;
+  let result: any = null;
 
   // Helper: retry a cart mutation up to `maxRetries` times with exponential backoff
   // when Shopify returns a throttle error.
@@ -92,6 +94,8 @@ export async function action({request, context}: Route.ActionArgs) {
     throw lastError;
   }
 
+
+
   switch (action) {
     case CartForm.ACTIONS.LinesAdd:
       result = await withRetry(() => cart.addLines(inputs.lines));
@@ -102,7 +106,8 @@ export async function action({request, context}: Route.ActionArgs) {
     case CartForm.ACTIONS.LinesRemove:
       result = await withRetry(() => cart.removeLines(inputs.lineIds));
       break;
-    case 'LoyaltyUpdate': {
+    case 'LoyaltyUpdate':
+    case 'CustomLoyaltyUpdate': {
       const isEn = context.storefront.i18n.language === 'EN';
       const pointsToRedeem = parseInt(inputs.points) || 0;
       const intent = inputs.intent;
@@ -185,7 +190,7 @@ export async function action({request, context}: Route.ActionArgs) {
         console.log('[LOYALTY_MIDDLEWARE] Body:', responseText);
 
         if (mwRes.ok) {
-          const mwData = JSON.parse(responseText);
+          const mwData = JSON.parse(responseText) as any;
           const code = mwData?.code || mwData?.discountCode || mwData?.discount_code || mwData?.data?.code || mwData?.data?.discountCode || mwData?.data?.discount_code;
           if (code) {
             generatedCode = code;
@@ -232,7 +237,7 @@ export async function action({request, context}: Route.ActionArgs) {
             console.warn('[LOYALTY_UPDATE] Falling back to mock discount code due to Admin API failure.');
             generatedCode = `LOYALTY-${pointsToRedeem}-MOCK`;
           } else {
-            const prData = await prRes.json();
+            const prData = await prRes.json() as any;
             const priceRuleId = prData.price_rule.id;
 
             generatedCode = `LOYALTY-${pointsToRedeem}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
@@ -259,12 +264,11 @@ export async function action({request, context}: Route.ActionArgs) {
       }
 
 
-
       const existingCodes = currentCart.discountCodes?.map(dc => dc.code).filter(c => !c.startsWith('LOYALTY-')) || [];
       const newCodes = [...existingCodes, generatedCode];
 
       await cart.updateDiscountCodes(newCodes);
-      result = await cart.updateAttributes([{ key: 'loyalty_points', value: String(pointsToRedeem) }]);
+      result = (await cart.updateAttributes([{ key: 'loyalty_points', value: String(pointsToRedeem) }])) as any;
       break;
     }
     case CartForm.ACTIONS.DiscountCodesUpdate: {
@@ -445,7 +449,7 @@ export async function action({request, context}: Route.ActionArgs) {
               branch_id: branchId || null
             })
           });
-          const validationData = await validationRes.json();
+          const validationData = await validationRes.json() as any;
           
           if (validationData.error) {
              // Map backend error codes to frontend messages
@@ -505,6 +509,13 @@ export async function action({request, context}: Route.ActionArgs) {
     case 'AttributesUpdate': {
         const raw = inputs.attributes;
         const updates = (Array.isArray(raw) ? raw : Object.values(raw || {})) as any[];
+        
+        // Mirror delivery_date and Time Slot to session storage
+        const deliveryDateAttr = updates.find((a: any) => a.key === 'delivery_date');
+        const timeSlotAttr = updates.find((a: any) => a.key === 'Time Slot');
+        if (deliveryDateAttr) context.session.set('delivery_date', deliveryDateAttr.value);
+        if (timeSlotAttr) context.session.set('Time Slot', timeSlotAttr.value);
+
         const currentCart = await cart.get();
         const existing = currentCart?.attributes || [];
         const mergedMap = new Map();
@@ -524,9 +535,13 @@ export async function action({request, context}: Route.ActionArgs) {
             const branchAttr = updates.find(a => a.key === 'Branch')?.value;
             const branchIdAttr = updates.find(a => a.key === 'Branch ID')?.value;
             const fTypeAttr = updates.find(a => a.key === 'Fulfillment Type')?.value;
+            const axStoreIdAttr = updates.find(a => a.key === 'AX Store ID')?.value || updates.find(a => a.key === 'ax_store_id')?.value || updates.find(a => a.key === 'custom.ax_store_id')?.value;
+            const customBranchIdAttr = updates.find(a => a.key === 'custom.branch_id')?.value || updates.find(a => a.key === 'branch_id')?.value;
 
             if (branchAttr) context.session.set('selectedLocationName', branchAttr);
             if (branchIdAttr) context.session.set('selectedLocationId', branchIdAttr);
+            if (axStoreIdAttr) context.session.set('selectedAxStoreId', axStoreIdAttr);
+            if (customBranchIdAttr) context.session.set('selectedCustomBranchId', customBranchIdAttr);
             if (fTypeAttr) {
                 context.session.set('fulfillmentType', fTypeAttr.toLowerCase() === 'pickup' ? 'pickup' : 'delivery');
             }
@@ -558,20 +573,21 @@ export async function action({request, context}: Route.ActionArgs) {
                 }
             }
 
-            let result = await cart.updateBuyerIdentity(buyerIdentity);
+            let innerResult: any = await cart.updateBuyerIdentity(buyerIdentity);
 
             // Check if the update failed due to Customer Invalid error
-            const userErrors = result.cartBuyerIdentityUpdate?.userErrors || [];
+            const userErrors = (innerResult as any).cartBuyerIdentityUpdate?.userErrors || [];
             const isCustomerError = userErrors.some((err: any) => err.message === "Customer غير صالح" || err.message === "Customer is invalid" || err.field?.includes('customerAccessToken'));
             
             if (isCustomerError && buyerIdentity.customerAccessToken) {
                 delete buyerIdentity.customerAccessToken;
-                result = await cart.updateBuyerIdentity(buyerIdentity);
+                innerResult = await cart.updateBuyerIdentity(buyerIdentity);
             }
             
-            if (result?.errors?.length || result?.userErrors?.length) {
-                console.error('[CART BUYER IDENTITY ERROR]', result.errors || result.userErrors);
+            if (innerResult?.errors?.length || innerResult?.userErrors?.length) {
+                console.error('[CART BUYER IDENTITY ERROR]', innerResult.errors || innerResult.userErrors);
             }
+            result = innerResult;
         } else if (!result) {
             result = await cart.get();
         }
@@ -588,7 +604,7 @@ export async function action({request, context}: Route.ActionArgs) {
     headers.append('Set-Cookie', await context.session.commit());
   }
 
-  const {cart: cartResult, errors, warnings} = result || { cart: null, errors: [], warnings: [] };
+  const {cart: cartResult, errors, warnings} = (result as any) || { cart: null, errors: [], warnings: [] };
 
   const redirectTo = formData.get('redirectTo') ?? null;
   if (typeof redirectTo === 'string') {

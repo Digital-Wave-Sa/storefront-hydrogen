@@ -598,7 +598,7 @@ function PromotionsDashboardContent({ adminData }: { adminData: any }) {
     ]);
     
     const csvContent = "data:text/csv;charset=utf-8,\uFEFF" 
-      + [headers.join(','), ...rows.map(e => e.map(val => `"${val}"`).join(','))].join('\n');
+      + [headers.join(','), ...rows.map((e: any) => e.map((val: any) => `"${val}"`).join(','))].join('\n');
       
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
@@ -988,9 +988,9 @@ function PromotionsDashboardContent({ adminData }: { adminData: any }) {
                       return acc;
                     }, {})
                   )
-                    .sort((a, b) => b[1] - a[1])
+                    .sort((a: any, b: any) => b[1] - a[1])
                     .slice(0, 5)
-                    .map(([branch, count]) => (
+                    .map(([branch, count]: [string, any]) => (
                       <div key={branch} className="flex justify-between items-center text-sm font-bold border-b pb-2 border-gray-50">
                         <span className="text-gray-500">{branch}</span>
                         <span className="text-[#234745] font-black">{count} {isEn ? 'used' : 'مرة'}</span>
@@ -1056,7 +1056,7 @@ function PromotionsDashboardContent({ adminData }: { adminData: any }) {
                   <tbody className="divide-y font-medium text-sm">
                     {filteredRedemptions
                       .filter((r: any) => r.code === selectedVoucherCode)
-                      .map((red: any, idx) => (
+                      .map((red: any, idx: number) => (
                         <tr key={idx} className="hover:bg-gray-50/50">
                           <td className="px-6 py-4 font-bold text-[#234745] font-en">{red.orderName}</td>
                           <td className="px-6 py-4 text-gray-400 font-en">

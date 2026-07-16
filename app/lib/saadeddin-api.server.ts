@@ -18,11 +18,12 @@ export class SaadeddinApi {
       },
     });
     
-    const data = await res.json().catch(() => ({}));
+    const data = await (res.json() as Promise<any>).catch(() => ({}));
 
     if (!res.ok || data.success === false) {
       const err = new Error(data.error || `Request failed with status ${res.status}`);
       (err as any).status = res.status;
+      (err as any).data = data.data;
       throw err;
     }
     
@@ -31,33 +32,48 @@ export class SaadeddinApi {
 
   // ─── AUTHENTICATION ──────────────────────────────────────────────────────────
 
-  async requestOtp(phone: string) {
+  async requestOtp(phone: string, flowType: 'register' | 'login') {
     return this.api('/auth/request-otp', {
       method: 'POST',
-      body: JSON.stringify({ phone }),
+      body: JSON.stringify({ phone, flowType }),
     });
   }
 
-  async verifyOtp(phone: string, code: string | number) {
-    const cleanPhone = phone.startsWith('+') ? phone.slice(1) : phone;
+  async verifyOtp(phone: string, code: string | number, flowType: 'register' | 'login') {
     return this.api('/auth/verify-otp', {
       method: 'POST',
-      body: JSON.stringify({ phone: cleanPhone, code: typeof code === 'number' ? code : parseInt(code, 10) }),
+      body: JSON.stringify({ phone, code: String(code), flowType }),
     });
   }
 
-  async register(data: { accountType: string; phone: string; name: string; email: string; companyName?: string; taxNumber?: string }) {
+  async register(
+    data: {
+      phone: string;
+      name: string;
+      email: string;
+      password?: string;
+      accountType: string;
+      otpToken: string;
+      companyName?: string;
+      taxNumber?: string;
+      companyAddress?: string;
+      birthDate?: string;
+    },
+    idempotencyKey: string
+  ) {
     return this.api('/auth/register', {
       method: 'POST',
+      headers: {
+        'Idempotency-Key': idempotencyKey,
+      },
       body: JSON.stringify(data),
     });
   }
 
   async login(phone: string, code: string | number) {
-    const cleanPhone = phone.startsWith('+') ? phone.slice(1) : phone;
     return this.api('/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ phone: cleanPhone, code: typeof code === 'number' ? code : parseInt(code, 10) }),
+      body: JSON.stringify({ phone, code: String(code) }),
     });
   }
 

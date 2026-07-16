@@ -3,7 +3,7 @@ import { useLoaderData, useRouteLoaderData } from 'react-router';
 import { PageHeader } from '~/components/layout/PageHeader';
 
 const PAGE_QUERY = `#graphql
-  query TermsPage(
+  query QualityPolicyPage(
     $language: LanguageCode,
     $country: CountryCode,
     $handle: String!
@@ -24,7 +24,7 @@ const PAGE_QUERY = `#graphql
 export async function loader({ context }: LoaderFunctionArgs) {
   const { page } = await context.storefront.query(PAGE_QUERY, {
     variables: { 
-      handle: 'terms',
+      handle: 'quality-policy',
       language: context.storefront.i18n.language,
       country: context.storefront.i18n.country,
     },
@@ -39,7 +39,7 @@ export async function loader({ context }: LoaderFunctionArgs) {
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
   if (!data?.page) {
-    return [{ title: 'Terms of Service | Saadeddin' }];
+    return [{ title: 'Quality Policy | Saadeddin' }];
   }
 
   const { page } = data;
@@ -54,7 +54,7 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => {
   ];
 };
 
-export default function TermsPage() {
+export default function QualityPolicyPage() {
   const { page } = useLoaderData<typeof loader>();
   const rootData = useRouteLoaderData('root') as any;
   const isEn = rootData?.consent?.language?.toLowerCase() === 'en';

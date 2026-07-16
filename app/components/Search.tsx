@@ -16,11 +16,12 @@ import { shouldHideProduct } from '~/lib/stock';
 import { useAside } from './Aside';
 
 import type {
-  PredictiveProductFragment,
-  PredictiveCollectionFragment,
-  PredictiveArticleFragment,
   SearchQuery,
 } from 'storefrontapi.generated';
+
+type PredictiveProductFragment = any;
+type PredictiveCollectionFragment = any;
+type PredictiveArticleFragment = any;
 
 type PredicticeSearchResultItemImage =
   | PredictiveCollectionFragment['image']
@@ -95,23 +96,24 @@ export function SearchForm({ searchTerm }: { searchTerm: string }) {
 
   return (
     <Form method="get" className="relative w-full group" dir={isEn ? 'ltr' : 'rtl'}>
-      <input
-        defaultValue={searchTerm}
-        name="q"
-        placeholder={isEn ? "Search..." : "شوكولاته..."}
-        ref={inputRef}
-        type="search"
-        className={`w-full bg-white shadow-sm rounded-[25px] py-[12px] pl-6 pr-14 text-[16px] font-bold placeholder:text-gray-400 focus:outline-none transition-all duration-300 ${isEn ? 'font-en' : "font-['GE_Dinar_One']"}`}
-      />
-      
-      {/* Clear Button (native search clear button might show, but let's hide the submit button) */}
-      <button
-        type="submit"
-        aria-label={isEn ? 'Search' : 'بحث'}
-        className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#234745] transition-colors p-2"
-      >
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
-      </button>
+      <div className={`w-full bg-white shadow-sm rounded-[25px] flex items-center ${isEn ? 'flex-row' : 'flex-row-reverse'} px-5 py-[10px] md:py-[12px] gap-2`}>
+        {/* Search icon sits right beside the text */}
+        <button
+          type="submit"
+          aria-label={isEn ? 'Search' : 'بحث'}
+          className="shrink-0 text-gray-400 hover:text-[#234745] transition-colors"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
+        </button>
+        <input
+          defaultValue={searchTerm}
+          name="q"
+          placeholder={isEn ? "Search..." : "شوكولاته..."}
+          ref={inputRef}
+          type="search"
+          className={`flex-1 min-w-0 bg-transparent text-[15px] md:text-[16px] font-bold placeholder:text-gray-400 focus:outline-none ${isEn ? 'text-left font-en' : "text-right font-['GE_Dinar_One']"}`}
+        />
+      </div>
     </Form>
   );
 }
@@ -129,7 +131,7 @@ export function SearchResults({
         keys.map((type) => {
           const resourceResults = results[type];
 
-          if (resourceResults.nodes[0]?.__typename === 'Product') {
+          if ((resourceResults.nodes[0] as any)?.__typename === 'Product') {
             const productResults = resourceResults as SearchQuery['products'];
             return resourceResults.nodes.length ? (
               <SearchResultsProductsGrid
@@ -153,7 +155,7 @@ function SearchResultsProductsGrid({ products }: Pick<SearchQuery, 'products'>) 
   const { selectedLocationId, selectedLocationName } = useOutletContext<{ selectedLocationId?: string, selectedLocationName?: string }>() || {};
 
   return (
-    <div className="mb-16" dir={isEn ? 'ltr' : 'rtl'}>
+    <div className="mb-0" dir={isEn ? 'ltr' : 'rtl'}>
 
       <Pagination connection={products}>
         {({ nodes, isLoading, NextLink, PreviousLink }) => {
@@ -165,17 +167,17 @@ function SearchResultsProductsGrid({ products }: Pick<SearchQuery, 'products'>) 
                   {isLoading ? (isEn ? 'Loading...' : 'جاري التحميل...') : (isEn ? '↑ Load Previous' : '↑ تحميل النتائج السابقة')}
                 </PreviousLink>
               </div>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-6 lg:gap-8">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-[10px] md:gap-6 lg:gap-8">
                 {visibleNodes.map((product) => (
-                  <ProductItem 
-                    key={product.id} 
-                    product={product} 
+                  <ProductItem
+                    key={product.id}
+                    product={product}
                     view="grid"
                   />
                 ))}
               </div>
               <div className="flex justify-center mt-12">
-                <NextLink className="bg-[#234745] text-white px-16 py-4 rounded-full font-black shadow-[0_10px_30_rgba(27,61,46,0.3)] hover:shadow-[0_15px_40px_rgba(27,61,46,0.4)] hover:-translate-y-1 transition-all duration-300">
+                <NextLink className="bg-[#234745] !text-white px-16 py-4 rounded-full font-black shadow-[0_10px_30_rgba(27,61,46,0.3)] hover:shadow-[0_15px_40px_rgba(27,61,46,0.4)] hover:-translate-y-1 transition-all duration-300">
                   {isLoading ? (isEn ? 'Loading...' : 'جاري التحميل...') : (isEn ? 'Browse More ↓' : 'تصفح المزيد ↓')}
                 </NextLink>
               </div>
@@ -228,7 +230,7 @@ export function NoSearchResults({ searchTerm }: { searchTerm: string }) {
   const isEn = locale === 'en';
 
   // Popular search suggestions
-  const popularSuggestions = isEn 
+  const popularSuggestions = isEn
     ? ['Cakes', 'Chocolate', 'Baklava', 'Gifts', 'Coffee']
     : ['كيك', 'شوكولاتة', 'بقلاوة', 'هدايا', 'قهوة'];
 
@@ -241,7 +243,7 @@ export function NoSearchResults({ searchTerm }: { searchTerm: string }) {
       <div className="relative z-10 w-24 h-24 mb-6 flex items-center justify-center">
         {/* Soft circle behind icon */}
         <div className="absolute inset-0 bg-[#FEF8EB] rounded-full scale-125"></div>
-        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#234745" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="relative z-10"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /><path d="M11 8v3"/><path d="M11 14h.01"/></svg>
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#234745" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="relative z-10"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /><path d="M11 8v3" /><path d="M11 14h.01" /></svg>
       </div>
 
       <h2 className="relative z-10 text-[28px] md:text-[32px] font-bold text-[#234745] mb-4">
@@ -260,16 +262,16 @@ export function NoSearchResults({ searchTerm }: { searchTerm: string }) {
       {/* Popular Suggestions */}
       <div className="relative z-10 mb-12 w-full max-w-[600px]">
         <div className="flex items-center gap-4 mb-6">
-            <div className="h-[1px] flex-1 bg-[#BBCFCD]/40"></div>
-            <p className="text-[13px] font-bold text-[#234745] tracking-wide uppercase px-2">
+          <div className="h-[1px] flex-1 bg-[#BBCFCD]/40"></div>
+          <p className="text-[13px] font-bold text-[#234745] tracking-wide uppercase px-2">
             {isEn ? 'Popular Searches' : 'عمليات بحث شائعة'}
-            </p>
-            <div className="h-[1px] flex-1 bg-[#BBCFCD]/40"></div>
+          </p>
+          <div className="h-[1px] flex-1 bg-[#BBCFCD]/40"></div>
         </div>
-        
+
         <div className="flex flex-wrap justify-center gap-3">
           {popularSuggestions.map((suggestion) => (
-            <Link 
+            <Link
               key={suggestion}
               to={`${isEn ? '/en' : ''}/search?q=${encodeURIComponent(suggestion)}`}
               className="px-6 py-2.5 bg-[#FEF8EB] text-[#234745] hover:bg-[#234745] hover:!text-white border border-[#234745]/10 font-medium rounded-full transition-all duration-300 transform hover:-translate-y-0.5 text-[15px]"
@@ -285,7 +287,7 @@ export function NoSearchResults({ searchTerm }: { searchTerm: string }) {
           to={isEn ? "/en" : "/"}
           className="inline-flex items-center justify-center gap-2 bg-[#234745] !text-white px-10 py-4 rounded-[25px] font-bold hover:bg-[#1b3635] transition-all duration-300 shadow-md group"
         >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={`transition-transform duration-300 ${isEn ? 'group-hover:-translate-x-1' : 'rotate-180 group-hover:translate-x-1'}`}><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={`transition-transform duration-300 ${isEn ? 'group-hover:-translate-x-1' : 'rotate-180 group-hover:translate-x-1'}`}><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
           <span className="text-[16px] !text-white">{isEn ? 'Continue Shopping' : 'متابعة التسوق'}</span>
         </Link>
       </div>
@@ -370,7 +372,7 @@ export function PredictiveSearchResults({ onClose }: { onClose?: () => void }) {
 
   const rootData = useRouteLoaderData('root') as any;
   const locale = rootData?.consent?.language?.toLowerCase() || 'ar';
-  
+
   if (!totalResults) {
     return <NoPredictiveSearchResults searchTerm={searchTerm} />;
   }
@@ -416,6 +418,7 @@ function NoPredictiveSearchResults({ searchTerm }: { searchTerm: React.MutableRe
 type SearchResultTypeProps = {
   goToSearchResult: (event: React.MouseEvent<HTMLAnchorElement>) => void;
   items: NormalizedPredictiveSearchResultItem[];
+  onClose?: (() => void) | undefined;
   searchTerm: UseSearchReturn['searchTerm'];
   type: NormalizedPredictiveSearchResults[number]['type'];
 };

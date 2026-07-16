@@ -1,3 +1,4 @@
+// @ts-ignore - route types generated during build
 import type {Route} from './+types/[sitemap.xml]';
 import {getSitemapIndex} from '@shopify/hydrogen';
 

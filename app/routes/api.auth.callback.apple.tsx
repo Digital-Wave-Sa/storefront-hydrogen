@@ -11,7 +11,7 @@ async function derivePassword(userId: string, secret: string): Promise<string> {
   return hashHex.slice(0, 24) + 'Aa1!';
 }
 
-function parseJwt(token: string) {
+function parseJwt(token: string): any {
   try {
     const base64Url = token.split('.')[1];
     const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
@@ -45,7 +45,7 @@ async function handleAppleAuth(formData: FormData, context: any) {
 
   if (userJson) {
     try {
-      const parsedUser = JSON.parse(userJson);
+      const parsedUser = JSON.parse(userJson) as any;
       if (parsedUser.name) {
         firstName = parsedUser.name.firstName || firstName;
         lastName = parsedUser.name.lastName || '';
@@ -64,7 +64,7 @@ async function handleAppleAuth(formData: FormData, context: any) {
   const searchRes = await fetch(`https://${domain}/admin/api/2023-04/customers/search.json?query=email:${finalEmail}`, {
     headers: { 'X-Shopify-Access-Token': adminToken },
   });
-  const { customers } = await searchRes.json();
+  const { customers } = await searchRes.json() as any;
 
   const existingCustomer = customers?.[0];
   const stablePassword = await derivePassword(appleUserId, env.SESSION_SECRET || 'saadeddin-social');
@@ -107,10 +107,10 @@ async function handleAppleAuth(formData: FormData, context: any) {
       })
     });
     if (!createRes.ok) {
-      const errData = await createRes.json().catch(() => ({}));
+      const errData = (await createRes.json().catch(() => ({}))) as any;
       throw new Error(errData.errors ? JSON.stringify(errData.errors) : 'Failed to register social account.');
     }
-    const createData = await createRes.json();
+    const createData = await createRes.json() as any;
     customerEmail = createData.customer?.email || finalEmail;
     customerPhone = createData.customer?.phone || '';
   }

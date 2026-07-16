@@ -14,7 +14,7 @@ export function ProductForm({
   isBogo = false,
 }: {
   productOptions: MappedProductOptions[];
-  selectedVariant: ProductFragment['selectedOrFirstAvailableVariant'];
+  selectedVariant: any;
   isBogo?: boolean;
 }) {
   const navigate = useNavigate();

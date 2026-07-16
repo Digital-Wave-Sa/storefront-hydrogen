@@ -71,7 +71,7 @@ export async function sendSMS({
     }
 
     try {
-      const result = JSON.parse(responseText);
+      const result = JSON.parse(responseText) as any;
       if (result.Result === "0" || result.Result === 0) {
         console.error('[SMS API REJECTED]', result);
         return { success: false, error: result.Message || "SMS API rejected request" };

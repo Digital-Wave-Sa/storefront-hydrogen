@@ -18,13 +18,39 @@ export const links: LinksFunction = () => {
 
 const CAKE_ATTRIBUTES_QUERY = `#graphql
   query CakeAttributes($language: LanguageCode) @inContext(language: $language) {
-    metaobjects(type: "cake_attribute", first: 250) {
+    cakeAttributes: metaobjects(type: "cake_attribute", first: 250) {
       nodes {
         id
         attributeType: field(key: "attribute_type") { value }
         nameEn: field(key: "name_english") { value }
+        nameAr: field(key: "name_arabic") { value }
         priceDelta: field(key: "price_delta") { value }
         thumbnailUrl: field(key: "thumbnail_image") { reference { ... on MediaImage { image { url } } } }
+        imageFront: field(key: "image_front") { reference { ... on MediaImage { image { url } } } }
+        imageTop: field(key: "image_top") { reference { ... on MediaImage { image { url } } } }
+        imageSliced: field(key: "image_sliced") { reference { ... on MediaImage { image { url } } } }
+      }
+    }
+    toppingDesigns: metaobjects(type: "cake_topping_design", first: 250) {
+      nodes {
+        id
+        topping: field(key: "topping") {
+          reference {
+            ... on Metaobject {
+              id
+            }
+          }
+        }
+        shape: field(key: "shape") {
+          reference {
+            ... on Metaobject {
+              id
+            }
+          }
+        }
+        imageFront: field(key: "image_front") { reference { ... on MediaImage { image { url } } } }
+        imageTop: field(key: "image_top") { reference { ... on MediaImage { image { url } } } }
+        imageSliced: field(key: "image_sliced") { reference { ... on MediaImage { image { url } } } }
       }
     }
   }
@@ -33,18 +59,30 @@ const CAKE_ATTRIBUTES_QUERY = `#graphql
 export async function loader({ context }: LoaderFunctionArgs) {
   const { storefront } = context;
   try {
-    const { metaobjects } = await storefront.query(CAKE_ATTRIBUTES_QUERY, {
+    const data = await storefront.query(CAKE_ATTRIBUTES_QUERY, {
       variables: { language: storefront.i18n.language },
       cache: storefront.CacheShort(),
     });
-    return { locale: storefront.i18n.language.toLowerCase(), cakeAttributes: metaobjects.nodes };
+    
+    return {
+      locale: storefront.i18n.language.toLowerCase(),
+      cakeAttributes: data.cakeAttributes?.nodes || [],
+      toppingDesigns: data.toppingDesigns?.nodes || []
+    };
   } catch (error) {
-    return { locale: 'en', cakeAttributes: [] };
+    console.error('[Cake Builder Loader] GraphQL Query Error:', error);
+    return { locale: 'en', cakeAttributes: [], toppingDesigns: [] };
   }
 }
 
 export default function CustomCakeBuilderRoute() {
-  const { cakeAttributes, locale } = useLoaderData<typeof loader>();
+  const { cakeAttributes, toppingDesigns, locale } = useLoaderData<typeof loader>();
   const isEn = locale === 'en';
-  return <LolaCakeBuilder cakeAttributes={cakeAttributes} isEn={isEn} />;
+  return (
+    <LolaCakeBuilder 
+      cakeAttributes={cakeAttributes} 
+      toppingDesigns={toppingDesigns} 
+      isEn={isEn} 
+    />
+  );
 }

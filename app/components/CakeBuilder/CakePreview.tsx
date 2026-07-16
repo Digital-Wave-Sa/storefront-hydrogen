@@ -19,6 +19,8 @@ interface CakePreviewProps {
   view?: 'front' | 'top' | 'sliced';
   setView?: (v: 'front' | 'top' | 'sliced') => void;
   currentStep?: number;
+  cakeAttributes?: any[];
+  toppingDesigns?: any[];
 }
 
 // Map shape IDs to their 2D visual assets
@@ -224,18 +226,29 @@ export function CakePreview({
   uploadedImage,
   view = 'front',
   setView,
-  currentStep = 1
+  currentStep = 1,
+  cakeAttributes = [],
+  toppingDesigns = []
 }: CakePreviewProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   
-  // Check which views are supported by the active shape
   const supportedViews = useMemo(() => {
+    const shapeMatch = cakeAttributes?.find(attr => {
+      if (!attr.nameEn?.value) return false;
+      const shopifyName = attr.nameEn.value.toLowerCase();
+      const cleanShape = (shape || '').toLowerCase().replace(/[-_]/g, ' ');
+      return cleanShape.includes(shopifyName) || cleanShape === shopifyName;
+    });
+
+    const hasTop = !!(shapeMatch?.imageTop?.reference?.image?.url || ['classic_round', 'standard', 'mini_cake', 'small_standard', 'circle'].includes(shape || ''));
+    const hasSliced = !!(shapeMatch?.imageSliced?.reference?.image?.url || ['classic_round', 'standard', 'mini_cake', 'small_standard', 'circle'].includes(shape || ''));
+
     return {
       front: true,
-      top: false,
-      sliced: false,
+      top: hasTop,
+      sliced: hasSliced,
     };
-  }, []);
+  }, [shape, cakeAttributes]);
 
   // Sync view selection with isCutaway prop (from step 2 toggle)
   useEffect(() => {
@@ -246,50 +259,62 @@ export function CakePreview({
     }
   }, [isCutaway, supportedViews, setView]);
 
-  // Get active image sources based on shape, view, topping
+  // Get active image sources based on shape, view, topping dynamically from Shopify Metaobjects
   const activeSources = useMemo(() => {
     let shapeImg = '';
-    const isRoundShape = shape === 'standard' || shape === 'circle' || shape === 'classic_round' || shape === 'mini_cake' || shape === 'small_standard';
     
-    if (isRoundShape) {
-      if (view === 'front') {
-        if (shape === 'classic_round') {
-          shapeImg = '/cake/shapes/classic-round.png';
-        } else if (shape === 'standard') {
-          shapeImg = '/cake/shapes/standard.png';
-        } else if (shape === 'mini_cake') {
-          shapeImg = '/cake/shapes/mini-cake.png';
-        } else {
-          shapeImg = '/cake/shapes/small-standard.png';
-        }
-      } else {
-        shapeImg = getStandardShapeAsset(view as 'front' | 'top' | 'sliced', flavorName);
+    // Find the current shape attribute
+    const shapeMatch = cakeAttributes?.find(attr => {
+      if (!attr.nameEn?.value) return false;
+      const shopifyName = attr.nameEn.value.toLowerCase();
+      const cleanShape = (shape || '').toLowerCase().replace(/[-_]/g, ' ');
+      return cleanShape.includes(shopifyName) || cleanShape === shopifyName;
+    });
+
+    // Check if Shopify has the shape image uploaded
+    let resolvedShapeImg = undefined;
+    if (shapeMatch) {
+      if (view === 'top' && shapeMatch.imageTop?.reference?.image?.url) {
+        resolvedShapeImg = shapeMatch.imageTop.reference.image.url;
+      } else if (view === 'sliced' && shapeMatch.imageSliced?.reference?.image?.url) {
+        resolvedShapeImg = shapeMatch.imageSliced.reference.image.url;
+      } else if (view === 'front' && shapeMatch.imageFront?.reference?.image?.url) {
+        resolvedShapeImg = shapeMatch.imageFront.reference.image.url;
       }
+    }
+
+    if (resolvedShapeImg) {
+      shapeImg = resolvedShapeImg;
     } else {
-      const sAssets = shapeAssets[shape] || shapeAssets.standard;
-      shapeImg = view === 'top' && sAssets.top 
-        ? sAssets.top 
-        : view === 'sliced' && sAssets.sliced 
-          ? sAssets.sliced 
-          : sAssets.front;
+      shapeImg = '';
     }
 
     const toppingId = toppings?.[0]?.id || '';
     let toppingImg = undefined;
-    if (toppingId === 'witches-dont-age' || toppingId === 'witches_dont_age') {
-      if (view === 'front') {
-        if (shape === 'classic_round') {
-          toppingImg = '/cake/toppings/witches_dont_age/standard_front-classic-round.png';
-        } else if (shape === 'standard') {
-          toppingImg = '/cake/toppings/witches_dont_age/standard_front-standard.png';
-        } else if (shape === 'mini_cake') {
-          toppingImg = '/cake/toppings/witches_dont_age/mini-cake.png';
-        } else if (shape === 'small_standard') {
-          toppingImg = '/cake/toppings/witches_dont_age/small-standard.png';
-        } else {
-          toppingImg = '/cake/toppings/witches_dont_age/standard_front.png';
-        }
+
+    // Resolve topping from Shopify Metaobjects via connecting design metaobjects
+    const toppingMatch = cakeAttributes?.find(attr => attr.attributeType?.value === 'Topping' && (attr.id === toppingId || attr.nameEn?.value?.toLowerCase() === toppingId.toLowerCase() || attr.nameEn?.value?.toLowerCase()?.replace(/[-_\s]+/g, ' ') === toppingId.toLowerCase()?.replace(/[-_\s]+/g, ' ')));
+    
+    let resolvedToppingImg = undefined;
+    if (toppingMatch && shapeMatch && toppingDesigns?.length) {
+      const design = toppingDesigns.find(d => {
+        const tRefId = d.topping?.reference?.id;
+        const sRefId = d.shape?.reference?.id;
+        return tRefId && sRefId && tRefId === toppingMatch.id && sRefId === shapeMatch.id;
+      });
+      if (design) {
+        resolvedToppingImg = view === 'top' && design.imageTop?.reference?.image?.url
+          ? design.imageTop.reference.image.url
+          : view === 'sliced' && design.imageSliced?.reference?.image?.url
+            ? design.imageSliced.reference.image.url
+            : design.imageFront?.reference?.image?.url;
       }
+    }
+
+    if (resolvedToppingImg) {
+      toppingImg = resolvedToppingImg;
+    } else {
+      toppingImg = undefined;
     }
 
     let tintImg = undefined;
@@ -311,7 +336,7 @@ export function CakePreview({
       toppingImg,
       toppingId
     };
-  }, [shape, view, toppings, flavorName, currentStep]);
+  }, [shape, view, toppings, flavorName, currentStep, cakeAttributes, toppingDesigns]);
 
   // Render loop
   useEffect(() => {
@@ -328,7 +353,9 @@ export function CakePreview({
     const { shapeImg, tintImg, toppingImg, toppingId } = activeSources;
 
     const imagesToLoad: { key: string; src: string }[] = [];
-    imagesToLoad.push({ key: 'shape', src: shapeImg });
+    if (shapeImg) {
+      imagesToLoad.push({ key: 'shape', src: shapeImg });
+    }
     if (tintImg) {
       imagesToLoad.push({ key: 'tint', src: tintImg });
     }
@@ -497,10 +524,7 @@ export function CakePreview({
         drawSprinkles(ctx, cakeX, cakeY, cakeW, cakeH);
       }
 
-      // 5. Render custom printed photo if uploaded
-      if (uploadedImage) {
-        drawUploadedImage(ctx, cakeX, cakeY, cakeW, cakeH);
-      }
+      // 5. Custom printed photo is attached to order but not rendered on cake preview as per user request
 
       // 6. Draw written frosting message text
       if (message) {
@@ -541,31 +565,6 @@ export function CakePreview({
       ctx.restore();
     }
 
-    function drawUploadedImage(ctx: CanvasRenderingContext2D, cx: number, cy: number, cw: number, ch: number) {
-      const img = new Image();
-      img.onload = () => {
-        ctx.save();
-        const centerX = cx + cw / 2;
-        if (view === 'top') {
-          const size = cw * 0.45;
-          ctx.beginPath();
-          ctx.arc(centerX, cy + ch / 2, size / 2, 0, Math.PI * 2);
-          ctx.clip();
-          ctx.drawImage(img, centerX - size / 2, (cy + ch / 2) - size / 2, size, size);
-        } else {
-          const sizeW = cw * 0.35;
-          const sizeH = ch * 0.25;
-          const rx = centerX - sizeW / 2;
-          const ry = cy + ch * 0.55;
-          
-          ctx.fillStyle = '#ffffff';
-          ctx.fillRect(rx - 4, ry - 4, sizeW + 8, sizeH + 8);
-          ctx.drawImage(img, rx, ry, sizeW, sizeH);
-        }
-        ctx.restore();
-      };
-      if (uploadedImage) img.src = uploadedImage;
-    }
 
     function drawMessage(ctx: CanvasRenderingContext2D, w: number, h: number, cakeBottom: number) {
       ctx.save();

@@ -14,9 +14,9 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
   const customerAccessToken = await session.get('customerAccessToken');
   console.log("AT TOP, TOKEN IS:", JSON.stringify(customerAccessToken));
   const isLoggedIn = Boolean(customerAccessToken?.accessToken || (typeof customerAccessToken === 'string' ? customerAccessToken : null));
-  
+
   const isAccountHome = pathname === `${localePrefix}/account` || pathname === `${localePrefix}/account/`;
-  const isPrivateRoute = new RegExp(`^${localePrefix}/account/(orders|orders/.*|profile|addresses|addresses/.*|notification-preferences|dashboard|feedback-analytics|promotions|wishlist|wallet|payments)$`).test(pathname);
+  const isPrivateRoute = new RegExp(`^${localePrefix}/account/(orders|orders/.*|profile|addresses|addresses/.*|notification-preferences|dashboard|feedback-analytics|promotions|wishlist|wallet)$`).test(pathname);
 
   if (!isLoggedIn) {
     if (isPrivateRoute || isAccountHome) {
@@ -44,7 +44,7 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
     // DEV BYPASS: If we are in dev mode and have a fake token, try to fetch the REAL customer profile via Admin API
     if (process.env.NODE_ENV === 'development' && customerAccessToken?.accessToken === 'dev-bypass-token') {
       const savedPhone = session.get('loginOtpPhone');
-      
+
       let realCustomer: any = null;
       let tags: string[] = [];
       let isAdmin = false;
@@ -53,14 +53,14 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
         try {
           const { getAdminToken } = await import('~/lib/shopify-admin.server');
           const adminToken = await getAdminToken(context.env);
-          const queryStr = savedPhone.includes('590910042') 
+          const queryStr = savedPhone.includes('590910042')
             ? encodeURIComponent('email:"motasem.udeh@gmail.com"')
             : encodeURIComponent(`phone:"${savedPhone}"`);
           const res = await fetch(`https://${context.env.PUBLIC_STORE_DOMAIN}/admin/api/2023-04/customers/search.json?query=${queryStr}`, {
             headers: { 'X-Shopify-Access-Token': adminToken, 'Content-Type': 'application/json' },
           });
-          const { customers } = await res.json();
-          
+          const { customers } = (await res.json()) as any;
+
           if (customers && customers.length > 0) {
             const adminCust = customers[0];
             // Format the admin customer to look like the Storefront API customer fragment
@@ -175,7 +175,7 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
             // Fetch gift cards and total balance
             const cardsRes = await fetch(`${baseGiftCardUrl}/gift-cards/by-phone/${encodeURIComponent(formattedPhone)}`);
             if (cardsRes.ok) {
-              const cardsData = await cardsRes.json();
+              const cardsData = (await cardsRes.json()) as any;
               if (cardsData?.success && cardsData?.data) {
                 cards = cardsData.data.cards || [];
                 balance = cardsData.data.totalBalance || 0;
@@ -187,7 +187,7 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
               try {
                 const txRes = await fetch(`${baseGiftCardUrl}/gift-cards/${card.code}/transactions`);
                 if (txRes.ok) {
-                  const txData = await txRes.json();
+                  const txData = (await txRes.json()) as any;
                   return (txData?.data?.transactions || [])
                     .filter((tx: any) => tx.operation !== 'CREATE')
                     .map((tx: any) => {
@@ -201,19 +201,19 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
                       };
                     });
                 }
-              } catch (e) {}
+              } catch (e) { }
               return [];
             });
 
             const historyResults = await Promise.all(historyPromises);
             history = historyResults
               .flat()
-              .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+              .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
           }
 
           // Fetch Loyalty Points explicitly from CRM endpoint
           loyaltyPoints = getMockPoints(formattedPhone);
-        } catch (e) {}
+        } catch (e) { }
         return { loyaltyPoints, balance, history, cards };
       })();
 
@@ -267,7 +267,7 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
         const middlewareUrl = context.env.MIDDLEWARE_URL || 'https://api.pryvexapls.com';
         const branchId = await context.session.get('selectedLocationId');
         const isLocal = new URL(request.url).host.includes('localhost') || new URL(request.url).host.includes('127.0.0.1');
-        
+
         // Ensure phone number matches expected local Saudi format for CRM (replace +966 with 0)
         let formattedPhone = customer.phone || '';
         if (isLocal && !formattedPhone) {
@@ -310,7 +310,7 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
           // Fetch gift cards and total balance
           const cardsRes = await fetch(`${baseGiftCardUrl}/gift-cards/by-phone/${encodeURIComponent(formattedPhone)}`);
           if (cardsRes.ok) {
-            const cardsData = await cardsRes.json();
+            const cardsData = (await cardsRes.json()) as any;
             if (cardsData?.success && cardsData?.data) {
               cards = cardsData.data.cards || [];
               balance = cardsData.data.totalBalance || 0;
@@ -322,7 +322,7 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
             try {
               const txRes = await fetch(`${baseGiftCardUrl}/gift-cards/${card.code}/transactions`);
               if (txRes.ok) {
-                const txData = await txRes.json();
+                const txData = (await txRes.json()) as any;
                 return (txData?.data?.transactions || []).map((tx: any) => {
                   const amt = parseFloat(tx.amount || '0');
                   return {
@@ -334,28 +334,28 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
                   };
                 });
               }
-            } catch (e) {}
+            } catch (e) { }
             return [];
           });
 
           const historyResults = await Promise.all(historyPromises);
           history = historyResults
             .flat()
-            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+            .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
         }
 
         // Fetch Loyalty Points explicitly from CRM endpoint
         loyaltyPoints = getMockPoints(formattedPhone);
-      } catch (e) {}
+      } catch (e) { }
       return { loyaltyPoints, balance, history, cards };
     })();
 
     return data(
-      { 
-        isLoggedIn, 
-        isPrivateRoute, 
-        isAccountHome, 
-        customer, 
+      {
+        isLoggedIn,
+        isPrivateRoute,
+        isAccountHome,
+        customer,
         isAdmin,
         googleMapsKey: context.env.PUBLIC_GOOGLE_MAPS_KEY,
         walletPromise
@@ -378,7 +378,7 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
 }
 
 export default function Acccount() {
-  const { isLoggedIn, isPrivateRoute, isAccountHome, customer, googleMapsKey, isAdmin, walletPromise } = useLoaderData<typeof loader>();
+  const { isLoggedIn, isPrivateRoute, isAccountHome, customer, googleMapsKey, isAdmin, walletPromise } = useLoaderData<any>();
   const rootData = useRouteLoaderData('root') as any;
   const locale = rootData?.locale || 'ar';
 
@@ -394,6 +394,19 @@ export default function Acccount() {
 }
 
 import { useWishlist } from '~/context/WishlistContext';
+import { SaudiRiyalSymbol } from '~/components/Price';
+
+function getSectionTitle(pathname: string, isEn: boolean) {
+  const cleanPath = pathname.replace(/^\/en/, '').replace(/\/$/, '');
+  if (cleanPath === '/account') return isEn ? 'Control Panel' : 'لوحة التحكم';
+  if (cleanPath.startsWith('/account/orders')) return isEn ? 'My Orders' : 'طلباتي';
+  if (cleanPath.startsWith('/account/wishlist')) return isEn ? 'Favorites' : 'المفضلة';
+  if (cleanPath.startsWith('/account/wallet')) return isEn ? 'Wallet & Vouchers' : 'المحفظة والقسائم';
+  if (cleanPath.startsWith('/account/addresses')) return isEn ? 'Addresses' : 'عناوين التوصيل';
+  if (cleanPath.startsWith('/account/profile')) return isEn ? 'Personal Information' : 'المعلومات الشخصية';
+  if (cleanPath.startsWith('/account/notification-preferences')) return isEn ? 'Notifications' : 'الاشعارات';
+  return isEn ? 'Control Panel' : 'لوحة التحكم';
+}
 
 function AccountLayout({
   customer,
@@ -403,16 +416,70 @@ function AccountLayout({
 }: {
   customer: CustomerFragment;
   isAdmin: boolean;
-  walletPromise?: Promise<{loyaltyPoints: number; balance: number}>;
+  walletPromise?: Promise<{ loyaltyPoints: number; balance: number }>;
   children: React.ReactNode;
 }) {
   const location = useLocation();
   const isEn = location.pathname.startsWith('/en');
-  
+  const localePrefix = isEn ? '/en' : '';
+  const isAccountHome = location.pathname === `${localePrefix}/account` || location.pathname === `${localePrefix}/account/`;
+
+  const searchParams = new URLSearchParams(location.search);
+  const viewOverview = searchParams.get('view') === 'overview';
+
+  // Show back header if: not on account home, OR on account home but viewing the overview view (?view=overview)
+  const showBackHeader = !isAccountHome || viewOverview;
+
   // Safe to use here since it's inside the WishlistProvider
   const { wishlist } = useWishlist();
   const wishlistCount = wishlist?.length || 0;
-  
+
+  const backUrl = `${localePrefix}/account`;
+  const sectionTitle = getSectionTitle(location.pathname, isEn);
+
+  const backHeader = (
+    <div
+      className="lg:hidden w-full text-white rounded-2xl py-4 px-4 md:px-6 mb-6 min-h-[64px] shadow-sm overflow-hidden"
+      style={{
+        backgroundColor: '#234745',
+        backgroundImage: "url('/images/second-bg-pattern.svg')",
+        backgroundRepeat: 'no-repeat',
+        backgroundSize: '700px',
+        backgroundPosition: 'center',
+      }}
+      dir={isEn ? 'ltr' : 'rtl'}
+    >
+      <div className="flex items-center gap-3 w-full">
+        {/* Go Back button */}
+        <NavLink
+          to={backUrl}
+          className="shrink-0 bg-[#9fb7ae] hover:bg-[#a7bfb9]/90 !text-[#234745] px-4 md:px-5 py-1.5 md:py-2 rounded-full font-bold text-[13px] md:text-[14px] flex items-center gap-1.5 transition-all shadow-sm whitespace-nowrap"
+          style={!isEn ? { fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" } : undefined}
+        >
+          {isEn ? (
+            <>
+              <span className="text-[15px]">←</span>
+              <span>Back</span>
+            </>
+          ) : (
+            <>
+              <span className="text-[15px]">→</span>
+              <span>رجوع</span>
+            </>
+          )}
+        </NavLink>
+
+        {/* Title */}
+        <h2
+          className="flex-1 min-w-0 text-center text-[16px] md:text-[18px] lg:text-[20px] font-bold select-none !m-0 leading-tight"
+          style={!isEn ? { fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" } : undefined}
+        >
+          {sectionTitle}
+        </h2>
+      </div>
+    </div>
+  );
+
   return (
     <div className="account-layout">
       <Suspense fallback={<AccountProfileHeader customer={customer} isEn={isEn} loyaltyPoints={0} balance={0} wishlistCount={0} />}>
@@ -424,10 +491,11 @@ function AccountLayout({
       </Suspense>
       <div className="max-w-[1200px] mx-auto px-4 md:px-6 w-full">
         <div className="grid grid-cols-1 lg:grid-cols-[302px_minmax(0,1fr)] gap-6 lg:gap-10 items-start w-full !mt-0 !pt-0">
-          <nav className="w-auto -mx-4 px-4 bg-transparent lg:mx-0 lg:w-full lg:bg-white lg:rounded-[24px] lg:py-6 lg:px-4 lg:border lg:border-[#BBCFCD] lg:sticky lg:top-[120px] z-10 min-w-0 max-w-[100vw] lg:max-w-full relative">
+          <nav className="w-auto -mx-4 px-4 bg-transparent lg:mx-0 lg:w-full lg:bg-white lg:rounded-[24px] lg:py-6 lg:px-4 lg:border lg:border-[#BBCFCD] lg:sticky lg:top-[120px] z-10 min-w-0 max-w-[100vw] lg:max-w-full relative hidden lg:block">
             <AcccountMenu customer={customer} isAdmin={isAdmin} />
           </nav>
           <main className="w-full min-w-0 max-w-[100vw] lg:max-w-full pb-20">
+            {showBackHeader && backHeader}
             {children}
           </main>
         </div>
@@ -492,16 +560,6 @@ function AcccountMenu({ customer, isAdmin }: { customer: CustomerFragment; isAdm
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" />
           <circle cx="12" cy="10" r="3" />
-        </svg>
-      )
-    },
-    {
-      to: `${localePrefix}/account/payments`,
-      label: isEn ? 'Payment Methods' : 'طرق الدفع',
-      icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <rect x="1" y="4" width="22" height="16" rx="2" />
-          <line x1="1" y1="10" x2="23" y2="10" />
         </svg>
       )
     },
@@ -576,7 +634,7 @@ function AcccountMenu({ customer, isAdmin }: { customer: CustomerFragment; isAdm
         {/* Manager Tools (Optional section if needed) */}
         {isAdmin && (
           <div className="mt-4 lg:mt-6 pt-4 border-t border-gray-100">
-             <NavLink
+            <NavLink
               to={`${localePrefix}/account/dashboard`}
               className="flex items-center justify-between px-2 lg:px-4 py-2 lg:py-3 text-gray-500 hover:text-[#234745] transition-all"
             >
@@ -592,9 +650,9 @@ function AcccountMenu({ customer, isAdmin }: { customer: CustomerFragment; isAdm
 
 function Logout({ isEn }: { isEn: boolean }) {
   return (
-    <Form 
-      className="account-logout" 
-      method="POST" 
+    <Form
+      className="account-logout"
+      method="POST"
       action="/account/logout"
       onSubmit={() => {
         localStorage.removeItem('wishlist');

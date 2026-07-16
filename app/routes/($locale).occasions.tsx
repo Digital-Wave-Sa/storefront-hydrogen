@@ -80,7 +80,7 @@ export async function loader({ context }: LoaderFunctionArgs) {
             cache: storefront.CacheNone(),
         });
 
-        return data({ products: products.nodes });
+        return data({ products: products.nodes, error: null });
     } catch (e: any) {
         return data({ products: [], error: e.message });
     }

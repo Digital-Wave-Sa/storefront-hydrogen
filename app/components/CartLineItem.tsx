@@ -153,16 +153,16 @@ export function CartLineItem({
                      else if (isNote) keyName = 'ملاحظة الطلب';
                    }
 
+                   const displayVal = a.value.length > 25 ? `${a.value.substring(0, 25)}...` : a.value;
                    return (
-                     <span key={a.key} className="px-3 py-1 bg-[#FEF8EB] border border-[#A67B5B]/30 text-[#A67B5B] rounded-full text-[12px] font-bold truncate max-w-full">
-                       {keyName}: {a.value}
+                     <span key={a.key} title={a.value} className="px-3 py-1 bg-[#FEF8EB] border border-[#A67B5B]/30 text-[#A67B5B] rounded-full text-[12px] font-bold truncate max-w-full">
+                       {keyName}: {displayVal}
                      </span>
                    );
                  })
                }
              </div>
            )}
-           {/* Prepaid Only Badge */}
            {(() => {
              const isPrepaidOnly = product?.tags?.some((t: string) => {
                const lowerTag = t.toLowerCase();
@@ -319,9 +319,10 @@ export function CartLineItem({
                       else if (isNote) keyName = 'ملاحظة الطلب';
                     }
 
+                    const displayVal = a.value.length > 25 ? `${a.value.substring(0, 25)}...` : a.value;
                     return (
-                      <span key={a.key} className="px-2.5 py-0.5 bg-[#FEF8EB] border border-[#A67B5B]/20 text-[#A67B5B] rounded-full text-[11px] font-bold truncate max-w-[150px]">
-                        {keyName}: {a.value}
+                      <span key={a.key} title={a.value} className="px-2.5 py-0.5 bg-[#FEF8EB] border border-[#A67B5B]/20 text-[#A67B5B] rounded-full text-[11px] font-bold truncate max-w-[150px]">
+                        {keyName}: {displayVal}
                       </span>
                     );
                   })
@@ -684,6 +685,7 @@ function CartLineGiftForm({ line, isEn }: { line: CartLine, isEn: boolean }) {
             placeholder={isEn ? "Recipient Name" : "اسم المستلم"} 
             value={recipient}
             onChange={(e) => setRecipient(e.target.value)}
+            maxLength={30}
             className="w-full bg-white border border-[#f0ece8] rounded-lg px-3 py-2 text-[13px] text-[#234745] focus:outline-none focus:border-[#d4a06a] focus:ring-1 focus:ring-[#d4a06a] transition-all"
           />
           <textarea 
@@ -691,8 +693,17 @@ function CartLineGiftForm({ line, isEn }: { line: CartLine, isEn: boolean }) {
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             rows={2}
+            maxLength={150}
             className="w-full bg-white border border-[#f0ece8] rounded-lg px-3 py-2 text-[13px] text-[#234745] focus:outline-none focus:border-[#d4a06a] focus:ring-1 focus:ring-[#d4a06a] transition-all resize-none"
           />
+          <div className="flex justify-between items-center text-[10px] text-gray-400 font-bold -mt-2 px-1">
+            <span>{isEn ? 'Max 150 chars' : 'الحد الأقصى ١٥٠ حرفاً'}</span>
+            <span>
+              {isEn 
+                ? `${150 - message.length} remaining` 
+                : `متبقي ${150 - message.length} حرفاً`}
+            </span>
+          </div>
           <label className="flex items-center gap-2 cursor-pointer">
             <input 
               type="checkbox" 

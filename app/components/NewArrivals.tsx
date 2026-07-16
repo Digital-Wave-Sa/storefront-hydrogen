@@ -99,7 +99,7 @@ export function NewArrivals({
                                                     : (idx % 2 === 0 ? '⏱ يحتاج يومين للتجهيز' : 'قسطها على دفعتين مع تمارا');
 
                                                 return (
-                                                    <div key={product.id} className={`flex flex-col h-full rounded-2xl bg-white overflow-hidden relative border border-gray-100 transition-all ${isVisibilityBlocked || effectiveOutOfStock ? 'product--disabled opacity-60 grayscale-[30%]' : 'group hover:shadow-lg'}`}>
+                                                    <div key={product.id} className={`flex flex-col h-full rounded-2xl bg-white overflow-hidden relative border border-gray-100 transition-all ${isVisibilityBlocked ? 'product--disabled opacity-60 grayscale-[30%]' : 'group hover:shadow-lg'}`}>
                                                         {!isVisibilityBlocked && (
                                                           <button 
                                                             onClick={(e) => {
@@ -113,9 +113,9 @@ export function NewArrivals({
                                                               });
                                                             }}
                                                             aria-label={isWishlisted ? "Remove from Wishlist" : "Add to Wishlist"}
-                                                            className={`absolute top-4 ${isEn ? 'left-4' : 'right-4'} z-10 w-10 h-10 p-0 rounded-full bg-white shadow-md transition-all flex items-center justify-center ${isWishlisted ? 'text-[#e74c3c]' : 'text-gray-700 hover:text-[#e74c3c]'}`}
+                                                            className={`absolute top-2 md:top-4 ${isEn ? 'left-2 md:left-4' : 'right-2 md:right-4'} z-10 w-7 h-7 md:w-10 md:h-10 p-0 rounded-full bg-white shadow-md transition-all flex items-center justify-center ${isWishlisted ? 'text-[#e74c3c]' : 'text-gray-700 hover:text-[#e74c3c]'}`}
                                                           >
-                                                              <svg width="20" height="20" viewBox="0 0 24 24" fill={isWishlisted ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.5">
+                                                              <svg className="w-3.5 h-3.5 md:w-5 md:h-5" viewBox="0 0 24 24" fill={isWishlisted ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.5">
                                                                   <path d="M20.8 4.6a5.5 5.5 0 00-7.7 0l-1.1 1-1.1-1a5.5 5.5 0 00-7.8 7.8l1 1 7.9 7.9 7.9-7.9 1-1a5.5 5.5 0 000-7.8z" />
                                                               </svg>
                                                           </button>
@@ -152,8 +152,26 @@ export function NewArrivals({
                                                                 alt=""
                                                                 loading="lazy"
                                                                 sizes="(min-width: 45em) 25vw, 50vw"
-                                                                className={`w-full h-full object-cover transition-transform duration-500 ${effectiveOutOfStock ? 'opacity-50 grayscale' : 'group-hover:scale-105'}`}
+                                                                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                                                                style={{ opacity: isVisibilityBlocked ? 0.5 : (effectiveOutOfStock ? 0.4 : 1), filter: isVisibilityBlocked ? 'grayscale(1)' : 'none' }}
                                                             />
+                                                        )}
+                                                        {/* Out of Stock badge overlay */}
+                                                        {!isVisibilityBlocked && isOutOfStock && !isPreorder && (
+                                                            <div className="absolute bottom-[16px] left-1/2 -translate-x-1/2 z-10 pointer-events-none">
+                                                                <span
+                                                                  className="flex items-center justify-center px-6 h-[40px] rounded-full font-bold text-[14px] whitespace-nowrap"
+                                                                  style={{
+                                                                    background: 'rgba(187, 207, 205, 0.72)',
+                                                                    backdropFilter: 'blur(6px)',
+                                                                    WebkitBackdropFilter: 'blur(6px)',
+                                                                    color: '#ffffff',
+                                                                    fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
+                                                                  }}
+                                                                >
+                                                                  {isEn ? 'Out of Stock' : 'نفذت الكمية'}
+                                                                </span>
+                                                            </div>
                                                         )}
                                                     </Link>
 
@@ -162,14 +180,14 @@ export function NewArrivals({
                                                         
                                                         {/* Title */}
                                                         <Link to={isVisibilityBlocked ? '#' : getProductUrl(product.handle)} onClick={isVisibilityBlocked ? (e: any) => e.preventDefault() : undefined}>
-                                                            <h3 className={`font-bold text-[#234745] line-clamp-1 transition-colors duration-300 ${isEn ? 'text-left' : 'text-right'} ${isVisibilityBlocked ? '' : 'hover:text-[#1a3a2d]'}`} style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", fontSize: '18px', lineHeight: '24px' }}>
+                                                            <h3 className={`font-bold text-[#234745] line-clamp-1 transition-colors duration-300 ${isEn ? 'text-left' : 'text-right'} ${isVisibilityBlocked ? '' : 'hover:text-[#1a3a2d]'}`} style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", fontSize: '18px', lineHeight: '24px', opacity: effectiveOutOfStock ? 0.4 : 1 }}>
                                                                 {product.title}
                                                             </h3>
                                                         </Link>
 
                                                         {/* Price — hidden when visibility blocked */}
                                                         {!isVisibilityBlocked ? (
-                                                          <div className="mt-2 mb-4 flex items-center gap-3">
+                                                          <div className="mt-2 mb-4 flex items-center gap-3" style={{ opacity: effectiveOutOfStock ? 0.4 : 1 }}>
                                                               <Price 
                                                                 data={product.priceRange.minVariantPrice} 
                                                                 isEn={isEn} 
@@ -266,7 +284,7 @@ function NewArrivalsAddToCart({
     isPreorder?: boolean;
     onNotifyClick?: () => void;
 }) {
-    const { setOpenAside } = useAside();
+    const { open: openAside } = useAside();
     const variantId = variant?.id;
     const isBogo = !!bogoFreeVariantId || (productTags?.some((t: string) => t.toLowerCase().includes('bogo')) ?? false);
 
@@ -279,10 +297,10 @@ function NewArrivalsAddToCart({
                     e.stopPropagation();
                     onNotifyClick?.();
                 }}
-                className="w-full h-[44px] flex items-center justify-center rounded-full font-bold text-[15px] bg-amber-500 text-white hover:bg-amber-600 shadow-sm transition-all duration-300 active:scale-95 relative z-20"
+                className="w-full h-[40px] md:h-[44px] px-2 md:px-4 flex items-center justify-center rounded-full font-bold text-[12px] md:text-[15px] bg-[#234745] text-white hover:bg-[#163529] shadow-sm transition-all duration-300 active:scale-95 relative z-20"
                 style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
             >
-                🔔 {notifyLabel}
+                {notifyLabel}
             </button>
         );
     }
@@ -312,7 +330,7 @@ function NewArrivalsAddToCart({
     return (
         <AddToCartButton
             lines={lines}
-            className={`w-full h-[44px] flex items-center justify-center rounded-full font-bold text-[15px] shadow-sm transition-all duration-300 active:scale-95 ${isPreorder ? 'bg-[#004f59] text-white hover:bg-[#003d45]' : 'bg-[#234745] text-white hover:bg-[#163529]'}`}
+            className={`w-full h-[40px] md:h-[44px] px-2 md:px-4 flex items-center justify-center rounded-full font-bold text-[12px] md:text-[15px] shadow-sm transition-all duration-300 active:scale-95 ${isPreorder ? 'bg-[#004f59] text-white hover:bg-[#003d45]' : 'bg-[#234745] text-white hover:bg-[#163529]'}`}
             disabled={isOutOfStock}
             style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
         >

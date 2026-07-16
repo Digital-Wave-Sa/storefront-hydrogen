@@ -2,6 +2,7 @@ import { Suspense } from 'react';
 import { data as json, redirect, type LoaderFunctionArgs, type ActionFunctionArgs } from 'react-router';
 import { useLoaderData, Form, useNavigation, useActionData, useLocation, Await, useRouteLoaderData } from 'react-router';
 import { Button } from '~/components/layout/Button';
+import { SaudiRiyalSymbol } from '~/components/Price';
 
 // The loader has been removed because WalletPage relies entirely on data from the parent AccountLayout (via useOutletContext)
 export async function action({ request, context }: ActionFunctionArgs) {
@@ -27,7 +28,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
         const res = await fetch(`https://${env.PUBLIC_STORE_DOMAIN}/admin/api/2023-04/customers/search.json?query=${queryStr}`, {
           headers: { 'X-Shopify-Access-Token': adminToken, 'Content-Type': 'application/json' },
         });
-        const { customers } = await res.json();
+        const { customers } = (await res.json()) as any;
         
         if (customers && customers.length > 0) {
           customer = {
@@ -101,7 +102,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
           message: formData.get('giftMessage')?.toString()
         })
       });
-      const data = await res.json();
+      const data = (await res.json()) as any;
       if (!res.ok || !data.success) {
          return json({ intent: 'gift_balance', error: isEn ? 'Failed to send gift. Please verify the phone number.' : 'فشل إرسال الهدية. يرجى التحقق من رقم الهاتف.' }, { status: 400 });
       }
@@ -170,7 +171,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
       if (!detailsRes.ok) {
         return json({ intent: 'redeem_voucher', error: isEn ? 'Invalid voucher code.' : 'رمز القسيمة غير صحيح.' }, { status: 400 });
       }
-      const detailsData = await detailsRes.json();
+      const detailsData = (await detailsRes.json()) as any;
       balanceBeforeActivation = detailsData?.data?.currentBalance || 0;
 
       // Call POST /gift-cards/:code/activate to bind it
@@ -184,7 +185,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
         })
       });
 
-      const data = await res.json();
+      const data = (await res.json()) as any;
 
       if (!res.ok || !data.success) {
         const reason = data.error || 'unknown';
@@ -203,7 +204,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
       let newBalance = balanceBeforeActivation;
       const balanceRes = await fetch(`${baseGiftCardUrl}/gift-cards/by-phone/${encodeURIComponent(formattedPhone)}`);
       if (balanceRes.ok) {
-        const balanceData = await balanceRes.json();
+        const balanceData = (await balanceRes.json()) as any;
         newBalance = balanceData?.data?.totalBalance || 0;
       }
 
@@ -278,9 +279,9 @@ export default function WalletPage() {
                     <h3 className="text-white/80 font-medium text-sm uppercase tracking-wider mb-2">
                       {isEn ? 'Current Balance' : 'الرصيد الحالي'}
                     </h3>
-                    <div className="flex items-end gap-2">
+                    <div className="flex items-end gap-1.5">
                       <span className="text-5xl font-black">{currentBalance.toFixed(2)}</span>
-                      <span className="text-xl font-bold text-[#d4a06a] pb-1">SAR</span>
+                      <SaudiRiyalSymbol className="h-9 w-auto text-[#d4a06a] mb-1" />
                     </div>
                     <p className="mt-6 text-sm text-white/70">
                       {isEn ? 'Use this balance at checkout to pay for your orders.' : 'استخدم هذا الرصيد عند الدفع لتغطية طلباتك.'}
@@ -351,7 +352,7 @@ export default function WalletPage() {
                         <div className="mt-4 pt-4 border-t border-white/10 flex justify-between items-end">
                           <div>
                             <span className="text-xs text-white/60 block">{isEn ? 'Balance' : 'الرصيد'}</span>
-                            <span className="text-2xl font-black">{parseFloat(card.currentBalance).toFixed(2)} <span className="text-sm font-bold text-[#d4a06a]">SAR</span></span>
+                            <span className="text-2xl font-black inline-flex items-center gap-1.5">{parseFloat(card.currentBalance).toFixed(2)} <SaudiRiyalSymbol className="h-5 w-auto text-[#d4a06a] mb-0.5" /></span>
                           </div>
                         </div>
                       </div>
@@ -377,7 +378,7 @@ export default function WalletPage() {
                           {isEn ? 'Voucher Activated Successfully!' : 'تم تفعيل القسيمة بنجاح!'}
                         </p>
                         <p className="text-sm opacity-90">
-                          {isEn ? `Bound ${actionData.creditedAmount} ${actionData.currency} voucher to your phone.` : `تم ربط قسيمة بقيمة ${actionData.creditedAmount} ${actionData.currency} برقم هاتفك.`}
+                          {isEn ? `Bound ${actionData.creditedAmount} SAR voucher to your phone.` : `تم ربط قسيمة بقيمة ${actionData.creditedAmount} ر.س. برقم هاتفك.`}
                         </p>
                       </div>
                     </div>
@@ -407,7 +408,7 @@ export default function WalletPage() {
                       disabled={isSubmitting}
                       className="w-full py-4 rounded-[16px] font-bold tracking-wide"
                     >
-                      {isSubmitting && formData?.get('intent') === 'redeem_voucher' ? (isEn ? 'Verifying...' : 'جاري التحقق...') : (isEn ? 'Redeem Voucher' : 'تفعيل القسيمة')}
+                      {isSubmitting && navigation.formData?.get('intent') === 'redeem_voucher' ? (isEn ? 'Verifying...' : 'جاري التحقق...') : (isEn ? 'Redeem Voucher' : 'تفعيل القسيمة')}
                     </Button>
                   </Form>
                 </div>
@@ -428,7 +429,7 @@ export default function WalletPage() {
                           {isEn ? 'Gift Sent Successfully!' : 'تم إرسال الهدية بنجاح!'}
                         </p>
                         <p className="text-sm opacity-90">
-                          {isEn ? `You gifted ${actionData.giftAmount} ${actionData.currency} to ${actionData.recipientPhone}.` : `قمت بإهداء ${actionData.giftAmount} ${actionData.currency} إلى ${actionData.recipientPhone}.`}
+                          {isEn ? `You gifted ${actionData.giftAmount} SAR to ${actionData.recipientPhone}.` : `قمت بإهداء ${actionData.giftAmount} ر.س. إلى ${actionData.recipientPhone}.`}
                         </p>
                       </div>
                     </div>
@@ -465,7 +466,9 @@ export default function WalletPage() {
                           className="flex-grow w-full px-5 py-4 bg-transparent outline-none font-bold text-gray-700 placeholder:font-medium placeholder:text-gray-400 min-w-0"
                           required
                         />
-                        <span className="px-5 font-bold text-[#A6BFB9] bg-gray-50 border-l border-gray-200 rtl:border-l-0 rtl:border-r h-full flex items-center shrink-0">SAR</span>
+                        <span className="px-5 bg-gray-50 border-l border-gray-200 rtl:border-l-0 rtl:border-r h-full flex items-center shrink-0">
+                          <SaudiRiyalSymbol className="h-4.5 w-auto text-[#A6BFB9]" />
+                        </span>
                       </div>
                     </div>
 
@@ -482,7 +485,7 @@ export default function WalletPage() {
                       disabled={isSubmitting}
                       className="w-full py-4 rounded-[16px] font-bold tracking-wide mt-2"
                     >
-                      {isSubmitting && formData?.get('intent') === 'gift_balance' ? (isEn ? 'Sending...' : 'جاري الإرسال...') : (isEn ? 'Send Gift' : 'إرسال الهدية')}
+                      {isSubmitting && navigation.formData?.get('intent') === 'gift_balance' ? (isEn ? 'Sending...' : 'جاري الإرسال...') : (isEn ? 'Send Gift' : 'إرسال الهدية')}
                     </Button>
                   </Form>
                 </div>
@@ -511,8 +514,8 @@ export default function WalletPage() {
                             <span className="font-bold text-gray-700">{isEn ? tx.labelEn : tx.labelAr}</span>
                             <span className="text-sm text-gray-500 font-medium" dir="ltr">{new Date(tx.date).toLocaleDateString(isEn ? 'en-US' : 'ar-SA', { year: 'numeric', month: 'short', day: 'numeric' })}</span>
                           </div>
-                          <div className={`font-black text-lg ${isAddition ? 'text-emerald-600' : 'text-red-500'}`} dir="ltr">
-                            {isAddition ? '+' : ''}{tx.amount.toFixed(2)} SAR
+                          <div className={`font-black text-lg inline-flex items-center gap-1 ${isAddition ? 'text-emerald-600' : 'text-red-500'}`} dir="ltr">
+                            {isAddition ? '+' : ''}{tx.amount.toFixed(2)} <SaudiRiyalSymbol className={`h-4.5 w-auto mb-0.5 ${isAddition ? 'text-emerald-600' : 'text-red-500'}`} />
                           </div>
                         </div>
                       );

@@ -43,7 +43,7 @@ export function WishlistProvider({
       
       if (localSaved) {
         try {
-          currentWishlist = JSON.parse(localSaved);
+          currentWishlist = JSON.parse(localSaved) as WishlistItem[];
         } catch (e) {
           console.error('Failed to parse local wishlist', e);
         }
@@ -53,11 +53,11 @@ export function WishlistProvider({
       if (customerId) {
         try {
           const response = await fetch(`/api/wishlist?customerId=${customerId}`);
-          const data = await response.json();
+          const data = await response.json() as any;
           if (data.wishlist && Array.isArray(data.wishlist)) {
             // Merge logic: combine unique IDs
             const cloudWishlist: WishlistItem[] = data.wishlist;
-            const mergedMap = new Map();
+            const mergedMap = new Map<string, WishlistItem>();
             
             // Local items take priority for metadata, cloud items added if missing
             currentWishlist.forEach(item => mergedMap.set(item.id, item));

@@ -77,7 +77,7 @@ export async function loader({ context }: LoaderFunctionArgs) {
     body: JSON.stringify({ query }),
   });
 
-  const json = await res.json();
+  const json = await res.json() as any;
   const locations = json?.data?.locations?.nodes || [];
 
   return data({ 
@@ -170,7 +170,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
       },
       body: JSON.stringify({ query }),
     });
-    const jsonLocs = await resLocs.json();
+    const jsonLocs = await resLocs.json() as any;
     const locationNodes = (jsonLocs?.data?.locations?.nodes || []).filter((loc: any) => !excludeBranches.includes(loc.id));
 
     if (locationNodes.length === 0) {
@@ -214,7 +214,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
         },
         body: JSON.stringify({ query: mutation, variables: { metafields: batch } }),
       });
-      const result = await res.json();
+      const result = await res.json() as any;
       if (result.errors) {
         return data({ error: result.errors[0].message }, { status: 400 });
       }
@@ -288,7 +288,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
     body: JSON.stringify({ query: mutation, variables }),
   });
 
-  const result = await res.json();
+  const result = await res.json() as any;
   if (result.errors) {
     return data({ error: result.errors[0].message }, { status: 400 });
   }

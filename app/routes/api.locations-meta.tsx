@@ -115,8 +115,12 @@ export async function loader({context}: Route.LoaderArgs) {
         coverage_areas: (loc.metafields?.nodes || []).find((m: any) => m.key === 'coverage_areas')?.value,
         
         // ERP Mapping
+        branch_id: (loc.metafields?.nodes || []).find((m: any) => m.key === 'branch_id')?.value,
         ax_store_id: (loc.metafields?.nodes || []).find((m: any) => m.key === 'ax_store_id')?.value,
         ax_branch_name: (loc.metafields?.nodes || []).find((m: any) => m.key === 'ax_branch_name')?.value,
+        
+        // Visibility toggle
+        hide_from_storefront: (loc.metafields?.nodes || []).find((m: any) => m.key === 'hide_from_storefront')?.value === 'true',
       };
     });
 

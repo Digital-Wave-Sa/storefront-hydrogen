@@ -34,14 +34,14 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
       }),
     });
 
-    const tokens = await tokenResponse.json();
+    const tokens = await tokenResponse.json() as any;
     if (tokens.error) throw new Error(tokens.error_description || 'Failed to exchange token');
 
     // 2. Get User Info
     const userResponse = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
       headers: { Authorization: `Bearer ${tokens.access_token}` },
     });
-    const googleUser = await userResponse.json();
+    const googleUser = await userResponse.json() as any;
     const { email, given_name, family_name, sub: googleId } = googleUser;
 
     if (!email) throw new Error('No email returned from Google');
@@ -55,7 +55,7 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
     const searchRes = await fetch(`https://${domain}/admin/api/2023-04/customers/search.json?query=email:${encodeURIComponent(email)}`, {
       headers: { 'X-Shopify-Access-Token': adminToken },
     });
-    const { customers } = await searchRes.json();
+    const { customers } = await searchRes.json() as any;
 
     const existingCustomer = customers?.[0];
     let finalEmail = email;
@@ -97,10 +97,10 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
         })
       });
       if (!createRes.ok) {
-        const errData = await createRes.json().catch(() => ({}));
+        const errData = (await createRes.json().catch(() => ({}))) as any;
         throw new Error(errData.errors ? JSON.stringify(errData.errors) : 'Failed to register social account.');
       }
-      const createData = await createRes.json();
+      const createData = await createRes.json() as any;
       finalEmail = createData.customer?.email || email;
       customerPhone = createData.customer?.phone || '';
     }

@@ -263,7 +263,7 @@ function loadDeferredData({context}: Route.LoaderArgs, customerAccessToken: any,
           const res = await fetch(`https://${shopDomain}/admin/api/2023-04/customers/search.json?query=${queryStr}`, {
              headers: { 'X-Shopify-Access-Token': token, 'Content-Type': 'application/json' },
           });
-          const d = await res.json();
+          const d = await res.json() as any;
           if (d?.customers && d.customers.length > 0) {
              const adminCust = d.customers[0];
              return { 
@@ -393,8 +393,8 @@ export function Layout({children}: {children?: React.ReactNode}) {
   useEffect(() => {
     if (typeof window === 'undefined' || !data?.env?.PUBLIC_GTM_ID || data.env.PUBLIC_GTM_ID === 'GTM-XXXXXXX') return;
 
-    window.dataLayer = window.dataLayer || [];
-    window.dataLayer.push({ 'gtm.start': new Date().getTime(), event: 'gtm.js' });
+    (window as any).dataLayer = (window as any).dataLayer || [];
+    (window as any).dataLayer.push({ 'gtm.start': new Date().getTime(), event: 'gtm.js' });
     
     let script = document.getElementById('gtm-loader') as HTMLScriptElement | null;
     if (!script) {
@@ -495,8 +495,8 @@ export default function App() {
   const locationFetcher = useFetcher();
 
   useEffect(() => {
-    if (data?.customer && typeof data.customer.then === 'function') {
-      data.customer.then((res: any) => {
+    if (data?.customer && typeof (data.customer as any).then === 'function') {
+      (data.customer as any).then((res: any) => {
         if (res?.customer?.id) setCustomerId(res.customer.id);
       }).catch(() => {});
     }
@@ -559,22 +559,22 @@ export default function App() {
 
   return (
     <Analytics.Provider
-      cart={data.cart}
-      shop={data.shop}
-      consent={data.consent}
+      cart={data!.cart as any}
+      shop={data!.shop}
+      consent={data!.consent}
     >
       <WishlistProvider customerId={customerId}>
         <GTMAnalytics />
         <CookieConsentBanner locale={data?.consent?.language?.toLowerCase() === 'en' ? 'en' : 'ar'} />
-        <PageLayout {...data}>
+        <PageLayout {...(data as any)}>
           {isNavigatingToProduct ? (
-            <ProductSkeleton isEn={data.consent.language.toLowerCase() === 'en'} />
+            <ProductSkeleton isEn={data!.consent.language.toLowerCase() === 'en'} />
           ) : (
             <Outlet context={{ 
-              locale: data.consent.language.toLowerCase(),
-              selectedLocationId: data.selectedLocationId,
-              selectedLocationName: data.selectedLocationName,
-              fulfillmentType: data.fulfillmentType
+              locale: data!.consent.language.toLowerCase(),
+              selectedLocationId: data!.selectedLocationId,
+              selectedLocationName: data!.selectedLocationName,
+              fulfillmentType: data!.fulfillmentType
             }} />
           )}
         </PageLayout>
@@ -600,7 +600,7 @@ export function ErrorBoundary() {
   if (errorStatus === 404) {
     return (
       <WishlistProvider customerId={undefined}>
-        <PageLayout {...rootData}>
+        <PageLayout {...(rootData as any)}>
           <NotFound />
         </PageLayout>
       </WishlistProvider>
@@ -609,7 +609,7 @@ export function ErrorBoundary() {
 
   return (
     <WishlistProvider customerId={undefined}>
-      <PageLayout {...rootData}>
+      <PageLayout {...(rootData as any)}>
         <ServerError error={error} status={errorStatus} />
       </PageLayout>
     </WishlistProvider>
@@ -761,6 +761,7 @@ const CUSTOMER_ADDRESSES_QUERY = `#graphql
           phone
         }
       }
+    }
   }
 `;
 

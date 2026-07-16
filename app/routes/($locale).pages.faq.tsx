@@ -3,14 +3,12 @@ import { useRouteLoaderData } from 'react-router';
 import { useState } from 'react';
 import { PageHeader } from '~/components/layout/PageHeader';
 
-export const meta: MetaFunction = ({ parentsData }) => {
-  const rootData = parentsData?.root as any;
-  const isEn = rootData?.consent?.language?.toLowerCase() === 'en';
+export const meta: MetaFunction = () => {
   return [
-    { title: isEn ? 'FAQs | Saadeddin' : 'الأسئلة الشائعة | سعد الدين' },
-    { name: 'description', content: isEn ? 'Find answers to frequently asked questions about our products, orders, and services.' : 'ابحث عن إجابات للأسئلة الشائعة حول منتجاتنا وطلباتنا وخدماتنا.' },
-    { property: 'og:title', content: isEn ? 'FAQs | Saadeddin' : 'الأسئلة الشائعة | سعد الدين' },
-    { property: 'og:description', content: isEn ? 'Find answers to frequently asked questions about our products, orders, and services.' : 'ابحث عن إجابات للأسئلة الشائعة حول منتجاتنا وطلباتنا وخدماتنا.' },
+    { title: 'FAQs | Saadeddin | الأسئلة الشائعة | سعد الدين' },
+    { name: 'description', content: 'Find answers to frequently asked questions about our products, orders, and services. | ابحث عن إجابات للأسئلة الشائعة حول منتجاتنا وطلباتنا وخدماتنا.' },
+    { property: 'og:title', content: 'FAQs | Saadeddin' },
+    { property: 'og:description', content: 'Find answers to frequently asked questions about our products, orders, and services.' },
   ];
 };
 

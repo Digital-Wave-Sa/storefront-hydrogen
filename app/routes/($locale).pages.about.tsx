@@ -4,14 +4,12 @@ import patternBg from '~/assets/patteren-collection-header.svg';
 // You should place the actual image in assets and update this path
 import storyImage from '~/assets/patteren-collection-header.svg'; 
 
-export const meta: MetaFunction = ({ parentsData }) => {
-  const rootData = parentsData?.root as any;
-  const isEn = rootData?.consent?.language?.toLowerCase() === 'en';
+export const meta: MetaFunction = () => {
   return [
-    { title: isEn ? 'Our Story | Saadeddin' : 'قصتنا | سعد الدين' },
-    { name: 'description', content: isEn ? 'Learn more about Saadeddin, our story, values, and history since 1919.' : 'تعرف على المزيد حول حلويات سعد الدين، قصتنا، قيمنا، وتاريخنا منذ عام ١٩١٩.' },
-    { property: 'og:title', content: isEn ? 'Our Story | Saadeddin' : 'قصتنا | سعد الدين' },
-    { property: 'og:description', content: isEn ? 'Learn more about Saadeddin, our story, values, and history since 1919.' : 'تعرف على المزيد حول حلويات سعد الدين، قصتنا، قيمنا، وتاريخنا منذ عام ١٩١٩.' },
+    { title: 'Our Story | Saadeddin | قصتنا | سعد الدين' },
+    { name: 'description', content: 'Learn more about Saadeddin, our story, values, and history since 1919. | تعرف على المزيد حول حلويات سعد الدين، قصتنا، قيمنا، وتاريخنا منذ عام ١٩١٩.' },
+    { property: 'og:title', content: 'Our Story | Saadeddin' },
+    { property: 'og:description', content: 'Learn more about Saadeddin, our story, values, and history since 1919.' },
   ];
 };
 

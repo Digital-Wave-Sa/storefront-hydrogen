@@ -1,5 +1,12 @@
 import { data, type ActionFunctionArgs } from 'react-router';
 
+/**
+ * POST /api/stock-notification
+ * Proxies the back-in-stock subscription to STOQ app.
+ * No private API key needed — STOQ authenticates via X-Shopify-Shop-Domain.
+ * Install STOQ from: https://apps.shopify.com/stoq
+ * Docs: https://docs.stoqapp.com/back-in-stock-api
+ */
 export async function action({ request, context }: ActionFunctionArgs) {
     if (request.method !== 'POST') {
         return data({ error: 'Method not allowed' }, { status: 405 });
@@ -13,71 +20,43 @@ export async function action({ request, context }: ActionFunctionArgs) {
             return data({ error: 'Email and variant ID are required' }, { status: 400 });
         }
 
-        const { SHOPIFY_ADMIN_API_ACCESS_TOKEN, PUBLIC_STORE_DOMAIN } = context.env as any;
+        // Extract numeric variant ID from GID (e.g. "gid://shopify/ProductVariant/123456" → 123456)
+        const numericVariantId = variantId.includes('/')
+            ? Number(variantId.split('/').pop())
+            : Number(variantId);
 
-        // --- NATIVE SHOPIFY INTEGRATION ---
-        // We push this as a Metaobject to Shopify. 
-        // This allows the user to use "Shopify Flow" to send the email when stock returns.
-        
-        if (SHOPIFY_ADMIN_API_ACCESS_TOKEN) {
-            const adminApiUrl = `https://${PUBLIC_STORE_DOMAIN}/admin/api/2024-04/graphql.json`;
-            const query = `
-                mutation MetaobjectCreate($metaobject: MetaobjectCreateInput!) {
-                    metaobjectCreate(metaobject: $metaobject) {
-                        metaobject {
-                            handle
-                        }
-                        userErrors {
-                            field
-                            message
-                        }
-                    }
-                }
-            `;
+        // Resolve the myshopify.com domain
+        const rawShop = (context.env as any).SHOPIFY_SHOP || (context.env as any).PUBLIC_STORE_DOMAIN || '';
+        const shopDomain = rawShop.includes('myshopify.com')
+            ? rawShop
+            : `${rawShop.split('.')[0]}.myshopify.com`;
 
-            const variables = {
-                metaobject: {
-                    type: "stock_notification",
-                    fields: [
-                        { key: "email", value: email },
-                        { key: "variant_id", value: variantId },
-                        { key: "product_title", value: productTitle },
-                        { key: "location_id", value: locationId || "global" },
-                        { key: "location_name", value: locationName || "All Locations" }
-                    ]
-                }
-            };
-
-            const response = await fetch(adminApiUrl, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-Shopify-Access-Token': SHOPIFY_ADMIN_API_ACCESS_TOKEN,
+        // Submit intent to STOQ — no API key required
+        const stoqRes = await fetch('https://app.stoqapp.com/api/v1/intents.json', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Shopify-Shop-Domain': shopDomain,
+            },
+            body: JSON.stringify({
+                intent: {
+                    email,
+                    variant_id: numericVariantId,
                 },
-                body: JSON.stringify({ query, variables }),
-            });
+            }),
+        });
 
-            const result = await response.json() as any;
-            
-            if (result.errors || result.data?.metaobjectCreate?.userErrors?.length) {
-                console.error('[STOCK NOTIFICATION ERROR] Shopify Admin Error:', JSON.stringify(result, null, 2));
-            } else {
-                console.log('[STOCK NOTIFICATION SUCCESS] Saved to Shopify Admin:', result.data?.metaobjectCreate?.metaobject?.handle);
-            }
+        if (!stoqRes.ok) {
+            const errText = await stoqRes.text();
+            console.error('[STOQ] Back-in-stock subscription failed:', stoqRes.status, errText);
+            return data({ error: 'Failed to register notification' }, { status: 502 });
         }
 
-        console.log(`[STOK NOTIFICATION] Subscription Sync to Shopify Admin:
-            Email: ${email}
-            Product: ${productTitle}
-            Variant: ${variantId}
-            Location: ${locationName} (${locationId})
-        `);
+        console.log(`[STOQ] Back-in-stock intent registered: email=${email}, variant=${numericVariantId}, product="${productTitle}", location=${locationName || 'N/A'} (${locationId || 'N/A'})`);
 
         return data({ success: true });
     } catch (error: any) {
+        console.error('[STOQ] Unexpected error:', error);
         return data({ error: error.message }, { status: 500 });
     }
 }
-
-
-

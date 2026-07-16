@@ -55,6 +55,9 @@ export interface Branch {
     distanceKm?: number;
     rating?: number;
     ratingCount?: number;
+    hideFromStorefront?: boolean;
+    branch_id?: string;
+    ax_store_id?: string;
     badge?: string;
 }
 
@@ -346,7 +349,7 @@ export function parseLocationToBranch(node: any): Branch {
         if (typeof fb === 'number') {
             if (typeof v === 'string' && v.trim().startsWith('{')) {
                 try {
-                    const parsed = JSON.parse(v);
+                    const parsed = JSON.parse(v) as any;
                     if (parsed.value !== undefined) return parseFloat(parsed.value);
                 } catch (e) {}
             }
@@ -398,14 +401,16 @@ export function parseLocationToBranch(node: any): Branch {
         workingDays: (() => {
             const val = (node as any).working_days?.value || node.metafields?.find((m: any) => m?.key === 'working_days')?.value;
             if (val) {
-                try { return JSON.parse(val); } catch (e) {}
+                try { return JSON.parse(val) as string[]; } catch (e) {}
             }
             return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
         })(),
         badge: '',
         google_maps: getMeta('google_maps', googleMapMeta),
-        rating: getMeta('rating', 0),
         ratingCount: getMeta('rating_count', 0),
+        hideFromStorefront: getMeta('hide_from_storefront', 'false') === 'true' || getMeta('hide_from_storefront', false) === true,
+        branch_id: getMeta('branch_id', ''),
+        ax_store_id: getMeta('ax_store_id', ''),
     };
 }
 
@@ -450,7 +455,7 @@ export function DeliveryPickupModal({
             setIsAnimating(true);
             fetch('/api/locations-meta')
                 .then(res => res.json())
-                .then(data => { if (data?.locations) setAdminMetafields(data.locations); })
+                .then((data: any) => { if (data?.locations) setAdminMetafields(data.locations); })
                 .catch(err => console.error('Admin metafields fetch error:', err));
             
             // Sync selected branch ID from session
@@ -527,9 +532,9 @@ export function DeliveryPickupModal({
                                 enrichedNodes = adminMetafields;
                             }
 
-                            const rawBranches: Branch[] = enrichedNodes.length > 0
-                                ? enrichedNodes.map((n: any) => parseLocationToBranch(n))
-                                : FALLBACK_BRANCHES;
+                             const rawBranches: Branch[] = enrichedNodes.length > 0
+                                 ? enrichedNodes.map((n: any) => parseLocationToBranch(n)).filter((b: any) => !b.hideFromStorefront)
+                                 : FALLBACK_BRANCHES.filter((b: any) => !b.hideFromStorefront);
 
                             // Calculate distances and dynamic delivery fees
                             const processedBranches = rawBranches.map(b => {
@@ -862,7 +867,7 @@ function ModalContent({
                                         </div>
                                         <div className="dpm-meta-row">
                                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
-                                             <span>
+                                             <span dir="ltr">
                                                  {(() => {
                                                      const day = new Intl.DateTimeFormat('en-US', {
                                                          timeZone: 'Asia/Riyadh',

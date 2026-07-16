@@ -11,7 +11,7 @@ import {
   CartForm,
   Analytics,
 } from '@shopify/hydrogen';
-import type {ProductItemFragment} from 'storefrontapi.generated';
+type ProductItemFragment = any;
 import {useVariantUrl} from '~/utils';
 import {useState, useEffect} from 'react';
 import {useAside} from '~/components/Aside';
@@ -388,7 +388,7 @@ function FilterForm({ filters, onClose, isDesktop, isEn }: { filters: any[], onC
 
     const toggleFilter = (inputStr: string) => {
         try {
-            const input = JSON.parse(inputStr);
+            const input = JSON.parse(inputStr) as any;
             const params = new URLSearchParams(searchParams);
             
             // Reconstruct the key based on the input object
@@ -430,7 +430,7 @@ function FilterForm({ filters, onClose, isDesktop, isEn }: { filters: any[], onC
 
     const isFilterActive = (inputStr: string) => {
         try {
-            const input = JSON.parse(inputStr);
+            const input = JSON.parse(inputStr) as any;
             const params = new URLSearchParams(searchParams);
             
             if (input.variantOption) {

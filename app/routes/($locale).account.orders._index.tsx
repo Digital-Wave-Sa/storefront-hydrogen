@@ -24,7 +24,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
   const intent = formData.get('intent');
 
   if (intent === 'reorder') {
-    const items = JSON.parse(String(formData.get('items') || '[]'));
+    const items = JSON.parse(String(formData.get('items') || '[]')) as any[];
     if (items.length > 0) {
       await cart.addLines(items.map((item: any) => ({
         merchandiseId: item.merchandiseId,
@@ -57,19 +57,19 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
         try {
           const { getAdminToken } = await import('~/lib/shopify-admin.server');
           const adminToken = await getAdminToken(context.env);
-          const queryStr = savedPhone.includes('590910042') 
+          const queryStr = savedPhone.includes('590910042')
             ? encodeURIComponent('email:"motasem.udeh@gmail.com"')
             : encodeURIComponent(`phone:"${savedPhone}"`);
           const res = await fetch(`https://${context.env.PUBLIC_STORE_DOMAIN}/admin/api/2023-04/customers/search.json?query=${queryStr}`, {
             headers: { 'X-Shopify-Access-Token': adminToken, 'Content-Type': 'application/json' },
           });
-          const { customers } = await res.json();
+          const { customers } = (await res.json()) as any;
           if (customers && customers.length > 0) {
             const adminCust = customers[0];
             const ordersRes = await fetch(`https://${context.env.PUBLIC_STORE_DOMAIN}/admin/api/2023-04/customers/${adminCust.id}/orders.json?status=any`, {
               headers: { 'X-Shopify-Access-Token': adminToken, 'Content-Type': 'application/json' },
             });
-            const { orders } = await ordersRes.json();
+            const { orders } = (await ordersRes.json()) as any;
             if (orders) {
               mappedOrders = orders.map((o: any) => ({
                 id: `gid://shopify/Order/${o.id}`,
@@ -86,6 +86,7 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
                     title: li.title,
                     quantity: li.quantity,
                     originalTotalPrice: { amount: li.price, currencyCode: o.currency },
+                    discountedTotalPrice: { amount: li.price, currencyCode: o.currency },
                     variant: {
                       id: li.variant_id ? `gid://shopify/ProductVariant/${li.variant_id}` : undefined,
                       image: null
@@ -100,14 +101,14 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
         }
       }
       customer = {
-        orders: { 
-          nodes: mappedOrders, 
-          pageInfo: { 
-            hasNextPage: false, 
+        orders: {
+          nodes: mappedOrders,
+          pageInfo: {
+            hasNextPage: false,
             hasPreviousPage: false,
             startCursor: "start",
             endCursor: "end"
-          } 
+          }
         }
       };
     } else {
@@ -125,7 +126,7 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
     return customer?.orders;
   })();
 
-  return data({ 
+  return data({
     ordersPromise,
   });
 }
@@ -147,8 +148,8 @@ export default function Orders() {
 
   return (
     <div className="orders-page-container" dir={isEn ? 'ltr' : 'rtl'}>
-      <div className="flex flex-col gap-6">
-        <h2 className="text-[28px] font-bold text-[#234745] text-start" style={!isEn ? { fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" } : undefined}>
+      <div className="bg-white border border-[#BBCFCD] rounded-3xl p-5 md:p-6 flex flex-col gap-5 w-full">
+        <h2 className="text-[20px] md:text-[22px] font-bold text-[#234745] text-start m-0" style={!isEn ? { fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" } : undefined}>
           {isEn ? 'My Orders' : 'طلباتي'}
         </h2>
 
@@ -162,25 +163,25 @@ export default function Orders() {
                 cancelled: orders?.nodes?.filter((o: any) => o.canceledAt || o.financialStatus === 'REFUNDED').length || 0,
                 preorder: orders?.nodes?.filter((o: any) => o.lineItems?.nodes?.some((li: any) => li.variant?.product?.tags?.some((t: string) => t.toLowerCase() === 'pre-order') || li.customAttributes?.some((a: any) => a.key === '_is_preorder' && a.value === 'true'))).length || 0,
               };
-              
+
               return (
-                <>
-                  <OrdersFilters 
-                    statusFilter={statusFilter} 
-                    isEn={isEn} 
+                <div className="flex flex-col gap-5">
+                  <OrdersFilters
+                    statusFilter={statusFilter}
+                    isEn={isEn}
                     counts={counts}
                   />
 
                   {orders?.nodes?.length ? (
-                    <OrdersList 
-                      orders={orders} 
+                    <OrdersList
+                      orders={orders}
                       statusFilter={statusFilter}
                       isEn={isEn}
                     />
                   ) : (
                     <EmptyOrders isEn={isEn} />
                   )}
-                </>
+                </div>
               )
             }}
           </Await>
@@ -200,20 +201,19 @@ function OrdersFilters({ statusFilter, isEn, counts }: { statusFilter: string, i
   ];
 
   return (
-    <div className="-mx-4 px-4 md:mx-0 md:px-0 mb-4" dir={isEn ? 'ltr' : 'rtl'}>
+    <div className="-mx-4 px-4 md:mx-0 md:px-0 mb-0" dir={isEn ? 'ltr' : 'rtl'}>
       <div className="flex flex-row overflow-x-auto hide-scrollbar items-center justify-start gap-3 pb-2 w-full snap-x">
         {tabs.map((tab) => {
           const isActive = statusFilter === tab.value || (statusFilter === 'all' && tab.value === 'all');
           return (
             <form key={tab.value} method="get" className="shrink-0 snap-start">
               <input type="hidden" name="status" value={tab.value} />
-              <button 
+              <button
                 type="submit"
-                className={`px-5 py-2.5 rounded-full text-[14px] font-bold transition-all border whitespace-nowrap ${
-                  isActive 
-                    ? 'bg-[#234745] text-white border-[#234745]' 
-                    : 'bg-white text-[#A8BDB5] border-[#EAF2F1] hover:border-[#A8BDB5]'
-                }`}
+                className={`px-5 py-2 rounded-full text-[13px] md:text-[14px] font-bold transition-all border whitespace-nowrap ${isActive
+                  ? 'bg-[#b9cdca] text-[#234745] border-transparent'
+                  : 'bg-white text-[#9FB7AE] border-[#BBCFCD] hover:border-[#234745]'
+                  }`}
               >
                 {isEn ? tab.labelEn : tab.labelAr}
               </button>
@@ -240,24 +240,24 @@ function OrdersList({ orders, statusFilter, isEn }: { orders: any, statusFilter:
       <div className="py-20 text-center bg-white rounded-2xl border border-dashed border-gray-200">
         <p className="text-gray-500">{isEn ? "No orders match your filters." : "لا توجد طلبات تطابق اختياراتك."}</p>
         <Link to="/account/orders" className="text-[#234745] font-bold underline mt-4 inline-block">
-           {isEn ? "Clear filters" : "مسح التصفية"}
+          {isEn ? "Clear filters" : "مسح التصفية"}
         </Link>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <Pagination connection={{...orders, nodes: filteredNodes}}>
+    <div className="flex flex-col gap-0">
+      <Pagination connection={{ ...orders, nodes: filteredNodes }}>
         {({ nodes, isLoading, PreviousLink, NextLink }) => (
           <>
-            <div className="flex justify-center mb-6">
+            <div className="flex justify-center mb-0">
               <PreviousLink className="pagination-link">{isEn ? '↑ Previous' : '↑ السابق'}</PreviousLink>
             </div>
-            
+
             <div className="flex flex-col gap-4">
               {nodes.map((order) => (
-                <OrderCard key={order.id} order={order} isEn={isEn} />
+                <OrderCard key={(order as any).id} order={order as any} isEn={isEn} />
               ))}
             </div>
 
@@ -273,37 +273,41 @@ function OrdersList({ orders, statusFilter, isEn }: { orders: any, statusFilter:
 
 function OrderCard({ order, isEn }: { order: OrderItemFragment, isEn: boolean }) {
   const fetcher = useFetcher();
-  // We specify a fixed layout format like the screenshot
-  const isoDate = order.processedAt.split('T')[0];
-  const [yearStr, monthStr, dayStr] = isoDate.split('-');
-  const dayNum = parseInt(dayStr, 10);
-  const yearNum = parseInt(yearStr, 10);
-  const arMonths = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
-  const enMonths = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-  const monthIndex = parseInt(monthStr, 10) - 1;
-  const monthEn = enMonths[monthIndex];
-  const monthAr = arMonths[monthIndex];
-  
-  const day = dayNum;
-  const year = yearStr;
-  const dateNode = isEn 
-    ? <>{monthEn} <span className="font-en">{day}</span>, <span className="font-en">{year}</span></>
-    : <><span className="font-en">{day}</span> {monthAr} <span className="font-en">{year}</span></>;
-
-  const lineItems = order.lineItems.nodes;
-  const productCount = lineItems.length;
+  const lineItems = order.lineItems?.nodes || [];
+  const productCount = lineItems.reduce((acc, item) => acc + (item.quantity || 0), 0);
   const firstItem = lineItems[0];
   const imageUrl = firstItem?.variant?.image?.url;
-  const totalAmount = order.currentTotalPrice?.amount || "0.00";
-  const orderIdEncoded = encodeURIComponent(order.id);
+  const totalAmount = parseFloat(order.currentTotalPrice?.amount || "0.00");
+  
+  // Calculate original total using discountedTotalPrice
+  const originalTotal = lineItems.reduce((sum, item) => sum + parseFloat(item.discountedTotalPrice?.amount || "0"), 0);
+
+  // Parse Date safely
+  let dateNode = null;
+  if (order.processedAt) {
+    const isoDate = order.processedAt.split('T')[0];
+    const [yearStr, monthStr, dayStr] = isoDate.split('-');
+    if (yearStr && monthStr && dayStr) {
+      const dayNum = parseInt(dayStr, 10);
+      const arMonths = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
+      const enMonths = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+      const monthIndex = parseInt(monthStr, 10) - 1;
+      const monthEn = enMonths[monthIndex] || '';
+      const monthAr = arMonths[monthIndex] || '';
+      
+      dateNode = isEn 
+        ? <>{monthEn} <span className="font-en">{dayNum}</span>, <span className="font-en">{yearStr}</span></>
+        : <><span className="font-en">{dayNum}</span> {monthAr} <span className="font-en">{yearStr}</span></>;
+    }
+  }
 
   const titles = lineItems.slice(0, 3).map(item => item.title).join(' • ') + (lineItems.length > 3 ? '...' : '');
 
   const handleReorder = (e: React.MouseEvent) => {
     e.preventDefault();
     const items = lineItems.map(item => ({
-      merchandiseId: item.variant?.id,
-      quantity: 1, 
+      merchandiseId: (item.variant as any)?.id,
+      quantity: item.quantity || 1, 
     }));
     
     const formData = new FormData();
@@ -314,95 +318,199 @@ function OrderCard({ order, isEn }: { order: OrderItemFragment, isEn: boolean })
 
   let statusEn = 'On its way to you';
   let statusAr = 'في الطريق إليك';
-  let statusColor = '#234745'; // Dark green
+  let statusColor = '#906B51'; // Brown/gold
   
-  if ((order as any).canceledAt || order.financialStatus === 'REFUNDED' || order.fulfillmentStatus === 'CANCELLED') {
+  if ((order as any).canceledAt || order.financialStatus === 'REFUNDED' || (order.fulfillmentStatus as any) === 'CANCELLED') {
      statusEn = 'Cancelled';
      statusAr = 'ملغاه';
-     statusColor = '#e74c3c'; // Red
+     statusColor = '#E64950'; // Red
   } else if (order.fulfillmentStatus === 'FULFILLED') {
      statusEn = 'Delivered';
      statusAr = 'تم التسليم';
-     statusColor = '#234745';
+     statusColor = '#234745'; // Dark green
   }
 
-  const isCancelled = !!((order as any).canceledAt || order.financialStatus === 'REFUNDED' || order.fulfillmentStatus === 'CANCELLED');
+  const isCancelled = !!((order as any).canceledAt || order.financialStatus === 'REFUNDED' || (order.fulfillmentStatus as any) === 'CANCELLED');
 
   return (
-    <div className="bg-white border border-[#9FB7AE] rounded-[12px] p-6">
-      <div className="flex flex-col md:flex-row items-center justify-between gap-6 w-full">
-        
-        {/* Right side (Order Details in RTL) */}
-        <div className="flex items-center gap-4 text-start w-full md:w-auto">
+    <div 
+      className="bg-white border border-[#BBCFCD] rounded-2xl transition-all hover:border-[#234745] w-full overflow-hidden"
+      dir={isEn ? 'ltr' : 'rtl'}
+    >
+      {/* 1. DESKTOP VIEW LAYOUT (Original Wide Row Design) */}
+      <div className="hidden md:flex flex-row items-center justify-between gap-6 p-6 w-full text-start">
+        {/* Right side (RTL): Product image + details column next to it */}
+        <div className="flex items-center gap-5 flex-1 min-w-0">
+          {/* Product Image */}
           <div className="relative flex-shrink-0">
             {imageUrl ? (
               <img 
                 src={imageUrl}
-                alt="Product" 
-                className="w-[90px] h-[70px] rounded-[12px] object-cover border border-gray-100"
+                alt="Product thumbnail" 
+                className="w-[90px] h-[90px] rounded-xl object-cover border border-gray-100"
               />
             ) : (
-              <div className="w-[90px] h-[70px] bg-gray-50 rounded-[12px] border border-gray-100 flex items-center justify-center">
+              <div className="w-[90px] h-[90px] bg-gray-50 rounded-xl border border-gray-100 flex items-center justify-center">
                 <svg className="w-6 h-6 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
               </div>
             )}
-            <div className="absolute -top-2 -start-2 w-6 h-6 bg-[#234745] text-white rounded-full flex items-center justify-center text-[11px] font-bold border-2 border-white font-en">
+            {/* Quantity Badge on Top-Left */}
+            <div className="absolute -top-2 -left-2 w-6 h-6 bg-[#234745] text-white rounded-full flex items-center justify-center text-[11px] font-bold border-2 border-white font-en shadow-sm">
               {productCount.toLocaleString('en-US')}
             </div>
           </div>
-          <div className="flex flex-col gap-1 items-start w-full">
-            <span className="text-[11px] text-[#A6BFB9] font-medium leading-tight tracking-wider uppercase mb-1 font-en" dir="ltr">
+
+          {/* Details Column */}
+          <div className="flex flex-col gap-1 min-w-0">
+            {/* Order number */}
+            <span className="text-[12px] text-[#9FB7AE] font-medium font-en" dir="ltr">
               #{order.orderNumber}
             </span>
-            <h3 className="text-[14px] md:text-[15px] font-bold text-[#234745] leading-none mb-1" style={!isEn ? { fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" } : undefined}>
+            {/* Item Titles */}
+            <h3 
+              className="text-[15px] md:text-[17px] font-bold text-[#234745] leading-tight mb-0.5 truncate" 
+              style={!isEn ? { fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" } : undefined}
+            >
               {titles}
             </h3>
-            <p className="text-[12px] text-[#A6BFB9] font-medium leading-tight flex items-center gap-1" dir={isEn ? 'ltr' : 'rtl'}>
+            {/* Date Node */}
+            <span className="text-[12px] text-[#9FB7AE] font-medium leading-tight">
               {dateNode}
-            </p>
-            <div className="flex items-center justify-start gap-1.5 mt-1">
-               <span className="text-[#234745]"><CurrencyIcon className="h-4 w-auto" /></span>
-               <span className="text-[16px] font-bold text-[#234745] leading-none font-en" dir="ltr">
-                 {parseFloat(totalAmount).toLocaleString('en-US', { minimumFractionDigits: 2 })}
-               </span>
+            </span>
+            {/* Paid Total Price */}
+            <div className="flex items-center gap-1 mt-1 text-[#234745]">
+              <span className="text-[18px] md:text-[20px] font-black leading-none font-en">
+                {totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+              </span>
+              <CurrencyIcon className="h-4.5 w-auto" />
             </div>
           </div>
         </div>
 
-        {/* Left side (Status & Actions in RTL) */}
-        <div className="flex flex-col items-start md:items-end gap-3 w-full md:w-auto mt-4 md:mt-0 border-t border-gray-100 md:border-none pt-4 md:pt-0">
+        {/* Left side (RTL): Status column & buttons under it */}
+        <div className="flex flex-col items-end justify-between gap-4 shrink-0">
+          {/* Status Dot & Label */}
           <div className="flex items-center gap-2">
-            <span className="text-[13px] font-bold" style={{ color: statusColor, ...(!isEn ? { fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" } : {}) }}>
+            <span className="text-[14px] font-bold" style={{ color: statusColor }}>
               {isEn ? statusEn : statusAr}
             </span>
-            <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: statusColor }} />
+            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: statusColor }} />
           </div>
-          <div className="flex items-center gap-2 w-full md:w-auto">
-              {isCancelled ? (
-                <span className="flex-1 md:flex-none text-center px-6 py-2 border border-gray-200 text-gray-400 bg-gray-50 rounded-[24px] text-[13px] font-bold cursor-not-allowed">
-                  {isEn ? 'Track / Invoice' : 'الفاتورة'}
-                </span>
-              ) : (
-                <Link 
-                  to={isEn ? `/en/track-order/${order.orderNumber}` : `/track-order/${order.orderNumber}`}
-                  className="flex-1 md:flex-none text-center px-6 py-2 border border-[#234745] text-[#234745] rounded-[24px] text-[13px] font-bold hover:bg-gray-50 transition-all"
-                >
-                  {isEn ? 'Track / Invoice' : 'الفاتورة'}
-                </Link>
-              )}
+
+          {/* Actions */}
+          <div className="flex items-center gap-2">
+            {!isCancelled && (
+              <Link 
+                to={isEn ? `/en/track-order/${order.orderNumber}` : `/track-order/${order.orderNumber}`}
+                className="text-center px-6 py-2 border border-[#234745] text-[#234745] rounded-full text-[13px] md:text-[14px] font-bold hover:bg-gray-50 transition-all whitespace-nowrap"
+              >
+                {order.fulfillmentStatus === 'FULFILLED' 
+                  ? (isEn ? 'Invoice' : 'الفاتورة')
+                  : (isEn ? 'Track' : 'تتبع')}
+              </Link>
+            )}
+            
             <button 
               onClick={handleReorder}
               disabled={fetcher.state !== 'idle'}
-              className="flex-1 md:flex-none text-center px-6 py-2 bg-[#234745] text-white rounded-[24px] text-[13px] font-bold hover:opacity-90 transition-all disabled:opacity-70"
-              style={{ color: '#FFFFFF' }}
+              className="text-center px-6 py-2 bg-[#234745] text-white rounded-full text-[13px] md:text-[14px] font-bold hover:opacity-90 transition-all disabled:opacity-70 whitespace-nowrap"
             >
               {fetcher.state !== 'idle' ? (isEn ? 'Adding...' : 'جاري...') : (isEn ? 'Reorder' : 'إعادة الطلب')}
             </button>
           </div>
         </div>
+      </div>
 
+      {/* 2. MOBILE VIEW LAYOUT (Original Stacked Mockup Design) */}
+      <div className="flex md:hidden flex-col gap-4 p-5 w-full text-start">
+        {/* Top Status Row */}
+        <div className="flex items-center gap-2 text-start">
+          <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: statusColor }} />
+          <span className="text-[14px] font-bold" style={{ color: statusColor }}>
+            {isEn ? statusEn : statusAr}
+          </span>
+        </div>
+
+        {/* Middle Row: Details (RTL Right) & Image (RTL Left) */}
+        <div className="flex flex-row items-center justify-between gap-4 w-full text-start">
+          {/* Details column */}
+          <div className="flex flex-col gap-1 flex-grow min-w-0">
+            {/* Order ID */}
+            <h3 
+              className="text-[15px] font-bold text-[#234745] leading-tight mb-0.5 truncate" 
+              style={!isEn ? { fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" } : undefined}
+            >
+              {isEn ? `Order — #${order.orderNumber}` : `آخر طلب — #${order.orderNumber}`}
+            </h3>
+            
+            {/* Subtitle: product count & original total */}
+            <span 
+              className="text-[12px] font-medium text-[#9FB7AE] truncate"
+              style={!isEn ? { fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" } : undefined}
+            >
+              {productCount} {isEn ? 'Products' : 'منتجات'} 
+              {originalTotal > totalAmount && (
+                <> • <span className="line-through">{originalTotal.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span></>
+              )}
+              {' '}{isEn ? 'SAR' : 'ر.س'}
+            </span>
+
+            {/* Paid Total */}
+            <div className="flex items-center gap-1 mt-1 text-[#234745]">
+              <span className="text-[18px] font-black leading-none font-en">
+                {totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+              </span>
+              <CurrencyIcon className="h-4.5 w-auto" />
+            </div>
+          </div>
+
+          {/* Product Image on Left (in RTL) */}
+          <div className="relative flex-shrink-0">
+            {imageUrl ? (
+              <img 
+                src={imageUrl}
+                alt="Order thumbnail" 
+                className="w-[85px] h-[85px] rounded-xl object-cover border border-gray-100"
+              />
+            ) : (
+              <div className="w-[85px] h-[85px] bg-gray-50 rounded-xl border border-gray-100 flex items-center justify-center">
+                <svg className="w-6 h-6 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+              </div>
+            )}
+            {/* Quantity Badge on Top-Left */}
+            <div className="absolute -top-2 -left-2 w-6 h-6 bg-[#234745] text-white rounded-full flex items-center justify-center text-[11px] font-bold border-2 border-white font-en shadow-sm">
+              {productCount.toLocaleString('en-US')}
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom Actions Row */}
+        <div className="flex flex-row gap-3 w-full mt-1.5">
+          {/* Secondary Action: Track or Invoice */}
+          {!isCancelled && (
+            <Link 
+              to={isEn ? `/en/track-order/${order.orderNumber}` : `/track-order/${order.orderNumber}`}
+              className="flex-1 text-center py-2.5 border border-[#234745] text-[#234745] rounded-full text-[13px] font-bold hover:bg-gray-50 transition-all whitespace-nowrap"
+            >
+              {order.fulfillmentStatus === 'FULFILLED' 
+                ? (isEn ? 'Invoice' : 'الفاتورة')
+                : (isEn ? 'Track' : 'تتبع')}
+            </Link>
+          )}
+          
+          {/* Primary Action: Reorder */}
+          <button 
+            onClick={handleReorder}
+            disabled={fetcher.state !== 'idle'}
+            className={`${isCancelled ? 'w-full' : 'flex-[1.5]'} text-center py-2.5 bg-[#234745] text-white rounded-full text-[13px] font-bold hover:opacity-90 transition-all disabled:opacity-70 whitespace-nowrap`}
+          >
+            {fetcher.state !== 'idle' ? (isEn ? 'Adding...' : 'جاري...') : (isEn ? 'Reorder' : 'إعادة الطلب')}
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -420,7 +528,7 @@ function EmptyOrders({ isEn }: { isEn: boolean }) {
         {isEn ? "No order history yet" : "لا توجد طلبات سابقة"}
       </h3>
       <Link to="/collections" className="mt-6 inline-block px-8 py-3 bg-[#234745] text-white rounded-[24px] text-[13px] font-bold hover:opacity-90">
-         {isEn ? "Start Shopping" : "ابدأ التسوق الآن"}
+        {isEn ? "Start Shopping" : "ابدأ التسوق الآن"}
       </Link>
     </div>
   );
@@ -439,6 +547,11 @@ const ORDER_ITEM_FRAGMENT = `#graphql
     lineItems(first: 10) {
       nodes {
         title
+        quantity
+        discountedTotalPrice {
+          amount
+          currencyCode
+        }
         customAttributes {
           key
           value

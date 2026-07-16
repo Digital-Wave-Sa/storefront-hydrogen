@@ -2,42 +2,42 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { NavLink } from 'react-router';
 
 const SLIDES = [
-  { 
-    id: 1, 
-    image: '/hero/slide1.webp', 
+  {
+    id: 1,
+    image: '/hero/slide1.webp',
     url: '/collections/all',
     title: { ar: 'نصنع لحظات\nلا تنسي', en: 'We Make Unforgettable\nMoments' },
-    subtitle: { 
-        ar: 'منذ عام ١٩١٩، نقدّم أرقى الحلويات العربية والشوكولاتة الفاخرة، لكل مناسبة تستحق الاحتفال.', 
-        en: 'Since 1919, we offer the finest Arabic sweets and premium chocolate for every occasion worth celebrating.' 
+    subtitle: {
+      ar: 'منذ عام ١٩١٩، نقدّم أرقى الحلويات العربية والشوكولاتة الفاخرة، لكل مناسبة تستحق الاحتفال.',
+      en: 'Since 1919, we offer the finest Arabic sweets and premium chocolate for every occasion worth celebrating.'
     },
     badge: { ar: 'منذ 1919 . مصنوعة بحُب', en: 'Since 1919 . Made With Love' },
     buttons: [
       { text: { ar: 'إكتشف قصتنا', en: 'Discover Our Story' }, url: '/pages/about', type: 'filled' }
     ]
   },
-  { 
-    id: 2, 
-    image: '/hero/slide2.webp', 
+  {
+    id: 2,
+    image: '/hero/slide2.webp',
     url: '/custom-cake',
     title: { ar: 'إحتفل بالعيد\nبأرقي الحلويات', en: 'Celebrate Eid\nWith Finest Sweets' },
-    subtitle: { 
-        ar: 'تشكيلة العيد الحصرية — معمول وشوكولاتة وحلويات عربية فاخرة في أجمل صناديق الهدايا.', 
-        en: 'Exclusive Eid collection — Maamoul, chocolate, and premium Arabic sweets in the most beautiful gift boxes.' 
+    subtitle: {
+      ar: 'تشكيلة العيد الحصرية — معمول وشوكولاتة وحلويات عربية فاخرة في أجمل صناديق الهدايا.',
+      en: 'Exclusive Eid collection — Maamoul, chocolate, and premium Arabic sweets in the most beautiful gift boxes.'
     },
     badge: { ar: 'عيد مبارك', en: 'Eid Mubarak' },
     buttons: [
       { text: { ar: 'تسوق تشكيلة العيد', en: 'Shop Eid Collection' }, url: '/collections/eid', type: 'filled' }
     ]
   },
-  { 
-    id: 3, 
-    image: '/hero/slide3.webp', 
+  {
+    id: 3,
+    image: '/hero/slide3.webp',
     url: '/custom-cake',
     title: { ar: 'صمم كيكتك\nكما تتخيلها', en: 'Design Your Cake\nAs You Imagine It' },
-    subtitle: { 
-        ar: 'اختر الحجم والنكهة والتزيين — نصنع لك كيكة مخصصة تماماً بحرفية سعد الدين.', 
-        en: 'Choose the size, flavor, and decoration — we craft a perfectly customized cake with Saadeddin craftsmanship.' 
+    subtitle: {
+      ar: 'اختر الحجم والنكهة والتزيين — نصنع لك كيكة مخصصة تماماً بحرفية سعد الدين.',
+      en: 'Choose the size, flavor, and decoration — we craft a perfectly customized cake with Saadeddin craftsmanship.'
     },
     badge: { ar: 'صمم كيكتك', en: 'Design Your Cake' },
     buttons: [
@@ -54,7 +54,7 @@ export function HeroSlider() {
   useEffect(() => {
     // Detect locale from URL or window
     setIsEn(window.location.pathname.includes('/en'));
-    
+
     // Center the initial slide on load
     const timer = setTimeout(() => {
       scrollToSlide(Math.floor(SLIDES.length / 2));
@@ -67,7 +67,7 @@ export function HeroSlider() {
     const scrollLeft = Math.abs(scrollRef.current.scrollLeft);
     const containerWidth = scrollRef.current.clientWidth;
     const slideWidth = scrollRef.current.children[0].clientWidth;
-    
+
     // We want the slide closest to the center of the container
     const newIndex = Math.round(scrollLeft / slideWidth);
     if (newIndex !== currentIndex && newIndex < SLIDES.length) {
@@ -92,9 +92,9 @@ export function HeroSlider() {
 
   return (
     <div className="w-full bg-[#FEF8EB] py-8 lg:py-14 relative group overflow-hidden">
-      
+
       {/* Scrollable Container */}
-      <div 
+      <div
         ref={scrollRef}
         onScroll={handleScroll}
         className="flex overflow-x-auto snap-x snap-mandatory gap-5 lg:gap-8 px-[max(20px,calc(50%-512px))] pb-10"
@@ -103,7 +103,7 @@ export function HeroSlider() {
         {SLIDES.map((slide, index) => {
           const isActive = index === currentIndex;
           return (
-            <div 
+            <div
               key={slide.id}
               className="snap-center shrink-0 w-[300px] lg:w-[1024px] max-w-[90vw] transition-all duration-700 ease-out"
               style={{
@@ -113,9 +113,9 @@ export function HeroSlider() {
             >
               <div className="relative w-full h-[360px] lg:h-[610px] rounded-[6px] lg:rounded-[20px] overflow-hidden bg-[#f8f5f2] group/slide flex flex-col">
                 {/* 1. Background Image - Stays Absolute */}
-                <img 
-                  src={slide.image} 
-                  alt="" 
+                <img
+                  src={slide.image}
+                  alt=""
                   className="absolute inset-0 w-full h-full object-cover transition-transform duration-1000 group-hover/slide:scale-105"
                 />
 
@@ -125,63 +125,62 @@ export function HeroSlider() {
 
                 {/* 3. Top-Center Badge */}
                 <div className="absolute top-4 lg:top-10 left-1/2 -translate-x-1/2 z-30 flex justify-center w-full px-4 lg:px-10">
-                    <div className="bg-[#234745] px-4 lg:px-8 py-1 lg:py-2 rounded-full border border-[#BBCFCD] shadow-2xl flex items-center gap-2 lg:gap-4">
-                        <div className="w-4 lg:w-6 h-[1px] bg-[#BBCFCD]" />
-                        <span className="text-[#BBCFCD] font-medium text-[12px] lg:text-[16px] tracking-wide whitespace-nowrap" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
-                            {isEn ? slide.badge.en : slide.badge.ar}
-                        </span>
-                        <div className="w-4 lg:w-6 h-[1px] bg-[#BBCFCD]" />
-                    </div>
+                  <div className="bg-[#234745] px-4 lg:px-8 py-1 lg:py-2 rounded-full shadow-2xl flex items-center gap-2 lg:gap-4">
+                    <div className="w-4 lg:w-6 h-[1px] bg-[#BBCFCD]" />
+                    <span className="text-[#BBCFCD] font-medium text-[12px] lg:text-[16px] tracking-wide whitespace-nowrap" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
+                      {isEn ? slide.badge.en : slide.badge.ar}
+                    </span>
+                    <div className="w-4 lg:w-6 h-[1px] bg-[#BBCFCD]" />
+                  </div>
                 </div>
 
                 {/* 4. Main Content Area */}
-                <div 
-                    dir={isEn ? 'ltr' : 'rtl'}
-                    className={`relative flex-1 flex flex-col justify-end lg:justify-center p-6 lg:p-16 text-white z-20 items-center lg:items-start text-center lg:text-start`}
+                <div
+                  dir={isEn ? 'ltr' : 'rtl'}
+                  className={`relative flex-1 flex flex-col justify-end lg:justify-center p-6 lg:p-16 text-white z-20 items-center lg:items-start text-center lg:text-start`}
                 >
-                    <div className="max-w-[95%] lg:max-w-[533px] flex flex-col items-center lg:items-start w-full">
-                        
-                        {/* Title */}
-                        <h2 
-                            className={`font-bold lg:font-normal leading-[1.0] lg:leading-[0.95] whitespace-pre-line mb-4 lg:mb-8 ${isEn ? 'text-[38px] lg:text-[64px]' : 'text-[38px] lg:text-[100px]'}`}
-                            style={!isEn ? { fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" } : undefined}
-                        >
-                            <span className="text-[#FFFFFF] drop-shadow-lg">{isEn ? slide.title.en : slide.title.ar}</span>
-                        </h2>
+                  <div className="max-w-[95%] lg:max-w-[533px] flex flex-col items-center lg:items-start w-full">
 
-                        {/* Subtitle */}
-                        <p 
-                            className={`font-normal leading-[1.2] max-w-[280px] lg:max-w-[400px] mt-0 mb-4 lg:mb-8 whitespace-pre-line text-[#FFFFFF] lg:text-[#BBCFCD] ${isEn ? 'text-[14px] lg:text-[16px]' : 'text-[12px] lg:text-[14px]'}`}
-                            style={!isEn ? { fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" } : undefined}
-                        >
-                            {isEn ? slide.subtitle.en : slide.subtitle.ar}
-                        </p>
+                    {/* Title */}
+                    <h2
+                      className={`font-bold lg:font-normal leading-[1.0] lg:leading-[0.95] whitespace-pre-line mb-4 lg:mb-8 ${isEn ? 'text-[38px] lg:text-[64px]' : 'text-[38px] lg:text-[100px]'}`}
+                      style={!isEn ? { fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" } : undefined}
+                    >
+                      <span className="text-[#FFFFFF] drop-shadow-lg">{isEn ? slide.title.en : slide.title.ar}</span>
+                    </h2>
 
-                        {/* Buttons */}
-                        <div className="flex flex-col lg:flex-row items-center gap-[8px] w-full mt-4 lg:mt-6">
-                            {slide.buttons?.map((btn, i) => (
-                                <NavLink 
-                                    key={i}
-                                    to={btn.url}
-                                    className={`flex items-center justify-center transition-all transform hover:scale-105 active:scale-95 w-full lg:w-[277px] h-[48px] py-[12px] px-[20px] rounded-[24px] ${
-                                        btn.type === 'filled' 
-                                        ? 'bg-[#BBCFCD] text-[#234745]' 
-                                        : 'bg-transparent text-[#F9F9F9] border border-[#BBCFCD]'
-                                    }`}
-                                    style={{ 
-                                        fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
-                                        fontWeight: 700,
-                                        fontSize: '18px',
-                                        lineHeight: '100%',
-                                        textAlign: 'center',
-                                        color: btn.type === 'filled' ? '#234745' : '#F9F9F9'
-                                    }}
-                                >
-                                    <span>{isEn ? btn.text.en : btn.text.ar}</span>
-                                </NavLink>
-                            ))}
-                        </div>
+                    {/* Subtitle */}
+                    <p
+                      className={`font-normal leading-[1.2] max-w-[280px] lg:max-w-[400px] mt-0 mb-4 lg:mb-8 whitespace-pre-line text-[#FFFFFF] lg:text-[#BBCFCD] ${isEn ? 'text-[14px] lg:text-[16px]' : 'text-[12px] lg:text-[14px]'}`}
+                      style={!isEn ? { fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" } : undefined}
+                    >
+                      {isEn ? slide.subtitle.en : slide.subtitle.ar}
+                    </p>
+
+                    {/* Buttons */}
+                    <div className="flex flex-col lg:flex-row items-center gap-[8px] w-full mt-4 lg:mt-6">
+                      {slide.buttons?.map((btn, i) => (
+                        <NavLink
+                          key={i}
+                          to={btn.url}
+                          className={`flex items-center justify-center transition-all transform hover:scale-105 active:scale-95 w-full lg:w-[277px] h-[48px] py-[12px] px-[20px] rounded-[24px] ${btn.type === 'filled'
+                            ? 'bg-[#BBCFCD] text-[#234745]'
+                            : 'bg-transparent text-[#F9F9F9] border border-[#BBCFCD]'
+                            }`}
+                          style={{
+                            fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
+                            fontWeight: 700,
+                            fontSize: '18px',
+                            lineHeight: '100%',
+                            textAlign: 'center',
+                            color: btn.type === 'filled' ? '#234745' : '#F9F9F9'
+                          }}
+                        >
+                          <span>{isEn ? btn.text.en : btn.text.ar}</span>
+                        </NavLink>
+                      ))}
                     </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -190,7 +189,7 @@ export function HeroSlider() {
       </div>
 
       {/* Navigation Arrows */}
-      <button 
+      <button
         onClick={prevSlide}
         aria-label={isEn ? "Previous slide" : "الشريحة السابقة"}
         className={`absolute start-[max(4px,calc(50%-552px))] top-1/2 -translate-y-1/2 w-10 h-10 bg-[#9FB7AE] text-[#234745] rounded-[25px] flex items-center justify-center transition-all z-30 border border-[#9FB7AE] hover:scale-110 active:scale-95 shadow-md ${currentIndex === 0 ? 'opacity-30 cursor-not-allowed' : 'opacity-100 hover:bg-white'}`}
@@ -200,8 +199,8 @@ export function HeroSlider() {
           <path d="M15 18l-6-6 6-6" />
         </svg>
       </button>
-      
-      <button 
+
+      <button
         onClick={nextSlide}
         aria-label={isEn ? "Next slide" : "الشريحة التالية"}
         className={`absolute end-[max(4px,calc(50%-552px))] top-1/2 -translate-y-1/2 w-10 h-10 bg-[#9FB7AE] text-[#234745] rounded-[25px] flex items-center justify-center transition-all z-30 border border-[#9FB7AE] hover:scale-110 active:scale-95 shadow-md ${currentIndex === SLIDES.length - 1 ? 'opacity-30 cursor-not-allowed' : 'opacity-100 hover:bg-white'}`}

@@ -25,12 +25,27 @@ export async function action({ request, context }: ActionFunctionArgs) {
     console.log('[CHECKOUT DIAGNOSTIC] Redirecting to cart: no cartId');
     return redirect(lang === 'en' ? '/en/cart' : '/cart');
   }
+
+  // Associate customerAccessToken with Cart Buyer Identity to bypass checkout login prompt
+  const customerAccessToken = await session.get('customerAccessToken');
+  if (customerAccessToken) {
+    const token = typeof customerAccessToken === 'string' ? customerAccessToken : customerAccessToken.accessToken;
+    try {
+      await context.cart.updateBuyerIdentity({
+        customerAccessToken: token,
+      });
+      console.log('[CHECKOUT DIAGNOSTIC] Successfully updated cart buyer identity');
+    } catch (err) {
+      console.error('[CHECKOUT DIAGNOSTIC] Failed to update cart buyer identity:', err);
+    }
+  }
   
   const { cart } = await storefront.query(`#graphql
     query checkoutCart($cartId: ID!) {
       cart(id: $cartId) {
         id
         checkoutUrl
+        note
         cost {
           subtotalAmount { amount currencyCode }
           totalAmount { amount currencyCode }
@@ -68,11 +83,78 @@ export async function action({ request, context }: ActionFunctionArgs) {
     return redirect(lang === 'en' ? '/en/cart' : '/cart');
   }
 
-  // 3. Build payload for Saadeddin API
-  const attributes = cart.attributes || [];
-  const fulfillmentType = attributes.find((a: any) => a.key.toLowerCase().trim() === 'fulfillment type')?.value;
-  const isPickup = fulfillmentType?.toLowerCase() === 'pickup';
+  // 3. Build payload for Saadeddin API and restore location properties
+  let rawAttributes = cart.attributes || [];
   
+  // Reconstruct missing attributes from the session if Shopify cleared them during login/identity update
+  const sessionFulfillmentType = await session.get('fulfillmentType');
+  const sessionBranch = await session.get('selectedLocationName');
+  const sessionBranchId = await session.get('selectedLocationId');
+  const sessionCustomBranchId = await session.get('selectedCustomBranchId');
+  const sessionAxStoreId = await session.get('selectedAxStoreId');
+  const sessionDate = await session.get('delivery_date');
+  const sessionTimeSlot = await session.get('Time Slot');
+
+  // Helper: check if attribute already exists and has a value, otherwise fall back to session
+  const getAttr = (key: string, sessionVal: any) => {
+    const existing = rawAttributes.find((a: any) => a.key === key)?.value;
+    return existing || sessionVal || '';
+  };
+
+  const finalAttributes = [
+    { key: 'Branch', value: getAttr('Branch', sessionBranch) },
+    { key: 'Branch ID', value: getAttr('Branch ID', sessionBranchId) },
+    { key: 'Fulfillment Type', value: getAttr('Fulfillment Type', sessionFulfillmentType === 'pickup' ? 'Pickup' : 'Delivery') },
+  ];
+
+  const customBranchVal = getAttr('custom.branch_id', sessionCustomBranchId) || getAttr('branch_id', sessionCustomBranchId);
+  if (customBranchVal) {
+    finalAttributes.push({ key: 'custom.branch_id', value: customBranchVal });
+    finalAttributes.push({ key: 'branch_id', value: customBranchVal });
+  }
+
+  const customAxStoreVal = getAttr('custom.ax_store_id', sessionAxStoreId) || getAttr('ax_store_id', sessionAxStoreId) || getAttr('AX Store ID', sessionAxStoreId);
+  if (customAxStoreVal) {
+    finalAttributes.push({ key: 'custom.ax_store_id', value: customAxStoreVal });
+    finalAttributes.push({ key: 'ax_store_id', value: customAxStoreVal });
+    finalAttributes.push({ key: 'AX Store ID', value: customAxStoreVal });
+  }
+
+  const deliveryDateVal = getAttr('delivery_date', sessionDate);
+  if (deliveryDateVal) {
+    finalAttributes.push({ key: 'delivery_date', value: deliveryDateVal });
+  }
+
+  const timeSlotVal = getAttr('Time Slot', sessionTimeSlot);
+  if (timeSlotVal) {
+    finalAttributes.push({ key: 'Time Slot', value: timeSlotVal });
+  }
+
+  // Preserve any other attributes (like loyalty_points)
+  rawAttributes.forEach((attr: any) => {
+    if (!finalAttributes.find((f) => f.key === attr.key)) {
+      finalAttributes.push({ key: attr.key, value: attr.value || '' });
+    }
+  });
+
+  // 4. Update the cart attributes and cart note on Shopify server
+  try {
+    await context.cart.updateAttributes(finalAttributes);
+  } catch (err) {
+    console.error('[CHECKOUT] Attributes update failed:', err);
+  }
+
+  // Format plaintext note block for fallback — used only in URL query params, NOT written to Shopify cart note
+  const branchName = finalAttributes.find((a: any) => a.key === 'Branch')?.value;
+  const branchId = finalAttributes.find((a: any) => a.key === 'Branch ID')?.value;
+  const fulfillmentType = finalAttributes.find((a: any) => a.key === 'Fulfillment Type')?.value;
+  const isPickup = fulfillmentType?.toLowerCase() === 'pickup';
+
+  const branchNoteBlock = `[Fulfillment: ${fulfillmentType || 'Delivery'}, Branch: ${branchName || 'N/A'}, Branch ID: ${branchId || 'N/A'}, custom.branch_id: ${customBranchVal || 'N/A'}, custom.ax_store_id: ${customAxStoreVal || 'N/A'}, delivery_date: ${deliveryDateVal || 'N/A'}, Time Slot: ${timeSlotVal || 'N/A'}]`;
+
+  // Only pass the customer-written note — do NOT modify the Shopify cart note with internal metadata
+  const customerNote = (cart.note || '').replace(/\[Fulfillment:[^\]]*\]/g, '').trim();
+
   const isBypassToken = customToken === 'dev-bypass-token';
   
   let profile;
@@ -87,7 +169,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
     }
   }
 
-  const pointsAttr = attributes.find((a: any) => a.key === 'loyalty_points')?.value;
+  const pointsAttr = finalAttributes.find((a: any) => a.key === 'loyalty_points')?.value;
   const pointsToRedeem = pointsAttr ? parseInt(pointsAttr) : undefined;
   
   const payload = {
@@ -104,33 +186,38 @@ export async function action({ request, context }: ActionFunctionArgs) {
     customerName: profile.name,
     pointsToRedeem,
     deliveryType: isPickup ? 'Pick Up' : 'Delivery',
+    branchId: customBranchVal || branchId || '',
+    axStoreId: customAxStoreVal || '',
+    noteAttributes: finalAttributes.map((a: any) => ({ name: a.key, value: a.value })),
+    attributes: finalAttributes.map((a: any) => ({ key: a.key, value: a.value })),
     idempotencyKey: `order-${Date.now()}`
   };
 
   try {
-    let checkoutRes;
-    if (isBypassToken) {
-      // Redirect directly to the real Shopify web checkout page
-      if (cart.checkoutUrl) {
-        return redirect(cart.checkoutUrl);
-      }
-      return redirect(lang === 'en' ? '/en/cart' : '/cart');
-    } else {
-      const api = new SaadeddinApi(env, customToken);
-      checkoutRes = await api.initiateCheckout(payload as any);
+    let checkoutUrl = cart.checkoutUrl;
+    if (checkoutUrl && finalAttributes.length > 0) {
+      const urlObj = new URL(checkoutUrl);
+      finalAttributes.forEach((attr: any) => {
+        if (attr.key && attr.value) {
+          urlObj.searchParams.set(`attributes[${attr.key}]`, attr.value);
+          urlObj.searchParams.set(`note_attributes[${attr.key}]`, attr.value);
+        }
+      });
+      // Build the order note: customer's written note + internal metadata block
+      // The metadata block is only passed via the URL — it is NOT stored in the Shopify cart note
+      const urlNote = customerNote
+        ? `${customerNote}\n\n${branchNoteBlock}`
+        : branchNoteBlock;
+      urlObj.searchParams.set('note', urlNote);
+      checkoutUrl = urlObj.toString();
     }
-    
-    if (checkoutRes.status === 'PAID') {
-      // Order paid in full via points/gift card
-      return redirect(lang === 'en' ? '/en/account/orders' : '/account/orders'); 
-    } else if (checkoutRes.status === 'AWAITING_PAYMENT' && checkoutRes.paymentUrl) {
-      return redirect(checkoutRes.paymentUrl);
+
+    if (checkoutUrl) {
+      return redirect(checkoutUrl);
     }
-    
     return redirect(lang === 'en' ? '/en/cart' : '/cart');
   } catch (error: any) {
-    console.error('Checkout error:', error);
-    // Ideally we pass error back to cart. For now just redirect back.
+    console.error('Checkout redirect error:', error);
     return redirect(lang === 'en' ? `/en/cart` : `/cart`);
   }
 }

@@ -47,7 +47,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
       const phone = String(form.get('phone') || '');
       try {
         const api = new SaadeddinApi(context.env);
-        await api.requestOtp(phone);
+        await api.requestOtp(phone, 'login');
         return data({ success: true, otpSent: true });
       } catch (e: any) {
         return data({ error: e.message || (lang === 'en' ? 'Failed to send OTP.' : 'فشل إرسال رمز التحقق.') }, { status: 400 });
@@ -65,7 +65,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
       try {
         const api = new SaadeddinApi(context.env);
-        await api.verifyOtp(phone, otp);
+        await api.verifyOtp(phone, otp, 'login');
         return data({ success: true, verified: true });
       } catch (e: any) {
         return data({ error: e.message || (lang === 'en' ? 'Invalid verification code.' : 'رمز التحقق غير صحيح.') }, { status: 400 });

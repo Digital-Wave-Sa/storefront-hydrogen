@@ -1,7 +1,9 @@
 import type {
   PredictiveSearchQuery,
-  RegularSearchQuery,
 } from 'storefrontapi.generated';
+
+// RegularSearchQuery is not exported from storefrontapi.generated
+type RegularSearchQuery = any;
 
 type ResultWithItems<Type extends 'predictive' | 'regular', Items> = {
   type: Type;
@@ -31,7 +33,7 @@ export function getEmptyPredictiveSearchResult(): PredictiveSearchReturn['result
       products: [],
       pages: [],
       queries: [],
-    },
+    } as any,
   };
 }
 

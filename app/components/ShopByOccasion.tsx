@@ -25,7 +25,7 @@ const occasionsAr = [
 export function ShopByOccasion({ collections }: { collections?: any[] }) {
     const { locale } = useOutletContext<{ locale: string }>();
     const isEn = locale === 'en';
-    
+
     // Merge Shopify data with static metadata
     const occasions = (isEn ? occasionsEn : occasionsAr).map(occasion => {
         const shopifyCollection = collections?.find(c => c.handle === occasion.handle);
@@ -44,7 +44,7 @@ export function ShopByOccasion({ collections }: { collections?: any[] }) {
                     <h2 className="text-[36px] lg:text-[50px] font-bold text-[#171717] mb-4 leading-none" style={!isEn ? { fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" } : undefined}>
                         {isEn ? 'What is your occasion?' : 'ما هي مناسبتك؟'}
                     </h2>
-                    <p className="text-[#7D7D7D] text-[14px] lg:text-[16px] font-medium tracking-wide" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
+                    <p className="text-[#7D7D7D] text-[16px] lg:text-[16px] font-medium tracking-wide" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
                         {isEn ? 'CHOOSE THE OCCASION AND WE PICK THE BEST FOR YOU' : 'اختار المناسبة ونختار لك الأفضل'}
                     </p>
                 </div>
@@ -56,25 +56,29 @@ export function ShopByOccasion({ collections }: { collections?: any[] }) {
                             key={index}
                             to={isEn ? `/en/occasions?category=${occasion.handle}` : `/occasions?category=${occasion.handle}`}
                             className="snap-start shrink-0 w-[calc(50vw-32px)] sm:w-[220px] md:w-[280px] max-w-full group flex flex-col bg-[#EED5D7] rounded-[20px] overflow-hidden transition-all duration-500 hover:shadow-xl hover:-translate-y-2 relative shadow-sm"
-                            style={{ 
+                            style={{
                                 aspectRatio: '280/344'
                             }}
                         >
                             {/* Pattern Overlay Layer */}
-                            <div 
-                                className="absolute inset-0 z-0 opacity-[0.35] pointer-events-none"
+                            <div
+                                className="absolute bottom-0 left-0 right-0 h-[30%] z-0 pointer-events-none"
                                 style={{
-                                    backgroundImage: `url('/images/pattern-2.svg')`,
-                                    backgroundSize: '70px',
-                                    backgroundPosition: 'center'
+                                    backgroundImage: `url('/assets/patterns/occassions-bg.svg')`,
+                                    backgroundSize: 'cover',
+                                    backgroundPosition: 'bottom center',
+                                    backgroundRepeat: 'no-repeat',
+                                    opacity: 0.4,
+                                    maskImage: 'linear-gradient(to top, rgba(0,0,0,1) 20%, rgba(0,0,0,0) 100%)',
+                                    WebkitMaskImage: 'linear-gradient(to top, rgba(0,0,0,1) 20%, rgba(0,0,0,0) 100%)'
                                 }}
                             />
-                            
+
                             <div className="p-3 lg:p-3.5 flex flex-col h-full relative z-10">
                                 {/* Image Container */}
                                 <div className="w-full aspect-square rounded-[14px] overflow-hidden bg-white relative shadow-sm">
-                                    <img 
-                                        src={occasion.image} 
+                                    <img
+                                        src={occasion.image}
                                         alt=""
                                         className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
                                     />
@@ -82,9 +86,9 @@ export function ShopByOccasion({ collections }: { collections?: any[] }) {
 
                                 {/* Label Area */}
                                 <div className="relative w-full pt-4 pb-2 mt-auto flex-1 flex items-center justify-center">
-                                   <h3 className="relative text-[22px] lg:text-[26px] font-bold text-[#1a1a1a] z-10 px-4 text-center leading-tight" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
-                                       {occasion.name}
-                                   </h3>
+                                    <h3 className="relative text-[22px] lg:text-[26px] font-bold text-[#171717] z-10 px-4 text-center leading-tight" style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" }}>
+                                        {occasion.name}
+                                    </h3>
                                 </div>
                             </div>
                         </Link>
@@ -95,7 +99,7 @@ export function ShopByOccasion({ collections }: { collections?: any[] }) {
                 <div className="mt-8 lg:mt-12 flex justify-center">
                     <Link
                         to={isEn ? "/en/occasions" : "/occasions"}
-                        className="px-12 py-4 rounded-full border-2 border-[#1a3533]/20 text-[#1a3533] font-bold text-[15px] lg:text-[18px] transition-all hover:bg-[#1a3533] hover:!text-white hover:border-[#1a3533] active:scale-95"
+                        className="px-12 py-4 rounded-full border-2 border-[#234745] !text-[#234745] [font-family:'GE_Dinar_One',sans-serif] font-bold text-[15px] lg:text-[18px] transition-all hover:bg-[#1a3533] hover:!text-white hover:border-[#1a3533] active:scale-95"
                     >
                         {isEn ? 'Browse All Occasions' : 'تصفح كل المناسبات'}
                     </Link>

@@ -168,30 +168,14 @@ export default function Addresses() {
   return (
     <div className="account-addresses-section" dir={isEn ? 'ltr' : 'rtl'}>
       {/* Outer bordered container */}
-      <div style={{
-        background: '#FFFFFF',
-        border: '1px solid #9FB7AE',
-        borderRadius: '12px',
-        padding: '32px',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '8px',
-      }}>
+      <div className="bg-white border border-[#9FB7AE] rounded-2xl p-4 md:p-6 flex flex-col gap-2">
         {/* Title */}
-        <h2 style={{
-          fontWeight: 700,
-          fontSize: '18px',
-          lineHeight: '22px',
-          color: '#171717',
-          margin: 0,
-          padding: 0,
-          textAlign: isEn ? 'left' : 'right',
-        }}>
+        <h2 className="font-bold text-xl md:text-2xl text-[#171717] m-0 mb-2">
           {isEn ? 'Delivery Addresses' : 'عناوين التوصيل'}
         </h2>
 
         {/* Cards container */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '16px' }}>
+        <div className="flex flex-col gap-3 mt-2">
 
           {addresses.nodes.map((address) => {
             const isDefault = defaultAddress?.id === address.id;
@@ -201,119 +185,71 @@ export default function Addresses() {
             return (
               <div
                 key={address.id}
-                style={{
-                  boxSizing: 'border-box',
-                  display: 'flex',
-                  flexDirection: 'row',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  padding: '12px 24px',
-                  gap: '16px',
-                  background: isDefault ? '#FEF8EB' : 'transparent',
-                  border: isDefault ? '1px solid #234745' : '1px solid #BBCFCD',
-                  borderRadius: '12px',
-                }}
+                className={`flex flex-col p-5 gap-3.5 rounded-[20px] border-2 transition-all ${
+                  isDefault ? 'bg-[#FEF8EB] border-[#234745]' : 'bg-transparent border-[#BBCFCD]'
+                }`}
               >
-                {/*
-                  RTL LOGIC:
-                  In RTL flex-row, FIRST element in HTML = appears on RIGHT.
-                  So Radio+Label goes FIRST (appears RIGHT), Actions goes SECOND (appears LEFT).
-                */}
-
-                {/* RIGHT content: Radio + Label + Address */}
-                <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'flex-start', gap: '16px' }}>
-                  {/* Radio: first in HTML = rightmost in RTL */}
-                  <div style={{
-                    width: '24px',
-                    height: '24px',
-                    borderRadius: '50%',
-                    background: isDefault ? '#234745' : 'transparent',
-                    border: isDefault ? 'none' : '2px solid #BBCFCD',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0,
-                    marginTop: '2px',
-                  }}>
-                    {isDefault && <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#fff' }} />}
-                  </div>
-
-                  {/* Label + badge + address text */}
-                  <div>
-                    {/* Label + Badge row — in RTL: first = rightmost */}
-                    <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                      <span style={{ fontWeight: 700, fontSize: '16px', lineHeight: '20px', color: '#234745' }}>
-                        {label}
-                      </span>
-                      {isDefault && (
-                        <div style={{
-                          border: '1px solid #906B51',
-                          borderRadius: '18px',
-                          padding: '3px 8px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                        }}>
-                          <span style={{ fontSize: '10px', fontWeight: 500, lineHeight: '12px', color: '#906B51', whiteSpace: 'nowrap' }}>
-                            {isEn ? 'Default' : 'افتراضي'}
-                          </span>
-                        </div>
-                      )}
+                {/* Top row: Radio + Label + Badge | Actions */}
+                <div className="flex flex-row flex-wrap items-center justify-between gap-2.5 w-full">
+                  {/* Radio + Label + Badge */}
+                  <div className="flex items-center gap-2.5">
+                    {/* Radio dot */}
+                    <div className={`w-5.5 h-5.5 rounded-full flex items-center justify-center flex-shrink-0 border-2 transition-all ${
+                      isDefault ? 'bg-[#234745] border-transparent' : 'bg-transparent border-[#BBCFCD]'
+                    }`}>
+                      {isDefault && <div className="w-2.5 h-2.5 rounded-full bg-white" />}
                     </div>
-                    {/* Address text */}
-                    <p style={{ margin: 0, fontWeight: 500, fontSize: '14px', lineHeight: '17px', color: '#9FB7AE' }}>
-                      {addressText}
-                    </p>
+                    <span className="font-bold text-base md:text-lg text-[#234745]">{label}</span>
+                    {isDefault && (
+                      <div className="border border-[#906B51] rounded-full px-3 py-0.5 inline-flex items-center">
+                        <span className="text-[10px] md:text-xs font-semibold text-[#906B51] whitespace-nowrap">
+                          {isEn ? 'Default' : 'افتراضي'}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex flex-row items-center gap-3.5 flex-wrap text-xs md:text-sm font-semibold">
+                    <button 
+                      type="button" 
+                      onClick={() => setActiveModal({ type: 'edit', address })}
+                      className="text-[#906B51] hover:text-[#906B51]/80 underline transition-colors"
+                    >
+                      {isEn ? 'Edit' : 'تعديل'}
+                    </button>
+                    {!isDefault && (
+                      <Form method="PUT" style={{ display: 'contents' }}>
+                        <input type="hidden" name="addressId" value={address.id} />
+                        <input type="hidden" name="defaultAddress" value="on" />
+                        <input type="hidden" name="address1" value={address.address1 ?? ''} />
+                        <input type="hidden" name="address2" value={address.address2 ?? ''} />
+                        <input type="hidden" name="city" value={address.city ?? ''} />
+                        <input type="hidden" name="firstName" value={address.firstName ?? ''} />
+                        <input type="hidden" name="lastName" value={address.lastName ?? ''} />
+                        <input type="hidden" name="phone" value={address.phone ?? ''} />
+                        <button 
+                          type="submit"
+                          className="text-[#234745] hover:text-[#234745]/80 underline transition-colors whitespace-nowrap"
+                        >
+                          {isEn ? 'Set as Default' : 'تعيين كافتراضي'}
+                        </button>
+                      </Form>
+                    )}
+                    <button 
+                      type="button" 
+                      onClick={() => setAddressToDelete(address.id)}
+                      className="text-[#E64950] hover:text-[#E64950]/80 transition-colors"
+                    >
+                      {isEn ? 'Delete' : 'حذف'}
+                    </button>
                   </div>
                 </div>
 
-                {/* LEFT content: Actions — second in HTML = leftmost in RTL */}
-                <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '24px', flexShrink: 0 }}>
-                  {/*
-                    Actions are also in RTL context.
-                    First in HTML = rightmost within the actions div.
-                    Visual target (left→right): حذف | تعيين كافتراضي | تعديل
-                    So: تعديل first (rightmost), حذف last (leftmost).
-                  */}
-
-                  {/* تعديل — rightmost */}
-                  <button
-                    type="button"
-                    onClick={() => setActiveModal({ type: 'edit', address })}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontWeight: 500, fontSize: '14px', lineHeight: '17px', color: '#906B51', textDecoration: 'underline', fontFamily: 'inherit' }}
-                  >
-                    {isEn ? 'Edit' : 'تعديل'}
-                  </button>
-
-                  {/* تعيين كافتراضي — middle (only for non-default) */}
-                  {!isDefault && (
-                    <Form method="PUT" style={{ display: 'contents' }}>
-                      <input type="hidden" name="addressId" value={address.id} />
-                      <input type="hidden" name="defaultAddress" value="on" />
-                      <input type="hidden" name="address1" value={address.address1 ?? ''} />
-                      <input type="hidden" name="address2" value={address.address2 ?? ''} />
-                      <input type="hidden" name="city" value={address.city ?? ''} />
-                      <input type="hidden" name="firstName" value={address.firstName ?? ''} />
-                      <input type="hidden" name="lastName" value={address.lastName ?? ''} />
-                      <input type="hidden" name="phone" value={address.phone ?? ''} />
-                      <button
-                        type="submit"
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontWeight: 500, fontSize: '14px', lineHeight: '17px', color: '#255441', textDecoration: 'underline', fontFamily: 'inherit' }}
-                      >
-                        {isEn ? 'Set as Default' : 'تعيين كافتراضي'}
-                      </button>
-                    </Form>
-                  )}
-
-                  {/* حذف — leftmost */}
-                  <button
-                    type="button"
-                    onClick={() => setAddressToDelete(address.id)}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontWeight: 500, fontSize: '14px', lineHeight: '17px', color: '#E64950', fontFamily: 'inherit' }}
-                  >
-                    {isEn ? 'Delete' : 'حذف'}
-                  </button>
-                </div>
+                {/* Address text — second line */}
+                <p className="margin-0 font-medium text-xs md:text-sm text-[#8fa49c] text-center w-full mt-1">
+                  {addressText}
+                </p>
               </div>
             );
           })}
@@ -322,31 +258,16 @@ export default function Addresses() {
           <button
             type="button"
             onClick={() => setActiveModal({ type: 'create' })}
-            style={{
-              boxSizing: 'border-box',
-              display: 'flex',
-              flexDirection: 'row',
-              justifyContent: 'center',
-              alignItems: 'center',
-              padding: '12px 24px',
-              gap: '8px',
-              width: '100%',
-              height: '48px',
-              background: 'transparent',
-              border: '1px solid #BBCFCD',
-              borderRadius: '12px',
-              cursor: 'pointer',
-            }}
+            className="w-full flex items-center justify-center gap-2 p-3.5 bg-transparent border-2 border-[#BBCFCD] hover:border-[#234745] rounded-2xl transition-all mt-1"
           >
-            <span style={{ fontWeight: 700, fontSize: '16px', lineHeight: '20px', color: '#234745', fontFamily: 'inherit' }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+              <line x1="12" y1="6" x2="12" y2="18" stroke="#234745" strokeWidth="2.5" strokeLinecap="round" />
+              <line x1="6" y1="12" x2="18" y2="12" stroke="#234745" strokeWidth="2.5" strokeLinecap="round" />
+            </svg>
+            <span className="font-bold text-sm md:text-base text-[#234745]">
               {isEn ? 'Add New Address' : 'إضافة عنوان جديد'}
             </span>
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-              <line x1="12" y1="6" x2="12" y2="18" stroke="#234745" strokeWidth="1.5" strokeLinecap="round" />
-              <line x1="6" y1="12" x2="18" y2="12" stroke="#234745" strokeWidth="1.5" strokeLinecap="round" />
-            </svg>
           </button>
-
         </div>
       </div>
 
@@ -369,7 +290,6 @@ export default function Addresses() {
     </div>
   );
 }
-
 
 function DeleteConfirmationModal({ onClose, addressId, locale }: { onClose: () => void, addressId: string, locale: string }) {
   const isEn = locale === 'en';
@@ -453,7 +373,7 @@ function AddressModal({ type, address, isDefault, onClose }: { type: 'create' | 
 
       try {
         const response = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${googleMapsKey}&language=${isEn ? 'en' : 'ar'}`);
-        const data = await response.data() as any;
+        const data = await response.json() as any;
         if (data.results?.[0]) {
             const result = data.results[0];
             setAddressLine1(result.formatted_address);
@@ -474,7 +394,7 @@ function AddressModal({ type, address, isDefault, onClose }: { type: 'create' | 
     
     try {
         const response = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(query)}&key=${googleMapsKey}&language=${isEn ? 'en' : 'ar'}`);
-        const data = await response.data() as any;
+        const data = await response.json() as any;
         if (data.results?.[0]) {
             const result = data.results[0];
             setAddressLine1(result.formatted_address);

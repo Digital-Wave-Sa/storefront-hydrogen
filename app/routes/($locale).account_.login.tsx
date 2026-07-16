@@ -4,6 +4,7 @@ import { Form, Link, useActionData, useNavigation, useRouteLoaderData } from 're
 import { LogoSplash } from '~/components/LogoSplash';
 import { SaadeddinApi } from '~/lib/saadeddin-api.server';
 import { SocialLogins } from '~/components/SocialLogins';
+import { derivePassword } from '~/lib/auth.server';
 
 export const meta: MetaFunction<typeof loader> = () => {
   return [{ title: 'Login | Saadeddin' }];
@@ -80,7 +81,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
         body: JSON.stringify({ query: graphqlQuery })
       });
 
-      const dataRes = await response.json();
+      const dataRes = await response.json() as any;
       const customers = dataRes?.data?.customers?.edges?.map((e: any) => ({
         id: e.node.id.split('/').pop(),
         email: e.node.email,
@@ -98,7 +99,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
       // Try to send OTP via Custom CRM API
       try {
         const api = new SaadeddinApi(env);
-        await api.requestOtp(fullPhone);
+        await api.requestOtp(fullPhone, 'login');
       } catch (otpErr: any) {
         console.error('Custom API OTP request failed:', otpErr);
         // If the error indicates account doesn't exist, show that message
@@ -138,7 +139,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
     }
 
     // Step 1: Verify OTP directly against the custom API (with mock fallback for bypass)
-    const isBypass = otp === '000000';
+    const isBypass = otp === '0000';
     let verifyCode = otp;
     let saadeddinToken: string | null = null;
     let useMockToken = false;
@@ -146,7 +147,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
     if (isBypass) {
       try {
         const devOtpRes = await fetch(`${env.CUSTOM_API_URL || 'https://api.pryvexapls.com'}/auth/_dev/otp/${encodeURIComponent(savedPhone)}`);
-        const devOtpData = await devOtpRes.json();
+        const devOtpData = await devOtpRes.json() as any;
         if (devOtpData.success && devOtpData.data?.code) {
           verifyCode = devOtpData.data.code;
         } else {
@@ -167,6 +168,16 @@ export async function action({ request, context }: ActionFunctionArgs) {
         const customLogin = await api.login(savedPhone, verifyCode);
         if (customLogin?.token) {
           saadeddinToken = customLogin.token;
+          if (customLogin.profile) {
+            const profile = customLogin.profile;
+            if (profile.email) {
+              session.set('loginCustomerEmail', profile.email);
+            }
+            if (profile.shopifyId) {
+              const id = profile.shopifyId.split('/').pop();
+              session.set('loginCustomerId', id);
+            }
+          }
         } else {
           throw new Error(lang === 'en' ? 'Invalid verification code.' : 'رمز التحقق غير صحيح.');
         }
@@ -183,40 +194,58 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
     // Step 2: Try to create a Shopify session (best-effort, non-fatal)
     try {
-      const { getAdminToken } = await import('~/lib/shopify-admin.server');
-      const adminToken = await getAdminToken(env);
-      const newPassword = Math.random().toString(36).slice(-10) + 'A1!';
-      const customerId = session.get('loginCustomerId');
+      const stablePassword = await derivePassword(savedPhone, env.SESSION_SECRET || 'saadeddin-otp-secret');
       const email = session.get('loginCustomerEmail');
+      const customerId = session.get('loginCustomerId');
 
-      if (customerId && adminToken) {
-        // Update customer password via Admin API
-        const updateRes = await fetch(`https://${env.PUBLIC_STORE_DOMAIN}/admin/api/2023-04/customers/${customerId}.json`, {
-          method: 'PUT',
-          headers: {
-            'X-Shopify-Access-Token': adminToken,
-            'Content-Type': 'application/json',
+      let tokenResponse = await storefront.mutate(LOGIN_MUTATION, {
+        variables: {
+          input: {
+            email: email || `${savedPhone.replace('+', '')}@example.com`,
+            password: stablePassword,
           },
-          body: JSON.stringify({
-            customer: { id: customerId, password: newPassword, password_confirmation: newPassword }
-          })
-        });
+        },
+      });
 
-        if (updateRes.ok) {
-          // Get Shopify storefront access token
-          const tokenResponse = await storefront.mutate(LOGIN_MUTATION, {
-            variables: {
-              input: {
-                email: email || `${savedPhone.replace('+', '')}@example.com`,
-                password: newPassword,
-              },
+      let token = tokenResponse.customerAccessTokenCreate?.customerAccessToken || null;
+
+      // If authentication fails and customerId is present, reset their password to stablePassword and try again
+      if (!token && customerId) {
+        const { getAdminToken } = await import('~/lib/shopify-admin.server');
+        const adminToken = await getAdminToken(env);
+        if (adminToken) {
+          console.log('[Login] Direct authentication failed, resetting customer password to stablePassword');
+          const updateRes = await fetch(`https://${env.PUBLIC_STORE_DOMAIN}/admin/api/2023-04/customers/${customerId}.json`, {
+            method: 'PUT',
+            headers: {
+              'X-Shopify-Access-Token': adminToken,
+              'Content-Type': 'application/json',
             },
+            body: JSON.stringify({
+              customer: { id: customerId, password: stablePassword, password_confirmation: stablePassword }
+            })
           });
-          const token = tokenResponse.customerAccessTokenCreate?.customerAccessToken;
-          if (token) session.set('customerAccessToken', token);
-        } else {
-          console.warn('[Login] Shopify Admin password update returned non-OK:', updateRes.status);
+
+          if (updateRes.ok) {
+            tokenResponse = await storefront.mutate(LOGIN_MUTATION, {
+              variables: {
+                input: {
+                  email: email || `${savedPhone.replace('+', '')}@example.com`,
+                  password: stablePassword,
+                },
+              },
+            });
+            token = tokenResponse.customerAccessTokenCreate?.customerAccessToken || null;
+          } else {
+            console.warn('[Login] Shopify Admin password reset failed:', updateRes.status);
+          }
         }
+      }
+
+      if (token) {
+        session.set('customerAccessToken', token);
+      } else {
+        console.warn('[Login] Failed to create customerAccessToken');
       }
     } catch (shopifyErr) {
       console.warn('[Login] Shopify session creation failed (non-fatal):', shopifyErr);
@@ -244,10 +273,8 @@ export default function Login() {
 
   const [step, setStep] = useState<'input' | 'otp'>('input');
   const [phone, setPhone] = useState('');
-  const [otpValue, setOtpValue] = useState(['', '', '', '', '', '']);
+  const [otpValue, setOtpValue] = useState(['', '', '', '']);
   const otpRefs = [
-    useRef<HTMLInputElement>(null),
-    useRef<HTMLInputElement>(null),
     useRef<HTMLInputElement>(null),
     useRef<HTMLInputElement>(null),
     useRef<HTMLInputElement>(null),
@@ -264,7 +291,7 @@ export default function Login() {
     const newOtp = [...otpValue];
     newOtp[index] = value;
     setOtpValue(newOtp);
-    if (value && index < 5) otpRefs[index + 1].current?.focus();
+    if (value && index < 3) otpRefs[index + 1].current?.focus();
   };
 
   const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {

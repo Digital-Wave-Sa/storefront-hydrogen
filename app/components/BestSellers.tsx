@@ -147,7 +147,7 @@ export function BestSellers({
                                         const isWishlisted = isInWishlist(product.id);
 
                                         return (
-                                            <div key={product.id} className={`snap-start shrink-0 w-[85vw] max-w-[320px] md:max-w-none md:w-full flex flex-col h-full rounded-[20px] border-0 overflow-hidden relative ${isVisibilityBlocked || (isOutOfStock && !isPreorder) ? 'product--disabled grayscale-[30%]' : 'group hover:shadow-[0_10px_40px_-10px_rgba(0,0,0,0.1)]'} transition-all duration-300`} style={{ backgroundColor: '#dce5df' }}>
+                                            <div key={product.id} className={`snap-start shrink-0 w-[85vw] max-w-[320px] md:max-w-none md:w-full flex flex-col h-full rounded-[20px] border-0 overflow-hidden relative ${isVisibilityBlocked ? 'product--disabled grayscale-[30%]' : 'group hover:shadow-[0_10px_40px_-10px_rgba(0,0,0,0.1)]'} transition-all duration-300`} style={{ backgroundColor: '#dce5df' }}>
 
                                                 {/* Top Action / Heart */}
                                                 {!isVisibilityBlocked && (
@@ -171,16 +171,16 @@ export function BestSellers({
 
                                                 {/* Status Badges Overlay (Stacking top right) */}
                                                 <div className="absolute top-4 ltr:right-4 rtl:left-auto rtl:right-4 z-10 flex flex-col gap-2 items-end">
-                                                    {(isVisibilityBlocked || (isOutOfStock && !isPreorder) || showPreorder) && (
+                                                    {(isVisibilityBlocked || showPreorder) && (
                                                       <span className={`text-[11px] font-bold px-3 py-1.5 rounded-full shadow-sm flex items-center gap-1.5 ${
                                                         isVisibilityBlocked 
                                                           ? (visibility.status === 'scheduled' ? 'bg-amber-500 text-white' : 'bg-red-500 text-white')
-                                                          : (showPreorder ? 'bg-[#004f59] text-white' : 'bg-red-500 text-white')
+                                                          : 'bg-[#004f59] text-white'
                                                       }`}>
-                                                        <span>{isVisibilityBlocked ? (visibility.status === 'scheduled' ? '🕐' : '⛔') : (showPreorder ? '📦' : '⛔')}</span>
+                                                        <span>{isVisibilityBlocked ? (visibility.status === 'scheduled' ? '🕐' : '⛔') : '📦'}</span>
                                                         {isVisibilityBlocked 
                                                           ? (isEn ? visibility.label.en : visibility.label.ar)
-                                                          : (showPreorder ? t.common.preOrder : t.common.outOfStock)
+                                                          : t.common.preOrder
                                                         }
                                                       </span>
                                                     )}
@@ -244,15 +244,24 @@ export function BestSellers({
                                                             alt=""
                                                             loading="lazy"
                                                             sizes="(min-width: 45em) 25vw, 50vw"
-                                                            className={`w-full h-full object-cover transition-transform duration-700 ${effectiveOutOfStock ? 'grayscale' : 'group-hover:scale-105'}`}
+                                                            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                                                            style={{ opacity: isVisibilityBlocked ? 0.5 : (isOutOfStock && !isPreorder ? 0.4 : 1), filter: isVisibilityBlocked ? 'grayscale(1)' : 'none' }}
                                                         />
                                                     )}
 
-                                                    {/* Out of stock overlay */}
                                                     {!isVisibilityBlocked && isOutOfStock && !isPreorder && (
-                                                        <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex justify-center z-10 font-bold">
-                                                            <span className="bg-red-500 text-white px-6 py-2 rounded-full font-bold text-sm tracking-wide shadow-sm uppercase">
-                                                                {t.common.outOfStock}
+                                                        <div className="absolute bottom-[16px] left-1/2 -translate-x-1/2 z-10 pointer-events-none">
+                                                            <span
+                                                              className="flex items-center justify-center px-6 h-[40px] rounded-full font-bold text-[14px] whitespace-nowrap"
+                                                              style={{
+                                                                background: 'rgba(187, 207, 205, 0.72)',
+                                                                backdropFilter: 'blur(6px)',
+                                                                WebkitBackdropFilter: 'blur(6px)',
+                                                                color: '#ffffff',
+                                                                fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
+                                                              }}
+                                                            >
+                                                              {isEn ? 'Out of Stock' : 'نفذت الكمية'}
                                                             </span>
                                                         </div>
                                                     )}
@@ -269,14 +278,14 @@ export function BestSellers({
                                                     
                                                     {/* Title */}
                                                     <Link to={isVisibilityBlocked ? '#' : getProductUrl(product.handle)} onClick={isVisibilityBlocked ? (e: any) => e.preventDefault() : undefined}>
-                                                        <h3 className={`font-bold text-[#234745] line-clamp-1 transition-colors duration-300 ${isVisibilityBlocked ? '' : 'hover:text-[#1a3a2d]'}`} style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", fontSize: '18px', lineHeight: '24px' }}>
+                                                        <h3 className={`font-bold text-[#234745] line-clamp-1 transition-colors duration-300 ${isVisibilityBlocked ? '' : 'hover:text-[#1a3a2d]'}`} style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", fontSize: '18px', lineHeight: '24px', opacity: isOutOfStock && !isPreorder ? 0.4 : 1 }}>
                                                             {product.title}
                                                         </h3>
                                                     </Link>
 
                                                     {/* Price Row (Side by side) */}
                                                     {!isVisibilityBlocked ? (
-                                                      <div className="mt-2 mb-4 flex items-center gap-3 justify-start" dir={isEn ? 'ltr' : 'rtl'}>
+                                                      <div className="mt-2 mb-4 flex items-center gap-3 justify-start" style={{ opacity: isOutOfStock && !isPreorder ? 0.4 : 1 }} dir={isEn ? 'ltr' : 'rtl'}>
                                                           <div className="text-[#234745] flex items-baseline gap-1">
                                                               <Price data={product.priceRange.minVariantPrice} isEn={isEn} showSymbol={true} size="lg" />
                                                           </div>
@@ -367,7 +376,7 @@ function BestSellersAddToCart({
     isPreorder?: boolean;
     onNotifyClick?: () => void;
 }) {
-    const { setOpenAside } = useAside();
+    const { open: openAside } = useAside();
     const variantId = variant?.id;
     const isBogo = !!bogoFreeVariantId || (productTags?.some((t: string) => t.toLowerCase().includes('bogo')) ?? false);
 
@@ -375,7 +384,7 @@ function BestSellersAddToCart({
         return (
             <button
                 type="button"
-                className="w-full h-[44px] flex items-center justify-center rounded-full font-bold text-[15px] bg-amber-500 text-white hover:bg-amber-600 shadow-sm transition-all duration-300 active:scale-95"
+                className="w-full h-[40px] md:h-[44px] px-2 md:px-4 flex items-center justify-center rounded-full font-bold text-[12px] md:text-[15px] bg-[#234745] text-white hover:bg-[#163529] shadow-sm transition-all duration-300 active:scale-95"
                 style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
                 onClick={(e) => {
                     e.preventDefault();
@@ -383,7 +392,7 @@ function BestSellersAddToCart({
                     onNotifyClick?.();
                 }}
             >
-                🔔 {notifyLabel}
+                {notifyLabel}
             </button>
         );
     }
@@ -413,7 +422,7 @@ function BestSellersAddToCart({
     return (
         <AddToCartButton
             lines={lines}
-            className={`w-full h-[44px] flex items-center justify-center rounded-full font-bold text-[15px] shadow-sm transition-all duration-300 active:scale-95 ${isPreorder ? 'bg-[#004f59] text-white hover:bg-[#003d45]' : 'bg-[#234745] text-white hover:bg-[#163529]'}`}
+            className={`w-full h-[40px] md:h-[44px] px-2 md:px-4 flex items-center justify-center rounded-full font-bold text-[12px] md:text-[15px] shadow-sm transition-all duration-300 active:scale-95 ${isPreorder ? 'bg-[#004f59] text-white hover:bg-[#003d45]' : 'bg-[#234745] text-white hover:bg-[#163529]'}`}
             style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
             disabled={isOutOfStock}
         >

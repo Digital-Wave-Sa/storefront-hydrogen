@@ -94,7 +94,7 @@ const cakeOptions = {
   ]
 };
 
-export default function LolaCakeBuilder({ cakeAttributes = [], isEn = false }: { cakeAttributes?: any[], isEn?: boolean }) {
+export default function LolaCakeBuilder({ cakeAttributes = [], toppingDesigns = [], isEn = false }: { cakeAttributes?: any[], toppingDesigns?: any[], isEn?: boolean }) {
   const [currentStep, setCurrentStep] = useState(1);
   const [isFaqOpen, setIsFaqOpen] = useState(false);
   const [isCutaway, setIsCutaway] = useState(false);
@@ -105,60 +105,202 @@ export default function LolaCakeBuilder({ cakeAttributes = [], isEn = false }: {
   const touchEndRef = useRef<number | null>(null);
   const minSwipeDistance = 50;
 
+  const photoPrintPrice = React.useMemo(() => {
+    const photoPrintAttribute = cakeAttributes?.find(attr => {
+      if (!attr.nameEn?.value) return false;
+      const name = attr.nameEn.value.toLowerCase();
+      return name.includes('photo') || name.includes('print') || name.includes('upload') || name.includes('image');
+    });
+    return photoPrintAttribute?.priceDelta?.value ? parseInt(photoPrintAttribute.priceDelta.value, 10) : 20; // Default 20 SAR
+  }, [cakeAttributes]);
+
   const mergedOptions = React.useMemo(() => {
-    const mergeCategory = (options: any[]) => {
-      return options.map(option => {
-        const shopifyMatch = cakeAttributes?.find(attr => {
-          if (!attr.nameEn?.value) return false;
-          const shopifyName = attr.nameEn.value.toLowerCase();
-          return option.name.toLowerCase().includes(shopifyName) || option.id.replace(/-/g, ' ') === shopifyName;
-        });
+    // 1. Filter and map shapes from "base" attributes
+    const shapes = cakeAttributes
+      .filter(attr => attr.attributeType?.value?.toLowerCase() === 'base' || attr.attributeType?.value?.toLowerCase() === 'shape')
+      .map(attr => {
+        const nameEn = attr.nameEn?.value || 'Shape';
+        const nameAr = attr.nameAr?.value || '';
+        const id = nameEn.toLowerCase().replace(/[\s\-_]+/g, '_');
+        const rawPrice = attr.priceDelta?.value ? parseInt(attr.priceDelta.value, 10) : 0;
+        const price = isNaN(rawPrice) ? 0 : rawPrice;
+        const thumbnail = attr.thumbnailUrl?.reference?.image?.url || '/images/cake-builder/cake-round.webp';
         
-        let merged = { ...option };
-        if (shopifyMatch) {
-          if (shopifyMatch.thumbnailUrl?.reference?.image?.url) {
-            merged.image = shopifyMatch.thumbnailUrl.reference.image.url;
-          }
-          if (shopifyMatch.priceDelta?.value !== undefined && shopifyMatch.priceDelta?.value !== null) {
-            merged.price = parseInt(shopifyMatch.priceDelta.value, 10);
-          }
-        }
-        return merged;
+        return {
+          id,
+          name: nameAr ? `${nameAr} (${nameEn})` : nameEn,
+          price,
+          image: thumbnail,
+          imageFront: attr.imageFront?.reference?.image?.url,
+          imageTop: attr.imageTop?.reference?.image?.url,
+          imageSliced: attr.imageSliced?.reference?.image?.url,
+          is3D: true
+        };
       });
-    };
+
+    // 2. Filter and map flavors
+    const flavors = cakeAttributes
+      .filter(attr => attr.attributeType?.value?.toLowerCase() === 'flavor')
+      .map(attr => {
+        const nameEn = attr.nameEn?.value || 'Flavor';
+        const nameAr = attr.nameAr?.value || '';
+        const id = nameEn.toLowerCase().replace(/[\s\-_]+/g, '_');
+        const rawPrice = attr.priceDelta?.value ? parseInt(attr.priceDelta.value, 10) : 0;
+        const price = isNaN(rawPrice) ? 0 : rawPrice;
+        const thumbnail = attr.thumbnailUrl?.reference?.image?.url || '/cake/flavors/vanilla.png';
+        
+        return {
+          id,
+          name: nameAr ? `${nameAr} (${nameEn})` : nameEn,
+          price,
+          image: thumbnail,
+          color: '#f5deb3' // default color
+        };
+      });
+
+    // 3. Filter and map toppings (styles)
+    const toppingsList = cakeAttributes
+      .filter(attr => attr.attributeType?.value?.toLowerCase() === 'topping')
+      .map(attr => {
+        const nameEn = attr.nameEn?.value || 'Topping';
+        const nameAr = attr.nameAr?.value || '';
+        const id = nameEn.toLowerCase().replace(/[\s\-_]+/g, '_');
+        const rawPrice = attr.priceDelta?.value ? parseInt(attr.priceDelta.value, 10) : 0;
+        const price = isNaN(rawPrice) ? 0 : rawPrice;
+        const thumbnail = attr.thumbnailUrl?.reference?.image?.url || '';
+        
+        return {
+          id,
+          name: nameAr ? `${nameAr} (${nameEn})` : nameEn,
+          price,
+          image: thumbnail
+        };
+      });
+
+    // Add default "Smooth Minimalist" (basic) option as index 0 for toppings
+    const basicStyle = { id: 'basic', name: isEn ? 'Smooth Minimalist' : 'ناعم (Smooth Minimalist)', price: 0, image: '' };
+    const styles = [basicStyle, ...toppingsList];
+
+    // Fallbacks if lists are empty (to prevent crash)
+    const finalShapes = shapes.length ? shapes : [
+      { id: 'classic_round', name: 'دائري كلاسيكي (Classic Round)', price: 250, image: '/images/cake-builder/cake-round.webp', imageFront: undefined, imageTop: undefined, imageSliced: undefined, is3D: true }
+    ];
+    const finalFlavors = flavors.length ? flavors : [
+      { id: 'vanilla', name: 'فانيلا (Vanilla)', price: 0, image: '/cake/flavors/vanilla.png', color: '#f5deb3' }
+    ];
 
     return {
-      shapes: mergeCategory(cakeOptions.shapes),
-      sizes: mergeCategory(cakeOptions.sizes),
-      tiers: mergeCategory(cakeOptions.tiers),
-      flavors: mergeCategory(cakeOptions.flavors),
-      styles: mergeCategory(cakeOptions.styles),
-      colors: mergeCategory(cakeOptions.colors).map(c => ({ ...c, price: 0 }))
+      shapes: finalShapes,
+      sizes: cakeOptions.sizes,
+      tiers: cakeOptions.tiers,
+      flavors: finalFlavors,
+      styles,
+      colors: cakeOptions.colors.map(c => ({ ...c, price: 0 }))
     };
-  }, [cakeAttributes]);
+  }, [cakeAttributes, isEn]);
 
   const [selections, setSelections] = useState({
     shape: mergedOptions.shapes[0],
-    size: { id: 'standard', name: 'عادي (Standard)', price: 0, scale: 1.0 },
+    size: cakeOptions.sizes[1] || { id: '8-inch', name: 'وسط (Medium)', personsAr: '٨-١٢ شخصاً', personsEn: '8-12 Persons', price: 180, scale: 1.0 },
     tier: { id: '1-tier', name: 'طبقة واحدة (Single Tier)', price: 0, count: 1 },
     flavor: mergedOptions.flavors[0],
     style: mergedOptions.styles[0],
-    color: mergedOptions.colors[0],
+    color: cakeOptions.colors[0],
     message: '',
     textColor: '#4a2511',
     textFont: 'Classic',
     uploadedImage: null as string | null
   });
 
+  const [savedSelections, setSavedSelections] = useState<any | null>(null);
+  const hasLoadedRef = useRef(false);
+
+  // Load from localStorage on mount
+  React.useEffect(() => {
+    try {
+      const saved = localStorage.getItem('custom_cake_selections');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed) {
+          setSavedSelections(parsed);
+        }
+      }
+    } catch (e) {
+      console.error('Failed to load selections from localStorage:', e);
+    }
+  }, []);
+
+  // Sync dynamic selections when options load exactly once
+  React.useEffect(() => {
+    if (cakeAttributes?.length > 0 && !hasLoadedRef.current) {
+      hasLoadedRef.current = true;
+      
+      if (savedSelections) {
+        const shape = mergedOptions.shapes.find(s => s.id === savedSelections.shapeId) || mergedOptions.shapes[0];
+        const size = cakeOptions.sizes.find(s => s.id === savedSelections.sizeId) || selections.size;
+        const tier = cakeOptions.tiers.find(t => t.id === savedSelections.tierId) || selections.tier;
+        const flavor = mergedOptions.flavors.find(f => f.id === savedSelections.flavorId) || mergedOptions.flavors[0];
+        const style = mergedOptions.styles.find(s => s.id === savedSelections.styleId) || mergedOptions.styles[0];
+        const color = cakeOptions.colors.find(c => c.id === savedSelections.colorId) || selections.color;
+        
+        setSelections({
+          shape,
+          size,
+          tier,
+          flavor,
+          style,
+          color,
+          message: savedSelections.message || '',
+          textColor: savedSelections.textColor || '#4a2511',
+          textFont: savedSelections.textFont || 'Classic',
+          uploadedImage: savedSelections.uploadedImage || null
+        });
+      } else {
+        setSelections(prev => ({
+          ...prev,
+          shape: mergedOptions.shapes.find(s => s.id === prev.shape?.id) || mergedOptions.shapes[0],
+          flavor: mergedOptions.flavors.find(f => f.id === prev.flavor?.id) || mergedOptions.flavors[0],
+          style: mergedOptions.styles.find(s => s.id === prev.style?.id) || mergedOptions.styles[0],
+        }));
+      }
+    }
+  }, [mergedOptions, cakeAttributes, savedSelections]);
+
+  // Auto-save selections to localStorage on change
+  React.useEffect(() => {
+    if (hasLoadedRef.current) {
+      const dataToSave = {
+        shapeId: selections.shape?.id,
+        sizeId: selections.size?.id,
+        tierId: selections.tier?.id,
+        flavorId: selections.flavor?.id,
+        styleId: selections.style?.id,
+        colorId: selections.color?.id,
+        message: selections.message,
+        textColor: selections.textColor,
+        textFont: selections.textFont,
+        uploadedImage: selections.uploadedImage
+      };
+      try {
+        localStorage.setItem('custom_cake_selections', JSON.stringify(dataToSave));
+      } catch (e) {
+        console.error('Failed to save selections to localStorage:', e);
+      }
+    }
+  }, [selections]);
+
   const [view, setView] = useState<'front' | 'top' | 'sliced'>('front');
 
   const supportedViews = React.useMemo(() => {
+    const shape = selections.shape;
+    const hasTop = !!((shape as any).imageTop || ['classic_round', 'standard', 'mini_cake', 'small_standard', 'circle'].includes(shape.id));
+    const hasSliced = !!((shape as any).imageSliced || ['classic_round', 'standard', 'mini_cake', 'small_standard', 'circle'].includes(shape.id));
     return {
       front: true,
-      top: false,
-      sliced: false,
+      top: hasTop,
+      sliced: hasSliced,
     };
-  }, []);
+  }, [selections.shape]);
 
   React.useEffect(() => {
     if (view === 'top' && !supportedViews.top) {
@@ -181,7 +323,7 @@ export default function LolaCakeBuilder({ cakeAttributes = [], isEn = false }: {
   React.useEffect(() => {
     const isSquareOrSheet = selections.shape.id === 'square' || selections.shape.id === 'sheet';
     if (isSquareOrSheet && selections.style.id !== 'basic') {
-      const basicStyle = mergedOptions.styles.find(s => s.id === 'basic') || { id: 'basic', name: 'ناعم (Smooth Minimalist)', price: 0 };
+      const basicStyle = mergedOptions.styles.find(s => s.id === 'basic') || { id: 'basic', name: 'ناعم (Smooth Minimalist)', price: 0, image: '' };
       setSelections(prev => ({ ...prev, style: basicStyle }));
     }
   }, [selections.shape.id, mergedOptions.styles, selections.style.id]);
@@ -232,12 +374,14 @@ export default function LolaCakeBuilder({ cakeAttributes = [], isEn = false }: {
 
   const calculateTotal = () => {
     let total = 0;
-    if (selections.shape) total += selections.shape.price;
-    if (selections.size) total += selections.size.price;
-    if (selections.tier) total += selections.tier.price;
-    if (selections.flavor) total += selections.flavor.price;
-    if (selections.style) total += selections.style.price;
-    if (selections.color) total += selections.color.price;
+    if (selections.shape && !isNaN(Number(selections.shape.price))) total += Number(selections.shape.price);
+    if (selections.size && !isNaN(Number(selections.size.price))) total += Number(selections.size.price);
+    if (selections.tier && !isNaN(Number(selections.tier.price))) total += Number(selections.tier.price);
+    if (selections.flavor && !isNaN(Number(selections.flavor.price))) total += Number(selections.flavor.price);
+    if (selections.style && !isNaN(Number(selections.style.price))) total += Number(selections.style.price);
+    if (selections.color && !isNaN(Number(selections.color.price))) total += Number(selections.color.price);
+    if (selections.uploadedImage && !isNaN(photoPrintPrice)) total += photoPrintPrice;
+    console.log('[DEBUG Price] shape:', selections.shape?.name, selections.shape?.price, 'size:', selections.size?.name, selections.size?.price, 'flavor:', selections.flavor?.name, selections.flavor?.price, 'style:', selections.style?.name, selections.style?.price, 'total:', total);
     return total;
   };
 
@@ -278,6 +422,9 @@ export default function LolaCakeBuilder({ cakeAttributes = [], isEn = false }: {
       });
       const data = (await response.json()) as any;
       if (data.checkoutUrl) {
+        try {
+          localStorage.removeItem('custom_cake_selections');
+        } catch (e) {}
         window.location.href = data.checkoutUrl;
       } else {
         alert(data.error || 'حدث خطأ أثناء إتمام الطلب');
@@ -316,7 +463,7 @@ export default function LolaCakeBuilder({ cakeAttributes = [], isEn = false }: {
   const renderOptionsGrid = (category: string, options: any[]) => (
     <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mt-6 w-full">
       {options.map(option => {
-        const isSelected = selections[category as keyof typeof selections]?.id === option.id;
+        const isSelected = (selections[category as keyof typeof selections] as any)?.id === option.id;
         const nameParts = option.name.split(' (');
         const displayName = isEn && nameParts.length > 1 ? nameParts[1].replace(')', '') : nameParts[0].trim();
 
@@ -590,9 +737,16 @@ export default function LolaCakeBuilder({ cakeAttributes = [], isEn = false }: {
                     </div>
                   )}
 
-                  {/* Image Upload */}
-                  <div className={isEn ? 'text-left' : 'text-right'}>
-                    <h2 className="text-2xl font-bold text-[#1a1a1a] mb-4">{isEn ? 'Printed Image on Cake' : 'صورة مطبوعة على الكيك'}</h2>
+                   {/* Image Upload */}
+                   <div className={isEn ? 'text-left' : 'text-right'}>
+                     <h2 className="text-2xl font-bold text-[#1a1a1a] mb-4">
+                       {isEn ? 'Printed Image on Cake' : 'صورة مطبوعة على الكيك'}
+                       {photoPrintPrice > 0 && (
+                         <span className="text-base font-semibold text-[#8b0000] ml-2 rtl:mr-2">
+                           (+{photoPrintPrice} {isEn ? 'SAR' : 'ر.س'})
+                         </span>
+                       )}
+                     </h2>
                     <div className="border-2 border-dashed border-[#A6C1B7] bg-[#F6FAF8] p-6 rounded-2xl text-center relative hover:bg-[#EEF5F2] transition-colors cursor-pointer">
                       <input 
                         type="file" 
@@ -601,6 +755,32 @@ export default function LolaCakeBuilder({ cakeAttributes = [], isEn = false }: {
                         onChange={(e) => {
                           const file = e.target.files?.[0];
                           if (file) {
+                            const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
+                            const isAllowedType = allowedTypes.includes(file.type.toLowerCase());
+                            const fileExtension = file.name.split('.').pop()?.toLowerCase();
+                            const allowedExtensions = ['png', 'jpg', 'jpeg', 'webp'];
+                            const isAllowedExtension = allowedExtensions.includes(fileExtension || '');
+
+                            if (!isAllowedType || !isAllowedExtension) {
+                              alert(isEn 
+                                ? 'Invalid file type. Please upload a valid image (PNG, JPG, WebP).' 
+                                : 'نوع ملف غير صالح. يرجى رفع صورة صالحة (PNG, JPG, WebP).'
+                              );
+                              e.target.value = '';
+                              return;
+                            }
+
+                            // Limit image size to 3MB to prevent localStorage quota issues and server payload errors
+                            const maxSizeBytes = 3 * 1024 * 1024;
+                            if (file.size > maxSizeBytes) {
+                              alert(isEn
+                                ? 'Image file size is too large. Please upload an image smaller than 3MB.'
+                                : 'حجم ملف الصورة كبير جداً. يرجى رفع صورة بحجم أقل من 3 ميجابايت.'
+                              );
+                              e.target.value = '';
+                              return;
+                            }
+
                             const reader = new FileReader();
                             reader.onload = (event) => {
                               setSelections(prev => ({ ...prev, uploadedImage: event.target?.result as string }));
@@ -695,6 +875,8 @@ export default function LolaCakeBuilder({ cakeAttributes = [], isEn = false }: {
                   view={view}
                   setView={setView}
                   currentStep={currentStep}
+                  cakeAttributes={cakeAttributes}
+                  toppingDesigns={toppingDesigns}
                 />
               </div>
             </div>

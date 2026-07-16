@@ -60,7 +60,7 @@ export async function getAdminToken(env: any): Promise<string> {
     });
 
     const responseText = await response.text();
-    let data;
+    let data: any;
     try {
       data = JSON.parse(responseText);
     } catch (e) {

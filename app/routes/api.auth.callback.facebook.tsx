@@ -29,7 +29,7 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
     tokenUrl.searchParams.set('code', code);
 
     const tokenResponse = await fetch(tokenUrl.toString());
-    const tokens = await tokenResponse.json();
+    const tokens = await tokenResponse.json() as any;
     if (tokens.error) throw new Error(tokens.error.message || 'Failed to exchange Facebook token');
 
     // 2. Get User Profile Info
@@ -38,7 +38,7 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
     profileUrl.searchParams.set('access_token', tokens.access_token);
 
     const userResponse = await fetch(profileUrl.toString());
-    const facebookUser = await userResponse.json();
+    const facebookUser = await userResponse.json() as any;
     const { email, first_name, last_name, id: fbId } = facebookUser;
 
     const finalEmail = email || `${fbId}@facebook.social.saadeddin.com`;
@@ -50,7 +50,7 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
     const searchRes = await fetch(`https://${domain}/admin/api/2023-04/customers/search.json?query=email:${finalEmail}`, {
       headers: { 'X-Shopify-Access-Token': adminToken },
     });
-    const { customers } = await searchRes.json();
+    const { customers } = await searchRes.json() as any;
 
     const existingCustomer = customers?.[0];
     const stablePassword = await derivePassword(fbId, env.SESSION_SECRET || 'saadeddin-social');
@@ -93,10 +93,10 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
         })
       });
       if (!createRes.ok) {
-        const errData = await createRes.json().catch(() => ({}));
+        const errData = (await createRes.json().catch(() => ({}))) as any;
         throw new Error(errData.errors ? JSON.stringify(errData.errors) : 'Failed to register social account.');
       }
-      const createData = await createRes.json();
+      const createData = await createRes.json() as any;
       customerEmail = createData.customer?.email || finalEmail;
       customerPhone = createData.customer?.phone || '';
     }

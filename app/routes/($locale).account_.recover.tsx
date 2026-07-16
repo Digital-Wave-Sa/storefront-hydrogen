@@ -40,7 +40,7 @@ export async function action({request, context}: ActionFunctionArgs) {
           'Content-Type': 'application/json',
         },
       });
-      const adminData = await adminResponse.json();
+      const adminData = (await adminResponse.json()) as any;
       
       if (!adminData.customers || adminData.customers.length === 0) {
         throw new Error(`Admin check: No customer found with email "${email}" in Shopify database.`);
@@ -52,14 +52,14 @@ export async function action({request, context}: ActionFunctionArgs) {
       }
     }
     
-    const {customerRecover} = await storefront.mutate(CUSTOMER_RECOVER_MUTATION, {
+    const {customerRecover} = (await storefront.mutate(CUSTOMER_RECOVER_MUTATION, {
       variables: {email},
-    });
+    })) as any;
 
     console.log('[DEBUG] Storefront Recover Response:', JSON.stringify(customerRecover));
 
-    if (customerRecover?.customerUserErrors?.length > 0) {
-      throw new Error(customerRecover.customerUserErrors[0].message);
+    if (customerRecover?.customerUserErrors?.length) {
+      throw new Error(customerRecover.customerUserErrors[0]?.message || 'Verification failed');
     }
 
     return data({resetRequested: true});

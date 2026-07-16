@@ -62,7 +62,7 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
         })
     });
 
-    const jsonRes = await res.json();
+    const jsonRes = await res.json() as any;
     const orderNode = jsonRes?.data?.orders?.edges?.[0]?.node;
 
     if (!orderNode) {
@@ -197,7 +197,7 @@ export default function TrackOrderPage() {
                             
                             {/* Items List */}
                             <div className="flex flex-col gap-6 mb-6">
-                                {orderData.items.map((item, idx) => (
+                                {orderData.items.map((item: any, idx: number) => (
                                     <div key={idx} className="flex gap-4">
                                         <div className="w-[60px] h-[60px] shrink-0 rounded-[12px] overflow-hidden bg-gray-50">
                                             <img src={item.image} alt={item.title} className="w-full h-full object-cover" />
@@ -205,7 +205,7 @@ export default function TrackOrderPage() {
                                         <div className="flex-1 flex flex-col justify-between">
                                             <h3 className="text-[14px] font-bold text-[#1A1A1A] leading-tight line-clamp-2">{item.title}</h3>
                                             <div className="flex items-center gap-2 flex-wrap">
-                                                {item.options.map((opt, i) => (
+                                                {item.options.map((opt: any, i: number) => (
                                                     <span key={i} className="text-[11px] text-[#8B8B8B] bg-[#F5F5F5] px-2 py-0.5 rounded-full border border-[#EBEBEB]">
                                                         {opt}
                                                     </span>
@@ -275,9 +275,15 @@ export default function TrackOrderPage() {
                                 <button className="w-full bg-[#234745] hover:bg-[#1a3533] text-white py-3.5 rounded-full font-bold transition-colors">
                                     {isEn ? 'Reorder' : 'إعادة الطلب'}
                                 </button>
-                                <a href={orderData.invoiceUrl} target="_blank" rel="noopener noreferrer" className="w-full bg-white border-[1.5px] border-[#234745] text-[#234745] hover:bg-gray-50 py-3.5 rounded-full font-bold transition-colors flex items-center justify-center">
-                                    {isEn ? 'Download Invoice' : 'تنزيل الفاتورة'}
-                                </a>
+                                {orderData.rawFinancialStatus?.toUpperCase() === 'PAID' ? (
+                                    <a href={`/api/invoice/${encodeURIComponent(orderData.id)}`} target="_blank" rel="noopener noreferrer" className="w-full bg-white border-[1.5px] border-[#234745] text-[#234745] hover:bg-gray-50 py-3.5 rounded-full font-bold transition-colors flex items-center justify-center cursor-pointer">
+                                        {isEn ? 'Download Invoice' : 'تنزيل الفاتورة'}
+                                    </a>
+                                ) : (
+                                    <div className="w-full bg-[#FFF5F5] border border-[#FFD8D8] text-[#E64950] py-3 rounded-full font-bold text-center text-[13px]">
+                                        {isEn ? 'Invoice pending payment' : 'الفاتورة بانتظار إتمام الدفع'}
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>

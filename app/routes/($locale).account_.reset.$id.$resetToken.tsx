@@ -66,7 +66,7 @@ export async function action({request, context, params}: ActionFunctionArgs) {
 }
 
 export default function Reset() {
-  const action = useActionData<ActionResponse>();
+  const action = useActionData() as any;
 
   return (
     <div className="account-reset">

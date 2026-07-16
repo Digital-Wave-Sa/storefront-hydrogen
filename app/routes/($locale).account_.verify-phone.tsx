@@ -69,7 +69,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
     const formattedPhone = `+966${cleanPhone}`;
 
     try {
-      await api.requestOtp(formattedPhone);
+      await api.requestOtp(formattedPhone, 'login');
       return data({ success: true, otpSent: true, phone: formattedPhone });
     } catch (e: any) {
       return data({ error: e.message || (isEn ? 'Failed to send verification code.' : 'فشل إرسال رمز التحقق.') }, { status: 400 });
@@ -82,7 +82,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
     try {
       // 1. Verify OTP with Saadeddin auth service
-      await api.verifyOtp(phone, code);
+      await api.verifyOtp(phone, code, 'login');
 
       // 2. Write the verified phone number to the customer profile in Shopify
       const updated = await storefront.mutate(CUSTOMER_PHONE_UPDATE_MUTATION, {

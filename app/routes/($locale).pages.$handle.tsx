@@ -18,8 +18,8 @@ export const meta: MetaFunction<typeof loader> = ({data}) => {
 };
 
 export async function loader({params, context}: LoaderFunctionArgs) {
-  if (!params.handle) {
-    throw new Error('Missing page handle');
+  if (!params.handle || params.handle === 'privacy') {
+    throw new Response('Not Found', {status: 404});
   }
 
   const {page} = await context.storefront.query(PAGE_QUERY, {

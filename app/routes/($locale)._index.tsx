@@ -14,8 +14,8 @@ import {CorporateGifting} from '~/components/CorporateGifting';
 import {getShopTitle} from '~/lib/seo';
 
 export const meta: Route.MetaFunction = ({matches}) => {
-  const rootMatch = matches.find((m) => m.id === 'root');
-  const rootData = rootMatch?.data as any;
+  const rootMatch = matches.find((m) => m?.id === 'root');
+  const rootData = (rootMatch as any)?.data as any;
   const isEn = rootData?.consent?.language?.toLowerCase() === 'en';
 
   const titleText = isEn ? 'Premium Sweets, Cakes & Chocolate' : 'حلويات، كيك وشوكولاتة فاخرة';

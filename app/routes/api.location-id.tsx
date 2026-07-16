@@ -9,6 +9,8 @@ export async function action({ request, context }: ActionFunctionArgs) {
     const manualLocationSelection = formData.get('manualLocationSelection');
     const attributesStr = formData.get('attributes');
     const buyerIdentityStr = formData.get('buyerIdentity');
+    const axStoreId = formData.get('axStoreId') || formData.get('ax_store_id');
+    const customBranchId = formData.get('customBranchId') || formData.get('branch_id');
     
     if (typeof fulfillmentType === 'string') {
         context.session.set('fulfillmentType', fulfillmentType);
@@ -25,25 +27,54 @@ export async function action({ request, context }: ActionFunctionArgs) {
     if (typeof manualLocationSelection === 'string') {
         context.session.set('manualLocationSelection', manualLocationSelection);
     }
+    if (typeof axStoreId === 'string') {
+        context.session.set('selectedAxStoreId', axStoreId);
+    }
+    if (typeof customBranchId === 'string') {
+        context.session.set('selectedCustomBranchId', customBranchId);
+    }
 
 
     try {
         const customerAccessToken = await context.session.get('customerAccessToken');
 
         // Sync Cart Attributes
-        let attributes = [];
+        let attributes = [] as any[];
         if (typeof attributesStr === 'string') {
             try {
-                attributes = JSON.parse(attributesStr);
+                attributes = JSON.parse(attributesStr) as any[];
             } catch (e) {}
         }
         
+        const sessionAxStoreId = (typeof axStoreId === 'string' ? axStoreId : (await context.session.get('selectedAxStoreId'))) || '';
+        const sessionCustomBranchId = (typeof customBranchId === 'string' ? customBranchId : (await context.session.get('selectedCustomBranchId'))) || '';
+
         if (attributes.length === 0) {
             attributes = [
                 { key: 'Branch', value: (typeof branchName === 'string' ? branchName : (await context.session.get('selectedLocationName'))) || '' },
                 { key: 'Branch ID', value: (typeof locationId === 'string' ? locationId : (await context.session.get('selectedLocationId'))) || '' },
                 { key: 'Fulfillment Type', value: typeof fulfillmentType === 'string' ? (fulfillmentType === 'pickup' ? 'Pickup' : 'Delivery') : 'Pickup' }
             ];
+        }
+
+        if (sessionCustomBranchId) {
+            if (!attributes.find((a: any) => a.key === 'custom.branch_id')) {
+                attributes.push({ key: 'custom.branch_id', value: sessionCustomBranchId });
+            }
+            if (!attributes.find((a: any) => a.key === 'branch_id')) {
+                attributes.push({ key: 'branch_id', value: sessionCustomBranchId });
+            }
+        }
+        if (sessionAxStoreId) {
+            if (!attributes.find((a: any) => a.key === 'custom.ax_store_id')) {
+                attributes.push({ key: 'custom.ax_store_id', value: sessionAxStoreId });
+            }
+            if (!attributes.find((a: any) => a.key === 'ax_store_id')) {
+                attributes.push({ key: 'ax_store_id', value: sessionAxStoreId });
+            }
+            if (!attributes.find((a: any) => a.key === 'AX Store ID')) {
+                attributes.push({ key: 'AX Store ID', value: sessionAxStoreId });
+            }
         }
         await context.cart.updateAttributes(attributes);
 

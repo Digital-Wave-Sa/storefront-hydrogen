@@ -136,10 +136,10 @@ export function CookieConsentBanner({ locale }: CookieConsentBannerProps) {
             : 'نستخدم ملفات تعريف الارتباط لتحسين تجربتك، وتخصيص المحتوى، وتحليل حركة الموقع. يمكنك قبول جميع ملفات تعريف الارتباط أو رفض غير الضرورية منها.'}
           {' '}
           <Link
-            to={isEn ? '/en/pages/privacy' : '/pages/privacy'}
+            to={isEn ? '/en/pages/terms' : '/pages/terms'}
             style={{ color: '#d4a06a', textDecoration: 'underline', whiteSpace: 'nowrap' }}
           >
-            {isEn ? 'Privacy Policy' : 'سياسة الخصوصية'}
+            {isEn ? 'Terms and Conditions' : 'الشروط والأحكام'}
           </Link>
         </p>
 

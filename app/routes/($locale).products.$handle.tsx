@@ -42,7 +42,7 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => {
   if (!data?.product) {
     return [{ title: 'Saadeddin' }];
   }
-  const { product, locale } = data;
+  const { product, locale } = data as any;
   const isEn = locale === 'en';
   const price = product.selectedVariant?.price;
   const priceString = price ? `${price.amount} ${price.currencyCode}` : '';
@@ -220,7 +220,7 @@ export async function loader(args: LoaderFunctionArgs) {
             }
           `;
 
-        const reviewsResult = await adminApiQuery(shopDomain, adminToken, reviewsQuery);
+        const reviewsResult = await adminApiQuery(shopDomain, adminToken, reviewsQuery) as any;
 
         const allReviews = reviewsResult.data?.metaobjects?.nodes?.map((node: any) => {
           const f: any = {};
@@ -267,13 +267,13 @@ export async function loader(args: LoaderFunctionArgs) {
               const res = await fetch(`https://${shopDomain}/admin/api/2023-04/customers/search.json?query=${queryStr}`, {
                 headers: { 'X-Shopify-Access-Token': token, 'Content-Type': 'application/json' },
               });
-              const { customers } = await res.json();
+              const { customers } = await res.json() as any;
               if (customers && customers.length > 0) {
                 const adminCust = customers[0];
                 const ordersRes = await fetch(`https://${shopDomain}/admin/api/2023-04/customers/${adminCust.id}/orders.json?status=any`, {
                   headers: { 'X-Shopify-Access-Token': token, 'Content-Type': 'application/json' },
                 });
-                const { orders } = await ordersRes.json();
+                const { orders } = await ordersRes.json() as any;
                 if (orders) {
                   hasPurchased = orders.some((o: any) =>
                     o.line_items?.some((li: any) => li.product_id && `gid://shopify/Product/${li.product_id}` === product.id)
@@ -326,8 +326,8 @@ export async function loader(args: LoaderFunctionArgs) {
     (async () => {
       let recommended: any = { products: { nodes: [] } };
 
-      if (product.related_products?.references?.nodes?.length > 0) {
-        recommended.products.nodes = product.related_products.references.nodes;
+      if ((product.related_products as any)?.references?.nodes?.length > 0) {
+        recommended.products.nodes = (product.related_products as any).references.nodes;
       } else {
         try {
           const recommendationsResult = await storefront.query(RECOMMENDED_PRODUCTS_QUERY, {
@@ -346,8 +346,8 @@ export async function loader(args: LoaderFunctionArgs) {
           const collectionResult = await storefront.query(COLLECTION_PRODUCTS_QUERY, {
             variables: { collectionId: product.collections.nodes[0].id },
           });
-          if (collectionResult.collection?.products?.nodes?.length > 0) {
-            recommended.products.nodes = collectionResult.collection.products.nodes.filter(
+          if ((collectionResult as any).collection?.products?.nodes?.length > 0) {
+            recommended.products.nodes = (collectionResult as any).collection.products.nodes.filter(
               (p: any) => p.id !== product.id
             ).slice(0, 4);
           }
@@ -401,7 +401,7 @@ function redirectToFirstVariant({
 }
 
 export default function Product() {
-  const { product, variants, visibility, reviews: loaderReviews, dynamicRating: loaderRating, dynamicCount: loaderCount, recommended, hasPurchased } = useLoaderData<typeof loader>();
+  const { product, variants, visibility, reviews: loaderReviews, dynamicRating: loaderRating, dynamicCount: loaderCount, recommended, hasPurchased } = useLoaderData<any>();
   const rootData = useRouteLoaderData('root') as any;
   const locale = rootData?.consent?.language?.toLowerCase() || 'ar';
   const isEn = locale === 'en';
@@ -796,6 +796,18 @@ export default function Product() {
         }}
       />
 
+      {/* Stock Notification Modal (STOQ integration) */}
+      <StockNotificationModal
+        isOpen={isNotifyModalOpen}
+        onClose={() => setIsNotifyModalOpen(false)}
+        productTitle={product.title}
+        variantId={selectedVariant?.id || ''}
+        isEn={isEn}
+        customerEmail={customerEmail}
+        locationId={selectedLocationId || undefined}
+        locationName={selectedLocationName || undefined}
+      />
+
       {/* Visibility Alert Banner */}
       {isVisibilityBlocked && (
         <div className={`w-full py-4 text-center font-bold text-sm ${visibility.status === 'scheduled'
@@ -1029,17 +1041,27 @@ export default function Product() {
             </p>
 
             {/* Tags */}
-            <div className="flex flex-wrap items-center gap-[12px] mb-[24px] w-full" style={{ marginTop: '32px' }}>
-              <div className="h-[40px] px-[16px] bg-[#FEF8EB] rounded-[25px] border border-[#BBCFCD]/50 flex items-center justify-center whitespace-nowrap">
-                <span className="text-[#255441] text-[14px] font-normal" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>{isEn ? 'Vegan 100%' : 'نباتي 100%'}</span>
+            {((product as any).vegan?.value === 'true' || (product as any).vegan?.value === '1' ||
+              (product as any).lactose_free?.value === 'true' || (product as any).lactose_free?.value === '1' ||
+              (product as any).gluten_free?.value === 'true' || (product as any).gluten_free?.value === '1') && (
+              <div className="flex flex-wrap items-center gap-[12px] mb-[24px] w-full" style={{ marginTop: '32px' }}>
+                {((product as any).vegan?.value === 'true' || (product as any).vegan?.value === '1') && (
+                  <div className="h-[40px] px-[16px] bg-[#FEF8EB] rounded-[25px] border border-[#BBCFCD]/50 flex items-center justify-center whitespace-nowrap">
+                    <span className="text-[#255441] text-[14px] font-normal" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>{isEn ? 'Vegan 100%' : 'نباتي 100%'}</span>
+                  </div>
+                )}
+                {((product as any).lactose_free?.value === 'true' || (product as any).lactose_free?.value === '1') && (
+                  <div className="h-[40px] px-[16px] bg-[#FEF8EB] rounded-[25px] border border-[#BBCFCD]/50 flex items-center justify-center whitespace-nowrap">
+                    <span className="text-[#255441] text-[14px] font-normal" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>{isEn ? 'Lactose Free' : 'خالٍ من اللاكتوز'}</span>
+                  </div>
+                )}
+                {((product as any).gluten_free?.value === 'true' || (product as any).gluten_free?.value === '1') && (
+                  <div className="h-[40px] px-[16px] bg-[#FEF8EB] rounded-[25px] border border-[#BBCFCD]/50 flex items-center justify-center whitespace-nowrap">
+                    <span className="text-[#255441] text-[14px] font-normal" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>{isEn ? 'Gluten Free' : 'خالٍ من الغلوتين'}</span>
+                  </div>
+                )}
               </div>
-              <div className="h-[40px] px-[16px] bg-[#FEF8EB] rounded-[25px] border border-[#BBCFCD]/50 flex items-center justify-center whitespace-nowrap">
-                <span className="text-[#255441] text-[14px] font-normal" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>{isEn ? 'Lactose Free' : 'خالٍ من اللاكتوز'}</span>
-              </div>
-              <div className="h-[40px] px-[16px] bg-[#FEF8EB] rounded-[25px] border border-[#BBCFCD]/50 flex items-center justify-center whitespace-nowrap">
-                <span className="text-[#255441] text-[14px] font-normal" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>{isEn ? 'Gluten Free' : 'خالٍ من الغلوتين'}</span>
-              </div>
-            </div>
+            )}
 
             {/* Divider */}
             <div className="w-full h-[1px] bg-[#BBCFCD]/50 mb-[24px]"></div>
@@ -1197,11 +1219,19 @@ export default function Product() {
                         <div className="mt-[16px] flex flex-col gap-4 animate-fade-in p-[16px] bg-[#fdfdfd] border border-gray-100 rounded-[12px]">
                           <div className="flex flex-col gap-2">
                             <label className="text-[13px] font-bold text-[#1a1a1a] text-start">{isEn ? 'Recipient Name' : 'اسم المستلم'}</label>
-                            <input type="text" value={recipientName} onChange={e => setRecipientName(e.target.value)} className="w-full p-3 text-[14px] border border-[#BBCFCD]/50 rounded-[8px] focus:ring-[#234745] focus:border-[#234745] bg-white font-medium text-start" placeholder={isEn ? "e.g. Sarah" : "مثال: سارة"} />
+                            <input type="text" value={recipientName} onChange={e => setRecipientName(e.target.value)} maxLength={30} className="w-full p-3 text-[14px] border border-[#BBCFCD]/50 rounded-[8px] focus:ring-[#234745] focus:border-[#234745] bg-white font-medium text-start" placeholder={isEn ? "e.g. Sarah" : "مثال: سارة"} />
                           </div>
                           <div className="flex flex-col gap-2">
                             <label className="text-[13px] font-bold text-[#1a1a1a] text-start">{isEn ? 'Gift Message' : 'رسالة إهداء'}</label>
-                            <textarea value={note} onChange={e => setNote(e.target.value)} rows={3} className="w-full p-3 text-[14px] border border-[#BBCFCD]/50 rounded-[8px] focus:ring-[#234745] focus:border-[#234745] resize-none bg-white font-medium text-start" placeholder={isEn ? "Write a lovely message..." : "اكتب رسالة جميلة..."}></textarea>
+                            <textarea value={note} onChange={e => setNote(e.target.value)} rows={3} maxLength={150} className="w-full p-3 text-[14px] border border-[#BBCFCD]/50 rounded-[8px] focus:ring-[#234745] focus:border-[#234745] resize-none bg-white font-medium text-start" placeholder={isEn ? "Write a lovely message..." : "اكتب رسالة جميلة..."}></textarea>
+                            <div className="flex justify-between items-center text-[10px] text-gray-400 font-bold px-1">
+                              <span>{isEn ? 'Max 150 chars' : 'الحد الأقصى ١٥٠ حرفاً'}</span>
+                              <span>
+                                {isEn 
+                                  ? `${150 - note.length} remaining` 
+                                  : `متبقي ${150 - note.length} حرفاً`}
+                              </span>
+                            </div>
                           </div>
                           <label className="flex items-center gap-3 cursor-pointer group flex-row">
                             <input type="checkbox" checked={hideSender} onChange={e => setHideSender(e.target.checked)} className="w-[18px] h-[18px] rounded-[4px] text-[#234745] focus:ring-[#234745] border-[#BBCFCD]/50" />
@@ -1243,8 +1273,8 @@ export default function Product() {
                           value={cakeMessage}
                           onChange={e => setCakeMessage(e.target.value)}
                           className="w-full p-3 text-[14px] border border-[#BBCFCD]/50 rounded-[8px] focus:ring-[#234745] focus:border-[#234745] bg-white font-medium text-start z-10 transition-colors shadow-inner"
-                          placeholder={isEn ? "e.g. Happy Birthday Sarah" : "مثال: عيد ميلاد سعيد سارة"}
-                          maxLength={50}
+                          placeholder={isEn ? "e.g. Happy Birthday" : "مثال: عيد ميلاد سعيد"}
+                          maxLength={24}
                         />
                         <div className="flex items-center gap-2 mt-2 z-10">
                           <span className="text-[12px] text-[#d4a06a] font-semibold text-start">
@@ -1343,6 +1373,16 @@ export default function Product() {
                               selectedVariant,
                               attributes: [
                                 { key: '_groupId', value: groupId },
+                                ...(isBundle && bundleComponents.length > 0 ? [
+                                  {
+                                    key: isEn ? 'Bundle Includes' : 'محتويات العرض',
+                                    value: bundleComponents.map((c: any) => `• ${c.title}`).join('\n')
+                                  },
+                                  {
+                                    key: '_bundle_skus',
+                                    value: bundleComponents.map((c: any) => c.variants?.nodes?.[0]?.sku).filter(Boolean).join(', ')
+                                  }
+                                ] : []),
                                 ...(cakeMessage ? [{ key: 'Cake Message', value: cakeMessage }] : []),
                                 ...(isGiftMode ? [
                                   { key: '_isGift', value: 'true' },
@@ -1363,6 +1403,7 @@ export default function Product() {
                                 attributes: [
                                   { key: '_groupId', value: groupId },
                                   { key: '_is_addon', value: 'true' },
+                                  ...(variant?.sku ? [{ key: '_sku', value: variant.sku }] : []),
                                 ],
                               };
                             });
@@ -1403,6 +1444,23 @@ export default function Product() {
                         </>
                       )}
                     </AddToCartButton>
+
+                    {/* Notify Me button — shown only when out of stock */}
+                    {effectiveOutOfStock && (
+                      <button
+                        type="button"
+                        onClick={() => setIsNotifyModalOpen(true)}
+                        className="w-full h-[48px] bg-[#234745] hover:bg-[#1a3533] active:scale-[0.98] text-white rounded-[25px] flex items-center justify-center gap-[8px] transition-all mt-2"
+                      >
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                          <path d="M13.73 21a2 2 0 01-3.46 0" />
+                        </svg>
+                        <span style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", fontWeight: 700, fontSize: '16px', lineHeight: '20px' }}>
+                          {isEn ? 'Notify Me When Available' : 'أبلغني عند التوفر'}
+                        </span>
+                      </button>
+                    )}
 
                     {/* Buy Now */}
                     <button className="w-full h-[48px] bg-[#EED5D7] hover:bg-[#e4d0d0] active:scale-[0.98] transition-all text-[#E64950] rounded-[25px] flex items-center justify-center gap-[8px]">
@@ -1483,6 +1541,16 @@ export default function Product() {
                                   selectedVariant,
                                   attributes: [
                                     { key: '_groupId', value: groupId },
+                                    ...(isBundle && bundleComponents.length > 0 ? [
+                                      {
+                                        key: isEn ? 'Bundle Includes' : 'محتويات العرض',
+                                        value: bundleComponents.map((c: any) => `• ${c.title}`).join('\n')
+                                      },
+                                      {
+                                        key: '_bundle_skus',
+                                        value: bundleComponents.map((c: any) => c.variants?.nodes?.[0]?.sku).filter(Boolean).join(', ')
+                                      }
+                                    ] : []),
                                     ...(cakeMessage ? [{ key: 'Cake Message', value: cakeMessage }] : []),
                                     ...(isGiftMode ? [
                                       { key: '_isGift', value: 'true' },
@@ -1503,6 +1571,7 @@ export default function Product() {
                                     attributes: [
                                       { key: '_groupId', value: groupId },
                                       { key: '_is_addon', value: 'true' },
+                                      ...(variant?.sku ? [{ key: '_sku', value: variant.sku }] : []),
                                     ],
                                   };
                                 });
@@ -1543,6 +1612,23 @@ export default function Product() {
                             </span>
                           )}
                         </AddToCartButton>
+
+                        {/* Sticky Notify Me button — shown only when out of stock */}
+                        {effectiveOutOfStock && (
+                          <button
+                            type="button"
+                            onClick={() => setIsNotifyModalOpen(true)}
+                            className="w-full h-[48px] bg-[#234745] hover:bg-[#1a3533] active:scale-[0.98] text-white rounded-[25px] flex items-center justify-center gap-1.5 transition-all mt-2"
+                          >
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+                              <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                              <path d="M13.73 21a2 2 0 01-3.46 0" />
+                            </svg>
+                            <span className="whitespace-nowrap text-[13px] sm:text-[14px]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", fontWeight: 700, lineHeight: '100%' }}>
+                              {isEn ? 'Notify Me' : 'أبلغني عند التوفر'}
+                            </span>
+                          </button>
+                        )}
                       </div>
 
                       {/* Buy Now Wrapper */}
@@ -2201,6 +2287,7 @@ const PRODUCT_FRAGMENT = `#graphql
             }
             variants(first: 1) {
               nodes {
+                sku
                 price {
                   amount
                   currencyCode
@@ -2228,6 +2315,7 @@ const PRODUCT_FRAGMENT = `#graphql
           variants(first: 1) {
             nodes {
               id
+              sku
               price {
                 amount
                 currencyCode
@@ -2286,6 +2374,15 @@ const PRODUCT_FRAGMENT = `#graphql
           id
         }
       }
+    }
+    vegan: metafield(namespace: "custom", key: "vegan") {
+      value
+    }
+    lactose_free: metafield(namespace: "custom", key: "lactose_free") {
+      value
+    }
+    gluten_free: metafield(namespace: "custom", key: "gluten_free") {
+      value
     }
     collections(first: 10) {
       nodes {

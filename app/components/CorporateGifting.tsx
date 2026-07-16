@@ -34,15 +34,15 @@ export function CorporateGifting() {
 
                     {/* Text Content */}
                     <div className="w-full lg:w-[35%] flex flex-col items-center lg:items-start text-center lg:text-start gap-6 lg:gap-[32px]">
-                        <h2 
+                        <h2
                             className="text-[32px] lg:text-[50px] font-bold text-white leading-[1.2] lg:leading-[80px]"
                             style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" }}
                         >
                             {activeContent.title}
                         </h2>
 
-                        <p 
-                            className="text-[#BBCFCD] text-[14px] leading-[17px] max-w-[484px]"
+                        <p
+                            className="text-[#BBCFCD] text-[14px] font-light leading-[17px] max-w-[484px]"
                             style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
                         >
                             {activeContent.description}
@@ -50,7 +50,7 @@ export function CorporateGifting() {
 
                         <Link
                             to={isEn ? "/en/corporate" : "/corporate"}
-                            className="bg-[#BBCFCD] hover:bg-[#a5b9b8] text-[#234745] px-8 py-3.5 lg:py-3 rounded-[25px] font-bold transition-all shadow-sm flex items-center justify-center w-[85%] sm:w-auto sm:min-w-[200px] lg:min-w-[160px]"
+                            className="bg-[#BBCFCD] hover:bg-[#a5b9b8] !text-[#234745] px-10 py-3.5 lg:py-3 rounded-[25px] font-bold transition-all shadow-sm flex items-center justify-center w-[85%] sm:w-auto sm:min-w-[200px] lg:min-w-[160px]"
                             style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
                         >
                             {activeContent.button}
@@ -59,7 +59,7 @@ export function CorporateGifting() {
 
                     {/* Cards */}
                     <div className="w-full lg:w-[65%] flex flex-col md:flex-row gap-[16px] lg:gap-[32px]">
-                        
+
                         {/* Card 1: Employees (First in RTL = Right side) */}
                         <div
                             className="hidden md:flex group relative flex-1 h-[300px] md:h-[264px] rounded-[20px] overflow-hidden bg-[#234745]"
@@ -72,7 +72,7 @@ export function CorporateGifting() {
                             <div className="absolute inset-0 bg-gradient-to-t from-[rgba(0,0,0,0.65)] via-[rgba(0,0,0,0.3)] to-transparent opacity-90"></div>
 
                             <div className="absolute bottom-[16px] left-0 right-0 text-center px-4">
-                                <h3 
+                                <h3
                                     className="text-[26px] font-bold text-white leading-[42px]"
                                     style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" }}
                                 >
@@ -93,7 +93,7 @@ export function CorporateGifting() {
                             <div className="absolute inset-0 bg-gradient-to-t from-[rgba(0,0,0,0.65)] via-[rgba(0,0,0,0.3)] to-transparent opacity-90"></div>
 
                             <div className="absolute bottom-[16px] left-0 right-0 text-center px-4">
-                                <h3 
+                                <h3
                                     className="text-[26px] font-bold text-white leading-[42px]"
                                     style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" }}
                                 >

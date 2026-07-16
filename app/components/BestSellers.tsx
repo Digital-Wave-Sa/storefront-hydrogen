@@ -19,7 +19,7 @@ export function BestSellers({
     products: Promise<any>;
 }) {
     const [isNotifyModalOpen, setIsNotifyModalOpen] = useState(false);
-    const [selectedProduct, setSelectedProduct] = useState<{title: string, variantId: string} | null>(null);
+    const [selectedProduct, setSelectedProduct] = useState<{ title: string, variantId: string } | null>(null);
 
     const { locale, selectedLocationName, selectedLocationId, customer } = useOutletContext<{ locale: string, selectedLocationName?: string, selectedLocationId?: string, customer?: Promise<any> }>();
     const [customerEmail, setCustomerEmail] = useState<string | undefined>(undefined);
@@ -28,7 +28,7 @@ export function BestSellers({
         if (customer && typeof customer.then === 'function') {
             customer.then((res: any) => {
                 if (res?.customer?.email) setCustomerEmail(res.customer.email);
-            }).catch(() => {});
+            }).catch(() => { });
         }
     }, [customer]);
 
@@ -37,27 +37,27 @@ export function BestSellers({
     const t = useI18n(locale);
     const isEn = locale === 'en';
 
-    const tabs = isEn 
+    const tabs = isEn
         ? ['All', 'Sweets', 'Cakes', 'Chocolate', 'Gifts']
         : ['الكل', 'الحلويات', 'الكيك', 'الشوكولاته', 'الهدايا'];
 
     const getProductUrl = (handle: string) => isEn ? `/en/products/${handle}` : `/products/${handle}`;
 
     const handleNotifyClick = (title: string, variantId: string) => {
-        setSelectedProduct({title, variantId});
+        setSelectedProduct({ title, variantId });
         setIsNotifyModalOpen(true);
     };
 
     return (
-        <section 
-            dir={isEn ? 'ltr' : 'rtl'} 
+        <section
+            dir={isEn ? 'ltr' : 'rtl'}
             className={`w-full relative overflow-hidden ${isEn ? 'font-en' : 'font-ar'}`}
             style={{ background: 'linear-gradient(to bottom, #234745 0%, #234745 65%, #FEF8EB 65%, #FEF8EB 100%)' }}
         >
             {/* Left Decorative Pattern */}
-            <div 
+            <div
                 className="absolute top-0 left-[-50px] w-[500px] h-[500px] opacity-[0.12] pointer-events-none"
-                style={{ 
+                style={{
                     backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='white' stroke-width='0.5'%3E%3Cpath d='M30 0 L60 30 L30 60 L0 30 Z' opacity='0.3'/%3E%3Cpath d='M30 10 Q35 30 50 30 Q35 30 30 50 Q25 30 10 30 Q25 30 30 10' opacity='0.6'/%3E%3C/g%3E%3C/svg%3E")`,
                     maskImage: 'radial-gradient(circle at 20% 20%, black 0%, transparent 70%)',
                     WebkitMaskImage: 'radial-gradient(circle at 20% 20%, black 0%, transparent 70%)'
@@ -65,9 +65,9 @@ export function BestSellers({
             />
 
             {/* Right Decorative Pattern */}
-            <div 
+            <div
                 className="absolute top-0 right-[-50px] w-[500px] h-[500px] opacity-[0.12] pointer-events-none"
-                style={{ 
+                style={{
                     backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='white' stroke-width='0.5'%3E%3Cpath d='M30 0 L60 30 L30 60 L0 30 Z' opacity='0.3'/%3E%3Cpath d='M30 10 Q35 30 50 30 Q35 30 30 50 Q25 30 10 30 Q25 30 30 10' opacity='0.6'/%3E%3C/g%3E%3C/svg%3E")`,
                     maskImage: 'radial-gradient(circle at 80% 20%, black 0%, transparent 70%)',
                     WebkitMaskImage: 'radial-gradient(circle at 80% 20%, black 0%, transparent 70%)'
@@ -111,12 +111,12 @@ export function BestSellers({
                                     {visibleProducts.map((product: any, idx: number) => {
                                         const variant = product.variants?.nodes?.[0];
                                         const storeAvailabilityNodes = variant?.storeAvailability?.nodes || [];
-                                        
+
                                         const isOutOfStock = getIsOutOfStock(
-                                          selectedLocationId,
-                                          selectedLocationName,
-                                          storeAvailabilityNodes,
-                                          product.availableForSale
+                                            selectedLocationId,
+                                            selectedLocationName,
+                                            storeAvailabilityNodes,
+                                            product.availableForSale
                                         );
 
 
@@ -126,8 +126,8 @@ export function BestSellers({
                                             product.visibility_end?.value,
                                         );
                                         const isVisibilityBlocked = !visibility.isActive;
-                                        const isPreorder = product.tags?.some((tag: string) => 
-                                          ['preorder', 'pre-order', 'طلب مسبق'].includes(tag.toLowerCase())
+                                        const isPreorder = product.tags?.some((tag: string) =>
+                                            ['preorder', 'pre-order', 'طلب مسبق'].includes(tag.toLowerCase())
                                         );
 
                                         const effectiveOutOfStock = (isOutOfStock || isVisibilityBlocked) && !isPreorder;
@@ -139,7 +139,7 @@ export function BestSellers({
                                         const isLimitedTime = !!product.is_limited_time?.value;
 
                                         // Mock some dynamic text just for matching the UI design identically
-                                        const tagText = isEn 
+                                        const tagText = isEn
                                             ? (idx % 2 === 0 ? 'Requires 2 days preparation' : 'Pay in 2 installments with Tamara')
                                             : (idx % 2 === 0 ? 'يحتاج يومين للتجهيز' : 'قسطها على دفعتين مع تمارا');
 
@@ -151,38 +151,37 @@ export function BestSellers({
 
                                                 {/* Top Action / Heart */}
                                                 {!isVisibilityBlocked && (
-                                                  <button
-                                                    onClick={(e) => {
-                                                      e.preventDefault();
-                                                      toggleWishlist({
-                                                        id: product.id,
-                                                        title: product.title,
-                                                        handle: product.handle,
-                                                        image: product.images?.nodes?.[0],
-                                                        priceRange: product.priceRange
-                                                      });
-                                                    }}
-                                                    aria-label={isWishlisted ? "Remove from Wishlist" : "Add to Wishlist"}
-                                                    className={`absolute top-4 ltr:left-4 rtl:right-auto rtl:left-4 z-10 w-10 h-10 p-0 rounded-full bg-white shadow-md transition-all flex items-center justify-center ${isWishlisted ? 'text-[#e74c3c]' : 'text-gray-700 hover:text-[#e74c3c]'}`}
-                                                  >
-                                                    <svg width="20" height="20" viewBox="0 0 24 24" fill={isWishlisted ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.5"><path d="M20.8 4.6a5.5 5.5 0 00-7.7 0l-1.1 1-1.1-1a5.5 5.5 0 00-7.8 7.8l1 1 7.9 7.9 7.9-7.9 1-1a5.5 5.5 0 000-7.8z" /></svg>
-                                                  </button>
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.preventDefault();
+                                                            toggleWishlist({
+                                                                id: product.id,
+                                                                title: product.title,
+                                                                handle: product.handle,
+                                                                image: product.images?.nodes?.[0],
+                                                                priceRange: product.priceRange
+                                                            });
+                                                        }}
+                                                        aria-label={isWishlisted ? "Remove from Wishlist" : "Add to Wishlist"}
+                                                        className={`absolute top-4 ltr:left-4 rtl:right-auto rtl:left-4 z-10 w-10 h-10 p-0 rounded-full bg-white shadow-md transition-all flex items-center justify-center ${isWishlisted ? 'text-[#e74c3c]' : 'text-gray-700 hover:text-[#e74c3c]'}`}
+                                                    >
+                                                        <svg width="20" height="20" viewBox="0 0 24 24" fill={isWishlisted ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.5"><path d="M20.8 4.6a5.5 5.5 0 00-7.7 0l-1.1 1-1.1-1a5.5 5.5 0 00-7.8 7.8l1 1 7.9 7.9 7.9-7.9 1-1a5.5 5.5 0 000-7.8z" /></svg>
+                                                    </button>
                                                 )}
 
                                                 {/* Status Badges Overlay (Stacking top right) */}
                                                 <div className="absolute top-4 ltr:right-4 rtl:left-auto rtl:right-4 z-10 flex flex-col gap-2 items-end">
                                                     {(isVisibilityBlocked || showPreorder) && (
-                                                      <span className={`text-[11px] font-bold px-3 py-1.5 rounded-full shadow-sm flex items-center gap-1.5 ${
-                                                        isVisibilityBlocked 
-                                                          ? (visibility.status === 'scheduled' ? 'bg-amber-500 text-white' : 'bg-red-500 text-white')
-                                                          : 'bg-[#004f59] text-white'
-                                                      }`}>
-                                                        <span>{isVisibilityBlocked ? (visibility.status === 'scheduled' ? '🕐' : '⛔') : '📦'}</span>
-                                                        {isVisibilityBlocked 
-                                                          ? (isEn ? visibility.label.en : visibility.label.ar)
-                                                          : t.common.preOrder
-                                                        }
-                                                      </span>
+                                                        <span className={`text-[11px] font-bold px-3 py-1.5 rounded-full shadow-sm flex items-center gap-1.5 ${isVisibilityBlocked
+                                                            ? (visibility.status === 'scheduled' ? 'bg-amber-500 text-white' : 'bg-red-500 text-white')
+                                                            : 'bg-[#004f59] text-white'
+                                                            }`}>
+                                                            <span>{isVisibilityBlocked ? (visibility.status === 'scheduled' ? '🕐' : '⛔') : '📦'}</span>
+                                                            {isVisibilityBlocked
+                                                                ? (isEn ? visibility.label.en : visibility.label.ar)
+                                                                : t.common.preOrder
+                                                            }
+                                                        </span>
                                                     )}
 
                                                     {/* Limited Time Badge */}
@@ -232,8 +231,8 @@ export function BestSellers({
                                                     )}
                                                 </div>
 
-                                                <Link 
-                                                    to={isVisibilityBlocked ? '#' : getProductUrl(product.handle)} 
+                                                <Link
+                                                    to={isVisibilityBlocked ? '#' : getProductUrl(product.handle)}
                                                     aria-label={product.title}
                                                     className={`relative block aspect-[4/3] w-full flex items-center justify-center overflow-hidden ${isVisibilityBlocked ? 'pointer-events-none' : ''}`}
                                                     onClick={isVisibilityBlocked ? (e: any) => e.preventDefault() : undefined}
@@ -252,16 +251,16 @@ export function BestSellers({
                                                     {!isVisibilityBlocked && isOutOfStock && !isPreorder && (
                                                         <div className="absolute bottom-[16px] left-1/2 -translate-x-1/2 z-10 pointer-events-none">
                                                             <span
-                                                              className="flex items-center justify-center px-6 h-[40px] rounded-full font-bold text-[14px] whitespace-nowrap"
-                                                              style={{
-                                                                background: 'rgba(187, 207, 205, 0.72)',
-                                                                backdropFilter: 'blur(6px)',
-                                                                WebkitBackdropFilter: 'blur(6px)',
-                                                                color: '#ffffff',
-                                                                fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
-                                                              }}
+                                                                className="flex items-center justify-center px-6 h-[40px] rounded-full font-bold text-[14px] whitespace-nowrap"
+                                                                style={{
+                                                                    background: 'rgba(187, 207, 205, 0.72)',
+                                                                    backdropFilter: 'blur(6px)',
+                                                                    WebkitBackdropFilter: 'blur(6px)',
+                                                                    color: '#ffffff',
+                                                                    fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
+                                                                }}
                                                             >
-                                                              {isEn ? 'Out of Stock' : 'نفذت الكمية'}
+                                                                {isEn ? 'Out of Stock' : 'نفذت الكمية'}
                                                             </span>
                                                         </div>
                                                     )}
@@ -275,7 +274,7 @@ export function BestSellers({
                                                 </Link>
 
                                                 <div className="p-5 lg:p-6 flex flex-col flex-grow" style={{ backgroundColor: '#ffffff' }}>
-                                                    
+
                                                     {/* Title */}
                                                     <Link to={isVisibilityBlocked ? '#' : getProductUrl(product.handle)} onClick={isVisibilityBlocked ? (e: any) => e.preventDefault() : undefined}>
                                                         <h3 className={`font-bold text-[#234745] line-clamp-1 transition-colors duration-300 ${isVisibilityBlocked ? '' : 'hover:text-[#1a3a2d]'}`} style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", fontSize: '18px', lineHeight: '24px', opacity: isOutOfStock && !isPreorder ? 0.4 : 1 }}>
@@ -285,28 +284,28 @@ export function BestSellers({
 
                                                     {/* Price Row (Side by side) */}
                                                     {!isVisibilityBlocked ? (
-                                                      <div className="mt-2 mb-4 flex items-center gap-3 justify-start" style={{ opacity: isOutOfStock && !isPreorder ? 0.4 : 1 }} dir={isEn ? 'ltr' : 'rtl'}>
-                                                          <div className="text-[#234745] flex items-baseline gap-1">
-                                                              <Price data={product.priceRange.minVariantPrice} isEn={isEn} showSymbol={true} size="lg" />
-                                                          </div>
-                                                          {hasDiscount && (
-                                                              <div className="text-[#E64950] line-through flex gap-1 items-baseline">
-                                                                  <Price data={compareAtPrice} isEn={isEn} showSymbol={true} size="md" />
-                                                              </div>
-                                                          )}
-                                                      </div>
+                                                        <div className="mt-2 mb-4 flex items-center gap-3 justify-start" style={{ opacity: isOutOfStock && !isPreorder ? 0.4 : 1 }} dir={isEn ? 'ltr' : 'rtl'}>
+                                                            <div className="text-[#234745] flex items-baseline gap-1">
+                                                                <Price data={product.priceRange.minVariantPrice} isEn={isEn} showSymbol={true} size="lg" />
+                                                            </div>
+                                                            {hasDiscount && (
+                                                                <div className="text-[#E64950] line-through flex gap-1 items-baseline">
+                                                                    <Price data={compareAtPrice} isEn={isEn} showSymbol={true} size="md" />
+                                                                </div>
+                                                            )}
+                                                        </div>
                                                     ) : (
-                                                      <div className="mt-2 mb-4">
-                                                        <span className={`text-sm font-bold ${visibility.status === 'scheduled' ? 'text-amber-600' : 'text-red-500'}`}>
-                                                          {isEn ? visibility.label.en : visibility.label.ar}
-                                                        </span>
-                                                      </div>
+                                                        <div className="mt-2 mb-4">
+                                                            <span className={`text-sm font-bold ${visibility.status === 'scheduled' ? 'text-amber-600' : 'text-red-500'}`}>
+                                                                {isEn ? visibility.label.en : visibility.label.ar}
+                                                            </span>
+                                                        </div>
                                                     )}
 
                                                     {/* Add to Cart Button */}
                                                     {!isVisibilityBlocked && (
-                                                      <div className="mt-auto">
-                                                          <BestSellersAddToCart
+                                                        <div className="mt-auto">
+                                                            <BestSellersAddToCart
                                                                 variant={variant}
                                                                 productTags={product.tags}
                                                                 bogoFreeVariantId={product.bogo_free_item?.reference?.id || product.bogo_free_item?.value || null}
@@ -315,8 +314,8 @@ export function BestSellers({
                                                                 addLabel={isPreorder ? t.common.preOrder : (isEn ? 'Add to Cart' : 'أضف إلي السلة')}
                                                                 isPreorder={isPreorder}
                                                                 onNotifyClick={() => handleNotifyClick(product.title, variant?.id)}
-                                                           />
-                                                      </div>
+                                                            />
+                                                        </div>
                                                     )}
                                                 </div>
 
@@ -332,14 +331,14 @@ export function BestSellers({
                 <div className="mt-6 lg:mt-16 flex justify-center">
                     <Link
                         to={isEn ? "/en/collections/all" : "/collections/all"}
-                        className="px-16 py-3 border-2 border-[#234745] text-[#234745] hover:bg-[#234745] hover:!text-white rounded-full font-bold text-[18px] transition-all min-w-[280px] text-center"
+                        className="px-12 py-4 rounded-full border-2 border-[#234745] !text-[#234745] [font-family:'GE_Dinar_One',sans-serif] font-bold text-[15px] lg:text-[18px] transition-all hover:bg-[#1a3533] hover:!text-white hover:border-[#1a3533] active:scale-95"
                     >
                         {isEn ? 'View All Products' : 'عرض جميع المنتجات'}
                     </Link>
                 </div>
 
                 {selectedProduct && (
-                    <StockNotificationModal 
+                    <StockNotificationModal
                         isOpen={isNotifyModalOpen}
                         onClose={() => setIsNotifyModalOpen(false)}
                         productTitle={selectedProduct.title}
@@ -398,25 +397,25 @@ function BestSellersAddToCart({
     }
 
     const groupId = Date.now().toString();
-    const lines = [{ 
-      merchandiseId: variantId, 
-      quantity: 1,
-      selectedVariant: variant,
-      attributes: [{ key: '_groupId', value: groupId }]
+    const lines = [{
+        merchandiseId: variantId,
+        quantity: 1,
+        selectedVariant: variant,
+        attributes: [{ key: '_groupId', value: groupId }]
     }];
 
     if (isBogo) {
-      const freeVariantId = bogoFreeVariantId || variantId;
-      lines.push({
-        merchandiseId: freeVariantId,
-        quantity: 1,
-        selectedVariant: variant,
-        attributes: [
-          { key: '_groupId', value: groupId },
-          { key: '_is_addon', value: 'true' },
-          { key: '_is_free', value: 'true' }
-        ]
-      });
+        const freeVariantId = bogoFreeVariantId || variantId;
+        lines.push({
+            merchandiseId: freeVariantId,
+            quantity: 1,
+            selectedVariant: variant,
+            attributes: [
+                { key: '_groupId', value: groupId },
+                { key: '_is_addon', value: 'true' },
+                { key: '_is_free', value: 'true' }
+            ]
+        });
     }
 
     return (

@@ -38,7 +38,9 @@ export default function AccountDashboard() {
           <circle cx="12" cy="7" r="4" />
         </svg>
       )
+    }
   ];
+
 
   return (
     <Suspense fallback={

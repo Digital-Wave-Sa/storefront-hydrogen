@@ -28,7 +28,7 @@ export function NewArrivals({
         if (customer && typeof customer.then === 'function') {
             customer.then((res: any) => {
                 if (res?.customer?.email) setCustomerEmail(res.customer.email);
-            }).catch(() => {});
+            }).catch(() => { });
         }
     }, [customer]);
 
@@ -62,67 +62,67 @@ export function NewArrivals({
                             return (
                                 <>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                                            {visibleProducts.slice(0, 4).map((product: any, idx: number) => {
-                                                const variant = product.variants?.nodes?.[0];
-                                                const storeAvailabilityNodes = variant?.storeAvailability?.nodes || [];
-                                                
-                                                const isOutOfStock = getIsOutOfStock(
-                                                  selectedLocationId,
-                                                  selectedLocationName,
-                                                  storeAvailabilityNodes,
-                                                  product.availableForSale
-                                                );
+                                        {visibleProducts.slice(0, 4).map((product: any, idx: number) => {
+                                            const variant = product.variants?.nodes?.[0];
+                                            const storeAvailabilityNodes = variant?.storeAvailability?.nodes || [];
 
-                                                const { toggleWishlist, isInWishlist } = useWishlist();
-                                                const isWishlisted = isInWishlist(product.id);
+                                            const isOutOfStock = getIsOutOfStock(
+                                                selectedLocationId,
+                                                selectedLocationName,
+                                                storeAvailabilityNodes,
+                                                product.availableForSale
+                                            );
 
-                                                // --- Visibility scheduling ---
-                                                const visibility = getVisibilityStatus(
-                                                    product.visibility_start?.value,
-                                                    product.visibility_end?.value,
-                                                );
-                                                const isVisibilityBlocked = !visibility.isActive;
-                                                const isPreorder = product.tags?.some((tag: string) => 
-                                                  ['preorder', 'pre-order', 'طلب مسبق'].includes(tag.toLowerCase())
-                                                );
+                                            const { toggleWishlist, isInWishlist } = useWishlist();
+                                            const isWishlisted = isInWishlist(product.id);
 
-                                                const effectiveOutOfStock = (isOutOfStock || isVisibilityBlocked) && !isPreorder;
-                                                const showPreorder = isPreorder && !isVisibilityBlocked && !isOutOfStock; // Only show pre-order if it's technically available (continue selling)
+                                            // --- Visibility scheduling ---
+                                            const visibility = getVisibilityStatus(
+                                                product.visibility_start?.value,
+                                                product.visibility_end?.value,
+                                            );
+                                            const isVisibilityBlocked = !visibility.isActive;
+                                            const isPreorder = product.tags?.some((tag: string) =>
+                                                ['preorder', 'pre-order', 'طلب مسبق'].includes(tag.toLowerCase())
+                                            );
 
-                                                const compareAtPrice = product.compareAtPriceRange?.minVariantPrice;
-                                                const price = product.priceRange?.minVariantPrice;
-                                                const hasDiscount = compareAtPrice && price && parseFloat(compareAtPrice.amount) > parseFloat(price.amount);
-                                                const isLimitedTime = !!product.is_limited_time?.value;
+                                            const effectiveOutOfStock = (isOutOfStock || isVisibilityBlocked) && !isPreorder;
+                                            const showPreorder = isPreorder && !isVisibilityBlocked && !isOutOfStock; // Only show pre-order if it's technically available (continue selling)
 
-                                                const tagText = isEn 
-                                                    ? (idx % 2 === 0 ? '⏱ Requires 2 days prep' : 'Pay in 2 with Tamara')
-                                                    : (idx % 2 === 0 ? '⏱ يحتاج يومين للتجهيز' : 'قسطها على دفعتين مع تمارا');
+                                            const compareAtPrice = product.compareAtPriceRange?.minVariantPrice;
+                                            const price = product.priceRange?.minVariantPrice;
+                                            const hasDiscount = compareAtPrice && price && parseFloat(compareAtPrice.amount) > parseFloat(price.amount);
+                                            const isLimitedTime = !!product.is_limited_time?.value;
 
-                                                return (
-                                                    <div key={product.id} className={`flex flex-col h-full rounded-2xl bg-white overflow-hidden relative border border-gray-100 transition-all ${isVisibilityBlocked ? 'product--disabled opacity-60 grayscale-[30%]' : 'group hover:shadow-lg'}`}>
-                                                        {!isVisibilityBlocked && (
-                                                          <button 
+                                            const tagText = isEn
+                                                ? (idx % 2 === 0 ? '⏱ Requires 2 days prep' : 'Pay in 2 with Tamara')
+                                                : (idx % 2 === 0 ? '⏱ يحتاج يومين للتجهيز' : 'قسطها على دفعتين مع تمارا');
+
+                                            return (
+                                                <div key={product.id} className={`flex flex-col h-full rounded-2xl bg-white overflow-hidden relative border border-gray-100 transition-all ${isVisibilityBlocked ? 'product--disabled opacity-60 grayscale-[30%]' : 'group hover:shadow-lg'}`}>
+                                                    {!isVisibilityBlocked && (
+                                                        <button
                                                             onClick={(e) => {
-                                                              e.preventDefault();
-                                                              toggleWishlist({
-                                                                id: product.id,
-                                                                title: product.title,
-                                                                handle: product.handle,
-                                                                image: product.images?.nodes?.[0],
-                                                                priceRange: product.priceRange
-                                                              });
+                                                                e.preventDefault();
+                                                                toggleWishlist({
+                                                                    id: product.id,
+                                                                    title: product.title,
+                                                                    handle: product.handle,
+                                                                    image: product.images?.nodes?.[0],
+                                                                    priceRange: product.priceRange
+                                                                });
                                                             }}
                                                             aria-label={isWishlisted ? "Remove from Wishlist" : "Add to Wishlist"}
-                                                            className={`absolute top-2 md:top-4 ${isEn ? 'left-2 md:left-4' : 'right-2 md:right-4'} z-10 w-7 h-7 md:w-10 md:h-10 p-0 rounded-full bg-white shadow-md transition-all flex items-center justify-center ${isWishlisted ? 'text-[#e74c3c]' : 'text-gray-700 hover:text-[#e74c3c]'}`}
-                                                          >
-                                                              <svg className="w-3.5 h-3.5 md:w-5 md:h-5" viewBox="0 0 24 24" fill={isWishlisted ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.5">
-                                                                  <path d="M20.8 4.6a5.5 5.5 0 00-7.7 0l-1.1 1-1.1-1a5.5 5.5 0 00-7.8 7.8l1 1 7.9 7.9 7.9-7.9 1-1a5.5 5.5 0 000-7.8z" />
-                                                              </svg>
-                                                          </button>
-                                                        )}
+                                                            className={`absolute top-2 md:top-4 left-2 md:left-4 z-10 w-7 h-7 md:w-10 md:h-10 p-0 rounded-full bg-white shadow-md transition-all flex items-center justify-center ${isWishlisted ? 'text-[#e74c3c]' : 'text-gray-700 hover:text-[#e74c3c]'}`}
+                                                        >
+                                                            <svg className="w-3.5 h-3.5 md:w-5 md:h-5" viewBox="0 0 24 24" fill={isWishlisted ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.5">
+                                                                <path d="M20.8 4.6a5.5 5.5 0 00-7.7 0l-1.1 1-1.1-1a5.5 5.5 0 00-7.8 7.8l1 1 7.9 7.9 7.9-7.9 1-1a5.5 5.5 0 000-7.8z" />
+                                                            </svg>
+                                                        </button>
+                                                    )}
 
                                                     {/* Status Badges Overlay (Stacking) */}
-                                                    <div className={`absolute top-4 ${isEn ? 'right-4' : 'left-4'} z-10 flex flex-col gap-2 ${isEn ? 'items-end' : 'items-start'}`}>
+                                                    <div className="absolute top-4 right-4 z-10 flex flex-col gap-2 items-end">
                                                         {/* Limited Time Badge */}
                                                         {!isVisibilityBlocked && isLimitedTime && (
                                                             <span className="text-[10px] font-bold px-3 py-1.5 rounded-full shadow-sm bg-purple-600 text-white flex items-center gap-1.5">
@@ -140,8 +140,8 @@ export function NewArrivals({
                                                     </div>
 
                                                     {/* Product Image */}
-                                                    <Link 
-                                                        to={isVisibilityBlocked ? '#' : getProductUrl(product.handle)} 
+                                                    <Link
+                                                        to={isVisibilityBlocked ? '#' : getProductUrl(product.handle)}
                                                         aria-label={product.title}
                                                         className={`relative block bg-[#F8F9F8] aspect-[4/3] w-full flex items-center justify-center p-0 overflow-hidden ${isVisibilityBlocked ? 'pointer-events-none' : ''}`}
                                                         onClick={isVisibilityBlocked ? (e: any) => e.preventDefault() : undefined}
@@ -160,16 +160,16 @@ export function NewArrivals({
                                                         {!isVisibilityBlocked && isOutOfStock && !isPreorder && (
                                                             <div className="absolute bottom-[16px] left-1/2 -translate-x-1/2 z-10 pointer-events-none">
                                                                 <span
-                                                                  className="flex items-center justify-center px-6 h-[40px] rounded-full font-bold text-[14px] whitespace-nowrap"
-                                                                  style={{
-                                                                    background: 'rgba(187, 207, 205, 0.72)',
-                                                                    backdropFilter: 'blur(6px)',
-                                                                    WebkitBackdropFilter: 'blur(6px)',
-                                                                    color: '#ffffff',
-                                                                    fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
-                                                                  }}
+                                                                    className="flex items-center justify-center px-6 h-[40px] rounded-full font-bold text-[14px] whitespace-nowrap"
+                                                                    style={{
+                                                                        background: 'rgba(187, 207, 205, 0.72)',
+                                                                        backdropFilter: 'blur(6px)',
+                                                                        WebkitBackdropFilter: 'blur(6px)',
+                                                                        color: '#ffffff',
+                                                                        fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
+                                                                    }}
                                                                 >
-                                                                  {isEn ? 'Out of Stock' : 'نفذت الكمية'}
+                                                                    {isEn ? 'Out of Stock' : 'نفذت الكمية'}
                                                                 </span>
                                                             </div>
                                                         )}
@@ -177,7 +177,7 @@ export function NewArrivals({
 
                                                     {/* Product Info */}
                                                     <div className="bg-white p-5 flex flex-col flex-grow">
-                                                        
+
                                                         {/* Title */}
                                                         <Link to={isVisibilityBlocked ? '#' : getProductUrl(product.handle)} onClick={isVisibilityBlocked ? (e: any) => e.preventDefault() : undefined}>
                                                             <h3 className={`font-bold text-[#234745] line-clamp-1 transition-colors duration-300 ${isEn ? 'text-left' : 'text-right'} ${isVisibilityBlocked ? '' : 'hover:text-[#1a3a2d]'}`} style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", fontSize: '18px', lineHeight: '24px', opacity: effectiveOutOfStock ? 0.4 : 1 }}>
@@ -187,41 +187,41 @@ export function NewArrivals({
 
                                                         {/* Price — hidden when visibility blocked */}
                                                         {!isVisibilityBlocked ? (
-                                                          <div className="mt-2 mb-4 flex items-center gap-3" style={{ opacity: effectiveOutOfStock ? 0.4 : 1 }}>
-                                                              <Price 
-                                                                data={product.priceRange.minVariantPrice} 
-                                                                isEn={isEn} 
-                                                                size="lg" 
-                                                                className="text-[#234745] font-bold"
-                                                              />
-                                                              {hasDiscount && (
-                                                                  <span className="text-[#E64950] line-through">
-                                                                      <Price data={compareAtPrice} isEn={isEn} size="md" showSymbol={false} />
-                                                                  </span>
-                                                              )}
-                                                          </div>
+                                                            <div className="mt-2 mb-4 flex items-center gap-3" style={{ opacity: effectiveOutOfStock ? 0.4 : 1 }}>
+                                                                <Price
+                                                                    data={product.priceRange.minVariantPrice}
+                                                                    isEn={isEn}
+                                                                    size="lg"
+                                                                    className="text-[#234745] font-bold"
+                                                                />
+                                                                {hasDiscount && (
+                                                                    <span className="text-[#E64950] line-through">
+                                                                        <Price data={compareAtPrice} isEn={isEn} size="md" showSymbol={false} />
+                                                                    </span>
+                                                                )}
+                                                            </div>
                                                         ) : (
-                                                          <div className="mt-2 mb-4">
-                                                            <span className={`text-sm font-bold ${visibility.status === 'scheduled' ? 'text-amber-600' : 'text-red-500'}`}>
-                                                              {isEn ? visibility.label.en : visibility.label.ar}
-                                                            </span>
-                                                          </div>
+                                                            <div className="mt-2 mb-4">
+                                                                <span className={`text-sm font-bold ${visibility.status === 'scheduled' ? 'text-amber-600' : 'text-red-500'}`}>
+                                                                    {isEn ? visibility.label.en : visibility.label.ar}
+                                                                </span>
+                                                            </div>
                                                         )}
 
                                                         {/* Add to Cart — only for active products */}
                                                         {!isVisibilityBlocked && (
-                                                           <div className="mt-auto">
-                                                               <NewArrivalsAddToCart
-                                                                  variant={variant}
-                                                                  productTags={product.tags}
-                                                                  bogoFreeVariantId={product.bogo_free_item?.reference?.id || product.bogo_free_item?.value || null}
-                                                                  isOutOfStock={isOutOfStock && !isPreorder}
-                                                                  notifyLabel={isPreorder ? t.common.preOrder : (isEn ? 'Notify Me' : 'أعلمني عند التوفر')}
-                                                                  addLabel={isPreorder ? t.common.preOrder : (isEn ? 'Add to Cart' : 'أضف إلى السلة')}
-                                                                  isPreorder={isPreorder}
-                                                                  onNotifyClick={() => handleNotifyClick(product.title, variant?.id)}
-                                                              />
-                                                           </div>
+                                                            <div className="mt-auto">
+                                                                <NewArrivalsAddToCart
+                                                                    variant={variant}
+                                                                    productTags={product.tags}
+                                                                    bogoFreeVariantId={product.bogo_free_item?.reference?.id || product.bogo_free_item?.value || null}
+                                                                    isOutOfStock={isOutOfStock && !isPreorder}
+                                                                    notifyLabel={isPreorder ? t.common.preOrder : (isEn ? 'Notify Me' : 'أعلمني عند التوفر')}
+                                                                    addLabel={isPreorder ? t.common.preOrder : (isEn ? 'Add to Cart' : 'أضف إلى السلة')}
+                                                                    isPreorder={isPreorder}
+                                                                    onNotifyClick={() => handleNotifyClick(product.title, variant?.id)}
+                                                                />
+                                                            </div>
                                                         )}
                                                     </div>
 
@@ -229,17 +229,17 @@ export function NewArrivals({
                                             );
                                         })}
                                     </div>
-                                    
+
                                     {/* View All Button */}
                                     <div className="mt-16 flex justify-center">
-                                        <Link 
+                                        <Link
                                             to={isEn ? "/en/collections" : "/collections"}
-                                            className="px-10 py-3.5 border border-[#234745] text-[#234745] rounded-full font-bold text-[15px] hover:bg-[#234745] hover:!text-white transition-all duration-300"
+                                            className="px-12 py-4 rounded-full border-2 border-[#234745] !text-[#234745] [font-family:'GE_Dinar_One',sans-serif] font-bold text-[15px] lg:text-[18px] transition-all hover:bg-[#1a3533] hover:!text-white hover:border-[#1a3533] active:scale-95"
                                             style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
                                         >
                                             {isEn ? 'View All Collections' : 'عرض جميع التشكيلات'}
                                         </Link>
-                                    </div>
+                                    </div >
                                 </>
                             );
                         }}
@@ -247,7 +247,7 @@ export function NewArrivals({
                 </Suspense>
 
                 {selectedProduct && (
-                    <StockNotificationModal 
+                    <StockNotificationModal
                         isOpen={isNotifyModalOpen}
                         onClose={() => setIsNotifyModalOpen(false)}
                         productTitle={selectedProduct.title}
@@ -260,7 +260,7 @@ export function NewArrivals({
                 )}
 
             </div>
-        </section>
+        </section >
     );
 }
 
@@ -306,25 +306,25 @@ function NewArrivalsAddToCart({
     }
 
     const groupId = Date.now().toString();
-    const lines = [{ 
-      merchandiseId: variantId, 
-      quantity: 1,
-      selectedVariant: variant,
-      attributes: [{ key: '_groupId', value: groupId }]
+    const lines = [{
+        merchandiseId: variantId,
+        quantity: 1,
+        selectedVariant: variant,
+        attributes: [{ key: '_groupId', value: groupId }]
     }];
 
     if (isBogo) {
-      const freeVariantId = bogoFreeVariantId || variantId;
-      lines.push({
-        merchandiseId: freeVariantId,
-        quantity: 1,
-        selectedVariant: variant,
-        attributes: [
-          { key: '_groupId', value: groupId },
-          { key: '_is_addon', value: 'true' },
-          { key: '_is_free', value: 'true' }
-        ]
-      });
+        const freeVariantId = bogoFreeVariantId || variantId;
+        lines.push({
+            merchandiseId: freeVariantId,
+            quantity: 1,
+            selectedVariant: variant,
+            attributes: [
+                { key: '_groupId', value: groupId },
+                { key: '_is_addon', value: 'true' },
+                { key: '_is_free', value: 'true' }
+            ]
+        });
     }
 
     return (

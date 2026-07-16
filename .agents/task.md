@@ -4,4 +4,4 @@
 - `[x]` Style the buy box as a responsive sticky bottom sheet on mobile
 - `[x]` Add scrolling safety padding on mobile layout
 - `[x]` Convert description, nutrition, and reviews tabs into responsive mobile accordions
-- `[/]` Run build to verify compilation
+- `[x]` Run build to verify compilation

@@ -38,17 +38,6 @@ export default function AccountDashboard() {
           <circle cx="12" cy="7" r="4" />
         </svg>
       )
-    },
-    {
-      to: `${localePrefix}/account/notification-preferences`,
-      label: isEn ? 'Notifications' : 'الاشعارات',
-      icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-500">
-          <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" />
-          <path d="M13.73 21a2 2 0 01-3.46 0" />
-        </svg>
-      )
-    }
   ];
 
   return (

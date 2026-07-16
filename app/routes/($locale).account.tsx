@@ -16,7 +16,7 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
   const isLoggedIn = Boolean(customerAccessToken?.accessToken || (typeof customerAccessToken === 'string' ? customerAccessToken : null));
 
   const isAccountHome = pathname === `${localePrefix}/account` || pathname === `${localePrefix}/account/`;
-  const isPrivateRoute = new RegExp(`^${localePrefix}/account/(orders|orders/.*|profile|addresses|addresses/.*|notification-preferences|dashboard|feedback-analytics|promotions|wishlist|wallet)$`).test(pathname);
+  const isPrivateRoute = new RegExp(`^${localePrefix}/account/(orders|orders/.*|profile|addresses|addresses/.*|dashboard|feedback-analytics|promotions|wishlist|wallet)$`).test(pathname);
 
   if (!isLoggedIn) {
     if (isPrivateRoute || isAccountHome) {
@@ -404,7 +404,6 @@ function getSectionTitle(pathname: string, isEn: boolean) {
   if (cleanPath.startsWith('/account/wallet')) return isEn ? 'Wallet & Vouchers' : 'المحفظة والقسائم';
   if (cleanPath.startsWith('/account/addresses')) return isEn ? 'Addresses' : 'عناوين التوصيل';
   if (cleanPath.startsWith('/account/profile')) return isEn ? 'Personal Information' : 'المعلومات الشخصية';
-  if (cleanPath.startsWith('/account/notification-preferences')) return isEn ? 'Notifications' : 'الاشعارات';
   return isEn ? 'Control Panel' : 'لوحة التحكم';
 }
 
@@ -570,16 +569,6 @@ function AcccountMenu({ customer, isAdmin }: { customer: CustomerFragment; isAdm
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
           <circle cx="12" cy="7" r="4" />
-        </svg>
-      )
-    },
-    {
-      to: `${localePrefix}/account/notification-preferences`,
-      label: isEn ? 'Notifications' : 'الاشعارات',
-      icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" />
-          <path d="M13.73 21a2 2 0 01-3.46 0" />
         </svg>
       )
     }

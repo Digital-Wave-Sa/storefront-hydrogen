@@ -1234,13 +1234,21 @@ function CartCalendarPicker({
   const fulfillmentType = cart?.attributes?.find((a: any) => a.key === 'Fulfillment Type')?.value || 'delivery';
   const isPickup = fulfillmentType?.toLowerCase() === 'pickup';
 
-  // Optimistic UI states
+  // Optimistic UI states — never overwrite while a fetch is in-flight
   const [localSelectedDate, setLocalSelectedDate] = useState(selectedDate);
   const [localTimeSlot, setLocalTimeSlot] = useState(selectedTimeSlot);
 
-  // Sync state with cart when fetcher is idle
+  // Only sync from cart when there's no pending fetch AND cart data actually changed
+  const prevSelectedDate = useRef(selectedDate);
+  const prevSelectedTimeSlot = useRef(selectedTimeSlot);
   useEffect(() => {
-    if (fetcher.state === 'idle') {
+    // If cart data changed (e.g. after page reload or external update) and no fetch
+    // is in-flight, pull the latest cart values into local state
+    const dateChanged = prevSelectedDate.current !== selectedDate;
+    const slotChanged = prevSelectedTimeSlot.current !== selectedTimeSlot;
+    prevSelectedDate.current = selectedDate;
+    prevSelectedTimeSlot.current = selectedTimeSlot;
+    if (fetcher.state === 'idle' && (dateChanged || slotChanged)) {
       setLocalSelectedDate(selectedDate);
       setLocalTimeSlot(selectedTimeSlot);
     }
@@ -1331,11 +1339,13 @@ function CartCalendarPicker({
   };
 
   const isDateDisabled = (date: Date) => {
-      date.setHours(0, 0, 0, 0);
-      if (date < today) return true;
-      if (date < minAvailableDate) return true;
-      if (date > maxFutureDate) return true;
-      if (isBranchClosedOn(date)) return true;
+      // Clone to avoid mutating the calendarDays Date objects
+      const d = new Date(date.getTime());
+      d.setHours(0, 0, 0, 0);
+      if (d < today) return true;
+      if (d < minAvailableDate) return true;
+      if (d > maxFutureDate) return true;
+      if (isBranchClosedOn(d)) return true;
       return false;
   };
 
@@ -1460,11 +1470,15 @@ function CartCalendarPicker({
                                   setLocalTimeSlot(''); // Reset slot locally
                                   
                                   const formData = new FormData();
-                                  formData.append('action', 'AttributesUpdate');
-                                  formData.append('attributes[0][key]', 'delivery_date');
-                                  formData.append('attributes[0][value]', dateStr);
-                                  formData.append('attributes[1][key]', 'Time Slot');
-                                  formData.append('attributes[1][value]', '');
+                                  formData.append('cartFormInput', JSON.stringify({
+                                      action: 'AttributesUpdate',
+                                      inputs: {
+                                          attributes: [
+                                              { key: 'delivery_date', value: dateStr },
+                                              { key: 'Time Slot', value: '' },
+                                          ]
+                                      }
+                                  }));
                                   fetcher.submit(formData, { method: 'POST', action: '/cart' });
                               }}
                               className={`
@@ -1495,11 +1509,15 @@ function CartCalendarPicker({
                               const newVal = e.target.value;
                               setLocalTimeSlot(newVal); // Instant local feedback
                               
-                              // Use the same flat FormData format as the date selection
                               const formData = new FormData();
-                              formData.append('action', 'AttributesUpdate');
-                              formData.append('attributes[0][key]', 'Time Slot');
-                              formData.append('attributes[0][value]', newVal);
+                              formData.append('cartFormInput', JSON.stringify({
+                                  action: 'AttributesUpdate',
+                                  inputs: {
+                                      attributes: [
+                                          { key: 'Time Slot', value: newVal }
+                                      ]
+                                  }
+                              }));
                               fetcher.submit(formData, { method: 'POST', action: '/cart' });
                           }}
                           className="w-full bg-[#fcfaf8] border border-[#f0ece8] rounded-xl px-4 py-3 text-[14px] text-[#234745] font-medium appearance-none focus:outline-none focus:border-[#d4a06a] focus:ring-1 focus:ring-[#d4a06a] transition-all cursor-pointer"

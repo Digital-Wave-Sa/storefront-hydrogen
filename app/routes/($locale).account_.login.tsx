@@ -101,16 +101,26 @@ export async function action({ request, context }: ActionFunctionArgs) {
         const api = new SaadeddinApi(env);
         await api.requestOtp(fullPhone, 'login');
       } catch (otpErr: any) {
-        console.error('Custom API OTP request failed:', otpErr);
-        // If the error indicates account doesn't exist, show that message
         const msg = otpErr.message || '';
+        const status = (otpErr as any).status;
+        const apiData = (otpErr as any).data;
+        console.error('[Login] OTP send failed:', {
+          phone: fullPhone,
+          error: msg,
+          status,
+          apiData,
+          apiUrl: env.CUSTOM_API_URL || 'https://api.pryvexapls.com (default)'
+        });
+        // If the error indicates account doesn't exist, show that message
         if (msg.toLowerCase().includes('not found') || msg.includes('غير موجود')) {
           return data({
             error: lang === 'en' ? 'Account not found. Please register.' : 'الحساب غير موجود. يرجى إنشاء حساب جديد.',
             notRegistered: true
           });
         }
-        return data({ error: lang === 'en' ? 'Failed to send verification code. Please try again.' : 'فشل إرسال رمز التحقق. يرجى المحاولة مرة أخرى.' });
+        // Return the actual API error message to the user so it's easier to diagnose
+        const displayError = msg || (lang === 'en' ? 'Failed to send verification code. Please try again.' : 'فشل إرسال رمز التحقق. يرجى المحاولة مرة أخرى.');
+        return data({ error: displayError });
       }
 
       session.set('loginOtpPhone', fullPhone);

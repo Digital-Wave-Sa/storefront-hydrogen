@@ -155,58 +155,43 @@ export async function action({ request, context }: ActionFunctionArgs) {
       return data({ error: lang === 'en' ? 'Invalid request. Please restart the login process.' : 'طلب غير صالح. يرجى إعادة تسجيل الدخول.' });
     }
 
-    // Step 1: Verify OTP directly against the custom API (with mock fallback for bypass)
-    const isBypass = otp === '0000';
-    let verifyCode = otp;
     let saadeddinToken: string | null = null;
-    let useMockToken = false;
 
-    if (isBypass) {
+    try {
+      const api = new SaadeddinApi(env);
+      let customLogin;
       try {
-        const devOtpRes = await fetch(`${env.CUSTOM_API_URL || 'https://api.pryvexapls.com'}/auth/_dev/otp/${encodeURIComponent(savedPhone)}`);
-        const devOtpData = await devOtpRes.json() as any;
-        if (devOtpData.success && devOtpData.data?.code) {
-          verifyCode = devOtpData.data.code;
+        customLogin = await api.login(savedPhone, otp);
+      } catch (err: any) {
+        // If it failed due to "No OTP found", retry by stripping the '+' sign prefix
+        const errMsg = err.message || '';
+        if (errMsg.includes('No OTP found') && savedPhone.startsWith('+')) {
+          const strippedPhone = savedPhone.replace('+', '');
+          console.log(`[Login] Retrying API login with stripped phone number: ${strippedPhone}`);
+          customLogin = await api.login(strippedPhone, otp);
         } else {
-          console.warn('Bypass: No active OTP found in DB, using dev mock token fallback.');
-          useMockToken = true;
+          throw err;
         }
-      } catch (devErr) {
-        console.warn('Bypass: Failed to fetch dev OTP, using dev mock token fallback.');
-        useMockToken = true;
       }
-    }
 
-    if (useMockToken) {
-      saadeddinToken = 'dev-bypass-token';
-    } else {
-      try {
-        const api = new SaadeddinApi(env);
-        const customLogin = await api.login(savedPhone, verifyCode);
-        if (customLogin?.token) {
-          saadeddinToken = customLogin.token;
-          if (customLogin.profile) {
-            const profile = customLogin.profile;
-            if (profile.email) {
-              session.set('loginCustomerEmail', profile.email);
-            }
-            if (profile.shopifyId) {
-              const id = profile.shopifyId.split('/').pop();
-              session.set('loginCustomerId', id);
-            }
+      if (customLogin?.token) {
+        saadeddinToken = customLogin.token;
+        if (customLogin.profile) {
+          const profile = customLogin.profile;
+          if (profile.email) {
+            session.set('loginCustomerEmail', profile.email);
           }
-        } else {
-          throw new Error(lang === 'en' ? 'Invalid verification code.' : 'رمز التحقق غير صحيح.');
+          if (profile.shopifyId) {
+            const id = profile.shopifyId.split('/').pop();
+            session.set('loginCustomerId', id);
+          }
         }
-      } catch (apiErr: any) {
-        console.error('[Login] Custom API verification failed:', apiErr);
-        if (isBypass) {
-          console.warn('Bypass: Custom API login failed, falling back to mock token.');
-          saadeddinToken = 'dev-bypass-token';
-        } else {
-          return data({ error: apiErr.message || (lang === 'en' ? 'Invalid verification code.' : 'رمز التحقق غير صحيح.') });
-        }
+      } else {
+        throw new Error(lang === 'en' ? 'Invalid verification code.' : 'رمز التحقق غير صحيح.');
       }
+    } catch (apiErr: any) {
+      console.error('[Login] Custom API verification failed:', apiErr);
+      return data({ error: apiErr.message || (lang === 'en' ? 'Invalid verification code.' : 'رمز التحقق غير صحيح.') });
     }
 
     // Step 2: Try to create a Shopify session (best-effort, non-fatal)
@@ -263,21 +248,9 @@ export async function action({ request, context }: ActionFunctionArgs) {
         session.set('customerAccessToken', token);
       } else {
         console.warn('[Login] Failed to create customerAccessToken');
-        if (isBypass) {
-          session.set('customerAccessToken', {
-            accessToken: 'dev-bypass-token',
-            expiresAt: new Date(Date.now() + 86400 * 1000).toISOString()
-          });
-        }
       }
     } catch (shopifyErr) {
       console.warn('[Login] Shopify session creation failed (non-fatal):', shopifyErr);
-      if (isBypass) {
-        session.set('customerAccessToken', {
-          accessToken: 'dev-bypass-token',
-          expiresAt: new Date(Date.now() + 86400 * 1000).toISOString()
-        });
-      }
     }
 
     // Always set the CRM token and redirect regardless of Shopify session

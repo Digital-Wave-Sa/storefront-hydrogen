@@ -31,7 +31,10 @@ export async function action({ request, context }: ActionFunctionArgs) {
     const countryCode = String(form.get('countryCode') || '+966');
     const email = String(form.get('email') || '').trim();
     let cleanPhone = phone.replace(/\D/g, '');
-    if (cleanPhone.startsWith('0')) cleanPhone = cleanPhone.substring(1);
+    const countryDigits = countryCode.replace(/\D/g, '');
+    if (cleanPhone.startsWith('00' + countryDigits)) cleanPhone = cleanPhone.substring(2 + countryDigits.length);
+    else if (cleanPhone.startsWith(countryDigits)) cleanPhone = cleanPhone.substring(countryDigits.length);
+    else if (cleanPhone.startsWith('0')) cleanPhone = cleanPhone.substring(1);
     const fullPhone = `${countryCode}${cleanPhone}`;
 
     // Cooldown Throttle Check (60 seconds)

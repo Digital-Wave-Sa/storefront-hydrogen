@@ -46,10 +46,17 @@ export async function action({ request, context }: ActionFunctionArgs) {
     const phone = String(form.get('phone') || '');
     const countryCode = String(form.get('countryCode') || '+966');
     let cleanPhone = phone.replace(/\D/g, '');
-    if (cleanPhone.startsWith('00966')) cleanPhone = cleanPhone.substring(5);
-    else if (cleanPhone.startsWith('966')) cleanPhone = cleanPhone.substring(3);
-    else if (cleanPhone.startsWith('05')) cleanPhone = cleanPhone.substring(1);
-    
+    const countryDigits = countryCode.replace(/\D/g, ''); // e.g. "966" from "+966"
+
+    // Strip international prefix variations to get the local number only
+    if (cleanPhone.startsWith('00' + countryDigits)) {
+      cleanPhone = cleanPhone.substring(2 + countryDigits.length);
+    } else if (cleanPhone.startsWith(countryDigits)) {
+      cleanPhone = cleanPhone.substring(countryDigits.length);
+    } else if (cleanPhone.startsWith('0')) {
+      cleanPhone = cleanPhone.substring(1);
+    }
+
     const fullPhone = `${countryCode}${cleanPhone}`;
 
 

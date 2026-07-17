@@ -59,14 +59,16 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
   if (intent === 'send-otp') {
     const rawPhone = String(form.get('phone') || '');
+    const countryCode = String(form.get('countryCode') || '+966');
     let cleanPhone = rawPhone.replace(/\D/g, '');
+    const countryDigits = countryCode.replace(/\D/g, '');
     
-    // Normalize Saudi phone format (E.164: +9665XXXXXXXX)
-    if (cleanPhone.startsWith('00966')) cleanPhone = cleanPhone.substring(5);
-    else if (cleanPhone.startsWith('966')) cleanPhone = cleanPhone.substring(3);
-    else if (cleanPhone.startsWith('05')) cleanPhone = cleanPhone.substring(1);
+    // Normalize phone format dynamically for any country code (E.164)
+    if (cleanPhone.startsWith('00' + countryDigits)) cleanPhone = cleanPhone.substring(2 + countryDigits.length);
+    else if (cleanPhone.startsWith(countryDigits)) cleanPhone = cleanPhone.substring(countryDigits.length);
+    else if (cleanPhone.startsWith('0')) cleanPhone = cleanPhone.substring(1);
     
-    const formattedPhone = `+966${cleanPhone}`;
+    const formattedPhone = `${countryCode}${cleanPhone}`;
 
     try {
       await api.requestOtp(formattedPhone, 'login');

@@ -302,6 +302,7 @@ export default function Login() {
 
   const [step, setStep] = useState<'input' | 'otp'>('input');
   const [phone, setPhone] = useState('');
+  const [countryCode, setCountryCode] = useState('+966');
   const [otpValue, setOtpValue] = useState(['', '', '', '']);
   const otpRefs = [
     useRef<HTMLInputElement>(null),
@@ -310,10 +311,27 @@ export default function Login() {
     useRef<HTMLInputElement>(null)
   ];
   const [loadingProvider, setLoadingProvider] = useState<string | null>(null);
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const resendFormRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
-    if (actionData?.step === 'otp') setStep('otp');
+    if (actionData?.step === 'otp') {
+      setStep('otp');
+      setResendCooldown(60);
+    }
   }, [actionData]);
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timer = setTimeout(() => setResendCooldown(c => c - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [resendCooldown]);
+
+  const handleResend = () => {
+    setOtpValue(['', '', '', '']);
+    setResendCooldown(60);
+    resendFormRef.current?.requestSubmit();
+  };
 
   const handleOTPChange = (index: number, value: string) => {
     if (value.length > 1) value = value[value.length - 1];
@@ -381,7 +399,7 @@ export default function Login() {
                       <span>{isEn ? 'Mobile Number' : 'رقم الجوال'}</span>
                     </label>
                     <div className="flex flex-row items-center border border-[#BBCFCD] bg-white rounded-[12px] h-[48px] focus-within:border-[#234745] transition-colors overflow-hidden" dir="ltr">
-                      <select name="countryCode" className="bg-transparent border-none text-[#171717] font-bold text-[14px] focus:ring-0 outline-none pl-4 pr-6 py-3 appearance-none cursor-pointer" style={{ backgroundImage: "url(\"data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e\")", backgroundRepeat: "no-repeat", backgroundPosition: "right 0.2rem center", backgroundSize: "1.2em", width: "90px" }}>
+                      <select name="countryCode" value={countryCode} onChange={e => setCountryCode(e.target.value)} className="bg-transparent border-none text-[#171717] font-bold text-[14px] focus:ring-0 outline-none pl-4 pr-6 py-3 appearance-none cursor-pointer" style={{ backgroundImage: "url(\"data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e\")", backgroundRepeat: "no-repeat", backgroundPosition: "right 0.2rem center", backgroundSize: "1.2em", width: "90px" }}>
                         <option value="+966">+966</option>
                         <option value="+971">+971</option>
                         <option value="+965">+965</option>
@@ -417,47 +435,74 @@ export default function Login() {
                   </button>
                 </Form>
               ) : (
-                <Form method="POST" className="w-full flex flex-col gap-6">
-                  <input type="hidden" name="intent" value="verify-otp" />
-                  <input type="hidden" name="otp" value={otpValue.join('')} />
-                  
-                  <div className="flex flex-col gap-2 w-full items-center">
-                    <label className="text-[14px] font-medium text-[#171717] mb-2" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
-                      {isEn ? 'Enter Verification Code' : 'أدخل رمز التحقق'}
-                    </label>
-                    <div className="flex gap-4 justify-center" dir="ltr">
-                      {otpRefs.map((ref, i) => (
-                        <input
-                          key={i}
-                          ref={ref}
-                          type="text"
-                          inputMode="numeric"
-                          maxLength={1}
-                          className="w-14 h-14 text-center border border-[#BBCFCD] rounded-[12px] text-2xl font-bold focus:border-[#234745] outline-none text-[#234745]"
-                          value={otpValue[i]}
-                          onChange={(e) => handleOTPChange(i, e.target.value)}
-                          onKeyDown={(e) => handleKeyDown(i, e)}
-                          autoFocus={i === 0}
-                        />
-                      ))}
+                <>
+                  {/* Hidden resend form */}
+                  <Form method="POST" ref={resendFormRef} className="hidden">
+                    <input type="hidden" name="intent" value="send-otp" />
+                    <input type="hidden" name="phone" value={phone} />
+                    <input type="hidden" name="countryCode" value={countryCode} />
+                  </Form>
+
+                  <Form method="POST" className="w-full flex flex-col gap-6">
+                    <input type="hidden" name="intent" value="verify-otp" />
+                    <input type="hidden" name="otp" value={otpValue.join('')} />
+                    
+                    <div className="flex flex-col gap-2 w-full items-center">
+                      <label className="text-[14px] font-medium text-[#171717] mb-2" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
+                        {isEn ? 'Enter Verification Code' : 'أدخل رمز التحقق'}
+                      </label>
+                      <div className="flex gap-4 justify-center" dir="ltr">
+                        {otpRefs.map((ref, i) => (
+                          <input
+                            key={i}
+                            ref={ref}
+                            type="text"
+                            inputMode="numeric"
+                            maxLength={1}
+                            className="w-14 h-14 text-center border border-[#BBCFCD] rounded-[12px] text-2xl font-bold focus:border-[#234745] outline-none text-[#234745]"
+                            value={otpValue[i]}
+                            onChange={(e) => handleOTPChange(i, e.target.value)}
+                            onKeyDown={(e) => handleKeyDown(i, e)}
+                            autoFocus={i === 0}
+                          />
+                        ))}
+                      </div>
                     </div>
-                  </div>
 
-                  {actionData?.error && <p className="text-red-500 text-sm text-center">{actionData.error}</p>}
+                    {actionData?.error && <p className="text-red-500 text-sm text-center">{actionData.error}</p>}
 
-                  <button 
-                    type="submit" 
-                    disabled={isLoading || otpValue.some(v => !v)}
-                    className="w-full bg-[#234745] text-[#FEF8EB] font-bold text-[16px] rounded-[25px] h-[48px] flex items-center justify-center hover:bg-[#1a3533] transition-colors disabled:opacity-70"
-                    style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
-                  >
-                    {isLoading ? (isEn ? 'Verifying...' : 'جاري التحقق...') : (isEn ? 'Verify & Login' : 'تأكيد الدخول')}
-                  </button>
-                  
-                  <button type="button" className="text-[#9FB7AE] hover:underline text-sm font-medium mx-auto" onClick={() => setStep('input')} style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
-                    {isEn ? 'Change Phone Number' : 'تغيير رقم الجوال'}
-                  </button>
-                </Form>
+                    <button 
+                      type="submit" 
+                      disabled={isLoading || otpValue.some(v => !v)}
+                      className="w-full bg-[#234745] text-[#FEF8EB] font-bold text-[16px] rounded-[25px] h-[48px] flex items-center justify-center hover:bg-[#1a3533] transition-colors disabled:opacity-70"
+                      style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
+                    >
+                      {isLoading ? (isEn ? 'Verifying...' : 'جاري التحقق...') : (isEn ? 'Verify & Login' : 'تأكيد الدخول')}
+                    </button>
+
+                    {/* Resend OTP */}
+                    <div className="flex flex-col items-center gap-1">
+                      {resendCooldown > 0 ? (
+                        <p className="text-[#9FB7AE] text-sm font-medium" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
+                          {isEn ? `Resend code in ${resendCooldown}s` : `إعادة الإرسال بعد ${resendCooldown} ث`}
+                        </p>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={handleResend}
+                          disabled={isLoading}
+                          className="text-[#234745] font-bold text-sm hover:underline disabled:opacity-50"
+                          style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
+                        >
+                          {isEn ? 'Resend verification code' : 'إعادة إرسال رمز التحقق'}
+                        </button>
+                      )}
+                      <button type="button" className="text-[#9FB7AE] hover:underline text-sm font-medium" onClick={() => setStep('input')} style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
+                        {isEn ? 'Change Phone Number' : 'تغيير رقم الجوال'}
+                      </button>
+                    </div>
+                  </Form>
+                </>
               )}
 
               {/* Social Logins Section */}

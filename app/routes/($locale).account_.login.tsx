@@ -61,48 +61,6 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
 
     try {
-      const { getAdminToken } = await import('~/lib/shopify-admin.server');
-      const adminToken = await getAdminToken(env);
-
-      const graphqlQuery = `
-        query {
-          customers(first: 10, query: "phone:${fullPhone}") {
-            edges {
-              node {
-                id
-                email
-                phone
-              }
-            }
-          }
-        }
-      `;
-
-      const adminDomain = env.SHOPIFY_SHOP ? `${env.SHOPIFY_SHOP.replace('.myshopify.com', '')}.myshopify.com` : env.PUBLIC_STORE_DOMAIN;
-      const response = await fetch(`https://${adminDomain}/admin/api/2023-04/graphql.json`, {
-        method: 'POST',
-        headers: {
-          'X-Shopify-Access-Token': adminToken,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ query: graphqlQuery })
-      });
-
-      const dataRes = await response.json() as any;
-      const customers = dataRes?.data?.customers?.edges?.map((e: any) => ({
-        id: e.node.id.split('/').pop(),
-        email: e.node.email,
-        phone: e.node.phone
-      })) || [];
-
-      // Only block if Admin API responded successfully with empty results
-      if (response.ok && dataRes?.data && customers.length === 0) {
-        return data({
-          error: lang === 'en' ? 'Account not found. Please register.' : 'الحساب غير موجود. يرجى إنشاء حساب جديد.',
-          notRegistered: true
-        });
-      }
-
       // Try to send OTP via Custom CRM API
       try {
         const api = new SaadeddinApi(env);
@@ -119,7 +77,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
           apiUrl: env.CUSTOM_API_URL || 'https://api.pryvexapls.com (default)'
         });
         // If the error indicates account doesn't exist, show that message
-        if (msg.toLowerCase().includes('not found') || msg.includes('غير موجود')) {
+        if (msg.toLowerCase().includes('not found') || msg.includes('غير موجود') || msg.toLowerCase().includes('not exist')) {
           return data({
             error: lang === 'en' ? 'Account not found. Please register.' : 'الحساب غير موجود. يرجى إنشاء حساب جديد.',
             notRegistered: true
@@ -131,10 +89,6 @@ export async function action({ request, context }: ActionFunctionArgs) {
       }
 
       session.set('loginOtpPhone', fullPhone);
-      if (customers.length > 0) {
-        session.set('loginCustomerEmail', customers[0].email);
-        session.set('loginCustomerId', customers[0].id);
-      }
       return data(
         { success: true, step: 'otp', phone: fullPhone },
         { headers: { 'Set-Cookie': await session.commit() } }

@@ -30,6 +30,24 @@ export class SaadeddinApi {
     return data.data;
   }
 
+  private getPhoneCandidates(phone: string): string[] {
+    const candidates: string[] = [phone];
+    if (phone.startsWith('+')) {
+      candidates.push(phone.replace('+', ''));
+    }
+    const countryCodes = ['+966', '+971', '+965', '+974', '+973', '+968', '+962'];
+    for (const cc of countryCodes) {
+      if (phone.startsWith(cc)) {
+        const local = phone.substring(cc.length);
+        if (!local.startsWith('0')) {
+          candidates.push(`${cc}0${local}`);
+          candidates.push(`${cc.replace('+', '')}0${local}`);
+        }
+      }
+    }
+    return Array.from(new Set(candidates));
+  }
+
   // ─── AUTHENTICATION ──────────────────────────────────────────────────────────
 
   async requestOtp(phone: string, flowType: 'register' | 'login') {
@@ -40,10 +58,25 @@ export class SaadeddinApi {
   }
 
   async verifyOtp(phone: string, code: string | number, flowType: 'register' | 'login') {
-    return this.api('/auth/verify-otp', {
-      method: 'POST',
-      body: JSON.stringify({ phone, code: String(code), flowType }),
-    });
+    const candidates = this.getPhoneCandidates(phone);
+    let lastErr: any = null;
+
+    for (let i = 0; i < candidates.length; i++) {
+      try {
+        console.log(`[verifyOtp] Trying candidate: ${candidates[i]}`);
+        return await this.api('/auth/verify-otp', {
+          method: 'POST',
+          body: JSON.stringify({ phone: candidates[i], code: String(code), flowType }),
+        });
+      } catch (err: any) {
+        lastErr = err;
+        const errMsg = err.message || '';
+        if (!errMsg.includes('No OTP found') && !errMsg.includes('not found')) {
+          throw err;
+        }
+      }
+    }
+    throw lastErr;
   }
 
   async register(
@@ -71,10 +104,25 @@ export class SaadeddinApi {
   }
 
   async login(phone: string, code: string | number) {
-    return this.api('/auth/login', {
-      method: 'POST',
-      body: JSON.stringify({ phone, code: String(code) }),
-    });
+    const candidates = this.getPhoneCandidates(phone);
+    let lastErr: any = null;
+
+    for (let i = 0; i < candidates.length; i++) {
+      try {
+        console.log(`[login] Trying candidate: ${candidates[i]}`);
+        return await this.api('/auth/login', {
+          method: 'POST',
+          body: JSON.stringify({ phone: candidates[i], code: String(code) }),
+        });
+      } catch (err: any) {
+        lastErr = err;
+        const errMsg = err.message || '';
+        if (!errMsg.includes('No OTP found') && !errMsg.includes('not found')) {
+          throw err;
+        }
+      }
+    }
+    throw lastErr;
   }
 
   async logout() {

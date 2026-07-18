@@ -114,19 +114,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
     try {
       const api = new SaadeddinApi(env);
-      try {
-        customLogin = await api.login(savedPhone, otp);
-      } catch (err: any) {
-        // If it failed due to "No OTP found", retry by stripping the '+' sign prefix
-        const errMsg = err.message || '';
-        if (errMsg.includes('No OTP found') && savedPhone.startsWith('+')) {
-          const strippedPhone = savedPhone.replace('+', '');
-          console.log(`[Login] Retrying API login with stripped phone number: ${strippedPhone}`);
-          customLogin = await api.login(strippedPhone, otp);
-        } else {
-          throw err;
-        }
-      }
+      customLogin = await api.login(savedPhone, otp);
 
       if (customLogin?.token) {
         saadeddinToken = customLogin.token;

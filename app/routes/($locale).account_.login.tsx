@@ -317,7 +317,7 @@ export default function Login() {
   useEffect(() => {
     if (actionData?.step === 'otp') {
       setStep('otp');
-      setResendCooldown(60);
+      setResendCooldown(180);
     }
   }, [actionData]);
 
@@ -329,7 +329,7 @@ export default function Login() {
 
   const handleResend = () => {
     setOtpValue(['', '', '', '']);
-    setResendCooldown(60);
+    setResendCooldown(180);
     resendFormRef.current?.requestSubmit();
   };
 

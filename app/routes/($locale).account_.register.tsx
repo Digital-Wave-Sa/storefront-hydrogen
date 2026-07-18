@@ -37,7 +37,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
     else if (cleanPhone.startsWith('0')) cleanPhone = cleanPhone.substring(1);
     const fullPhone = `${countryCode}${cleanPhone}`;
 
-    // Cooldown Throttle Check (60 seconds)
+    // Cooldown Throttle Check (180 seconds to match backend rate limit)
     const cooldown = session.get('otpCooldown');
     if (cooldown && Date.now() < cooldown) {
       const waitSecs = Math.ceil((cooldown - Date.now()) / 1000);
@@ -53,7 +53,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
       await api.requestOtp(fullPhone, 'register');
 
       session.set('otpPhone', fullPhone);
-      session.set('otpCooldown', Date.now() + 60 * 1000);
+      session.set('otpCooldown', Date.now() + 180 * 1000);
       return data(
         { step: 'otp' },
         { headers: { 'Set-Cookie': await session.commit() } }
@@ -271,12 +271,12 @@ export default function Register() {
   const otpRefs = [useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null)];
 
   const fetcher = useFetcher<any>();
-  const [resendCooldown, setResendCooldown] = useState(60);
+  const [resendCooldown, setResendCooldown] = useState(180);
 
   useEffect(() => {
     if (actionData?.step === 'otp') {
       setStep('otp');
-      setResendCooldown(60);
+      setResendCooldown(180);
     }
   }, [actionData]);
 
@@ -298,7 +298,7 @@ export default function Register() {
     submitData.append('language', formData.language);
 
     fetcher.submit(submitData, { method: 'POST' });
-    setResendCooldown(60);
+    setResendCooldown(180);
   };
 
   const isResent = fetcher.data?.step === 'otp' && !fetcher.data?.error;

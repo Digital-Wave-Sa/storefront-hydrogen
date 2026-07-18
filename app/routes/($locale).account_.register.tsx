@@ -111,23 +111,8 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
       // 1. Verify OTP directly via CRM API to get otpToken
       let otpToken = '';
-      let verifyCode = otp;
-      const isBypass = otp === '0000';
-
-      if (isBypass) {
-        try {
-          const devOtpRes = await fetch(`${env.CUSTOM_API_URL || 'https://api.pryvexapls.com'}/auth/_dev/otp/${encodeURIComponent(savedPhone)}`);
-          const devOtpData = await devOtpRes.json() as any;
-          if (devOtpData.success && devOtpData.data?.code) {
-            verifyCode = devOtpData.data.code;
-          }
-        } catch (devErr) {
-          console.warn('[Register] Failed to fetch dev OTP code:', devErr);
-        }
-      }
-
       try {
-        const verifyRes = await api.verifyOtp(savedPhone, verifyCode, 'register');
+        const verifyRes = await api.verifyOtp(savedPhone, otp, 'register');
         otpToken = verifyRes.otpToken;
       } catch (verifyErr: any) {
         console.error('[Register] verifyOtp failed:', verifyErr);
@@ -231,13 +216,6 @@ export async function action({ request, context }: ActionFunctionArgs) {
       // 5. Save tokens in session and redirect to /account
       if (token) {
         session.set('customerAccessToken', token);
-      } else {
-        if (isBypass) {
-          session.set('customerAccessToken', {
-            accessToken: 'dev-bypass-token',
-            expiresAt: new Date(Date.now() + 86400 * 1000).toISOString()
-          });
-        }
       }
       session.set('saadeddinToken', saadeddinToken);
       session.unset('otpPhone');

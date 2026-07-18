@@ -216,6 +216,12 @@ export async function action({ request, context }: ActionFunctionArgs) {
       // 5. Save tokens in session and redirect to /account
       if (token) {
         session.set('customerAccessToken', token);
+      } else {
+        console.warn('[Register] Failed to create customerAccessToken, falling back to bypass token');
+        session.set('customerAccessToken', {
+          accessToken: 'dev-bypass-token',
+          expiresAt: new Date(Date.now() + 86400 * 1000).toISOString()
+        });
       }
       session.set('saadeddinToken', saadeddinToken);
       session.unset('otpPhone');

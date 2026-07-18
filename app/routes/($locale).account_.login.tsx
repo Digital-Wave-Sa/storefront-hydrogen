@@ -110,10 +110,10 @@ export async function action({ request, context }: ActionFunctionArgs) {
     }
 
     let saadeddinToken: string | null = null;
+    let customLogin: any = null;
 
     try {
       const api = new SaadeddinApi(env);
-      let customLogin;
       try {
         customLogin = await api.login(savedPhone, otp);
       } catch (err: any) {
@@ -151,8 +151,81 @@ export async function action({ request, context }: ActionFunctionArgs) {
     // Step 2: Try to create a Shopify session (best-effort, non-fatal)
     try {
       const stablePassword = await derivePassword(savedPhone, env.SESSION_SECRET || 'saadeddin-otp-secret');
-      const email = session.get('loginCustomerEmail');
-      const customerId = session.get('loginCustomerId');
+      let email = session.get('loginCustomerEmail');
+      let customerId = session.get('loginCustomerId');
+      const profileName = customLogin?.profile?.name || '';
+      const accountType = customLogin?.profile?.accountType || 'INDIVIDUAL';
+
+      // Fallback: If customer exists in CRM but shopifyId is missing, create in Shopify
+      if (!customerId) {
+        console.log('[Login] Customer exists in ERP but shopifyId is missing. Attempting to create in Shopify.');
+        try {
+          const { getAdminToken } = await import('~/lib/shopify-admin.server');
+          const adminToken = await getAdminToken(env);
+          
+          if (adminToken) {
+            let firstName = profileName;
+            let lastName = '';
+            if (accountType === 'COMPANY') {
+              lastName = '(Company)';
+            } else {
+              const nameParts = profileName.trim().split(/\s+/);
+              firstName = nameParts[0] || 'Customer';
+              lastName = nameParts.slice(1).join(' ') || '(N/A)';
+            }
+
+            const customerPayload = {
+              customer: {
+                first_name: firstName,
+                last_name: lastName,
+                phone: savedPhone,
+                email: email || `${savedPhone.replace(/\D/g, '')}@saadeddin.placeholder`,
+                password: stablePassword,
+                password_confirmation: stablePassword,
+                tags: accountType === 'COMPANY' ? 'verified_phone, B2B' : 'verified_phone'
+              }
+            };
+
+            const adminResponse = await fetch(`https://${env.PUBLIC_STORE_DOMAIN}/admin/api/2024-01/customers.json`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'X-Shopify-Access-Token': adminToken },
+              body: JSON.stringify(customerPayload)
+            });
+
+            if (adminResponse.ok) {
+              const adminData = await adminResponse.json() as any;
+              customerId = String(adminData.customer?.id);
+              email = adminData.customer?.email || email;
+              console.log('[Login] Shopify customer created successfully:', customerId);
+            } else {
+              const errBody = await adminResponse.text();
+              console.error('[Login] Fallback Shopify Admin customer creation failed:', adminResponse.status, errBody);
+              
+              // If it failed because email/phone is already taken in Shopify, try to locate existing customer by phone
+              if (errBody.includes('already') || errBody.includes('taken')) {
+                const searchRes = await fetch(`https://${env.PUBLIC_STORE_DOMAIN}/admin/api/2023-04/graphql.json`, {
+                  method: 'POST',
+                  headers: { 'X-Shopify-Access-Token': adminToken, 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    query: `query { customers(first: 1, query: "phone:\\"${savedPhone}\\"") { edges { node { id email } } } }`
+                  })
+                });
+                if (searchRes.ok) {
+                  const searchData = await searchRes.json() as any;
+                  const node = searchData?.data?.customers?.edges?.[0]?.node;
+                  if (node) {
+                    customerId = node.id.split('/').pop();
+                    email = node.email || email;
+                    console.log('[Login] Found existing customer by phone search:', customerId);
+                  }
+                }
+              }
+            }
+          }
+        } catch (createErr) {
+          console.error('[Login] Error trying to check/create Shopify customer:', createErr);
+        }
+      }
 
       let tokenResponse = await storefront.mutate(LOGIN_MUTATION, {
         variables: {

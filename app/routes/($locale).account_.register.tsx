@@ -48,33 +48,6 @@ export async function action({ request, context }: ActionFunctionArgs) {
     }
 
     try {
-      // Check if email already exists in Shopify before sending OTP
-      if (email) {
-        try {
-          const { getAdminToken } = await import('~/lib/shopify-admin.server');
-          const adminToken = await getAdminToken(env);
-          if (adminToken) {
-            const emailCheckRes = await fetch(
-              `https://${env.PUBLIC_STORE_DOMAIN}/admin/api/2024-01/customers/search.json?query=email:"${encodeURIComponent(email)}"&fields=id`,
-              { headers: { 'X-Shopify-Access-Token': adminToken } }
-            );
-            if (emailCheckRes.ok) {
-              const checkData = await emailCheckRes.json() as any;
-              if (checkData.customers?.length > 0) {
-                console.warn('[Register] Email already exists — blocking OTP send:', email);
-                return data({
-                  error: lang === 'en'
-                    ? 'This email address is already registered. Please use a different one.'
-                    : 'البريد الإلكتروني هذا مسجل بالفعل. يرجى استخدام بريد إلكتروني آخر.'
-                });
-              }
-            }
-          }
-        } catch (emailCheckErr) {
-          console.error('[Register] Email pre-check error (non-fatal):', emailCheckErr);
-        }
-      }
-
       const api = new SaadeddinApi(env);
       await api.requestOtp(fullPhone, 'register');
 
@@ -121,6 +94,33 @@ export async function action({ request, context }: ActionFunctionArgs) {
     const taxRegistration = String(form.get('taxRegistration') || '');
     const companyAddress = String(form.get('companyAddress') || '');
 
+    // Validate email uniqueness in Shopify Admin API before calling register
+    if (email) {
+      try {
+        const { getAdminToken } = await import('~/lib/shopify-admin.server');
+        const adminToken = await getAdminToken(env);
+        if (adminToken) {
+          console.log('[Register] Checking if email already exists in Shopify:', email);
+          const emailCheckRes = await fetch(
+            `https://${env.PUBLIC_STORE_DOMAIN}/admin/api/2024-01/customers/search.json?query=email:"${encodeURIComponent(email)}"&fields=id`,
+            { headers: { 'X-Shopify-Access-Token': adminToken } }
+          );
+          if (emailCheckRes.ok) {
+            const checkData = await emailCheckRes.json() as any;
+            if (checkData.customers?.length > 0) {
+              console.warn('[Register] Email already exists in Shopify:', email);
+              return data({
+                error: lang === 'en'
+                  ? 'This email address is already registered. Please use a different one.'
+                  : 'البريد الإلكتروني هذا مسجل بالفعل. يرجى استخدام بريد إلكتروني آخر.'
+              });
+            }
+          }
+        }
+      } catch (checkErr) {
+        console.error('[Register] Pre-check Shopify email existence error:', checkErr);
+      }
+    }
 
     let firstName = '';
     let lastName = '';

@@ -2409,6 +2409,13 @@ export type CakeAttributesQuery = {
       }
     >;
   };
+  cakeSettings: {
+    nodes: Array<{
+      preparationHours?: StorefrontAPI.Maybe<
+        Pick<StorefrontAPI.MetaobjectField, 'value'>
+      >;
+    }>;
+  };
 };
 
 export type GiftingProductItemFragment = Pick<
@@ -4116,7 +4123,7 @@ interface GeneratedQueryTypes {
     return: CorporateProductsQuery;
     variables: CorporateProductsQueryVariables;
   };
-  '#graphql\n  query CakeAttributes($language: LanguageCode) @inContext(language: $language) {\n    cakeAttributes: metaobjects(type: "cake_attribute", first: 250) {\n      nodes {\n        id\n        attributeType: field(key: "attribute_type") { value }\n        nameEn: field(key: "name_english") { value }\n        nameAr: field(key: "name_arabic") { value }\n        priceDelta: field(key: "price_delta") { value }\n        thumbnailUrl: field(key: "thumbnail_image") { reference { ... on MediaImage { image { url } } } }\n        imageFront: field(key: "image_front") { reference { ... on MediaImage { image { url } } } }\n        imageTop: field(key: "image_top") { reference { ... on MediaImage { image { url } } } }\n        imageSliced: field(key: "image_sliced") { reference { ... on MediaImage { image { url } } } }\n      }\n    }\n    toppingDesigns: metaobjects(type: "cake_topping_design", first: 250) {\n      nodes {\n        id\n        topping: field(key: "topping") {\n          reference {\n            ... on Metaobject {\n              id\n            }\n          }\n        }\n        shape: field(key: "shape") {\n          reference {\n            ... on Metaobject {\n              id\n            }\n          }\n        }\n        imageFront: field(key: "image_front") { reference { ... on MediaImage { image { url } } } }\n        imageTop: field(key: "image_top") { reference { ... on MediaImage { image { url } } } }\n        imageSliced: field(key: "image_sliced") { reference { ... on MediaImage { image { url } } } }\n      }\n    }\n  }\n': {
+  '#graphql\n  query CakeAttributes($language: LanguageCode) @inContext(language: $language) {\n    cakeAttributes: metaobjects(type: "cake_attribute", first: 250) {\n      nodes {\n        id\n        attributeType: field(key: "attribute_type") { value }\n        nameEn: field(key: "name_english") { value }\n        nameAr: field(key: "name_arabic") { value }\n        priceDelta: field(key: "price_delta") { value }\n        thumbnailUrl: field(key: "thumbnail_image") { reference { ... on MediaImage { image { url } } } }\n        imageFront: field(key: "image_front") { reference { ... on MediaImage { image { url } } } }\n        imageTop: field(key: "image_top") { reference { ... on MediaImage { image { url } } } }\n        imageSliced: field(key: "image_sliced") { reference { ... on MediaImage { image { url } } } }\n      }\n    }\n    toppingDesigns: metaobjects(type: "cake_topping_design", first: 250) {\n      nodes {\n        id\n        topping: field(key: "topping") {\n          reference {\n            ... on Metaobject {\n              id\n            }\n          }\n        }\n        shape: field(key: "shape") {\n          reference {\n            ... on Metaobject {\n              id\n            }\n          }\n        }\n        imageFront: field(key: "image_front") { reference { ... on MediaImage { image { url } } } }\n        imageTop: field(key: "image_top") { reference { ... on MediaImage { image { url } } } }\n        imageSliced: field(key: "image_sliced") { reference { ... on MediaImage { image { url } } } }\n      }\n    }\n    cakeSettings: metaobjects(type: "cake_settings", first: 1) {\n      nodes {\n        preparationHours: field(key: "preparation_hours") { value }\n      }\n    }\n  }\n': {
     return: CakeAttributesQuery;
     variables: CakeAttributesQueryVariables;
   };

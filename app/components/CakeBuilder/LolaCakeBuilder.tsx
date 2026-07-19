@@ -49,8 +49,7 @@ const steps = [
   { id: 1, titleEn: 'Shape', titleAr: 'اختر الشكل', icon: Cake },
   { id: 2, titleEn: 'Flavor', titleAr: 'أختر النكهة', icon: FlavorIcon },
   { id: 3, titleEn: 'Decoration', titleAr: 'أختر التزيين', icon: DecorationIcon },
-  { id: 4, titleEn: 'Message', titleAr: 'أضف رسالتك الخاصة', icon: MessageIcon },
-  { id: 5, titleEn: 'Time', titleAr: 'وقت التحضير', icon: Clock }
+  { id: 4, titleEn: 'Message', titleAr: 'أضف رسالتك الخاصة', icon: MessageIcon }
 ];
 
 const cakeOptions = {
@@ -119,6 +118,7 @@ export default function LolaCakeBuilder({
   const [isFaqOpen, setIsFaqOpen] = useState(false);
   const [isCutaway, setIsCutaway] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isPrepModalOpen, setIsPrepModalOpen] = useState(false);
   
   // Touch gestures state
   const touchStartRef = useRef<number | null>(null);
@@ -875,56 +875,6 @@ export default function LolaCakeBuilder({
                 </div>
               )}
 
-              {currentStep === 5 && (
-                <div className="animate-in fade-in duration-300 space-y-6">
-                  <div className={isEn ? 'text-left' : 'text-right'}>
-                    <h2 className="text-2xl font-bold text-[#1a1a1a] mb-2">
-                      {isEn ? 'Select Preparation & Time' : 'اختر وقت التجهيز والاستلام'}
-                    </h2>
-                    <p className="text-[#8BA19C] text-sm mb-6">
-                      {isEn 
-                        ? `Custom cakes require a minimum of ${preparationHours} hours of preparation time. Please select one of the options below:` 
-                        : `تحتاج الكيكات المخصصة إلى ${preparationHours} ساعة كحد أدنى للتجهيز والتحضير. يرجى اختيار أحد الخيارات التالية:`}
-                    </p>
-                    
-                    <div className="flex flex-col gap-4 w-full">
-                      {prepTimeOptions.map(option => {
-                        const isSelected = selections.prepTime?.id === option.id;
-                        return (
-                          <div 
-                            key={option.id}
-                            className={`p-6 rounded-2xl border transition-all cursor-pointer relative flex flex-col justify-start gap-2 ${
-                              isSelected 
-                                ? 'border-[#294941] bg-[#F6FAF8]' 
-                                : 'border-[#E5E7EB] bg-white hover:border-[#294941]/50'
-                            }`}
-                            onClick={() => setSelections(prev => ({ ...prev, prepTime: option }))}
-                          >
-                            <div className={`absolute top-5 ${isEn ? 'right-5' : 'left-5'} w-6 h-6 rounded-full flex items-center justify-center border transition-all ${
-                              isSelected 
-                                ? 'bg-[#294941] border-[#294941] text-white' 
-                                : 'border-gray-300 bg-white text-transparent'
-                            }`}>
-                              <Check className="w-4 h-4 stroke-[3]" />
-                            </div>
-                            <div className="font-bold text-[#1a1a1a] text-lg pr-6 pl-6">
-                              {isEn ? option.nameEn : option.nameAr}
-                            </div>
-                            <div className="text-[#8BA19C] text-sm pr-6 pl-6">
-                              {isEn ? option.descEn : option.descAr}
-                            </div>
-                            {option.price > 0 && (
-                              <div className="text-[#294941] font-bold text-md mt-1 pr-6 pl-6">
-                                +{toArabicDigits(option.price)} <SaudiRiyalSymbol className="w-auto h-3.5 inline-block text-[#294941]" />
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
 
             {/* Next Button and FAQ Button */}
@@ -940,7 +890,7 @@ export default function LolaCakeBuilder({
               ) : (
                 <button 
                   className={`inline-flex items-center gap-3 px-10 py-4 rounded-full font-bold bg-[#294941] text-white hover:bg-[#1E3A34] transition-all text-xl disabled:opacity-50 disabled:cursor-not-allowed ${isEn ? 'flex-row-reverse' : ''}`}
-                  onClick={handleCheckout}
+                  onClick={() => setIsPrepModalOpen(true)}
                   disabled={isSubmitting}
                 >
                   {isSubmitting ? (isEn ? 'Preparing...' : 'جاري التحضير...') : (isEn ? 'Checkout and Pay' : 'إتمام الطلب والدفع')}
@@ -1082,6 +1032,78 @@ export default function LolaCakeBuilder({
         </div>
       </div>
       <FaqModal isOpen={isFaqOpen} onClose={() => setIsFaqOpen(false)} />
+
+      {isPrepModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in" dir={isEn ? 'ltr' : 'rtl'}>
+          <div className="bg-white rounded-[32px] max-w-lg w-full p-8 shadow-2xl border border-gray-100 flex flex-col gap-6 animate-zoom-in max-h-[90vh] overflow-y-auto">
+            <div className={isEn ? 'text-left' : 'text-right'}>
+              <h2 className="text-2xl font-bold text-[#1a1a1a] mb-2">
+                {isEn ? 'Select Preparation & Time' : 'اختر وقت التجهيز والاستلام'}
+              </h2>
+              <p className="text-[#8BA19C] text-sm">
+                {isEn 
+                  ? `Custom cakes require a minimum of ${preparationHours} hours of preparation time. Please select one of the options below:` 
+                  : `تحتاج الكيكات المخصصة إلى ${preparationHours} ساعة كحد أدنى للتجهيز والتحضير. يرجى اختيار أحد الخيارات التالية:`}
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-4 w-full">
+              {prepTimeOptions.map(option => {
+                const isSelected = selections.prepTime?.id === option.id;
+                return (
+                  <div 
+                    key={option.id}
+                    className={`p-6 rounded-2xl border transition-all cursor-pointer relative flex flex-col justify-start gap-2 ${
+                      isSelected 
+                        ? 'border-[#294941] bg-[#F6FAF8]' 
+                        : 'border-[#E5E7EB] bg-white hover:border-[#294941]/50'
+                    }`}
+                    onClick={() => setSelections(prev => ({ ...prev, prepTime: option }))}
+                  >
+                    <div className={`absolute top-5 ${isEn ? 'right-5' : 'left-5'} w-6 h-6 rounded-full flex items-center justify-center border transition-all ${
+                      isSelected 
+                        ? 'bg-[#294941] border-[#294941] text-white' 
+                        : 'border-gray-300 bg-white text-transparent'
+                    }`}>
+                      <Check className="w-4 h-4 stroke-[3]" />
+                    </div>
+                    <div className="font-bold text-[#1a1a1a] pr-6 pl-6 text-[16px] leading-tight">
+                      {isEn ? option.nameEn : option.nameAr}
+                    </div>
+                    <div className="text-[#8BA19C] text-xs pr-6 pl-6 mt-1">
+                      {isEn ? option.descEn : option.descAr}
+                    </div>
+                    {option.price > 0 && (
+                      <div className="text-[#294941] font-bold text-sm mt-1 pr-6 pl-6">
+                        +{toArabicDigits(option.price)} <SaudiRiyalSymbol className="w-auto h-3.5 inline-block text-[#294941]" />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className={`flex gap-4 w-full mt-4 ${isEn ? 'flex-row' : 'flex-row-reverse'}`}>
+              <button
+                type="button"
+                className="flex-1 py-3.5 rounded-full font-bold bg-[#294941] text-white hover:bg-[#1E3A34] transition-all text-[16px] disabled:opacity-50 flex items-center justify-center"
+                onClick={handleCheckout}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? (isEn ? 'Preparing...' : 'جاري التحضير...') : (isEn ? 'Confirm & Checkout' : 'تأكيد وإتمام الطلب')}
+              </button>
+              <button
+                type="button"
+                className="px-6 py-3.5 rounded-full font-bold border border-gray-300 text-gray-700 hover:bg-gray-50 transition-all text-[16px]"
+                onClick={() => setIsPrepModalOpen(false)}
+                disabled={isSubmitting}
+              >
+                {isEn ? 'Cancel' : 'إلغاء'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

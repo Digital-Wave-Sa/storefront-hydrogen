@@ -47,6 +47,34 @@ export async function action({ request, context }: ActionFunctionArgs) {
       });
     }
 
+    // Proactively check if the email already exists in Shopify before sending the OTP
+    if (email) {
+      try {
+        const { getAdminToken } = await import('~/lib/shopify-admin.server');
+        const adminToken = await getAdminToken(env);
+        if (adminToken) {
+          console.log('[Register] Proactively checking if email exists in Shopify before sending OTP:', email);
+          const emailCheckRes = await fetch(
+            `https://${env.PUBLIC_STORE_DOMAIN}/admin/api/2024-01/customers/search.json?query=email:"${encodeURIComponent(email)}"&fields=id`,
+            { headers: { 'X-Shopify-Access-Token': adminToken } }
+          );
+          if (emailCheckRes.ok) {
+            const checkData = await emailCheckRes.json() as any;
+            if (checkData.customers?.length > 0) {
+              console.warn('[Register] Email already exists in Shopify before sending OTP:', email);
+              return data({
+                error: lang === 'en'
+                  ? 'This email address is already registered. Please use a different one.'
+                  : 'البريد الإلكتروني هذا مسجل بالفعل. يرجى استخدام بريد إلكتروني آخر.'
+              });
+            }
+          }
+        }
+      } catch (checkErr) {
+        console.error('[Register] Pre-check Shopify email existence before OTP error:', checkErr);
+      }
+    }
+
     try {
       const api = new SaadeddinApi(env);
       await api.requestOtp(fullPhone, 'register');

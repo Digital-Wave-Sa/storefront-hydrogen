@@ -358,13 +358,13 @@ export default function Login() {
     <div className="min-h-screen bg-[#FEF8EB] flex items-center justify-center p-4 lg:p-8" dir={isEn ? 'ltr' : 'rtl'}>
       {/* Main Container */}
       <div className="w-full max-w-[1280px] flex flex-col lg:flex-row-reverse gap-6 min-h-[880px]">
-        
+
         {/* Left Pane - Form Area */}
         <div className="w-full lg:w-1/2 bg-white border border-[#BBCFCD]/50 rounded-[24px] flex flex-col items-center justify-center p-6 lg:p-12 relative shadow-sm">
-          
+
           {/* Main Form Container */}
           <div className="w-full flex flex-col items-center">
-            
+
             {/* Header / Welcome Text */}
             <div className="flex flex-col items-center mb-6 gap-2 w-full border-b border-[#BBCFCD]/50 pb-6">
               <h1 className="text-[26px] font-bold text-[#171717] flex items-center gap-2" style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" }}>
@@ -378,7 +378,7 @@ export default function Login() {
 
             {/* Form Box */}
             <div className="w-full flex flex-col items-center gap-6">
-              
+
               {/* Tabs */}
               <div className="flex w-full gap-4 h-[48px]">
                 <button className="flex-1 bg-[#234745] text-[#FEF8EB] rounded-[25px] font-bold text-[16px] transition-colors" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
@@ -395,7 +395,7 @@ export default function Login() {
               {step === 'input' ? (
                 <Form method="POST" className="w-full flex flex-col gap-6 w-full">
                   <input type="hidden" name="intent" value="send-otp" />
-                  
+
                   {/* Phone Input */}
                   <div className="flex flex-col gap-2 w-full">
                     <label className={`text-[12px] font-bold text-[#171717] px-1 w-full flex gap-1 ${isEn ? 'flex-row' : 'flex-row-reverse justify-end'}`} style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
@@ -429,8 +429,8 @@ export default function Login() {
                   {actionData?.error && <p className="text-red-500 text-sm text-center">{actionData.error}</p>}
 
                   {/* Submit Button */}
-                  <button 
-                    type="submit" 
+                  <button
+                    type="submit"
                     disabled={isLoading || phone.length < 9}
                     className="w-full bg-[#234745] text-[#FEF8EB] font-bold text-[16px] rounded-[25px] h-[48px] flex items-center justify-center hover:bg-[#1a3533] transition-colors disabled:opacity-70"
                     style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
@@ -450,7 +450,7 @@ export default function Login() {
                   <Form method="POST" className="w-full flex flex-col gap-6">
                     <input type="hidden" name="intent" value="verify-otp" />
                     <input type="hidden" name="otp" value={otpValue.join('')} />
-                    
+
                     <div className="flex flex-col gap-2 w-full items-center">
                       <label className="text-[14px] font-medium text-[#171717] mb-2" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
                         {isEn ? 'Enter Verification Code' : 'أدخل رمز التحقق'}
@@ -475,8 +475,8 @@ export default function Login() {
 
                     {actionData?.error && <p className="text-red-500 text-sm text-center">{actionData.error}</p>}
 
-                    <button 
-                      type="submit" 
+                    <button
+                      type="submit"
                       disabled={isLoading || otpValue.some(v => !v)}
                       className="w-full bg-[#234745] text-[#FEF8EB] font-bold text-[16px] rounded-[25px] h-[48px] flex items-center justify-center hover:bg-[#1a3533] transition-colors disabled:opacity-70"
                       style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
@@ -512,7 +512,7 @@ export default function Login() {
               {/* Guest Login Section */}
               <div className="w-full flex flex-col gap-4 mt-2">
                 {/* Continue as Guest Button */}
-                <Link 
+                <Link
                   to={isEn ? "/en/cart" : "/cart"}
                   className="w-full h-[52px] border border-[#234745] rounded-[12px] flex items-center justify-center hover:bg-[#234745]/5 transition-colors"
                 >
@@ -528,14 +528,14 @@ export default function Login() {
 
         {/* Right Pane - Branding Area (Hidden on Mobile) */}
         <div className="hidden lg:flex w-1/2 bg-[#234745] rounded-[24px] relative flex-col items-center justify-center overflow-hidden p-8 shadow-sm">
-          
+
           {/* Back to Store Button */}
-          <Link 
-            to={isEn ? "/en" : "/"} 
+          <Link
+            to={isEn ? "/en" : "/"}
             className="absolute top-8 ltr:left-8 rtl:right-8 bg-[#9FB7AE] hover:bg-[#BBCFCD] transition-colors rounded-full px-8 py-3 flex items-center gap-3 z-10"
           >
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className={!isEn ? 'rotate-180' : ''}>
-              <path d="M19 12H5M5 12L12 19M5 12L12 5" stroke="#234745" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M19 12H5M5 12L12 19M5 12L12 5" stroke="#234745" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
             <span className="font-bold text-[18px] text-[#234745]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
               {isEn ? 'Back to store' : 'العودة للمتجر'}

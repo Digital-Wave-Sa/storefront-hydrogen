@@ -422,6 +422,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
               sku: closestMapping.sku,
               quantity: 1,
               originalUnitPrice: priceNum.toFixed(2),
+              requiresShipping: true,
               customAttributes: [
                 ...customAttributes,
                 ...(finalImageAttr ? [{ key: isEn ? 'Printed Image URL' : 'رابط صورة الطباعة', value: finalImageAttr }] : []),

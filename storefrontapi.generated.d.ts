@@ -3974,6 +3974,14 @@ export type CustomerAccessTokenCreateSocialMutation = {
   }>;
 };
 
+export type GetCustomerIdQueryVariables = StorefrontAPI.Exact<{
+  customerAccessToken: StorefrontAPI.Scalars['String']['input'];
+}>;
+
+export type GetCustomerIdQuery = {
+  customer?: StorefrontAPI.Maybe<Pick<StorefrontAPI.Customer, 'id' | 'email'>>;
+};
+
 export type CustomerAddressesForLocationIdQueryVariables = StorefrontAPI.Exact<{
   customerAccessToken: StorefrontAPI.Scalars['String']['input'];
 }>;
@@ -4206,6 +4214,10 @@ interface GeneratedQueryTypes {
   '#graphql\n    fragment SearchProduct on Product {\n    __typename\n    handle\n    id\n    publishedAt\n    title\n    availableForSale\n    trackingParameters\n    vendor\n    tags\n    productType\n    featuredImage {\n      id\n      altText\n      url\n      width\n      height\n    }\n    priceRange {\n      minVariantPrice {\n        amount\n        currencyCode\n      }\n      maxVariantPrice {\n        amount\n        currencyCode\n      }\n    }\n    compareAtPriceRange {\n      minVariantPrice {\n        amount\n        currencyCode\n      }\n    }\n    visibility_start: metafield(namespace: "custom", key: "visibility_start") {\n      value\n    }\n    visibility_end: metafield(namespace: "custom", key: "visibility_end") {\n      value\n    }\n    rating: metafield(namespace: "reviews", key: "rating") {\n      value\n    }\n    ratingCount: metafield(namespace: "reviews", key: "rating_count") {\n      value\n    }\n    bogo_free_item: metafield(namespace: "custom", key: "bogo_free_item") {\n      value\n      reference {\n        ... on ProductVariant {\n          id\n        }\n      }\n    }\n    variants(first: 10) {\n      nodes {\n        id\n        image {\n          url\n          altText\n          width\n          height\n        }\n        price {\n          amount\n          currencyCode\n        }\n        compareAtPrice {\n          amount\n          currencyCode\n        }\n        selectedOptions {\n          name\n          value\n        }\n        product {\n          handle\n          title\n        }\n        storeAvailability(first: 250) {\n          nodes {\n            available\n            location {\n              id\n              name\n            }\n          }\n        }\n      }\n    }\n  }\n  fragment SearchPage on Page {\n     __typename\n     handle\n    id\n    title\n    trackingParameters\n  }\n  fragment SearchArticle on Article {\n    __typename\n    handle\n    id\n    title\n    trackingParameters\n  }\n  query search(\n    $country: CountryCode\n    $endCursor: String\n    $first: Int\n    $language: LanguageCode\n    $last: Int\n    $query: String!\n    $startCursor: String\n    $productFilters: [ProductFilter!]\n  ) @inContext(country: $country, language: $language) {\n    products: search(\n      query: $query,\n      unavailableProducts: HIDE,\n      types: [PRODUCT],\n      first: $first,\n      sortKey: RELEVANCE,\n      last: $last,\n      before: $startCursor,\n      after: $endCursor,\n      productFilters: $productFilters\n    ) {\n      productFilters {\n        id\n        label\n        type\n        values {\n          id\n          label\n          count\n          input\n        }\n      }\n      nodes {\n        ...on Product {\n          ...SearchProduct\n        }\n      }\n      pageInfo {\n        hasNextPage\n        hasPreviousPage\n        startCursor\n        endCursor\n      }\n    }\n    pages: search(\n      query: $query,\n      types: [PAGE],\n      first: 10\n    ) {\n      nodes {\n        ...on Page {\n          ...SearchPage\n        }\n      }\n    }\n    articles: search(\n      query: $query,\n      types: [ARTICLE],\n      first: 10\n    ) {\n      nodes {\n        ...on Article {\n          ...SearchArticle\n        }\n      }\n    }\n    collections(first: 50) {\n      nodes {\n        id\n        handle\n        title\n      }\n    }\n  }\n': {
     return: SearchQuery;
     variables: SearchQueryVariables;
+  };
+  '#graphql\n              query getCustomerId($customerAccessToken: String!) {\n                customer(customerAccessToken: $customerAccessToken) {\n                  id\n                  email\n                }\n              }\n            ': {
+    return: GetCustomerIdQuery;
+    variables: GetCustomerIdQueryVariables;
   };
   '#graphql\n                  query CustomerAddressesForLocationId($customerAccessToken: String!) {\n                    customer(customerAccessToken: $customerAccessToken) {\n                      addresses(first: 250) {\n                        nodes {\n                          id\n                          firstName\n                          lastName\n                          address1\n                          address2\n                          city\n                          country\n                          phone\n                        }\n                      }\n                    }\n                  }\n                ': {
     return: CustomerAddressesForLocationIdQuery;

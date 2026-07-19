@@ -129,30 +129,30 @@ export default function LolaCakeBuilder({
     const options = [
       {
         id: `${preparationHours}h`,
-        nameEn: `Express Preparation (Ready in ${preparationHours} Hours)`,
-        nameAr: `تحضير سريع (جاهز خلال ${preparationHours} ساعة)`,
+        nameEn: `I want it ready in ${preparationHours} Hours`,
+        nameAr: `أريدها جاهزة خلال ${preparationHours} ساعة`,
         price: 0,
-        descEn: `Your cake will be ready for pickup or delivery starting ${preparationHours} hours from now.`,
-        descAr: `ستكون الكيكة جاهزة للاستلام أو التوصيل بعد ${preparationHours} ساعة من الآن.`
+        descEn: `Your cake will be prepared and ready starting ${preparationHours} hours from now.`,
+        descAr: `سيتم تحضير الكيكة وتجهيزها بعد ${preparationHours} ساعة من الآن.`
       },
       {
         id: `${preparationHours + 24}h`,
-        nameEn: `Standard Preparation (Ready in ${preparationHours + 24} Hours)`,
-        nameAr: `تحضير عادي (جاهز خلال ${preparationHours + 24} ساعة)`,
+        nameEn: `I want it ready in ${preparationHours + 24} Hours`,
+        nameAr: `أريدها جاهزة خلال ${preparationHours + 24} ساعة`,
         price: 0,
-        descEn: `Your cake will be ready for pickup or delivery starting ${preparationHours + 24} hours from now.`,
-        descAr: `ستكون الكيكة جاهزة للاستلام أو التوصيل بعد ${preparationHours + 24} ساعة من الآن.`
+        descEn: `Your cake will be prepared and ready starting ${preparationHours + 24} hours from now.`,
+        descAr: `سيتم تحضير الكيكة وتجهيزها بعد ${preparationHours + 24} ساعة من الآن.`
       }
     ];
 
     if (preparationHours === 24) {
       options.push({
         id: '72h',
-        nameEn: 'Extended Preparation (Ready in 72 Hours)',
-        nameAr: 'تحضير ممتد (جاهز خلال 72 ساعة)',
+        nameEn: 'I want it ready in 72 Hours',
+        nameAr: 'أريدها جاهزة خلال 72 ساعة',
         price: 0,
-        descEn: 'Your cake will be ready for pickup or delivery starting 72 hours from now.',
-        descAr: 'ستكون الكيكة جاهزة للاستلام أو التوصيل بعد 72 ساعة من الآن.'
+        descEn: 'Your cake will be prepared and ready starting 72 hours from now.',
+        descAr: 'سيتم تحضير الكيكة وتجهيزها بعد 72 ساعة من الآن.'
       });
     }
 

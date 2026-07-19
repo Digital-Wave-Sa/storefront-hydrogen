@@ -550,6 +550,15 @@ export default function Login() {
 
               {/* Guest Login Section */}
               <div className="w-full flex flex-col gap-4 mt-2">
+                {/* Or Divider */}
+                <div className="w-full flex items-center gap-4 py-2">
+                  <div className="flex-1 h-[1px] bg-[#BBCFCD]/50"></div>
+                  <span className="text-[#A19F9F] text-sm font-medium" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
+                    {isEn ? 'or' : 'أو'}
+                  </span>
+                  <div className="flex-1 h-[1px] bg-[#BBCFCD]/50"></div>
+                </div>
+
                 {/* Continue as Guest Button */}
                 <Link
                   to={isEn ? "/en/cart" : "/cart"}

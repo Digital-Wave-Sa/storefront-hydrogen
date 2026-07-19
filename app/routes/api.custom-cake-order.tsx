@@ -281,6 +281,73 @@ export async function action({ request, context }: ActionFunctionArgs) {
       return Response.json({ error: 'Invalid price' }, { status: 400 });
     }
 
+    // Securely retrieve active customer details from the session
+    let customerId: string | null = null;
+    let customerEmail: string | null = null;
+
+    try {
+      const customerAccessToken = await context.session.get('customerAccessToken');
+      const loginOtpPhone = await context.session.get('loginOtpPhone');
+
+      if (customerAccessToken?.accessToken) {
+        if (customerAccessToken.accessToken === 'dev-bypass-token') {
+          // Resolve dev-bypass customer from Admin API search using phone
+          if (loginOtpPhone) {
+            let cleanPhone = loginOtpPhone.replace(/\D/g, '');
+            if (cleanPhone.startsWith('966')) {
+              cleanPhone = '+' + cleanPhone;
+            } else if (cleanPhone.startsWith('0')) {
+              cleanPhone = '+966' + cleanPhone.slice(1);
+            } else {
+              cleanPhone = '+966' + cleanPhone;
+            }
+
+            const searchMutation = `#graphql
+              query searchCustomer($query: String!) {
+                customers(first: 1, query: $query) {
+                  nodes {
+                    id
+                    email
+                  }
+                }
+              }
+            `;
+            const searchRes = await adminApiQuery(shopDomain, potentialTokens[0], searchMutation, {
+              query: `phone:${cleanPhone}`
+            }) as any;
+
+            const foundCust = searchRes?.data?.customers?.nodes?.[0];
+            if (foundCust?.id) {
+              customerId = foundCust.id;
+              customerEmail = foundCust.email;
+            }
+          }
+        } else {
+          // Resolve real logged-in customer via Storefront API token query
+          const storefrontRes = await context.storefront.query(
+            `#graphql
+              query getCustomerId($customerAccessToken: String!) {
+                customer(customerAccessToken: $customerAccessToken) {
+                  id
+                  email
+                }
+              }
+            `,
+            {
+              variables: { customerAccessToken: customerAccessToken.accessToken },
+              cache: context.storefront.CacheNone(),
+            }
+          ) as any;
+          if (storefrontRes?.customer?.id) {
+            customerId = storefrontRes.customer.id;
+            customerEmail = storefrontRes.customer.email;
+          }
+        }
+      }
+    } catch (sessionErr) {
+      console.error('[Custom Cake Order] Error resolving session customer:', sessionErr);
+    }
+
     const description = isEn
       ? `${shape} • ${size} • ${flavor} • ${layers} layers • ${color} • ${topping}${prepTime ? ` • Prep: ${prepTime}` : ''}${message ? ` • "${message}" (${messageFont}, ${messageColor})` : ''}`
       : `${shape} • ${size} • ${flavor} • ${layers} طبقات • ${color} • ${topping}${prepTime ? ` • تجهيز: ${prepTime}` : ''}${message ? ` • "${message}" (${messageFont}, ${messageColor})` : ''}`;
@@ -348,7 +415,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
         const resolvedTitle = `طلبية خاصة فئة ${displayPrice} ريال`;
 
         // Update the custom attributes with the final image URL or status
-        const draftOrderInput = {
+        const draftOrderInput: any = {
           lineItems: [
             {
               title: resolvedTitle,
@@ -366,6 +433,13 @@ export async function action({ request, context }: ActionFunctionArgs) {
           tags: ['custom-cake', 'cake-builder'],
           taxExempt: true,
         };
+
+        if (customerId) {
+          draftOrderInput.customerId = customerId;
+        }
+        if (customerEmail) {
+          draftOrderInput.email = customerEmail;
+        }
 
         const result = await adminApiQuery(shopDomain, token, mutation, {
           input: draftOrderInput,

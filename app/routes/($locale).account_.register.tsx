@@ -30,6 +30,32 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
   });
 }
 
+function formatOtpError(errorMessage: string, lang: 'en' | 'ar'): string {
+  if (!errorMessage) {
+    return lang === 'en' ? 'Invalid verification code.' : 'رمز التحقق غير صحيح.';
+  }
+
+  const lowercaseMsg = errorMessage.toLowerCase();
+  const numberMatch = errorMessage.match(/\d+/);
+  const attempts = numberMatch ? numberMatch[0] : '2';
+
+  if (
+    lowercaseMsg.includes('invalid code') || 
+    lowercaseMsg.includes('incorrect code') || 
+    lowercaseMsg.includes('invalid verification code') || 
+    lowercaseMsg.includes('incorrect verification code') ||
+    lowercaseMsg.includes('otp')
+  ) {
+    if (lang === 'en') {
+      return `Invalid code. You have ${attempts} attempts remaining`;
+    } else {
+      return `الرمز غير صحيح — تبقى لك ${attempts} محاولة`;
+    }
+  }
+
+  return errorMessage;
+}
+
 export async function action({ request, context }: ActionFunctionArgs) {
   const { storefront, session, env } = context;
   const form = await request.formData();
@@ -183,8 +209,9 @@ export async function action({ request, context }: ActionFunctionArgs) {
         otpToken = verifyRes.otpToken;
       } catch (verifyErr: any) {
         console.error('[Register] verifyOtp failed:', verifyErr);
+        const rawError = verifyErr.message || (lang === 'en' ? 'Incorrect verification code.' : 'رمز التحقق غير صحيح.');
         return data({
-          error: verifyErr.message || (lang === 'en' ? 'Incorrect verification code.' : 'رمز التحقق غير صحيح.')
+          error: formatOtpError(rawError, lang)
         });
       }
 

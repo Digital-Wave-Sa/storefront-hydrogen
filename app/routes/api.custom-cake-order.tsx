@@ -2,30 +2,6 @@ import { type ActionFunctionArgs, type LoaderFunctionArgs } from 'react-router';
 import { adminApiQuery } from '../lib/admin.server';
 
 /**
- * Helper to fetch a product variant ID by SKU from Shopify Admin API
- */
-async function getVariantIdBySku(shopDomain: string, token: string, sku: string): Promise<string | null> {
-  try {
-    const query = `
-      query getVariantBySku($query: String!) {
-        productVariants(first: 1, query: $query) {
-          nodes {
-            id
-          }
-        }
-      }
-    `;
-    const res = await adminApiQuery(shopDomain, token, query, {
-      query: `sku:${sku}`
-    }) as any;
-    return res?.data?.productVariants?.nodes?.[0]?.id || null;
-  } catch (err) {
-    console.error(`[Custom Cake] Failed to fetch variant ID for SKU ${sku}:`, err);
-    return null;
-  }
-}
-
-/**
  * GET /api/custom-cake-order — Returns 405
  */
 export async function loader({}: LoaderFunctionArgs) {
@@ -438,21 +414,42 @@ export async function action({ request, context }: ActionFunctionArgs) {
         const displayPrice = Number.isInteger(priceNum) ? priceNum : priceNum.toFixed(2);
         const resolvedTitle = `طلبية خاصة فئة ${displayPrice} ريال`;
 
-        // Fetch real variant ID by SKU to ensure local pickup options are active at checkout
-        const variantId = await getVariantIdBySku(shopDomain, token, closestMapping.sku);
-        if (variantId) {
-          console.log(`[Custom Cake] Found variant ID ${variantId} for SKU ${closestMapping.sku}`);
-        } else {
-          console.log(`[Custom Cake] No variant ID found for SKU ${closestMapping.sku}. Falling back to custom line item.`);
+        // Resolve the actual variant ID from Shopify using the SKU to support Local Pickup
+        let variantId: string | null = null;
+        try {
+          const findVariantQuery = `
+            query findVariantBySku($query: String!) {
+              productVariants(first: 1, query: $query) {
+                nodes {
+                  id
+                }
+              }
+            }
+          `;
+          const findVariantRes = await adminApiQuery(shopDomain, token, findVariantQuery, {
+            query: `sku:${closestMapping.sku}`
+          }) as any;
+          const resolvedVar = findVariantRes?.data?.productVariants?.nodes?.[0];
+          if (resolvedVar?.id) {
+            variantId = resolvedVar.id;
+            console.log(`[Custom Cake] Resolved catalog variant ID ${variantId} for SKU ${closestMapping.sku}`);
+          } else {
+            console.warn(`[Custom Cake] No catalog variant found for SKU ${closestMapping.sku}`);
+          }
+        } catch (variantErr) {
+          console.error(`[Custom Cake] Failed to resolve variant for SKU ${closestMapping.sku}:`, variantErr);
         }
 
         // Update the custom attributes with the final image URL or status
         const draftOrderInput: any = {
           lineItems: [
             {
-              ...(variantId ? { variantId } : { title: resolvedTitle, sku: closestMapping.sku, requiresShipping: true }),
+              ...(variantId ? { variantId } : {}),
+              title: resolvedTitle,
+              sku: closestMapping.sku,
               quantity: 1,
               originalUnitPrice: priceNum.toFixed(2),
+              requiresShipping: true,
               customAttributes: [
                 ...customAttributes,
                 ...(finalImageAttr ? [{ key: isEn ? 'Printed Image URL' : 'رابط صورة الطباعة', value: finalImageAttr }] : []),

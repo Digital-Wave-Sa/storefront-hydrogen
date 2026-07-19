@@ -302,7 +302,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
               cleanPhone = '+966' + cleanPhone;
             }
 
-            const searchMutation = `#graphql
+            const searchMutation = `
               query searchCustomer($query: String!) {
                 customers(first: 1, query: $query) {
                   nodes {

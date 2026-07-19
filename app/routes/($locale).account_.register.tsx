@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { data, redirect, type ActionFunctionArgs, type LoaderFunctionArgs, type MetaFunction } from 'react-router';
-import { Form, Link, useActionData, useNavigation, useRouteLoaderData, useFetcher } from 'react-router';
+import { Form, Link, useActionData, useNavigation, useRouteLoaderData, useFetcher, useLoaderData } from 'react-router';
 import { LogoSplash } from '~/components/LogoSplash';
 import { SaadeddinApi } from '~/lib/saadeddin-api.server';
 import { derivePassword } from '~/lib/auth.server';
@@ -15,7 +15,19 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
   if (customerAccessToken && saadeddinToken) {
     return redirect('/account');
   }
-  return data({});
+
+  // Recover active OTP cooldown/phone session state on page refresh
+  const cooldown = await context.session.get('otpCooldown');
+  const phone = await context.session.get('otpPhone');
+  let remainingSeconds = 0;
+  if (cooldown && Date.now() < cooldown) {
+    remainingSeconds = Math.ceil((cooldown - Date.now()) / 1000);
+  }
+
+  return data({
+    otpPhone: remainingSeconds > 0 ? phone : null,
+    otpCooldownRemaining: remainingSeconds > 0 ? remainingSeconds : 0
+  });
 }
 
 export async function action({ request, context }: ActionFunctionArgs) {
@@ -329,13 +341,27 @@ const CUSTOMER_ACCESS_TOKEN_CREATE_MUTATION = `#graphql
 `;
 
 export default function Register() {
+  const loaderData = useLoaderData<any>();
+  const initialStep = loaderData?.otpPhone ? 'otp' : 'input';
+  const initialCooldown = loaderData?.otpCooldownRemaining || 0;
+
+  let initialPhone = '';
+  if (loaderData?.otpPhone) {
+    const matched = loaderData.otpPhone.match(/^(\+\d{1,3})(.*)$/);
+    if (matched) {
+      initialPhone = matched[2];
+    } else {
+      initialPhone = loaderData.otpPhone;
+    }
+  }
+
   const rootData = useRouteLoaderData('root') as any;
   const isEn = rootData?.locale?.language === 'EN';
   const actionData = useActionData() as any;
   const navigation = useNavigation();
   const isLoading = navigation.state === 'submitting';
 
-  const [step, setStep] = useState<'input' | 'otp'>('input');
+  const [step, setStep] = useState<'input' | 'otp'>(initialStep);
   
   const [formData, setFormData] = useState({
     accountType: 'individual',
@@ -343,7 +369,7 @@ export default function Register() {
     companyName: '',
     taxRegistration: '',
     companyAddress: '',
-    phone: '',
+    phone: initialPhone,
     email: '',
     language: 'ar',
     termsAccepted: false
@@ -353,7 +379,7 @@ export default function Register() {
   const otpRefs = [useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null)];
 
   const fetcher = useFetcher<any>();
-  const [resendCooldown, setResendCooldown] = useState(60);
+  const [resendCooldown, setResendCooldown] = useState(initialCooldown);
 
   useEffect(() => {
     if (actionData?.step === 'otp') {

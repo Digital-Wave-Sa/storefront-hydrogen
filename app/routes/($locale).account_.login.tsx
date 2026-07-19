@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { data, redirect, type ActionFunctionArgs, type LoaderFunctionArgs, type MetaFunction } from 'react-router';
-import { Form, Link, useActionData, useNavigation, useRouteLoaderData } from 'react-router';
+import { Form, Link, useActionData, useNavigation, useRouteLoaderData, useLoaderData } from 'react-router';
 import { LogoSplash } from '~/components/LogoSplash';
 import { SaadeddinApi } from '~/lib/saadeddin-api.server';
 import { derivePassword } from '~/lib/auth.server';
@@ -15,7 +15,19 @@ export async function loader({ context }: LoaderFunctionArgs) {
   if (customerAccessToken && saadeddinToken) {
     return redirect('/account');
   }
-  return data({});
+
+  // Recover active OTP cooldown/phone session state on page refresh
+  const cooldown = await context.session.get('loginOtpCooldown');
+  const phone = await context.session.get('loginOtpPhone');
+  let remainingSeconds = 0;
+  if (cooldown && Date.now() < cooldown) {
+    remainingSeconds = Math.ceil((cooldown - Date.now()) / 1000);
+  }
+
+  return data({
+    otpPhone: remainingSeconds > 0 ? phone : null,
+    otpCooldownRemaining: remainingSeconds > 0 ? remainingSeconds : 0
+  });
 }
 
 // Keeping the GraphQL mutation for fallback if needed
@@ -58,6 +70,16 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
     const fullPhone = `${countryCode}${cleanPhone}`;
 
+    // Cooldown Throttle Check (60 seconds)
+    const cooldown = session.get('loginOtpCooldown');
+    if (cooldown && Date.now() < cooldown) {
+      const waitSecs = Math.ceil((cooldown - Date.now()) / 1000);
+      return data({
+        error: lang === 'en'
+          ? `Please wait ${waitSecs} seconds before requesting another code.`
+          : `يرجى الانتظار ${waitSecs} ثانية قبل طلب رمز تحقق جديد.`,
+      });
+    }
 
     try {
       // Try to send OTP via Custom CRM API
@@ -88,6 +110,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
       }
 
       session.set('loginOtpPhone', fullPhone);
+      session.set('loginOtpCooldown', Date.now() + 60 * 1000);
       return data(
         { success: true, step: 'otp', phone: fullPhone },
         { headers: { 'Set-Cookie': await session.commit() } }
@@ -297,6 +320,22 @@ export async function action({ request, context }: ActionFunctionArgs) {
 }
 
 export default function Login() {
+  const loaderData = useLoaderData<any>();
+  const initialStep = loaderData?.otpPhone ? 'otp' : 'input';
+  const initialCooldown = loaderData?.otpCooldownRemaining || 0;
+
+  let initialPhone = '';
+  let initialCountryCode = '+966';
+  if (loaderData?.otpPhone) {
+    const matched = loaderData.otpPhone.match(/^(\+\d{1,3})(.*)$/);
+    if (matched) {
+      initialCountryCode = matched[1];
+      initialPhone = matched[2];
+    } else {
+      initialPhone = loaderData.otpPhone;
+    }
+  }
+
   const actionData = useActionData<any>();
   const navigation = useNavigation();
   const rootData = useRouteLoaderData('root') as any;
@@ -304,9 +343,9 @@ export default function Login() {
   const isEn = locale === 'en';
   const isLoading = navigation.state === 'submitting';
 
-  const [step, setStep] = useState<'input' | 'otp'>('input');
-  const [phone, setPhone] = useState('');
-  const [countryCode, setCountryCode] = useState('+966');
+  const [step, setStep] = useState<'input' | 'otp'>(initialStep);
+  const [phone, setPhone] = useState(initialPhone);
+  const [countryCode, setCountryCode] = useState(initialCountryCode);
   const [otpValue, setOtpValue] = useState(['', '', '', '']);
   const otpRefs = [
     useRef<HTMLInputElement>(null),
@@ -315,7 +354,7 @@ export default function Login() {
     useRef<HTMLInputElement>(null)
   ];
   const [loadingProvider, setLoadingProvider] = useState<string | null>(null);
-  const [resendCooldown, setResendCooldown] = useState(0);
+  const [resendCooldown, setResendCooldown] = useState(initialCooldown);
   const resendFormRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {

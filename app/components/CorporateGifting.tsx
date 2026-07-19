@@ -65,7 +65,7 @@ export function CorporateGifting() {
                             className="hidden md:flex group relative flex-1 h-[300px] md:h-[264px] rounded-[20px] overflow-hidden bg-[#234745]"
                         >
                             <img
-                                src="/images/gift-corporate-2.webp"
+                                src="/images/gift-corporate-1.webp"
                                 alt=""
                                 className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                             />
@@ -86,7 +86,7 @@ export function CorporateGifting() {
                             className="group relative flex-1 h-[300px] md:h-[264px] rounded-[20px] overflow-hidden bg-[#234745]"
                         >
                             <img
-                                src="/images/gift-corporate-1.webp"
+                                src="/images/gift-corporate-2.webp"
                                 alt=""
                                 className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                             />

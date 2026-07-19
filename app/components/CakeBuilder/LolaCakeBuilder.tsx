@@ -95,12 +95,26 @@ const cakeOptions = {
   ]
 };
 
-const prepTimeOptions = [
-  { id: '24h', nameEn: 'Express Preparation (Ready in 24 Hours)', nameAr: 'تحضير سريع (جاهز خلال 24 ساعة)', price: 0, descEn: 'Your cake will be ready for pickup or delivery starting 24 hours from now.', descAr: 'ستكون الكيكة جاهزة للاستلام أو التوصيل بعد 24 ساعة من الآن.' },
-  { id: '48h', nameEn: 'Standard Preparation (Ready in 48 Hours)', nameAr: 'تحضير عادي (جاهز خلال 48 ساعة)', price: 0, descEn: 'Your cake will be ready for pickup or delivery starting 48 hours from now.', descAr: 'ستكون الكيكة جاهزة للاستلام أو التوصيل بعد 48 ساعة من الآن.' }
-];
+const DEFAULT_PREP_OPTION = {
+  id: '24h',
+  nameEn: 'Express Preparation (Ready in 24 Hours)',
+  nameAr: 'تحضير سريع (جاهز خلال 24 ساعة)',
+  price: 0,
+  descEn: 'Your cake will be ready for pickup or delivery starting 24 hours from now.',
+  descAr: 'ستكون الكيكة جاهزة للاستلام أو التوصيل بعد 24 ساعة من الآن.'
+};
 
-export default function LolaCakeBuilder({ cakeAttributes = [], toppingDesigns = [], isEn = false }: { cakeAttributes?: any[], toppingDesigns?: any[], isEn?: boolean }) {
+export default function LolaCakeBuilder({ 
+  cakeAttributes = [], 
+  toppingDesigns = [], 
+  isEn = false,
+  preparationHours = 24 
+}: { 
+  cakeAttributes?: any[], 
+  toppingDesigns?: any[], 
+  isEn?: boolean,
+  preparationHours?: number 
+}) {
   const [currentStep, setCurrentStep] = useState(1);
   const [isFaqOpen, setIsFaqOpen] = useState(false);
   const [isCutaway, setIsCutaway] = useState(false);
@@ -110,6 +124,40 @@ export default function LolaCakeBuilder({ cakeAttributes = [], toppingDesigns = 
   const touchStartRef = useRef<number | null>(null);
   const touchEndRef = useRef<number | null>(null);
   const minSwipeDistance = 50;
+
+  const prepTimeOptions = React.useMemo(() => {
+    const options = [
+      {
+        id: `${preparationHours}h`,
+        nameEn: `Express Preparation (Ready in ${preparationHours} Hours)`,
+        nameAr: `تحضير سريع (جاهز خلال ${preparationHours} ساعة)`,
+        price: 0,
+        descEn: `Your cake will be ready for pickup or delivery starting ${preparationHours} hours from now.`,
+        descAr: `ستكون الكيكة جاهزة للاستلام أو التوصيل بعد ${preparationHours} ساعة من الآن.`
+      },
+      {
+        id: `${preparationHours + 24}h`,
+        nameEn: `Standard Preparation (Ready in ${preparationHours + 24} Hours)`,
+        nameAr: `تحضير عادي (جاهز خلال ${preparationHours + 24} ساعة)`,
+        price: 0,
+        descEn: `Your cake will be ready for pickup or delivery starting ${preparationHours + 24} hours from now.`,
+        descAr: `ستكون الكيكة جاهزة للاستلام أو التوصيل بعد ${preparationHours + 24} ساعة من الآن.`
+      }
+    ];
+
+    if (preparationHours === 24) {
+      options.push({
+        id: '72h',
+        nameEn: 'Extended Preparation (Ready in 72 Hours)',
+        nameAr: 'تحضير ممتد (جاهز خلال 72 ساعة)',
+        price: 0,
+        descEn: 'Your cake will be ready for pickup or delivery starting 72 hours from now.',
+        descAr: 'ستكون الكيكة جاهزة للاستلام أو التوصيل بعد 72 ساعة من الآن.'
+      });
+    }
+
+    return options;
+  }, [preparationHours]);
 
   const photoPrintPrice = React.useMemo(() => {
     const photoPrintAttribute = cakeAttributes?.find(attr => {
@@ -166,7 +214,7 @@ export default function LolaCakeBuilder({ cakeAttributes = [], toppingDesigns = 
 
     // 3. Filter and map toppings (styles)
     const toppingsList = cakeAttributes
-      .filter(attr => attr.attributeType?.value?.toLowerCase() === 'topping')
+      .filter(attr => attr.attributeType?.value?.toLowerCase() === 'topping' || attr.attributeType?.value?.toLowerCase() === 'style')
       .map(attr => {
         const nameEn = attr.nameEn?.value || 'Topping';
         const nameAr = attr.nameAr?.value || '';
@@ -179,7 +227,10 @@ export default function LolaCakeBuilder({ cakeAttributes = [], toppingDesigns = 
           id,
           name: nameAr ? `${nameAr} (${nameEn})` : nameEn,
           price,
-          image: thumbnail
+          image: thumbnail,
+          imageFront: attr.imageFront?.reference?.image?.url,
+          imageTop: attr.imageTop?.reference?.image?.url,
+          imageSliced: attr.imageSliced?.reference?.image?.url
         };
       });
 
@@ -216,7 +267,7 @@ export default function LolaCakeBuilder({ cakeAttributes = [], toppingDesigns = 
     textColor: '#4a2511',
     textFont: 'Classic',
     uploadedImage: null as string | null,
-    prepTime: prepTimeOptions[1]
+    prepTime: DEFAULT_PREP_OPTION
   });
 
   const [savedSelections, setSavedSelections] = useState<any | null>(null);
@@ -249,7 +300,7 @@ export default function LolaCakeBuilder({ cakeAttributes = [], toppingDesigns = 
         const flavor = mergedOptions.flavors.find(f => f.id === savedSelections.flavorId) || mergedOptions.flavors[0];
         const style = mergedOptions.styles.find(s => s.id === savedSelections.styleId) || mergedOptions.styles[0];
         const color = cakeOptions.colors.find(c => c.id === savedSelections.colorId) || selections.color;
-        const prepTime = prepTimeOptions.find(p => p.id === savedSelections.prepTimeId) || prepTimeOptions[1];
+        const prepTime = prepTimeOptions.find(p => p.id === savedSelections.prepTimeId) || prepTimeOptions[0];
         
         setSelections({
           shape,
@@ -265,11 +316,13 @@ export default function LolaCakeBuilder({ cakeAttributes = [], toppingDesigns = 
           prepTime
         });
       } else {
+        const defaultPrep = prepTimeOptions[0];
         setSelections(prev => ({
           ...prev,
           shape: mergedOptions.shapes.find(s => s.id === prev.shape?.id) || mergedOptions.shapes[0],
           flavor: mergedOptions.flavors.find(f => f.id === prev.flavor?.id) || mergedOptions.flavors[0],
           style: mergedOptions.styles.find(s => s.id === prev.style?.id) || mergedOptions.styles[0],
+          prepTime: defaultPrep
         }));
       }
     }
@@ -830,8 +883,8 @@ export default function LolaCakeBuilder({ cakeAttributes = [], toppingDesigns = 
                     </h2>
                     <p className="text-[#8BA19C] text-sm mb-6">
                       {isEn 
-                        ? 'Custom cakes require a minimum of 24 hours of preparation time. Please select one of the options below:' 
-                        : 'تحتاج الكيكات المخصصة إلى 24 ساعة كحد أدنى للتجهيز والتحضير. يرجى اختيار أحد الخيارات التالية:'}
+                        ? `Custom cakes require a minimum of ${preparationHours} hours of preparation time. Please select one of the options below:` 
+                        : `تحتاج الكيكات المخصصة إلى ${preparationHours} ساعة كحد أدنى للتجهيز والتحضير. يرجى اختيار أحد الخيارات التالية:`}
                     </p>
                     
                     <div className="flex flex-col gap-4 w-full">

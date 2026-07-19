@@ -53,6 +53,11 @@ const CAKE_ATTRIBUTES_QUERY = `#graphql
         imageSliced: field(key: "image_sliced") { reference { ... on MediaImage { image { url } } } }
       }
     }
+    cakeSettings: metaobjects(type: "cake_settings", first: 1) {
+      nodes {
+        preparationHours: field(key: "preparation_hours") { value }
+      }
+    }
   }
 `;
 
@@ -62,27 +67,32 @@ export async function loader({ context }: LoaderFunctionArgs) {
     const data = await storefront.query(CAKE_ATTRIBUTES_QUERY, {
       variables: { language: storefront.i18n.language },
       cache: storefront.CacheShort(),
-    });
+    }) as any;
+
+    const rawHours = data.cakeSettings?.nodes?.[0]?.preparationHours?.value;
+    const preparationHours = rawHours ? parseInt(rawHours, 10) : 24;
     
     return {
       locale: storefront.i18n.language.toLowerCase(),
       cakeAttributes: data.cakeAttributes?.nodes || [],
-      toppingDesigns: data.toppingDesigns?.nodes || []
+      toppingDesigns: data.toppingDesigns?.nodes || [],
+      preparationHours: isNaN(preparationHours) ? 24 : preparationHours
     };
   } catch (error) {
     console.error('[Cake Builder Loader] GraphQL Query Error:', error);
-    return { locale: 'en', cakeAttributes: [], toppingDesigns: [] };
+    return { locale: 'en', cakeAttributes: [], toppingDesigns: [], preparationHours: 24 };
   }
 }
 
 export default function CustomCakeBuilderRoute() {
-  const { cakeAttributes, toppingDesigns, locale } = useLoaderData<typeof loader>();
+  const { cakeAttributes, toppingDesigns, locale, preparationHours } = useLoaderData<typeof loader>();
   const isEn = locale === 'en';
   return (
     <LolaCakeBuilder 
       cakeAttributes={cakeAttributes} 
       toppingDesigns={toppingDesigns} 
       isEn={isEn} 
+      preparationHours={preparationHours}
     />
   );
 }

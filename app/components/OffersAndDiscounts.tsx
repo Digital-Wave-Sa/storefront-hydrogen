@@ -17,7 +17,7 @@ export function OffersAndDiscounts({ config }: { config?: any }) {
             <div className="max-w-[1400px] mx-auto px-4 md:px-8">
 
                 {/* Section Header */}
-                <div className="text-center mb-16 flex flex-col items-center">
+                <div className="text-center mb-10 flex flex-col items-center">
                     <h2 className="text-[48px] lg:text-[64px] font-bold text-[#1a1a1a] mb-4 leading-none tracking-tighter">
                         {isEn ? 'Offers & Discounts' : 'العروض والتخفيضات'}
                     </h2>
@@ -47,7 +47,7 @@ export function OffersAndDiscounts({ config }: { config?: any }) {
                         {/* Content Side */}
                         <div className={`w-full md:w-[45%] flex flex-col relative z-10 px-8 lg:px-14 py-12 items-center md:items-start text-center md:text-start`}>
 
-                            <div 
+                            <div
                                 className="text-white text-[14px] font-bold mb-8 shadow-sm flex items-center justify-center"
                                 style={{
                                     background: '#E64950',
@@ -118,7 +118,7 @@ export function OffersAndDiscounts({ config }: { config?: any }) {
                             />
                         </div>
                         <div className="relative z-10 w-full flex flex-col items-center">
-                            <h3 
+                            <h3
                                 className={`font-bold text-white text-center mb-10 tracking-tight ${isEn ? 'text-[28px] lg:text-[36px]' : 'text-[38px]'}`}
                                 style={{ fontFamily: !isEn ? "'Bahij Janna', sans-serif" : undefined, lineHeight: '125%' }}
                             >
@@ -138,7 +138,7 @@ export function OffersAndDiscounts({ config }: { config?: any }) {
                 <div className="flex justify-center">
                     <Link
                         to={isEn ? "/en/collections/offers" : "/collections/offers"}
-                        className="px-16 py-4 border-2 border-[#234745] text-[#234745] hover:bg-[#234745] hover:!text-white rounded-full text-[17px] transition-all min-w-[320px] text-center uppercase tracking-widest shadow-sm font-dinar font-bold"
+                        className="px-12 py-4 rounded-full border-2 border-[#234745] !text-[#234745] [font-family:'GE_Dinar_One',sans-serif] font-bold text-[15px] lg:text-[18px] transition-all hover:bg-[#1a3533] hover:!text-white hover:border-[#1a3533] active:scale-95"
                     >
                         {isEn ? 'View All Offers' : 'عرض جميع العروض'}
                     </Link>

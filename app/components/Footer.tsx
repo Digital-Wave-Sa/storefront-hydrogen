@@ -164,11 +164,11 @@ export function Footer({ footer, locale }: { footer: Promise<FooterQuery | null>
 
                 {/* Bottom Bar */}
                 <div className="w-full flex flex-col md:flex-row justify-between items-center gap-6 md:gap-4" style={{ color: '#FEF8EB' }}>
-                  <div className="flex items-center gap-2 sm:gap-8 justify-center w-full md:w-auto mt-4 md:mt-0">
-                    <NavLink to={isEn ? "/en/pages/terms" : "/pages/terms"} className="font-medium text-[14px] md:text-[16px] hover:text-white transition-colors" style={{ color: '#FEF8EB' }}>{isEn ? 'Terms and Conditions' : 'الشروط والاحكام'}</NavLink>
-                  </div>
                   <div className="font-medium text-[15px] md:text-[16px] text-center w-full md:w-auto" style={{ color: '#FEF8EB' }}>
                     {isEn ? '© 2026 Saadeddin — All Rights Reserved' : <span>© <span className="font-sans inline-block" dir="ltr">2026</span> سعد الدين — جميع الحقوق محفوظة</span>}
+                  </div>
+                  <div className="flex items-center gap-2 sm:gap-8 justify-center w-full md:w-auto mt-4 md:mt-0">
+                    <NavLink to={isEn ? "/en/pages/terms" : "/pages/terms"} className="font-medium text-[14px] md:text-[16px] hover:text-white transition-colors" style={{ color: '#FEF8EB' }}>{isEn ? 'Terms and Conditions' : 'الشروط والاحكام'}</NavLink>
                   </div>
                 </div>
 

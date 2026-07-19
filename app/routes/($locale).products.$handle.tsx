@@ -1044,24 +1044,24 @@ export default function Product() {
             {((product as any).vegan?.value === 'true' || (product as any).vegan?.value === '1' ||
               (product as any).lactose_free?.value === 'true' || (product as any).lactose_free?.value === '1' ||
               (product as any).gluten_free?.value === 'true' || (product as any).gluten_free?.value === '1') && (
-              <div className="flex flex-wrap items-center gap-[12px] mb-[24px] w-full" style={{ marginTop: '32px' }}>
-                {((product as any).vegan?.value === 'true' || (product as any).vegan?.value === '1') && (
-                  <div className="h-[40px] px-[16px] bg-[#FEF8EB] rounded-[25px] border border-[#BBCFCD]/50 flex items-center justify-center whitespace-nowrap">
-                    <span className="text-[#255441] text-[14px] font-normal" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>{isEn ? 'Vegan 100%' : 'نباتي 100%'}</span>
-                  </div>
-                )}
-                {((product as any).lactose_free?.value === 'true' || (product as any).lactose_free?.value === '1') && (
-                  <div className="h-[40px] px-[16px] bg-[#FEF8EB] rounded-[25px] border border-[#BBCFCD]/50 flex items-center justify-center whitespace-nowrap">
-                    <span className="text-[#255441] text-[14px] font-normal" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>{isEn ? 'Lactose Free' : 'خالٍ من اللاكتوز'}</span>
-                  </div>
-                )}
-                {((product as any).gluten_free?.value === 'true' || (product as any).gluten_free?.value === '1') && (
-                  <div className="h-[40px] px-[16px] bg-[#FEF8EB] rounded-[25px] border border-[#BBCFCD]/50 flex items-center justify-center whitespace-nowrap">
-                    <span className="text-[#255441] text-[14px] font-normal" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>{isEn ? 'Gluten Free' : 'خالٍ من الغلوتين'}</span>
-                  </div>
-                )}
-              </div>
-            )}
+                <div className="flex flex-wrap items-center gap-[12px] mb-[24px] w-full" style={{ marginTop: '32px' }}>
+                  {((product as any).vegan?.value === 'true' || (product as any).vegan?.value === '1') && (
+                    <div className="h-[40px] px-[16px] bg-[#FEF8EB] rounded-[25px] border border-[#BBCFCD]/50 flex items-center justify-center whitespace-nowrap">
+                      <span className="text-[#255441] text-[14px] font-normal" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>{isEn ? 'Vegan 100%' : 'نباتي 100%'}</span>
+                    </div>
+                  )}
+                  {((product as any).lactose_free?.value === 'true' || (product as any).lactose_free?.value === '1') && (
+                    <div className="h-[40px] px-[16px] bg-[#FEF8EB] rounded-[25px] border border-[#BBCFCD]/50 flex items-center justify-center whitespace-nowrap">
+                      <span className="text-[#255441] text-[14px] font-normal" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>{isEn ? 'Lactose Free' : 'خالٍ من اللاكتوز'}</span>
+                    </div>
+                  )}
+                  {((product as any).gluten_free?.value === 'true' || (product as any).gluten_free?.value === '1') && (
+                    <div className="h-[40px] px-[16px] bg-[#FEF8EB] rounded-[25px] border border-[#BBCFCD]/50 flex items-center justify-center whitespace-nowrap">
+                      <span className="text-[#255441] text-[14px] font-normal" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>{isEn ? 'Gluten Free' : 'خالٍ من الغلوتين'}</span>
+                    </div>
+                  )}
+                </div>
+              )}
 
             {/* Divider */}
             <div className="w-full h-[1px] bg-[#BBCFCD]/50 mb-[24px]"></div>
@@ -1227,8 +1227,8 @@ export default function Product() {
                             <div className="flex justify-between items-center text-[10px] text-gray-400 font-bold px-1">
                               <span>{isEn ? 'Max 150 chars' : 'الحد الأقصى ١٥٠ حرفاً'}</span>
                               <span>
-                                {isEn 
-                                  ? `${150 - note.length} remaining` 
+                                {isEn
+                                  ? `${150 - note.length} remaining`
                                   : `متبقي ${150 - note.length} حرفاً`}
                               </span>
                             </div>
@@ -1320,16 +1320,8 @@ export default function Product() {
                   {isEn ? 'Quantity' : 'الكمية'}
                 </span>
                 <div className="flex items-center gap-[8px]">
-                  <button
-                    type="button"
-                    onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                    className="w-[40px] h-[40px] flex items-center justify-center bg-white rounded-[8px] text-[#906B51] border border-[#BBCFCD]/50 hover:border-[#234745] transition-all"
-                  >
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14" /></svg>
-                  </button>
-                  <div className="w-[40px] h-[40px] flex items-center justify-center bg-white rounded-[8px] border border-[#BBCFCD]/50 font-medium text-[16px] text-[#255441]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
-                    {new Intl.NumberFormat('en-US').format(quantity)}
-                  </div>
+
+
                   <button
                     type="button"
                     onClick={() => setQuantity(quantity + 1)}
@@ -1337,6 +1329,19 @@ export default function Product() {
                   >
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 5v14M5 12h14" /></svg>
                   </button>
+
+                  <div className="w-[40px] h-[40px] flex items-center justify-center bg-white rounded-[8px] border border-[#BBCFCD]/50 font-medium text-[16px] text-[#255441]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
+                    {new Intl.NumberFormat('en-US').format(quantity)}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                    className="w-[40px] h-[40px] flex items-center justify-center bg-white rounded-[8px] text-[#906B51] border border-[#BBCFCD]/50 hover:border-[#234745] transition-all"
+                  >
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14" /></svg>
+                  </button>
+
                 </div>
               </div>
 
@@ -1674,8 +1679,8 @@ export default function Product() {
               return (
                 <div className={`bg-[#FEF8EB] rounded-[20px] p-[16px] border border-[#BBCFCD]/50 flex flex-col gap-0 text-start`}>
                   {/* Item 1: Free Delivery */}
-                  <div className="py-[12px] flex flex-col justify-center items-center gap-[4px] text-center">
-                    <h4 className="font-bold text-[14px] text-[#234745] leading-[17px]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>{isEn ? 'Free Delivery' : 'توصيل مجاني'}</h4>
+                  <div className="pb-[12px] flex flex-col justify-center gap-[4px]">
+                    <h4 className="font-bold text-[14px] text-[#234745] leading-[17px] !mt-[0]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>{isEn ? 'Free Delivery' : 'توصيل مجاني'}</h4>
                     <p className="text-[12px] text-[#7D7D7D] font-normal leading-[15px]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
                       {isEn
                         ? `On orders above ${threshold} SAR`
@@ -1685,7 +1690,7 @@ export default function Product() {
                   <div className="h-[1px] w-full bg-[#BBCFCD]/50"></div>
 
                   {/* Item 2: Branch Pickup */}
-                  <div className="py-[12px] flex flex-col justify-center items-center gap-[4px] text-center">
+                  <div className="py-[12px] flex flex-col justify-center gap-[4px]">
                     <h4 className="font-bold text-[14px] text-[#234745] leading-[17px]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>{isEn ? 'Branch Pickup' : 'استلام من الفرع'}</h4>
                     <p className="text-[12px] text-[#7D7D7D] font-normal leading-[15px]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
                       {isEn ? 'Ready in 15 minutes' : 'جاهز خلال 15 دقيقة'}
@@ -1694,7 +1699,7 @@ export default function Product() {
                   <div className="h-[1px] w-full bg-[#BBCFCD]/50"></div>
 
                   {/* Item 3: Guaranteed Return */}
-                  <div className="py-[12px] flex flex-col justify-center items-center gap-[4px] text-center">
+                  <div className="py-[12px] flex flex-col justify-center gap-[4px]">
                     <h4 className="font-bold text-[14px] text-[#234745] leading-[17px]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>{isEn ? 'Guaranteed Return' : 'استرجاع مضمون'}</h4>
                     <p className="text-[12px] text-[#7D7D7D] font-normal leading-[15px]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
                       {isEn ? 'Within 24 hours of receipt' : 'خلال 24 ساعة من الاستلام'}
@@ -1703,7 +1708,7 @@ export default function Product() {
                   <div className="h-[1px] w-full bg-[#BBCFCD]/50"></div>
 
                   {/* Item 4: Secure Payment */}
-                  <div className="py-[12px] flex flex-col justify-center items-center gap-[4px] text-center">
+                  <div className="pt-[12px] flex flex-col justify-center gap-[4px]">
                     <h4 className="font-bold text-[14px] text-[#234745] leading-[17px]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>{isEn ? '100% Secure Payment' : 'دفع آمن 100%'}</h4>
                     <p className="text-[12px] text-[#7D7D7D] font-normal leading-[15px]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
                       {isEn ? 'Encrypted and protected' : 'مدفوعات مشفرة ومحمية'}
@@ -2027,7 +2032,7 @@ function ProductGallery({ images, product }: { images: any[], product: any }) {
             alt={currentImage?.altText || 'Product Image'}
             sizes="(min-width: 768px) 50vw, 100vw"
             loading="eager"
-            className={`w-full h-full object-cover transition-opacity duration-300 ${zoomHoverProps.show ? 'opacity-0' : 'opacity-100'}`}
+            className={`w-full h-full object-cover border border-[#9FB7AE] transition-opacity duration-300 ${zoomHoverProps.show ? 'opacity-0' : 'opacity-100'}`}
           />
           {zoomHoverProps.show && currentImage?.url && (
             <div
@@ -2056,7 +2061,7 @@ function ProductGallery({ images, product }: { images: any[], product: any }) {
             <div
               key={img.id}
               onClick={() => setActiveIndex(i)}
-              className={`w-24 h-24 bg-[#f9f9f9] rounded-xl border-2 transition-all cursor-pointer flex items-center justify-center overflow-hidden shadow-sm ${i === activeIndex ? 'border-[#234745]' : 'border-transparent opacity-70 hover:opacity-100 hover:border-gray-200'
+              className={`w-24 h-24 bg-[#f9f9f9] rounded-xl border-2 transition-all cursor-pointer flex items-center justify-center overflow-hidden shadow-sm ${i === activeIndex ? 'border-2 border-[#234745]' : 'border-transparent opacity-70 hover:opacity-100 hover:border-gray-200 border-[#BBCFCD]/50'
                 }`}
             >
               <Image

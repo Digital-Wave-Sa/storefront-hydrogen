@@ -3,7 +3,6 @@ import { data, redirect, type ActionFunctionArgs, type LoaderFunctionArgs, type 
 import { Form, Link, useActionData, useNavigation, useRouteLoaderData, useFetcher } from 'react-router';
 import { LogoSplash } from '~/components/LogoSplash';
 import { SaadeddinApi } from '~/lib/saadeddin-api.server';
-import { SocialLogins } from '~/components/SocialLogins';
 import { derivePassword } from '~/lib/auth.server';
 
 export const meta: MetaFunction<typeof loader> = () => {
@@ -557,7 +556,6 @@ export default function Register() {
                     {isLoading ? (isEn ? 'Sending...' : 'جاري الإرسال...') : (isEn ? 'Create account and send verification code' : 'إنشاء حساب وإرسال رمز التحقق')}
                   </button>
                 </Form>
-                <SocialLogins />
               </>
               ) : (
                 <Form method="POST" className="w-full flex flex-col gap-6">

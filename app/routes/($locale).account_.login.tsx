@@ -3,7 +3,6 @@ import { data, redirect, type ActionFunctionArgs, type LoaderFunctionArgs, type 
 import { Form, Link, useActionData, useNavigation, useRouteLoaderData } from 'react-router';
 import { LogoSplash } from '~/components/LogoSplash';
 import { SaadeddinApi } from '~/lib/saadeddin-api.server';
-import { SocialLogins } from '~/components/SocialLogins';
 import { derivePassword } from '~/lib/auth.server';
 
 export const meta: MetaFunction<typeof loader> = () => {
@@ -510,19 +509,8 @@ export default function Login() {
                 </>
               )}
 
-              {/* Social Logins Section */}
+              {/* Guest Login Section */}
               <div className="w-full flex flex-col gap-4 mt-2">
-                <SocialLogins />
-
-                {/* Divider 2 */}
-                <div className="flex items-center gap-4 w-full">
-                  <div className="flex-1 h-[2px] bg-[#BBCFCD]/50" />
-                  <span className="text-[#7D7D7D] font-medium text-[14px]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
-                    {isEn ? 'Or' : 'أو'}
-                  </span>
-                  <div className="flex-1 h-[2px] bg-[#BBCFCD]/50" />
-                </div>
-
                 {/* Continue as Guest Button */}
                 <Link 
                   to={isEn ? "/en/cart" : "/cart"}

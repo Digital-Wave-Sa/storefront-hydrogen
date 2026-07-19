@@ -146,7 +146,7 @@ export function RamadanBanner({ config }: { config?: any }) {
                                 ].map((item, index) => (
                                     <div key={index} className="w-[68px] h-[80px] md:w-[72px] md:h-[87px] bg-[#FEF8EB] border border-[#906B51] md:border-[#9FB7AE] rounded-[8px] flex flex-col justify-center items-center gap-[7px] p-[10px] md:p-[16px] shadow-sm box-border">
                                         <span className={`text-[#906B51] font-bold text-[16px] md:text-[18px] leading-[22px] ${!isEn ? 'font-dinar' : ''}`}>
-                                            {convertToArabicDigits(item.value)}
+                                            {(item.value)}
                                         </span>
                                         <span className="text-[#906B51] font-dinar text-[14px] leading-[17px]">
                                             {isEn ? item.labelEn : item.labelAr}

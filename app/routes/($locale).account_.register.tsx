@@ -205,6 +205,54 @@ export async function action({ request, context }: ActionFunctionArgs) {
             } else {
               const errBody = await adminResponse.text();
               console.error('[Register] Fallback Shopify Admin customer creation failed:', adminResponse.status, errBody);
+
+              // Fallback: If creation failed (probably because email already exists), search for the customer by email
+              if (email) {
+                console.log('[Register] Searching Shopify Admin by email:', email);
+                const emailSearchRes = await fetch(
+                  `https://${env.PUBLIC_STORE_DOMAIN}/admin/api/2024-01/customers/search.json?query=email:"${encodeURIComponent(email)}"&fields=id,email`,
+                  { headers: { 'X-Shopify-Access-Token': adminToken } }
+                );
+                
+                if (emailSearchRes.ok) {
+                  const emailSearchData = await emailSearchRes.json() as any;
+                  const foundCustomer = emailSearchData.customers?.[0];
+                  
+                  if (foundCustomer) {
+                    const resolvedCustomerId = String(foundCustomer.id);
+                    console.log('[Register] Found existing customer by email:', resolvedCustomerId, '— updating phone and resetting password');
+                    
+                    // Update customer's phone and password
+                    const updateRes = await fetch(
+                      `https://${env.PUBLIC_STORE_DOMAIN}/admin/api/2024-01/customers/${resolvedCustomerId}.json`,
+                      {
+                        method: 'PUT',
+                        headers: { 'X-Shopify-Access-Token': adminToken, 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          customer: { 
+                            id: resolvedCustomerId, 
+                            phone: savedPhone,
+                            password: stablePassword, 
+                            password_confirmation: stablePassword 
+                          }
+                        })
+                      }
+                    );
+                    
+                    if (updateRes.ok) {
+                      console.log('[Register] Successfully updated existing customer phone and reset password ✅');
+                      // Try creating storefront access token again
+                      const tokenResponse = await storefront.mutate(CUSTOMER_ACCESS_TOKEN_CREATE_MUTATION, {
+                        variables: { input: { email: foundCustomer.email || email, password: stablePassword } },
+                      });
+                      token = tokenResponse.customerAccessTokenCreate?.customerAccessToken || null;
+                    } else {
+                      const updateErr = await updateRes.text();
+                      console.error('[Register] Failed to update existing customer:', updateRes.status, updateErr);
+                    }
+                  }
+                }
+              }
             }
           }
         } catch (fallbackErr) {

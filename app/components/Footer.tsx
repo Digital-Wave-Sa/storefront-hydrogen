@@ -47,7 +47,6 @@ export function Footer({ footer, locale }: { footer: Promise<FooterQuery | null>
                       <NavLink to={isEn ? "/en/pages/loyalty" : "/pages/loyalty"} className="font-medium hover:text-white transition-colors" style={{ fontSize: 'clamp(13px, 4vw, 15px)' }}>{isEn ? 'Loyalty Program' : 'برنامج الولاء'}</NavLink>
                       <NavLink to={isEn ? "/en/pages/branches" : "/pages/branches"} className="font-medium hover:text-white transition-colors" style={{ fontSize: 'clamp(13px, 4vw, 15px)' }}>{isEn ? 'Our Branches' : 'فروعنا'}</NavLink>
                       <NavLink to={isEn ? "/en/pages/track-order" : "/pages/track-order"} className="font-medium hover:text-white transition-colors" style={{ fontSize: 'clamp(13px, 4vw, 15px)' }}>{isEn ? 'Track Your Order' : 'تتبع طلبك'}</NavLink>
-                      <NavLink to={isEn ? "/en/pages/returns" : "/pages/returns"} className="font-medium hover:text-white transition-colors" style={{ fontSize: 'clamp(13px, 4vw, 15px)' }}>{isEn ? 'Return Policy' : 'سياسة الاسترجاع'}</NavLink>
                       <NavLink to={isEn ? "/en/pages/faq" : "/pages/faq"} className="font-medium hover:text-white transition-colors" style={{ fontSize: 'clamp(13px, 4vw, 15px)' }}>{isEn ? 'FAQs' : 'الأسئلة الشائعة'}</NavLink>
                       <NavLink to={isEn ? "/en/pages/contact" : "/pages/contact"} className="font-medium hover:text-white transition-colors" style={{ fontSize: 'clamp(13px, 4vw, 15px)' }}>{isEn ? 'Contact Us' : 'تواصل معنا'}</NavLink>
                     </div>

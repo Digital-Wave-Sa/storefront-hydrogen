@@ -117,13 +117,13 @@ export default function OccasionsPage() {
     const filteredProducts = products.filter((p: any) => {
         const cat = categories.find(c => c.id === selectedCategory);
         if (!cat) return false;
-        
+
         const tags = p.tags.map((t: string) => t.toLowerCase());
-        return tags.includes(cat.id.toLowerCase()) || 
-               tags.includes(cat.en.toLowerCase()) || 
-               tags.includes(cat.ar.toLowerCase()) ||
-               tags.includes(`occasion-${cat.id}`) ||
-               tags.includes(cat.id.replace('-', '')); // Handle "mothersday" or "newbaby"
+        return tags.includes(cat.id.toLowerCase()) ||
+            tags.includes(cat.en.toLowerCase()) ||
+            tags.includes(cat.ar.toLowerCase()) ||
+            tags.includes(`occasion-${cat.id}`) ||
+            tags.includes(cat.id.replace('-', '')); // Handle "mothersday" or "newbaby"
     });
 
     const displayProducts = filteredProducts;
@@ -132,7 +132,7 @@ export default function OccasionsPage() {
 
     return (
         <div className={`min-h-screen bg-white ${isEn ? 'font-en' : "font-['GE_Dinar_One']"}`} dir={isEn ? 'ltr' : 'rtl'}>
-            
+
             {/* Hero Section */}
             <PageHeader
                 title={isEn ? 'What is your occasion?' : 'ما هي مناسبتك؟'}
@@ -144,14 +144,13 @@ export default function OccasionsPage() {
             <div className="w-full overflow-hidden">
                 <div className="flex gap-3 lg:gap-4 overflow-x-auto hide-scrollbars py-8 max-w-[1200px] mx-auto px-4 lg:px-8 justify-start lg:justify-center flex-nowrap snap-x" style={{ direction: 'rtl' }}>
                     {categories.map(cat => (
-                        <button 
-                            key={cat.id} 
+                        <button
+                            key={cat.id}
                             onClick={() => setSelectedCategory(cat.id)}
-                            className={`shrink-0 snap-start px-6 py-2.5 rounded-full border-[1.5px] font-bold transition-all ${
-                                selectedCategory === cat.id 
-                                    ? 'bg-[#BBCFCD] border-[#BBCFCD] text-[#234745]' 
-                                    : 'bg-transparent border-[#234745] text-[#234745] hover:bg-gray-50'
-                            }`}
+                            className={`shrink-0 snap-start px-6 py-2.5 rounded-full border-[1.5px] font-bold transition-all ${selectedCategory === cat.id
+                                ? 'bg-[#BBCFCD] border-[#BBCFCD] text-[#234745]'
+                                : 'bg-transparent border-[#234745] text-[#234745] hover:bg-gray-50'
+                                }`}
                         >
                             {isEn ? cat.en : cat.ar}
                         </button>
@@ -164,7 +163,7 @@ export default function OccasionsPage() {
                 <h2 className="text-[24px] lg:text-[32px] font-black text-[#1A1A1A] mb-8">
                     {isEn ? `Suggestions for ${selectedCatLabel}` : `مقترحات لـ ${selectedCatLabel}`}
                 </h2>
-                
+
                 {displayProducts.length > 0 ? (
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 lg:gap-6">
                         {displayProducts.map((product: any) => (
@@ -180,21 +179,21 @@ export default function OccasionsPage() {
 
             {/* Promotional Banners */}
             <div className="max-w-[1200px] mx-auto px-4 lg:px-8 pb-32 lg:pb-48 flex flex-col gap-12 lg:gap-20">
-                
+
                 {/* Custom Cake Banner */}
                 <Link to={isEn ? '/en/custom-cake' : '/custom-cake'} className="block w-full transition-transform hover:scale-[1.01]">
                     <div className="w-full bg-[#EED5D7] rounded-[24px] flex flex-col md:flex-row items-center relative overflow-hidden min-h-[200px] lg:min-h-[220px]">
-                        
+
                         {/* Content Side */}
                         <div className={`w-full md:w-[60%] flex flex-col relative z-10 px-8 lg:px-16 py-10 items-center md:items-start text-center md:text-start`}>
-                            <h2 
+                            <h2
                                 className={`text-[26px] font-bold text-[#234745] mb-2`}
                                 style={{ fontFamily: !isEn ? "'Bahij Janna', sans-serif" : undefined, lineHeight: '100%' }}
                             >
                                 {isEn ? "Didn't find what you're looking for?" : 'لم تجد ما تبحث عنه؟'}
                             </h2>
-                            <p 
-                                className="text-[#7D7D7D] font-medium text-[16px] mb-8"
+                            <p
+                                className="text-[#7D7D7D] font-medium text-[16px] !mb-6"
                                 style={{ fontFamily: !isEn ? "'GE Dinar One', sans-serif" : undefined, lineHeight: '100%' }}
                             >
                                 {isEn ? 'No problem! You can design your own cake easily now.' : 'لا مشكلة! يمكنك تصميم كيكتك الخاصة الان وبكل سهولة'}
@@ -206,10 +205,10 @@ export default function OccasionsPage() {
 
                         {/* Image Side */}
                         <div className="w-full md:w-[40%] h-full flex items-center justify-center p-6 lg:p-8 relative z-10 shrink-0">
-                            <img 
-                                src="/images/custom-cake.webp" 
-                                className="w-full h-auto object-contain max-w-[200px] lg:max-w-[240px]" 
-                                alt="Custom Cake Design" 
+                            <img
+                                src="/images/custom-cake.webp"
+                                className="w-full h-auto object-contain max-w-[200px] lg:max-w-[240px]"
+                                alt="Custom Cake Design"
                             />
                         </div>
 
@@ -234,7 +233,7 @@ export default function OccasionsPage() {
 
                         {/* Content Side */}
                         <div className={`w-full md:w-[55%] flex flex-col relative z-10 px-8 lg:px-16 py-12 items-center md:items-start text-center md:text-start`}>
-                            <div 
+                            <div
                                 className="text-white text-[14px] font-bold mb-6 shadow-sm flex items-center justify-center w-max"
                                 style={{
                                     background: '#E64950',
@@ -252,13 +251,13 @@ export default function OccasionsPage() {
                                     </h3>
                                 ) : (
                                     <>
-                                        <h3 
+                                        <h3
                                             className="text-[26px] font-bold text-[#234745]"
                                             style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif", lineHeight: '100%' }}
                                         >
                                             أهدِ من تحب
                                         </h3>
-                                        <h3 
+                                        <h3
                                             className="text-[26px] font-bold text-[#234745]"
                                             style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif", lineHeight: '100%' }}
                                         >
@@ -268,8 +267,8 @@ export default function OccasionsPage() {
                                 )}
                             </div>
 
-                            <p 
-                                className="text-[#7D7D7D] font-medium text-[16px] max-w-[340px] mb-8"
+                            <p
+                                className="text-[#7D7D7D] font-medium text-[16px] max-w-[340px] !mb-4"
                                 style={{ fontFamily: !isEn ? "'GE Dinar One', sans-serif" : undefined, lineHeight: '100%' }}
                             >
                                 {isEn ? 'Choose value, add message, and send instantly' : 'اختار القيمة، أضف رسالتك، وأرسلها فوراً'}

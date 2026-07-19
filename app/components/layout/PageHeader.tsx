@@ -9,7 +9,7 @@ interface PageHeaderProps {
 
 export function PageHeader({ title, subtitle, isEn, children }: PageHeaderProps) {
     return (
-        <header className="relative w-full min-h-[300px] bg-[#234745] overflow-hidden flex flex-col items-center justify-center text-white px-5 md:px-[80px] py-10 mt-[-1px]">
+        <header className="relative w-full bg-[#234745] overflow-hidden flex flex-col items-center justify-center text-white px-5 md:px-[80px] py-10 mt-[-1px]">
             <div
                 className="absolute inset-0 pointer-events-none opacity-100 bg-[length:1800px_900px] md:bg-[length:100%_535%]"
                 style={{

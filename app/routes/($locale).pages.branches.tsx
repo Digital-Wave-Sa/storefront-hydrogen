@@ -176,19 +176,19 @@ export default function BranchesPage() {
                 {/* Stats */}
                 <div className="flex justify-center items-center gap-8 lg:gap-16 mt-4 w-full" style={{ fontFamily: fontFam }}>
                     <div>
-                        <div className="text-2xl lg:text-3xl font-bold mb-1">{isEn ? branchCount : branchCount}</div>
+                        <div className="text-2xl lg:text-3xl font-bold mb-1" style={{ fontFamily: 'EnglishDigits, "GE Dinar One", sans-serif' }}>{isEn ? branchCount : branchCount}</div>
                         <div className="text-white/60 text-xs lg:text-sm">{isEn ? 'Branches' : 'فرع'}</div>
                     </div>
                     <div>
-                        <div className="text-2xl lg:text-3xl font-bold mb-1" dir="ltr">{isEn ? '35+' : '+٣٥'}</div>
+                        <div className="text-2xl lg:text-3xl font-bold mb-1" style={{ fontFamily: 'EnglishDigits, "GE Dinar One", sans-serif' }} dir="ltr">35+</div>
                         <div className="text-white/60 text-xs lg:text-sm">{isEn ? 'Cities' : 'مدينة'}</div>
                     </div>
                     <div>
-                        <div className="text-2xl lg:text-3xl font-bold mb-1" dir="ltr">{isEn ? '24/7' : '٢٤/٧'}</div>
+                        <div className="text-2xl lg:text-3xl font-bold mb-1" style={{ fontFamily: 'EnglishDigits, "GE Dinar One", sans-serif' }} dir="ltr">24/7</div>
                         <div className="text-white/60 text-xs lg:text-sm">{isEn ? 'Most Branches' : 'معظم الفروع'}</div>
                     </div>
                     <div>
-                        <div className="text-2xl lg:text-3xl font-bold mb-1">{isEn ? '10 Min' : '١٠ دقيقة'}</div>
+                        <div className="text-2xl lg:text-3xl font-bold mb-1" style={{ fontFamily: 'EnglishDigits, "GE Dinar One", sans-serif' }} dir="ltr">{isEn ? '10 Min' : '10 دقيقة'}</div>
                         <div className="text-white/60 text-xs lg:text-sm">{isEn ? 'Prep Time' : 'وقت التجهيز'}</div>
                     </div>
                 </div>

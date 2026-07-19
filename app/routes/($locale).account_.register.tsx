@@ -94,6 +94,34 @@ export async function action({ request, context }: ActionFunctionArgs) {
     const taxRegistration = String(form.get('taxRegistration') || '');
     const companyAddress = String(form.get('companyAddress') || '');
 
+    // Validate email uniqueness in Shopify Admin API before calling register
+    if (email) {
+      try {
+        const { getAdminToken } = await import('~/lib/shopify-admin.server');
+        const adminToken = await getAdminToken(env);
+        if (adminToken) {
+          console.log('[Register] Checking if email already exists in Shopify:', email);
+          const emailCheckRes = await fetch(
+            `https://${env.PUBLIC_STORE_DOMAIN}/admin/api/2024-01/customers/search.json?query=email:"${encodeURIComponent(email)}"&fields=id`,
+            { headers: { 'X-Shopify-Access-Token': adminToken } }
+          );
+          if (emailCheckRes.ok) {
+            const checkData = await emailCheckRes.json() as any;
+            if (checkData.customers?.length > 0) {
+              console.warn('[Register] Email already exists in Shopify:', email);
+              return data({
+                error: lang === 'en'
+                  ? 'This email address is already registered. Please use a different one.'
+                  : 'البريد الإلكتروني هذا مسجل بالفعل. يرجى استخدام بريد إلكتروني آخر.'
+              });
+            }
+          }
+        }
+      } catch (checkErr) {
+        console.error('[Register] Pre-check Shopify email existence error:', checkErr);
+      }
+    }
+
     let firstName = '';
     let lastName = '';
     if (accountType === 'company') {
@@ -203,56 +231,29 @@ export async function action({ request, context }: ActionFunctionArgs) {
               });
               token = tokenResponse.customerAccessTokenCreate?.customerAccessToken || null;
             } else {
-              const errBody = await adminResponse.text();
-              console.error('[Register] Fallback Shopify Admin customer creation failed:', adminResponse.status, errBody);
-
-              // Fallback: If creation failed (probably because email already exists), search for the customer by email
-              if (email) {
-                console.log('[Register] Searching Shopify Admin by email:', email);
-                const emailSearchRes = await fetch(
-                  `https://${env.PUBLIC_STORE_DOMAIN}/admin/api/2024-01/customers/search.json?query=email:"${encodeURIComponent(email)}"&fields=id,email`,
-                  { headers: { 'X-Shopify-Access-Token': adminToken } }
-                );
-                
-                if (emailSearchRes.ok) {
-                  const emailSearchData = await emailSearchRes.json() as any;
-                  const foundCustomer = emailSearchData.customers?.[0];
-                  
-                  if (foundCustomer) {
-                    const resolvedCustomerId = String(foundCustomer.id);
-                    console.log('[Register] Found existing customer by email:', resolvedCustomerId, '— updating phone and resetting password');
-                    
-                    // Update customer's phone and password
-                    const updateRes = await fetch(
-                      `https://${env.PUBLIC_STORE_DOMAIN}/admin/api/2024-01/customers/${resolvedCustomerId}.json`,
-                      {
-                        method: 'PUT',
-                        headers: { 'X-Shopify-Access-Token': adminToken, 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                          customer: { 
-                            id: resolvedCustomerId, 
-                            phone: savedPhone,
-                            password: stablePassword, 
-                            password_confirmation: stablePassword 
-                          }
-                        })
-                      }
-                    );
-                    
-                    if (updateRes.ok) {
-                      console.log('[Register] Successfully updated existing customer phone and reset password ✅');
-                      // Try creating storefront access token again
-                      const tokenResponse = await storefront.mutate(CUSTOMER_ACCESS_TOKEN_CREATE_MUTATION, {
-                        variables: { input: { email: foundCustomer.email || email, password: stablePassword } },
-                      });
-                      token = tokenResponse.customerAccessTokenCreate?.customerAccessToken || null;
-                    } else {
-                      const updateErr = await updateRes.text();
-                      console.error('[Register] Failed to update existing customer:', updateRes.status, updateErr);
-                    }
-                  }
-                }
+              const errBody = await adminResponse.json() as any;
+              console.error('[Register] Fallback Shopify Admin customer creation failed:', adminResponse.status, JSON.stringify(errBody));
+              
+              if (errBody?.errors?.email) {
+                return data({
+                  error: lang === 'en' 
+                    ? 'This email address is already registered. Please use a different one.' 
+                    : 'البريد الإلكتروني هذا مسجل بالفعل. يرجى استخدام بريد إلكتروني آخر.'
+                });
               }
+              if (errBody?.errors?.phone) {
+                return data({
+                  error: lang === 'en' 
+                    ? 'This phone number is already registered. Please use a different one.' 
+                    : 'رقم الهاتف هذا مسجل بالفعل. يرجى استخدام رقم هاتف آخر.'
+                });
+              }
+              
+              return data({
+                error: lang === 'en'
+                  ? 'Shopify customer registration failed. Please contact support.'
+                  : 'فشلت عملية التسجيل في شوبيفاي. يرجى التواصل مع الدعم.'
+              });
             }
           }
         } catch (fallbackErr) {

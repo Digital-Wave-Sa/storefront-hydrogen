@@ -548,7 +548,7 @@ function FilterForm({ filters, onClose, isDesktop, isEn }: { filters: any[], onC
                           { labelAr: 'تخرج', labelEn: 'Graduation', tag: 'graduation' },
                           { labelAr: 'يوم الأم', labelEn: 'Mother\'s Day', tag: 'mothers-day' },
                           { labelAr: 'اليوم الوطني', labelEn: 'National Day', tag: 'national-day' },
-                          { labelAr: 'طفل جديد', labelEn: 'New Baby', tag: 'new-baby' },
+                          { labelAr: 'مواليد', labelEn: 'New Baby', tag: 'new-baby' },
                         ].map((item, i) => {
                             const active = searchParams.getAll('filter.p.tag').includes(item.tag);
                             return (

@@ -60,7 +60,7 @@ export function ReviewForm({
                 <label className="block text-xs font-black uppercase tracking-widest text-[#295b45] mb-3">
                     {isEn ? 'Your Rating' : 'تقييمك'}
                 </label>
-                <div className={`flex items-center gap-2 ${!isEn && 'flex-row-reverse justify-end'}`}>
+                <div className="flex items-center gap-2">
                     {[1, 2, 3, 4, 5].map((star) => (
                         <button
                             key={star}

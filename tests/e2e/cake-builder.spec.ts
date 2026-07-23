@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-test.describe('Lola Cake Builder E2E Tests', () => {
+test.describe('Custom Cake Builder E2E Tests', () => {
 
   test('Page loads and elements render correctly in English', async ({ page }) => {
     // Navigate to English Custom Cake route
@@ -59,10 +59,10 @@ test.describe('Lola Cake Builder E2E Tests', () => {
 
     // Input custom text
     const messageInput = page.locator('input[placeholder="Example: Happy Birthday"]');
-    await messageInput.fill('Lola Birthday');
+    await messageInput.fill('Happy Birthday');
 
     // Verify the input updates correctly
-    await expect(messageInput).toHaveValue('Lola Birthday');
+    await expect(messageInput).toHaveValue('Happy Birthday');
   });
 
   test('Bilingual RTL direction in Arabic custom-cake builder', async ({ page }) => {

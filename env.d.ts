@@ -32,5 +32,6 @@ declare global {
     SHOPIFY_SHOP: string;
     MIDDLEWARE_URL: string;
     CUSTOM_API_URL: string;
+    SDLP_APP_URL?: string;
   }
 }

@@ -44,8 +44,8 @@ export function NewArrivals({
             <div className="max-w-[1400px] mx-auto px-4 md:px-8">
 
                 {/* Section Header */}
-                <div className="text-center mb-10 flex flex-col items-center">
-                    <h2 className="text-[32px] lg:text-[42px] font-bold text-[#1a1a1a] mb-2 leading-tight" style={!isEn ? { fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" } : undefined}>
+                <div className="text-center mb-8 flex flex-col items-center">
+                    <h2 className="text-[32px] lg:text-[42px] font-bold text-[#1a1a1a] !mb-2 leading-tight" style={!isEn ? { fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" } : undefined}>
                         {isEn ? 'Featured Collections' : 'التشكيلات المميزة'}
                     </h2>
                     <p className="text-[#8a9e9a] text-[14px] lg:text-[16px] font-medium" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
@@ -123,6 +123,12 @@ export function NewArrivals({
 
                                                     {/* Status Badges Overlay (Stacking) */}
                                                     <div className="absolute top-4 right-4 z-10 flex flex-col gap-2 items-end">
+                                                        {isVisibilityBlocked && (
+                                                            <span className="text-[10px] font-bold px-3 py-1.5 rounded-full shadow-sm bg-[#906B51] text-white flex items-center gap-1.5">
+                                                                <span>🍂</span>
+                                                                {isEn ? 'Out for Season' : 'نفد للموسم'}
+                                                            </span>
+                                                        )}
                                                         {/* Limited Time Badge */}
                                                         {!isVisibilityBlocked && isLimitedTime && (
                                                             <span className="text-[10px] font-bold px-3 py-1.5 rounded-full shadow-sm bg-purple-600 text-white flex items-center gap-1.5">
@@ -141,10 +147,9 @@ export function NewArrivals({
 
                                                     {/* Product Image */}
                                                     <Link
-                                                        to={isVisibilityBlocked ? '#' : getProductUrl(product.handle)}
+                                                        to={getProductUrl(product.handle)}
                                                         aria-label={product.title}
-                                                        className={`relative block bg-[#F8F9F8] aspect-[4/3] w-full flex items-center justify-center p-0 overflow-hidden ${isVisibilityBlocked ? 'pointer-events-none' : ''}`}
-                                                        onClick={isVisibilityBlocked ? (e: any) => e.preventDefault() : undefined}
+                                                        className="relative block bg-[#F8F9F8] aspect-[4/3] w-full flex items-center justify-center p-0 overflow-hidden"
                                                     >
                                                         {product.images?.nodes?.[0] && (
                                                             <Image
@@ -156,8 +161,19 @@ export function NewArrivals({
                                                                 style={{ opacity: isVisibilityBlocked ? 0.5 : (effectiveOutOfStock ? 0.4 : 1), filter: isVisibilityBlocked ? 'grayscale(1)' : 'none' }}
                                                             />
                                                         )}
-                                                        {/* Out of Stock badge overlay */}
-                                                        {!isVisibilityBlocked && isOutOfStock && !isPreorder && (
+                                                        {/* Out of Stock / Seasonal badge overlay */}
+                                                        {isVisibilityBlocked ? (
+                                                            <div className="absolute bottom-[16px] left-1/2 -translate-x-1/2 z-10 pointer-events-none">
+                                                                <span
+                                                                    className="flex items-center justify-center px-5 h-[36px] rounded-full font-bold text-[13px] whitespace-nowrap shadow-sm text-white bg-[#906B51]"
+                                                                    style={{
+                                                                        fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
+                                                                    }}
+                                                                >
+                                                                    {isEn ? 'Out for the Season' : 'نفد للموسم'}
+                                                                </span>
+                                                            </div>
+                                                        ) : isOutOfStock && !isPreorder ? (
                                                             <div className="absolute bottom-[16px] left-1/2 -translate-x-1/2 z-10 pointer-events-none">
                                                                 <span
                                                                     className="flex items-center justify-center px-6 h-[40px] rounded-full font-bold text-[14px] whitespace-nowrap"
@@ -172,21 +188,21 @@ export function NewArrivals({
                                                                     {isEn ? 'Out of Stock' : 'نفذت الكمية'}
                                                                 </span>
                                                             </div>
-                                                        )}
+                                                        ) : null}
                                                     </Link>
 
                                                     {/* Product Info */}
                                                     <div className="bg-white p-5 flex flex-col flex-grow">
 
                                                         {/* Title */}
-                                                        <Link to={isVisibilityBlocked ? '#' : getProductUrl(product.handle)} onClick={isVisibilityBlocked ? (e: any) => e.preventDefault() : undefined}>
+                                                        <Link to={getProductUrl(product.handle)}>
                                                             <h3 className={`font-bold text-[#234745] line-clamp-1 transition-colors duration-300 ${isEn ? 'text-left' : 'text-right'} ${isVisibilityBlocked ? '' : 'hover:text-[#1a3a2d]'}`} style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", fontSize: '18px', lineHeight: '24px', opacity: effectiveOutOfStock ? 0.4 : 1 }}>
                                                                 {product.title}
                                                             </h3>
                                                         </Link>
 
                                                         {/* Price — hidden when visibility blocked */}
-                                                        {!isVisibilityBlocked ? (
+                                                        {!isVisibilityBlocked && (
                                                             <div className="mt-2 mb-4 flex items-center gap-3" style={{ opacity: effectiveOutOfStock ? 0.4 : 1 }}>
                                                                 <Price
                                                                     data={product.priceRange.minVariantPrice}
@@ -200,17 +216,24 @@ export function NewArrivals({
                                                                     </span>
                                                                 )}
                                                             </div>
-                                                        ) : (
-                                                            <div className="mt-2 mb-4">
-                                                                <span className={`text-sm font-bold ${visibility.status === 'scheduled' ? 'text-amber-600' : 'text-red-500'}`}>
-                                                                    {isEn ? visibility.label.en : visibility.label.ar}
-                                                                </span>
-                                                            </div>
                                                         )}
 
-                                                        {/* Add to Cart — only for active products */}
-                                                        {!isVisibilityBlocked && (
-                                                            <div className="mt-auto">
+                                                        {/* Add to Cart Button */}
+                                                        <div className="mt-auto">
+                                                            {isVisibilityBlocked ? (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => handleNotifyClick(product.title, variant?.id)}
+                                                                    className="w-full h-[40px] md:h-[44px] px-2 md:px-4 flex items-center justify-center gap-1.5 rounded-full font-bold text-[12px] md:text-[14px] bg-[#906B51] hover:bg-[#7d5c45] text-white shadow-sm transition-all duration-300 active:scale-95"
+                                                                    style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
+                                                                >
+                                                                    <span>{isEn ? 'Notify for Next Season' : 'أبلغني في الموسم القادم'}</span>
+                                                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+                                                                        <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                                                                        <path d="M13.73 21a2 2 0 01-3.46 0" />
+                                                                    </svg>
+                                                                </button>
+                                                            ) : (
                                                                 <NewArrivalsAddToCart
                                                                     variant={variant}
                                                                     productTags={product.tags}
@@ -221,8 +244,8 @@ export function NewArrivals({
                                                                     isPreorder={isPreorder}
                                                                     onNotifyClick={() => handleNotifyClick(product.title, variant?.id)}
                                                                 />
-                                                            </div>
-                                                        )}
+                                                            )}
+                                                        </div>
                                                     </div>
 
                                                 </div>
@@ -231,7 +254,7 @@ export function NewArrivals({
                                     </div>
 
                                     {/* View All Button */}
-                                    <div className="mt-16 flex justify-center">
+                                    <div className="mt-8 lg:mt-12 flex justify-center">
                                         <Link
                                             to={isEn ? "/en/collections" : "/collections"}
                                             className="px-12 py-4 rounded-full border-2 border-[#234745] !text-[#234745] [font-family:'GE_Dinar_One',sans-serif] font-bold text-[15px] lg:text-[18px] transition-all hover:bg-[#1a3533] hover:!text-white hover:border-[#1a3533] active:scale-95"

@@ -81,7 +81,7 @@ const cakeOptions = {
   ],
   colors: [
     { id: 'white', name: 'أبيض كلاسيكي (White)', price: 0, color: '#fdf5e6' },
-    { id: 'pink', name: 'وردي لولا (Lola Pink)', price: 0, color: '#ffb6c1' },
+    { id: 'pink', name: 'وردي سعد الدين (Saadeddin Pink)', price: 0, color: '#ffb6c1' },
     { id: 'magenta', name: 'ماجنتا (Magenta)', price: 0, color: '#a32c81' },
     { id: 'red', name: 'أحمر مخملي (Red)', price: 0, color: '#dc143c' },
     { id: 'orange', name: 'برتقالي (Orange)', price: 0, color: '#ff8c00' },
@@ -103,7 +103,7 @@ const DEFAULT_PREP_OPTION = {
   descAr: 'ستكون الكيكة جاهزة للاستلام أو التوصيل بعد 24 ساعة من الآن.'
 };
 
-export default function LolaCakeBuilder({ 
+export default function CustomCakeBuilder({ 
   cakeAttributes = [], 
   toppingDesigns = [], 
   isEn = false,

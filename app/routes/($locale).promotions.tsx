@@ -7,8 +7,8 @@ import { SaudiRiyalSymbol } from '~/components/Price';
 
 // GraphQL query to fetch promotional products
 const PROMOTIONS_QUERY = `#graphql
-  query getPromotionalProducts($country: CountryCode, $language: LanguageCode) {
-    products(first: 8) {
+  query getPromotionalProducts($country: CountryCode, $language: LanguageCode) @inContext(country: $country, language: $language) {
+    products(first: 50) {
       nodes {
         id
         handle
@@ -21,9 +21,11 @@ const PROMOTIONS_QUERY = `#graphql
           width
           height
         }
-        variants(first: 1) {
+        variants(first: 10) {
           nodes {
             id
+            title
+            availableForSale
             price {
               amount
               currencyCode
@@ -42,8 +44,41 @@ const PROMOTIONS_QUERY = `#graphql
 export async function loader({ context }: LoaderFunctionArgs) {
   const { storefront } = context;
   try {
-    const data = await storefront.query(PROMOTIONS_QUERY);
-    return { products: data?.products?.nodes || [] };
+    const data = await storefront.query(PROMOTIONS_QUERY, {
+      variables: {
+        country: storefront.i18n.country,
+        language: storefront.i18n.language,
+      },
+      cache: storefront.CacheNone(),
+    });
+
+    const allProducts = data?.products?.nodes || [];
+
+    // Filter ONLY products that have a discount (compareAtPrice > price) or discount/promotion tags
+    const discountedProducts = allProducts.filter((product: any) => {
+      const variants = product.variants?.nodes || [];
+      const hasDiscountedVariant = variants.some((v: any) => {
+        const price = parseFloat(v.price?.amount || '0');
+        const comparePrice = parseFloat(v.compareAtPrice?.amount || '0');
+        return comparePrice > price;
+      });
+
+      const tags = (product.tags || []).map((t: string) => t.toLowerCase());
+      const hasDiscountTag = tags.some((t: string) =>
+        t.includes('discount') ||
+        t.includes('sale') ||
+        t.includes('promotion') ||
+        t.includes('bogo') ||
+        t.includes('1+1') ||
+        t.includes('خصم') ||
+        t.includes('عرض') ||
+        t.includes('promo')
+      );
+
+      return hasDiscountedVariant || hasDiscountTag;
+    });
+
+    return { products: discountedProducts };
   } catch (error) {
     console.error('Error loading promotional products:', error);
     return { products: [] };
@@ -60,7 +95,7 @@ export default function PromotionsPage() {
   // Toast message state for "Copy Code"
   const [showToast, setShowToast] = useState(false);
 
-  // Live Countdown Timer state (initialized to 8h 32m 22s as in the mock image)
+  // Live Countdown Timer state
   const [timeLeft, setTimeLeft] = useState({ hours: 8, minutes: 32, seconds: 22 });
 
   useEffect(() => {
@@ -87,129 +122,48 @@ export default function PromotionsPage() {
     setTimeout(() => setShowToast(false), 2000);
   };
 
-  // Default Arabic/English fallbacks to show a pixel-perfect mockup matching the exact image uploaded
-  const mockProducts = [
-    {
-      id: 'mock-1',
-      title: isEn ? 'Chocolate Pieces Selection' : 'تشكيلة قطع شوكولاتة',
-      price: '188',
-      comparePrice: '200',
-      tag: isEn ? 'Most Wanted' : 'الأكثر طلباً',
-      image: 'https://cdn.shopify.com/s/files/1/0616/1606/2642/files/cake.png',
-      availableForSale: true,
-      variantId: 'mock-var-1',
-      tags: ['BOGO', '1+1']
-    },
-    {
-      id: 'mock-2',
-      title: isEn ? 'Maamoul with Pistachio' : 'معمول بالفستق',
-      price: '56',
-      comparePrice: '60',
-      tag: isEn ? '5% Off' : '5% خصم',
-      image: 'https://cdn.shopify.com/s/files/1/0616/1606/2642/files/cake.png',
-      availableForSale: true,
-      variantId: 'mock-var-2',
-      tags: ['BOGO', '1+1']
-    },
-    {
-      id: 'mock-3',
-      title: isEn ? 'Mixed Baklava' : 'بقلاوة مشكلة',
-      price: '219',
-      comparePrice: '240',
-      tag: isEn ? 'Most Wanted' : 'الأكثر طلباً',
-      image: 'https://cdn.shopify.com/s/files/1/0616/1606/2642/files/cake.png',
-      availableForSale: true,
-      variantId: 'mock-var-3',
-      tags: ['BOGO', '1+1']
-    },
-    {
-      id: 'mock-4',
-      title: isEn ? 'Product Name' : 'اسم المنتج',
-      price: '188',
-      comparePrice: '200',
-      tag: isEn ? 'Most Wanted' : 'الأكثر طلباً',
-      image: 'https://cdn.shopify.com/s/files/1/0616/1606/2642/files/cake.png',
-      availableForSale: true,
-      variantId: 'mock-var-4',
-      tags: ['BOGO', '1+1']
-    },
-    {
-      id: 'mock-5',
-      title: isEn ? 'Chocolate Pieces Selection' : 'تشكيلة قطع شوكولاتة',
-      price: '188',
-      comparePrice: '200',
-      tag: isEn ? 'Most Wanted' : 'الأكثر طلباً',
-      image: 'https://cdn.shopify.com/s/files/1/0616/1606/2642/files/cake.png',
-      availableForSale: true,
-      variantId: 'mock-var-5',
-      tags: ['BOGO', '1+1']
-    },
-    {
-      id: 'mock-6',
-      title: isEn ? 'Maamoul with Pistachio' : 'معمول بالفستق',
-      price: '56',
-      comparePrice: '60',
-      tag: isEn ? '5% Off' : '5% خصم',
-      image: 'https://cdn.shopify.com/s/files/1/0616/1606/2642/files/cake.png',
-      availableForSale: true,
-      variantId: 'mock-var-6',
-      tags: ['BOGO', '1+1']
-    },
-    {
-      id: 'mock-7',
-      title: isEn ? 'Mixed Baklava' : 'بقلاوة مشكلة',
-      price: '219',
-      comparePrice: '240',
-      tag: isEn ? 'Most Wanted' : 'الأكثر طلباً',
-      image: 'https://cdn.shopify.com/s/files/1/0616/1606/2642/files/cake.png',
-      availableForSale: true,
-      variantId: 'mock-var-7',
-      tags: ['BOGO', '1+1']
-    },
-    {
-      id: 'mock-8',
-      title: isEn ? 'Product Name' : 'اسم المنتج',
-      price: '188',
-      comparePrice: '200',
-      tag: isEn ? 'Most Wanted' : 'الأكثر طلباً',
-      image: 'https://cdn.shopify.com/s/files/1/0616/1606/2642/files/cake.png',
-      availableForSale: true,
-      variantId: 'mock-var-8',
-      tags: ['BOGO', '1+1']
+  // Dynamically map real discounted products from Shopify
+  const displayProducts = products.map((prod: any) => {
+    const variant = prod.variants?.nodes?.find((v: any) => {
+      const price = parseFloat(v.price?.amount || '0');
+      const comparePrice = parseFloat(v.compareAtPrice?.amount || '0');
+      return comparePrice > price;
+    }) || prod.variants?.nodes?.[0];
+
+    const priceNum = parseFloat(variant?.price?.amount || '0');
+    const compareNum = parseFloat(variant?.compareAtPrice?.amount || '0');
+
+    const priceStr = Math.round(priceNum).toString();
+    const compareStr = compareNum > priceNum ? Math.round(compareNum).toString() : '';
+
+    // Calculate dynamic discount percentage tag if compareAtPrice is higher
+    let tagBadge = '';
+    if (compareNum > priceNum) {
+      const pct = Math.round(((compareNum - priceNum) / compareNum) * 100);
+      tagBadge = isEn ? `${pct}% OFF` : `خصم %${pct}`;
+    } else {
+      const hasBogo = prod.tags?.some((t: string) => t.toUpperCase().includes('1+1') || t.toUpperCase().includes('BOGO'));
+      if (hasBogo) {
+        tagBadge = isEn ? 'BUY 1 GET 1' : '1+1 مجاناً';
+      } else if (prod.tags?.some((t: string) => t.includes('الأكثر طلباً') || t.toLowerCase().includes('best_seller'))) {
+        tagBadge = isEn ? 'Most Wanted' : 'الأكثر طلباً';
+      } else {
+        tagBadge = isEn ? 'Special Offer' : 'عرض خاص';
+      }
     }
-  ];
 
-  // Helper check to filter BOGO/1+1 products
-  const isBogoProduct = (tagsList: string[]) => {
-    if (!tagsList) return false;
-    return tagsList.some((t: string) => {
-      const ut = t.toUpperCase();
-      return ut.includes('BOGO') || ut.includes('1+1') || ut.includes('FREE') || ut.includes('مجانا');
-    });
-  };
-
-  // Map real Shopify products to matching structures, or fallback to mock list
-  const displayProducts = products && products.length > 0
-    ? products
-      .filter((prod: any) => isBogoProduct(prod.tags || []))
-      .map((prod: any, idx: number) => {
-        const variant = prod.variants?.nodes?.[0];
-        const price = variant?.price?.amount ? Math.round(parseFloat(variant.price.amount)).toString() : '0';
-        const comparePrice = variant?.compareAtPrice?.amount ? Math.round(parseFloat(variant.compareAtPrice.amount)).toString() : '';
-        const mockFallback = mockProducts[idx % mockProducts.length];
-        return {
-          id: prod.id,
-          title: isEn ? prod.title : (mockFallback.title || prod.title),
-          price,
-          comparePrice: comparePrice || (parseFloat(price) < parseFloat(mockFallback.price) ? mockFallback.comparePrice : ''),
-          tag: mockFallback.tag,
-          image: prod.featuredImage?.url || mockFallback.image,
-          availableForSale: prod.availableForSale,
-          variantId: variant?.id,
-          handle: prod.handle
-        };
-      })
-    : mockProducts.filter((prod: any) => isBogoProduct(prod.tags || []));
+    return {
+      id: prod.id,
+      title: prod.title,
+      price: priceStr,
+      comparePrice: compareStr,
+      tag: tagBadge,
+      image: prod.featuredImage?.url || '/images/placeholder.webp',
+      availableForSale: prod.availableForSale && (variant?.availableForSale ?? true),
+      variantId: variant?.id,
+      handle: prod.handle,
+    };
+  });
 
   const direction = isEn ? 'ltr' : 'rtl';
 
@@ -239,17 +193,26 @@ export default function PromotionsPage() {
           style={{ boxSizing: 'border-box', background: '#FEF8EB' }}
           className="w-full rounded-[24px] border border-[#906B51] flex flex-col lg:flex-row items-stretch gap-6 p-5 lg:p-8"
         >
-          {/* Left Side: Promotion Details */}
+          {/* Top on Mobile: Table Image (Above text on mobile, second on desktop) */}
+          <div className="w-full lg:w-[45%] h-[220px] sm:h-[260px] lg:h-[350px] flex-shrink-0 rounded-[16px] overflow-hidden order-1 lg:order-2">
+            <img
+              src="/images/promotions/promotions-1st-section.webp"
+              alt="Season Specials"
+              className="w-full h-full object-cover object-center"
+            />
+          </div>
+
+          {/* Bottom on Mobile: Promotion Details (Below image on mobile, first on desktop) */}
           <div
             dir={direction}
-            className="flex-1 flex flex-col justify-center gap-5 py-2"
+            className="flex-1 flex flex-col justify-center gap-5 py-2 order-2 lg:order-1"
           >
             {/* Tag Badge — aligned to start (right in RTL) */}
             <div className="flex">
               <div className="bg-[#E24D55] px-3 py-1.5 rounded-[6px] flex items-center gap-1.5">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-white flex-shrink-0">
                   <circle cx="12" cy="12" r="10" />
-                  <polyline points="12 6 12 12 16 14" />
+                  <polyline points="12 6 12 16 14" />
                 </svg>
                 <span className="text-white font-bold text-[12px] tracking-wide whitespace-nowrap">
                   {isEn ? 'LIMITED OFFER' : 'عرض محدود'}
@@ -309,7 +272,7 @@ export default function PromotionsPage() {
                 <span className="text-[#234745] font-bold text-[15px] tracking-widest" style={{ fontFamily: "'EnglishDigits', sans-serif" }}>SAAD20</span>
                 <button
                   onClick={handleCopyCode}
-                  className="text-[#906B51] text-[11px] font-bold px-2 py-1.5 hover:bg-[#FDF0D5] rounded-[6px] border border-[#F5EAD4] transition-colors whitespace-nowrap"
+                  className="text-[#906B51] text-[11px] font-bold px-2 py-1.5 hover:bg-[#FDF0D5] rounded-[6px] border border-[#F5EAD4] transition-colors whitespace-nowrap cursor-pointer"
                 >
                   {isEn ? 'Copy' : 'نسخ الكود'}
                 </button>
@@ -326,17 +289,6 @@ export default function PromotionsPage() {
               </Link>
             </div>
           </div>
-
-          {/* Right Side: Table Image — inset with card padding, rounded corners */}
-          <div className="w-full lg:w-[45%] h-[260px] sm:h-[260px] lg:h-[350px] flex-shrink-0 rounded-[16px] overflow-hidden">
-            <img
-              src="/images/promotions/promotions-1st-section.webp"
-              alt="Season Specials"
-              className="w-full h-full object-cover object-center"
-            />
-          </div>
-
-
         </section>
 
         {/* 3. BOGO Banner (Buy 1 Get 1 Free) */}
@@ -528,106 +480,114 @@ export default function PromotionsPage() {
             </h2>
           </div>
 
-          <div className="flex flex-row overflow-x-auto gap-4 md:grid md:grid-cols-4 md:gap-6 pb-4 md:pb-0 snap-x snap-mandatory hide-scrollbars">
-            {displayProducts.map((prod: any) => {
-              const isSelected = isInWishlist(prod.id);
-              return (
-                <div key={prod.id} className="bg-white border border-[#EBE3D5] rounded-[24px] overflow-hidden flex flex-col justify-between hover:shadow-md transition-shadow relative group w-[220px] sm:w-[260px] md:w-auto flex-shrink-0 md:flex-shrink snap-start">
-                  {/* Top Badges */}
-                  <div className="absolute top-3 left-3 right-3 flex justify-between items-center z-10">
-                    {/* Wishlist Heart Icon */}
-                    <button
-                      type="button"
-                      onClick={() => toggleWishlist(prod)}
-                      className="w-[40px] h-[40px] bg-white rounded-full flex items-center justify-center shadow-md hover:scale-105 transition-transform active:scale-95"
-                    >
-                      <svg
-                        width="18"
-                        height="18"
-                        viewBox="0 0 24 24"
-                        fill={isSelected ? '#E24D55' : 'none'}
-                        stroke={isSelected ? '#E24D55' : '#1A1A1A'}
-                        strokeWidth="2"
+          {displayProducts.length > 0 ? (
+            <div className="flex flex-row overflow-x-auto gap-4 md:grid md:grid-cols-4 md:gap-6 pb-4 md:pb-0 snap-x snap-mandatory hide-scrollbars">
+              {displayProducts.map((prod: any) => {
+                const isSelected = isInWishlist(prod.id);
+                return (
+                  <div key={prod.id} className="bg-white border border-[#EBE3D5] rounded-[24px] overflow-hidden flex flex-col justify-between hover:shadow-md transition-shadow relative group w-[220px] sm:w-[260px] md:w-auto flex-shrink-0 md:flex-shrink snap-start">
+                    {/* Top Badges */}
+                    <div className="absolute top-3 left-3 right-3 flex justify-between items-center z-10">
+                      {/* Wishlist Heart Icon */}
+                      <button
+                        type="button"
+                        onClick={() => toggleWishlist(prod)}
+                        className="w-[40px] h-[40px] bg-white rounded-full flex items-center justify-center shadow-md hover:scale-105 transition-transform active:scale-95 cursor-pointer"
                       >
-                        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-                      </svg>
-                    </button>
+                        <svg
+                          width="18"
+                          height="18"
+                          viewBox="0 0 24 24"
+                          fill={isSelected ? '#E24D55' : 'none'}
+                          stroke={isSelected ? '#E24D55' : '#1A1A1A'}
+                          strokeWidth="2"
+                        >
+                          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+                        </svg>
+                      </button>
 
-                    {/* Tag Badge */}
-                    <div className="bg-[#C5A96A] text-white font-bold text-[11px] px-3.5 py-1.5 rounded-full shadow-sm">
-                      {prod.tag}
-                    </div>
-                  </div>
-
-                  {/* Product Image (Flush to top/left/right) */}
-                  <div className="w-full aspect-[4/3] overflow-hidden bg-gray-50">
-                    {prod.handle ? (
-                      <Link to={`/products/${prod.handle}`}>
-                        <img
-                          src={prod.image}
-                          alt={prod.title}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                        />
-                      </Link>
-                    ) : (
-                      <img
-                        src={prod.image}
-                        alt={prod.title}
-                        className="w-full h-full object-cover"
-                      />
-                    )}
-                  </div>
-
-                  {/* Details & Button */}
-                  <div className="p-4 md:p-5 flex flex-col gap-3 w-full">
-                    <h4 className="text-[#171717] text-[16px] md:text-[18px] font-bold text-start line-clamp-1">
-                      {prod.title}
-                    </h4>
-
-                    {/* Prices */}
-                    <div className="flex items-center gap-3 text-start font-bold">
-                      {/* Price */}
-                      <div className={`flex items-center gap-1 text-[#234745] ${isEn ? 'flex-row' : 'flex-row-reverse'}`} dir="ltr">
-                        <span className="text-[18px] md:text-[20px]" style={{ fontFamily: "'EnglishDigits', sans-serif" }}>
-                          {prod.price}
-                        </span>
-                        <SaudiRiyalSymbol className="h-[14px] w-auto text-[#234745] mb-0.5" />
-                      </div>
-                      {/* Compare Price */}
-                      {prod.comparePrice && (
-                        <div className={`flex items-center gap-1 text-[#E64950] ${isEn ? 'flex-row' : 'flex-row-reverse'}`} dir="ltr">
-                          <span className="text-lg md:text-[14px] line-through font-black" style={{ fontFamily: "'EnglishDigits', sans-serif" }}>
-                            {prod.comparePrice}
-                          </span>
-                          <SaudiRiyalSymbol className="h-[11px] w-auto text-[#E64950] mb-0.5" />
+                      {/* Tag Badge */}
+                      {prod.tag && (
+                        <div className="bg-[#C5A96A] text-white font-bold text-[11px] px-3.5 py-1.5 rounded-full shadow-sm">
+                          {prod.tag}
                         </div>
                       )}
                     </div>
 
-                    {/* Add to Cart Button */}
-                    <div className="w-full mt-1">
-                      {prod.variantId ? (
-                        <AddToCartButton
-                          lines={[{ merchandiseId: prod.variantId, quantity: 1 }]}
-                          disabled={!prod.availableForSale}
-                          className="w-full h-[48px] bg-[#234745] hover:bg-[#1a3533] text-white font-bold text-[14px] rounded-[50px] transition-colors flex items-center justify-center"
-                        >
-                          {isEn ? 'Add to Cart' : 'أضف إلي السلة'}
-                        </AddToCartButton>
+                    {/* Product Image (Flush to top/left/right) */}
+                    <div className="w-full aspect-[4/3] overflow-hidden bg-gray-50">
+                      {prod.handle ? (
+                        <Link to={`/products/${prod.handle}`}>
+                          <img
+                            src={prod.image}
+                            alt={prod.title}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          />
+                        </Link>
                       ) : (
-                        <button
-                          disabled
-                          className="w-full h-[48px] bg-[#BBCFCD] text-[#234745] font-bold text-[14px] rounded-[50px] cursor-not-allowed opacity-50 flex items-center justify-center"
-                        >
-                          {isEn ? 'Out of Stock' : 'نفذت الكمية'}
-                        </button>
+                        <img
+                          src={prod.image}
+                          alt={prod.title}
+                          className="w-full h-full object-cover"
+                        />
                       )}
                     </div>
+
+                    {/* Details & Button */}
+                    <div className="p-4 md:p-5 flex flex-col gap-3 w-full">
+                      <h4 className="text-[#171717] text-[16px] md:text-[18px] font-bold text-start line-clamp-1">
+                        {prod.title}
+                      </h4>
+
+                      {/* Prices */}
+                      <div className="flex items-center gap-3 text-start font-bold">
+                        {/* Price */}
+                        <div className={`flex items-center gap-1 text-[#234745] ${isEn ? 'flex-row' : 'flex-row-reverse'}`} dir="ltr">
+                          <span className="text-[18px] md:text-[20px]" style={{ fontFamily: "'EnglishDigits', sans-serif" }}>
+                            {prod.price}
+                          </span>
+                          <SaudiRiyalSymbol className="h-[14px] w-auto text-[#234745] mb-0.5" />
+                        </div>
+                        {/* Compare Price */}
+                        {prod.comparePrice && (
+                          <div className={`flex items-center gap-1 text-[#E64950] ${isEn ? 'flex-row' : 'flex-row-reverse'}`} dir="ltr">
+                            <span className="text-lg md:text-[14px] line-through font-black" style={{ fontFamily: "'EnglishDigits', sans-serif" }}>
+                              {prod.comparePrice}
+                            </span>
+                            <SaudiRiyalSymbol className="h-[11px] w-auto text-[#E64950] mb-0.5" />
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Add to Cart Button */}
+                      <div className="w-full mt-1">
+                        {prod.variantId ? (
+                          <AddToCartButton
+                            lines={[{ merchandiseId: prod.variantId, quantity: 1 }]}
+                            disabled={!prod.availableForSale}
+                            className="w-full h-[48px] bg-[#234745] hover:bg-[#1a3533] text-white font-bold text-[14px] rounded-[50px] transition-colors flex items-center justify-center cursor-pointer"
+                          >
+                            {isEn ? 'Add to Cart' : 'أضف إلي السلة'}
+                          </AddToCartButton>
+                        ) : (
+                          <button
+                            disabled
+                            className="w-full h-[48px] bg-[#BBCFCD] text-[#234745] font-bold text-[14px] rounded-[50px] cursor-not-allowed opacity-50 flex items-center justify-center"
+                          >
+                            {isEn ? 'Out of Stock' : 'نفذت الكمية'}
+                          </button>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="w-full py-12 text-center text-[#7D7D7D] font-bold text-[16px] bg-white/60 rounded-[24px] border border-[#EBE3D5]">
+              {isEn ? 'No discounted products available at the moment.' : 'لا توجد منتجات عليها خصومات حالياً.'}
+            </div>
+          )}
         </section>
 
       </div>

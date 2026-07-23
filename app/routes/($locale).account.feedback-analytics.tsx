@@ -13,9 +13,29 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
   }
 
   let isAdmin = false;
+  let customerTags: string[] = [];
 
   if (customerAccessToken.accessToken === 'dev-bypass-token') {
     isAdmin = true;
+    const savedPhone = await session.get('loginOtpPhone');
+    if (savedPhone) {
+      try {
+        const { getAdminToken: getShopifyAdminToken } = await import('~/lib/shopify-admin.server');
+        const adminToken = await getShopifyAdminToken(env);
+        const shopDomain = env.SHOPIFY_SHOP ? `${env.SHOPIFY_SHOP.replace('.myshopify.com', '')}.myshopify.com` : env.PUBLIC_STORE_DOMAIN;
+        const cleanPhoneForSearch = savedPhone.replace('+966', '').replace(/\D/g, '');
+        const queryStr = encodeURIComponent(`*${cleanPhoneForSearch}*`);
+        const res = await fetch(`https://${shopDomain}/admin/api/2023-04/customers/search.json?query=${queryStr}`, {
+           headers: { 'X-Shopify-Access-Token': env.SHOPIFY_ADMIN_API_ACCESS_TOKENS || adminToken, 'Content-Type': 'application/json' },
+        });
+        const d = await res.json() as any;
+        if (d?.customers?.[0]?.tags) {
+          customerTags = d.customers[0].tags.split(',').map((t: string) => t.trim());
+        }
+      } catch (e) {
+        console.error('[FeedbackAnalytics] Failed to fetch customer tags for dev bypass:', e);
+      }
+    }
   } else {
     // Verify if user is an Admin/Manager
     const { customer: sfCustomer } = await storefront.query(`#graphql
@@ -34,7 +54,7 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
       return redirect('/account/login');
     }
 
-    const customerTags = sfCustomer?.tags || [];
+    customerTags = sfCustomer?.tags || [];
     isAdmin = customerTags.some((tag: string) => {
       const clean = tag.toLowerCase().trim().replace(/[^a-z0-9]/g, '');
       return clean === 'admin' || clean === 'branchmanager' || clean === 'manager';
@@ -44,6 +64,9 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
   if (!isAdmin) {
     return redirect('/account/profile');
   }
+
+  const branchTag = customerTags.find((tag: string) => tag.toLowerCase().trim().startsWith('branch:'));
+  const restrictedBranch = branchTag ? branchTag.split(':')[1]?.trim() : null;
 
   const adminDataPromise = (async () => {
     const shopDomain = env.PUBLIC_STORE_DOMAIN;
@@ -83,13 +106,38 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
       }
     `;
 
+    // Fetch orders
+    const ordersQuery = `
+      query {
+        orders(first: 250, sortKey: CREATED_AT, reverse: true) {
+          nodes {
+            id
+            createdAt
+            totalPriceSet {
+              shopMoney {
+                amount
+                currencyCode
+              }
+            }
+            customAttributes {
+              key
+              value
+            }
+          }
+        }
+      }
+    `;
+
     let reviewsData: any = [];
     let locationsData: any = [];
+    let ordersData: any = [];
+    let allLocations: any[] = [];
 
     try {
-      const [revRes, locRes] = await Promise.all([
+      const [revRes, locRes, ordRes] = await Promise.all([
         adminApiQuery(shopDomain, adminToken, reviewsQuery, {}) as Promise<any>,
-        adminApiQuery(shopDomain, adminToken, locationsQuery, {}) as Promise<any>
+        adminApiQuery(shopDomain, adminToken, locationsQuery, {}) as Promise<any>,
+        adminApiQuery(shopDomain, adminToken, ordersQuery, {}) as Promise<any>
       ]);
       
       if (revRes?.data?.metaobjects?.nodes) {
@@ -105,17 +153,70 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
       }
 
       if (locRes?.data?.locations?.nodes) {
-        locationsData = locRes.data.locations.nodes.map((node: any) => {
+        allLocations = locRes.data.locations.nodes.map((node: any) => {
           return {
             id: node.id,
             name: node.name,
             rating: parseFloat(node.metafields?.nodes?.find((m: any) => m.key === 'rating')?.value || '0'),
             ratingCount: parseInt(node.metafields?.nodes?.find((m: any) => m.key === 'rating_count')?.value || '0', 10),
           };
-        }).filter((l: any) => l.ratingCount > 0).sort((a: any, b: any) => b.rating - a.rating);
+        });
+
+        locationsData = allLocations
+          .filter((l: any) => l.ratingCount > 0)
+          .sort((a: any, b: any) => b.rating - a.rating);
+      }
+
+      if (reviewsData.length > 0 && allLocations.length > 0) {
+        reviewsData = reviewsData.map((rev: any) => {
+          if (!rev.location_name && rev.location_id) {
+            const matchLoc = allLocations.find((l: any) => l.id === rev.location_id);
+            if (matchLoc) {
+              return {
+                ...rev,
+                location_name: matchLoc.name,
+              };
+            }
+          }
+          return rev;
+        });
+      }
+
+      if (ordRes?.data?.orders?.nodes) {
+        ordersData = ordRes.data.orders.nodes.map((node: any) => {
+          const attributes: any = {};
+          (node.customAttributes || []).forEach((a: any) => {
+            attributes[a.key] = a.value;
+          });
+          return {
+            id: node.id,
+            date: node.createdAt,
+            totalPrice: parseFloat(node.totalPriceSet?.shopMoney?.amount || '0'),
+            currency: node.totalPriceSet?.shopMoney?.currencyCode || 'SAR',
+            branchName: attributes['Branch'] || null,
+            branchId: attributes['Branch ID'] || null,
+            fulfillmentType: attributes['Fulfillment Type'] || null,
+          };
+        });
       }
     } catch (err) {
       console.error('[FeedbackAnalytics] Failed to fetch data:', err);
+    }
+
+    if (restrictedBranch) {
+      reviewsData = reviewsData.filter((rev: any) => 
+        rev.location_name && rev.location_name.toLowerCase().includes(restrictedBranch.toLowerCase())
+      );
+      locationsData = locationsData.filter((loc: any) => 
+        loc.name && loc.name.toLowerCase().includes(restrictedBranch.toLowerCase())
+      );
+      ordersData = ordersData.filter((order: any) => {
+        const nameMatches = order.branchName && order.branchName.toLowerCase().includes(restrictedBranch.toLowerCase());
+        const idMatches = order.branchId && allLocations.some(l => 
+          l.id === order.branchId && l.name.toLowerCase().includes(restrictedBranch.toLowerCase())
+        );
+        return nameMatches || idMatches;
+      });
     }
 
     // Calculate Aggregated Metrics
@@ -172,6 +273,23 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
     const trendLabels = Object.keys(trends).map(d => d.split('-').slice(1).join('/'));
     const trendData = Object.values(trends).map(t => t.count);
 
+    // Calculate Sales Metrics
+    let totalSales = 0;
+    let completedOrdersCount = ordersData.length;
+    let pickupCount = 0;
+    let deliveryCount = 0;
+
+    ordersData.forEach((order: any) => {
+      totalSales += order.totalPrice;
+      if (order.fulfillmentType === 'Pickup') {
+        pickupCount++;
+      } else if (order.fulfillmentType === 'Delivery') {
+        deliveryCount++;
+      }
+    });
+
+    const averageOrderValue = completedOrdersCount > 0 ? (totalSales / completedOrdersCount).toFixed(1) : '0.0';
+
     return {
       reviews: reviewsData,
       locations: locationsData,
@@ -181,6 +299,12 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
         sentimentScore,
         sentimentDistribution: { positive, neutral, negative }
       },
+      salesMetrics: {
+        totalSales: totalSales.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 }),
+        completedOrdersCount,
+        averageOrderValue,
+        fulfillmentDistribution: { pickup: pickupCount, delivery: deliveryCount }
+      },
       trends: {
         labels: trendLabels,
         data: trendData
@@ -188,28 +312,28 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
     };
   })();
 
-  return data({ adminDataPromise });
+  return data({ adminDataPromise, restrictedBranch });
 }
 
 import { Suspense } from 'react';
 import { Await } from 'react-router';
 
 export default function FeedbackAnalyticsDashboard() {
-  const { adminDataPromise } = useLoaderData<typeof loader>();
+  const { adminDataPromise, restrictedBranch } = useLoaderData<typeof loader>();
   const locale = useLocation().pathname.startsWith('/en') ? 'en' : 'ar';
   const isEn = locale === 'en';
 
   return (
     <Suspense fallback={<div className="py-20 text-center text-gray-500">{isEn ? 'Loading analytics data...' : 'جاري تحميل بيانات التحليلات...'}</div>}>
       <Await resolve={adminDataPromise}>
-        {(adminData) => <FeedbackAnalyticsDashboardContent adminData={adminData} locale={locale} />}
+        {(adminData) => <FeedbackAnalyticsDashboardContent adminData={adminData} restrictedBranch={restrictedBranch} locale={locale} />}
       </Await>
     </Suspense>
   );
 }
 
-function FeedbackAnalyticsDashboardContent({ adminData, locale }: { adminData: any; locale: string }) {
-  const { reviews, locations, metrics, trends } = adminData;
+function FeedbackAnalyticsDashboardContent({ adminData, restrictedBranch, locale }: { adminData: any; restrictedBranch: string | null; locale: string }) {
+  const { reviews, locations, metrics, trends, salesMetrics } = adminData;
   const isEn = locale === 'en';
   const i18n = useI18n(locale);
 
@@ -251,11 +375,19 @@ function FeedbackAnalyticsDashboardContent({ adminData, locale }: { adminData: a
     <div className="account-dashboard-content" dir={isEn ? 'ltr' : 'rtl'}>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-4">
         <div>
-          <h1 className="text-3xl font-black text-[#234745] mb-2">
-            {i18n.common.feedbackAnalytics}
+          <h1 className="text-3xl font-black text-[#234745] mb-2 flex items-center gap-3 flex-wrap">
+            <span>{i18n.common.feedbackAnalytics}</span>
+            {restrictedBranch && (
+              <span className="text-xs font-semibold bg-[#234745]/10 text-[#234745] px-3 py-1.5 rounded-full inline-block">
+                {isEn ? `${restrictedBranch} Branch` : `فرع ${restrictedBranch}`}
+              </span>
+            )}
           </h1>
           <p className="text-gray-500 font-medium">
-            {isEn ? 'Monitor customer satisfaction and reviews' : 'مراقبة رضا العملاء والتقييمات'}
+            {restrictedBranch 
+              ? (isEn ? `Monitor customer satisfaction and reviews for ${restrictedBranch} branch` : `مراقبة رضا العملاء والتقييمات لفرع ${restrictedBranch}`)
+              : (isEn ? 'Monitor customer satisfaction and reviews across all stores' : 'مراقبة رضا العملاء والتقييمات لجميع الفروع')
+            }
           </p>
         </div>
         <button 
@@ -352,6 +484,92 @@ function FeedbackAnalyticsDashboardContent({ adminData, locale }: { adminData: a
               <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
                 <div className="bg-red-500 h-2 rounded-full" style={{ width: `${(metrics.sentimentDistribution.negative / Math.max(metrics.totalReviews, 1)) * 100}%` }}></div>
               </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Sales & Orders KPIs */}
+      <h2 className="text-xl font-black text-[#234745] mb-4 mt-10">
+        {isEn ? 'Sales & Operations' : 'المبيعات والعمليات'}
+      </h2>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center justify-center text-center">
+          <div className="text-gray-500 font-bold uppercase tracking-wider text-xs mb-2">{isEn ? 'Total Sales' : 'إجمالي المبيعات'}</div>
+          <div className="text-3xl font-black text-[#234745] mb-1">{salesMetrics.totalSales} <span className="text-sm font-bold text-gray-500">SAR</span></div>
+          <div className="text-sm text-gray-400 font-medium">{isEn ? 'Recent Orders' : 'الطلبات الأخيرة'}</div>
+        </div>
+        
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center justify-center text-center">
+          <div className="text-gray-500 font-bold uppercase tracking-wider text-xs mb-2">{isEn ? 'Total Orders' : 'إجمالي الطلبات'}</div>
+          <div className="text-3xl font-black text-[#234745] mb-1">{salesMetrics.completedOrdersCount}</div>
+          <div className="text-sm text-gray-400 font-medium">{isEn ? 'Orders mapped to location' : 'الطلبات المرتبطة بالفرع'}</div>
+        </div>
+
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center justify-center text-center">
+          <div className="text-gray-500 font-bold uppercase tracking-wider text-xs mb-2">{isEn ? 'Average Order Value' : 'متوسط قيمة الطلب'}</div>
+          <div className="text-3xl font-black text-[#234745] mb-1">{salesMetrics.averageOrderValue} <span className="text-sm font-bold text-gray-500">SAR</span></div>
+          <div className="text-sm text-gray-400 font-medium">{isEn ? 'Average checkout value' : 'متوسط القيمة لكل عميل'}</div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+        {/* Fulfillment Type Breakdown */}
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col">
+          <h2 className="text-lg font-bold text-[#234745] mb-6">{isEn ? 'Fulfillment Breakdown' : 'طريقة الاستلام'}</h2>
+          
+          <div className="flex-1 flex flex-col justify-center gap-6">
+            <div>
+              <div className="flex justify-between mb-1 text-sm font-bold text-gray-700">
+                <span className="flex items-center gap-2">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#234745" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 8v8"/></svg>
+                  {isEn ? 'Pickup' : 'استلام من الفرع'}
+                </span>
+                <span>{salesMetrics.fulfillmentDistribution.pickup}</span>
+              </div>
+              <div className="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden">
+                <div className="bg-[#234745] h-2.5 rounded-full" style={{ width: `${(salesMetrics.fulfillmentDistribution.pickup / Math.max(salesMetrics.completedOrdersCount, 1)) * 100}%` }}></div>
+              </div>
+            </div>
+
+            <div>
+              <div className="flex justify-between mb-1 text-sm font-bold text-gray-700">
+                <span className="flex items-center gap-2">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#d4a06a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+                  {isEn ? 'Delivery' : 'توصيل للمنزل'}
+                </span>
+                <span>{salesMetrics.fulfillmentDistribution.delivery}</span>
+              </div>
+              <div className="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden">
+                <div className="bg-[#d4a06a] h-2.5 rounded-full" style={{ width: `${(salesMetrics.fulfillmentDistribution.delivery / Math.max(salesMetrics.completedOrdersCount, 1)) * 100}%` }}></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Store Info / Meta */}
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between">
+          <div>
+            <h2 className="text-lg font-bold text-[#234745] mb-4">{isEn ? 'Location Details' : 'تفاصيل الفرع'}</h2>
+            <p className="text-gray-500 font-medium mb-6 text-sm">
+              {isEn ? 'Important properties and metadata loaded for this branch.' : 'البيانات والخصائص التعريفية المسجلة لهذا الفرع.'}
+            </p>
+          </div>
+          <div className="flex flex-col gap-4">
+            <div className="flex justify-between border-b border-gray-50 pb-2">
+              <span className="text-gray-400 font-medium text-sm">{isEn ? 'Location Name' : 'اسم الفرع'}</span>
+              <span className="text-[#234745] font-bold text-sm">{restrictedBranch || (isEn ? 'Global Admin' : 'مدير عام')}</span>
+            </div>
+            <div className="flex justify-between border-b border-gray-50 pb-2">
+              <span className="text-gray-400 font-medium text-sm">{isEn ? 'System Status' : 'حالة النظام'}</span>
+              <span className="text-green-500 font-bold text-sm flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-green-500 inline-block animate-pulse"></span>
+                {isEn ? 'Active' : 'نشط'}
+              </span>
+            </div>
+            <div className="flex justify-between pb-2">
+              <span className="text-gray-400 font-medium text-sm">{isEn ? 'Region' : 'المنطقة / الدولة'}</span>
+              <span className="text-gray-600 font-bold text-sm">{restrictedBranch && restrictedBranch.toLowerCase().includes('dubai') ? (isEn ? 'UAE' : 'الإمارات') : (isEn ? 'Saudi Arabia' : 'المملكة العربية السعودية')}</span>
             </div>
           </div>
         </div>

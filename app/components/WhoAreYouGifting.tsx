@@ -1,5 +1,5 @@
 import { Link, useOutletContext } from 'react-router';
-import { useRef } from 'react';
+import { useRef, useState, useEffect } from 'react';
 
 const recipientsEn = [
     { name: 'Mother', handle: 'gifts-for-mother', image: 'https://images.unsplash.com/photo-1596464522432-843818e6c79a?q=80&w=800&auto=format&fit=crop' },
@@ -22,64 +22,160 @@ export function WhoAreYouGifting({ collections }: { collections?: any[] }) {
     const isEn = locale === 'en';
 
     const containerRef = useRef<HTMLDivElement>(null);
-    const isDown = useRef(false);
-    const startX = useRef(0);
-    const scrollLeft = useRef(0);
-    const moved = useRef(false);
+    const scrollbarTrackRef = useRef<HTMLDivElement>(null);
+    const [scrollProgress, setScrollProgress] = useState(0);
+    const [thumbWidth, setThumbWidth] = useState(30);
+    const [showScrollbar, setShowScrollbar] = useState(false);
+    const [isDragging, setIsDragging] = useState(false);
 
-    const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
-        isDown.current = true;
-        moved.current = false;
+    const isDraggingScrollbar = useRef(false);
+    const scrollbarStartX = useRef(0);
+    const scrollbarStartScrollLeft = useRef(0);
+
+    const handleScroll = () => {
         if (!containerRef.current) return;
-        startX.current = e.pageX - containerRef.current.offsetLeft;
-        scrollLeft.current = containerRef.current.scrollLeft;
+        const { scrollLeft, scrollWidth, clientWidth } = containerRef.current;
+        const maxScroll = scrollWidth - clientWidth;
+        if (maxScroll <= 0) {
+            setShowScrollbar(false);
+            return;
+        }
+        setShowScrollbar(true);
+        const ratio = clientWidth / scrollWidth;
+        setThumbWidth(Math.max(15, ratio * 100)); // minimum thumb size of 15%
+
+        // Normalize scrollLeft for RTL/LTR
+        const progress = (Math.abs(scrollLeft) / maxScroll) * 100;
+        setScrollProgress(Math.min(100, Math.max(0, progress)));
     };
 
-    const handleMouseLeave = () => {
-        isDown.current = false;
+    const handleScrollbarMouseMove = (e: MouseEvent) => {
+        if (!isDraggingScrollbar.current || !containerRef.current || !scrollbarTrackRef.current) return;
+
+        const deltaX = e.clientX - scrollbarStartX.current;
+        const trackWidth = scrollbarTrackRef.current.clientWidth;
+        const { scrollWidth, clientWidth } = containerRef.current;
+        const maxScroll = scrollWidth - clientWidth;
+
+        if (maxScroll <= 0) return;
+
+        const thumbPxWidth = (thumbWidth / 100) * trackWidth;
+        const draggablePathWidth = trackWidth - thumbPxWidth;
+        if (draggablePathWidth <= 0) return;
+
+        const scrollRatio = maxScroll / draggablePathWidth;
+        const scrollDelta = deltaX * scrollRatio;
+        containerRef.current.scrollLeft = scrollbarStartScrollLeft.current + scrollDelta;
     };
 
-    const handleMouseUp = () => {
-        isDown.current = false;
+    const handleScrollbarMouseUp = () => {
+        isDraggingScrollbar.current = false;
+        setIsDragging(false);
+        document.body.style.userSelect = '';
+        window.removeEventListener('mousemove', handleScrollbarMouseMove);
+        window.removeEventListener('mouseup', handleScrollbarMouseUp);
     };
 
-    const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-        if (!isDown.current || !containerRef.current) return;
+    const handleScrollbarMouseDown = (e: React.MouseEvent) => {
+        if (!containerRef.current || !scrollbarTrackRef.current) return;
+        isDraggingScrollbar.current = true;
+        setIsDragging(true);
+        document.body.style.userSelect = 'none';
+
+        scrollbarStartX.current = e.clientX;
+        scrollbarStartScrollLeft.current = containerRef.current.scrollLeft;
+
+        window.addEventListener('mousemove', handleScrollbarMouseMove);
+        window.addEventListener('mouseup', handleScrollbarMouseUp);
+    };
+
+    const handleScrollbarTouchMove = (e: TouchEvent) => {
+        if (!isDraggingScrollbar.current || !containerRef.current || !scrollbarTrackRef.current || e.touches.length === 0) return;
         e.preventDefault();
-        const x = e.pageX - containerRef.current.offsetLeft;
-        const walk = (x - startX.current) * 1.5;
-        if (Math.abs(walk) > 5) {
-            moved.current = true;
-        }
-        containerRef.current.scrollLeft = scrollLeft.current - walk;
+
+        const deltaX = e.touches[0].clientX - scrollbarStartX.current;
+        const trackWidth = scrollbarTrackRef.current.clientWidth;
+        const { scrollWidth, clientWidth } = containerRef.current;
+        const maxScroll = scrollWidth - clientWidth;
+
+        if (maxScroll <= 0) return;
+
+        const thumbPxWidth = (thumbWidth / 100) * trackWidth;
+        const draggablePathWidth = trackWidth - thumbPxWidth;
+        if (draggablePathWidth <= 0) return;
+
+        const scrollRatio = maxScroll / draggablePathWidth;
+        const scrollDelta = deltaX * scrollRatio;
+        containerRef.current.scrollLeft = scrollbarStartScrollLeft.current + scrollDelta;
     };
 
-    const handleLinkClick = (e: React.MouseEvent) => {
-        if (moved.current) {
-            e.preventDefault();
-            e.stopPropagation();
-        }
+    const handleScrollbarTouchEnd = () => {
+        isDraggingScrollbar.current = false;
+        setIsDragging(false);
+        window.removeEventListener('touchmove', handleScrollbarTouchMove);
+        window.removeEventListener('touchend', handleScrollbarTouchEnd);
     };
 
-    // Merge Shopify data with static fallbacks
-    const recipients = (isEn ? recipientsEn : recipientsAr).map(recipient => {
-        const shopifyCollection = collections?.find(c => c.handle === recipient.handle);
-        return {
-            ...recipient,
-            image: shopifyCollection?.image?.url || recipient.image,
-            name: recipient.name
+    const handleScrollbarTouchStart = (e: React.TouchEvent) => {
+        if (!containerRef.current || !scrollbarTrackRef.current || e.touches.length === 0) return;
+        isDraggingScrollbar.current = true;
+        setIsDragging(true);
+
+        scrollbarStartX.current = e.touches[0].clientX;
+        scrollbarStartScrollLeft.current = containerRef.current.scrollLeft;
+
+        window.addEventListener('touchmove', handleScrollbarTouchMove, { passive: false });
+        window.addEventListener('touchend', handleScrollbarTouchEnd);
+    };
+
+    useEffect(() => {
+        return () => {
+            window.removeEventListener('mousemove', handleScrollbarMouseMove);
+            window.removeEventListener('mouseup', handleScrollbarMouseUp);
+            window.removeEventListener('touchmove', handleScrollbarTouchMove);
+            window.removeEventListener('touchend', handleScrollbarTouchEnd);
         };
-    });
+    }, [thumbWidth]);
+
+    // Filter collections starting with 'gifts-for-'
+    const giftingCollections = (collections || []).filter((c: any) => c.handle.startsWith('gifts-for-'));
+
+    // If we have dynamic collections from Shopify starting with 'gifts-for-', use them; otherwise, use the static fallbacks
+    const recipients = giftingCollections.length > 0
+        ? giftingCollections.map((c: any) => ({
+            name: c.title,
+            handle: c.handle,
+            image: c.image?.url || 'https://images.unsplash.com/photo-1596464522432-843818e6c79a?q=80&w=800&auto=format&fit=crop'
+        }))
+        : (isEn ? recipientsEn : recipientsAr).map(recipient => {
+            const shopifyCollection = collections?.find(c => c.handle === recipient.handle);
+            return {
+                ...recipient,
+                image: shopifyCollection?.image?.url || recipient.image,
+                name: recipient.name
+            };
+        });
+
+    useEffect(() => {
+        const container = containerRef.current;
+        if (!container) return;
+
+        handleScroll();
+        window.addEventListener('resize', handleScroll);
+        return () => {
+            window.removeEventListener('resize', handleScroll);
+        };
+    }, [recipients]);
 
     return (
         <section className={`w-full lg:py-24 bg-white ${isEn ? 'font-en' : 'font-ar'}`} dir={isEn ? 'ltr' : 'rtl'} style={{ paddingTop: '50px', paddingBottom: '50px' }}>
             <div className="max-w-[1400px] mx-auto">
                 {/* Header */}
                 <div className="text-center mb-6 lg:mb-6 px-6">
-                    <h2 className="text-[36px] lg:text-[52px] font-bold text-[#1a1a1a] mb-4 leading-none">
+                    <h2 className="text-[36px] lg:text-[52px] font-bold text-[#1a1a1a] !mb-2 leading-none">
                         {isEn ? 'Who are you gifting?' : 'بتهدي لمين؟'}
                     </h2>
-                    <p className="text-[#8B8B8B] text-[14px] lg:text-[16px] font-bold tracking-wide">
+                    <p className="text-[#8B8B8B] text-[14px] lg:text-[16px] font-medium tracking-wide" style={{ fontFamily: '"GE Dinar One", sans-serif' }}>
                         {isEn ? 'CHOOSE THE RECIPIENT AND WE GUIDE YOU TO THE PERFECT GIFT' : 'اختر المستلم ونوجهك للهدية المثالية'}
                     </p>
                 </div>
@@ -87,11 +183,8 @@ export function WhoAreYouGifting({ collections }: { collections?: any[] }) {
                 {/* Horizontal Slider (Always a Slider) */}
                 <div
                     ref={containerRef}
-                    onMouseDown={handleMouseDown}
-                    onMouseLeave={handleMouseLeave}
-                    onMouseUp={handleMouseUp}
-                    onMouseMove={handleMouseMove}
-                    className="flex flex-nowrap justify-start gap-3 md:gap-4 lg:gap-6 overflow-x-auto snap-x snap-mandatory pb-0 px-6 lg:px-0 hide-scrollbars cursor-grab active:cursor-grabbing select-none"
+                    onScroll={handleScroll}
+                    className={`flex flex-nowrap justify-start gap-3 md:gap-4 lg:gap-6 overflow-x-auto pb-0 px-6 lg:px-0 hide-scrollbars select-none ${isDragging ? 'snap-none' : 'snap-x snap-mandatory'}`}
                 >
                     {recipients.map((recipient, index) => {
                         const catId = recipient.handle.replace('gifts-for-', '');
@@ -99,8 +192,7 @@ export function WhoAreYouGifting({ collections }: { collections?: any[] }) {
                             <Link
                                 key={index}
                                 to={isEn ? `/en/gifting?category=${catId}` : `/gifting?category=${catId}`}
-                                onClick={handleLinkClick}
-                                className="group flex-shrink-0 w-[140px] sm:w-[180px] md:w-[220px] lg:w-[calc((100%-4*24px)/4.35)] relative rounded-[20px] overflow-hidden snap-center transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl"
+                                className="group flex-shrink-0 w-[140px] sm:w-[180px] md:w-[220px] lg:w-[calc((100%-4*24px)/4.35)] relative rounded-[12px] overflow-hidden snap-center transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl"
                                 style={{ aspectRatio: '1/1' }}
                             >
                                 <div className="w-full h-full relative">
@@ -123,6 +215,30 @@ export function WhoAreYouGifting({ collections }: { collections?: any[] }) {
                         );
                     })}
                 </div>
+
+                {/* Horizontal Scroll Progress Bar */}
+                {showScrollbar && (
+                    <div
+                        onMouseDown={handleScrollbarMouseDown}
+                        onTouchStart={handleScrollbarTouchStart}
+                        className="w-full px-6 mx-auto h-[16px] bg-transparent mt-8 relative cursor-pointer flex items-center justify-center select-none"
+                        style={{ touchAction: 'none' }}
+                    >
+                        <div
+                            ref={scrollbarTrackRef}
+                            className="w-full h-[3px] bg-[#EBEBEB] rounded-full relative overflow-hidden pointer-events-none"
+                        >
+                            <div
+                                className={`absolute top-0 bottom-0 bg-[#234745] rounded-full ${isDragging ? '' : 'transition-all duration-150'}`}
+                                style={{
+                                    width: `${thumbWidth}%`,
+                                    left: isEn ? `${scrollProgress * (100 - thumbWidth) / 100}%` : 'auto',
+                                    right: !isEn ? `${scrollProgress * (100 - thumbWidth) / 100}%` : 'auto',
+                                }}
+                            />
+                        </div>
+                    </div>
+                )}
 
                 {/* Footer Button */}
                 <div className="mt-8 lg:mt-12 flex justify-center px-6">

@@ -15,7 +15,11 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
   if (!customToken) {
     console.log('[CHECKOUT DIAGNOSTIC] Redirecting to login: no customToken');
-    return redirect(lang === 'en' ? '/en/account/login' : '/account/login');
+    const redirectToUrl = lang === 'en' ? '/en/cart' : '/cart';
+    return redirect(
+      (lang === 'en' ? `/en/account/login` : `/account/login`) + 
+      `?redirectTo=${encodeURIComponent(redirectToUrl)}`
+    );
   }
 
   // 2. Fetch current Cart from Hydrogen
@@ -165,7 +169,13 @@ export async function action({ request, context }: ActionFunctionArgs) {
     try {
       profile = await api.getProfile();
     } catch(e) {
-      return redirect(lang === 'en' ? '/en/account/login' : '/account/login');
+      console.error('[CHECKOUT] getProfile failed, clearing saadeddinToken:', e);
+      session.unset('saadeddinToken');
+      const loginRedirectUrl = (lang === 'en' ? `/en/account/login` : `/account/login`) + 
+        `?redirectTo=${encodeURIComponent(lang === 'en' ? '/en/cart' : '/cart')}`;
+      return redirect(loginRedirectUrl, {
+        headers: { 'Set-Cookie': await session.commit() }
+      });
     }
   }
 

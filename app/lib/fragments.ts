@@ -60,6 +60,15 @@ export const CART_QUERY_FRAGMENT = `#graphql
           name
           value
         }
+        storeAvailability(first: 250) {
+          nodes {
+            available
+            location {
+              id
+              name
+            }
+          }
+        }
       }
     }
     parentRelationship {
@@ -123,6 +132,15 @@ export const CART_QUERY_FRAGMENT = `#graphql
         selectedOptions {
           name
           value
+        }
+        storeAvailability(first: 250) {
+          nodes {
+            available
+            location {
+              id
+              name
+            }
+          }
         }
       }
     }

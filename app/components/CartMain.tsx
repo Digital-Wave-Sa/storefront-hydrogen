@@ -6,7 +6,7 @@ import { useAside } from '~/components/Aside';
 import { CartLineItem, type CartLine } from '~/components/CartLineItem';
 import { CartSummary } from './CartSummary';
 import { Price, SaudiRiyalSymbol } from './Price';
-import patternBg from '~/assets/patteren-collection-header.svg';
+import patternBg from '/images/second-bg-pattern.svg';
 
 export type CartLayout = 'page' | 'aside';
 const CartAnalyticsView = Analytics.CartView as any;
@@ -132,10 +132,11 @@ export function CartMain({ layout, cart: originalCart }: CartMainProps) {
                 className="flex items-center gap-2 bg-[#A8BDB5] hover:bg-[#97aaa3] text-[#1a3b3a] px-6 py-2 rounded-full text-[15px] font-bold transition-all shadow-sm shrink-0"
                 style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
               >
-                <span className="pt-0.5">{isEn ? 'Back' : 'رجوع'}</span>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={`${isEn ? 'rotate-180' : ''}`}>
                   <path d="M5 12h14M12 5l7 7-7 7" />
                 </svg>
+                <span className="pt-0.5">{isEn ? 'Back' : 'رجوع'}</span>
+
               </button>
 
               {/* Title & Subtitle Block (Second in DOM = Left of button in RTL) */}
@@ -153,7 +154,7 @@ export function CartMain({ layout, cart: originalCart }: CartMainProps) {
         </div>
 
         {/* 2. White Breadcrumb Section */}
-        <div className="w-full bg-white border-b border-[#F2E8D5] py-4 shadow-sm mb-10">
+        <div className="w-full bg-white py-4 mb-10">
           <div className="max-w-[1400px] mx-auto px-4 md:px-8">
             <div className="flex items-center gap-2 text-[14px] font-bold" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
               <Link to={isEn ? "/en" : "/"} className="text-gray-400 hover:text-[#234745] transition-colors">{isEn ? 'Home' : 'الرئيسية'}</Link>
@@ -169,7 +170,7 @@ export function CartMain({ layout, cart: originalCart }: CartMainProps) {
             <div className="flex flex-col gap-4">
               {/* Free Delivery Progress (Restored) */}
               {cartHasItems && !isPickup && (
-                <div className="bg-white rounded-[24px] p-6 border border-[#f0ece8] shadow-sm mb-2">
+                <div className="bg-white rounded-[24px] p-6 border border-[#BBCFCD]/80 mb-2">
                   <div className="flex justify-between items-center mb-3">
                     <p className="text-[14px] font-bold text-[#234745]">
                       {progress >= 100 ? (
@@ -230,7 +231,7 @@ export function CartMain({ layout, cart: originalCart }: CartMainProps) {
               {cartHasItems && (
                 <div className="flex flex-col gap-4">
                   <div className="flex items-center justify-between border-b border-[#F2E8D5] pb-4">
-                    <h3 className="text-[18px] font-black text-[#234745]" style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" }}>
+                    <h3 className="text-[16px] font-medium text-[#234745]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
                       {isEn ? `Products (${cart?.totalQuantity || 0})` : `المنتجات (${new Intl.NumberFormat('en-US').format(cart?.totalQuantity || 0)})`}
                     </h3>
                     <CartForm
@@ -238,8 +239,11 @@ export function CartMain({ layout, cart: originalCart }: CartMainProps) {
                       action={CartForm.ACTIONS.LinesRemove}
                       inputs={{ lineIds: (cart?.lines?.nodes ?? []).map(line => line.id) }}
                     >
-                      <button type="submit" className="flex items-center gap-2 text-[#DF4646] hover:text-[#c43b3b] font-bold text-[14px] transition-colors">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                      <button type="submit" className="flex items-center gap-2 text-[#E64950] hover:text-[#c43b3b] font-medium text-[16px] transition-colors" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
+                        <svg width="10" height="11" viewBox="0 0 10 11" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M0.666667 10.5133V1.18H0V0.513333H2.66667V0H6.66667V0.513333H9.33333V1.18H8.66667V10.5133H0.666667ZM1.33333 9.84667H8V1.18H1.33333V9.84667ZM3.20533 8.51333H3.872V2.51333H3.20533V8.51333ZM5.46133 8.51333H6.128V2.51333H5.46133V8.51333Z" fill="#E64950" />
+                        </svg>
+
                         {isEn ? 'Empty Cart' : 'إفراغ السلة'}
                       </button>
                     </CartForm>

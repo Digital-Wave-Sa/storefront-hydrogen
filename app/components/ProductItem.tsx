@@ -290,9 +290,9 @@ export function ProductItem({
             {/* Status Badges overlay — corner badges (promo/visibility) */}
             <div className={`absolute top-[16px] ${isEn ? 'left-[16px]' : 'right-[16px]'} z-10 flex flex-col gap-2 ${isEn ? 'items-start' : 'items-end'}`}>
               {isVisibilityBlocked && (
-                  <span className={`text-[10px] font-black px-3 py-1.5 rounded-[8px] shadow-sm flex items-center gap-1.5 ${visibility.status === 'scheduled' ? 'bg-amber-500 text-white' : 'bg-red-500 text-white'}`}>
-                    <span>{visibility.status === 'scheduled' ? '🕐' : '⛔'}</span>
-                    {isEn ? visibility.label.en : visibility.label.ar}
+                  <span className="text-[10px] font-black px-3 py-1.5 rounded-[8px] shadow-sm flex items-center gap-1.5 bg-[#906B51] text-white">
+                    <span>🍂</span>
+                    {isEn ? 'Out for the Season' : 'نفد للموسم'}
                   </span>
               )}
               {!isVisibilityBlocked && showPreorder && (
@@ -318,8 +318,19 @@ export function ProductItem({
               )}
             </div>
 
-            {/* Out of Stock — centered pill overlay at bottom of image */}
-            {!isVisibilityBlocked && showOutOfStock && (
+            {/* Out of Stock / Seasonal — centered pill overlay at bottom of image */}
+            {isVisibilityBlocked ? (
+              <div className="absolute bottom-[20px] left-1/2 -translate-x-1/2 z-10 pointer-events-none">
+                <span
+                  className="flex items-center justify-center px-5 h-[36px] rounded-full font-bold text-[13px] whitespace-nowrap shadow-sm text-white bg-[#906B51]"
+                  style={{
+                    fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
+                  }}
+                >
+                  {isEn ? 'Out for the Season' : 'نفد للموسم'}
+                </span>
+              </div>
+            ) : showOutOfStock ? (
               <div className="absolute bottom-[20px] left-1/2 -translate-x-1/2 z-10 pointer-events-none">
                 <span
                   className="flex items-center justify-center px-6 h-[40px] rounded-full font-bold text-[14px] whitespace-nowrap"
@@ -334,12 +345,12 @@ export function ProductItem({
                   {isEn ? 'Out of Stock' : 'نفذت الكمية'}
                 </span>
               </div>
-            )}
+            ) : null}
         </div>
       </Link>
         
       <div className={`p-3 md:p-4 flex flex-col flex-grow ${isEn ? 'text-left' : 'text-right'}`}>
-          <Link prefetch="intent" to={isVisibilityBlocked ? '#' : variantUrl} className={isVisibilityBlocked ? 'pointer-events-none' : ''}>
+          <Link prefetch="intent" to={variantUrl}>
               <h4 className={`font-bold text-[#234745] text-[16px] md:text-[18px] line-clamp-1 transition-colors duration-300 ${isVisibilityBlocked ? '' : 'group-hover:text-[#1a3a2d]'}`} style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", lineHeight: '24px', opacity: showOutOfStock ? 0.4 : 1 }}>
                   {formatNumbers(product.title)}
               </h4>
@@ -358,29 +369,40 @@ export function ProductItem({
             </div>
           )}
 
-          {!isVisibilityBlocked && (
-            <div className="mt-auto">
-                {effectiveAvailable ? (
-                    <AddToCartButton 
-                          lines={cartLines as any} 
-                          disabled={!effectiveAvailable || isOutOfStock}
-                          className="w-full h-[40px] md:h-[44px] px-2 md:px-4 flex items-center justify-center rounded-full font-bold text-[12px] md:text-[15px] bg-[#234745] text-white hover:bg-[#163529] shadow-sm transition-all duration-300 active:scale-95"
-                          style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
-                      >
-                          {isEn ? 'Add to Cart' : 'أضف إلي السلة'}
-                      </AddToCartButton>
-                ) : (
-                    <button 
-                        type="button"
-                        onClick={() => setIsNotifyModalOpen(true)}
+          <div className="mt-auto">
+              {isVisibilityBlocked ? (
+                  <button 
+                      type="button"
+                      onClick={() => setIsNotifyModalOpen(true)}
+                      className="w-full h-[40px] md:h-[44px] px-2 md:px-4 flex items-center justify-center gap-1.5 rounded-full font-bold text-[12px] md:text-[14px] bg-[#906B51] hover:bg-[#7d5c45] text-white shadow-sm transition-all duration-300 active:scale-95"
+                      style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
+                  >
+                      <span>{isEn ? 'Notify for Next Season' : 'أبلغني في الموسم القادم'}</span>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+                        <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                        <path d="M13.73 21a2 2 0 01-3.46 0" />
+                      </svg>
+                  </button>
+              ) : effectiveAvailable ? (
+                  <AddToCartButton 
+                        lines={cartLines as any} 
+                        disabled={!effectiveAvailable || isOutOfStock}
                         className="w-full h-[40px] md:h-[44px] px-2 md:px-4 flex items-center justify-center rounded-full font-bold text-[12px] md:text-[15px] bg-[#234745] text-white hover:bg-[#163529] shadow-sm transition-all duration-300 active:scale-95"
                         style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
                     >
-                        {isEn ? 'Notify Me' : 'أبلغني عن التوفر'}
-                    </button>
-                )}
-            </div>
-          )}
+                        {isEn ? 'Add to Cart' : 'أضف إلي السلة'}
+                    </AddToCartButton>
+              ) : (
+                  <button 
+                      type="button"
+                      onClick={() => setIsNotifyModalOpen(true)}
+                      className="w-full h-[40px] md:h-[44px] px-2 md:px-4 flex items-center justify-center rounded-full font-bold text-[12px] md:text-[15px] bg-[#234745] text-white hover:bg-[#163529] shadow-sm transition-all duration-300 active:scale-95"
+                      style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
+                  >
+                      {isEn ? 'Notify Me' : 'أبلغني عن التوفر'}
+                  </button>
+              )}
+          </div>
       </div>
 
       <StockNotificationModal 

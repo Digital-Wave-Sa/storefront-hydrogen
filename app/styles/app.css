@@ -2274,6 +2274,17 @@ button.reset:hover:not(:has(> *)) {
 
 .status-open { background: #e6f4ea; color: #1e7e34; }
 .status-closed { background: #fce8e6; color: #d93025; }
+.status-disabled { background: #e9ecef; color: #495057; }
+
+.dpm-branch-item.disabled {
+  opacity: 0.55;
+  background: #f8f9fa;
+  cursor: not-allowed;
+}
+.dpm-branch-item.disabled:hover {
+  transform: none;
+  background: #f8f9fa;
+}
 
 /* Action Area */
 .dpm-footer-action {

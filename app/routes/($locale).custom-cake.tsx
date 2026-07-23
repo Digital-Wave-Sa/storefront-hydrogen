@@ -1,5 +1,5 @@
 import { type LoaderFunctionArgs, type LinksFunction, useLoaderData } from 'react-router';
-import LolaCakeBuilder from '~/components/CakeBuilder/LolaCakeBuilder';
+import CustomCakeBuilder from '~/components/CakeBuilder/CustomCakeBuilder';
 import { getShopTitle } from '~/lib/seo';
 import type { Route } from './+types/($locale).custom-cake';
 
@@ -88,7 +88,7 @@ export default function CustomCakeBuilderRoute() {
   const { cakeAttributes, toppingDesigns, locale, preparationHours } = useLoaderData<typeof loader>();
   const isEn = locale === 'en';
   return (
-    <LolaCakeBuilder 
+    <CustomCakeBuilder 
       cakeAttributes={cakeAttributes} 
       toppingDesigns={toppingDesigns} 
       isEn={isEn} 

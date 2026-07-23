@@ -100,7 +100,7 @@ export default function OccasionsPage() {
         { id: 'graduation', en: 'Graduation', ar: 'التخرج' },
         { id: 'mothers-day', en: 'Mother\'s Day', ar: 'يوم الأم' },
         { id: 'national-day', en: 'National Day', ar: 'اليوم الوطني' },
-        { id: 'new-baby', en: 'New Baby', ar: 'طفل جديد' },
+        { id: 'new-baby', en: 'New Baby', ar: 'مواليد' },
     ];
 
     const [searchParams] = useSearchParams();
@@ -185,7 +185,7 @@ export default function OccasionsPage() {
                     <div className="w-full bg-[#EED5D7] rounded-[24px] flex flex-col md:flex-row items-center relative overflow-hidden min-h-[200px] lg:min-h-[220px]">
 
                         {/* Content Side */}
-                        <div className={`w-full md:w-[60%] flex flex-col relative z-10 px-8 lg:px-16 py-10 items-center md:items-start text-center md:text-start`}>
+                        <div className={`w-full md:w-[60%] flex flex-col relative z-10 px-8 pt-8 pb-4 md:pt-8 md:pb-8 lg:px-16 py-10 md:items-start text-start`}>
                             <h2
                                 className={`text-[26px] font-bold text-[#234745] mb-2`}
                                 style={{ fontFamily: !isEn ? "'Bahij Janna', sans-serif" : undefined, lineHeight: '100%' }}
@@ -198,7 +198,7 @@ export default function OccasionsPage() {
                             >
                                 {isEn ? 'No problem! You can design your own cake easily now.' : 'لا مشكلة! يمكنك تصميم كيكتك الخاصة الان وبكل سهولة'}
                             </p>
-                            <div className="bg-[#234745] hover:bg-[#1a3533] text-[#FEF8EB] px-10 py-3 rounded-[25px] font-bold transition-all w-max shadow-sm mt-2">
+                            <div className="bg-[#234745] hover:bg-[#1a3533] text-[#FEF8EB] px-10 py-3 rounded-[25px] font-bold transition-all w-full text-center items-center md:items-start w-full md:w-max shadow-sm mt-2">
                                 {isEn ? 'Design Your Cake' : 'صمم كيكتك'}
                             </div>
                         </div>

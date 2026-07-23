@@ -170,7 +170,10 @@ export default function Addresses() {
       {/* Outer bordered container */}
       <div className="bg-white border border-[#9FB7AE] rounded-2xl p-4 md:p-6 flex flex-col gap-2">
         {/* Title */}
-        <h2 className="font-bold text-xl md:text-2xl text-[#171717] m-0 mb-2">
+        <h2
+          className="font-bold text-[18px] md:text-2xl text-[#171717] !m-0"
+          style={{ fontFamily: isEn ? "'Inter', sans-serif" : "'GE Dinar One', sans-serif" }}
+        >
           {isEn ? 'Delivery Addresses' : 'عناوين التوصيل'}
         </h2>
 
@@ -185,18 +188,16 @@ export default function Addresses() {
             return (
               <div
                 key={address.id}
-                className={`flex flex-col p-5 gap-3.5 rounded-[20px] border-2 transition-all ${
-                  isDefault ? 'bg-[#FEF8EB] border-[#234745]' : 'bg-transparent border-[#BBCFCD]'
-                }`}
+                className={`flex flex-col p-4 gap-3.5 rounded-[12px] border-1 transition-all ${isDefault ? 'bg-[#FEF8EB] border-[#234745]' : 'bg-transparent border-[#BBCFCD]'
+                  }`}
               >
                 {/* Top row: Radio + Label + Badge | Actions */}
                 <div className="flex flex-row flex-wrap items-center justify-between gap-2.5 w-full">
                   {/* Radio + Label + Badge */}
                   <div className="flex items-center gap-2.5">
                     {/* Radio dot */}
-                    <div className={`w-5.5 h-5.5 rounded-full flex items-center justify-center flex-shrink-0 border-2 transition-all ${
-                      isDefault ? 'bg-[#234745] border-transparent' : 'bg-transparent border-[#BBCFCD]'
-                    }`}>
+                    <div className={`w-5.5 h-5.5 rounded-full flex items-center justify-center flex-shrink-0 border-2 transition-all ${isDefault ? 'bg-[#234745] border-transparent' : 'bg-transparent border-[#BBCFCD]'
+                      }`}>
                       {isDefault && <div className="w-2.5 h-2.5 rounded-full bg-white" />}
                     </div>
                     <span className="font-bold text-base md:text-lg text-[#234745]">{label}</span>
@@ -211,8 +212,8 @@ export default function Addresses() {
 
                   {/* Actions */}
                   <div className="flex flex-row items-center gap-3.5 flex-wrap text-xs md:text-sm font-semibold">
-                    <button 
-                      type="button" 
+                    <button
+                      type="button"
                       onClick={() => setActiveModal({ type: 'edit', address })}
                       className="text-[#906B51] hover:text-[#906B51]/80 underline transition-colors"
                     >
@@ -228,7 +229,7 @@ export default function Addresses() {
                         <input type="hidden" name="firstName" value={address.firstName ?? ''} />
                         <input type="hidden" name="lastName" value={address.lastName ?? ''} />
                         <input type="hidden" name="phone" value={address.phone ?? ''} />
-                        <button 
+                        <button
                           type="submit"
                           className="text-[#234745] hover:text-[#234745]/80 underline transition-colors whitespace-nowrap"
                         >
@@ -236,8 +237,8 @@ export default function Addresses() {
                         </button>
                       </Form>
                     )}
-                    <button 
-                      type="button" 
+                    <button
+                      type="button"
                       onClick={() => setAddressToDelete(address.id)}
                       className="text-[#E64950] hover:text-[#E64950]/80 transition-colors"
                     >
@@ -247,7 +248,7 @@ export default function Addresses() {
                 </div>
 
                 {/* Address text — second line */}
-                <p className="margin-0 font-medium text-xs md:text-sm text-[#8fa49c] text-center w-full mt-1">
+                <p className="margin-0 !text-[14px] font-medium text-xs md:text-sm text-[#8fa49c] text-start w-full mt-1">
                   {addressText}
                 </p>
               </div>
@@ -307,10 +308,10 @@ function DeleteConfirmationModal({ onClose, addressId, locale }: { onClose: () =
         </p>
         <div className="flex gap-3">
           <Form method="DELETE" className="flex-1" onSubmit={onClose}>
-             <input type="hidden" name="addressId" value={addressId} />
-             <Button type="submit" variant="primary" fullWidth size="lg" className="!bg-red-500 hover:!bg-red-600 !border-red-500">
-               {isEn ? 'Delete' : 'حذف'}
-             </Button>
+            <input type="hidden" name="addressId" value={addressId} />
+            <Button type="submit" variant="primary" fullWidth size="lg" className="!bg-red-500 hover:!bg-red-600 !border-red-500">
+              {isEn ? 'Delete' : 'حذف'}
+            </Button>
           </Form>
           <Button type="button" variant="secondary" className="flex-1" size="lg" onClick={onClose}>
             {isEn ? 'Cancel' : 'إلغاء'}
@@ -342,10 +343,10 @@ function AddressModal({ type, address, isDefault, onClose }: { type: 'create' | 
   }, [address, googleMapsKey, mapUrl]);
 
   // State to hold coordinates
-  const [coords, setCoords] = useState<{lat: number, lng: number} | null>(() => {
+  const [coords, setCoords] = useState<{ lat: number, lng: number } | null>(() => {
     if (address?.address2?.includes('COORDS:')) {
-        const match = address.address2.match(/COORDS:(-?\d+\.\d+),(-?\d+\.\d+)/);
-        if (match) return { lat: parseFloat(match[1]), lng: parseFloat(match[2]) };
+      const match = address.address2.match(/COORDS:(-?\d+\.\d+),(-?\d+\.\d+)/);
+      if (match) return { lat: parseFloat(match[1]), lng: parseFloat(match[2]) };
     }
     return null;
   });
@@ -354,11 +355,11 @@ function AddressModal({ type, address, isDefault, onClose }: { type: 'create' | 
     setAddressLine1(result.address);
     setCity(result.city);
     setCoords({ lat: result.lat, lng: result.lng });
-    
+
     // Update preview map
     const { lat, lng } = result;
     setMapUrl(`https://www.google.com/maps/embed/v1/view?key=${googleMapsKey}&center=${lat},${lng}&zoom=17`);
-    
+
     setIsValidated(true);
     setIsMapPickerOpen(false);
   };
@@ -375,13 +376,13 @@ function AddressModal({ type, address, isDefault, onClose }: { type: 'create' | 
         const response = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${googleMapsKey}&language=${isEn ? 'en' : 'ar'}`);
         const data = await response.json() as any;
         if (data.results?.[0]) {
-            const result = data.results[0];
-            setAddressLine1(result.formatted_address);
-            const cityObj = result.address_components.find((c: any) => c.types.includes('locality'));
-            if (cityObj) setCity(cityObj.long_name);
-            setIsValidated(true);
+          const result = data.results[0];
+          setAddressLine1(result.formatted_address);
+          const cityObj = result.address_components.find((c: any) => c.types.includes('locality'));
+          if (cityObj) setCity(cityObj.long_name);
+          setIsValidated(true);
         }
-      } catch (e) {}
+      } catch (e) { }
       setIsValidating(false);
     });
   };
@@ -391,18 +392,18 @@ function AddressModal({ type, address, isDefault, onClose }: { type: 'create' | 
     setIsValidating(true);
     const url = `https://www.google.com/maps/embed/v1/place?key=${googleMapsKey}&q=${encodeURIComponent(query)}&zoom=16`;
     setMapUrl(url);
-    
+
     try {
-        const response = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(query)}&key=${googleMapsKey}&language=${isEn ? 'en' : 'ar'}`);
-        const data = await response.json() as any;
-        if (data.results?.[0]) {
-            const result = data.results[0];
-            setAddressLine1(result.formatted_address);
-            const cityObj = result.address_components.find((c: any) => c.types.includes('locality'));
-            if (cityObj) setCity(cityObj.long_name);
-            setIsValidated(true);
-        }
-    } catch (e) {}
+      const response = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(query)}&key=${googleMapsKey}&language=${isEn ? 'en' : 'ar'}`);
+      const data = await response.json() as any;
+      if (data.results?.[0]) {
+        const result = data.results[0];
+        setAddressLine1(result.formatted_address);
+        const cityObj = result.address_components.find((c: any) => c.types.includes('locality'));
+        if (cityObj) setCity(cityObj.long_name);
+        setIsValidated(true);
+      }
+    } catch (e) { }
     setIsValidating(false);
   };
 
@@ -421,54 +422,54 @@ function AddressModal({ type, address, isDefault, onClose }: { type: 'create' | 
           <div style={{ marginBottom: '24px' }}>
             <label className="account-field-label">{isEn ? 'Validate Location on Map' : 'تأكيد الموقع على الخريطة'}</label>
             <div className="flex gap-2 mb-3">
-               <input 
-                 type="text" 
-                 placeholder={isEn ? "Search area, street..." : "ابحث عن منطقة، شارع..."}
-                 className="account-input" 
-                 onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleSearchOnMap(e.currentTarget.value))}
-               />
-               <button 
-                 type="button"
-                 onClick={handleLocateMe}
-                 className="px-4 bg-[#fcfaf5] border-2 border-gray-100 rounded-xl hover:border-gray-300 transition-all text-gray-600"
-               >
-                 📍
-               </button>
+              <input
+                type="text"
+                placeholder={isEn ? "Search area, street..." : "ابحث عن منطقة، شارع..."}
+                className="account-input"
+                onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleSearchOnMap(e.currentTarget.value))}
+              />
+              <button
+                type="button"
+                onClick={handleLocateMe}
+                className="px-4 bg-[#fcfaf5] border-2 border-gray-100 rounded-xl hover:border-gray-300 transition-all text-gray-600"
+              >
+                📍
+              </button>
             </div>
 
             <div className="w-full h-[200px] bg-gray-50 rounded-2xl overflow-hidden border-2 border-gray-100 relative group">
-               {mapUrl ? (
-                 <>
-                   <iframe
-                     title="Map Picker"
-                     src={mapUrl}
-                     width="100%"
-                     height="100%"
-                     style={{ border: 0 }}
-                     loading="lazy"
-                   />
-                   <div className="absolute inset-0 bg-black/5 group-hover:bg-black/10 transition-colors flex items-center justify-center pointer-events-none">
-                      <button 
-                        type="button" 
-                        onClick={() => setIsMapPickerOpen(true)}
-                        className="pointer-events-auto px-4 py-2 bg-white text-[#234745] rounded-full shadow-lg font-bold text-[13px] border-2 border-[#234745]/10 hover:scale-105 active:scale-95 transition-all"
-                      >
-                        {isEn ? 'Change Location' : 'تغيير الموقع'}
-                      </button>
-                   </div>
-                 </>
-               ) : (
-                 <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center">
-                    <p className="text-[13px] text-gray-400 mb-3">{isEn ? 'Pin your location on the map' : 'قم بتحديد موقعك على الخريطة'}</p>
-                    <button 
-                      type="button" 
-                      onClick={() => setIsMapPickerOpen(true)} 
-                      className="px-6 py-2.5 bg-[#234745] text-white rounded-full font-bold text-[14px] shadow-sm hover:shadow-md transition-all"
+              {mapUrl ? (
+                <>
+                  <iframe
+                    title="Map Picker"
+                    src={mapUrl}
+                    width="100%"
+                    height="100%"
+                    style={{ border: 0 }}
+                    loading="lazy"
+                  />
+                  <div className="absolute inset-0 bg-black/5 group-hover:bg-black/10 transition-colors flex items-center justify-center pointer-events-none">
+                    <button
+                      type="button"
+                      onClick={() => setIsMapPickerOpen(true)}
+                      className="pointer-events-auto px-4 py-2 bg-white text-[#234745] rounded-full shadow-lg font-bold text-[13px] border-2 border-[#234745]/10 hover:scale-105 active:scale-95 transition-all"
                     >
-                      {isEn ? 'Open Map' : 'فتح الخريطة'}
+                      {isEn ? 'Change Location' : 'تغيير الموقع'}
                     </button>
-                 </div>
-               )}
+                  </div>
+                </>
+              ) : (
+                <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center">
+                  <p className="text-[13px] text-gray-400 mb-3">{isEn ? 'Pin your location on the map' : 'قم بتحديد موقعك على الخريطة'}</p>
+                  <button
+                    type="button"
+                    onClick={() => setIsMapPickerOpen(true)}
+                    className="px-6 py-2.5 bg-[#234745] text-white rounded-full font-bold text-[14px] shadow-sm hover:shadow-md transition-all"
+                  >
+                    {isEn ? 'Open Map' : 'فتح الخريطة'}
+                  </button>
+                </div>
+              )}
             </div>
             {!isValidated && (
               <p className="text-[11px] text-red-500 mt-2 font-bold uppercase tracking-tight">
@@ -478,12 +479,12 @@ function AddressModal({ type, address, isDefault, onClose }: { type: 'create' | 
           </div>
 
           {isMapPickerOpen && (
-             <MapPickerDialog 
-               googleMapsKey={googleMapsKey} 
-               isEn={isEn} 
-               onClose={() => setIsMapPickerOpen(false)} 
-               onConfirm={handleLocationConfirm}
-             />
+            <MapPickerDialog
+              googleMapsKey={googleMapsKey}
+              isEn={isEn}
+              onClose={() => setIsMapPickerOpen(false)}
+              onConfirm={handleLocationConfirm}
+            />
           )}
 
           <div className="account-form-grid">
@@ -499,23 +500,23 @@ function AddressModal({ type, address, isDefault, onClose }: { type: 'create' | 
 
           <div style={{ marginTop: '20px' }}>
             <label className="account-field-label">العنوان (الشارع، الحي)</label>
-            <input 
-              name="address1" 
-              value={addressLine1} 
+            <input
+              name="address1"
+              value={addressLine1}
               onChange={(e) => setAddressLine1(e.target.value)}
-              className="account-input" 
-              required 
+              className="account-input"
+              required
             />
           </div>
 
           <div style={{ marginTop: '20px' }}>
             <label className="account-field-label">المدينة</label>
-            <input 
-              name="city" 
-              value={city} 
+            <input
+              name="city"
+              value={city}
               onChange={(e) => setCity(e.target.value)}
-              className="account-input" 
-              required 
+              className="account-input"
+              required
             />
           </div>
 
@@ -580,15 +581,15 @@ const CREATE_ADDRESS_MUTATION = `#graphql
 ` as const;
 
 // ─── MAP PICKER DIALOG ──────────────────────────────────────────────────────
-function MapPickerDialog({ 
-  googleMapsKey, 
-  isEn, 
-  onClose, 
-  onConfirm 
-}: { 
-  googleMapsKey: string; 
-  isEn: boolean; 
-  onClose: () => void; 
+function MapPickerDialog({
+  googleMapsKey,
+  isEn,
+  onClose,
+  onConfirm
+}: {
+  googleMapsKey: string;
+  isEn: boolean;
+  onClose: () => void;
   onConfirm: (res: { address: string; city: string; lat: number; lng: number }) => void;
 }) {
   const mapRef = useRef<HTMLDivElement>(null);
@@ -684,75 +685,75 @@ function MapPickerDialog({
       <div className="relative w-full max-w-[800px] h-[80vh] bg-white rounded-3xl overflow-hidden shadow-2xl flex flex-col" onClick={e => e.stopPropagation()}>
         {/* Header Search */}
         <div className="absolute top-4 left-4 right-4 z-[10] flex gap-2">
-            <div className="flex-1 relative bg-white rounded-2xl shadow-lg border-2 border-[#234745]/5 overflow-hidden">
-                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
-                </div>
-                <input 
-                  ref={searchRef}
-                  type="text" 
-                  placeholder={isEn ? "Search for location..." : "ابحث عن موقع..."} 
-                  className="w-full h-12 pl-12 pr-4 text-[14px] font-bold text-gray-700 outline-none"
-                />
+          <div className="flex-1 relative bg-white rounded-2xl shadow-lg border-2 border-[#234745]/5 overflow-hidden">
+            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
             </div>
-            <button 
-              onClick={() => (window as any)._locateMe?.()}
-              className="w-12 h-12 bg-white rounded-2xl shadow-lg flex items-center justify-center text-[#234745] shrink-0 border-2 border-[#234745]/5 active:scale-95 transition-transform"
-            >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 2L2 12h3v8h6v-6h2v6h6v-8h3L12 2z" /></svg>
-            </button>
-            <button 
-              onClick={onClose}
-              className="w-12 h-12 bg-white rounded-2xl shadow-lg flex items-center justify-center text-gray-400 shrink-0 border-2 border-[#234745]/5 active:scale-95 transition-transform text-2xl font-light"
-            >
-              &times;
-            </button>
+            <input
+              ref={searchRef}
+              type="text"
+              placeholder={isEn ? "Search for location..." : "ابحث عن موقع..."}
+              className="w-full h-12 pl-12 pr-4 text-[14px] font-bold text-gray-700 outline-none"
+            />
+          </div>
+          <button
+            onClick={() => (window as any)._locateMe?.()}
+            className="w-12 h-12 bg-white rounded-2xl shadow-lg flex items-center justify-center text-[#234745] shrink-0 border-2 border-[#234745]/5 active:scale-95 transition-transform"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 2L2 12h3v8h6v-6h2v6h6v-8h3L12 2z" /></svg>
+          </button>
+          <button
+            onClick={onClose}
+            className="w-12 h-12 bg-white rounded-2xl shadow-lg flex items-center justify-center text-gray-400 shrink-0 border-2 border-[#234745]/5 active:scale-95 transition-transform text-2xl font-light"
+          >
+            &times;
+          </button>
         </div>
 
         {/* Map Container */}
         <div className="flex-1 relative bg-gray-100 min-h-[300px]">
           <div ref={mapRef} className="absolute inset-0 z-0" />
-          
+
           {/* Custom Center Pin */}
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none mb-8">
-              <div className="relative flex flex-col items-center">
-                  <div className="w-10 h-10 bg-[#234745] rounded-full border-4 border-white shadow-xl flex items-center justify-center animate-bounce">
-                      <div className="w-2 h-2 bg-yellow-400 rounded-full" />
-                  </div>
-                  <div className="w-1 h-3 bg-[#234745] rounded-b-full -mt-0.5 shadow-sm" />
-                  <div className="w-3 h-1.5 bg-black/20 rounded-full blur-[2px] mt-1" />
+            <div className="relative flex flex-col items-center">
+              <div className="w-10 h-10 bg-[#234745] rounded-full border-4 border-white shadow-xl flex items-center justify-center animate-bounce">
+                <div className="w-2 h-2 bg-yellow-400 rounded-full" />
               </div>
+              <div className="w-1 h-3 bg-[#234745] rounded-b-full -mt-0.5 shadow-sm" />
+              <div className="w-3 h-1.5 bg-black/20 rounded-full blur-[2px] mt-1" />
+            </div>
           </div>
         </div>
 
         {/* Footer Confirmation */}
         <div className="bg-white p-5 sm:p-6 border-t border-gray-100">
-             <div className="mb-5">
-                <p className="text-[11px] font-bold text-[#234745]/40 uppercase tracking-widest mb-1.5">{isEn ? 'Confirm Delivery Spot' : 'تأكيد موقع التوصيل'}</p>
-                <div className="flex items-start gap-3">
-                   <div className="mt-1 text-[#234745]">
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" /><circle cx="12" cy="10" r="3" /></svg>
-                   </div>
-                   <div className="flex-1">
-                      {isResolving ? (
-                        <div className="h-4 w-2/3 bg-gray-100 rounded animate-pulse" />
-                      ) : (
-                        <p className="text-[14px] font-bold text-gray-800 leading-snug line-clamp-2">
-                          {address || (isEn ? 'Move the map to select address' : 'حرك الخريطة لتحديد العنوان')}
-                        </p>
-                      )}
-                   </div>
-                </div>
-             </div>
+          <div className="mb-5">
+            <p className="text-[11px] font-bold text-[#234745]/40 uppercase tracking-widest mb-1.5">{isEn ? 'Confirm Delivery Spot' : 'تأكيد موقع التوصيل'}</p>
+            <div className="flex items-start gap-3">
+              <div className="mt-1 text-[#234745]">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" /><circle cx="12" cy="10" r="3" /></svg>
+              </div>
+              <div className="flex-1">
+                {isResolving ? (
+                  <div className="h-4 w-2/3 bg-gray-100 rounded animate-pulse" />
+                ) : (
+                  <p className="text-[14px] font-bold text-gray-800 leading-snug line-clamp-2">
+                    {address || (isEn ? 'Move the map to select address' : 'حرك الخريطة لتحديد العنوان')}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
 
-             <button 
-               type="button"
-               disabled={!coords || isResolving}
-               onClick={() => coords && onConfirm({ address, city, ...coords })}
-               className={`w-full py-4 rounded-2xl font-bold text-[15px] shadow-lg transition-all ${(!coords || isResolving) ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-[#234745] text-white hover:bg-[#153125] active:scale-[0.98] shadow-[#234745]/20'}`}
-             >
-               {isEn ? 'Confirm Location' : 'تأكيد الموقع'}
-             </button>
+          <button
+            type="button"
+            disabled={!coords || isResolving}
+            onClick={() => coords && onConfirm({ address, city, ...coords })}
+            className={`w-full py-4 rounded-2xl font-bold text-[15px] shadow-lg transition-all ${(!coords || isResolving) ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-[#234745] text-white hover:bg-[#153125] active:scale-[0.98] shadow-[#234745]/20'}`}
+          >
+            {isEn ? 'Confirm Location' : 'تأكيد الموقع'}
+          </button>
         </div>
       </div>
     </div>

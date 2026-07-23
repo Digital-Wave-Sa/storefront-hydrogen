@@ -1,12 +1,22 @@
 import { Form, NavLink, Outlet, useLoaderData, useLocation, useRouteLoaderData, Await } from 'react-router';
-import { data, redirect, type LoaderFunctionArgs } from 'react-router';
+import { data, redirect, type LoaderFunctionArgs, type ShouldRevalidateFunction } from 'react-router';
 import type { CustomerFragment } from 'storefrontapi.generated';
 import { Suspense } from 'react';
 import { AccountProfileHeader } from '~/components/account/AccountProfileHeader';
-import { getMockPoints } from '~/lib/mock-loyalty.server';
-export function shouldRevalidate() {
+import { getLoyaltyPoints } from '~/lib/loyalty.server';
+export const shouldRevalidate: ShouldRevalidateFunction = ({
+  formMethod,
+  currentUrl,
+  nextUrl,
+}) => {
+  if (formMethod && formMethod !== 'GET') {
+    return true;
+  }
+  if (currentUrl.toString() === nextUrl.toString()) {
+    return true;
+  }
   return false;
-}
+};
 export async function loader({ request, context }: LoaderFunctionArgs) {
   const { session, storefront } = context;
   const { pathname } = new URL(request.url);
@@ -212,7 +222,13 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
           }
 
           // Fetch Loyalty Points explicitly from CRM endpoint
-          loyaltyPoints = getMockPoints(formattedPhone);
+          loyaltyPoints = await getLoyaltyPoints({
+            customerId: mockCustomer.id,
+            phone: formattedPhone || mockCustomer.phone || undefined,
+            email: mockCustomer.email || undefined,
+            env: context.env,
+            context,
+          });
         } catch (e) { }
         return { loyaltyPoints, balance, history, cards };
       })();
@@ -345,7 +361,13 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
         }
 
         // Fetch Loyalty Points explicitly from CRM endpoint
-        loyaltyPoints = getMockPoints(formattedPhone);
+        loyaltyPoints = await getLoyaltyPoints({
+          customerId: customer.id,
+          phone: formattedPhone || customer.phone || undefined,
+          email: customer.email || undefined,
+          env: context.env,
+          context,
+        });
       } catch (e) { }
       return { loyaltyPoints, balance, history, cards };
     })();
@@ -436,51 +458,74 @@ function AccountLayout({
   const backUrl = `${localePrefix}/account`;
   const sectionTitle = getSectionTitle(location.pathname, isEn);
 
+  let badgeText = '';
+  const cleanPath = location.pathname.replace(/^\/en/, '').replace(/\/$/, '');
+  if (cleanPath.startsWith('/account/wishlist')) {
+    badgeText = `${wishlistCount} ${isEn ? 'Products' : 'منتجات'}`;
+  }
+
   const backHeader = (
     <div
-      className="lg:hidden w-full text-white rounded-2xl py-4 px-4 md:px-6 mb-6 min-h-[64px] shadow-sm overflow-hidden"
+      className="lg:hidden w-full text-white py-3 md:py-3.5 mb-6 shadow-sm overflow-hidden relative"
       style={{
         backgroundColor: '#234745',
         backgroundImage: "url('/images/second-bg-pattern.svg')",
-        backgroundRepeat: 'no-repeat',
-        backgroundSize: '700px',
+        backgroundRepeat: 'repeat',
+        backgroundSize: '350px',
         backgroundPosition: 'center',
       }}
       dir={isEn ? 'ltr' : 'rtl'}
     >
-      <div className="flex items-center gap-3 w-full">
-        {/* Go Back button */}
+      <div className="max-w-[1200px] mx-auto px-2 md:px-4 w-full flex items-center justify-between gap-4 relative z-10 min-h-[44px]">
+        {/* Go Back button (Right side in RTL) */}
         <NavLink
           to={backUrl}
-          className="shrink-0 bg-[#9fb7ae] hover:bg-[#a7bfb9]/90 !text-[#234745] px-4 md:px-5 py-1.5 md:py-2 rounded-full font-bold text-[13px] md:text-[14px] flex items-center gap-1.5 transition-all shadow-sm whitespace-nowrap"
+          className="shrink-0 bg-[#9fb7ae] hover:bg-[#8ba19c] !text-[#234745] px-4 md:px-5 py-1.5 md:py-2 rounded-full font-bold text-[13px] md:text-[15px] flex items-center gap-2 transition-all shadow-sm whitespace-nowrap"
           style={!isEn ? { fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" } : undefined}
         >
-          {isEn ? (
-            <>
-              <span className="text-[15px]">←</span>
-              <span>Back</span>
-            </>
-          ) : (
-            <>
-              <span className="text-[15px]">→</span>
-              <span>رجوع</span>
-            </>
-          )}
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className={isEn ? 'rotate-180' : ''}
+          >
+            <line x1="5" y1="12" x2="19" y2="12" />
+            <polyline points="12 5 19 12 12 19" />
+          </svg>
+          <span>{isEn ? 'Back' : 'رجوع'}</span>
+
         </NavLink>
 
-        {/* Title */}
+        {/* Center Title */}
         <h2
-          className="flex-1 min-w-0 text-center text-[16px] md:text-[18px] lg:text-[20px] font-bold select-none !m-0 leading-tight"
-          style={!isEn ? { fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" } : undefined}
+          className="flex-1 min-w-0 text-start text-[18px] md:text-[22px] font-bold select-none !m-0 leading-tight text-white"
+          style={!isEn ? { fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" } : undefined}
         >
           {sectionTitle}
         </h2>
+
+        {/* Badge or Equal Spacer (Left side in RTL) */}
+        {badgeText ? (
+          <div
+            className="shrink-0 bg-[#FEF8EB] text-[#234745] px-4 md:px-5 py-1.5 md:py-2 rounded-full font-bold text-[13px] md:text-[14px] whitespace-nowrap shadow-sm"
+            style={!isEn ? { fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" } : undefined}
+          >
+            {badgeText}
+          </div>
+        ) : (
+          <div className="w-[85px] md:w-[110px] shrink-0 opacity-0 pointer-events-none" />
+        )}
       </div>
-    </div>
+    </div >
   );
 
   return (
-    <div className="account-layout">
+    <div className="account-layout bg-[#FEF8EB] min-h-screen">
       <Suspense fallback={<AccountProfileHeader customer={customer} isEn={isEn} loyaltyPoints={0} balance={0} wishlistCount={0} />}>
         <Await resolve={walletPromise}>
           {(wallet) => (
@@ -488,13 +533,16 @@ function AccountLayout({
           )}
         </Await>
       </Suspense>
+
+      {/* Full width Go Back Banner for Inner Pages */}
+      {showBackHeader && backHeader}
+
       <div className="max-w-[1200px] mx-auto px-4 md:px-6 w-full">
         <div className="grid grid-cols-1 lg:grid-cols-[302px_minmax(0,1fr)] gap-6 lg:gap-10 items-start w-full !mt-0 !pt-0">
           <nav className="w-auto -mx-4 px-4 bg-transparent lg:mx-0 lg:w-full lg:bg-white lg:rounded-[24px] lg:py-6 lg:px-4 lg:border lg:border-[#BBCFCD] lg:sticky lg:top-[120px] z-10 min-w-0 max-w-[100vw] lg:max-w-full relative hidden lg:block">
             <AcccountMenu customer={customer} isAdmin={isAdmin} />
           </nav>
           <main className="w-full min-w-0 max-w-[100vw] lg:max-w-full pb-20">
-            {showBackHeader && backHeader}
             {children}
           </main>
         </div>

@@ -119,7 +119,7 @@ export function StarRating({
 
     if (hideText) {
         return (
-            <div className={`flex items-center gap-0.5 ${!isEn && 'flex-row-reverse'}`}>
+            <div className="flex items-center gap-0.5">
                 {renderStars()}
             </div>
         );
@@ -127,7 +127,7 @@ export function StarRating({
 
     return (
         <div className="flex items-center gap-1.5 font-bold">
-            <div className={`flex items-center gap-0.5 ${!isEn && 'flex-row-reverse'}`}>
+            <div className="flex items-center gap-0.5">
                 {renderStars()}
             </div>
             <span className={`text-gray-700 ${textSizes[size]} mt-0.5`}>{numericRating.toFixed(1)}</span>

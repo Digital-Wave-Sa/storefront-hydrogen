@@ -1,7 +1,7 @@
 import { type MetaFunction, type ActionFunctionArgs } from 'react-router';
 import { useRouteLoaderData, useActionData, Form, useNavigation } from 'react-router';
 import { PageLayout } from '~/components/PageLayout';
-import patternBg from '~/assets/patteren-collection-header.svg';
+import patternBg from '/images/second-bg-pattern.svg';
 
 export const meta: MetaFunction = () => {
   return [
@@ -104,7 +104,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
   try {
     const { getAdminToken } = await import('~/lib/shopify-admin.server');
     const adminToken = await getAdminToken(context.env);
-    
+
     const rawShop = context.env.SHOPIFY_SHOP || context.env.PUBLIC_STORE_DOMAIN || '';
     let shopDomain = rawShop;
     if (!shopDomain.includes('myshopify.com')) {
@@ -120,13 +120,13 @@ export async function action({ request, context }: ActionFunctionArgs) {
     const errors = res?.errors;
 
     // Detect if definition is missing
-    const isMissingDefinition = 
+    const isMissingDefinition =
       (errors && errors.some((e: any) => e.message && (e.message.includes('not found') || e.message.includes('type') || e.message.includes('invalid') || e.message.includes('type "contact_submission"')))) ||
       (userErrors && userErrors.some((e: any) => e.message && (e.message.includes('not found') || e.message.includes('type') || e.message.includes('invalid') || e.message.includes('type "contact_submission"'))));
 
     if (isMissingDefinition) {
       console.log('[METAOBJECT] Definition "contact_submission" not found. Creating definition first...');
-      
+
       // 2. Create the definition
       const defRes = await executeQuery(defMutation, defVariables, adminToken, shopDomain) as any;
       console.log('[METAOBJECT DEF CREATE RESP]', JSON.stringify(defRes));
@@ -154,16 +154,16 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
     return {
       success: true,
-      message: isEn 
-        ? 'Your message has been submitted successfully and saved to our records!' 
+      message: isEn
+        ? 'Your message has been submitted successfully and saved to our records!'
         : 'تم تقديم رسالتك بنجاح وحفظها في سجلاتنا!'
     };
   } catch (error: any) {
     console.error('[CONTACT ACTION ERROR]', error);
     return {
       success: false,
-      error: isEn 
-        ? 'Something went wrong. Please try again later.' 
+      error: isEn
+        ? 'Something went wrong. Please try again later.'
         : 'حدث خطأ ما. يرجى المحاولة مرة أخرى لاحقاً.'
     };
   }
@@ -178,23 +178,23 @@ export default function ContactPage() {
   return (
     <div className={`w-full min-h-screen bg-[#FEF8EB] ${isEn ? 'font-en text-left' : 'font-ar text-right'}`} dir={isEn ? 'ltr' : 'rtl'}>
       {/* Hero Section */}
-      <div className="relative w-full min-h-[300px] bg-[#234745] overflow-hidden flex flex-col items-center justify-center text-white px-[80px] py-10">
+      <div className="relative w-full bg-[#234745] overflow-hidden flex flex-col items-center justify-center text-white px-[80px] py-10">
         <div
           className="absolute inset-0 pointer-events-none opacity-100"
           style={{
             backgroundImage: `url(${patternBg})`,
-            backgroundSize: 'cover',
+            backgroundSize: 'contain',
             backgroundPosition: 'center'
           }}
         />
         <div className="relative z-10 text-center">
-          <p className="text-[16px] font-medium opacity-80 mb-2" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", lineHeight: '100%' }}>
+          <p className="text-[16px] font-medium text-[#9FB7AE]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", lineHeight: '100%' }}>
             {isEn ? 'Contact us' : 'تواصل معنا'}
           </p>
-          <h1 className="font-bold" style={{ fontSize: '50px', fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif", lineHeight: '1.4', color: 'rgb(254, 248, 235)', marginTop: '10px', marginBottom: '1rem' }}>
+          <h1 className="font-bold !text-[26px] md:!text-[50px]" style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif", lineHeight: '1.4', color: '#FEF8EB', marginTop: '1rem', marginBottom: '1rem' }}>
             {isEn ? "We're always here to help" : 'نحن هنا دائماً لمساعدتك'}
           </h1>
-          <p className="text-[14px] md:text-[16px] font-medium opacity-80 mt-2" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", lineHeight: '100%' }}>
+          <p className="text-[14px] md:text-[16px] font-medium text-[#9FB7AE] mt-2" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", lineHeight: '100%' }}>
             {isEn ? 'Choose the best way to reach us' : 'اختر أفضل طريقة للتواصل معنا'}
           </p>
         </div>
@@ -202,26 +202,32 @@ export default function ContactPage() {
 
       <div className="max-w-[1400px] mx-auto px-4 md:px-6 mt-10 md:mt-16 relative z-20 pb-20">
         {/* Contact Method Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-16">
-          <ContactCard 
-            title="WhatsApp" 
-            subtitle={isEn ? 'Fastest — Instant response' : 'الأسرع — رد فوري'} 
-            pill={isEn ? '7:30 AM - 4:00 PM' : '7:30 ص - 4:00 م'} 
+        <div
+          className="flex md:grid md:grid-cols-4 overflow-x-auto md:overflow-x-visible snap-x snap-mandatory md:snap-none gap-4 md:gap-6 mb-16 pb-4 md:pb-0"
+          style={{
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none',
+          }}
+        >
+          <ContactCard
+            title="WhatsApp"
+            subtitle={isEn ? 'Fastest — Instant response' : 'الأسرع — رد فوري'}
+            pill={isEn ? '+966 9200 17020' : '+966 9200 17020'}
           />
-          <ContactCard 
-            title={isEn ? 'Phone' : 'الهاتف'} 
-            subtitle={isEn ? 'For urgent inquiries' : 'للاستفسارات العاجلة'} 
-            pill={isEn ? '7:30 AM - 4:00 PM' : '7:30 ص - 4:00 م'} 
+          <ContactCard
+            title={isEn ? 'Phone' : 'الهاتف'}
+            subtitle={isEn ? 'For urgent inquiries' : 'للاستفسارات العاجلة'}
+            pill={isEn ? '920017070' : '920017070'}
           />
-          <ContactCard 
-            title={isEn ? 'Email' : 'البريد الإلكتروني'} 
-            subtitle={isEn ? 'Detailed requests' : 'للإستفسارات التفصيلية'} 
-            pill={isEn ? 'Response within 24h' : 'الرد خلال 24 ساعة'} 
+          <ContactCard
+            title={isEn ? 'Email' : 'البريد الإلكتروني'}
+            subtitle={isEn ? 'Detailed requests' : 'للإستفسارات التفصيلية'}
+            pill={isEn ? 'Response within 24h' : 'الرد خلال 24 ساعة'}
           />
-          <ContactCard 
-            title={isEn ? 'Visit Branch' : 'زيارة فرع'} 
-            subtitle={isEn ? '117 branches everywhere' : '117 فرع في كل مكان'} 
-            pill={isEn ? 'Search for nearest' : 'إبحث عن اقرب فرع'} 
+          <ContactCard
+            title={isEn ? 'Visit Branch' : 'زيارة فرع'}
+            subtitle={isEn ? '117 branches everywhere' : '117 فرع في كل مكان'}
+            pill={isEn ? 'Search for nearest' : 'إبحث عن اقرب فرع'}
           />
         </div>
 
@@ -233,7 +239,7 @@ export default function ContactPage() {
                 {isEn ? 'Contact Information' : 'معلومات التواصل'}
               </h2>
               <div className="space-y-0">
-                <InfoRow label="WhatsApp" value="+966 5X XXX XXXX" isEn={isEn} isLtrValue />
+                <InfoRow label="WhatsApp" value="+966 9200 17020" isEn={isEn} isLtrValue />
                 <InfoRow label={isEn ? 'Phone' : 'الهاتف'} value="920017070" isEn={isEn} isLtrValue />
                 <InfoRow label={isEn ? 'Email' : 'البريد الإلكتروني'} value="info@saadeddin.com" isEn={isEn} isLtrValue />
               </div>
@@ -270,7 +276,7 @@ export default function ContactPage() {
 
           {/* Form Column (Second in code = Left in RTL) */}
           <div className="w-full md:w-[45%] bg-white border border-[#234745] shadow-sm overflow-hidden" style={{ borderRadius: '12px' }}>
-            <div className="p-6 w-full" style={{ display: 'block', width: '100%', maxWidth: 'none' }}>
+            <div className="p-4 md:p-6 w-full" style={{ display: 'block', width: '100%', maxWidth: 'none' }}>
               {actionData?.success === true ? (
                 <div className="p-10 w-full text-center flex flex-col items-center justify-center gap-6" style={{ minHeight: '400px' }}>
                   <div className="w-20 h-20 bg-green-50 rounded-full flex items-center justify-center text-green-600 shadow-md">
@@ -298,7 +304,7 @@ export default function ContactPage() {
                 </div>
               ) : (
                 <>
-                  <h2 className="text-[26px] font-bold text-[#234745]" style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif", lineHeight: '100%', marginBottom: '32px' }}>
+                  <h2 className="text-[20px] md:text-[26px] font-bold text-[#234745]" style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif", lineHeight: '100%', marginBottom: '25px' }}>
                     {isEn ? 'Send us a message' : 'أرسل لنا رسالة'}
                   </h2>
 
@@ -317,12 +323,12 @@ export default function ContactPage() {
                     <FormField name="email" label={isEn ? 'Email' : 'البريد الإلكتروني'} placeholder="name@gmail.com" required type="email" isEn={isEn} forceLtr />
 
                     <div className="flex flex-col gap-4">
-                      <label className="text-[15px] font-bold text-[#1F413F] flex items-center gap-1" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", lineHeight: '100%' }}>
+                      <label className="text-[15px] font-medium text-[#1F413F] flex items-center gap-1" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", lineHeight: '100%' }}>
                         <span>{isEn ? 'Subject' : 'الموضوع'}</span>
                         <span className="text-red-500 font-bold">*</span>
                       </label>
                       <div className="relative">
-                        <select name="subject" required className={`w-full h-[58px] px-6 rounded-2xl border border-gray-200 focus:border-[#1F413F] outline-none bg-white text-[16px] appearance-none transition-all ${isEn ? 'text-left' : 'text-right'}`} dir={isEn ? 'ltr' : 'rtl'} style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", fontWeight: 500 }}>
+                        <select name="subject" required className={`w-full h-[58px] px-4 md:px-6 rounded-xl border border-gray-200 focus:border-[#1F413F] outline-none bg-white text-[14px] md:text-[16px] appearance-none transition-all ${isEn ? 'text-left' : 'text-right'}`} dir={isEn ? 'ltr' : 'rtl'} style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", fontWeight: 500 }}>
                           <option value="">{isEn ? 'Select Subject' : 'إختر الموضوع'}</option>
                           <option value="Inquiry">{isEn ? 'Inquiry' : 'استفسار'}</option>
                           <option value="Sales">{isEn ? 'Sales' : 'مبيعات'}</option>
@@ -333,7 +339,7 @@ export default function ContactPage() {
                           <option value="Service Proposal">{isEn ? 'Service Proposal' : 'عرض خدمة'}</option>
                           <option value="Other">{isEn ? 'Other' : 'اخرى'}</option>
                         </select>
-                        <div className={`absolute top-1/2 -translate-y-1/2 pointer-events-none ${isEn ? 'right-6' : 'left-6'}`}>
+                        <div className={`absolute top-1/2 -translate-y-1/2 pointer-events-none ${isEn ? 'right-4' : 'left-4'}`}>
                           <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor" className="opacity-30"><path d="M5 7l5 5 5-5H5z" /></svg>
                         </div>
                       </div>
@@ -342,7 +348,7 @@ export default function ContactPage() {
                     <FormField name="orderNumber" label={isEn ? 'Order Number (Optional)' : 'رقم الطلب (إختياري)'} placeholder="sd-asdqo142" isEn={isEn} forceLtr />
 
                     <div className="flex flex-col gap-4">
-                      <label className="text-[15px] font-bold text-[#1F413F] flex items-center gap-1" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", lineHeight: '100%' }}>
+                      <label className="text-[15px] font-medium text-[#1F413F] flex items-center gap-1" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", lineHeight: '100%' }}>
                         <span>{isEn ? 'Message' : 'الرسالة'}</span>
                         <span className="text-red-500 font-bold">*</span>
                       </label>
@@ -350,9 +356,9 @@ export default function ContactPage() {
                         name="message"
                         required
                         placeholder={isEn ? 'Write your message here...' : 'إكتب رسالتك هنا...'}
-                        className={`w-full border border-gray-200 focus:border-[#1F413F] outline-none bg-white text-[16px] resize-none transition-all ${isEn ? 'text-left' : 'text-right'}`}
-                        style={{ 
-                          fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", 
+                        className={`w-full border border-gray-200 focus:border-[#1F413F] outline-none bg-white text-[14px] md:text-[16px] resize-none transition-all ${isEn ? 'text-left' : 'text-right'} placeholder:text-[#9FB7AE]`}
+                        style={{
+                          fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
                           fontWeight: 500,
                           height: '96px',
                           padding: '12px 16px',
@@ -364,10 +370,10 @@ export default function ContactPage() {
 
 
 
-                    <button 
-                      type="submit" 
+                    <button
+                      type="submit"
                       disabled={isSubmitting}
-                      className="w-full h-[64px] bg-[#234745] text-white rounded-full font-bold text-[18px] hover:bg-[#1a3533] disabled:opacity-50 transition-all mt-6 shadow-xl shadow-[#234745]/20 flex items-center justify-center gap-2"
+                      className="w-full h-[50px] bg-[#234745] text-white rounded-full font-bold text-[16px] hover:bg-[#1a3533] disabled:opacity-50 transition-all mt-6 flex items-center justify-center gap-2"
                       style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" }}
                     >
                       {isSubmitting ? (
@@ -391,21 +397,21 @@ export default function ContactPage() {
 function ContactCard({ title, subtitle, pill }: any) {
   return (
     <div
-      className="bg-white p-6 md:p-10 border border-[#234745] flex flex-col items-center justify-center text-center transition-all min-h-[200px] w-full"
-      style={{ borderRadius: '32px' }}
+      className="bg-white p-6 md:p-6 border border-[#234745] flex flex-col items-center justify-center text-center transition-all min-h-[180px] w-[200px] md:w-full flex-shrink-0 snap-start snap-always"
+      style={{ borderRadius: '12px' }}
     >
       <h3 className="text-[24px] md:text-[28px] font-bold text-[#1F413F] mb-3" style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif", lineHeight: '100%' }}>{title}</h3>
-      <p 
-        className="text-[14px] md:text-[15px] text-[#A8BDB5] !mb-6 font-medium"
-        style={{ fontFamily: "sans-serif", lineHeight: '1.4', fontWeight: 500, marginBottom: '24px' }}
+      <p
+        className="text-[14px] md:text-[15px] text-[#9FB7AE] !mb-6 font-medium"
+        style={{ lineHeight: '1.4', fontWeight: 500, marginBottom: '24px', fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" }}
       >
         {subtitle}
       </p>
       <div
-        className="inline-flex items-center justify-center px-8 h-[40px] font-bold bg-[#BBCFCD] text-[#1F413F] transition-colors whitespace-nowrap"
+        className="inline-flex text-[14px] items-center justify-center px-8 h-[40px] font-bold bg-[#BBCFCD] text-[#234745] transition-colors whitespace-nowrap"
         style={{
           borderRadius: '1000px',
-          fontFamily: "sans-serif",
+          fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif",
           fontWeight: 700,
           lineHeight: '100%',
           minWidth: '89px'
@@ -422,7 +428,7 @@ function FormField({ label, placeholder, required, type = "text", isEn, forceLtr
   const isLtrDir = isEn || forceLtr;
   return (
     <div className={`flex flex-col gap-3 ${isEn ? 'text-left' : 'text-right'}`} style={{ width: '100%' }}>
-      <label className="text-[14px] font-bold text-[#1F413F] flex items-center gap-1" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", lineHeight: '100%' }}>
+      <label className="text-[14px] font-medium text-[#1F413F] flex items-center gap-1" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", lineHeight: '100%' }}>
         <span>{label}</span>
         {required && <span className="text-red-500 font-bold">*</span>}
       </label>
@@ -432,7 +438,7 @@ function FormField({ label, placeholder, required, type = "text", isEn, forceLtr
         placeholder={placeholder}
         required={required}
         dir={isLtrDir ? 'ltr' : 'rtl'}
-        className={`w-full h-[54px] px-6 rounded-xl border border-gray-200 focus:border-[#1F413F] outline-none bg-white text-[15px] transition-all placeholder:text-gray-300 ${isLtrDir ? 'text-left' : 'text-right'}`}
+        className={`w-full h-[54px] text-[14px] md:text-[16px] px-4 rounded-xl border border-gray-200 focus:border-[#1F413F] outline-none bg-white text-[15px] transition-all placeholder:text-[#9FB7AE] ${isLtrDir ? 'text-left' : 'text-right'}`}
         style={{ fontFamily: forceLtr ? "sans-serif" : "'GE Dinar One', sans-serif", fontWeight: 500 }}
       />
     </div>
@@ -442,10 +448,10 @@ function FormField({ label, placeholder, required, type = "text", isEn, forceLtr
 function InfoRow({ label, value, isEn, isLtrValue = false, forceSans = false }: any) {
   return (
     <div className="flex items-center justify-between py-5 border-b border-[#1F413F]/5">
-      <span className="text-[16px] font-medium text-gray-400/80" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", lineHeight: '100%' }}>{label}</span>
-      <span 
-        className={`text-[16px] font-bold text-[#1F413F] tracking-tight ${isLtrValue && !isEn ? 'text-left flex-1 pl-4' : ''}`} 
-        dir={isLtrValue ? "ltr" : "auto"} 
+      <span className="text-[14px] md:text-[16px] font-medium text-[#9FB7AE]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", lineHeight: '100%' }}>{label}</span>
+      <span
+        className={`text-[14px] md:text-[16px] font-bold text-[#1F413F] tracking-tight ${isLtrValue && !isEn ? 'text-left flex-1 pl-4' : ''}`}
+        dir={isLtrValue ? "ltr" : "auto"}
         style={{ fontFamily: (isLtrValue || forceSans) ? "sans-serif" : "'GE Dinar One', sans-serif", lineHeight: '100%', fontWeight: 700 }}
       >
         {value}

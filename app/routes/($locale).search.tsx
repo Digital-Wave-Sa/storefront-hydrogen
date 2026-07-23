@@ -1,6 +1,6 @@
 import type { MetaFunction } from 'react-router';
 import { data, type LoaderFunctionArgs } from 'react-router';
-import { useLoaderData, useOutletContext, Link, useLocation } from 'react-router';
+import { useLoaderData, useOutletContext, Link, useLocation, useSearchParams } from 'react-router';
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import {
@@ -91,11 +91,19 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
     finalQuery += ` ${activeCollection}`;
   }
 
+  let sortKey = searchParams.get('sortKey') || 'RELEVANCE';
+  if (sortKey !== 'RELEVANCE' && sortKey !== 'PRICE') {
+    sortKey = 'RELEVANCE';
+  }
+  const reverse = searchParams.get('reverse') === 'true';
+
   const { storefront } = context;
   const searchPayload = await storefront.query(SEARCH_QUERY as any, {
     variables: {
       query: finalQuery,
       productFilters: filters.length > 0 ? filters : undefined,
+      sortKey: sortKey as any,
+      reverse,
       ...variables,
       country: storefront.i18n.country,
       language: storefront.i18n.language,
@@ -188,6 +196,7 @@ export default function SearchPage() {
   const { publish } = useAnalytics();
   const location = useLocation();
   
+  const [searchParams, setSearchParams] = useSearchParams();
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [sortKey, setSortKey] = useState('RELEVANCE');
@@ -248,71 +257,107 @@ export default function SearchPage() {
       </header>
 
       <div className="bg-[#FEF8EB] min-h-screen">
-          <div className="px-4 md:px-8 lg:px-12 py-10 max-w-[1440px] mx-auto text-right">
-            {/* Filter controls row */}
-            <div className="flex items-center justify-between gap-2 mb-5 w-full">
-              {/* Left Side: Sort by dropdown */}
-              {totalProducts > 0 ? (
-                <div className="flex items-center gap-1.5 md:gap-2">
-                  <label className="text-[#9CA3AF] text-[12px] md:text-[14px] font-medium whitespace-nowrap" style={{ fontFamily: !isEn ? "'GE Dinar One', sans-serif" : undefined }}>
+        <div className="px-4 md:px-8 lg:px-12 py-10 max-w-[1440px] mx-auto text-right">
+          <div className="flex flex-col lg:flex-row gap-8 items-start">
+            <div className="flex-1 min-w-0 w-full lg:order-2">
+              {/* Mobile Layout Controls (< lg) */}
+              <div className="lg:hidden flex flex-col gap-4 mb-2" dir={isEn ? 'ltr' : 'rtl'}>
+                {/* Row 1: Filter button on right (RTL start), Sort on left (RTL end) */}
+                <div className="flex items-center justify-between w-full gap-2">
+                  {/* Filter Button */}
+                  <button
+                    type="button"
+                    onClick={() => setIsFilterOpen(true)}
+                    className="flex items-center gap-2 px-2 py-2 bg-white border border-[#BBCFCD]/50 text-[#234745] rounded-[6px] font-medium hover:bg-gray-50 transition-all md:text-[14px] shrink-0"
+                    style={{ fontFamily: !isEn ? "'GE Dinar One', sans-serif" : undefined }}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="text-[#234745] shrink-0">
+                      <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                    </svg>
+                    <span>{isEn ? 'Filter' : 'تصفية'}</span>
+                  </button>
+
+                  {/* Sort by Dropdown */}
+                  <div className="flex items-center gap-1">
+                    <span className="text-[#BBCFCD] text-[12px] md:text-[16px] font-normal md:font-medium whitespace-nowrap" style={{ fontFamily: !isEn ? "'GE Dinar One', sans-serif" : undefined }}>
+                      {isEn ? 'Sort by:' : 'ترتيب حسب:'}
+                    </span>
+                    <div className="flex items-center bg-transparent border border-[#BBCFCD]/60 rounded-[6px] px-2 py-2 relative w-[125px] sm:w-[150px]">
+                      <select
+                        aria-label={isEn ? "Sort by" : "ترتيب حسب"}
+                        className="w-full bg-transparent text-[14px] sm:text-[14px] font-normal text-[#255441] cursor-pointer focus:outline-none focus:ring-0 border-none appearance-none rtl:pl-5 rtl:pr-1 ltr:pr-5 ltr:pl-1"
+                        style={{ WebkitAppearance: 'none', appearance: 'none', fontFamily: !isEn ? "'GE Dinar One', sans-serif" : undefined }}
+                        onChange={(e) => {
+                          const [key, rev] = e.target.value.split('|');
+                          const params = new URLSearchParams(searchParams);
+                          params.set('sortKey', key);
+                          params.set('reverse', rev);
+                          setSearchParams(params, { preventScrollReset: true });
+                        }}
+                        value={`${searchParams.get('sortKey') || 'RELEVANCE'}|${searchParams.get('reverse') || 'false'}`}
+                      >
+                        <option value="RELEVANCE|false">{isEn ? 'Featured' : 'الأكثر صلة'}</option>
+                        <option value="PRICE|false">{isEn ? 'Price: Low to High' : 'السعر: من الأقل للأعلى'}</option>
+                        <option value="PRICE|true">{isEn ? 'Price: High to Low' : 'السعر: من الأعلى للأقل'}</option>
+                      </select>
+                      <svg className={`absolute ${isEn ? 'right-2' : 'left-2'} top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#234745] pointer-events-none`} fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7"></path></svg>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Row 2: Active Filter Chips */}
+                <div className="flex flex-wrap items-center gap-2.5 justify-start w-full">
+                  <ActiveFilterChips isEn={isEn} collections={globalCollections || []} />
+                </div>
+              </div>
+
+              {/* Desktop Layout Controls (hidden on mobile, visible on lg) */}
+              <div className={`hidden lg:flex ${isEn ? 'flex-row' : 'flex-row-reverse'} items-center justify-between gap-4 mb-4 w-full`} dir={isEn ? 'ltr' : 'rtl'}>
+                {/* Sort Dropdown (Left side in RTL) */}
+                <div className="flex items-center gap-2.5 shrink-0">
+                  <span className="text-[#BBCFCD] text-[15px] font-bold" style={{ fontFamily: !isEn ? "'GE Dinar One', sans-serif" : undefined }}>
                     {isEn ? 'Sort by:' : 'ترتيب حسب:'}
-                  </label>
-                  <div className="flex items-center bg-white border border-[#BBCFCD]/60 rounded-xl px-2 py-2 flex items-center relative w-[115px] md:w-[180px] shadow-sm">
+                  </span>
+                  <div className="flex items-center bg-transparent border border-[#BBCFCD] rounded-[16px] px-4 py-2.5 relative w-[170px]">
                     <select
-                      className="w-full bg-transparent text-[12px] md:text-[14px] font-bold text-[#234745] cursor-pointer focus:outline-none focus:ring-0 border-none appearance-none rtl:pl-5 rtl:pr-1 ltr:pr-5 ltr:pl-1"
+                      aria-label={isEn ? "Sort by" : "ترتيب حسب"}
+                      className="w-full bg-transparent text-[12px] md:text-[16px] font-medium text-[#234745] cursor-pointer focus:outline-none focus:ring-0 border-none appearance-none rtl:pl-5 rtl:pr-1 ltr:pr-5 ltr:pl-1"
                       style={{ WebkitAppearance: 'none', appearance: 'none', fontFamily: !isEn ? "'GE Dinar One', sans-serif" : undefined }}
                       onChange={(e) => {
                         const [key, rev] = e.target.value.split('|');
-                        const url = new URL(window.location.href);
-                        url.searchParams.set('sortKey', key);
-                        url.searchParams.set('reverse', rev);
-                        window.location.href = url.toString();
+                        const params = new URLSearchParams(searchParams);
+                        params.set('sortKey', key);
+                        params.set('reverse', rev);
+                        setSearchParams(params, { preventScrollReset: true });
                       }}
-                      value={`${sortKey}|${reverse}`}
+                      value={`${searchParams.get('sortKey') || 'RELEVANCE'}|${searchParams.get('reverse') || 'false'}`}
                     >
                       <option value="RELEVANCE|false">{isEn ? 'Featured' : 'الأكثر صلة'}</option>
                       <option value="PRICE|false">{isEn ? 'Price: Low to High' : 'السعر: من الأقل للأعلى'}</option>
                       <option value="PRICE|true">{isEn ? 'Price: High to Low' : 'السعر: من الأعلى للأقل'}</option>
                     </select>
-                    {/* Chevron down arrow on the left for RTL, right for LTR */}
-                    <svg className={`absolute ${isEn ? 'right-2' : 'left-2'} top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#234745] pointer-events-none`} fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7"></path></svg>
+                    <svg className={`absolute ${isEn ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#234745] pointer-events-none`} fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7"></path></svg>
                   </div>
                 </div>
-              ) : <div />}
 
-              {/* Right Side: Filter Button (visible on mobile/tablet) */}
-              <button 
-                 onClick={() => setIsFilterOpen(true)}
-                 className="lg:hidden flex items-center gap-1.5 px-3.5 py-2 bg-white border border-[#BBCFCD]/60 text-[#234745] rounded-xl font-bold hover:bg-gray-50 transition-all shadow-sm active:scale-95 group whitespace-nowrap text-[12px] md:text-[14px]"
-                 style={{ fontFamily: !isEn ? "'GE Dinar One', sans-serif" : undefined }}
-              >
-                 {/* Funnel outline icon matching the screenshot (placed first so in RTL it renders on the right) */}
-                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="text-[#234745] shrink-0">
-                   <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
-                 </svg>
-                 <span>{isEn ? 'Filter' : 'تصفية'}</span>
-              </button>
-            </div>
-
-            {/* Filter chips row (visible when filters are active) */}
-            <div className="flex items-center gap-2.5 flex-wrap justify-start mb-8 w-full">
-              <ActiveFilterChips isEn={isEn} collections={globalCollections || []} />
-            </div>
-
-            <div className="flex flex-col lg:flex-row gap-8 items-start">
-              <div className="flex-1 min-w-0 w-full lg:order-2">
-                  {!searchResults.totalResults ? (
-                      <NoSearchResults searchTerm={searchTerm} />
-                  ) : (
-                      <SearchResults results={searchResults.results as any} />
-                  )}
+                {/* Active Filter Chips (Right side in RTL) */}
+                <div className="flex-1 flex flex-wrap items-center gap-2.5 justify-start">
+                  <ActiveFilterChips isEn={isEn} collections={globalCollections || []} />
+                </div>
               </div>
 
-              <div className="hidden lg:block w-72 shrink-0">
-                 <FilterSidebar filters={filterOptions} collections={globalCollections || []} onClose={() => {}} isDesktop={true} isEn={isEn} />
-              </div>
+              {!searchResults.totalResults ? (
+                <NoSearchResults searchTerm={searchTerm} />
+              ) : (
+                <SearchResults results={searchResults.results as any} />
+              )}
+            </div>
+
+            <div className="hidden lg:block w-72 shrink-0">
+              <FilterSidebar filters={filterOptions} collections={globalCollections || []} onClose={() => {}} isDesktop={true} isEn={isEn} />
             </div>
           </div>
+        </div>
       </div>
       {mounted && typeof document !== 'undefined' && createPortal(
         <div className={`fixed inset-0 z-[999999] pointer-events-none transition-all duration-500 ${isFilterOpen ? 'visible' : 'invisible'}`}>
@@ -447,13 +492,16 @@ const SEARCH_QUERY = `#graphql
     $query: String!
     $startCursor: String
     $productFilters: [ProductFilter!]
+    $sortKey: SearchSortKeys
+    $reverse: Boolean
   ) @inContext(country: $country, language: $language) {
     products: search(
       query: $query,
       unavailableProducts: HIDE,
       types: [PRODUCT],
       first: $first,
-      sortKey: RELEVANCE,
+      sortKey: $sortKey,
+      reverse: $reverse,
       last: $last,
       before: $startCursor,
       after: $endCursor,

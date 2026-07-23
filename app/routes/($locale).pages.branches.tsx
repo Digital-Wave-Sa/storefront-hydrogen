@@ -1,10 +1,24 @@
 import { useOutletContext, useRouteLoaderData } from 'react-router';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import type { Route } from './+types/($locale).pages.branches';
 import { PageHeader } from '~/components/layout/PageHeader';
 
 export const meta: Route.MetaFunction = () => {
     return [{ title: 'Our Branches | فروعنا' }];
+};
+
+// Helper to extract city from custom.city metafield with fallback to address.city
+const getBranchCity = (loc: any) => {
+    const metaCity = loc.city?.value ||
+        loc.city_metafield?.value ||
+        (loc.metafields && loc.metafields.find((m: any) => m.key === 'city')?.value);
+    if (metaCity && String(metaCity).trim()) {
+        return String(metaCity).trim();
+    }
+    if (loc.address?.city && String(loc.address.city).trim()) {
+        return String(loc.address.city).trim();
+    }
+    return '';
 };
 
 // ─── MOCK DATA ─────────────────────────────────────────────────────────────
@@ -33,11 +47,18 @@ const deliveryZones = [
 export default function BranchesPage() {
     const { locale } = useOutletContext<{ locale: string }>();
     const rootData = useRouteLoaderData<any>('root');
-    const locations = rootData?.locations?.locations?.nodes || [];
+    const rawLocations = rootData?.locations?.locations?.nodes || [];
+    const locations = rawLocations.filter((loc: any) => {
+        const isHidden = loc.hide_from_storefront?.value === 'true' ||
+            loc.hide_from_storefront === true ||
+            loc.hide_from_storefront === 'true';
+        return !isHidden;
+    });
 
     const isEn = locale === 'en';
     const fontClass = isEn ? 'font-en' : 'font-ar';
-    const fontFam = isEn ? "'Inter', sans-serif" : "'GE Dinar One', sans-serif";
+    const fontFam = isEn ? "'Inter', sans-serif" : "'EnglishDigits', 'GE Dinar One', sans-serif";
+    const fontFam2 = isEn ? "'Inter', sans-serif" : "'EnglishDigits', 'Bahij Janna', sans-serif";
 
     const branchCount = locations.length > 0 ? locations.length : 117;
     const googleMapsKey = rootData?.env?.PUBLIC_GOOGLE_MAPS_KEY || (typeof window !== 'undefined' ? (window as any).ENV?.PUBLIC_GOOGLE_MAPS_KEY : undefined);
@@ -47,7 +68,96 @@ export default function BranchesPage() {
     const [mapLoaded, setMapLoaded] = useState(false);
 
     const [selectedBranch, setSelectedBranch] = useState<any>(null);
+    const [selectedCity, setSelectedCity] = useState<string>('all');
+    const [searchQuery, setSearchQuery] = useState<string>('');
     const mapInstanceRef = useRef<any>(null);
+
+    // Dynamic City Groups from locations custom.city metafield
+    const { cityGroups, citiesList, totalCitiesCount } = useMemo(() => {
+        const groups: Record<string, any[]> = {};
+
+        locations.forEach((loc: any) => {
+            const cityName = getBranchCity(loc) || (isEn ? 'Other' : 'أخرى');
+            if (!groups[cityName]) {
+                groups[cityName] = [];
+            }
+            groups[cityName].push(loc);
+        });
+
+        const sortedCityNames = Object.keys(groups).sort((a, b) => groups[b].length - groups[a].length);
+
+        const citiesList = [
+            { id: 'all', nameAr: 'الكل', nameEn: 'All', cityName: 'all', count: locations.length },
+            ...sortedCityNames.map((cityName) => ({
+                id: cityName,
+                nameAr: `${cityName} (${groups[cityName].length})`,
+                nameEn: `${cityName} (${groups[cityName].length})`,
+                cityName,
+                count: groups[cityName].length,
+            }))
+        ];
+
+        return {
+            cityGroups: groups,
+            citiesList,
+            totalCitiesCount: sortedCityNames.length,
+        };
+    }, [locations, isEn]);
+
+    // Dynamic Locations filtered by selected city and search query
+    const filteredLocations = useMemo(() => {
+        return locations.filter((loc: any) => {
+            const cityName = getBranchCity(loc) || (isEn ? 'Other' : 'أخرى');
+
+            if (selectedCity !== 'all' && cityName !== selectedCity) {
+                return false;
+            }
+
+            if (searchQuery.trim()) {
+                const q = searchQuery.toLowerCase().trim();
+                const nameMatch = loc.name?.toLowerCase().includes(q);
+                const addressMatch = loc.address?.address1?.toLowerCase().includes(q);
+                const cityMatch = cityName.toLowerCase().includes(q);
+                return nameMatch || addressMatch || cityMatch;
+            }
+
+            return true;
+        });
+    }, [locations, selectedCity, searchQuery, isEn]);
+
+    // Dynamic Delivery Zones Grid (Grouped by custom.city metafield)
+    const dynamicDeliveryZones = useMemo(() => {
+        const cityNames = Object.keys(cityGroups).sort((a, b) => cityGroups[b].length - cityGroups[a].length);
+
+        return cityNames.map((cityName) => {
+            const branchList = cityGroups[cityName] || [];
+            const count = branchList.length;
+
+            let branchesText = '';
+            if (isEn) {
+                branchesText = `${count} ${count === 1 ? 'Branch' : 'Branches'}`;
+            } else {
+                if (count === 1) branchesText = 'فرع واحد';
+                else if (count === 2) branchesText = 'فرعان';
+                else if (count >= 3 && count <= 10) branchesText = `${count} فروع`;
+                else branchesText = `${count} فرع`;
+            }
+
+            const hasDelivery = branchList.some((b: any) =>
+                b.delivery_fee?.value || b.delivery_hours_from?.value
+            );
+
+            return {
+                cityName,
+                count,
+                branchesText,
+                coverage: hasDelivery
+                    ? (isEn ? 'Delivery Available' : 'توصيل متاح')
+                    : (isEn ? 'Pickup Only' : 'استلام فقط'),
+                isPickupOnly: !hasDelivery,
+            };
+        });
+    }, [cityGroups, isEn]);
 
     const forceEnglishDigits = (str: string) => {
         if (!str) return '';
@@ -78,9 +188,23 @@ export default function BranchesPage() {
             return;
         }
 
+        let retryCount = 0;
         const initMap = () => {
             try {
-                if (!mapRef.current || !(window as any).google) return;
+                if (!mapRef.current) {
+                    if (retryCount < 20) {
+                        retryCount++;
+                        setTimeout(initMap, 250);
+                    }
+                    return;
+                }
+                if (!(window as any).google || !(window as any).google.maps || !(window as any).google.maps.Map) {
+                    if (retryCount < 20) {
+                        retryCount++;
+                        setTimeout(initMap, 250);
+                    }
+                    return;
+                }
 
                 const map = new (window as any).google.maps.Map(mapRef.current, {
                     center: { lat: 24.7136, lng: 46.6753 }, // Riyadh default
@@ -153,7 +277,7 @@ export default function BranchesPage() {
                 document.head.appendChild(script);
             } else {
                 // If script exists but wasn't loaded by us with a callback, just try to init after a small delay
-                setTimeout(initMap, 1000);
+                setTimeout(initMap, 500);
             }
         } else {
             initMap();
@@ -169,33 +293,33 @@ export default function BranchesPage() {
                 subtitle={isEn ? 'Our Branches' : 'فروعنا'}
                 isEn={isEn}
             >
-                <p className="text-[#BBCFCD] text-[18px] mb-12 max-w-lg mx-auto mt-4" style={{ fontFamily: fontFam, lineHeight: '100%' }}>
+                <p className="text-[#BBCFCD] text-[18px] mb-12 max-w-lg mx-auto mt-4" style={{ fontFamily: fontFam2, lineHeight: '100%' }}>
                     {isEn ? 'Search for the nearest branch or check delivery availability in your area' : 'ابحث عن أقرب فرع أو تحقق من توفر التوصيل لمنطقتك'}
                 </p>
 
                 {/* Stats */}
-                <div className="flex justify-center items-center gap-8 lg:gap-16 mt-4 w-full" style={{ fontFamily: fontFam }}>
+                <div className="flex justify-center items-center gap-4 lg:gap-16 mt-4 w-full" style={{ fontFamily: fontFam }}>
                     <div>
-                        <div className="text-2xl lg:text-3xl font-bold mb-1" style={{ fontFamily: 'EnglishDigits, "GE Dinar One", sans-serif' }}>{isEn ? branchCount : branchCount}</div>
+                        <div className="text-[24px] lg:text-3xl font-bold mb-1" style={{ fontFamily: 'EnglishDigits, "Bahij Janna", sans-serif' }}>{branchCount}</div>
                         <div className="text-white/60 text-xs lg:text-sm">{isEn ? 'Branches' : 'فرع'}</div>
                     </div>
                     <div>
-                        <div className="text-2xl lg:text-3xl font-bold mb-1" style={{ fontFamily: 'EnglishDigits, "GE Dinar One", sans-serif' }} dir="ltr">35+</div>
+                        <div className="text-[24px] lg:text-3xl font-bold mb-1" style={{ fontFamily: 'EnglishDigits, "Bahij Janna", sans-serif' }} dir="ltr">{totalCitiesCount || 35}+</div>
                         <div className="text-white/60 text-xs lg:text-sm">{isEn ? 'Cities' : 'مدينة'}</div>
                     </div>
                     <div>
-                        <div className="text-2xl lg:text-3xl font-bold mb-1" style={{ fontFamily: 'EnglishDigits, "GE Dinar One", sans-serif' }} dir="ltr">24/7</div>
+                        <div className="text-[24px] lg:text-3xl font-bold mb-1" style={{ fontFamily: 'EnglishDigits, "Bahij Janna", sans-serif' }} dir="ltr">24/7</div>
                         <div className="text-white/60 text-xs lg:text-sm">{isEn ? 'Most Branches' : 'معظم الفروع'}</div>
                     </div>
                     <div>
-                        <div className="text-2xl lg:text-3xl font-bold mb-1" style={{ fontFamily: 'EnglishDigits, "GE Dinar One", sans-serif' }} dir="ltr">{isEn ? '10 Min' : '10 دقيقة'}</div>
+                        <div className="text-[24px] lg:text-3xl font-bold mb-1" style={{ fontFamily: 'EnglishDigits, "Bahij Janna", sans-serif' }}>{isEn ? '10 Min' : '10 دقيقة'}</div>
                         <div className="text-white/60 text-xs lg:text-sm">{isEn ? 'Prep Time' : 'وقت التجهيز'}</div>
                     </div>
                 </div>
             </PageHeader>
 
             {/* ─── SEARCH & FILTER BAR ──────────────────────────────────────────── */}
-            <div className="bg-white py-6">
+            <div id="branches-search-section" className="bg-white py-6">
                 <div className="max-w-[1400px] mx-auto px-4 lg:px-6 flex flex-col lg:flex-row items-center justify-between gap-6">
                     {/* Search Input */}
                     <div className="w-full lg:w-[450px] flex items-center bg-white border border-gray-300 rounded-full p-1 relative shrink-0">
@@ -204,21 +328,29 @@ export default function BranchesPage() {
                         </div>
                         <input
                             type="text"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
                             placeholder={isEn ? 'Search for city or neighborhood...' : 'إبحث عن مدينة أو حي...'}
                             className="w-full py-2 bg-transparent text-sm outline-none text-gray-700"
                             style={{ fontFamily: fontFam }}
                         />
+                        {searchQuery && (
+                            <button onClick={() => setSearchQuery('')} className="text-gray-400 hover:text-gray-600 px-2">
+                                ✕
+                            </button>
+                        )}
                         <button className="bg-[#234745] hover:bg-[#1a3533] text-white px-8 py-2 rounded-full text-sm font-bold transition-colors shrink-0" style={{ fontFamily: fontFam }}>
                             {isEn ? 'Search' : 'بحث'}
                         </button>
                     </div>
 
-                    {/* Filter Pills */}
+                    {/* Filter Pills (Dynamic from custom.city metafields) */}
                     <div className="flex-1 overflow-x-auto scrollbar-hide flex items-center justify-end gap-2 lg:gap-3 w-full" dir={isEn ? 'ltr' : 'rtl'}>
-                        {cities.map((city, idx) => (
+                        {citiesList.map((city) => (
                             <button
-                                key={idx}
-                                className={`whitespace-nowrap px-5 py-2 rounded-full text-[13px] font-bold transition-colors border ${idx === 0 ? 'bg-[#BBCFCD] border-[#BBCFCD] text-[#234745]' : 'bg-white border-gray-300 text-gray-500 hover:border-gray-400'}`}
+                                key={city.id}
+                                onClick={() => setSelectedCity(city.cityName)}
+                                className={`whitespace-nowrap px-5 py-2 rounded-full text-[13px] font-bold transition-colors border ${selectedCity === city.cityName ? 'bg-[#BBCFCD] border-[#BBCFCD] text-[#234745]' : 'bg-white border-gray-300 text-gray-500 hover:border-gray-400'}`}
                                 style={{ fontFamily: fontFam }}
                             >
                                 {isEn ? city.nameEn : city.nameAr}
@@ -229,17 +361,22 @@ export default function BranchesPage() {
             </div>
 
             {/* ─── MAP & LIST LAYOUT ────────────────────────────────────────────── */}
-            <div className="max-w-[1400px] mx-auto px-4 lg:px-6 py-6 mb-12">
+            <div className="max-w-[1400px] mx-auto px-4 lg:px-6 py-6 !mb-4">
                 <div className="flex flex-col lg:flex-row gap-6 h-auto lg:h-[800px]">
 
-                    {/* List Area (First in DOM so it's on the right in RTL) */}
-                    <div className="w-full lg:w-[400px] flex flex-col h-full bg-white border border-gray-300 rounded-[20px] p-4 shrink-0">
-                        <div className="mb-4 text-[#1a1a1a] font-bold text-[14px] flex items-center justify-start px-2" style={{ fontFamily: fontFam }}>
-                            <span>{isEn ? `Showing ${locations.length} Branches` : `عرض ${locations.length} فروع`}</span>
+                    {/* List Area */}
+                    <div className="w-full lg:w-[400px] flex flex-col h-[380px] lg:h-full bg-white border border-gray-300 rounded-[20px] p-4 shrink-0">
+                        <div className="mb-4 text-[#1a1a1a] font-bold text-[14px] flex items-center justify-between px-2" style={{ fontFamily: fontFam }}>
+                            <span>{isEn ? `Showing ${filteredLocations.length} Branches` : `عرض ${filteredLocations.length} فروع`}</span>
+                            {selectedCity !== 'all' && (
+                                <button onClick={() => setSelectedCity('all')} className="text-xs text-[#234745] underline font-normal">
+                                    {isEn ? 'Show All' : 'إظهار الكل'}
+                                </button>
+                            )}
                         </div>
 
                         <div className="flex-1 overflow-y-auto space-y-3 pr-2 scrollbar-thin">
-                            {locations.map((branch: any) => {
+                            {filteredLocations.map((branch: any) => {
                                 const rawShift1 = branch.working_hours_from?.value && branch.working_hours_to?.value
                                     ? `${branch.working_hours_from.value} - ${branch.working_hours_to.value}`
                                     : `${isEn ? '8:00 AM' : '8:00 ص'} - ${isEn ? '11:00 PM' : '11:00 م'}`;
@@ -248,25 +385,26 @@ export default function BranchesPage() {
                                     : '';
                                 const hours = forceEnglishDigits(rawShift2 ? `${rawShift1} & ${rawShift2}` : rawShift1);
                                 const isSelected = selectedBranch?.id === branch.id;
+                                const cityName = getBranchCity(branch);
 
                                 return (
                                     <div
                                         key={branch.id}
                                         onClick={() => handleBranchClick(branch)}
-                                        className={`bg-[#F8F9FA] rounded-xl p-4 border transition-all cursor-pointer ${isSelected ? 'border-[#234745] bg-[#F1F5F4]' : 'border-transparent hover:border-gray-200'}`}
+                                        className={`bg-[#F8F9FA] rounded-xl p-4 border transition-all cursor-pointer ${isSelected ? 'border-0 bg-[#FEF8EB]' : 'border-transparent hover:border-gray-200'}`}
                                     >
-                                        <div className="flex justify-between items-start mb-1">
+                                        <div className="flex justify-between items-center mb-3">
                                             <h3 className="font-bold text-[14px] text-[#234745]" style={{ fontFamily: fontFam }}>
                                                 {branch.name}
                                             </h3>
-                                            <span className="px-3 py-1 rounded-full text-[10px] font-bold bg-[#E2E8F0] text-gray-600" style={{ fontFamily: fontFam }}>
+                                            <span className="px-3 py-1 rounded-full text-[13px] font-normal bg-[#BBCFCD] text-gray-600" style={{ fontFamily: fontFam }}>
                                                 {isEn ? 'Open Now' : 'مفتوح الآن'}
                                             </span>
                                         </div>
-                                        <p className="text-gray-500 text-[12px] mb-2 leading-relaxed" style={{ fontFamily: fontFam }}>
-                                            {branch.address?.address1} {branch.address?.city ? `, ${branch.address.city}` : ''}
+                                        <p className="text-[#9FB7AE] font-medium text-[16px] !mb-2 leading-relaxed" style={{ fontFamily: fontFam }}>
+                                            {branch.address?.address1} {cityName ? `, ${cityName}` : (branch.address?.city ? `, ${branch.address.city}` : '')}
                                         </p>
-                                        <div className="flex items-center gap-1.5 text-gray-400 text-[11px] mb-4 font-medium" style={{ fontFamily: fontFam }}>
+                                        <div className="flex !items-center gap-1.5 text-[#9FB7AE] text-[11px] mb-4 font-medium" style={{ fontFamily: fontFam }}>
                                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
                                             <span dir="ltr">{hours}</span>
                                         </div>
@@ -309,7 +447,7 @@ export default function BranchesPage() {
                     </div>
 
                     {/* Map Area */}
-                    <div className="w-full flex-1 bg-gray-200 rounded-[20px] overflow-hidden h-[500px] lg:h-full relative border border-gray-300 z-10 flex items-center justify-center">
+                    <div className="w-full bg-gray-200 rounded-[20px] overflow-hidden h-[420px] lg:h-full lg:flex-1 relative border border-gray-300 z-10 flex items-center justify-center">
                         {mapError && (
                             <div className="absolute inset-0 flex items-center justify-center bg-gray-100 z-20 p-6 text-center text-red-500 font-bold" style={{ fontFamily: fontFam }}>
                                 {mapError}
@@ -321,12 +459,14 @@ export default function BranchesPage() {
                             </div>
                         )}
                         {/* Interactive Native Google Map */}
-                        <div ref={mapRef} style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} />
+                        <div ref={mapRef} className="w-full h-full min-h-[420px] lg:min-h-full" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} />
 
                         {/* Static Floating Card matching mockup */}
                         {selectedBranch && (
-                            <div className="absolute bottom-6 left-6 lg:bottom-10 lg:left-10 bg-white rounded-[16px] shadow-lg p-5 w-[300px] z-30" style={{ fontFamily: fontFam }}>
-                                <h4 className="font-bold text-[14px] text-[#1a1a1a] mb-1 text-start">{selectedBranch.name}</h4>
+                            <div
+                                className="absolute bottom-4 left-1/2 -translate-x-1/2 lg:bottom-10 lg:left-10 lg:translate-x-0 bg-white rounded-[12px] shadow-lg p-4 w-[300px] z-30"
+                                style={{ fontFamily: fontFam }}
+                            >                                <h4 className="font-bold text-[14px] text-[#1a1a1a] mb-1 text-start">{selectedBranch.name}</h4>
                                 <p className="text-[12px] text-gray-500 mb-4 text-start">{selectedBranch.address?.address1 || ''}</p>
                                 <div className="flex gap-2">
                                     {selectedBranch.address?.phone ? (
@@ -357,35 +497,43 @@ export default function BranchesPage() {
                 </div>
             </div>
 
-            {/* ─── DELIVERY ZONES ───────────────────────────────────────────────── */}
-            <div className="max-w-[1400px] mx-auto px-4 lg:px-6 py-12 mb-20">
-                <div className="flex flex-col lg:flex-row justify-between items-center mb-8 gap-4">
-                    <h2 className="text-3xl lg:text-4xl font-bold text-[#1a1a1a]" style={{ fontFamily: isEn ? fontFam : "'Bahij Janna', sans-serif" }}>
+            {/* ─── DYNAMIC DELIVERY ZONES (Read directly from custom.city metafield) ───────────────── */}
+            <div className="max-w-[1400px] mx-auto px-4 lg:px-6 py-4 mb-20">
+                <div className="flex flex-row justify-between !items-center mb-8 gap-4">
+                    <h2 className="text-[20px] lg:text-[50px] font-bold !mb-0 text-[#234745]" style={{ fontFamily: isEn ? fontFam : "'Bahij Janna', sans-serif" }}>
                         {isEn ? 'Delivery Zones' : 'مناطق التوصيل'}
                     </h2>
-                    <div className="flex items-center gap-6 text-[12px] font-bold" style={{ fontFamily: fontFam }}>
-                        <div className="flex items-center gap-2 text-[#234745]">
+                    <div className="flex items-center gap-3 text-[12px] font-normal" style={{ fontFamily: fontFam }}>
+                        <div className="flex items-center gap-1 text-[#234745]">
                             <div className="w-2 h-2 rounded-full bg-[#234745]" />
                             <span>{isEn ? 'Delivery Available' : 'توصيل متاح'}</span>
                         </div>
-                        <div className="flex items-center gap-2 text-gray-400">
-                            <div className="w-2 h-2 rounded-full bg-gray-400" />
+                        <div className="flex items-center gap-1 text-[#9FB7AE]">
+                            <div className="w-2 h-2 rounded-full bg-[#9FB7AE]" />
                             <span>{isEn ? 'Pickup Only' : 'استلام فقط'}</span>
                         </div>
                     </div>
                 </div>
 
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 lg:gap-6">
-                    {deliveryZones.map((zone, idx) => (
-                        <div key={idx} className="bg-white border border-gray-300 rounded-[16px] p-8 text-center hover:shadow-sm transition-shadow">
-                            <h3 className="text-[22px] font-bold text-[#1a1a1a] mb-2" style={{ fontFamily: isEn ? fontFam : "'Bahij Janna', sans-serif" }}>
-                                {isEn ? zone.nameEn : zone.nameAr}
+                    {dynamicDeliveryZones.map((zone) => (
+                        <div
+                            key={zone.cityName}
+                            onClick={() => {
+                                setSelectedCity(zone.cityName);
+                                const el = document.getElementById('branches-search-section');
+                                if (el) el.scrollIntoView({ behavior: 'smooth' });
+                            }}
+                            className="bg-white border border-gray-300 rounded-[16px] p-6 text-center transition-all cursor-pointer group"
+                        >
+                            <h3 className="text-[20px] md:text-[30px] font-bold text-[#234745] mb-2 transition-transform" style={{ fontFamily: isEn ? fontFam2 : "'Bahij Janna', sans-serif" }}>
+                                {zone.cityName}
                             </h3>
-                            <p className="text-gray-400 text-[13px] font-medium mb-5" style={{ fontFamily: fontFam }}>
-                                {isEn ? zone.branchesEn : zone.branchesAr}
+                            <p className="text-[#9FB7AE] text-[16px] md:text-[18px] font-medium mb-4" style={{ fontFamily: fontFam }}>
+                                {zone.branchesText}
                             </p>
-                            <div className="text-[#1a1a1a] text-[13px] font-bold" style={{ fontFamily: fontFam }}>
-                                {isEn ? zone.coverageEn : zone.coverageAr}
+                            <div className={`text-[15px] md:text-[18px] font-medium mt-2 ${zone.isPickupOnly ? 'text-gray-400' : 'text-[#234745]'}`} style={{ fontFamily: fontFam }}>
+                                {zone.coverage}
                             </div>
                         </div>
                     ))}

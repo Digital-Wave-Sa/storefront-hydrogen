@@ -129,7 +129,7 @@ export async function loader({context}: Route.LoaderArgs) {
       {
         status: 200,
         headers: {
-          'Cache-Control': 'public, max-age=300, stale-while-revalidate=3600',
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
         },
       }
     );

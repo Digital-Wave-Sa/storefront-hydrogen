@@ -272,9 +272,74 @@ const RECOMMENDED_PRODUCTS_QUERY = `#graphql
   }
   query RecommendedProducts ($country: CountryCode, $language: LanguageCode)
     @inContext(country: $country, language: $language) {
-    products(first: 8, sortKey: UPDATED_AT, reverse: true) {
+    
+    fallbackProducts: products(first: 8, sortKey: UPDATED_AT, reverse: true) {
       nodes {
         ...RecommendedProduct
+      }
+    }
+
+    bestSellers: collection(handle: "best-sellers") {
+      products(first: 8) {
+        nodes {
+          ...RecommendedProduct
+        }
+      }
+    }
+
+    kunafa: collection(handle: "kunafa") {
+      products(first: 8) {
+        nodes {
+          ...RecommendedProduct
+        }
+      }
+    }
+
+    sweets: collection(handle: "sweets") {
+      products(first: 8) {
+        nodes {
+          ...RecommendedProduct
+        }
+      }
+    }
+
+    chocolateCake: collection(handle: "chocolate-cake") {
+      products(first: 8) {
+        nodes {
+          ...RecommendedProduct
+        }
+      }
+    }
+
+    cakes: collection(handle: "cakes") {
+      products(first: 8) {
+        nodes {
+          ...RecommendedProduct
+        }
+      }
+    }
+
+    chocolate: collection(handle: "chocolate") {
+      products(first: 8) {
+        nodes {
+          ...RecommendedProduct
+        }
+      }
+    }
+
+    gifts: collection(handle: "gifts") {
+      products(first: 8) {
+        nodes {
+          ...RecommendedProduct
+        }
+      }
+    }
+
+    gifting: collection(handle: "gifting") {
+      products(first: 8) {
+        nodes {
+          ...RecommendedProduct
+        }
       }
     }
   }

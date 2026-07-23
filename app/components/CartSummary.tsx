@@ -1,17 +1,17 @@
-import type {CartApiQueryFragment} from 'storefrontapi.generated';
-import type {CartLayout} from '~/components/CartMain';
-import {CartForm, Money, type OptimisticCart} from '@shopify/hydrogen';
-import {useEffect, useId, useRef, useState} from 'react';
-import {useFetcher, useRouteLoaderData, Link, useLocation, Form} from 'react-router';
-import {useAside} from '~/components/Aside';
-import {Price, SaudiRiyalSymbol} from './Price';
+import type { CartApiQueryFragment } from 'storefrontapi.generated';
+import type { CartLayout } from '~/components/CartMain';
+import { CartForm, Money, type OptimisticCart } from '@shopify/hydrogen';
+import { useEffect, useId, useRef, useState } from 'react';
+import { useFetcher, useRouteLoaderData, Link, useLocation, Form } from 'react-router';
+import { useAside } from '~/components/Aside';
+import { Price, SaudiRiyalSymbol } from './Price';
 
 type CartSummaryProps = {
   cart: OptimisticCart<CartApiQueryFragment | null>;
   layout: CartLayout;
 };
 
-export function CartSummary({cart, layout}: CartSummaryProps) {
+export function CartSummary({ cart, layout }: CartSummaryProps) {
   const summaryId = useId();
   const discountsHeadingId = useId();
   const discountCodeInputId = useId();
@@ -45,41 +45,41 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
   const loyaltyPointsRedeemed = parseInt(appliedPointsStr) || 0;
   const expectedLoyaltyDiscount = loyaltyPointsRedeemed * 0.01;
   const hasLoyaltyDiscount = cart?.discountCodes?.some((dc: any) => dc.code?.startsWith('LOYALTY-')) && expectedLoyaltyDiscount > 0;
-  
+
   const loyaltyDiscountDisplay = hasLoyaltyDiscount ? expectedLoyaltyDiscount : 0;
   // Make sure we don't show negative other discounts due to floating point math
   const otherDiscountDisplay = Math.max(0, totalDiscount - loyaltyDiscountDisplay);
 
   const attributes = cart?.attributes || [];
-  
+
   // Fallbacks to session values if cart attributes are not written or cleared
   const sessionBranchName = rootData?.selectedLocationName;
-  const isBranchPlaceholder = !sessionBranchName || 
-                              sessionBranchName.includes('اختر') || 
-                              sessionBranchName.toLowerCase().includes('select');
-  
+  const isBranchPlaceholder = !sessionBranchName ||
+    sessionBranchName.includes('اختر') ||
+    sessionBranchName.toLowerCase().includes('select');
+
   const attrBranch = attributes.find((a: any) => a.key.toLowerCase().trim() === 'branch')?.value;
   const branch = attrBranch || (!isBranchPlaceholder ? sessionBranchName : undefined);
-  
+
   const attrBranchId = attributes.find((a: any) => a.key.toLowerCase().trim() === 'branch id')?.value;
   const branchId = attrBranchId || (!isBranchPlaceholder ? rootData?.selectedLocationId : undefined);
-  
+
   const attrFulfillmentType = attributes.find((a: any) => a.key.toLowerCase().trim() === 'fulfillment type')?.value;
   const fulfillmentType = attrFulfillmentType || rootData?.fulfillmentType;
-  
+
   const timeSlot = attributes.find((a: any) => a.key.toLowerCase().trim() === 'time slot')?.value;
 
   // Dynamic Settings from Metafields
   const locations = rootData?.locations?.locations?.nodes || rootData?.locations?.nodes || [];
   // Try matching by ID first (more reliable), then fallback to name
-  const currentBranch = locations.find((loc: any) => 
-    (branchId && loc.id === branchId) || 
+  const currentBranch = locations.find((loc: any) =>
+    (branchId && loc.id === branchId) ||
     (branch && loc.name === branch)
   );
 
   const minOrderMeta = currentBranch?.min_order_value || currentBranch?.metafields?.find((m: any) => m?.key === 'minimum_order_value');
   const minOrderAttr = attributes.find((a: any) => a.key.toLowerCase().trim() === 'minimum order value')?.value;
-  const minOrderValue = minOrderAttr ? parseFloat(minOrderAttr) : (minOrderMeta?.value ? parseFloat(minOrderMeta.value) : 50); 
+  const minOrderValue = minOrderAttr ? parseFloat(minOrderAttr) : (minOrderMeta?.value ? parseFloat(minOrderMeta.value) : 50);
   const isMinOrderMet = subtotal >= minOrderValue;
   const thresholdMeta = currentBranch?.free_delivery_threshold || currentBranch?.metafields?.find((m: any) => m?.key === 'free_delivery_threshold');
   const feeMeta = currentBranch?.delivery_fee || currentBranch?.metafields?.find((m: any) => m?.key === 'delivery_fee');
@@ -92,20 +92,26 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
   const deliveryFee = (isFreeDelivery || isPickup) ? 0 : (feeAttribute ? parseFloat(feeAttribute) : (feeMeta?.value ? parseFloat(feeMeta.value) : 25));
   const calculatedTotal = parseFloat(cart?.cost?.totalAmount?.amount || '0') + deliveryFee;
 
-  const isTimeSlotSelected = !!timeSlot && timeSlot.trim() !== '';
-  const isBranchSelected = !!branch && branch.trim() !== '';
+  const isBranchHidden = currentBranch && (
+    currentBranch.hide_from_storefront?.value === 'true' ||
+    currentBranch.hide_from_storefront === true ||
+    currentBranch.hide_from_storefront === 'true'
+  );
 
-  const hasPreOrderItems = cart?.lines?.nodes?.some((line: any) => 
-    line.merchandise?.product?.tags?.some((tag: string) => 
+  const isTimeSlotSelected = !!timeSlot && timeSlot.trim() !== '';
+  const isBranchSelected = !!branch && branch.trim() !== '' && !isBranchHidden;
+
+  const hasPreOrderItems = cart?.lines?.nodes?.some((line: any) =>
+    line.merchandise?.product?.tags?.some((tag: string) =>
       ['preorder', 'pre-order', 'طلب مسبق'].includes(tag.toLowerCase().trim())
     )
   );
 
-  const hasCashOnly = cart?.lines?.nodes?.some((line: any) => 
+  const hasCashOnly = cart?.lines?.nodes?.some((line: any) =>
     line.merchandise?.product?.tags?.some((tag: string) => tag.toLowerCase().trim() === 'cash-only')
   );
 
-  const prepaidOnlyItems = cart?.lines?.nodes?.filter((line: any) => 
+  const prepaidOnlyItems = cart?.lines?.nodes?.filter((line: any) =>
     line.merchandise?.product?.tags?.some((tag: string) => {
       const t = tag.toLowerCase().trim();
       return t === 'prepaid-only' || t === 'nocod';
@@ -119,17 +125,17 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
 
   const outOfStockItems = cart?.lines?.nodes?.filter((line: any) => {
     if (!currentBranch) return false;
-    
+
     const availabilityNodes = line.merchandise?.storeAvailability?.nodes || [];
     if (availabilityNodes.length === 0) return false;
-    
-    const currentBranchAvailability = availabilityNodes.find((node: any) => 
+
+    const currentBranchAvailability = availabilityNodes.find((node: any) =>
       node.location?.name === currentBranch.name || node.location?.id === currentBranch.id
     );
 
     return currentBranchAvailability && !currentBranchAvailability.available;
   }) || [];
-  
+
   const hasOutOfStockItems = outOfStockItems.length > 0;
   const outOfStockItemNamesEn = outOfStockItems.map((line: any) => line.merchandise?.product?.title || line.merchandise?.title).join(', ');
   const outOfStockItemNamesAr = outOfStockItems.map((line: any) => line.merchandise?.product?.title || line.merchandise?.title).join('، ');
@@ -138,7 +144,7 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
   const dynamicTimeSlots = selectedDate ? generateDynamicSlots(currentBranch, isEn, fulfillmentType, selectedDate) : [];
   const isTimeSlotInvalid = !!timeSlot && !dynamicTimeSlots.includes(timeSlot);
 
-  const canCheckout = isMinOrderMet && isBranchSelected && !isOutOfRange && !hasOutOfStockItems && !isTimeSlotInvalid && !!selectedDate && !!timeSlot;
+  const canCheckout = isMinOrderMet && isBranchSelected && !isBranchHidden && !isOutOfRange && !hasOutOfStockItems && !isTimeSlotInvalid && !!selectedDate && !!timeSlot;
 
   const branchHoursStr = (() => {
     if (!currentBranch) return '';
@@ -161,15 +167,15 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
 
 
   return (
-    <div aria-labelledby={summaryId} className="flex flex-col gap-4">
+    <div aria-labelledby={summaryId} className="flex flex-col gap-2">
       {layout === 'page' && (
         <>
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col pt-6">
+          <div className="bg-white rounded-2xl border border-[#BBCFCD]/80 flex flex-col pt-4">
             {/* Header */}
-            <div className="px-6 pb-4 border-b border-gray-200">
-               <h3 className={`text-[20px] font-black text-[#1a1a1a] ${isEn ? 'text-left' : 'text-right'}`} style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" }}>
-                 {isEn ? 'Order Summary' : 'ملخص الطلب'}
-               </h3>
+            <div className="mx-6 pb-2 border-2px border-[#BBCFCD]/80">
+              <h3 className={`text-[20px] font-black text-[#1a1a1a] ${isEn ? 'text-left' : 'text-right'}`} style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" }}>
+                {isEn ? 'Order Summary' : 'ملخص الطلب'}
+              </h3>
             </div>
 
             <div className="px-6 py-6 flex flex-col gap-6">
@@ -191,8 +197,8 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
                       if (typeof window !== 'undefined' && (window as any).Smile) {
                         (window as any).Smile.show();
                       } else {
-                        alert(isEn 
-                          ? "Smile.io widget is loading or PUBLIC_SMILE_CHANNEL_KEY is not configured yet." 
+                        alert(isEn
+                          ? "Smile.io widget is loading or PUBLIC_SMILE_CHANNEL_KEY is not configured yet."
                           : "أداة Smile.io قيد التحميل أو لم يتم إعداد مفتاح PUBLIC_SMILE_CHANNEL_KEY بعد."
                         );
                       }
@@ -223,61 +229,61 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
 
               {/* Breakdown */}
               <div className="flex flex-col gap-4">
+                <div className="flex justify-between items-center text-[15px]">
+                  <dt className="text-[#9FB7AE] font-medium" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>{isEn ? 'Subtotal' : 'المجموع الفرعي'}</dt>
+                  <dd className="text-[#234745] font-bold font-en flex items-center gap-1 flex-row-reverse">
+                    <SaudiRiyalSymbol className="h-4 w-auto" />
+                    <span>{subtotalBeforeDiscounts.toFixed(2)}</span>
+                  </dd>
+                </div>
+
+                {otherDiscountDisplay > 0 && (
                   <div className="flex justify-between items-center text-[15px]">
-                     <dt className="text-[#9FB7AE] font-bold" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>{isEn ? 'Subtotal' : 'المجموع الفرعي'}</dt>
-                     <dd className="text-[#234745] font-black font-en flex items-center gap-1 flex-row-reverse">
-                       <SaudiRiyalSymbol className="h-4 w-auto" />
-                       <span>{subtotalBeforeDiscounts.toFixed(2)}</span>
-                     </dd>
+                    <dt className="text-green-600 font-bold" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
+                      {isEn ? 'Discount' : 'الخصم'}
+                    </dt>
+                    <dd className="text-green-600 font-black font-en flex items-center gap-1 flex-row-reverse">
+                      <SaudiRiyalSymbol className="h-4 w-auto" />
+                      <span>-{otherDiscountDisplay.toFixed(2)}</span>
+                    </dd>
                   </div>
+                )}
 
-                  {otherDiscountDisplay > 0 && (
-                    <div className="flex justify-between items-center text-[15px]">
-                      <dt className="text-green-600 font-bold" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
-                        {isEn ? 'Discount' : 'الخصم'}
-                      </dt>
-                      <dd className="text-green-600 font-black font-en flex items-center gap-1 flex-row-reverse">
-                        <SaudiRiyalSymbol className="h-4 w-auto" />
-                        <span>-{otherDiscountDisplay.toFixed(2)}</span>
-                      </dd>
-                    </div>
-                  )}
-
-                  {loyaltyDiscountDisplay > 0 && (
-                    <div className="flex justify-between items-center text-[15px]">
-                      <dt className="text-green-600 font-bold" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
-                        {isEn ? 'Loyalty Discount' : 'خصم نقاط الولاء'}
-                      </dt>
-                      <dd className="text-green-600 font-black font-en flex items-center gap-1 flex-row-reverse">
-                        <SaudiRiyalSymbol className="h-4 w-auto" />
-                        <span>-{loyaltyDiscountDisplay.toFixed(2)}</span>
-                      </dd>
-                    </div>
-                  )}
-
+                {loyaltyDiscountDisplay > 0 && (
                   <div className="flex justify-between items-center text-[15px]">
-                     <dt className="text-[#9FB7AE] font-bold" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>{isEn ? 'Delivery Fees' : 'رسوم التوصيل'}</dt>
-                     <dd className="text-[#234745] font-bold font-en flex items-center gap-1">
-                       {isFreeDelivery ? (
-                         <span className="text-[#234745] font-black text-[15px]">{isEn ? 'Free' : 'مجاني'}</span>
-                       ) : (
-                         <div className="flex items-center gap-1 flex-row-reverse">
-                           <SaudiRiyalSymbol className="h-4 w-auto" />
-                           <span className="font-black">{deliveryFee.toFixed(2)}</span>
-                         </div>
-                       )}
-                     </dd>
+                    <dt className="text-green-600 font-bold" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
+                      {isEn ? 'Loyalty Discount' : 'خصم نقاط الولاء'}
+                    </dt>
+                    <dd className="text-green-600 font-black font-en flex items-center gap-1 flex-row-reverse">
+                      <SaudiRiyalSymbol className="h-4 w-auto" />
+                      <span>-{loyaltyDiscountDisplay.toFixed(2)}</span>
+                    </dd>
                   </div>
+                )}
 
-                  {cart?.cost?.totalTaxAmount && (
-                    <div className="flex justify-between items-center text-[15px]">
-                      <dt className="text-[#9FB7AE] font-bold" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>{isEn ? 'VAT (15%)' : 'ضريبة القيمة المضافة (١٥٪)'}</dt>
-                      <dd className="text-[#234745] font-black font-en flex items-center gap-1 flex-row-reverse">
+                <div className="flex justify-between items-center text-[15px]">
+                  <dt className="text-[#9FB7AE] font-medium" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>{isEn ? 'Delivery Fees' : 'رسوم التوصيل'}</dt>
+                  <dd className="text-[#234745] font-bold font-en flex items-center gap-1">
+                    {isFreeDelivery ? (
+                      <span className="text-[#234745] font-black text-[15px]">{isEn ? 'Free' : 'مجاني'}</span>
+                    ) : (
+                      <div className="flex items-center gap-1 flex-row-reverse">
                         <SaudiRiyalSymbol className="h-4 w-auto" />
-                        <span>{parseFloat(cart.cost.totalTaxAmount.amount).toFixed(2)}</span>
-                      </dd>
-                    </div>
-                  )}
+                        <span className="font-black">{deliveryFee.toFixed(2)}</span>
+                      </div>
+                    )}
+                  </dd>
+                </div>
+
+                {cart?.cost?.totalTaxAmount && (
+                  <div className="flex justify-between items-center text-[15px]">
+                    <dt className="text-[#9FB7AE] font-bold" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>{isEn ? 'VAT (15%)' : 'ضريبة القيمة المضافة (١٥٪)'}</dt>
+                    <dd className="text-[#234745] font-bold font-en flex items-center gap-1 flex-row-reverse">
+                      <SaudiRiyalSymbol className="h-4 w-auto" />
+                      <span>{parseFloat(cart.cost.totalTaxAmount.amount).toFixed(2)}</span>
+                    </dd>
+                  </div>
+                )}
               </div>
 
               {/* Separator */}
@@ -285,18 +291,18 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
 
               {/* Total */}
               <div className="flex justify-between items-center">
-                 <div className="flex flex-col gap-1">
-                    <dt className="text-[20px] font-black text-[#234745]" style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" }}>
-                      {isEn ? 'Total' : 'الإجمالي'}
-                    </dt>
-                    <span className="text-[12px] text-[#9FB7AE] font-bold">
-                      {isEn ? 'Includes 15% VAT' : 'شامل ضريبة القيمة المضافة ١٥٪'}
-                    </span>
-                 </div>
-                 <dd className="text-[28px] font-black text-[#234745] font-en flex items-center gap-2 flex-row-reverse">
-                   <SaudiRiyalSymbol className="h-6 w-auto" />
-                   <span>{calculatedTotal.toFixed(2)}</span>
-                 </dd>
+                <div className="flex flex-col gap-1">
+                  <dt className="text-[20px] font-black text-[#234745]" style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" }}>
+                    {isEn ? 'Total' : 'الإجمالي'}
+                  </dt>
+                  <span className="text-[12px] text-[#9FB7AE] font-bold">
+                    {isEn ? 'Includes 15% VAT' : 'شامل ضريبة القيمة المضافة ١٥٪'}
+                  </span>
+                </div>
+                <dd className="text-[28px] font-black text-[#234745] font-en flex items-center gap-2 flex-row-reverse">
+                  <SaudiRiyalSymbol className="h-6 w-auto" />
+                  <span>{calculatedTotal.toFixed(2)}</span>
+                </dd>
               </div>
 
               {/* Buttons */}
@@ -321,74 +327,75 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
                 )}
 
 
-               {hasPrepaidOnly && (
-                 <div className="bg-orange-50 border border-orange-200 p-3 rounded-lg flex items-start gap-2 mb-1">
-                   <svg className="w-5 h-5 text-orange-500 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                   </svg>
-                   <p className="text-orange-800 text-[13px] font-bold leading-tight" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
-                     {isEn 
-                       ? `Note: Cash on Delivery is not available because your cart contains restricted items (${prepaidItemNamesEn}). Please use a prepaid method at checkout.` 
-                       : `ملاحظة: الدفع عند الاستلام غير متاح لاحتواء سلتك على منتجات تتطلب الدفع المسبق (${prepaidItemNamesAr}). يرجى استخدام طريقة دفع إلكترونية.`}
-                   </p>
-                 </div>
-               )}
+                {hasPrepaidOnly && (
+                  <div className="bg-orange-50 border border-orange-200 p-3 rounded-lg flex items-start gap-2 mb-1">
+                    <svg className="w-5 h-5 text-orange-500 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    <p className="text-orange-800 text-[13px] font-bold leading-tight" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
+                      {isEn
+                        ? `Note: Cash on Delivery is not available because your cart contains restricted items (${prepaidItemNamesEn}). Please use a prepaid method at checkout.`
+                        : `ملاحظة: الدفع عند الاستلام غير متاح لاحتواء سلتك على منتجات تتطلب الدفع المسبق (${prepaidItemNamesAr}). يرجى استخدام طريقة دفع إلكترونية.`}
+                    </p>
+                  </div>
+                )}
 
-               <CartCheckoutActions 
-                 checkoutUrl={cart?.checkoutUrl} 
-                 discountCodes={cart?.discountCodes}
-                 isEn={isEn} 
-                 disabled={!canCheckout}
-                 totalAmount={calculatedTotal}
-                 currencyCode={currencyCode}
-                 isPickup={isPickup}
-                 cart={cart}
-                 validationError={
-                   !isMinOrderMet ? (isEn ? <span className="flex items-center gap-1">Minimum order is <SaudiRiyalSymbol className="h-3 w-auto" /> {minOrderValue}</span> : <span className="flex items-center gap-1 flex-row-reverse">الحد الأدنى هو {minOrderValue} <SaudiRiyalSymbol className="h-3 w-auto" /></span>) :
-                   !isBranchSelected ? (isEn ? 'Please select a branch' : 'يرجى اختيار الفرع') :
-                   isOutOfRange ? (isEn ? 'Address is out of delivery range' : 'العنوان خارج نطاق التوصيل') :
-                   !selectedDate ? (isPickup ? (isEn ? 'Please select pickup date' : 'يرجى اختيار تاريخ الاستلام') : (isEn ? 'Please select delivery date' : 'يرجى اختيار تاريخ التوصيل')) :
-                   !timeSlot ? (isPickup ? (isEn ? 'Please select pickup window' : 'يرجى اختيار فترة الاستلام') : (isEn ? 'Please select delivery window' : 'يرجى اختيار فترة التوصيل')) :
-                   isTimeSlotInvalid ? (isPickup ? (isEn ? 'Time slot is outside working hours' : 'وقت الاستلام خارج ساعات العمل') : (isEn ? 'Delivery time is outside working hours' : 'وقت التوصيل خارج ساعات العمل')) :
-                   null
-                 }
-               />
-               <Link 
-                 to={isEn ? "/en" : "/"} 
-                 className="w-full h-[52px] bg-[#F9E8E8] hover:bg-[#F2DFDF] active:scale-[0.98] transition-all text-[#DF4646] rounded-[50px] font-black text-[16px] flex items-center justify-center border border-[#EAA2A2]"
-                 style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" }}
-               >
-                 {isEn ? 'Continue Shopping' : 'متابعة التسوق'}
-               </Link>
-            </div>
+                <CartCheckoutActions
+                  checkoutUrl={cart?.checkoutUrl}
+                  discountCodes={cart?.discountCodes}
+                  isEn={isEn}
+                  disabled={!canCheckout}
+                  totalAmount={calculatedTotal}
+                  currencyCode={currencyCode}
+                  isPickup={isPickup}
+                  cart={cart}
+                  validationError={
+                    !isMinOrderMet ? (isEn ? <span className="flex items-center gap-1">Minimum order is <SaudiRiyalSymbol className="h-3 w-auto" /> {minOrderValue}</span> : <span className="flex items-center gap-1 flex-row-reverse">الحد الأدنى هو {minOrderValue} <SaudiRiyalSymbol className="h-3 w-auto" /></span>) :
+                      isBranchHidden ? (isEn ? 'Selected branch is currently unavailable. Please select another branch.' : 'الفرع المختار غير متوفر حالياً. يرجى اختيار فرع آخر.') :
+                        !isBranchSelected ? (isEn ? 'Please select a branch' : 'يرجى اختيار الفرع') :
+                          isOutOfRange ? (isEn ? 'Address is out of delivery range' : 'العنوان خارج نطاق التوصيل') :
+                            !selectedDate ? (isPickup ? (isEn ? 'Please select pickup date' : 'يرجى اختيار تاريخ الاستلام') : (isEn ? 'Please select delivery date' : 'يرجى اختيار تاريخ التوصيل')) :
+                              !timeSlot ? (isPickup ? (isEn ? 'Please select pickup window' : 'يرجى اختيار فترة الاستلام') : (isEn ? 'Please select delivery window' : 'يرجى اختيار فترة التوصيل')) :
+                                isTimeSlotInvalid ? (isPickup ? (isEn ? 'Time slot is outside working hours' : 'وقت الاستلام خارج ساعات العمل') : (isEn ? 'Delivery time is outside working hours' : 'وقت التوصيل خارج ساعات العمل')) :
+                                  null
+                  }
+                />
+                <Link
+                  to={isEn ? "/en" : "/"}
+                  className="w-full h-[52px] bg-[#F9E8E8] hover:bg-[#F2DFDF] active:scale-[0.98] transition-all text-[#DF4646] rounded-[50px] font-black text-[16px] flex items-center justify-center border border-[#EAA2A2]"
+                  style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" }}
+                >
+                  {isEn ? 'Continue Shopping' : 'متابعة التسوق'}
+                </Link>
+              </div>
 
-            {/* Tamara Promo Box */}
-            <div className="bg-[#FBF9F4] rounded-[16px] p-5 border border-[#F2E8D5] flex flex-col items-center text-center shadow-sm relative mt-4">
+              {/* Tamara Promo Box */}
+              <div className="bg-[#FBF9F4] rounded-[16px] p-5 border border-[#F2E8D5] flex flex-col items-center text-center shadow-sm relative mt-4">
                 <div className="px-5 py-1 rounded-[10px] mb-3 inline-block" style={{ background: 'linear-gradient(90deg, #F9C3A3 0%, #D4A5E4 50%, #9BC4E5 100%)' }}>
-                   <span className="text-[#1a1a1a] font-black text-[18px] tracking-tight font-en leading-none block pt-0.5">tamara</span>
+                  <span className="text-[#1a1a1a] font-black text-[18px] tracking-tight font-en leading-none block pt-0.5">tamara</span>
                 </div>
                 <h4 className="text-[15px] font-black text-[#1a1a1a] leading-tight mb-2" style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" }}>
-                    {isEn ? 'Split it into 4 interest-free payments' : 'قسّطها على ٤ دفعات بدون فوائد'}
+                  {isEn ? 'Split it into 4 interest-free payments' : 'قسّطها على ٤ دفعات بدون فوائد'}
                 </h4>
                 <div className="w-full flex justify-end mt-1">
                   <p className="text-[11px] font-bold text-gray-500">
-                      {isEn ? 'with Tamara' : 'مع تمارا'}
+                    {isEn ? 'with Tamara' : 'مع تمارا'}
                   </p>
                 </div>
-            </div>
+              </div>
 
-            {/* Footer Features */}
-            <div className="flex items-center justify-between mt-6 border-t border-gray-200 pt-6 px-2 pb-6">
+              {/* Footer Features */}
+              <div className="flex items-center justify-between mt-6 border-t border-gray-200 pt-6 px-2 pb-6">
                 <div className="flex flex-col items-center">
-                    <span className="text-[13px] font-bold text-[#9FB7AE]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>{isEn ? 'Guaranteed Quality' : 'جودة مضمونة'}</span>
+                  <span className="text-[13px] font-bold text-[#9FB7AE]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>{isEn ? 'Guaranteed Quality' : 'جودة مضمونة'}</span>
                 </div>
                 <div className="flex flex-col items-center">
-                    <span className="text-[13px] font-bold text-[#9FB7AE]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>{isEn ? 'Fast Delivery' : 'توصيل سريع'}</span>
+                  <span className="text-[13px] font-bold text-[#9FB7AE]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>{isEn ? 'Fast Delivery' : 'توصيل سريع'}</span>
                 </div>
                 <div className="flex flex-col items-center">
-                    <span className="text-[13px] font-bold text-[#9FB7AE]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>{isEn ? 'Secure Payment' : 'دفع آمن ومضمون'}</span>
+                  <span className="text-[13px] font-bold text-[#9FB7AE]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>{isEn ? 'Secure Payment' : 'دفع آمن ومضمون'}</span>
                 </div>
-            </div>
+              </div>
             </div>
           </div>
         </>
@@ -402,7 +409,7 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
               <Price data={cart?.cost?.subtotalAmount!} isEn={isEn} size="xs" />
             </dd>
           </div>
-          
+
           <div className="flex justify-between items-center text-[14px]">
             <dt className="text-gray-400 font-medium">{isEn ? 'Delivery' : 'التوصيل'}</dt>
             <dd className="text-[#234745] font-bold font-en">
@@ -450,10 +457,10 @@ function parseHourString(hourStr: string): number {
   const isAm = clean.includes('AM');
   const num = parseInt(clean.replace(/\D/g, ''));
   if (isNaN(num)) return 9;
-  
+
   if (isPm && num < 12) return num + 12;
   if (isAm && num === 12) return 0;
-  
+
   // If it is 24h format (e.g., "19:00" -> 19)
   if (clean.includes(':')) {
     const parts = clean.split(':');
@@ -511,7 +518,7 @@ function generateDynamicSlots(branch: any, isEn: boolean, fulfillmentType: strin
   let dayFromKey = fromKey;
   let dayToKey = toKey;
   const lowerDay = riyadhDateStr.toLowerCase(); // 'sun', 'mon', etc.
-  
+
   if (isDelivery) {
     const hasDayDelivery = getMeta(`${lowerDay}_delivery_hours_from`);
     if (hasDayDelivery) {
@@ -574,11 +581,11 @@ function generateDynamicSlots(branch: any, isEn: boolean, fulfillmentType: strin
     for (let h = start; h < end; h += interval) {
       let nextH = h + interval;
       if (nextH > end) nextH = end;
-      
+
       const fromFormatted = formatHour(h, isEn);
       const toFormatted = formatHour(nextH, isEn);
       const label = `${fromFormatted} - ${toFormatted}`;
-      
+
       if (isTomorrow) {
         slots.push(label);
       } else {
@@ -618,7 +625,7 @@ function generateDynamicSlots(branch: any, isEn: boolean, fulfillmentType: strin
 function CartTimeSlot({ isEn, cart, currentBranch, hasError }: { isEn: boolean, cart: any, currentBranch: any, hasError?: boolean }) {
   const timeSlot = cart?.attributes?.find((a: any) => a.key === 'Time Slot')?.value || '';
   const fulfillmentType = cart?.attributes?.find((a: any) => a.key === 'Fulfillment Type')?.value || 'delivery';
-  
+
   // Dynamically calculate time slots based on the fulfilling branch's active hours
   const dynamicTimeSlots = generateDynamicSlots(currentBranch, isEn, fulfillmentType);
 
@@ -630,7 +637,7 @@ function CartTimeSlot({ isEn, cart, currentBranch, hasError }: { isEn: boolean, 
       <CartForm route="/cart" action={'AttributesUpdate' as any}>
         <input type="hidden" name="attributes[0][key]" value="Time Slot" />
         <div className="relative">
-          <select 
+          <select
             name="attributes[0][value]"
             key={timeSlot}
             defaultValue={timeSlot}
@@ -641,7 +648,7 @@ function CartTimeSlot({ isEn, cart, currentBranch, hasError }: { isEn: boolean, 
           >
             <option value="">{isEn ? 'Select preferred delivery time' : 'اختر وقت التوصيل المفضل'}</option>
             {dynamicTimeSlots.map((slot: string, idx: number) => (
-                <option key={idx} value={slot}>{slot}</option>
+              <option key={idx} value={slot}>{slot}</option>
             ))}
           </select>
           <div className="absolute top-1/2 -translate-y-1/2 rtl:left-4 ltr:right-4 pointer-events-none text-[#d4a06a]">
@@ -661,14 +668,14 @@ function CartOrderNotes({ isEn, cart }: { isEn: boolean, cart: any }) {
       <label className="text-[13px] font-bold text-[#234745] px-1">{isEn ? 'Order Notes' : 'ملاحظات الطلب'}</label>
       <CartForm route="/cart" action={'NoteUpdate' as any}>
         <textarea
-           name="note"
-           defaultValue={note}
-           placeholder={isEn ? "Write a note (e.g. Happy Birthday)" : "اكتب ملاحظة (مثال: عيد ميلاد سعيد)"}
-           rows={2}
-           onBlur={(e) => {
-             if (e.target.form) e.target.form.requestSubmit();
-           }}
-           className="w-full bg-[#fcfaf8] border border-[#f0ece8] rounded-xl px-4 py-3 text-[14px] text-[#234745] placeholder-gray-400 focus:outline-none focus:border-[#d4a06a] focus:ring-1 focus:ring-[#d4a06a] transition-all resize-none"
+          name="note"
+          defaultValue={note}
+          placeholder={isEn ? "Write a note (e.g. Happy Birthday)" : "اكتب ملاحظة (مثال: عيد ميلاد سعيد)"}
+          rows={2}
+          onBlur={(e) => {
+            if (e.target.form) e.target.form.requestSubmit();
+          }}
+          className="w-full bg-[#fcfaf8] border border-[#f0ece8] rounded-xl px-4 py-3 text-[14px] text-[#234745] placeholder-gray-400 focus:outline-none focus:border-[#d4a06a] focus:ring-1 focus:ring-[#d4a06a] transition-all resize-none"
         />
       </CartForm>
     </div>
@@ -676,17 +683,17 @@ function CartOrderNotes({ isEn, cart }: { isEn: boolean, cart: any }) {
 }
 
 function CartCheckoutActions({
-  checkoutUrl, 
+  checkoutUrl,
   discountCodes,
-  isEn, 
-  disabled, 
+  isEn,
+  disabled,
   validationError,
   totalAmount,
   currencyCode,
   isPickup,
   cart,
 }: {
-  checkoutUrl?: string; 
+  checkoutUrl?: string;
   discountCodes?: any[];
   isEn: boolean;
   disabled?: boolean;
@@ -731,8 +738,8 @@ function CartCheckoutActions({
   return (
     <>
       <div className="flex flex-col gap-2 w-full">
-        <Form action="/checkout/initiate" method="post" className="w-full">
-          <button 
+        <form action={isEn ? "/en/checkout/initiate" : "/checkout/initiate"} method="post" className="w-full">
+          <button
             type="submit"
             disabled={disabled}
             onClick={fireBeginCheckout}
@@ -741,7 +748,7 @@ function CartCheckoutActions({
           >
             {isEn ? 'Complete Order' : 'إتمام الطلب'}
           </button>
-        </Form>
+        </form>
         {disabled && validationError && (
           <p className="text-red-500 text-[12px] font-bold text-center px-4 py-2 bg-red-50 rounded-xl border border-red-100 flex items-center justify-center gap-2">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
@@ -760,12 +767,12 @@ function LoyaltyRedemptionUI({ isEn, cart }: { isEn: boolean, cart: any }) {
   const rootData = useRouteLoaderData('root') as any;
   const appliedPointsStr = cart?.attributes?.find((a: any) => a.key === 'loyalty_points')?.value;
   const initialPoints = parseInt(appliedPointsStr) || 0;
-  
+
   const [pointsToRedeem, setPointsToRedeem] = useState<number>(initialPoints);
   const [availablePoints, setAvailablePoints] = useState<number | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const fetcher = useFetcher<any>();
-  
+
   const [customerInfo, setCustomerInfo] = useState<{ phone?: string, email?: string }>({});
 
   useEffect(() => {
@@ -778,7 +785,7 @@ function LoyaltyRedemptionUI({ isEn, cart }: { isEn: boolean, cart: any }) {
             email: cust.email,
           });
         }
-      }).catch(() => {});
+      }).catch(() => { });
     }
   }, [rootData?.customer]);
 
@@ -799,7 +806,7 @@ function LoyaltyRedemptionUI({ isEn, cart }: { isEn: boolean, cart: any }) {
   if (!phone && email && email.includes('@saadeddin.dev')) {
     phone = email.split('@')[0];
   }
-  
+
   const customerIdentifier = phone || email;
 
   useEffect(() => {
@@ -812,7 +819,7 @@ function LoyaltyRedemptionUI({ isEn, cart }: { isEn: boolean, cart: any }) {
             setAvailablePoints(data.data.points);
           }
         })
-        .catch(() => {});
+        .catch(() => { });
     }
   }, [customerIdentifier]);
 
@@ -827,8 +834,8 @@ function LoyaltyRedemptionUI({ isEn, cart }: { isEn: boolean, cart: any }) {
         </div>
         <div className="bg-[#fcfaf8] border border-[#f0ece8] rounded-xl p-4 text-center">
           <p className="text-[12px] text-gray-500 font-medium mb-3">
-            {isEn 
-              ? 'Log in to view and redeem your loyalty points.' 
+            {isEn
+              ? 'Log in to view and redeem your loyalty points.'
               : 'سجل الدخول لعرض واستبدال نقاط الولاء الخاصة بك.'}
           </p>
           <Link
@@ -879,15 +886,14 @@ function LoyaltyRedemptionUI({ isEn, cart }: { isEn: boolean, cart: any }) {
           const hasEnoughPoints = (availablePoints !== null ? availablePoints : 2500) >= m.points;
           const withinCartTotal = cartSubtotal >= m.value;
           const isAllowedToRedeem = hasEnoughPoints && withinCartTotal;
-          
+
           return (
-            <div 
+            <div
               key={m.points}
-              className={`border rounded-xl p-3 flex flex-col justify-between gap-3 transition-all ${
-                isApplied 
-                  ? 'border-[#27ae60] bg-emerald-50/30 shadow-sm' 
-                  : 'border-[#f0ece8] bg-[#fcfaf8] hover:border-[#d4a06a]/40'
-              }`}
+              className={`border rounded-xl p-3 flex flex-col justify-between gap-3 transition-all ${isApplied
+                ? 'border-[#27ae60] bg-emerald-50/30 shadow-sm'
+                : 'border-[#f0ece8] bg-[#fcfaf8] hover:border-[#d4a06a]/40'
+                }`}
             >
               <div className="flex flex-col gap-0.5">
                 <span className="text-[13px] font-black text-[#234745]">
@@ -910,17 +916,16 @@ function LoyaltyRedemptionUI({ isEn, cart }: { isEn: boolean, cart: any }) {
                 {(fetcher: any) => {
                   const isSubmitting = fetcher.state !== 'idle';
                   const actionError = fetcher.data?.error;
-                  
+
                   return (
                     <div className="w-full">
                       <button
                         type="submit"
                         disabled={isSubmitting || (!isApplied && !isAllowedToRedeem)}
-                        className={`w-full text-center py-2 rounded-lg text-[12px] font-bold transition-all ${
-                          isApplied
-                            ? 'bg-[#e74c3c] hover:bg-[#c0392b] text-white shadow-sm'
-                            : 'bg-[#234745] hover:bg-[#142e22] text-white disabled:opacity-30 disabled:bg-[#234745] disabled:cursor-not-allowed'
-                        }`}
+                        className={`w-full text-center py-2 rounded-lg text-[12px] font-bold transition-all ${isApplied
+                          ? 'bg-[#e74c3c] hover:bg-[#c0392b] text-white shadow-sm'
+                          : 'bg-[#234745] hover:bg-[#142e22] text-white disabled:opacity-30 disabled:bg-[#234745] disabled:cursor-not-allowed'
+                          }`}
                       >
                         {isSubmitting
                           ? (isEn ? 'Processing...' : 'جاري المعالجة...')
@@ -950,21 +955,21 @@ function LoyaltyRedemptionUI({ isEn, cart }: { isEn: boolean, cart: any }) {
   );
 }
 
-function ViewCartAction({isEn}: {isEn: boolean}) {
-  const {close} = useAside();
+function ViewCartAction({ isEn }: { isEn: boolean }) {
+  const { close } = useAside();
 
   return (
-    <div className="mt-4 px-6 mb-6">
+    <div className="mt-2 px-2 mb-2">
       <Link
         to={isEn ? '/en/cart' : '/cart'}
         onClick={close}
         prefetch="intent"
-        className="w-full bg-[#004f59] hover:bg-[#003840] text-white font-bold py-5 px-8 rounded-[32px] flex items-center justify-between transition-all group shadow-xl"
+        className="w-full bg-[#234745] hover:bg-[#003840] text-white font-bold py-4 px-8 rounded-[32px] flex items-center justify-between transition-all group shadow-xl"
       >
         <span className="text-[16px] text-white">{isEn ? 'View Cart' : 'عرض السلة'}</span>
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className={`${isEn ? '' : 'rotate-180'} transition-transform group-hover:translate-x-1`}>
-          <line x1="5" y1="12" x2="19" y2="12"></line>
-          <polyline points="12 5 19 12 12 19"></polyline>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={` transition-transform group-hover:translate-x-1`}>
+          <line x1="21" y1="12" x2="3" y2="12"></line>
+          <polyline points="10 5 3 12 10 19"></polyline>
         </svg>
       </Link>
     </div>
@@ -988,12 +993,12 @@ function CartDiscounts({
   const codes: string[] =
     discountCodes
       ?.filter((discount) => discount.applicable)
-      ?.map(({code}) => code) || [];
-      
+      ?.map(({ code }) => code) || [];
+
   const hasLineAllocations = cart?.lines?.nodes?.some((line: any) => line?.discountAllocations?.length > 0);
   const hasCartAllocations = cart?.discountAllocations?.length > 0;
   const hasAllocations = hasLineAllocations || hasCartAllocations;
-  
+
   // If we have allocations but no manual codes, it must be an automatic discount!
   const hasAutomaticDiscount = hasAllocations && codes.length === 0;
 
@@ -1018,8 +1023,8 @@ function CartDiscounts({
                       </span>
                     </div>
                   </div>
-                  <button 
-                    type="submit" 
+                  <button
+                    type="submit"
                     aria-label="Remove discount"
                     disabled={isRemoving}
                     className="text-green-600 hover:text-red-500 transition-colors p-1"
@@ -1060,20 +1065,20 @@ function CartDiscounts({
               <div className="flex flex-col gap-2 w-full">
                 <div className="flex w-full items-center justify-between border border-gray-300 rounded-xl overflow-hidden focus-within:border-[#234745] transition-colors p-1.5 h-[56px] relative bg-white">
                   <input
-                      type="text"
-                      name="discountCode"
-                      placeholder={isEn ? "Discount code" : "كود الخصم"}
-                      className="flex-1 bg-transparent px-4 py-2 text-[14px] text-[#234745] focus:outline-none placeholder-[#9FB7AE] font-bold w-full h-full"
-                      style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
-                    />
-                    <button 
-                      type="submit"
-                      disabled={isLoading}
-                      className="bg-[#234745] text-white px-6 h-full text-[14px] font-bold hover:bg-[#1A3533] transition-colors rounded-[8px] flex-shrink-0"
-                      style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
-                    >
-                      {isLoading ? '...' : (isEn ? 'Apply' : 'تطبيق')}
-                    </button>
+                    type="text"
+                    name="discountCode"
+                    placeholder={isEn ? "Discount code" : "كود الخصم"}
+                    className="flex-1 bg-transparent px-4 py-2 text-[14px] text-[#234745] focus:outline-none placeholder-[#9FB7AE] font-bold w-full h-full"
+                    style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
+                  />
+                  <button
+                    type="submit"
+                    disabled={isLoading}
+                    className="bg-[#234745] text-white px-6 h-full text-[14px] font-bold hover:bg-[#1A3533] transition-colors rounded-[8px] flex-shrink-0"
+                    style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
+                  >
+                    {isLoading ? '...' : (isEn ? 'Apply' : 'تطبيق')}
+                  </button>
                 </div>
                 {fetcher.data?.error && (
                   <div className="text-red-500 text-xs font-bold px-3 py-2 bg-red-50 border border-red-200 rounded-lg flex items-center gap-1.5 mt-1">
@@ -1126,7 +1131,7 @@ function CartGiftCard({
   const appliedGiftCardCodes = useRef<string[]>([]);
   const giftCardCodeInput = useRef<HTMLInputElement>(null);
   const codes: string[] =
-    giftCardCodes?.map(({lastCharacters}) => lastCharacters) || [];
+    giftCardCodes?.map(({ lastCharacters }) => lastCharacters) || [];
 
   function saveAppliedCode(code: string) {
     const formattedCode = code.replace(/\s/g, ''); // Remove spaces
@@ -1157,7 +1162,7 @@ function CartGiftCard({
                 aria-label="Remove gift card"
                 className="text-gray-400 hover:text-red-500 transition-colors p-1"
               >
-                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
               </button>
             </div>
           </UpdateGiftCardForm>
@@ -1180,10 +1185,10 @@ function CartGiftCard({
             ref={giftCardCodeInput}
             className="flex-1 bg-[#fcfaf8] border border-[#f0ece8] rounded-xl px-4 py-3 text-[14px] text-[#234745] placeholder-gray-400 focus:outline-none focus:border-[#d4a06a] focus:ring-1 focus:ring-[#d4a06a] transition-all"
           />
-          <button 
-            type="submit" 
+          <button
+            type="submit"
             aria-label="Apply gift card"
-             className="bg-[#f0ece8] text-[#234745] font-bold px-5 py-3 rounded-xl hover:bg-[#e8e4e1] transition-colors"
+            className="bg-[#f0ece8] text-[#234745] font-bold px-5 py-3 rounded-xl hover:bg-[#e8e4e1] transition-colors"
           >
             {isEn ? 'Apply' : 'تطبيق'}
           </button>
@@ -1256,27 +1261,27 @@ function CartCalendarPicker({
 
   // 1. Calculate max prep days
   const maxPrepDays = cart?.lines?.nodes?.reduce((max: number, line: any) => {
-      const tags = line.merchandise?.product?.tags || [];
-      const prepTag = tags.find((t: string) => t.startsWith('prep-days-') || t.startsWith('prep-'));
-      if (prepTag) {
-          const days = parseInt(prepTag.replace(/\D/g, ''));
-          if (!isNaN(days) && days > max) return days;
-      }
-      return max;
+    const tags = line.merchandise?.product?.tags || [];
+    const prepTag = tags.find((t: string) => t.startsWith('prep-days-') || t.startsWith('prep-'));
+    if (prepTag) {
+      const days = parseInt(prepTag.replace(/\D/g, ''));
+      if (!isNaN(days) && days > max) return days;
+    }
+    return max;
   }, 0) || 0;
 
   // 2. Track current displayed month
   const [displayedMonth, setDisplayedMonth] = useState(() => {
-      const initial = selectedDate ? new Date(selectedDate + 'T12:00:00') : new Date();
-      return isNaN(initial.getTime()) ? new Date() : initial;
+    const initial = selectedDate ? new Date(selectedDate + 'T12:00:00') : new Date();
+    return isNaN(initial.getTime()) ? new Date() : initial;
   });
 
   // 3. Helper to format date in YYYY-MM-DD
   const formatYYYYMMDD = (date: Date) => {
-      const y = date.getFullYear();
-      const m = String(date.getMonth() + 1).padStart(2, '0');
-      const d = String(date.getDate()).padStart(2, '0');
-      return `${y}-${m}-${d}`;
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
   };
 
   // 4. Generate calendar grid days
@@ -1292,27 +1297,27 @@ function CartCalendarPicker({
 
   // Previous month fallback padding days
   for (let i = firstDayIndex - 1; i >= 0; i--) {
-      calendarDays.push({
-          date: new Date(year, month - 1, prevMonthTotalDays - i),
-          isCurrentMonth: false,
-      });
+    calendarDays.push({
+      date: new Date(year, month - 1, prevMonthTotalDays - i),
+      isCurrentMonth: false,
+    });
   }
 
   // Current month days
   for (let i = 1; i <= totalDays; i++) {
-      calendarDays.push({
-          date: new Date(year, month, i),
-          isCurrentMonth: true,
-      });
+    calendarDays.push({
+      date: new Date(year, month, i),
+      isCurrentMonth: true,
+    });
   }
 
   // Next month padding days to fill 42 cells grid
   const remainingCells = 42 - calendarDays.length;
   for (let i = 1; i <= remainingCells; i++) {
-      calendarDays.push({
-          date: new Date(year, month + 1, i),
-          isCurrentMonth: false,
-      });
+    calendarDays.push({
+      date: new Date(year, month + 1, i),
+      isCurrentMonth: false,
+    });
   }
 
   // 5. Date validation checks
@@ -1328,34 +1333,34 @@ function CartCalendarPicker({
 
   // Check branch closed days
   const isBranchClosedOn = (date: Date) => {
-      if (!currentBranch) return false;
-      const openDays = currentBranch.workingDays;
-      if (!openDays || !Array.isArray(openDays) || openDays.length === 0) return false;
-      const weekday = new Intl.DateTimeFormat('en-US', {
-          timeZone: 'Asia/Riyadh',
-          weekday: 'short'
-      }).format(date);
-      return !openDays.includes(weekday);
+    if (!currentBranch) return false;
+    const openDays = currentBranch.workingDays;
+    if (!openDays || !Array.isArray(openDays) || openDays.length === 0) return false;
+    const weekday = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'Asia/Riyadh',
+      weekday: 'short'
+    }).format(date);
+    return !openDays.includes(weekday);
   };
 
   const isDateDisabled = (date: Date) => {
-      // Clone to avoid mutating the calendarDays Date objects
-      const d = new Date(date.getTime());
-      d.setHours(0, 0, 0, 0);
-      if (d < today) return true;
-      if (d < minAvailableDate) return true;
-      if (d > maxFutureDate) return true;
-      if (isBranchClosedOn(d)) return true;
-      return false;
+    // Clone to avoid mutating the calendarDays Date objects
+    const d = new Date(date.getTime());
+    d.setHours(0, 0, 0, 0);
+    if (d < today) return true;
+    if (d < minAvailableDate) return true;
+    if (d > maxFutureDate) return true;
+    if (isBranchClosedOn(d)) return true;
+    return false;
   };
 
   // 6. Navigation
   const handlePrevMonth = () => {
-      setDisplayedMonth(new Date(year, month - 1, 1));
+    setDisplayedMonth(new Date(year, month - 1, 1));
   };
 
   const handleNextMonth = () => {
-      setDisplayedMonth(new Date(year, month + 1, 1));
+    setDisplayedMonth(new Date(year, month + 1, 1));
   };
 
   // 7. Time slot generation based on selected date
@@ -1371,26 +1376,26 @@ function CartCalendarPicker({
       const meta = currentBranch.metafields?.find((m: any) => m?.key === key);
       return meta?.value;
     };
-    
+
     const dateObj = localSelectedDate ? new Date(localSelectedDate + 'T12:00:00') : new Date();
     const weekday = new Intl.DateTimeFormat('en-US', {
       timeZone: 'Asia/Riyadh',
       weekday: 'short'
     }).format(dateObj).toLowerCase();
-    
+
     const dayFromKey = `${weekday}_working_hours_from`;
     const dayToKey = `${weekday}_working_hours_to`;
-    
+
     const fromStr = getMeta(dayFromKey) || getMeta('working_hours_from') || '10:00';
     const toStr = getMeta(dayToKey) || getMeta('working_hours_to') || '22:00';
-    
+
     const fromStr2 = getMeta('working_hours_from_shift2');
     const toStr2 = getMeta('working_hours_to_shift2');
-    
+
     const forceEnglishDigits = (str: string) => {
       return str.replace(/[٠-٩]/g, (d) => String.fromCharCode(d.charCodeAt(0) - 1632));
     };
-    
+
     const shift1 = `${fromStr} - ${toStr}`;
     const shift2 = fromStr2 && toStr2 ? ` & ${fromStr2} - ${toStr2}` : '';
     return forceEnglishDigits(shift1 + shift2);
@@ -1408,151 +1413,151 @@ function CartCalendarPicker({
   const weekdays = isEn ? weekdaysEn : weekdaysAr;
 
   return (
-      <div className="bg-[#fcfaf8] border border-[#f0ece8] rounded-2xl p-4 flex flex-col gap-4 select-none">
-          <div className="flex flex-col gap-1">
-              <span className="text-[13px] font-bold text-[#234745] px-1">
-                  {isPickup ? (isEn ? 'Preferred Pickup Date & Time' : 'تاريخ ووقت الاستلام المفضل') : (isEn ? 'Preferred Delivery Date & Time' : 'تاريخ ووقت التوصيل المفضل')}
-              </span>
-              {maxPrepDays > 0 && (
-                  <span className="text-[11px] text-[#c98e54] font-medium px-1 flex items-center gap-1">
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                      {isEn 
-                          ? `Items require ${maxPrepDays} days prep time` 
-                          : `الأصناف تتطلب تحضير لمدة ${maxPrepDays} أيام`}
-                  </span>
-              )}
-          </div>
+    <div className="bg-[#fcfaf8] border border-[#f0ece8] rounded-2xl p-4 flex flex-col gap-4 select-none">
+      <div className="flex flex-col gap-1">
+        <span className="text-[13px] font-bold text-[#234745] px-1">
+          {isPickup ? (isEn ? 'Preferred Pickup Date & Time' : 'تاريخ ووقت الاستلام المفضل') : (isEn ? 'Preferred Delivery Date & Time' : 'تاريخ ووقت التوصيل المفضل')}
+        </span>
+        {maxPrepDays > 0 && (
+          <span className="text-[11px] text-[#c98e54] font-medium px-1 flex items-center gap-1">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
+            {isEn
+              ? `Items require ${maxPrepDays} days prep time`
+              : `الأصناف تتطلب تحضير لمدة ${maxPrepDays} أيام`}
+          </span>
+        )}
+      </div>
 
-          {/* Visual Calendar */}
-          <div className="flex flex-col gap-3">
-              {/* Header Navigation */}
-              <div className="flex justify-between items-center px-1">
-                  <button 
-                      type="button" 
-                      onClick={handlePrevMonth}
-                      disabled={displayedMonth.getMonth() === today.getMonth() && displayedMonth.getFullYear() === today.getFullYear()}
-                      className="p-1.5 rounded-lg border border-[#f0ece8] text-[#234745] disabled:opacity-30 disabled:cursor-not-allowed hover:bg-[#fcfaf8] transition-all"
-                  >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="15 18 9 12 15 6"/></svg>
-                  </button>
-                  <span className="font-bold text-[14px] text-[#234745]">{monthLabel}</span>
-                  <button 
-                      type="button" 
-                      onClick={handleNextMonth}
-                      className="p-1.5 rounded-lg border border-[#f0ece8] text-[#234745] hover:bg-[#fcfaf8] transition-all"
-                  >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6"/></svg>
-                  </button>
-              </div>
+      {/* Visual Calendar */}
+      <div className="flex flex-col gap-3">
+        {/* Header Navigation */}
+        <div className="flex justify-between items-center px-1">
+          <button
+            type="button"
+            onClick={handlePrevMonth}
+            disabled={displayedMonth.getMonth() === today.getMonth() && displayedMonth.getFullYear() === today.getFullYear()}
+            className="p-1.5 rounded-lg border border-[#f0ece8] text-[#234745] disabled:opacity-30 disabled:cursor-not-allowed hover:bg-[#fcfaf8] transition-all"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="15 18 9 12 15 6" /></svg>
+          </button>
+          <span className="font-bold text-[14px] text-[#234745]">{monthLabel}</span>
+          <button
+            type="button"
+            onClick={handleNextMonth}
+            className="p-1.5 rounded-lg border border-[#f0ece8] text-[#234745] hover:bg-[#fcfaf8] transition-all"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6" /></svg>
+          </button>
+        </div>
 
-              {/* Weekday Labels */}
-              <div className="grid grid-cols-7 text-center text-[12px] font-bold text-[#9FB7AE]">
-                  {weekdays.map((d, i) => (
-                      <span key={i} className="py-1">{d}</span>
-                  ))}
-              </div>
+        {/* Weekday Labels */}
+        <div className="grid grid-cols-7 text-center text-[12px] font-bold text-[#9FB7AE]">
+          {weekdays.map((d, i) => (
+            <span key={i} className="py-1">{d}</span>
+          ))}
+        </div>
 
-              {/* Day Cells Grid */}
-              <div className="grid grid-cols-7 gap-1 text-center">
-                  {calendarDays.map((cell, idx) => {
-                      const dateStr = formatYYYYMMDD(cell.date);
-                      const disabled = isDateDisabled(cell.date);
-                      const isSelected = localSelectedDate === dateStr;
-                      const isTodayCell = formatYYYYMMDD(today) === dateStr;
+        {/* Day Cells Grid */}
+        <div className="grid grid-cols-7 gap-1 text-center">
+          {calendarDays.map((cell, idx) => {
+            const dateStr = formatYYYYMMDD(cell.date);
+            const disabled = isDateDisabled(cell.date);
+            const isSelected = localSelectedDate === dateStr;
+            const isTodayCell = formatYYYYMMDD(today) === dateStr;
 
-                      return (
-                          <button
-                              key={idx}
-                              type="button"
-                              disabled={disabled}
-                              onClick={() => {
-                                  setLocalSelectedDate(dateStr);
-                                  setLocalTimeSlot(''); // Reset slot locally
-                                  
-                                  const formData = new FormData();
-                                  formData.append('cartFormInput', JSON.stringify({
-                                      action: 'AttributesUpdate',
-                                      inputs: {
-                                          attributes: [
-                                              { key: 'delivery_date', value: dateStr },
-                                              { key: 'Time Slot', value: '' },
-                                          ]
-                                      }
-                                  }));
-                                  fetcher.submit(formData, { method: 'POST', action: '/cart' });
-                              }}
-                              className={`
+            return (
+              <button
+                key={idx}
+                type="button"
+                disabled={disabled}
+                onClick={() => {
+                  setLocalSelectedDate(dateStr);
+                  setLocalTimeSlot(''); // Reset slot locally
+
+                  const formData = new FormData();
+                  formData.append('cartFormInput', JSON.stringify({
+                    action: 'AttributesUpdate',
+                    inputs: {
+                      attributes: [
+                        { key: 'delivery_date', value: dateStr },
+                        { key: 'Time Slot', value: '' },
+                      ]
+                    }
+                  }));
+                  fetcher.submit(formData, { method: 'POST', action: '/cart' });
+                }}
+                className={`
                                   py-2 rounded-xl text-[13px] font-medium transition-all relative
                                   ${!cell.isCurrentMonth ? 'text-gray-300' : 'text-[#234745]'}
                                   ${disabled ? 'opacity-25 cursor-not-allowed bg-transparent' : 'hover:bg-[#f3ece6] cursor-pointer'}
                                   ${isSelected ? '!bg-[#234745] !text-white font-bold shadow-md scale-105' : ''}
                                   ${isTodayCell && !isSelected ? 'border border-[#d4a06a] text-[#d4a06a]' : ''}
                               `}
-                          >
-                              {cell.date.getDate()}
-                          </button>
-                      );
-                  })}
-              </div>
-          </div>
-
-          {/* Time Slot Picker (Only visible after selecting a date) */}
-          {localSelectedDate && (
-              <div className="flex flex-col gap-2 border-t border-[#f0ece8] pt-4">
-                  <label className="text-[13px] font-bold text-[#234745] px-1">
-                      {isPickup ? (isEn ? 'Preferred Pickup Window' : 'فترة الاستلام المفضلة') : (isEn ? 'Preferred Delivery Window' : 'فترة التوصيل المفضلة')}
-                  </label>
-                  <div className="relative">
-                      <select 
-                          value={localTimeSlot}
-                          onChange={(e) => {
-                              const newVal = e.target.value;
-                              setLocalTimeSlot(newVal); // Instant local feedback
-                              
-                              const formData = new FormData();
-                              formData.append('cartFormInput', JSON.stringify({
-                                  action: 'AttributesUpdate',
-                                  inputs: {
-                                      attributes: [
-                                          { key: 'Time Slot', value: newVal }
-                                      ]
-                                  }
-                              }));
-                              fetcher.submit(formData, { method: 'POST', action: '/cart' });
-                          }}
-                          className="w-full bg-[#fcfaf8] border border-[#f0ece8] rounded-xl px-4 py-3 text-[14px] text-[#234745] font-medium appearance-none focus:outline-none focus:border-[#d4a06a] focus:ring-1 focus:ring-[#d4a06a] transition-all cursor-pointer"
-                      >
-                          <option value="">{isPickup ? (isEn ? 'Select preferred pickup window' : 'اختر فترة الاستلام المفضلة') : (isEn ? 'Select preferred delivery window' : 'اختر فترة التوصيل المفضلة')}</option>
-                          {dynamicTimeSlots.map((slot: string, idx: number) => (
-                              <option key={idx} value={slot}>{slot}</option>
-                          ))}
-                      </select>
-                      <div className="absolute top-1/2 -translate-y-1/2 rtl:left-4 ltr:right-4 pointer-events-none text-[#d4a06a]">
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
-                      </div>
-                  </div>
-                  {isTimeSlotInvalid && (
-                      <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-xl text-[12px] text-red-800 font-bold leading-relaxed flex items-start gap-2">
-                          <span className="text-base leading-none">⚠️</span>
-                          <div>
-                              {isEn ? (
-                                  <>
-                                      Your selected {isPickup ? 'pickup' : 'delivery'} time (<span className="underline">{localTimeSlot}</span>) is outside the working hours of <strong>{currentBranch?.name || 'this branch'}</strong>.
-                                      <br />
-                                      Working hours on this day: <strong>{branchHoursStr}</strong>. Please select a different time window.
-                                  </>
-                              ) : (
-                                  <>
-                                      وقت {isPickup ? 'الاستلام' : 'التوصيل'} المحدد (<span className="underline">{localTimeSlot}</span>) خارج ساعات عمل فرع <strong>{currentBranch?.name || 'هذا الفرع'}</strong>.
-                                      <br />
-                                      ساعات العمل في هذا اليوم: <strong>{branchHoursStr}</strong>. يرجى اختيار فترة {isPickup ? 'الاستلام' : 'التوصيل'} الأخرى.
-                                  </>
-                              )}
-                          </div>
-                      </div>
-                  )}
-              </div>
-          )}
+              >
+                {cell.date.getDate()}
+              </button>
+            );
+          })}
+        </div>
       </div>
+
+      {/* Time Slot Picker (Only visible after selecting a date) */}
+      {localSelectedDate && (
+        <div className="flex flex-col gap-2 border-t border-[#f0ece8] pt-4">
+          <label className="text-[13px] font-bold text-[#234745] px-1">
+            {isPickup ? (isEn ? 'Preferred Pickup Window' : 'فترة الاستلام المفضلة') : (isEn ? 'Preferred Delivery Window' : 'فترة التوصيل المفضلة')}
+          </label>
+          <div className="relative">
+            <select
+              value={localTimeSlot}
+              onChange={(e) => {
+                const newVal = e.target.value;
+                setLocalTimeSlot(newVal); // Instant local feedback
+
+                const formData = new FormData();
+                formData.append('cartFormInput', JSON.stringify({
+                  action: 'AttributesUpdate',
+                  inputs: {
+                    attributes: [
+                      { key: 'Time Slot', value: newVal }
+                    ]
+                  }
+                }));
+                fetcher.submit(formData, { method: 'POST', action: '/cart' });
+              }}
+              className="w-full bg-[#fcfaf8] border border-[#f0ece8] rounded-xl px-4 py-3 text-[14px] text-[#234745] font-medium appearance-none focus:outline-none focus:border-[#d4a06a] focus:ring-1 focus:ring-[#d4a06a] transition-all cursor-pointer"
+            >
+              <option value="">{isPickup ? (isEn ? 'Select preferred pickup window' : 'اختر فترة الاستلام المفضلة') : (isEn ? 'Select preferred delivery window' : 'اختر فترة التوصيل المفضلة')}</option>
+              {dynamicTimeSlots.map((slot: string, idx: number) => (
+                <option key={idx} value={slot}>{slot}</option>
+              ))}
+            </select>
+            <div className="absolute top-1/2 -translate-y-1/2 rtl:left-4 ltr:right-4 pointer-events-none text-[#d4a06a]">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </div>
+          </div>
+          {isTimeSlotInvalid && (
+            <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-xl text-[12px] text-red-800 font-bold leading-relaxed flex items-start gap-2">
+              <span className="text-base leading-none">⚠️</span>
+              <div>
+                {isEn ? (
+                  <>
+                    Your selected {isPickup ? 'pickup' : 'delivery'} time (<span className="underline">{localTimeSlot}</span>) is outside the working hours of <strong>{currentBranch?.name || 'this branch'}</strong>.
+                    <br />
+                    Working hours on this day: <strong>{branchHoursStr}</strong>. Please select a different time window.
+                  </>
+                ) : (
+                  <>
+                    وقت {isPickup ? 'الاستلام' : 'التوصيل'} المحدد (<span className="underline">{localTimeSlot}</span>) خارج ساعات عمل فرع <strong>{currentBranch?.name || 'هذا الفرع'}</strong>.
+                    <br />
+                    ساعات العمل في هذا اليوم: <strong>{branchHoursStr}</strong>. يرجى اختيار فترة {isPickup ? 'الاستلام' : 'التوصيل'} الأخرى.
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   );
 }

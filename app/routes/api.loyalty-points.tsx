@@ -1,25 +1,30 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from 'react-router';
-import { getMockPoints } from '~/lib/mock-loyalty.server';
+import { getLoyaltyPoints } from '~/lib/loyalty.server';
 
 /**
- * Loyalty Points API Route (Mock Version)
+ * Loyalty Points API Route
  * 
- * Reads the customer's loyalty points balance from the local Mock Loyalty Service.
+ * Fetches the customer's loyalty points balance from the SDLP service, falling back to mock points if unset.
  * 
- * GET /api/loyalty-points?phone=0501234567
- * POST /api/loyalty-points { phone: "0501234567" }
+ * GET /api/loyalty-points?phone=0501234567&customerId=gid://shopify/Customer/123
+ * POST /api/loyalty-points { phone: "0501234567", customerId: "gid://shopify/Customer/123" }
  */
 export async function loader({ request, context }: LoaderFunctionArgs) {
   const url = new URL(request.url);
-  const identifier = url.searchParams.get('phone') || url.searchParams.get('email') || url.searchParams.get('identifier');
-
-  console.log(`[API Loyalty Points GET] Retrieving points locally for: ${identifier}`);
+  const identifier = url.searchParams.get('phone') || url.searchParams.get('email') || url.searchParams.get('identifier') || url.searchParams.get('customerId');
 
   if (!identifier) {
     return Response.json({ success: false, error: 'Identifier is required' }, { status: 400 });
   }
 
-  const points = getMockPoints(identifier);
+  const points = await getLoyaltyPoints({
+    customerId: url.searchParams.get('customerId') || undefined,
+    phone: url.searchParams.get('phone') || identifier,
+    email: url.searchParams.get('email') || undefined,
+    env: context.env,
+    context,
+  });
+
   return Response.json({ success: true, data: { points } }, {
     headers: {
       'Cache-Control': 'private, max-age=60, stale-while-revalidate=300',
@@ -34,15 +39,20 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
   try {
     const body = await request.json() as any;
-    const identifier = body?.phone || body?.email || body?.identifier;
-
-    console.log(`[API Loyalty Points POST] Retrieving points locally for: ${identifier}`);
+    const identifier = body?.phone || body?.email || body?.identifier || body?.customerId;
 
     if (!identifier) {
       return Response.json({ success: false, error: 'Identifier is required' }, { status: 400 });
     }
 
-    const points = getMockPoints(identifier);
+    const points = await getLoyaltyPoints({
+      customerId: body?.customerId,
+      phone: body?.phone || identifier,
+      email: body?.email,
+      env: context.env,
+      context,
+    });
+
     return Response.json({ success: true, data: { points } });
   } catch (error: any) {
     return Response.json({ success: false, error: error.message }, { status: 500 });

@@ -11,17 +11,14 @@ export default function Wishlist() {
 
   return (
     <div className="account-wishlist">
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-[28px] lg:text-[32px] font-black text-[#234745] mb-1">
-            {isEn ? 'My Wishlist' : 'قائمة أمنياتي'}
-          </h1>
-          <p className="text-gray-500 text-sm">
-            {isEn
-              ? `You have ${wishlist.length} items saved`
-              : `لديك ${wishlist.length} منتجات محفوظة`}
-          </p>
-        </div>
+      {/* Desktop Header Card matching mockup */}
+      <div className="hidden lg:flex items-center justify-between bg-white border border-[#9FB7AE] rounded-[12px] px-6 py-5 mb-6 w-full">
+        <h1 className="!text-[18px] font-bold text-[#234745] !m-0" style={!isEn ? { fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" } : undefined}>
+          {isEn ? 'Favorites' : 'المفضلة'}
+        </h1>
+        <span className="text-[#234745] font-normal !text-[16px]" style={!isEn ? { fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" } : undefined}>
+          {wishlist.length} {isEn ? 'Products' : 'منتجات'}
+        </span>
       </div>
 
       {wishlist.length === 0 ? (

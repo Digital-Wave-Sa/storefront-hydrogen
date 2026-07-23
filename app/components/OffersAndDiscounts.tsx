@@ -17,11 +17,11 @@ export function OffersAndDiscounts({ config }: { config?: any }) {
             <div className="max-w-[1400px] mx-auto px-4 md:px-8">
 
                 {/* Section Header */}
-                <div className="text-center mb-10 flex flex-col items-center">
-                    <h2 className="text-[48px] lg:text-[64px] font-bold text-[#1a1a1a] mb-4 leading-none tracking-tighter">
+                <div className="text-center mb-8 flex flex-col items-center">
+                    <h2 className="text-[48px] lg:text-[50px] font-bold text-[#1a1a1a] !mb-2 leading-none tracking-tighter">
                         {isEn ? 'Offers & Discounts' : 'العروض والتخفيضات'}
                     </h2>
-                    <p className="text-[#8B8B8B] text-[18px] lg:text-[22px] font-medium opacity-80">
+                    <p className="text-[#8B8B8B] text-[18px] lg:text-[22px] !font-medium" style={{ fontFamily: '"GE Dinar One", sans-serif' }}>
                         {isEn ? 'Strongest offers for a limited time' : 'أقوى العروض لفترة محدودة'}
                     </p>
                 </div>

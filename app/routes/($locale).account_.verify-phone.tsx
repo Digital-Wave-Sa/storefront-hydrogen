@@ -145,6 +145,10 @@ export default function VerifyPhone() {
       setTimer(59);
       if (actionData.phone) setPhone(actionData.phone);
     }
+    if (actionData && 'error' in actionData && actionData.error) {
+      setOtpArray(['','','','','','']);
+      otpRefs[0].current?.focus();
+    }
   }, [actionData]);
 
   // SMS Resend Timer count down

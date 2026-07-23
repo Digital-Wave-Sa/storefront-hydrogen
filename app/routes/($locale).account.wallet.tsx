@@ -8,7 +8,7 @@ import { SaudiRiyalSymbol } from '~/components/Price';
 export async function action({ request, context }: ActionFunctionArgs) {
   const { session, storefront, env } = context;
   const customerAccessToken = await session.get('customerAccessToken');
-  
+
   if (!customerAccessToken) {
     return redirect('/account/login');
   }
@@ -17,19 +17,19 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
   if (customerAccessToken.accessToken === 'dev-bypass-token') {
     const savedPhone = await session.get('loginOtpPhone');
-    
+
     if (savedPhone) {
       try {
         const { getAdminToken } = await import('~/lib/shopify-admin.server');
         const adminToken = await getAdminToken(env);
-        const queryStr = savedPhone.includes('590910042') 
+        const queryStr = savedPhone.includes('590910042')
           ? encodeURIComponent('email:"motasem.udeh@gmail.com"')
           : encodeURIComponent(`phone:"${savedPhone}"`);
         const res = await fetch(`https://${env.PUBLIC_STORE_DOMAIN}/admin/api/2023-04/customers/search.json?query=${queryStr}`, {
           headers: { 'X-Shopify-Access-Token': adminToken, 'Content-Type': 'application/json' },
         });
         const { customers } = (await res.json()) as any;
-        
+
         if (customers && customers.length > 0) {
           customer = {
             id: `gid://shopify/Customer/${customers[0].id}`,
@@ -104,11 +104,11 @@ export async function action({ request, context }: ActionFunctionArgs) {
       });
       const data = (await res.json()) as any;
       if (!res.ok || !data.success) {
-         return json({ intent: 'gift_balance', error: isEn ? 'Failed to send gift. Please verify the phone number.' : 'فشل إرسال الهدية. يرجى التحقق من رقم الهاتف.' }, { status: 400 });
+        return json({ intent: 'gift_balance', error: isEn ? 'Failed to send gift. Please verify the phone number.' : 'فشل إرسال الهدية. يرجى التحقق من رقم الهاتف.' }, { status: 400 });
       }
-      return json({ 
+      return json({
         intent: 'gift_balance',
-        success: true, 
+        success: true,
         giftAmount,
         recipientPhone,
         newBalance: data.new_balance || (currentBalance - giftAmount),
@@ -128,7 +128,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
   try {
     let balanceBeforeActivation = 0;
-    
+
     if (isLocal) {
       const globalGiftCards = (globalThis as any).__giftCards || new Map();
       const card = globalGiftCards.get(voucherCode);
@@ -157,9 +157,9 @@ export async function action({ request, context }: ActionFunctionArgs) {
         }
       }
 
-      return json({ 
+      return json({
         intent: 'redeem_voucher',
-        success: true, 
+        success: true,
         creditedAmount: balanceBeforeActivation,
         newBalance,
         currency: 'SAR'
@@ -190,7 +190,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
       if (!res.ok || !data.success) {
         const reason = data.error || 'unknown';
         let friendlyError = isEn ? 'Failed to activate voucher.' : 'فشل في تفعيل القسيمة.';
-        
+
         if (reason.includes('Already activated') || reason.includes('already_used')) {
           friendlyError = isEn ? 'This voucher has already been activated.' : 'تم تفعيل هذه القسيمة بالفعل مسبقاً.';
         } else if (reason.includes('not found') || reason.includes('invalid_code')) {
@@ -208,9 +208,9 @@ export async function action({ request, context }: ActionFunctionArgs) {
         newBalance = balanceData?.data?.totalBalance || 0;
       }
 
-      return json({ 
+      return json({
         intent: 'redeem_voucher',
-        success: true, 
+        success: true,
         creditedAmount: balanceBeforeActivation,
         newBalance,
         currency: 'SAR'
@@ -238,7 +238,7 @@ export default function WalletPage() {
     <Suspense fallback={
       <div className="wallet-page animate-fade-in" dir={isEn ? 'ltr' : 'rtl'}>
         <div className="mb-8">
-          <h1 className="text-3xl font-black text-[#234745] mb-2">
+          <h1 className="text-3xl font-black text-[#234745] m-2">
             {isEn ? 'Wallet & Vouchers' : 'المحفظة والقسائم'}
           </h1>
           <p className="text-gray-500 font-medium">
@@ -252,8 +252,8 @@ export default function WalletPage() {
     }>
       <Await resolve={walletPromise}>
         {({ balance, loyaltyPoints, history, cards }) => {
-          const currentBalance = actionData?.success && actionData.newBalance !== undefined 
-            ? actionData.newBalance 
+          const currentBalance = actionData?.success && actionData.newBalance !== undefined
+            ? actionData.newBalance
             : balance;
 
           const activeCards = cards || [];
@@ -261,7 +261,7 @@ export default function WalletPage() {
           return (
             <div className="wallet-page animate-fade-in" dir={isEn ? 'ltr' : 'rtl'}>
               <div className="mb-8">
-                <h1 className="text-3xl font-black text-[#234745] mb-2">
+                <h1 className="text-3xl font-black text-[#234745] !mb-2 !mt-0">
                   {isEn ? 'Wallet & Vouchers' : 'المحفظة والقسائم'}
                 </h1>
                 <p className="text-gray-500 font-medium">
@@ -274,7 +274,7 @@ export default function WalletPage() {
                 <div className="bg-gradient-to-br from-[#234745] to-[#1a3533] rounded-[24px] p-8 text-white relative overflow-hidden shadow-xl shadow-[#234745]/20">
                   <div className="absolute top-0 right-0 w-40 h-40 bg-white opacity-5 rounded-full -translate-y-10 translate-x-10" />
                   <div className="absolute bottom-0 left-0 w-32 h-32 bg-[#d4a06a] opacity-10 rounded-full translate-y-10 -translate-x-10" />
-                  
+
                   <div className="relative z-10">
                     <h3 className="text-white/80 font-medium text-sm uppercase tracking-wider mb-2">
                       {isEn ? 'Current Balance' : 'الرصيد الحالي'}
@@ -289,45 +289,45 @@ export default function WalletPage() {
                   </div>
                 </div>
 
-                 {/* Loyalty Points Card */}
-                 <div className="bg-[#fcfaf7] border-2 border-[#f0e6d8] rounded-[24px] p-8 relative overflow-hidden flex flex-col justify-between">
-                   <div>
-                     <h3 className="text-[#a88a68] font-bold text-sm uppercase tracking-wider mb-2">
-                       {rootData?.env?.PUBLIC_SMILE_CHANNEL_KEY ? (isEn ? 'Smile Rewards & Points' : 'نقاط ومكافآت Smile') : (isEn ? 'Loyalty Points' : 'نقاط الولاء')}
-                     </h3>
-                     <div className="flex items-end gap-2">
-                       <span className="text-4xl font-black text-[#234745]">
-                         {rootData?.env?.PUBLIC_SMILE_CHANNEL_KEY ? 'Smile' : loyaltyPoints}
-                       </span>
-                       {(!rootData?.env?.PUBLIC_SMILE_CHANNEL_KEY) && (
-                         <span className="text-lg font-bold text-[#234745] pb-1">{isEn ? 'Pts' : 'نقطة'}</span>
-                       )}
-                     </div>
-                     <p className="mt-4 text-sm text-gray-500 font-medium">
-                       {rootData?.env?.PUBLIC_SMILE_CHANNEL_KEY 
-                         ? (isEn ? 'Earn points on every order and redeem them for rewards using Smile.io.' : 'اكسب نقاطاً على كل طلب واستبدلها بمكافآت رائعة عبر Smile.io.')
-                         : (isEn ? 'Earn points on every order and redeem them for rewards.' : 'اكسب نقاطاً على كل طلب واستبدلها بمكافآت رائعة.')}
-                     </p>
-                   </div>
-                   {rootData?.env?.PUBLIC_SMILE_CHANNEL_KEY && (
-                     <button
-                       type="button"
-                       onClick={() => {
-                         if (typeof window !== 'undefined' && (window as any).Smile) {
-                           (window as any).Smile.show();
-                         } else {
-                           alert(isEn 
-                             ? "Smile.io widget is loading or not active yet. Please verify your PUBLIC_SMILE_CHANNEL_KEY." 
-                             : "أداة Smile.io قيد التحميل أو غير نشطة بعد. يرجى التحقق من مفتاح PUBLIC_SMILE_CHANNEL_KEY."
-                           );
-                         }
-                       }}
-                       className="mt-6 w-full py-3 bg-[#234745] hover:bg-[#1a3533] text-white font-bold rounded-xl text-xs transition-colors text-center uppercase tracking-wider"
-                     >
-                       {isEn ? 'Open Rewards Panel' : 'فتح لوحة المكافآت'}
-                     </button>
-                   )}
-                 </div>
+                {/* Loyalty Points Card */}
+                <div className="bg-[#fcfaf7] border-2 border-[#f0e6d8] rounded-[24px] p-8 relative overflow-hidden flex flex-col justify-between">
+                  <div>
+                    <h3 className="text-[#a88a68] font-bold text-sm uppercase tracking-wider mb-2">
+                      {rootData?.env?.PUBLIC_SMILE_CHANNEL_KEY ? (isEn ? 'Smile Rewards & Points' : 'نقاط ومكافآت Smile') : (isEn ? 'Loyalty Points' : 'نقاط الولاء')}
+                    </h3>
+                    <div className="flex items-end gap-2">
+                      <span className="text-4xl font-black text-[#234745]">
+                        {rootData?.env?.PUBLIC_SMILE_CHANNEL_KEY ? 'Smile' : loyaltyPoints}
+                      </span>
+                      {(!rootData?.env?.PUBLIC_SMILE_CHANNEL_KEY) && (
+                        <span className="text-lg font-bold text-[#234745] pb-1">{isEn ? 'Pts' : 'نقطة'}</span>
+                      )}
+                    </div>
+                    <p className="mt-4 text-sm text-gray-500 font-medium">
+                      {rootData?.env?.PUBLIC_SMILE_CHANNEL_KEY
+                        ? (isEn ? 'Earn points on every order and redeem them for rewards using Smile.io.' : 'اكسب نقاطاً على كل طلب واستبدلها بمكافآت رائعة عبر Smile.io.')
+                        : (isEn ? 'Earn points on every order and redeem them for rewards.' : 'اكسب نقاطاً على كل طلب واستبدلها بمكافآت رائعة.')}
+                    </p>
+                  </div>
+                  {rootData?.env?.PUBLIC_SMILE_CHANNEL_KEY && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (typeof window !== 'undefined' && (window as any).Smile) {
+                          (window as any).Smile.show();
+                        } else {
+                          alert(isEn
+                            ? "Smile.io widget is loading or not active yet. Please verify your PUBLIC_SMILE_CHANNEL_KEY."
+                            : "أداة Smile.io قيد التحميل أو غير نشطة بعد. يرجى التحقق من مفتاح PUBLIC_SMILE_CHANNEL_KEY."
+                          );
+                        }
+                      }}
+                      className="mt-6 w-full py-3 bg-[#234745] hover:bg-[#1a3533] text-white font-bold rounded-xl text-xs transition-colors text-center uppercase tracking-wider"
+                    >
+                      {isEn ? 'Open Rewards Panel' : 'فتح لوحة المكافآت'}
+                    </button>
+                  )}
+                </div>
               </div>
 
               {/* Active Gift Cards Section */}
@@ -371,7 +371,7 @@ export default function WalletPage() {
                   {actionData?.intent === 'redeem_voucher' && actionData?.success && (
                     <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 px-6 py-4 rounded-[16px] mb-6 flex items-center gap-3 animate-fade-in">
                       <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0 text-emerald-600">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
                       </div>
                       <div>
                         <p className="font-bold">
@@ -386,8 +386,8 @@ export default function WalletPage() {
 
                   {actionData?.intent === 'redeem_voucher' && actionData?.error && (
                     <div className="bg-red-50 border border-red-200 text-red-700 px-6 py-4 rounded-[16px] mb-6 flex items-center gap-3 animate-fade-in">
-                       <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 text-red-600">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                      <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 text-red-600">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
                       </div>
                       <p className="font-bold">{actionData.error}</p>
                     </div>
@@ -395,16 +395,16 @@ export default function WalletPage() {
 
                   <Form method="POST" className="flex flex-col gap-4 mt-auto" key={actionData?.intent === 'redeem_voucher' && actionData?.success ? 'success-reset-redeem' : 'form-redeem'}>
                     <input type="hidden" name="intent" value="redeem_voucher" />
-                    <input 
-                      type="text" 
-                      name="voucherCode" 
+                    <input
+                      type="text"
+                      name="voucherCode"
                       placeholder={isEn ? "Enter voucher code (e.g. GC-WELCOME50)" : "أدخل رمز القسيمة (مثال: GC-WELCOME50)"}
                       className="w-full px-5 py-4 bg-gray-50 border-2 border-gray-100 focus:border-[#234745] focus:bg-white rounded-[16px] outline-none transition-all font-bold text-gray-700 placeholder:font-medium placeholder:text-gray-400"
                       required
                     />
-                    <Button 
-                      type="submit" 
-                      variant="primary" 
+                    <Button
+                      type="submit"
+                      variant="primary"
                       disabled={isSubmitting}
                       className="w-full py-4 rounded-[16px] font-bold tracking-wide"
                     >
@@ -422,7 +422,7 @@ export default function WalletPage() {
                   {actionData?.intent === 'gift_balance' && actionData?.success && (
                     <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 px-6 py-4 rounded-[16px] mb-6 flex items-center gap-3 animate-fade-in">
                       <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0 text-emerald-600">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></svg>
                       </div>
                       <div>
                         <p className="font-bold">
@@ -437,8 +437,8 @@ export default function WalletPage() {
 
                   {actionData?.intent === 'gift_balance' && actionData?.error && (
                     <div className="bg-red-50 border border-red-200 text-red-700 px-6 py-4 rounded-[16px] mb-6 flex items-center gap-3 animate-fade-in">
-                       <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 text-red-600">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                      <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 text-red-600">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
                       </div>
                       <p className="font-bold">{actionData.error}</p>
                     </div>
@@ -447,18 +447,18 @@ export default function WalletPage() {
                   <Form method="POST" className="flex flex-col gap-4 mt-auto" key={actionData?.intent === 'gift_balance' && actionData?.success ? 'success-reset-gift' : 'form-gift'}>
                     <input type="hidden" name="intent" value="gift_balance" />
                     <input type="hidden" name="currentBalance" value={currentBalance} />
-                    
+
                     <div className="flex flex-col gap-4">
-                      <input 
-                        type="tel" 
-                        name="recipientPhone" 
+                      <input
+                        type="tel"
+                        name="recipientPhone"
                         placeholder={isEn ? "Recipient Phone (e.g. 05...)" : "رقم هاتف المستلم (مثال: 05...)"}
                         className="w-full px-5 py-4 bg-gray-50 border-2 border-gray-100 focus:border-[#234745] focus:bg-white rounded-[16px] outline-none transition-all font-bold text-gray-700 placeholder:font-medium placeholder:text-gray-400"
                         required
                       />
                       <div className="w-full flex items-center bg-gray-50 border-2 border-gray-100 rounded-[16px] focus-within:border-[#234745] focus-within:bg-white transition-all overflow-hidden">
-                        <input 
-                          type="number" 
+                        <input
+                          type="number"
                           name="giftAmount"
                           min="1"
                           max={currentBalance}
@@ -472,16 +472,16 @@ export default function WalletPage() {
                       </div>
                     </div>
 
-                    <input 
-                      type="text" 
-                      name="giftMessage" 
+                    <input
+                      type="text"
+                      name="giftMessage"
                       placeholder={isEn ? "Personal Message (Optional)" : "رسالة شخصية (اختياري)"}
                       className="w-full px-5 py-4 bg-gray-50 border-2 border-gray-100 focus:border-[#234745] focus:bg-white rounded-[16px] outline-none transition-all font-bold text-gray-700 placeholder:font-medium placeholder:text-gray-400"
                     />
 
-                    <Button 
-                      type="submit" 
-                      variant="secondary" 
+                    <Button
+                      type="submit"
+                      variant="secondary"
                       disabled={isSubmitting}
                       className="w-full py-4 rounded-[16px] font-bold tracking-wide mt-2"
                     >
@@ -496,7 +496,7 @@ export default function WalletPage() {
                 <h2 className="text-xl font-bold text-[#234745] mb-6 border-b border-gray-100 pb-4">
                   {isEn ? 'Recent Activity' : 'النشاط الأخير'}
                 </h2>
-                
+
                 {!history || history.length === 0 ? (
                   <div className="text-center py-12 text-gray-400">
                     <svg className="w-16 h-16 mx-auto mb-4 opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor">

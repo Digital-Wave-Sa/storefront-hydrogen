@@ -149,7 +149,7 @@ export default function Orders() {
   return (
     <div className="orders-page-container" dir={isEn ? 'ltr' : 'rtl'}>
       <div className="bg-white border border-[#BBCFCD] rounded-3xl p-5 md:p-6 flex flex-col gap-5 w-full">
-        <h2 className="text-[20px] md:text-[22px] font-bold text-[#234745] text-start m-0" style={!isEn ? { fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" } : undefined}>
+        <h2 className="hidden lg:block text-[20px] md:text-[22px] font-bold text-[#234745] text-start m-0" style={!isEn ? { fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" } : undefined}>
           {isEn ? 'My Orders' : 'طلباتي'}
         </h2>
 
@@ -278,7 +278,7 @@ function OrderCard({ order, isEn }: { order: OrderItemFragment, isEn: boolean })
   const firstItem = lineItems[0];
   const imageUrl = firstItem?.variant?.image?.url;
   const totalAmount = parseFloat(order.currentTotalPrice?.amount || "0.00");
-  
+
   // Calculate original total using discountedTotalPrice
   const originalTotal = lineItems.reduce((sum, item) => sum + parseFloat(item.discountedTotalPrice?.amount || "0"), 0);
 
@@ -294,8 +294,8 @@ function OrderCard({ order, isEn }: { order: OrderItemFragment, isEn: boolean })
       const monthIndex = parseInt(monthStr, 10) - 1;
       const monthEn = enMonths[monthIndex] || '';
       const monthAr = arMonths[monthIndex] || '';
-      
-      dateNode = isEn 
+
+      dateNode = isEn
         ? <>{monthEn} <span className="font-en">{dayNum}</span>, <span className="font-en">{yearStr}</span></>
         : <><span className="font-en">{dayNum}</span> {monthAr} <span className="font-en">{yearStr}</span></>;
     }
@@ -307,9 +307,9 @@ function OrderCard({ order, isEn }: { order: OrderItemFragment, isEn: boolean })
     e.preventDefault();
     const items = lineItems.map(item => ({
       merchandiseId: (item.variant as any)?.id,
-      quantity: item.quantity || 1, 
+      quantity: item.quantity || 1,
     }));
-    
+
     const formData = new FormData();
     formData.append('intent', 'reorder');
     formData.append('items', JSON.stringify(items));
@@ -319,21 +319,21 @@ function OrderCard({ order, isEn }: { order: OrderItemFragment, isEn: boolean })
   let statusEn = 'On its way to you';
   let statusAr = 'في الطريق إليك';
   let statusColor = '#906B51'; // Brown/gold
-  
+
   if ((order as any).canceledAt || order.financialStatus === 'REFUNDED' || (order.fulfillmentStatus as any) === 'CANCELLED') {
-     statusEn = 'Cancelled';
-     statusAr = 'ملغاه';
-     statusColor = '#E64950'; // Red
+    statusEn = 'Cancelled';
+    statusAr = 'ملغاه';
+    statusColor = '#E64950'; // Red
   } else if (order.fulfillmentStatus === 'FULFILLED') {
-     statusEn = 'Delivered';
-     statusAr = 'تم التسليم';
-     statusColor = '#234745'; // Dark green
+    statusEn = 'Delivered';
+    statusAr = 'تم التسليم';
+    statusColor = '#234745'; // Dark green
   }
 
   const isCancelled = !!((order as any).canceledAt || order.financialStatus === 'REFUNDED' || (order.fulfillmentStatus as any) === 'CANCELLED');
 
   return (
-    <div 
+    <div
       className="bg-white border border-[#BBCFCD] rounded-2xl transition-all hover:border-[#234745] w-full overflow-hidden"
       dir={isEn ? 'ltr' : 'rtl'}
     >
@@ -344,9 +344,9 @@ function OrderCard({ order, isEn }: { order: OrderItemFragment, isEn: boolean })
           {/* Product Image */}
           <div className="relative flex-shrink-0">
             {imageUrl ? (
-              <img 
+              <img
                 src={imageUrl}
-                alt="Product thumbnail" 
+                alt="Product thumbnail"
                 className="w-[90px] h-[90px] rounded-xl object-cover border border-gray-100"
               />
             ) : (
@@ -365,12 +365,12 @@ function OrderCard({ order, isEn }: { order: OrderItemFragment, isEn: boolean })
           {/* Details Column */}
           <div className="flex flex-col gap-1 min-w-0">
             {/* Order number */}
-            <span className="text-[12px] text-[#9FB7AE] font-medium font-en" dir="ltr">
+            <span className="text-[12px] text-[#9FB7AE] font-medium font-en">
               #{order.orderNumber}
             </span>
             {/* Item Titles */}
-            <h3 
-              className="text-[15px] md:text-[17px] font-bold text-[#234745] leading-tight mb-0.5 truncate" 
+            <h3
+              className="text-[15px] md:text-[17px] font-bold text-[#234745] leading-tight mb-0.5 truncate"
               style={!isEn ? { fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" } : undefined}
             >
               {titles}
@@ -402,17 +402,17 @@ function OrderCard({ order, isEn }: { order: OrderItemFragment, isEn: boolean })
           {/* Actions */}
           <div className="flex items-center gap-2">
             {!isCancelled && (
-              <Link 
+              <Link
                 to={isEn ? `/en/track-order/${order.orderNumber}` : `/track-order/${order.orderNumber}`}
                 className="text-center px-6 py-2 border border-[#234745] text-[#234745] rounded-full text-[13px] md:text-[14px] font-bold hover:bg-gray-50 transition-all whitespace-nowrap"
               >
-                {order.fulfillmentStatus === 'FULFILLED' 
+                {order.fulfillmentStatus === 'FULFILLED'
                   ? (isEn ? 'Invoice' : 'الفاتورة')
                   : (isEn ? 'Track' : 'تتبع')}
               </Link>
             )}
-            
-            <button 
+
+            <button
               onClick={handleReorder}
               disabled={fetcher.state !== 'idle'}
               className="text-center px-6 py-2 bg-[#234745] text-white rounded-full text-[13px] md:text-[14px] font-bold hover:opacity-90 transition-all disabled:opacity-70 whitespace-nowrap"
@@ -438,19 +438,19 @@ function OrderCard({ order, isEn }: { order: OrderItemFragment, isEn: boolean })
           {/* Details column */}
           <div className="flex flex-col gap-1 flex-grow min-w-0">
             {/* Order ID */}
-            <h3 
-              className="text-[15px] font-bold text-[#234745] leading-tight mb-0.5 truncate" 
+            <h3
+              className="text-[15px] font-bold text-[#234745] leading-tight mb-0.5 truncate"
               style={!isEn ? { fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" } : undefined}
             >
               {isEn ? `Order — #${order.orderNumber}` : `آخر طلب — #${order.orderNumber}`}
             </h3>
-            
+
             {/* Subtitle: product count & original total */}
-            <span 
+            <span
               className="text-[12px] font-medium text-[#9FB7AE] truncate"
               style={!isEn ? { fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" } : undefined}
             >
-              {productCount} {isEn ? 'Products' : 'منتجات'} 
+              {productCount} {isEn ? 'Products' : 'منتجات'}
               {originalTotal > totalAmount && (
                 <> • <span className="line-through">{originalTotal.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span></>
               )}
@@ -469,9 +469,9 @@ function OrderCard({ order, isEn }: { order: OrderItemFragment, isEn: boolean })
           {/* Product Image on Left (in RTL) */}
           <div className="relative flex-shrink-0">
             {imageUrl ? (
-              <img 
+              <img
                 src={imageUrl}
-                alt="Order thumbnail" 
+                alt="Order thumbnail"
                 className="w-[85px] h-[85px] rounded-xl object-cover border border-gray-100"
               />
             ) : (
@@ -492,18 +492,18 @@ function OrderCard({ order, isEn }: { order: OrderItemFragment, isEn: boolean })
         <div className="flex flex-row gap-3 w-full mt-1.5">
           {/* Secondary Action: Track or Invoice */}
           {!isCancelled && (
-            <Link 
+            <Link
               to={isEn ? `/en/track-order/${order.orderNumber}` : `/track-order/${order.orderNumber}`}
               className="flex-1 text-center py-2.5 border border-[#234745] text-[#234745] rounded-full text-[13px] font-bold hover:bg-gray-50 transition-all whitespace-nowrap"
             >
-              {order.fulfillmentStatus === 'FULFILLED' 
+              {order.fulfillmentStatus === 'FULFILLED'
                 ? (isEn ? 'Invoice' : 'الفاتورة')
                 : (isEn ? 'Track' : 'تتبع')}
             </Link>
           )}
-          
+
           {/* Primary Action: Reorder */}
-          <button 
+          <button
             onClick={handleReorder}
             disabled={fetcher.state !== 'idle'}
             className={`${isCancelled ? 'w-full' : 'flex-[1.5]'} text-center py-2.5 bg-[#234745] text-white rounded-full text-[13px] font-bold hover:opacity-90 transition-all disabled:opacity-70 whitespace-nowrap`}

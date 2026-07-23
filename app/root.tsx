@@ -135,6 +135,35 @@ export async function loader(args: Route.LoaderArgs) {
     session.set('fulfillmentType', fType);
   }
 
+  // Validate if the stored branch is hidden
+  const locNodes = criticalData?.locations?.locations?.nodes || [];
+  if (selectedLocId && locNodes.length > 0) {
+    const selectedNode = locNodes.find((n: any) => n.id === selectedLocId);
+    if (selectedNode) {
+      const isHidden = selectedNode.hide_from_storefront?.value === 'true' || 
+                       selectedNode.hide_from_storefront === true || 
+                       selectedNode.hide_from_storefront === 'true';
+      if (isHidden) {
+        console.log(`[ROOT LOADER] Resetting hidden location: id=${selectedLocId}, name=${selectedLocName}`);
+        if (!isSA) {
+          const urlLocale = new URL(args.request.url).pathname.split('/')[1]?.toLowerCase();
+          selectedLocId = '';
+          selectedLocName = urlLocale === 'en' ? 'Select Your Branch' : 'اختر الفرع';
+          fType = 'pickup';
+        } else {
+          const isTesting = env.PUBLIC_STORE_DOMAIN?.includes('belivagloire');
+          selectedLocId = isTesting ? 'gid://shopify/Location/114186715445' : 'gid://shopify/Location/80198500503';
+          const urlLocale = new URL(args.request.url).pathname.split('/')[1]?.toLowerCase();
+          selectedLocName = urlLocale === 'en' ? 'Olaya Branch' : 'فرع العليا';
+          fType = 'pickup';
+        }
+        session.set('selectedLocationId', selectedLocId);
+        session.set('selectedLocationName', selectedLocName);
+        session.set('fulfillmentType', fType);
+      }
+    }
+  }
+
   if (customerAccessToken?.accessToken || selectedLocName || fType) {
     let cartData = null;
     try {
@@ -206,7 +235,7 @@ async function loadCriticalData({context}: Route.LoaderArgs) {
         }
       }
     `, {
-      cache: storefront.CacheLong(),
+      cache: storefront.CacheNone(),
     }).then(res => ({ nodes: res.metaobjects?.nodes || [] }))
       .catch((e: Error) => {
         console.error('[ROOT] Storefront Review Fetch Failed:', e.message);
@@ -631,6 +660,10 @@ const LOCATIONS_QUERY = `#graphql
           longitude
           phone
         }
+        city: metafield(namespace: "custom", key: "city") {
+          key
+          value
+        }
         delivery_fee: metafield(namespace: "custom", key: "delivery_fee") {
           key
           value
@@ -732,6 +765,10 @@ const LOCATIONS_QUERY = `#graphql
           value
         }
         rating_count: metafield(namespace: "custom", key: "rating_count") {
+          key
+          value
+        }
+        hide_from_storefront: metafield(namespace: "custom", key: "hide_from_storefront") {
           key
           value
         }

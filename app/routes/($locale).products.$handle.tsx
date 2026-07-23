@@ -1,5 +1,5 @@
 import { Suspense, useState, useEffect, useMemo } from 'react';
-import { getProductVisibility, type VisibilityResult } from '~/lib/visibility';
+import { getVisibilityStatus, getProductVisibility, type VisibilityResult } from '~/lib/visibility';
 import { getIsOutOfStock } from '~/lib/stock';
 import { StockNotificationModal } from '~/components/StockNotificationModal';
 import { Price, SaudiRiyalSymbol } from '~/components/Price';
@@ -32,7 +32,7 @@ import {
 import { useAside } from '~/components/Aside';
 import type { CartLineInput } from '@shopify/hydrogen/storefront-api-types';
 import { getVariantUrl } from '~/utils';
-import patternBg from '~/assets/patteren-collection-header.svg';
+import patternBg from '/images/second-bg-pattern.svg';
 
 export const shouldRevalidate = () => {
   return false;
@@ -228,10 +228,13 @@ export async function loader(args: LoaderFunctionArgs) {
           return f;
         }) || [];
 
-        reviews = allReviews.filter((r: any) =>
-          r.product_handle === decodedHandle &&
-          (r.status === 'Approved' || r.status === 'Published' || !r.status)
-        );
+        reviews = allReviews.filter((r: any) => {
+          const rHandle = (r.product_handle || '').toLowerCase().trim();
+          const targetHandle = (decodedHandle || '').toLowerCase().trim();
+          const statusStr = (r.status || '').toLowerCase().trim();
+          const isApproved = statusStr === 'approved' || statusStr === 'published' || statusStr === 'active' || !statusStr;
+          return (rHandle === targetHandle || rHandle === (decodedHandle || '').toLowerCase().trim()) && isApproved;
+        });
       } catch (err) {
         console.error('[REVIEWS] Failed to fetch reviews:', err);
       }
@@ -407,20 +410,24 @@ export default function Product() {
   const isEn = locale === 'en';
   const customer = rootData?.customer;
 
-  // Use global reviews from root loader (Storefront API)
-  const allNodes = rootData?.reviews?.nodes || [];
-  const reviews = allNodes.map((node: any) => {
+  // Prefer fresh loaderReviews from handle loader, fallback to rootData.reviews
+  const rootReviews = (rootData?.reviews?.nodes || []).map((node: any) => {
     const f: any = {};
     node.fields.forEach((field: any) => f[field.key] = field.value);
     return f;
   }).filter((r: any) => {
-    const isApproved = r.status === 'Approved' || r.status === 'Published';
-    return r.product_handle === product.handle && isApproved;
-  }) || [];
+    const rHandle = (r.product_handle || '').toLowerCase().trim();
+    const targetHandle = (product.handle || '').toLowerCase().trim();
+    const statusStr = (r.status || '').toLowerCase().trim();
+    const isApproved = statusStr === 'approved' || statusStr === 'published' || statusStr === 'active' || !statusStr;
+    return rHandle === targetHandle && isApproved;
+  });
 
-  // Calculate dynamic rating from global reviews
-  let dynamicRating = loaderRating;
-  let dynamicCount = loaderCount;
+  const reviews = (Array.isArray(loaderReviews) && loaderReviews.length > 0) ? loaderReviews : rootReviews;
+
+  // Calculate dynamic rating from active reviews
+  let dynamicRating = loaderRating || 0;
+  let dynamicCount = loaderCount || reviews.length;
   if (reviews.length > 0) {
     const sum = reviews.reduce((acc: number, r: any) => acc + (parseFloat(r.rating) || 0), 0);
     dynamicRating = sum / reviews.length;
@@ -824,7 +831,7 @@ export default function Product() {
       {/* 1. Styled PDP Header Header */}
       <div className="w-full">
         {/* Dark Green Patterned Section */}
-        <div className="w-full bg-[#234745] relative overflow-hidden py-6 md:py-12">
+        <div className="w-full bg-[#234745] relative overflow-hidden py-6 md:py-10">
           {/* Background Texture */}
           <div
             className="absolute inset-0 pointer-events-none"
@@ -935,7 +942,7 @@ export default function Product() {
               <div className="flex items-center gap-[6px]">
                 <span className={`w-[6px] h-[6px] rounded-full ${effectiveOutOfStock ? 'bg-[#E64950]' : 'bg-[#255441]'}`}></span>
                 <span className={`text-[12px] font-bold ${effectiveOutOfStock ? 'text-[#E64950]' : 'text-[#255441]'}`} style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", lineHeight: '100%' }}>
-                  {effectiveOutOfStock ? (isEn ? 'Out of Stock' : 'نفذت الكمية') : (isEn ? 'Available' : 'متوفر')}
+                  {effectiveOutOfStock ? (isEn ? 'Out of Stock' : 'غير متوفر') : (isEn ? 'Available' : 'متوفر')}
                 </span>
               </div>
             </div>
@@ -1300,223 +1307,430 @@ export default function Product() {
           <div className="lg:sticky lg:top-24 flex flex-col gap-4 w-full lg:w-[301px]">
 
             {/* Desktop Action Box Container (hidden on mobile) */}
-            <div className="hidden lg:flex bg-white rounded-[20px] p-4 border border-[#BBCFCD]/50 flex-col gap-6 w-full">
-              {/* 1. Payment Promo Banner */}
-              <div className="bg-[#FEF8EB] rounded-[16px] py-[12px] px-[16px] border border-[#BBCFCD]/50 flex flex-col items-center justify-center gap-2">
-                <div className="flex items-center justify-center gap-[16px] w-full h-[32px]">
-                  <img src="/images/icons/apple-pay.png" className="h-[15px] object-contain" alt="Apple Pay" />
-                  <img src="/images/icons/mastercard.png" className="h-[18px] object-contain" alt="Mastercard" />
-                  <img src="/images/icons/visa.png" className="h-[14px] object-contain" alt="Visa" />
-                  <img src="/images/icons/mada.png" className="h-[24px] object-contain scale-[1.7] origin-center" alt="Mada" />
-                </div>
-                <span className="text-[14px] font-bold text-[#234745] text-center" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
-                  {isEn ? 'Split it into 4 interest-free payments' : 'قسّطها على ٤ دفعات بدون فوائد'}
-                </span>
-              </div>
+            {effectiveOutOfStock ? (
+              isVisibilityBlocked ? (
+                /* ── Seasonal Out-of-Season Card (matching screenshot spec) ── */
+                (() => {
+                  const seasonMsg = (product as any).seasonal_message?.value || (product as any).next_season_date?.value || null;
+                  return (
+                    <div className="hidden lg:flex bg-white rounded-[24px] border border-[#BBCFCD]/60 p-6 flex-col items-start justify-center text-start gap-3 w-full shadow-sm">
+                      {/* Line 1: Header with brown exclamation circle icon */}
+                      <div className="flex items-center justify-center gap-2">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" className="shrink-0">
+                          <circle cx="12" cy="12" r="10" stroke="#906B51" strokeWidth="1.8" />
+                          <line x1="12" y1="8" x2="12" y2="12" stroke="#906B51" strokeWidth="2" strokeLinecap="round" />
+                          <circle cx="12" cy="16" r="1" fill="#906B51" />
+                        </svg>
+                        <span className="text-[#171717] font-medium text-[16px] sm:text-[16px]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
+                          {isEn ? 'Out for the Season' : 'نفد هذا المنتج للموسم'}
+                        </span>
 
-              {/* 2. Quantity */}
-              <div className="flex items-center justify-between h-[40px] w-full">
-                <span className="font-medium text-[#171717] text-[16px]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
-                  {isEn ? 'Quantity' : 'الكمية'}
-                </span>
-                <div className="flex items-center gap-[8px]">
+                      </div>
 
-
-                  <button
-                    type="button"
-                    onClick={() => setQuantity(quantity + 1)}
-                    className="w-[40px] h-[40px] flex items-center justify-center bg-white rounded-[8px] text-[#234745] border border-[#BBCFCD]/50 hover:border-[#234745] transition-all"
-                  >
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 5v14M5 12h14" /></svg>
-                  </button>
-
-                  <div className="w-[40px] h-[40px] flex items-center justify-center bg-white rounded-[8px] border border-[#BBCFCD]/50 font-medium text-[16px] text-[#255441]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
-                    {new Intl.NumberFormat('en-US').format(quantity)}
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                    className="w-[40px] h-[40px] flex items-center justify-center bg-white rounded-[8px] text-[#906B51] border border-[#BBCFCD]/50 hover:border-[#234745] transition-all"
-                  >
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14" /></svg>
-                  </button>
-
-                </div>
-              </div>
-
-              {/* 3. Actions */}
-              <div className="flex flex-col gap-4">
-                {isVisibilityBlocked ? (
-                  <div className="w-full bg-gray-100 text-gray-400 py-3 rounded-full text-[16px] font-bold flex items-center justify-center gap-2 cursor-not-allowed">
-                    {isEn ? visibility.label.en : visibility.label.ar}
-                  </div>
-                ) : (
-                  <>
-                    {/* Add to Cart */}
-                    <AddToCartButton
-                      analytics={{
-                        products: [
-                          {
-                            productGid: product.id,
-                            variantGid: selectedVariant.id,
-                            quantity,
-                          },
-                        ],
-                      }}
-                      disabled={!selectedVariant || effectiveOutOfStock}
-                      onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-                      lines={
-                        selectedVariant
-                          ? (() => {
-                            const groupId = Date.now().toString();
-                            const isBogo = product.tags?.some((t: string) => t.toLowerCase().includes('bogo'));
-
-                            const mainLine = {
-                              merchandiseId: selectedVariant.id,
-                              quantity,
-                              selectedVariant,
-                              attributes: [
-                                { key: '_groupId', value: groupId },
-                                ...(isBundle && bundleComponents.length > 0 ? [
-                                  {
-                                    key: isEn ? 'Bundle Includes' : 'محتويات العرض',
-                                    value: bundleComponents.map((c: any) => `• ${c.title}`).join('\n')
-                                  },
-                                  {
-                                    key: '_bundle_skus',
-                                    value: bundleComponents.map((c: any) => c.variants?.nodes?.[0]?.sku).filter(Boolean).join(', ')
-                                  }
-                                ] : []),
-                                ...(cakeMessage ? [{ key: 'Cake Message', value: cakeMessage }] : []),
-                                ...(isGiftMode ? [
-                                  { key: '_isGift', value: 'true' },
-                                  ...(recipientName ? [{ key: 'Recipient Name', value: recipientName }] : []),
-                                  ...(note ? [{ key: 'Gift Message', value: note }] : []),
-                                  { key: '_hideSender', value: hideSender ? 'Yes' : 'No' },
-                                ] : (note ? [{ key: 'Order Note', value: note }] : [])),
-                              ],
-                            };
-
-                            const addonLines = selectedAddons.map((addonId) => {
-                              const addonNode = addonNodes.find((n: any) => n.variants.nodes[0].id === addonId);
-                              const variant = addonNode?.variants.nodes[0];
-                              return {
-                                merchandiseId: addonId,
-                                quantity: 1,
-                                selectedVariant: variant,
-                                attributes: [
-                                  { key: '_groupId', value: groupId },
-                                  { key: '_is_addon', value: 'true' },
-                                  ...(variant?.sku ? [{ key: '_sku', value: variant.sku }] : []),
-                                ],
-                              };
-                            });
-
-                            if (isBogo) {
-                              const freeVariantId = bogoFreeVariantId || selectedVariant.id;
-                              return [
-                                mainLine,
-                                {
-                                  merchandiseId: freeVariantId,
-                                  quantity,
-                                  selectedVariant: selectedVariant,
-                                  attributes: [
-                                    { key: '_groupId', value: groupId },
-                                    { key: '_is_addon', value: 'true' },
-                                    { key: '_is_free', value: 'true' },
-                                  ],
-                                },
-                                ...addonLines
-                              ];
-                            }
-
-                            return [mainLine, ...addonLines];
-                          })()
-                          : []
-                      }
-                      className={`w-full h-[48px] ${effectiveOutOfStock ? 'bg-gray-300 cursor-not-allowed' : 'bg-[#234745] hover:bg-[#1a3533] active:scale-[0.98]'} text-white rounded-[25px] flex items-center justify-center gap-[8px] transition-all`}
-                    >
-                      {effectiveOutOfStock ? (
-                        isEn ? 'Out of Stock' : 'نفذت الكمية'
-                      ) : (
-                        <>
-                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                            <circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" />
-                            <path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6" />
-                          </svg>
-                          <span style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", fontWeight: 700, fontSize: '16px', lineHeight: '20px' }}>{isEn ? 'Add to Cart' : 'أضف إلي السلة'}</span>
-                        </>
+                      {/* Line 2: Subtitle message (Only displayed when date/message exists) */}
+                      {seasonMsg && (
+                        <div className="text-[#9FB7AE] text-[16px] font-medium" style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" }}>
+                          {seasonMsg}
+                        </div>
                       )}
-                    </AddToCartButton>
 
-                    {/* Notify Me button — shown only when out of stock */}
-                    {effectiveOutOfStock && (
+                      {/* Line 3: Solid Brown Pill (Notify Me for Next Season) */}
                       <button
                         type="button"
                         onClick={() => setIsNotifyModalOpen(true)}
-                        className="w-full h-[48px] bg-[#234745] hover:bg-[#1a3533] active:scale-[0.98] text-white rounded-[25px] flex items-center justify-center gap-[8px] transition-all mt-2"
+                        className="w-full py-[12px] bg-[#906B51] hover:bg-[#7d5c45] active:scale-[0.98] text-white rounded-full flex items-center justify-center gap-2 transition-all mt-1 shadow-sm"
                       >
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
                           <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" />
                           <path d="M13.73 21a2 2 0 01-3.46 0" />
                         </svg>
-                        <span style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", fontWeight: 700, fontSize: '16px', lineHeight: '20px' }}>
+                        <span style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", fontWeight: 700, fontSize: '16px' }}>
+                          {isEn ? 'Notify Me for Next Season' : 'أبلغني في الموسم القادم'}
+                        </span>
+
+                      </button>
+
+                      {/* Line 4: Soft Cream Pill (Pre-order for Next Season) */}
+                      <button
+                        type="button"
+                        onClick={() => setIsNotifyModalOpen(true)}
+                        className="w-full py-[12px] bg-[#FEF8EB] hover:bg-[#FFF4E0] active:scale-[0.98] border border-[#234745] text-[#234745] rounded-full flex items-center justify-center gap-2 transition-all shadow-sm"
+                      >
+                        <span style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", fontWeight: 700, fontSize: '16px' }}>
+                          {isEn ? 'Pre-order for Next Season' : 'طلب مسبق للموسم القادم'}
+                        </span>
+                      </button>
+                    </div>
+                  );
+                })()
+              ) : (
+                /* ── Standard Out-of-Stock Card (Standalone single card matching screenshot) ── */
+                (() => {
+                  const restockDate = (product as any).restock_date?.value || (product as any).expected_restock_date?.value || null;
+                  let formattedRestock: string | null = null;
+                  if (restockDate) {
+                    try {
+                      const d = new Date(restockDate);
+                      formattedRestock = d.toLocaleDateString(isEn ? 'en-SA' : 'ar-SA-u-nu-latn', { year: 'numeric', month: 'long', day: 'numeric' });
+                    } catch (_) { formattedRestock = restockDate; }
+                    if (formattedRestock) {
+                      formattedRestock = formattedRestock.replace(/[٠-٩]/g, d => '٠١٢٣٥٦٧٨٩'.indexOf(d).toString());
+                    }
+                  }
+                  return (
+                    <div className="hidden lg:flex bg-white rounded-[20px] border border-[#BBCFCD]/50 p-[16px] flex-col items-start justify-center text-start gap-3 w-full">
+                      {/* Line 1: Status with red exclamation icon */}
+                      <div className="flex items-center justify-center gap-2">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" className="shrink-0">
+                          <circle cx="12" cy="12" r="10" stroke="#E64950" strokeWidth="1.8" />
+                          <line x1="12" y1="8" x2="12" y2="12" stroke="#E64950" strokeWidth="2" strokeLinecap="round" />
+                          <circle cx="12" cy="16" r="1" fill="#E64950" />
+                        </svg>
+                        <span className="text-[#171717] font-medium text-[16px] sm:text-[16px]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
+                          {isEn ? 'Currently Unavailable' : 'غير متوفر حالياً'}
+                        </span>
+                      </div>
+
+                      {/* Line 2: Restock Date (rendered only if date exists) */}
+                      {formattedRestock && (
+                        <div className="text-[#906B51] text-[16px] font-bold" style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" }}>
+                          {isEn ? `Expected: ${formattedRestock}` : `متوقع توفره: ${formattedRestock}`}
+                        </div>
+                      )}
+
+                      {/* Line 3: Notify Me Pill Button */}
+                      <button
+                        type="button"
+                        onClick={() => setIsNotifyModalOpen(true)}
+                        className="w-full bg-[#FFFBF0] py-[12px] hover:bg-[#FFF4E0] active:scale-[0.98] border border-[#234745] text-[#234745] rounded-full flex items-center justify-center gap-2 transition-all mt-1 shadow-sm"
+                      >
+                        <svg width="13" height="17" viewBox="0 0 13 17" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path fill-rule="evenodd" clip-rule="evenodd" d="M7.15137 0.833333C7.15137 0.61232 7.06357 0.400358 6.90729 0.244078C6.75101 0.0877973 6.53905 0 6.31804 0C6.09703 0 5.88506 0.0877973 5.72878 0.244078C5.5725 0.400358 5.48471 0.61232 5.48471 0.833333V1.45833H5.02054C4.12723 1.45827 3.26748 1.79866 2.61631 2.4102C1.96514 3.02173 1.5715 3.85845 1.51554 4.75L1.33137 7.695C1.26018 8.81768 0.883242 9.8995 0.241372 10.8233C0.108566 11.0142 0.0274194 11.2362 0.00582378 11.4678C-0.0157718 11.6993 0.0229185 11.9325 0.118132 12.1446C0.213346 12.3568 0.361841 12.5407 0.549178 12.6785C0.736515 12.8162 0.956316 12.9032 1.18721 12.9308L4.02637 13.2708V14.1667C4.02637 14.7745 4.26781 15.3573 4.69759 15.7871C5.12736 16.2169 5.71025 16.4583 6.31804 16.4583C6.92583 16.4583 7.50872 16.2169 7.93849 15.7871C8.36826 15.3573 8.60971 14.7745 8.60971 14.1667V13.2708L11.4489 12.93C11.6796 12.9023 11.8993 12.8153 12.0865 12.6776C12.2737 12.5399 12.4221 12.3561 12.5173 12.144C12.6125 11.932 12.6513 11.699 12.6298 11.4676C12.6083 11.2361 12.5273 11.0142 12.3947 10.8233C11.7528 9.8995 11.3759 8.81768 11.3047 7.695L11.1205 4.75083C11.0648 3.85913 10.6712 3.02221 10.02 2.4105C9.36885 1.79879 8.50898 1.45829 7.61554 1.45833H7.15137V0.833333ZM5.02054 2.70833C4.44518 2.70826 3.89143 2.92748 3.47202 3.32134C3.05261 3.7152 2.79908 4.25411 2.76304 4.82833L2.57971 7.77333C2.49402 9.12395 2.04042 10.4254 1.26804 11.5367C1.25843 11.5505 1.25255 11.5665 1.25098 11.5833C1.24942 11.6 1.25221 11.6169 1.25908 11.6322C1.26596 11.6476 1.27669 11.6609 1.29024 11.6709C1.30378 11.6808 1.31967 11.6872 1.33637 11.6892L4.45054 12.0633C5.69137 12.2117 6.94471 12.2117 8.18554 12.0633L11.2997 11.6892C11.3164 11.6872 11.3323 11.6808 11.3458 11.6709C11.3594 11.6609 11.3701 11.6476 11.377 11.6322C11.3839 11.6169 11.3867 11.6 11.3851 11.5833C11.3835 11.5665 11.3776 11.5505 11.368 11.5367C10.5959 10.4253 10.1426 9.12387 10.0572 7.77333L9.87304 4.82833C9.837 4.25411 9.58347 3.7152 9.16406 3.32134C8.74465 2.92748 8.19089 2.70826 7.61554 2.70833H5.02054ZM6.31804 15.2083C5.74304 15.2083 5.27637 14.7417 5.27637 14.1667V13.5417H7.35971V14.1667C7.35971 14.7417 6.89304 15.2083 6.31804 15.2083Z" fill="#234745" />
+                        </svg>
+
+                        <span style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", fontWeight: 700, fontSize: '16px' }}>
                           {isEn ? 'Notify Me When Available' : 'أبلغني عند التوفر'}
                         </span>
                       </button>
-                    )}
+                    </div>
+                  );
+                })()
+              )
+            ) : (
+              <div className="hidden lg:flex bg-white rounded-[20px] p-4 border border-[#BBCFCD]/50 flex-col gap-6 w-full">
+                {/* 1. Payment Promo Banner */}
+                <div className="bg-[#FEF8EB] rounded-[16px] py-[12px] px-[16px] border border-[#BBCFCD]/50 flex flex-col items-center justify-center gap-2">
+                  <div className="flex items-center justify-center gap-[16px] w-full h-[32px]">
+                    <img src="/images/icons/apple-pay.png" className="h-[15px] object-contain" alt="Apple Pay" />
+                    <img src="/images/icons/mastercard.png" className="h-[18px] object-contain" alt="Mastercard" />
+                    <img src="/images/icons/visa.png" className="h-[14px] object-contain" alt="Visa" />
+                    <img src="/images/icons/mada.png" className="h-[24px] object-contain scale-[1.7] origin-center" alt="Mada" />
+                  </div>
+                  <span className="text-[14px] font-bold text-[#234745] text-center" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
+                    {isEn ? 'Split it into 4 interest-free payments' : 'قسّطها على ٤ دفعات بدون فوائد'}
+                  </span>
+                </div>
 
-                    {/* Buy Now */}
-                    <button className="w-full h-[48px] bg-[#EED5D7] hover:bg-[#e4d0d0] active:scale-[0.98] transition-all text-[#E64950] rounded-[25px] flex items-center justify-center gap-[8px]">
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4Z" />
-                        <line x1="3" y1="6" x2="21" y2="6" />
-                        <path d="M16 10a4 4 0 01-8 0" />
-                      </svg>
-                      <span style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", fontWeight: 700, fontSize: '16px', lineHeight: '20px' }}>{isEn ? 'Buy Now' : 'إشتري الان'}</span>
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
-
-            {/* Mobile Action Box Container (sticky bottom sheet, hidden on desktop) */}
-            <div className="lg:hidden bg-white fixed bottom-0 left-0 right-0 z-40 rounded-t-[32px] p-6 shadow-[0_-10px_30px_rgba(0,0,0,0.08)] border-t border-[#BBCFCD]/30 flex flex-col gap-4">
-
-              <div className="flex flex-col gap-4">
-                {/* 1. Quantity */}
+                {/* 2. Quantity */}
                 <div className="flex items-center justify-between h-[40px] w-full">
-                  <span className="font-bold text-[#171717] text-[16px]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
+                  <span className="font-medium text-[#171717] text-[16px]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
                     {isEn ? 'Quantity' : 'الكمية'}
                   </span>
                   <div className="flex items-center gap-[8px]">
                     <button
                       type="button"
-                      onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                      className="w-[40px] h-[40px] flex items-center justify-center bg-white rounded-[8px] text-[#906B51] border border-[#BBCFCD]/50 hover:border-[#234745] transition-all font-bold"
+                      onClick={() => setQuantity(quantity + 1)}
+                      className="w-[40px] h-[40px] flex items-center justify-center bg-white rounded-[8px] text-[#234745] border border-[#BBCFCD]/50 hover:border-[#234745] transition-all"
                     >
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14" /></svg>
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 5v14M5 12h14" /></svg>
                     </button>
-                    <div className="w-[40px] h-[40px] flex items-center justify-center bg-white rounded-[8px] border border-[#BBCFCD]/50 font-bold text-[16px] text-[#255441]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
+
+                    <div className="w-[40px] h-[40px] flex items-center justify-center bg-white rounded-[8px] border border-[#BBCFCD]/50 font-medium text-[16px] text-[#255441]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
                       {new Intl.NumberFormat('en-US').format(quantity)}
                     </div>
+
                     <button
                       type="button"
-                      onClick={() => setQuantity(quantity + 1)}
-                      className="w-[40px] h-[40px] flex items-center justify-center bg-white rounded-[8px] text-[#234745] border border-[#BBCFCD]/50 hover:border-[#234745] transition-all font-bold"
+                      onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                      className="w-[40px] h-[40px] flex items-center justify-center bg-white rounded-[8px] text-[#906B51] border border-[#BBCFCD]/50 hover:border-[#234745] transition-all"
                     >
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 5v14M5 12h14" /></svg>
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14" /></svg>
                     </button>
                   </div>
                 </div>
 
-                {/* 2. Actions (Add to Cart / Buy Now side-by-side) */}
-                <div className="w-full">
+                {/* 3. Actions */}
+                <div className="flex flex-col gap-4">
                   {isVisibilityBlocked ? (
                     <div className="w-full bg-gray-100 text-gray-400 py-3 rounded-full text-[16px] font-bold flex items-center justify-center gap-2 cursor-not-allowed">
                       {isEn ? visibility.label.en : visibility.label.ar}
                     </div>
+                  ) : (
+                    <>
+                      {/* Add to Cart */}
+                      <AddToCartButton
+                        analytics={{
+                          products: [
+                            {
+                              productGid: product.id,
+                              variantGid: selectedVariant.id,
+                              quantity,
+                            },
+                          ],
+                        }}
+                        disabled={!selectedVariant}
+                        onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                        lines={
+                          selectedVariant
+                            ? (() => {
+                              const groupId = Date.now().toString();
+                              const isBogo = product.tags?.some((t: string) => t.toLowerCase().includes('bogo'));
+
+                              const mainLine = {
+                                merchandiseId: selectedVariant.id,
+                                quantity,
+                                selectedVariant,
+                                attributes: [
+                                  { key: '_groupId', value: groupId },
+                                  ...(isBundle && bundleComponents.length > 0 ? [
+                                    {
+                                      key: isEn ? 'Bundle Includes' : 'محتويات العرض',
+                                      value: bundleComponents.map((c: any) => `• ${c.title}`).join('\n')
+                                    },
+                                    {
+                                      key: '_bundle_skus',
+                                      value: bundleComponents.map((c: any) => c.variants?.nodes?.[0]?.sku).filter(Boolean).join(', ')
+                                    }
+                                  ] : []),
+                                  ...(cakeMessage ? [{ key: 'Cake Message', value: cakeMessage }] : []),
+                                  ...(isGiftMode ? [
+                                    { key: '_isGift', value: 'true' },
+                                    ...(recipientName ? [{ key: 'Recipient Name', value: recipientName }] : []),
+                                    ...(note ? [{ key: 'Gift Message', value: note }] : []),
+                                    { key: '_hideSender', value: hideSender ? 'Yes' : 'No' },
+                                  ] : (note ? [{ key: 'Order Note', value: note }] : [])),
+                                ],
+                              };
+
+                              const addonLines = selectedAddons.map((addonId) => {
+                                const addonNode = addonNodes.find((n: any) => n.variants.nodes[0].id === addonId);
+                                const variant = addonNode?.variants.nodes[0];
+                                return {
+                                  merchandiseId: addonId,
+                                  quantity: 1,
+                                  selectedVariant: variant,
+                                  attributes: [
+                                    { key: '_groupId', value: groupId },
+                                    { key: '_is_addon', value: 'true' },
+                                    ...(variant?.sku ? [{ key: '_sku', value: variant.sku }] : []),
+                                  ],
+                                };
+                              });
+
+                              if (isBogo) {
+                                const freeVariantId = bogoFreeVariantId || selectedVariant.id;
+                                return [
+                                  mainLine,
+                                  {
+                                    merchandiseId: freeVariantId,
+                                    quantity,
+                                    selectedVariant: selectedVariant,
+                                    attributes: [
+                                      { key: '_groupId', value: groupId },
+                                      { key: '_is_addon', value: 'true' },
+                                      { key: '_is_free', value: 'true' },
+                                    ],
+                                  },
+                                  ...addonLines
+                                ];
+                              }
+
+                              return [mainLine, ...addonLines];
+                            })()
+                            : []
+                        }
+                        className={`w-full h-[48px] ${effectiveOutOfStock ? 'bg-gray-300 cursor-not-allowed' : 'bg-[#234745] hover:bg-[#1a3533] active:scale-[0.98]'} text-white rounded-[25px] flex items-center justify-center gap-[8px] transition-all`}
+                      >
+                        {effectiveOutOfStock ? (
+                          isEn ? 'Out of Stock' : 'نفذت الكمية'
+                        ) : (
+                          <>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                              <circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" />
+                              <path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6" />
+                            </svg>
+                            <span style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", fontWeight: 700, fontSize: '16px', lineHeight: '20px' }}>{isEn ? 'Add to Cart' : 'أضف إلي السلة'}</span>
+                          </>
+                        )}
+                      </AddToCartButton>
+
+                      {/* Notify Me button — shown only when out of stock */}
+                      {effectiveOutOfStock && (
+                        <button
+                          type="button"
+                          onClick={() => setIsNotifyModalOpen(true)}
+                          className="w-full h-[48px] bg-[#234745] hover:bg-[#1a3533] active:scale-[0.98] text-white rounded-[25px] flex items-center justify-center gap-[8px] transition-all mt-2"
+                        >
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                            <path d="M13.73 21a2 2 0 01-3.46 0" />
+                          </svg>
+                          <span style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", fontWeight: 700, fontSize: '16px', lineHeight: '20px' }}>
+                            {isEn ? 'Notify Me When Available' : 'أبلغني عند التوفر'}
+                          </span>
+                        </button>
+                      )}
+
+                      {/* Buy Now */}
+                      <button className="w-full h-[48px] bg-[#EED5D7] hover:bg-[#e4d0d0] active:scale-[0.98] transition-all text-[#E64950] rounded-[25px] flex items-center justify-center gap-[8px]">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4Z" />
+                          <line x1="3" y1="6" x2="21" y2="6" />
+                          <path d="M16 10a4 4 0 01-8 0" />
+                        </svg>
+                        <span style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", fontWeight: 700, fontSize: '16px', lineHeight: '20px' }}>{isEn ? 'Buy Now' : 'إشتري الان'}</span>
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Mobile Action Box Container (sticky bottom sheet, hidden on desktop) */}
+            <div className="lg:hidden bg-white fixed bottom-0 left-0 right-0 z-40 rounded-t-[32px] px-[16px] py-[24px] shadow-[0_-10px_30px_rgba(0,0,0,0.08)] border-t border-[#BBCFCD]/30 flex flex-col gap-4">
+
+              <div className="flex flex-col gap-4">
+                {/* 1. Quantity */}
+                {!effectiveOutOfStock && (
+                  <div className="flex items-center justify-between h-[40px] w-full">
+                    <span className="font-bold text-[#171717] text-[16px]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
+                      {isEn ? 'Quantity' : 'الكمية'}
+                    </span>
+                    <div className="flex items-center gap-[8px]">
+                      <button
+                        type="button"
+                        onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                        className="w-[40px] h-[40px] flex items-center justify-center bg-white rounded-[8px] text-[#906B51] border border-[#BBCFCD]/50 hover:border-[#234745] transition-all font-bold"
+                      >
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14" /></svg>
+                      </button>
+                      <div className="w-[40px] h-[40px] flex items-center justify-center bg-white rounded-[8px] border border-[#BBCFCD]/50 font-bold text-[16px] text-[#255441]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
+                        {new Intl.NumberFormat('en-US').format(quantity)}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setQuantity(quantity + 1)}
+                        className="w-[40px] h-[40px] flex items-center justify-center bg-white rounded-[8px] text-[#234745] border border-[#BBCFCD]/50 hover:border-[#234745] transition-all font-bold"
+                      >
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 5v14M5 12h14" /></svg>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* 2. Actions (Add to Cart / Buy Now side-by-side) */}
+                <div className="w-full">
+                  {isVisibilityBlocked ? (
+                    /* ── Mobile Seasonal Out-of-Season View (matching user design spec) ── */
+                    (() => {
+                      const seasonMsg = (product as any).seasonal_message?.value || (product as any).next_season_date?.value || null;
+                      return (
+                        <div className="w-full flex flex-col items-center justify-center text-center gap-3 py-1">
+                          {/* Line 1: Header with brown exclamation circle icon */}
+                          <div className="flex items-center justify-center gap-2">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" className="shrink-0">
+                              <circle cx="12" cy="12" r="10" stroke="#906B51" strokeWidth="1.8" />
+                              <line x1="12" y1="8" x2="12" y2="12" stroke="#906B51" strokeWidth="2" strokeLinecap="round" />
+                              <circle cx="12" cy="16" r="1" fill="#906B51" />
+                            </svg>
+                            <span className="text-[#171717] font-bold text-[18px]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
+                              {isEn ? 'Out for the Season' : 'نفد هذا المنتج للموسم'}
+                            </span>
+
+                          </div>
+
+                          {/* Line 2: Subtitle message (Only displayed when date/message exists) */}
+                          {seasonMsg && (
+                            <div className="text-[#967459] text-[15px] font-bold" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
+                              {seasonMsg}
+                            </div>
+                          )}
+
+                          {/* Line 3: Solid Brown Pill (Notify Me for Next Season) */}
+                          <button
+                            type="button"
+                            onClick={() => setIsNotifyModalOpen(true)}
+                            className="w-full py-[12px] bg-[#906B51] hover:bg-[#7d5c45] active:scale-[0.98] text-white rounded-full flex items-center justify-center gap-2 transition-all mt-1 shadow-sm"
+                          >
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+                              <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                              <path d="M13.73 21a2 2 0 01-3.46 0" />
+                            </svg>
+                            <span style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", fontWeight: 700, fontSize: '15px' }}>
+                              {isEn ? 'Notify Me for Next Season' : 'أبلغني في الموسم القادم'}
+                            </span>
+
+                          </button>
+
+                          {/* Line 4: Soft Cream Pill (Pre-order for Next Season) */}
+                          <button
+                            type="button"
+                            onClick={() => setIsNotifyModalOpen(true)}
+                            className="w-full py-[12px] bg-[#FFFBF0] hover:bg-[#FFF4E0] active:scale-[0.98] border border-[#234745] text-[#234745] rounded-full flex items-center justify-center gap-2 transition-all shadow-sm"
+                          >
+                            <span style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", fontWeight: 700, fontSize: '15px' }}>
+                              {isEn ? 'Pre-order for Next Season' : 'طلب مسبق للموسم القادم'}
+                            </span>
+                          </button>
+                        </div>
+                      );
+                    })()
+                  ) : effectiveOutOfStock ? (
+                    /* ── Mobile Out-of-Stock View (matching image 2) ── */
+                    (() => {
+                      const restockDate = (product as any).restock_date?.value || (product as any).expected_restock_date?.value || null;
+                      let formattedRestock: string | null = null;
+                      if (restockDate) {
+                        try {
+                          const d = new Date(restockDate);
+                          formattedRestock = d.toLocaleDateString(isEn ? 'en-SA' : 'ar-SA-u-nu-latn', { year: 'numeric', month: 'long', day: 'numeric' });
+                        } catch (_) { formattedRestock = restockDate; }
+                        if (formattedRestock) {
+                          formattedRestock = formattedRestock.replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d).toString());
+                        }
+                      }
+                      return (
+                        <div className="w-full flex flex-col items-center justify-center text-center gap-3 py-1">
+                          <div className="flex items-center justify-center gap-2">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" className="shrink-0">
+                              <circle cx="12" cy="12" r="10" stroke="#E64950" strokeWidth="1.8" />
+                              <line x1="12" y1="8" x2="12" y2="12" stroke="#E64950" strokeWidth="2" strokeLinecap="round" />
+                              <circle cx="12" cy="16" r="1" fill="#E64950" />
+                            </svg>
+                            <span className="text-[#171717] font-medium text-[16px]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
+                              {isEn ? 'Currently Unavailable' : 'غير متوفر حالياً'}
+                            </span>
+                          </div>
+                          {formattedRestock && (
+                            <div className="text-[#906B51] text-[16px] font-bold" style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" }}>
+                              {isEn ? `Expected: ${formattedRestock}` : `متوقع توفره: ${formattedRestock}`}
+                            </div>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => setIsNotifyModalOpen(true)}
+                            className="w-full py-[12px] bg-[#FFFBF0] hover:bg-[#FFF4E0] active:scale-[0.98] border border-[#255441] text-[#255441] rounded-full flex items-center justify-center gap-2 transition-all mt-1 shadow-sm"
+                          >
+                            <svg width="13" height="17" viewBox="0 0 13 17" fill="none" xmlns="http://www.w3.org/2000/svg">
+                              <path fill-rule="evenodd" clip-rule="evenodd" d="M7.15137 0.833333C7.15137 0.61232 7.06357 0.400358 6.90729 0.244078C6.75101 0.0877973 6.53905 0 6.31804 0C6.09703 0 5.88506 0.0877973 5.72878 0.244078C5.5725 0.400358 5.48471 0.61232 5.48471 0.833333V1.45833H5.02054C4.12723 1.45827 3.26748 1.79866 2.61631 2.4102C1.96514 3.02173 1.5715 3.85845 1.51554 4.75L1.33137 7.695C1.26018 8.81768 0.883242 9.8995 0.241372 10.8233C0.108566 11.0142 0.0274194 11.2362 0.00582378 11.4678C-0.0157718 11.6993 0.0229185 11.9325 0.118132 12.1446C0.213346 12.3568 0.361841 12.5407 0.549178 12.6785C0.736515 12.8162 0.956316 12.9032 1.18721 12.9308L4.02637 13.2708V14.1667C4.02637 14.7745 4.26781 15.3573 4.69759 15.7871C5.12736 16.2169 5.71025 16.4583 6.31804 16.4583C6.92583 16.4583 7.50872 16.2169 7.93849 15.7871C8.36826 15.3573 8.60971 14.7745 8.60971 14.1667V13.2708L11.4489 12.93C11.6796 12.9023 11.8993 12.8153 12.0865 12.6776C12.2737 12.5399 12.4221 12.3561 12.5173 12.144C12.6125 11.932 12.6513 11.699 12.6298 11.4676C12.6083 11.2361 12.5273 11.0142 12.3947 10.8233C11.7528 9.8995 11.3759 8.81768 11.3047 7.695L11.1205 4.75083C11.0648 3.85913 10.6712 3.02221 10.02 2.4105C9.36885 1.79879 8.50898 1.45829 7.61554 1.45833H7.15137V0.833333ZM5.02054 2.70833C4.44518 2.70826 3.89143 2.92748 3.47202 3.32134C3.05261 3.7152 2.79908 4.25411 2.76304 4.82833L2.57971 7.77333C2.49402 9.12395 2.04042 10.4254 1.26804 11.5367C1.25843 11.5505 1.25255 11.5665 1.25098 11.5833C1.24942 11.6 1.25221 11.6169 1.25908 11.6322C1.26596 11.6476 1.27669 11.6609 1.29024 11.6709C1.30378 11.6808 1.31967 11.6872 1.33637 11.6892L4.45054 12.0633C5.69137 12.2117 6.94471 12.2117 8.18554 12.0633L11.2997 11.6892C11.3164 11.6872 11.3323 11.6808 11.3458 11.6709C11.3594 11.6609 11.3701 11.6476 11.377 11.6322C11.3839 11.6169 11.3867 11.6 11.3851 11.5833C11.3835 11.5665 11.3776 11.5505 11.368 11.5367C10.5959 10.4253 10.1426 9.12387 10.0572 7.77333L9.87304 4.82833C9.837 4.25411 9.58347 3.7152 9.16406 3.32134C8.74465 2.92748 8.19089 2.70826 7.61554 2.70833H5.02054ZM6.31804 15.2083C5.74304 15.2083 5.27637 14.7417 5.27637 14.1667V13.5417H7.35971V14.1667C7.35971 14.7417 6.89304 15.2083 6.31804 15.2083Z" fill="#234745" />
+                            </svg>
+                            <span style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", fontWeight: 700, fontSize: '16px' }}>
+                              {isEn ? 'Notify Me When Available' : 'أبلغني عند التوفر'}
+                            </span>
+                          </button>
+                        </div>
+                      );
+                    })()
                   ) : (
                     <div className="flex flex-row gap-3 items-center w-full">
                       {/* Add to Cart */}
@@ -1655,14 +1869,16 @@ export default function Product() {
               </div>
 
               {/* 3. Payment Promo Banner */}
-              <div className="bg-[#FEF8EB] rounded-[16px] py-[10px] px-[16px] border border-[#BBCFCD]/50 flex flex-col items-center justify-center w-full">
-                <div className="flex items-center justify-center gap-[16px] w-full h-[24px]">
-                  <img src="/images/icons/apple-pay.png" className="h-[14px] object-contain" alt="Apple Pay" />
-                  <img src="/images/icons/mastercard.png" className="h-[16px] object-contain" alt="Mastercard" />
-                  <img src="/images/icons/visa.png" className="h-[12px] object-contain" alt="Visa" />
-                  <img src="/images/icons/mada.png" className="h-[20px] object-contain scale-[1.5] origin-center" alt="Mada" />
+              {!effectiveOutOfStock && (
+                <div className="bg-[#FEF8EB] rounded-[16px] py-[10px] px-[16px] border border-[#BBCFCD]/50 flex flex-col items-center justify-center w-full">
+                  <div className="flex items-center justify-center gap-[16px] w-full h-[24px]">
+                    <img src="/images/icons/apple-pay.png" className="h-[14px] object-contain" alt="Apple Pay" />
+                    <img src="/images/icons/mastercard.png" className="h-[16px] object-contain" alt="Mastercard" />
+                    <img src="/images/icons/visa.png" className="h-[12px] object-contain" alt="Visa" />
+                    <img src="/images/icons/mada.png" className="h-[20px] object-contain scale-[1.5] origin-center" alt="Mada" />
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
 
             {/* 3. Service Features List (Dynamically Driven) */}
@@ -1810,32 +2026,57 @@ export default function Product() {
             </div>
           </div>
 
-          {/* MOBILE ACCORDIONS INTERFACE (hidden on desktop) */}
-          <div className="flex md:hidden flex-col w-full gap-4 text-start">
-            {/* 1. Description Accordion */}
-            <div className="w-full bg-white rounded-[20px] border border-[#BBCFCD] overflow-hidden shadow-sm">
-              <button
-                type="button"
-                onClick={() => setOpenAccordions(prev => ({ ...prev, details: !prev.details }))}
-                className="w-full px-5 py-4 flex items-center justify-between font-bold text-[18px] text-[#234745] hover:bg-gray-50/50 transition-colors"
-                style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
-              >
-                <span>{isEn ? 'Product Description' : 'وصف المنتج'}</span>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className={`transition-transform duration-300 ${openAccordions.details ? 'rotate-180' : ''}`}>
-                  <polyline points="6 9 12 15 18 9" />
-                </svg>
-              </button>
-              {openAccordions.details && (
-                <div className="px-5 pb-5 pt-2 border-t border-[#BBCFCD]/20 animate-fade-in">
+          {/* MOBILE TABS INTERFACE (matching mockup screenshot) */}
+          <div className="flex md:hidden flex-col w-full text-start">
+            {/* Tab Navigation Header */}
+            {(() => {
+              const mobileTabs = [
+                { id: 'details', label: isEn ? 'Product Description' : 'وصف المنتج' },
+                { id: 'reviews', label: isEn ? `Reviews (${reviews?.length || 0})` : `المراجعات (${new Intl.NumberFormat('en-US').format(reviews?.length || 0)})` },
+                ...((product as any).nutrition?.value ? [{ id: 'nutrition', label: isEn ? 'Nutrition Facts' : 'حقائق غذائية' }] : [])
+              ];
+              return (
+                <div className="w-full flex flex-col items-center mb-6">
                   <div
-                    className="text-[#171717] leading-[24px] font-normal text-[15px] [&>p]:mb-[12px] last:[&>p]:mb-0"
+                    className="w-full flex items-center justify-between sm:justify-center gap-4 sm:gap-8 overflow-x-auto hide-scrollbars border-b border-[#BBCFCD]/40 pb-0 px-2"
+                    style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                  >
+                    {mobileTabs.map((t) => {
+                      const isActive = activeTab === t.id;
+                      return (
+                        <button
+                          key={t.id}
+                          type="button"
+                          onClick={() => setActiveTab(t.id)}
+                          className={`relative pb-3 text-[14px] xs:text-[15px] sm:text-[17px] font-bold transition-all flex flex-col items-center whitespace-nowrap shrink-0 ${isActive ? 'text-[#234745]' : 'text-[#8B9895] hover:text-[#234745]'
+                            }`}
+                          style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
+                        >
+                          <span>{t.label}</span>
+                          {isActive && (
+                            <div className="absolute bottom-[-1px] left-0 right-0 h-[3px] bg-[#234745] rounded-full animate-fade-in" />
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Tab Content */}
+            <div className="w-full px-2 animate-fade-in">
+              {activeTab === 'details' ? (
+                <div className="w-full flex flex-col gap-4 text-center">
+                  <div
+                    className="text-[#171717] font-bold text-[15px] sm:text-[16px] leading-[28px] [&>p]:mb-4 last:[&>p]:mb-0"
                     style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
                     dangerouslySetInnerHTML={{ __html: product.descriptionHtml || product.description }}
                   />
 
                   {(product as any).allergens?.value && (
-                    <div className="p-5 bg-orange-50/50 rounded-[20px] border border-orange-100/50 mt-4">
-                      <h5 className="text-[14px] font-black text-orange-800 mb-2 flex items-center gap-2">
+                    <div className="p-4 bg-orange-50/60 rounded-[20px] border border-orange-100/60 mt-2 text-start">
+                      <h5 className="text-[14px] font-black text-orange-800 mb-1.5 flex items-center gap-2">
                         <span>⚠️</span>
                         {isEn ? 'Allergens Warning' : 'معلومات الحساسية'}
                       </h5>
@@ -1845,52 +2086,22 @@ export default function Product() {
                     </div>
                   )}
                 </div>
-              )}
-            </div>
-
-            {/* 2. Nutrition Accordion */}
-            {(product as any).nutrition?.value && (
-              <div className="w-full bg-white rounded-[20px] border border-[#BBCFCD]/30 overflow-hidden shadow-sm">
-                <button
-                  type="button"
-                  onClick={() => setOpenAccordions(prev => ({ ...prev, nutrition: !prev.nutrition }))}
-                  className="w-full px-5 py-4 flex items-center justify-between font-bold text-[18px] text-[#234745] hover:bg-gray-50/50 transition-colors"
-                  style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
-                >
-                  <span>{isEn ? 'Nutrition Facts' : 'القيمة الغذائية'}</span>
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className={`transition-transform duration-300 ${openAccordions.nutrition ? 'rotate-180' : ''}`}>
-                    <polyline points="6 9 12 15 18 9" />
-                  </svg>
-                </button>
-                {openAccordions.nutrition && (
-                  <div className="px-5 pb-5 pt-2 border-t border-[#BBCFCD]/20 animate-fade-in">
-                    <div className={`p-4 bg-[#295b45]/5 rounded-[20px] border border-[#295b45]/10 ${isEn ? 'text-left' : 'text-right'}`}>
+              ) : activeTab === 'nutrition' ? (
+                <div className="w-full">
+                  {(product as any).nutrition?.value && (
+                    <div className="p-5 bg-[#295b45]/5 rounded-[20px] border border-[#295b45]/10 text-start">
+                      <h5 className="text-[15px] font-black text-[#295b45] mb-2 flex items-center gap-2">
+                        <span>🥗</span>
+                        {isEn ? 'Nutrition Facts' : 'حقائق غذائية'}
+                      </h5>
                       <p className="text-[14px] font-bold text-[#234745]/80 leading-relaxed whitespace-pre-wrap">
                         {(product as any).nutrition.value}
                       </p>
                     </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* 3. Reviews Accordion */}
-            <div className="w-full bg-white rounded-[20px] border border-[#BBCFCD]/30 overflow-hidden shadow-sm">
-              <button
-                type="button"
-                onClick={() => setOpenAccordions(prev => ({ ...prev, reviews: !prev.reviews }))}
-                className="w-full px-5 py-4 flex items-center justify-between font-bold text-[18px] text-[#234745] hover:bg-gray-50/50 transition-colors"
-                style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
-              >
-                <span>{isEn ? `Reviews (${reviews?.length || 0})` : `المراجعات (${new Intl.NumberFormat('en-US').format(reviews?.length || 0)})`}</span>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className={`transition-transform duration-300 ${openAccordions.reviews ? 'rotate-180' : ''}`}>
-                  <polyline points="6 9 12 15 18 9" />
-                </svg>
-              </button>
-              {openAccordions.reviews && (
-                <div className="px-5 pb-5 pt-4 border-t border-[#BBCFCD]/20 animate-fade-in">
-                  {renderReviews()}
+                  )}
                 </div>
+              ) : (
+                renderReviews()
               )}
             </div>
           </div>
@@ -1903,15 +2114,15 @@ export default function Product() {
         <div className="max-w-[1400px] mx-auto px-4 md:px-8">
           <div className="flex items-center justify-between mb-[32px] w-full">
             <h2
-              className="font-bold text-[#171717] !m-0"
-              style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif", fontSize: '22px', lineHeight: '80px' }}
+              className="font-bold text-[#171717] !m-0 text-[18px] leading-[24px] md:text-[50px] md:leading-[80px]"
+              style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" }}
             >
               {isEn ? 'Related Products' : 'منتجات ذات صلة'}
             </h2>
             <Link
               to={isEn ? "/en/collections/all" : "/collections/all"}
-              className="bg-white border border-[#D2D2D2] px-[12px] py-[8px] rounded-[25px] font-bold text-[#234745] hover:bg-gray-50 transition-all flex items-center justify-center gap-[8px]"
-              style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", fontSize: '16px', lineHeight: '20px' }}
+              className="bg-white !text-[12px] md:!text-[16px] border border-[#D2D2D2] px-[8px] py-[4px] md:px-[12px] md:py-[8px] rounded-[25px] font-bold text-[#234745] hover:bg-gray-50 transition-all flex items-center justify-center gap-[8px]"
+              style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", lineHeight: '20px' }}
             >
               <span>{isEn ? 'View All' : 'عرض الكل'}</span>
               <svg width="12" height="9" viewBox="0 0 12 9" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -1972,8 +2183,20 @@ function ProductGallery({ images, product }: { images: any[], product: any }) {
     setZoomHoverProps({ show: false, x: 0, y: 0 });
   };
 
+  const rootData = useRouteLoaderData('root') as any;
+  const isEn = rootData?.locale === 'en';
+
+  const visibility = getVisibilityStatus(
+    product.visibility_start?.value,
+    product.visibility_end?.value,
+  );
+  const isVisibilityBlocked = !visibility.isActive ||
+    product.tags?.some((t: string) => t.toLowerCase().includes('season') || t.includes('موسم')) ||
+    Boolean(product.seasonal_message?.value) ||
+    Boolean(product.next_season_date?.value);
+
   return (
-    <div className="flex flex-col gap-6 relative w-full">
+    <div className="flex flex-col gap-4 relative w-full">
       {/* Main Image with Zoom on Desktop, Swipe on Mobile */}
       <div className="relative w-full aspect-square bg-[#f9f9f9] rounded-[2.5rem] overflow-hidden group border border-gray-100 shadow-sm">
 
@@ -1997,6 +2220,18 @@ function ProductGallery({ images, product }: { images: any[], product: any }) {
             </svg>
           </button>
         </div>
+
+        {/* Top Seasonal Badge (Right Side) */}
+        {isVisibilityBlocked && (
+          <div className="absolute top-6 right-6 z-20">
+            <span
+              className="px-4 py-2 bg-[#906B51] text-white font-bold text-[14px] md:text-[15px] rounded-full shadow-md flex items-center justify-center"
+              style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
+            >
+              {isEn ? 'Out for the Season' : 'نفد للموسم'}
+            </span>
+          </div>
+        )}
 
         <div
           className="w-full h-full flex md:hidden overflow-x-auto snap-x snap-mandatory flex-nowrap hide-scrollbars"
@@ -2047,32 +2282,78 @@ function ProductGallery({ images, product }: { images: any[], product: any }) {
         </div>
 
         {/* Mobile Dots Indicator */}
-        <div className="absolute bottom-6 left-0 right-0 flex justify-center gap-2 md:hidden">
+        {/* <div className="absolute bottom-6 left-0 right-0 flex justify-center gap-2 md:hidden">
           {images.map((img, i) => (
             <div key={img.id} className={`w-2 h-2 rounded-full transition-all duration-300 ${i === activeIndex ? 'bg-[#234745] w-4' : 'bg-gray-300'}`} />
           ))}
-        </div>
+        </div> */}
       </div>
 
-      {/* Desktop Thumbnails (Centered Row) */}
+      {/* Thumbnails Slider (Exactly 4 items visible at a time, scrollable for more) */}
       {images.length > 1 && (
-        <div className="hidden md:flex justify-center gap-4 mt-2">
-          {images.map((img, i) => (
-            <div
-              key={img.id}
-              onClick={() => setActiveIndex(i)}
-              className={`w-24 h-24 bg-[#f9f9f9] rounded-xl border-2 transition-all cursor-pointer flex items-center justify-center overflow-hidden shadow-sm ${i === activeIndex ? 'border-2 border-[#234745]' : 'border-transparent opacity-70 hover:opacity-100 hover:border-gray-200 border-[#BBCFCD]/50'
-                }`}
+        <div className="relative w-full mt-2 px-1 group/slider">
+          {/* Navigation arrow - Left */}
+          {images.length > 4 && (
+            <button
+              type="button"
+              onClick={() => {
+                const container = document.getElementById('product-thumbnails-slider');
+                if (container) {
+                  container.scrollBy({ left: -240, behavior: 'smooth' });
+                }
+              }}
+              className="absolute -left-3 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-white/90 shadow-md border border-gray-200 flex items-center justify-center text-gray-700 hover:bg-white hover:scale-105 active:scale-95 transition-all opacity-0 group-hover/slider:opacity-100"
+              aria-label="Scroll left"
             >
-              <Image
-                data={img}
-                alt={img.altText || `Product thumbnail ${i + 1}`}
-                sizes="(min-width: 768px) 15vw, 25vw"
-                loading="lazy"
-                className="w-full h-full object-cover"
-              />
-            </div>
-          ))}
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M15 18l-6-6 6-6" />
+              </svg>
+            </button>
+          )}
+
+          {/* Navigation arrow - Right */}
+          {images.length > 4 && (
+            <button
+              type="button"
+              onClick={() => {
+                const container = document.getElementById('product-thumbnails-slider');
+                if (container) {
+                  container.scrollBy({ left: 240, behavior: 'smooth' });
+                }
+              }}
+              className="absolute -right-3 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-white/90 shadow-md border border-gray-200 flex items-center justify-center text-gray-700 hover:bg-white hover:scale-105 active:scale-95 transition-all opacity-0 group-hover/slider:opacity-100"
+              aria-label="Scroll right"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 18l6-6-6-6" />
+              </svg>
+            </button>
+          )}
+
+          <div
+            id="product-thumbnails-slider"
+            className="flex gap-3 overflow-x-auto snap-x snap-mandatory scroll-smooth hide-scrollbars py-1 px-0.5"
+            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+          >
+            {images.map((img, i) => (
+              <div
+                key={img.id || i}
+                onClick={() => setActiveIndex(i)}
+                className={`shrink-0 w-[calc(25%-9px)] aspect-square bg-[#f9f9f9] rounded-2xl border-2 transition-all cursor-pointer flex items-center justify-center overflow-hidden snap-start shadow-sm ${i === activeIndex
+                  ? 'border-2 border-[#234745] ring-2 ring-[#234745]/20 scale-[1.02]'
+                  : 'border-[#BBCFCD]/40 opacity-70 hover:opacity-100 hover:border-[#234745]/60'
+                  }`}
+              >
+                <Image
+                  data={img}
+                  alt={img.altText || `Product thumbnail ${i + 1}`}
+                  sizes="140px"
+                  loading="lazy"
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
@@ -2170,11 +2451,23 @@ function ProductForm({
           if (option.values.length === 1 && option.values[0].value === 'Default Title') {
             return null;
           }
-          const isSize = option.name.toLowerCase() === 'size' || option.name.toLowerCase() === 'title';
-          let label = isSize ? (isEn ? 'Size' : 'الحجم') : option.name;
+          const optNameLower = option.name.toLowerCase();
+          const isSize = optNameLower === 'size' || optNameLower === 'title';
+          const isDenomination = optNameLower === 'denominations' || optNameLower === 'denomination' || optNameLower === 'value' || optNameLower === 'amount';
 
-          if (isGiftCard && isSize) {
-            label = isEn ? 'Voucher Value' : 'قيمة القسيمة';
+          let label = option.name;
+          if (!isEn) {
+            if (isDenomination) {
+              label = 'الفئات';
+            } else if (isSize) {
+              label = isGiftCard ? 'قيمة القسيمة' : 'الحجم';
+            }
+          } else {
+            if (isDenomination) {
+              label = 'Denominations';
+            } else if (isSize) {
+              label = isGiftCard ? 'Voucher Value' : 'Size';
+            }
           }
 
           return (
@@ -2187,11 +2480,39 @@ function ProductForm({
               </h5>
               <div className="flex flex-wrap gap-[12px] justify-start w-full">
                 {option.values.map(({ value, isAvailable, isActive, to }) => {
-                  let displayValue = value;
+                  const cleanNumStr = value.replace(/SAR|ر\.س/gi, '').trim();
+                  const numVal = parseFloat(cleanNumStr);
+                  const isMonetary = !isNaN(numVal) && (value.toLowerCase().includes('sar') || value.includes('ر.س') || /^\d+(\.\d+)?$/.test(cleanNumStr));
+
+                  const pillTextColor = isActive ? 'text-white' : 'text-[#255441]';
+
+                  let renderedValue: React.ReactNode = value;
+
                   if (!isEn) {
-                    if (value.toLowerCase() === 'small') displayValue = 'صغير';
-                    if (value.toLowerCase() === 'medium') displayValue = 'وسط';
-                    if (value.toLowerCase() === 'large') displayValue = 'كبير';
+                    if (value.toLowerCase() === 'small') renderedValue = 'صغير';
+                    else if (value.toLowerCase() === 'medium') renderedValue = 'وسط';
+                    else if (value.toLowerCase() === 'large') renderedValue = 'كبير';
+                    else if (isMonetary) {
+                      const formattedNum = numVal % 1 === 0 ? numVal.toString() : numVal.toFixed(2);
+                      renderedValue = (
+                        <span className={`inline-flex items-center justify-center gap-1.5 font-bold ${pillTextColor}`}>
+                          <span>{formattedNum}</span>
+                          <SaudiRiyalSymbol className={`h-4 w-auto shrink-0 mb-0.5 ${isActive ? 'text-white fill-white' : 'text-[#255441]'}`} />
+                        </span>
+                      );
+                    } else {
+                      renderedValue = value.replace(/SAR/gi, 'ر.س');
+                    }
+                  } else {
+                    if (isMonetary) {
+                      const formattedNum = numVal % 1 === 0 ? numVal.toString() : numVal.toFixed(2);
+                      renderedValue = (
+                        <span className={`inline-flex items-center justify-center gap-1.5 font-bold ${pillTextColor}`}>
+                          <span>SAR</span>
+                          <span>{formattedNum}</span>
+                        </span>
+                      );
+                    }
                   }
 
                   const variantUrl = isEn ? `/en${to}` : to;
@@ -2203,13 +2524,13 @@ function ProductForm({
                       preventScrollReset
                       replace
                       to={variantUrl}
-                      className={`h-[48px] px-[24px] rounded-[25px] text-[14px] font-normal border transition-all flex items-center justify-center min-w-[100px] shadow-sm ${isActive
-                        ? 'bg-[#234745] border-[#234745] text-white'
-                        : 'bg-white border-[#BBCFCD]/50 text-[#255441] hover:border-[#234745] hover:text-[#234745]'
+                      className={`h-[44px] px-[20px] rounded-[22px] text-[14px] font-bold border transition-all flex items-center justify-center min-w-[90px] shadow-sm ${isActive
+                        ? 'bg-[#234745] border-[#234745] !text-white shadow-md'
+                        : 'bg-white border-[#BBCFCD]/60 text-[#255441] hover:border-[#234745] hover:text-[#234745]'
                         } ${!isAvailable ? 'opacity-40 cursor-not-allowed' : ''}`}
                       style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
                     >
-                      {displayValue}
+                      {renderedValue}
                     </Link>
                   );
                 })}
@@ -2345,6 +2666,12 @@ const PRODUCT_FRAGMENT = `#graphql
     visibility_end: metafield(namespace: "custom", key: "visibility_end") {
       value
     }
+    next_season_date: metafield(namespace: "custom", key: "next_season_date") {
+      value
+    }
+    seasonal_message: metafield(namespace: "custom", key: "seasonal_message") {
+      value
+    }
     nutrition: metafield(namespace: "custom", key: "nutrition") {
       value
     }
@@ -2387,6 +2714,12 @@ const PRODUCT_FRAGMENT = `#graphql
       value
     }
     gluten_free: metafield(namespace: "custom", key: "gluten_free") {
+      value
+    }
+    restock_date: metafield(namespace: "custom", key: "restock_date") {
+      value
+    }
+    expected_restock_date: metafield(namespace: "custom", key: "expected_restock_date") {
       value
     }
     collections(first: 10) {

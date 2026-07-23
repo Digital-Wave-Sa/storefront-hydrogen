@@ -38,8 +38,8 @@ export function BestSellers({
     const isEn = locale === 'en';
 
     const tabs = isEn
-        ? ['All', 'Sweets', 'Cakes', 'Chocolate', 'Gifts']
-        : ['الكل', 'الحلويات', 'الكيك', 'الشوكولاته', 'الهدايا'];
+        ? ['All', 'Kunafa', 'Cakes', 'Chocolate', 'Gifts']
+        : ['الكل', 'كنافة', 'الكيك', 'الشوكولاته', 'الهدايا'];
 
     const getProductUrl = (handle: string) => isEn ? `/en/products/${handle}` : `/products/${handle}`;
 
@@ -78,7 +78,7 @@ export function BestSellers({
 
                 {/* Section Header */}
                 <div className="text-center mb-8">
-                    <h2 className="text-[36px] lg:text-[48px] font-bold mb-2 leading-tight" style={{ color: '#ffffff' }}>
+                    <h2 className="text-[36px] lg:text-[48px] font-bold !mb-2 leading-tight" style={{ color: '#ffffff' }}>
                         {isEn ? 'Best Sellers' : 'أفضل المبيعات'}
                     </h2>
                     <p className="text-sm md:text-base" style={{ color: 'rgba(255,255,255,0.6)' }}>{isEn ? 'Most wanted this week' : 'الأكثر طلباً هذا الأسبوع'}</p>
@@ -104,8 +104,93 @@ export function BestSellers({
                 <Suspense fallback={<div className="text-center py-20 text-gray-500">{isEn ? 'Loading products...' : 'جاري تحميل المنتجات...'}</div>}>
                     <Await resolve={products}>
                         {(resolvedData) => {
-                            const productNodes = (resolvedData as any).products?.nodes || [];
-                            const visibleProducts = productNodes.filter((p: any) => !shouldHideProduct(p, selectedLocationId, selectedLocationName));
+                            // Dynamically resolve products based on activeTab
+                            const getNodes = (coll: any) => coll?.products?.nodes || [];
+                            const fallback = (resolvedData as any).fallbackProducts?.nodes || (resolvedData as any).products?.nodes || [];
+
+                            let tabProducts = [];
+                            switch (activeTab) {
+                                case 0: { // All
+                                    const bs = getNodes((resolvedData as any).bestSellers);
+                                    tabProducts = bs.length > 0 ? bs : fallback;
+                                    break;
+                                }
+                                case 1: { // Sweets / الحلويات
+                                    const sweets = getNodes((resolvedData as any).sweets);
+                                    const kunafa = getNodes((resolvedData as any).kunafa);
+                                    tabProducts = sweets.length > 0 ? sweets : (kunafa.length > 0 ? kunafa : []);
+                                    if (tabProducts.length === 0) {
+                                        tabProducts = fallback.filter((p: any) => {
+                                            const type = (p.productType || '').toLowerCase();
+                                            const tags = (p.tags || []).map((t: string) => t.toLowerCase());
+                                            const title = (p.title || '').toLowerCase();
+                                            return type.includes('sweets') || type.includes('kunafa') || type.includes('حلويات') || type.includes('كنافة') ||
+                                                title.includes('sweets') || title.includes('kunafa') || title.includes('حلويات') || title.includes('كنافة') || title.includes('warbat') || title.includes('وربات') ||
+                                                tags.some((t: string) => t.includes('sweets') || t.includes('kunafa') || t.includes('حلويات') || t.includes('كنافة'));
+                                        });
+                                    }
+                                    break;
+                                }
+                                case 2: { // Cakes
+                                    const chocCake = getNodes((resolvedData as any).chocolateCake);
+                                    const cakes = getNodes((resolvedData as any).cakes);
+                                    tabProducts = chocCake.length > 0 ? chocCake : (cakes.length > 0 ? cakes : []);
+                                    if (tabProducts.length === 0) {
+                                        tabProducts = fallback.filter((p: any) => {
+                                            const type = (p.productType || '').toLowerCase();
+                                            const tags = (p.tags || []).map((t: string) => t.toLowerCase());
+                                            const title = (p.title || '').toLowerCase();
+                                            return type.includes('cake') || type.includes('كيك') ||
+                                                title.includes('cake') || title.includes('كيك') ||
+                                                tags.some((t: string) => t.includes('cake') || t.includes('كيك'));
+                                        });
+                                    }
+                                    break;
+                                }
+                                case 3: { // Chocolate
+                                    const choc = getNodes((resolvedData as any).chocolate);
+                                    tabProducts = choc.length > 0 ? choc : [];
+                                    if (tabProducts.length === 0) {
+                                        tabProducts = fallback.filter((p: any) => {
+                                            const type = (p.productType || '').toLowerCase();
+                                            const tags = (p.tags || []).map((t: string) => t.toLowerCase());
+                                            const title = (p.title || '').toLowerCase();
+                                            return type.includes('chocolate') || type.includes('شوكولاته') || type.includes('شوكولاتة') ||
+                                                title.includes('chocolate') || title.includes('شوكولاته') || title.includes('شوكولاتة') ||
+                                                tags.some((t: string) => t.includes('chocolate') || t.includes('شوكولاته') || t.includes('شوكولاتة'));
+                                        });
+                                    }
+                                    break;
+                                }
+                                case 4: { // Gifts
+                                    const gifts = getNodes((resolvedData as any).gifts);
+                                    const gifting = getNodes((resolvedData as any).gifting);
+                                    tabProducts = gifts.length > 0 ? gifts : (gifting.length > 0 ? gifting : []);
+                                    if (tabProducts.length === 0) {
+                                        tabProducts = fallback.filter((p: any) => {
+                                            const type = (p.productType || '').toLowerCase();
+                                            const tags = (p.tags || []).map((t: string) => t.toLowerCase());
+                                            const title = (p.title || '').toLowerCase();
+                                            return type.includes('gift') || type.includes('gifting') || type.includes('هدايا') || type.includes('الهدايا') || type.includes('bundle') || type.includes('box') || type.includes('باقة') ||
+                                                title.includes('gift') || title.includes('gifting') || title.includes('هدايا') || title.includes('الهدايا') || title.includes('bundle') || title.includes('box') || title.includes('باقة') || title.includes('add on') ||
+                                                tags.some((t: string) => t.includes('gift') || t.includes('gifting') || t.includes('هدايا') || t.includes('الهدايا') || t.includes('bundle') || t.includes('box') || t.includes('باقة'));
+                                        });
+                                    }
+                                    break;
+                                }
+                                default:
+                                    tabProducts = fallback;
+                            }
+
+                            const visibleProducts = tabProducts.filter((p: any) => !shouldHideProduct(p, selectedLocationId, selectedLocationName));
+
+                            if (visibleProducts.length === 0) {
+                                return (
+                                    <div className="w-full text-center py-16 text-white/70 font-medium">
+                                        {isEn ? 'No products found in this category' : 'لم يتم العثور على منتجات في هذه الفئة'}
+                                    </div>
+                                );
+                            }
                             return (
                                 <div className="flex md:grid md:grid-cols-3 lg:grid-cols-4 gap-4 lg:gap-6 overflow-x-auto md:overflow-visible hide-scrollbars snap-x snap-mandatory pb-8 md:pb-0 -mx-4 px-4 md:mx-0 md:px-0">
                                     {visibleProducts.map((product: any, idx: number) => {
@@ -232,10 +317,9 @@ export function BestSellers({
                                                 </div>
 
                                                 <Link
-                                                    to={isVisibilityBlocked ? '#' : getProductUrl(product.handle)}
+                                                    to={getProductUrl(product.handle)}
                                                     aria-label={product.title}
-                                                    className={`relative block aspect-[4/3] w-full flex items-center justify-center overflow-hidden ${isVisibilityBlocked ? 'pointer-events-none' : ''}`}
-                                                    onClick={isVisibilityBlocked ? (e: any) => e.preventDefault() : undefined}
+                                                    className="relative block aspect-[4/3] w-full flex items-center justify-center overflow-hidden"
                                                 >
                                                     {product.images?.nodes?.[0] && (
                                                         <Image
@@ -248,7 +332,18 @@ export function BestSellers({
                                                         />
                                                     )}
 
-                                                    {!isVisibilityBlocked && isOutOfStock && !isPreorder && (
+                                                    {isVisibilityBlocked ? (
+                                                        <div className="absolute bottom-[16px] left-1/2 -translate-x-1/2 z-10 pointer-events-none">
+                                                            <span
+                                                                className="flex items-center justify-center px-5 h-[36px] rounded-full font-bold text-[13px] whitespace-nowrap shadow-sm text-white bg-[#906B51]"
+                                                                style={{
+                                                                    fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
+                                                                }}
+                                                            >
+                                                                {isEn ? 'Out for the Season' : 'نفد للموسم'}
+                                                            </span>
+                                                        </div>
+                                                    ) : isOutOfStock && !isPreorder ? (
                                                         <div className="absolute bottom-[16px] left-1/2 -translate-x-1/2 z-10 pointer-events-none">
                                                             <span
                                                                 className="flex items-center justify-center px-6 h-[40px] rounded-full font-bold text-[14px] whitespace-nowrap"
@@ -263,8 +358,8 @@ export function BestSellers({
                                                                 {isEn ? 'Out of Stock' : 'نفذت الكمية'}
                                                             </span>
                                                         </div>
-                                                    )}
-                                                    {showPreorder && (
+                                                    ) : null}
+                                                    {!isVisibilityBlocked && showPreorder && (
                                                         <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex justify-center z-10 font-bold">
                                                             <span className="bg-[#004f59] text-white px-6 py-2 rounded-full font-bold text-sm tracking-wide shadow-sm uppercase">
                                                                 {t.common.preOrder}
@@ -276,14 +371,14 @@ export function BestSellers({
                                                 <div className="p-5 lg:p-6 flex flex-col flex-grow" style={{ backgroundColor: '#ffffff' }}>
 
                                                     {/* Title */}
-                                                    <Link to={isVisibilityBlocked ? '#' : getProductUrl(product.handle)} onClick={isVisibilityBlocked ? (e: any) => e.preventDefault() : undefined}>
+                                                    <Link to={getProductUrl(product.handle)}>
                                                         <h3 className={`font-bold text-[#234745] line-clamp-1 transition-colors duration-300 ${isVisibilityBlocked ? '' : 'hover:text-[#1a3a2d]'}`} style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", fontSize: '18px', lineHeight: '24px', opacity: isOutOfStock && !isPreorder ? 0.4 : 1 }}>
                                                             {product.title}
                                                         </h3>
                                                     </Link>
 
                                                     {/* Price Row (Side by side) */}
-                                                    {!isVisibilityBlocked ? (
+                                                    {!isVisibilityBlocked && (
                                                         <div className="mt-2 mb-4 flex items-center gap-3 justify-start" style={{ opacity: isOutOfStock && !isPreorder ? 0.4 : 1 }} dir={isEn ? 'ltr' : 'rtl'}>
                                                             <div className="text-[#234745] flex items-baseline gap-1">
                                                                 <Price data={product.priceRange.minVariantPrice} isEn={isEn} showSymbol={true} size="lg" />
@@ -294,17 +389,24 @@ export function BestSellers({
                                                                 </div>
                                                             )}
                                                         </div>
-                                                    ) : (
-                                                        <div className="mt-2 mb-4">
-                                                            <span className={`text-sm font-bold ${visibility.status === 'scheduled' ? 'text-amber-600' : 'text-red-500'}`}>
-                                                                {isEn ? visibility.label.en : visibility.label.ar}
-                                                            </span>
-                                                        </div>
                                                     )}
 
                                                     {/* Add to Cart Button */}
-                                                    {!isVisibilityBlocked && (
-                                                        <div className="mt-auto">
+                                                    <div className="mt-auto">
+                                                        {isVisibilityBlocked ? (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleNotifyClick(product.title, variant?.id)}
+                                                                className="w-full h-[40px] md:h-[44px] px-2 md:px-4 flex items-center justify-center gap-1.5 rounded-full font-bold text-[12px] md:text-[14px] bg-[#906B51] hover:bg-[#7d5c45] text-white shadow-sm transition-all duration-300 active:scale-95"
+                                                                style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
+                                                            >
+                                                                <span>{isEn ? 'Notify for Next Season' : 'أبلغني في الموسم القادم'}</span>
+                                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+                                                                    <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                                                                    <path d="M13.73 21a2 2 0 01-3.46 0" />
+                                                                </svg>
+                                                            </button>
+                                                        ) : (
                                                             <BestSellersAddToCart
                                                                 variant={variant}
                                                                 productTags={product.tags}
@@ -315,8 +417,8 @@ export function BestSellers({
                                                                 isPreorder={isPreorder}
                                                                 onNotifyClick={() => handleNotifyClick(product.title, variant?.id)}
                                                             />
-                                                        </div>
-                                                    )}
+                                                        )}
+                                                    </div>
                                                 </div>
 
                                             </div>
@@ -328,7 +430,7 @@ export function BestSellers({
                     </Await>
                 </Suspense>
 
-                <div className="mt-6 lg:mt-16 flex justify-center">
+                <div className="mt-8 lg:mt-12 flex justify-center">
                     <Link
                         to={isEn ? "/en/collections/all" : "/collections/all"}
                         className="px-12 py-4 rounded-full border-2 border-[#234745] !text-[#234745] [font-family:'GE_Dinar_One',sans-serif] font-bold text-[15px] lg:text-[18px] transition-all hover:bg-[#1a3533] hover:!text-white hover:border-[#1a3533] active:scale-95"

@@ -183,10 +183,10 @@ export function CustomerReviews({ config }: { config?: any }) {
 
                 {/* Header */}
                 <div className="text-center mb-10 flex flex-col items-center">
-                    <h2 className="text-[48px] lg:text-[64px] font-bold text-[#1a1a1a] mb-4 leading-none tracking-tighter" style={!isEn ? { fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" } : undefined}>
+                    <h2 className="text-[48px] lg:text-[50px] font-bold text-[#1a1a1a] !mb-2 leading-none tracking-tighter" style={!isEn ? { fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" } : undefined}>
                         {isEn ? titleEn : titleAr}
                     </h2>
-                    <p className="text-[#7D7D7D] font-dinar font-medium text-[16px] leading-[20px] text-center">
+                    <p className="text-[#7D7D7D] font-dinar font-medium text-[16px] leading-[20px] text-center" style={{ fontFamily: '"GE Dinar One", sans-serif' }}>
                         {isEn ? subtitleEn : subtitleAr}
                     </p>
                 </div>

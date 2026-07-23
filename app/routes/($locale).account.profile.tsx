@@ -103,7 +103,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
           throw new Error('Failed to delete account on the server.');
         }
       }
-      
+
       session.unset('customerAccessToken');
       return redirect('/', {
         headers: {
@@ -131,7 +131,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
           if (cleanPhone.startsWith('00966')) cleanPhone = cleanPhone.substring(5);
           else if (cleanPhone.startsWith('966')) cleanPhone = cleanPhone.substring(3);
           else if (cleanPhone.startsWith('05')) cleanPhone = cleanPhone.substring(1);
-          
+
           customer.phone = `${countryCode}${cleanPhone}`;
           console.log('DEBUG: Final phone string being sent to Shopify:', customer.phone);
         } else {
@@ -245,14 +245,14 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
 function parsePhoneNumber(phone: string | null | undefined) {
   if (!phone) return { countryCode: '+966', number: '' };
-  
+
   const countryCodes = ['+966', '+971', '+965', '+974', '+973', '+968', '+962'];
   for (const code of countryCodes) {
     if (phone.startsWith(code)) {
       return { countryCode: code, number: phone.substring(code.length) };
     }
   }
-  
+
   // Saudi fallbacks
   if (phone.startsWith('05')) {
     return { countryCode: '+966', number: phone.substring(1) };
@@ -260,7 +260,7 @@ function parsePhoneNumber(phone: string | null | undefined) {
   if (phone.startsWith('5')) {
     return { countryCode: '+966', number: phone };
   }
-  
+
   return { countryCode: '+966', number: phone };
 }
 
@@ -271,7 +271,7 @@ export default function AccountProfile() {
   const rootData = useRouteLoaderData('root') as any;
   const locale = rootData?.locale || 'ar';
   const isEn = locale === 'en';
-  
+
   const customer = action?.customer ?? loaderCustomer;
   const isLoading = navigation.state !== 'idle';
   const isCompany = customer.lastName === '(Company)';
@@ -325,6 +325,8 @@ export default function AccountProfile() {
         }
       } else if (fetcher.data.error) {
         setOtpError(fetcher.data.error);
+        setOtpValue(['', '', '', '', '', '']);
+        otpRefs[0].current?.focus();
       }
     }
   }, [fetcher.state, fetcher.data, showOtpModal]);
@@ -379,157 +381,161 @@ export default function AccountProfile() {
   if (!isEditing) {
     return (
       <>
-      <div className="flex flex-col items-center w-full animate-fade-in" dir={isEn ? 'ltr' : 'rtl'}>
-        <div className="bg-white border border-[#9FB7AE] rounded-[12px] p-8 flex flex-col gap-6 w-full max-w-[955px] box-border">
-          
-          {/* Missing Phone Alert */}
-          {!customer.phone && (
-            <div className="bg-[#FFEBEB] border border-[#FFD4D4] rounded-[16px] p-5 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-start animate-pulse">
-              <div>
-                <h4 className="text-[15px] font-bold text-[#D32F2F] mb-1" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
-                  {isEn ? 'Add Your Mobile Number' : 'إضافة رقم الجوال الخاص بك'}
-                </h4>
-                <p className="text-[13px] text-[#C62828] font-medium m-0" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
-                  {isEn 
-                    ? 'Please register your phone number to secure your account and access gift cards & loyalty rewards.' 
-                    : 'يرجى ربط رقم الجوال الخاص بك لتأمين حسابك والاستفادة من بطاقات الهدايا ونقاط الولاء.'}
-                </p>
-              </div>
-              <button 
-                onClick={() => setIsEditing(true)} 
-                className="bg-[#D32F2F] text-white text-sm font-bold px-5 py-2.5 rounded-[12px] hover:bg-[#C62828] transition-colors shrink-0"
-                style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
-              >
-                {isEn ? 'Add Now' : 'إضافة الآن'}
-              </button>
-            </div>
-          )}
+        <div className="flex flex-col items-center w-full animate-fade-in" dir={isEn ? 'ltr' : 'rtl'}>
+          <div className="bg-white border border-[#9FB7AE] rounded-[12px] p-8 flex flex-col gap-6 w-full max-w-[955px] box-border">
 
-          {/* Header */}
-          <div className="flex justify-between items-center w-full">
-            <h3 className="text-[18px] font-bold text-[#171717] m-0 leading-none" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
-              {isEn ? 'Personal Information' : 'المعلومات الشخصية'}
-            </h3>
-            <button 
-              onClick={() => setIsEditing(true)}
-              className="text-[14px] font-medium text-[#255441] underline m-0 leading-none" 
-              style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
-            >
-              {isEn ? 'Edit' : 'تعديل'}
-            </button>
-          </div>
-
-          {/* Grid */}
-          <div className="flex flex-col gap-6 w-full">
-            {/* Row 1 */}
-            <div className="flex flex-col md:flex-row gap-6 w-full">
-              <div className="flex flex-col gap-2 flex-1">
-                <span className="text-[14px] font-medium text-[#171717] leading-none" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
-                  {isEn ? 'Full Name' : 'الإسم الكامل'}
-                </span>
-                <div className="bg-[#FEF8EB] border border-[#BBCFCD] rounded-[12px] h-[48px] px-4 flex items-center">
-                  <span className="text-[14px] font-medium text-[#9FB7AE]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
-                    {customer.firstName} {customer.lastName !== '(Company)' ? customer.lastName : ''}
-                  </span>
+            {/* Missing Phone Alert */}
+            {!customer.phone && (
+              <div className="bg-[#FFEBEB] border border-[#FFD4D4] rounded-[16px] p-5 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-start animate-pulse">
+                <div>
+                  <h4 className="text-[15px] font-bold text-[#D32F2F] mb-1" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
+                    {isEn ? 'Add Your Mobile Number' : 'إضافة رقم الجوال الخاص بك'}
+                  </h4>
+                  <p className="text-[13px] text-[#C62828] font-medium m-0" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
+                    {isEn
+                      ? 'Please register your phone number to secure your account and access gift cards & loyalty rewards.'
+                      : 'يرجى ربط رقم الجوال الخاص بك لتأمين حسابك والاستفادة من بطاقات الهدايا ونقاط الولاء.'}
+                  </p>
                 </div>
-              </div>
-              <div className="flex flex-col gap-2 flex-1">
-                <span className="text-[14px] font-medium text-[#171717] leading-none" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
-                  {isEn ? 'Mobile Number' : 'رقم الجوال'}
-                </span>
-                <div className="bg-[#FEF8EB] border border-[#BBCFCD] rounded-[12px] h-[48px] px-4 flex items-center" dir="ltr">
-                  <span className="text-[14px] font-medium text-[#9FB7AE] w-full text-start md:text-end" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", textAlign: isEn ? 'left' : 'right' }}>
-                    {customer.phone || '-'}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Row 2 */}
-            <div className="flex flex-col md:flex-row gap-6 w-full">
-              <div className="flex flex-col gap-2 flex-1">
-                <span className="text-[14px] font-medium text-[#171717] leading-none" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
-                  {isEn ? 'Email' : 'البريد الإلكتروني'}
-                </span>
-                <div className="bg-[#FEF8EB] border border-[#BBCFCD] rounded-[12px] h-[48px] px-4 flex items-center">
-                  <span className="text-[14px] font-medium text-[#9FB7AE]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
-                    {customer.email}
-                  </span>
-                </div>
-              </div>
-              <div className="flex flex-col gap-2 flex-1">
-                <span className="text-[14px] font-medium text-[#171717] leading-none" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
-                  {isEn ? 'Date of Birth' : 'تاريخ الميلاد'}
-                </span>
-                <div className="bg-[#FEF8EB] border border-[#BBCFCD] rounded-[12px] h-[48px] px-4 flex items-center">
-                  <span className="text-[14px] font-medium text-[#9FB7AE]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", letterSpacing: '2px' }}>
-                    {(customer as any).birthdate?.value ? (customer as any).birthdate.value.replace(/-/g, ' / ') : '-'}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Row 3 */}
-            <div className="flex flex-col gap-2 w-full">
-              <span className="text-[14px] font-medium text-[#171717] leading-none" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
-                {isEn ? 'Preferred Language' : 'اللغة المفضلة'}
-              </span>
-              <div className="bg-[#FEF8EB] border border-[#BBCFCD] rounded-[12px] h-[48px] px-4 flex items-center w-full">
-                <span className="text-[14px] font-medium text-[#9FB7AE]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
-                  {isEn ? 'English' : 'العربية'}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div className="border-t border-[#BBCFCD] w-full my-2"></div>
-
-          {/* Delete Button */}
-          <div className="flex justify-start items-center">
-            <button onClick={() => setShowDeleteModal(true)} type="button" className="flex items-center justify-center gap-2 border border-[#E64950] rounded-[12px] h-[48px] px-6 text-[#E64950] hover:bg-red-50 transition-colors">
-              <span className="text-[16px] font-bold leading-none" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
-                {isEn ? 'Delete Account Permanently' : 'حذف الحساب نهائياً'}
-              </span>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                 <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2M10 11v6M14 11v6"/>
-              </svg>
-            </button>
-          </div>
-        </div>
-      </div>
-      
-      {showDeleteModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-fade-in" dir={isEn ? 'ltr' : 'rtl'}>
-          <div className="bg-white rounded-[24px] p-8 max-w-[480px] w-[90%] flex flex-col items-center text-center shadow-xl">
-            <div className="w-[80px] h-[80px] bg-[#E64950] rounded-full flex items-center justify-center text-white text-[40px] font-bold mb-6">
-              !
-            </div>
-            <h3 className="text-[20px] font-bold text-[#171717] mb-2" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
-              {isEn ? 'Are you sure you want to permanently delete the account?' : 'هل انت متأكد من انك تريد حذف الحساب نهائياً؟'}
-            </h3>
-            <p className="text-[14px] text-[#7D7D7D] mb-8" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
-              {isEn ? 'Warning! All your data will be deleted if the account is deleted' : 'انتبه! سيتم حذف جميع البيانات الخاصة بك في حال حذف الحساب'}
-            </p>
-            <div className="flex w-full gap-4">
-              <Form method="PUT" className="w-1/2">
-                <input type="hidden" name="intent" value="deleteAccount" />
-                <button type="submit" disabled={isLoading} className="w-full bg-[#E64950] text-white rounded-[12px] h-[48px] text-[16px] font-bold hover:bg-[#c0392b] transition-colors disabled:opacity-70" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
-                  {isLoading ? (isEn ? 'Deleting...' : 'جاري الحذف...') : (isEn ? 'Yes, delete' : 'نعم, حذف')}
+                <button
+                  onClick={() => setIsEditing(true)}
+                  className="bg-[#D32F2F] text-white text-sm font-bold px-5 py-2.5 rounded-[12px] hover:bg-[#C62828] transition-colors shrink-0"
+                  style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
+                >
+                  {isEn ? 'Add Now' : 'إضافة الآن'}
                 </button>
-              </Form>
-              <button 
-                type="button" 
-                onClick={() => setShowDeleteModal(false)}
-                className="w-1/2 bg-[#255441] text-white rounded-[12px] h-[48px] text-[16px] font-bold hover:bg-[#1a3a2d] transition-colors" 
+              </div>
+            )}
+
+            {/* Header */}
+            <div className="flex justify-between items-center w-full">
+              <h3 className="text-[18px] font-bold text-[#171717] m-0 leading-none" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
+                {isEn ? 'Personal Information' : 'المعلومات الشخصية'}
+              </h3>
+              <button
+                onClick={() => setIsEditing(true)}
+                className="text-[14px] font-medium text-[#255441] underline m-0 leading-none"
                 style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
               >
-                {isEn ? 'No, go back' : 'لا, الرجوع'}
+                {isEn ? 'Edit' : 'تعديل'}
+              </button>
+            </div>
+
+            {/* Grid */}
+            <div className="flex flex-col gap-6 w-full">
+              {/* Row 1 */}
+              <div className="flex flex-col md:flex-row gap-6 w-full">
+                <div className="flex flex-col gap-2 flex-1">
+                  <span className="text-[14px] font-medium text-[#171717] leading-none" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
+                    {isEn ? 'Mobile Number' : 'رقم الجوال'}
+                  </span>
+                  <div className="bg-[#FEF8EB] border border-[#BBCFCD] rounded-[12px] h-[48px] px-4 flex items-center" dir="ltr">
+                    <span className="text-[14px] font-medium text-[#9FB7AE] w-full text-start md:text-end" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", textAlign: isEn ? 'left' : 'right' }}>
+                      {customer.phone || '-'}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex flex-col gap-2 flex-1">
+                  <span className="text-[14px] font-medium text-[#171717] leading-none" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
+                    {isEn ? 'Full Name' : 'الإسم الكامل'}
+                  </span>
+                  <div className="bg-[#FEF8EB] border border-[#BBCFCD] rounded-[12px] h-[48px] px-4 flex items-center">
+                    <span className="text-[14px] font-medium text-[#9FB7AE]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
+                      {customer.firstName} {customer.lastName !== '(Company)' ? customer.lastName : ''}
+                    </span>
+                  </div>
+                </div>
+
+              </div>
+
+              {/* Row 2 */}
+              <div className="flex flex-col md:flex-row gap-6 w-full">
+                <div className="flex flex-col gap-2 flex-1">
+                  <span className="text-[14px] font-medium text-[#171717] leading-none" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
+                    {isEn ? 'Date of Birth' : 'تاريخ الميلاد'}
+                  </span>
+                  <div className="bg-[#FEF8EB] border border-[#BBCFCD] rounded-[12px] h-[48px] px-4 flex items-center">
+                    <span className="text-[14px] font-medium text-[#9FB7AE]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", letterSpacing: '2px' }}>
+                      {(customer as any).birthdate?.value ? (customer as any).birthdate.value.replace(/-/g, ' / ') : '-'}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex flex-col gap-2 flex-1">
+                  <span className="text-[14px] font-medium text-[#171717] leading-none" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
+                    {isEn ? 'Email' : 'البريد الإلكتروني'}
+                  </span>
+                  <div className="bg-[#FEF8EB] border border-[#BBCFCD] rounded-[12px] h-[48px] px-4 flex items-center">
+                    <span className="text-[14px] font-medium text-[#9FB7AE]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
+                      {customer.email}
+                    </span>
+                  </div>
+                </div>
+
+              </div>
+
+              {/* Row 3 */}
+              <div className="flex flex-col gap-2 w-full">
+                <span className="text-[14px] font-medium text-[#171717] leading-none" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
+                  {isEn ? 'Preferred Language' : 'اللغة المفضلة'}
+                </span>
+                <div className="bg-[#FEF8EB] border border-[#BBCFCD] rounded-[12px] h-[48px] px-4 flex items-center w-full">
+                  <span className="text-[14px] font-medium text-[#9FB7AE]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
+                    {isEn ? 'English' : 'العربية'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="border-t border-[#BBCFCD] w-full my-2"></div>
+
+            {/* Delete Button */}
+            <div className="flex justify-center md:justify-start items-center !w-full md:w-auto">
+              <button onClick={() => setShowDeleteModal(true)} type="button" className="flex items-center justify-center gap-2 border border-[#E64950] rounded-[12px] h-[48px] px-6 text-[#E64950] hover:bg-red-50 transition-colors w-full md:w-auto">
+                <svg width="15" height="16" viewBox="0 0 15 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path fill-rule="evenodd" clip-rule="evenodd" d="M2.72833 2.83333L3.405 14.2067C3.41519 14.3762 3.48967 14.5354 3.61325 14.6518C3.73683 14.7683 3.90019 14.8332 4.07 14.8333H10.0967C10.2665 14.8332 10.4298 14.7683 10.5534 14.6518C10.677 14.5354 10.7515 14.3762 10.7617 14.2067L11.4383 2.83333H2.72833ZM12.4408 2.83333L11.76 14.2658C11.7347 14.6899 11.5485 15.0883 11.2393 15.3796C10.9302 15.6709 10.5215 15.8332 10.0967 15.8333H4.07C3.64521 15.8332 3.23648 15.6709 2.92733 15.3796C2.61818 15.0883 2.43194 14.6899 2.40667 14.2658L1.72583 2.83333H0V2.25C0 2.13949 0.0438988 2.03351 0.122039 1.95537C0.200179 1.87723 0.30616 1.83333 0.416667 1.83333H13.75C13.8605 1.83333 13.9665 1.87723 14.0446 1.95537C14.1228 2.03351 14.1667 2.13949 14.1667 2.25V2.83333H12.4408ZM8.75 0C8.86051 0 8.96649 0.0438988 9.04463 0.122039C9.12277 0.200179 9.16667 0.30616 9.16667 0.416667V1H5V0.416667C5 0.30616 5.0439 0.200179 5.12204 0.122039C5.20018 0.0438988 5.30616 0 5.41667 0H8.75ZM5 5H6L6.41667 12.5H5.41667L5 5ZM8.16667 5H9.16667L8.75 12.5H7.75L8.16667 5Z" fill="#E64950" />
+                </svg>
+                <span className="text-[14px] md:text-[16px] font-bold" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
+                  {isEn ? 'Delete Account Permanently' : 'حذف الحساب نهائياً'}
+                </span>
+
+
               </button>
             </div>
           </div>
         </div>
-      )}
-    </>
+
+        {showDeleteModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-fade-in" dir={isEn ? 'ltr' : 'rtl'}>
+            <div className="bg-white rounded-[24px] p-8 max-w-[480px] w-[90%] flex flex-col items-center text-center shadow-xl">
+              <div className="w-[80px] h-[80px] bg-[#E64950] rounded-full flex items-center justify-center text-white text-[40px] font-bold mb-6">
+                !
+              </div>
+              <h3 className="md:!text-[18px] !text-[14px] font-bold text-[#171717] mb-2" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
+                {isEn ? 'Are you sure you want to permanently delete the account?' : 'هل انت متأكد من انك تريد حذف الحساب نهائياً؟'}
+              </h3>
+              <p className="!text-[12px] md:!text-[14px] text-[#7D7D7D] !mb-4 !font-medium" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
+                {isEn ? 'Warning! All your data will be deleted if the account is deleted' : 'انتبه! سيتم حذف جميع البيانات الخاصة بك في حال حذف الحساب'}
+              </p>
+              <div className="flex w-full gap-4">
+                <Form method="PUT" className="w-1/2">
+                  <input type="hidden" name="intent" value="deleteAccount" />
+                  <button type="submit" disabled={isLoading} className="w-full bg-[#E64950] text-white rounded-full h-[48px] text-[14px] md:text-[16px] font-bold hover:bg-[#c0392b] transition-colors disabled:opacity-70" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
+                    {isLoading ? (isEn ? 'Deleting...' : 'جاري الحذف...') : (isEn ? 'Yes, delete' : 'نعم, حذف')}
+                  </button>
+                </Form>
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteModal(false)}
+                  className="w-1/2 bg-[#255441] text-white rounded-full h-[48px] text-[14px] md:text-[16px] font-bold hover:bg-[#1a3a2d] transition-colors"
+                  style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
+                >
+                  {isEn ? 'No, go back' : 'لا, الرجوع'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </>
     );
   }
 
@@ -537,7 +543,7 @@ export default function AccountProfile() {
     <div className="flex flex-col items-center w-full" dir={isEn ? 'ltr' : 'rtl'}>
       <Form ref={formRef} onSubmit={handleProfileSubmit} method="PUT" className="animate-fade-in w-full max-w-[955px] box-border" style={{ display: 'contents' }}>
         <div className="bg-white border border-[#9FB7AE] rounded-[12px] p-8 flex flex-col gap-6 w-full box-border">
-          
+
           {/* Missing Phone Alert */}
           {!customer.phone && (
             <div className="bg-[#FFEBEB] border border-[#FFD4D4] rounded-[16px] p-5 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-start animate-pulse">
@@ -546,8 +552,8 @@ export default function AccountProfile() {
                   {isEn ? 'Add Your Mobile Number' : 'إضافة رقم الجوال الخاص بك'}
                 </h4>
                 <p className="text-[13px] text-[#C62828] font-medium m-0" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
-                  {isEn 
-                    ? 'Please register your phone number to secure your account and access gift cards & loyalty rewards.' 
+                  {isEn
+                    ? 'Please register your phone number to secure your account and access gift cards & loyalty rewards.'
                     : 'يرجى ربط رقم الجوال الخاص بك لتأمين حسابك والاستفادة من بطاقات الهدايا ونقاط الولاء.'}
                 </p>
               </div>
@@ -559,10 +565,10 @@ export default function AccountProfile() {
             <h3 className="text-[18px] font-bold text-[#171717] m-0 leading-none" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
               {isEn ? 'Personal Information' : 'المعلومات الشخصية'}
             </h3>
-            <button 
+            <button
               type="button"
               onClick={() => setIsEditing(false)}
-              className="text-[14px] font-medium text-[#255441] underline m-0 leading-none" 
+              className="text-[14px] font-medium text-[#255441] underline m-0 leading-none"
               style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
             >
               {isEn ? 'Cancel' : 'إلغاء'}
@@ -593,11 +599,11 @@ export default function AccountProfile() {
                   {isEn ? 'Mobile Number' : 'رقم الجوال'}
                 </label>
                 <div className="flex flex-row items-center border border-[#BBCFCD] bg-white rounded-[12px] h-[48px] focus-within:border-[#234745] transition-colors overflow-hidden" dir="ltr">
-                  <select 
-                    name="countryCode" 
+                  <select
+                    name="countryCode"
                     value={selectedCountryCode}
                     onChange={(e) => setSelectedCountryCode(e.target.value)}
-                    className="bg-transparent border-none text-[#171717] font-bold text-[14px] focus:ring-0 outline-none pl-4 pr-6 py-3 appearance-none cursor-pointer" 
+                    className="bg-transparent border-none text-[#171717] font-bold text-[14px] focus:ring-0 outline-none pl-4 pr-6 py-3 appearance-none cursor-pointer"
                     style={{ backgroundImage: "url(\"data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e\")", backgroundRepeat: "no-repeat", backgroundPosition: "right 0.2rem center", backgroundSize: "1.2em", width: "90px" }}
                   >
                     <option value="+966">+966</option>
@@ -661,7 +667,7 @@ export default function AccountProfile() {
                 {isEn ? 'Preferred Language' : 'اللغة المفضلة'}
               </label>
               <div className="relative">
-                <select 
+                <select
                   className="appearance-none bg-white border border-[#BBCFCD] rounded-[12px] h-[48px] px-4 w-full text-[14px] font-medium text-[#171717] focus:outline-none focus:border-[#9FB7AE]"
                   style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
                   defaultValue={isEn ? 'en' : 'ar'}
@@ -677,11 +683,11 @@ export default function AccountProfile() {
                 </div>
               </div>
             </div>
-            
+
             {/* Save Button */}
             <div className="flex justify-end w-full mt-2">
-              <button 
-                type="submit" 
+              <button
+                type="submit"
                 disabled={isLoading}
                 className="bg-[#234745] text-white rounded-[12px] h-[48px] px-8 text-[16px] font-bold hover:bg-[#1a3533] transition-colors disabled:opacity-70"
                 style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", minWidth: '180px' }}
@@ -700,11 +706,11 @@ export default function AccountProfile() {
                 {isEn ? 'Delete Account Permanently' : 'حذف الحساب نهائياً'}
               </span>
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                 <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2M10 11v6M14 11v6"/>
+                <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2M10 11v6M14 11v6" />
               </svg>
             </button>
           </div>
-          
+
           {action?.error && (
             <div className="mt-4 p-4 rounded-[12px] bg-[#ffebeb] border border-[#ffcfcf] text-[#e74c3c]">
               <p className="m-0 text-[14px] font-semibold">
@@ -734,10 +740,10 @@ export default function AccountProfile() {
                   {isLoading ? (isEn ? 'Deleting...' : 'جاري الحذف...') : (isEn ? 'Yes, delete' : 'نعم, حذف')}
                 </button>
               </Form>
-              <button 
-                type="button" 
+              <button
+                type="button"
                 onClick={() => setShowDeleteModal(false)}
-                className="w-1/2 bg-[#255441] text-white rounded-[12px] h-[48px] text-[16px] font-bold hover:bg-[#1a3a2d] transition-colors" 
+                className="w-1/2 bg-[#255441] text-white rounded-[12px] h-[48px] text-[16px] font-bold hover:bg-[#1a3a2d] transition-colors"
                 style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
               >
                 {isEn ? 'No, go back' : 'لا, الرجوع'}
@@ -752,16 +758,16 @@ export default function AccountProfile() {
           <div className="bg-white rounded-[24px] p-8 max-w-[480px] w-[90%] flex flex-col items-center text-center shadow-xl">
             <div className="w-[80px] h-[80px] bg-[#234745] rounded-full flex items-center justify-center text-white mb-6">
               <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="5" y="2" width="14" height="20" rx="2" ry="2"/>
-                <line x1="12" y1="18" x2="12.01" y2="18"/>
+                <rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
+                <line x1="12" y1="18" x2="12.01" y2="18" />
               </svg>
             </div>
             <h3 className="text-[20px] font-bold text-[#171717] mb-2" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
               {isEn ? 'Verify Mobile Number' : 'التحقق من رقم الجوال'}
             </h3>
             <p className="text-[14px] text-[#7D7D7D] mb-6" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
-              {isEn 
-                ? `Please enter the 6-digit verification code sent to ${selectedCountryCode}${enteredPhone}` 
+              {isEn
+                ? `Please enter the 6-digit verification code sent to ${selectedCountryCode}${enteredPhone}`
                 : `الرجاء إدخال رمز التحقق المكون من 6 أرقام المرسل إلى ${selectedCountryCode}${enteredPhone}`}
             </p>
 
@@ -788,8 +794,8 @@ export default function AccountProfile() {
             )}
 
             <div className="flex w-full gap-4">
-              <button 
-                type="button" 
+              <button
+                type="button"
                 onClick={verifyOtpAndSubmit}
                 disabled={fetcher.state !== 'idle' || otpValue.join('').length < 6}
                 className="w-1/2 bg-[#234745] text-white rounded-[12px] h-[48px] text-[16px] font-bold hover:bg-[#1a3533] transition-colors disabled:opacity-50"
@@ -797,10 +803,10 @@ export default function AccountProfile() {
               >
                 {fetcher.state !== 'idle' ? (isEn ? 'Verifying...' : 'جاري التحقق...') : (isEn ? 'Verify' : 'تأكيد')}
               </button>
-              <button 
-                type="button" 
+              <button
+                type="button"
                 onClick={() => setShowOtpModal(false)}
-                className="w-1/2 bg-gray-100 text-gray-700 rounded-[12px] h-[48px] text-[16px] font-bold hover:bg-gray-200 transition-colors" 
+                className="w-1/2 bg-gray-100 text-gray-700 rounded-[12px] h-[48px] text-[16px] font-bold hover:bg-gray-200 transition-colors"
                 style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
               >
                 {isEn ? 'Cancel' : 'إلغاء'}

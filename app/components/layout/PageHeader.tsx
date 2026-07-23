@@ -1,4 +1,4 @@
-import patternBg from '~/assets/patteren-collection-header.svg';
+import patternBg from '/images/second-bg-pattern.svg';
 
 interface PageHeaderProps {
     title: string;
@@ -15,16 +15,16 @@ export function PageHeader({ title, subtitle, isEn, children }: PageHeaderProps)
                 style={{
                     backgroundImage: `url(${patternBg})`,
                     backgroundPosition: 'center',
-                    backgroundRepeat: 'no-repeat'
+                    backgroundSize: '1400px 3000px'
                 }}
             />
             <div className="relative z-10 w-full flex flex-col items-center justify-center text-center mt-4">
                 {subtitle && (
-                    <p className="text-[#BBCFCD] text-[18px] md:text-[18px] font-bold mb-4" style={{ fontFamily: isEn ? "'Inter', sans-serif" : "'EnglishDigits', 'GE Dinar One', sans-serif", lineHeight: '100%' }}>
+                    <p className="text-[#BBCFCD] !text-[12px] md:!text-[18px] font-normal mb-4" style={{ fontFamily: isEn ? "'Inter', sans-serif" : "'EnglishDigits', 'GE Dinar One', sans-serif", lineHeight: '100%' }}>
                         {subtitle}
                     </p>
                 )}
-                <h1 className="!text-[32px] md:!text-[50px] font-bold" style={{ fontFamily: isEn ? "'Inter', sans-serif" : "'EnglishDigits', 'Bahij Janna', sans-serif", lineHeight: '100%', color: '#FEF8EB', marginTop: '1rem', marginBottom: '1rem' }}>
+                <h1 className="!text-[26px] md:!text-[50px] font-bold" style={{ fontFamily: isEn ? "'Inter', sans-serif" : "'EnglishDigits', 'Bahij Janna', sans-serif", lineHeight: '100%', color: '#FEF8EB', marginTop: '1rem', marginBottom: '1rem' }}>
                     {title}
                 </h1>
                 {children}

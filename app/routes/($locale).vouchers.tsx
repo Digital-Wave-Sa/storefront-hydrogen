@@ -42,8 +42,8 @@ export default function VouchersPage() {
     e.preventDefault();
     if (!voucherCodeInput.trim()) return;
     setAppliedVoucherSuccess(
-      isEn 
-        ? `Voucher "${voucherCodeInput.trim().toUpperCase()}" validated successfully! Applied to your cart.` 
+      isEn
+        ? `Voucher "${voucherCodeInput.trim().toUpperCase()}" validated successfully! Applied to your cart.`
         : `تم التحقق من القسيمة "${voucherCodeInput.trim().toUpperCase()}" بنجاح! تم التطبيق على سلتك.`
     );
     showToast(isEn ? 'Voucher code applied!' : 'تم تطبيق كود القسيمة!');
@@ -53,8 +53,8 @@ export default function VouchersPage() {
     e.preventDefault();
     if (!balanceCheckInput.trim()) return;
     setBalanceResult(
-      isEn 
-        ? `Current balance for "${balanceCheckInput.trim()}": 150.00 SAR` 
+      isEn
+        ? `Current balance for "${balanceCheckInput.trim()}": 150.00 SAR`
         : `الرصيد المتاح للرمز "${balanceCheckInput.trim()}": 150.00 ر.س`
     );
   };
@@ -71,90 +71,120 @@ export default function VouchersPage() {
         </div>
       )}
 
-      {/* ─── 1. HERO BANNER SECTION ───────────────────────────────────────── */}
-      <section className="relative w-full h-[420px] sm:h-[480px] lg:h-[520px] bg-[#1A3533] overflow-hidden flex items-center justify-center">
-        {/* Background Image Overlay */}
-        <div className="absolute inset-0 z-0">
+      {/* ─── 1. HERO BANNER SECTION (Matches Figma Specs: 1440px max-width, 610px height, rounded-20px) ──────────────── */}
+      <section className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
+        <div className="relative w-full h-[460px] sm:h-[540px] lg:h-[610px] rounded-[20px] overflow-hidden shadow-2xl">
+          {/* Background Image — full cover, no dark tint */}
           <img
-            src="https://images.unsplash.com/photo-1578985545062-69928b1d9587?q=80&w=1600&auto=format&fit=crop"
+            src="/images/vouchers/voucher-hero.png"
             alt="Saadeddin Luxury Vouchers Banner"
-            className="w-full h-full object-cover opacity-35 scale-105 transition-transform duration-1000"
+            className="absolute inset-0 w-full h-full object-cover object-center"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#1A3533]/90 via-[#1A3533]/50 to-transparent" />
-        </div>
 
-        {/* Content Container */}
-        <div className="relative z-10 max-w-[1200px] mx-auto px-4 text-center text-white flex flex-col items-center justify-center gap-4">
-          {/* Badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-[#C8A464] text-[13px] sm:text-[14px] font-bold">
-            <span className="w-2 h-2 rounded-full bg-[#C8A464] animate-pulse" />
-            {isEn ? 'Gift Vouchers' : 'قسائم الهدايا'}
-          </div>
+          {/*
+            Gradient overlay:
+            - Arabic (RTL): text is on the RIGHT → darken the right side
+              from-transparent (left) → to-black/50 (right)
+            - English (LTR): text is on the LEFT → darken the left side
+              from-black/50 (left) → to-transparent (right)
+          */}
+          <div
+            className={`absolute inset-0 z-10 pointer-events-none ${
+              isEn
+                ? 'bg-gradient-to-r from-black/55 via-black/20 to-transparent'
+                : 'bg-gradient-to-l from-black/55 via-black/20 to-transparent'
+            }`}
+          />
 
-          {/* Title */}
-          <h1 
-            className="text-[32px] sm:text-[44px] lg:text-[54px] font-bold leading-[1.15] text-white tracking-wide max-w-[850px]"
-            style={{ fontFamily: isEn ? "'Bahij Janna', sans-serif" : undefined }}
+          {/* Content — absolute positioned to fill hero, uses flexbox to push text to correct side */}
+          <div
+            className="absolute inset-0 z-20 flex flex-col justify-between"
+            style={{ padding: 'clamp(24px, 4%, 56px)' }}
           >
-            {isEn ? 'Gifts & Promotional Vouchers' : 'الهدايا والعروض الترويجية'}
-          </h1>
 
-          {/* Subtitle */}
-          <p 
-            className="text-white/85 text-[14px] sm:text-[16px] lg:text-[18px] max-w-[700px] font-light leading-relaxed"
-            style={{ fontFamily: isEn ? "'Gotham Light', sans-serif" : undefined }}
-          >
-            {isEn 
-              ? 'The finest selection for every occasion, bringing endless possibilities and sweet memories.' 
-              : 'التجربة الاختيار الأفضل وتجعل إمكانية الاستخدام والخيارات الخالية متوفرة دائماً'}
-          </p>
+            {/* TOP ROW: Badge pinned to correct side */}
+            <div className={`flex ${isEn ? 'justify-start' : 'justify-end'}`}>
+              <div className="inline-flex items-center gap-2 px-5 py-1.5 rounded-full bg-[#D4B483] text-[#1A3533] text-[13px] sm:text-[14px] font-bold shadow">
+                <span>—</span>
+                <span>{isEn ? 'Gift Vouchers' : 'قسائم الهدايا'}</span>
+                <span>—</span>
+              </div>
+            </div>
 
-          {/* Action Buttons */}
-          <div className="flex flex-wrap items-center justify-center gap-4 mt-4">
-            <Link
-              to={isEn ? '/en/collections/all' : '/collections/all'}
-              className="h-[48px] px-8 bg-[#C8A464] hover:bg-[#b59355] text-[#1A3533] font-bold text-[15px] rounded-[50px] flex items-center justify-center transition-all shadow-lg hover:scale-105"
+            {/* MIDDLE ROW: Title, subtitle, buttons — pinned to correct side */}
+            <div
+              className={`flex flex-col gap-3 w-full max-w-[580px] ${
+                isEn ? 'self-start text-left items-start' : 'self-end text-right items-end'
+              }`}
             >
-              {isEn ? 'Shop Now' : 'تسوق الآن'}
-            </Link>
-            <a
-              href="#redeem-section"
-              className="h-[48px] px-8 bg-white/15 hover:bg-white/25 border border-white/30 text-white font-bold text-[15px] rounded-[50px] flex items-center justify-center transition-all backdrop-blur-sm"
-            >
-              {isEn ? 'Redeem Voucher' : 'استبدال قسيمة'}
-            </a>
-          </div>
+              {/* Title */}
+              <h1
+                className="text-[36px] sm:text-[52px] lg:text-[68px] font-bold leading-[1.05] text-white tracking-tight"
+                style={{ textShadow: '0 2px 12px rgba(0,0,0,0.35)' }}
+              >
+                {isEn ? (
+                  <>Gifts & Promotional <br />Vouchers</>
+                ) : (
+                  <>الهدايا والعروض <br />الترويجية</>
+                )}
+              </h1>
 
-          {/* Bottom Feature Strip */}
-          <div className="mt-8 pt-6 border-t border-white/15 flex flex-wrap items-center justify-center gap-6 sm:gap-12 text-white/80 text-[12px] sm:text-[13px] font-medium">
-            <div className="flex items-center gap-2">
-              <span className="text-[#C8A464]">✓</span>
-              <span>{isEn ? 'Quick Preparation' : 'تجهيزات خلال وطلبات لساعة أحدث'}</span>
+              {/* Subtitle */}
+              <p
+                className="text-white/90 text-[12px] sm:text-[14px] lg:text-[15px] font-light leading-relaxed max-w-[480px]"
+                style={{ textShadow: '0 1px 6px rgba(0,0,0,0.4)' }}
+              >
+                {isEn
+                  ? 'Give the gift of choice. Buy, gift, and redeem luxury Saadeddin vouchers — the perfect gift for every occasion.'
+                  : 'امنح هدية الاختيار. اشترِ، أهدِ، واستبدل قسائم هدايا "سعد الدين" الراقية — الهدية المثالية لكل مناسبة.'}
+              </p>
+
+              {/* Action Buttons */}
+              <div className={`flex flex-wrap items-center gap-4 mt-2 ${isEn ? 'justify-start' : 'justify-end'}`}>
+
+                {/* Primary Shop Button (Gold) */}
+                <Link
+                  to={isEn ? '/en/collections/all' : '/collections/all'}
+                  className="h-[46px] sm:h-[50px] px-9 bg-[#D4B483] hover:bg-[#c4a473] text-[#1A3533] font-bold text-[15px] sm:text-[16px] rounded-full flex items-center justify-center transition-all shadow-md active:scale-98"
+                >
+                  {isEn ? 'Shop Now' : 'تسوق الآن'}
+                </Link>
+
+                {/* Secondary Redeem Button (Sage Mint Glassmorphism) */}
+                <a
+                  href="#redeem-section"
+                  className="h-[46px] sm:h-[50px] px-9 bg-[#B6CFC9]/90 hover:bg-[#a2cfc4] text-[#1A3533] font-bold text-[15px] sm:text-[16px] rounded-full flex items-center justify-center transition-all backdrop-blur-md shadow-md active:scale-98"
+                >
+                  {isEn ? 'Redeem Voucher' : 'استبدال قسيمة'}
+                </a>
+
+              </div>
+
             </div>
-            <span className="text-white/30 hidden sm:inline">|</span>
-            <div className="flex items-center gap-2">
-              <span className="text-[#C8A464]">✓</span>
-              <span>{isEn ? 'Fast Shipping' : 'شحن سريع'}</span>
+
+            {/* Bottom Feature Strip (Matches Figma Screenshot) */}
+            <div className={`flex flex-wrap items-center gap-3 sm:gap-5 text-white/95 text-[11px] sm:text-[12px] font-medium ${isEn ? 'justify-start' : 'justify-end'}`}>
+              <span>{isEn ? 'Halal & HACCP Certified for Food Safety.' : 'شهادات حلال والهيسب لسلامة الغذاء.'}</span>
+              <span className="text-white/40">|</span>
+              <span>{isEn ? 'Refrigerated Shipping' : 'شحن مبرد'}</span>
+              <span className="text-white/40">|</span>
+              <span>{isEn ? 'Over 30 Countries' : 'أكثر من 30 دولة'}</span>
             </div>
-            <span className="text-white/30 hidden sm:inline">|</span>
-            <div className="flex items-center gap-2">
-              <span className="text-[#C8A464]">✓</span>
-              <span>{isEn ? '100% Fresh' : 'أكل طازج 100%'}</span>
-            </div>
+
           </div>
         </div>
       </section>
 
       {/* ─── 2. AVAILABLE VOUCHERS SECTION ──────────────────────────────── */}
-      <section className="max-w-[1200px] mx-auto px-4 pt-16 pb-12">
+      <section className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 pt-14 pb-12">
         <div className="text-center mb-10">
-          <h2 
+          <h2
             className="text-[28px] sm:text-[34px] font-bold text-[#234745] mb-2"
             style={{ fontFamily: isEn ? "'Bahij Janna', sans-serif" : undefined }}
           >
             {isEn ? 'Available Vouchers' : 'القسائم المتاحة'}
           </h2>
-          <p 
+          <p
             className="text-[#666666] text-[14px] sm:text-[15px]"
             style={{ fontFamily: isEn ? "'Gotham Light', sans-serif" : undefined }}
           >
@@ -176,10 +206,10 @@ export default function VouchersPage() {
               <div className="text-[#C8A464] text-[11px] font-bold tracking-[0.25em] uppercase mb-4 text-center">
                 S A A D E D D I N
               </div>
-              
+
               {/* Main Discount */}
               <div className="text-center my-3">
-                <span 
+                <span
                   className="text-[34px] sm:text-[40px] font-bold text-white leading-none block mb-1"
                   style={{ fontFamily: isEn ? "'Bahij Janna', sans-serif" : undefined }}
                 >
@@ -204,7 +234,7 @@ export default function VouchersPage() {
                 <button
                   type="button"
                   onClick={() => handleCopyCode('SWEET')}
-                  className="h-[38px] px-5 bg-[#C8A464] hover:bg-[#b59355] text-[#1A3533] font-bold text-[13px] rounded-full transition-all active:scale-95 shadow-md"
+                  className="h-[38px] px-5 bg-[#D4B483] hover:bg-[#c4a473] text-[#1A3533] font-bold text-[13px] rounded-full transition-all active:scale-95 shadow-md"
                 >
                   {isEn ? 'Get Code' : 'إحصل عليه'}
                 </button>
@@ -216,7 +246,7 @@ export default function VouchersPage() {
           </div>
 
           {/* Voucher Card 2 (Gold Luxury) */}
-          <div className="relative bg-[#C8A464] text-[#1A3533] rounded-2xl p-6 shadow-xl flex flex-col justify-between overflow-hidden border border-[#C8A464]/30 hover:-translate-y-1 transition-all duration-300">
+          <div className="relative bg-[#D4B483] text-[#1A3533] rounded-2xl p-6 shadow-xl flex flex-col justify-between overflow-hidden border border-[#D4B483]/30 hover:-translate-y-1 transition-all duration-300">
             {/* Cutout notches */}
             <div className="absolute -left-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-[#FAF8F5]" />
             <div className="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-[#FAF8F5]" />
@@ -226,10 +256,10 @@ export default function VouchersPage() {
               <div className="text-[#1A3533]/80 text-[11px] font-bold tracking-[0.25em] uppercase mb-4 text-center">
                 S A A D E D D I N
               </div>
-              
+
               {/* Main Discount */}
               <div className="text-center my-3">
-                <span 
+                <span
                   className="text-[34px] sm:text-[40px] font-bold text-[#1A3533] leading-none block mb-1"
                   style={{ fontFamily: isEn ? "'Bahij Janna', sans-serif" : undefined }}
                 >
@@ -265,7 +295,7 @@ export default function VouchersPage() {
             </div>
           </div>
 
-          {/* Voucher Card 3 (Soft Grey/Cream) */}
+          {/* Voucher Card 3 (Soft Grey/White) */}
           <div className="relative bg-white text-[#234745] rounded-2xl p-6 shadow-md flex flex-col justify-between overflow-hidden border border-gray-200 hover:-translate-y-1 transition-all duration-300">
             {/* Cutout notches */}
             <div className="absolute -left-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-[#FAF8F5]" />
@@ -276,10 +306,10 @@ export default function VouchersPage() {
               <div className="text-[#234745]/60 text-[11px] font-bold tracking-[0.25em] uppercase mb-4 text-center">
                 S A A D E D D I N
               </div>
-              
+
               {/* Main Discount */}
               <div className="text-center my-3">
-                <span 
+                <span
                   className="text-[34px] sm:text-[40px] font-bold text-[#234745] leading-none block mb-1"
                   style={{ fontFamily: isEn ? "'Bahij Janna', sans-serif" : undefined }}
                 >
@@ -319,12 +349,12 @@ export default function VouchersPage() {
       </section>
 
       {/* ─── 3. MY VOUCHERS & REDEMPTION SECTION ─────────────────────────── */}
-      <section id="redeem-section" className="max-w-[1200px] mx-auto px-4 py-12">
+      <section id="redeem-section" className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
 
           {/* Left Column: Use Voucher & Balance Check Box */}
           <div className="lg:col-span-5 bg-white rounded-2xl p-6 sm:p-8 shadow-sm border border-gray-200">
-            <h3 
+            <h3
               className="text-[20px] sm:text-[22px] font-bold text-[#234745] mb-1"
               style={{ fontFamily: isEn ? "'Bahij Janna', sans-serif" : undefined }}
             >
@@ -392,7 +422,7 @@ export default function VouchersPage() {
           <div className="lg:col-span-7 bg-white rounded-2xl p-6 sm:p-8 shadow-sm border border-gray-200">
             <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
               <div>
-                <h3 
+                <h3
                   className="text-[20px] sm:text-[22px] font-bold text-[#234745] mb-1"
                   style={{ fontFamily: isEn ? "'Bahij Janna', sans-serif" : undefined }}
                 >
@@ -408,27 +438,24 @@ export default function VouchersPage() {
                 <button
                   type="button"
                   onClick={() => setActiveTab('active')}
-                  className={`px-4 py-1.5 text-[12px] font-bold rounded-lg transition-all ${
-                    activeTab === 'active' ? 'bg-[#234745] text-white shadow-sm' : 'text-gray-600 hover:text-[#234745]'
-                  }`}
+                  className={`px-4 py-1.5 text-[12px] font-bold rounded-lg transition-all ${activeTab === 'active' ? 'bg-[#234745] text-white shadow-sm' : 'text-gray-600 hover:text-[#234745]'
+                    }`}
                 >
                   {isEn ? 'Active (1)' : 'فعالة (1)'}
                 </button>
                 <button
                   type="button"
                   onClick={() => setActiveTab('used')}
-                  className={`px-4 py-1.5 text-[12px] font-bold rounded-lg transition-all ${
-                    activeTab === 'used' ? 'bg-[#234745] text-white shadow-sm' : 'text-gray-600 hover:text-[#234745]'
-                  }`}
+                  className={`px-4 py-1.5 text-[12px] font-bold rounded-lg transition-all ${activeTab === 'used' ? 'bg-[#234745] text-white shadow-sm' : 'text-gray-600 hover:text-[#234745]'
+                    }`}
                 >
                   {isEn ? 'Used (1)' : 'مستخدمة (1)'}
                 </button>
                 <button
                   type="button"
                   onClick={() => setActiveTab('expired')}
-                  className={`px-4 py-1.5 text-[12px] font-bold rounded-lg transition-all ${
-                    activeTab === 'expired' ? 'bg-[#234745] text-white shadow-sm' : 'text-gray-600 hover:text-[#234745]'
-                  }`}
+                  className={`px-4 py-1.5 text-[12px] font-bold rounded-lg transition-all ${activeTab === 'expired' ? 'bg-[#234745] text-white shadow-sm' : 'text-gray-600 hover:text-[#234745]'
+                    }`}
                 >
                   {isEn ? 'Expired (1)' : 'منتهية (1)'}
                 </button>
@@ -465,7 +492,7 @@ export default function VouchersPage() {
               {activeTab === 'used' && (
                 <div className="flex items-center justify-between p-4 rounded-xl border border-gray-200 bg-gray-50 opacity-75">
                   <div className="flex items-center gap-4">
-                    <div className="w-14 h-14 rounded-xl bg-[#C8A464] text-[#1A3533] font-bold text-[16px] flex items-center justify-center">
+                    <div className="w-14 h-14 rounded-xl bg-[#D4B483] text-[#1A3533] font-bold text-[16px] flex items-center justify-center">
                       50 SAR
                     </div>
                     <div>
@@ -485,7 +512,7 @@ export default function VouchersPage() {
                 <div className="flex items-center justify-between p-4 rounded-xl border border-gray-200 bg-gray-50 opacity-60">
                   <div className="flex items-center gap-4">
                     <div className="w-14 h-14 rounded-xl bg-gray-400 text-white font-bold text-[16px] flex items-center justify-center">
-                      25 SAR
+                      24 SAR
                     </div>
                     <div>
                       <h4 className="font-bold text-gray-600 text-[15px]">
@@ -509,15 +536,15 @@ export default function VouchersPage() {
       </section>
 
       {/* ─── 4. WHAT WOULD YOU LIKE TO DO SECTION ────────────────────────── */}
-      <section className="max-w-[1200px] mx-auto px-4 pt-8 pb-12">
+      <section className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-12">
         <div className="text-center mb-10">
-          <h2 
+          <h2
             className="text-[28px] sm:text-[34px] font-bold text-[#234745] mb-2"
             style={{ fontFamily: isEn ? "'Bahij Janna', sans-serif" : undefined }}
           >
             {isEn ? 'What would you like to do?' : 'ماذا تريد أن تفعل؟'}
           </h2>
-          <p 
+          <p
             className="text-[#666666] text-[14px] sm:text-[15px]"
             style={{ fontFamily: isEn ? "'Gotham Light', sans-serif" : undefined }}
           >
@@ -540,18 +567,18 @@ export default function VouchersPage() {
                   <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"></path>
                 </svg>
               </div>
-              <h3 
+              <h3
                 className="text-[22px] sm:text-[26px] font-bold text-[#234745] mb-3"
                 style={{ fontFamily: isEn ? "'Bahij Janna', sans-serif" : undefined }}
               >
                 {isEn ? 'Gift a Voucher' : 'أهدِ قسيمة'}
               </h3>
-              <p 
+              <p
                 className="text-gray-600 text-[14px] leading-relaxed max-w-[420px] mb-8"
                 style={{ fontFamily: isEn ? "'Gotham Light', sans-serif" : undefined }}
               >
-                {isEn 
-                  ? 'Send a digital gift voucher to your loved ones via email with a personalized message and choice of designs.' 
+                {isEn
+                  ? 'Send a digital gift voucher to your loved ones via email with a personalized message and choice of designs.'
                   : 'أرسل قسيمة هدية لأي شخص عبر البريد الإلكتروني مع رسالة شخصية وتصميم اختياري'}
               </p>
             </div>
@@ -573,18 +600,18 @@ export default function VouchersPage() {
                   <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
                 </svg>
               </div>
-              <h3 
+              <h3
                 className="text-[22px] sm:text-[26px] font-bold text-[#234745] mb-3"
                 style={{ fontFamily: isEn ? "'Bahij Janna', sans-serif" : undefined }}
               >
                 {isEn ? 'Buy for Yourself' : 'إشترِ لنفسك'}
               </h3>
-              <p 
+              <p
                 className="text-gray-600 text-[14px] leading-relaxed max-w-[420px] mb-8"
                 style={{ fontFamily: isEn ? "'Gotham Light', sans-serif" : undefined }}
               >
-                {isEn 
-                  ? 'Add balance to your account and use it anytime when shopping to easily pay for your purchases.' 
+                {isEn
+                  ? 'Add balance to your account and use it anytime when shopping to easily pay for your purchases.'
                   : 'أضف رصيد إلى حسابك واستخدمه عند التسوق في أي وقت لتسدد بها الدفعة أو التفاصيل القادمة'}
               </p>
             </div>

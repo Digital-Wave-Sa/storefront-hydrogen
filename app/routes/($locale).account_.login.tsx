@@ -87,6 +87,19 @@ function formatOtpError(errorMessage: string, lang: 'en' | 'ar'): string {
 
 function translateOtpErrorMessage(msg: string, lang: 'en' | 'ar'): string {
   if (!msg) return '';
+
+  const lowerMsg = msg.toLowerCase();
+  if (
+    lowerMsg.includes('gateway dispatch failed') ||
+    lowerMsg.includes('sms gateway') ||
+    lowerMsg.includes('dispatch failed') ||
+    lowerMsg.includes('gateway failed')
+  ) {
+    return lang === 'en'
+      ? 'SMS service is temporarily unavailable. Please try again in a few moments.'
+      : 'خدمة الرسائل القصيرة غير متاحة حالياً. يرجى المحاولة بعد قليل.';
+  }
+
   if (lang === 'en') return msg;
 
   const minutesMatch = msg.match(/please\s+wait\s+(\d+)\s+minutes?\s+before\s+requesting/i);
@@ -107,7 +120,6 @@ function translateOtpErrorMessage(msg: string, lang: 'en' | 'ar'): string {
     return `يرجى الانتظار ${secs} ثانية قبل طلب رمز تحقق جديد.`;
   }
 
-  const lowerMsg = msg.toLowerCase();
   if (lowerMsg.includes('invalid otp') || lowerMsg.includes('otp is invalid') || lowerMsg.includes('incorrect otp')) {
     return 'رمز التحقق غير صحيح.';
   }

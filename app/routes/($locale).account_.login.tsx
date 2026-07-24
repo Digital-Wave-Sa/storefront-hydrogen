@@ -450,12 +450,20 @@ export async function action({ request, context }: ActionFunctionArgs) {
     session.unset('loginOtpAttempts');
     session.unset('loginOtpBlockUntil');
 
+    const prefLang = session.get('preferredLanguage');
+    const userLang = prefLang ? prefLang : lang;
+
     const url = new URL(request.url);
-    const redirectTo = url.searchParams.get('redirectTo') || form.get('redirectTo') || '';
-    let targetRedirect = lang === 'en' ? '/en/account' : '/account';
-    if (redirectTo && typeof redirectTo === 'string' && redirectTo.startsWith('/')) {
-      targetRedirect = redirectTo;
+    const rawRedirect = url.searchParams.get('redirectTo') || form.get('redirectTo') || '';
+    let cleanRedirect = typeof rawRedirect === 'string' && rawRedirect.startsWith('/') ? rawRedirect : '/account';
+
+    if (cleanRedirect.startsWith('/en/')) {
+      cleanRedirect = cleanRedirect.substring(3);
+    } else if (cleanRedirect === '/en') {
+      cleanRedirect = '/account';
     }
+
+    const targetRedirect = userLang === 'en' ? `/en${cleanRedirect}` : cleanRedirect;
 
     return redirect(targetRedirect, {
       headers: { 'Set-Cookie': await session.commit() },

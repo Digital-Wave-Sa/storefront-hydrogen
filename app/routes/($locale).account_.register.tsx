@@ -226,6 +226,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
     const email = String(form.get('email') || '');
     const taxRegistration = String(form.get('taxRegistration') || '');
     const companyAddress = String(form.get('companyAddress') || '');
+    const selectedLanguage = String(form.get('language') || '').toLowerCase().trim() === 'en' ? 'en' : 'ar';
 
     // Validate email uniqueness in Shopify Admin API before calling register
     if (email) {
@@ -319,6 +320,8 @@ export async function action({ request, context }: ActionFunctionArgs) {
           password: stablePassword,
           accountType: accountType === 'company' ? 'COMPANY' : 'INDIVIDUAL',
           otpToken,
+          language: selectedLanguage,
+          preferredLanguage: selectedLanguage,
           companyName: companyName || undefined,
           taxNumber: taxRegistration || undefined,
           companyAddress: companyAddress || undefined
@@ -428,17 +431,23 @@ export async function action({ request, context }: ActionFunctionArgs) {
         });
       }
       session.set('saadeddinToken', saadeddinToken);
+      session.set('preferredLanguage', selectedLanguage);
       session.unset('otpPhone');
       session.unset('socialProfile');
       session.unset('registerOtpAttempts');
       session.unset('registerOtpBlockUntil');
 
       const url = new URL(request.url);
-      const redirectTo = url.searchParams.get('redirectTo') || form.get('redirectTo') || '';
-      let targetRedirect = lang === 'en' ? '/en/account' : '/account';
-      if (redirectTo && typeof redirectTo === 'string' && redirectTo.startsWith('/')) {
-        targetRedirect = redirectTo;
+      const rawRedirect = url.searchParams.get('redirectTo') || form.get('redirectTo') || '';
+      let cleanRedirect = typeof rawRedirect === 'string' && rawRedirect.startsWith('/') ? rawRedirect : '/account';
+
+      if (cleanRedirect.startsWith('/en/')) {
+        cleanRedirect = cleanRedirect.substring(3);
+      } else if (cleanRedirect === '/en') {
+        cleanRedirect = '/account';
       }
+
+      const targetRedirect = selectedLanguage === 'en' ? `/en${cleanRedirect}` : cleanRedirect;
 
       return redirect(targetRedirect, {
         headers: { 'Set-Cookie': await session.commit() }

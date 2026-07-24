@@ -143,8 +143,8 @@ export function HeroSlider() {
 
                     {/* Title */}
                     <h2
-                      className={`font-bold lg:font-normal leading-[1.0] lg:leading-[0.95] whitespace-pre-line mb-4 lg:mb-8 ${isEn ? 'text-[38px] lg:text-[64px]' : 'text-[38px] lg:text-[90px]'}`}
-                      style={!isEn ? { fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" } : undefined}
+                      className={`font-bold lg:font-bold leading-[1.0] lg:leading-[0.95] whitespace-pre-line mb-4 lg:mb-8 ${isEn ? 'text-[38px] lg:text-[64px]' : 'text-[38px] lg:text-[90px]'}`}
+                      style={{ fontFamily: "'Bahij Janna', sans-serif" }}
                     >
                       <span className="text-[#FFFFFF] drop-shadow-lg">{isEn ? slide.title.en : slide.title.ar}</span>
                     </h2>

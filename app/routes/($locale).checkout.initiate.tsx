@@ -9,12 +9,13 @@ export async function action({ request, context }: ActionFunctionArgs) {
     return redirect(lang === 'en' ? '/en/cart' : '/cart');
   }
 
-  // 1. Ensure user is logged in via Custom API
+  // 1. Ensure user is logged in via Custom API or Shopify Customer Access Token
   const customToken = await session.get('saadeddinToken');
-  console.log('[CHECKOUT DIAGNOSTIC] customToken:', customToken);
+  const customerAccessToken = await session.get('customerAccessToken');
+  console.log('[CHECKOUT DIAGNOSTIC] customToken:', customToken, 'customerAccessToken:', !!customerAccessToken);
 
-  if (!customToken) {
-    console.log('[CHECKOUT DIAGNOSTIC] Redirecting to login: no customToken');
+  if (!customToken && !customerAccessToken) {
+    console.log('[CHECKOUT DIAGNOSTIC] Redirecting to login: no customToken and no customerAccessToken');
     const redirectToUrl = lang === 'en' ? '/en/cart' : '/cart';
     return redirect(
       (lang === 'en' ? `/en/account/login` : `/account/login`) + 
@@ -31,7 +32,6 @@ export async function action({ request, context }: ActionFunctionArgs) {
   }
 
   // Associate customerAccessToken with Cart Buyer Identity to bypass checkout login prompt
-  const customerAccessToken = await session.get('customerAccessToken');
   if (customerAccessToken) {
     const token = typeof customerAccessToken === 'string' ? customerAccessToken : customerAccessToken.accessToken;
     try {
@@ -161,21 +161,15 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
   const isBypassToken = customToken === 'dev-bypass-token';
   
-  let profile;
+  let profile: { name?: string, phone?: string } = {};
   if (isBypassToken) {
     profile = { name: 'Dev Bypass User', phone: '966501111111' };
-  } else {
+  } else if (customToken) {
     const api = new SaadeddinApi(env, customToken);
     try {
       profile = await api.getProfile();
     } catch(e) {
-      console.error('[CHECKOUT] getProfile failed, clearing saadeddinToken:', e);
-      session.unset('saadeddinToken');
-      const loginRedirectUrl = (lang === 'en' ? `/en/account/login` : `/account/login`) + 
-        `?redirectTo=${encodeURIComponent(lang === 'en' ? '/en/cart' : '/cart')}`;
-      return redirect(loginRedirectUrl, {
-        headers: { 'Set-Cookie': await session.commit() }
-      });
+      console.warn('[CHECKOUT] getProfile failed, continuing checkout gracefully:', e);
     }
   }
 

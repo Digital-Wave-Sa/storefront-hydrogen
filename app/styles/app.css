@@ -70,12 +70,59 @@
   unicode-range: U+0030-0039, U+0025, U+002C, U+002E; /* 0-9, %, ,, . */
 }
 
+@font-face {
+  font-family: 'Gotham Light';
+  src: local('Gotham-Light'), local('Gotham Light'), local('Gotham'), url('/fonts/Gotham-Light.woff2') format('woff2'), url('/fonts/Gotham-Light.woff') format('woff'), url('/fonts/Gotham-Light.ttf') format('truetype');
+  font-weight: 300;
+  font-style: normal;
+}
+
 .font-ar {
   font-family: 'EnglishDigits', 'Bahij Janna', 'Cairo', sans-serif !important;
 }
 
+/* English Version Font Hierarchy */
 .font-en {
-  font-family: 'Inter', 'Outfit', 'Segoe UI', sans-serif !important;
+  font-family: 'Gotham Light', 'Gotham', 'Inter', 'Outfit', 'Segoe UI', sans-serif !important;
+}
+
+/* English Main Titles / Headings: Bahij Janna Bold */
+.font-en h1,
+.font-en h2,
+.font-en h3,
+.font-en .title,
+.font-en .font-title,
+.font-en header h1,
+.font-en header h2,
+.font-en header h3,
+.font-en footer h1,
+.font-en footer h2,
+.font-en footer h3 {
+  font-family: 'Bahij Janna', sans-serif !important;
+  font-weight: 700 !important;
+}
+
+/* English Subtitles, Descriptions, Body Text & Nav Links: Gotham Light */
+.font-en p,
+.font-en span,
+.font-en a,
+.font-en button,
+.font-en li,
+.font-en label,
+.font-en h4,
+.font-en h5,
+.font-en h6,
+.font-en .subtitle,
+.font-en .sub-title,
+.font-en header p,
+.font-en header span,
+.font-en header a,
+.font-en header button,
+.font-en footer p,
+.font-en footer span,
+.font-en footer a,
+.font-en footer li {
+  font-family: 'Gotham Light', 'Gotham', 'Inter', 'Segoe UI', sans-serif !important;
 }
 
 

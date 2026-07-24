@@ -673,7 +673,7 @@ const STATIC_NAV_AR = [
   { title: 'المناسبات', url: '/occasions' },
   { title: 'الهدايا', url: '/gifting' },
   { title: 'الكيك المخصص', url: '/custom-cake' },
-  { title: 'العروض', url: '/collections/offers' },
+  { title: 'العروض', url: '/promotions' },
 ];
 
 const STATIC_NAV_EN = [
@@ -681,7 +681,7 @@ const STATIC_NAV_EN = [
   { title: 'Occasions', url: '/en/occasions' },
   { title: 'Gifts', url: '/en/gifting' },
   { title: 'Custom Cake', url: '/en/custom-cake' },
-  { title: 'Offers', url: '/en/collections/offers' },
+  { title: 'Offers', url: '/en/promotions' },
 ];
 
 function CategoryNav({
@@ -699,7 +699,7 @@ function CategoryNav({
   return (
     <nav className="flex items-center gap-1 xl:gap-2 h-full">
       {NAV_ITEMS.map((item) => {
-        const isOffers = item.url.includes('offers');
+        const isOffers = item.url.includes('offers') || item.url.includes('promotions');
         return (
           <div
             key={item.url}

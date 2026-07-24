@@ -54,7 +54,7 @@ export function Footer({ footer, locale }: { footer: Promise<FooterQuery | null>
                     {/* Left Column (Second in DOM in RTL) */}
                     <div className="flex flex-col gap-4 items-start">
                       <NavLink to={isEn ? "/en/custom-cake" : "/custom-cake"} className="font-medium hover:text-white transition-colors" style={{ fontSize: 'clamp(13px, 4vw, 15px)' }}>{isEn ? 'Design Your Cake' : 'صمم كيكتك'}</NavLink>
-                      <NavLink to={isEn ? "/en/collections/offers" : "/collections/offers"} className="font-medium hover:text-white transition-colors" style={{ fontSize: 'clamp(13px, 4vw, 15px)' }}>{isEn ? 'Our Offers' : 'عروضنا'}</NavLink>
+                      <NavLink to={isEn ? "/en/promotions" : "/promotions"} className="font-medium hover:text-white transition-colors" style={{ fontSize: 'clamp(13px, 4vw, 15px)' }}>{isEn ? 'Our Offers' : 'عروضنا'}</NavLink>
                       <span className="font-medium cursor-default" style={{ fontSize: 'clamp(13px, 4vw, 15px)' }}>{isEn ? 'Customer Service' : 'خدمة العملاء'}</span>
                       <span className="font-medium font-sans cursor-default" dir="ltr" style={{ fontSize: 'clamp(13px, 4vw, 15px)' }}>920017070</span>
                       <span className="font-medium font-sans cursor-default break-all" dir="ltr" style={{ fontSize: 'clamp(11px, 3.5vw, 15px)' }}>info@saadeddin.com</span>
@@ -103,7 +103,7 @@ export function Footer({ footer, locale }: { footer: Promise<FooterQuery | null>
                         <NavLink to={isEn ? "/en" : "/"} className="font-medium text-[16px] hover:text-white transition-colors">{isEn ? 'Home' : 'الرئيسية'}</NavLink>
                         <NavLink to={isEn ? "/en/custom-cake" : "/custom-cake"} className="font-medium text-[16px] hover:text-white transition-colors">{isEn ? 'Design Your Cake' : 'صمم كيكتك'}</NavLink>
                         <NavLink to={isEn ? "/en/pages/loyalty" : "/pages/loyalty"} className="font-medium text-[16px] hover:text-white transition-colors">{isEn ? 'Loyalty Program' : 'برنامج الولاء'}</NavLink>
-                        <NavLink to={isEn ? "/en/collections/offers" : "/collections/offers"} className="font-medium text-[16px] hover:text-white transition-colors">{isEn ? 'Our Offers' : 'عروضنا'}</NavLink>
+                        <NavLink to={isEn ? "/en/promotions" : "/promotions"} className="font-medium text-[16px] hover:text-white transition-colors">{isEn ? 'Our Offers' : 'عروضنا'}</NavLink>
                         <NavLink to={isEn ? "/en/pages/branches" : "/pages/branches"} className="font-medium text-[16px] hover:text-white transition-colors">{isEn ? 'Our Branches' : 'فروعنا'}</NavLink>
                         <NavLink to={isEn ? "/en/quality-policy" : "/quality-policy"} className="font-medium text-[16px] hover:text-white transition-colors">{isEn ? 'Quality Policy' : 'سياسة الجودة'}</NavLink>
                       </div>
@@ -134,7 +134,7 @@ export function Footer({ footer, locale }: { footer: Promise<FooterQuery | null>
                         <NavLink to={isEn ? "/en/pages/track-order" : "/pages/track-order"} className="font-medium text-[16px] hover:text-white transition-colors">{isEn ? 'Track Your Order' : 'تتبع طلبك'}</NavLink>
                         <NavLink to={isEn ? "/en/pages/returns" : "/pages/returns"} className="font-medium text-[16px] hover:text-white transition-colors">{isEn ? 'Return Policy' : 'سياسة الاسترجاع'}</NavLink>
                         <NavLink to={isEn ? "/en/pages/faq" : "/pages/faq"} className="font-medium text-[16px] hover:text-white transition-colors">{isEn ? 'FAQs' : 'الأسئلة الشائعة'}</NavLink>
-                        <NavLink to={isEn ? "/en/collections/offers" : "/collections/offers"} className="font-medium text-[16px] hover:text-white transition-colors">{isEn ? 'Our Offers' : 'عروضنا'}</NavLink>
+                        <NavLink to={isEn ? "/en/promotions" : "/promotions"} className="font-medium text-[16px] hover:text-white transition-colors">{isEn ? 'Our Offers' : 'عروضنا'}</NavLink>
                         <NavLink to={isEn ? "/en/pages/contact" : "/pages/contact"} className="font-medium text-[16px] hover:text-white transition-colors">{isEn ? 'Contact Us' : 'تواصل معنا'}</NavLink>
                       </div>
                     </div>

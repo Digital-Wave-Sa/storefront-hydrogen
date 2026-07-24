@@ -125,7 +125,7 @@ export function OffersAndDiscounts({ config }: { config?: any }) {
                                 {isEn ? 'Offers on our Best Products' : 'عروض وتخفضيات علي افضل منتجاتنا'}
                             </h3>
                             <Link
-                                to={isEn ? "/en/collections/offers" : "/collections/offers"}
+                                to={isEn ? "/en/promotions" : "/promotions"}
                                 className="bg-[#FEF8EB] text-[#255441] rounded-[100px] transition-all flex items-center justify-center font-bold px-8 py-3 w-[90%] md:w-full md:max-w-[245px]"
                             >
                                 {isEn ? 'Browse Now' : 'تصفح الان'}
@@ -137,7 +137,7 @@ export function OffersAndDiscounts({ config }: { config?: any }) {
                 {/* Footer View All */}
                 <div className="flex justify-center">
                     <Link
-                        to={isEn ? "/en/collections/offers" : "/collections/offers"}
+                        to={isEn ? "/en/promotions" : "/promotions"}
                         className="px-12 py-4 rounded-full border-2 border-[#234745] !text-[#234745] [font-family:'GE_Dinar_One',sans-serif] font-bold text-[15px] lg:text-[18px] transition-all hover:bg-[#1a3533] hover:!text-white hover:border-[#1a3533] active:scale-95"
                     >
                         {isEn ? 'View All Offers' : 'عرض جميع العروض'}

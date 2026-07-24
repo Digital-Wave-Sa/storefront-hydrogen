@@ -367,7 +367,6 @@ export function BestSellers({
                                                         </div>
                                                     )}
                                                 </Link>
-
                                                 <div className="p-5 lg:p-6 flex flex-col flex-grow" style={{ backgroundColor: '#ffffff' }}>
 
                                                     {/* Title */}
@@ -378,18 +377,22 @@ export function BestSellers({
                                                     </Link>
 
                                                     {/* Price Row (Side by side) */}
-                                                    {!isVisibilityBlocked && (
-                                                        <div className="mt-2 mb-4 flex items-center gap-3 justify-start" style={{ opacity: isOutOfStock && !isPreorder ? 0.4 : 1 }} dir={isEn ? 'ltr' : 'rtl'}>
-                                                            <div className="text-[#234745] flex items-baseline gap-1">
-                                                                <Price data={product.priceRange.minVariantPrice} isEn={isEn} showSymbol={true} size="lg" />
-                                                            </div>
-                                                            {hasDiscount && (
-                                                                <div className="text-[#E64950] line-through flex gap-1 items-baseline">
-                                                                    <Price data={compareAtPrice} isEn={isEn} showSymbol={true} size="md" />
+                                                    <div className="mt-2 mb-4 flex items-center gap-3 justify-start min-h-[32px]" style={{ opacity: isOutOfStock && !isPreorder ? 0.4 : 1 }} dir={isEn ? 'ltr' : 'rtl'}>
+                                                        {!isVisibilityBlocked ? (
+                                                            <>
+                                                                <div className="text-[#234745] flex items-baseline gap-1">
+                                                                    <Price data={product.priceRange.minVariantPrice} isEn={isEn} showSymbol={true} size="lg" />
                                                                 </div>
-                                                            )}
-                                                        </div>
-                                                    )}
+                                                                {hasDiscount && (
+                                                                    <div className="text-[#E64950] line-through flex gap-1 items-baseline">
+                                                                        <Price data={compareAtPrice} isEn={isEn} showSymbol={true} size="md" />
+                                                                    </div>
+                                                                )}
+                                                            </>
+                                                        ) : (
+                                                            <div className="h-[24px]" />
+                                                        )}
+                                                    </div>
 
                                                     {/* Add to Cart Button */}
                                                     <div className="mt-auto">

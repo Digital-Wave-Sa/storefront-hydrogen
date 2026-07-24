@@ -209,13 +209,10 @@ export default function PromotionsPage() {
           >
             {/* Tag Badge — aligned to start (right in RTL) */}
             <div className="flex">
-              <div className="bg-[#E24D55] px-3 py-1.5 rounded-[6px] flex items-center gap-1.5">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-white flex-shrink-0">
-                  <circle cx="12" cy="12" r="10" />
-                  <polyline points="12 6 12 16 14" />
-                </svg>
+              <div className="bg-[#E64950] px-[8px] py-[4px] rounded-[6px] flex items-center gap-1.5">
+
                 <span className="text-white font-bold text-[12px] tracking-wide whitespace-nowrap">
-                  {isEn ? 'LIMITED OFFER' : 'عرض محدود'}
+                  {isEn ? 'LIMITED OFFER ⏳' : '⏳ عرض محدود'}
                 </span>
               </div>
             </div>
@@ -223,7 +220,7 @@ export default function PromotionsPage() {
             {/* Title + Subtitle */}
             <div className="flex flex-col gap-2">
               <h2
-                className="text-[#234745] text-[26px] md:text-[34px] font-bold leading-[100%]"
+                className="text-[#234745] text-[26px] md:!text-[50px] font-bold leading-[100%]"
                 style={{
                   fontFamily: isEn ? 'inherit' : "'Bahij Janna', sans-serif",
                   fontWeight: 700,
@@ -236,7 +233,7 @@ export default function PromotionsPage() {
                 {isEn ? (
                   <>Discounts up to <span style={{ fontFamily: "'EnglishDigits', sans-serif" }}>40%</span> on our best products for a limited time</>
                 ) : (
-                  <>خصومات حتى <span style={{ fontFamily: "'EnglishDigits', sans-serif" }}>40%</span> على أفضل منتجاتنا لفترة محدودة</>
+                  <>خصومات حتى <span style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>40%</span> على أفضل منتجاتنا لفترة محدودة</>
                 )}
               </p>
             </div>
@@ -247,32 +244,32 @@ export default function PromotionsPage() {
               {/* Timer: Hours | Minutes | Seconds — in RTL renders right-to-left naturally */}
               <div className="flex items-center gap-2" suppressHydrationWarning>
                 {/* Hours */}
-                <div className="flex flex-col items-center justify-center w-[60px] h-[64px] border border-[#9FB7AE] rounded-[10px]">
-                  <span suppressHydrationWarning className="text-[#234745] font-bold text-[22px] leading-none" style={{ fontFamily: "'EnglishDigits', sans-serif" }}>{timeLeft.hours}</span>
-                  <span className="text-[#234745] text-[11px] font-semibold mt-1">{isEn ? 'Hours' : 'ساعة'}</span>
+                <div className="flex flex-col items-center gap-[7px] justify-center w-[60px] h-[64px] border border-[#9FB7AE] rounded-[8px]">
+                  <span suppressHydrationWarning className="text-[#234745] font-bold text-[18px] leading-none" style={{ fontFamily: "'EnglishDigits','Bahaji Janna', sans-serif" }}>{timeLeft.hours}</span>
+                  <span className="text-[#234745] text-[11px] font-normal mt-1">{isEn ? 'Hours' : 'ساعة'}</span>
                 </div>
                 {/* Minutes */}
-                <div className="flex flex-col items-center justify-center w-[60px] h-[64px] border border-[#9FB7AE] rounded-[10px]">
-                  <span suppressHydrationWarning className="text-[#234745] font-bold text-[22px] leading-none" style={{ fontFamily: "'EnglishDigits', sans-serif" }}>{timeLeft.minutes}</span>
-                  <span className="text-[#234745] text-[11px] font-semibold mt-1">{isEn ? 'Mins' : 'دقيقة'}</span>
+                <div className="flex flex-col items-center gap-[7px] justify-center w-[60px] h-[64px] border border-[#9FB7AE] rounded-[8px]">
+                  <span suppressHydrationWarning className="text-[#234745] font-bold text-[18px] leading-none" style={{ fontFamily: "'EnglishDigits','Bahaji Janna', sans-serif" }}>{timeLeft.minutes}</span>
+                  <span className="text-[#234745] text-[11px] font-normal mt-1">{isEn ? 'Mins' : 'دقيقة'}</span>
                 </div>
                 {/* Seconds */}
-                <div className="flex flex-col items-center justify-center w-[60px] h-[64px] border border-[#9FB7AE] rounded-[10px]">
-                  <span suppressHydrationWarning className="text-[#234745] font-bold text-[22px] leading-none" style={{ fontFamily: "'EnglishDigits', sans-serif" }}>{timeLeft.seconds}</span>
-                  <span className="text-[#234745] text-[11px] font-semibold mt-1">{isEn ? 'Secs' : 'ثانية'}</span>
+                <div className="flex flex-col items-center gap-[7px] justify-center w-[60px] h-[64px] border border-[#9FB7AE] rounded-[8px]">
+                  <span suppressHydrationWarning className="text-[#234745] font-bold text-[18px] leading-none" style={{ fontFamily: "'EnglishDigits','Bahaji Janna', sans-serif" }}>{timeLeft.seconds}</span>
+                  <span className="text-[#234745] text-[11px] font-normal mt-1">{isEn ? 'Secs' : 'ثانية'}</span>
                 </div>
               </div>
 
               {/* Promo Code Box — always LTR inside so SAAD20 is left, button is right */}
               <div
                 dir="ltr"
-                className="flex items-center justify-between h-[64px] border border-[#9FB7AE] rounded-[10px] px-3 gap-2"
+                className="flex items-center justify-center sm:justify-between h-[64px] w-full sm:w-auto border border-[#9FB7AE] rounded-[8px] px-3 gap-2"
                 style={{ minWidth: '160px' }}
               >
-                <span className="text-[#234745] font-bold text-[15px] tracking-widest" style={{ fontFamily: "'EnglishDigits', sans-serif" }}>SAAD20</span>
+                <span className="text-[#234745] font-bold text-[18px] tracking-widest" style={{ fontFamily: "'EnglishDigits', 'Ge Dinar One', sans-serif" }}>SAAD20</span>
                 <button
                   onClick={handleCopyCode}
-                  className="text-[#906B51] text-[11px] font-bold px-2 py-1.5 hover:bg-[#FDF0D5] rounded-[6px] border border-[#F5EAD4] transition-colors whitespace-nowrap cursor-pointer"
+                  className="text-[#234745] text-[14px] font-normal px-2 py-1.5 hover:bg-[#FDF0D5] rounded-[6px] border border-[#F5EAD4] transition-colors whitespace-nowrap cursor-pointer"
                 >
                   {isEn ? 'Copy' : 'نسخ الكود'}
                 </button>
@@ -283,7 +280,8 @@ export default function PromotionsPage() {
             <div className="flex w-full sm:w-auto">
               <Link
                 to="/collections/all"
-                className="inline-flex items-center justify-center w-full sm:w-auto px-10 h-[50px] bg-[#BBCFCD] hover:bg-[#ACC4C2] font-bold text-[15px] rounded-full transition-colors !text-[#234745] [font-family:'GE_Dinar_One',sans-serif]"
+                className={`inline-flex items-center justify-center w-full sm:w-[216px] px-[20px] py-[12px] bg-[#BBCFCD] hover:bg-[#ACC4C2] font-bold text-[16px] rounded-full transition-colors !text-[#234745] ${isEn ? "[font-family:'Inter',sans-serif]" : "[font-family:'GE_Dinar_One',sans-serif]"
+                  }`}
               >
                 {isEn ? 'Shop Now' : 'تسوق الآن'}
               </Link>

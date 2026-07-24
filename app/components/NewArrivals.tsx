@@ -201,22 +201,26 @@ export function NewArrivals({
                                                             </h3>
                                                         </Link>
 
-                                                        {/* Price — hidden when visibility blocked */}
-                                                        {!isVisibilityBlocked && (
-                                                            <div className="mt-2 mb-4 flex items-center gap-3" style={{ opacity: effectiveOutOfStock ? 0.4 : 1 }}>
-                                                                <Price
-                                                                    data={product.priceRange.minVariantPrice}
-                                                                    isEn={isEn}
-                                                                    size="lg"
-                                                                    className="text-[#234745] font-bold"
-                                                                />
-                                                                {hasDiscount && (
-                                                                    <span className="text-[#E64950] line-through">
-                                                                        <Price data={compareAtPrice} isEn={isEn} size="md" showSymbol={false} />
-                                                                    </span>
-                                                                )}
-                                                            </div>
-                                                        )}
+                                                        {/* Price — preserved height placeholder for visibility blocked seasonal products */}
+                                                        <div className="mt-2 mb-4 flex items-center gap-3 min-h-[32px]" style={{ opacity: effectiveOutOfStock ? 0.4 : 1 }}>
+                                                            {!isVisibilityBlocked ? (
+                                                                <>
+                                                                    <Price
+                                                                        data={product.priceRange.minVariantPrice}
+                                                                        isEn={isEn}
+                                                                        size="lg"
+                                                                        className="text-[#234745] font-bold"
+                                                                    />
+                                                                    {hasDiscount && (
+                                                                        <span className="text-[#E64950] line-through">
+                                                                            <Price data={compareAtPrice} isEn={isEn} size="md" showSymbol={false} />
+                                                                        </span>
+                                                                    )}
+                                                                </>
+                                                            ) : (
+                                                                <div className="h-[24px]" />
+                                                            )}
+                                                        </div>
 
                                                         {/* Add to Cart Button */}
                                                         <div className="mt-auto">

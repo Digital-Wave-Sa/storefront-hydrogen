@@ -35,25 +35,29 @@ export function ProductItem({
   const { toggleWishlist, isInWishlist } = useWishlist();
   const isWishlisted = isInWishlist(product.id);
 
+  const variantsNodes = product.variants?.nodes || (product as any).product?.variants?.nodes || [];
+
   const variant = useMemo(() => {
-    if (!product.variants?.nodes?.length) return undefined;
-    
-    // Try to find a variant that is actually in stock at the selected location
-    const availableVariant = product.variants.nodes.find((v: any) => {
-        const outOfStock = getIsOutOfStock(
-            selectedLocationId,
-            selectedLocationName,
-            v.storeAvailability?.nodes || [],
-            product.availableForSale
-        );
-        return !outOfStock;
-    });
+    if (variantsNodes.length > 0) {
+      const availableVariant = variantsNodes.find((v: any) => {
+          const outOfStock = getIsOutOfStock(
+              selectedLocationId,
+              selectedLocationName,
+              v.storeAvailability?.nodes || [],
+              product.availableForSale
+          );
+          return !outOfStock;
+      });
+      return availableVariant || variantsNodes[0];
+    }
+    if ((product as any).price || (product as any).id?.includes('ProductVariant')) {
+      return product;
+    }
+    return undefined;
+  }, [product, variantsNodes, selectedLocationId, selectedLocationName]);
 
-    // Fall back to the first variant if nothing is explicitly in stock
-    return availableVariant || product.variants.nodes[0];
-  }, [product, selectedLocationId, selectedLocationName]);
-
-  const variantUrl = useVariantUrl(product.handle, variant?.selectedOptions || []);
+  const productHandle = product.handle || (product as any).product?.handle || (product as any).variants?.nodes?.[0]?.product?.handle || '';
+  const variantUrl = productHandle ? useVariantUrl(productHandle, variant?.selectedOptions || []) : '#';
   
   const storeAvailabilityNodes = variant?.storeAvailability?.nodes || [];
   const isOutOfStock = getIsOutOfStock(
@@ -254,17 +258,21 @@ export function ProductItem({
         }}
       >
         <div className="w-full aspect-[4/3] relative flex items-center justify-center bg-gray-50 overflow-hidden">
-            {product.featuredImage && (
-            <Image
-                alt=""
-                aspectRatio="4/3"
-                data={product.featuredImage}
-                loading={loading}
-                sizes="(min-width: 45em) 400px, 100vw"
-                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                style={{ opacity: isVisibilityBlocked ? 0.5 : (showOutOfStock ? 0.4 : 1), filter: isVisibilityBlocked ? 'grayscale(1)' : 'none' }}
-            />
-            )}
+            {(() => {
+              const imageToDisplay = product.featuredImage || product.images?.nodes?.[0] || product.variants?.nodes?.[0]?.image;
+              if (!imageToDisplay) return null;
+              return (
+                <Image
+                  alt={imageToDisplay.altText || product.title || ''}
+                  aspectRatio="4/3"
+                  data={imageToDisplay}
+                  loading={loading}
+                  sizes="(min-width: 45em) 400px, 100vw"
+                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                  style={{ opacity: isVisibilityBlocked ? 0.5 : (showOutOfStock ? 0.4 : 1), filter: isVisibilityBlocked ? 'grayscale(1)' : 'none' }}
+                />
+              );
+            })()}
             
             {/* Wishlist Heart Icon */}
             <div className={`absolute top-2 md:top-4 ${isEn ? 'right-2 md:right-4' : 'left-2 md:left-4'} z-20`}>
@@ -356,8 +364,9 @@ export function ProductItem({
               </h4>
           </Link>
 
-          {!isVisibilityBlocked && product.priceRange && (
-            <div className={`mt-[8px] mb-[16px] flex ${isEn ? 'justify-start' : 'justify-start'} items-center gap-[8px]`} style={{ opacity: showOutOfStock ? 0.4 : 1 }}>
+          <div className={`mt-[8px] mb-[16px] flex ${isEn ? 'justify-start' : 'justify-start'} items-center gap-[8px] min-h-[28px]`} style={{ opacity: showOutOfStock ? 0.4 : 1 }}>
+            {!isVisibilityBlocked && product.priceRange ? (
+              <>
                 <div className="flex items-center text-[#255441]">
                     <Price data={product.priceRange.minVariantPrice} size="lg" isEn={isEn} />
                 </div>
@@ -366,8 +375,11 @@ export function ProductItem({
                         <Price data={product.compareAtPriceRange.minVariantPrice} size="md" isEn={isEn} />
                     </div>
                 )}
-            </div>
-          )}
+              </>
+            ) : (
+              <div className="h-[24px]" />
+            )}
+          </div>
 
           <div className="mt-auto">
               {isVisibilityBlocked ? (

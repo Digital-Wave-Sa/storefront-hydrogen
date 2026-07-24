@@ -34,8 +34,11 @@ import type { CartLineInput } from '@shopify/hydrogen/storefront-api-types';
 import { getVariantUrl } from '~/utils';
 import patternBg from '/images/second-bg-pattern.svg';
 
-export const shouldRevalidate = () => {
-  return false;
+export const shouldRevalidate = ({ currentUrl, nextUrl, defaultShouldRevalidate }: any) => {
+  if (currentUrl.pathname !== nextUrl.pathname) {
+    return true;
+  }
+  return defaultShouldRevalidate;
 };
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
@@ -330,7 +333,15 @@ export async function loader(args: LoaderFunctionArgs) {
       let recommended: any = { products: { nodes: [] } };
 
       if ((product.related_products as any)?.references?.nodes?.length > 0) {
-        recommended.products.nodes = (product.related_products as any).references.nodes;
+        recommended.products.nodes = (product.related_products as any).references.nodes.map((node: any) => {
+          if (node?.product && node.product.handle) {
+            return {
+              ...node.product,
+              featuredImage: node.product.featuredImage || node.image,
+            };
+          }
+          return node;
+        }).filter((p: any) => p && p.handle);
       } else {
         try {
           const recommendationsResult = await storefront.query(RECOMMENDED_PRODUCTS_QUERY, {
@@ -738,7 +749,7 @@ export default function Product() {
   };
 
   return (
-    <div dir={isEn ? 'ltr' : 'rtl'} className={`w-full bg-[#fafafa] ${isEn ? 'font-en' : 'font-ar'}`}>
+    <div key={product.id} dir={isEn ? 'ltr' : 'rtl'} className={`w-full bg-[#fafafa] ${isEn ? 'font-en' : 'font-ar'}`}>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
@@ -1155,7 +1166,7 @@ export default function Product() {
                   {/* Addons Section (High Fidelity) */}
                   {addonNodes.length > 0 && (
                     <div className="flex flex-col gap-[16px] w-full max-w-[519px]">
-                      <h5 className="font-bold text-[#255441] text-[18px] text-start" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
+                      <h5 className="font-bold text-[#255441] text-[18px] !m-0 text-start" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
                         {isEn ? 'Add-ons' : 'إضافات'}
                       </h5>
                       <div className="flex flex-col gap-[8px]">
@@ -1167,7 +1178,7 @@ export default function Product() {
                           return (
                             <div
                               key={addon.id}
-                              className={`w-full h-[64px] px-[16px] rounded-[12px] border transition-all flex items-center justify-between shadow-sm cursor-pointer ${isSelected ? 'border-[#234745] bg-[#f0f4f2]' : 'border-[#D2D2D2] bg-white hover:border-gray-300'
+                              className={`w-full h-[64px] px-[16px] rounded-[12px] border transition-all flex items-center justify-between cursor-pointer ${isSelected ? 'border-[#234745] bg-[#f0f4f2]' : 'border-[#D2D2D2] bg-white hover:border-gray-300'
                                 } ${outOfStock ? 'opacity-50 grayscale cursor-not-allowed' : ''}`}
                               onClick={() => !outOfStock && handleAddonToggle(variant.id)}
                             >
@@ -2736,6 +2747,28 @@ const PRODUCT_FRAGMENT = `#graphql
           ... on Product {
             ...ProductDetailRecommendedProduct
           }
+          ... on ProductVariant {
+            id
+            title
+            image {
+              id
+              url
+              altText
+              width
+              height
+            }
+            price {
+              amount
+              currencyCode
+            }
+            compareAtPrice {
+              amount
+              currencyCode
+            }
+            product {
+              ...ProductDetailRecommendedProduct
+            }
+          }
         }
       }
     }
@@ -2783,6 +2816,13 @@ const RECOMMENDED_PRODUCT_FRAGMENT = `#graphql
         amount
         currencyCode
       }
+    }
+    featuredImage {
+      id
+      url
+      altText
+      width
+      height
     }
     images(first: 1) {
       nodes {

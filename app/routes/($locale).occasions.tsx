@@ -136,7 +136,7 @@ export default function OccasionsPage() {
             {/* Hero Section */}
             <PageHeader
                 title={isEn ? 'What is your occasion?' : 'ما هي مناسبتك؟'}
-                subtitle={isEn ? 'CHOOSE THE OCCASION AND WE PICK THE BEST FOR YOU' : 'اختار المناسبة ونختار لك الأفضل'}
+                subtitle={isEn ? 'Choose the occasion and we pick the best for you' : 'اختار المناسبة ونختار لك الأفضل'}
                 isEn={isEn}
             />
 

@@ -175,8 +175,8 @@ export function WhoAreYouGifting({ collections }: { collections?: any[] }) {
                     <h2 className="text-[36px] lg:text-[52px] font-bold text-[#1a1a1a] !mb-2 leading-none">
                         {isEn ? 'Who are you gifting?' : 'بتهدي لمين؟'}
                     </h2>
-                    <p className="text-[#8B8B8B] text-[14px] lg:text-[16px] font-medium tracking-wide" style={{ fontFamily: '"GE Dinar One", sans-serif' }}>
-                        {isEn ? 'CHOOSE THE RECIPIENT AND WE GUIDE YOU TO THE PERFECT GIFT' : 'اختر المستلم ونوجهك للهدية المثالية'}
+                    <p className="text-[#8B8B8B] text-[14px] lg:text-[16px] font-medium tracking-wide">
+                        {isEn ? 'Choose the recipient and we guide you to the perfect gift' : 'اختر المستلم ونوجهك للهدية المثالية'}
                     </p>
                 </div>
 

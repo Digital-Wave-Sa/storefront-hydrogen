@@ -44,8 +44,8 @@ export function ShopByOccasion({ collections }: { collections?: any[] }) {
                     <h2 className="text-[36px] lg:text-[50px] font-bold text-[#171717] !mb-2 leading-none" style={!isEn ? { fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" } : undefined}>
                         {isEn ? 'What is your occasion?' : 'ما هي مناسبتك؟'}
                     </h2>
-                    <p className="text-[#7D7D7D] text-[16px] lg:text-[16px] font-medium tracking-wide" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
-                        {isEn ? 'CHOOSE THE OCCASION AND WE PICK THE BEST FOR YOU' : 'اختار المناسبة ونختار لك الأفضل'}
+                    <p className="text-[#7D7D7D] text-[16px] lg:text-[16px] font-medium tracking-wide">
+                        {isEn ? 'Choose the occasion and we pick the best for you' : 'اختار المناسبة ونختار لك الأفضل'}
                     </p>
                 </div>
 

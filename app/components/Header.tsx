@@ -210,6 +210,28 @@ function TopBar({
   const [branches, setBranches] = useState<any[]>([]);
   const [isOpenBranch, setIsOpenBranch] = useState(true);
 
+  // Auto-prompt location selection if user hasn't declared location and geolocation fails/denied
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const isDeclared = sessionStorage.getItem('declaredLocation') === 'true';
+      if (isDeclared) return;
+
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          () => {},
+          (err) => {
+            // Geolocation denied or failed -> Open modal so user declares location or uses Global Stock
+            setModalOpen(true);
+          },
+          { timeout: 4000 }
+        );
+      } else {
+        setModalOpen(true);
+      }
+    } catch (e) {}
+  }, []);
+
   // 1. Resolve locations promise or use direct object
   useEffect(() => {
     if (!locations) return;

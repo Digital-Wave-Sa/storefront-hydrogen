@@ -1,4 +1,4 @@
-import {type FetcherWithComponents} from 'react-router';
+import {type FetcherWithComponents, useNavigate} from 'react-router';
 import {CartForm, type OptimisticCartLineInput} from '@shopify/hydrogen';
 import {useAside} from './Aside';
 
@@ -11,6 +11,7 @@ export function AddToCartButton({
   selectedVariant,
   className,
   style,
+  isExport,
 }: {
   analytics?: unknown;
   children: React.ReactNode;
@@ -20,8 +21,11 @@ export function AddToCartButton({
   selectedVariant?: any;
   className?: string;
   style?: React.CSSProperties;
+  /** When true: tags line with _export=true and redirects to /export-cart */
+  isExport?: boolean;
 }) {
   const {open} = useAside();
+  const navigate = useNavigate();
 
   const fireAddToCartEvent = () => {
     try {
@@ -60,10 +64,21 @@ export function AddToCartButton({
     }
   };
 
+  // Inject _export attribute into each line when isExport is true
+  const exportLines = isExport
+    ? lines.map(line => ({
+        ...line,
+        attributes: [
+          ...((line as any).attributes || []),
+          { key: '_export', value: 'true' },
+        ],
+      }))
+    : lines;
+
   return (
     <CartForm 
       route="/cart" 
-      inputs={{lines}} 
+      inputs={{lines: exportLines}} 
       action={CartForm.ACTIONS.LinesAdd}
     >
       {(fetcher: FetcherWithComponents<any>) => (
@@ -78,7 +93,13 @@ export function AddToCartButton({
             onClick={(e) => {
               fireAddToCartEvent();
               if (onClick) onClick();
-              open('cart');
+              if (isExport) {
+                // Export flow: don't open cart aside, navigate to export cart
+                // Small delay to let the cart mutation fire first
+                setTimeout(() => navigate('/export-cart'), 100);
+              } else {
+                open('cart');
+              }
             }}
             disabled={disabled ?? fetcher.state !== 'idle'}
             className={className}

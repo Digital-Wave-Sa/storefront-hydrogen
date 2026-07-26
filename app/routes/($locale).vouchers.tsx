@@ -601,11 +601,10 @@ export default function VouchersPage() {
                 <button
                   type="button"
                   onClick={() => setActiveTab('active')}
-                  className={`px-6 py-2.5 text-[14px] font-bold rounded-full transition-all ${
-                    activeTab === 'active'
-                      ? 'bg-[#234745] text-white shadow-sm'
-                      : 'bg-white text-[#7D7D7D] shadow-sm hover:text-[#234745]'
-                  }`}
+                  className={`px-6 py-2.5 text-[14px] font-bold rounded-full transition-all ${activeTab === 'active'
+                    ? 'bg-[#234745] text-white shadow-sm'
+                    : 'bg-white text-[#7D7D7D] shadow-sm hover:text-[#234745]'
+                    }`}
                   style={{ fontFamily: "'GE Dinar One', 'GE SS Two', sans-serif" }}
                 >
                   {isEn ? 'Active (2)' : 'فعالة (2)'}
@@ -613,11 +612,10 @@ export default function VouchersPage() {
                 <button
                   type="button"
                   onClick={() => setActiveTab('used')}
-                  className={`px-6 py-2.5 text-[14px] font-bold rounded-full transition-all ${
-                    activeTab === 'used'
-                      ? 'bg-[#234745] text-white shadow-sm'
-                      : 'bg-white text-[#7D7D7D] shadow-sm hover:text-[#234745]'
-                  }`}
+                  className={`px-6 py-2.5 text-[14px] font-bold rounded-full transition-all ${activeTab === 'used'
+                    ? 'bg-[#234745] text-white shadow-sm'
+                    : 'bg-white text-[#7D7D7D] shadow-sm hover:text-[#234745]'
+                    }`}
                   style={{ fontFamily: "'GE Dinar One', 'GE SS Two', sans-serif" }}
                 >
                   {isEn ? 'Used (1)' : 'مستخدمة (1)'}
@@ -625,11 +623,10 @@ export default function VouchersPage() {
                 <button
                   type="button"
                   onClick={() => setActiveTab('expired')}
-                  className={`px-6 py-2.5 text-[14px] font-bold rounded-full transition-all ${
-                    activeTab === 'expired'
-                      ? 'bg-[#234745] text-white shadow-sm'
-                      : 'bg-white text-[#7D7D7D] shadow-sm hover:text-[#234745]'
-                  }`}
+                  className={`px-6 py-2.5 text-[14px] font-bold rounded-full transition-all ${activeTab === 'expired'
+                    ? 'bg-[#234745] text-white shadow-sm'
+                    : 'bg-white text-[#7D7D7D] shadow-sm hover:text-[#234745]'
+                    }`}
                   style={{ fontFamily: "'GE Dinar One', 'GE SS Two', sans-serif" }}
                 >
                   {isEn ? 'Expired (1)' : 'منتهية (1)'}
@@ -658,115 +655,240 @@ export default function VouchersPage() {
 
               {/* Voucher Card 1: Active (فعالة) */}
               {(activeTab === 'active' || activeTab === 'all') && (
-                <div className="relative bg-white rounded-[24px] p-6 sm:p-7 border border-gray-100 shadow-sm hover:shadow-md transition-all flex items-center justify-between gap-4">
+                <div
+                  className="relative bg-white transition-all flex items-center justify-between"
+                  style={{
+                    borderRight: '4px solid #234745',
+                    borderRadius: '12px',
+                    padding: '24px',
+                    gap: '24px',
+                    minHeight: '136px',
+                  }}
+                >
+                  {/* Right Main Info + Badge */}
+                  <div className="flex items-center gap-5">
+                    {/* Dark Teal Badge */}
+                    <div className="w-[88px] h-[88px] rounded-[20px] bg-[#234745] text-white font-bold text-[26px] flex items-center justify-center flex-shrink-0 shadow-sm">
+                      15%
+                    </div>
+                    <div className="text-right flex flex-col gap-2">
+                      <h4
+                        style={{
+                          color: '#234745',
+                          fontFamily: "'Bahij Janna', 'Bahij', serif",
+                          fontWeight: 700,
+                          fontSize: '20px',
+                          lineHeight: '100%',
+                          textAlign: 'right',
+                        }}
+                      >
+                        {isEn ? '15% OFF . Oriental Sweets' : 'خصم 15%. الحلويات الشرقية'}
+                      </h4>
+                      <p
+                        style={{
+                          color: '#7D7D7D',
+                          fontFamily: "'GE Dinar One', 'GE SS Two', sans-serif",
+                          fontWeight: 500,
+                          fontSize: '16px',
+                          lineHeight: '100%',
+                          textAlign: 'right',
+                        }}
+                      >
+                        SWEETS
+                      </p>
+                      <span
+                        style={{
+                          color: '#7D7D7D',
+                          fontFamily: "'GE Dinar One', 'GE SS Two', sans-serif",
+                          fontWeight: 500,
+                          fontSize: '16px',
+                          lineHeight: '100%',
+                          textAlign: 'right',
+                        }}
+                      >
+                        {isEn ? 'Expires Dec 31' : 'تنتهي 31 ديسمبر'}
+                      </span>
+                    </div>
+                  </div>
+
                   {/* Left Action & Status */}
-                  <div className="flex flex-col items-start justify-between self-stretch gap-3">
+                  <div className="flex flex-col items-center justify-between self-stretch gap-3">
                     <span
-                      className="text-[14px] font-medium text-[#A0B2B0]"
-                      style={{ fontFamily: "'GE Dinar One', 'GE SS Two', sans-serif" }}
+                      style={{
+                        color: '#7D7D7D',
+                        fontFamily: "'GE Dinar One', 'GE SS Two', sans-serif",
+                        fontWeight: 500,
+                        fontSize: '16px',
+                        lineHeight: '100%',
+                        textAlign: 'center',
+                      }}
                     >
                       {isEn ? 'Active' : 'فعالة'}
                     </span>
                     <Link
                       to={isEn ? '/en/cart' : '/cart'}
-                      className="h-[44px] px-8 bg-[#234745] hover:bg-[#1A3533] text-white font-bold text-[14px] rounded-full flex items-center justify-center transition-all shadow-sm active:scale-95"
-                      style={{ fontFamily: "'GE Dinar One', 'GE SS Two', sans-serif" }}
+                      className="hover:opacity-90 transition-all shadow-sm active:scale-95"
+                      style={{
+                        color: '#FFFFFF',
+                        fontFamily: "'GE Dinar One', 'GE SS Two', sans-serif",
+                        fontWeight: 700,
+                        fontSize: '16px',
+                        lineHeight: '100%',
+                        textAlign: 'center',
+                        width: '148px',
+                        height: '48px',
+                        gap: '8px',
+                        borderRadius: '24px',
+                        padding: '12px 20px',
+                        background: '#234745',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        textDecoration: 'none',
+                      }}
                     >
                       {isEn ? 'Use Now' : 'إستخدم الان'}
                     </Link>
-                  </div>
-
-                  {/* Right Main Info + Badge */}
-                  <div className="flex items-center gap-5">
-                    <div className="text-right">
-                      <h4
-                        className="font-bold text-[#234745] text-[19px] sm:text-[20px] mb-1"
-                        style={{ fontFamily: "'Bahij Janna', 'Bahij', serif" }}
-                      >
-                        {isEn ? '15% OFF . Oriental Sweets' : 'خصم 15% . الحلويات الشرقية'}
-                      </h4>
-                      <p className="text-[14px] text-[#A0B2B0] font-mono mb-1">SWEETS</p>
-                      <span
-                        className="text-[13px] text-[#A0B2B0]"
-                        style={{ fontFamily: "'GE Dinar One', 'GE SS Two', sans-serif" }}
-                      >
-                        {isEn ? 'Expires Dec 31' : 'تنتهي 31 ديسمبر'}
-                      </span>
-                    </div>
-                    {/* Dark Teal Badge */}
-                    <div className="w-[88px] h-[88px] rounded-[20px] bg-[#234745] text-white font-bold text-[26px] flex items-center justify-center flex-shrink-0 shadow-sm">
-                      15%
-                    </div>
                   </div>
                 </div>
               )}
 
               {/* Voucher Card 2: Used (مستخدمة) */}
               {(activeTab === 'used' || activeTab === 'all') && (
-                <div className="relative bg-white rounded-[24px] p-6 sm:p-7 border border-gray-100 shadow-sm flex items-center justify-between gap-4">
-                  {/* Left Status */}
-                  <div className="flex items-center self-stretch pt-2">
-                    <span
-                      className="text-[14px] font-medium text-[#B0B0B0]"
-                      style={{ fontFamily: "'GE Dinar One', 'GE SS Two', sans-serif" }}
-                    >
-                      {isEn ? 'Used' : 'مستخدمه'}
-                    </span>
-                  </div>
-
+                <div
+                  className="relative bg-white shadow-sm flex items-center justify-between border border-gray-100"
+                  style={{
+                    borderRight: '4px solid #234745',
+                    borderRadius: '12px',
+                    padding: '24px',
+                    gap: '24px',
+                    minHeight: '136px',
+                  }}
+                >
                   {/* Right Main Info + Badge */}
                   <div className="flex items-center gap-5">
-                    <div className="text-right">
-                      <h4
-                        className="font-bold text-[#7D7D7D] text-[19px] sm:text-[20px] mb-1"
-                        style={{ fontFamily: "'Bahij Janna', 'Bahij', serif" }}
-                      >
-                        {isEn ? '50 SAR Gift Voucher' : 'قسيمة هدية 50 ر.س'}
-                      </h4>
-                      <p className="text-[14px] text-[#B0B0B0] font-mono">Gift</p>
-                    </div>
                     {/* Gold Badge */}
                     <div className="w-[88px] h-[88px] rounded-[20px] bg-[#E2C78A] text-white font-bold text-[20px] flex items-center justify-center flex-shrink-0">
                       50 ر.س
                     </div>
+                    <div className="text-right flex flex-col gap-2">
+                      <h4
+                        style={{
+                          color: '#7D7D7D',
+                          fontFamily: "'Bahij Janna', 'Bahij', serif",
+                          fontWeight: 700,
+                          fontSize: '20px',
+                          lineHeight: '100%',
+                          textAlign: 'right',
+                        }}
+                      >
+                        {isEn ? '50 SAR Gift Voucher' : 'قسيمة هدية 50 ر.س'}
+                      </h4>
+                      <p
+                        style={{
+                          color: '#7D7D7D',
+                          fontFamily: "'GE Dinar One', 'GE SS Two', sans-serif",
+                          fontWeight: 500,
+                          fontSize: '16px',
+                          lineHeight: '100%',
+                          textAlign: 'right',
+                        }}
+                      >
+                        Gift
+                      </p>
+                    </div>
+                  </div>
+                  {/* Left Status */}
+                  <div className="flex items-center self-stretch pt-2">
+                    <span
+                      style={{
+                        color: '#7D7D7D',
+                        fontFamily: "'GE Dinar One', 'GE SS Two', sans-serif",
+                        fontWeight: 500,
+                        fontSize: '16px',
+                        lineHeight: '100%',
+                        textAlign: 'center',
+                      }}
+                    >
+                      {isEn ? 'Used' : 'مستخدمه'}
+                    </span>
                   </div>
                 </div>
               )}
 
               {/* Voucher Card 3: Expired (منتهية) */}
               {(activeTab === 'expired' || activeTab === 'all') && (
-                <div className="relative bg-white rounded-[24px] p-6 sm:p-7 border border-gray-100 shadow-sm flex items-center justify-between gap-4">
-                  {/* Left Status */}
-                  <div className="flex flex-col items-start justify-start self-stretch pt-2">
-                    <span
-                      className="text-[14px] font-medium text-[#B0B0B0]"
-                      style={{ fontFamily: "'GE Dinar One', 'GE SS Two', sans-serif" }}
-                    >
-                      {isEn ? 'Expired' : 'منتهية'}
-                    </span>
-                  </div>
-
+                <div
+                  className="relative bg-white shadow-sm flex items-center justify-between border border-gray-100"
+                  style={{
+                    borderRight: '4px solid #234745',
+                    borderRadius: '12px',
+                    padding: '24px',
+                    gap: '24px',
+                    minHeight: '136px',
+                  }}
+                >
                   {/* Right Main Info + Badge */}
                   <div className="flex items-center gap-5">
-                    <div className="text-right">
+                    {/* Slate Gray Badge */}
+                    <div className="w-[88px] h-[88px] rounded-[20px] bg-[#97A7AD] text-white font-bold text-[20px] flex items-center justify-center flex-shrink-0">
+                      24 ر.س
+                    </div>
+                    {/* Text Info */}
+                    <div className="text-right flex flex-col gap-2">
                       <h4
-                        className="font-bold text-[#7D7D7D] text-[19px] sm:text-[20px] mb-1"
-                        style={{ fontFamily: "'Bahij Janna', 'Bahij', serif" }}
+                        style={{
+                          color: '#7D7D7D',
+                          fontFamily: "'Bahij Janna', 'Bahij', serif",
+                          fontWeight: 700,
+                          fontSize: '20px',
+                          lineHeight: '100%',
+                          textAlign: 'right',
+                        }}
                       >
                         {isEn ? 'Ramadan Voucher 25 SAR' : 'قسيمة رمضان 25 ر.س'}
                       </h4>
-                      <p className="text-[14px] text-[#B0B0B0] font-mono mb-1">Gift</p>
+                      <p
+                        style={{
+                          color: '#7D7D7D',
+                          fontFamily: "'GE Dinar One', 'GE SS Two', sans-serif",
+                          fontWeight: 500,
+                          fontSize: '16px',
+                          lineHeight: '100%',
+                          textAlign: 'right',
+                        }}
+                      >
+                        Gift
+                      </p>
                       <span
-                        className="text-[13px] text-[#B0B0B0]"
-                        style={{ fontFamily: "'GE Dinar One', 'GE SS Two', sans-serif" }}
+                        style={{
+                          color: '#7D7D7D',
+                          fontFamily: "'GE Dinar One', 'GE SS Two', sans-serif",
+                          fontWeight: 500,
+                          fontSize: '16px',
+                          lineHeight: '100%',
+                          textAlign: 'right',
+                        }}
                       >
                         {isEn ? 'Expired April 10, 2025' : 'انتهت ١٠ ابريل ٢٠٢٥'}
                       </span>
                     </div>
-                    {/* Slate Gray Badge */}
-                    <div className="w-20 h-20 rounded-[16px] bg-[#97A7AD] text-white font-bold text-[18px] flex items-center justify-center flex-shrink-0">
-                      24 ر.س
-                    </div>
+                  </div>
+
+                  {/* Left Status */}
+                  <div className="flex flex-col items-start justify-start self-stretch pt-2">
+                    <span
+                      style={{
+                        color: '#7D7D7D',
+                        fontFamily: "'GE Dinar One', 'GE SS Two', sans-serif",
+                        fontWeight: 500,
+                        fontSize: '16px',
+                        lineHeight: '100%',
+                        textAlign: 'center',
+                      }}
+                    >
+                      {isEn ? 'Expired' : 'منتهية'}
+                    </span>
                   </div>
                 </div>
               )}
@@ -864,93 +986,97 @@ export default function VouchersPage() {
       </section>
 
       {/* ─── 4. WHAT WOULD YOU LIKE TO DO SECTION ────────────────────────── */}
-      <section className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-12">
-        <div className="text-center mb-10">
-          <h2
-            className="text-[28px] sm:text-[34px] font-bold text-[#234745] mb-2"
-            style={{ fontFamily: isEn ? "'Bahij Janna', sans-serif" : undefined }}
-          >
-            {isEn ? 'What would you like to do?' : 'ماذا تريد أن تفعل؟'}
-          </h2>
-          <p
-            className="text-[#666666] text-[14px] sm:text-[15px]"
-            style={{ fontFamily: isEn ? "'Gotham Light', sans-serif" : undefined }}
-          >
-            {isEn ? 'Choose the option you want' : 'اختر الخيار الذي تريده'}
-          </p>
-        </div>
-
-        {/* 2 Options Cards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-
-          {/* Option Card 1: Gift a Voucher */}
-          <div className="bg-[#FAF6EE] rounded-2xl p-8 sm:p-10 border border-[#C8A464]/30 text-center flex flex-col items-center justify-between hover:shadow-md transition-all">
-            <div className="flex flex-col items-center">
-              <div className="w-16 h-16 rounded-full bg-[#234745] text-[#C8A464] flex items-center justify-center mb-5 shadow-inner">
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <polyline points="20 12 20 22 4 22 4 12"></polyline>
-                  <rect x="2" y="7" width="20" height="5"></rect>
-                  <line x1="12" y1="22" x2="12" y2="7"></line>
-                  <path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"></path>
-                  <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"></path>
-                </svg>
-              </div>
-              <h3
-                className="text-[22px] sm:text-[26px] font-bold text-[#234745] mb-3"
-                style={{ fontFamily: isEn ? "'Bahij Janna', sans-serif" : undefined }}
-              >
-                {isEn ? 'Gift a Voucher' : 'أهدِ قسيمة'}
-              </h3>
-              <p
-                className="text-gray-600 text-[14px] leading-relaxed max-w-[420px] mb-8"
-                style={{ fontFamily: isEn ? "'Gotham Light', sans-serif" : undefined }}
-              >
-                {isEn
-                  ? 'Send a digital gift voucher to your loved ones via email with a personalized message and choice of designs.'
-                  : 'أرسل قسيمة هدية لأي شخص عبر البريد الإلكتروني مع رسالة شخصية وتصميم اختياري'}
-              </p>
-            </div>
-            <Link
-              to={isEn ? '/en/buy-gift-card' : '/buy-gift-card'}
-              className="w-full sm:w-auto h-[48px] px-10 bg-[#234745] hover:bg-[#1A3533] text-white font-bold text-[15px] rounded-full flex items-center justify-center transition-all shadow-md active:scale-98"
+      <section className="w-full bg-white py-16">
+        <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-10">
+            <h2
+              className="text-[28px] sm:text-[34px] font-bold text-[#234745] mb-2"
+              style={{ fontFamily: isEn ? "'Bahij Janna', sans-serif" : undefined }}
             >
-              {isEn ? 'Gift Now' : 'إهداء الآن'}
-            </Link>
+              {isEn ? 'What would you like to do?' : 'ماذا تريد أن تفعل؟'}
+            </h2>
+            <p
+              className="text-[#666666] text-[14px] sm:text-[15px]"
+              style={{ fontFamily: isEn ? "'Gotham Light', sans-serif" : undefined }}
+            >
+              {isEn ? 'Choose the option you want' : 'اختر الخيار الذي تريده'}
+            </p>
           </div>
 
-          {/* Option Card 2: Buy for Yourself */}
-          <div className="bg-[#FAF6EE] rounded-2xl p-8 sm:p-10 border border-[#C8A464]/30 text-center flex flex-col items-center justify-between hover:shadow-md transition-all">
-            <div className="flex flex-col items-center">
-              <div className="w-16 h-16 rounded-full bg-[#C8A464] text-[#1A3533] flex items-center justify-center mb-5 shadow-inner">
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="9" cy="21" r="1"></circle>
-                  <circle cx="20" cy="21" r="1"></circle>
-                  <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
-                </svg>
-              </div>
-              <h3
-                className="text-[22px] sm:text-[26px] font-bold text-[#234745] mb-3"
-                style={{ fontFamily: isEn ? "'Bahij Janna', sans-serif" : undefined }}
-              >
-                {isEn ? 'Buy for Yourself' : 'إشترِ لنفسك'}
-              </h3>
-              <p
-                className="text-gray-600 text-[14px] leading-relaxed max-w-[420px] mb-8"
-                style={{ fontFamily: isEn ? "'Gotham Light', sans-serif" : undefined }}
-              >
-                {isEn
-                  ? 'Add balance to your account and use it anytime when shopping to easily pay for your purchases.'
-                  : 'أضف رصيد إلى حسابك واستخدمه عند التسوق في أي وقت لتسدد بها الدفعة أو التفاصيل القادمة'}
-              </p>
-            </div>
-            <Link
-              to={isEn ? '/en/buy-gift-card' : '/buy-gift-card'}
-              className="w-full sm:w-auto h-[48px] px-10 border-2 border-[#234745] hover:bg-[#234745] hover:text-white text-[#234745] font-bold text-[15px] rounded-full flex items-center justify-center transition-all shadow-sm active:scale-98"
-            >
-              {isEn ? 'Buy Now' : 'إشترِ الآن'}
-            </Link>
-          </div>
+          {/* 2 Options Cards Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
 
+            {/* Option Card 1: Gift a Voucher */}
+            <div className="bg-[#FEF8EB] rounded-2xl p-8 sm:p-10 border border-[#C8A464]/30 text-center flex flex-col items-center justify-between hover:shadow-md transition-all">
+              <div className="flex flex-col items-center">
+                <div className="w-[48px] h-[48px] rounded-full bg-[#255441] text-[#C8A464] flex items-center justify-center mb-5 shadow-inner">
+                  <svg width="17" height="18" viewBox="0 0 17 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M7 17C7.82843 17 8.5 16.3284 8.5 15.5C8.5 14.6716 7.82843 14 7 14C6.17157 14 5.5 14.6716 5.5 15.5C5.5 16.3284 6.17157 17 7 17Z" stroke="#BBCFCD" />
+                    <path d="M14 17C14.8284 17 15.5 16.3284 15.5 15.5C15.5 14.6716 14.8284 14 14 14C13.1716 14 12.5 14.6716 12.5 15.5C12.5 16.3284 13.1716 17 14 17Z" stroke="#BBCFCD" />
+                    <path d="M0.5 0.5H2.5L6.004 11.5H14" stroke="#BBCFCD" stroke-linecap="round" stroke-linejoin="round" />
+                    <path d="M5.22869 9.00049L3.30469 3.00049H15.8117C15.891 3.00039 15.9691 3.01914 16.0397 3.05519C16.1103 3.09124 16.1713 3.14356 16.2177 3.20783C16.2641 3.2721 16.2946 3.34649 16.3066 3.42484C16.3185 3.5032 16.3117 3.58328 16.2867 3.65849L14.6197 8.65849C14.5865 8.75801 14.5229 8.84459 14.4379 8.90596C14.3528 8.96734 14.2506 9.00041 14.1457 9.00049H5.22869Z" stroke="#BBCFCD" stroke-linecap="round" stroke-linejoin="round" />
+                  </svg>
+
+                </div>
+                <h3
+                  className="text-[22px] sm:text-[26px] font-bold text-[#255441] !mb-[16px]"
+                  style={{ fontFamily: isEn ? "'Bahij Janna', sans-serif" : undefined }}
+                >
+                  {isEn ? 'Gift a Voucher' : 'أهدِ قسيمة'}
+                </h3>
+                <p
+                  className="text-[#9FB7AE] text-[14px] font-medium leading-relaxed max-w-[420px] !mb-[16px]"
+                  style={{ fontFamily: isEn ? "'Gotham Light', sans-serif" : undefined }}
+                >
+                  {isEn
+                    ? 'Send a digital gift voucher to your loved ones via email with a personalized message and choice of designs.'
+                    : 'أرسل قسيمة هدية لأي شخص عبر البريد الإلكتروني مع رسالة شخصية وتصميم اختياري'}
+                </p>
+              </div>
+              <Link
+                to={isEn ? '/en/buy-gift-card' : '/buy-gift-card'}
+                className="w-full sm:w-auto h-[48px] px-10 bg-[#255441] !w-[248px] hover:bg-[#1A3533] !text-white font-bold text-[14px] rounded-full flex items-center justify-center transition-all active:scale-98"
+              >
+                {isEn ? 'Gift Now' : 'إهداء الآن'}
+              </Link>
+            </div>
+
+            {/* Option Card 2: Buy for Yourself */}
+            <div className="bg-[#FEF8EB] rounded-2xl p-8 sm:p-10 border border-[#C8A464]/30 text-center flex flex-col items-center justify-between hover:shadow-md transition-all">
+              <div className="flex flex-col items-center">
+                <div className="w-[48px] h-[48px] rounded-full bg-[#C5A96A] text-[#C8A464] flex items-center justify-center mb-5 shadow-inner">
+                  <svg width="17" height="18" viewBox="0 0 17 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M7 17C7.82843 17 8.5 16.3284 8.5 15.5C8.5 14.6716 7.82843 14 7 14C6.17157 14 5.5 14.6716 5.5 15.5C5.5 16.3284 6.17157 17 7 17Z" stroke="#BBCFCD" />
+                    <path d="M14 17C14.8284 17 15.5 16.3284 15.5 15.5C15.5 14.6716 14.8284 14 14 14C13.1716 14 12.5 14.6716 12.5 15.5C12.5 16.3284 13.1716 17 14 17Z" stroke="#BBCFCD" />
+                    <path d="M0.5 0.5H2.5L6.004 11.5H14" stroke="#BBCFCD" stroke-linecap="round" stroke-linejoin="round" />
+                    <path d="M5.22869 9.00049L3.30469 3.00049H15.8117C15.891 3.00039 15.9691 3.01914 16.0397 3.05519C16.1103 3.09124 16.1713 3.14356 16.2177 3.20783C16.2641 3.2721 16.2946 3.34649 16.3066 3.42484C16.3185 3.5032 16.3117 3.58328 16.2867 3.65849L14.6197 8.65849C14.5865 8.75801 14.5229 8.84459 14.4379 8.90596C14.3528 8.96734 14.2506 9.00041 14.1457 9.00049H5.22869Z" stroke="#BBCFCD" stroke-linecap="round" stroke-linejoin="round" />
+                  </svg>
+
+                </div>
+                <h3
+                  className="text-[22px] sm:text-[26px] font-bold text-[#255441] !mb-[16px]"
+                  style={{ fontFamily: isEn ? "'Bahij Janna', sans-serif" : undefined }}
+                >
+                  {isEn ? 'Gift a Voucher' : 'أهدِ قسيمة'}
+                </h3>
+                <p
+                  className="text-[#9FB7AE] text-[14px] font-medium leading-relaxed max-w-[420px] !mb-[16px]"
+                  style={{ fontFamily: isEn ? "'Gotham Light', sans-serif" : undefined }}
+                >
+                  {isEn
+                    ? 'Send a digital gift voucher to your loved ones via email with a personalized message and choice of designs.'
+                    : 'أرسل قسيمة هدية لأي شخص عبر البريد الإلكتروني مع رسالة شخصية وتصميم اختياري'}
+                </p>
+              </div>
+              <Link
+                to={isEn ? '/en/buy-gift-card' : '/buy-gift-card'}
+                className="w-full sm:w-auto h-[48px] px-10 bg-transparent !w-[248px] hover:bg-[#1A3533] !text-[#255441] hover:!text-white border !border-[#255441] font-bold text-[14px] rounded-full flex items-center justify-center transition-all active:scale-98"
+              >
+                {isEn ? 'Gift Now' : 'إهداء الآن'}
+              </Link>
+            </div>
+
+          </div>
         </div>
       </section>
     </div>

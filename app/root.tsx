@@ -113,21 +113,10 @@ export async function loader(args: Route.LoaderArgs) {
                        selectedLocId === 'gid://shopify/Location/114186715445';
   const hasManualSelection = manualLocationSelection === 'true';
 
-  if (!isSA && !hasManualSelection && (isDefaultLoc || !selectedLocId)) {
+  if (!hasManualSelection && (isDefaultLoc || !selectedLocId || selectedLocId === undefined || selectedLocId === null)) {
     const urlLocale = new URL(args.request.url).pathname.split('/')[1]?.toLowerCase();
     selectedLocId = '';
     selectedLocName = urlLocale === 'en' ? 'Select Your Branch' : 'اختر الفرع';
-    fType = 'pickup';
-    
-    session.set('selectedLocationId', selectedLocId);
-    session.set('selectedLocationName', selectedLocName);
-    session.set('fulfillmentType', fType);
-    session.set('isInternationalUser', 'true');
-  } else if (selectedLocId === undefined || selectedLocId === null) {
-    const isTesting = env.PUBLIC_STORE_DOMAIN?.includes('belivagloire');
-    selectedLocId = isTesting ? 'gid://shopify/Location/114186715445' : 'gid://shopify/Location/80198500503';
-    const urlLocale = new URL(args.request.url).pathname.split('/')[1]?.toLowerCase();
-    selectedLocName = urlLocale === 'en' ? 'Olaya Branch' : 'فرع العليا';
     fType = 'pickup';
     
     session.set('selectedLocationId', selectedLocId);

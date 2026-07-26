@@ -24,10 +24,13 @@ export function ProductItem({
   product,
   loading,
   view = 'grid',
+  isExport,
 }: {
   product: any;
   loading?: 'eager' | 'lazy';
   view?: 'grid' | 'list';
+  /** When true: add-to-cart goes to the export journey (/export-cart) */
+  isExport?: boolean;
 }) {
   const [isNotifyModalOpen, setIsNotifyModalOpen] = useState(false);
   const { selectedLocationId, selectedLocationName } = useOutletContext<{ selectedLocationId?: string, selectedLocationName?: string }>() || {};
@@ -40,11 +43,13 @@ export function ProductItem({
   const variant = useMemo(() => {
     if (variantsNodes.length > 0) {
       const availableVariant = variantsNodes.find((v: any) => {
+          const vAvailable = v.availableForSale ?? product.availableForSale ?? true;
           const outOfStock = getIsOutOfStock(
-              selectedLocationId,
-              selectedLocationName,
+              // Export products ship from central stock — bypass branch check
+              isExport ? null : selectedLocationId,
+              isExport ? null : selectedLocationName,
               v.storeAvailability?.nodes || [],
-              product.availableForSale
+              vAvailable
           );
           return !outOfStock;
       });
@@ -54,17 +59,19 @@ export function ProductItem({
       return product;
     }
     return undefined;
-  }, [product, variantsNodes, selectedLocationId, selectedLocationName]);
+  }, [product, variantsNodes, selectedLocationId, selectedLocationName, isExport]);
 
   const productHandle = product.handle || (product as any).product?.handle || (product as any).variants?.nodes?.[0]?.product?.handle || '';
   const variantUrl = productHandle ? useVariantUrl(productHandle, variant?.selectedOptions || []) : '#';
   
   const storeAvailabilityNodes = variant?.storeAvailability?.nodes || [];
+  const variantAvailable = variant?.availableForSale ?? product.availableForSale ?? true;
   const isOutOfStock = getIsOutOfStock(
-    selectedLocationId,
-    selectedLocationName,
+    // Export products ship from central stock — bypass branch check
+    isExport ? null : selectedLocationId,
+    isExport ? null : selectedLocationName,
     storeAvailabilityNodes,
-    product.availableForSale
+    variantAvailable
   );
   const isAvailable = !isOutOfStock && !!variant;
 
@@ -207,6 +214,7 @@ export function ProductItem({
                     <AddToCartButton 
                         lines={cartLines as any} 
                         disabled={!effectiveAvailable || isOutOfStock}
+                        isExport={isExport}
                         className="h-[44px] px-8 flex items-center justify-center rounded-full font-bold text-[15px] bg-[#234745] text-white hover:bg-[#163529] shadow-sm transition-all duration-300 active:scale-95"
                         style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
                     >
@@ -399,6 +407,7 @@ export function ProductItem({
                   <AddToCartButton 
                         lines={cartLines as any} 
                         disabled={!effectiveAvailable || isOutOfStock}
+                        isExport={isExport}
                         className="w-full h-[40px] md:h-[44px] px-2 md:px-4 flex items-center justify-center rounded-full font-bold text-[12px] md:text-[15px] bg-[#234745] text-white hover:bg-[#163529] shadow-sm transition-all duration-300 active:scale-95"
                         style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
                     >

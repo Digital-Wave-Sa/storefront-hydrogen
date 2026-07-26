@@ -1037,7 +1037,7 @@ export default function VouchersPage() {
                 to={isEn ? '/en/buy-gift-card' : '/buy-gift-card'}
                 className="w-full sm:w-auto h-[48px] px-10 bg-[#255441] !w-[248px] hover:bg-[#1A3533] !text-white font-bold text-[14px] rounded-full flex items-center justify-center transition-all active:scale-98"
               >
-                {isEn ? 'Gift Now' : 'إهداء الآن'}
+                {isEn ? 'Start Now' : 'إبدأ الان'}
               </Link>
             </div>
 
@@ -1057,22 +1057,22 @@ export default function VouchersPage() {
                   className="text-[22px] sm:text-[26px] font-bold text-[#255441] !mb-[16px]"
                   style={{ fontFamily: isEn ? "'Bahij Janna', sans-serif" : undefined }}
                 >
-                  {isEn ? 'Gift a Voucher' : 'أهدِ قسيمة'}
+                  {isEn ? 'Buy for Yourself' : 'إشترِ لنفسك'}
                 </h3>
                 <p
                   className="text-[#9FB7AE] text-[14px] font-medium leading-relaxed max-w-[420px] !mb-[16px]"
                   style={{ fontFamily: isEn ? "'Gotham Light', sans-serif" : undefined }}
                 >
                   {isEn
-                    ? 'Send a digital gift voucher to your loved ones via email with a personalized message and choice of designs.'
-                    : 'أرسل قسيمة هدية لأي شخص عبر البريد الإلكتروني مع رسالة شخصية وتصميم اختياري'}
+                    ? 'Add credit to your account and use it whenever you want at checkout without needing gifting details.'
+                    : 'أضف رصيداً الي حسابك واستخدمه عند الدفع في أي وقت تريده دون الحاجة لتفاصيل الإهداء'}
                 </p>
               </div>
               <Link
-                to={isEn ? '/en/buy-gift-card' : '/buy-gift-card'}
+                to={isEn ? '/en/buy-gift-card?mode=self' : '/buy-gift-card?mode=self'}
                 className="w-full sm:w-auto h-[48px] px-10 bg-transparent !w-[248px] hover:bg-[#1A3533] !text-[#255441] hover:!text-white border !border-[#255441] font-bold text-[14px] rounded-full flex items-center justify-center transition-all active:scale-98"
               >
-                {isEn ? 'Gift Now' : 'إهداء الآن'}
+                {isEn ? 'Start Now' : 'إبدأ الان'}
               </Link>
             </div>
 

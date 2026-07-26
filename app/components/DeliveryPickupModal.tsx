@@ -780,6 +780,7 @@ function ModalContent({
                     <button
                         onClick={() => {
                             if (typeof window !== 'undefined') {
+                                localStorage.setItem('declaredLocation', 'true');
                                 sessionStorage.setItem('declaredLocation', 'true');
                             }
                             onSelectBranch({ id: '', name: isEn ? 'International Visitor' : 'زائر دولي' }, 'pickup');

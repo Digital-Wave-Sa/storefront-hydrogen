@@ -174,11 +174,7 @@ export function ProductItem({
                       <span>🎁</span> {isEn ? 'Buy 1 Get 1 Free' : '1+1 مجاناً'}
                   </span>
               )}
-              {!isVisibilityBlocked && !isBogo && product.compareAtPriceRange?.minVariantPrice && product.priceRange?.minVariantPrice && parseFloat(product.compareAtPriceRange.minVariantPrice.amount) > parseFloat(product.priceRange.minVariantPrice.amount) && (
-                  <span className="text-[9px] font-black px-2 py-1 rounded-lg shadow-sm bg-[#e74c3c] text-white flex items-center gap-1">
-                      <span>🔥</span> {isEn ? 'Sale' : 'تخفيض'}
-                  </span>
-              )}
+
             </div>
             </div>
         </Link>
@@ -327,11 +323,7 @@ export function ProductItem({
                       <span>🎁</span> {isEn ? 'Buy 1 Get 1 Free' : '1+1 مجاناً'}
                   </div>
               )}
-              {!isVisibilityBlocked && !isBogo && product.compareAtPriceRange?.minVariantPrice && product.priceRange?.minVariantPrice && parseFloat(product.compareAtPriceRange.minVariantPrice.amount) > parseFloat(product.priceRange.minVariantPrice.amount) && (
-                  <div className="text-[10px] font-black px-2.5 py-1.5 rounded-[8px] shadow-sm bg-[#e74c3c] text-white flex items-center gap-1.5">
-                      <span>🔥</span> {isEn ? 'Sale' : 'تخفيض'}
-                  </div>
-              )}
+
             </div>
 
             {/* Out of Stock / Seasonal — centered pill overlay at bottom of image */}

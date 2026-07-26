@@ -5,6 +5,7 @@ import { useState, useEffect, Fragment } from 'react';
 import { createPortal } from 'react-dom';
 import patternBg from '/images/second-bg-pattern.svg';
 import { getShopTitle } from '~/lib/seo';
+import { SaudiRiyalSymbol } from '~/components/Price';
 import type { Route } from './+types/($locale).collections.all';
 
 export const meta: Route.MetaFunction = ({ matches }) => {
@@ -455,17 +456,32 @@ export function ActiveFilterChips({ isEn, collections }: { isEn: boolean, collec
       try {
         const parsed = JSON.parse(value) as any;
         if (parsed.gte !== undefined && parsed.lte !== undefined) {
-          label = isEn
-            ? `Price: ${parsed.gte} - ${parsed.lte} SAR`
-            : `السعر: ${parsed.gte} - ${parsed.lte} ر.س`;
+          label = isEn ? (
+            `Price: ${parsed.gte} - ${parsed.lte} SAR`
+          ) : (
+            <span className="inline-flex items-center gap-1">
+              <span>السعر: {parsed.gte} - {parsed.lte}</span>
+              <SaudiRiyalSymbol className="h-3 w-auto text-[#234745]" />
+            </span>
+          );
         } else if (parsed.gte !== undefined) {
-          label = isEn
-            ? `Price: Over ${parsed.gte} SAR`
-            : `السعر: أكثر من ${parsed.gte} ر.س`;
+          label = isEn ? (
+            `Price: Over ${parsed.gte} SAR`
+          ) : (
+            <span className="inline-flex items-center gap-1">
+              <span>السعر: أكثر من {parsed.gte}</span>
+              <SaudiRiyalSymbol className="h-3 w-auto text-[#234745]" />
+            </span>
+          );
         } else if (parsed.lte !== undefined) {
-          label = isEn
-            ? `Price: Under ${parsed.lte} SAR`
-            : `السعر: أقل من ${parsed.lte} ر.س`;
+          label = isEn ? (
+            `Price: Under ${parsed.lte} SAR`
+          ) : (
+            <span className="inline-flex items-center gap-1">
+              <span>السعر: أقل من {parsed.lte}</span>
+              <SaudiRiyalSymbol className="h-3 w-auto text-[#234745]" />
+            </span>
+          );
         }
       } catch (e) { }
     } else if (key === 'filter.v.availability') {
@@ -811,10 +827,46 @@ export function FilterSidebar({ filters, collections, onClose, isDesktop = false
   };
 
   const pricePresets = [
-    { label: isEn ? 'Under 100 SAR' : 'أقل من 100 ر.س', min: '', max: '100' },
-    { label: isEn ? '100 - 200 SAR' : '100 - 200 ر.س', min: '100', max: '200' },
-    { label: isEn ? '200 - 400 SAR' : '200 - 400 ر.س', min: '200', max: '400' },
-    { label: isEn ? 'Over 400 SAR' : 'أكثر من 400 ر.س', min: '400', max: '' }
+    {
+      label: isEn ? 'Under 100 SAR' : (
+        <span className="inline-flex items-center gap-1">
+          <span>أقل من <span className="font-en">100</span></span>
+          <SaudiRiyalSymbol className="h-3 w-auto text-current" />
+        </span>
+      ),
+      min: '',
+      max: '100'
+    },
+    {
+      label: isEn ? '100 - 200 SAR' : (
+        <span className="inline-flex items-center gap-1 font-en">
+          <span>100 - 200</span>
+          <SaudiRiyalSymbol className="h-3 w-auto text-current" />
+        </span>
+      ),
+      min: '100',
+      max: '200'
+    },
+    {
+      label: isEn ? '200 - 400 SAR' : (
+        <span className="inline-flex items-center gap-1 font-en">
+          <span>200 - 400</span>
+          <SaudiRiyalSymbol className="h-3 w-auto text-current" />
+        </span>
+      ),
+      min: '200',
+      max: '400'
+    },
+    {
+      label: isEn ? 'Over 400 SAR' : (
+        <span className="inline-flex items-center gap-1">
+          <span>أكثر من <span className="font-en">400</span></span>
+          <SaudiRiyalSymbol className="h-3 w-auto text-current" />
+        </span>
+      ),
+      min: '400',
+      max: ''
+    }
   ];
 
   const currentParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams();
@@ -902,7 +954,15 @@ export function FilterSidebar({ filters, collections, onClose, isDesktop = false
         {/* Price */}
         <div className="w-[270px] flex flex-col gap-4">
           <button type="button" onClick={() => toggleSection('price')} className="flex items-center justify-between w-full outline-none group">
-            <h3 className={`text-[16px] font-bold ${isEn ? 'font-en' : "font-['GE_Dinar_One']"} text-[#171717] flex items-center gap-1`}>{isEn ? 'Price (SAR)' : 'السعر (ر.س)'}</h3>
+            <h3 className={`text-[16px] font-bold ${isEn ? 'font-en' : "font-['GE_Dinar_One']"} text-[#171717] flex items-center gap-1`}>
+              {isEn ? 'Price (SAR)' : (
+                <span className="inline-flex items-center gap-1">
+                  <span>السعر (</span>
+                  <SaudiRiyalSymbol className="h-3.5 w-auto text-[#171717]" />
+                  <span>)</span>
+                </span>
+              )}
+            </h3>
             <div className="flex items-center gap-6">
               {(minPrice || maxPrice) && (
                 <span onClick={clearPrice} className={`text-[16px] font-bold ${isEn ? 'font-en' : "font-['GE_Dinar_One']"} text-[#E64950]`}>{isEn ? 'Clear' : 'مسح'}</span>

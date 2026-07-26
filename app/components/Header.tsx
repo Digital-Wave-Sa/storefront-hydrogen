@@ -210,25 +210,16 @@ function TopBar({
   const [branches, setBranches] = useState<any[]>([]);
   const [isOpenBranch, setIsOpenBranch] = useState(true);
 
-  // Auto-prompt location selection if user hasn't declared location and geolocation fails/denied
+  // Prevent unwanted auto-popup on every page load / navigation
   useEffect(() => {
     if (typeof window === 'undefined') return;
     try {
-      const isDeclared = sessionStorage.getItem('declaredLocation') === 'true';
-      if (isDeclared) return;
+      const isDeclaredSession = sessionStorage.getItem('declaredLocation') === 'true';
+      const isDeclaredLocal = localStorage.getItem('declaredLocation') === 'true';
+      if (isDeclaredSession || isDeclaredLocal) return;
 
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          () => {},
-          (err) => {
-            // Geolocation denied or failed -> Open modal so user declares location or uses Global Stock
-            setModalOpen(true);
-          },
-          { timeout: 4000 }
-        );
-      } else {
-        setModalOpen(true);
-      }
+      // Mark declaredLocation in sessionStorage so it doesn't nag across page reloads/navigations
+      sessionStorage.setItem('declaredLocation', 'true');
     } catch (e) {}
   }, []);
 
@@ -482,12 +473,28 @@ function TopBar({
 
       <DeliveryPickupModal
         isOpen={modalOpen}
-        onClose={() => setModalOpen(false)}
+        onClose={() => {
+          setModalOpen(false);
+          if (typeof window !== 'undefined') {
+            try {
+              localStorage.setItem('declaredLocation', 'true');
+              sessionStorage.setItem('declaredLocation', 'true');
+            } catch (e) {}
+          }
+        }}
         locationsPromise={locations}
         customerPromise={customer}
         googleMapsKey={googleMapsKey}
         locale={locale}
-        onSelectBranch={onSelectBranch}
+        onSelectBranch={(branch: any, type: any) => {
+          if (typeof window !== 'undefined') {
+            try {
+              localStorage.setItem('declaredLocation', 'true');
+              sessionStorage.setItem('declaredLocation', 'true');
+            } catch (e) {}
+          }
+          onSelectBranch(branch, type);
+        }}
         defaultTab={fulfillmentType as any || 'delivery'}
         selectedLocationId={selectedLocationId}
         selectedAddressName={selectedAddressName}

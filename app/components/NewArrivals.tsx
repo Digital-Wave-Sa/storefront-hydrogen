@@ -136,13 +136,6 @@ export function NewArrivals({
                                                                 {product.is_limited_time.value}
                                                             </span>
                                                         )}
-                                                        {/* Sale Badge */}
-                                                        {!isVisibilityBlocked && hasDiscount && (
-                                                            <span className="text-[10px] font-bold px-3 py-1.5 rounded-full shadow-sm bg-[#e74c3c] text-white flex items-center gap-1.5">
-                                                                <span>🔥</span>
-                                                                {isEn ? 'Sale' : 'تخفيض'}
-                                                            </span>
-                                                        )}
                                                     </div>
 
                                                     {/* Product Image */}

@@ -81,7 +81,7 @@ export function OffersAndDiscounts({ config }: { config?: any }) {
                             </p>
 
                             <Link
-                                to={isEn ? "/en/products/gift-card" : "/products/gift-card"}
+                                to={isEn ? "/en/vouchers" : "/vouchers"}
                                 className="bg-[#234745] flex items-center justify-center transition-all mt-8 font-dinar font-bold"
                                 style={{
                                     width: '261px',

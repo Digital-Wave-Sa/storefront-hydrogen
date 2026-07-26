@@ -498,6 +498,7 @@ export default function Product() {
 
   const [isNotifyModalOpen, setIsNotifyModalOpen] = useState(false);
   const [quantity, setQuantity] = useState(1);
+  const [isBuyingNow, setIsBuyingNow] = useState(false);
   const [activeTab, setActiveTab] = useState('details');
   const [selectedAddons, setSelectedAddons] = useState<string[]>([]); // Array of Variant IDs
   const [note, setNote] = useState('');
@@ -548,6 +549,100 @@ export default function Product() {
     setSelectedAddons((prev) =>
       prev.includes(variantId) ? prev.filter((id) => id !== variantId) : [...prev, variantId]
     );
+  };
+
+  const handleBuyNow = async () => {
+    if (!selectedVariant || effectiveOutOfStock || isBuyingNow) return;
+    setIsBuyingNow(true);
+
+    try {
+      const groupId = Date.now().toString();
+      const isBogoTag = product.tags?.some((t: string) => t.toLowerCase().includes('bogo'));
+
+      const mainLine = {
+        merchandiseId: selectedVariant.id,
+        quantity,
+        attributes: [
+          { key: '_groupId', value: groupId },
+          ...(isBundle && bundleComponents.length > 0 ? [
+            {
+              key: isEn ? 'Bundle Includes' : 'محتويات العرض',
+              value: bundleComponents.map((c: any) => `• ${c.title}`).join('\n')
+            },
+            {
+              key: '_bundle_skus',
+              value: bundleComponents.map((c: any) => c.variants?.nodes?.[0]?.sku).filter(Boolean).join(', ')
+            }
+          ] : []),
+          ...(cakeMessage ? [{ key: 'Cake Message', value: cakeMessage }] : []),
+          ...(isGiftMode ? [
+            { key: '_isGift', value: 'true' },
+            ...(recipientName ? [{ key: 'Recipient Name', value: recipientName }] : []),
+            ...(note ? [{ key: 'Gift Message', value: note }] : []),
+            { key: '_hideSender', value: hideSender ? 'Yes' : 'No' },
+          ] : (note ? [{ key: 'Order Note', value: note }] : [])),
+        ],
+      };
+
+      const addonLines = selectedAddons.map((addonId) => {
+        const addonNode = addonNodes.find((n: any) => n.variants?.nodes?.[0]?.id === addonId);
+        const variant = addonNode?.variants?.nodes?.[0];
+        return {
+          merchandiseId: addonId,
+          quantity: 1,
+          attributes: [
+            { key: '_groupId', value: groupId },
+            { key: '_is_addon', value: 'true' },
+            ...(variant?.sku ? [{ key: '_sku', value: variant.sku }] : []),
+          ],
+        };
+      });
+
+      let linesToAdd = [mainLine, ...addonLines];
+
+      if (isBogoTag) {
+        const freeVariantId = bogoFreeVariantId || selectedVariant.id;
+        linesToAdd = [
+          mainLine,
+          {
+            merchandiseId: freeVariantId,
+            quantity,
+            attributes: [
+              { key: '_groupId', value: groupId },
+              { key: '_is_addon', value: 'true' },
+              { key: '_is_free', value: 'true' },
+            ],
+          },
+          ...addonLines
+        ];
+      }
+
+      const formData = new FormData();
+      const cartInput = {
+        action: 'LinesAdd',
+        inputs: { lines: linesToAdd },
+      };
+      formData.append('cartFormInput', JSON.stringify(cartInput));
+
+      const res = await fetch('/cart', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await res.json() as any;
+      const checkoutUrl = data?.cart?.checkoutUrl || (rootData?.cart?.checkoutUrl);
+
+      if (checkoutUrl) {
+        window.location.href = checkoutUrl;
+      } else {
+        window.location.href = isEn ? '/en/cart' : '/cart';
+      }
+    } catch (err) {
+      console.error('Buy Now error:', err);
+      window.location.href = isEn ? '/en/cart' : '/cart';
+    } finally {
+      setIsBuyingNow(false);
+    }
   };
 
   // Calculate the Dynamic Total
@@ -826,18 +921,7 @@ export default function Product() {
         locationName={selectedLocationName || undefined}
       />
 
-      {/* Visibility Alert Banner */}
-      {isVisibilityBlocked && (
-        <div className={`w-full py-4 text-center font-bold text-sm ${visibility.status === 'scheduled'
-          ? 'bg-amber-50 text-amber-700 border-b border-amber-200'
-          : 'bg-red-50 text-red-600 border-b border-red-200'
-          }`}>
-          <div className="max-w-[1400px] mx-auto px-4 md:px-8 flex items-center justify-center gap-3">
-            <span className="text-lg">{visibility.status === 'scheduled' ? '🕐' : '⚠️'}</span>
-            <span>{isEn ? visibility.label.en : visibility.label.ar} — {isEn ? 'This product is not available at the moment' : 'هذا المنتج غير متاح حالياً'}</span>
-          </div>
-        </div>
-      )}
+
 
       {/* 1. Styled PDP Header Header */}
       <div className="w-full">
@@ -1593,13 +1677,20 @@ export default function Product() {
                       )}
 
                       {/* Buy Now */}
-                      <button className="w-full h-[48px] bg-[#EED5D7] hover:bg-[#e4d0d0] active:scale-[0.98] transition-all text-[#E64950] rounded-[25px] flex items-center justify-center gap-[8px]">
+                      <button
+                        type="button"
+                        onClick={handleBuyNow}
+                        disabled={!selectedVariant || effectiveOutOfStock || isBuyingNow}
+                        className={`w-full h-[48px] ${effectiveOutOfStock || !selectedVariant ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-[#EED5D7] hover:bg-[#e4d0d0] active:scale-[0.98] text-[#E64950]'} rounded-[25px] flex items-center justify-center gap-[8px] transition-all`}
+                      >
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                           <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4Z" />
                           <line x1="3" y1="6" x2="21" y2="6" />
                           <path d="M16 10a4 4 0 01-8 0" />
                         </svg>
-                        <span style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", fontWeight: 700, fontSize: '16px', lineHeight: '20px' }}>{isEn ? 'Buy Now' : 'إشتري الان'}</span>
+                        <span style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", fontWeight: 700, fontSize: '16px', lineHeight: '20px' }}>
+                          {isBuyingNow ? (isEn ? 'Processing...' : 'جاري التحويل...') : (isEn ? 'Buy Now' : 'إشتري الان')}
+                        </span>
                       </button>
                     </>
                   )}
@@ -1863,14 +1954,21 @@ export default function Product() {
 
                       {/* Buy Now Wrapper */}
                       <div className="flex-1">
-                        <button className="w-full h-[48px] bg-[#EED5D7] hover:bg-[#e4d0d0] active:scale-[0.98] transition-all text-[#E64950] rounded-[25px] flex items-center justify-center transition-all">
+                        <button
+                          type="button"
+                          onClick={handleBuyNow}
+                          disabled={!selectedVariant || effectiveOutOfStock || isBuyingNow}
+                          className={`w-full h-[48px] ${effectiveOutOfStock || !selectedVariant ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-[#EED5D7] hover:bg-[#e4d0d0] active:scale-[0.98] text-[#E64950]'} rounded-[25px] flex items-center justify-center transition-all`}
+                        >
                           <span className="flex items-center justify-center gap-1.5 w-full h-full px-1">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
                               <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4Z" />
                               <line x1="3" y1="6" x2="21" y2="6" />
                               <path d="M16 10a4 4 0 01-8 0" />
                             </svg>
-                            <span className="whitespace-nowrap text-[13px] sm:text-[14px]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", fontWeight: 700, lineHeight: '100%' }}>{isEn ? 'Buy Now' : 'شراء الآن'}</span>
+                            <span className="whitespace-nowrap text-[13px] sm:text-[14px]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", fontWeight: 700, lineHeight: '100%' }}>
+                              {isBuyingNow ? (isEn ? 'Processing...' : 'جاري...') : (isEn ? 'Buy Now' : 'شراء الآن')}
+                            </span>
                           </span>
                         </button>
                       </div>

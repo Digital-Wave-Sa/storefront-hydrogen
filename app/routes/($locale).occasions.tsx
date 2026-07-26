@@ -216,7 +216,7 @@ export default function OccasionsPage() {
                 </Link>
 
                 {/* Gift Voucher Banner */}
-                <Link to={isEn ? '/en/products/gift-card' : '/products/gift-card'} className="block w-full transition-transform hover:scale-[1.01]">
+                <Link to={isEn ? '/en/vouchers' : '/vouchers'} className="block w-full transition-transform hover:scale-[1.01]">
                     <div className="w-full bg-[#FEF8EB] rounded-[24px] flex flex-col md:flex-row items-center relative overflow-hidden min-h-[300px] lg:min-h-[340px]">
 
                         {/* Weave Pattern behind text */}

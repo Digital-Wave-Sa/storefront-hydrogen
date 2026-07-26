@@ -285,14 +285,6 @@ export function BestSellers({
                                                         </span>
                                                     )}
 
-                                                    {/* BOGO Badge */}
-                                                    {!isVisibilityBlocked && product.tags?.some((t: string) => t.toLowerCase().includes('bogo')) && (
-                                                        <span className="text-[11px] font-bold px-3 py-1.5 rounded-full shadow-sm bg-orange-500 text-white flex items-center gap-1.5 animate-pulse">
-                                                            <span>🔥</span>
-                                                            {isEn ? 'BOGO' : 'عرض خاص'}
-                                                        </span>
-                                                    )}
-
                                                     {/* Payment Restriction Badges */}
                                                     {!isVisibilityBlocked && product.tags?.some((t: string) => ['prepaid-only', 'payment:prepaid-only'].includes(t.toLowerCase().trim())) && (
                                                         <span className="text-[11px] font-bold px-3 py-1.5 rounded-full shadow-sm bg-[#2980b9] text-white flex items-center gap-1.5 border border-white/20">
@@ -357,7 +349,7 @@ export function BestSellers({
 
                                                     {/* Title */}
                                                     <Link to={getProductUrl(product.handle)}>
-                                                        <h3 className={`font-bold text-[#234745] line-clamp-1 transition-colors duration-300 ${isVisibilityBlocked ? '' : 'hover:text-[#1a3a2d]'}`} style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", fontSize: '18px', lineHeight: '24px', opacity: isOutOfStock && !isPreorder ? 0.4 : 1 }}>
+                                                        <h3 className={`font-bold text-[#234745] text-[16px] line-clamp-1 transition-colors duration-300 ${isVisibilityBlocked ? '' : 'hover:text-[#1a3a2d]'}`} style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", fontSize: '16px', lineHeight: '24px', opacity: isOutOfStock && !isPreorder ? 0.4 : 1 }}>
                                                             {product.title}
                                                         </h3>
                                                     </Link>

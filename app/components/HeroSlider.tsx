@@ -163,7 +163,7 @@ export function HeroSlider() {
                         <NavLink
                           key={i}
                           to={btn.url}
-                          className={`flex items-center justify-center transition-all transform hover:scale-105 active:scale-95 w-full lg:w-[277px] h-[48px] py-[12px] px-[20px] rounded-[24px] ${btn.type === 'filled'
+                          className={`flex items-center !no-underline justify-center transition-all duration-300 hover:!bg-[#F9F9F9] transform w-full lg:w-[277px] h-[48px] py-[12px] px-[20px] rounded-[24px] ${btn.type === 'filled'
                             ? 'bg-[#BBCFCD] text-[#234745]'
                             : 'bg-transparent text-[#F9F9F9] border border-[#BBCFCD]'
                             }`}

@@ -46,35 +46,47 @@ export function PageLayout({
     ? urlLocale 
     : (rootData?.consent?.language?.toLowerCase() || 'ar');
 
+  const isCustomCakePage = location.pathname.includes('/custom-cake');
+
   return (
     <Aside.Provider>
       <CartAside cart={cart} />
       <MobileSearchModal locale={locale} />
       <MobileMenuAside header={header} locale={locale} />
-      {header && (
-        <Header
-          header={header}
-          cart={cart}
-          isLoggedIn={isLoggedIn}
-          publicStoreDomain={publicStoreDomain}
-          locale={locale}
-          locations={locations}
-          customer={customer}
-          googleMapsKey={rootData?.env?.PUBLIC_GOOGLE_MAPS_KEY}
-          selectedLocationId={rootData?.selectedLocationId}
-          selectedLocationName={rootData?.selectedLocationName}
-          selectedAddressName={rootData?.selectedAddressName}
-          fulfillmentType={rootData?.fulfillmentType}
-          megaMenuData={megaMenuData}
-        />
+      {isCustomCakePage ? (
+        <header className="w-full bg-white border-b border-gray-100 py-3 md:py-4 flex items-center justify-center z-30 relative shadow-sm">
+          <Link to={locale === 'en' ? '/en' : '/'} aria-label="Saadeddin Home">
+            <img src="/logo.svg" alt="SAADEDDIN" className="h-10 md:h-12 w-auto object-contain mx-auto" />
+          </Link>
+        </header>
+      ) : (
+        header && (
+          <Header
+            header={header}
+            cart={cart}
+            isLoggedIn={isLoggedIn}
+            publicStoreDomain={publicStoreDomain}
+            locale={locale}
+            locations={locations}
+            customer={customer}
+            googleMapsKey={rootData?.env?.PUBLIC_GOOGLE_MAPS_KEY}
+            selectedLocationId={rootData?.selectedLocationId}
+            selectedLocationName={rootData?.selectedLocationName}
+            selectedAddressName={rootData?.selectedAddressName}
+            fulfillmentType={rootData?.fulfillmentType}
+            megaMenuData={megaMenuData}
+          />
+        )
       )}
       <main>{children}</main>
-      <Footer
-        footer={footer}
-        header={header}
-        publicStoreDomain={publicStoreDomain}
-        locale={locale}
-      />
+      {!isCustomCakePage && (
+        <Footer
+          footer={footer}
+          header={header}
+          publicStoreDomain={publicStoreDomain}
+          locale={locale}
+        />
+      )}
     </Aside.Provider>
   );
 }

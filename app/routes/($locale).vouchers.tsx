@@ -122,15 +122,17 @@ export default function VouchersPage() {
               ? {
                 top: '32px', bottom: '24px', left: '56px',
                 display: 'flex', flexDirection: 'column',
-                justifyContent: 'space-between',
+                justifyContent: 'center',
                 alignItems: 'flex-start',
+                gap: '20px',
                 maxWidth: '620px',
               }
               : {
                 top: '32px', bottom: '24px', right: '56px',
                 display: 'flex', flexDirection: 'column',
-                justifyContent: 'space-between',
-                alignItems: 'flex-end',
+                justifyContent: 'center',
+                alignItems: 'flex-start',
+                gap: '20px',
                 maxWidth: '620px',
               }
             }
@@ -166,7 +168,7 @@ export default function VouchersPage() {
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '14px',
-                alignItems: isEn ? 'flex-start' : 'flex-end',
+                alignItems: isEn ? 'flex-start' : 'flex-start',
                 textAlign: isEn ? 'left' : 'right',
               }}
             >
@@ -178,7 +180,7 @@ export default function VouchersPage() {
                   fontSize: 'clamp(38px, 6vw, 90px)',
                   fontWeight: 700,
                   lineHeight: '100%',
-                  margin: 0,
+                  margin: '0 0 20px 0',
                   textShadow: '0 2px 20px rgba(0,0,0,0.5)',
                 }}
               >

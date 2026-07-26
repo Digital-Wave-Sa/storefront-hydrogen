@@ -1008,11 +1008,7 @@ export default function Product() {
               >
                 {product.title}
               </h1>
-              {isBogo && (
-                <span className="text-[12px] font-black px-3 py-1.5 rounded-xl shadow-sm bg-[#FF6B6B] text-white flex items-center gap-1.5 shrink-0 mt-2">
-                  <span>🎁</span> {isEn ? 'Buy 1 Get 1 Free' : '1+1 مجاناً'}
-                </span>
-              )}
+
             </div>
 
             {/* Rating & Availability Row */}

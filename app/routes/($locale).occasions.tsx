@@ -181,7 +181,7 @@ export default function OccasionsPage() {
             <div className="max-w-[1200px] mx-auto px-4 lg:px-8 pb-32 lg:pb-48 flex flex-col gap-12 lg:gap-20">
 
                 {/* Custom Cake Banner */}
-                <Link to={isEn ? '/en/custom-cake' : '/custom-cake'} className="block w-full transition-transform hover:scale-[1.01]">
+                <Link to={isEn ? '/en/custom-cake' : '/custom-cake'} className="block w-full">
                     <div className="w-full bg-[#EED5D7] rounded-[24px] flex flex-col md:flex-row items-center relative overflow-hidden min-h-[200px] lg:min-h-[220px]">
 
                         {/* Content Side */}
@@ -216,7 +216,7 @@ export default function OccasionsPage() {
                 </Link>
 
                 {/* Gift Voucher Banner */}
-                <Link to={isEn ? '/en/vouchers' : '/vouchers'} className="block w-full transition-transform hover:scale-[1.01]">
+                <Link to={isEn ? '/en/vouchers' : '/vouchers'} className="block w-full">
                     <div className="w-full bg-[#FEF8EB] rounded-[24px] flex flex-col md:flex-row items-center relative overflow-hidden min-h-[300px] lg:min-h-[340px]">
 
                         {/* Weave Pattern behind text */}

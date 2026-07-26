@@ -86,7 +86,7 @@ export function ShopByOccasion({ collections }: { collections?: any[] }) {
 
                                 {/* Label Area */}
                                 <div className="relative w-full mt-auto flex-1 flex items-center justify-center">
-                                    <h3 className="relative pt-2 text-[22px] lg:text-[26px] font-bold text-[#171717] z-10 px-4 text-center leading-tight" style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" }}>
+                                    <h3 className="relative pt-2 text-[22px] !no-underline hover:no-underline lg:text-[26px] font-bold text-[#171717] z-10 px-4 text-center leading-tight" style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" }}>
                                         {occasion.name}
                                     </h3>
                                 </div>

@@ -99,7 +99,7 @@ export function NewArrivals({
                                                 : (idx % 2 === 0 ? '⏱ يحتاج يومين للتجهيز' : 'قسطها على دفعتين مع تمارا');
 
                                             return (
-                                                <div key={product.id} className={`flex flex-col h-full rounded-2xl bg-white overflow-hidden relative border border-gray-100 transition-all ${isVisibilityBlocked ? 'product--disabled opacity-60 grayscale-[30%]' : 'group hover:shadow-lg'}`}>
+                                                <div key={product.id} className={`flex flex-col h-full rounded-2xl bg-white overflow-hidden relative border border-gray-100 transition-all ${isVisibilityBlocked ? 'product--disabled opacity-60 grayscale-[30%]' : 'group'}`}>
                                                     {!isVisibilityBlocked && (
                                                         <button
                                                             onClick={(e) => {
@@ -189,7 +189,7 @@ export function NewArrivals({
 
                                                         {/* Title */}
                                                         <Link to={getProductUrl(product.handle)}>
-                                                            <h3 className={`font-bold text-[#234745] line-clamp-1 transition-colors duration-300 ${isEn ? 'text-left' : 'text-right'} ${isVisibilityBlocked ? '' : 'hover:text-[#1a3a2d]'}`} style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", fontSize: '18px', lineHeight: '24px', opacity: effectiveOutOfStock ? 0.4 : 1 }}>
+                                                            <h3 className={`font-bold text-[#234745] text-[16px] line-clamp-1 transition-colors duration-300 ${isEn ? 'text-left' : 'text-right'} ${isVisibilityBlocked ? '' : 'hover:text-[#1a3a2d]'}`} style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", fontSize: '16px', lineHeight: '24px', opacity: effectiveOutOfStock ? 0.4 : 1 }}>
                                                                 {product.title}
                                                             </h3>
                                                         </Link>

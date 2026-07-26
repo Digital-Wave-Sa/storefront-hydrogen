@@ -204,7 +204,7 @@ function CorporateProductCard({ product, isEn }: { product: any; isEn: boolean }
                 <div className="flex flex-col gap-1 text-start">
                     <Link to={productUrl}>
                         <h3
-                            className="text-[#234745] font-bold text-[18px] hover:text-[#906B51] transition-colors m-0 leading-snug"
+                            className="text-[#234745] font-bold text-[16px] hover:text-[#906B51] transition-colors m-0 leading-snug"
                             style={{ fontFamily: isEn ? 'inherit' : "'Bahij Janna', sans-serif" }}
                         >
                             {product.title}

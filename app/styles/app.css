@@ -23,6 +23,10 @@
   font-family: 'EnglishDigits', 'GE Dinar One', sans-serif !important;
 }
 
+a, a:hover, a:focus, a:active {
+  text-decoration: none !important;
+}
+
 :root {
   --aside-width: 400px;
   --cart-aside-summary-height-with-discount: 300px;

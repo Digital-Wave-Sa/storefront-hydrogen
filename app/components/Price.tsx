@@ -42,7 +42,7 @@ export function Price({ data, className = '', isEn = false, showSymbol = true, s
     xs: 'text-xs',
     sm: 'text-sm font-bold',
     md: 'text-[15px] md:text-lg font-black',
-    lg: 'text-[18px] md:text-2xl font-black',
+    lg: 'text-[18px] font-black',
     xl: 'text-2xl md:text-4xl font-black'
   };
 
@@ -50,7 +50,7 @@ export function Price({ data, className = '', isEn = false, showSymbol = true, s
     xs: 'h-2 w-auto',
     sm: 'h-2.5 w-auto',
     md: 'h-[12px] md:h-3.5 w-auto',
-    lg: 'h-[16px] md:h-5 w-auto',
+    lg: 'h-[15px] w-auto',
     xl: 'h-[20px] md:h-7 w-auto'
   };
 

@@ -169,11 +169,7 @@ export function ProductItem({
                       <span>⏳</span> {(product as any).is_limited_time.value}
                   </span>
               )}
-              {!isVisibilityBlocked && isBogo && (
-                  <span className="text-[9px] font-black px-2 py-1 rounded-lg shadow-sm bg-[#FF6B6B] text-white flex items-center gap-1">
-                      <span>🎁</span> {isEn ? 'Buy 1 Get 1 Free' : '1+1 مجاناً'}
-                  </span>
-              )}
+
 
             </div>
             </div>
@@ -191,7 +187,7 @@ export function ProductItem({
               </span>
           </div>
           <Link to={isVisibilityBlocked ? '#' : variantUrl} prefetch="intent" onClick={isVisibilityBlocked ? (e: any) => e.preventDefault() : undefined}>
-            <h4 className={`text-xl md:text-2xl font-black text-gray-800 mb-2 truncate transition-colors ${isVisibilityBlocked ? '' : 'group-hover:text-[#234745]'}`} style={{ opacity: showOutOfStock ? 0.4 : 1 }}>{formatNumbers(product.title)}</h4>
+            <h4 className={`text-[16px] font-black text-gray-800 mb-2 truncate transition-colors ${isVisibilityBlocked ? '' : 'group-hover:text-[#234745]'}`} style={{ opacity: showOutOfStock ? 0.4 : 1 }}>{formatNumbers(product.title)}</h4>
           </Link>
           {!isVisibilityBlocked && product.priceRange && (
             <div style={{ opacity: showOutOfStock ? 0.4 : 1 }}>
@@ -318,11 +314,7 @@ export function ProductItem({
                       <span>⏳</span> {(product as any).is_limited_time.value}
                   </div>
               )}
-              {!isVisibilityBlocked && isBogo && (
-                  <div className="text-[10px] font-black px-2.5 py-1.5 rounded-[8px] shadow-sm bg-[#FF6B6B] text-white flex items-center gap-1.5">
-                      <span>🎁</span> {isEn ? 'Buy 1 Get 1 Free' : '1+1 مجاناً'}
-                  </div>
-              )}
+
 
             </div>
 
@@ -359,7 +351,7 @@ export function ProductItem({
         
       <div className={`p-3 md:p-4 flex flex-col flex-grow ${isEn ? 'text-left' : 'text-right'}`}>
           <Link prefetch="intent" to={variantUrl}>
-              <h4 className={`font-bold text-[#234745] text-[16px] md:text-[18px] line-clamp-1 transition-colors duration-300 ${isVisibilityBlocked ? '' : 'group-hover:text-[#1a3a2d]'}`} style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", lineHeight: '24px', opacity: showOutOfStock ? 0.4 : 1 }}>
+              <h4 className={`font-bold text-[#234745] text-[16px] line-clamp-1 transition-colors duration-300 ${isVisibilityBlocked ? '' : 'group-hover:text-[#1a3a2d]'}`} style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", fontSize: '16px', lineHeight: '24px', opacity: showOutOfStock ? 0.4 : 1 }}>
                   {formatNumbers(product.title)}
               </h4>
           </Link>

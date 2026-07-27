@@ -381,11 +381,12 @@ export function BestSellers({
                                                                 className="w-full h-[40px] md:h-[44px] px-2 md:px-4 flex items-center justify-center gap-1.5 rounded-full font-bold text-[12px] md:text-[14px] bg-[#906B51] hover:bg-[#7d5c45] text-white shadow-sm transition-all duration-300 active:scale-95"
                                                                 style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
                                                             >
-                                                                <span>{isEn ? 'Notify for Next Season' : 'أبلغني في الموسم القادم'}</span>
                                                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
                                                                     <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" />
                                                                     <path d="M13.73 21a2 2 0 01-3.46 0" />
                                                                 </svg>
+                                                                <span>{isEn ? 'Notify for Next Season' : 'أبلغني في الموسم القادم'}</span>
+
                                                             </button>
                                                         ) : (
                                                             <BestSellersAddToCart
@@ -393,8 +394,8 @@ export function BestSellers({
                                                                 productTags={product.tags}
                                                                 bogoFreeVariantId={product.bogo_free_item?.reference?.id || product.bogo_free_item?.value || null}
                                                                 isOutOfStock={isOutOfStock && !isPreorder}
-                                                                notifyLabel={isPreorder ? t.common.preOrder : (isEn ? 'Notify Me' : 'أبلغني عن التوفر')}
-                                                                addLabel={isPreorder ? t.common.preOrder : (isEn ? 'Add to Cart' : 'أضف إلي السلة')}
+                                                                notifyLabel={isPreorder ? t.common.preOrder : (isEn ? 'Notify Me' : 'أبلغني عند التوفر')}
+                                                                addLabel={isPreorder ? t.common.preOrder : (isEn ? 'Add to Cart' : 'أضف إلى السلة')}
                                                                 isPreorder={isPreorder}
                                                                 onNotifyClick={() => handleNotifyClick(product.title, variant?.id)}
                                                             />

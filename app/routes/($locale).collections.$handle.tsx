@@ -21,7 +21,7 @@ import {getIsOutOfStock} from '~/lib/stock';
 import {Price} from '~/components/Price';
 import {AddToCartButton} from '~/components/AddToCartButton';
 import {StockNotificationModal} from '~/components/StockNotificationModal';
-import patternBg from '~/assets/patteren-collection-header.svg';
+import patternBg from '/images/second-bg-pattern.svg';
 
 export const meta: MetaFunction<typeof loader> = ({data}) => {
   if (!data?.collection) {
@@ -152,10 +152,10 @@ export default function Collection() {
 
       {/* Breadcrumb Strip */}
       <div className="bg-white border-b border-gray-100">
-        <div className="px-4 md:px-8 lg:px-12 py-4 max-w-[1440px] mx-auto text-right text-[13px] font-black flex items-center gap-2">
-            <span className="text-gray-400">{isEn ? 'Home' : 'الرئيسية'}</span>
-            <span className="text-gray-300">/</span>
-            <span className="text-gray-800">{collection.title}</span>
+        <div className="px-4 md:px-8 lg:px-12 py-4 max-w-[1440px] mx-auto text-right text-[16px] font-black flex items-center gap-2 font-medium font-['GE_Dinar_One']">
+          <span className="text-[#7d7d7d] text-500">{isEn ? 'Home' : 'الرئيسية'}</span>
+          <span className="text-gray-300">/</span>
+          <span className="text-[#171717]-800">{getCollectionDisplayTitle(collection, isEn)}</span>
         </div>
       </div>
 
@@ -301,42 +301,133 @@ export default function Collection() {
   );
 }
 
-function CollectionHero({ collection, productsCount, isEn }: { collection: any, productsCount: number, isEn: boolean }) {
-    return (
-        <section className="relative h-[144px] w-full bg-[#234745] overflow-hidden flex items-center" dir={isEn ? 'ltr' : 'rtl'}>
-            <div 
-                className="absolute inset-0 bg-[length:1500px_800px] md:bg-cover"
-                style={{
-                    backgroundImage: `url(${patternBg})`,
-                    backgroundPosition: 'center',
-                }}
-            />
-            
-            <div className="relative z-10 w-full max-w-[1440px] mx-auto px-4 md:px-8 lg:px-12 flex items-center justify-between">
-                
-                {/* Right Side: Title, Subtitle, and Back Button */}
-                <div className={`flex flex-col ${isEn ? 'items-start' : 'items-end'} gap-[8px]`}>
-                    <div className="flex items-center gap-[24px]" dir={isEn ? 'ltr' : 'rtl'}>
-                        <button onClick={() => window.history.back()} className={`flex items-center gap-[8px] bg-[#9FB7AE] hover:bg-[#8BA19C] text-[#234745] px-6 py-2 rounded-[25px] text-[16px] font-bold transition-all ${isEn ? 'font-en' : ''}`} style={isEn ? {} : { fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }} dir={isEn ? 'ltr' : 'rtl'}>
-                            <svg className={`w-5 h-5 ${isEn ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                            </svg>
-                            <span>{isEn ? 'Back' : 'رجوع'}</span>
-                        </button>
-                        <h1 className={`text-[32px] md:text-[40px] font-bold text-white drop-shadow-sm ${isEn ? 'text-left font-en' : 'text-right'}`} style={isEn ? {} : { fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }} dir={isEn ? 'ltr' : 'rtl'}>
-                            {collection.title}
-                        </h1>
-                    </div>
-                </div>
+const collectionTranslations: Record<string, string> = {
+  'wedding': 'زفاف وخطوبة',
+  'ramadan': 'رمضان',
+  'birthdays': 'أعياد الميلاد',
+  'eid': 'عيد الفطر والاضحى',
+  'new-baby': 'مواليد',
+  'national-day': 'اليوم الوطني',
+  'mothers-day': 'يوم الأم',
+  'mother-s-day': 'يوم الأم',
+  'graduation': 'تخرج',
+  'corporate-gifts': 'هدايا مؤسسية',
+  'chocolate': 'الشوكولاته',
+  'cakes': 'الكيك',
+  'biscuits': 'البسكويت',
+  'oriental': 'الحلويات الشرقية',
+  'coffee': 'القهوة',
+  'strawberry': 'الفراوله',
+  'gifts': 'الهدايا',
+  'cupcakes': 'الكب كيك',
+  'arabic-sweets': 'الحلويات العربية',
+  'oriental-sweets': 'الحلويات الشرقية',
+  'sweets': 'الحلويات',
+  'pastry': 'المعجنات',
+  'pastries': 'المعجنات',
+  'baking': 'المخبوزات',
+  'bakery': 'المخبوزات',
+  'cream': 'الكريمة',
+  'coffee-and-dates': 'القهوة والتمر',
+  'ice-cream': 'الآيس كريم',
+  'kunafa': 'كنافة',
+  'all': 'جميع المنتجات',
+  'best-sellers': 'الأكثر مبيعاً',
+  'new-arrivals': 'وصل حديثاً',
+};
 
-                {/* Left Side in RTL (Second child): Product Count */}
-                <div className={`bg-[#FEF8EB] text-[#234745] px-6 py-2 rounded-[25px] text-[16px] font-bold shadow-sm shrink-0 ${isEn ? 'font-en' : ''}`} style={isEn ? {} : { fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
-                    {productsCount} {isEn ? 'Products' : 'منتجات'}
-                </div>
-                
-            </div>
-        </section>
-    );
+const collectionTitleTranslations: Record<string, string> = {
+  "Mother's Day": 'يوم الأم',
+  "Mothers Day": 'يوم الأم',
+  "Mother’s Day": 'يوم الأم',
+  "Eid": 'عيد الفطر والأضحى',
+  "Eid Al-Fitr": 'عيد الفطر',
+  "Eid Al-Adha": 'عيد الأضحى',
+  "Wedding": 'زفاف وخطوبة',
+  "Ramadan": 'رمضان',
+  "Birthdays": 'أعياد الميلاد',
+  "Birthday": 'أعياد الميلاد',
+  "New Baby": 'مواليد',
+  "National Day": 'اليوم الوطني',
+  "Graduation": 'تخرج',
+  "Corporate Gifts": 'هدايا مؤسسية',
+  "Corporate": 'هدايا مؤسسية',
+  "Chocolate": 'الشوكولاته',
+  "Cakes": 'الكيك',
+  "Cake": 'الكيك',
+  "Biscuits": 'البسكويت',
+  "Oriental": 'الحلويات الشرقية',
+  "Coffee": 'القهوة',
+  "Gifts": 'الهدايا',
+  "Cupcakes": 'الكب كيك',
+  "Arabic Sweets": 'الحلويات العربية',
+  "Oriental Sweets": 'الحلويات الشرقية',
+  "Sweets": 'الحلويات',
+  "Pastry": 'المعجنات',
+  "Pastries": 'المعجنات',
+  "Bakery": 'المخبوزات',
+  "Ice Cream": 'الآيس كريم',
+  "Kunafa": 'كنافة',
+  "Best Sellers": 'الأكثر مبيعاً',
+  "New Arrivals": 'وصل حديثاً',
+  "All Products": 'جميع المنتجات',
+};
+
+const getCollectionDisplayTitle = (collection: any, isEn: boolean) => {
+  if (isEn) return collection?.title || '';
+  
+  const handle = collection?.handle?.toLowerCase();
+  const title = collection?.title?.trim();
+
+  if (handle && collectionTranslations[handle]) {
+    return collectionTranslations[handle];
+  }
+
+  if (title && collectionTitleTranslations[title]) {
+    return collectionTitleTranslations[title];
+  }
+
+  return collection?.title || '';
+};
+
+function CollectionHero({ collection, productsCount, isEn }: { collection: any, productsCount: number, isEn: boolean }) {
+  const displayTitle = getCollectionDisplayTitle(collection, isEn);
+
+  return (
+    <section className="relative h-[144px] w-full bg-[#234745] overflow-hidden flex items-center" dir={isEn ? 'ltr' : 'rtl'}>
+      <div
+        className="absolute inset-0 bg-[length:1500px_800px] md:bg-[length:1900px_2000px]"
+        style={{
+          backgroundImage: `url(${patternBg})`,
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat',
+        }}
+      />
+      <div className="relative z-10 w-full max-w-[1440px] mx-auto px-4 md:px-8 lg:px-12 flex items-center justify-between">
+
+        {/* Right Side: Title and Back Button */}
+        <div className={`flex flex-col ${isEn ? 'items-start' : 'items-end'} gap-[8px]`}>
+          <div className="flex items-center gap-2 md:gap-4" dir={isEn ? 'ltr' : 'rtl'}>
+            <button onClick={() => window.history.back()} className={`flex items-center gap-[8px] bg-[#9FB7AE] hover:bg-[#8BA19C] text-[#234745] px-4 md:px-6 py-2 rounded-[25px] text-[12px] md:text-[16px] font-bold transition-all ${isEn ? 'font-en' : ''}`} style={isEn ? {} : { fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }} dir={isEn ? 'ltr' : 'rtl'}>
+              <svg className={`w-3 h-3 md:w-5 md:h-5 ${isEn ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+              </svg>
+              <span>{isEn ? 'Back' : 'رجوع'}</span>
+            </button>
+            <h1 className={`!text-[16px] md:!text-[38px] font-bold text-white drop-shadow-sm ${isEn ? 'text-left font-en' : 'text-right'}`} style={isEn ? {} : { fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }} dir={isEn ? 'ltr' : 'rtl'}>
+              {displayTitle}
+            </h1>
+          </div>
+        </div>
+
+        {/* Left Side in RTL: Product Count */}
+        <div className={`bg-[#FEF8EB] text-[#234745] px-4 py-2 md:px-6 md:py-2 rounded-[25px] text-[12px] md:text-[18px] font-bold shadow-sm shrink-0 ${isEn ? 'font-en' : ''}`} style={isEn ? {} : { fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" }}>
+          <span className="font-en">{productsCount}</span> {isEn ? 'Products' : 'منتجات'}
+        </div>
+
+      </div>
+    </section>
+  );
 }
 
 function FilterSidebar({ filters, onClose, isDesktop = false, isEn }: { filters: any[], onClose: () => void, isDesktop?: boolean, isEn: boolean }) {

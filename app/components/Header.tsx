@@ -225,17 +225,30 @@ function TopBar({
 
   // 1. Resolve locations promise or use direct object
   useEffect(() => {
-    if (!locations) return;
-    if (typeof (locations as any).then === 'function') {
-      let cancelled = false;
-      locations.then((data: any) => {
-        if (cancelled) return;
-        setBranches(data?.locations?.nodes || []);
-      }).catch(() => { });
-      return () => { cancelled = true; };
-    } else {
-      setBranches((locations as any)?.locations?.nodes || []);
+    let cancelled = false;
+    if (locations) {
+      if (typeof (locations as any).then === 'function') {
+        locations.then((data: any) => {
+          if (cancelled) return;
+          const nodes = data?.locations?.nodes || data?.locations || [];
+          if (nodes.length > 0) setBranches(nodes);
+        }).catch(() => { });
+      } else {
+        const nodes = (locations as any)?.locations?.nodes || (locations as any)?.locations || [];
+        if (nodes.length > 0) setBranches(nodes);
+      }
     }
+    
+    fetch('/api/locations-meta')
+      .then(res => res.json())
+      .then((data: any) => {
+        if (!cancelled && data?.locations?.length > 0) {
+          setBranches(data.locations);
+        }
+      })
+      .catch(() => {});
+
+    return () => { cancelled = true; };
   }, [locations]);
 
   // 2. Compute branch open status dynamically
@@ -449,32 +462,34 @@ function TopBar({
                 <span className="truncate max-w-[90px] md:max-w-[200px] font-medium leading-none tracking-wide">
                   {fulfillmentType === 'delivery' && selectedAddressName
                     ? (isEn ? `Delivery: ${selectedAddressName}` : `توصيل: ${selectedAddressName}`)
-                    : (selectedLocationId && selectedLocationName
+                    : (selectedLocationId || selectedLocationName
                       ? (() => {
                           if (branches?.length > 0) {
                             const activeNode = branches.find((b: any) => 
-                              b.id === selectedLocationId || 
-                              b.numericalId === selectedLocationId?.split('/')?.pop() ||
-                              b.name === selectedLocationName ||
-                              b.rawName === selectedLocationName ||
-                              b.name_in_arabic === selectedLocationName ||
-                              b.nameInArabic === selectedLocationName
+                              (selectedLocationId && (b.id === selectedLocationId || b.numericalId === selectedLocationId?.split('/')?.pop())) ||
+                              (selectedLocationName && (
+                                b.name === selectedLocationName || 
+                                b.rawName === selectedLocationName || 
+                                b.name_in_arabic === selectedLocationName || 
+                                b.nameInArabic === selectedLocationName ||
+                                (b.metafields && b.metafields.find((m: any) => m?.key === 'name_in_arabic')?.value === selectedLocationName)
+                              ))
                             );
                             if (activeNode) {
                               if (isEn) {
                                 // On English view: Use English name
-                                const enName = activeNode.rawName || activeNode.name;
+                                const enName = activeNode.name || activeNode.rawName;
                                 if (enName && String(enName).trim()) return String(enName).trim();
                               } else {
                                 // On Arabic view: Use Arabic name if available
                                 const arName = activeNode.nameInArabic || activeNode.name_in_arabic?.value || activeNode.name_in_arabic || activeNode.metafields?.find((m: any) => m?.key === 'name_in_arabic')?.value;
                                 if (arName && String(arName).trim()) return String(arName).trim();
-                                const fallbackName = activeNode.rawName || activeNode.name;
+                                const fallbackName = activeNode.name || activeNode.rawName;
                                 if (fallbackName && String(fallbackName).trim()) return String(fallbackName).trim();
                               }
                             }
                           }
-                          return selectedLocationName;
+                          return selectedLocationName || (isEn ? 'Select Your Branch' : 'اختر الفرع');
                         })()
                       : (isEn ? 'Select Your Branch' : 'اختر الفرع'))
                   }

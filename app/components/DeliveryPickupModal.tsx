@@ -205,7 +205,7 @@ export function getDistance(coords1: { lat: number; lng: number } | number, coor
     return R * c;
 }
 
-export function parseLocationToBranch(node: any): Branch {
+export function parseLocationToBranch(node: any, isEn: boolean = false): Branch {
     const addr = node.address || {};
     const googleMapMeta = node.metafields?.find((m: any) => m?.key === 'google_maps')?.value || '';
     
@@ -538,7 +538,7 @@ export function DeliveryPickupModal({
                             }
 
                              const rawBranches: Branch[] = enrichedNodes.length > 0
-                                 ? enrichedNodes.map((n: any) => parseLocationToBranch(n))
+                                 ? enrichedNodes.map((n: any) => parseLocationToBranch(n, isEn))
                                  : FALLBACK_BRANCHES;
 
                             // Calculate distances (perKmRate disabled, always use base fee)

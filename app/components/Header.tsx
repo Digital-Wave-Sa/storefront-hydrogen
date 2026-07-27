@@ -451,10 +451,28 @@ function TopBar({
                     ? (isEn ? `Delivery: ${selectedAddressName}` : `توصيل: ${selectedAddressName}`)
                     : (selectedLocationId && selectedLocationName
                       ? (() => {
-                          if (!isEn && branches?.length > 0) {
-                            const activeNode = branches.find((b: any) => b.id === selectedLocationId || b.numericalId === selectedLocationId?.split('/')?.pop());
-                            const arName = activeNode?.name_in_arabic?.value || activeNode?.name_in_arabic || activeNode?.metafields?.find((m: any) => m?.key === 'name_in_arabic')?.value;
-                            if (arName && String(arName).trim()) return String(arName).trim();
+                          if (branches?.length > 0) {
+                            const activeNode = branches.find((b: any) => 
+                              b.id === selectedLocationId || 
+                              b.numericalId === selectedLocationId?.split('/')?.pop() ||
+                              b.name === selectedLocationName ||
+                              b.rawName === selectedLocationName ||
+                              b.name_in_arabic === selectedLocationName ||
+                              b.nameInArabic === selectedLocationName
+                            );
+                            if (activeNode) {
+                              if (isEn) {
+                                // On English view: Use English name
+                                const enName = activeNode.rawName || activeNode.name;
+                                if (enName && String(enName).trim()) return String(enName).trim();
+                              } else {
+                                // On Arabic view: Use Arabic name if available
+                                const arName = activeNode.nameInArabic || activeNode.name_in_arabic?.value || activeNode.name_in_arabic || activeNode.metafields?.find((m: any) => m?.key === 'name_in_arabic')?.value;
+                                if (arName && String(arName).trim()) return String(arName).trim();
+                                const fallbackName = activeNode.rawName || activeNode.name;
+                                if (fallbackName && String(fallbackName).trim()) return String(fallbackName).trim();
+                              }
+                            }
                           }
                           return selectedLocationName;
                         })()

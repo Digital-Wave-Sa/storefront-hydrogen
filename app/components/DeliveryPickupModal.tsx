@@ -359,9 +359,14 @@ export function parseLocationToBranch(node: any): Branch {
         return v;
     };
 
+    const nameInArabic = getMeta('name_in_arabic', (node as any).name_in_arabic?.value || (node as any).name_in_arabic || '');
+    const displayName = (!isEn && nameInArabic && String(nameInArabic).trim()) ? String(nameInArabic).trim() : (node.name || 'فرع');
+
     return {
         id: node.id,
-        name: node.name || 'فرع',
+        name: displayName,
+        rawName: node.name || 'فرع',
+        nameInArabic: nameInArabic || '',
         address: [addr.address1, addr.address2].filter(Boolean).join(' - ') || '',
         city: getMeta('city', addr.city || ''),
         lat: getMeta('latitude', addr.latitude || 0),

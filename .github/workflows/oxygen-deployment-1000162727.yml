@@ -1,4 +1,4 @@
-name: Storefront 1000131204
+name: Storefront 1000162727
 on: [push]
 
 permissions:
@@ -38,4 +38,4 @@ jobs:
       - name: Build and Publish to Oxygen
         run: npx shopify hydrogen deploy
         env:
-          SHOPIFY_HYDROGEN_DEPLOYMENT_TOKEN: ${{ secrets.OXYGEN_DEPLOYMENT_TOKEN_1000131204 }}
+          SHOPIFY_HYDROGEN_DEPLOYMENT_TOKEN: ${{ secrets.OXYGEN_DEPLOYMENT_TOKEN_1000162727 }}

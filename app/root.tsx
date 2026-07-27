@@ -649,6 +649,10 @@ const LOCATIONS_QUERY = `#graphql
           longitude
           phone
         }
+        name_in_arabic: metafield(namespace: "custom", key: "name_in_arabic") {
+          key
+          value
+        }
         city: metafield(namespace: "custom", key: "city") {
           key
           value

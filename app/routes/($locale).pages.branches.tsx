@@ -395,7 +395,9 @@ export default function BranchesPage() {
                                     >
                                         <div className="flex justify-between items-center mb-3">
                                             <h3 className="font-bold text-[14px] text-[#234745]" style={{ fontFamily: fontFam }}>
-                                                {branch.name}
+                                                {(!isEn && (branch.name_in_arabic?.value || branch.name_in_arabic || branch.metafields?.find((m: any) => m?.key === 'name_in_arabic')?.value))
+                                                    ? (branch.name_in_arabic?.value || branch.name_in_arabic || branch.metafields?.find((m: any) => m?.key === 'name_in_arabic')?.value)
+                                                    : branch.name}
                                             </h3>
                                             <span className="px-3 py-1 rounded-full text-[13px] font-normal bg-[#BBCFCD] text-gray-600" style={{ fontFamily: fontFam }}>
                                                 {isEn ? 'Open Now' : 'مفتوح الآن'}
@@ -466,7 +468,12 @@ export default function BranchesPage() {
                             <div
                                 className="absolute bottom-4 left-1/2 -translate-x-1/2 lg:bottom-10 lg:left-10 lg:translate-x-0 bg-white rounded-[12px] shadow-lg p-4 w-[300px] z-30"
                                 style={{ fontFamily: fontFam }}
-                            >                                <h4 className="font-bold text-[14px] text-[#1a1a1a] mb-1 text-start">{selectedBranch.name}</h4>
+                            >
+                                <h4 className="font-bold text-[14px] text-[#1a1a1a] mb-1 text-start">
+                                    {(!isEn && (selectedBranch.name_in_arabic?.value || selectedBranch.name_in_arabic || selectedBranch.metafields?.find((m: any) => m?.key === 'name_in_arabic')?.value))
+                                        ? (selectedBranch.name_in_arabic?.value || selectedBranch.name_in_arabic || selectedBranch.metafields?.find((m: any) => m?.key === 'name_in_arabic')?.value)
+                                        : selectedBranch.name}
+                                </h4>
                                 <p className="text-[12px] text-gray-500 mb-4 text-start">{selectedBranch.address?.address1 || ''}</p>
                                 <div className="flex gap-2">
                                     {selectedBranch.address?.phone ? (

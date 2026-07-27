@@ -84,6 +84,7 @@ export async function loader({context}: Route.LoaderArgs) {
           value: m.value,
         })),
         // Helper fields for common UI components
+        name_in_arabic: (loc.metafields?.nodes || []).find((m: any) => m.key === 'name_in_arabic')?.value,
         hours_from: (loc.metafields?.nodes || []).find((m: any) => m.key === 'working_hours_from')?.value,
         hours_to: (loc.metafields?.nodes || []).find((m: any) => m.key === 'working_hours_to')?.value,
         hours_from_shift2: (loc.metafields?.nodes || []).find((m: any) => m.key === 'working_hours_from_shift2')?.value,

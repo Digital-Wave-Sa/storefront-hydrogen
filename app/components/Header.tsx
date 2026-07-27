@@ -450,7 +450,14 @@ function TopBar({
                   {fulfillmentType === 'delivery' && selectedAddressName
                     ? (isEn ? `Delivery: ${selectedAddressName}` : `توصيل: ${selectedAddressName}`)
                     : (selectedLocationId && selectedLocationName
-                      ? selectedLocationName
+                      ? (() => {
+                          if (!isEn && branches?.length > 0) {
+                            const activeNode = branches.find((b: any) => b.id === selectedLocationId || b.numericalId === selectedLocationId?.split('/')?.pop());
+                            const arName = activeNode?.name_in_arabic?.value || activeNode?.name_in_arabic || activeNode?.metafields?.find((m: any) => m?.key === 'name_in_arabic')?.value;
+                            if (arName && String(arName).trim()) return String(arName).trim();
+                          }
+                          return selectedLocationName;
+                        })()
                       : (isEn ? 'Select Your Branch' : 'اختر الفرع'))
                   }
                 </span>

@@ -57,7 +57,9 @@ export function NewArrivals({
                 <Suspense fallback={<div className="text-center py-20 text-gray-500">{t.common.loadingArrivals}</div>}>
                     <Await resolve={products}>
                         {(resolvedData) => {
-                            const productNodes = (resolvedData as any).products?.nodes || [];
+                            const tagged = (resolvedData as any)?.taggedProducts?.nodes || [];
+                            const all = (resolvedData as any)?.allProducts?.nodes || (resolvedData as any)?.products?.nodes || [];
+                            const productNodes = tagged.length > 0 ? tagged : all;
                             const visibleProducts = productNodes.filter((p: any) => !shouldHideProduct(p, selectedLocationId, selectedLocationName));
                             return (
                                 <>

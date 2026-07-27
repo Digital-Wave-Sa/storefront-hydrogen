@@ -17,6 +17,26 @@ const recipientsAr = [
     { name: 'الأطفال', handle: 'gifts-for-children', image: 'https://images.unsplash.com/photo-1510439401736-22463e26f59c?q=80&w=800&auto=format&fit=crop' },
 ];
 
+const arabicNameMap: Record<string, string> = {
+    'gifts-for-mother': 'الأم',
+    'gifts-for-father': 'الأب',
+    'gifts-for-fathers': 'الأب',
+    'gifts-for-friends': 'الأصدقاء',
+    'gifts-for-colleagues': 'الزملاء',
+    'gifts-for-children': 'الأطفال',
+    'gifts-for-kids': 'الأطفال',
+};
+
+const englishNameMap: Record<string, string> = {
+    'gifts-for-mother': 'Mother',
+    'gifts-for-father': 'Father',
+    'gifts-for-fathers': 'Father',
+    'gifts-for-friends': 'Friends',
+    'gifts-for-colleagues': 'Colleagues',
+    'gifts-for-children': 'Children',
+    'gifts-for-kids': 'Children',
+};
+
 export function WhoAreYouGifting({ collections }: { collections?: any[] }) {
     const { locale } = useOutletContext<{ locale: string }>();
     const isEn = locale === 'en';
@@ -142,11 +162,21 @@ export function WhoAreYouGifting({ collections }: { collections?: any[] }) {
 
     // If we have dynamic collections from Shopify starting with 'gifts-for-', use them; otherwise, use the static fallbacks
     const recipients = giftingCollections.length > 0
-        ? giftingCollections.map((c: any) => ({
-            name: c.title,
-            handle: c.handle,
-            image: c.image?.url || 'https://images.unsplash.com/photo-1596464522432-843818e6c79a?q=80&w=800&auto=format&fit=crop'
-        }))
+        ? giftingCollections.map((c: any) => {
+            const handleKey = c.handle.toLowerCase();
+            let name = c.title;
+            if (isEn) {
+                name = englishNameMap[handleKey] || c.title;
+            } else {
+                const hasArabicLetters = /[\u0600-\u06FF]/.test(c.title || '');
+                name = hasArabicLetters ? c.title : (arabicNameMap[handleKey] || c.title);
+            }
+            return {
+                name,
+                handle: c.handle,
+                image: c.image?.url || 'https://images.unsplash.com/photo-1596464522432-843818e6c79a?q=80&w=800&auto=format&fit=crop'
+            };
+        })
         : (isEn ? recipientsEn : recipientsAr).map(recipient => {
             const shopifyCollection = collections?.find(c => c.handle === recipient.handle);
             return {

@@ -34,7 +34,7 @@ export function BranchSelector({ locationsPromise, locale, onSelectBranch, selec
             if (cancelled) return;
             const nodes = locationsData?.locations?.nodes || [];
             const parsed: Branch[] = nodes.length > 0
-                ? nodes.map((n: any) => parseLocationToBranch(n))
+                ? nodes.map((n: any) => parseLocationToBranch(n, isEn))
                 : FALLBACK_BRANCHES;
             setBranches(parsed);
             setIsLoading(false);

@@ -1,0 +1,57 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  ci-check:
+    name: Build & Code Verification (CI)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run production build
+        run: npx shopify hydrogen build
+
+  cd-deploy:
+    name: Deploy to Shopify Oxygen (CD)
+    needs: ci-check
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Deploy to Oxygen
+        env:
+          SHOPIFY_OXYGEN_DEPLOY_TOKEN: ${{ secrets.SHOPIFY_OXYGEN_DEPLOY_TOKEN }}
+        run: |
+          if [ -z "$SHOPIFY_OXYGEN_DEPLOY_TOKEN" ]; then
+            echo "Error: SHOPIFY_OXYGEN_DEPLOY_TOKEN secret is missing in GitHub repository settings."
+            exit 1
+          fi
+          npx shopify hydrogen deploy --token=$SHOPIFY_OXYGEN_DEPLOY_TOKEN

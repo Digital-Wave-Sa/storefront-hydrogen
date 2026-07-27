@@ -1,4 +1,5 @@
 import {redirect} from 'react-router';
+// @ts-ignore - route types generated during build
 import type {Route} from './+types/discount.$code';
 
 /**
@@ -46,3 +47,4 @@ export async function loader({request, context, params}: Route.LoaderArgs) {
     headers,
   });
 }
+

@@ -42,7 +42,7 @@ function SearchResultsArticles({
     <div className="search-result">
       <h2>Articles</h2>
       <div>
-        {articles?.nodes?.map((article) => {
+        {articles?.nodes?.map((article: any) => {
           const articleUrl = urlWithTrackingParams({
             baseUrl: `/blogs/${article.handle}`,
             trackingParams: article.trackingParameters,
@@ -72,7 +72,7 @@ function SearchResultsPages({term, pages}: PartialSearchResult<'pages'>) {
     <div className="search-result">
       <h2>Pages</h2>
       <div>
-        {pages?.nodes?.map((page) => {
+        {pages?.nodes?.map((page: any) => {
           const pageUrl = urlWithTrackingParams({
             baseUrl: `/pages/${page.handle}`,
             trackingParams: page.trackingParameters,
@@ -106,7 +106,7 @@ function SearchResultsProducts({
       <h2>Products</h2>
       <Pagination connection={products}>
         {({nodes, isLoading, NextLink, PreviousLink}) => {
-          const ItemsMarkup = nodes.map((product) => {
+          const ItemsMarkup = nodes.map((product: any) => {
             const productUrl = urlWithTrackingParams({
               baseUrl: `/products/${product.handle}`,
               trackingParams: product.trackingParameters,

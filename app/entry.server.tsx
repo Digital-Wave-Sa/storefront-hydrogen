@@ -1,7 +1,6 @@
 import {ServerRouter} from 'react-router';
 import {isbot} from 'isbot';
-import ReactDOMServer from 'react-dom/server';
-const { renderToReadableStream } = ReactDOMServer;
+import {renderToReadableStream} from 'react-dom/server';
 import {
   createContentSecurityPolicy,
   type HydrogenRouterContextProvider,
@@ -20,6 +19,48 @@ export default async function handleRequest(
       checkoutDomain: context.env.PUBLIC_CHECKOUT_DOMAIN,
       storeDomain: context.env.PUBLIC_STORE_DOMAIN,
     },
+    scriptSrc: [
+      "'self'", 
+      "'unsafe-inline'",
+      'https://maps.googleapis.com', 
+      'https://cdn.shopify.com',
+      'https://www.googletagmanager.com',
+      'https://www.google-analytics.com',
+      'https://ssl.google-analytics.com'
+    ],
+    frameSrc: [
+      "'self'", 
+      'https://www.google.com', 
+      'https://maps.google.com',
+      'https://www.googletagmanager.com'
+    ],
+    imgSrc: [
+      "'self'", 
+      'https://cdn.shopify.com', 
+      'https://shopify.com', 
+      'https://saadeddin.com', 
+      'https://cdn.tamara.co', 
+      'https://maps.googleapis.com', 
+      'https://maps.gstatic.com', 
+      'https://file.lola.do', 
+      'https://images.unsplash.com',
+      'https://www.googletagmanager.com',
+      'https://*.google-analytics.com',
+      'data:'
+    ],
+    connectSrc: [
+      "'self'", 
+      'https://maps.googleapis.com', 
+      '*.google.com', 
+      'https://*.google.com', 
+      'https://cdn.tamara.co', 
+      'https://raw.githubusercontent.com',
+      'https://www.googletagmanager.com',
+      'https://*.google-analytics.com',
+      'https://*.analytics.google.com'
+    ],
+    styleSrc: ["'self'", "'unsafe-inline'", 'https://cdn.shopify.com', 'https://fonts.googleapis.com'],
+    fontSrc: ["'self'", 'https://cdn.shopify.com', 'https://fonts.gstatic.com', 'data:'],
   });
 
   const body = await renderToReadableStream(

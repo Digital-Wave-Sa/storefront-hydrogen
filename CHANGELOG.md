@@ -1,5 +1,102 @@
 # skeleton
 
+## 2026.4.2
+
+### Patch Changes
+
+- Add support for Vite 7 and Vite 8. Hydrogen remains backwards-compatible with Vite 5+. ([#3617](https://github.com/Shopify/hydrogen/pull/3617)) by [@frandiox](https://github.com/frandiox)
+
+  Mini Oxygen's dev server has been refactored to use the [Vite Environment API](https://vite.dev/guide/api-environment), which is the standard way to run non-browser runtimes in Vite. This replaces the previous custom middleware approach with a first-class `FetchableDevEnvironment`, improving compatibility with Vite's built-in HMR and module invalidation.
+
+  New Hydrogen projects created with `npm create @shopify/hydrogen` will default to Vite 8. The `vite-tsconfig-paths` plugin is no longer needed in the skeleton template since Vite 8 supports `resolve.tsconfigPaths` natively.
+
+- Updated dependencies [[`dc49699c799997d5893bc06e444f888e86a3bc29`](https://github.com/Shopify/hydrogen/commit/dc49699c799997d5893bc06e444f888e86a3bc29), [`50df825c57159757529f5f9f62c258d4de2a4b97`](https://github.com/Shopify/hydrogen/commit/50df825c57159757529f5f9f62c258d4de2a4b97), [`51f1e77fe63be5e5ded4ef0c91942bc304f1abc4`](https://github.com/Shopify/hydrogen/commit/51f1e77fe63be5e5ded4ef0c91942bc304f1abc4)]:
+  - @shopify/hydrogen@2026.4.2
+
+## 2026.4.1
+
+### Patch Changes
+
+- Fix `set-cookie-parser` and `cookie` resolution warnings during `dev` by using Vite's nested dependency syntax (`react-router > dep`). These are CJS transitive dependencies of `react-router` that weren't resolvable by bare name with strict package managers like pnpm. ([#3698](https://github.com/Shopify/hydrogen/pull/3698)) by [@fredericoo](https://github.com/fredericoo)
+
+- Updated dependencies [[`f84ab400c62d89827574d0fa65ba310a2e75f36f`](https://github.com/Shopify/hydrogen/commit/f84ab400c62d89827574d0fa65ba310a2e75f36f)]:
+  - @shopify/hydrogen@2026.4.1
+
+## 2026.4.0
+
+### Major Changes
+
+- Update Storefront API and Customer Account API from 2026-01 to 2026-04. ([#3651](https://github.com/Shopify/hydrogen/pull/3651)) by [@itsjustriley](https://github.com/itsjustriley)
+
+  ## Breaking changes
+
+  **JSON metafield values limited to 128KB**: When using API version 2026-04 or later, the Storefront API limits JSON type metafield writes to 128KB. This limit applies at the API level - Hydrogen passes through to the Storefront API without additional restriction. Apps that used JSON metafields before April 1, 2026 are grandfathered at the existing 2MB limit. Large metafield values continue to be readable by all API versions.
+
+  ## New features
+
+  **New `MERCHANDISE_LINE_TRANSFORMERS_RUN_ERROR` cart error code**: Cart operations (`cartCreate`, `cartLinesAdd`, etc.) now return a specific `MERCHANDISE_LINE_TRANSFORMERS_RUN_ERROR` error code when a Cart Transform Function fails at runtime, instead of the previous generic `INVALID` error code. If you handle cart errors in your storefront code, you may want to add handling for this new code.
+
+  ## Changelog links
+  - [Storefront API 2026-04 changelog](https://shopify.dev/changelog?filter=api&api_version=2026-04&api_type=storefront-graphql)
+  - [Customer Account API 2026-04 changelog](https://shopify.dev/changelog?filter=api&api_version=2026-04&api_type=customer-account-graphql)
+
+### Patch Changes
+
+- Updated dependencies [[`e7215ed0d7a74cacfa8c935f414c1cf32fc2ccd0`](https://github.com/Shopify/hydrogen/commit/e7215ed0d7a74cacfa8c935f414c1cf32fc2ccd0), [`92ab8e8b59807bbdb5dbecaa18629292d5566135`](https://github.com/Shopify/hydrogen/commit/92ab8e8b59807bbdb5dbecaa18629292d5566135), [`b0caa5c013380c7837f049f48da089a1671e2c6d`](https://github.com/Shopify/hydrogen/commit/b0caa5c013380c7837f049f48da089a1671e2c6d)]:
+  - @shopify/hydrogen@2026.4.0
+
+## 2026.1.4
+
+### Patch Changes
+
+- Remove redundant Storefront API proxy route from skeleton template. The server now automatically proxies requests to `/api/:version/graphql.json` via `createRequestHandler` with `proxyStandardRoutes: true` (enabled by default since December 2025). ([#3572](https://github.com/Shopify/hydrogen/pull/3572)) by [@itsjustriley](https://github.com/itsjustriley)
+
+  Developers no longer need a manual route file for the tokenless Storefront API. Existing apps with this route can safely delete it - the server-level proxy provides the same functionality with better cookie forwarding and analytics integration.
+
+- Updated dependencies [[`b0a75c1d759706931876f056662de2497cb3e688`](https://github.com/Shopify/hydrogen/commit/b0a75c1d759706931876f056662de2497cb3e688), [`a44ee3566b9bb9a7f43f05dfaae6f1f2ab1d548f`](https://github.com/Shopify/hydrogen/commit/a44ee3566b9bb9a7f43f05dfaae6f1f2ab1d548f)]:
+  - @shopify/hydrogen@2026.1.4
+
+## 2026.1.3
+
+### Patch Changes
+
+- Improve screen reader experience for paginated product grids by hiding decorative arrow characters from assistive technology. ([#3557](https://github.com/Shopify/hydrogen/pull/3557)) by [@itsjustriley](https://github.com/itsjustriley)
+
+- Fix broken `aria-label` on territory code input in address form. The label was the raw developer string `"territoryCode"` instead of a human-readable `"Country code"`. ([#3607](https://github.com/Shopify/hydrogen/pull/3607)) by [@itsjustriley](https://github.com/itsjustriley)
+
+- Add aria-label to ProductPrice for improved screen reader accessibility ([#3558](https://github.com/Shopify/hydrogen/pull/3558)) by [@itsjustriley](https://github.com/itsjustriley)
+
+- Updated dependencies [[`108243003a7f36349a446478f4e8ab0cade3e13a`](https://github.com/Shopify/hydrogen/commit/108243003a7f36349a446478f4e8ab0cade3e13a)]:
+  - @shopify/hydrogen@2026.1.3
+
+## 2026.1.2
+
+### Patch Changes
+
+- Improve gift card accessibility in Skeleton template ([#3518](https://github.com/Shopify/hydrogen/pull/3518)) by [@itsjustriley](https://github.com/itsjustriley)
+
+- Updated shopify/cli dependencies for cli-hydrogen ([#3553](https://github.com/Shopify/hydrogen/pull/3553)) by [@andguy95](https://github.com/andguy95)
+
+- Updated loaders that used `customerAccount.handleAuthStatus()` to now await it. ([#3523](https://github.com/Shopify/hydrogen/pull/3523)) by [@fredericoo](https://github.com/fredericoo)
+
+  ### Migration
+
+  If you call `handleAuthStatus()` in your own loaders, update those callsites to use `await`.
+
+- Updated dependencies [[`16b0e7baca0dfd1fb330d12dac924c7593d169a8`](https://github.com/Shopify/hydrogen/commit/16b0e7baca0dfd1fb330d12dac924c7593d169a8), [`1c19b87782818dbdb4252754d2d44eb9a44fe50f`](https://github.com/Shopify/hydrogen/commit/1c19b87782818dbdb4252754d2d44eb9a44fe50f), [`029fa2d0e2297f67b37c650ba8e875ee5dee81b3`](https://github.com/Shopify/hydrogen/commit/029fa2d0e2297f67b37c650ba8e875ee5dee81b3)]:
+  - @shopify/hydrogen@2026.1.2
+
+## 2026.1.1
+
+### Patch Changes
+
+- Added a notice with relevant information on how to link a store in case there is no store linked yet ([#3448](https://github.com/Shopify/hydrogen/pull/3448)) by [@fredericoo](https://github.com/fredericoo)
+
+- Fixed an issue where users without addresses could not add the first one ([#3456](https://github.com/Shopify/hydrogen/pull/3456)) by [@fredericoo](https://github.com/fredericoo)
+
+- Updated dependencies [[`ff93a1daf2207e52e1f8331f9ff2ccd1f9b7fed6`](https://github.com/Shopify/hydrogen/commit/ff93a1daf2207e52e1f8331f9ff2ccd1f9b7fed6)]:
+  - @shopify/hydrogen@2026.1.1
+
 ## 2026.1.0
 
 ### Major Changes

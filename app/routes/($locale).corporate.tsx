@@ -1,0 +1,982 @@
+import { useState } from 'react';
+import { data, type LoaderFunctionArgs, type MetaFunction, useLoaderData, useRouteLoaderData, Link } from 'react-router';
+import { ProductItem } from '~/components/ProductItem';
+import { PageHeader } from '~/components/layout/PageHeader';
+
+export const meta: MetaFunction = () => {
+    return [{ title: `Saadeddin | Corporate Gifting` }];
+};
+
+const PRODUCT_ITEM_FRAGMENT = `#graphql
+  fragment CorporateProductItem on Product {
+    id
+    handle
+    title
+    featuredImage {
+      id
+      altText
+      url
+      width
+      height
+    }
+    priceRange {
+      minVariantPrice {
+        amount
+        currencyCode
+      }
+      maxVariantPrice {
+        amount
+        currencyCode
+      }
+    }
+    compareAtPriceRange {
+      minVariantPrice {
+        amount
+        currencyCode
+      }
+    }
+    availableForSale
+    variants(first: 10) {
+      nodes {
+        id
+        title
+        availableForSale
+        quantityAvailable
+        selectedOptions {
+          name
+          value
+        }
+        price {
+          amount
+          currencyCode
+        }
+      }
+    }
+    tags
+  }
+` as const;
+
+export async function loader({ context }: LoaderFunctionArgs) {
+    const { storefront } = context;
+
+    // Fetch products strictly for the corporate B2B grid (using corporate or b2b tags)
+    const query = `#graphql
+    ${PRODUCT_ITEM_FRAGMENT}
+    query CorporateProducts($country: CountryCode, $language: LanguageCode) @inContext(country: $country, language: $language) {
+      products(first: 20, query: "tag:corporate OR tag:b2b") {
+        nodes {
+          ...CorporateProductItem
+        }
+      }
+    }
+  `;
+
+    try {
+        const { products } = await storefront.query(query, {
+            variables: {
+                country: storefront.i18n.country,
+                language: storefront.i18n.language,
+            },
+            cache: storefront.CacheNone(),
+        });
+
+        return data({ products: products.nodes });
+    } catch (e: any) {
+        return data({ products: [], error: e.message });
+    }
+}
+
+function resolveTiers(product: any, isEn: boolean): Tier[] {
+    const minPrice = parseFloat(product.priceRange?.minVariantPrice?.amount || '0');
+    const variantNodes = product.variants?.nodes || [];
+
+    // 1. Product Variants (e.g., Variant 1 = "20 - 49 علبة", Variant 2 = "50 - 99 علبة", Variant 3 = "100+ علبة")
+    if (variantNodes.length > 1) {
+        const lastIdx = variantNodes.length - 1;
+        return variantNodes.map((v: any, idx: number) => ({
+            label: v.title,
+            price: Math.round(parseFloat(v.price?.amount || '0')),
+            isBest: idx === lastIdx,
+        }));
+    }
+
+    // 2. Custom Metafield "b2b_tiers" (JSON: [{"min": 20, "max": 49, "price": 85}, ...])
+    if (product.b2bTiers?.value) {
+        try {
+            const parsed = JSON.parse(product.b2bTiers.value);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+                const lastIdx = parsed.length - 1;
+                return parsed.map((item: any, idx: number) => ({
+                    label: item.max
+                        ? `${item.min} - ${item.max} ${isEn ? 'Boxes' : 'علبة'}`
+                        : `${item.min}+ ${isEn ? 'Boxes' : 'علبة'}`,
+                    price: Math.round(parseFloat(item.price || item.amount || 0)),
+                    isBest: idx === lastIdx || Boolean(item.isBest),
+                }));
+            }
+        } catch (e) {
+            // Fallback if parse error
+        }
+    }
+
+    // 3. Native Storefront API quantityPriceBreaks on first variant
+    const variant = variantNodes[0];
+    const priceBreaks = variant?.quantityPriceBreaks?.nodes || [];
+    if (priceBreaks.length > 0) {
+        const sortedBreaks = [...priceBreaks].sort((a: any, b: any) => a.minimumQuantity - b.minimumQuantity);
+        const tiers: Tier[] = [];
+        for (let i = 0; i < sortedBreaks.length; i++) {
+            const current = sortedBreaks[i];
+            const next = sortedBreaks[i + 1];
+            const minQty = current.minimumQuantity;
+            const maxQty = next ? next.minimumQuantity - 1 : null;
+            const isBest = i === sortedBreaks.length - 1;
+
+            tiers.push({
+                label: maxQty
+                    ? `${minQty} - ${maxQty} ${isEn ? 'Boxes' : 'علبة'}`
+                    : `${minQty}+ ${isEn ? 'Boxes' : 'علبة'}`,
+                price: Math.round(parseFloat(current.price?.amount || '0')),
+                isBest,
+            });
+        }
+        if (tiers.length > 0) return tiers;
+    }
+
+    // 4. Dynamic Fallback calculated based on variant base price
+    const tier1Price = Math.round(minPrice);
+    const tier2Price = Math.round(minPrice * 0.90);
+    const tier3Price = Math.round(minPrice * 0.82);
+
+    return [
+        { label: `20 - 49 ${isEn ? 'Boxes' : 'علبة'}`, price: tier1Price },
+        { label: `50 - 99 ${isEn ? 'Boxes' : 'علبة'}`, price: tier2Price },
+        { label: `100+ ${isEn ? 'Boxes' : 'علبة'}`, price: tier3Price, isBest: true },
+    ];
+}
+
+function CorporateProductCard({ product, isEn }: { product: any; isEn: boolean }) {
+    const tiers = resolveTiers(product, isEn);
+
+    // Tags
+    const isBestSeller = product.tags?.includes('best_seller') || product.tags?.includes('الأكثر طلباً');
+    const isEid = product.tags?.includes('eid') || product.tags?.includes('مناسب للعيد');
+    const tagBadgeText = isBestSeller ? (isEn ? 'Best Seller' : 'الأكثر طلباً') : isEid ? (isEn ? 'Eid Special' : 'مناسب للعيد') : null;
+
+    const productUrl = isEn ? `/en/products/${product.handle}` : `/products/${product.handle}`;
+
+    return (
+        <div className="w-full max-w-[411px] mx-auto bg-white rounded-[20px] overflow-hidden flex flex-col hover:shadow-lg transition-all border border-[#E6E2D8]/60">
+            {/* 1. Image Header */}
+            <div className="relative w-full h-[220px] bg-[#F6F1EC] overflow-hidden">
+                <Link to={productUrl} className="block w-full h-full">
+                    <img
+                        src={product.featuredImage?.url || '/images/placeholder.webp'}
+                        alt={product.featuredImage?.altText || product.title}
+                        className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
+                    />
+                </Link>
+
+                {/* Badges Container */}
+                <div className="absolute top-3.5 left-3.5 right-3.5 flex justify-between items-center pointer-events-none">
+                    {/* Top Left Badge: Logo Customization */}
+                    <div className="flex items-center gap-1.5 bg-white/95 px-3 py-1 rounded-full shadow-sm border border-gray-200/80">
+                        <span className="text-[#255441] font-bold text-[13px]">{isEn ? 'Logo' : 'شعار'}</span>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#255441" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
+                        </svg>
+                    </div>
+
+                    {/* Top Right Badge: Category/Special Badge */}
+                    {tagBadgeText ? (
+                        <div className="bg-[#234745] px-3.5 py-1 rounded-full shadow-sm">
+                            <span className="text-[#FEF8EB] font-bold text-[13px]">{tagBadgeText}</span>
+                        </div>
+                    ) : (
+                        <div />
+                    )}
+                </div>
+            </div>
+
+            {/* 2. Card Content */}
+            <div className="flex flex-col p-5 gap-4 flex-1">
+                {/* Title & Subtitle */}
+                <div className="flex flex-col gap-1 text-start">
+                    <Link to={productUrl}>
+                        <h3
+                            className="text-[#234745] font-bold text-[16px] hover:text-[#906B51] transition-colors m-0 leading-snug"
+                            style={{ fontFamily: isEn ? 'inherit' : "'Bahij Janna', sans-serif" }}
+                        >
+                            {product.title}
+                        </h3>
+                    </Link>
+                    <p className="text-[#8B9895] font-medium text-[13px] sm:text-[14px] m-0 line-clamp-1">
+                        {product.description || (isEn ? 'Customizable luxury collection — Medium Box' : 'معمول + بقلاوة + حلوى مشكلة — علبة وسط')}
+                    </p>
+                </div>
+
+                {/* Wholesale Pricing Box (أسعار الجملة) */}
+                <div className="bg-[#FEF8EB] border border-[#E6E2D8] rounded-[16px] p-4 flex flex-col gap-3 mt-auto">
+                    <h4 className="text-[#906B51] font-bold text-[14px] text-start m-0 border-b border-[#E6E2D8]/60 pb-2">
+                        {isEn ? 'Wholesale Prices' : 'أسعار الجملة'}
+                    </h4>
+
+                    <div className="flex flex-col gap-2.5">
+                        {tiers.map((tier, idx) => (
+                            <div key={idx} className="flex justify-between items-center text-[14px]">
+                                <span className="text-[#8B9895] font-medium">{tier.label}</span>
+                                <div className="flex items-center gap-2">
+                                    {tier.isBest && (
+                                        <div className="bg-[#234745] px-2.5 py-0.5 rounded-full">
+                                            <span className="text-[#FEF8EB] font-bold text-[11px]">{isEn ? 'Best' : 'الأفضل'}</span>
+                                        </div>
+                                    )}
+                                    <div className="flex items-center gap-1 font-bold text-[#234745] text-[16px]">
+                                        <span style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" }}>{tier.price}</span>
+                                        <span className="text-[13px] font-normal">﷼</span>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Action Button: اختر وخصص */}
+                <Link
+                    to={productUrl}
+                    className="w-full bg-[#234745] text-white font-bold text-[16px] py-3 rounded-full hover:bg-[#1a3533] transition-colors text-center block mt-1 shadow-sm"
+                    style={{ fontFamily: isEn ? 'inherit' : "'Bahij Janna', sans-serif" }}
+                >
+                    {isEn ? 'Choose & Customize' : 'إختر وخصص'}
+                </Link>
+            </div>
+        </div>
+    );
+}
+
+export default function CorporatePage() {
+    const { products } = useLoaderData<typeof loader>();
+    const rootData = useRouteLoaderData('root') as any;
+    const locale = rootData?.locale || 'ar';
+    const isEn = locale === 'en';
+
+    // State for mode toggle: 'self' (طلب ذاتي) vs 'custom' (عرض سعر مخصص)
+    const [activeMode, setActiveMode] = useState<'self' | 'custom'>('self');
+    const [formSubmitted, setFormSubmitted] = useState(false);
+
+    const handleFormSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        setFormSubmitted(true);
+    };
+
+    return (
+        <div className={`min-h-screen bg-[#FFFFFF] ${isEn ? 'font-en' : "font-['GE_Dinar_One']"}`} dir={isEn ? 'ltr' : 'rtl'}>
+
+            {/* 1. Hero Section */}
+            <PageHeader
+                title={isEn ? 'Corporate Gifts with Your Identity' : 'هدايا مؤسسية بهويتك الخاصة'}
+                subtitle={isEn ? 'Gifts that suit your company' : 'هدايا تليق بشركتك'}
+                isEn={isEn}
+            >
+                <p className="text-[#9FB7AE] text-[16px] md:text-[20px] font-medium relative z-10 max-w-2xl leading-[1.6] mb-12 md:mb-20 mt-4">
+                    {isEn ? 'Premium collections with your company logo — for employees, clients, and official occasions' : 'تشكيلات فاخرة بشعار شركتك — للموظفين والعملاء والمناسبات الرسمية'}
+                </p>
+            </PageHeader>
+
+            {/* Overlapping Stats Pills */}
+            <div className="w-full relative z-20 -mt-[20px] mb-20 px-4">
+                <div className="max-w-[1000px] mx-auto flex flex-wrap justify-center gap-4 md:gap-5">
+
+                    <div className="bg-[#FEF8EB] px-8 py-4 rounded-[8px] border border-[#9FB7AE] flex flex-col items-center min-w-[150px]">
+                        <span className="text-[#234745] font-bold text-[24px] mb-1 leading-none" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One'" }}>{isEn ? '500+' : '+500'}</span>
+                        <span className="text-[#9FB7AE] text-[14px] font-medium">{isEn ? 'Companies trust us' : 'شركة تثق بنا'}</span>
+                    </div>
+
+                    <div className="bg-[#FEF8EB] px-8 py-4 rounded-[8px] border border-[#9FB7AE] flex flex-col items-center min-w-[150px]">
+                        <span className="text-[#234745] font-bold text-[24px] mb-1 leading-none" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One'" }}>{isEn ? '24 Hours' : '24 ساعة'}</span>
+                        <span className="text-[#9FB7AE] text-[14px] font-medium">{isEn ? 'Guaranteed response' : 'استجابة مضمونة'}</span>
+                    </div>
+
+                    <div className="bg-[#FEF8EB] px-8 py-4 rounded-[8px] border border-[#9FB7AE] flex flex-col items-center min-w-[150px]">
+                        <span className="text-[#234745] font-bold text-[24px] mb-1 leading-none" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One'" }}>{isEn ? '+35 Cities' : '+35 مدينة'}</span>
+                        <span className="text-[#9FB7AE] text-[14px] font-medium">{isEn ? 'We deliver to' : 'نوصل لها'}</span>
+                    </div>
+
+                    <div className="bg-[#FEF8EB] px-8 py-4 rounded-[8px] border border-[#9FB7AE] flex flex-col items-center min-w-[150px]">
+                        <span className="text-[#234745] font-bold text-[24px] mb-1 leading-none" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One'" }}>{isEn ? '20 Boxes' : '20 علبة'}</span>
+                        <span className="text-[#9FB7AE] text-[14px] font-medium">{isEn ? 'Minimum order' : 'حد أدنى'}</span>
+                    </div>
+
+                </div>
+            </div>
+
+            {/* 2. How it Works */}
+            <section className="w-full bg-[#234745] py-16 px-4">
+                <div className="max-w-[1280px] mx-auto flex flex-col items-center gap-8">
+
+                    {/* Header */}
+                    <div className="flex flex-col items-center text-center gap-3">
+                        <h4 className="text-[#C5A96A] font-medium text-[18px] leading-[22px]">{isEn ? 'How it works' : 'طريقة العمل'}</h4>
+                        <h2 className="text-[#FEF8EB] text-[36px] md:text-[50px] font-bold leading-tight !mb-0" style={{ fontFamily: "'Bahij Janna', sans-serif" }}>{isEn ? 'How does the service work?' : 'كيف تعمل الخدمة؟'}</h2>
+                        <p className="text-[#9FB7AE] text-[16px] md:text-[18px] font-medium leading-[22px]">{isEn ? 'Three simple steps from choosing your path to delivering the gift' : 'ثلاث خطوات بسبطة من اختيار المسار وحتي وصول الهدية إلي المُستلم'}</p>
+                    </div>
+
+                    {/* Steps Grid */}
+                    <div className="flex flex-col md:flex-row justify-center items-center w-full gap-8">
+
+                        {/* Step 1 */}
+                        <div className="flex-1 flex flex-col items-center p-8 gap-4 w-full md:max-w-[405px] bg-[#274D4B] border border-[#9FB7AE] rounded-[20px] text-center h-[208px] justify-center">
+                            <div className="py-1 px-3.5 rounded-full bg-[#C5A96A] text-[#234745] flex items-center justify-center font-bold text-[20px]" style={{ fontFamily: "EnglishDigits" }}>1</div>
+                            <h3 className="text-[#FEF8EB] font-bold text-[22px] md:text-[26px] leading-[42px] m-0" style={{ fontFamily: "'Bahij Janna', sans-serif" }}>{isEn ? 'Choose Path' : 'اختر المسار'}</h3>
+                            <p className="text-[#9FB7AE] text-[14px] leading-[17px] m-0 max-w-[300px]">{isEn ? 'Select a ready order or a custom quote that suits your company needs.' : 'حدّد بين طلب جاهز أو عرض سعر مخصص يناسب احتياج شركتك.'}</p>
+                        </div>
+
+                        {/* Step 2 */}
+                        <div className="flex-1 flex flex-col items-center p-8 gap-4 w-full md:max-w-[405px] bg-[#274D4B] border border-[#9FB7AE] rounded-[20px] text-center h-[208px] justify-center">
+                            <div className="py-1 px-3.5 rounded-full bg-[#C5A96A] text-[#234745] flex items-center justify-center font-bold text-[20px]" style={{ fontFamily: "EnglishDigits" }}>2</div>
+                            <h3 className="text-[#FEF8EB] font-bold text-[22px] md:text-[26px] leading-[42px] m-0" style={{ fontFamily: "'Bahij Janna', sans-serif" }}>{isEn ? 'Customize Details' : 'خصص التفاصيل'}</h3>
+                            <p className="text-[#9FB7AE] text-[14px] leading-[17px] m-0 max-w-[300px]">{isEn ? 'Choose the collection, add your logo, and specify quantity and packaging.' : 'اختر التشكيلة، أضف الشعار، وحدّد الكمية والتغليف المناسب.'}</p>
+                        </div>
+
+                        {/* Step 3 */}
+                        <div className="flex-1 flex flex-col items-center p-8 gap-4 w-full md:max-w-[405px] bg-[#274D4B] border border-[#9FB7AE] rounded-[20px] text-center h-[208px] justify-center">
+                            <div className="py-1 px-3.5 !rounded-full bg-[#C5A96A] text-[#234745] flex items-center justify-center font-bold text-[20px]" style={{ fontFamily: "EnglishDigits" }}>3</div>
+                            <h3 className="text-[#FEF8EB] font-bold text-[22px] md:text-[26px] leading-[42px] m-0">{isEn ? 'Receive Gifts' : 'استلم الهدايا'}</h3>
+                            <p className="text-[#9FB7AE] text-[14px] leading-[17px] m-0 max-w-[300px]">{isEn ? 'We prepare and pack within 24h and deliver to any city.' : 'نجهّز ونغلّف خلال ٢٤ ساعة ونوصل إلى أي مدينة تختارها.'}</p>
+                        </div>
+
+                    </div>
+                </div>
+            </section>
+
+            {/* 3. How to Proceed? (Quick Order vs Custom Quote) */}
+            <section className="w-full bg-white py-20 px-4 border-b border-[#9FB7AE]/30">
+                <div className="max-w-[1280px] mx-auto flex flex-col items-center gap-10">
+
+                    {/* Header */}
+                    <div className="flex flex-col items-center text-center gap-2">
+                        <h4 className="text-[#906B51] font-medium text-[18px] leading-[22px]">{isEn ? 'Choose Your Path' : 'اختر مسارك'}</h4>
+                        <h2 className="text-[#234745] text-[36px] md:text-[50px] font-bold leading-[80px]" style={{ fontFamily: isEn ? 'inherit' : "'Bahij Janna'" }}>{isEn ? 'How would you like to proceed?' : 'كيف تريد المتابعة؟'}</h2>
+                    </div>
+
+                    {/* Cards Grid / Path Selector */}
+                    <div className="flex flex-col md:flex-row w-full gap-8 justify-center">
+
+                        {/* Card 1: Self Order (طلب ذاتي) */}
+                        <button
+                            type="button"
+                            onClick={() => setActiveMode('self')}
+                            className={`flex-1 flex flex-row justify-end items-start p-6 md:p-8 gap-6 rounded-[16px] transition-all cursor-pointer text-start ${activeMode === 'self'
+                                ? 'bg-[#FEF8EB] border-1 border-[#234745] shadow-md ring-2 ring-[#234745]/10'
+                                : 'bg-white border border-[#9FB7AE]/60 hover:border-[#234745]/60 hover:shadow-sm'
+                                }`}
+                        >
+                            <div className="w-12 h-12 bg-[#BBCFCD]/50 rounded-full flex-none relative flex items-center justify-center">
+                                <svg width="17" height="18" viewBox="0 0 17 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M7 17C7.82843 17 8.5 16.3284 8.5 15.5C8.5 14.6716 7.82843 14 7 14C6.17157 14 5.5 14.6716 5.5 15.5C5.5 16.3284 6.17157 17 7 17Z" stroke="#234745" />
+                                    <path d="M14 17C14.8284 17 15.5 16.3284 15.5 15.5C15.5 14.6716 14.8284 14 14 14C13.1716 14 12.5 14.6716 12.5 15.5C12.5 16.3284 13.1716 17 14 17Z" stroke="#234745" />
+                                    <path d="M0.5 0.5H2.5L6.004 11.5H14" stroke="#234745" strokeLinecap="round" strokeLinejoin="round" />
+                                    <path d="M5.22478 9.00049L3.30078 3.00049H15.8078C15.887 3.00039 15.9652 3.01914 16.0358 3.05519C16.1064 3.09124 16.1674 3.14356 16.2138 3.20783C16.2602 3.2721 16.2907 3.34649 16.3026 3.42484C16.3146 3.5032 16.3078 3.58328 16.2828 3.65849L14.6158 8.65849C14.5826 8.75801 14.519 8.84459 14.434 8.90596C14.3489 8.96734 14.2467 9.00041 14.1418 9.00049H5.22478Z" stroke="#234745" strokeLinecap="round" strokeLinejoin="round" />
+                                </svg>
+                            </div>
+                            <div className="flex flex-col justify-center items-start gap-3 flex-1">
+                                <div className="flex items-center justify-between w-full">
+                                    <h3 className="text-[#234745] font-bold text-[18px] leading-[22px] m-0">{isEn ? 'Self Order' : 'طلب ذاتي'}</h3>
+                                    {activeMode === 'self' && (
+                                        <span className="w-3 h-3 bg-[#234745] rounded-full inline-block" />
+                                    )}
+                                </div>
+                                <p className="text-[#9FB7AE] text-[14px] leading-[17px] font-normal m-0">{isEn ? 'Choose your products and logo and pay directly — no waiting' : 'اختر منتجاتك وشعارك وادفع مباشرة — بدون انتظار'}</p>
+                                <div className="bg-[#BBCFCD] px-4 py-2 rounded-full flex items-center justify-center mt-2">
+                                    <span className="text-[#234745] font-bold text-[14px] leading-[17px]" style={{ fontFamily: isEn ? 'inherit' : "'Bahij Janna'" }}>{isEn ? '20 - 200 Boxes' : '20 - 200 علبة'}</span>
+                                </div>
+                            </div>
+                        </button>
+
+                        {/* Card 2: Custom Quote (عرض سعر مخصص) */}
+                        <button
+                            type="button"
+                            onClick={() => setActiveMode('custom')}
+                            className={`flex-1 flex flex-row justify-end items-start p-6 md:p-8 gap-6 rounded-[16px] transition-all cursor-pointer text-start ${activeMode === 'custom'
+                                ? 'bg-[#FEF8EB] border-1 border-[#234745] shadow-md ring-2 ring-[#234745]/10'
+                                : 'bg-white border border-[#9FB7AE]/60 hover:border-[#234745]/60 hover:shadow-sm'
+                                }`}
+                        >
+                            <div className="w-12 h-12 bg-[#BBCFCD]/50 rounded-full flex-none relative flex items-center justify-center">
+                                <svg width="23" height="18" viewBox="0 0 23 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M22.3125 4.68493e-05L18.4416 3.6532L22.1444 9.8857L22.3125 9.67673V4.68493e-05ZM0 0.0533438V10.6421C0.21 10.6694 0.462328 10.6844 0.716953 10.6871C1.27336 10.6929 1.73198 10.6566 1.98961 10.6335L4.45781 4.38806L0 0.0533438ZM18.2416 4.96866L17.9116 5.18222C17.9046 5.18677 17.6602 5.33859 17.5885 5.38331L17.0914 5.68425L17.0984 5.68847C16.8681 5.83177 16.804 5.87208 16.5426 6.03441C16.41 6.11677 16.4067 6.11869 16.2809 6.19683C15.3298 5.68556 14.2978 5.29261 13.0935 4.98361C11.5788 5.4412 9.9743 6.10336 8.37211 6.72464C9.03727 7.52559 9.77648 7.78641 10.5211 7.79573C11.3845 7.80652 12.2672 7.43105 12.8751 7.01039L13.2219 6.77039L13.57 7.27336L18.9819 11.1795L21.0965 9.77381L18.2416 4.96866ZM5.08486 5.09709L2.95828 10.4777L3.73875 11.0779L5.18227 9.4417L5.29791 9.31069L5.47228 9.29981C5.54259 9.29541 5.61197 9.29338 5.68041 9.29372C6.15909 9.29681 6.58706 9.42103 6.90806 9.70434C7.14581 9.91397 7.30387 10.1931 7.39556 10.5162L7.50244 10.5096C8.0647 10.4744 8.57128 10.5904 8.93822 10.9141C9.30511 11.2379 9.48337 11.7261 9.51853 12.2885L9.52181 12.3391C9.82369 12.3961 10.0939 12.515 10.3137 12.7088C10.6806 13.0326 10.8588 13.5207 10.894 14.0831L10.9032 14.2293C10.9332 14.2388 10.9629 14.2491 10.9923 14.2602L11.0876 14.1264L11.344 13.7665L11.4758 13.5814L11.8194 13.8262L14.6051 15.8107C14.9081 15.736 15.0887 15.6197 15.1892 15.4785C15.2898 15.3374 15.3407 15.1284 15.3122 14.8173L11.972 12.4252L11.6289 12.1796L11.8722 11.84L12.1849 11.401L12.5285 11.6458L16.2942 14.3283C16.5972 14.2536 16.7779 14.1373 16.8784 13.9962C16.9789 13.8551 17.0298 13.6466 17.0014 13.3361L12.6703 10.2634L12.3262 10.0192L12.8144 9.33108L13.1586 9.5752L17.4905 12.6486C17.7938 12.5738 17.9745 12.4575 18.0751 12.3163C18.1758 12.175 18.2267 11.9659 18.198 11.6542L13.0211 7.9178C12.3341 8.32505 11.4554 8.6513 10.5106 8.63948C9.40495 8.62566 8.2223 8.09733 7.3523 6.76214C7.31789 6.70934 7.29574 6.6495 7.28749 6.58702C7.27924 6.52454 7.2851 6.461 7.30462 6.40108C7.32415 6.34116 7.35686 6.28638 7.40033 6.24075C7.44381 6.19513 7.49696 6.15983 7.55587 6.13744C8.16591 5.90564 8.78227 5.66072 9.40008 5.41772L5.08495 5.09737L5.08486 5.09709ZM5.68964 10.1418L3.46008 12.6688C3.50353 12.985 3.60258 13.1817 3.73603 13.2995C3.86948 13.4172 4.07705 13.491 4.39622 13.4947L6.62573 10.9677C6.58228 10.6515 6.48323 10.4547 6.34978 10.3369C6.21633 10.2192 6.00881 10.1455 5.68959 10.1418L5.68964 10.1418ZM7.7197 11.3516L5.20191 14.2054C5.24531 14.5216 5.34441 14.7184 5.47781 14.8362C5.61141 14.9538 5.81883 15.0276 6.13805 15.0312L8.65584 12.1775C8.61244 11.8612 8.51334 11.6645 8.37989 11.5467C8.24644 11.4289 8.03897 11.3552 7.71975 11.3515L7.7197 11.3516ZM9.09502 13.1463L6.86564 15.6733C6.90909 15.9895 7.00814 16.1863 7.14159 16.3041C7.27509 16.4218 7.48261 16.4955 7.80178 16.4992L10.0312 13.9724C9.9878 13.656 9.88875 13.4593 9.7553 13.3415C9.62184 13.2237 9.41433 13.1501 9.09511 13.1464L9.09502 13.1463ZM10.2529 14.9808L8.43445 17.0565C8.47781 17.3733 8.57686 17.5703 8.71045 17.6881C8.84381 17.8058 9.05109 17.8795 9.36984 17.8833L11.1884 15.8077C11.145 15.4909 11.0459 15.2939 10.9123 15.176C10.779 15.0583 10.5717 14.9847 10.253 14.9809L10.2529 14.9808ZM11.9096 15.2054C11.989 15.4219 12.0349 15.6619 12.0509 15.9175L12.0617 16.0911L11.6737 16.534L12.9264 17.4263C13.2294 17.3516 13.41 17.2353 13.5105 17.0942C13.611 16.9531 13.662 16.7443 13.6337 16.4336L11.9096 15.2055L11.9096 15.2054Z" fill="#234745" />
+                                </svg>
+                            </div>
+                            <div className="flex flex-col justify-center items-start gap-3 flex-1">
+                                <div className="flex items-center justify-between w-full">
+                                    <h3 className="text-[#234745] font-bold text-[18px] leading-[22px] m-0">{isEn ? 'Custom Quote' : 'عرض سعر مخصص'}</h3>
+                                    {activeMode === 'custom' && (
+                                        <span className="w-3 h-3 bg-[#234745] rounded-full inline-block" />
+                                    )}
+                                </div>
+                                <p className="text-[#9FB7AE] text-[14px] leading-[17px] font-medium m-0">{isEn ? 'For large orders or special customization — an account manager will contact you' : 'للطلبات الكبيرة أو التخصيص الخاص — مدير حساب سيتواصل معك'}</p>
+                                <div className="bg-[#FEF8EB] px-4 py-2 rounded-full flex items-center justify-center mt-2">
+                                    <span className="text-[#906B51] font-bold text-[14px] leading-[17px]" style={{ fontFamily: isEn ? 'inherit' : "'Bahij Janna'" }}>{isEn ? '200+ Boxes or Custom Order' : '+200 علبة أو طلب خاص'}</span>
+                                </div>
+                            </div>
+                        </button>
+
+                    </div>
+                </div>
+            </section>
+
+            {/* 4. DYNAMIC CONTENT SECTION: Self Order (Product Grid) vs Custom Quote Form */}
+            {activeMode === 'self' ? (
+                /* SECTION 4A: Product Selection (اختر تشكيلتك) */
+                <section id="products" className="w-full bg-[#FEF8EB] py-20 px-4">
+                    <div className="max-w-[1280px] mx-auto flex flex-col gap-8">
+
+                        {/* Header */}
+                        <div className="flex flex-col items-center text-center gap-3">
+                            <h4 className="text-[#906B51] font-medium text-[18px] leading-[22px]">{isEn ? 'Collections' : 'التشكيلات'}</h4>
+                            <h2 className="text-[#234745] text-[36px] md:text-[50px] font-bold leading-[80px]" style={{ fontFamily: isEn ? 'inherit' : "'Bahij Janna'" }}>{isEn ? 'Choose Your Selection' : 'اختر تشكيلتك'}</h2>
+                            <p className="text-[#9FB7AE] text-[16px] md:text-[18px] font-medium leading-[22px]">{isEn ? '12 B2B collections fitting every corporate occasion and budget' : '١٢ تشكيلة B2B تناسب كل مناسبة وميزانية مؤسسية'}</p>
+                        </div>
+
+                        {/* Filters */}
+                        <div className="flex flex-row justify-between items-center mt-4 mb-8">
+                            <span className="text-[#234745] font-bold text-[16px] hidden md:block">{isEn ? 'Box Budget:' : 'الميزانية للعلبة:'}</span>
+                            <div className="flex flex-wrap items-center gap-[10px]">
+
+                                {/* Filter 3: All */}
+                                <div className="flex flex-row justify-between items-center px-4 py-2 w-[192px] h-[40px] border border-[#BBCFCD] rounded-[16px] bg-transparent cursor-pointer">
+                                    <span className="text-[#255441] font-medium text-[16px]">{isEn ? 'All' : 'الكل'}</span>
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#234745" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                                </div>
+
+                                {/* Filter 2: Size */}
+                                <div className="flex flex-row justify-between items-center px-4 py-2 w-[192px] h-[40px] border border-[#BBCFCD] rounded-[16px] bg-transparent cursor-pointer">
+                                    <span className="text-[#255441] font-medium text-[16px]">{isEn ? 'Size' : 'الحجم'}</span>
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#234745" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                                </div>
+
+                                {/* Filter 1: Accept Logo? */}
+                                <div className="flex flex-row justify-between items-center px-4 py-2 w-[192px] h-[40px] border border-[#BBCFCD] rounded-[16px] bg-transparent cursor-pointer">
+                                    <span className="text-[#255441] font-medium text-[16px]">{isEn ? 'Accepts Logo?' : 'يقبل شعار؟'}</span>
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#234745" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                                </div>
+
+                            </div>
+                        </div>
+
+                        {/* Dynamic Products Grid from Shopify */}
+                        {products && products.length > 0 ? (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                {products.map((product: any) => (
+                                    <CorporateProductCard key={product.id} product={product} isEn={isEn} />
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="w-full py-12 text-center text-[#7D7D7D] font-bold text-[18px]">
+                                {isEn ? 'No corporate products available at the moment.' : 'لا توجد منتجات مؤسسية متاحة حالياً.'}
+                            </div>
+                        )}
+                    </div>
+                </section>
+            ) : (
+                /* SECTION 4B: Custom Quote Form (طلب عرض سعر للطلبات الكبيرة) */
+                <section id="custom-quote" className="w-full bg-[#FEF8EB] py-16 md:py-24 px-4 sm:px-6 md:px-8 border-b border-[#9FB7AE]/30">
+                    <div className="max-w-[1280px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-start">
+
+                        {/* Left Side: White Form Card */}
+                        <div className="lg:col-span-7 bg-white rounded-[24px] p-6 sm:p-8 md:p-10 border border-[#E6E2D8] shadow-sm flex flex-col gap-6">
+                            <h3
+                                className="text-[#234745] font-bold text-[22px] sm:text-[26px] text-start m-0 leading-tight"
+                                style={{ fontFamily: isEn ? 'inherit' : "'Bahij Janna', sans-serif" }}
+                            >
+                                {isEn ? 'Send Us Your Custom Quote Request' : 'أرسل لنا عرض السعر المخصص'}
+                            </h3>
+
+                            {formSubmitted ? (
+                                <div className="bg-[#234745]/5 border border-[#234745]/20 rounded-[16px] p-8 text-center flex flex-col items-center gap-4 my-6">
+                                    <div className="w-16 h-16 bg-[#234745] rounded-full flex items-center justify-center">
+                                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                            <polyline points="20 6 9 17 4 12" />
+                                        </svg>
+                                    </div>
+                                    <h4 className="text-[#234745] font-bold text-[22px] m-0">
+                                        {isEn ? 'Request Received Successfully!' : 'تم استلام طلبك بنجاح!'}
+                                    </h4>
+                                    <p className="text-[#8B9895] font-medium text-[15px] max-w-md m-0">
+                                        {isEn ? 'An account manager will review your specs and contact you within 24 hours with a tailored offer.' : 'سيتواصل معك مدير حسابك المختص خلال 24 ساعة لتقديم عرض سعر مخصص يتناسب مع تطلعاتك.'}
+                                    </p>
+                                    <button
+                                        type="button"
+                                        onClick={() => setFormSubmitted(false)}
+                                        className="mt-4 bg-[#234745] text-white font-bold px-6 py-2.5 rounded-full text-[14px]"
+                                    >
+                                        {isEn ? 'Send Another Request' : 'إرسال طلب آخر'}
+                                    </button>
+                                </div>
+                            ) : (
+                                <form onSubmit={handleFormSubmit} className="flex flex-col gap-5 text-start">
+                                    {/* Row 1: Company Name & Tax ID */}
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <div className="flex flex-col gap-1.5">
+                                            <label className="text-[#234745] font-bold text-[14px]">
+                                                {isEn ? 'Company Name' : 'اسم الشركة'} <span className="text-red-500">*</span>
+                                            </label>
+                                            <input
+                                                type="text"
+                                                required
+                                                placeholder={isEn ? 'Company Name' : 'شركة الامانه'}
+                                                className="w-full h-[48px] px-4 rounded-[12px] border border-[#E6E2D8] bg-white text-[#234745] placeholder-[#B0BDBA] focus:outline-none focus:border-[#234745] text-[15px]"
+                                            />
+                                        </div>
+
+                                        <div className="flex flex-col gap-1.5">
+                                            <label className="text-[#234745] font-bold text-[14px]">
+                                                {isEn ? 'Tax ID Number' : 'الرقم الضريبي'} <span className="text-red-500">*</span>
+                                            </label>
+                                            <input
+                                                type="text"
+                                                required
+                                                placeholder={isEn ? 'Tax ID' : 'الرقم الضريبي'}
+                                                className="w-full h-[48px] px-4 rounded-[12px] border border-[#E6E2D8] bg-white text-[#234745] placeholder-[#B0BDBA] focus:outline-none focus:border-[#234745] text-[15px]"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Row 2: Manager Name & Phone */}
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <div className="flex flex-col gap-1.5">
+                                            <label className="text-[#234745] font-bold text-[14px]">
+                                                {isEn ? 'Manager Name' : 'اسم المسؤول'} <span className="text-red-500">*</span>
+                                            </label>
+                                            <input
+                                                type="text"
+                                                required
+                                                placeholder={isEn ? 'Manager Name' : 'نور الدالي'}
+                                                className="w-full h-[48px] px-4 rounded-[12px] border border-[#E6E2D8] bg-white text-[#234745] placeholder-[#B0BDBA] focus:outline-none focus:border-[#234745] text-[15px]"
+                                            />
+                                        </div>
+
+                                        <div className="flex flex-col gap-1.5">
+                                            <label className="text-[#234745] font-bold text-[14px]">
+                                                {isEn ? 'Phone Number' : 'الجوال'} <span className="text-red-500">*</span>
+                                            </label>
+                                            <input
+                                                type="tel"
+                                                required
+                                                placeholder={isEn ? 'Phone Number' : 'رقم الجوال'}
+                                                className="w-full h-[48px] px-4 rounded-[12px] border border-[#E6E2D8] bg-white text-[#234745] placeholder-[#B0BDBA] focus:outline-none focus:border-[#234745] text-[15px]"
+                                                dir="ltr"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Row 3: Email */}
+                                    <div className="flex flex-col gap-1.5">
+                                        <label className="text-[#234745] font-bold text-[14px]">
+                                            {isEn ? 'Email Address' : 'البريد الإلكتروني'} <span className="text-red-500">*</span>
+                                        </label>
+                                        <input
+                                            type="email"
+                                            required
+                                            placeholder="name@gmail.com"
+                                            className="w-full h-[48px] px-4 rounded-[12px] border border-[#E6E2D8] bg-white text-[#234745] placeholder-[#B0BDBA] focus:outline-none focus:border-[#234745] text-[15px]"
+                                            dir="ltr"
+                                        />
+                                    </div>
+
+                                    {/* Row 4: Event Type */}
+                                    <div className="flex flex-col gap-1.5">
+                                        <label className="text-[#234745] font-bold text-[14px]">
+                                            {isEn ? 'Occasion Type' : 'نوع المناسبة'} <span className="text-red-500">*</span>
+                                        </label>
+                                        <select
+                                            required
+                                            className="w-full h-[48px] px-4 rounded-[12px] border border-[#E6E2D8] bg-white text-[#234745] focus:outline-none focus:border-[#234745] text-[15px] appearance-none cursor-pointer"
+                                        >
+                                            <option value="">{isEn ? 'Select Occasion' : 'إختر المناسبة'}</option>
+                                            <option value="official">{isEn ? 'Official / Corporate Event' : 'مناسبة رسمية / مؤسسية'}</option>
+                                            <option value="eid">{isEn ? 'Eid / Seasonal' : 'عيد / موسم'}</option>
+                                            <option value="employees">{isEn ? 'Employee Recognition' : 'تكريم موظفين'}</option>
+                                            <option value="conference">{isEn ? 'Conference / Exhibition' : 'مؤتمر / فعاليات'}</option>
+                                            <option value="other">{isEn ? 'Other' : 'أخرى'}</option>
+                                        </select>
+                                    </div>
+
+                                    {/* Row 5: Quantity & Budget per Box */}
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <div className="flex flex-col gap-1.5">
+                                            <label className="text-[#234745] font-bold text-[14px]">
+                                                {isEn ? 'Target Quantity' : 'الكمية المناسبة'} <span className="text-red-500">*</span>
+                                            </label>
+                                            <select
+                                                required
+                                                className="w-full h-[48px] px-4 rounded-[12px] border border-[#E6E2D8] bg-white text-[#234745] focus:outline-none focus:border-[#234745] text-[15px] appearance-none cursor-pointer"
+                                            >
+                                                <option value="200-500">200 - 500</option>
+                                                <option value="500-1000">500 - 1000</option>
+                                                <option value="1000+">1000+</option>
+                                            </select>
+                                        </div>
+
+                                        <div className="flex flex-col gap-1.5">
+                                            <label className="text-[#234745] font-bold text-[14px]">
+                                                {isEn ? 'Budget per Box' : 'الميزانية للعلبة'} <span className="text-red-500">*</span>
+                                            </label>
+                                            <select
+                                                required
+                                                className="w-full h-[48px] px-4 rounded-[12px] border border-[#E6E2D8] bg-white text-[#234745] focus:outline-none focus:border-[#234745] text-[15px] appearance-none cursor-pointer"
+                                            >
+                                                <option value="<100">{isEn ? 'Under 100 SAR' : 'أقل من 100 ر.س'}</option>
+                                                <option value="100-200">100 - 200 ر.س</option>
+                                                <option value="200+">200+ ر.س</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    {/* Row 6: Required Delivery Date */}
+                                    <div className="flex flex-col gap-1.5">
+                                        <label className="text-[#234745] font-bold text-[14px]">
+                                            {isEn ? 'Required Delivery Date' : 'تاريخ التسليم المطلوب'}
+                                        </label>
+                                        <input
+                                            type="date"
+                                            className="w-full h-[48px] px-4 rounded-[12px] border border-[#E6E2D8] bg-white text-[#234745] placeholder-[#B0BDBA] focus:outline-none focus:border-[#234745] text-[15px]"
+                                        />
+                                    </div>
+
+                                    {/* Row 7: Customization Requirements */}
+                                    <div className="flex flex-col gap-1.5">
+                                        <label className="text-[#234745] font-bold text-[14px]">
+                                            {isEn ? 'Customization Requirements' : 'متطلبات التخصيص'}
+                                        </label>
+                                        <textarea
+                                            rows={3}
+                                            placeholder={isEn ? 'Example: Company logo, custom message, specialized box packaging' : 'مثال : شعار الشركة ، رسالة موحده ، تغليف خاص'}
+                                            className="w-full p-4 rounded-[12px] border border-[#E6E2D8] bg-white text-[#234745] placeholder-[#B0BDBA] focus:outline-none focus:border-[#234745] text-[15px] resize-none"
+                                        />
+                                    </div>
+
+                                    {/* Row 8: Preferred Delivery Branch */}
+                                    <div className="flex flex-col gap-1.5">
+                                        <label className="text-[#234745] font-bold text-[14px]">
+                                            {isEn ? 'Preferred Delivery Branch' : 'الفرع المفضل للتسليم'}
+                                        </label>
+                                        <select
+                                            className="w-full h-[48px] px-4 rounded-[12px] border border-[#E6E2D8] bg-white text-[#234745] focus:outline-none focus:border-[#234745] text-[15px] appearance-none cursor-pointer"
+                                        >
+                                            <option value="Riyadh">{isEn ? 'Riyadh' : 'الرياض'}</option>
+                                            <option value="Jeddah">{isEn ? 'Jeddah' : 'جدة'}</option>
+                                            <option value="Dammam">{isEn ? 'Dammam' : 'الدمام'}</option>
+                                            <option value="Khobar">{isEn ? 'Khobar' : 'الخبر'}</option>
+                                            <option value="Makkah">{isEn ? 'Makkah' : 'مكة المكرمة'}</option>
+                                            <option value="Madinah">{isEn ? 'Madinah' : 'المدينة المنورة'}</option>
+                                            <option value="Other">{isEn ? 'Other City' : 'أخرى'}</option>
+                                        </select>
+                                    </div>
+
+                                    {/* Row 9: Attachment (Optional) */}
+                                    <div className="flex flex-col gap-1.5">
+                                        <label className="text-[#234745] font-bold text-[14px]">
+                                            {isEn ? 'Add Attachment (Optional)' : 'إضافة مرفق (اختياري)'}
+                                        </label>
+                                        <label className="border-2 border-dashed border-[#906B51]/60 rounded-[16px] p-6 flex flex-col items-center justify-center text-center cursor-pointer hover:bg-[#FEF8EB]/50 transition-colors bg-[#FEF8EB]/20">
+                                            <input type="file" className="hidden" accept="image/*,.pdf,.doc,.docx" />
+                                            <span className="text-[#234745] font-bold text-[15px]">
+                                                {isEn ? 'Add Attachment' : 'إضافة مرفق'}
+                                            </span>
+                                            <span className="text-[#8B9895] text-[13px] font-medium mt-1">
+                                                {isEn ? 'Logo, correspondence, or relevant files' : 'شعار ، مراسلات ، أي ملفات ذات صلة'}
+                                            </span>
+                                        </label>
+                                    </div>
+
+                                    {/* Row 10: Submit Button */}
+                                    <button
+                                        type="submit"
+                                        className="w-full bg-[#234745] text-white font-bold text-[16px] md:text-[18px] py-4 rounded-full hover:bg-[#1a3533] transition-colors text-center mt-3 shadow-md cursor-pointer"
+                                        style={{ fontFamily: isEn ? 'inherit' : "'Bahij Janna', sans-serif" }}
+                                    >
+                                        {isEn ? 'Send Quote Request' : 'إرسال طلب عرض السعر'}
+                                    </button>
+                                </form>
+                            )}
+                        </div>
+
+                        {/* Right Side: Sidebar Information */}
+                        <div className="lg:col-span-5 flex flex-col text-start gap-6 pt-2">
+                            <div className="flex flex-col gap-3">
+                                <h2
+                                    className="text-[#234745] font-bold text-[32px] sm:text-[38px] md:text-[44px] leading-tight m-0"
+                                    style={{ fontFamily: isEn ? 'inherit' : "'Bahij Janna', sans-serif" }}
+                                >
+                                    {isEn ? 'Quote Request for Large Orders' : 'طلب عرض سعر للطلبات الكبيرة'}
+                                </h2>
+                                <p className="text-[#8B9895] font-medium text-[15px] md:text-[17px] leading-relaxed m-0">
+                                    {isEn
+                                        ? 'For orders over 200 boxes, custom branding, or multi-address delivery — your account manager will reach out within 24 hours with a tailored quote.'
+                                        : 'للطلبات فوق 200 علبة، أو التخصيص الخاص، أو التوصيل لعدة عناوين — مدير حسابك سيتواصل خلال 24 ساعة بعرض مفضل.'}
+                                </p>
+                            </div>
+
+                            <div className="flex flex-col gap-6 pt-6 border-t border-[#E6E2D8]">
+                                {/* Contact 1: WhatsApp */}
+                                <div className="flex flex-col gap-1">
+                                    <span className="text-[#234745] font-bold text-[16px]">
+                                        {isEn ? 'Corporate WhatsApp' : 'WhatsApp للشركات'}
+                                    </span>
+                                    <span className="text-[#9FB7AE] font-medium text-[14px]">
+                                        {isEn ? 'Instant response within 30 mins' : 'رد فوري خلال 30 دقيقة'}
+                                    </span>
+                                </div>
+
+                                {/* Contact 2: Direct Line */}
+                                <div className="flex flex-col gap-1">
+                                    <span className="text-[#234745] font-bold text-[16px] flex items-center gap-2">
+                                        <span>{isEn ? 'Direct Line' : 'خط الشركات المباشر'}</span>
+                                        <span className="text-[#906B51] font-bold text-[16px] dir-ltr inline-block" style={{ fontFamily: 'EnglishDigits' }}>
+                                            +966 11 XXX XXXX
+                                        </span>
+                                    </span>
+                                </div>
+
+                                {/* Contact 3: Email */}
+                                <div className="flex flex-col gap-1">
+                                    <span className="text-[#234745] font-bold text-[16px]">
+                                        corporate@saadeddin.com
+                                    </span>
+                                    <span className="text-[#9FB7AE] font-medium text-[14px]">
+                                        {isEn ? 'Response within 24 hours' : 'رد خلال 24 ساعة'}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </section>
+            )}
+
+            {/* 5. Packages */}
+            <section className="w-full bg-white py-20 px-4">
+                <div className="max-w-[1280px] mx-auto flex flex-col gap-8">
+                    {/* Header */}
+                    <div className="flex flex-col items-center text-center gap-3">
+                        <h4 className="text-[#906B51] font-medium text-[18px] leading-[22px]">{isEn ? 'Collections' : 'التشكيلات'}</h4>
+                        <h2 className="text-[#234745] text-[36px] md:text-[50px] font-bold leading-[80px]" style={{ fontFamily: isEn ? 'inherit' : "'Bahij Janna'" }}>{isEn ? 'Corporate Gift Packages' : 'باقات الهدايا المؤسسية'}</h2>
+                        <p className="text-[#9FB7AE] text-[16px] md:text-[18px] font-medium leading-[22px] max-w-[600px]">{isEn ? 'A curated selection of ready-made collections, fully customizable with your company\'s identity.' : 'مجموعة منتقاة من التشكيلات الجاهزة، يمكن تخصيصها بالكامل بهوية شركتك.'}</p>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-4">
+
+                        {/* Classic Package (Right-most in RTL) */}
+                        <div className="w-full max-w-[411px] mx-auto bg-[#FEF8EB] rounded-[20px] overflow-hidden flex flex-col hover:shadow-lg transition-shadow">
+                            <div className="relative w-full h-[216px] bg-[#BBCFCD] flex items-center justify-center">
+                                <div className="absolute top-4 right-4">
+                                    <div className="bg-[#FEF8EB] px-4 py-1.5 rounded-[25px]">
+                                        <span className="text-[#234745] font-bold text-[14px]">{isEn ? 'Classic' : 'كلاسيك'}</span>
+                                    </div>
+                                </div>
+                                <svg width="80" height="80" viewBox="0 0 24 24" fill="#234745" stroke="#234745" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"><polyline points="21 8 21 21 3 21 3 8"></polyline><rect x="1" y="3" width="22" height="5"></rect><line x1="10" y1="12" x2="14" y2="12"></line></svg>
+                            </div>
+
+                            <div className="flex flex-col p-6 gap-4 flex-1">
+                                <div className="flex flex-col gap-3">
+                                    <h3 className="text-[#234745] font-bold text-[16px] text-right m-0">{isEn ? 'Classic Collection' : 'التشكيلة الكلاسيكية'}</h3>
+                                    <p className="text-[#9FB7AE] font-medium text-[16px] leading-[20px] text-right m-0 h-[40px] md:h-[60px] lg:h-[40px]">{isEn ? 'An elegant gift for various corporate occasions with premium packaging and your company logo.' : 'هدية أنيقة لمختلف المناسبات الرسمية مع تغليف فاخر وشعار شركتك.'}</p>
+                                </div>
+
+                                <div className="w-full border-t border-[#9FB7AE] mt-2 mb-1"></div>
+
+                                <div className="flex justify-between items-center mt-auto flex-row-reverse">
+                                    <span className="text-[#7D7D7D] font-medium text-[16px]">{isEn ? 'Starts from 20 Boxes' : 'تبدأ من ٢٠ علبة'}</span>
+                                    <div className="flex items-center gap-2 flex-row-reverse group cursor-pointer">
+                                        <span className="text-[#906B51] font-bold text-[16px]">{isEn ? 'View Details' : 'عرض التفاصيل'}</span>
+                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#906B51" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="group-hover:-translate-x-1 transition-transform"><path d="M19 12H5M5 12L12 19M5 12L12 5"></path></svg>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Premium Package (Center) */}
+                        <div className="w-full max-w-[411px] mx-auto bg-[#FEF8EB] rounded-[20px] overflow-hidden flex flex-col hover:shadow-lg transition-shadow">
+                            <div className="relative w-full h-[216px] bg-[#234745] flex items-center justify-center">
+                                <div className="absolute top-4 right-4">
+                                    <div className="bg-[#FEF8EB] px-4 py-1.5 rounded-[25px]">
+                                        <span className="text-[#234745] font-bold text-[14px]">{isEn ? 'Premium' : 'المميزة'}</span>
+                                    </div>
+                                </div>
+                                <svg width="80" height="80" viewBox="0 0 24 24" fill="#C5A96A" stroke="#C5A96A" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                            </div>
+
+                            <div className="flex flex-col p-6 gap-4 flex-1">
+                                <div className="flex flex-col gap-3">
+                                    <h3 className="text-[#234745] font-bold text-[16px] text-right m-0">{isEn ? 'Premium Collection' : 'التشكيلة المميزة'}</h3>
+                                    <p className="text-[#9FB7AE] font-medium text-[16px] leading-[20px] text-right m-0 h-[40px] md:h-[60px] lg:h-[40px]">{isEn ? 'A sophisticated choice for VIP clients and partners, with curated contents and striking packaging.' : 'اختيار راقٍ للعملاء وكبار الشركاء، بمحتوى مدروس وتغليف لافت.'}</p>
+                                </div>
+
+                                <div className="w-full border-t border-[#9FB7AE] mt-2 mb-1"></div>
+
+                                <div className="flex justify-between items-center mt-auto flex-row-reverse">
+                                    <span className="text-[#7D7D7D] font-medium text-[16px]">{isEn ? 'Starts from 20 Boxes' : 'تبدأ من ٢٠ علبة'}</span>
+                                    <div className="flex items-center gap-2 flex-row-reverse group cursor-pointer">
+                                        <span className="text-[#906B51] font-bold text-[16px]">{isEn ? 'View Details' : 'عرض التفاصيل'}</span>
+                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#906B51" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="group-hover:-translate-x-1 transition-transform"><path d="M19 12H5M5 12L12 19M5 12L12 5"></path></svg>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Custom Package (Left-most in RTL) */}
+                        <div className="w-full max-w-[411px] mx-auto bg-[#FEF8EB] rounded-[20px] overflow-hidden flex flex-col hover:shadow-lg transition-shadow">
+                            <div className="relative w-full h-[216px] bg-[#BBCFCD] flex items-center justify-center">
+                                <div className="absolute top-4 right-4">
+                                    <div className="bg-[#FEF8EB] px-4 py-1.5 rounded-[25px]">
+                                        <span className="text-[#234745] font-bold text-[14px]">{isEn ? 'Custom' : 'مخصصة'}</span>
+                                    </div>
+                                </div>
+                                <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="#234745" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg>
+                            </div>
+
+                            <div className="flex flex-col p-6 gap-4 flex-1">
+                                <div className="flex flex-col gap-3">
+                                    <h3 className="text-[#234745] font-bold text-[16px] text-right m-0">{isEn ? 'Custom Collection' : 'التشكيلة المخصصة'}</h3>
+                                    <p className="text-[#9FB7AE] font-medium text-[16px] leading-[20px] text-right m-0 h-[40px] md:h-[60px] lg:h-[40px]">{isEn ? 'Design your gift to reflect your identity — contents, packaging, and logo as requested.' : 'صمّم هديتك بما يعكس هويتك — محتوى وتغليف وشعار حسب طلبك.'}</p>
+                                </div>
+
+                                <div className="w-full border-t border-[#9FB7AE] mt-2 mb-1"></div>
+
+                                <div className="flex justify-between items-center mt-auto flex-row-reverse">
+                                    <span className="text-[#7D7D7D] font-medium text-[16px]">{isEn ? 'Custom +200 Boxes' : 'حسب الطلب +٢٠٠ علبة'}</span>
+                                    <div className="flex items-center gap-2 flex-row-reverse group cursor-pointer">
+                                        <span className="text-[#906B51] font-bold text-[16px]">{isEn ? 'View Details' : 'عرض التفاصيل'}</span>
+                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#906B51" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="group-hover:-translate-x-1 transition-transform"><path d="M19 12H5M5 12L12 19M5 12L12 5"></path></svg>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </section>
+
+            {/* 6. Custom Identity */}
+            <section className="w-full bg-[#FEF8EB] py-20 px-4">
+                <div className="max-w-[1200px] mx-auto flex flex-col md:flex-row items-center gap-12 lg:gap-20">
+
+                    <div className="w-full md:w-1/2">
+                        <h2 className="text-[32px] md:text-[40px] font-bold text-[#1A1A1A] mb-6 leading-tight">
+                            {isEn ? 'A Design That Reflects Your Identity' : 'تصميم يعكس هويتك'}
+                        </h2>
+                        <p className="text-[#8B8B8B] text-[16px] mb-10 font-medium leading-relaxed">
+                            {isEn ? 'We understand that your gift represents your brand. We give you full control to customize exactly what fits your corporate identity.' : 'نتفهم أن هديتك تمثل شركتك ولذلك نمنحك الحرية في التعديل على العلب وبطاقات الإهداء بشكل يتوافق مع هويتك.'}
+                        </p>
+
+                        <div className="flex justify-between items-start">
+                            <div className="flex flex-col items-center text-center w-1/3">
+                                <div className="w-14 h-14 bg-white rounded-full flex items-center justify-center shadow-sm mb-3">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#234745" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path></svg>
+                                </div>
+                                <span className="text-[#234745] font-bold text-[13px]">{isEn ? 'Custom Box' : 'تغليف مخصص'}</span>
+                            </div>
+
+                            <div className="flex flex-col items-center text-center w-1/3">
+                                <div className="w-14 h-14 bg-white rounded-full flex items-center justify-center shadow-sm mb-3">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#234745" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1v12z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg>
+                                </div>
+                                <span className="text-[#234745] font-bold text-[13px]">{isEn ? 'Ribbon Logo' : 'شريطة بشعارك'}</span>
+                            </div>
+
+                            <div className="flex flex-col items-center text-center w-1/3">
+                                <div className="w-14 h-14 bg-white rounded-full flex items-center justify-center shadow-sm mb-3">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#234745" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
+                                </div>
+                                <span className="text-[#234745] font-bold text-[13px]">{isEn ? 'Card Print' : 'طباعة الكرت'}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="w-full md:w-1/2">
+                        <div className="w-full aspect-[4/3] bg-[#234745] rounded-[32px] overflow-hidden shadow-2xl relative">
+                            {/* Image Placeholder */}
+                            <div className="absolute inset-0 opacity-80" style={{ backgroundImage: `url('https://images.unsplash.com/photo-1549465220-1a8b9238cd48?q=80&w=1200&auto=format&fit=crop')`, backgroundSize: 'cover', backgroundPosition: 'center', mixBlendMode: 'luminosity' }}></div>
+                            <div className="absolute inset-0 bg-[#234745]/30"></div>
+                        </div>
+                    </div>
+
+                </div>
+            </section>
+
+            {/* 7. Why Choose Us */}
+            <section className="w-full bg-white py-20 px-4">
+                <div className="max-w-[1200px] mx-auto text-center">
+                    <h4 className="text-[#8B8B8B] font-bold text-[14px] mb-2">{isEn ? 'Our Advantages' : 'ميزتنا'}</h4>
+                    <h2 className="text-[#1A1A1A] text-[28px] md:text-[36px] font-bold mb-12">{isEn ? 'Why Choose Us?' : 'لماذا تختارنا؟'}</h2>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+
+                        <div className="border border-gray-100 rounded-[20px] p-6 flex flex-col text-center items-center hover:border-[#234745] transition-colors bg-white hover:shadow-lg">
+                            <div className="w-12 h-12 bg-[#234745] rounded-lg flex items-center justify-center mb-4">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                            </div>
+                            <h3 className="text-[#1A1A1A] font-bold text-[18px] mb-2">{isEn ? 'Premium Quality' : 'جودة فاخرة'}</h3>
+                            <p className="text-[#8B8B8B] text-[13px] font-medium leading-relaxed">
+                                {isEn ? 'The finest ingredients for the best taste.' : 'نستخدم أفضل المكونات لنضمن لك منتجاً يليق بمكانتك.'}
+                            </p>
+                        </div>
+
+                        <div className="border border-gray-100 rounded-[20px] p-6 flex flex-col text-center items-center hover:border-[#234745] transition-colors bg-white hover:shadow-lg">
+                            <div className="w-12 h-12 bg-[#234745] rounded-lg flex items-center justify-center mb-4">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>
+                            </div>
+                            <h3 className="text-[#1A1A1A] font-bold text-[18px] mb-2">{isEn ? 'Fast Delivery' : 'توصيل سريع'}</h3>
+                            <p className="text-[#8B8B8B] text-[13px] font-medium leading-relaxed">
+                                {isEn ? 'Punctual delivery for your important occasions.' : 'نلتزم بالمواعيد لضمان وصول الهدايا في وقتها المحدد.'}
+                            </p>
+                        </div>
+
+                        <div className="border border-gray-100 rounded-[20px] p-6 flex flex-col text-center items-center hover:border-[#234745] transition-colors bg-white hover:shadow-lg">
+                            <div className="w-12 h-12 bg-[#234745] rounded-lg flex items-center justify-center mb-4">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                            </div>
+                            <h3 className="text-[#1A1A1A] font-bold text-[18px] mb-2">{isEn ? 'Trusted Brand' : 'علامة موثوقة'}</h3>
+                            <p className="text-[#8B8B8B] text-[13px] font-medium leading-relaxed">
+                                {isEn ? 'Over 100 years of experience in sweet making.' : 'خبرة تتجاوز المئة عام في صناعة الحلويات.'}
+                            </p>
+                        </div>
+
+                        <div className="border border-gray-100 rounded-[20px] p-6 flex flex-col text-center items-center hover:border-[#234745] transition-colors bg-white hover:shadow-lg">
+                            <div className="w-12 h-12 bg-[#234745] rounded-lg flex items-center justify-center mb-4">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                            </div>
+                            <h3 className="text-[#1A1A1A] font-bold text-[18px] mb-2">{isEn ? 'Dedicated Support' : 'دعم مخصص'}</h3>
+                            <p className="text-[#8B8B8B] text-[13px] font-medium leading-relaxed">
+                                {isEn ? 'A dedicated team to manage your corporate requests.' : 'فريق متخصص لتلبية متطلبات الشركات بكفاءة.'}
+                            </p>
+                        </div>
+
+                        <div className="border border-gray-100 rounded-[20px] p-6 flex flex-col text-center items-center hover:border-[#234745] transition-colors bg-white hover:shadow-lg">
+                            <div className="w-12 h-12 bg-[#234745] rounded-lg flex items-center justify-center mb-4">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
+                            </div>
+                            <h3 className="text-[#1A1A1A] font-bold text-[18px] mb-2">{isEn ? 'Elegant Packaging' : 'تغليف أنيق'}</h3>
+                            <p className="text-[#8B8B8B] text-[13px] font-medium leading-relaxed">
+                                {isEn ? 'Luxurious boxes that add value to your gift.' : 'علب فاخرة مصممة لتضيف لمسة راقية لهديتك.'}
+                            </p>
+                        </div>
+
+                        <div className="border border-gray-100 rounded-[20px] p-6 flex flex-col text-center items-center hover:border-[#234745] transition-colors bg-white hover:shadow-lg">
+                            <div className="w-12 h-12 bg-[#234745] rounded-lg flex items-center justify-center mb-4">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
+                            </div>
+                            <h3 className="text-[#1A1A1A] font-bold text-[18px] mb-2">{isEn ? 'Custom Identity' : 'هوية مخصصة'}</h3>
+                            <p className="text-[#8B8B8B] text-[13px] font-medium leading-relaxed">
+                                {isEn ? 'Print your logo on boxes and ribbons.' : 'إمكانية دمج شعار شركتك على العلب والتغليف.'}
+                            </p>
+                        </div>
+
+                    </div>
+                </div>
+            </section>
+
+        </div>
+    );
+}

@@ -22,6 +22,11 @@ export const CART_QUERY_FRAGMENT = `#graphql
         ...Money
       }
     }
+    discountAllocations {
+      discountedAmount {
+        ...Money
+      }
+    }
     merchandise {
       ... on ProductVariant {
         id
@@ -40,17 +45,29 @@ export const CART_QUERY_FRAGMENT = `#graphql
           altText
           width
           height
-
         }
         product {
           handle
           title
           id
           vendor
+          tags
+          availability_date: metafield(namespace: "custom", key: "visibility_start") {
+            value
+          }
         }
         selectedOptions {
           name
           value
+        }
+        storeAvailability(first: 250) {
+          nodes {
+            available
+            location {
+              id
+              name
+            }
+          }
         }
       }
     }
@@ -78,6 +95,11 @@ export const CART_QUERY_FRAGMENT = `#graphql
         ...Money
       }
     }
+    discountAllocations {
+      discountedAmount {
+        ...Money
+      }
+    }
     merchandise {
       ... on ProductVariant {
         id
@@ -102,10 +124,23 @@ export const CART_QUERY_FRAGMENT = `#graphql
           title
           id
           vendor
+          tags
+          availability_date: metafield(namespace: "custom", key: "visibility_start") {
+            value
+          }
         }
         selectedOptions {
           name
           value
+        }
+        storeAvailability(first: 250) {
+          nodes {
+            available
+            location {
+              id
+              name
+            }
+          }
         }
       }
     }
@@ -140,8 +175,6 @@ export const CART_QUERY_FRAGMENT = `#graphql
     lines(first: $numCartLines) {
       nodes {
         ...CartLine
-      }
-      nodes {
         ...CartLineComponent
       }
     }
@@ -168,8 +201,14 @@ export const CART_QUERY_FRAGMENT = `#graphql
       code
       applicable
     }
+    discountAllocations {
+      discountedAmount {
+        ...Money
+      }
+    }
   }
 ` as const;
+
 
 const MENU_FRAGMENT = `#graphql
   fragment MenuItem on MenuItem {

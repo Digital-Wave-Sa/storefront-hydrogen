@@ -1,3 +1,4 @@
+// @ts-ignore - route types generated during build
 import type {Route} from './+types/$';
 
 export async function loader({request}: Route.LoaderArgs) {
@@ -9,3 +10,4 @@ export async function loader({request}: Route.LoaderArgs) {
 export default function CatchAllPage() {
   return null;
 }
+

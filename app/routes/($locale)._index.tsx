@@ -1,115 +1,158 @@
-import { Await, useLoaderData, Link } from 'react-router';
-import type { Route } from './+types/_index';
-import { Suspense } from 'react';
-import { Image } from '@shopify/hydrogen';
-import type {
-  FeaturedCollectionFragment,
-  RecommendedProductsQuery,
-} from 'storefrontapi.generated';
-import { ProductItem } from '~/components/ProductItem';
+import {Await, useLoaderData} from 'react-router';
+import type {Route} from './+types/($locale)._index';
+import {HeroSlider} from '~/components/HeroSlider';
+import {ShopByCategory} from '~/components/ShopByCategory';
+import {BestSellers} from '~/components/BestSellers';
+import {DesignYourCake} from '~/components/DesignYourCake';
+import {ShopByOccasion} from '~/components/ShopByOccasion';
+import {NewArrivals} from '~/components/NewArrivals';
+import {OffersAndDiscounts} from '~/components/OffersAndDiscounts';
+import {RamadanBanner} from '~/components/RamadanBanner';
+import {CustomerReviews} from '~/components/CustomerReviews';
+import {WhoAreYouGifting} from '~/components/WhoAreYouGifting';
+import {CorporateGifting} from '~/components/CorporateGifting';
+import {getShopTitle} from '~/lib/seo';
 
-export const meta: Route.MetaFunction = () => {
-  return [{ title: 'Hydrogen | Home' }];
+export const meta: Route.MetaFunction = ({matches}) => {
+  const rootMatch = matches.find((m) => m?.id === 'root');
+  const rootData = (rootMatch as any)?.data as any;
+  const isEn = rootData?.consent?.language?.toLowerCase() === 'en';
+
+  const titleText = isEn ? 'Premium Sweets, Cakes & Chocolate' : 'حلويات، كيك وشوكولاتة فاخرة';
+  const description = isEn 
+    ? 'Discover Saadeddin Pastry - The destination for premium Arabic sweets, European cakes, and fine chocolate. Freshly prepared daily with the finest ingredients.'
+    : 'اكتشف حلويات سعد الدين - وجهتك للحلويات العربية الفاخرة، الكيك الأوروبي، والشوكولاتة الراقية. تُحضر طازجة يومياً بأجود المكونات.';
+
+  const title = getShopTitle(titleText, matches);
+
+  return [
+    {title},
+    {
+      name: 'description',
+      content: description,
+    },
+    {
+      property: 'og:title',
+      content: title,
+    },
+    {
+      property: 'og:description',
+      content: description,
+    },
+  ];
 };
 
 export async function loader(args: Route.LoaderArgs) {
-  // Start fetching non-critical data without blocking time to first byte
   const deferredData = loadDeferredData(args);
-
-  // Await the critical data required to render initial state of the page
   const criticalData = await loadCriticalData(args);
-
-  return { ...deferredData, ...criticalData };
+  return {...deferredData, ...criticalData};
 }
 
-/**
- * Load data necessary for rendering content above the fold. This is the critical data
- * needed to render the page. If it's unavailable, the whole page should 400 or 500 error.
- */
-async function loadCriticalData({ context }: Route.LoaderArgs) {
-  const [{ collections }] = await Promise.all([
-    context.storefront.query(FEATURED_COLLECTION_QUERY),
-    // Add other queries here, so that they are loaded in parallel
+async function loadCriticalData({context}: Route.LoaderArgs) {
+  const [{collections}, occasionsResult, configResult] = await Promise.all([
+    context.storefront.query(FEATURED_COLLECTION_QUERY, {
+      variables: {
+        country: context.storefront.i18n.country,
+        language: context.storefront.i18n.language,
+      },
+    }),
+    context.storefront.query(OCCASIONS_QUERY, {
+      variables: {
+        country: context.storefront.i18n.country,
+        language: context.storefront.i18n.language,
+      },
+    }).catch((error) => {
+      console.error('Failed to fetch occasions:', error);
+      return { collections: { nodes: [] } };
+    }),
+    context.storefront.query(HOMEPAGE_CONFIG_QUERY, {
+      variables: {
+        country: context.storefront.i18n.country,
+        language: context.storefront.i18n.language,
+      },
+    }).catch((error) => {
+      console.error('Failed to fetch homepage config:', error);
+      return { metaobjects: { nodes: [] } };
+    }),
   ]);
 
   return {
     featuredCollection: collections.nodes[0],
+    occasions: occasionsResult.collections.nodes,
+    homepageConfig: configResult?.metaobjects?.nodes?.[0] || null,
   };
 }
 
-/**
- * Load data for rendering content below the fold. This data is deferred and will be
- * fetched after the initial page load. If it's unavailable, the page should still 200.
- * Make sure to not throw any errors here, as it will cause the page to 500.
- */
-function loadDeferredData({ context }: Route.LoaderArgs) {
+function loadDeferredData({context}: Route.LoaderArgs) {
   const recommendedProducts = context.storefront
-    .query(RECOMMENDED_PRODUCTS_QUERY)
+    .query(RECOMMENDED_PRODUCTS_QUERY, {
+      variables: {
+        country: context.storefront.i18n.country,
+        language: context.storefront.i18n.language,
+      },
+    })
     .catch((error: Error) => {
-      // Log query errors, but don't throw them so the page can still render
+      console.error(error);
+      return null;
+    });
+
+  const newArrivals = context.storefront
+    .query(NEW_ARRIVALS_QUERY, {
+      variables: {
+        country: context.storefront.i18n.country,
+        language: context.storefront.i18n.language,
+      },
+    })
+    .catch((error: Error) => {
       console.error(error);
       return null;
     });
 
   return {
     recommendedProducts,
+    newArrivals,
   };
 }
 
 export default function Homepage() {
   const data = useLoaderData<typeof loader>();
-  return (
-    <div className="home">
-      <FeaturedCollection collection={data.featuredCollection} />
-      <RecommendedProducts products={data.recommendedProducts} />
-    </div>
-  );
-}
 
-function FeaturedCollection({
-  collection,
-}: {
-  collection: FeaturedCollectionFragment;
-}) {
-  if (!collection) return null;
-  const image = collection?.image;
   return (
-    <Link
-      className="featured-collection"
-      to={`/collections/${collection.handle}`}
-    >
-      {/* {image && (
-        <div className="featured-collection-image">
-          <Image data={image} sizes="100vw" />
-        </div>
-      )} */}
-      <h1>{collection.title}</h1>
-    </Link>
-  );
-}
-
-function RecommendedProducts({
-  products,
-}: {
-  products: Promise<RecommendedProductsQuery | null>;
-}) {
-  return (
-    <div className="recommended-products">
-      <h2>Recommended Products</h2>
-      <Suspense fallback={<div>Loading...</div>}>
-        <Await resolve={products}>
-          {(response) => (
-            <div className="recommended-products-grid">
-              {response
-                ? response.products.nodes.map((product) => (
-                  <ProductItem key={product.id} product={product} />
-                ))
-                : null}
-            </div>
-          )}
-        </Await>
-      </Suspense>
-      <br />
+    <div className="home w-full bg-[#FEF8EB] overflow-x-hidden">
+      <h1 className="sr-only">Saadeddin Pastry</h1>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'Organization',
+            name: 'Saadeddin Pastry',
+            url: 'https://saadeddin.com',
+            logo: 'https://saadeddin.com/logo.png',
+            contactPoint: {
+              '@type': 'ContactPoint',
+              telephone: '920017070',
+              contactType: 'customer service',
+              availableLanguage: ['English', 'Arabic'],
+            },
+            sameAs: [
+              'https://www.facebook.com/SaadeddinPastry',
+              'https://twitter.com/saadeddinpastry',
+              'https://www.instagram.com/saadeddinpastry/',
+            ],
+          }),
+        }}
+      />
+      <HeroSlider />
+      <ShopByOccasion collections={data.occasions} />
+      <WhoAreYouGifting collections={data.occasions} />
+      <BestSellers products={data.recommendedProducts} />
+      <CorporateGifting />
+      <NewArrivals products={data.newArrivals} />
+      <DesignYourCake />
+      <RamadanBanner config={data.homepageConfig} />
+      <OffersAndDiscounts config={data.homepageConfig} />
+      <CustomerReviews config={data.homepageConfig} />
     </div>
   );
 }
@@ -142,25 +185,318 @@ const RECOMMENDED_PRODUCTS_QUERY = `#graphql
     id
     title
     handle
+    availableForSale
+    productType
+    tags
+    compareAtPriceRange {
+      minVariantPrice {
+        amount
+        currencyCode
+      }
+    }
     priceRange {
       minVariantPrice {
         amount
         currencyCode
       }
     }
-    featuredImage {
-      id
-      url
-      altText
-      width
-      height
+    images(first: 1) {
+      nodes {
+        id
+        url
+        altText
+        width
+        height
+      }
+    }
+    visibility_start: metafield(namespace: "custom", key: "visibility_start") {
+      value
+    }
+    visibility_end: metafield(namespace: "custom", key: "visibility_end") {
+      value
+    }
+    is_limited_time: metafield(namespace: "custom", key: "is_limited_time") {
+      value
+    }
+    average_rating: metafield(namespace: "custom", key: "average_rating") {
+      value
+    }
+    rating_count: metafield(namespace: "custom", key: "rating_count") {
+      value
+    }
+    bogo_free_item: metafield(namespace: "custom", key: "bogo_free_item") {
+      value
+      reference {
+        ... on ProductVariant {
+          id
+        }
+      }
+    }
+    variants(first: 10) {
+      nodes {
+        id
+        title
+        image {
+          url
+          altText
+          width
+          height
+        }
+        price {
+          amount
+          currencyCode
+        }
+        compareAtPrice {
+          amount
+          currencyCode
+        }
+        selectedOptions {
+          name
+          value
+        }
+        product {
+          handle
+          title
+        }
+        storeAvailability(first: 250) {
+          nodes {
+            available
+            location {
+              id
+              name
+            }
+          }
+        }
+      }
     }
   }
   query RecommendedProducts ($country: CountryCode, $language: LanguageCode)
     @inContext(country: $country, language: $language) {
-    products(first: 4, sortKey: UPDATED_AT, reverse: true) {
+    
+    fallbackProducts: products(first: 8, sortKey: UPDATED_AT, reverse: true) {
       nodes {
         ...RecommendedProduct
+      }
+    }
+
+    bestSellers: collection(handle: "best-sellers") {
+      products(first: 8) {
+        nodes {
+          ...RecommendedProduct
+        }
+      }
+    }
+
+    kunafa: collection(handle: "kunafa") {
+      products(first: 8) {
+        nodes {
+          ...RecommendedProduct
+        }
+      }
+    }
+
+    sweets: collection(handle: "sweets") {
+      products(first: 8) {
+        nodes {
+          ...RecommendedProduct
+        }
+      }
+    }
+
+    chocolateCake: collection(handle: "chocolate-cake") {
+      products(first: 8) {
+        nodes {
+          ...RecommendedProduct
+        }
+      }
+    }
+
+    cakes: collection(handle: "cakes") {
+      products(first: 8) {
+        nodes {
+          ...RecommendedProduct
+        }
+      }
+    }
+
+    chocolate: collection(handle: "chocolate") {
+      products(first: 8) {
+        nodes {
+          ...RecommendedProduct
+        }
+      }
+    }
+
+    gifts: collection(handle: "gifts") {
+      products(first: 8) {
+        nodes {
+          ...RecommendedProduct
+        }
+      }
+    }
+
+    gifting: collection(handle: "gifting") {
+      products(first: 8) {
+        nodes {
+          ...RecommendedProduct
+        }
+      }
+    }
+  }
+` as const;
+
+const NEW_ARRIVALS_QUERY = `#graphql
+  fragment NewArrivalProduct on Product {
+    id
+    title
+    handle
+    availableForSale
+    productType
+    tags
+    compareAtPriceRange {
+      minVariantPrice {
+        amount
+        currencyCode
+      }
+    }
+    priceRange {
+      minVariantPrice {
+        amount
+        currencyCode
+      }
+    }
+    images(first: 1) {
+      nodes {
+        id
+        url
+        altText
+        width
+        height
+      }
+    }
+    visibility_start: metafield(namespace: "custom", key: "visibility_start") {
+      value
+    }
+    visibility_end: metafield(namespace: "custom", key: "visibility_end") {
+      value
+    }
+    is_limited_time: metafield(namespace: "custom", key: "is_limited_time") {
+      value
+    }
+    average_rating: metafield(namespace: "custom", key: "average_rating") {
+      value
+    }
+    rating_count: metafield(namespace: "custom", key: "rating_count") {
+      value
+    }
+    bogo_free_item: metafield(namespace: "custom", key: "bogo_free_item") {
+      value
+      reference {
+        ... on ProductVariant {
+          id
+        }
+      }
+    }
+    variants(first: 10) {
+      nodes {
+        id
+        title
+        image {
+          url
+          altText
+          width
+          height
+        }
+        price {
+          amount
+          currencyCode
+        }
+        compareAtPrice {
+          amount
+          currencyCode
+        }
+        selectedOptions {
+          name
+          value
+        }
+        product {
+          handle
+          title
+        }
+        storeAvailability(first: 250) {
+          nodes {
+            available
+            location {
+              id
+              name
+            }
+          }
+        }
+      }
+    }
+  }
+  query NewArrivalsProducts ($country: CountryCode, $language: LanguageCode)
+    @inContext(country: $country, language: $language) {
+    products(first: 4, sortKey: CREATED_AT, reverse: true, query: "tag:special") {
+      nodes {
+        ...NewArrivalProduct
+      }
+    }
+  }
+` as const;
+
+const OCCASIONS_QUERY = `#graphql
+  query Occasions($country: CountryCode, $language: LanguageCode)
+    @inContext(country: $country, language: $language) {
+    collections(first: 100) {
+      nodes {
+        id
+        title
+        handle
+        image {
+          url
+          altText
+          width
+          height
+        }
+      }
+    }
+  }
+` as const;
+
+export const HOMEPAGE_CONFIG_QUERY = `#graphql
+  query HomepageConfig($country: CountryCode, $language: LanguageCode)
+    @inContext(country: $country, language: $language) {
+    metaobjects(type: "homepage_config", first: 1) {
+      nodes {
+        fields {
+          key
+          value
+          reference {
+            ... on MediaImage {
+              image {
+                url
+              }
+            }
+          }
+          references(first: 10) {
+            nodes {
+              ... on Metaobject {
+                fields {
+                  key
+                  value
+                  reference {
+                    ... on MediaImage {
+                      image {
+                        url
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
       }
     }
   }

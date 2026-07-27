@@ -1,4 +1,5 @@
 import {redirect} from 'react-router';
+// @ts-ignore - route types generated during build
 import type {Route} from './+types/cart.$lines';
 
 /**
@@ -23,7 +24,7 @@ export async function loader({request, context, params}: Route.LoaderArgs) {
   const {cart} = context;
   const {lines} = params;
   if (!lines) return redirect('/cart');
-  const linesMap = lines.split(',').map((line) => {
+  const linesMap = lines.split(',').map((line: any) => {
     const lineDetails = line.split(':');
     const variantId = lineDetails[0];
     const quantity = parseInt(lineDetails[1], 10);
@@ -68,3 +69,4 @@ export async function loader({request, context, params}: Route.LoaderArgs) {
 export default function Component() {
   return null;
 }
+

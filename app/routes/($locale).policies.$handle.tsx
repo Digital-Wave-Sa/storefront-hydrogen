@@ -1,5 +1,5 @@
-import {Link, useLoaderData} from 'react-router';
-import type {Route} from './+types/policies.$handle';
+import {data, type LoaderFunctionArgs, type MetaFunction} from 'react-router';
+import {Link, useLoaderData, useRouteLoaderData} from 'react-router';
 import {type Shop} from '@shopify/hydrogen/storefront-api-types';
 
 type SelectedPolicies = keyof Pick<
@@ -7,11 +7,11 @@ type SelectedPolicies = keyof Pick<
   'privacyPolicy' | 'shippingPolicy' | 'termsOfService' | 'refundPolicy'
 >;
 
-export const meta: Route.MetaFunction = ({data}) => {
-  return [{title: `Hydrogen | ${data?.policy.title ?? ''}`}];
+export const meta: MetaFunction<typeof loader> = ({data}) => {
+  return [{title: `Saadeddin | ${data?.policy?.title || 'Policy'}`}];
 };
 
-export async function loader({params, context}: Route.LoaderArgs) {
+export async function loader({params, context}: LoaderFunctionArgs) {
   if (!params.handle) {
     throw new Response('No handle was passed in', {status: 404});
   }
@@ -21,7 +21,7 @@ export async function loader({params, context}: Route.LoaderArgs) {
     (_: unknown, m1: string) => m1.toUpperCase(),
   ) as SelectedPolicies;
 
-  const data = await context.storefront.query(POLICY_CONTENT_QUERY, {
+  const payload = await context.storefront.query(POLICY_CONTENT_QUERY, {
     variables: {
       privacyPolicy: false,
       shippingPolicy: false,
@@ -32,28 +32,32 @@ export async function loader({params, context}: Route.LoaderArgs) {
     },
   });
 
-  const policy = data.shop?.[policyName];
+  const policy = payload.shop?.[policyName];
 
   if (!policy) {
     throw new Response('Could not find the policy', {status: 404});
   }
 
-  return {policy};
+  return data({policy});
 }
 
 export default function Policy() {
   const {policy} = useLoaderData<typeof loader>();
+  const rootData = useRouteLoaderData('root') as any;
+  const isEn = rootData?.locale === 'en';
 
   return (
-    <div className="policy">
+    <div className="policy" dir={isEn ? 'ltr' : 'rtl'}>
       <br />
       <br />
-      <div>
-        <Link to="/policies">← Back to Policies</Link>
+      <div className={isEn ? 'text-left' : 'text-right'}>
+        <Link to="/policies" className="hover:underline">
+            {isEn ? '← Back to Policies' : '← العودة للسياسات'}
+        </Link>
       </div>
       <br />
-      <h1>{policy.title}</h1>
-      <div dangerouslySetInnerHTML={{__html: policy.body}} />
+      <h1 className="text-3xl font-black text-[#234745] mb-6">{policy.title}</h1>
+      <div className="prose max-w-none" dangerouslySetInnerHTML={{__html: policy.body}} />
     </div>
   );
 }

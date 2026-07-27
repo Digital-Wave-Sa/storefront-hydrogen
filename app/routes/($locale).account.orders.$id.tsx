@@ -1,222 +1,309 @@
-import {redirect, useLoaderData} from 'react-router';
-import type {Route} from './+types/account.orders.$id';
-import {Money, Image} from '@shopify/hydrogen';
-import type {
-  OrderLineItemFullFragment,
-  OrderQuery,
-} from 'customer-accountapi.generated';
-import {CUSTOMER_ORDER_QUERY} from '~/graphql/customer-account/CustomerOrderQuery';
+import { useState } from 'react';
+import { data, redirect, type LoaderFunctionArgs, type ActionFunctionArgs } from 'react-router';
+import { Link, useLoaderData, useFetcher, type MetaFunction } from 'react-router';
+import { Money, Image, flattenConnection } from '@shopify/hydrogen';
+import type { OrderLineItemFullFragment } from 'storefrontapi.generated';
+import { Button } from '~/components/layout/Button';
 
-export const meta: Route.MetaFunction = ({data}) => {
-  return [{title: `Order ${data?.order?.name}`}];
+export const meta: MetaFunction<typeof loader> = ({ data }) => {
+  return [{ title: `Order ${data?.order?.name} | Saadeddin` }];
 };
 
-export async function loader({params, context}: Route.LoaderArgs) {
-  const {customerAccount} = context;
+export async function loader({ params, context }: LoaderFunctionArgs) {
+  const { session, storefront } = context;
+
   if (!params.id) {
     return redirect('/account/orders');
   }
 
-  const orderId = atob(params.id);
-  const {data, errors}: {data: OrderQuery; errors?: Array<{message: string}>} =
-    await customerAccount.query(CUSTOMER_ORDER_QUERY, {
-      variables: {
-        orderId,
-        language: customerAccount.i18n.language,
-      },
-    });
+  const orderId = decodeURIComponent(params.id);
+  const customerAccessToken = await session.get('customerAccessToken');
 
-  if (errors?.length || !data?.order) {
-    throw new Error('Order not found');
+  if (!customerAccessToken) {
+    return redirect('/account/login');
   }
 
-  const {order} = data;
+  const { order } = await storefront.query(CUSTOMER_ORDER_QUERY, {
+    variables: { 
+      orderId,
+      country: storefront.i18n.country,
+      language: storefront.i18n.language,
+    },
+  });
 
-  // Extract line items directly from nodes array
-  const lineItems = order.lineItems.nodes;
+  if (!order || !('lineItems' in order)) {
+    throw new Response('Order not found', { status: 404 });
+  }
 
-  // Extract discount applications directly from nodes array
-  const discountApplications = order.discountApplications.nodes;
-
-  // Get fulfillment status from first fulfillment node
-  const fulfillmentStatus = order.fulfillments.nodes[0]?.status ?? 'N/A';
-
-  // Get first discount value with proper type checking
+  const lineItems = flattenConnection(order.lineItems);
+  const discountApplications = order.discountApplications?.nodes || [];
   const firstDiscount = discountApplications[0]?.value;
+  const discountValue = firstDiscount?.__typename === 'MoneyV2' && firstDiscount;
+  const discountPercentage = firstDiscount?.__typename === 'PricingPercentageValue' && firstDiscount?.percentage;
 
-  // Type guard for MoneyV2 discount
-  const discountValue =
-    firstDiscount?.__typename === 'MoneyV2'
-      ? (firstDiscount as Extract<
-          typeof firstDiscount,
-          {__typename: 'MoneyV2'}
-        >)
-      : null;
+  const customAttributes = order.customAttributes || [];
+  const fulfillmentType = customAttributes.find(a => a.key === 'fulfillment_type')?.value || 'Delivery';
+  const branchName = customAttributes.find(a => a.key === 'branch_name')?.value;
+  
+  const rawMetafield = order.order_status?.value || '';
+  const metafieldValue = rawMetafield.toLowerCase().trim();
+  const isReadyManual = metafieldValue === 'ready' || metafieldValue === 'out_for_delivery';
+  const isDeliveredManual = metafieldValue === 'delivered';
 
-  // Type guard for percentage discount
-  const discountPercentage =
-    firstDiscount?.__typename === 'PricingPercentageValue'
-      ? (
-          firstDiscount as Extract<
-            typeof firstDiscount,
-            {__typename: 'PricingPercentageValue'}
-          >
-        ).percentage
-      : null;
+  const locale = storefront.i18n.language.toLowerCase();
 
-  return {
+  return data({
     order,
     lineItems,
     discountValue,
     discountPercentage,
-    fulfillmentStatus,
-  };
+    fulfillmentType,
+    branchName,
+    rawMetafield,
+    isReadyManual,
+    isDeliveredManual,
+    locale,
+  });
+}
+
+export async function action({ request, context }: ActionFunctionArgs) {
+  return data({ error: 'Invalid intent' }, { status: 400 });
 }
 
 export default function OrderRoute() {
-  const {
-    order,
-    lineItems,
-    discountValue,
-    discountPercentage,
-    fulfillmentStatus,
-  } = useLoaderData<typeof loader>();
+  const { order, lineItems, discountValue, discountPercentage, fulfillmentType, branchName, rawMetafield, isReadyManual, isDeliveredManual, locale } = useLoaderData<typeof loader>();
+  const isEn = locale === 'en';
+  const fetcher = useFetcher<any>();
+
+  const isPickup = fulfillmentType === 'Pickup';
+  
+  const isDelivered = order.fulfillmentStatus === 'FULFILLED' || isDeliveredManual;
+  const isReady = isReadyManual || isDelivered;
+
+  const getStatusLabel = (status: string) => {
+    const map: Record<string, any> = {
+      FULFILLED: { en: 'Delivered', ar: 'تم التوصيل' },
+      UNFULFILLED: { en: 'Processing', ar: 'قيد التنفيذ' },
+      PARTIALLY_FULFILLED: { en: 'Ready', ar: 'جاهز' },
+    };
+    return map[status]?.[isEn ? 'en' : 'ar'] || status;
+  };
+
+  const handleReorder = () => {
+    const items = lineItems.map(item => ({
+      merchandiseId: item.variant?.id,
+      quantity: item.quantity,
+    }));
+    
+    const formData = new FormData();
+    formData.append('intent', 'reorder');
+    formData.append('items', JSON.stringify(items));
+    fetcher.submit(formData, { method: 'POST' });
+  };
+
   return (
-    <div className="account-order">
-      <h2>Order {order.name}</h2>
-      <p>Placed on {new Date(order.processedAt!).toDateString()}</p>
-      {order.confirmationNumber && (
-        <p>Confirmation: {order.confirmationNumber}</p>
-      )}
-      <br />
-      <div>
-        <table>
-          <thead>
-            <tr>
-              <th scope="col">Product</th>
-              <th scope="col">Price</th>
-              <th scope="col">Quantity</th>
-              <th scope="col">Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            {lineItems.map((lineItem, lineItemIndex) => (
-              // eslint-disable-next-line react/no-array-index-key
-              <OrderLineRow key={lineItemIndex} lineItem={lineItem} />
-            ))}
-          </tbody>
-          <tfoot>
-            {((discountValue && discountValue.amount) ||
-              discountPercentage) && (
-              <tr>
-                <th scope="row" colSpan={3}>
-                  <p>Discounts</p>
-                </th>
-                <th scope="row">
-                  <p>Discounts</p>
-                </th>
-                <td>
-                  {discountPercentage ? (
-                    <span>-{discountPercentage}% OFF</span>
-                  ) : (
-                    discountValue && <Money data={discountValue!} />
-                  )}
-                </td>
-              </tr>
-            )}
-            <tr>
-              <th scope="row" colSpan={3}>
-                <p>Subtotal</p>
-              </th>
-              <th scope="row">
-                <p>Subtotal</p>
-              </th>
-              <td>
-                <Money data={order.subtotal!} />
-              </td>
-            </tr>
-            <tr>
-              <th scope="row" colSpan={3}>
-                Tax
-              </th>
-              <th scope="row">
-                <p>Tax</p>
-              </th>
-              <td>
-                <Money data={order.totalTax!} />
-              </td>
-            </tr>
-            <tr>
-              <th scope="row" colSpan={3}>
-                Total
-              </th>
-              <th scope="row">
-                <p>Total</p>
-              </th>
-              <td>
-                <Money data={order.totalPrice!} />
-              </td>
-            </tr>
-          </tfoot>
-        </table>
-        <div>
-          <h3>Shipping Address</h3>
-          {order?.shippingAddress ? (
-            <address>
-              <p>{order.shippingAddress.name}</p>
-              {order.shippingAddress.formatted ? (
-                <p>{order.shippingAddress.formatted}</p>
-              ) : (
-                ''
-              )}
-              {order.shippingAddress.formattedArea ? (
-                <p>{order.shippingAddress.formattedArea}</p>
-              ) : (
-                ''
-              )}
-            </address>
-          ) : (
-            <p>No shipping address defined</p>
-          )}
-          <h3>Status</h3>
-          <div>
-            <p>{fulfillmentStatus}</p>
+    <div className="order-details-container animate-fade-in" dir={isEn ? 'ltr' : 'rtl'}>
+      <div className="order-header-section">
+        <div className="order-title-group">
+          <h1>{isEn ? `Order ${order.name}` : `طلب رقم ${order.name}`}</h1>
+          <p className="order-date">
+            {isEn ? 'Placed on ' : 'تم الطلب في '}
+            {new Date(order.processedAt!).toLocaleDateString(isEn ? 'en-US' : 'ar-SA', {
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+            })}
+          </p>
+          <div className="order-meta-badges">
+            <span className={`status-badge fulfillment-${order.fulfillmentStatus?.toLowerCase()}`}>
+              {getStatusLabel(order.fulfillmentStatus!)}
+            </span>
           </div>
         </div>
       </div>
-      <br />
-      <p>
-        <a target="_blank" href={order.statusPageUrl} rel="noreferrer">
-          View Order Status →
-        </a>
-      </p>
+
+      <div className="order-timeline-card">
+        <h3 className="order-card-title">{isEn ? 'Order Status' : 'حالة الطلب'}</h3>
+        <div className="timeline-steps">
+          <TimelineStep 
+            label={isEn ? 'Confirmed' : 'تم التأكيد'} 
+            status="completed" 
+            time={new Date(order.processedAt!).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} 
+          />
+          <TimelineStep 
+            label={isEn ? 'Preparing' : 'قيد التحضير'} 
+            status={isReady ? 'completed' : 'active'} 
+          />
+          <TimelineStep 
+            label={isPickup ? (isEn ? 'Ready for Pickup' : 'جاهز للاستلام') : (isEn ? 'Out for Delivery' : 'جاري التوصيل')} 
+            status={isDelivered ? 'completed' : (isReady ? 'active' : 'pending')} 
+          />
+          <TimelineStep 
+            label={isPickup ? (isEn ? 'Picked Up' : 'تم الاستلام') : (isEn ? 'Delivered' : 'تم التوصيل')} 
+            status={isDelivered ? 'completed' : 'pending'} 
+          />
+        </div>
+      </div>
+
+      <div className="order-grid">
+        <div className="order-main-content">
+          <div className="order-card">
+            <h3 className="order-card-title">{isEn ? 'Order Items' : 'أصناف الطلب'}</h3>
+            <div className="order-line-items">
+              {lineItems.map((item: any, i) => {
+                const isPreorder = item.variant?.product?.tags?.some((t: string) => t.toLowerCase() === 'pre-order') || item.customAttributes?.some((a: any) => a.key === '_is_preorder' && a.value === 'true');
+                const preorderDate = item.customAttributes?.find((a: any) => a.key === 'Pre-order Date' || a.key === 'Availability Date')?.value;
+                
+                return (
+                <div key={i} className="order-line-item">
+                  <div className="line-item-image">
+                    {item.variant?.image && <Image data={item.variant.image} width={80} height={80} />}
+                  </div>
+                  <div className="line-item-info">
+                    <div className="flex items-center gap-2 mb-1">
+                      {isPreorder && (
+                        <span className="px-2 py-0.5 bg-[#FEF8EB] text-[#A67B5B] border border-[#A67B5B]/30 rounded text-[11px] font-bold uppercase tracking-wide">
+                          {isEn ? 'Pre-order' : 'طلب مسبق'}
+                        </span>
+                      )}
+                    </div>
+                    <Link to={`/products/${item.variant?.product?.handle}`} className="line-item-name">
+                      {item.title}
+                    </Link>
+                    {preorderDate && (
+                      <div className="text-[12px] text-amber-600 font-bold mb-1">
+                        {isEn ? `Available: ${preorderDate}` : `متاح: ${preorderDate}`}
+                      </div>
+                    )}
+                    <div className="line-item-price-qty">
+                      <span>{isEn ? 'Qty: ' : 'الكمية: '}{item.quantity}</span>
+                      <Money data={item.discountedTotalPrice!} />
+                    </div>
+                  </div>
+                </div>
+              )})}
+            </div>
+          </div>
+        </div>
+
+        <div className="order-sidebar">
+          <div className="order-card">
+            <h3 className="order-card-title">{isEn ? 'Fulfillment' : 'التوصيل والاستلام'}</h3>
+            <div className="order-info-group">
+              <span className="info-label">{isEn ? 'Method: ' : 'الطريقة: '}</span>
+              <span className="info-value">
+                {isPickup ? (isEn ? 'Self Pickup' : 'استلام من الفرع') : (isEn ? 'Home Delivery' : 'توصيل للمنزل')}
+              </span>
+            </div>
+            {branchName && (
+              <div className="order-info-group mt-2">
+                <span className="info-label">{isEn ? 'Branch: ' : 'الفرع: '}</span>
+                <span className="info-value">{branchName}</span>
+              </div>
+            )}
+          </div>
+          <button className="btn-reorder w-full" onClick={handleReorder}>
+            {isEn ? 'Reorder All Items' : 'إعادة طلب الكل'}
+          </button>
+          {order.financialStatus?.toUpperCase() === 'PAID' && (
+            <a 
+              href={`/api/invoice/${encodeURIComponent(order.name)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full mt-3 bg-white border border-[#234745] text-[#234745] hover:bg-gray-50 py-3.5 rounded-[25px] font-bold flex items-center justify-center gap-2 transition-all text-[15px] cursor-pointer"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+              </svg>
+              {isEn ? 'Download Invoice' : 'تحميل الفاتورة'}
+            </a>
+          )}
+        </div>
+      </div>
+
+
     </div>
   );
 }
 
-function OrderLineRow({lineItem}: {lineItem: OrderLineItemFullFragment}) {
+function TimelineStep({ label, status, time }: { label: string; status: 'completed' | 'active' | 'pending'; time?: string }) {
   return (
-    <tr key={lineItem.id}>
-      <td>
-        <div>
-          {lineItem?.image && (
-            <div>
-              <Image data={lineItem.image} width={96} height={96} />
-            </div>
-          )}
-          <div>
-            <p>{lineItem.title}</p>
-            <small>{lineItem.variantTitle}</small>
-          </div>
-        </div>
-      </td>
-      <td>
-        <Money data={lineItem.price!} />
-      </td>
-      <td>{lineItem.quantity}</td>
-      <td>
-        <Money data={lineItem.totalDiscount!} />
-      </td>
-    </tr>
+    <div className={`timeline-step ${status}`}>
+      <div className="step-dot">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4">
+          <polyline points="20 6 9 17 4 12" />
+        </svg>
+      </div>
+      <span className="step-label">{label}</span>
+      {time && <span className="step-time">{time}</span>}
+    </div>
   );
 }
+
+const CUSTOMER_ORDER_QUERY = `#graphql
+  fragment OrderMoney on MoneyV2 {
+    amount
+    currencyCode
+  }
+  fragment OrderLineItemFull on OrderLineItem {
+    title
+    quantity
+    customAttributes {
+      key
+      value
+    }
+    discountedTotalPrice {
+      ...OrderMoney
+    }
+    variant {
+      id
+      image {
+        url
+        altText
+      }
+      product {
+        handle
+        tags
+      }
+    }
+  }
+  query Order(
+    $country: CountryCode
+    $language: LanguageCode
+    $orderId: ID!
+  ) @inContext(country: $country, language: $language) {
+    order: node(id: $orderId) {
+      ... on Order {
+        id
+        name
+        processedAt
+        fulfillmentStatus
+        financialStatus
+        order_status: metafield(namespace: "custom", key: "order_status") {
+          value
+        }
+        totalTaxV2 { ...OrderMoney }
+        totalPriceV2 { ...OrderMoney }
+        subtotalPriceV2 { ...OrderMoney }
+        customAttributes {
+          key
+          value
+        }
+        discountApplications(first: 10) {
+          nodes {
+            value {
+              __typename
+              ... on MoneyV2 { ...OrderMoney }
+              ... on PricingPercentageValue { percentage }
+            }
+          }
+        }
+        lineItems(first: 100) {
+          nodes { ...OrderLineItemFull }
+        }
+      }
+    }
+  }
+` as const;

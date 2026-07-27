@@ -6,12 +6,32 @@
 // Enhance TypeScript's built-in typings.
 import '@total-typescript/ts-reset';
 
-
-// env.d.ts
-declare module 'virtual:react-router/server-build' {
-  export const routes: any;
-  export const assets: any;
-  export const entry: any;
-  export const future: any;
-  export const publicPath: string;
+declare global {
+  interface Env {
+    SESSION_SECRET: string;
+    PUBLIC_STOREFRONT_API_TOKEN: string;
+    PRIVATE_STOREFRONT_API_TOKEN: string;
+    PUBLIC_STORE_DOMAIN: string;
+    PUBLIC_STOREFRONT_ID: string;
+    PUBLIC_CUSTOMER_ACCOUNT_API_CLIENT_ID: string;
+    PUBLIC_CUSTOMER_ACCOUNT_API_URL: string;
+    PUBLIC_CHECKOUT_DOMAIN: string;
+    SHOPIFY_ADMIN_API_ACCESS_TOKEN: string;
+    GOOGLE_CLIENT_ID: string;
+    GOOGLE_CLIENT_SECRET: string;
+    FACEBOOK_CLIENT_ID: string;
+    FACEBOOK_CLIENT_SECRET: string;
+    APPLE_CLIENT_ID: string;
+    PUBLIC_GOOGLE_MAPS_KEY: string;
+    PUBLIC_GOOGLE_PLACES_KEY: string;
+    PUBLIC_GOOGLE_GEOCODING_KEY: string;
+    PUBLIC_GOOGLE_DISTANCE_MATRIX_KEY: string;
+    PUBLIC_GTM_ID: string;
+    PUBLIC_GA4_MEASUREMENT_ID: string;
+    PUBLIC_SMILE_CHANNEL_KEY: string;
+    SHOPIFY_SHOP: string;
+    MIDDLEWARE_URL: string;
+    CUSTOM_API_URL: string;
+    SDLP_APP_URL?: string;
+  }
 }

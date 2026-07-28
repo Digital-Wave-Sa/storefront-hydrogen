@@ -275,7 +275,7 @@ export function ProductItem({
           })()}
 
           {/* Wishlist Heart Icon */}
-          <div className={`absolute top-2 md:top-4 ${isEn ? 'right-2 md:right-4' : 'left-2 md:left-4'} z-20`}>
+          <div className={`absolute top-2 md:top-3 ${isEn ? 'right-2 md:right-3' : 'left-2 md:left-3'} z-20`}>
             <button
               onClick={(e) => {
                 e.preventDefault();

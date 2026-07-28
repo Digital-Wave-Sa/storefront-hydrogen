@@ -71,7 +71,7 @@ export function AccountProfileHeader({
               {/* Stats Row */}
               <div className="flex items-center justify-start gap-8 md:justify-start w-full md:w-auto gap-2 md:gap-14 mt-1">
                 <div className="text-center">
-                  <p className="text-[14px] md:text-[22px] font-bold leading-none text-white mb-1 md:mb-2 font-en">{customer.numberOfOrders || 0}</p>
+                  <p className="text-[14px] md:text-[22px] font-bold leading-none text-white mb-1 md:mb-2 font-en">{customer.numberOfOrders ?? customer.orders?.nodes?.length ?? 0}</p>
                   <p className="text-[12px] md:text-[12px] text-[#9FB7AE] font-normal opacity-90">
                     {isEn ? 'Orders' : 'طلب'}
                   </p>

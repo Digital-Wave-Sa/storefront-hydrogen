@@ -1,4 +1,4 @@
-﻿import { data as json, type LoaderFunctionArgs, useLoaderData, useNavigate } from 'react-router';
+import { data as json, type LoaderFunctionArgs, useLoaderData, useNavigate } from 'react-router';
 import { useState } from 'react';
 
 export async function loader({ params, context }: LoaderFunctionArgs) {
@@ -59,7 +59,13 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
       }
     `;
 
-    const res = await fetch(`https://${context.env.PUBLIC_STORE_DOMAIN}/admin/api/2023-10/graphql.json`, {
+    const rawId = decodeURIComponent(orderNumber || '').trim();
+    const cleanNum = rawId.replace(/^#/, '');
+
+    // 1. Primary GraphQL query using broad search string
+    const searchQuery = `name:#${cleanNum} OR name:${cleanNum} OR name:*${cleanNum}* OR ${cleanNum}`;
+
+    let res = await fetch(`https://${context.env.PUBLIC_STORE_DOMAIN}/admin/api/2023-10/graphql.json`, {
         method: 'POST',
         headers: {
             'X-Shopify-Access-Token': adminToken,
@@ -67,12 +73,119 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
         },
         body: JSON.stringify({
             query,
-            variables: { query: `name:${orderNumber}` }
+            variables: { query: searchQuery }
         })
     });
 
-    const jsonRes = await res.json() as any;
-    const orderNode = jsonRes?.data?.orders?.edges?.[0]?.node;
+    let jsonRes = await res.json() as any;
+    let orderNode = jsonRes?.data?.orders?.edges?.[0]?.node;
+
+    // 2. Direct GID lookup fallback (if ID is numeric long ID e.g. 7037127885033)
+    if (!orderNode && /^\d{7,}$/.test(cleanNum)) {
+        const idQuery = `
+          query GetOrderById($id: ID!) {
+            order(id: $id) {
+              id
+              name
+              processedAt
+              canceledAt
+              displayFinancialStatus
+              displayFulfillmentStatus
+              statusPageUrl
+              totalPriceSet { shopMoney { amount } }
+              subtotalPriceSet { shopMoney { amount } }
+              totalTaxSet { shopMoney { amount } }
+              totalShippingPriceSet { shopMoney { amount } }
+              paymentGatewayNames
+              shippingLine { title }
+              shippingAddress { address1 city }
+              customAttributes { key value }
+              order_status: metafield(namespace: "custom", key: "order_status") { value }
+              lineItems(first: 20) {
+                edges {
+                  node {
+                    title
+                    variantTitle
+                    originalUnitPriceSet { shopMoney { amount } }
+                    image { url }
+                  }
+                }
+              }
+            }
+          }
+        `;
+        const resById = await fetch(`https://${context.env.PUBLIC_STORE_DOMAIN}/admin/api/2023-10/graphql.json`, {
+            method: 'POST',
+            headers: {
+                'X-Shopify-Access-Token': adminToken,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                query: idQuery,
+                variables: { id: `gid://shopify/Order/${cleanNum}` }
+            })
+        });
+        const jsonResById = await resById.json() as any;
+        orderNode = jsonResById?.data?.order;
+    }
+
+    // 3. Scan recent 25 orders fallback if Shopify search index hasn't indexed the query string
+    if (!orderNode) {
+        const recentQuery = `
+          query GetRecentOrders {
+            orders(first: 25, sortKey: CREATED_AT, reverse: true) {
+              edges {
+                node {
+                  id
+                  name
+                  processedAt
+                  canceledAt
+                  displayFinancialStatus
+                  displayFulfillmentStatus
+                  statusPageUrl
+                  totalPriceSet { shopMoney { amount } }
+                  subtotalPriceSet { shopMoney { amount } }
+                  totalTaxSet { shopMoney { amount } }
+                  totalShippingPriceSet { shopMoney { amount } }
+                  paymentGatewayNames
+                  shippingLine { title }
+                  shippingAddress { address1 city }
+                  customAttributes { key value }
+                  order_status: metafield(namespace: "custom", key: "order_status") { value }
+                  lineItems(first: 20) {
+                    edges {
+                      node {
+                        title
+                        variantTitle
+                        originalUnitPriceSet { shopMoney { amount } }
+                        image { url }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        `;
+        const resRecent = await fetch(`https://${context.env.PUBLIC_STORE_DOMAIN}/admin/api/2023-10/graphql.json`, {
+            method: 'POST',
+            headers: {
+                'X-Shopify-Access-Token': adminToken,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ query: recentQuery })
+        });
+        const jsonRecent = await resRecent.json() as any;
+        const edges = jsonRecent?.data?.orders?.edges || [];
+        const matchEdge = edges.find(({ node }: any) => {
+            const nodeName = (node.name || '').replace(/^#/, '').toLowerCase();
+            const nodeId = (node.id || '').split('/').pop();
+            return nodeName === cleanNum.toLowerCase() || nodeId === cleanNum;
+        });
+        if (matchEdge) {
+            orderNode = matchEdge.node;
+        }
+    }
 
     if (!orderNode) {
         throw new Response('Order Not Found', { status: 404 });

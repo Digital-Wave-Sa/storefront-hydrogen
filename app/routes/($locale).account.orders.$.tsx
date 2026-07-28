@@ -22,8 +22,9 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
     const fullGid = `gid://shopify/Order/${numericId}`;
 
     try {
-      const { getAdminToken } = await import('~/lib/shopify-admin.server');
+      const { getAdminToken, getAdminDomain } = await import('~/lib/shopify-admin.server');
       const adminToken = await getAdminToken(context.env);
+      const adminDomain = getAdminDomain(context.env);
 
       // Query Admin API for the order number using full GID
       const query = `
@@ -36,7 +37,7 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
       `;
 
       const res = await fetch(
-        `https://${context.env.PUBLIC_STORE_DOMAIN}/admin/api/2023-10/graphql.json`,
+        `https://${adminDomain}/admin/api/2023-10/graphql.json`,
         {
           method: 'POST',
           headers: {
@@ -83,7 +84,7 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 
       const cleanQuery = decoded.replace(/[^\w#]/g, '');
       const res = await fetch(
-        `https://${context.env.PUBLIC_STORE_DOMAIN}/admin/api/2023-10/graphql.json`,
+        `https://${adminDomain}/admin/api/2023-10/graphql.json`,
         {
           method: 'POST',
           headers: {

@@ -10,8 +10,9 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
         throw new Response('Order number required', { status: 400 });
     }
 
-    const { getAdminToken } = await import('~/lib/shopify-admin.server');
+    const { getAdminToken, getAdminDomain } = await import('~/lib/shopify-admin.server');
     const adminToken = await getAdminToken(context.env);
+    const adminDomain = getAdminDomain(context.env);
 
     // Fetch order from Admin GraphQL API to get line item images + pickup detection + order status metafield
     const query = `
@@ -65,7 +66,7 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
     // 1. Primary GraphQL query using broad search string
     const searchQuery = `name:#${cleanNum} OR name:${cleanNum} OR name:*${cleanNum}* OR ${cleanNum}`;
 
-    let res = await fetch(`https://${context.env.PUBLIC_STORE_DOMAIN}/admin/api/2023-10/graphql.json`, {
+    let res = await fetch(`https://${adminDomain}/admin/api/2023-10/graphql.json`, {
         method: 'POST',
         headers: {
             'X-Shopify-Access-Token': adminToken,
@@ -114,7 +115,7 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
             }
           }
         `;
-        const resById = await fetch(`https://${context.env.PUBLIC_STORE_DOMAIN}/admin/api/2023-10/graphql.json`, {
+        const resById = await fetch(`https://${adminDomain}/admin/api/2023-10/graphql.json`, {
             method: 'POST',
             headers: {
                 'X-Shopify-Access-Token': adminToken,
@@ -167,7 +168,7 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
             }
           }
         `;
-        const resRecent = await fetch(`https://${context.env.PUBLIC_STORE_DOMAIN}/admin/api/2023-10/graphql.json`, {
+        const resRecent = await fetch(`https://${adminDomain}/admin/api/2023-10/graphql.json`, {
             method: 'POST',
             headers: {
                 'X-Shopify-Access-Token': adminToken,

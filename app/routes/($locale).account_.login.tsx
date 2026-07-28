@@ -285,9 +285,11 @@ export async function action({ request, context }: ActionFunctionArgs) {
     let resolvedCustomerId: string | null = null;
 
     let adminToken: string | null = null;
+    let adminDomain: string = '';
     try {
-      const { getAdminToken } = await import('~/lib/shopify-admin.server');
+      const { getAdminToken, getAdminDomain } = await import('~/lib/shopify-admin.server');
       adminToken = await getAdminToken(env);
+      adminDomain = getAdminDomain(env);
     } catch (_) {}
 
     if (adminToken) {
@@ -297,7 +299,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
       if (crmShopifyId) {
         const numericId = String(crmShopifyId).split('/').pop()!;
         const verifyRes = await fetch(
-          `https://${env.PUBLIC_STORE_DOMAIN}/admin/api/2024-01/customers/${numericId}.json?fields=id,email`,
+          `https://${adminDomain}/admin/api/2024-01/customers/${numericId}.json?fields=id,email`,
           { headers: { 'X-Shopify-Access-Token': adminToken } }
         );
         if (verifyRes.ok) {
@@ -310,7 +312,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
       // 2. Search by phone
       if (!resolvedCustomerId) {
         const searchRes = await fetch(
-          `https://${env.PUBLIC_STORE_DOMAIN}/admin/api/2024-01/customers/search.json?query=phone:"${encodeURIComponent(savedPhone)}"&fields=id,email`,
+          `https://${adminDomain}/admin/api/2024-01/customers/search.json?query=phone:"${encodeURIComponent(savedPhone)}"&fields=id,email`,
           { headers: { 'X-Shopify-Access-Token': adminToken } }
         );
         if (searchRes.ok) {
@@ -331,7 +333,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
         const createEmail = resolvedEmail || `${savedPhone.replace(/\D/g, '')}@saadeddin.placeholder`;
 
         const createRes = await fetch(
-          `https://${env.PUBLIC_STORE_DOMAIN}/admin/api/2024-01/customers.json`,
+          `https://${adminDomain}/admin/api/2024-01/customers.json`,
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-Shopify-Access-Token': adminToken },
@@ -358,7 +360,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
           // Customer exists with same phone/email — search by email
           if (resolvedEmail) {
             const emailSearchRes = await fetch(
-              `https://${env.PUBLIC_STORE_DOMAIN}/admin/api/2024-01/customers/search.json?query=email:"${encodeURIComponent(resolvedEmail)}"&fields=id,email`,
+              `https://${adminDomain}/admin/api/2024-01/customers/search.json?query=email:"${encodeURIComponent(resolvedEmail)}"&fields=id,email`,
               { headers: { 'X-Shopify-Access-Token': adminToken } }
             );
             if (emailSearchRes.ok) {
@@ -376,7 +378,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
       // 4. Always reset password so Storefront mutation works
       if (resolvedCustomerId) {
         await fetch(
-          `https://${env.PUBLIC_STORE_DOMAIN}/admin/api/2024-01/customers/${resolvedCustomerId}.json`,
+          `https://${adminDomain}/admin/api/2024-01/customers/${resolvedCustomerId}.json`,
           {
             method: 'PUT',
             headers: { 'X-Shopify-Access-Token': adminToken, 'Content-Type': 'application/json' },

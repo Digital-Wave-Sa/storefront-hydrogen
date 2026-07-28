@@ -215,26 +215,40 @@ export function HeroSlider({ config }: { config?: any }) {
 
                     {/* Buttons */}
                     <div className="flex flex-col lg:flex-row items-center gap-[8px] w-full mt-4 lg:mt-6">
-                      {slide.buttons?.map((btn, i) => (
-                        <NavLink
-                          key={i}
-                          to={btn.url}
-                          className={`flex items-center !no-underline justify-center transition-all duration-300 hover:!bg-[#F9F9F9] transform w-full lg:w-[277px] h-[48px] py-[12px] px-[20px] rounded-[24px] ${btn.type === 'filled'
-                            ? 'bg-[#BBCFCD] text-[#234745]'
-                            : 'bg-transparent text-[#F9F9F9] border border-[#BBCFCD]'
-                            }`}
-                          style={{
-                            fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
-                            fontWeight: 700,
-                            fontSize: '18px',
-                            lineHeight: '100%',
-                            textAlign: 'center',
-                            color: btn.type === 'filled' ? '#234745' : '#F9F9F9'
-                          }}
-                        >
-                          <span>{isEn ? btn.text.en : btn.text.ar}</span>
-                        </NavLink>
-                      ))}
+                      {slide.buttons?.map((btn, i) => {
+                        const targetUrl = (() => {
+                          const url = btn.url || '';
+                          if (!url) return isEn ? '/en' : '/';
+                          if (url.startsWith('http://') || url.startsWith('https://')) return url;
+                          const path = url.startsWith('/') ? url : `/${url}`;
+                          if (isEn) {
+                            return path.startsWith('/en') ? path : `/en${path}`;
+                          } else {
+                            return path.startsWith('/en/') ? path.replace(/^\/en/, '') : (path === '/en' ? '/' : path);
+                          }
+                        })();
+
+                        return (
+                          <NavLink
+                            key={i}
+                            to={targetUrl}
+                            className={`flex items-center !no-underline justify-center transition-all duration-300 hover:!bg-[#F9F9F9] transform w-full lg:w-[277px] h-[48px] py-[12px] px-[20px] rounded-[24px] ${btn.type === 'filled'
+                              ? 'bg-[#BBCFCD] text-[#234745]'
+                              : 'bg-transparent text-[#F9F9F9] border border-[#BBCFCD]'
+                              }`}
+                            style={{
+                              fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
+                              fontWeight: 700,
+                              fontSize: '18px',
+                              lineHeight: '100%',
+                              textAlign: 'center',
+                              color: btn.type === 'filled' ? '#234745' : '#F9F9F9'
+                            }}
+                          >
+                            <span>{isEn ? btn.text.en : btn.text.ar}</span>
+                          </NavLink>
+                        );
+                      })}
                     </div>
                   </div>
                 </div>

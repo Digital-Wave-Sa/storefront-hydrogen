@@ -21,7 +21,14 @@ export function RamadanBanner({ config }: { config?: any }) {
     const badgeAr = getField('badge_ar') || 'عرض محدود';
     const btnTextEn = getField('button_text_en') || 'Shop the Collection';
     const btnTextAr = getField('button_text_ar') || 'تسوق التشكيلة الان';
-    const btnLink = getField('button_link') || (isEn ? "/en/collections/ramadan" : "/collections/ramadan");
+    const rawBtnLink = getField('button_link') || '/collections/ramadan';
+    const btnLink = (() => {
+        if (!rawBtnLink) return isEn ? '/en' : '/';
+        if (rawBtnLink.startsWith('http://') || rawBtnLink.startsWith('https://')) return rawBtnLink;
+        const path = rawBtnLink.startsWith('/') ? rawBtnLink : `/${rawBtnLink}`;
+        if (isEn) return path.startsWith('/en') ? path : `/en${path}`;
+        return path.startsWith('/en/') ? path.replace(/^\/en/, '') : (path === '/en' ? '/' : path);
+    })();
     const imageUrl = getRefUrl('image') || getRefUrl('ramadan_image') || '/images/ramadan-offers-section.webp';
 
     // Simple countdown logic starting from 14 days

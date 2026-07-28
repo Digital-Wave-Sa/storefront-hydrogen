@@ -189,7 +189,7 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
     }
 
     if (!orderNode) {
-        throw new Response('Order Not Found', { status: 404 });
+        return json({ isEn, orderData: null, searchedId: orderNumber });
     }
 
     const shippingAmount = parseFloat(orderNode.totalShippingPriceSet?.shopMoney?.amount || '0');
@@ -262,8 +262,48 @@ const CurrencyIcon = ({ className }: { className?: string }) => (
 );
 
 export default function TrackOrderPage() {
-    const { isEn, orderData } = useLoaderData<typeof loader>();
+    const loaderData = useLoaderData<typeof loader>();
+    const isEn = loaderData.isEn;
+    const orderData = loaderData.orderData;
+    const searchedId = (loaderData as any).searchedId || '';
     const navigate = useNavigate();
+    const [searchInput, setSearchInput] = useState('');
+
+    if (!orderData) {
+        return (
+            <div className={`min-h-screen bg-[#FEF8EB] ${isEn ? 'font-en' : "font-['GE_Dinar_One']"} py-16 px-4 flex flex-col items-center justify-center text-center`} dir={isEn ? 'ltr' : 'rtl'}>
+                <div className="bg-white rounded-[20px] border border-[#EBEBEB] p-8 md:p-12 max-w-[500px] w-full shadow-sm flex flex-col items-center">
+                    <div className="w-16 h-16 rounded-full bg-[#FEF8EB] text-[#234745] flex items-center justify-center mb-6">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        </svg>
+                    </div>
+                    <h2 className="text-[22px] font-black text-[#1A1A1A] mb-2">
+                        {isEn ? `Order #${searchedId} Not Found` : `لم يتم العثور على الطلب #${searchedId}`}
+                    </h2>
+                    <p className="text-[#8B8B8B] text-[14px] mb-8 leading-relaxed">
+                        {isEn ? 'Please verify your order number and try searching again, or go to your account orders.' : 'يرجى التأكد من كتابة رقم الطلب بشكل صحيح والبحث مجدداً، أو الانتقال إلى حسابك لعرض طلباتك.'}
+                    </p>
+                    <form onSubmit={(e) => { e.preventDefault(); if (searchInput.trim()) navigate(isEn ? `/en/track-order/${searchInput.trim()}` : `/track-order/${searchInput.trim()}`); }} className="w-full flex flex-col gap-3 mb-6">
+                        <input
+                            type="text"
+                            value={searchInput}
+                            onChange={(e) => setSearchInput(e.target.value)}
+                            placeholder={isEn ? "Enter Order Number (e.g. 1010)" : "أدخل رقم الطلب (مثال: 1010)"}
+                            className="w-full px-5 py-3.5 rounded-full border border-[#BBCFCD] focus:outline-none focus:border-[#234745] text-[14px] text-center"
+                        />
+                        <button type="submit" className="w-full bg-[#234745] text-white py-3.5 rounded-full font-bold text-[14px] hover:bg-[#1a3533] transition-colors">
+                            {isEn ? 'Search Order' : 'بحث عن الطلب'}
+                        </button>
+                    </form>
+                    <button onClick={() => navigate(isEn ? '/en/account/orders' : '/account/orders')} className="text-[#234745] font-bold text-[14px] hover:underline">
+                        {isEn ? 'Go to My Orders' : 'الانتقال إلى طلباتي'}
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
     const forceEnNums = (text: string | number | undefined | null) => {
         if (text == null) return text;

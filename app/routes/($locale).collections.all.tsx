@@ -614,7 +614,7 @@ export function FilterSidebar({ filters, collections, onClose, isDesktop = false
 
   const isOccasionOrGift = (handle: string) => {
     const occasions = ['wedding', 'ramadan', 'birthdays', 'eid', 'new-baby', 'national-day', 'mothers-day', 'graduation', 'corporate-gifts', 'occasions'];
-    return handle.startsWith('gifts-for-') || handle === 'gifts' || handle === 'gifting' || occasions.includes(handle);
+    return handle.startsWith('gifts-for-') || handle === 'gifts' || handle === 'gifting' || occasions.includes(handle) || handle === 'all' || handle === 'frontpage';
   };
   const localOccasionTranslation: { [key: string]: string } = {
     'wedding': 'زفاف وخطوبة',
@@ -647,6 +647,8 @@ export function FilterSidebar({ filters, collections, onClose, isDesktop = false
     'coffee-and-dates': 'القهوة والتمر',
     'ice-cream': 'الآيس كريم',
     'kunafa': 'كنافة',
+    'maamoul': 'معمول',
+    'baklava': 'بقلاوة',
     'all': 'الكل',
   };
   const localValueTranslation: { [key: string]: string } = {
@@ -657,7 +659,19 @@ export function FilterSidebar({ filters, collections, onClose, isDesktop = false
     'yes': 'نعم',
     'no': 'لا',
   };
-  const categoryCollections = collections.filter((c: any) => !isOccasionOrGift(c.handle));
+  const dynamicCategoryCollections = (collections || []).filter((c: any) => !isOccasionOrGift(c.handle));
+
+  const DEFAULT_CATEGORIES = [
+    { id: 'cat-chocolate', handle: 'chocolate', title: isEn ? 'Chocolate' : 'الشوكولاته' },
+    { id: 'cat-cakes', handle: 'cakes', title: isEn ? 'Cakes' : 'الكيك' },
+    { id: 'cat-oriental', handle: 'oriental-sweets', title: isEn ? 'Oriental Sweets' : 'الحلويات الشرقية' },
+    { id: 'cat-baklava', handle: 'baklava', title: isEn ? 'Baklava' : 'بقلاوة' },
+    { id: 'cat-maamoul', handle: 'maamoul', title: isEn ? 'Maamoul' : 'معمول' },
+    { id: 'cat-pastries', handle: 'pastries', title: isEn ? 'Pastries' : 'المعجنات' },
+    { id: 'cat-sweets', handle: 'sweets', title: isEn ? 'Sweets' : 'الحلويات' },
+  ];
+
+  const categoryCollections = dynamicCategoryCollections.length > 0 ? dynamicCategoryCollections : DEFAULT_CATEGORIES;
 
   const occasionHandles = ['wedding', 'ramadan', 'birthdays', 'eid', 'new-baby', 'national-day', 'mothers-day', 'graduation', 'corporate-gifts'];
   const order = ['eid', 'ramadan', 'birthdays', 'wedding', 'graduation', 'mothers-day', 'national-day', 'corporate-gifts'];
@@ -913,41 +927,39 @@ export function FilterSidebar({ filters, collections, onClose, isDesktop = false
           </>
         )}
 
-        {/* Categories - Dynamic from Collections */}
-        {categoryCollections && categoryCollections.length > 0 && (
-          <div className="w-[270px] flex flex-col gap-4">
-            <button type="button" onClick={() => toggleSection('categories')} className="flex items-center justify-between w-full outline-none group">
-              <h3 className={`text-[16px] font-bold ${isEn ? 'font-en' : "font-['GE_Dinar_One']"} text-[#171717]`}>{isEn ? 'Categories' : 'الأقسام'}</h3>
-              <svg className={`w-4 h-4 text-[#234745] transition-transform duration-300 ${openSections['categories'] ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-            <div className={`flex flex-col gap-4 transition-all duration-300 overflow-hidden ${openSections['categories'] ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'}`}>
-              {categoryCollections.map((collection: any) => {
-                const isActive = currentParams.getAll('category').includes(collection.handle);
-                return (
-                  <button type="button" key={collection.id} onClick={() => toggleParamLink('category', collection.handle)} className="flex items-center justify-between w-full outline-none group text-start">
-                    <div className="flex items-center gap-2">
-                      <div className={`w-4 h-4 rounded flex items-center justify-center transition-colors ${isActive ? 'bg-[#234745]' : 'border-[1.14px] border-[#BBCFCD] bg-white group-hover:border-[#234745]'}`}>
-                        {isActive && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><polyline points="20 6 9 17 4 12"></polyline></svg>}
-                      </div>
-                      <span className={`text-[16px] font-medium ${isEn ? 'font-en' : "font-['GE_Dinar_One']"} transition-colors ${isActive ? 'text-[#234745]' : 'text-[#7D7D7D] group-hover:text-[#234745]'}`}>
-                        {!isEn && localCategoryTranslation[collection.handle] ? localCategoryTranslation[collection.handle] : collection.title}
-                      </span>
+        {/* Categories - Dynamic from Collections with Fallbacks */}
+        <div className="w-[270px] flex flex-col gap-4">
+          <button type="button" onClick={() => toggleSection('categories')} className="flex items-center justify-between w-full outline-none group">
+            <h3 className={`text-[16px] font-bold ${isEn ? 'font-en' : "font-['GE_Dinar_One']"} text-[#171717]`}>{isEn ? 'Categories' : 'الأقسام'}</h3>
+            <svg className={`w-4 h-4 text-[#234745] transition-transform duration-300 ${openSections['categories'] ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+          <div className={`flex flex-col gap-4 transition-all duration-300 overflow-hidden ${openSections['categories'] ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'}`}>
+            {categoryCollections.map((collection: any) => {
+              const isActive = currentParams.getAll('category').includes(collection.handle);
+              return (
+                <button type="button" key={collection.id} onClick={() => toggleParamLink('category', collection.handle)} className="flex items-center justify-between w-full outline-none group text-start">
+                  <div className="flex items-center gap-2">
+                    <div className={`w-4 h-4 rounded flex items-center justify-center transition-colors ${isActive ? 'bg-[#234745]' : 'border-[1.14px] border-[#BBCFCD] bg-white group-hover:border-[#234745]'}`}>
+                      {isActive && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><polyline points="20 6 9 17 4 12"></polyline></svg>}
                     </div>
-                    <span className={`text-[16px] font-medium ${isEn ? 'font-en text-[#7D7D7D]' : "font-['GE_Dinar_One'] text-[#7D7D7D]"}`}>
-                      {collection.products?.nodes !== undefined ? (
-                        <>
-                          (<span className="font-en">{collection.products.nodes.length}</span>)
-                        </>
-                      ) : ''}
+                    <span className={`text-[16px] font-medium ${isEn ? 'font-en' : "font-['GE_Dinar_One']"} transition-colors ${isActive ? 'text-[#234745]' : 'text-[#7D7D7D] group-hover:text-[#234745]'}`}>
+                      {!isEn && localCategoryTranslation[collection.handle] ? localCategoryTranslation[collection.handle] : collection.title}
                     </span>
-                  </button>
-                );
-              })}
-            </div>
+                  </div>
+                  <span className={`text-[16px] font-medium ${isEn ? 'font-en text-[#7D7D7D]' : "font-['GE_Dinar_One'] text-[#7D7D7D]"}`}>
+                    {collection.products?.nodes !== undefined ? (
+                      <>
+                        (<span className="font-en">{collection.products.nodes.length}</span>)
+                      </>
+                    ) : ''}
+                  </span>
+                </button>
+              );
+            })}
           </div>
-        )}
+        </div>
 
         <div className="w-[302px] border-t border-[#BBCFCD]/50 my-0" />
 

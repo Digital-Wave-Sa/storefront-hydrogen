@@ -1,70 +1,62 @@
-import { useState } from 'react';
-import { data, redirect, type LoaderFunctionArgs, type ActionFunctionArgs } from 'react-router';
-import { Link, useLoaderData, useFetcher, type MetaFunction } from 'react-router';
-import { Money, Image, flattenConnection } from '@shopify/hydrogen';
-import type { OrderLineItemFullFragment } from 'storefrontapi.generated';
-import { Button } from '~/components/layout/Button';
-
-export const meta: MetaFunction<typeof loader> = ({ data }) => {
-  return [{ title: `Order ${data?.order?.name} | Saadeddin` }];
-};
+import { redirect, type LoaderFunctionArgs } from 'react-router';
 
 export async function loader({ params, context }: LoaderFunctionArgs) {
-  const { session, storefront } = context;
-
   if (!params.id) {
     return redirect('/account/orders');
   }
 
+  const locale = context.storefront.i18n.language.toLowerCase();
+  const isEn = locale === 'en';
   const orderId = decodeURIComponent(params.id);
-  const customerAccessToken = await session.get('customerAccessToken');
 
-  if (!customerAccessToken) {
-    return redirect('/account/login');
+  // If it's already a plain order number (e.g. "1010"), redirect directly
+  if (/^\d+$/.test(orderId)) {
+    return redirect(isEn ? `/en/track-order/${orderId}` : `/track-order/${orderId}`);
   }
 
-  const { order } = await storefront.query(CUSTOMER_ORDER_QUERY, {
-    variables: { 
-      orderId,
-      country: storefront.i18n.country,
-      language: storefront.i18n.language,
-    },
-  });
+  // It's a GID (gid://shopify/Order/12345) — resolve to order number via Admin API
+  try {
+    const { getAdminToken } = await import('~/lib/shopify-admin.server');
+    const adminToken = await getAdminToken(context.env);
 
-  if (!order || !('lineItems' in order)) {
-    throw new Response('Order not found', { status: 404 });
+    // Extract numeric ID from GID
+    const numericId = orderId.split('/').pop();
+    const query = `
+      query GetOrderName($id: ID!) {
+        order(id: $id) {
+          name
+          orderNumber
+        }
+      }
+    `;
+
+    const res = await fetch(`https://${context.env.PUBLIC_STORE_DOMAIN}/admin/api/2023-10/graphql.json`, {
+      method: 'POST',
+      headers: {
+        'X-Shopify-Access-Token': adminToken,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ query, variables: { id: orderId } }),
+    });
+
+    const json = await res.json() as any;
+    const orderNumber = json?.data?.order?.orderNumber;
+
+    if (orderNumber) {
+      return redirect(isEn ? `/en/track-order/${orderNumber}` : `/track-order/${orderNumber}`);
+    }
+  } catch (_) {
+    // fallback below
   }
 
-  const lineItems = flattenConnection(order.lineItems);
-  const discountApplications = order.discountApplications?.nodes || [];
-  const firstDiscount = discountApplications[0]?.value;
-  const discountValue = firstDiscount?.__typename === 'MoneyV2' && firstDiscount;
-  const discountPercentage = firstDiscount?.__typename === 'PricingPercentageValue' && firstDiscount?.percentage;
-
-  const customAttributes = order.customAttributes || [];
-  const fulfillmentType = customAttributes.find(a => a.key === 'fulfillment_type')?.value || 'Delivery';
-  const branchName = customAttributes.find(a => a.key === 'branch_name')?.value;
-  
-  const rawMetafield = order.order_status?.value || '';
-  const metafieldValue = rawMetafield.toLowerCase().trim();
-  const isReadyManual = metafieldValue === 'ready' || metafieldValue === 'out_for_delivery';
-  const isDeliveredManual = metafieldValue === 'delivered';
-
-  const locale = storefront.i18n.language.toLowerCase();
-
-  return data({
-    order,
-    lineItems,
-    discountValue,
-    discountPercentage,
-    fulfillmentType,
-    branchName,
-    rawMetafield,
-    isReadyManual,
-    isDeliveredManual,
-    locale,
-  });
+  return redirect(isEn ? `/en/account/orders` : `/account/orders`);
 }
+
+// Stub export so the route module is valid
+export default function OrderRedirect() {
+  return null;
+}
+
 
 export async function action({ request, context }: ActionFunctionArgs) {
   return data({ error: 'Invalid intent' }, { status: 400 });

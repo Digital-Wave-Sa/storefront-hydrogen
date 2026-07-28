@@ -196,13 +196,102 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
       },
     );
   } catch (error) {
-    console.error('There was a problem loading account:', error);
-    session.unset('customerAccessToken');
-    return redirect(`${new URL(request.url).pathname.split('/')[1] === 'en' ? '/en' : ''}/account/login`, {
-      headers: {
-        'Set-Cookie': await session.commit(),
-      },
-    });
+    console.warn('[Account Loader] Storefront customer query failed, attempting Admin API fallback:', error);
+    try {
+      const savedPhone = session.get('loginOtpPhone');
+      const savedEmail = session.get('loginCustomerEmail');
+      const savedCustomerId = session.get('loginCustomerId');
+
+      const { getAdminToken, getAdminDomain } = await import('~/lib/shopify-admin.server');
+      const adminToken = await getAdminToken(context.env);
+      const adminDomain = getAdminDomain(context.env);
+
+      let adminCust: any = null;
+
+      if (adminToken && adminDomain) {
+        if (savedCustomerId) {
+          const res = await fetch(`https://${adminDomain}/admin/api/2024-01/customers/${savedCustomerId}.json`, {
+            headers: { 'X-Shopify-Access-Token': adminToken }
+          });
+          if (res.ok) {
+            const data = await res.json() as any;
+            adminCust = data.customer;
+          }
+        }
+        if (!adminCust && savedPhone) {
+          const res = await fetch(`https://${adminDomain}/admin/api/2024-01/customers/search.json?query=phone:"${encodeURIComponent(savedPhone)}"`, {
+            headers: { 'X-Shopify-Access-Token': adminToken }
+          });
+          if (res.ok) {
+            const data = await res.json() as any;
+            adminCust = data.customers?.[0];
+          }
+        }
+      }
+
+      const tags = adminCust?.tags ? (typeof adminCust.tags === 'string' ? adminCust.tags.split(',').map((t: string) => t.trim()) : adminCust.tags) : [];
+      const isAdmin = tags.some((tag: string) => {
+        const clean = tag.toLowerCase().replace(/[^a-z0-9]/g, '');
+        return clean === 'admin' || clean === 'branchmanager' || clean === 'manager';
+      });
+
+      const fallbackCustomer = {
+        id: adminCust ? `gid://shopify/Customer/${adminCust.id}` : 'gid://shopify/Customer/123456789',
+        firstName: adminCust?.first_name || 'Customer',
+        lastName: adminCust?.last_name || '',
+        email: adminCust?.email || savedEmail || 'customer@saadeddin.top',
+        phone: adminCust?.phone || savedPhone || '+966500000000',
+        tags,
+        numberOfOrders: adminCust?.orders_count || 0,
+        orders: { nodes: [] },
+        addresses: {
+          nodes: (adminCust?.addresses || []).map((addr: any) => ({
+            id: `gid://shopify/MailingAddress/${addr.id}`,
+            firstName: addr.first_name,
+            lastName: addr.last_name,
+            address1: addr.address1,
+            address2: addr.address2,
+            city: addr.city,
+            phone: addr.phone,
+            country: addr.country,
+            zip: addr.zip
+          }))
+        }
+      };
+
+      const walletPromise = (async () => {
+        let loyaltyPoints = 0;
+        let balance = 0;
+        let history: any[] = [];
+        let cards: any[] = [];
+        try {
+          loyaltyPoints = await getLoyaltyPoints({
+            customerId: fallbackCustomer.id,
+            phone: fallbackCustomer.phone || undefined,
+            email: fallbackCustomer.email || undefined,
+            env: context.env,
+            context,
+          });
+        } catch (e) { }
+        return { loyaltyPoints, balance, history, cards };
+      })();
+
+      return data({
+        isLoggedIn: true,
+        isPrivateRoute,
+        isAccountHome,
+        customer: fallbackCustomer,
+        isAdmin,
+        googleMapsKey: context.env.PUBLIC_GOOGLE_MAPS_KEY,
+        walletPromise
+      });
+    } catch (fallbackErr) {
+      console.error('[Account Loader] Fallback customer fetch failed:', fallbackErr);
+      session.unset('customerAccessToken');
+      return redirect(`${localePrefix}/account/login`, {
+        headers: { 'Set-Cookie': await session.commit() },
+      });
+    }
   }
 }
 

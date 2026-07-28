@@ -746,6 +746,7 @@ const STATIC_NAV_AR = [
 ];
 
 const STATIC_NAV_EN = [
+  { title: 'Home', url: '/en' },
   { title: 'Products', url: '/en/collections/all', hasMega: true },
   { title: 'Occasions', url: '/en/occasions' },
   { title: 'Gifts', url: '/en/gifting' },

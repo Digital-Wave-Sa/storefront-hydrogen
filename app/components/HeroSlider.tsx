@@ -78,14 +78,14 @@ export function HeroSlider({ config }: { config?: any }) {
 
         const defaultFallback = DEFAULT_SLIDES[idx % DEFAULT_SLIDES.length];
         const imageUrl = getImg('image', 'bg_image', 'background_image') || defaultFallback.image;
-        const badgeAr = getVal('badge_ar', 'badge_text_ar', 'badge', 'tag', 'badge_text') || defaultFallback.badge.ar;
-        const badgeEn = getVal('badge_en', 'badge_text_en', 'badge', 'tag', 'badge_text') || defaultFallback.badge.en;
-        const titleAr = getVal('title_ar', 'title', 'heading_ar') || defaultFallback.title.ar;
-        const titleEn = getVal('title_en', 'title', 'heading_en') || defaultFallback.title.en;
-        const subtitleAr = getVal('subtitle_ar', 'subtitle', 'description_ar') || defaultFallback.subtitle.ar;
-        const subtitleEn = getVal('subtitle_en', 'subtitle', 'description_en') || defaultFallback.subtitle.en;
-        const btnTextAr = getVal('button_text_ar', 'button_text', 'cta_text_ar') || defaultFallback.buttons[0].text.ar;
-        const btnTextEn = getVal('button_text_en', 'button_text', 'cta_text_en') || defaultFallback.buttons[0].text.en;
+        const badgeAr = getVal('badge_text_arabic', 'badge_ar', 'badge_text_ar', 'badge', 'tag', 'badge_text') || defaultFallback.badge.ar;
+        const badgeEn = getVal('badge_text_english', 'badge_en', 'badge_text_en', 'badge', 'tag', 'badge_text') || defaultFallback.badge.en;
+        const titleAr = getVal('title_arabic', 'title_ar', 'title', 'heading_ar') || defaultFallback.title.ar;
+        const titleEn = getVal('title_english', 'title_en', 'title', 'heading_en') || defaultFallback.title.en;
+        const subtitleAr = getVal('subtitle_arabic', 'subtitle_ar', 'subtitle', 'description_ar') || defaultFallback.subtitle.ar;
+        const subtitleEn = getVal('subtitle_english', 'subtitle_en', 'subtitle', 'description_en') || defaultFallback.subtitle.en;
+        const btnTextAr = getVal('button_text_arabic', 'button_text_ar', 'button_text', 'cta_text_ar') || defaultFallback.buttons[0].text.ar;
+        const btnTextEn = getVal('button_text_english', 'button_text_en', 'button_text', 'cta_text_en') || defaultFallback.buttons[0].text.en;
         const btnLink = getVal('button_link', 'url', 'link', 'cta_link') || defaultFallback.buttons[0].url;
 
         return {

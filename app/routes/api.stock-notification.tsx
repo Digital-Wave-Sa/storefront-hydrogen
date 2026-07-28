@@ -87,7 +87,32 @@ export async function action({ request, context }: ActionFunctionArgs) {
       console.warn('[STOCK_NOTIFICATION MW ERR]', mwErr);
     }
 
-    // 2. Try saving to Shopify Metaobjects
+    // 2. Forward subscription to STOQ App API for STOQ automated emails
+    try {
+      const rawShop = (env as any)?.SHOPIFY_SHOP || PUBLIC_STORE_DOMAIN || 'saaddeenshop-x21xumcd.myshopify.com';
+      const shopDomain = rawShop.includes('myshopify.com')
+        ? rawShop
+        : `${rawShop.split('.')[0]}.myshopify.com`;
+
+      const numericVariantId = String(variantId).includes('/')
+        ? String(variantId).split('/').pop()
+        : variantId;
+
+      await fetch('https://app.stoqapp.com/api/v1/intents.json', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          shop: shopDomain,
+          email,
+          variant_id: numericVariantId,
+          intent_type: 'back_in_stock',
+        }),
+      });
+    } catch (stoqErr) {
+      console.warn('[STOQ_INTENT WARN]', stoqErr);
+    }
+
+    // 3. Try saving to Shopify Metaobjects
     try {
       const rawShop = (env as any)?.SHOPIFY_SHOP || PUBLIC_STORE_DOMAIN || 'saaddeenshop-x21xumcd.myshopify.com';
       const shopDomain = rawShop.includes('myshopify.com')

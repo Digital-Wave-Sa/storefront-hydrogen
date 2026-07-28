@@ -235,6 +235,38 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
         return clean === 'admin' || clean === 'branchmanager' || clean === 'manager';
       });
 
+      let mappedOrders: any[] = [];
+      if (adminCust?.id && adminToken && adminDomain) {
+        try {
+          const ordersRes = await fetch(`https://${adminDomain}/admin/api/2024-01/customers/${adminCust.id}/orders.json?status=any`, {
+            headers: { 'X-Shopify-Access-Token': adminToken }
+          });
+          if (ordersRes.ok) {
+            const ordersData = await ordersRes.json() as any;
+            if (ordersData.orders) {
+              mappedOrders = ordersData.orders.map((o: any) => ({
+                id: `gid://shopify/Order/${o.id}`,
+                orderNumber: o.order_number,
+                processedAt: o.processed_at,
+                financialStatus: o.financial_status ? o.financial_status.toUpperCase() : 'PAID',
+                fulfillmentStatus: o.fulfillment_status ? o.fulfillment_status.toUpperCase() : 'UNFULFILLED',
+                currentTotalPrice: { amount: String(o.total_price), currencyCode: o.currency || 'SAR' },
+                lineItems: {
+                  nodes: (o.line_items || []).map((li: any) => ({
+                    title: li.title,
+                    variant: { image: null }
+                  }))
+                }
+              }));
+            }
+          }
+        } catch (e) {
+          console.error('[Account Loader] Failed to fetch customer orders via Admin API:', e);
+        }
+      }
+
+      const realOrderCount = mappedOrders.length || adminCust?.orders_count || 0;
+
       const fallbackCustomer = {
         id: adminCust ? `gid://shopify/Customer/${adminCust.id}` : 'gid://shopify/Customer/123456789',
         firstName: adminCust?.first_name || 'Customer',
@@ -242,8 +274,8 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
         email: adminCust?.email || savedEmail || 'customer@saadeddin.top',
         phone: adminCust?.phone || savedPhone || '+966500000000',
         tags,
-        numberOfOrders: adminCust?.orders_count || 0,
-        orders: { nodes: [] },
+        numberOfOrders: realOrderCount,
+        orders: { nodes: mappedOrders },
         addresses: {
           nodes: (adminCust?.addresses || []).map((addr: any) => ({
             id: `gid://shopify/MailingAddress/${addr.id}`,

@@ -61,20 +61,32 @@ export function HeroSlider({ config }: { config?: any }) {
         return isHidden !== 'true' && isHidden !== '1' && isHidden !== true;
       })
       .map((node: any, idx: number) => {
-        const getVal = (k: string) => node.fields?.find((f: any) => f.key === k)?.value || '';
-        const getImg = (k: string) => node.fields?.find((f: any) => f.key === k)?.reference?.image?.url;
+        const getVal = (...keys: string[]) => {
+          for (const k of keys) {
+            const match = node.fields?.find((f: any) => f.key === k)?.value;
+            if (match && String(match).trim()) return String(match).trim();
+          }
+          return '';
+        };
+        const getImg = (...keys: string[]) => {
+          for (const k of keys) {
+            const url = node.fields?.find((f: any) => f.key === k)?.reference?.image?.url;
+            if (url) return url;
+          }
+          return '';
+        };
 
         const defaultFallback = DEFAULT_SLIDES[idx % DEFAULT_SLIDES.length];
-        const imageUrl = getImg('image') || defaultFallback.image;
-        const badgeAr = getVal('badge_ar') || defaultFallback.badge.ar;
-        const badgeEn = getVal('badge_en') || defaultFallback.badge.en;
-        const titleAr = getVal('title_ar') || defaultFallback.title.ar;
-        const titleEn = getVal('title_en') || defaultFallback.title.en;
-        const subtitleAr = getVal('subtitle_ar') || defaultFallback.subtitle.ar;
-        const subtitleEn = getVal('subtitle_en') || defaultFallback.subtitle.en;
-        const btnTextAr = getVal('button_text_ar') || defaultFallback.buttons[0].text.ar;
-        const btnTextEn = getVal('button_text_en') || defaultFallback.buttons[0].text.en;
-        const btnLink = getVal('button_link') || defaultFallback.buttons[0].url;
+        const imageUrl = getImg('image', 'bg_image', 'background_image') || defaultFallback.image;
+        const badgeAr = getVal('badge_ar', 'badge_text_ar', 'badge', 'tag', 'badge_text') || defaultFallback.badge.ar;
+        const badgeEn = getVal('badge_en', 'badge_text_en', 'badge', 'tag', 'badge_text') || defaultFallback.badge.en;
+        const titleAr = getVal('title_ar', 'title', 'heading_ar') || defaultFallback.title.ar;
+        const titleEn = getVal('title_en', 'title', 'heading_en') || defaultFallback.title.en;
+        const subtitleAr = getVal('subtitle_ar', 'subtitle', 'description_ar') || defaultFallback.subtitle.ar;
+        const subtitleEn = getVal('subtitle_en', 'subtitle', 'description_en') || defaultFallback.subtitle.en;
+        const btnTextAr = getVal('button_text_ar', 'button_text', 'cta_text_ar') || defaultFallback.buttons[0].text.ar;
+        const btnTextEn = getVal('button_text_en', 'button_text', 'cta_text_en') || defaultFallback.buttons[0].text.en;
+        const btnLink = getVal('button_link', 'url', 'link', 'cta_link') || defaultFallback.buttons[0].url;
 
         return {
           id: node.id || idx + 1,

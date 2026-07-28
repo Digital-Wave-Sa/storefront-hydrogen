@@ -1,5 +1,5 @@
 import type {Route} from './+types/api.locations-meta';
-import { getAdminToken } from '~/lib/shopify-admin.server';
+import { getAdminToken, getAdminDomain } from '~/lib/shopify-admin.server';
 
 /**
  * Server-side API route that fetches Location metafields via the Shopify Admin GraphQL API.
@@ -9,7 +9,7 @@ import { getAdminToken } from '~/lib/shopify-admin.server';
 export async function loader({context}: Route.LoaderArgs) {
   const {env} = context;
 
-  const shopDomain = env.PUBLIC_STORE_DOMAIN;
+  const shopDomain = getAdminDomain(env);
 
   if (!shopDomain) {
     return Response.json({locations: []}, {status: 200});
@@ -83,6 +83,8 @@ export async function loader({context}: Route.LoaderArgs) {
           namespace: m.namespace,
           value: m.value,
         })),
+        latitude: parseFloat((loc.metafields?.nodes || []).find((m: any) => m.key === 'latitude' || m.key === 'lat' || m.key === 'location_latitude')?.value || loc.address?.latitude || '0'),
+        longitude: parseFloat((loc.metafields?.nodes || []).find((m: any) => m.key === 'longitude' || m.key === 'lng' || m.key === 'lon' || m.key === 'location_longitude')?.value || loc.address?.longitude || '0'),
         // Helper fields for common UI components
         name_in_arabic: (loc.metafields?.nodes || []).find((m: any) => m.key === 'name_in_arabic')?.value,
         hours_from: (loc.metafields?.nodes || []).find((m: any) => m.key === 'working_hours_from')?.value,

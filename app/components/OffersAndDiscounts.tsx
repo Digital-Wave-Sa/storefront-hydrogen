@@ -33,6 +33,7 @@ export function OffersAndDiscounts({ config }: { config?: any }) {
     const c1SubtitleEn = getC1Val('subtitle_en') || 'Choose value, add message, and send instantly';
     const c1SubtitleAr = getC1Val('subtitle_ar') || 'اختار القيمة، أضف رسالتك، وأرسلها فوراً';
     const c1BtnEn = getC1Val('button_text_en') || 'Buy Voucher Now';
+    const c1BtnAr = getC1Val('button_text_ar') || 'إشتري قسيمة الان';
     const formatLink = (rawUrl: string, defaultPath: string) => {
         const url = rawUrl || defaultPath;
         if (!url) return isEn ? '/en' : '/';

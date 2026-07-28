@@ -129,7 +129,12 @@ export async function loader(args: LoaderFunctionArgs) {
   const decodedHandle = decodeURIComponent(handle);
 
   let { product } = await storefront.query(PRODUCT_QUERY, {
-    variables: { handle: decodedHandle, selectedOptions },
+    variables: { 
+      handle: decodedHandle, 
+      selectedOptions,
+      country: storefront.i18n.country,
+      language: storefront.i18n.language,
+    },
     cache: storefront.CacheNone(),
   });
 
@@ -2351,7 +2356,9 @@ function ProductGallery({ images, product }: { images: any[], product: any }) {
             <div key={img.id} className="w-full h-full shrink-0 snap-center flex items-center justify-center relative">
               <Image
                 data={img}
-                alt={img.altText || 'Product Image'}
+                alt={img.altText || product?.title || 'Product Image'}
+                aspectRatio="1/1"
+                widths={[600, 800, 1200, 1600]}
                 sizes="(min-width: 768px) 50vw, 100vw"
                 loading={idx === 0 ? 'eager' : 'lazy'}
                 className="w-full h-full object-cover"
@@ -2369,8 +2376,10 @@ function ProductGallery({ images, product }: { images: any[], product: any }) {
         >
           <Image
             data={currentImage}
-            alt={currentImage?.altText || 'Product Image'}
-            sizes="(min-width: 768px) 50vw, 100vw"
+            alt={currentImage?.altText || product?.title || 'Product Image'}
+            aspectRatio="1/1"
+            widths={[600, 800, 1200, 1600]}
+            sizes="(min-width: 1024px) 600px, (min-width: 768px) 50vw, 100vw"
             loading="eager"
             className={`w-full h-full object-cover border border-[#9FB7AE] transition-opacity duration-300 ${zoomHoverProps.show ? 'opacity-0' : 'opacity-100'}`}
           />
@@ -2705,6 +2714,18 @@ const PRODUCT_FRAGMENT = `#graphql
     productType
     isGiftCard
     tags
+    name_in_arabic: metafield(namespace: "custom", key: "name_in_arabic") {
+      value
+    }
+    title_in_arabic: metafield(namespace: "custom", key: "title_in_arabic") {
+      value
+    }
+    arabic_name: metafield(namespace: "custom", key: "arabic_name") {
+      value
+    }
+    arabic_title: metafield(namespace: "custom", key: "arabic_title") {
+      value
+    }
     bundle_components: metafield(namespace: "custom", key: "bundle_components") {
       references(first: 20) {
         nodes {

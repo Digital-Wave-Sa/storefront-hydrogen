@@ -266,6 +266,7 @@ export function ProductItem({
                 aspectRatio="4/3"
                 data={imageToDisplay}
                 loading={loading}
+                widths={[400, 600, 800, 1200]}
                 sizes="(min-width: 45em) 400px, 100vw"
                 className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                 style={{ opacity: isVisibilityBlocked ? 0.5 : (showOutOfStock ? 0.4 : 1), filter: isVisibilityBlocked ? 'grayscale(1)' : 'none' }}

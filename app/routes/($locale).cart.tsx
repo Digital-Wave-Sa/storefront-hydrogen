@@ -171,7 +171,7 @@ export async function action({request, context}: Route.ActionArgs) {
       let generatedCode = '';
       let middlewareSucceeded = false;
       const branchId = currentCart.attributes?.find((a: any) => a.key.toLowerCase().trim() === 'branch id')?.value || '1';
-      const middlewareUrl = context.env.MIDDLEWARE_URL || 'https://wh.pryvexapls.com';
+      const middlewareUrl = context.env.MIDDLEWARE_URL || 'https://wh.saadeddin.top';
 
       console.log('[LOYALTY_MIDDLEWARE] Attempting apply via middleware with branch:', branchId);
       try {
@@ -423,7 +423,7 @@ export async function action({request, context}: Route.ActionArgs) {
           
           // PRODUCTION: Call the actual Middleware
           // TODO: Replace with the actual Middleware URL provided by the backend developer
-          const middlewareUrl = context.env.MIDDLEWARE_URL || 'https://wh.pryvexapls.com';
+          const middlewareUrl = context.env.MIDDLEWARE_URL || 'https://wh.saadeddin.top';
           const customerAccessToken = await context.session.get('customerAccessToken');
           
           // Format cart items for the middleware

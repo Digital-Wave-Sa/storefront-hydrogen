@@ -1,7 +1,7 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { NavLink } from 'react-router';
 
-const SLIDES = [
+const DEFAULT_SLIDES = [
   {
     id: 1,
     image: '/hero/slide1.webp',
@@ -46,10 +46,54 @@ const SLIDES = [
   },
 ];
 
-export function HeroSlider() {
+export function HeroSlider({ config }: { config?: any }) {
   const scrollRef = useRef<HTMLDivElement>(null);
-  const [currentIndex, setCurrentIndex] = useState(Math.floor(SLIDES.length / 2));
   const [isEn, setIsEn] = useState(false);
+
+  // Dynamic slides from Shopify Metaobject with fallback to DEFAULT_SLIDES
+  const dynamicSlides = React.useMemo(() => {
+    const rawNodes = config?.heroSlides?.nodes || [];
+    if (rawNodes.length === 0) return DEFAULT_SLIDES;
+
+    const parsed = rawNodes
+      .filter((node: any) => {
+        const isHidden = node.fields?.find((f: any) => f.key === 'is_hidden')?.value;
+        return isHidden !== 'true' && isHidden !== '1' && isHidden !== true;
+      })
+      .map((node: any, idx: number) => {
+        const getVal = (k: string) => node.fields?.find((f: any) => f.key === k)?.value || '';
+        const getImg = (k: string) => node.fields?.find((f: any) => f.key === k)?.reference?.image?.url;
+
+        const defaultFallback = DEFAULT_SLIDES[idx % DEFAULT_SLIDES.length];
+        const imageUrl = getImg('image') || defaultFallback.image;
+        const badgeAr = getVal('badge_ar') || defaultFallback.badge.ar;
+        const badgeEn = getVal('badge_en') || defaultFallback.badge.en;
+        const titleAr = getVal('title_ar') || defaultFallback.title.ar;
+        const titleEn = getVal('title_en') || defaultFallback.title.en;
+        const subtitleAr = getVal('subtitle_ar') || defaultFallback.subtitle.ar;
+        const subtitleEn = getVal('subtitle_en') || defaultFallback.subtitle.en;
+        const btnTextAr = getVal('button_text_ar') || defaultFallback.buttons[0].text.ar;
+        const btnTextEn = getVal('button_text_en') || defaultFallback.buttons[0].text.en;
+        const btnLink = getVal('button_link') || defaultFallback.buttons[0].url;
+
+        return {
+          id: node.id || idx + 1,
+          image: imageUrl,
+          url: btnLink,
+          title: { ar: titleAr, en: titleEn },
+          subtitle: { ar: subtitleAr, en: subtitleEn },
+          badge: { ar: badgeAr, en: badgeEn },
+          buttons: [
+            { text: { ar: btnTextAr, en: btnTextEn }, url: btnLink, type: 'filled' }
+          ]
+        };
+      });
+
+    return parsed.length > 0 ? parsed : DEFAULT_SLIDES;
+  }, [config]);
+
+  const slides = dynamicSlides;
+  const [currentIndex, setCurrentIndex] = useState(Math.floor(slides.length / 2));
 
   useEffect(() => {
     // Detect locale from URL or window
@@ -57,10 +101,10 @@ export function HeroSlider() {
 
     // Center the initial slide on load
     const timer = setTimeout(() => {
-      scrollToSlide(Math.floor(SLIDES.length / 2));
+      scrollToSlide(Math.floor(slides.length / 2));
     }, 300);
     return () => clearTimeout(timer);
-  }, []);
+  }, [slides.length]);
 
   const handleScroll = useCallback(() => {
     if (!scrollRef.current) return;
@@ -70,10 +114,10 @@ export function HeroSlider() {
 
     // We want the slide closest to the center of the container
     const newIndex = Math.round(scrollLeft / slideWidth);
-    if (newIndex !== currentIndex && newIndex < SLIDES.length) {
+    if (newIndex !== currentIndex && newIndex < slides.length) {
       setCurrentIndex(newIndex);
     }
-  }, [currentIndex]);
+  }, [currentIndex, slides.length]);
 
   const scrollToSlide = (index: number) => {
     if (!scrollRef.current) return;
@@ -87,7 +131,7 @@ export function HeroSlider() {
     }
   };
 
-  const nextSlide = () => scrollToSlide(Math.min(currentIndex + 1, SLIDES.length - 1));
+  const nextSlide = () => scrollToSlide(Math.min(currentIndex + 1, slides.length - 1));
   const prevSlide = () => scrollToSlide(Math.max(currentIndex - 1, 0));
 
   return (
@@ -100,7 +144,7 @@ export function HeroSlider() {
         className="flex overflow-x-auto snap-x snap-mandatory gap-5 lg:gap-8 px-[max(20px,calc(50%-512px))] pb-10"
         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       >
-        {SLIDES.map((slide, index) => {
+        {slides.map((slide, index) => {
           const isActive = index === currentIndex;
           return (
             <div
@@ -203,8 +247,8 @@ export function HeroSlider() {
       <button
         onClick={nextSlide}
         aria-label={isEn ? "Next slide" : "الشريحة التالية"}
-        className={`absolute end-[max(4px,calc(50%-552px))] top-1/2 -translate-y-1/2 w-10 h-10 bg-[#9FB7AE] text-[#234745] rounded-[25px] flex items-center justify-center transition-all z-30 border border-[#9FB7AE] hover:scale-110 active:scale-95 shadow-md ${currentIndex === SLIDES.length - 1 ? 'opacity-30 cursor-not-allowed' : 'opacity-100 hover:bg-white'}`}
-        disabled={currentIndex === SLIDES.length - 1}
+        className={`absolute end-[max(4px,calc(50%-552px))] top-1/2 -translate-y-1/2 w-10 h-10 bg-[#9FB7AE] text-[#234745] rounded-[25px] flex items-center justify-center transition-all z-30 border border-[#9FB7AE] hover:scale-110 active:scale-95 shadow-md ${currentIndex === slides.length - 1 ? 'opacity-30 cursor-not-allowed' : 'opacity-100 hover:bg-white'}`}
+        disabled={currentIndex === slides.length - 1}
       >
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className={isEn ? 'rotate-180' : ''}>
           <path d="M15 18l-6-6 6-6" />
@@ -213,7 +257,7 @@ export function HeroSlider() {
 
       {/* Indicators */}
       <div className="absolute bottom-10 lg:bottom-14 left-1/2 -translate-x-1/2 flex justify-center gap-4 z-20">
-        {SLIDES.map((_, index) => (
+        {slides.map((_, index) => (
           <button
             key={index}
             onClick={() => scrollToSlide(index)}

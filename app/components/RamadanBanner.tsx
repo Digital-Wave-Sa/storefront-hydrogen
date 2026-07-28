@@ -5,20 +5,24 @@ export function RamadanBanner({ config }: { config?: any }) {
     const { locale } = useOutletContext<{ locale: string }>();
     const isEn = locale === 'en';
 
-    // Parse Metaobject config
-    const showField = config?.fields?.find((f: any) => f.key === 'show_ramadan_banner')?.value;
-    if (showField === 'false') return null; // Hide if explicitly toggled off
+    // Parse ramadan_banner Metaobject node
+    const rNode = config?.ramadanBanner?.nodes?.[0];
+    const isHidden = rNode?.fields?.find((f: any) => f.key === 'is_hidden')?.value;
+    if (isHidden === 'true' || isHidden === '1' || isHidden === true) return null;
 
-    const getField = (key: string) => config?.fields?.find((f: any) => f.key === key)?.value;
-    const getRefUrl = (key: string) => config?.fields?.find((f: any) => f.key === key)?.reference?.image?.url;
+    const getField = (key: string) => rNode?.fields?.find((f: any) => f.key === key)?.value;
+    const getRefUrl = (key: string) => rNode?.fields?.find((f: any) => f.key === key)?.reference?.image?.url;
 
-    const customTitleEn = getField('ramadan_title_en');
-    const customTitleAr = getField('ramadan_title_ar');
-    const subtitleEn = getField('ramadan_subtitle_en') || 'Luxury sweets — exclusive for Ramadan';
-    const subtitleAr = getField('ramadan_subtitle_ar') || 'حلويات وشوكولاتة فاخرة — حصرية لشهر رمضان المبارك';
-    const badgeEn = getField('ramadan_badge_en') || 'Limited Offer';
-    const badgeAr = getField('ramadan_badge_ar') || 'عرض محدود';
-    const imageUrl = getRefUrl('ramadan_image') || '/images/ramadan-offers-section.webp';
+    const customTitleEn = getField('title_en');
+    const customTitleAr = getField('title_ar');
+    const subtitleEn = getField('subtitle_en') || 'Luxury sweets — exclusive for Ramadan';
+    const subtitleAr = getField('subtitle_ar') || 'حلويات وشوكولاتة فاخرة — حصرية لشهر رمضان المبارك';
+    const badgeEn = getField('badge_en') || 'Limited Offer';
+    const badgeAr = getField('badge_ar') || 'عرض محدود';
+    const btnTextEn = getField('button_text_en') || 'Shop the Collection';
+    const btnTextAr = getField('button_text_ar') || 'تسوق التشكيلة الان';
+    const btnLink = getField('button_link') || (isEn ? "/en/collections/ramadan" : "/collections/ramadan");
+    const imageUrl = getRefUrl('image') || getRefUrl('ramadan_image') || '/images/ramadan-offers-section.webp';
 
     // Simple countdown logic starting from 14 days
     const [timeLeft, setTimeLeft] = useState({
@@ -157,11 +161,11 @@ export function RamadanBanner({ config }: { config?: any }) {
 
                             {/* CTA Button */}
                             <Link
-                                to={isEn ? "/en/collections/ramadan" : "/collections/ramadan"}
+                                to={btnLink}
                                 className="bg-[#BBCFCD] !text-[#234745] font-dinar font-bold text-[16px] md:text-[18px] leading-[22px] rounded-[24px] w-[85%] md:w-[224px] h-[48px] flex items-center justify-center hover:bg-[#a5bdbb] transition-colors"
                                 style={{ padding: '12px 20px', gap: '8px' }}
                             >
-                                {isEn ? 'Shop the Collection' : 'تسوق التشكيلة الان'}
+                                {isEn ? btnTextEn : btnTextAr}
                             </Link>
 
                         </div>

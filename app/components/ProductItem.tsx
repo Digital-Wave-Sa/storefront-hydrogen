@@ -295,35 +295,30 @@ export function ProductItem({
             </button>
           </div>
 
-          {/* Status Badges overlay — corner badges (top-right in RTL, top-left in LTR) */}
-          <div className={`absolute top-2 md:top-3 ${isEn ? 'left-2 md:left-3' : 'right-2 md:right-3'} z-10 flex flex-col gap-2 ${isEn ? 'items-start' : 'items-end'}`}>
-            {isVisibilityBlocked && (
-              <span className="text-[11px] font-bold px-3 py-1.5 rounded-[12px] shadow-sm flex items-center gap-1.5 bg-[#906B51] text-white">
-                <span>🍂</span>
+          {/* Status Badge overlay — top corner (top-right in RTL, top-left in LTR) */}
+          <div className={`absolute top-2 md:top-3 ${isEn ? 'left-2 md:left-3' : 'right-2 md:right-3'} z-10`}>
+            {isVisibilityBlocked ? (
+              <span
+                className="flex items-center justify-center px-3.5 py-1.5 rounded-full font-bold text-[12px] whitespace-nowrap shadow-sm text-white bg-[#234745]/90 backdrop-blur-md"
+                style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
+              >
                 {isEn ? 'Out for the Season' : 'نفد للموسم'}
               </span>
-            )}
-            {!isVisibilityBlocked && showOutOfStock && (
+            ) : showOutOfStock ? (
               <span
-                className="flex items-center justify-center px-3 py-1.5 rounded-[12px] font-bold text-[12px] whitespace-nowrap shadow-sm text-white bg-[#234745]/90 backdrop-blur-md"
-                style={{
-                  fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
-                }}
+                className="flex items-center justify-center px-3.5 py-1.5 rounded-full font-bold text-[12px] whitespace-nowrap shadow-sm text-white bg-[#234745]/90 backdrop-blur-md"
+                style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
               >
                 {isEn ? 'Out of Stock' : 'نفذت الكمية'}
               </span>
-            )}
-            {!isVisibilityBlocked && showPreorder && (
-              <span className="text-[11px] font-bold px-3 py-1.5 rounded-[12px] shadow-sm flex items-center gap-1.5 bg-blue-600 text-white">
-                <span>📦</span>
+            ) : showPreorder ? (
+              <span
+                className="flex items-center justify-center px-3.5 py-1.5 rounded-full font-bold text-[12px] whitespace-nowrap shadow-sm text-white bg-[#234745]/90 backdrop-blur-md"
+                style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
+              >
                 {t.common.preOrder}
               </span>
-            )}
-            {!isVisibilityBlocked && (product as any).is_limited_time?.value && (
-              <div className="text-[11px] font-bold px-2.5 py-1.5 rounded-[12px] shadow-sm bg-purple-600 text-white flex items-center gap-1.5">
-                <span>⏳</span> {(product as any).is_limited_time.value}
-              </div>
-            )}
+            ) : null}
           </div>
         </div>
       </Link>

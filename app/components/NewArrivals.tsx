@@ -123,21 +123,30 @@ export function NewArrivals({
                                                         </button>
                                                     )}
 
-                                                    {/* Status Badges Overlay (Stacking) */}
-                                                    <div className="absolute top-4 right-4 z-10 flex flex-col gap-2 items-end">
-                                                        {isVisibilityBlocked && (
-                                                            <span className="text-[10px] font-bold px-3 py-1.5 rounded-full shadow-sm bg-[#906B51] text-white flex items-center gap-1.5">
-                                                                <span>🍂</span>
-                                                                {isEn ? 'Out for Season' : 'نفد للموسم'}
+                                                    {/* Status Badge Overlay (Top Corner: Top-Right in RTL, Top-Left in LTR) */}
+                                                    <div className={`absolute top-2 md:top-3 ${isEn ? 'left-2 md:left-3' : 'right-2 md:right-3'} z-10`}>
+                                                        {isVisibilityBlocked ? (
+                                                            <span
+                                                                className="flex items-center justify-center px-3.5 py-1.5 rounded-full font-bold text-[12px] whitespace-nowrap shadow-sm text-white bg-[#234745]/90 backdrop-blur-md"
+                                                                style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
+                                                            >
+                                                                {isEn ? 'Out for the Season' : 'نفد للموسم'}
                                                             </span>
-                                                        )}
-                                                        {/* Limited Time Badge */}
-                                                        {!isVisibilityBlocked && isLimitedTime && (
-                                                            <span className="text-[10px] font-bold px-3 py-1.5 rounded-full shadow-sm bg-purple-600 text-white flex items-center gap-1.5">
-                                                                <span>⏳</span>
-                                                                {product.is_limited_time.value}
+                                                        ) : isOutOfStock && !isPreorder ? (
+                                                            <span
+                                                                className="flex items-center justify-center px-3.5 py-1.5 rounded-full font-bold text-[12px] whitespace-nowrap shadow-sm text-white bg-[#234745]/90 backdrop-blur-md"
+                                                                style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
+                                                            >
+                                                                {isEn ? 'Out of Stock' : 'نفذت الكمية'}
                                                             </span>
-                                                        )}
+                                                        ) : isPreorder ? (
+                                                            <span
+                                                                className="flex items-center justify-center px-3.5 py-1.5 rounded-full font-bold text-[12px] whitespace-nowrap shadow-sm text-white bg-[#234745]/90 backdrop-blur-md"
+                                                                style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
+                                                            >
+                                                                {t.common.preOrder}
+                                                            </span>
+                                                        ) : null}
                                                     </div>
 
                                                     {/* Product Image */}
@@ -156,34 +165,6 @@ export function NewArrivals({
                                                                 style={{ opacity: isVisibilityBlocked ? 0.5 : (effectiveOutOfStock ? 0.4 : 1), filter: isVisibilityBlocked ? 'grayscale(1)' : 'none' }}
                                                             />
                                                         )}
-                                                        {/* Out of Stock / Seasonal badge overlay */}
-                                                        {isVisibilityBlocked ? (
-                                                            <div className="absolute bottom-[16px] left-1/2 -translate-x-1/2 z-10 pointer-events-none">
-                                                                <span
-                                                                    className="flex items-center justify-center px-5 h-[36px] rounded-full font-bold text-[13px] whitespace-nowrap shadow-sm text-white bg-[#906B51]"
-                                                                    style={{
-                                                                        fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
-                                                                    }}
-                                                                >
-                                                                    {isEn ? 'Out for the Season' : 'نفد للموسم'}
-                                                                </span>
-                                                            </div>
-                                                        ) : isOutOfStock && !isPreorder ? (
-                                                            <div className="absolute bottom-[16px] left-1/2 -translate-x-1/2 z-10 pointer-events-none">
-                                                                <span
-                                                                    className="flex items-center justify-center px-6 h-[40px] rounded-full font-bold text-[14px] whitespace-nowrap"
-                                                                    style={{
-                                                                        background: 'rgba(187, 207, 205, 0.72)',
-                                                                        backdropFilter: 'blur(6px)',
-                                                                        WebkitBackdropFilter: 'blur(6px)',
-                                                                        color: '#ffffff',
-                                                                        fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
-                                                                    }}
-                                                                >
-                                                                    {isEn ? 'Out of Stock' : 'نفذت الكمية'}
-                                                                </span>
-                                                            </div>
-                                                        ) : null}
                                                     </Link>
 
                                                     {/* Product Info */}

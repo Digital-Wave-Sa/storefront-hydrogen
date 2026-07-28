@@ -18,22 +18,17 @@ export function getAdminDomain(env: any): string {
     return d.includes('myshopify.com') ? d : `${d}.myshopify.com`;
   }
 
-  // 2. SHOPIFY_SHOP is store handle or myshopify domain
-  if (env.SHOPIFY_SHOP) {
-    const rawShop = env.SHOPIFY_SHOP.replace(/^https?:\/\//, '').replace(/\/$/, '');
-    if (rawShop.includes('myshopify.com')) {
-      return rawShop;
-    }
-    return `${rawShop.split('.')[0]}.myshopify.com`;
+  // 2. SHOPIFY_SHOP is just the store handle (e.g. "saadeldeenshop-x21xumcd")
+  if (env.SHOPIFY_SHOP && !env.SHOPIFY_SHOP.includes('x21kumcd')) {
+    const handle = env.SHOPIFY_SHOP.replace(/^https?:\/\//, '').split('.')[0];
+    return `${handle}.myshopify.com`;
   }
 
-  // 3. PUBLIC_STORE_DOMAIN if it contains myshopify.com (and not Oxygen .o2.myshopify.dev)
-  if (env.PUBLIC_STORE_DOMAIN && env.PUBLIC_STORE_DOMAIN.includes('myshopify.com') && !env.PUBLIC_STORE_DOMAIN.includes('.o2.')) {
-    return env.PUBLIC_STORE_DOMAIN;
-  }
-
-  // Fallback domain for Saadeddin store Admin API calls
-  return 'saaddeenshop-x21xumcd.myshopify.com';
+  // 3. PUBLIC_STORE_DOMAIN — strip the x21kumcd subdomain to get the real admin domain
+  // e.g. saadeldeen-shop.x21kumcd.myshopify.com → NOT usable for Admin API
+  // We can't derive the admin domain from this — log a warning
+  console.warn('[ShopifyAdmin] SHOPIFY_ADMIN_DOMAIN is not set. Admin API calls may fail. Set SHOPIFY_ADMIN_DOMAIN=saadeldeenshop-x21xumcd.myshopify.com in your environment.');
+  return env.PUBLIC_STORE_DOMAIN || '';
 }
 
 export async function getAdminToken(env: any): Promise<string> {

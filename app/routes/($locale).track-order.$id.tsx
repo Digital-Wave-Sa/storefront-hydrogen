@@ -10,11 +10,10 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
         throw new Response('Order number required', { status: 400 });
     }
 
-    const { getAdminToken, getAdminDomain } = await import('~/lib/shopify-admin.server');
+    const { getAdminToken } = await import('~/lib/shopify-admin.server');
     const adminToken = await getAdminToken(context.env);
-    const adminDomain = getAdminDomain(context.env);
 
-    // Fetch order from Admin GraphQL API to get line item images + pickup detection + order status metafield
+    // Fetch order from Admin GraphQL API to get line item images + pickup detection + fulfillments status
     const query = `
       query GetOrder($query: String!) {
         orders(first: 1, query: $query) {
@@ -41,6 +40,21 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
                 key
                 value
               }
+              fulfillments {
+                status
+                displayStatus
+              }
+              fulfillmentOrders(first: 5) {
+                edges {
+                  node {
+                    status
+                    requestStatus
+                    supportedActions {
+                      action
+                    }
+                  }
+                }
+              }
               order_status: metafield(namespace: "custom", key: "order_status") {
                 value
               }
@@ -60,13 +74,7 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
       }
     `;
 
-    const rawId = decodeURIComponent(orderNumber || '').trim();
-    const cleanNum = rawId.replace(/^#/, '');
-
-    // 1. Primary GraphQL query using broad search string
-    const searchQuery = `name:#${cleanNum} OR name:${cleanNum} OR name:*${cleanNum}* OR ${cleanNum}`;
-
-    let res = await fetch(`https://${adminDomain}/admin/api/2023-10/graphql.json`, {
+    const res = await fetch(`https://${context.env.PUBLIC_STORE_DOMAIN}/admin/api/2023-10/graphql.json`, {
         method: 'POST',
         headers: {
             'X-Shopify-Access-Token': adminToken,
@@ -74,122 +82,15 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
         },
         body: JSON.stringify({
             query,
-            variables: { query: searchQuery }
+            variables: { query: `name:${orderNumber}` }
         })
     });
 
-    let jsonRes = await res.json() as any;
-    let orderNode = jsonRes?.data?.orders?.edges?.[0]?.node;
-
-    // 2. Direct GID lookup fallback (if ID is numeric long ID e.g. 7037127885033)
-    if (!orderNode && /^\d{7,}$/.test(cleanNum)) {
-        const idQuery = `
-          query GetOrderById($id: ID!) {
-            order(id: $id) {
-              id
-              name
-              processedAt
-              canceledAt
-              displayFinancialStatus
-              displayFulfillmentStatus
-              statusPageUrl
-              totalPriceSet { shopMoney { amount } }
-              subtotalPriceSet { shopMoney { amount } }
-              totalTaxSet { shopMoney { amount } }
-              totalShippingPriceSet { shopMoney { amount } }
-              paymentGatewayNames
-              shippingLine { title }
-              shippingAddress { address1 city }
-              customAttributes { key value }
-              order_status: metafield(namespace: "custom", key: "order_status") { value }
-              lineItems(first: 20) {
-                edges {
-                  node {
-                    title
-                    variantTitle
-                    originalUnitPriceSet { shopMoney { amount } }
-                    image { url }
-                  }
-                }
-              }
-            }
-          }
-        `;
-        const resById = await fetch(`https://${adminDomain}/admin/api/2023-10/graphql.json`, {
-            method: 'POST',
-            headers: {
-                'X-Shopify-Access-Token': adminToken,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                query: idQuery,
-                variables: { id: `gid://shopify/Order/${cleanNum}` }
-            })
-        });
-        const jsonResById = await resById.json() as any;
-        orderNode = jsonResById?.data?.order;
-    }
-
-    // 3. Scan recent 25 orders fallback if Shopify search index hasn't indexed the query string
-    if (!orderNode) {
-        const recentQuery = `
-          query GetRecentOrders {
-            orders(first: 25, sortKey: CREATED_AT, reverse: true) {
-              edges {
-                node {
-                  id
-                  name
-                  processedAt
-                  canceledAt
-                  displayFinancialStatus
-                  displayFulfillmentStatus
-                  statusPageUrl
-                  totalPriceSet { shopMoney { amount } }
-                  subtotalPriceSet { shopMoney { amount } }
-                  totalTaxSet { shopMoney { amount } }
-                  totalShippingPriceSet { shopMoney { amount } }
-                  paymentGatewayNames
-                  shippingLine { title }
-                  shippingAddress { address1 city }
-                  customAttributes { key value }
-                  order_status: metafield(namespace: "custom", key: "order_status") { value }
-                  lineItems(first: 20) {
-                    edges {
-                      node {
-                        title
-                        variantTitle
-                        originalUnitPriceSet { shopMoney { amount } }
-                        image { url }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        `;
-        const resRecent = await fetch(`https://${adminDomain}/admin/api/2023-10/graphql.json`, {
-            method: 'POST',
-            headers: {
-                'X-Shopify-Access-Token': adminToken,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ query: recentQuery })
-        });
-        const jsonRecent = await resRecent.json() as any;
-        const edges = jsonRecent?.data?.orders?.edges || [];
-        const matchEdge = edges.find(({ node }: any) => {
-            const nodeName = (node.name || '').replace(/^#/, '').toLowerCase();
-            const nodeId = (node.id || '').split('/').pop();
-            return nodeName === cleanNum.toLowerCase() || nodeId === cleanNum;
-        });
-        if (matchEdge) {
-            orderNode = matchEdge.node;
-        }
-    }
+    const jsonRes = await res.json() as any;
+    const orderNode = jsonRes?.data?.orders?.edges?.[0]?.node;
 
     if (!orderNode) {
-        return json({ isEn, orderData: null, searchedId: orderNumber });
+        throw new Response('Order Not Found', { status: 404 });
     }
 
     const shippingAmount = parseFloat(orderNode.totalShippingPriceSet?.shopMoney?.amount || '0');
@@ -219,7 +120,27 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
         orderNode.shippingAddress === null
     );
 
-    // Read custom order_status metafield
+    // Parse native Shopify fulfillments and fulfillmentOrders
+    const fulfillments = orderNode.fulfillments || [];
+    const fulfillmentOrders = (orderNode.fulfillmentOrders?.edges || []).map((e: any) => e.node);
+
+    const hasReadyForPickupFulfillment = fulfillments.some((f: any) => 
+        f.displayStatus === 'READY_FOR_PICKUP' || 
+        f.status === 'READY_FOR_PICKUP'
+    ) || fulfillmentOrders.some((fo: any) => 
+        fo.supportedActions?.some((sa: any) => sa.action === 'PICK_UP' || sa.action === 'MARK_AS_PICKED_UP')
+    );
+
+    const hasOutForDeliveryFulfillment = fulfillments.some((f: any) => 
+        f.displayStatus === 'OUT_FOR_DELIVERY' || 
+        f.displayStatus === 'IN_TRANSIT'
+    );
+
+    const hasPreparingFulfillment = fulfillments.length > 0 || fulfillmentOrders.some((fo: any) => 
+        fo.status === 'IN_PROGRESS' || (fo.status === 'OPEN' && isPickup)
+    );
+
+    // Read custom order_status metafield as optional override
     const orderStatusMeta = (orderNode.order_status?.value || '').toLowerCase().trim();
 
     const orderData = {
@@ -233,6 +154,9 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
         rawFinancialStatus: orderNode.displayFinancialStatus || 'PAID',
         canceledAt: orderNode.canceledAt || null,
         isPickup,
+        hasReadyForPickupFulfillment,
+        hasOutForDeliveryFulfillment,
+        hasPreparingFulfillment,
         orderStatusMeta,
         items: orderNode.lineItems.edges.map(({ node: item }: any) => ({
             title: item.title,
@@ -262,48 +186,8 @@ const CurrencyIcon = ({ className }: { className?: string }) => (
 );
 
 export default function TrackOrderPage() {
-    const loaderData = useLoaderData<typeof loader>();
-    const isEn = loaderData.isEn;
-    const orderData = loaderData.orderData;
-    const searchedId = (loaderData as any).searchedId || '';
+    const { isEn, orderData } = useLoaderData<typeof loader>();
     const navigate = useNavigate();
-    const [searchInput, setSearchInput] = useState('');
-
-    if (!orderData) {
-        return (
-            <div className={`min-h-screen bg-[#FEF8EB] ${isEn ? 'font-en' : "font-['GE_Dinar_One']"} py-16 px-4 flex flex-col items-center justify-center text-center`} dir={isEn ? 'ltr' : 'rtl'}>
-                <div className="bg-white rounded-[20px] border border-[#EBEBEB] p-8 md:p-12 max-w-[500px] w-full shadow-sm flex flex-col items-center">
-                    <div className="w-16 h-16 rounded-full bg-[#FEF8EB] text-[#234745] flex items-center justify-center mb-6">
-                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <circle cx="11" cy="11" r="8"></circle>
-                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                        </svg>
-                    </div>
-                    <h2 className="text-[22px] font-black text-[#1A1A1A] mb-2">
-                        {isEn ? `Order #${searchedId} Not Found` : `لم يتم العثور على الطلب #${searchedId}`}
-                    </h2>
-                    <p className="text-[#8B8B8B] text-[14px] mb-8 leading-relaxed">
-                        {isEn ? 'Please verify your order number and try searching again, or go to your account orders.' : 'يرجى التأكد من كتابة رقم الطلب بشكل صحيح والبحث مجدداً، أو الانتقال إلى حسابك لعرض طلباتك.'}
-                    </p>
-                    <form onSubmit={(e) => { e.preventDefault(); if (searchInput.trim()) navigate(isEn ? `/en/track-order/${searchInput.trim()}` : `/track-order/${searchInput.trim()}`); }} className="w-full flex flex-col gap-3 mb-6">
-                        <input
-                            type="text"
-                            value={searchInput}
-                            onChange={(e) => setSearchInput(e.target.value)}
-                            placeholder={isEn ? "Enter Order Number (e.g. 1010)" : "أدخل رقم الطلب (مثال: 1010)"}
-                            className="w-full px-5 py-3.5 rounded-full border border-[#BBCFCD] focus:outline-none focus:border-[#234745] text-[14px] text-center"
-                        />
-                        <button type="submit" className="w-full bg-[#234745] text-white py-3.5 rounded-full font-bold text-[14px] hover:bg-[#1a3533] transition-colors">
-                            {isEn ? 'Search Order' : 'بحث عن الطلب'}
-                        </button>
-                    </form>
-                    <button onClick={() => navigate(isEn ? '/en/account/orders' : '/account/orders')} className="text-[#234745] font-bold text-[14px] hover:underline">
-                        {isEn ? 'Go to My Orders' : 'الانتقال إلى طلباتي'}
-                    </button>
-                </div>
-            </div>
-        );
-    }
 
     const forceEnNums = (text: string | number | undefined | null) => {
         if (text == null) return text;
@@ -483,22 +367,28 @@ export default function TrackOrderPage() {
                                 <div className={`absolute top-4 bottom-4 ${isEn ? 'left-4' : 'right-4'} w-[2px] bg-[#BBCFCD]/40`} />
 
                                 {(() => {
-                                    const isPickup = orderData.isPickup;
-                                    const fulfillment = orderData.rawFulfillmentStatus;
-                                    const isCancelled = !!(orderData.canceledAt || orderData.rawFinancialStatus === 'REFUNDED');
-
-                                    // 4-step system using only native Shopify statuses
-                                    // Works for both prepaid (PAID) and COD (PENDING) orders
-                                    // Step 2 is always active as long as order is not cancelled
+                                    // Determine current step natively from Shopify fulfillments + optional metafield
+                                    const meta = orderData.orderStatusMeta;
                                     let currentStep: number;
-                                    if (isCancelled) {
-                                        currentStep = 0; // all grey
-                                    } else if (fulfillment === 'FULFILLED') {
-                                        currentStep = 4; // done
-                                    } else if (fulfillment === 'IN_PROGRESS' || fulfillment === 'PARTIALLY_FULFILLED' || fulfillment === 'OPEN') {
-                                        currentStep = 3; // ready for pickup / on the way
+                                    if (orderData.canceledAt || orderData.rawFinancialStatus === 'REFUNDED') {
+                                        currentStep = 0; // cancelled
+                                    } else if (orderData.rawFulfillmentStatus === 'FULFILLED') {
+                                        currentStep = 5; // fully completed (Picked up or Delivered)
+                                    } else if (
+                                        orderData.hasReadyForPickupFulfillment || 
+                                        orderData.hasOutForDeliveryFulfillment || 
+                                        meta === 'ready' || meta === 'ready_for_pickup' || meta === 'out_for_delivery'
+                                    ) {
+                                        currentStep = 4; // Ready for Pickup / On the Way
+                                    } else if (
+                                        orderData.hasPreparingFulfillment || 
+                                        meta === 'preparing' || meta === 'in_progress' || orderData.rawFulfillmentStatus === 'PARTIALLY_FULFILLED'
+                                    ) {
+                                        currentStep = 3; // Preparing
+                                    } else if (meta === 'confirmed' || orderData.rawFinancialStatus === 'PAID') {
+                                        currentStep = 2; // Confirmed
                                     } else {
-                                        currentStep = 2; // confirmed (always for any placed, non-cancelled order)
+                                        currentStep = 1; // Received
                                     }
 
                                     const toEnglishDigits = (str: string) => {
@@ -522,6 +412,9 @@ export default function TrackOrderPage() {
                                     const formattedRawTime = rawTimeStr.replace(/([0-9])([\u0645\u0635])/g, '$1 $2').replace(/([0-9])(AM|PM)/ig, '$1 $2');
                                     const timeStr = toEnglishDigits(formattedRawTime);
 
+                                    // Pickup orders get different stage 4 & 5 labels
+                                    const isPickup = orderData.isPickup;
+
                                     const stages = [
                                         {
                                             id: 1,
@@ -535,18 +428,25 @@ export default function TrackOrderPage() {
                                             id: 2,
                                             en: 'Confirmed',
                                             ar: 'تم التأكيد',
-                                            descEn: isCancelled ? 'Order was cancelled' : 'Order confirmed',
-                                            descAr: isCancelled ? 'تم إلغاء الطلب' : 'تم تأكيد طلبك'
+                                            descEn: 'Order has been confirmed',
+                                            descAr: 'تم تأكيد طلبك بنجاح'
                                         },
                                         {
                                             id: 3,
-                                            en: isPickup ? 'Ready for Pickup' : 'On the Way',
-                                            ar: isPickup ? 'جاهز للاستلام' : 'في الطريق إليك',
-                                            descEn: isPickup ? 'Your order is ready at the branch' : 'Your order is on the way',
-                                            descAr: isPickup ? 'طلبك جاهز في الفرع' : 'طلبك في الطريق إليك'
+                                            en: 'Preparing',
+                                            ar: 'جاري التجهيز',
+                                            descEn: 'Preparing your order',
+                                            descAr: 'جاري تجهيز طلبك'
                                         },
                                         {
                                             id: 4,
+                                            en: isPickup ? 'Ready for Pickup' : 'On the Way',
+                                            ar: isPickup ? 'جاهز للاستلام' : 'في الطريق إليك',
+                                            descEn: isPickup ? 'Your order is ready at the branch' : 'On the way to you',
+                                            descAr: isPickup ? 'طلبك جاهز في الفرع' : 'طلبك في الطريق إليك'
+                                        },
+                                        {
+                                            id: 5,
                                             en: isPickup ? 'Picked Up' : 'Delivered',
                                             ar: isPickup ? 'تم الاستلام' : 'تم التسليم',
                                             descEn: isPickup ? 'Order picked up successfully' : 'Delivered successfully',

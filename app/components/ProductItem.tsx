@@ -295,57 +295,31 @@ export function ProductItem({
             </button>
           </div>
 
-          {/* Status Badges overlay — corner badges (promo/visibility) */}
-          <div className={`absolute top-[16px] ${isEn ? 'left-[16px]' : 'right-[16px]'} z-10 flex flex-col gap-2 ${isEn ? 'items-start' : 'items-end'}`}>
-            {isVisibilityBlocked && (
-              <span className="text-[10px] font-black px-3 py-1.5 rounded-[8px] shadow-sm flex items-center gap-1.5 bg-[#906B51] text-white">
-                <span>🍂</span>
-                {isEn ? 'Out for the Season' : 'نفد للموسم'}
-              </span>
-            )}
-            {!isVisibilityBlocked && showPreorder && (
-              <span className="text-[10px] font-black px-3 py-1.5 rounded-[8px] shadow-sm flex items-center gap-1.5 bg-blue-600 text-white">
-                <span>📦</span>
-                {t.common.preOrder}
-              </span>
-            )}
-            {!isVisibilityBlocked && (product as any).is_limited_time?.value && (
-              <div className="text-[10px] font-black px-2.5 py-1.5 rounded-[8px] shadow-sm bg-purple-600 text-white flex items-center gap-1.5">
-                <span>⏳</span> {(product as any).is_limited_time.value}
-              </div>
-            )}
-
-
-          </div>
-
-          {/* Out of Stock / Seasonal — centered pill overlay at bottom of image */}
-          {isVisibilityBlocked ? (
-            <div className="absolute bottom-[20px] left-1/2 -translate-x-1/2 z-10 pointer-events-none">
+          {/* Status Badge overlay — top corner (top-right in RTL, top-left in LTR) */}
+          <div className={`absolute top-2 md:top-3 ${isEn ? 'left-2 md:left-3' : 'right-2 md:right-3'} z-10`}>
+            {isVisibilityBlocked ? (
               <span
-                className="flex items-center justify-center px-5 h-[36px] rounded-full font-bold text-[13px] whitespace-nowrap shadow-sm text-white bg-[#906B51]"
-                style={{
-                  fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
-                }}
+                className="flex items-center justify-center px-3.5 py-1.5 rounded-full font-bold text-[12px] whitespace-nowrap shadow-sm text-white bg-[#234745]/90 backdrop-blur-md"
+                style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
               >
                 {isEn ? 'Out for the Season' : 'نفد للموسم'}
               </span>
-            </div>
-          ) : showOutOfStock ? (
-            <div className="absolute bottom-[20px] left-1/2 -translate-x-1/2 z-10 pointer-events-none">
+            ) : showOutOfStock ? (
               <span
-                className="flex items-center justify-center px-6 h-[40px] rounded-full font-bold text-[14px] whitespace-nowrap"
-                style={{
-                  background: 'rgba(187, 207, 205, 0.72)',
-                  backdropFilter: 'blur(6px)',
-                  WebkitBackdropFilter: 'blur(6px)',
-                  color: '#ffffff',
-                  fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
-                }}
+                className="flex items-center justify-center px-3.5 py-1.5 rounded-full font-bold text-[12px] whitespace-nowrap shadow-sm text-white bg-[#234745]/90 backdrop-blur-md"
+                style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
               >
                 {isEn ? 'Out of Stock' : 'نفذت الكمية'}
               </span>
-            </div>
-          ) : null}
+            ) : showPreorder ? (
+              <span
+                className="flex items-center justify-center px-3.5 py-1.5 rounded-full font-bold text-[12px] whitespace-nowrap shadow-sm text-white bg-[#234745]/90 backdrop-blur-md"
+                style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
+              >
+                {t.common.preOrder}
+              </span>
+            ) : null}
+          </div>
         </div>
       </Link>
 

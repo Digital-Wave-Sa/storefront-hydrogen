@@ -254,44 +254,30 @@ export function BestSellers({
                                                     </button>
                                                 )}
 
-                                                {/* Status Badges Overlay (Stacking top right) */}
-                                                <div className="absolute top-4 ltr:right-4 rtl:left-auto rtl:right-4 z-10 flex flex-col gap-2 items-end">
-                                                    {(isVisibilityBlocked || showPreorder) && (
-                                                        <span className={`text-[11px] font-bold px-3 py-1.5 rounded-full shadow-sm flex items-center gap-1.5 ${isVisibilityBlocked
-                                                            ? (visibility.status === 'scheduled' ? 'bg-amber-500 text-white' : 'bg-red-500 text-white')
-                                                            : 'bg-[#004f59] text-white'
-                                                            }`}>
-                                                            <span>{isVisibilityBlocked ? (visibility.status === 'scheduled' ? '🕐' : '⛔') : '📦'}</span>
-                                                            {isVisibilityBlocked
-                                                                ? (isEn ? visibility.label.en : visibility.label.ar)
-                                                                : t.common.preOrder
-                                                            }
+                                                {/* Status Badge Overlay (Top Corner: Top-Right in RTL, Top-Left in LTR) */}
+                                                <div className={`absolute top-2 md:top-3 ${isEn ? 'left-2 md:left-3' : 'right-2 md:right-3'} z-10`}>
+                                                    {isVisibilityBlocked ? (
+                                                        <span
+                                                            className="flex items-center justify-center px-3.5 py-1.5 rounded-full font-bold text-[12px] whitespace-nowrap shadow-sm text-white bg-[#234745]/90 backdrop-blur-md"
+                                                            style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
+                                                        >
+                                                            {isEn ? 'Out for the Season' : 'نفد للموسم'}
                                                         </span>
-                                                    )}
-
-                                                    {/* Limited Time Badge */}
-                                                    {!isVisibilityBlocked && isLimitedTime && (
-                                                        <span className="text-[11px] font-bold px-3 py-1.5 rounded-full shadow-sm bg-purple-600 text-white flex items-center gap-1.5">
-                                                            <span>⏳</span>
-                                                            {product.is_limited_time.value}
+                                                    ) : isOutOfStock && !isPreorder ? (
+                                                        <span
+                                                            className="flex items-center justify-center px-3.5 py-1.5 rounded-full font-bold text-[12px] whitespace-nowrap shadow-sm text-white bg-[#234745]/90 backdrop-blur-md"
+                                                            style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
+                                                        >
+                                                            {isEn ? 'Out of Stock' : 'نفذت الكمية'}
                                                         </span>
-                                                    )}
-
-                                                    {/* Bundle Badge */}
-                                                    {!isVisibilityBlocked && (product.productType?.toLowerCase() === 'bundle' || product.tags?.some((t: string) => t.toLowerCase() === 'bundle')) && (
-                                                        <span className="text-[11px] font-bold px-3 py-1.5 rounded-full shadow-sm bg-blue-600 text-white flex items-center gap-1.5">
-                                                            <span>📦</span>
-                                                            {isEn ? 'Bundle' : 'باقة'}
+                                                    ) : showPreorder ? (
+                                                        <span
+                                                            className="flex items-center justify-center px-3.5 py-1.5 rounded-full font-bold text-[12px] whitespace-nowrap shadow-sm text-white bg-[#234745]/90 backdrop-blur-md"
+                                                            style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
+                                                        >
+                                                            {t.common.preOrder}
                                                         </span>
-                                                    )}
-
-                                                    {/* Payment Restriction Badges */}
-                                                    {!isVisibilityBlocked && product.tags?.some((t: string) => ['prepaid-only', 'payment:prepaid-only'].includes(t.toLowerCase().trim())) && (
-                                                        <span className="text-[11px] font-bold px-3 py-1.5 rounded-full shadow-sm bg-[#2980b9] text-white flex items-center gap-1.5 border border-white/20">
-                                                            <span>💳</span>
-                                                            {isEn ? 'Paid Only' : 'دفع مسبق فقط'}
-                                                        </span>
-                                                    )}
+                                                    ) : null}
                                                 </div>
 
                                                 <Link
@@ -308,41 +294,6 @@ export function BestSellers({
                                                             className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                                                             style={{ opacity: isVisibilityBlocked ? 0.5 : (isOutOfStock && !isPreorder ? 0.4 : 1), filter: isVisibilityBlocked ? 'grayscale(1)' : 'none' }}
                                                         />
-                                                    )}
-
-                                                    {isVisibilityBlocked ? (
-                                                        <div className="absolute bottom-[16px] left-1/2 -translate-x-1/2 z-10 pointer-events-none">
-                                                            <span
-                                                                className="flex items-center justify-center px-5 h-[36px] rounded-full font-bold text-[13px] whitespace-nowrap shadow-sm text-white bg-[#906B51]"
-                                                                style={{
-                                                                    fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
-                                                                }}
-                                                            >
-                                                                {isEn ? 'Out for the Season' : 'نفد للموسم'}
-                                                            </span>
-                                                        </div>
-                                                    ) : isOutOfStock && !isPreorder ? (
-                                                        <div className="absolute bottom-[16px] left-1/2 -translate-x-1/2 z-10 pointer-events-none">
-                                                            <span
-                                                                className="flex items-center justify-center px-6 h-[40px] rounded-full font-bold text-[14px] whitespace-nowrap"
-                                                                style={{
-                                                                    background: 'rgba(187, 207, 205, 0.72)',
-                                                                    backdropFilter: 'blur(6px)',
-                                                                    WebkitBackdropFilter: 'blur(6px)',
-                                                                    color: '#ffffff',
-                                                                    fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
-                                                                }}
-                                                            >
-                                                                {isEn ? 'Out of Stock' : 'نفذت الكمية'}
-                                                            </span>
-                                                        </div>
-                                                    ) : null}
-                                                    {!isVisibilityBlocked && showPreorder && (
-                                                        <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex justify-center z-10 font-bold">
-                                                            <span className="bg-[#004f59] text-white px-6 py-2 rounded-full font-bold text-sm tracking-wide shadow-sm uppercase">
-                                                                {t.common.preOrder}
-                                                            </span>
-                                                        </div>
                                                     )}
                                                 </Link>
                                                 <div className="p-5 lg:p-6 flex flex-col flex-grow" style={{ backgroundColor: '#ffffff' }}>

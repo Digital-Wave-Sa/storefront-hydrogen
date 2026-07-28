@@ -33,8 +33,16 @@ export function OffersAndDiscounts({ config }: { config?: any }) {
     const c1SubtitleEn = getC1Val('subtitle_en') || 'Choose value, add message, and send instantly';
     const c1SubtitleAr = getC1Val('subtitle_ar') || 'اختار القيمة، أضف رسالتك، وأرسلها فوراً';
     const c1BtnEn = getC1Val('button_text_en') || 'Buy Voucher Now';
-    const c1BtnAr = getC1Val('button_text_ar') || 'إشتري قسيمة الان';
-    const c1BtnLink = getC1Val('button_link') || (isEn ? "/en/vouchers" : "/vouchers");
+    const formatLink = (rawUrl: string, defaultPath: string) => {
+        const url = rawUrl || defaultPath;
+        if (!url) return isEn ? '/en' : '/';
+        if (url.startsWith('http://') || url.startsWith('https://')) return url;
+        const path = url.startsWith('/') ? url : `/${url}`;
+        if (isEn) return path.startsWith('/en') ? path : `/en${path}`;
+        return path.startsWith('/en/') ? path.replace(/^\/en/, '') : (path === '/en' ? '/' : path);
+    };
+
+    const c1BtnLink = formatLink(getC1Val('button_link'), '/vouchers');
     const c1Img = getC1Img('image') || "/images/voucher.webp";
 
     // Card 2 (Promotions / Green Card)
@@ -46,7 +54,7 @@ export function OffersAndDiscounts({ config }: { config?: any }) {
     const c2TitleAr = getC2Val('title_ar') || 'عروض وتخفضيات علي افضل منتجاتنا';
     const c2BtnEn = getC2Val('button_text_en') || 'Browse Now';
     const c2BtnAr = getC2Val('button_text_ar') || 'تصفح الان';
-    const c2BtnLink = getC2Val('button_link') || (isEn ? "/en/promotions" : "/promotions");
+    const c2BtnLink = formatLink(getC2Val('button_link'), '/promotions');
     const c2Img = getC2Img('image') || "/images/sweets-box.webp";
 
     return (

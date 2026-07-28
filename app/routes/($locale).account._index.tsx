@@ -3,6 +3,7 @@ import { useOutletContext, Link, useLocation, Await, Form } from 'react-router';
 import type { CustomerFragment } from 'storefrontapi.generated';
 import { useWishlist } from '~/context/WishlistContext';
 import { SaudiRiyalSymbol } from '~/components/Price';
+import { checkIsPickupOrder } from './($locale).account.orders._index';
 
 // Currency SVG Icon provided by user
 const CurrencyIcon = ({ className }: { className?: string }) => (
@@ -230,19 +231,7 @@ export default function AccountDashboard() {
                 const totalAmount = lastOrder.currentTotalPrice?.amount || "0.00";
                 const orderIdEncoded = encodeURIComponent(lastOrder.id);
 
-                const customAttrs = (lastOrder as any).customAttributes || [];
-                const fulfillmentTypeAttr = customAttrs.find((a: any) => 
-                  a.key === 'Fulfillment Type' || a.key === 'fulfillment_type' || a.key === 'Fulfillment' || a.key === 'type'
-                )?.value || '';
-                const shippingTitle = (lastOrder as any).shippingTitle || (lastOrder as any).shippingLine?.title || '';
-
-                const isPickup = (
-                  fulfillmentTypeAttr.toLowerCase().includes('pickup') ||
-                  fulfillmentTypeAttr.includes('استلام') ||
-                  shippingTitle.toLowerCase().includes('pickup') ||
-                  shippingTitle.includes('استلام') ||
-                  shippingTitle.toLowerCase().includes('pick up')
-                );
+                const isPickup = checkIsPickupOrder(lastOrder);
 
                 let statusEn = isPickup ? 'Ready for Pickup' : 'Processing';
                 let statusAr = isPickup ? 'جاهز للاستلام من الفرع' : 'قيد المعالجة';

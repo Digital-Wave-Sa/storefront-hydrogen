@@ -7,48 +7,59 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 
   const locale = context.storefront.i18n.language.toLowerCase();
   const isEn = locale === 'en';
-  const orderId = decodeURIComponent(params.id);
+  const rawId = decodeURIComponent(params.id);
 
-  // If it's already a plain order number (e.g. "1010"), redirect directly
-  if (/^\d+$/.test(orderId)) {
-    return redirect(isEn ? `/en/track-order/${orderId}` : `/track-order/${orderId}`);
+  // 1. Short order number (e.g. "1010" or "#1010")
+  const simpleNumMatch = rawId.match(/#?(\d{1,6})\b/);
+  if (simpleNumMatch && !rawId.includes('shopify')) {
+    const orderNum = simpleNumMatch[1];
+    return redirect(isEn ? `/en/track-order/${orderNum}` : `/track-order/${orderNum}`);
   }
 
-  // It's a GID (gid://shopify/Order/12345) — resolve to order number via Admin API
-  try {
-    const { getAdminToken } = await import('~/lib/shopify-admin.server');
-    const adminToken = await getAdminToken(context.env);
+  // 2. Extract numeric ID (e.g. 7037127885033) from GID
+  const digitsMatch = rawId.match(/(\d{7,})/);
+  if (digitsMatch) {
+    const numericId = digitsMatch[1];
+    const fullGid = `gid://shopify/Order/${numericId}`;
 
-    const query = `
-      query GetOrderName($id: ID!) {
-        order(id: $id) {
-          orderNumber
+    try {
+      const { getAdminToken } = await import('~/lib/shopify-admin.server');
+      const adminToken = await getAdminToken(context.env);
+
+      const query = `
+        query GetOrderName($id: ID!) {
+          order(id: $id) {
+            orderNumber
+            name
+          }
         }
-      }
-    `;
+      `;
 
-    const res = await fetch(
-      `https://${context.env.PUBLIC_STORE_DOMAIN}/admin/api/2023-10/graphql.json`,
-      {
-        method: 'POST',
-        headers: {
-          'X-Shopify-Access-Token': adminToken,
-          'Content-Type': 'application/json',
+      const res = await fetch(
+        `https://${context.env.PUBLIC_STORE_DOMAIN}/admin/api/2023-10/graphql.json`,
+        {
+          method: 'POST',
+          headers: {
+            'X-Shopify-Access-Token': adminToken,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ query, variables: { id: fullGid } }),
         },
-        body: JSON.stringify({ query, variables: { id: orderId } }),
-      },
-    );
-
-    const json = (await res.json()) as any;
-    const orderNumber = json?.data?.order?.orderNumber;
-
-    if (orderNumber) {
-      return redirect(
-        isEn ? `/en/track-order/${orderNumber}` : `/track-order/${orderNumber}`,
       );
+
+      const json = (await res.json()) as any;
+      const orderNumber =
+        json?.data?.order?.orderNumber ||
+        json?.data?.order?.name?.replace('#', '');
+
+      if (orderNumber) {
+        return redirect(
+          isEn ? `/en/track-order/${orderNumber}` : `/track-order/${orderNumber}`,
+        );
+      }
+    } catch (_) {
+      // ignore
     }
-  } catch (_) {
-    // fallback below
   }
 
   return redirect(isEn ? `/en/account/orders` : `/account/orders`);

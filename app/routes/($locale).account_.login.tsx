@@ -245,212 +245,181 @@ export async function action({ request, context }: ActionFunctionArgs) {
       cleanPhone = cleanPhone.substring(1);
     }
     const fullFormPhone = formPhone ? `${formCountryCode}${cleanPhone}` : '';
-    const savedPhone = session.get('loginOtpPhone') || fullFormPhone || '+966500000000';
-    const email = session.get('loginCustomerEmail');
-    const customerId = session.get('loginCustomerId');
+    const savedPhone = session.get('loginOtpPhone') || fullFormPhone;
 
+    if (!savedPhone) {
+      return data({ error: lang === 'en' ? 'Session expired. Please request a new code.' : 'انتهت الجلسة. يرجى طلب رمز جديد.' });
+    }
+
+    if (!otp || otp.length < 4) {
+      return data({ error: lang === 'en' ? 'Please enter the 4-digit verification code.' : 'يرجى إدخال رمز التحقق المكوّن من 4 أرقام.' });
+    }
+
+    // ── Step 1: Verify OTP with CRM ──────────────────────────────────────────
     let saadeddinToken: string | null = null;
-    let customLogin: any = null;
+    let crmProfile: any = null;
 
     try {
       const api = new SaadeddinApi(env);
-      try {
-        customLogin = await api.login(savedPhone, otp);
-      } catch (apiErr: any) {
-        console.warn('[Login] Custom API verification failed, using OTP bypass fallback:', apiErr?.message);
-        customLogin = {
-          token: `bypass-token-${Date.now()}`,
-          profile: {
-            name: 'Customer',
-            email: `${savedPhone.replace(/\D/g, '')}@saadeddin.placeholder`,
-            shopifyId: null,
-            accountType: 'INDIVIDUAL'
-          }
-        };
-      }
+      const loginResult = await api.login(savedPhone, otp);
+      saadeddinToken = loginResult?.token || null;
+      crmProfile = loginResult?.profile || null;
 
-      if (customLogin?.token) {
-        saadeddinToken = customLogin.token;
-        if (customLogin.profile) {
-          const profile = customLogin.profile;
-          if (profile.email) {
-            session.set('loginCustomerEmail', profile.email);
-          }
-          if (profile.shopifyId) {
-            const id = profile.shopifyId.split('/').pop();
-            session.set('loginCustomerId', id);
-          }
-        }
+      if (crmProfile?.email) {
+        session.set('loginCustomerEmail', crmProfile.email);
       }
-    } catch (err: any) {
-      console.warn('[Login] OTP bypass fallback active:', err);
-      saadeddinToken = `bypass-token-${Date.now()}`;
+      if (crmProfile?.shopifyId) {
+        const id = String(crmProfile.shopifyId).split('/').pop();
+        session.set('loginCustomerId', id);
+      }
+    } catch (apiErr: any) {
+      // CRM returned a real error (wrong OTP, too many attempts, etc.) — show it
+      const errMsg = formatOtpError(apiErr?.message || '', lang);
+      return data({ error: errMsg });
     }
 
-    // Step 2: Create a real Shopify session
-    try {
-      const stablePassword = await derivePassword(savedPhone, env.SESSION_SECRET || 'saadeddin-otp-secret');
-      let email = session.get('loginCustomerEmail') || customLogin?.profile?.email || null;
-      const crmShopifyId = customLogin?.profile?.shopifyId; // may be stale
-      const profileName = customLogin?.profile?.name || '';
-      const accountType = customLogin?.profile?.accountType || 'INDIVIDUAL';
+    // ── Step 2: Get/create Shopify customer via Admin API ────────────────────
+    const stablePassword = await derivePassword(savedPhone, env.SESSION_SECRET || 'saadeddin-otp-secret');
+    let resolvedEmail: string | null = crmProfile?.email || session.get('loginCustomerEmail') || null;
+    let resolvedCustomerId: string | null = null;
 
-      let adminToken: string | null = null;
-      try {
-        const { getAdminToken } = await import('~/lib/shopify-admin.server');
-        adminToken = await getAdminToken(env);
-      } catch (err) {
-        console.warn('[Login] Admin API token fetch warning:', err);
+    let adminToken: string | null = null;
+    try {
+      const { getAdminToken } = await import('~/lib/shopify-admin.server');
+      adminToken = await getAdminToken(env);
+    } catch (_) {}
+
+    if (adminToken) {
+      const crmShopifyId = crmProfile?.shopifyId;
+
+      // 1. Verify CRM's shopifyId
+      if (crmShopifyId) {
+        const numericId = String(crmShopifyId).split('/').pop()!;
+        const verifyRes = await fetch(
+          `https://${env.PUBLIC_STORE_DOMAIN}/admin/api/2024-01/customers/${numericId}.json?fields=id,email`,
+          { headers: { 'X-Shopify-Access-Token': adminToken } }
+        );
+        if (verifyRes.ok) {
+          const verifyData = await verifyRes.json() as any;
+          resolvedCustomerId = numericId;
+          resolvedEmail = verifyData.customer?.email || resolvedEmail;
+        }
       }
 
-      let resolvedCustomerId: string | null = null;
-      let resolvedEmail: string | null = email;
-
-      if (adminToken) {
-        // ── 1. If CRM gave us a shopifyId, verify it actually exists ────────
-        if (crmShopifyId) {
-          const numericId = crmShopifyId.split('/').pop();
-          console.log('[Login] Verifying CRM shopifyId in Shopify Admin:', numericId);
-          const verifyRes = await fetch(
-            `https://${env.PUBLIC_STORE_DOMAIN}/admin/api/2024-01/customers/${numericId}.json?fields=id,email`,
-            { headers: { 'X-Shopify-Access-Token': adminToken } }
-          );
-          if (verifyRes.ok) {
-            const verifyData = await verifyRes.json() as any;
-            resolvedCustomerId = numericId!;
-            resolvedEmail = verifyData.customer?.email || resolvedEmail;
-            console.log('[Login] shopifyId verified ✅:', resolvedCustomerId, resolvedEmail);
-          } else {
-            console.warn('[Login] CRM shopifyId is stale (customer deleted/not found in Shopify):', numericId, '— will search by phone');
+      // 2. Search by phone
+      if (!resolvedCustomerId) {
+        const searchRes = await fetch(
+          `https://${env.PUBLIC_STORE_DOMAIN}/admin/api/2024-01/customers/search.json?query=phone:"${encodeURIComponent(savedPhone)}"&fields=id,email`,
+          { headers: { 'X-Shopify-Access-Token': adminToken } }
+        );
+        if (searchRes.ok) {
+          const searchData = await searchRes.json() as any;
+          const found = searchData.customers?.[0];
+          if (found) {
+            resolvedCustomerId = String(found.id);
+            resolvedEmail = found.email || resolvedEmail;
           }
         }
+      }
 
-        // ── 2. If not found by ID, search by phone ───────────────────────────
-        if (!resolvedCustomerId) {
-          console.log('[Login] Searching Shopify Admin by phone:', savedPhone);
-          const searchRes = await fetch(
-            `https://${env.PUBLIC_STORE_DOMAIN}/admin/api/2024-01/customers/search.json?query=phone:"${encodeURIComponent(savedPhone)}"&fields=id,email`,
-            { headers: { 'X-Shopify-Access-Token': adminToken } }
-          );
-          if (searchRes.ok) {
-            const searchData = await searchRes.json() as any;
-            const found = searchData.customers?.[0];
-            if (found) {
-              resolvedCustomerId = String(found.id);
-              resolvedEmail = found.email || resolvedEmail;
-              console.log('[Login] Found by phone search ✅:', resolvedCustomerId, resolvedEmail);
-            }
+      // 3. Create customer if still not found
+      if (!resolvedCustomerId) {
+        const nameParts = (crmProfile?.name || '').trim().split(/\s+/);
+        const firstName = nameParts[0] || 'Customer';
+        const lastName = nameParts.slice(1).join(' ') || '(N/A)';
+        const createEmail = resolvedEmail || `${savedPhone.replace(/\D/g, '')}@saadeddin.placeholder`;
+
+        const createRes = await fetch(
+          `https://${env.PUBLIC_STORE_DOMAIN}/admin/api/2024-01/customers.json`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Shopify-Access-Token': adminToken },
+            body: JSON.stringify({
+              customer: {
+                first_name: firstName,
+                last_name: lastName,
+                phone: savedPhone,
+                email: createEmail,
+                password: stablePassword,
+                password_confirmation: stablePassword,
+                tags: crmProfile?.accountType === 'COMPANY' ? 'verified_phone, B2B' : 'verified_phone',
+                verified_email: true,
+              }
+            })
           }
-        }
+        );
 
-        // ── 3. If still not found, create the customer in Shopify ────────────
-        if (!resolvedCustomerId) {
-          console.log('[Login] Customer not in Shopify — creating via Admin API');
-          const nameParts = profileName.trim().split(/\s+/);
-          const firstName = nameParts[0] || 'Customer';
-          const lastName = nameParts.slice(1).join(' ') || '(N/A)';
-          const createEmail = resolvedEmail || `${savedPhone.replace(/\D/g, '')}@saadeddin.placeholder`;
-
-          const createRes = await fetch(
-            `https://${env.PUBLIC_STORE_DOMAIN}/admin/api/2024-01/customers.json`,
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'X-Shopify-Access-Token': adminToken },
-              body: JSON.stringify({
-                customer: {
-                  first_name: firstName,
-                  last_name: lastName,
-                  phone: savedPhone,
-                  email: createEmail,
-                  password: stablePassword,
-                  password_confirmation: stablePassword,
-                  tags: accountType === 'COMPANY' ? 'verified_phone, B2B' : 'verified_phone',
-                  verified_email: true,
-                }
-              })
-            }
-          );
-
-          if (createRes.ok) {
-            const createData = await createRes.json() as any;
-            resolvedCustomerId = String(createData.customer?.id);
-            resolvedEmail = createData.customer?.email || createEmail;
-            console.log('[Login] Shopify customer created ✅:', resolvedCustomerId);
-          } else {
-            const errText = await createRes.text();
-            console.error('[Login] Customer creation failed:', createRes.status, errText);
-
-            // Last resort: try searching by email
-            if (resolvedEmail) {
-              const emailSearchRes = await fetch(
-                `https://${env.PUBLIC_STORE_DOMAIN}/admin/api/2024-01/customers/search.json?query=email:"${encodeURIComponent(resolvedEmail)}"&fields=id,email`,
-                { headers: { 'X-Shopify-Access-Token': adminToken } }
-              );
-              if (emailSearchRes.ok) {
-                const emailSearchData = await emailSearchRes.json() as any;
-                const found = emailSearchData.customers?.[0];
-                if (found) {
-                  resolvedCustomerId = String(found.id);
-                  resolvedEmail = found.email || resolvedEmail;
-                  console.log('[Login] Found by email search (fallback) ✅:', resolvedCustomerId);
-                }
+        if (createRes.ok) {
+          const createData = await createRes.json() as any;
+          resolvedCustomerId = String(createData.customer?.id);
+          resolvedEmail = createData.customer?.email || createEmail;
+        } else {
+          // Customer exists with same phone/email — search by email
+          if (resolvedEmail) {
+            const emailSearchRes = await fetch(
+              `https://${env.PUBLIC_STORE_DOMAIN}/admin/api/2024-01/customers/search.json?query=email:"${encodeURIComponent(resolvedEmail)}"&fields=id,email`,
+              { headers: { 'X-Shopify-Access-Token': adminToken } }
+            );
+            if (emailSearchRes.ok) {
+              const emailSearchData = await emailSearchRes.json() as any;
+              const found = emailSearchData.customers?.[0];
+              if (found) {
+                resolvedCustomerId = String(found.id);
+                resolvedEmail = found.email || resolvedEmail;
               }
             }
           }
         }
-
-        // ── 4. Reset password to stablePassword so Storefront login works ───
-        if (resolvedCustomerId) {
-          console.log('[Login] Resetting Shopify password for customer:', resolvedCustomerId);
-          await fetch(
-            `https://${env.PUBLIC_STORE_DOMAIN}/admin/api/2024-01/customers/${resolvedCustomerId}.json`,
-            {
-              method: 'PUT',
-              headers: { 'X-Shopify-Access-Token': adminToken, 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                customer: { id: resolvedCustomerId, password: stablePassword, password_confirmation: stablePassword }
-              })
-            }
-          );
-        }
       }
 
-      // ── 5. Get Shopify Storefront access token ─────────────────────────────
-      const loginEmail = resolvedEmail || `${savedPhone.replace(/\D/g, '')}@saadeddin.placeholder`;
-      try {
-        const tokenResponse = await storefront.mutate(LOGIN_MUTATION, {
-          variables: { input: { email: loginEmail, password: stablePassword } },
-        });
-
-        const token = tokenResponse.customerAccessTokenCreate?.customerAccessToken || null;
-
-        if (token) {
-          session.set('customerAccessToken', token);
-          console.log('[Login] Shopify access token created ✅');
-        } else {
-          console.warn('[Login] Storefront token creation returned null, using fallback bypass token');
-          session.set('customerAccessToken', {
-            accessToken: 'bypass-session-token',
-            expiresAt: new Date(Date.now() + 86400 * 1000).toISOString()
-          });
-        }
-      } catch (sfErr) {
-        console.warn('[Login] Storefront token mutation warning, using fallback bypass token:', sfErr);
-        session.set('customerAccessToken', {
-          accessToken: 'bypass-session-token',
-          expiresAt: new Date(Date.now() + 86400 * 1000).toISOString()
-        });
+      // 4. Always reset password so Storefront mutation works
+      if (resolvedCustomerId) {
+        await fetch(
+          `https://${env.PUBLIC_STORE_DOMAIN}/admin/api/2024-01/customers/${resolvedCustomerId}.json`,
+          {
+            method: 'PUT',
+            headers: { 'X-Shopify-Access-Token': adminToken, 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              customer: { id: resolvedCustomerId, password: stablePassword, password_confirmation: stablePassword }
+            })
+          }
+        );
       }
-    } catch (shopifyErr: any) {
-      console.warn('[Login] Shopify session block warning, using fallback bypass session:', shopifyErr?.message);
-      session.set('customerAccessToken', {
-        accessToken: 'bypass-session-token',
-        expiresAt: new Date(Date.now() + 86400 * 1000).toISOString()
+    }
+
+    // ── Step 3: Create Shopify Storefront access token ───────────────────────
+    const loginEmail = resolvedEmail || `${savedPhone.replace(/\D/g, '')}@saadeddin.placeholder`;
+
+    let storefrontToken: any = null;
+    try {
+      const tokenResponse = await storefront.mutate(LOGIN_MUTATION, {
+        variables: { input: { email: loginEmail, password: stablePassword } },
+      });
+
+      storefrontToken = tokenResponse.customerAccessTokenCreate?.customerAccessToken || null;
+
+      const userErrors = tokenResponse.customerAccessTokenCreate?.customerUserErrors || [];
+      if (userErrors.length > 0) {
+        console.error('[Login] Storefront mutation errors:', JSON.stringify(userErrors));
+      }
+    } catch (sfErr: any) {
+      console.error('[Login] Storefront mutation threw:', sfErr?.message);
+    }
+
+    if (!storefrontToken) {
+      // Cannot create a real Shopify session — show meaningful error
+      console.error('[Login] FATAL: Could not create Shopify session. adminToken:', !!adminToken, 'email:', loginEmail, 'customerId:', resolvedCustomerId);
+      return data({
+        error: lang === 'en'
+          ? 'Login succeeded but we could not create your session. Please try again or contact support.'
+          : 'تم التحقق بنجاح ولكن لم نتمكن من إنشاء جلستك. يرجى المحاولة مرة أخرى أو التواصل مع الدعم.'
       });
     }
 
-    // Always set the CRM token and redirect regardless of Shopify session
-    session.set('saadeddinToken', saadeddinToken || `bypass-token-${Date.now()}`);
+    // ── Step 4: Commit session and redirect ──────────────────────────────────
+    session.set('customerAccessToken', storefrontToken);
+    session.set('saadeddinToken', saadeddinToken!);
+    session.set('loginOtpPhone', savedPhone);
     session.unset('loginCustomerEmail');
     session.unset('loginCustomerId');
     session.unset('loginOtpAttempts');

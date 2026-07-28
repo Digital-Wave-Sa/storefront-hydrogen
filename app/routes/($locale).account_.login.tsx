@@ -286,8 +286,13 @@ export async function action({ request, context }: ActionFunctionArgs) {
       const profileName = customLogin?.profile?.name || '';
       const accountType = customLogin?.profile?.accountType || 'INDIVIDUAL';
 
-      const { getAdminToken } = await import('~/lib/shopify-admin.server');
-      const adminToken = await getAdminToken(env);
+      let adminToken: string | null = null;
+      try {
+        const { getAdminToken } = await import('~/lib/shopify-admin.server');
+        adminToken = await getAdminToken(env);
+      } catch (err) {
+        console.warn('[Login] Admin API token fetch warning:', err);
+      }
 
       let resolvedCustomerId: string | null = null;
       let resolvedEmail: string | null = email;

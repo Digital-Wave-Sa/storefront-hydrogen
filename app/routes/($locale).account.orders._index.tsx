@@ -14,6 +14,54 @@ import type {
 } from 'storefrontapi.generated';
 import { Button } from '~/components/layout/Button';
 
+export function checkIsPickupOrder(order: any): boolean {
+  if (!order) return false;
+
+  const customAttrs = (order.customAttributes || order.custom_attributes || []);
+  const fulfillmentAttr = customAttrs.find((a: any) => {
+    const k = (a.key || a.name || '').toLowerCase();
+    return k === 'fulfillment type' || k === 'fulfillment_type' || k === 'fulfillment' || k === 'type' || k === 'delivery type';
+  })?.value || '';
+
+  if (
+    fulfillmentAttr.toLowerCase().includes('pickup') || 
+    fulfillmentAttr.toLowerCase().includes('pick up') || 
+    fulfillmentAttr.includes('استلام')
+  ) {
+    return true;
+  }
+
+  const shippingTitle = String(
+    order.shippingTitle || 
+    order.shippingLine?.title || 
+    order.shipping_lines?.[0]?.title || 
+    order.shipping_lines?.[0]?.code || 
+    ''
+  ).toLowerCase();
+
+  if (
+    shippingTitle.includes('pickup') || 
+    shippingTitle.includes('pick up') || 
+    shippingTitle.includes('pick_up') || 
+    shippingTitle.includes('استلام') || 
+    shippingTitle.includes('in store') ||
+    shippingTitle.includes('store')
+  ) {
+    return true;
+  }
+
+  const tags = String(typeof order.tags === 'string' ? order.tags : (order.tags || []).join(',')).toLowerCase();
+  if (tags.includes('pickup') || tags.includes('pick up') || tags.includes('استلام')) {
+    return true;
+  }
+
+  if (order.shippingAddress === null || order.shipping_address === null) {
+    return true;
+  }
+
+  return false;
+}
+
 export const meta: MetaFunction<typeof loader> = () => {
   return [{ title: 'طلباتي | Saadeddin' }];
 };
@@ -318,18 +366,8 @@ function OrderCard({ order, isEn }: { order: OrderItemFragment, isEn: boolean })
     fetcher.submit(formData, { method: 'POST' });
   };
 
-  const customAttrs = (order as any).customAttributes || [];
-  const fulfillmentTypeAttr = customAttrs.find((a: any) => 
-    a.key === 'Fulfillment Type' || a.key === 'fulfillment_type' || a.key === 'Fulfillment' || a.key === 'type'
-  )?.value || '';
-  const shippingTitle = (order as any).shippingTitle || (order as any).shippingLine?.title || '';
-
   const isPickup = (
-    fulfillmentTypeAttr.toLowerCase().includes('pickup') ||
-    fulfillmentTypeAttr.includes('استلام') ||
-    shippingTitle.toLowerCase().includes('pickup') ||
-    shippingTitle.includes('استلام') ||
-    shippingTitle.toLowerCase().includes('pick up')
+    checkIsPickupOrder(order)
   );
 
   let statusEn = isPickup ? 'Ready for Pickup' : 'On its way to you';

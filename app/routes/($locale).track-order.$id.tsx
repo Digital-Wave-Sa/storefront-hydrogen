@@ -13,7 +13,7 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
     const { getAdminToken } = await import('~/lib/shopify-admin.server');
     const adminToken = await getAdminToken(context.env);
 
-    // Fetch order from Admin GraphQL API to get line item images
+    // Fetch order from Admin GraphQL API to get line item images + pickup detection + order status metafield
     const query = `
       query GetOrder($query: String!) {
         orders(first: 1, query: $query) {
@@ -22,6 +22,7 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
               id
               name
               processedAt
+              canceledAt
               displayFinancialStatus
               displayFulfillmentStatus
               statusPageUrl
@@ -30,9 +31,17 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
               totalTaxSet { shopMoney { amount } }
               totalShippingPriceSet { shopMoney { amount } }
               paymentGatewayNames
+              shippingLine { title }
               shippingAddress {
                 address1
                 city
+              }
+              customAttributes {
+                key
+                value
+              }
+              order_status: metafield(namespace: "custom", key: "order_status") {
+                value
               }
               lineItems(first: 20) {
                 edges {
@@ -82,15 +91,35 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
         }
     }
 
+    // Detect pickup order
+    const shippingLineTitle = (orderNode.shippingLine?.title || '').toLowerCase();
+    const customAttrs = orderNode.customAttributes || [];
+    const fulfillmentAttr = (customAttrs.find((a: any) => {
+        const k = (a.key || '').toLowerCase();
+        return k === 'fulfillment type' || k === 'fulfillment_type' || k === 'fulfillment' || k === 'delivery type';
+    })?.value || '').toLowerCase();
+    const isPickup = (
+        shippingLineTitle.includes('pickup') || shippingLineTitle.includes('pick up') ||
+        shippingLineTitle.includes('in store') || shippingLineTitle.includes('استلام') ||
+        fulfillmentAttr.includes('pickup') || fulfillmentAttr.includes('استلام') ||
+        orderNode.shippingAddress === null
+    );
+
+    // Read custom order_status metafield
+    const orderStatusMeta = (orderNode.order_status?.value || '').toLowerCase().trim();
+
     const orderData = {
         id: orderNode.name,
         date: isEn
             ? `Ordered on ${new Date(orderNode.processedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}, ${new Date(orderNode.processedAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`
             : `طلب في ${new Date(orderNode.processedAt).toLocaleDateString('ar-SA-u-nu-latn', { year: 'numeric', month: 'long', day: 'numeric' })}, ${new Date(orderNode.processedAt).toLocaleTimeString('ar-SA-u-nu-latn', { hour: 'numeric', minute: '2-digit' })}`,
-        status: isEn ? (orderNode.displayFulfillmentStatus === 'FULFILLED' ? 'Delivered' : orderNode.displayFinancialStatus === 'REFUNDED' ? 'Cancelled' : 'Order Received') : (orderNode.displayFulfillmentStatus === 'FULFILLED' ? 'تم التسليم' : orderNode.displayFinancialStatus === 'REFUNDED' ? 'ملغاه' : 'تم استلام طلبك'),
+        status: isEn ? (orderNode.displayFulfillmentStatus === 'FULFILLED' ? (isPickup ? 'Picked Up' : 'Delivered') : orderNode.canceledAt ? 'Cancelled' : 'Order Received') : (orderNode.displayFulfillmentStatus === 'FULFILLED' ? (isPickup ? 'تم الاستلام' : 'تم التسليم') : orderNode.canceledAt ? 'ملغاة' : 'تم استلام طلبك'),
         invoiceUrl: orderNode.statusPageUrl,
         rawFulfillmentStatus: orderNode.displayFulfillmentStatus || 'UNFULFILLED',
         rawFinancialStatus: orderNode.displayFinancialStatus || 'PAID',
+        canceledAt: orderNode.canceledAt || null,
+        isPickup,
+        orderStatusMeta,
         items: orderNode.lineItems.edges.map(({ node: item }: any) => ({
             title: item.title,
             price: parseFloat(item.originalUnitPriceSet?.shopMoney?.amount || '0').toLocaleString('en-US', { minimumFractionDigits: 2 }),
@@ -104,7 +133,7 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
             vat: parseFloat(orderNode.totalTaxSet?.shopMoney?.amount || '0').toLocaleString('en-US', { minimumFractionDigits: 2 }),
             total: parseFloat(orderNode.totalPriceSet?.shopMoney?.amount || '0').toLocaleString('en-US', { minimumFractionDigits: 2 })
         },
-        address: orderNode.shippingAddress ? `${orderNode.shippingAddress.address1}, ${orderNode.shippingAddress.city}` : (isEn ? 'No Address' : 'لا يوجد عنوان'),
+        address: orderNode.shippingAddress ? `${orderNode.shippingAddress.address1}, ${orderNode.shippingAddress.city}` : (isPickup ? (isEn ? 'Store Pickup' : 'استلام من الفرع') : (isEn ? 'No Address' : 'لا يوجد عنوان')),
         paymentMethod: paymentGateway
     };
 
@@ -300,10 +329,24 @@ export default function TrackOrderPage() {
                                 <div className={`absolute top-4 bottom-4 ${isEn ? 'left-4' : 'right-4'} w-[2px] bg-[#BBCFCD]/40`} />
 
                                 {(() => {
-                                    const currentStep = orderData.rawFinancialStatus === 'REFUNDED' ? 0
-                                        : orderData.rawFulfillmentStatus === 'FULFILLED' ? 5
-                                            : orderData.rawFulfillmentStatus === 'PARTIALLY_FULFILLED' ? 3
-                                                : 2;
+                                    // Determine current step from Shopify statuses + optional order_status metafield
+                                    const meta = orderData.orderStatusMeta;
+                                    let currentStep: number;
+                                    if (orderData.canceledAt || orderData.rawFinancialStatus === 'REFUNDED') {
+                                        currentStep = 0; // cancelled
+                                    } else if (orderData.rawFulfillmentStatus === 'FULFILLED') {
+                                        currentStep = 5; // fully done
+                                    } else if (meta === 'delivered' || meta === 'picked_up' || meta === 'pickedup') {
+                                        currentStep = 5;
+                                    } else if (meta === 'out_for_delivery' || meta === 'ready' || meta === 'ready_for_pickup') {
+                                        currentStep = 4;
+                                    } else if (meta === 'preparing' || meta === 'in_progress' || orderData.rawFulfillmentStatus === 'PARTIALLY_FULFILLED') {
+                                        currentStep = 3;
+                                    } else if (meta === 'confirmed' || orderData.rawFinancialStatus === 'PAID') {
+                                        currentStep = 2;
+                                    } else {
+                                        currentStep = 1;
+                                    }
 
                                     const toEnglishDigits = (str: string) => {
                                         const arabicDigits = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
@@ -326,6 +369,9 @@ export default function TrackOrderPage() {
                                     const formattedRawTime = rawTimeStr.replace(/([0-9])([\u0645\u0635])/g, '$1 $2').replace(/([0-9])(AM|PM)/ig, '$1 $2');
                                     const timeStr = toEnglishDigits(formattedRawTime);
 
+                                    // Pickup orders get different stage 4 & 5 labels
+                                    const isPickup = orderData.isPickup;
+
                                     const stages = [
                                         {
                                             id: 1,
@@ -346,22 +392,22 @@ export default function TrackOrderPage() {
                                             id: 3,
                                             en: 'Preparing',
                                             ar: 'جاري التجهيز',
-                                            descEn: 'Preparing order',
+                                            descEn: 'Preparing your order',
                                             descAr: 'جاري تجهيز طلبك'
                                         },
                                         {
                                             id: 4,
-                                            en: 'On the Way',
-                                            ar: 'في الطريق إليك',
-                                            descEn: 'On the way to you',
-                                            descAr: 'طلبك في الطريق إليك'
+                                            en: isPickup ? 'Ready for Pickup' : 'On the Way',
+                                            ar: isPickup ? 'جاهز للاستلام' : 'في الطريق إليك',
+                                            descEn: isPickup ? 'Your order is ready at the branch' : 'On the way to you',
+                                            descAr: isPickup ? 'طلبك جاهز في الفرع' : 'طلبك في الطريق إليك'
                                         },
                                         {
                                             id: 5,
-                                            en: 'Delivered',
-                                            ar: 'تم التسليم',
-                                            descEn: 'Delivered successfully',
-                                            descAr: 'تم تسليم طلبك بنجاح'
+                                            en: isPickup ? 'Picked Up' : 'Delivered',
+                                            ar: isPickup ? 'تم الاستلام' : 'تم التسليم',
+                                            descEn: isPickup ? 'Order picked up successfully' : 'Delivered successfully',
+                                            descAr: isPickup ? 'تم استلام طلبك بنجاح من الفرع' : 'تم تسليم طلبك بنجاح'
                                         },
                                     ];
 

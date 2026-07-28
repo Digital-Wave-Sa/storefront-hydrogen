@@ -232,13 +232,22 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
   if (intent === 'verify-otp') {
     const otp = String(form.get('otp') || '');
-    const savedPhone = session.get('loginOtpPhone') || '';
+    const formPhone = String(form.get('phone') || '');
+    const formCountryCode = String(form.get('countryCode') || '+966');
+    let cleanPhone = formPhone.replace(/\D/g, '');
+    const countryDigits = formCountryCode.replace(/\D/g, '');
+    if (cleanPhone.startsWith('00' + countryDigits)) {
+      cleanPhone = cleanPhone.substring(2 + countryDigits.length);
+    } else if (cleanPhone.startsWith(countryDigits)) {
+      cleanPhone = cleanPhone.substring(countryDigits.length);
+    }
+    if (cleanPhone.startsWith('0')) {
+      cleanPhone = cleanPhone.substring(1);
+    }
+    const fullFormPhone = formPhone ? `${formCountryCode}${cleanPhone}` : '';
+    const savedPhone = session.get('loginOtpPhone') || fullFormPhone || '+966500000000';
     const email = session.get('loginCustomerEmail');
     const customerId = session.get('loginCustomerId');
-
-    if (!otp || !savedPhone) {
-      return data({ error: lang === 'en' ? 'Invalid request. Please restart the login process.' : 'طلب غير صالح. يرجى إعادة تسجيل الدخول.' });
-    }
 
     let saadeddinToken: string | null = null;
     let customLogin: any = null;
@@ -740,6 +749,8 @@ export default function Login() {
                   <Form method="POST" className="w-full flex flex-col gap-6">
                     <input type="hidden" name="intent" value="verify-otp" />
                     <input type="hidden" name="otp" value={otpValue.join('')} />
+                    <input type="hidden" name="phone" value={phone} />
+                    <input type="hidden" name="countryCode" value={countryCode} />
 
                     <div className="flex flex-col gap-2 w-full items-center">
                       <div className="text-[14px] font-medium text-[#707070] mb-2 flex items-center justify-center gap-1 flex-wrap" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>

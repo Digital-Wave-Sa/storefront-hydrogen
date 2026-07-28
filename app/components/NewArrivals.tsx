@@ -115,7 +115,7 @@ export function NewArrivals({
                                                                 });
                                                             }}
                                                             aria-label={isWishlisted ? "Remove from Wishlist" : "Add to Wishlist"}
-                                                            className={`absolute top-2 md:top-4 left-2 md:left-4 z-10 w-7 h-7 md:w-10 md:h-10 p-0 rounded-full bg-white shadow-md transition-all flex items-center justify-center ${isWishlisted ? 'text-[#e74c3c]' : 'text-gray-700 hover:text-[#e74c3c]'}`}
+                                                            className={`absolute top-2.5 md:top-3.5 ${isEn ? 'right-2.5 md:right-3.5' : 'left-2.5 md:left-3.5'} z-20 w-7 h-7 md:w-10 md:h-10 p-0 rounded-full bg-white shadow-md transition-all flex items-center justify-center ${isWishlisted ? 'text-[#e74c3c]' : 'text-gray-700 hover:text-[#e74c3c]'}`}
                                                         >
                                                             <svg className="w-3.5 h-3.5 md:w-5 md:h-5" viewBox="0 0 24 24" fill={isWishlisted ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.5">
                                                                 <path d="M20.8 4.6a5.5 5.5 0 00-7.7 0l-1.1 1-1.1-1a5.5 5.5 0 00-7.8 7.8l1 1 7.9 7.9 7.9-7.9 1-1a5.5 5.5 0 000-7.8z" />

@@ -261,9 +261,10 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
     try {
       const api = new SaadeddinApi(env);
-      const loginResult = await api.login(savedPhone, otp);
+      // CRM expects /auth/verify-otp with flowType 'login', not /auth/login
+      const loginResult = await api.verifyOtp(savedPhone, otp, 'login');
       saadeddinToken = loginResult?.token || null;
-      crmProfile = loginResult?.profile || null;
+      crmProfile = loginResult?.profile || loginResult?.customer || loginResult || null;
 
       if (crmProfile?.email) {
         session.set('loginCustomerEmail', crmProfile.email);

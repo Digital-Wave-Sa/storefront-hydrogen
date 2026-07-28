@@ -1,5 +1,5 @@
 import { Suspense } from 'react';
-import { useOutletContext, Link, useLocation, Await, Form, useFetcher } from 'react-router';
+import { useOutletContext, Link, useLocation, Await, Form } from 'react-router';
 import type { CustomerFragment } from 'storefrontapi.generated';
 import { useWishlist } from '~/context/WishlistContext';
 import { SaudiRiyalSymbol } from '~/components/Price';
@@ -233,21 +233,6 @@ export default function AccountDashboard() {
 
                 const isPickup = checkIsPickupOrder(lastOrder);
 
-                // eslint-disable-next-line react-hooks/rules-of-hooks
-                const reorderFetcher = useFetcher();
-
-                const handleReorder = (e: React.MouseEvent) => {
-                  e.preventDefault();
-                  const items = (lastOrder.lineItems?.nodes || []).map((item: any) => ({
-                    merchandiseId: item.variant?.id,
-                    quantity: item.quantity || 1,
-                  })).filter((item: any) => item.merchandiseId);
-                  const formData = new FormData();
-                  formData.append('intent', 'reorder');
-                  formData.append('items', JSON.stringify(items));
-                  reorderFetcher.submit(formData, { method: 'POST', action: '/account/orders' });
-                };
-
                 let statusEn = isPickup ? 'Ready for Pickup' : 'Processing';
                 let statusAr = isPickup ? 'جاهز للاستلام من الفرع' : 'قيد المعالجة';
                 if (lastOrder.fulfillmentStatus === 'FULFILLED') {
@@ -300,18 +285,18 @@ export default function AccountDashboard() {
                         </div>
                         <div className="flex items-center gap-2">
                           <Link
-                            to={isEn ? `/en/track-order/${lastOrder.orderNumber}` : `/track-order/${lastOrder.orderNumber}`}
+                            to={isEn ? `/en/account/orders/${orderIdEncoded}` : `/account/orders/${orderIdEncoded}`}
                             className="px-6 py-2 border border-[#234745] text-[#234745] rounded-[24px] text-[13px] font-bold hover:bg-gray-50 transition-all"
                           >
                             {isEn ? 'Track' : 'تتبع'}
                           </Link>
-                          <button
-                            onClick={handleReorder}
-                            disabled={reorderFetcher.state !== 'idle'}
-                            className="px-6 py-2 bg-[#234745] text-white rounded-[24px] text-[13px] font-bold hover:opacity-90 transition-all disabled:opacity-60"
+                          <Link
+                            to={isEn ? `/en/account/orders/${orderIdEncoded}` : `/account/orders/${orderIdEncoded}`}
+                            className="px-6 py-2 bg-[#234745] text-white rounded-[24px] text-[13px] font-bold hover:opacity-90 transition-all"
+                            style={{ color: '#FFFFFF' }}
                           >
-                            {reorderFetcher.state !== 'idle' ? (isEn ? 'Adding...' : 'جاري...') : (isEn ? 'Reorder' : 'إعادة الطلب')}
-                          </button>
+                            {isEn ? 'Reorder' : 'إعادة الطلب'}
+                          </Link>
                         </div>
                       </div>
 

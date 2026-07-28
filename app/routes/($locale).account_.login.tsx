@@ -571,12 +571,21 @@ export default function Login() {
   };
 
   const handleOTPChange = (index: number, value: string) => {
-    if (value.length > 1) value = value[value.length - 1];
+    const digitsOnly = value.replace(/\D/g, '');
+    if (digitsOnly.length >= 4) {
+      const newOtp = digitsOnly.slice(0, 4).split('');
+      setOtpValue(newOtp);
+      setHasEditSinceError(true);
+      otpRefs[3].current?.focus();
+      return;
+    }
+
+    const singleDigit = digitsOnly ? digitsOnly[digitsOnly.length - 1] : '';
     const newOtp = [...otpValue];
-    newOtp[index] = value;
+    newOtp[index] = singleDigit;
     setOtpValue(newOtp);
     setHasEditSinceError(true);
-    if (value && index < 3) otpRefs[index + 1].current?.focus();
+    if (singleDigit && index < 3) otpRefs[index + 1].current?.focus();
   };
 
   const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {

@@ -223,7 +223,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
           error: msg,
           status,
           apiData,
-          apiUrl: env.CUSTOM_API_URL || 'https://api.pryvexapls.com (default)'
+          apiUrl: env.CUSTOM_API_URL || 'https://api.saadeddin.top (default)'
         });
         // If the error indicates account doesn't exist, show that message
         if (msg.toLowerCase().includes('not found') || msg.includes('غير موجود') || msg.toLowerCase().includes('not exist')) {

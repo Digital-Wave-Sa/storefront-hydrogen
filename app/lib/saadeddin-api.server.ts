@@ -3,7 +3,7 @@ export class SaadeddinApi {
   private token?: string;
 
   constructor(env: any, token?: string) {
-    this.baseUrl = env.CUSTOM_API_URL || 'https://api.pryvexapls.com';
+    this.baseUrl = env.CUSTOM_API_URL || 'https://api.saadeddin.top';
     this.token = token;
   }
 

@@ -138,7 +138,7 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
         let history: any[] = [];
         let cards: any[] = [];
         try {
-          const middlewareUrl = context.env.MIDDLEWARE_URL || 'https://api.pryvexapls.com';
+          const middlewareUrl = context.env.MIDDLEWARE_URL || 'https://api.saadeddin.top';
           const branchId = await context.session.get('selectedLocationId');
           const isLocal = new URL(request.url).host.includes('localhost') || new URL(request.url).host.includes('127.0.0.1');
 
@@ -280,7 +280,7 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
       let history: any[] = [];
       let cards: any[] = [];
       try {
-        const middlewareUrl = context.env.MIDDLEWARE_URL || 'https://api.pryvexapls.com';
+        const middlewareUrl = context.env.MIDDLEWARE_URL || 'https://api.saadeddin.top';
         const branchId = await context.session.get('selectedLocationId');
         const isLocal = new URL(request.url).host.includes('localhost') || new URL(request.url).host.includes('127.0.0.1');
 

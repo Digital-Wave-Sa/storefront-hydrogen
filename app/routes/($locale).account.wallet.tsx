@@ -65,7 +65,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
   const formData = await request.formData();
   const intent = formData.get('intent')?.toString() || 'redeem_voucher';
   const isEn = new URL(request.url).pathname.includes('/en');
-  const middlewareUrl = env.MIDDLEWARE_URL || 'https://api.pryvexapls.com';
+  const middlewareUrl = env.MIDDLEWARE_URL || 'https://api.saadeddin.top';
   const isLocal = new URL(request.url).host.includes('localhost') || new URL(request.url).host.includes('127.0.0.1');
   const baseGiftCardUrl = isLocal ? 'http://localhost:3000' : middlewareUrl;
 

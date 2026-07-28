@@ -97,7 +97,7 @@ function translateOtpErrorMessage(msg: string, lang: 'en' | 'ar'): string {
       const parsed = JSON.parse(cleanMsg);
       if (parsed.message) cleanMsg = parsed.message;
       else if (parsed.error) cleanMsg = parsed.error;
-    } catch {}
+    } catch { }
   }
 
   const lowerMsg = cleanMsg.toLowerCase();
@@ -784,11 +784,10 @@ export default function Login() {
                             type="text"
                             inputMode="numeric"
                             maxLength={1}
-                            className={`w-14 h-14 text-center border rounded-[12px] text-2xl font-bold outline-none transition-colors ${
-                              showError
+                            className={`w-14 h-14 text-center border rounded-[12px] text-2xl font-bold outline-none transition-colors ${showError
                                 ? 'border-[#F38C8C] text-[#E55C5C] bg-[#FFF5F5] focus:border-[#E55C5C] disabled:bg-[#FFF5F5] disabled:text-[#E55C5C] disabled:border-[#F38C8C]'
                                 : 'border-[#BBCFCD] text-[#234745] focus:border-[#234745] disabled:bg-gray-50'
-                            }`}
+                              }`}
                             value={otpValue[i]}
                             onChange={(e) => handleOTPChange(i, e.target.value)}
                             onKeyDown={(e) => handleKeyDown(i, e)}
@@ -867,7 +866,7 @@ export default function Login() {
 
                 {/* Continue as Guest Button */}
                 <Link
-                  to={isEn ? "/en/cart" : "/cart"}
+                  to={isEn ? "/en/" : "/"}
                   className="w-full h-[52px] border border-[#234745] rounded-[12px] flex items-center justify-center hover:bg-[#234745]/5 transition-colors"
                 >
                   <span className="font-bold text-[16px] text-[#9FB7AE]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>

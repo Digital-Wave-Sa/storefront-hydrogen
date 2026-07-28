@@ -1,4 +1,4 @@
-import { data as json, type LoaderFunctionArgs, useLoaderData, useNavigate } from 'react-router';
+﻿import { data as json, type LoaderFunctionArgs, useLoaderData, useNavigate } from 'react-router';
 import { useState } from 'react';
 
 export async function loader({ params, context }: LoaderFunctionArgs) {
@@ -329,23 +329,22 @@ export default function TrackOrderPage() {
                                 <div className={`absolute top-4 bottom-4 ${isEn ? 'left-4' : 'right-4'} w-[2px] bg-[#BBCFCD]/40`} />
 
                                 {(() => {
-                                    // Determine current step from Shopify statuses + optional order_status metafield
-                                    const meta = orderData.orderStatusMeta;
+                                    const isPickup = orderData.isPickup;
+                                    const fulfillment = orderData.rawFulfillmentStatus;
+                                    const isCancelled = !!(orderData.canceledAt || orderData.rawFinancialStatus === 'REFUNDED');
+
+                                    // 4-step system using only native Shopify statuses
+                                    // Works for both prepaid (PAID) and COD (PENDING) orders
+                                    // Step 2 is always active as long as order is not cancelled
                                     let currentStep: number;
-                                    if (orderData.canceledAt || orderData.rawFinancialStatus === 'REFUNDED') {
-                                        currentStep = 0; // cancelled
-                                    } else if (orderData.rawFulfillmentStatus === 'FULFILLED') {
-                                        currentStep = 5; // fully done
-                                    } else if (meta === 'delivered' || meta === 'picked_up' || meta === 'pickedup') {
-                                        currentStep = 5;
-                                    } else if (meta === 'out_for_delivery' || meta === 'ready' || meta === 'ready_for_pickup') {
-                                        currentStep = 4;
-                                    } else if (meta === 'preparing' || meta === 'in_progress' || orderData.rawFulfillmentStatus === 'PARTIALLY_FULFILLED') {
-                                        currentStep = 3;
-                                    } else if (meta === 'confirmed' || orderData.rawFinancialStatus === 'PAID') {
-                                        currentStep = 2;
+                                    if (isCancelled) {
+                                        currentStep = 0; // all grey
+                                    } else if (fulfillment === 'FULFILLED') {
+                                        currentStep = 4; // done
+                                    } else if (fulfillment === 'IN_PROGRESS' || fulfillment === 'PARTIALLY_FULFILLED' || fulfillment === 'OPEN') {
+                                        currentStep = 3; // ready for pickup / on the way
                                     } else {
-                                        currentStep = 1;
+                                        currentStep = 2; // confirmed (always for any placed, non-cancelled order)
                                     }
 
                                     const toEnglishDigits = (str: string) => {
@@ -369,9 +368,6 @@ export default function TrackOrderPage() {
                                     const formattedRawTime = rawTimeStr.replace(/([0-9])([\u0645\u0635])/g, '$1 $2').replace(/([0-9])(AM|PM)/ig, '$1 $2');
                                     const timeStr = toEnglishDigits(formattedRawTime);
 
-                                    // Pickup orders get different stage 4 & 5 labels
-                                    const isPickup = orderData.isPickup;
-
                                     const stages = [
                                         {
                                             id: 1,
@@ -385,25 +381,18 @@ export default function TrackOrderPage() {
                                             id: 2,
                                             en: 'Confirmed',
                                             ar: 'تم التأكيد',
-                                            descEn: 'Order has been confirmed',
-                                            descAr: 'تم تأكيد طلبك بنجاح'
+                                            descEn: isCancelled ? 'Order was cancelled' : 'Order confirmed',
+                                            descAr: isCancelled ? 'تم إلغاء الطلب' : 'تم تأكيد طلبك'
                                         },
                                         {
                                             id: 3,
-                                            en: 'Preparing',
-                                            ar: 'جاري التجهيز',
-                                            descEn: 'Preparing your order',
-                                            descAr: 'جاري تجهيز طلبك'
-                                        },
-                                        {
-                                            id: 4,
                                             en: isPickup ? 'Ready for Pickup' : 'On the Way',
                                             ar: isPickup ? 'جاهز للاستلام' : 'في الطريق إليك',
-                                            descEn: isPickup ? 'Your order is ready at the branch' : 'On the way to you',
+                                            descEn: isPickup ? 'Your order is ready at the branch' : 'Your order is on the way',
                                             descAr: isPickup ? 'طلبك جاهز في الفرع' : 'طلبك في الطريق إليك'
                                         },
                                         {
-                                            id: 5,
+                                            id: 4,
                                             en: isPickup ? 'Picked Up' : 'Delivered',
                                             ar: isPickup ? 'تم الاستلام' : 'تم التسليم',
                                             descEn: isPickup ? 'Order picked up successfully' : 'Delivered successfully',

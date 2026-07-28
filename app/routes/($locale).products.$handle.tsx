@@ -1011,7 +1011,19 @@ export default function Product() {
                   margin: 0
                 }}
               >
-                {product.title}
+                {(() => {
+                  if (isEn) return product.title;
+                  const hasArabicInTitle = /[\u0600-\u06FF]/.test(product.title || '');
+                  if (hasArabicInTitle) return product.title;
+                  const arMetafield = 
+                    (product as any).name_in_arabic?.value ||
+                    (product as any).title_in_arabic?.value ||
+                    (product as any).name_ar?.value ||
+                    (product as any).title_ar?.value ||
+                    (product as any).arabic_name?.value ||
+                    (product as any).arabic_title?.value;
+                  return (arMetafield && String(arMetafield).trim()) ? String(arMetafield).trim() : product.title;
+                })()}
               </h1>
 
             </div>
@@ -2724,6 +2736,12 @@ const PRODUCT_FRAGMENT = `#graphql
       value
     }
     arabic_title: metafield(namespace: "custom", key: "arabic_title") {
+      value
+    }
+    name_ar: metafield(namespace: "custom", key: "name_ar") {
+      value
+    }
+    title_ar: metafield(namespace: "custom", key: "title_ar") {
       value
     }
     bundle_components: metafield(namespace: "custom", key: "bundle_components") {

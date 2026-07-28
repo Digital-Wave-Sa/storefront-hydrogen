@@ -45,7 +45,8 @@ export async function getAdminToken(env: any): Promise<string> {
   const clientSecret = env.SHOPIFY_CLIENT_SECRET || env.SHOPIFY_ADMIN_CLIENT_SECRET;
 
   if (!clientId || !clientSecret || !rawShop) {
-    throw new Error(`Missing credentials. Found: Shop=${rawShop}, ID=${!!clientId}, Secret=${!!clientSecret}`);
+    console.warn(`[ShopifyAdmin] Missing credentials. Found: Shop=${rawShop}, ID=${!!clientId}, Secret=${!!clientSecret}`);
+    return null;
   }
 
   try {

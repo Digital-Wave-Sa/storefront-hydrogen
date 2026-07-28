@@ -79,7 +79,7 @@ async function loadCriticalData({context}: Route.LoaderArgs) {
   return {
     featuredCollection: collections.nodes[0],
     occasions: occasionsResult.collections.nodes,
-    homepageConfig: configResult?.metaobjects?.nodes?.[0] || null,
+    homepageConfig: configResult || null,
   };
 }
 
@@ -143,7 +143,7 @@ export default function Homepage() {
           }),
         }}
       />
-      <HeroSlider />
+      <HeroSlider config={data.homepageConfig} />
       <ShopByOccasion collections={data.occasions} />
       <WhoAreYouGifting collections={data.occasions} />
       <BestSellers products={data.recommendedProducts} />
@@ -472,33 +472,52 @@ const OCCASIONS_QUERY = `#graphql
 export const HOMEPAGE_CONFIG_QUERY = `#graphql
   query HomepageConfig($country: CountryCode, $language: LanguageCode)
     @inContext(country: $country, language: $language) {
-    metaobjects(type: "homepage_config", first: 1) {
+    heroSlides: metaobjects(type: "hero_slide", first: 20) {
       nodes {
+        id
         fields {
           key
           value
           reference {
             ... on MediaImage {
-              image {
-                url
-              }
+              image { url }
             }
           }
-          references(first: 10) {
-            nodes {
-              ... on Metaobject {
-                fields {
-                  key
-                  value
-                  reference {
-                    ... on MediaImage {
-                      image {
-                        url
-                      }
-                    }
-                  }
-                }
-              }
+        }
+      }
+    }
+    ramadanBanner: metaobjects(type: "ramadan_banner", first: 1) {
+      nodes {
+        id
+        fields {
+          key
+          value
+          reference {
+            ... on MediaImage {
+              image { url }
+            }
+          }
+        }
+      }
+    }
+    offersSection: metaobjects(type: "offers_section", first: 1) {
+      nodes {
+        id
+        fields {
+          key
+          value
+        }
+      }
+    }
+    offerCards: metaobjects(type: "offer_card", first: 10) {
+      nodes {
+        id
+        fields {
+          key
+          value
+          reference {
+            ... on MediaImage {
+              image { url }
             }
           }
         }

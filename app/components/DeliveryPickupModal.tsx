@@ -598,13 +598,79 @@ export function DeliveryPickupModal({
 
 function normalizeCity(city: string): string {
     const c = (city || '').toLowerCase().trim();
-    if (c.includes('riyadh') || c.includes('رياض')) return 'riyadh';
+    if (c.includes('riyadh') || c.includes('رياض') || c.includes('12251') || c.includes('13315') || c.includes('14253')) return 'riyadh';
     if (c.includes('abha') || c.includes('أبها') || c.includes('ابها')) return 'abha';
     if (c.includes('jeddah') || c.includes('جدة') || c.includes('جده')) return 'jeddah';
     if (c.includes('khamis') || c.includes('خميس') || c.includes('مشيط')) return 'khamis mushait';
     if (c.includes('dammam') || c.includes('دمام')) return 'dammam';
     if (c.includes('khobar') || c.includes('خبر')) return 'khobar';
     return c;
+}
+
+export function detectCityFromAddress(addr: any): string {
+    if (!addr) return '';
+    const combinedText = [
+        addr.city,
+        addr.address1,
+        addr.address2,
+        addr.province,
+        addr.company,
+        addr.zip,
+        addr.firstName,
+        addr.lastName
+    ].filter(Boolean).join(' ').toLowerCase();
+
+    // Riyadh & neighborhoods & postal codes
+    if (
+        combinedText.includes('riyadh') || combinedText.includes('رياض') ||
+        combinedText.includes('sahafa') || combinedText.includes('صحافة') ||
+        combinedText.includes('olaya') || combinedText.includes('عليا') ||
+        combinedText.includes('malaz') || combinedText.includes('ملز') ||
+        combinedText.includes('yasmin') || combinedText.includes('ياسمين') ||
+        combinedText.includes('narjis') || combinedText.includes('نرجس') ||
+        combinedText.includes('hittin') || combinedText.includes('حطين') ||
+        combinedText.includes('nakheel') || combinedText.includes('نخيل') ||
+        combinedText.includes('aqiq') || combinedText.includes('عقيق') ||
+        combinedText.includes('rawdah') || combinedText.includes('روضة') ||
+        combinedText.includes('diriyah') || combinedText.includes('درعية') ||
+        combinedText.includes('sulaimaniyah') || combinedText.includes('سليمانية') ||
+        combinedText.includes('12251') || combinedText.includes('13315') || combinedText.includes('14253') || combinedText.includes('11564')
+    ) {
+        return 'riyadh';
+    }
+
+    // Jeddah & neighborhoods
+    if (
+        combinedText.includes('jeddah') || combinedText.includes('جدة') || combinedText.includes('جده') ||
+        combinedText.includes('hamra') || combinedText.includes('حمراء') ||
+        combinedText.includes('salamah') || combinedText.includes('سلامة') ||
+        combinedText.includes('shati') || combinedText.includes('شاطئ') ||
+        combinedText.includes('23323')
+    ) {
+        return 'jeddah';
+    }
+
+    // Abha / Asir
+    if (combinedText.includes('abha') || combinedText.includes('أبها') || combinedText.includes('ابها') || combinedText.includes('عسير')) {
+        return 'abha';
+    }
+
+    // Khamis Mushait
+    if (combinedText.includes('khamis') || combinedText.includes('خميس') || combinedText.includes('مشيط')) {
+        return 'khamis mushait';
+    }
+
+    // Dammam
+    if (combinedText.includes('dammam') || combinedText.includes('دمام')) {
+        return 'dammam';
+    }
+
+    // Khobar
+    if (combinedText.includes('khobar') || combinedText.includes('خبر')) {
+        return 'khobar';
+    }
+
+    return normalizeCity(addr.city);
 }
 
 function ModalContent({
@@ -1018,10 +1084,15 @@ function ModalContent({
                                          nearestBranch = { ...nearestBranch, deliveryFee: nearestBranch.baseDeliveryFee || nearestBranch.deliveryFee };
 
                                     } else {
-                                         // Fallback to city match (ignoring disabled/hidden stores)
-                                         nearestBranch = branches.find((b: any) => 
-                                             normalizeCity(b.city) === normalizeCity(currentAddress?.city) && !b.hideFromStorefront
-                                         ) || branches.find((b: any) => !b.hideFromStorefront) || branches[0];
+                                         // Fallback to intelligent city & neighborhood detection
+                                         const targetCity = detectCityFromAddress(currentAddress);
+                                         nearestBranch = (targetCity
+                                             ? branches.find((b: any) => !b.hideFromStorefront && detectCityFromAddress(b) === targetCity) ||
+                                               branches.find((b: any) => !b.hideFromStorefront && normalizeCity(b.city) === targetCity)
+                                             : null
+                                         ) || branches.find((b: any) => !b.hideFromStorefront && (normalizeCity(b.city) === 'riyadh' || b.name?.includes('الرياض') || b.name?.includes('العليا')))
+                                           || branches.find((b: any) => !b.hideFromStorefront)
+                                           || branches[0];
                                          
                                          // Reset to base fee if no exact coordinates
                                          nearestBranch = { ...nearestBranch, deliveryFee: nearestBranch.baseDeliveryFee || nearestBranch.deliveryFee };

@@ -129,7 +129,12 @@ export async function loader(args: LoaderFunctionArgs) {
   const decodedHandle = decodeURIComponent(handle);
 
   let { product } = await storefront.query(PRODUCT_QUERY, {
-    variables: { handle: decodedHandle, selectedOptions },
+    variables: { 
+      handle: decodedHandle, 
+      selectedOptions,
+      country: storefront.i18n.country,
+      language: storefront.i18n.language,
+    },
     cache: storefront.CacheNone(),
   });
 
@@ -1006,11 +1011,7 @@ export default function Product() {
                   margin: 0
                 }}
               >
-                {(() => {
-                  if (isEn) return product.title;
-                  const arTitle = (product as any).name_in_arabic?.value || (product as any).title_in_arabic?.value || (product as any).arabic_name?.value || (product as any).arabic_title?.value;
-                  return (arTitle && String(arTitle).trim()) ? String(arTitle).trim() : product.title;
-                })()}
+                {product.title}
               </h1>
 
             </div>

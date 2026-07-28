@@ -213,7 +213,7 @@ export default function AccountDashboard() {
                 {/* Total Orders */}
                 <div className="bg-white border border-[#9FB7AE] rounded-[12px] py-8 px-4 flex flex-col items-center justify-center text-center gap-2">
                   <span className="text-[28px] md:text-[34px] font-bold text-[#234745] leading-none font-en">
-                    {customer.numberOfOrders || 12}
+                    {customer.numberOfOrders ?? customer.orders?.nodes?.length ?? 0}
                   </span>
                   <p className="text-[14px] text-[#A6BFB9] font-medium" style={!isEn ? { fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" } : undefined}>
                     {isEn ? 'Total Orders' : 'إجمالي الطلبات'}

@@ -98,25 +98,60 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
 
   const ordersPromise = (async () => {
     let customer: any = null;
-    if (customerAccessToken.accessToken === 'dev-bypass-token') {
+    const token = typeof customerAccessToken === 'string' ? customerAccessToken : customerAccessToken?.accessToken;
+    const isFallbackToken = !token || token === 'dev-bypass-token' || token.startsWith('session-');
+
+    if (!isFallbackToken) {
+      try {
+        const result = await storefront.query(CUSTOMER_ORDERS_QUERY, {
+          variables: {
+            customerAccessToken: token,
+            country: storefront.i18n.country,
+            language: storefront.i18n.language,
+            ...paginationVariables,
+          },
+          cache: storefront.CacheNone(),
+        });
+        customer = result?.customer;
+      } catch (e) {
+        console.error('[Orders Loader] Storefront query failed, falling back to Admin API:', e);
+      }
+    }
+
+    if (!customer?.orders?.nodes?.length) {
       let mappedOrders: any[] = [];
       const savedPhone = await session.get('loginOtpPhone');
-      if (savedPhone) {
-        try {
-          const { getAdminToken } = await import('~/lib/shopify-admin.server');
-          const adminToken = await getAdminToken(context.env);
-          const queryStr = savedPhone.includes('590910042')
-            ? encodeURIComponent('email:"motasem.udeh@gmail.com"')
-            : encodeURIComponent(`phone:"${savedPhone}"`);
-          const res = await fetch(`https://${context.env.PUBLIC_STORE_DOMAIN}/admin/api/2023-04/customers/search.json?query=${queryStr}`, {
+      const savedEmail = await session.get('loginOtpEmail');
+      try {
+        const { getAdminToken, getAdminDomain } = await import('~/lib/shopify-admin.server');
+        const adminToken = await getAdminToken(context.env);
+        const adminDomain = getAdminDomain(context.env);
+
+        let adminCust: any = null;
+        if (savedPhone) {
+          const res = await fetch(`https://${adminDomain}/admin/api/2024-01/customers/search.json?query=phone:"${encodeURIComponent(savedPhone)}"`, {
             headers: { 'X-Shopify-Access-Token': adminToken, 'Content-Type': 'application/json' },
           });
-          const { customers } = (await res.json()) as any;
-          if (customers && customers.length > 0) {
-            const adminCust = customers[0];
-            const ordersRes = await fetch(`https://${context.env.PUBLIC_STORE_DOMAIN}/admin/api/2023-04/customers/${adminCust.id}/orders.json?status=any`, {
-              headers: { 'X-Shopify-Access-Token': adminToken, 'Content-Type': 'application/json' },
-            });
+          if (res.ok) {
+            const data = await res.json() as any;
+            adminCust = data.customers?.[0];
+          }
+        }
+        if (!adminCust && savedEmail) {
+          const res = await fetch(`https://${adminDomain}/admin/api/2024-01/customers/search.json?query=email:"${encodeURIComponent(savedEmail)}"`, {
+            headers: { 'X-Shopify-Access-Token': adminToken, 'Content-Type': 'application/json' },
+          });
+          if (res.ok) {
+            const data = await res.json() as any;
+            adminCust = data.customers?.[0];
+          }
+        }
+
+        if (adminCust?.id) {
+          const ordersRes = await fetch(`https://${adminDomain}/admin/api/2024-01/customers/${adminCust.id}/orders.json?status=any`, {
+            headers: { 'X-Shopify-Access-Token': adminToken, 'Content-Type': 'application/json' },
+          });
+          if (ordersRes.ok) {
             const { orders } = (await ordersRes.json()) as any;
             if (orders) {
               mappedOrders = orders.map((o: any) => ({
@@ -126,17 +161,19 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
                 canceledAt: o.canceled_at,
                 financialStatus: o.financial_status ? o.financial_status.toUpperCase() : 'PAID',
                 fulfillmentStatus: o.fulfillment_status ? o.fulfillment_status.toUpperCase() : 'UNFULFILLED',
-                totalPrice: { amount: o.total_price, currencyCode: o.currency },
-                currentTotalPrice: { amount: o.total_price, currencyCode: o.currency },
+                totalPrice: { amount: String(o.total_price), currencyCode: o.currency || 'SAR' },
+                currentTotalPrice: { amount: String(o.total_price), currencyCode: o.currency || 'SAR' },
                 statusUrl: o.order_status_url,
                 customAttributes: (o.note_attributes || []).map((attr: any) => ({ key: attr.name || attr.key, value: attr.value })),
-                shippingTitle: o.shipping_lines?.[0]?.title || '',
+                shippingTitle: o.shipping_lines?.[0]?.title || o.shipping_lines?.[0]?.code || '',
+                shippingAddress: o.shipping_address || null,
+                tags: o.tags || '',
                 lineItems: {
-                  nodes: o.line_items.map((li: any) => ({
+                  nodes: (o.line_items || []).map((li: any) => ({
                     title: li.title,
                     quantity: li.quantity,
-                    originalTotalPrice: { amount: li.price, currencyCode: o.currency },
-                    discountedTotalPrice: { amount: li.price, currencyCode: o.currency },
+                    originalTotalPrice: { amount: String(li.price), currencyCode: o.currency || 'SAR' },
+                    discountedTotalPrice: { amount: String(li.price), currencyCode: o.currency || 'SAR' },
                     variant: {
                       id: li.variant_id ? `gid://shopify/ProductVariant/${li.variant_id}` : undefined,
                       image: null
@@ -146,12 +183,13 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
               }));
             }
           }
-        } catch (e) {
-          console.error('Failed to fetch real orders in dev bypass', e);
         }
+      } catch (e) {
+        console.error('[Orders Loader] Admin API fallback failed:', e);
       }
-      customer = {
-        orders: {
+
+      if (mappedOrders.length > 0) {
+        return {
           nodes: mappedOrders,
           pageInfo: {
             hasNextPage: false,
@@ -159,19 +197,8 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
             startCursor: "start",
             endCursor: "end"
           }
-        }
-      };
-    } else {
-      const result = await storefront.query(CUSTOMER_ORDERS_QUERY, {
-        variables: {
-          customerAccessToken: customerAccessToken.accessToken,
-          country: storefront.i18n.country,
-          language: storefront.i18n.language,
-          ...paginationVariables,
-        },
-        cache: storefront.CacheNone(),
-      });
-      customer = result.customer;
+        };
+      }
     }
     return customer?.orders;
   })();

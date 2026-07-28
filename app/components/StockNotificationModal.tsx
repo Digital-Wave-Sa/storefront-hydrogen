@@ -31,16 +31,21 @@ export function StockNotificationModal({
 
     useEffect(() => {
         setMounted(true);
-        if (customerEmail && !isEditingEmail) {
-            setEmail(customerEmail);
-        }
         if (isOpen) {
+            setStatus('idle');
+            setError(null);
             document.body.style.overflow = 'hidden';
+            if (customerEmail && !isEditingEmail) {
+                setEmail(customerEmail);
+            }
+        } else {
+            setStatus('idle');
+            setError(null);
         }
         return () => {
             document.body.style.overflow = 'unset';
         };
-    }, [isOpen, customerEmail, isEditingEmail]);
+    }, [isOpen, variantId, customerEmail]);
 
     if (!mounted || !isOpen) return null;
 

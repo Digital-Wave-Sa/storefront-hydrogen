@@ -81,6 +81,8 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
                 totalPrice: { amount: o.total_price, currencyCode: o.currency },
                 currentTotalPrice: { amount: o.total_price, currencyCode: o.currency },
                 statusUrl: o.order_status_url,
+                customAttributes: (o.note_attributes || []).map((attr: any) => ({ key: attr.name || attr.key, value: attr.value })),
+                shippingTitle: o.shipping_lines?.[0]?.title || '',
                 lineItems: {
                   nodes: o.line_items.map((li: any) => ({
                     title: li.title,
@@ -316,17 +318,31 @@ function OrderCard({ order, isEn }: { order: OrderItemFragment, isEn: boolean })
     fetcher.submit(formData, { method: 'POST' });
   };
 
-  let statusEn = 'On its way to you';
-  let statusAr = 'في الطريق إليك';
+  const customAttrs = (order as any).customAttributes || [];
+  const fulfillmentTypeAttr = customAttrs.find((a: any) => 
+    a.key === 'Fulfillment Type' || a.key === 'fulfillment_type' || a.key === 'Fulfillment' || a.key === 'type'
+  )?.value || '';
+  const shippingTitle = (order as any).shippingTitle || (order as any).shippingLine?.title || '';
+
+  const isPickup = (
+    fulfillmentTypeAttr.toLowerCase().includes('pickup') ||
+    fulfillmentTypeAttr.includes('استلام') ||
+    shippingTitle.toLowerCase().includes('pickup') ||
+    shippingTitle.includes('استلام') ||
+    shippingTitle.toLowerCase().includes('pick up')
+  );
+
+  let statusEn = isPickup ? 'Ready for Pickup' : 'On its way to you';
+  let statusAr = isPickup ? 'جاهز للاستلام من الفرع' : 'في الطريق إليك';
   let statusColor = '#906B51'; // Brown/gold
 
   if ((order as any).canceledAt || order.financialStatus === 'REFUNDED' || (order.fulfillmentStatus as any) === 'CANCELLED') {
     statusEn = 'Cancelled';
-    statusAr = 'ملغاه';
+    statusAr = 'ملغاة';
     statusColor = '#E64950'; // Red
   } else if (order.fulfillmentStatus === 'FULFILLED') {
-    statusEn = 'Delivered';
-    statusAr = 'تم التسليم';
+    statusEn = isPickup ? 'Picked up' : 'Delivered';
+    statusAr = isPickup ? 'تم الاستلام من الفرع' : 'تم التسليم';
     statusColor = '#234745'; // Dark green
   }
 

@@ -251,6 +251,8 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
                 financialStatus: o.financial_status ? o.financial_status.toUpperCase() : 'PAID',
                 fulfillmentStatus: o.fulfillment_status ? o.fulfillment_status.toUpperCase() : 'UNFULFILLED',
                 currentTotalPrice: { amount: String(o.total_price), currencyCode: o.currency || 'SAR' },
+                customAttributes: (o.note_attributes || []).map((attr: any) => ({ key: attr.name || attr.key, value: attr.value })),
+                shippingTitle: o.shipping_lines?.[0]?.title || '',
                 lineItems: {
                   nodes: (o.line_items || []).map((li: any) => ({
                     title: li.title,

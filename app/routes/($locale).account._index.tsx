@@ -230,14 +230,28 @@ export default function AccountDashboard() {
                 const totalAmount = lastOrder.currentTotalPrice?.amount || "0.00";
                 const orderIdEncoded = encodeURIComponent(lastOrder.id);
 
-                let statusEn = 'Processing';
-                let statusAr = 'قيد المعالجة';
+                const customAttrs = (lastOrder as any).customAttributes || [];
+                const fulfillmentTypeAttr = customAttrs.find((a: any) => 
+                  a.key === 'Fulfillment Type' || a.key === 'fulfillment_type' || a.key === 'Fulfillment' || a.key === 'type'
+                )?.value || '';
+                const shippingTitle = (lastOrder as any).shippingTitle || (lastOrder as any).shippingLine?.title || '';
+
+                const isPickup = (
+                  fulfillmentTypeAttr.toLowerCase().includes('pickup') ||
+                  fulfillmentTypeAttr.includes('استلام') ||
+                  shippingTitle.toLowerCase().includes('pickup') ||
+                  shippingTitle.includes('استلام') ||
+                  shippingTitle.toLowerCase().includes('pick up')
+                );
+
+                let statusEn = isPickup ? 'Ready for Pickup' : 'Processing';
+                let statusAr = isPickup ? 'جاهز للاستلام من الفرع' : 'قيد المعالجة';
                 if (lastOrder.fulfillmentStatus === 'FULFILLED') {
-                  statusEn = 'Delivered';
-                  statusAr = 'تم التوصيل';
+                  statusEn = isPickup ? 'Picked up' : 'Delivered';
+                  statusAr = isPickup ? 'تم الاستلام من الفرع' : 'تم التوصيل';
                 } else if (lastOrder.financialStatus === 'PAID') {
-                  statusEn = 'On its way to you';
-                  statusAr = 'في الطريق إليك';
+                  statusEn = isPickup ? 'Ready for Pickup' : 'On its way to you';
+                  statusAr = isPickup ? 'جاهز للاستلام من الفرع' : 'في الطريق إليك';
                 }
 
                 return (

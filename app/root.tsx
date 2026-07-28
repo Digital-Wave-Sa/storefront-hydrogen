@@ -92,9 +92,11 @@ export async function loader(args: Route.LoaderArgs) {
   const {storefront, env, session} = args.context;
   const customerAccessToken = await session.get('customerAccessToken');
   const loginOtpPhone = await session.get('loginOtpPhone');
+  const loginCustomerId = await session.get('loginCustomerId');
+  const loginCustomerEmail = await session.get('loginCustomerEmail');
 
   // Start fetching non-critical data without blocking time to first byte
-  const deferredData = loadDeferredData(args, customerAccessToken, loginOtpPhone);
+  const deferredData = loadDeferredData(args, customerAccessToken, loginOtpPhone, loginCustomerId, loginCustomerEmail);
 
   // OPTIONAL: Ensure Cart Buyer Identity and Attributes are synced
   let selectedLocId = session.get('selectedLocationId');
@@ -250,7 +252,13 @@ async function loadCriticalData({context}: Route.LoaderArgs) {
  * fetched after the initial page load. If it's unavailable, the page should still 200.
  * Make sure to not throw any errors here, as it will cause the page to 500.
  */
-function loadDeferredData({context}: Route.LoaderArgs, customerAccessToken: any, loginOtpPhone: string | undefined | null) {
+function loadDeferredData(
+  {context}: Route.LoaderArgs,
+  customerAccessToken: any,
+  loginOtpPhone: string | undefined | null,
+  loginCustomerId?: string | undefined | null,
+  loginCustomerEmail?: string | undefined | null
+) {
   const {storefront, customerAccount, cart} = context;
 
   // defer the footer query (below the fold)
@@ -267,58 +275,102 @@ function loadDeferredData({context}: Route.LoaderArgs, customerAccessToken: any,
       return null;
     });
 
-  const customer = (customerAccessToken?.accessToken === 'dev-bypass-token')
-    ? (async () => {
-        try {
-          const phone = loginOtpPhone;
-          if (!phone) return null;
-          const env = context.env as any;
-          const rawShop = env.SHOPIFY_SHOP || env.PUBLIC_STORE_DOMAIN || 'the-beauty-secrets-ksa';
-          let shopDomain = rawShop.includes('myshopify.com') ? rawShop : `${rawShop.split('.')[0]}.myshopify.com`;
-          const token = env.SHOPIFY_ADMIN_API_ACCESS_TOKENS;
-          const cleanPhoneForSearch = phone.replace('+966', '').replace(/\D/g, '');
-          const queryStr = encodeURIComponent(`*${cleanPhoneForSearch}*`);
-          const res = await fetch(`https://${shopDomain}/admin/api/2023-04/customers/search.json?query=${queryStr}`, {
-             headers: { 'X-Shopify-Access-Token': token, 'Content-Type': 'application/json' },
-          });
-          const d = await res.json() as any;
-          if (d?.customers && d.customers.length > 0) {
-             const adminCust = d.customers[0];
-             return { 
-                customer: { 
-                   id: `gid://shopify/Customer/${adminCust.id}`, 
-                   firstName: adminCust.first_name,
-                   lastName: adminCust.last_name,
-                   addresses: { 
-                      nodes: (adminCust.addresses || []).map((addr: any) => ({
-                         id: `gid://shopify/MailingAddress/${addr.id}`,
-                         firstName: addr.first_name,
-                         lastName: addr.last_name,
-                         address1: addr.address1,
-                         address2: addr.address2,
-                         city: addr.city,
-                         phone: addr.phone,
-                         country: addr.country,
-                         zip: addr.zip
-                      })) 
-                   } 
-                } 
-             };
-          }
-        } catch(e) {
-          console.error('[ROOT] Dev bypass customer fetch failed:', e);
-        }
-        return null;
-      })()
-    : (customerAccessToken?.accessToken
-      ? storefront.query(CUSTOMER_ADDRESSES_QUERY, {
-          variables: { customerAccessToken: customerAccessToken.accessToken },
+  const customer = (async () => {
+    if (!customerAccessToken) return null;
+
+    const token = typeof customerAccessToken === 'string' ? customerAccessToken : customerAccessToken?.accessToken;
+
+    // 1. Try Storefront API query first if token is a standard Storefront access token
+    if (token && !token.startsWith('session-')) {
+      try {
+        const res = await storefront.query(CUSTOMER_ADDRESSES_QUERY, {
+          variables: { customerAccessToken: token },
           cache: storefront.CacheNone(),
-        }).catch(err => {
-          console.error('[ROOT] Customer addresses query failed:', err);
-          return null;
-        })
-      : Promise.resolve(null));
+        });
+        if (res?.customer) return res;
+      } catch (err) {
+        console.warn('[ROOT] Storefront customer addresses query failed, attempting Admin API fallback:', err);
+      }
+    }
+
+    // 2. Admin API fallback if Storefront query returned null or threw, or if session token is active
+    try {
+      const { getAdminToken, getAdminDomain } = await import('~/lib/shopify-admin.server');
+      const adminToken = await getAdminToken(context.env);
+      const adminDomain = getAdminDomain(context.env);
+
+      if (!adminToken || !adminDomain) return null;
+
+      let adminCust: any = null;
+
+      if (loginCustomerId) {
+        const numericId = String(loginCustomerId).split('/').pop();
+        const res = await fetch(`https://${adminDomain}/admin/api/2024-01/customers/${numericId}.json`, {
+          headers: { 'X-Shopify-Access-Token': adminToken }
+        });
+        if (res.ok) {
+          const d = await res.json() as any;
+          adminCust = d.customer;
+        }
+      }
+
+      if (!adminCust && (loginOtpPhone || loginCustomerEmail)) {
+        let queryStr = '';
+        if (loginOtpPhone) {
+          queryStr = `phone:"${encodeURIComponent(loginOtpPhone)}"`;
+        } else if (loginCustomerEmail) {
+          queryStr = `email:"${encodeURIComponent(loginCustomerEmail)}"`;
+        }
+        const res = await fetch(`https://${adminDomain}/admin/api/2024-01/customers/search.json?query=${queryStr}`, {
+          headers: { 'X-Shopify-Access-Token': adminToken }
+        });
+        if (res.ok) {
+          const d = await res.json() as any;
+          adminCust = d.customers?.[0];
+        }
+      }
+
+      if (adminCust) {
+        return {
+          customer: {
+            id: `gid://shopify/Customer/${adminCust.id}`,
+            firstName: adminCust.first_name,
+            lastName: adminCust.last_name,
+            email: adminCust.email,
+            phone: adminCust.phone,
+            defaultAddress: adminCust.default_address ? {
+              id: `gid://shopify/MailingAddress/${adminCust.default_address.id}`,
+              firstName: adminCust.default_address.first_name,
+              lastName: adminCust.default_address.last_name,
+              address1: adminCust.default_address.address1,
+              address2: adminCust.default_address.address2,
+              city: adminCust.default_address.city,
+              phone: adminCust.default_address.phone,
+              country: adminCust.default_address.country,
+              zip: adminCust.default_address.zip
+            } : null,
+            addresses: {
+              nodes: (adminCust.addresses || []).map((addr: any) => ({
+                id: `gid://shopify/MailingAddress/${addr.id}`,
+                firstName: addr.first_name,
+                lastName: addr.last_name,
+                address1: addr.address1,
+                address2: addr.address2,
+                city: addr.city,
+                phone: addr.phone,
+                country: addr.country,
+                zip: addr.zip
+              }))
+            }
+          }
+        };
+      }
+    } catch (e) {
+      console.error('[ROOT] Admin API customer addresses fallback failed:', e);
+    }
+
+    return null;
+  })();
 
 
 

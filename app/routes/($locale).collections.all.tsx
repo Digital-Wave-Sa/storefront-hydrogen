@@ -935,7 +935,7 @@ export function FilterSidebar({ filters, collections, onClose, isDesktop = false
               <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
             </svg>
           </button>
-          <div className={`flex flex-col gap-4 transition-all duration-300 overflow-hidden ${openSections['categories'] ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'}`}>
+          <div className={`flex flex-col gap-3 transition-all duration-300 ${openSections['categories'] ? 'max-h-[220px] overflow-y-auto custom-scrollbar opacity-100 pr-1 pl-1' : 'max-h-0 overflow-hidden opacity-0'}`}>
             {categoryCollections.map((collection: any) => {
               const isActive = currentParams.getAll('category').includes(collection.handle);
               return (

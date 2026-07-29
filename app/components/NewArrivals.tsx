@@ -59,7 +59,12 @@ export function NewArrivals({
                         {(resolvedData) => {
                             const tagged = (resolvedData as any)?.taggedProducts?.nodes || [];
                             const all = (resolvedData as any)?.allProducts?.nodes || (resolvedData as any)?.products?.nodes || [];
-                            const productNodes = tagged.length > 0 ? tagged : all;
+                            const specialProducts = [...tagged, ...all].filter((p: any) =>
+                                p.tags?.some((t: string) => t.toLowerCase() === 'special-collection' || t.toLowerCase() === 'special_collection' || t.toLowerCase().includes('special-collection'))
+                            );
+                            // Deduplicate products by id
+                            const uniqueSpecial = Array.from(new Map(specialProducts.map((p: any) => [p.id, p])).values());
+                            const productNodes = uniqueSpecial.length > 0 ? uniqueSpecial : (tagged.length > 0 ? tagged : all);
                             const visibleProducts = productNodes.filter((p: any) => !shouldHideProduct(p, selectedLocationId, selectedLocationName));
                             return (
                                 <>

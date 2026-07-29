@@ -866,6 +866,10 @@ const MEGAMENU_COLLECTIONS_QUERY = `#graphql
             id
             title
             handle
+            featuredImage {
+              url
+              altText
+            }
           }
         }
       }

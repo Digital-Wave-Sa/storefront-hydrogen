@@ -627,10 +627,14 @@ export default function CustomCakeBuilder({
           <div className="flex items-center gap-3 md:gap-6 shrink-0">
             <button
               onClick={() => window.history.back()}
-              className="bg-[#A6C1B7] text-[#234745] hover:bg-[#8ca59c] transition-colors px-3.5 py-1.5 md:px-5 md:py-2.5 rounded-full flex items-center gap-1.5 font-bold text-xs md:text-base shrink-0 shadow-xs"
+              className={`flex items-center gap-[8px] bg-[#9FB7AE] hover:bg-[#8BA19C] text-[#234745] px-4 md:px-6 py-2 rounded-[25px] text-[12px] md:text-[16px] font-bold transition-all shrink-0 ${isEn ? 'font-en' : ''}`}
+              style={isEn ? {} : { fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
+              dir={isEn ? 'ltr' : 'rtl'}
             >
+              <svg className={`w-3 h-3 md:w-5 md:h-5 ${isEn ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+              </svg>
               <span>{isEn ? 'Back' : 'رجوع'}</span>
-              <ArrowLeft className={`w-3.5 h-3.5 md:w-5 md:h-5 ${isEn ? '' : 'rotate-180'}`} />
             </button>
 
             <h1 className="text-[16px] md:text-2xl font-extrabold leading-tight text-white m-0">

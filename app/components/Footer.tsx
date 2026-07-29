@@ -3,8 +3,11 @@ import { Suspense } from 'react';
 import type { FooterQuery } from 'storefrontapi.generated';
 import { LogoSplash } from './LogoSplash';
 
-export function Footer({ footer, locale }: { footer: Promise<FooterQuery | null>; header: any; publicStoreDomain: string; locale?: string }) {
+export function Footer({ footer, locale, megaMenuData }: { footer: Promise<FooterQuery | null>; header?: any; publicStoreDomain?: string; locale?: string; megaMenuData?: any }) {
   const isEn = locale === 'en';
+
+  const rawNodes = megaMenuData?.nodes || megaMenuData?.collections?.nodes || [];
+  const dynamicCollections = rawNodes.filter((c: any) => c && c.handle && c.title).slice(0, 5);
 
   return (
     <Suspense fallback={null}>
@@ -110,13 +113,28 @@ export function Footer({ footer, locale }: { footer: Promise<FooterQuery | null>
                         {isEn ? 'Products' : 'المنتجات'}
                       </h3>
                       <div className="flex flex-col items-start gap-2" style={{ color: '#D2D2D2' }}>
-                        <NavLink to={isEn ? "/en/collections/oriental" : "/collections/oriental"} className="font-medium text-[16px] hover:text-white transition-colors">{isEn ? 'Oriental Sweets' : 'الحلويات الشرقية'}</NavLink>
-                        <NavLink to={isEn ? "/en/collections/dark-chocolate" : "/collections/dark-chocolate"} className="font-medium text-[16px] hover:text-white transition-colors">{isEn ? 'Dark Chocolate' : 'الشوكولاتة الداكنة'}</NavLink>
-                        <NavLink to={isEn ? "/en/custom-cake" : "/custom-cake"} className="font-medium text-[16px] hover:text-white transition-colors">{isEn ? 'Custom Cakes' : 'الكيك المخصص'}</NavLink>
-                        <NavLink to={isEn ? "/en/collections/gift-boxes" : "/collections/gift-boxes"} className="font-medium text-[16px] hover:text-white transition-colors">{isEn ? 'Gift Boxes' : 'صناديق الهدايا'}</NavLink>
-                        <NavLink to={isEn ? "/en/collections/arabic-coffee" : "/collections/arabic-coffee"} className="font-medium text-[16px] hover:text-white transition-colors">{isEn ? 'Arabic Coffee' : 'القهوة العربية'}</NavLink>
+                        {dynamicCollections.length > 0 ? (
+                          dynamicCollections.map((col: any) => (
+                            <NavLink
+                              key={col.id || col.handle}
+                              to={isEn ? `/en/collections/${col.handle}` : `/collections/${col.handle}`}
+                              className="font-medium text-[16px] hover:text-white transition-colors"
+                            >
+                              {col.title}
+                            </NavLink>
+                          ))
+                        ) : (
+                          <>
+                            <NavLink to={isEn ? "/en/collections/oriental" : "/collections/oriental"} className="font-medium text-[16px] hover:text-white transition-colors">{isEn ? 'Oriental Sweets' : 'الحلويات الشرقية'}</NavLink>
+                            <NavLink to={isEn ? "/en/collections/dark-chocolate" : "/collections/dark-chocolate"} className="font-medium text-[16px] hover:text-white transition-colors">{isEn ? 'Dark Chocolate' : 'الشوكولاتة الداكنة'}</NavLink>
+                            <NavLink to={isEn ? "/en/custom-cake" : "/custom-cake"} className="font-medium text-[16px] hover:text-white transition-colors">{isEn ? 'Custom Cakes' : 'الكيك المخصص'}</NavLink>
+                            <NavLink to={isEn ? "/en/collections/gift-boxes" : "/collections/gift-boxes"} className="font-medium text-[16px] hover:text-white transition-colors">{isEn ? 'Gift Boxes' : 'صناديق الهدايا'}</NavLink>
+                            <NavLink to={isEn ? "/en/collections/arabic-coffee" : "/collections/arabic-coffee"} className="font-medium text-[16px] hover:text-white transition-colors">{isEn ? 'Arabic Coffee' : 'القهوة العربية'}</NavLink>
+                          </>
+                        )}
                       </div>
                     </div>
+
 
                     {/* Col 4: Customer Service */}
                     <div className="flex flex-col items-start gap-6">

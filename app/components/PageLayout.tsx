@@ -85,6 +85,7 @@ export function PageLayout({
           header={header}
           publicStoreDomain={publicStoreDomain}
           locale={locale}
+          megaMenuData={megaMenuData}
         />
       )}
     </Aside.Provider>

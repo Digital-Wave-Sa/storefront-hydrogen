@@ -50,6 +50,15 @@ const PRODUCT_ITEM_FRAGMENT = `#graphql
           amount
           currencyCode
         }
+        storeAvailability(first: 250) {
+          nodes {
+            available
+            location {
+              id
+              name
+            }
+          }
+        }
       }
     }
     tags

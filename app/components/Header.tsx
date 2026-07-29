@@ -175,7 +175,13 @@ export function Header({ header, isLoggedIn, cart, locations, customer, locale, 
         className={`absolute top-full left-0 w-full transition-all duration-300 origin-top z-[60] 
           ${activeMega ? 'opacity-100 visible translate-y-0' : 'opacity-0 invisible -translate-y-2'}`}
       >
-        {activeMega === 'products' && <ProductMegaMenu locale={locale} megaMenuData={megaMenuData} />}
+        {activeMega === 'products' && (
+          <ProductMegaMenu
+            locale={locale}
+            megaMenuData={megaMenuData}
+            onClose={() => setActiveMega(null)}
+          />
+        )}
       </div>
     </header>
   );
@@ -802,7 +808,7 @@ function CategoryNav({
   );
 }
 
-function ProductMegaMenu({ locale, megaMenuData }: { locale?: string; megaMenuData?: any }) {
+function ProductMegaMenu({ locale, megaMenuData, onClose }: { locale?: string; megaMenuData?: any; onClose?: () => void }) {
   const isEn = locale === 'en';
 
   const rawNodes = megaMenuData?.nodes || megaMenuData?.collections?.nodes || [];
@@ -863,7 +869,7 @@ function ProductMegaMenu({ locale, megaMenuData }: { locale?: string; megaMenuDa
       <div className="max-w-[1400px] mx-auto grid grid-cols-4 gap-8 p-10">
         {categories.map((cat: any) => (
           <div key={cat.title} className="group cursor-pointer">
-            <NavLink to={cat.url} className="block">
+            <NavLink to={cat.url} onClick={onClose} className="block">
               <div className="relative aspect-[4/3] rounded-2xl overflow-hidden mb-6 shadow-md transition-transform duration-500 group-hover:scale-[1.03]">
                 <img src={cat.image} alt={cat.title} className="w-full h-full object-cover" />
                 <div className="absolute inset-0 bg-gradient-to-t from-[#234745]/80 via-transparent to-transparent opacity-60 group-hover:opacity-80 transition-opacity" />
@@ -877,6 +883,7 @@ function ProductMegaMenu({ locale, megaMenuData }: { locale?: string; megaMenuDa
                 <li key={item.title}>
                   <NavLink
                     to={item.url}
+                    onClick={onClose}
                     className="text-[#234745]/70 hover:text-[#234745] hover:translate-x-1 transition-all inline-block font-medium text-sm"
                   >
                     {item.title}
@@ -892,7 +899,7 @@ function ProductMegaMenu({ locale, megaMenuData }: { locale?: string; megaMenuDa
           <span className="text-[#234745]/60 font-medium">
             {isEn ? 'Discover our full collection of fresh delights' : 'اكتشف مجموعتنا الكاملة من الحلويات الطازجة'}
           </span>
-          <NavLink to="/collections/all" className="text-[#234745] font-bold hover:underline flex items-center gap-2">
+          <NavLink to={isEn ? '/en/collections/all' : '/collections/all'} onClick={onClose} className="text-[#234745] font-bold hover:underline flex items-center gap-2">
             {isEn ? 'Shop All Products' : 'تسوق جميع المنتجات'}
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={isEn ? '' : 'rotate-180'}><line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" /></svg>
           </NavLink>

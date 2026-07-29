@@ -451,7 +451,11 @@ export function DeliveryPickupModal({
     const location = useLocation();
 
     // Memoize the combined promise to prevent Await from re-suspending on every state change (like typing in search or switching tabs)
-    const combinedPromise = useMemo(() => Promise.all([locationsPromise, customerPromise]), [locationsPromise, customerPromise]);
+    const combinedPromise = useMemo(() => {
+        const locP = locationsPromise ? Promise.resolve(locationsPromise).catch(() => null) : Promise.resolve(null);
+        const custP = customerPromise ? Promise.resolve(customerPromise).catch(() => null) : Promise.resolve(null);
+        return Promise.all([locP, custP]);
+    }, [locationsPromise, customerPromise]);
 
     const prevPathname = useRef(location.pathname);
     useEffect(() => {
@@ -528,9 +532,9 @@ export function DeliveryPickupModal({
                 </button>
 
                 <Suspense fallback={<div className="dpm-loading"><div className="dpm-loading-spinner" /></div>}>
-                    <Await resolve={combinedPromise}>
+                    <Await resolve={combinedPromise} errorElement={<div className="dpm-loading"><div className="dpm-loading-spinner" /></div>}>
                         {([locationsData, customerData]: [any, any]) => {
-                            const nodes = locationsData?.locations?.nodes || [];
+                            const nodes = locationsData?.locations?.nodes || locationsData?.nodes || (Array.isArray(locationsData) ? locationsData : []);
                             
                             // Use Storefront API nodes as the base
                             let enrichedNodes = mergeWithAdminMeta(nodes);

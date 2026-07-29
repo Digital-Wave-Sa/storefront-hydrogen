@@ -258,7 +258,12 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
                 lineItems: {
                   nodes: (o.line_items || []).map((li: any) => ({
                     title: li.title,
-                    variant: { image: null }
+                    quantity: li.quantity || 1,
+                    variantId: li.variant_id,
+                    variant: {
+                      id: li.variant_id ? `gid://shopify/ProductVariant/${li.variant_id}` : undefined,
+                      image: null
+                    }
                   }))
                 }
               }));

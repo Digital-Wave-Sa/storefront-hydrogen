@@ -366,7 +366,7 @@ export default function CollectionAll() {
                       <ProductsGrid products={filteredNodes} view={view} />
                       <div className="flex justify-center mt-16">
                         <NextLink className="px-12 py-4 rounded-full border-2 border-[#234745] !text-[#234745] [font-family:'GE_Dinar_One',sans-serif] font-bold text-[15px] lg:text-[18px] transition-all hover:bg-[#1a3533] hover:!text-white hover:border-[#1a3533] active:scale-95">
-                          {isLoading ? (isEn ? 'Loading...' : 'جاري التحميل...') : <span>{isEn ? 'Browse More ↓' : 'تصفح المزيد ↓'}</span>}
+                          {isLoading ? (isEn ? 'Loading...' : 'جاري التحميل...') : <span>{isEn ? 'Browse More ↓' : 'تصفح المزيد'}</span>}
                         </NextLink>
                       </div>
                     </>

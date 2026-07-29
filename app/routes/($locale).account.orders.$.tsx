@@ -1,1 +1,6 @@
-export { loader, action, meta, default } from './($locale).account.orders.$id';
+import type { MetaFunction } from 'react-router';
+export { loader, default } from './($locale).track-order.$id';
+
+export const meta: MetaFunction = () => {
+  return [{ title: 'Order Details | Saadeddin' }];
+};

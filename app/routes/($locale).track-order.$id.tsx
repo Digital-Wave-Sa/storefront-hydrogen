@@ -109,6 +109,7 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
                   }
                 }
               }
+              tags
               order_status: metafield(namespace: "custom", key: "order_status") {
                 value
               }
@@ -237,7 +238,10 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 
     const hasOutForDeliveryFulfillment = fulfillments.some((f: any) => 
         f.displayStatus === 'OUT_FOR_DELIVERY' || 
-        f.displayStatus === 'IN_TRANSIT'
+        f.displayStatus === 'IN_TRANSIT' ||
+        f.displayStatus === 'LABEL_PRINTED' ||
+        f.displayStatus === 'LABEL_PURCHASED' ||
+        f.displayStatus === 'SUBMITTED'
     );
 
     const hasPreparingFulfillment = fulfillments.length > 0 || fulfillmentOrders.some((fo: any) => 
@@ -246,6 +250,24 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 
     // Read custom order_status metafield as optional override
     const orderStatusMeta = (orderNode.order_status?.value || '').toLowerCase().trim();
+
+    // Parse order tags — tags are a comma-separated string from Admin API
+    // e.g. "ready-for-delivery, vip, express"
+    const rawTags = Array.isArray(orderNode.tags) 
+        ? orderNode.tags 
+        : typeof orderNode.tags === 'string' 
+            ? orderNode.tags.split(',').map((t: string) => t.trim().toLowerCase()).filter(Boolean)
+            : [];
+
+    const tagSet = new Set(rawTags.map((t: string) => t.toLowerCase().replace(/[\s_]/g, '-')));
+
+    // Tag-based step detection patterns
+    const tagIndicatesStep5 = tagSet.has('delivered') || tagSet.has('picked-up') || tagSet.has('تم-التسليم') || tagSet.has('تم-الاستلام');
+    const tagIndicatesStep4 = tagSet.has('ready-for-delivery') || tagSet.has('out-for-delivery') || 
+        tagSet.has('ready-for-pickup') || tagSet.has('on-the-way') || tagSet.has('in-transit') ||
+        tagSet.has('جاهز-للتسليم') || tagSet.has('جاهز-للاستلام') || tagSet.has('في-الطريق');
+    const tagIndicatesStep3 = tagSet.has('preparing') || tagSet.has('in-progress') || 
+        tagSet.has('being-prepared') || tagSet.has('جاري-التجهيز');
 
     const orderData = {
         id: orderNode.name,
@@ -262,6 +284,9 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
         hasOutForDeliveryFulfillment,
         hasPreparingFulfillment,
         orderStatusMeta,
+        tagIndicatesStep3,
+        tagIndicatesStep4,
+        tagIndicatesStep5,
         items: orderNode.lineItems.edges.map(({ node: item }: any) => ({
             title: item.title,
             price: parseFloat(item.originalUnitPriceSet?.shopMoney?.amount || '0').toLocaleString('en-US', { minimumFractionDigits: 2 }),
@@ -471,21 +496,27 @@ export default function TrackOrderPage() {
                                 <div className={`absolute top-4 bottom-4 ${isEn ? 'left-4' : 'right-4'} w-[2px] bg-[#BBCFCD]/40`} />
 
                                 {(() => {
-                                    // Determine current step natively from Shopify fulfillments + optional metafield
+                                    // Determine current step from: native Shopify fulfillments, metafield override, OR order tags
                                     const meta = orderData.orderStatusMeta;
                                     let currentStep: number;
                                     if (orderData.canceledAt || orderData.rawFinancialStatus === 'REFUNDED') {
                                         currentStep = 0; // cancelled
-                                    } else if (orderData.rawFulfillmentStatus === 'FULFILLED') {
-                                        currentStep = 5; // fully completed (Picked up or Delivered)
+                                    } else if (
+                                        orderData.rawFulfillmentStatus === 'FULFILLED' ||
+                                        orderData.tagIndicatesStep5 ||
+                                        meta === 'delivered' || meta === 'picked_up'
+                                    ) {
+                                        currentStep = 5; // Delivered / Picked Up
                                     } else if (
                                         orderData.hasReadyForPickupFulfillment || 
                                         orderData.hasOutForDeliveryFulfillment || 
-                                        meta === 'ready' || meta === 'ready_for_pickup' || meta === 'out_for_delivery'
+                                        orderData.tagIndicatesStep4 ||
+                                        meta === 'ready' || meta === 'ready_for_pickup' || meta === 'out_for_delivery' || meta === 'ready_for_delivery'
                                     ) {
-                                        currentStep = 4; // Ready for Pickup / On the Way
+                                        currentStep = 4; // Ready for Pickup / On the Way / Ready for Delivery
                                     } else if (
                                         orderData.hasPreparingFulfillment || 
+                                        orderData.tagIndicatesStep3 ||
                                         meta === 'preparing' || meta === 'in_progress' || orderData.rawFulfillmentStatus === 'PARTIALLY_FULFILLED'
                                     ) {
                                         currentStep = 3; // Preparing

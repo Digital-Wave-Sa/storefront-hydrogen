@@ -383,6 +383,9 @@ export async function action({ request, context }: ActionFunctionArgs) {
             if (adminResponse.ok) {
               const adminData = await adminResponse.json() as any;
               console.log('[Register] Fallback customer created successfully in Shopify Admin:', adminData.customer?.id);
+              if (adminData.customer?.id) {
+                session.set('loginCustomerId', `gid://shopify/Customer/${adminData.customer.id}`);
+              }
 
               // Try creating storefront access token again
               const tokenResponse = await storefront.mutate(CUSTOMER_ACCESS_TOKEN_CREATE_MUTATION, {
@@ -420,7 +423,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
         }
       }
 
-      // 5. Save tokens in session and redirect to /account
+      // 5. Save tokens and user session data in session and redirect to /account
       if (token) {
         session.set('customerAccessToken', token);
       } else {
@@ -432,6 +435,10 @@ export async function action({ request, context }: ActionFunctionArgs) {
       }
       session.set('saadeddinToken', saadeddinToken);
       session.set('preferredLanguage', selectedLanguage);
+      session.set('loginOtpPhone', savedPhone);
+      if (email) {
+        session.set('loginCustomerEmail', email);
+      }
       session.unset('otpPhone');
       session.unset('socialProfile');
       session.unset('registerOtpAttempts');

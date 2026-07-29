@@ -4,14 +4,21 @@ import { useState } from 'react';
 export async function loader({ params, context }: LoaderFunctionArgs) {
     const locale = context.storefront.i18n.language.toLowerCase() || 'ar';
     const isEn = locale === 'en';
-    const orderNumber = params.id;
+    const rawId = decodeURIComponent(params.id || params['*'] || '');
 
-    if (!orderNumber) {
+    if (!rawId) {
         throw new Response('Order number required', { status: 400 });
     }
 
-    const { getAdminToken } = await import('~/lib/shopify-admin.server');
+    const numericId = rawId.replace(/\D/g, '');
+    const cleanId = rawId.replace(/^.*\/+/, '').replace(/^gid:.*?\//, '');
+    const searchQuery = numericId 
+        ? `name:${numericId} OR name:#${numericId} OR id:${numericId}` 
+        : `name:${cleanId} OR name:#${cleanId}`;
+
+    const { getAdminToken, getAdminDomain } = await import('~/lib/shopify-admin.server');
     const adminToken = await getAdminToken(context.env);
+    const adminDomain = getAdminDomain(context.env);
 
     // Fetch order from Admin GraphQL API to get line item images + pickup detection + fulfillments status
     const query = `
@@ -74,7 +81,7 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
       }
     `;
 
-    const res = await fetch(`https://${context.env.PUBLIC_STORE_DOMAIN}/admin/api/2023-10/graphql.json`, {
+    const res = await fetch(`https://${adminDomain}/admin/api/2023-10/graphql.json`, {
         method: 'POST',
         headers: {
             'X-Shopify-Access-Token': adminToken,
@@ -82,7 +89,7 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
         },
         body: JSON.stringify({
             query,
-            variables: { query: `name:${orderNumber}` }
+            variables: { query: searchQuery }
         })
     });
 

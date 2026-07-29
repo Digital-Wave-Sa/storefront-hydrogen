@@ -274,7 +274,21 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
         date: isEn
             ? `Ordered on ${new Date(orderNode.processedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}, ${new Date(orderNode.processedAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`
             : `طلب في ${new Date(orderNode.processedAt).toLocaleDateString('ar-SA-u-nu-latn', { year: 'numeric', month: 'long', day: 'numeric' })}, ${new Date(orderNode.processedAt).toLocaleTimeString('ar-SA-u-nu-latn', { hour: 'numeric', minute: '2-digit' })}`,
-        status: isEn ? (orderNode.displayFulfillmentStatus === 'FULFILLED' ? (isPickup ? 'Picked Up' : 'Delivered') : orderNode.canceledAt ? 'Cancelled' : 'Order Received') : (orderNode.displayFulfillmentStatus === 'FULFILLED' ? (isPickup ? 'تم الاستلام' : 'تم التسليم') : orderNode.canceledAt ? 'ملغاة' : 'تم استلام طلبك'),
+        status: isEn 
+            ? ((orderNode.displayFulfillmentStatus === 'FULFILLED' || tagIndicatesStep5) 
+                ? (isPickup ? 'Picked Up' : 'Delivered') 
+                : orderNode.canceledAt 
+                    ? 'Cancelled' 
+                    : ((hasReadyForPickupFulfillment || hasOutForDeliveryFulfillment || tagIndicatesStep4) 
+                        ? (isPickup ? 'Ready for Pickup' : 'On the Way') 
+                        : 'Order Received'))
+            : ((orderNode.displayFulfillmentStatus === 'FULFILLED' || tagIndicatesStep5) 
+                ? (isPickup ? 'تم الاستلام من الفرع' : 'تم التسليم') 
+                : orderNode.canceledAt 
+                    ? 'ملغاة' 
+                    : ((hasReadyForPickupFulfillment || hasOutForDeliveryFulfillment || tagIndicatesStep4) 
+                        ? (isPickup ? 'جاهز للاستلام من الفرع' : 'في الطريق إليك') 
+                        : 'تم استلام طلبك')),
         invoiceUrl: orderNode.statusPageUrl,
         rawFulfillmentStatus: orderNode.displayFulfillmentStatus || 'UNFULFILLED',
         rawFinancialStatus: orderNode.displayFinancialStatus || 'PAID',

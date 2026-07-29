@@ -467,18 +467,41 @@ function OrderCard({ order, isEn }: { order: OrderItemFragment, isEn: boolean })
     checkIsPickupOrder(order)
   );
 
-  let statusEn = isPickup ? 'Ready for Pickup' : 'On its way to you';
-  let statusAr = isPickup ? 'جاهز للاستلام من الفرع' : 'في الطريق إليك';
+  const rawTags = (order as any).tags
+    ? (typeof (order as any).tags === 'string'
+        ? (order as any).tags.split(',').map((t: string) => t.trim().toLowerCase())
+        : Array.isArray((order as any).tags) ? (order as any).tags.map((t: string) => t.toLowerCase()) : [])
+    : [];
+
+  const tagSet = new Set(rawTags.map((t: string) => t.replace(/[\s_]/g, '-')));
+
+  const isFulfilled = order.fulfillmentStatus === 'FULFILLED' || tagSet.has('delivered') || tagSet.has('picked-up') || tagSet.has('تم-التسليم') || tagSet.has('تم-الاستلام');
+
+  const isReady = tagSet.has('ready-for-delivery') || tagSet.has('out-for-delivery') || 
+    tagSet.has('ready-for-pickup') || tagSet.has('on-the-way') || tagSet.has('in-transit') ||
+    tagSet.has('جاهز-للتسليم') || tagSet.has('جاهز-للاستلام') || tagSet.has('في-الطريق') ||
+    order.fulfillmentStatus === 'PARTIALLY_FULFILLED';
+
+  let statusEn = 'Order Received';
+  let statusAr = 'تم استلام طلبك';
   let statusColor = '#906B51'; // Brown/gold
 
   if ((order as any).canceledAt || order.financialStatus === 'REFUNDED' || (order.fulfillmentStatus as any) === 'CANCELLED') {
     statusEn = 'Cancelled';
     statusAr = 'ملغاة';
     statusColor = '#E64950'; // Red
-  } else if (order.fulfillmentStatus === 'FULFILLED') {
+  } else if (isFulfilled) {
     statusEn = isPickup ? 'Picked up' : 'Delivered';
     statusAr = isPickup ? 'تم الاستلام من الفرع' : 'تم التسليم';
     statusColor = '#234745'; // Dark green
+  } else if (isReady) {
+    statusEn = isPickup ? 'Ready for Pickup' : 'On its way to you';
+    statusAr = isPickup ? 'جاهز للاستلام من الفرع' : 'في الطريق إليك';
+    statusColor = '#906B51'; // Brown/gold
+  } else {
+    statusEn = 'Order Received';
+    statusAr = 'تم استلام طلبك';
+    statusColor = '#906B51'; // Brown/gold
   }
 
   const isCancelled = !!((order as any).canceledAt || order.financialStatus === 'REFUNDED' || (order.fulfillmentStatus as any) === 'CANCELLED');

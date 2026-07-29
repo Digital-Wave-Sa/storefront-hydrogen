@@ -1492,7 +1492,7 @@ export default function Product() {
                           <circle cx="12" cy="16" r="1" fill="#906B51" />
                         </svg>
                         <span className="text-[#171717] font-medium text-[16px] sm:text-[16px]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
-                          {isEn ? 'Out for the Season' : 'نفد هذا المنتج للموسم'}
+                          {isEn ? 'Out of Season' : 'نفد هذا المنتج للموسم'}
                         </span>
 
                       </div>
@@ -1821,7 +1821,7 @@ export default function Product() {
                               <circle cx="12" cy="16" r="1" fill="#906B51" />
                             </svg>
                             <span className="text-[#171717] font-bold text-[18px]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
-                              {isEn ? 'Out for the Season' : 'نفد هذا المنتج للموسم'}
+                              {isEn ? 'Out of Season' : 'نفد هذا المنتج للموسم'}
                             </span>
 
                           </div>
@@ -2409,10 +2409,10 @@ function ProductGallery({ images, product }: { images: any[], product: any }) {
         {isVisibilityBlocked && (
           <div className="absolute top-6 right-6 z-20">
             <span
-              className="px-4 py-2 bg-[#906B51] text-white font-bold text-[14px] md:text-[15px] rounded-full shadow-md flex items-center justify-center"
+              className="px-4 py-2 bg-[#906b51] text-white font-bold text-[14px] md:text-[15px] rounded-full shadow-md flex items-center justify-center"
               style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
             >
-              {isEn ? 'Out for the Season' : 'نفد للموسم'}
+              {isEn ? 'Out of Season' : 'نفد للموسم'}
             </span>
           </div>
         )}

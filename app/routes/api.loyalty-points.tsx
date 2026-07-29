@@ -1,25 +1,19 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from 'react-router';
-import { getLoyaltyPoints } from '~/lib/loyalty.server';
+import { getLoyaltyPoints, redeemLoyaltyPoints } from '~/lib/loyalty.server';
 
 /**
  * Loyalty Points API Route
  * 
- * Fetches the customer's loyalty points balance from the SDLP service, falling back to mock points if unset.
- * 
- * GET /api/loyalty-points?phone=0501234567&customerId=gid://shopify/Customer/123
- * POST /api/loyalty-points { phone: "0501234567", customerId: "gid://shopify/Customer/123" }
+ * GET /api/loyalty-points?customerId=gid://shopify/Customer/123
+ * POST /api/loyalty-points { customerId: "gid://shopify/Customer/123", points: 200 }
  */
 export async function loader({ request, context }: LoaderFunctionArgs) {
   const url = new URL(request.url);
-  const identifier = url.searchParams.get('phone') || url.searchParams.get('email') || url.searchParams.get('identifier') || url.searchParams.get('customerId');
-
-  if (!identifier) {
-    return Response.json({ success: false, error: 'Identifier is required' }, { status: 400 });
-  }
+  const identifier = url.searchParams.get('customerId') || url.searchParams.get('phone') || url.searchParams.get('email') || url.searchParams.get('identifier');
 
   const points = await getLoyaltyPoints({
     customerId: url.searchParams.get('customerId') || undefined,
-    phone: url.searchParams.get('phone') || identifier,
+    phone: url.searchParams.get('phone') || identifier || undefined,
     email: url.searchParams.get('email') || undefined,
     env: context.env,
     context,
@@ -27,7 +21,7 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
 
   return Response.json({ success: true, data: { points } }, {
     headers: {
-      'Cache-Control': 'private, max-age=60, stale-while-revalidate=300',
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
     },
   });
 }
@@ -39,22 +33,31 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
   try {
     const body = await request.json() as any;
-    const identifier = body?.phone || body?.email || body?.identifier || body?.customerId;
+    const pointsToRedeem = parseInt(body?.points) || 0;
 
-    if (!identifier) {
-      return Response.json({ success: false, error: 'Identifier is required' }, { status: 400 });
+    if (pointsToRedeem <= 0 || pointsToRedeem % 100 !== 0) {
+      return Response.json({ success: false, error: 'Points must be redeemed in increments of 100.' }, { status: 400 });
     }
 
-    const points = await getLoyaltyPoints({
+    const result = await redeemLoyaltyPoints({
       customerId: body?.customerId,
-      phone: body?.phone || identifier,
+      phone: body?.phone,
       email: body?.email,
+      points: pointsToRedeem,
       env: context.env,
       context,
     });
 
-    return Response.json({ success: true, data: { points } });
+    if (result.success) {
+      return Response.json({
+        success: true,
+        discountCode: result.discountCode,
+        newBalance: result.newBalance,
+      });
+    } else {
+      return Response.json({ success: false, error: result.error || 'Failed to redeem points' }, { status: 400 });
+    }
   } catch (error: any) {
-    return Response.json({ success: false, error: error.message }, { status: 500 });
+    return Response.json({ success: false, error: error?.message || 'Server error' }, { status: 500 });
   }
 }

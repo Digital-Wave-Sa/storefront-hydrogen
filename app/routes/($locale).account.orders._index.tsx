@@ -189,16 +189,79 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
       }
 
       if (mappedOrders.length > 0) {
-        return {
-          nodes: mappedOrders,
-          pageInfo: {
-            hasNextPage: false,
-            hasPreviousPage: false,
-            startCursor: "start",
-            endCursor: "end"
+          // Enrich line items with translated product titles from Storefront API (@inContext)
+          try {
+            // Collect all unique variant GIDs across all orders
+            const variantIds: string[] = [];
+            for (const order of mappedOrders) {
+              for (const li of order.lineItems.nodes) {
+                if (li.variant?.id && !variantIds.includes(li.variant.id)) {
+                  variantIds.push(li.variant.id);
+                }
+              }
+            }
+
+            if (variantIds.length > 0) {
+              const lang = storefront.i18n.language;
+              const country = storefront.i18n.country;
+              const variantQuery = `
+                query GetVariantTitles($ids: [ID!]!) @inContext(language: ${lang}, country: ${country}) {
+                  nodes(ids: $ids) {
+                    ... on ProductVariant {
+                      id
+                      product {
+                        title
+                      }
+                    }
+                  }
+                }
+              `;
+              const variantResult = await storefront.query(variantQuery as any, {
+                variables: { ids: variantIds },
+                cache: storefront.CacheShort(),
+              }) as any;
+
+              // Build a map from variant GID → translated product title
+              const titleMap: Record<string, string> = {};
+              for (const node of (variantResult?.nodes || [])) {
+                if (node?.id && node?.product?.title) {
+                  titleMap[node.id] = node.product.title;
+                }
+              }
+
+              // Overwrite line item titles with translated versions
+              mappedOrders = mappedOrders.map((order: any) => ({
+                ...order,
+                lineItems: {
+                  ...order.lineItems,
+                  nodes: order.lineItems.nodes.map((li: any) => ({
+                    ...li,
+                    title: (li.variant?.id && titleMap[li.variant.id]) ? titleMap[li.variant.id] : li.title,
+                    variant: {
+                      ...li.variant,
+                      product: {
+                        title: (li.variant?.id && titleMap[li.variant.id]) ? titleMap[li.variant.id] : li.title,
+                        tags: []
+                      }
+                    }
+                  }))
+                }
+              }));
+            }
+          } catch (e) {
+            console.warn('[Orders Loader] Could not enrich line item titles with translations:', e);
           }
-        };
-      }
+
+          return {
+            nodes: mappedOrders,
+            pageInfo: {
+              hasNextPage: false,
+              hasPreviousPage: false,
+              startCursor: "start",
+              endCursor: "end"
+            }
+          };
+        }
     }
     return customer?.orders;
   })();

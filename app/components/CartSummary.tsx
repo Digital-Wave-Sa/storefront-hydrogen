@@ -89,8 +89,16 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
   const isFreeDelivery = subtotal >= threshold;
   const feeAttribute = attributes.find((a: any) => a.key.toLowerCase().trim() === 'delivery fee')?.value;
   const isPickup = fulfillmentType?.toLowerCase() === 'pickup';
-  // Use dynamically calculated fee from attribute, otherwise fallback to metafield base fee or 25
-  const deliveryFee = (isFreeDelivery || isPickup) ? 0 : (feeAttribute ? parseFloat(feeAttribute) : (feeMeta?.value ? parseFloat(feeMeta.value) : 25));
+  // Use dynamically calculated fee from attribute, otherwise fallback to location delivery fee or 0 (no hardcoded 25 fallback)
+  const deliveryFee = (isFreeDelivery || isPickup)
+    ? 0
+    : (feeAttribute
+        ? parseFloat(feeAttribute)
+        : (feeMeta?.value
+            ? parseFloat(feeMeta.value)
+            : (typeof currentBranch?.delivery_fee === 'number'
+                ? currentBranch.delivery_fee
+                : 0)));
   const calculatedTotal = parseFloat(cart?.cost?.totalAmount?.amount || '0') + deliveryFee;
 
   const isBranchHidden = currentBranch && (

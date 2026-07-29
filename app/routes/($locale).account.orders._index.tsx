@@ -6,7 +6,7 @@ import {
   type MetaFunction,
 } from 'react-router';
 import { Suspense } from 'react';
-import { Link, useLoaderData, useFetcher, useOutletContext, useSearchParams, Await } from 'react-router';
+import { Link, useLoaderData, useFetcher, useOutletContext, useSearchParams, Await, Form } from 'react-router';
 import { Money, Pagination, getPaginationVariables } from '@shopify/hydrogen';
 import type {
   CustomerOrdersFragment,
@@ -451,18 +451,16 @@ function OrderCard({ order, isEn }: { order: OrderItemFragment, isEn: boolean })
   };
   const titles = lineItems.slice(0, 3).map(getDisplayTitle).join(' • ') + (lineItems.length > 3 ? '...' : '');
 
-  const handleReorder = (e: React.MouseEvent) => {
-    e.preventDefault();
-    const items = lineItems.map(item => ({
-      merchandiseId: (item.variant as any)?.id,
+  const reorderLines = lineItems.map((item: any) => {
+    const rawId = (item.variant as any)?.id || item.variantId;
+    const merchandiseId = rawId && String(rawId).startsWith('gid://')
+      ? String(rawId)
+      : `gid://shopify/ProductVariant/${rawId}`;
+    return {
+      merchandiseId,
       quantity: item.quantity || 1,
-    }));
-
-    const formData = new FormData();
-    formData.append('intent', 'reorder');
-    formData.append('items', JSON.stringify(items));
-    fetcher.submit(formData, { method: 'POST' });
-  };
+    };
+  });
 
   const isPickup = (
     checkIsPickupOrder(order)
@@ -596,13 +594,23 @@ function OrderCard({ order, isEn }: { order: OrderItemFragment, isEn: boolean })
               </Link>
             )}
 
-            <button
-              onClick={handleReorder}
-              disabled={fetcher.state !== 'idle'}
-              className="text-center px-6 py-2 bg-[#234745] text-white rounded-full text-[13px] md:text-[14px] font-bold hover:opacity-90 transition-all disabled:opacity-70 whitespace-nowrap"
-            >
-              {fetcher.state !== 'idle' ? (isEn ? 'Adding...' : 'جاري...') : (isEn ? 'Reorder' : 'إعادة الطلب')}
-            </button>
+            <Form action={isEn ? "/en/cart" : "/cart"} method="post" className="inline-block">
+              <input
+                type="hidden"
+                name="cartFormInput"
+                value={JSON.stringify({
+                  action: 'LinesAdd',
+                  inputs: { lines: reorderLines },
+                })}
+              />
+              <button
+                type="submit"
+                className="text-center px-6 py-2 bg-[#234745] text-white rounded-full text-[13px] md:text-[14px] font-bold hover:opacity-90 transition-all whitespace-nowrap active:scale-95"
+                style={{ color: '#FFFFFF' }}
+              >
+                {isEn ? 'Reorder' : 'إعادة الطلب'}
+              </button>
+            </Form>
           </div>
         </div>
       </div>
@@ -687,13 +695,23 @@ function OrderCard({ order, isEn }: { order: OrderItemFragment, isEn: boolean })
           )}
 
           {/* Primary Action: Reorder */}
-          <button
-            onClick={handleReorder}
-            disabled={fetcher.state !== 'idle'}
-            className={`${isCancelled ? 'w-full' : 'flex-[1.5]'} text-center py-2.5 bg-[#234745] text-white rounded-full text-[13px] font-bold hover:opacity-90 transition-all disabled:opacity-70 whitespace-nowrap`}
-          >
-            {fetcher.state !== 'idle' ? (isEn ? 'Adding...' : 'جاري...') : (isEn ? 'Reorder' : 'إعادة الطلب')}
-          </button>
+          <Form action={isEn ? "/en/cart" : "/cart"} method="post" className={isCancelled ? 'w-full' : 'flex-[1.5]'}>
+            <input
+              type="hidden"
+              name="cartFormInput"
+              value={JSON.stringify({
+                action: 'LinesAdd',
+                inputs: { lines: reorderLines },
+              })}
+            />
+            <button
+              type="submit"
+              className="w-full text-center py-2.5 bg-[#234745] text-white rounded-full text-[13px] font-bold hover:opacity-90 transition-all whitespace-nowrap active:scale-95"
+              style={{ color: '#FFFFFF' }}
+            >
+              {isEn ? 'Reorder' : 'إعادة الطلب'}
+            </button>
+          </Form>
         </div>
       </div>
     </div>

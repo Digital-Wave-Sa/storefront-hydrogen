@@ -1,4 +1,4 @@
-import { data as json, type LoaderFunctionArgs, useLoaderData, useNavigate } from 'react-router';
+import { data as json, type LoaderFunctionArgs, useLoaderData, useNavigate, Form } from 'react-router';
 import { useState } from 'react';
 
 function mapRestOrderToNode(rawRest: any) {
@@ -341,6 +341,8 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
         tagIndicatesStep4,
         tagIndicatesStep5,
         items: orderNode.lineItems.edges.map(({ node: item }: any) => ({
+            variantId: item.variant?.id || item.variantId || item.variant_id,
+            quantity: item.quantity || 1,
             title: (item.variant?.id && titleMap[item.variant.id]) ? titleMap[item.variant.id] : item.title,
             price: parseFloat(item.originalUnitPriceSet?.shopMoney?.amount || '0').toLocaleString('en-US', { minimumFractionDigits: 2 }),
             options: item.variantTitle && item.variantTitle !== 'Default Title' ? item.variantTitle.split(' / ') : [],
@@ -521,9 +523,37 @@ export default function TrackOrderPage() {
 
                             {/* Actions */}
                             <div className="flex flex-col gap-3">
-                                <button className="w-full bg-[#234745] hover:bg-[#1a3533] text-white py-3.5 rounded-full font-bold transition-colors">
-                                    {isEn ? 'Reorder' : 'إعادة الطلب'}
-                                </button>
+                                {(() => {
+                                  const reorderLines = (orderData.items || []).map((item: any) => {
+                                    const rawId = item.variantId;
+                                    const merchandiseId = rawId && String(rawId).startsWith('gid://')
+                                      ? String(rawId)
+                                      : `gid://shopify/ProductVariant/${rawId}`;
+                                    return {
+                                      merchandiseId,
+                                      quantity: item.quantity || 1,
+                                    };
+                                  });
+                                  return (
+                                    <Form action={isEn ? "/en/cart" : "/cart"} method="post" className="w-full">
+                                      <input
+                                        type="hidden"
+                                        name="cartFormInput"
+                                        value={JSON.stringify({
+                                          action: 'LinesAdd',
+                                          inputs: { lines: reorderLines },
+                                        })}
+                                      />
+                                      <button
+                                        type="submit"
+                                        className="w-full bg-[#234745] hover:bg-[#1a3533] text-white py-3.5 rounded-full font-bold transition-colors cursor-pointer active:scale-95"
+                                        style={{ color: '#FFFFFF' }}
+                                      >
+                                        {isEn ? 'Reorder' : 'إعادة الطلب'}
+                                      </button>
+                                    </Form>
+                                  );
+                                })()}
                                 {orderData.rawFinancialStatus?.toUpperCase() === 'PAID' ? (
                                     <a href={`/api/invoice/${encodeURIComponent(orderData.id)}`} target="_blank" rel="noopener noreferrer" className="w-full bg-white border-[1.5px] border-[#234745] text-[#234745] hover:bg-gray-50 py-3.5 rounded-full font-bold transition-colors flex items-center justify-center cursor-pointer">
                                         {isEn ? 'Download Invoice' : 'تنزيل الفاتورة'}

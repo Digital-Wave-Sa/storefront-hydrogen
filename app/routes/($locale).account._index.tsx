@@ -290,14 +290,39 @@ export default function AccountDashboard() {
                           >
                             {isEn ? 'Track' : 'تتبع'}
                           </Link>
-                          <Link
-                            to={isEn ? `/en/account/orders/${orderIdEncoded}` : `/account/orders/${orderIdEncoded}`}
-                            className="px-6 py-2 bg-[#234745] text-white rounded-[24px] text-[13px] font-bold hover:opacity-90 transition-all"
-                            style={{ color: '#FFFFFF' }}
-                          >
-                            {isEn ? 'Reorder' : 'إعادة الطلب'}
-                          </Link>
+                          {(() => {
+                            const reorderLines = (lastOrder.lineItems?.nodes || []).map((item: any) => {
+                              const rawId = (item.variant as any)?.id || item.variantId;
+                              const merchandiseId = rawId && String(rawId).startsWith('gid://')
+                                ? String(rawId)
+                                : `gid://shopify/ProductVariant/${rawId}`;
+                              return {
+                                merchandiseId,
+                                quantity: item.quantity || 1,
+                              };
+                            });
+                            return (
+                              <Form action={isEn ? "/en/cart" : "/cart"} method="post" className="inline-block">
+                                <input
+                                  type="hidden"
+                                  name="cartFormInput"
+                                  value={JSON.stringify({
+                                    action: 'LinesAdd',
+                                    inputs: { lines: reorderLines },
+                                  })}
+                                />
+                                <button
+                                  type="submit"
+                                  className="px-6 py-2 bg-[#234745] text-white rounded-[24px] text-[13px] font-bold hover:opacity-90 transition-all active:scale-95 cursor-pointer"
+                                  style={{ color: '#FFFFFF' }}
+                                >
+                                  {isEn ? 'Reorder' : 'إعادة الطلب'}
+                                </button>
+                              </Form>
+                            );
+                          })()}
                         </div>
+
                       </div>
 
                     </div>

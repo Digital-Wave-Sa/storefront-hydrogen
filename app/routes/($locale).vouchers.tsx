@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useLocation, Link, data, type LoaderFunctionArgs, type MetaFunction } from 'react-router';
+import { useLocation, Link, data, useLoaderData, type LoaderFunctionArgs, type MetaFunction } from 'react-router';
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
   const isEn = data?.lang === 'en';
@@ -10,9 +10,95 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => {
 };
 
 export async function loader({ context }: LoaderFunctionArgs) {
-  const { storefront } = context;
+  const { storefront, env } = context;
   const lang = storefront.i18n.language === 'EN' ? 'en' : 'ar';
-  return data({ lang });
+
+  let shopifyVouchers: Array<{
+    id: string;
+    title: string;
+    code: string;
+    valueType: string;
+    value: number;
+    discountDisplayAr: string;
+    discountDisplayEn: string;
+    subtitleAr: string;
+    subtitleEn: string;
+    expiryTextAr: string;
+    expiryTextEn: string;
+  }> = [];
+
+  try {
+    const { getAdminToken, getAdminDomain } = await import('~/lib/shopify-admin.server');
+    const adminToken = await getAdminToken(env);
+    const adminDomain = getAdminDomain(env);
+
+    if (adminToken && adminDomain) {
+      const res = await fetch(`https://${adminDomain}/admin/api/2024-01/price_rules.json?status=active`, {
+        headers: { 'X-Shopify-Access-Token': adminToken, 'Content-Type': 'application/json' }
+      });
+      if (res.ok) {
+        const resData = await res.json() as any;
+        const priceRules = (resData.price_rules || []).filter((rule: any) => {
+          return !rule.title?.startsWith('Loyalty Redemption:');
+        });
+
+        const voucherPromises = priceRules.map(async (rule: any) => {
+          let code = rule.title;
+          try {
+            const dcRes = await fetch(`https://${adminDomain}/admin/api/2024-01/price_rules/${rule.id}/discount_codes.json`, {
+              headers: { 'X-Shopify-Access-Token': adminToken }
+            });
+            if (dcRes.ok) {
+              const dcData = await dcRes.json() as any;
+              if (dcData.discount_codes?.[0]?.code) {
+                code = dcData.discount_codes[0].code;
+              }
+            }
+          } catch (e) {}
+
+          const isPercentage = rule.value_type === 'percentage';
+          const valNum = Math.abs(parseFloat(rule.value || '0'));
+          
+          let discountDisplayAr = isPercentage ? `خصم %${valNum}` : `${valNum} خصم`;
+          let discountDisplayEn = isPercentage ? `${valNum}% OFF` : `${valNum} SAR OFF`;
+
+          const minSpend = rule.prerequisite_subtotal_range?.greater_than_or_equal_to;
+          let subtitleAr = minSpend ? `عند الشراء بأكثر من ${parseFloat(minSpend)} ر.س` : 'على جميع المنتجات';
+          let subtitleEn = minSpend ? `On purchases over ${parseFloat(minSpend)} SAR` : 'On all items';
+
+          let expiryDateStrAr = rule.ends_at
+            ? new Date(rule.ends_at).toLocaleDateString('ar-SA')
+            : '31 ديسمبر 2026';
+          let expiryDateStrEn = rule.ends_at
+            ? new Date(rule.ends_at).toLocaleDateString('en-US')
+            : 'Dec 31, 2026';
+
+          let expiryTextAr = `تنتهي ${expiryDateStrAr}${minSpend ? ` . الحد الأدنى ${parseFloat(minSpend)} رس` : ''}`;
+          let expiryTextEn = `Expires ${expiryDateStrEn}${minSpend ? ` . Min spend ${parseFloat(minSpend)} SAR` : ''}`;
+
+          return {
+            id: String(rule.id),
+            title: rule.title,
+            code,
+            valueType: rule.value_type,
+            value: valNum,
+            discountDisplayAr,
+            discountDisplayEn,
+            subtitleAr,
+            subtitleEn,
+            expiryTextAr,
+            expiryTextEn,
+          };
+        });
+
+        shopifyVouchers = await Promise.all(voucherPromises);
+      }
+    }
+  } catch (err) {
+    console.error('[Vouchers Loader] Error fetching native Shopify price rules:', err);
+  }
+
+  return data({ lang, shopifyVouchers });
 }
 
 function SaadeddinLogo({ className = '', style }: { className?: string; style?: React.CSSProperties }) {
@@ -34,6 +120,7 @@ export default function VouchersPage() {
   // URL-based locale detection — reliable on both server and client, no hydration mismatch
   const { pathname } = useLocation();
   const isEn = pathname.startsWith('/en/') || pathname === '/en';
+  const { shopifyVouchers = [] } = useLoaderData<typeof loader>() || {};
 
   const [activeTab, setActiveTab] = useState<'active' | 'used' | 'expired'>('active');
   const [voucherCodeInput, setVoucherCodeInput] = useState('');
@@ -317,25 +404,80 @@ export default function VouchersPage() {
 
         {/* Voucher Cards — 3 column grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {(shopifyVouchers.length > 0 ? shopifyVouchers : [
+            {
+              id: '1',
+              title: 'Free Delivery',
+              code: 'FreeShip',
+              discountDisplayAr: 'توصيل مجاني',
+              discountDisplayEn: 'Free Delivery',
+              subtitleAr: 'توصيل مجاني على طلبك القادم',
+              subtitleEn: 'Free shipping on your next order',
+              expiryTextAr: 'تنتهي 31 ديسمبر 2026 . الحد الادنى 150 رس',
+              expiryTextEn: 'Expires Dec 31, 2026 . Min spend 150 SAR',
+            },
+            {
+              id: '2',
+              title: '50 SAR Discount',
+              code: 'SWEET',
+              discountDisplayAr: '50 خصم',
+              discountDisplayEn: '50 SAR OFF',
+              subtitleAr: 'عند الشراء بأكثر من ٣٠٠ رس',
+              subtitleEn: 'On purchases over 300 SAR',
+              expiryTextAr: 'تنتهي 31 ديسمبر 2026 . الحد الادنى 150 رس',
+              expiryTextEn: 'Expires Dec 31, 2026 . Min spend 150 SAR',
+            },
+            {
+              id: '3',
+              title: '15% Discount',
+              code: 'SWEET',
+              discountDisplayAr: '15% خصم',
+              discountDisplayEn: '15% OFF',
+              subtitleAr: 'على جميع الحلويات الشرقية',
+              subtitleEn: 'On all Oriental Sweets',
+              expiryTextAr: 'تنتهي 31 ديسمبر 2026 . الحد الادنى 150 رس',
+              expiryTextEn: 'Expires Dec 31, 2026 . Min spend 150 SAR',
+            },
+          ]).map((v, index) => {
+            const themeIndex = index % 3;
+            const themes = [
+              {
+                bg: '#F5F3EE',
+                textPrimary: '#234745',
+                textSub: '#666',
+                btnBg: '#234745',
+                btnText: '#fff',
+                dividerColor: 'rgba(35,71,69,0.22)',
+              },
+              {
+                bg: '#C5A96A',
+                textPrimary: '#234745',
+                textSub: '#1A3533',
+                btnBg: '#234745',
+                btnText: '#fff',
+                dividerColor: 'rgba(35,71,69,0.3)',
+              },
+              {
+                bg: '#234745',
+                textPrimary: '#fff',
+                textSub: 'rgba(255,255,255,0.85)',
+                btnBg: '#C5A96A',
+                btnText: '#1A3533',
+                dividerColor: 'rgba(255,255,255,0.2)',
+              },
+            ];
+            const theme = themes[themeIndex];
 
-          {/* ── CARD 1: White/Light — توصيل مجاني ── */}
-          {(() => {
-            const bg = '#F5F3EE';
-            const textPrimary = '#234745';
-            const textSub = '#666';
-            const btnBg = '#234745';
-            const btnText = '#fff';
-            const dividerColor = 'rgba(35,71,69,0.22)';
-            const brandColor = 'rgba(35,71,69,0.55)';
             return (
               <div
+                key={v.id || v.code || index}
                 className="relative flex flex-col rounded-[20px] overflow-visible shadow-lg hover:-translate-y-1 transition-all duration-300"
-                style={{ background: bg }}
+                style={{ background: theme.bg }}
               >
                 {/* Top section */}
                 <div className="flex flex-col px-8 !pt-10 pb-8" style={{ textAlign: isEn ? 'left' : 'right' }}>
-                  {/* Brand Logo SVG — aligned right directly above discount text */}
-                  <div className={`flex justify-start mb-2 mt-10`} style={{ color: textPrimary }}>
+                  {/* Brand Logo SVG */}
+                  <div className="flex justify-start mb-2 mt-10" style={{ color: theme.textPrimary }}>
                     <SaadeddinLogo className="h-3.5 sm:h-4 w-auto" />
                   </div>
                   {/* Discount value */}
@@ -343,23 +485,21 @@ export default function VouchersPage() {
                     className="font-bold leading-none mb-4 flex items-baseline gap-2"
                     style={{
                       fontFamily: "'Bahij Janna', 'Bahij', serif",
-                      color: textPrimary,
+                      color: theme.textPrimary,
                     }}
                   >
-                    {isEn ? (
-                      <span style={{ fontSize: '50px', fontWeight: 700 }}>Free Delivery</span>
-                    ) : (
-                      <span style={{ fontSize: '50px', fontWeight: 700 }}>توصيل مجاني</span>
-                    )}
+                    <span style={{ fontSize: '42px', fontWeight: 700 }}>
+                      {isEn ? v.discountDisplayEn : v.discountDisplayAr}
+                    </span>
                   </div>
                   {/* Description */}
                   <div
                     style={{
                       fontFamily: "'GE Dinar One', 'GE SS Two', sans-serif",
-                      fontSize: '16px', color: textSub, fontWeight: 400,
+                      fontSize: '16px', color: theme.textSub, fontWeight: 400,
                     }}
                   >
-                    {isEn ? 'Free shipping on your next order' : 'توصيل مجاني على طلبك القادم'}
+                    {isEn ? v.subtitleEn : v.subtitleAr}
                   </div>
                 </div>
 
@@ -367,17 +507,17 @@ export default function VouchersPage() {
                 <div className="relative flex items-center" style={{ margin: '0' }}>
                   <div className="absolute -left-3 w-6 h-6 rounded-full z-10" style={{ background: '#FAF8F5' }} />
                   <div className="absolute -right-3 w-6 h-6 rounded-full z-10" style={{ background: '#FAF8F5' }} />
-                  <div className="w-full" style={{ borderTop: `2px dashed ${dividerColor}`, marginLeft: '12px', marginRight: '12px' }} />
+                  <div className="w-full" style={{ borderTop: `2px dashed ${theme.dividerColor}`, marginLeft: '12px', marginRight: '12px' }} />
                 </div>
 
-                {/* Bottom section — dir=ltr forces button physical LEFT, code physical RIGHT */}
+                {/* Bottom section */}
                 <div dir="ltr" className="flex items-center justify-between px-8 pt-6 pb-4 gap-4">
                   <button
                     type="button"
-                    onClick={() => handleCopyCode('FreeShip')}
+                    onClick={() => handleCopyCode(v.code)}
                     className="flex-shrink-0 font-bold transition-opacity hover:opacity-80 active:scale-95"
                     style={{
-                      background: btnBg, color: btnText,
+                      background: theme.btnBg, color: theme.btnText,
                       borderRadius: '999px', padding: '13px 32px',
                       fontSize: '16px', fontWeight: 700,
                       border: 'none', cursor: 'pointer',
@@ -387,11 +527,11 @@ export default function VouchersPage() {
                     {isEn ? 'Get Code' : 'إحصل عليه'}
                   </button>
                   <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '12px', color: textSub, marginBottom: '4px', fontFamily: "'GE Dinar One', sans-serif" }}>
+                    <div style={{ fontSize: '12px', color: theme.textSub, marginBottom: '4px', fontFamily: "'GE Dinar One', sans-serif" }}>
                       {isEn ? 'Code' : 'الرمز'}
                     </div>
-                    <div style={{ fontSize: '20px', fontWeight: 700, color: textPrimary, fontFamily: 'monospace', letterSpacing: '0.02em' }}>
-                      FreeShip
+                    <div style={{ fontSize: '20px', fontWeight: 700, color: theme.textPrimary, fontFamily: 'monospace', letterSpacing: '0.02em' }}>
+                      {v.code}
                     </div>
                   </div>
                 </div>
@@ -401,191 +541,14 @@ export default function VouchersPage() {
                   className="px-8 pb-6"
                   style={{
                     fontFamily: "'GE Dinar One', 'GE SS Two', sans-serif",
-                    fontSize: '13px', color: textSub, textAlign: isEn ? 'left' : 'right',
+                    fontSize: '13px', color: theme.textSub, textAlign: isEn ? 'left' : 'right',
                   }}
                 >
-                  {isEn ? 'Expires Dec 31, 2026 . Min spend 150 SAR' : 'تنتهي 31 ديسمبر 2026 . الحد الادنى 150 رس'}
+                  {isEn ? v.expiryTextEn : v.expiryTextAr}
                 </div>
               </div>
             );
-          })()}
-
-          {/* ── CARD 2: Gold — 50 خصم ── */}
-          {(() => {
-            const bg = '#C5A96A';
-            const textPrimary = '#234745';
-            const textSub = '#1A3533';
-            const btnBg = '#234745';
-            const btnText = '#fff';
-            const dividerColor = 'rgba(35,71,69,0.3)';
-            const brandColor = 'rgba(35,71,69,0.6)';
-            return (
-              <div
-                className="relative flex flex-col rounded-[20px] overflow-visible shadow-lg hover:-translate-y-1 transition-all duration-300"
-                style={{ background: bg }}
-              >
-                <div className="flex flex-col px-8 !pt-10 pb-8" style={{ textAlign: isEn ? 'left' : 'right' }}>
-                  <div className={`flex justify-start mb-2 mt-10`} style={{ color: textPrimary }}>
-                    <SaadeddinLogo className="h-3.5 sm:h-4 w-auto" />
-                  </div>
-                  <div
-                    className="font-bold leading-none mb-4 flex items-baseline gap-2"
-                    style={{
-                      fontFamily: "'Bahij Janna', 'Bahij', serif",
-                      color: textPrimary,
-                    }}
-                  >
-                    {isEn ? (
-                      <span style={{ fontSize: '50px', fontWeight: 700 }}>50 SAR OFF</span>
-                    ) : (
-                      <>
-                        <span style={{ fontSize: '50px', fontWeight: 700 }}>50</span>
-                        <span style={{ fontSize: '26px', fontWeight: 700 }}>خصم</span>
-                      </>
-                    )}
-                  </div>
-                  <div
-                    style={{
-                      fontFamily: "'GE Dinar One', 'GE SS Two', sans-serif",
-                      fontSize: '16px', color: textSub, fontWeight: 400,
-                    }}
-                  >
-                    {isEn ? 'On purchases over 300 SAR' : 'عند الشراء بأكثر من ٣٠٠ رس'}
-                  </div>
-                </div>
-
-                <div className="relative flex items-center">
-                  <div className="absolute -left-3 w-6 h-6 rounded-full z-10" style={{ background: '#FAF8F5' }} />
-                  <div className="absolute -right-3 w-6 h-6 rounded-full z-10" style={{ background: '#FAF8F5' }} />
-                  <div className="w-full" style={{ borderTop: `2px dashed ${dividerColor}`, marginLeft: '12px', marginRight: '12px' }} />
-                </div>
-
-                <div dir="ltr" className="flex items-center justify-between px-8 pt-6 pb-4 gap-4">
-                  <button
-                    type="button"
-                    onClick={() => handleCopyCode('SWEET')}
-                    className="flex-shrink-0 font-bold transition-opacity hover:opacity-80 active:scale-95"
-                    style={{
-                      background: btnBg, color: btnText,
-                      borderRadius: '999px', padding: '13px 32px',
-                      fontSize: '16px', fontWeight: 700,
-                      border: 'none', cursor: 'pointer',
-                      fontFamily: "'GE Dinar One', sans-serif",
-                    }}
-                  >
-                    {isEn ? 'Get Code' : 'إحصل عليه'}
-                  </button>
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '12px', color: textSub, marginBottom: '4px', fontFamily: "'GE Dinar One', sans-serif" }}>
-                      {isEn ? 'Code' : 'الرمز'}
-                    </div>
-                    <div style={{ fontSize: '20px', fontWeight: 700, color: textPrimary, fontFamily: 'monospace', letterSpacing: '0.02em' }}>
-                      SWEET
-                    </div>
-                  </div>
-                </div>
-
-                <div
-                  className="px-8 pb-6"
-                  style={{
-                    fontFamily: "'GE Dinar One', 'GE SS Two', sans-serif",
-                    fontSize: '13px', color: textSub, textAlign: isEn ? 'left' : 'right',
-                  }}
-                >
-                  {isEn ? 'Expires Dec 31, 2026 . Min spend 150 SAR' : 'تنتهي 31 ديسمبر 2026 . الحد الادنى 150 رس'}
-                </div>
-              </div>
-            );
-          })()}
-
-          {/* ── CARD 3: Dark Teal — 15% خصم ── */}
-          {(() => {
-            const bg = '#234745';
-            const textPrimary = '#fff';
-            const textSub = 'rgba(255,255,255,0.75)';
-            const btnBg = '#C5A96A';
-            const btnText = '#1A3533';
-            const dividerColor = 'rgba(255,255,255,0.2)';
-            const brandColor = 'rgba(255,255,255,0.55)';
-            return (
-              <div
-                className="relative flex flex-col rounded-[20px] overflow-visible shadow-lg hover:-translate-y-1 transition-all duration-300"
-                style={{ background: bg }}
-              >
-                <div className="flex flex-col px-8 !pt-10 pb-8" style={{ textAlign: isEn ? 'left' : 'right' }}>
-                  <div className={`flex justify-start mb-2 mt-10`} style={{ color: textPrimary }}>
-                    <SaadeddinLogo className="h-3.5 sm:h-4 w-auto" />
-                  </div>
-                  <div
-                    className="font-bold leading-none mb-4 flex items-baseline gap-2"
-                    style={{
-                      fontFamily: "'Bahij Janna', 'Bahij', serif",
-                      color: textPrimary,
-                    }}
-                  >
-                    {isEn ? (
-                      <span style={{ fontSize: '50px', fontWeight: 700 }}>15% OFF</span>
-                    ) : (
-                      <>
-                        <span style={{ fontSize: '50px', fontWeight: 700 }}>15%</span>
-                        <span style={{ fontSize: '26px', fontWeight: 700 }}>خصم</span>
-                      </>
-                    )}
-                  </div>
-                  <div
-                    style={{
-                      fontFamily: "'GE Dinar One', 'GE SS Two', sans-serif",
-                      fontSize: '16px', color: textSub, fontWeight: 400,
-                    }}
-                  >
-                    {isEn ? 'On all Oriental Sweets' : 'على جميع الحلويات الشرقية'}
-                  </div>
-                </div>
-
-                <div className="relative flex items-center">
-                  <div className="absolute -left-3 w-6 h-6 rounded-full z-10" style={{ background: '#FAF8F5' }} />
-                  <div className="absolute -right-3 w-6 h-6 rounded-full z-10" style={{ background: '#FAF8F5' }} />
-                  <div className="w-full" style={{ borderTop: `2px dashed ${dividerColor}`, marginLeft: '12px', marginRight: '12px' }} />
-                </div>
-
-                <div dir="ltr" className="flex items-center justify-between px-8 pt-6 pb-4 gap-4">
-                  <button
-                    type="button"
-                    onClick={() => handleCopyCode('SWEET')}
-                    className="flex-shrink-0 font-bold transition-opacity hover:opacity-80 active:scale-95"
-                    style={{
-                      background: btnBg, color: btnText,
-                      borderRadius: '999px', padding: '13px 32px',
-                      fontSize: '16px', fontWeight: 700,
-                      border: 'none', cursor: 'pointer',
-                      fontFamily: "'GE Dinar One', sans-serif",
-                    }}
-                  >
-                    {isEn ? 'Get Code' : 'إحصل عليه'}
-                  </button>
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '12px', color: textSub, marginBottom: '4px', fontFamily: "'GE Dinar One', sans-serif" }}>
-                      {isEn ? 'Code' : 'الرمز'}
-                    </div>
-                    <div style={{ fontSize: '20px', fontWeight: 700, color: textPrimary, fontFamily: 'monospace', letterSpacing: '0.02em' }}>
-                      SWEET
-                    </div>
-                  </div>
-                </div>
-
-                <div
-                  className="px-8 pb-6"
-                  style={{
-                    fontFamily: "'GE Dinar One', 'GE SS Two', sans-serif",
-                    fontSize: '13px', color: textSub, textAlign: isEn ? 'left' : 'right',
-                  }}
-                >
-                  {isEn ? 'Expires Dec 31, 2026 . Min spend 150 SAR' : 'تنتهي 31 ديسمبر 2026 . الحد الادنى 150 رس'}
-                </div>
-              </div>
-            );
-          })()}
-
+          })}
         </div>
       </section>
 

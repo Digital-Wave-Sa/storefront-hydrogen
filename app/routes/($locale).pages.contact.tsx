@@ -175,6 +175,14 @@ export default function ContactPage() {
   const actionData = useActionData<typeof action>();
   const navigation = useNavigation();
   const isSubmitting = navigation.state === 'submitting';
+
+  const scrollToForm = () => {
+    const formElem = document.getElementById('contact-form');
+    if (formElem) {
+      formElem.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
   return (
     <div className={`w-full min-h-screen bg-[#FEF8EB] ${isEn ? 'font-en text-left' : 'font-ar text-right'}`} dir={isEn ? 'ltr' : 'rtl'}>
       {/* Hero Section */}
@@ -213,21 +221,25 @@ export default function ContactPage() {
             title="WhatsApp"
             subtitle={isEn ? 'Fastest — Instant response' : 'الأسرع — رد فوري'}
             pill={isEn ? '+966 9200 17020' : '+966 9200 17020'}
+            href="https://wa.me/966920017020"
           />
           <ContactCard
             title={isEn ? 'Phone' : 'الهاتف'}
             subtitle={isEn ? 'For urgent inquiries' : 'للاستفسارات العاجلة'}
             pill={isEn ? '920017070' : '920017070'}
+            href="tel:920017070"
           />
           <ContactCard
             title={isEn ? 'Email' : 'البريد الإلكتروني'}
             subtitle={isEn ? 'Detailed requests' : 'للإستفسارات التفصيلية'}
             pill={isEn ? 'Response within 24h' : 'الرد خلال 24 ساعة'}
+            onClick={scrollToForm}
           />
           <ContactCard
             title={isEn ? 'Visit Branch' : 'زيارة فرع'}
             subtitle={isEn ? '117 branches everywhere' : '117 فرع في كل مكان'}
             pill={isEn ? 'Search for nearest' : 'إبحث عن اقرب فرع'}
+            href="/pages/branches"
           />
         </div>
 
@@ -275,7 +287,7 @@ export default function ContactPage() {
           </div>
 
           {/* Form Column (Second in code = Left in RTL) */}
-          <div className="w-full md:w-[45%] bg-white border border-[#234745] shadow-sm overflow-hidden" style={{ borderRadius: '12px' }}>
+          <div id="contact-form" className="w-full md:w-[45%] bg-white border border-[#234745] shadow-sm overflow-hidden scroll-mt-10" style={{ borderRadius: '12px' }}>
             <div className="p-4 md:p-6 w-full" style={{ display: 'block', width: '100%', maxWidth: 'none' }}>
               {actionData?.success === true ? (
                 <div className="p-10 w-full text-center flex flex-col items-center justify-center gap-6" style={{ minHeight: '400px' }}>
@@ -394,13 +406,14 @@ export default function ContactPage() {
 }
 
 
-function ContactCard({ title, subtitle, pill }: any) {
-  return (
+function ContactCard({ title, subtitle, pill, href, onClick }: any) {
+  const cardInner = (
     <div
-      className="bg-white p-6 md:p-6 border border-[#234745] flex flex-col items-center justify-center text-center transition-all min-h-[180px] w-[200px] md:w-full flex-shrink-0 snap-start snap-always"
+      className="bg-white p-6 md:p-6 border border-[#234745] flex flex-col items-center justify-center text-center transition-all min-h-[180px] w-[200px] md:w-full flex-shrink-0 snap-start snap-always hover:shadow-md cursor-pointer group"
       style={{ borderRadius: '12px' }}
+      onClick={onClick}
     >
-      <h3 className="text-[24px] md:text-[28px] font-bold text-[#1F413F] mb-3" style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif", lineHeight: '100%' }}>{title}</h3>
+      <h3 className="text-[24px] md:text-[28px] font-bold text-[#1F413F] mb-3 group-hover:text-[#234745] transition-colors" style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif", lineHeight: '100%' }}>{title}</h3>
       <p
         className="text-[14px] md:text-[15px] text-[#9FB7AE] !mb-6 font-medium"
         style={{ lineHeight: '1.4', fontWeight: 500, marginBottom: '24px', fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" }}
@@ -408,7 +421,7 @@ function ContactCard({ title, subtitle, pill }: any) {
         {subtitle}
       </p>
       <div
-        className="inline-flex text-[14px] items-center justify-center px-8 h-[40px] font-bold bg-[#BBCFCD] text-[#234745] transition-colors whitespace-nowrap"
+        className="inline-flex text-[14px] items-center justify-center px-8 h-[40px] font-bold bg-[#BBCFCD] group-hover:bg-[#ACC4C2] text-[#234745] transition-colors whitespace-nowrap cursor-pointer shadow-sm"
         style={{
           borderRadius: '1000px',
           fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif",
@@ -422,6 +435,23 @@ function ContactCard({ title, subtitle, pill }: any) {
       </div>
     </div>
   );
+
+  if (href) {
+    if (href.startsWith('http') || href.startsWith('tel:')) {
+      return (
+        <a href={href} target={href.startsWith('http') ? '_blank' : undefined} rel={href.startsWith('http') ? 'noopener noreferrer' : undefined} className="block w-full text-left no-underline">
+          {cardInner}
+        </a>
+      );
+    }
+    return (
+      <Link to={href} className="block w-full text-left no-underline">
+        {cardInner}
+      </Link>
+    );
+  }
+
+  return cardInner;
 }
 
 function FormField({ label, placeholder, required, type = "text", isEn, forceLtr = false, name }: any) {

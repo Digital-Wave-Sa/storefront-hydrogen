@@ -2164,6 +2164,33 @@ button.reset:hover:not(:has(> *)) {
   border: 1px solid rgba(27, 61, 46, 0.05);
 }
 
+.dpm-loading {
+  width: 100%;
+  height: 100%;
+  min-height: 400px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 40px;
+}
+
+.dpm-loading-spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid rgba(35, 71, 69, 0.15);
+  border-top-color: #234745;
+  border-radius: 50%;
+  animation: dpmSpin 0.8s linear infinite;
+}
+
+@keyframes dpmSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .dpm-map-area {
   flex: 1 1 50%;
   max-width: 50%;

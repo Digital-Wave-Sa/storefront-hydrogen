@@ -531,8 +531,22 @@ export function DeliveryPickupModal({
                     </svg>
                 </button>
 
-                <Suspense fallback={<div className="dpm-loading"><div className="dpm-loading-spinner" /></div>}>
-                    <Await resolve={combinedPromise} errorElement={<div className="dpm-loading"><div className="dpm-loading-spinner" /></div>}>
+                <Suspense fallback={(
+                    <div className="dpm-loading">
+                        <div className="dpm-loading-spinner" />
+                        <span className="text-[#234745] font-bold text-[15px]" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
+                            {isEn ? 'Loading store locations...' : 'جاري تحميل فروع الخدمة...'}
+                        </span>
+                    </div>
+                )}>
+                    <Await resolve={combinedPromise} errorElement={(
+                        <div className="dpm-loading">
+                            <div className="dpm-loading-spinner" />
+                            <span className="text-[#234745] font-bold text-[15px]" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
+                                {isEn ? 'Loading store locations...' : 'جاري تحميل فروع الخدمة...'}
+                            </span>
+                        </div>
+                    )}>
                         {([locationsData, customerData]: [any, any]) => {
                             const nodes = locationsData?.locations?.nodes || locationsData?.nodes || (Array.isArray(locationsData) ? locationsData : []);
                             

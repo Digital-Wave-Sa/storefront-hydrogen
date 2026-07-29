@@ -168,6 +168,7 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
                 shippingTitle: o.shipping_lines?.[0]?.title || o.shipping_lines?.[0]?.code || '',
                 shippingAddress: o.shipping_address || null,
                 tags: o.tags || '',
+                fulfillments: o.fulfillments || [],
                 lineItems: {
                   nodes: (o.line_items || []).map((li: any) => ({
                     title: li.title,
@@ -467,6 +468,12 @@ function OrderCard({ order, isEn }: { order: OrderItemFragment, isEn: boolean })
     checkIsPickupOrder(order)
   );
 
+  const fulfillments = (order as any).fulfillments || [];
+  const hasFulfillment = fulfillments.some((f: any) => 
+    f.status === 'success' || 
+    ['out_for_delivery', 'ready_for_pickup', 'in_transit', 'submitted', 'label_printed'].includes((f.shipment_status || f.displayStatus || '').toLowerCase())
+  );
+
   const rawTags = (order as any).tags
     ? (typeof (order as any).tags === 'string'
         ? (order as any).tags.split(',').map((t: string) => t.trim().toLowerCase())
@@ -477,10 +484,13 @@ function OrderCard({ order, isEn }: { order: OrderItemFragment, isEn: boolean })
 
   const isFulfilled = order.fulfillmentStatus === 'FULFILLED' || tagSet.has('delivered') || tagSet.has('picked-up') || tagSet.has('تم-التسليم') || tagSet.has('تم-الاستلام');
 
-  const isReady = tagSet.has('ready-for-delivery') || tagSet.has('out-for-delivery') || 
+  const isReady = hasFulfillment || 
+    tagSet.has('ready-for-delivery') || tagSet.has('out-for-delivery') || 
     tagSet.has('ready-for-pickup') || tagSet.has('on-the-way') || tagSet.has('in-transit') ||
+    tagSet.has('ready') || tagSet.has('جاهز') ||
     tagSet.has('جاهز-للتسليم') || tagSet.has('جاهز-للاستلام') || tagSet.has('في-الطريق') ||
-    order.fulfillmentStatus === 'PARTIALLY_FULFILLED';
+    order.fulfillmentStatus === 'PARTIALLY_FULFILLED' || order.fulfillmentStatus === 'IN_PROGRESS';
+
 
   let statusEn = 'Order Received';
   let statusAr = 'تم استلام طلبك';

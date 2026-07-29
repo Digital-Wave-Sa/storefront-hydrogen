@@ -116,14 +116,17 @@ function MobileMenuAside({
   locale: string;
 }) {
   const {close} = useAside();
+  const location = useLocation();
+  const isEn = String(locale).toLowerCase() === 'en' || location.pathname.startsWith('/en');
+
   return (
     header?.menu && (
-      <Aside type="mobile" heading="MENU">
+      <Aside type="mobile" heading={isEn ? 'MENU' : 'القائمة'}>
         <HeaderMenu
           menu={header.menu}
           viewport="mobile"
           onClose={close}
-          locale={locale}
+          locale={isEn ? 'en' : 'ar'}
         />
       </Aside>
     )

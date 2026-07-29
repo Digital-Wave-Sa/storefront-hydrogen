@@ -924,7 +924,7 @@ export function HeaderMenu({
   onClose?: () => void;
 }) {
   const location = useLocation();
-  const isEn = locale === 'en';
+  const isEn = String(locale || '').toLowerCase() === 'en' || location.pathname.startsWith('/en');
   const NAV_ITEMS = isEn ? STATIC_NAV_EN : STATIC_NAV_AR;
 
   return (
@@ -948,23 +948,52 @@ export function HeaderMenu({
 
         <div className="space-y-2">
           {NAV_ITEMS.map((item) => {
-            const isOffers = item.url.includes('offers');
+            const isOffers = item.url.includes('promotions') || item.url.includes('offers');
             return (
               <NavLink
                 key={item.url}
                 to={item.url}
                 onClick={onClose}
+                end={item.url === '/' || item.url === '/en'}
                 prefetch="intent"
                 className={({ isActive }) => `
-                flex items-center justify-between px-6 py-4 rounded-2xl text-[16px] font-bold transition-all
-                ${isOffers ? 'bg-[#b91c1c] !text-white' : isActive ? 'bg-[#234745] text-white' : 'bg-white text-[#234745] shadow-sm'}
-              `}
-                style={isOffers ? { color: 'white' } : {}}
+                  flex items-center justify-between px-6 py-4 rounded-2xl text-[16px] font-bold transition-all
+                  ${isOffers
+                    ? 'bg-[#b91c1c] !text-white'
+                    : isActive
+                      ? 'bg-[#234745] !text-white shadow-md'
+                      : 'bg-white text-[#234745] shadow-sm hover:bg-gray-50'
+                  }
+                `}
+                style={({ isActive }) => (
+                  isOffers
+                    ? { color: '#FFFFFF' }
+                    : isActive
+                      ? { color: '#FFFFFF', backgroundColor: '#234745' }
+                      : { color: '#234745' }
+                )}
               >
-                {item.title}
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className={isEn ? '' : 'rotate-180'}><polyline points="9 18 15 12 9 6" /></svg>
+                {({ isActive }) => (
+                  <>
+                    <span className={isActive || isOffers ? '!text-white' : 'text-[#234745]'} style={{ color: isActive || isOffers ? '#FFFFFF' : '#234745' }}>
+                      {item.title}
+                    </span>
+                    <svg
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                      className={`${isEn ? '' : 'rotate-180'} ${isActive || isOffers ? '!text-white' : 'text-[#234745]'}`}
+                      style={{ color: isActive || isOffers ? '#FFFFFF' : '#234745' }}
+                    >
+                      <polyline points="9 18 15 12 9 6" />
+                    </svg>
+                  </>
+                )}
               </NavLink>
-            )
+            );
           })}
         </div>
       </div>

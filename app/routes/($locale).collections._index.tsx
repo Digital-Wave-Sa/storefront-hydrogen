@@ -1,22 +1,22 @@
-import {useLoaderData, Link, useRouteLoaderData, data} from 'react-router';
-import {type LoaderFunctionArgs} from 'react-router';
-import {Pagination, getPaginationVariables, Image} from '@shopify/hydrogen';
-import type {CollectionFragment} from 'storefrontapi.generated';
+import { useLoaderData, Link, useRouteLoaderData, data } from 'react-router';
+import { type LoaderFunctionArgs } from 'react-router';
+import { Pagination, getPaginationVariables, Image } from '@shopify/hydrogen';
+import type { CollectionFragment } from 'storefrontapi.generated';
 
-export async function loader({context, request}: LoaderFunctionArgs) {
+export async function loader({ context, request }: LoaderFunctionArgs) {
   const paginationVariables = getPaginationVariables(request, {
     pageBy: 12,
   });
 
-  const {collections} = await context.storefront.query(COLLECTIONS_QUERY, {
+  const { collections } = await context.storefront.query(COLLECTIONS_QUERY, {
     variables: paginationVariables as any,
   });
 
-  return data({collections});
+  return data({ collections });
 }
 
 export default function Collections() {
-  const {collections} = useLoaderData<typeof loader>();
+  const { collections } = useLoaderData<typeof loader>();
   const rootData = useRouteLoaderData('root') as any;
   const menu = rootData?.header?.menu;
   const isEn = rootData?.locale === 'en';
@@ -24,7 +24,7 @@ export default function Collections() {
   return (
     <div className="collection-page" dir={isEn ? 'ltr' : 'rtl'}>
       <div className={`px-4 md:px-8 lg:px-12 py-12 max-w-[1440px] mx-auto ${isEn ? 'text-left' : 'text-right'}`}>
-        
+
         {/* Horizontal Category Navigation */}
         {menu?.items && menu.items.length > 0 && (
           <div className="mb-12 overflow-x-auto hide-scrollbars">
@@ -41,7 +41,7 @@ export default function Collections() {
                     return parts[parts.length - 1] || '';
                   }
                 };
-                
+
                 const itemHandle = getHandle(item.url);
 
                 return (
@@ -64,18 +64,18 @@ export default function Collections() {
             {isEn ? 'All Collections' : 'كل التصنيفات'}
           </h1>
           <Pagination connection={collections}>
-            {({nodes, isLoading, PreviousLink, NextLink}) => (
+            {({ nodes, isLoading, PreviousLink, NextLink }) => (
               <div>
                 <div className="flex justify-center mb-10">
                   <PreviousLink className="text-[#234745] font-black border-2 border-[#234745]/10 px-8 py-2.5 rounded-full hover:bg-gray-50 transition-all">
                     {isLoading ? (isEn ? 'Loading...' : 'جاري التحميل...') : (isEn ? '↑ Load Previous' : '↑ تحميل المنتجات السابقة')}
                   </PreviousLink>
                 </div>
-                
+
                 <CollectionsGrid collections={nodes} isEn={isEn} />
-                
+
                 <div className="flex justify-center mt-16">
-                  <NextLink className="bg-[#234745] text-white px-16 py-4 rounded-full font-black shadow-[0_10px_30px_rgba(27,61,46,0.3)] hover:shadow-[0_15px_40px_rgba(27,61,46,0.4)] hover:-translate-y-1 transition-all duration-300">
+                  <NextLink className="px-12 py-4 rounded-full border-2 border-[#234745] !text-[#234745] [font-family:'GE_Dinar_One',sans-serif] font-bold text-[15px] lg:text-[18px] transition-all hover:bg-[#1a3533] hover:!text-white hover:border-[#1a3533] active:scale-95">
                     {isLoading ? (isEn ? 'Loading...' : 'جاري التحميل...') : (isEn ? 'Load More ↓' : 'تصفح المزيد ↓')}
                   </NextLink>
                 </div>
@@ -88,7 +88,7 @@ export default function Collections() {
   );
 }
 
-function CollectionsGrid({collections, isEn}: {collections: CollectionFragment[], isEn: boolean}) {
+function CollectionsGrid({ collections, isEn }: { collections: CollectionFragment[], isEn: boolean }) {
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 lg:gap-8">
       {collections.map((collection, index) => (
@@ -131,9 +131,9 @@ function CollectionItem({
           />
         )}
         <div className="absolute inset-x-0 bottom-0 p-4 translate-y-full group-hover:translate-y-0 transition-transform duration-300 hidden md:block">
-            <div className="w-full bg-[#234745] text-white py-3.5 rounded-[1.5rem] font-bold text-[13px] shadow-xl hover:bg-[#2d5e4a] transition-all text-center">
-                {isEn ? 'View Products' : 'تصفح المنتجات'}
-            </div>
+          <div className="w-full bg-[#234745] text-white py-3.5 rounded-[1.5rem] font-bold text-[13px] shadow-xl hover:bg-[#2d5e4a] transition-all text-center">
+            {isEn ? 'View Products' : 'تصفح المنتجات'}
+          </div>
         </div>
       </div>
       <h5 className="text-[17px] font-black text-gray-800 line-clamp-1 group-hover:text-[#234745] transition-colors duration-300 text-center">{collection.title}</h5>

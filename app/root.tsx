@@ -235,12 +235,18 @@ async function loadCriticalData({context}: Route.LoaderArgs) {
     storefront.query(MEGAMENU_COLLECTIONS_QUERY, {
       cache: storefront.CacheLong(),
       variables: {
+        ids: [
+          'gid://shopify/Collection/473419940073',
+          'gid://shopify/Collection/473419907305',
+          'gid://shopify/Collection/473421021417',
+          'gid://shopify/Collection/473423872233',
+        ],
         country: storefront.i18n.country,
         language: storefront.i18n.language,
       },
     }).catch((error) => {
       console.error('Failed to fetch megamenu data:', error);
-      return { collections: { nodes: [] } };
+      return { nodes: [] };
     }),
   ]);
 
@@ -844,10 +850,10 @@ const CUSTOMER_ADDRESSES_QUERY = `#graphql
 `;
 
 const MEGAMENU_COLLECTIONS_QUERY = `#graphql
-  query MegaMenuCollections($country: CountryCode, $language: LanguageCode)
+  query MegaMenuCollections($ids: [ID!]!, $country: CountryCode, $language: LanguageCode)
     @inContext(country: $country, language: $language) {
-    collections(first: 4) {
-      nodes {
+    nodes(ids: $ids) {
+      ... on Collection {
         id
         title
         handle
@@ -855,7 +861,7 @@ const MEGAMENU_COLLECTIONS_QUERY = `#graphql
           url
           altText
         }
-        products(first: 4) {
+        products(first: 6) {
           nodes {
             id
             title

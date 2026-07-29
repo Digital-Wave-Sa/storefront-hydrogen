@@ -486,6 +486,10 @@ export default function CustomCakeBuilder({
         })
       });
       const data = (await response.json()) as any;
+      if (data.requireLogin && data.loginUrl) {
+        window.location.href = data.loginUrl;
+        return;
+      }
       if (data.checkoutUrl) {
         try {
           localStorage.removeItem('custom_cake_selections');

@@ -26,10 +26,12 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
   const isLoggedIn = Boolean(customerAccessToken?.accessToken || (typeof customerAccessToken === 'string' ? customerAccessToken : null));
 
   const isAccountHome = pathname === `${localePrefix}/account` || pathname === `${localePrefix}/account/`;
-  const isPrivateRoute = new RegExp(`^${localePrefix}/account/(orders|orders/.*|profile|addresses|addresses/.*|dashboard|feedback-analytics|promotions|wishlist|wallet)$`).test(pathname);
+  // orders list (/account/orders) is private; detail pages (/account/orders/:id) render standalone like /track-order/:id
+  const isOrderDetail = new RegExp(`^${localePrefix}/account/orders/.+$`).test(pathname);
+  const isPrivateRoute = !isOrderDetail && new RegExp(`^${localePrefix}/account/(orders|profile|addresses|addresses/.*|dashboard|feedback-analytics|promotions|wishlist|wallet)$`).test(pathname);
 
   if (!isLoggedIn) {
-    if (isPrivateRoute || isAccountHome) {
+    if (isPrivateRoute || isAccountHome || isOrderDetail) {
       session.unset('customerAccessToken');
       return redirect(`${localePrefix}/account/login`, {
         headers: {
@@ -335,6 +337,7 @@ export default function Acccount() {
   const locale = rootData?.locale || 'ar';
 
   if (!isPrivateRoute && !isAccountHome) {
+    // This covers /account/orders/:id detail pages and other non-private routes
     return <Outlet context={{ customer, googleMapsKey, isAdmin, walletPromise, locale }} />;
   }
 

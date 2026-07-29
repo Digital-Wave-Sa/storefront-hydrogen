@@ -33,7 +33,8 @@ function mapRestOrderToNode(rawRest: any) {
                     title: item.title,
                     variantTitle: item.variant_title || '',
                     originalUnitPriceSet: { shopMoney: { amount: String(item.price || '0') } },
-                    image: null
+                    image: null,
+                    variant: { id: item.variant_id ? `gid://shopify/ProductVariant/${item.variant_id}` : undefined }
                 }
             }))
         }
@@ -120,6 +121,7 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
                     variantTitle
                     originalUnitPriceSet { shopMoney { amount } }
                     image { url }
+                    variant { id }
                   }
                 }
               }
@@ -269,6 +271,43 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
     const tagIndicatesStep3 = tagSet.has('preparing') || tagSet.has('in-progress') || 
         tagSet.has('being-prepared') || tagSet.has('جاري-التجهيز');
 
+    // Fetch Storefront API translated product titles for line items using @inContext
+    const titleMap: Record<string, string> = {};
+    try {
+        const variantIds = (orderNode.lineItems?.edges || [])
+            .map((e: any) => e.node?.variant?.id)
+            .filter(Boolean);
+
+        if (variantIds.length > 0) {
+            const lang = context.storefront.i18n.language;
+            const country = context.storefront.i18n.country;
+            const variantQuery = `
+              query GetVariantTitles($ids: [ID!]!) @inContext(language: ${lang}, country: ${country}) {
+                nodes(ids: $ids) {
+                  ... on ProductVariant {
+                    id
+                    product {
+                      title
+                    }
+                  }
+                }
+              }
+            `;
+            const variantResult = await context.storefront.query(variantQuery as any, {
+                variables: { ids: variantIds },
+                cache: context.storefront.CacheShort(),
+            }) as any;
+
+            for (const node of (variantResult?.nodes || [])) {
+                if (node?.id && node?.product?.title) {
+                    titleMap[node.id] = node.product.title;
+                }
+            }
+        }
+    } catch (e) {
+        console.warn('[TrackOrder Loader] Failed to fetch translated titles:', e);
+    }
+
     const orderData = {
         id: orderNode.name,
         date: isEn
@@ -302,7 +341,7 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
         tagIndicatesStep4,
         tagIndicatesStep5,
         items: orderNode.lineItems.edges.map(({ node: item }: any) => ({
-            title: item.title,
+            title: (item.variant?.id && titleMap[item.variant.id]) ? titleMap[item.variant.id] : item.title,
             price: parseFloat(item.originalUnitPriceSet?.shopMoney?.amount || '0').toLocaleString('en-US', { minimumFractionDigits: 2 }),
             options: item.variantTitle && item.variantTitle !== 'Default Title' ? item.variantTitle.split(' / ') : [],
             image: item.image?.url || 'https://cdn.shopify.com/s/files/1/0533/2089/files/placeholder-images-image_large.png'

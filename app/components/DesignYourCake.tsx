@@ -32,7 +32,7 @@ export function DesignYourCake() {
                 }}
             ></div>
 
-            <div className="relative z-10 max-w-[1400px] mx-auto px-6 pt-[180px] sm:pt-[220px] pb-12 lg:py-[50px] flex items-center">
+            <div className="relative z-10 max-w-[1400px] mx-auto px-6 pt-[80px] pb-12 lg:py-[50px] flex items-center">
 
                 {/* UI Content - First in DOM: goes RIGHT in RTL, LEFT in LTR */}
                 <div className="w-full lg:w-[60%] flex flex-col">

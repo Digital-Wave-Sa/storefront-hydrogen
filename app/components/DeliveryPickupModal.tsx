@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { createPortal } from 'react-dom';
 import { Await, useFetcher, useRouteLoaderData, Link, useLocation } from 'react-router';
 import { Suspense } from 'react';
 import { Price } from './Price';
@@ -444,22 +443,15 @@ export function DeliveryPickupModal({
     const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null);
     const [geoError, setGeoError] = useState<boolean>(false);
     const [isAnimating, setIsAnimating] = useState(false);
-    const [mounted, setMounted] = useState(false);
-    useEffect(() => {
-        setMounted(true);
-    }, []);
+    const [adminMetafields, setAdminMetafields] = useState<any[]>([]);
     const location = useLocation();
 
     // Memoize the combined promise to prevent Await from re-suspending on every state change (like typing in search or switching tabs)
     const combinedPromise = useMemo(() => Promise.all([locationsPromise, customerPromise]), [locationsPromise, customerPromise]);
 
-    const prevPathname = useRef(location.pathname);
     useEffect(() => {
-        if (prevPathname.current !== location.pathname) {
-            prevPathname.current = location.pathname;
-            if (isOpen) {
-                onClose();
-            }
+        if (isOpen) {
+            onClose();
         }
     }, [location.pathname]);
 
@@ -512,7 +504,7 @@ export function DeliveryPickupModal({
         });
     };
 
-    const modalJSX = (
+    return (
         <div className="dpm-overlay" onClick={onClose} dir={isEn ? 'ltr' : 'rtl'}>
             <div
                 className={`dpm-container ${isAnimating ? 'dpm-enter' : ''}`}
@@ -600,11 +592,6 @@ export function DeliveryPickupModal({
             </div>
         </div>
     );
-
-    if (mounted && typeof document !== 'undefined') {
-        return createPortal(modalJSX, document.body);
-    }
-    return modalJSX;
 }
 
 // ─── SUB-COMPONENTS ───────────────────────────────────────────────────────

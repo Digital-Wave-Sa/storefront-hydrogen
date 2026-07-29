@@ -319,7 +319,8 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
                 <LoyaltyRedemptionUI isEn={isEn} cart={cart} />
               )}
 
-              {/* ALWAYS-VISIBLE LOCATION & BRANCH CARD */}
+              {/* ALWAYS-VISIBLE LOCATION & BRANCH CARD (Hidden for now as requested) */}
+              {/* 
               <div
                 onClick={() => setIsLocationModalOpen(true)}
                 className={`w-full rounded-2xl p-4 transition-all cursor-pointer border shadow-sm ${
@@ -375,6 +376,7 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
                   )}
                 </div>
               </div>
+              */}
 
               {/* Date & Time Slot Picker required for all orders (Delivery and Pickup) */}
               <CartCalendarPicker isEn={isEn} cart={cart} currentBranch={currentBranch} />

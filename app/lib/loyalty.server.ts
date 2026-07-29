@@ -97,8 +97,13 @@ export async function getLoyaltyPoints(params: LoyaltyParams): Promise<number> {
     return 0;
   }
 
+  const searchPhone = params.phone || (params.context?.session ? await params.context.session.get('loginOtpPhone') : null);
+
   try {
-    const url = `${sdlpAppUrl}/api/storefront/loyalty?shop=${encodeURIComponent(shop)}&customerId=${encodeURIComponent(customerId)}`;
+    let url = `${sdlpAppUrl}/api/storefront/loyalty?shop=${encodeURIComponent(shop)}&customerId=${encodeURIComponent(customerId)}`;
+    if (searchPhone) {
+      url += `&phone=${encodeURIComponent(searchPhone)}`;
+    }
     console.log('[SDLP Loyalty] GET Request:', url);
 
     const res = await fetch(url, { headers: { Accept: 'application/json' } });
@@ -140,11 +145,14 @@ export async function redeemLoyaltyPoints({
     return { success: false, error: 'Customer account not found' };
   }
 
+  const searchPhone = phone || (context?.session ? await context.session.get('loginOtpPhone') : null);
+
   try {
     const url = `${sdlpAppUrl}/api/storefront/loyalty`;
     const payload = {
       shop,
       customerId: resolvedCustomerId,
+      phone: searchPhone || undefined,
       points: Number(points),
     };
     console.log('[SDLP Loyalty] POST Request:', url, payload);

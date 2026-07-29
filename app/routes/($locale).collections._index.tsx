@@ -9,11 +9,3 @@ export async function loader({ params }: LoaderFunctionArgs) {
 export default function Collections() {
   return null;
 }
-viousPage
-        startCursor
-        endCursor
-      }
-    }
-  }
-` as const;
-

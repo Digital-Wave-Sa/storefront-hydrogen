@@ -183,7 +183,7 @@ export default function Collection() {
                     .filter(([key]) => key.startsWith('filter.') && key !== 'filter.v.price.min' && key !== 'filter.v.price.max')
                     .map(([key, value], i) => (
                     <div key={i} className="flex items-center gap-2 bg-white border border-[#234745]/10 text-gray-600 px-3 py-1.5 rounded-full text-[12px] font-bold shadow-sm">
-                        <span>{value}</span>
+                        <span>{translateFilterValue(value, isEn)}</span>
                         <button 
                             onClick={() => {
                                 const params = new URLSearchParams(searchParams);
@@ -300,6 +300,37 @@ export default function Collection() {
     </div>
   );
 }
+
+const translateFilterHeader = (label: string, isEn: boolean) => {
+  if (isEn) return label;
+  const l = String(label).toLowerCase().trim();
+  const map: Record<string, string> = {
+    'availability': 'التوفر',
+    'price': 'السعر',
+    'product type': 'نوع المنتج',
+    'product_type': 'نوع المنتج',
+    'vendor': 'المورد',
+    'product vendor': 'المورد',
+    'more filters': 'المزيد من الفلاتر',
+  };
+  return map[l] || label;
+};
+
+const translateFilterValue = (val: string, isEn: boolean) => {
+  if (isEn) return val;
+  const l = String(val).toLowerCase().trim();
+  const map: Record<string, string> = {
+    'in stock': 'متوفر',
+    'out of stock': 'غير متوفر',
+    'true': 'متوفر',
+    'false': 'غير متوفر',
+    '1': 'متوفر',
+    '0': 'غير متوفر',
+    'yes': 'نعم',
+    'no': 'لا',
+  };
+  return map[l] || val;
+};
 
 const collectionTranslations: Record<string, string> = {
   'wedding': 'زفاف وخطوبة',
@@ -597,7 +628,7 @@ function FilterForm({ filters, onClose, isDesktop, isEn }: { filters: any[], onC
                     return (
                         <div key={filter.id} className="mb-6 border-b border-gray-100 pb-6">
                             <button onClick={() => toggleSection(filter.label)} className="w-full flex items-center justify-between group">
-                                <h3 className="text-[15px] font-black text-gray-800 tracking-wide">{filter.label}</h3>
+                                <h3 className="text-[15px] font-black text-gray-800 tracking-wide">{translateFilterHeader(filter.label, isEn)}</h3>
                                 <svg className={`w-4 h-4 text-gray-400 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
                             </button>
                             <div className={`mt-4 overflow-hidden transition-all duration-300 ${isOpen ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'}`}>
@@ -610,7 +641,7 @@ function FilterForm({ filters, onClose, isDesktop, isEn }: { filters: any[], onC
                                                     <div className={`w-4 h-4 rounded-[4px] border flex items-center justify-center transition-colors ${active ? 'bg-[#234745] border-[#234745]' : 'border-gray-300 bg-white group-hover:border-[#234745]'}`}>
                                                         {active && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
                                                     </div>
-                                                    <span className={`text-[13px] font-bold ${active ? 'text-[#234745]' : 'text-gray-500 group-hover:text-gray-800'}`}>{val.label}</span>
+                                                    <span className={`text-[13px] font-bold ${active ? 'text-[#234745]' : 'text-gray-500 group-hover:text-gray-800'}`}>{translateFilterValue(val.label, isEn)}</span>
                                                 </div>
                                                 <span className="text-[12px] font-medium text-gray-500">({val.count})</span>
                                             </label>

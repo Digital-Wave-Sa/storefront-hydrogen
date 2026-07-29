@@ -1,4 +1,4 @@
-import { Link, useOutletContext, useRouteLoaderData } from 'react-router';
+import { Link, useOutletContext, useRouteLoaderData, useLocation } from 'react-router';
 import { Image } from '@shopify/hydrogen';
 import { useState, useEffect, useMemo } from 'react';
 import { useVariantUrl } from '~/utils';
@@ -75,9 +75,10 @@ export function ProductItem({
   );
   const isAvailable = !isOutOfStock && !!variant;
 
+  const location = useLocation();
   const rootData = useRouteLoaderData('root') as any;
-  const locale = rootData?.locale || 'ar';
-  const isEn = locale === 'en';
+  const isEn = location.pathname.startsWith('/en') || rootData?.locale === 'en';
+  const locale = isEn ? 'en' : 'ar';
   const t = useI18n(locale);
   const customer = rootData?.customer;
   const [customerEmail, setCustomerEmail] = useState<string | undefined>(undefined);

@@ -1,6 +1,45 @@
 import { data as json, type LoaderFunctionArgs, useLoaderData, useNavigate } from 'react-router';
 import { useState } from 'react';
 
+function mapRestOrderToNode(rawRest: any) {
+    return {
+        id: `gid://shopify/Order/${rawRest.id}`,
+        name: `#${rawRest.order_number}`,
+        processedAt: rawRest.processed_at,
+        canceledAt: rawRest.cancelled_at,
+        displayFinancialStatus: rawRest.financial_status ? rawRest.financial_status.toUpperCase() : 'PAID',
+        displayFulfillmentStatus: rawRest.fulfillment_status ? rawRest.fulfillment_status.toUpperCase() : 'UNFULFILLED',
+        statusPageUrl: rawRest.order_status_url,
+        totalPriceSet: { shopMoney: { amount: String(rawRest.total_price || '0') } },
+        subtotalPriceSet: { shopMoney: { amount: String(rawRest.subtotal_price || '0') } },
+        totalTaxSet: { shopMoney: { amount: String(rawRest.total_tax || '0') } },
+        totalShippingPriceSet: { shopMoney: { amount: String(rawRest.shipping_lines?.[0]?.price || '0') } },
+        paymentGatewayNames: rawRest.payment_gateway_names || (rawRest.payment_details?.credit_card_company ? [rawRest.payment_details.credit_card_company] : ['Credit Card']),
+        shippingLine: { title: rawRest.shipping_lines?.[0]?.title || '' },
+        shippingAddress: rawRest.shipping_address ? {
+            address1: rawRest.shipping_address.address1,
+            city: rawRest.shipping_address.city
+        } : null,
+        customAttributes: (rawRest.note_attributes || []).map((attr: any) => ({ key: attr.name || attr.key, value: attr.value })),
+        fulfillments: (rawRest.fulfillments || []).map((f: any) => ({
+            status: f.status ? f.status.toUpperCase() : '',
+            displayStatus: f.shipment_status ? f.shipment_status.toUpperCase() : (f.status === 'success' ? 'FULFILLED' : '')
+        })),
+        fulfillmentOrders: { edges: [] },
+        order_status: { value: rawRest.tags || '' },
+        lineItems: {
+            edges: (rawRest.line_items || []).map((item: any) => ({
+                node: {
+                    title: item.title,
+                    variantTitle: item.variant_title || '',
+                    originalUnitPriceSet: { shopMoney: { amount: String(item.price || '0') } },
+                    image: null
+                }
+            }))
+        }
+    };
+}
+
 export async function loader({ params, context }: LoaderFunctionArgs) {
     const locale = context.storefront.i18n.language.toLowerCase() || 'ar';
     const isEn = locale === 'en';
@@ -10,19 +49,27 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
         throw new Response('Order number required', { status: 400 });
     }
 
-    const numericId = rawId.replace(/\D/g, '');
-    const cleanId = rawId.replace(/^.*\/+/, '').replace(/^gid:.*?\//, '');
-    const searchQuery = numericId 
-        ? `name:${numericId} OR name:#${numericId} OR id:${numericId}` 
-        : `name:${cleanId} OR name:#${cleanId}`;
+    // Parse the ID correctly:
+    // - GID format: "gid://shopify/Order/7037265608937" → internalId = "7037265608937"
+    // - Order number: "1011" or "#1011" → orderNumber = "1011"
+    let internalId: string | null = null;
+    let orderNumber: string | null = null;
+
+    const gidMatch = rawId.match(/gid:\/\/shopify\/Order\/(\d+)/);
+    if (gidMatch) {
+        internalId = gidMatch[1];
+    } else {
+        // Strip leading # if present, then treat as order number
+        orderNumber = rawId.replace(/^#/, '').trim();
+    }
 
     const { getAdminToken, getAdminDomain } = await import('~/lib/shopify-admin.server');
     const adminToken = await getAdminToken(context.env);
     const adminDomain = getAdminDomain(context.env);
 
-    // Fetch order from Admin GraphQL API to get line item images + pickup detection + fulfillments status
-    const query = `
-      query GetOrder($query: String!) {
+    // Build the Admin GraphQL query — search by GID or order name
+    const gqlQuery = `
+      query GetOrder($id: ID, $query: String) {
         orders(first: 1, query: $query) {
           edges {
             node {
@@ -81,76 +128,68 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
       }
     `;
 
+    // Build search query string:
+    // - For GID (internalId): search by "id:7037265608937"
+    // - For order number (orderNumber): search by "name:#1011"
+    const searchQuery = internalId
+        ? `id:${internalId}`
+        : `name:#${orderNumber} OR name:${orderNumber}`;
+
     let orderNode: any = null;
 
     try {
-        const res = await fetch(`https://${adminDomain}/admin/api/2023-10/graphql.json`, {
+        const res = await fetch(`https://${adminDomain}/admin/api/2024-01/graphql.json`, {
             method: 'POST',
             headers: {
                 'X-Shopify-Access-Token': adminToken,
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                query,
+                query: gqlQuery,
                 variables: { query: searchQuery }
             })
         });
         const jsonRes = await res.json() as any;
+        console.log('[TrackOrder] GraphQL response:', JSON.stringify(jsonRes?.data?.orders?.edges?.length), 'searchQuery:', searchQuery);
         orderNode = jsonRes?.data?.orders?.edges?.[0]?.node;
     } catch (e) {
         console.error('[TrackOrder Loader] Admin GraphQL query failed:', e);
     }
 
-    // Fallback to REST API if GraphQL search returned 0 results
-    if (!orderNode && numericId) {
-        try {
-            const restRes = await fetch(`https://${adminDomain}/admin/api/2024-01/orders/${numericId}.json`, {
-                headers: { 'X-Shopify-Access-Token': adminToken, 'Content-Type': 'application/json' }
-            });
-            if (restRes.ok) {
-                const restData = await restRes.json() as any;
-                const rawRest = restData?.order;
-                if (rawRest) {
-                    orderNode = {
-                        id: `gid://shopify/Order/${rawRest.id}`,
-                        name: `#${rawRest.order_number}`,
-                        processedAt: rawRest.processed_at,
-                        canceledAt: rawRest.cancelled_at,
-                        displayFinancialStatus: rawRest.financial_status ? rawRest.financial_status.toUpperCase() : 'PAID',
-                        displayFulfillmentStatus: rawRest.fulfillment_status ? rawRest.fulfillment_status.toUpperCase() : 'UNFULFILLED',
-                        statusPageUrl: rawRest.order_status_url,
-                        totalPriceSet: { shopMoney: { amount: String(rawRest.total_price || '0') } },
-                        subtotalPriceSet: { shopMoney: { amount: String(rawRest.subtotal_price || '0') } },
-                        totalTaxSet: { shopMoney: { amount: String(rawRest.total_tax || '0') } },
-                        totalShippingPriceSet: { shopMoney: { amount: String(rawRest.shipping_lines?.[0]?.price || '0') } },
-                        paymentGatewayNames: rawRest.payment_gateway_names || ['Credit Card'],
-                        shippingLine: { title: rawRest.shipping_lines?.[0]?.title || '' },
-                        shippingAddress: rawRest.shipping_address ? {
-                            address1: rawRest.shipping_address.address1,
-                            city: rawRest.shipping_address.city
-                        } : null,
-                        customAttributes: (rawRest.note_attributes || []).map((attr: any) => ({ key: attr.name || attr.key, value: attr.value })),
-                        fulfillments: (rawRest.fulfillments || []).map((f: any) => ({
-                            status: f.status ? f.status.toUpperCase() : '',
-                            displayStatus: f.shipment_status ? f.shipment_status.toUpperCase() : (f.status === 'success' ? 'FULFILLED' : '')
-                        })),
-                        fulfillmentOrders: { edges: [] },
-                        order_status: { value: rawRest.tags || '' },
-                        lineItems: {
-                            edges: (rawRest.line_items || []).map((item: any) => ({
-                                node: {
-                                    title: item.title,
-                                    variantTitle: item.variant_title || '',
-                                    originalUnitPriceSet: { shopMoney: { amount: String(item.price || '0') } },
-                                    image: null
-                                }
-                            }))
-                        }
-                    };
+    // Fallback: fetch by REST API using internal ID (for GIDs) or search by order number
+    if (!orderNode) {
+        const restId = internalId || null;
+        if (restId) {
+            try {
+                const restRes = await fetch(`https://${adminDomain}/admin/api/2024-01/orders/${restId}.json`, {
+                    headers: { 'X-Shopify-Access-Token': adminToken, 'Content-Type': 'application/json' }
+                });
+                if (restRes.ok) {
+                    const restData = await restRes.json() as any;
+                    const rawRest = restData?.order;
+                    if (rawRest) {
+                        orderNode = mapRestOrderToNode(rawRest);
+                    }
                 }
+            } catch (e) {
+                console.error('[TrackOrder Loader] Admin REST fallback (by ID) failed:', e);
             }
-        } catch (e) {
-            console.error('[TrackOrder Loader] Admin REST fallback failed:', e);
+        } else if (orderNumber) {
+            // Fallback: search by order name via REST
+            try {
+                const restRes = await fetch(`https://${adminDomain}/admin/api/2024-01/orders.json?name=%23${orderNumber}&status=any`, {
+                    headers: { 'X-Shopify-Access-Token': adminToken, 'Content-Type': 'application/json' }
+                });
+                if (restRes.ok) {
+                    const restData = await restRes.json() as any;
+                    const rawRest = restData?.orders?.[0];
+                    if (rawRest) {
+                        orderNode = mapRestOrderToNode(rawRest);
+                    }
+                }
+            } catch (e) {
+                console.error('[TrackOrder Loader] Admin REST fallback (by name) failed:', e);
+            }
         }
     }
 

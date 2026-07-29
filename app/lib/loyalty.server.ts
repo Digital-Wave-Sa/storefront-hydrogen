@@ -1,6 +1,4 @@
-import { getMockPoints } from '~/lib/mock-loyalty.server';
-
-interface GetLoyaltyPointsParams {
+interface LoyaltyParams {
   customerId?: string;
   phone?: string;
   email?: string;
@@ -9,125 +7,174 @@ interface GetLoyaltyPointsParams {
 }
 
 /**
- * Fetches real customer loyalty points balance from the external SDLP service,
- * adhering to the backend integration specification:
- * GET ${sdlpAppUrl}/api/storefront/loyalty?shop=${shop}&customerId=${encodeURIComponent(customerId)}
- * 
- * If customerId is not directly provided, attempts to resolve it from the active session or Admin API.
- * If SDLP_APP_URL is not set in env, falls back gracefully to local mock points.
+ * Resolves full Shopify Customer GID (e.g., gid://shopify/Customer/108701679849)
  */
-export async function getLoyaltyPoints({
-  customerId,
-  phone,
-  email,
-  env,
-  context,
-}: GetLoyaltyPointsParams): Promise<number> {
-  const shop = env?.PUBLIC_STORE_DOMAIN || 'the-beauty-secrets-ksa.myshopify.com';
-  const sdlpAppUrl = env?.SDLP_APP_URL;
-
-  // Fallback to local mock if SDLP_APP_URL is not configured
-  if (!sdlpAppUrl) {
-    const fallbackId = customerId || phone || email || '0501234567';
-    return getMockPoints(fallbackId);
+export async function getCustomerGid({ customerId, phone, email, env, context }: LoyaltyParams): Promise<string | null> {
+  // 1. If customerId is already a full GID
+  if (customerId && customerId.startsWith('gid://shopify/Customer/')) {
+    return customerId;
+  }
+  // 2. If customerId is numeric string
+  if (customerId && /^\d+$/.test(customerId)) {
+    return `gid://shopify/Customer/${customerId}`;
   }
 
-  let resolvedCustomerId = customerId;
-
-  // If customerId is missing or is just a raw phone/email, try to resolve official Shopify Customer GID
-  if (!resolvedCustomerId || (!resolvedCustomerId.startsWith('gid://') && !/^\d+$/.test(resolvedCustomerId))) {
-    // 1. Check if logged in customer session has ID in context
-    if (context?.session) {
-      try {
-        const sessionToken = await context.session.get('customerAccessToken');
-        if (sessionToken && context.storefront) {
-          const tokenStr = typeof sessionToken === 'string' ? sessionToken : sessionToken.accessToken;
-          const { customer } = await context.storefront.query(`
-            query getCustomerId($token: String!) {
-              customer(customerAccessToken: $token) {
-                id
-              }
-            }
-          `, { variables: { token: tokenStr } });
-          if (customer?.id) {
-            resolvedCustomerId = customer.id;
+  // 3. Try Storefront session customerAccessToken
+  if (context?.session && context?.storefront) {
+    try {
+      const sessionToken = await context.session.get('customerAccessToken');
+      const tokenStr = typeof sessionToken === 'string' ? sessionToken : sessionToken?.accessToken;
+      if (tokenStr && tokenStr !== 'dev-bypass-token') {
+        const { customer } = await context.storefront.query(
+          `#graphql
+          query getCustomerGid($customerAccessToken: String!) {
+            customer(customerAccessToken: $customerAccessToken) { id }
           }
-        }
-      } catch (e) {
-        console.warn('[Loyalty] Could not resolve customerId via session:', e);
+          `,
+          { variables: { customerAccessToken: tokenStr }, cache: context.storefront.CacheNone() }
+        );
+        if (customer?.id) return customer.id;
       }
-    }
-
-    // 2. Try Customer Account API if available
-    if (!resolvedCustomerId && context?.customerAccount) {
-      try {
-        const isLoggedIn = await context.customerAccount.isLoggedIn();
-        if (isLoggedIn) {
-          const { data } = await context.customerAccount.query(`
-            query getCustomerId {
-              customer {
-                id
-              }
-            }
-          `);
-          if (data?.customer?.id) {
-            resolvedCustomerId = data.customer.id;
-          }
-        }
-      } catch (e) {
-        console.warn('[Loyalty] Could not resolve customerId via Customer Account API:', e);
-      }
-    }
-
-    // 3. Try Admin API lookup by phone or email if provided
-    if (!resolvedCustomerId && (phone || email || customerId)) {
-      const searchTerm = phone || email || customerId;
-      try {
-        const { getAdminToken } = await import('~/lib/shopify-admin.server');
-        const adminToken = await getAdminToken(env);
-        if (adminToken && searchTerm) {
-          const searchQuery = phone ? `phone:"${phone}"` : email ? `email:"${email}"` : `query:"${searchTerm}"`;
-          const adminDomain = env.SHOPIFY_SHOP ? `${env.SHOPIFY_SHOP.replace('.myshopify.com', '')}.myshopify.com` : shop;
-          const res = await fetch(
-            `https://${adminDomain}/admin/api/2024-01/customers/search.json?query=${encodeURIComponent(searchQuery)}&fields=id`,
-            { headers: { 'X-Shopify-Access-Token': adminToken } }
-          );
-          if (res.ok) {
-            const data = (await res.json()) as any;
-            if (data.customers?.[0]?.id) {
-              resolvedCustomerId = `gid://shopify/Customer/${data.customers[0].id}`;
-            }
-          }
-        }
-      } catch (e) {
-        console.warn('[Loyalty] Admin customer search failed:', e);
-      }
+    } catch (e) {
+      console.warn('[Loyalty] Storefront query for customer GID failed:', e);
     }
   }
 
-  // If we still don't have a valid customer ID, return 0
-  if (!resolvedCustomerId) {
+  // 4. Check session loginCustomerId
+  if (context?.session) {
+    try {
+      const savedCustomerId = await context.session.get('loginCustomerId');
+      if (savedCustomerId) {
+        return savedCustomerId.startsWith('gid://') ? savedCustomerId : `gid://shopify/Customer/${savedCustomerId}`;
+      }
+    } catch (e) {}
+  }
+
+  // 5. Admin API search by phone or email
+  const searchPhone = phone || (context?.session ? await context.session.get('loginOtpPhone') : null);
+  const searchEmail = email || (context?.session ? await context.session.get('loginOtpEmail') : null);
+
+  if (searchPhone || searchEmail) {
+    try {
+      const { getAdminToken, getAdminDomain } = await import('~/lib/shopify-admin.server');
+      const adminToken = await getAdminToken(env);
+      const adminDomain = getAdminDomain(env);
+      const query = searchPhone ? `phone:"${searchPhone}"` : `email:"${searchEmail}"`;
+
+      if (adminToken && adminDomain) {
+        const res = await fetch(
+          `https://${adminDomain}/admin/api/2024-01/customers/search.json?query=${encodeURIComponent(query)}&fields=id`,
+          { headers: { 'X-Shopify-Access-Token': adminToken, 'Content-Type': 'application/json' } }
+        );
+        if (res.ok) {
+          const data = (await res.json()) as any;
+          if (data.customers?.[0]?.id) {
+            return `gid://shopify/Customer/${data.customers[0].id}`;
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('[Loyalty] Admin API search failed:', e);
+    }
+  }
+
+  return null;
+}
+
+/**
+ * GET /api/storefront/loyalty
+ * Specification: GET ${sdlpAppUrl}/api/storefront/loyalty?shop=${shop}&customerId=${customerId}
+ * NO fallback points if 0 or error.
+ */
+export async function getLoyaltyPoints(params: LoyaltyParams): Promise<number> {
+  const env = params.env;
+  const sdlpAppUrl = env?.PUBLIC_SDLP_APP_URL || env?.SDLP_APP_URL || 'https://sdlp.saadeddin.top';
+  const shop = env?.PUBLIC_SHOPIFY_STORE_DOMAIN || env?.PUBLIC_STORE_DOMAIN || 'saadeldeenshop-x21xumcd.myshopify.com';
+
+  const customerId = await getCustomerGid(params);
+  if (!customerId) {
     console.warn('[Loyalty] Unable to resolve customerId for SDLP query.');
     return 0;
   }
 
-  // Fetch points balance from SDLP App external service
   try {
-    const endpoint = `${sdlpAppUrl}/api/storefront/loyalty?shop=${encodeURIComponent(shop)}&customerId=${encodeURIComponent(resolvedCustomerId)}`;
-    console.log(`[Loyalty] Querying SDLP endpoint: ${endpoint}`);
+    const url = `${sdlpAppUrl}/api/storefront/loyalty?shop=${encodeURIComponent(shop)}&customerId=${encodeURIComponent(customerId)}`;
+    console.log('[SDLP Loyalty] GET Request:', url);
 
-    const response = await fetch(endpoint);
-    if (response.ok) {
-      const result = (await response.json()) as any;
-      console.log('[Loyalty] SDLP response:', result);
-      const balance = result?.balance ?? result?.data?.balance ?? 0;
+    const res = await fetch(url, { headers: { Accept: 'application/json' } });
+    if (res.ok) {
+      const data = (await res.json()) as any;
+      console.log('[SDLP Loyalty] GET Response:', data);
+      const balance = data?.balance ?? data?.data?.balance ?? 0;
       return typeof balance === 'number' ? balance : (parseInt(balance, 10) || 0);
     } else {
-      console.error(`[Loyalty] Error fetching points: HTTP ${response.status}`, await response.text());
+      console.error('[SDLP Loyalty] GET Error status:', res.status, await res.text());
     }
-  } catch (error) {
-    console.error('[Loyalty] Error fetching points from SDLP App:', error);
+  } catch (err) {
+    console.error('[SDLP Loyalty] GET Exception:', err);
   }
 
   return 0;
+}
+
+/**
+ * POST /api/storefront/loyalty
+ * Specification:
+ * Headers: Content-Type: application/json
+ * Body: { "shop": shop, "customerId": customerId, "points": points }
+ * Returns: { "success": true, "discountCode": "LOYAL-K3M9XQ-200", "newBalance": 1300 }
+ */
+export async function redeemLoyaltyPoints({
+  customerId,
+  points,
+  phone,
+  email,
+  env,
+  context,
+}: LoyaltyParams & { points: number }): Promise<{ success: boolean; discountCode?: string; newBalance?: number; error?: string }> {
+  const sdlpAppUrl = env?.PUBLIC_SDLP_APP_URL || env?.SDLP_APP_URL || 'https://sdlp.saadeddin.top';
+  const shop = env?.PUBLIC_SHOPIFY_STORE_DOMAIN || env?.PUBLIC_STORE_DOMAIN || 'saadeldeenshop-x21xumcd.myshopify.com';
+
+  const resolvedCustomerId = await getCustomerGid({ customerId, phone, email, env, context });
+  if (!resolvedCustomerId) {
+    return { success: false, error: 'Customer account not found' };
+  }
+
+  try {
+    const url = `${sdlpAppUrl}/api/storefront/loyalty`;
+    const payload = {
+      shop,
+      customerId: resolvedCustomerId,
+      points: Number(points),
+    };
+    console.log('[SDLP Loyalty] POST Request:', url, payload);
+
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const data = (await res.json()) as any;
+    console.log('[SDLP Loyalty] POST Response:', data);
+
+    if (res.ok && data?.success) {
+      return {
+        success: true,
+        discountCode: data.discountCode,
+        newBalance: data.newBalance,
+      };
+    } else {
+      return {
+        success: false,
+        error: data?.error || 'Failed to redeem loyalty points',
+      };
+    }
+  } catch (err: any) {
+    console.error('[SDLP Loyalty] POST Exception:', err);
+    return { success: false, error: err?.message || 'Network request failed' };
+  }
 }

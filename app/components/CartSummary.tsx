@@ -924,7 +924,7 @@ function LoyaltyRedemptionUI({ isEn, cart }: { isEn: boolean, cart: any }) {
       <div className="grid grid-cols-2 gap-3">
         {milestones.map((m) => {
           const isApplied = initialPoints === m.points;
-          const hasEnoughPoints = (availablePoints !== null ? availablePoints : 2500) >= m.points;
+          const hasEnoughPoints = (availablePoints || 0) >= m.points;
           const withinCartTotal = cartSubtotal >= m.value;
           const isAllowedToRedeem = hasEnoughPoints && withinCartTotal;
 

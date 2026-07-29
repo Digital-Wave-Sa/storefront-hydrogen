@@ -108,7 +108,11 @@ export async function loader({request, params, context}: LoaderFunctionArgs) {
 
     const tagged = fallbackRes?.taggedProducts?.nodes || [];
     const all = fallbackRes?.allProducts?.nodes || [];
-    const productNodes = tagged.length > 0 ? tagged : all;
+    const specialProducts = [...tagged, ...all].filter((p: any) =>
+      p.tags?.some((t: string) => t.toLowerCase() === 'special-collection' || t.toLowerCase() === 'special_collection' || t.toLowerCase().includes('special-collection'))
+    );
+    const uniqueSpecial = Array.from(new Map(specialProducts.map((p: any) => [p.id, p])).values());
+    const productNodes = uniqueSpecial.length > 0 ? uniqueSpecial : (tagged.length > 0 ? tagged : all);
 
     targetCollection = {
       id: 'gid://shopify/Collection/featured',
@@ -997,12 +1001,12 @@ const FEATURED_PRODUCTS_FALLBACK_QUERY = `#graphql
     $country: CountryCode
     $language: LanguageCode
   ) @inContext(country: $country, language: $language) {
-    taggedProducts: products(first: 50, query: "tag:featured OR tag:featured_collections OR tag:عرض OR tag:ميز") {
+    taggedProducts: products(first: 100, query: "tag:special-collection OR tag:special_collection OR tag:featured") {
       nodes {
         ...HandleProductItem
       }
     }
-    allProducts: products(first: 50) {
+    allProducts: products(first: 100) {
       nodes {
         ...HandleProductItem
       }

@@ -298,12 +298,12 @@ export default function AccountDashboard() {
                               const rawId = item.variant?.id || item.variantId || item.variant_id;
                               const merchandiseId = rawId && String(rawId).startsWith('gid://')
                                 ? String(rawId)
-                                : `gid://shopify/ProductVariant/${rawId}`;
+                                : (rawId ? `gid://shopify/ProductVariant/${rawId}` : '');
                               return {
                                 merchandiseId,
                                 quantity: item.quantity || 1,
                               };
-                            }).filter((l: any) => l.merchandiseId && !l.merchandiseId.endsWith('undefined'));
+                            }).filter((l: any) => l.merchandiseId && !l.merchandiseId.endsWith('undefined') && !l.merchandiseId.endsWith('null'));
 
                             return (
                               <Form action={isEn ? "/en/cart" : "/cart"} method="post" className="inline-block">
@@ -317,8 +317,7 @@ export default function AccountDashboard() {
                                 />
                                 <button
                                   type="submit"
-                                  disabled={reorderLines.length === 0}
-                                  className="px-6 py-2 bg-[#234745] text-white rounded-[24px] text-[13px] font-bold hover:opacity-90 transition-all active:scale-95 cursor-pointer disabled:opacity-50"
+                                  className="px-6 py-2 bg-[#234745] text-white rounded-[24px] text-[13px] font-bold hover:opacity-90 transition-all active:scale-95 cursor-pointer"
                                   style={{ color: '#FFFFFF' }}
                                 >
                                   {isEn ? 'Reorder' : 'إعادة الطلب'}

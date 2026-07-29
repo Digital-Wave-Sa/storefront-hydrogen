@@ -307,7 +307,7 @@ export function ProductItem({
               </span>
             ) : showOutOfStock ? (
               <span
-                className="flex items-center justify-center px-3.5 py-1.5 rounded-full font-bold text-[12px] whitespace-nowrap shadow-sm text-white bg-[#234745]/90 backdrop-blur-md"
+                className="flex items-center justify-center px-3.5 py-1.5 rounded-full font-bold text-[12px] whitespace-nowrap shadow-sm text-white bg-[#E64950] backdrop-blur-md"
                 style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
               >
                 {isEn ? 'Out of Stock' : 'نفذت الكمية'}

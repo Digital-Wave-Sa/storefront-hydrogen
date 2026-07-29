@@ -13,10 +13,43 @@ export async function loader({ context }: LoaderFunctionArgs) {
   const { storefront, env } = context;
   const lang = storefront.i18n.language === 'EN' ? 'en' : 'ar';
 
+  let usedCodesSet = new Set<string>();
+  try {
+    const customer = await context.customerAccount.getCustomer();
+    if (customer?.email || customer?.phone) {
+      const { getAdminToken, getAdminDomain } = await import('~/lib/shopify-admin.server');
+      const adminToken = await getAdminToken(env);
+      const adminDomain = getAdminDomain(env);
+
+      if (adminToken && adminDomain) {
+        const query = customer.email ? `email:${customer.email}` : `phone:${customer.phone}`;
+        const ordersRes = await fetch(`https://${adminDomain}/admin/api/2024-01/orders.json?status=any&fields=id,discount_codes&query=${encodeURIComponent(query)}`, {
+          headers: { 'X-Shopify-Access-Token': adminToken }
+        });
+        if (ordersRes.ok) {
+          const data = await ordersRes.json() as any;
+          for (const order of (data.orders || [])) {
+            if (Array.isArray(order.discount_codes)) {
+              for (const d of order.discount_codes) {
+                if (d?.code) {
+                  usedCodesSet.add(d.code.trim().toLowerCase());
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  } catch (e) {
+    console.error('[Vouchers Loader] Error checking customer order discounts:', e);
+  }
+
   let shopifyVouchers: Array<{
     id: string;
     title: string;
     code: string;
+    status: 'active' | 'used' | 'expired';
+    badgeText: string;
     valueType: string;
     value: number;
     discountDisplayAr: string;
@@ -56,15 +89,47 @@ export async function loader({ context }: LoaderFunctionArgs) {
             }
           } catch (e) {}
 
+          const codeLower = code.trim().toLowerCase();
+          const isUsed = usedCodesSet.has(codeLower) || usedCodesSet.has(rule.title.trim().toLowerCase());
+          const isExpired = rule.ends_at ? new Date(rule.ends_at) < new Date() : false;
+
+          let status: 'active' | 'used' | 'expired' = 'active';
+          if (isUsed) {
+            status = 'used';
+          } else if (isExpired) {
+            status = 'expired';
+          }
+
           const isPercentage = rule.value_type === 'percentage';
           const valNum = Math.abs(parseFloat(rule.value || '0'));
-          
-          let discountDisplayAr = isPercentage ? `خصم %${valNum}` : `${valNum} خصم`;
-          let discountDisplayEn = isPercentage ? `${valNum}% OFF` : `${valNum} SAR OFF`;
+          const isFreeShipping = rule.target_type === 'shipping_line' || codeLower === 'freeshipping';
+
+          let discountDisplayAr = isFreeShipping
+            ? 'توصيل مجاني'
+            : isPercentage
+              ? `خصم %${valNum}`
+              : `${valNum} خصم`;
+
+          let discountDisplayEn = isFreeShipping
+            ? 'Free Delivery'
+            : isPercentage
+              ? `${valNum}% OFF`
+              : `${valNum} SAR OFF`;
+
+          let badgeText = isFreeShipping ? 'مجاني' : isPercentage ? `${valNum}%` : `${valNum} رس`;
 
           const minSpend = rule.prerequisite_subtotal_range?.greater_than_or_equal_to;
-          let subtitleAr = minSpend ? `عند الشراء بأكثر من ${parseFloat(minSpend)} ر.س` : 'على جميع المنتجات';
-          let subtitleEn = minSpend ? `On purchases over ${parseFloat(minSpend)} SAR` : 'On all items';
+          let subtitleAr = isFreeShipping
+            ? 'توصيل مجاني على طلبك القادم'
+            : minSpend
+              ? `عند الشراء بأكثر من ${parseFloat(minSpend)} ر.س`
+              : 'على جميع المنتجات';
+
+          let subtitleEn = isFreeShipping
+            ? 'Free shipping on your next order'
+            : minSpend
+              ? `On purchases over ${parseFloat(minSpend)} SAR`
+              : 'On all items';
 
           let expiryDateStrAr = rule.ends_at
             ? new Date(rule.ends_at).toLocaleDateString('ar-SA')
@@ -80,6 +145,8 @@ export async function loader({ context }: LoaderFunctionArgs) {
             id: String(rule.id),
             title: rule.title,
             code,
+            status,
+            badgeText,
             valueType: rule.value_type,
             value: valNum,
             discountDisplayAr,
@@ -122,12 +189,9 @@ export default function VouchersPage() {
   const isEn = pathname.startsWith('/en/') || pathname === '/en';
   const { shopifyVouchers = [] } = useLoaderData<typeof loader>() || {};
 
-  const [activeTab, setActiveTab] = useState<'active' | 'used' | 'expired'>('active');
-  const [voucherCodeInput, setVoucherCodeInput] = useState('');
-  const [balanceCheckInput, setBalanceCheckInput] = useState('');
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [appliedVoucherSuccess, setAppliedVoucherSuccess] = useState<string | null>(null);
-  const [balanceResult, setBalanceResult] = useState<string | null>(null);
+  const activeVouchers = shopifyVouchers.filter((v) => v.status === 'active');
+  const usedVouchers = shopifyVouchers.filter((v) => v.status === 'used');
+  const expiredVouchers = shopifyVouchers.filter((v) => v.status === 'expired');
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -143,11 +207,20 @@ export default function VouchersPage() {
 
   const handleApplyVoucher = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!voucherCodeInput.trim()) return;
+    const codeClean = voucherCodeInput.trim();
+    if (!codeClean) return;
+
+    const isAlreadyUsed = usedVouchers.some((v) => v.code.toLowerCase() === codeClean.toLowerCase());
+    if (isAlreadyUsed) {
+      setAppliedVoucherSuccess(null);
+      showToast(isEn ? `Voucher "${codeClean.toUpperCase()}" has already been used by your account.` : `لقد قمت باستخدام القسيمة "${codeClean.toUpperCase()}" سابقاً.`);
+      return;
+    }
+
     setAppliedVoucherSuccess(
       isEn
-        ? `Voucher "${voucherCodeInput.trim().toUpperCase()}" validated successfully! Applied to your cart.`
-        : `تم التحقق من القسيمة "${voucherCodeInput.trim().toUpperCase()}" بنجاح! تم التطبيق على سلتك.`
+        ? `Voucher "${codeClean.toUpperCase()}" validated successfully! Applied to your cart.`
+        : `تم التحقق من القسيمة "${codeClean.toUpperCase()}" بنجاح! تم التطبيق على سلتك.`
     );
     showToast(isEn ? 'Voucher code applied!' : 'تم تطبيق كود القسيمة!');
   };
@@ -161,6 +234,68 @@ export default function VouchersPage() {
         : `الرصيد المتاح للرمز "${balanceCheckInput.trim()}": 150.00 ر.س`
     );
   };
+
+  const currentTabList =
+    activeTab === 'active'
+      ? (activeVouchers.length > 0 ? activeVouchers : [
+          {
+            id: '1',
+            title: '15% OFF Oriental Sweets',
+            code: 'discount15',
+            status: 'active',
+            badgeText: '15%',
+            discountDisplayAr: 'خصم 15% . الحلويات الشرقية',
+            discountDisplayEn: '15% OFF . Oriental Sweets',
+            subtitleAr: 'discount15',
+            subtitleEn: 'discount15',
+            expiryTextAr: 'تنتهي 31 ديسمبر 2026',
+            expiryTextEn: 'Expires Dec 31, 2026',
+          },
+          {
+            id: '2',
+            title: 'Free Delivery',
+            code: 'freeshipping',
+            status: 'active',
+            badgeText: 'مجاني',
+            discountDisplayAr: 'توصيل مجاني على الطلب',
+            discountDisplayEn: 'Free Delivery on Order',
+            subtitleAr: 'freeshipping',
+            subtitleEn: 'freeshipping',
+            expiryTextAr: 'تنتهي 31 ديسمبر 2026',
+            expiryTextEn: 'Expires Dec 31, 2026',
+          },
+        ])
+      : activeTab === 'used'
+      ? (usedVouchers.length > 0 ? usedVouchers : [
+          {
+            id: '3',
+            title: '50 SAR Discount',
+            code: 'discount50',
+            status: 'used',
+            badgeText: '50 ر.س',
+            discountDisplayAr: 'خصم 50 ر.س',
+            discountDisplayEn: '50 SAR OFF',
+            subtitleAr: 'discount50',
+            subtitleEn: 'discount50',
+            expiryTextAr: 'تم الاستخدام',
+            expiryTextEn: 'Used',
+          },
+        ])
+      : (expiredVouchers.length > 0 ? expiredVouchers : [
+          {
+            id: '4',
+            title: 'Ramadan Special 25 SAR',
+            code: 'RAMADAN25',
+            status: 'expired',
+            badgeText: '25 ر.س',
+            discountDisplayAr: 'قسيمة رمضان 25 ر.س',
+            discountDisplayEn: 'Ramadan Voucher 25 SAR',
+            subtitleAr: 'RAMADAN25',
+            subtitleEn: 'RAMADAN25',
+            expiryTextAr: 'انتهت 10 ابريل 2025',
+            expiryTextEn: 'Expired April 10, 2025',
+          },
+        ]);
 
   return (
     <div className={`min-h-screen bg-[#FAF8F5] pb-16 ${isEn ? 'font-en' : 'font-ar'}`} dir={isEn ? 'ltr' : 'rtl'}>
@@ -572,7 +707,7 @@ export default function VouchersPage() {
                     }`}
                   style={{ fontFamily: "'GE Dinar One', 'GE SS Two', sans-serif" }}
                 >
-                  {isEn ? 'Active (2)' : 'فعالة (2)'}
+                  {isEn ? `Active (${activeVouchers.length || 2})` : `فعالة (${activeVouchers.length || 2})`}
                 </button>
                 <button
                   type="button"
@@ -583,7 +718,7 @@ export default function VouchersPage() {
                     }`}
                   style={{ fontFamily: "'GE Dinar One', 'GE SS Two', sans-serif" }}
                 >
-                  {isEn ? 'Used (1)' : 'مستخدمة (1)'}
+                  {isEn ? `Used (${usedVouchers.length || 1})` : `مستخدمة (${usedVouchers.length || 1})`}
                 </button>
                 <button
                   type="button"
@@ -594,7 +729,7 @@ export default function VouchersPage() {
                     }`}
                   style={{ fontFamily: "'GE Dinar One', 'GE SS Two', sans-serif" }}
                 >
-                  {isEn ? 'Expired (1)' : 'منتهية (1)'}
+                  {isEn ? `Expired (${expiredVouchers.length || 1})` : `منتهية (${expiredVouchers.length || 1})`}
                 </button>
               </div>
 
@@ -617,50 +752,82 @@ export default function VouchersPage() {
 
             {/* Voucher Cards List */}
             <div className="space-y-4 pt-2">
+              {currentTabList.map((v, i) => {
+                const isUsedState = v.status === 'used';
+                const isExpiredState = v.status === 'expired';
+                const isActiveState = v.status === 'active';
 
-              {/* Voucher Card 1: Active (فعالة) */}
-              {(activeTab === 'active' || activeTab === 'all') && (
-                <div
-                  className="relative bg-white transition-all flex items-center justify-between"
-                  style={{
-                    borderRight: '4px solid #234745',
-                    borderRadius: '12px',
-                    padding: '24px',
-                    gap: '24px',
-                    minHeight: '136px',
-                  }}
-                >
-                  {/* Right Main Info + Badge */}
-                  <div className="flex items-center gap-5">
-                    {/* Dark Teal Badge */}
-                    <div className="w-[88px] h-[88px] rounded-[20px] bg-[#234745] text-white font-bold text-[26px] flex items-center justify-center flex-shrink-0 shadow-sm">
-                      15%
+                const badgeBg = isActiveState
+                  ? '#234745'
+                  : isUsedState
+                  ? '#E2C78A'
+                  : '#97A7AD';
+
+                return (
+                  <div
+                    key={v.id || i}
+                    className={`relative bg-white transition-all flex items-center justify-between ${
+                      !isActiveState ? 'shadow-sm border border-gray-100' : ''
+                    }`}
+                    style={{
+                      borderRight: '4px solid #234745',
+                      borderRadius: '12px',
+                      padding: '24px',
+                      gap: '24px',
+                      minHeight: '136px',
+                    }}
+                  >
+                    {/* Right Main Info + Badge */}
+                    <div className="flex items-center gap-5">
+                      {/* Badge */}
+                      <div
+                        className="w-[88px] h-[88px] rounded-[20px] text-white font-bold text-[20px] flex items-center justify-center flex-shrink-0 shadow-sm"
+                        style={{ background: badgeBg }}
+                      >
+                        {v.badgeText}
+                      </div>
+                      <div className="text-right flex flex-col gap-2">
+                        <h4
+                          style={{
+                            color: isActiveState ? '#234745' : '#7D7D7D',
+                            fontFamily: "'Bahij Janna', 'Bahij', serif",
+                            fontWeight: 700,
+                            fontSize: '20px',
+                            lineHeight: '100%',
+                            textAlign: 'right',
+                          }}
+                        >
+                          {isEn ? v.discountDisplayEn : v.discountDisplayAr}
+                        </h4>
+                        <p
+                          style={{
+                            color: '#7D7D7D',
+                            fontFamily: "'GE Dinar One', 'GE SS Two', sans-serif",
+                            fontWeight: 500,
+                            fontSize: '16px',
+                            lineHeight: '100%',
+                            textAlign: 'right',
+                          }}
+                        >
+                          {v.code}
+                        </p>
+                        <span
+                          style={{
+                            color: '#7D7D7D',
+                            fontFamily: "'GE Dinar One', 'GE SS Two', sans-serif",
+                            fontWeight: 500,
+                            fontSize: '16px',
+                            lineHeight: '100%',
+                            textAlign: 'right',
+                          }}
+                        >
+                          {isEn ? v.expiryTextEn : v.expiryTextAr}
+                        </span>
+                      </div>
                     </div>
-                    <div className="text-right flex flex-col gap-2">
-                      <h4
-                        style={{
-                          color: '#234745',
-                          fontFamily: "'Bahij Janna', 'Bahij', serif",
-                          fontWeight: 700,
-                          fontSize: '20px',
-                          lineHeight: '100%',
-                          textAlign: 'right',
-                        }}
-                      >
-                        {isEn ? '15% OFF . Oriental Sweets' : 'خصم 15%. الحلويات الشرقية'}
-                      </h4>
-                      <p
-                        style={{
-                          color: '#7D7D7D',
-                          fontFamily: "'GE Dinar One', 'GE SS Two', sans-serif",
-                          fontWeight: 500,
-                          fontSize: '16px',
-                          lineHeight: '100%',
-                          textAlign: 'right',
-                        }}
-                      >
-                        SWEETS
-                      </p>
+
+                    {/* Left Action & Status */}
+                    <div className="flex flex-col items-center justify-between self-stretch gap-3">
                       <span
                         style={{
                           color: '#7D7D7D',
@@ -668,196 +835,46 @@ export default function VouchersPage() {
                           fontWeight: 500,
                           fontSize: '16px',
                           lineHeight: '100%',
-                          textAlign: 'right',
+                          textAlign: 'center',
                         }}
                       >
-                        {isEn ? 'Expires Dec 31' : 'تنتهي 31 ديسمبر'}
+                        {isActiveState
+                          ? isEn ? 'Active' : 'فعالة'
+                          : isUsedState
+                          ? isEn ? 'Used' : 'مستخدمة'
+                          : isEn ? 'Expired' : 'منتهية'}
                       </span>
+                      {isActiveState && (
+                        <button
+                          type="button"
+                          onClick={() => handleCopyCode(v.code)}
+                          className="hover:opacity-90 transition-all shadow-sm active:scale-95 border-none cursor-pointer"
+                          style={{
+                            color: '#FFFFFF',
+                            fontFamily: "'GE Dinar One', 'GE SS Two', sans-serif",
+                            fontWeight: 700,
+                            fontSize: '16px',
+                            lineHeight: '100%',
+                            textAlign: 'center',
+                            width: '148px',
+                            height: '48px',
+                            gap: '8px',
+                            borderRadius: '24px',
+                            padding: '12px 20px',
+                            background: '#234745',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            textDecoration: 'none',
+                          }}
+                        >
+                          {isEn ? 'Use Now' : 'إستخدم الان'}
+                        </button>
+                      )}
                     </div>
                   </div>
-
-                  {/* Left Action & Status */}
-                  <div className="flex flex-col items-center justify-between self-stretch gap-3">
-                    <span
-                      style={{
-                        color: '#7D7D7D',
-                        fontFamily: "'GE Dinar One', 'GE SS Two', sans-serif",
-                        fontWeight: 500,
-                        fontSize: '16px',
-                        lineHeight: '100%',
-                        textAlign: 'center',
-                      }}
-                    >
-                      {isEn ? 'Active' : 'فعالة'}
-                    </span>
-                    <Link
-                      to={isEn ? '/en/cart' : '/cart'}
-                      className="hover:opacity-90 transition-all shadow-sm active:scale-95"
-                      style={{
-                        color: '#FFFFFF',
-                        fontFamily: "'GE Dinar One', 'GE SS Two', sans-serif",
-                        fontWeight: 700,
-                        fontSize: '16px',
-                        lineHeight: '100%',
-                        textAlign: 'center',
-                        width: '148px',
-                        height: '48px',
-                        gap: '8px',
-                        borderRadius: '24px',
-                        padding: '12px 20px',
-                        background: '#234745',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        textDecoration: 'none',
-                      }}
-                    >
-                      {isEn ? 'Use Now' : 'إستخدم الان'}
-                    </Link>
-                  </div>
-                </div>
-              )}
-
-              {/* Voucher Card 2: Used (مستخدمة) */}
-              {(activeTab === 'used' || activeTab === 'all') && (
-                <div
-                  className="relative bg-white shadow-sm flex items-center justify-between border border-gray-100"
-                  style={{
-                    borderRight: '4px solid #234745',
-                    borderRadius: '12px',
-                    padding: '24px',
-                    gap: '24px',
-                    minHeight: '136px',
-                  }}
-                >
-                  {/* Right Main Info + Badge */}
-                  <div className="flex items-center gap-5">
-                    {/* Gold Badge */}
-                    <div className="w-[88px] h-[88px] rounded-[20px] bg-[#E2C78A] text-white font-bold text-[20px] flex items-center justify-center flex-shrink-0">
-                      50 ر.س
-                    </div>
-                    <div className="text-right flex flex-col gap-2">
-                      <h4
-                        style={{
-                          color: '#7D7D7D',
-                          fontFamily: "'Bahij Janna', 'Bahij', serif",
-                          fontWeight: 700,
-                          fontSize: '20px',
-                          lineHeight: '100%',
-                          textAlign: 'right',
-                        }}
-                      >
-                        {isEn ? '50 SAR Gift Voucher' : 'قسيمة هدية 50 ر.س'}
-                      </h4>
-                      <p
-                        style={{
-                          color: '#7D7D7D',
-                          fontFamily: "'GE Dinar One', 'GE SS Two', sans-serif",
-                          fontWeight: 500,
-                          fontSize: '16px',
-                          lineHeight: '100%',
-                          textAlign: 'right',
-                        }}
-                      >
-                        Gift
-                      </p>
-                    </div>
-                  </div>
-                  {/* Left Status */}
-                  <div className="flex items-center self-stretch pt-2">
-                    <span
-                      style={{
-                        color: '#7D7D7D',
-                        fontFamily: "'GE Dinar One', 'GE SS Two', sans-serif",
-                        fontWeight: 500,
-                        fontSize: '16px',
-                        lineHeight: '100%',
-                        textAlign: 'center',
-                      }}
-                    >
-                      {isEn ? 'Used' : 'مستخدمه'}
-                    </span>
-                  </div>
-                </div>
-              )}
-
-              {/* Voucher Card 3: Expired (منتهية) */}
-              {(activeTab === 'expired' || activeTab === 'all') && (
-                <div
-                  className="relative bg-white shadow-sm flex items-center justify-between border border-gray-100"
-                  style={{
-                    borderRight: '4px solid #234745',
-                    borderRadius: '12px',
-                    padding: '24px',
-                    gap: '24px',
-                    minHeight: '136px',
-                  }}
-                >
-                  {/* Right Main Info + Badge */}
-                  <div className="flex items-center gap-5">
-                    {/* Slate Gray Badge */}
-                    <div className="w-[88px] h-[88px] rounded-[20px] bg-[#97A7AD] text-white font-bold text-[20px] flex items-center justify-center flex-shrink-0">
-                      24 ر.س
-                    </div>
-                    {/* Text Info */}
-                    <div className="text-right flex flex-col gap-2">
-                      <h4
-                        style={{
-                          color: '#7D7D7D',
-                          fontFamily: "'Bahij Janna', 'Bahij', serif",
-                          fontWeight: 700,
-                          fontSize: '20px',
-                          lineHeight: '100%',
-                          textAlign: 'right',
-                        }}
-                      >
-                        {isEn ? 'Ramadan Voucher 25 SAR' : 'قسيمة رمضان 25 ر.س'}
-                      </h4>
-                      <p
-                        style={{
-                          color: '#7D7D7D',
-                          fontFamily: "'GE Dinar One', 'GE SS Two', sans-serif",
-                          fontWeight: 500,
-                          fontSize: '16px',
-                          lineHeight: '100%',
-                          textAlign: 'right',
-                        }}
-                      >
-                        Gift
-                      </p>
-                      <span
-                        style={{
-                          color: '#7D7D7D',
-                          fontFamily: "'GE Dinar One', 'GE SS Two', sans-serif",
-                          fontWeight: 500,
-                          fontSize: '16px',
-                          lineHeight: '100%',
-                          textAlign: 'right',
-                        }}
-                      >
-                        {isEn ? 'Expired April 10, 2025' : 'انتهت ١٠ ابريل ٢٠٢٥'}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Left Status */}
-                  <div className="flex flex-col items-start justify-start self-stretch pt-2">
-                    <span
-                      style={{
-                        color: '#7D7D7D',
-                        fontFamily: "'GE Dinar One', 'GE SS Two', sans-serif",
-                        fontWeight: 500,
-                        fontSize: '16px',
-                        lineHeight: '100%',
-                        textAlign: 'center',
-                      }}
-                    >
-                      {isEn ? 'Expired' : 'منتهية'}
-                    </span>
-                  </div>
-                </div>
-              )}
-
+                );
+              })}
             </div>
           </div>
 

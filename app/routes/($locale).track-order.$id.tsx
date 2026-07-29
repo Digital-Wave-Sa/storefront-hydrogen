@@ -81,20 +81,78 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
       }
     `;
 
-    const res = await fetch(`https://${adminDomain}/admin/api/2023-10/graphql.json`, {
-        method: 'POST',
-        headers: {
-            'X-Shopify-Access-Token': adminToken,
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            query,
-            variables: { query: searchQuery }
-        })
-    });
+    let orderNode: any = null;
 
-    const jsonRes = await res.json() as any;
-    const orderNode = jsonRes?.data?.orders?.edges?.[0]?.node;
+    try {
+        const res = await fetch(`https://${adminDomain}/admin/api/2023-10/graphql.json`, {
+            method: 'POST',
+            headers: {
+                'X-Shopify-Access-Token': adminToken,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                query,
+                variables: { query: searchQuery }
+            })
+        });
+        const jsonRes = await res.json() as any;
+        orderNode = jsonRes?.data?.orders?.edges?.[0]?.node;
+    } catch (e) {
+        console.error('[TrackOrder Loader] Admin GraphQL query failed:', e);
+    }
+
+    // Fallback to REST API if GraphQL search returned 0 results
+    if (!orderNode && numericId) {
+        try {
+            const restRes = await fetch(`https://${adminDomain}/admin/api/2024-01/orders/${numericId}.json`, {
+                headers: { 'X-Shopify-Access-Token': adminToken, 'Content-Type': 'application/json' }
+            });
+            if (restRes.ok) {
+                const restData = await restRes.json() as any;
+                const rawRest = restData?.order;
+                if (rawRest) {
+                    orderNode = {
+                        id: `gid://shopify/Order/${rawRest.id}`,
+                        name: `#${rawRest.order_number}`,
+                        processedAt: rawRest.processed_at,
+                        canceledAt: rawRest.cancelled_at,
+                        displayFinancialStatus: rawRest.financial_status ? rawRest.financial_status.toUpperCase() : 'PAID',
+                        displayFulfillmentStatus: rawRest.fulfillment_status ? rawRest.fulfillment_status.toUpperCase() : 'UNFULFILLED',
+                        statusPageUrl: rawRest.order_status_url,
+                        totalPriceSet: { shopMoney: { amount: String(rawRest.total_price || '0') } },
+                        subtotalPriceSet: { shopMoney: { amount: String(rawRest.subtotal_price || '0') } },
+                        totalTaxSet: { shopMoney: { amount: String(rawRest.total_tax || '0') } },
+                        totalShippingPriceSet: { shopMoney: { amount: String(rawRest.shipping_lines?.[0]?.price || '0') } },
+                        paymentGatewayNames: rawRest.payment_gateway_names || ['Credit Card'],
+                        shippingLine: { title: rawRest.shipping_lines?.[0]?.title || '' },
+                        shippingAddress: rawRest.shipping_address ? {
+                            address1: rawRest.shipping_address.address1,
+                            city: rawRest.shipping_address.city
+                        } : null,
+                        customAttributes: (rawRest.note_attributes || []).map((attr: any) => ({ key: attr.name || attr.key, value: attr.value })),
+                        fulfillments: (rawRest.fulfillments || []).map((f: any) => ({
+                            status: f.status ? f.status.toUpperCase() : '',
+                            displayStatus: f.shipment_status ? f.shipment_status.toUpperCase() : (f.status === 'success' ? 'FULFILLED' : '')
+                        })),
+                        fulfillmentOrders: { edges: [] },
+                        order_status: { value: rawRest.tags || '' },
+                        lineItems: {
+                            edges: (rawRest.line_items || []).map((item: any) => ({
+                                node: {
+                                    title: item.title,
+                                    variantTitle: item.variant_title || '',
+                                    originalUnitPriceSet: { shopMoney: { amount: String(item.price || '0') } },
+                                    image: null
+                                }
+                            }))
+                        }
+                    };
+                }
+            }
+        } catch (e) {
+            console.error('[TrackOrder Loader] Admin REST fallback failed:', e);
+        }
+    }
 
     if (!orderNode) {
         throw new Response('Order Not Found', { status: 404 });

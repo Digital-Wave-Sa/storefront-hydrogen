@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { createPortal } from 'react-dom';
 import { Await, useFetcher, useRouteLoaderData, Link, useLocation } from 'react-router';
 import { Suspense } from 'react';
 import { Price } from './Price';
@@ -485,12 +484,7 @@ export function DeliveryPickupModal({
         }
     }, [isOpen]);
 
-    const [isMounted, setIsMounted] = useState(false);
-    useEffect(() => {
-        setIsMounted(true);
-    }, []);
-
-    if (!isOpen || !isMounted) return null;
+    if (!isOpen) return null;
 
     const mergeWithAdminMeta = (nodes: any[]) => {
         if (!adminMetafields.length) {
@@ -510,7 +504,7 @@ export function DeliveryPickupModal({
         });
     };
 
-    return createPortal(
+    return (
         <div className="dpm-overlay" onClick={onClose} dir={isEn ? 'ltr' : 'rtl'}>
             <div
                 className={`dpm-container ${isAnimating ? 'dpm-enter' : ''}`}
@@ -1122,7 +1116,6 @@ function ModalContent({
                     </button>
                 </div>
             </div>
-        </>,
-        document.body
+        </>
     );
 }

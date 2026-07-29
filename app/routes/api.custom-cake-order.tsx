@@ -348,6 +348,18 @@ export async function action({ request, context }: ActionFunctionArgs) {
       console.error('[Custom Cake Order] Error resolving session customer:', sessionErr);
     }
 
+    // If user is not logged in, require sign in before proceeding to checkout
+    if (!customerId && !customerEmail) {
+      const targetUrl = isEn ? '/en/custom-cake' : '/custom-cake';
+      const loginUrl = isEn
+        ? `/en/account/login?redirectTo=${encodeURIComponent(targetUrl)}`
+        : `/account/login?redirectTo=${encodeURIComponent(targetUrl)}`;
+      return Response.json({
+        requireLogin: true,
+        loginUrl,
+      });
+    }
+
     const description = isEn
       ? `${shape} • ${size} • ${flavor} • ${layers} layers • ${color} • ${topping}${prepTime ? ` • Prep: ${prepTime}` : ''}${message ? ` • "${message}" (${messageFont}, ${messageColor})` : ''}`
       : `${shape} • ${size} • ${flavor} • ${layers} طبقات • ${color} • ${topping}${prepTime ? ` • تجهيز: ${prepTime}` : ''}${message ? ` • "${message}" (${messageFont}, ${messageColor})` : ''}`;

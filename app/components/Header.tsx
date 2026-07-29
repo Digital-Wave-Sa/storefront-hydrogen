@@ -816,9 +816,12 @@ function ProductMegaMenu({ locale, megaMenuData, onClose }: { locale?: string; m
 
   const categories = collections.length > 0 ? collections.map((col: any) => {
     const colUrl = isEn ? `/en/collections/${col.handle}` : `/collections/${col.handle}`;
+    const firstProductImg = col.products?.nodes?.find((p: any) => p.featuredImage?.url)?.featuredImage?.url;
+    const catImage = col.image?.url || firstProductImg || 'https://cdn.shopify.com/s/files/1/0533/2089/files/placeholder-images-image_large.png';
+
     return {
       title: col.title,
-      image: col.image?.url || 'https://cdn.shopify.com/s/files/1/0943/4280/7861/files/category-baklava.jpg?v=1730000000',
+      image: catImage,
       items: col.products?.nodes?.map((p: any) => ({
         title: p.title,
         url: isEn ? `/en/products/${p.handle}` : `/products/${p.handle}`

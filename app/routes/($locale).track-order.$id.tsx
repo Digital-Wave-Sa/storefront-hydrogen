@@ -406,17 +406,10 @@ export default function TrackOrderPage() {
 
                         <div className="flex items-center gap-4 lg:gap-6">
                             <button onClick={() => navigate(-1)} className="flex items-center gap-2 bg-[#BBCFCD] hover:bg-[#A9C1BF] text-[#234745] px-6 py-2 rounded-[25px] font-bold transition-colors w-max h-[42px] shrink-0">
-                                {isEn && (
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="rotate-180">
-                                        <path d="M5 12h14" /><path d="m12 5 7 7-7 7" />
-                                    </svg>
-                                )}
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={isEn ? 'rotate-180' : ''}>
+                                    <path d="M5 12h14" /><path d="m12 5 7 7-7 7" />
+                                </svg>
                                 <span className="text-[16px] leading-none">{isEn ? 'Back' : 'رجوع'}</span>
-                                {!isEn && (
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                        <path d="M5 12h14" /><path d="m12 5 7 7-7 7" />
-                                    </svg>
-                                )}
                             </button>
 
                             <div className="flex flex-col gap-1.5 items-start">

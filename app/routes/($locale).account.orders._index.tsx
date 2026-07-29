@@ -378,7 +378,14 @@ function OrderCard({ order, isEn }: { order: OrderItemFragment, isEn: boolean })
     }
   }
 
-  const titles = lineItems.slice(0, 3).map(item => item.title).join(' • ') + (lineItems.length > 3 ? '...' : '');
+  // Use translated product title (from @inContext) when available; fall back to lineItem.title snapshot
+  const getDisplayTitle = (item: any) => {
+    const productTitle = item.variant?.product?.title;
+    // If product title exists and differs from the line item title (which is always English snapshot), prefer it
+    if (productTitle && productTitle.trim()) return productTitle;
+    return item.title;
+  };
+  const titles = lineItems.slice(0, 3).map(getDisplayTitle).join(' • ') + (lineItems.length > 3 ? '...' : '');
 
   const handleReorder = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -653,6 +660,7 @@ const ORDER_ITEM_FRAGMENT = `#graphql
           }
           product {
             tags
+            title
           }
         }
       }

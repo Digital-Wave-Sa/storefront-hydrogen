@@ -229,7 +229,8 @@ export default function AccountDashboard() {
                 const firstItem = lastOrder.lineItems?.nodes?.[0];
                 const imageUrl = firstItem?.variant?.image?.url || "https://cdn.shopify.com/s/files/1/0809/4209/4648/files/cake-slice.jpg?v=1710400000";
                 const totalAmount = lastOrder.currentTotalPrice?.amount || "0.00";
-                const orderIdEncoded = encodeURIComponent(lastOrder.id);
+                const trackOrderNumber = lastOrder.orderNumber || (lastOrder.name ? lastOrder.name.replace('#', '') : null) || (lastOrder.id ? lastOrder.id.split('/').pop() : '');
+                const trackUrl = isEn ? `/en/track-order/${trackOrderNumber}` : `/track-order/${trackOrderNumber}`;
 
                 const isPickup = checkIsPickupOrder(lastOrder);
 
@@ -285,7 +286,7 @@ export default function AccountDashboard() {
                         </div>
                         <div className="flex items-center gap-2">
                           <Link
-                            to={isEn ? `/en/track-order/${lastOrder.orderNumber}` : `/track-order/${lastOrder.orderNumber}`}
+                            to={trackUrl}
                             className="px-6 py-2 border border-[#234745] text-[#234745] rounded-[24px] text-[13px] font-bold hover:bg-gray-50 transition-all"
                           >
                             {lastOrder.fulfillmentStatus === 'FULFILLED'

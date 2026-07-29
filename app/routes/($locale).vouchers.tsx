@@ -10,29 +10,32 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => {
 };
 
 export async function loader({ context }: LoaderFunctionArgs) {
-  const { storefront, env } = context;
-  const lang = storefront.i18n.language === 'EN' ? 'en' : 'ar';
+  const { storefront, env, customerAccount } = context;
+  const lang = storefront?.i18n?.language === 'EN' ? 'en' : 'ar';
 
   let usedCodesSet = new Set<string>();
   try {
-    const customer = await context.customerAccount.getCustomer();
-    if (customer?.email || customer?.phone) {
-      const { getAdminToken, getAdminDomain } = await import('~/lib/shopify-admin.server');
-      const adminToken = await getAdminToken(env);
-      const adminDomain = getAdminDomain(env);
+    const isLoggedIn = await customerAccount?.isLoggedIn();
+    if (isLoggedIn) {
+      const customer = await customerAccount.getCustomer();
+      if (customer?.email || customer?.phone) {
+        const { getAdminToken, getAdminDomain } = await import('~/lib/shopify-admin.server');
+        const adminToken = await getAdminToken(env);
+        const adminDomain = getAdminDomain(env);
 
-      if (adminToken && adminDomain) {
-        const query = customer.email ? `email:${customer.email}` : `phone:${customer.phone}`;
-        const ordersRes = await fetch(`https://${adminDomain}/admin/api/2024-01/orders.json?status=any&fields=id,discount_codes&query=${encodeURIComponent(query)}`, {
-          headers: { 'X-Shopify-Access-Token': adminToken }
-        });
-        if (ordersRes.ok) {
-          const data = await ordersRes.json() as any;
-          for (const order of (data.orders || [])) {
-            if (Array.isArray(order.discount_codes)) {
-              for (const d of order.discount_codes) {
-                if (d?.code) {
-                  usedCodesSet.add(d.code.trim().toLowerCase());
+        if (adminToken && adminDomain) {
+          const query = customer.email ? `email:${customer.email}` : `phone:${customer.phone}`;
+          const ordersRes = await fetch(`https://${adminDomain}/admin/api/2024-01/orders.json?status=any&fields=id,discount_codes&query=${encodeURIComponent(query)}`, {
+            headers: { 'X-Shopify-Access-Token': adminToken }
+          });
+          if (ordersRes.ok) {
+            const data = await ordersRes.json() as any;
+            for (const order of (data.orders || [])) {
+              if (Array.isArray(order.discount_codes)) {
+                for (const d of order.discount_codes) {
+                  if (d?.code) {
+                    usedCodesSet.add(d.code.trim().toLowerCase());
+                  }
                 }
               }
             }

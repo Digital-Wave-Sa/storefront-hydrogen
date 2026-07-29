@@ -1,4 +1,4 @@
-import { data, type ActionFunctionArgs } from 'react-router';
+import type { ActionFunctionArgs } from 'react-router';
 
 export async function action({ request, context }: ActionFunctionArgs) {
     const formData = await request.formData();
@@ -153,8 +153,9 @@ export async function action({ request, context }: ActionFunctionArgs) {
         console.error('[LOCATION API] Cart sync failed:', e);
     }
 
-    return data({ success: true }, {
+    return new Response(JSON.stringify({ success: true }), {
         headers: {
+            'Content-Type': 'application/json',
             'Set-Cookie': await context.session.commit(),
         },
     });

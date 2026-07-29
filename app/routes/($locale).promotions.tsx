@@ -171,7 +171,7 @@ export default function PromotionsPage() {
       isBogo: hasBogo,
       tags: prod.tags || [],
       tag: tagBadge,
-      image: prod.featuredImage?.url || '/images/placeholder.webp',
+      image: prod.featuredImage?.url || '/images/placeholder/sample.png',
       availableForSale: prod.availableForSale && (variant?.availableForSale ?? true),
       variantId: variant?.id,
       handle: prod.handle,

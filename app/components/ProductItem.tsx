@@ -152,7 +152,7 @@ export function ProductItem({
           }}
         >
           <div className="w-32 h-32 md:w-48 md:h-48 bg-gray-50 rounded-2xl overflow-hidden border border-gray-50 relative">
-            {product.featuredImage && (
+            {product.featuredImage ? (
               <Image
                 alt=""
                 aspectRatio="1/1"
@@ -161,6 +161,12 @@ export function ProductItem({
                 sizes="200px"
                 className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-110"
                 style={{ opacity: isVisibilityBlocked ? 0.5 : (showOutOfStock ? 0.4 : 1), filter: isVisibilityBlocked ? 'grayscale(1)' : 'none' }}
+              />
+            ) : (
+              <img
+                src="/images/placeholder/sample.png"
+                alt={product.title || ''}
+                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
               />
             )}
             {/* Promo Badges (List View) */}
@@ -260,7 +266,15 @@ export function ProductItem({
         <div className="w-full aspect-[4/3] relative flex items-center justify-center bg-gray-50 overflow-hidden">
           {(() => {
             const imageToDisplay = product.featuredImage || product.images?.nodes?.[0] || product.variants?.nodes?.[0]?.image;
-            if (!imageToDisplay) return null;
+            if (!imageToDisplay) {
+              return (
+                <img
+                  src="/images/placeholder/sample.png"
+                  alt={product.title || ''}
+                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                />
+              );
+            }
             return (
               <Image
                 alt={imageToDisplay.altText || product.title || ''}

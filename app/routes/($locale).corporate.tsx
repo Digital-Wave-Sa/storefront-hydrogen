@@ -171,7 +171,7 @@ function CorporateProductCard({ product, isEn }: { product: any; isEn: boolean }
             <div className="relative w-full h-[220px] bg-[#F6F1EC] overflow-hidden">
                 <Link to={productUrl} className="block w-full h-full">
                     <img
-                        src={product.featuredImage?.url || '/images/placeholder.webp'}
+                        src={product.featuredImage?.url || '/images/placeholder/sample.png'}
                         alt={product.featuredImage?.altText || product.title}
                         className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
                     />

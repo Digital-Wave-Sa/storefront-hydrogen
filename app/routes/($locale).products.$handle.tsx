@@ -1300,7 +1300,7 @@ export default function Product() {
                                   {component.featuredImage ? (
                                     <Image data={component.featuredImage} className="object-cover w-full h-full" sizes="80px" />
                                   ) : (
-                                    <div className="w-full h-full flex items-center justify-center text-gray-300 text-[10px]">{isEn ? 'No Image' : 'لا توجد صورة'}</div>
+                                    <img src="/images/placeholder/sample.png" alt={component.title || ''} className="object-cover w-full h-full" />
                                   )}
                                 </div>
                                 <div className="flex flex-col flex-grow text-start">

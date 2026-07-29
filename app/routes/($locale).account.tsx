@@ -675,7 +675,9 @@ export const CUSTOMER_FRAGMENT = `#graphql
         lineItems(first: 20) {
           nodes {
             title
+            quantity
             variant {
+              id
               image {
                 url
                 altText

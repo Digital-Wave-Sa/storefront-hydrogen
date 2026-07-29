@@ -285,14 +285,16 @@ export default function AccountDashboard() {
                         </div>
                         <div className="flex items-center gap-2">
                           <Link
-                            to={isEn ? `/en/account/orders/${orderIdEncoded}` : `/account/orders/${orderIdEncoded}`}
+                            to={isEn ? `/en/track-order/${lastOrder.orderNumber}` : `/track-order/${lastOrder.orderNumber}`}
                             className="px-6 py-2 border border-[#234745] text-[#234745] rounded-[24px] text-[13px] font-bold hover:bg-gray-50 transition-all"
                           >
-                            {isEn ? 'Track' : 'تتبع'}
+                            {lastOrder.fulfillmentStatus === 'FULFILLED'
+                              ? (isEn ? 'Invoice' : 'الفاتورة')
+                              : (isEn ? 'Track' : 'تتبع')}
                           </Link>
                           {(() => {
                             const reorderLines = (lastOrder.lineItems?.nodes || []).map((item: any) => {
-                              const rawId = (item.variant as any)?.id || item.variantId;
+                              const rawId = item.variant?.id || item.variantId || item.variant_id;
                               const merchandiseId = rawId && String(rawId).startsWith('gid://')
                                 ? String(rawId)
                                 : `gid://shopify/ProductVariant/${rawId}`;
@@ -300,7 +302,8 @@ export default function AccountDashboard() {
                                 merchandiseId,
                                 quantity: item.quantity || 1,
                               };
-                            });
+                            }).filter((l: any) => l.merchandiseId && !l.merchandiseId.endsWith('undefined'));
+
                             return (
                               <Form action={isEn ? "/en/cart" : "/cart"} method="post" className="inline-block">
                                 <input
@@ -313,7 +316,8 @@ export default function AccountDashboard() {
                                 />
                                 <button
                                   type="submit"
-                                  className="px-6 py-2 bg-[#234745] text-white rounded-[24px] text-[13px] font-bold hover:opacity-90 transition-all active:scale-95 cursor-pointer"
+                                  disabled={reorderLines.length === 0}
+                                  className="px-6 py-2 bg-[#234745] text-white rounded-[24px] text-[13px] font-bold hover:opacity-90 transition-all active:scale-95 cursor-pointer disabled:opacity-50"
                                   style={{ color: '#FFFFFF' }}
                                 >
                                   {isEn ? 'Reorder' : 'إعادة الطلب'}

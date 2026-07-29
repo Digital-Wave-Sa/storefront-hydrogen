@@ -258,10 +258,10 @@ export function BestSellers({
                                                 <div className={`absolute top-2 md:top-3 ${isEn ? 'left-2 md:left-3' : 'right-2 md:right-3'} z-10`}>
                                                     {isVisibilityBlocked ? (
                                                         <span
-                                                            className="flex items-center justify-center px-3.5 py-1.5 rounded-full font-bold text-[12px] whitespace-nowrap shadow-sm text-white bg-[#234745]/90 backdrop-blur-md"
+                                                            className="flex items-center justify-center px-3.5 py-1.5 rounded-full font-bold text-[12px] whitespace-nowrap shadow-sm text-white bg-[#906b51] backdrop-blur-md"
                                                             style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
                                                         >
-                                                            {isEn ? 'Out for the Season' : 'نفد للموسم'}
+                                                            {isEn ? 'Out of Season' : 'نفد للموسم'}
                                                         </span>
                                                     ) : isOutOfStock && !isPreorder ? (
                                                         <span

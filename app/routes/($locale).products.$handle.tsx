@@ -959,7 +959,7 @@ export default function Product() {
           <div className={`max-w-[1400px] mx-auto px-4 md:px-8 relative z-10 flex ${isEn ? 'justify-end' : 'justify-start'}`}>
             <button
               onClick={() => window.history.back()}
-              className={`flex items-center justify-center gap-[24px] bg-[#9FB7AE] hover:bg-[#8ca39a] text-[#234745] px-[32px] h-[48px] rounded-[100px] transition-all font-bold ${isEn ? 'flex-row' : 'flex-row-reverse'}`}
+              className={`flex items-center justify-center gap-[8px] bg-[#9FB7AE] hover:bg-[#8ca39a] text-[#234745] px-[32px] h-[48px] rounded-[100px] transition-all font-bold ${isEn ? 'flex-row' : 'flex-row-reverse'}`}
               style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", fontSize: '16px' }}
             >
               <span className="mt-[2px]">{isEn ? 'Back' : 'رجوع'}</span>

@@ -349,16 +349,29 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
                   currencyCode={currencyCode}
                   isPickup={isPickup}
                   cart={cart}
-                  isBranchError={isMinOrderMet && (!isBranchSelected || isBranchHidden)}
+                  branchErrorText={
+                    isBranchHidden
+                      ? (isEn ? 'Selected branch is currently unavailable. Please select another branch.' : 'الفرع المختار غير متوفر حالياً. يرجى اختيار فرع آخر.')
+                      : !isBranchSelected
+                        ? (isEn ? 'Please select a branch' : 'يرجى اختيار الفرع')
+                        : null
+                  }
                   validationError={
-                    !isMinOrderMet ? (isEn ? <span className="flex items-center gap-1">Minimum order is <SaudiRiyalSymbol className="h-3 w-auto" /> {minOrderValue}</span> : <span className="flex items-center gap-1 flex-row-reverse">الحد الأدنى هو {minOrderValue} <SaudiRiyalSymbol className="h-3 w-auto" /></span>) :
-                      isBranchHidden ? (isEn ? 'Selected branch is currently unavailable. Please select another branch.' : 'الفرع المختار غير متوفر حالياً. يرجى اختيار فرع آخر.') :
-                        !isBranchSelected ? (isEn ? 'Please select a branch' : 'يرجى اختيار الفرع') :
-                          isOutOfRange ? (isEn ? 'Address is out of delivery range' : 'العنوان خارج نطاق التوصيل') :
-                            !selectedDate ? (isPickup ? (isEn ? 'Please select pickup date' : 'يرجى اختيار تاريخ الاستلام') : (isEn ? 'Please select delivery date' : 'يرجى اختيار تاريخ التوصيل')) :
-                              !timeSlot ? (isPickup ? (isEn ? 'Please select pickup window' : 'يرجى اختيار فترة الاستلام') : (isEn ? 'Please select delivery window' : 'يرجى اختيار فترة التوصيل')) :
-                                isTimeSlotInvalid ? (isPickup ? (isEn ? 'Time slot is outside working hours' : 'وقت الاستلام خارج ساعات العمل') : (isEn ? 'Delivery time is outside working hours' : 'وقت التوصيل خارج ساعات العمل')) :
-                                  null
+                    !isMinOrderMet ? (
+                      isEn ? (
+                        <span className="flex items-center justify-center gap-1">Minimum order is <SaudiRiyalSymbol className="h-3 w-auto" /> {minOrderValue}</span>
+                      ) : (
+                        <span className="flex items-center justify-center gap-1"><span>الحد الأدنى هو {minOrderValue}</span><SaudiRiyalSymbol className="h-3.5 w-auto inline-block ms-1" /></span>
+                      )
+                    ) : isOutOfRange ? (
+                      isEn ? 'Address is out of delivery range' : 'العنوان خارج نطاق التوصيل'
+                    ) : !selectedDate ? (
+                      isPickup ? (isEn ? 'Please select pickup date' : 'يرجى اختيار تاريخ الاستلام') : (isEn ? 'Please select delivery date' : 'يرجى اختيار تاريخ التوصيل')
+                    ) : !timeSlot ? (
+                      isPickup ? (isEn ? 'Please select pickup window' : 'يرجى اختيار فترة الاستلام') : (isEn ? 'Please select delivery window' : 'يرجى اختيار فترة التوصيل')
+                    ) : isTimeSlotInvalid ? (
+                      isPickup ? (isEn ? 'Time slot is outside working hours' : 'وقت الاستلام خارج ساعات العمل') : (isEn ? 'Delivery time is outside working hours' : 'وقت التوصيل خارج ساعات العمل')
+                    ) : null
                   }
                 />
 
@@ -690,22 +703,22 @@ function CartCheckoutActions({
   isEn,
   disabled,
   validationError,
+  branchErrorText,
   totalAmount,
   currencyCode,
   isPickup,
   cart,
-  isBranchError,
 }: {
   checkoutUrl?: string;
   discountCodes?: any[];
   isEn: boolean;
   disabled?: boolean;
   validationError?: React.ReactNode | null;
+  branchErrorText?: string | null;
   totalAmount: number;
   currencyCode: string;
   isPickup?: boolean;
   cart?: any;
-  isBranchError?: boolean;
 }) {
   const fireBeginCheckout = () => {
     try {
@@ -753,27 +766,32 @@ function CartCheckoutActions({
             {isEn ? 'Complete Order' : 'إتمام الطلب'}
           </button>
         </form>
-        {disabled && validationError && (
-          isBranchError ? (
-            <button
-              type="button"
-              onClick={() => {
-                if (typeof window !== 'undefined') {
-                  window.dispatchEvent(new CustomEvent('openDeliveryModal'));
-                }
-              }}
-              className="w-full text-red-500 text-[13px] font-bold text-center px-4 py-2.5 bg-red-50 hover:bg-red-100 active:scale-[0.98] transition-all rounded-xl border border-red-200 flex items-center justify-center gap-2 cursor-pointer shadow-sm group"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="shrink-0"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
-              <span className="group-hover:underline">{validationError}</span>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="shrink-0 ltr:rotate-180 transition-transform group-hover:translate-x-[-2px]"><path d="M15 18l-6-6 6-6"/></svg>
-            </button>
-          ) : (
-            <p className="text-red-500 text-[12px] font-bold text-center px-4 py-2 bg-red-50 rounded-xl border border-red-100 flex items-center justify-center gap-2">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="shrink-0"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
-              {validationError}
-            </p>
-          )
+
+        {disabled && (
+          <>
+            {branchErrorText && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (typeof window !== 'undefined') {
+                    window.dispatchEvent(new CustomEvent('openDeliveryModal'));
+                  }
+                }}
+                className="w-full text-red-500 text-[13px] font-bold text-center px-4 py-2.5 bg-red-50 hover:bg-red-100 active:scale-[0.98] transition-all rounded-xl border border-red-200 flex items-center justify-center gap-2 cursor-pointer shadow-sm group"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="shrink-0"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                <span className="group-hover:underline">{branchErrorText}</span>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="shrink-0 ltr:rotate-180 transition-transform group-hover:translate-x-[-2px]"><path d="M15 18l-6-6 6-6"/></svg>
+              </button>
+            )}
+
+            {validationError && (
+              <p className="text-red-500 text-[12px] font-bold text-center px-4 py-2 bg-red-50 rounded-xl border border-red-100 flex items-center justify-center gap-2">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="shrink-0"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                {validationError}
+              </p>
+            )}
+          </>
         )}
       </div>
     </>

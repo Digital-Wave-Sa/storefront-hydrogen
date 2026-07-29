@@ -750,11 +750,21 @@ function CartCheckoutActions({
           </button>
         </form>
         {disabled && validationError && (
-          <p className="text-red-500 text-[12px] font-bold text-center px-4 py-2 bg-red-50 rounded-xl border border-red-100 flex items-center justify-center gap-2">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
-            {validationError}
-          </p>
+          <button
+            type="button"
+            onClick={() => {
+              if (typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent('openDeliveryModal'));
+              }
+            }}
+            className="w-full text-red-500 text-[13px] font-bold text-center px-4 py-2.5 bg-red-50 hover:bg-red-100 active:scale-[0.98] transition-all rounded-xl border border-red-200 flex items-center justify-center gap-2 cursor-pointer shadow-sm group"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="shrink-0"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+            <span className="group-hover:underline">{validationError}</span>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="shrink-0 ltr:rotate-180 transition-transform group-hover:translate-x-[-2px]"><path d="M15 18l-6-6 6-6"/></svg>
+          </button>
         )}
+
       </div>
     </>
   );

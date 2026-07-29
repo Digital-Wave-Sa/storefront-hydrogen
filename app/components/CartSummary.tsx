@@ -349,7 +349,7 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
                   currencyCode={currencyCode}
                   isPickup={isPickup}
                   cart={cart}
-                  isBranchError={!isBranchSelected || isBranchHidden}
+                  isBranchError={isMinOrderMet && (!isBranchSelected || isBranchHidden)}
                   validationError={
                     !isMinOrderMet ? (isEn ? <span className="flex items-center gap-1">Minimum order is <SaudiRiyalSymbol className="h-3 w-auto" /> {minOrderValue}</span> : <span className="flex items-center gap-1 flex-row-reverse">الحد الأدنى هو {minOrderValue} <SaudiRiyalSymbol className="h-3 w-auto" /></span>) :
                       isBranchHidden ? (isEn ? 'Selected branch is currently unavailable. Please select another branch.' : 'الفرع المختار غير متوفر حالياً. يرجى اختيار فرع آخر.') :

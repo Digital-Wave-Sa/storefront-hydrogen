@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useLocation, Link, data, useLoaderData, type LoaderFunctionArgs, type MetaFunction } from 'react-router';
+import { useLocation, Link, useLoaderData, type LoaderFunctionArgs, type MetaFunction } from 'react-router';
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
   const isEn = data?.lang === 'en';
@@ -168,7 +168,7 @@ export async function loader({ context }: LoaderFunctionArgs) {
     console.error('[Vouchers Loader] Error fetching native Shopify price rules:', err);
   }
 
-  return data({ lang, shopifyVouchers });
+  return { lang, shopifyVouchers };
 }
 
 function SaadeddinLogo({ className = '', style }: { className?: string; style?: React.CSSProperties }) {

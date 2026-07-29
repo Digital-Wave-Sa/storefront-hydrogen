@@ -967,7 +967,7 @@ function ViewCartAction({ isEn }: { isEn: boolean }) {
         className="w-full bg-[#234745] hover:bg-[#003840] text-white font-bold py-4 px-8 rounded-[32px] flex items-center justify-between transition-all group shadow-xl"
       >
         <span className="text-[16px] text-white">{isEn ? 'View Cart' : 'عرض السلة'}</span>
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={` transition-transform group-hover:translate-x-1`}>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={`transition-transform ${isEn ? 'rotate-180 group-hover:translate-x-1' : 'group-hover:-translate-x-1'}`}>
           <line x1="21" y1="12" x2="3" y2="12"></line>
           <polyline points="10 5 3 12 10 19"></polyline>
         </svg>

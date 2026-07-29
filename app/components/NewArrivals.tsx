@@ -237,7 +237,7 @@ export function NewArrivals({
                                     {/* View All Button */}
                                     <div className="mt-8 lg:mt-12 flex justify-center">
                                         <Link
-                                            to={isEn ? "/en/collections/all" : "/collections/all"}
+                                            to={isEn ? "/en/collections/featured" : "/collections/featured"}
                                             className="px-12 py-4 rounded-full border-2 border-[#234745] !text-[#234745] [font-family:'GE_Dinar_One',sans-serif] font-bold text-[15px] lg:text-[18px] transition-all hover:bg-[#1a3533] hover:!text-white hover:border-[#1a3533] active:scale-95"
                                             style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
                                         >

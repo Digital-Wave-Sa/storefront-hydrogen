@@ -94,10 +94,45 @@ export async function loader({request, params, context}: LoaderFunctionArgs) {
     cache: storefront.CacheNone(),
   });
 
-  if (!collection) {
+  let targetCollection = collection;
+
+  if (!targetCollection && (handle === 'featured' || handle === 'featured_collections')) {
+    const isEn = storefront.i18n.language === 'EN';
+    const fallbackRes: any = await storefront.query(FEATURED_PRODUCTS_FALLBACK_QUERY, {
+      variables: {
+        country: storefront.i18n.country,
+        language: storefront.i18n.language,
+      },
+      cache: storefront.CacheNone(),
+    }).catch(() => null);
+
+    const tagged = fallbackRes?.taggedProducts?.nodes || [];
+    const all = fallbackRes?.allProducts?.nodes || [];
+    const productNodes = tagged.length > 0 ? tagged : all;
+
+    targetCollection = {
+      id: 'gid://shopify/Collection/featured',
+      handle: 'featured',
+      title: isEn ? 'Featured Collections' : 'التشكيلات المميزة',
+      description: isEn ? 'Collections crafted with ultimate care, telling the story of the craft since 1919' : 'تشكيلات صنعت بعناية فائقة، تحكي قصة الحرفة منذ 1919',
+      image: null,
+      products: {
+        nodes: productNodes,
+        filters: [],
+        pageInfo: {
+          hasPreviousPage: false,
+          hasNextPage: false,
+          startCursor: null,
+          endCursor: null,
+        },
+      },
+    };
+  }
+
+  if (!targetCollection) {
     return redirect(params.locale ? `/${params.locale}/collections` : '/collections');
   }
-  return data({collection, filters});
+  return data({collection: targetCollection, filters});
 }
 
 export default function Collection() {
@@ -951,6 +986,25 @@ const COLLECTION_QUERY = `#graphql
           startCursor
           endCursor
         }
+      }
+    }
+  }
+` as const;
+
+const FEATURED_PRODUCTS_FALLBACK_QUERY = `#graphql
+  ${PRODUCT_ITEM_FRAGMENT}
+  query FeaturedProductsFallback(
+    $country: CountryCode
+    $language: LanguageCode
+  ) @inContext(country: $country, language: $language) {
+    taggedProducts: products(first: 50, query: "tag:featured OR tag:featured_collections OR tag:عرض OR tag:ميز") {
+      nodes {
+        ...HandleProductItem
+      }
+    }
+    allProducts: products(first: 50) {
+      nodes {
+        ...HandleProductItem
       }
     }
   }

@@ -842,19 +842,21 @@ function LoyaltyRedemptionUI({ isEn, cart }: { isEn: boolean, cart: any }) {
             {isEn ? 'Redeem Points' : 'استبدال النقاط'}
           </span>
         </div>
-        <div className="bg-[#fcfaf8] border border-[#f0ece8] rounded-xl p-4 text-center">
-          <p className="text-[12px] text-gray-500 font-medium mb-3">
+        <div className="bg-[#fcfaf8] border border-[#f0ece8] rounded-xl p-5 text-center flex flex-col items-center gap-3">
+          <p className="text-[13px] text-gray-600 font-medium leading-relaxed max-w-[280px]">
             {isEn
               ? 'Log in to view and redeem your loyalty points.'
               : 'سجل الدخول لعرض واستبدال نقاط الولاء الخاصة بك.'}
           </p>
           <Link
             to={isEn ? "/en/account/login" : "/account/login"}
-            className="inline-block bg-[#234745] text-white font-bold px-4 py-2 rounded-lg text-[12px] hover:bg-[#142e22] transition-colors"
+            className="inline-flex items-center justify-center bg-[#234745] hover:bg-[#163529] !text-white font-bold px-6 py-2.5 rounded-full text-[13px] transition-all shadow-sm active:scale-95 mt-1"
+            style={{ color: '#FFFFFF', fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
           >
             {isEn ? 'Log In' : 'تسجيل الدخول'}
           </Link>
         </div>
+
       </section>
     );
   }

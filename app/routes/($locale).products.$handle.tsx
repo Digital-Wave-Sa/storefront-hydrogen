@@ -460,7 +460,21 @@ export default function Product() {
     product.handle.includes('gift-card') ||
     product.productType?.toLowerCase().includes('gift card');
 
-  const bundleComponents = (product as any).bundle_components?.references?.nodes || [];
+  const rawMetaComponents = (product as any).bundle_components?.references?.nodes || [];
+  const variantComponents = ((selectedVariant as any)?.components?.nodes || []).map((c: any) => {
+    const p = c.productVariant?.product;
+    const v = c.productVariant;
+    const qtyPrefix = c.quantity && c.quantity > 1 ? `${c.quantity}x ` : '';
+    return {
+      id: p?.id || v?.id,
+      title: qtyPrefix + (p?.title || v?.title || ''),
+      handle: p?.handle,
+      featuredImage: p?.featuredImage || v?.image,
+      variants: { nodes: [{ sku: v?.sku, price: v?.price }] }
+    };
+  }).filter((c: any) => c.title);
+
+  const bundleComponents = variantComponents.length > 0 ? variantComponents : rawMetaComponents;
   const isBundle = product.productType?.toLowerCase() === 'bundle' || product.tags?.some((t: string) => t.toLowerCase() === 'bundle') || bundleComponents.length > 0;
 
   const bundleSavings = useMemo(() => {
@@ -2702,6 +2716,33 @@ const PRODUCT_VARIANT_FRAGMENT = `#graphql
     unitPrice {
       amount
       currencyCode
+    }
+    components(first: 20) {
+      nodes {
+        quantity
+        productVariant {
+          id
+          title
+          sku
+          price {
+            amount
+            currencyCode
+          }
+          image {
+            url
+            altText
+          }
+          product {
+            id
+            title
+            handle
+            featuredImage {
+              url
+              altText
+            }
+          }
+        }
+      }
     }
     storeAvailability(first: 250) {
       nodes {

@@ -453,9 +453,13 @@ export function DeliveryPickupModal({
     // Memoize the combined promise to prevent Await from re-suspending on every state change (like typing in search or switching tabs)
     const combinedPromise = useMemo(() => Promise.all([locationsPromise, customerPromise]), [locationsPromise, customerPromise]);
 
+    const prevPathname = useRef(location.pathname);
     useEffect(() => {
-        if (isOpen) {
-            onClose();
+        if (prevPathname.current !== location.pathname) {
+            prevPathname.current = location.pathname;
+            if (isOpen) {
+                onClose();
+            }
         }
     }, [location.pathname]);
 

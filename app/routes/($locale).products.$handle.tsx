@@ -998,18 +998,66 @@ export default function Product() {
         <div className="lg:col-span-5 flex flex-col pt-2 order-2">
           {/* High-Fidelity Header Section */}
           <div className="flex flex-col gap-0 w-full max-w-[519px] items-start">
-            {/* Vendor (Sub Title) */}
-            <span
-              className="text-[#906B51] block mb-[16px] text-start"
-              style={{
-                fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
-                fontWeight: 700,
-                fontSize: '12px',
-                lineHeight: '15px',
-              }}
-            >
-              {product.vendor || (isEn ? 'Chocolate' : 'الشوكولاته')}
-            </span>
+            {/* Collection Name (Sub Title) */}
+            {(() => {
+              const collections = product?.collections?.nodes || [];
+              const primaryCollection = collections.find(
+                (c: any) => c.handle !== 'frontpage' && c.handle !== 'home-page' && c.handle !== 'front-page'
+              ) || collections[0];
+
+              let colTitle = '';
+              if (primaryCollection) {
+                if (isEn) {
+                  colTitle = primaryCollection.title;
+                } else {
+                  const arMetafield =
+                    primaryCollection.title_in_arabic?.value ||
+                    primaryCollection.title_ar?.value ||
+                    primaryCollection.name_in_arabic?.value ||
+                    primaryCollection.name_ar?.value;
+
+                  const hasArabicInTitle = /[\u0600-\u06FF]/.test(primaryCollection.title || '');
+                  colTitle = (arMetafield && String(arMetafield).trim())
+                    ? String(arMetafield).trim()
+                    : (hasArabicInTitle ? primaryCollection.title : (isEn ? 'Pastry' : 'حلويات سعد الدين'));
+                }
+              }
+
+              if (!colTitle) {
+                colTitle = isEn ? 'Pastry' : 'حلويات سعد الدين';
+              }
+
+              const collectionUrl = primaryCollection?.handle
+                ? (isEn ? `/en/collections/${primaryCollection.handle}` : `/collections/${primaryCollection.handle}`)
+                : null;
+
+              return collectionUrl ? (
+                <Link
+                  to={collectionUrl}
+                  className="text-[#906B51] hover:underline block mb-[16px] text-start transition-colors"
+                  style={{
+                    fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
+                    fontWeight: 700,
+                    fontSize: '12px',
+                    lineHeight: '15px',
+                  }}
+                >
+                  {colTitle}
+                </Link>
+              ) : (
+                <span
+                  className="text-[#906B51] block mb-[16px] text-start"
+                  style={{
+                    fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
+                    fontWeight: 700,
+                    fontSize: '12px',
+                    lineHeight: '15px',
+                  }}
+                >
+                  {colTitle}
+                </span>
+              );
+            })()}
 
             <div className="flex flex-wrap items-center gap-[12px] mb-[24px] w-full justify-start">
               <h1
@@ -2767,6 +2815,25 @@ const PRODUCT_FRAGMENT = `#graphql
     productType
     isGiftCard
     tags
+    collections(first: 5) {
+      nodes {
+        id
+        title
+        handle
+        title_in_arabic: metafield(namespace: "custom", key: "title_in_arabic") {
+          value
+        }
+        title_ar: metafield(namespace: "custom", key: "title_ar") {
+          value
+        }
+        name_in_arabic: metafield(namespace: "custom", key: "name_in_arabic") {
+          value
+        }
+        name_ar: metafield(namespace: "custom", key: "name_ar") {
+          value
+        }
+      }
+    }
     name_in_arabic: metafield(namespace: "custom", key: "name_in_arabic") {
       value
     }

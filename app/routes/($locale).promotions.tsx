@@ -94,6 +94,7 @@ export default function PromotionsPage() {
 
   // Toast message state for "Copy Code"
   const [showToast, setShowToast] = useState(false);
+  const [activeFilter, setActiveFilter] = useState<'all' | 'bogo' | 'gifts25' | 'chocolates40'>('all');
 
   // Live Countdown Timer state
   const [timeLeft, setTimeLeft] = useState({ hours: 8, minutes: 32, seconds: 22 });
@@ -122,6 +123,14 @@ export default function PromotionsPage() {
     setTimeout(() => setShowToast(false), 2000);
   };
 
+  const handleFilterClick = (filter: 'all' | 'bogo' | 'gifts25' | 'chocolates40') => {
+    setActiveFilter(filter);
+    const gridElem = document.getElementById('promotions-grid');
+    if (gridElem) {
+      gridElem.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
   // Dynamically map real discounted products from Shopify
   const displayProducts = products.map((prod: any) => {
     const variant = prod.variants?.nodes?.find((v: any) => {
@@ -136,13 +145,14 @@ export default function PromotionsPage() {
     const priceStr = Math.round(priceNum).toString();
     const compareStr = compareNum > priceNum ? Math.round(compareNum).toString() : '';
 
+    const discountPct = compareNum > priceNum ? Math.round(((compareNum - priceNum) / compareNum) * 100) : 0;
+    const hasBogo = prod.tags?.some((t: string) => t.toUpperCase().includes('1+1') || t.toUpperCase().includes('BOGO')) || prod.title?.includes('1+1');
+
     // Calculate dynamic discount percentage tag if compareAtPrice is higher
     let tagBadge = '';
     if (compareNum > priceNum) {
-      const pct = Math.round(((compareNum - priceNum) / compareNum) * 100);
-      tagBadge = isEn ? `${pct}% OFF` : `خصم %${pct}`;
+      tagBadge = isEn ? `${discountPct}% OFF` : `خصم %${discountPct}`;
     } else {
-      const hasBogo = prod.tags?.some((t: string) => t.toUpperCase().includes('1+1') || t.toUpperCase().includes('BOGO'));
       if (hasBogo) {
         tagBadge = isEn ? 'BUY 1 GET 1' : '1+1 مجاناً';
       } else if (prod.tags?.some((t: string) => t.includes('الأكثر طلباً') || t.toLowerCase().includes('best_seller'))) {
@@ -157,6 +167,9 @@ export default function PromotionsPage() {
       title: prod.title,
       price: priceStr,
       comparePrice: compareStr,
+      discountPct,
+      isBogo: hasBogo,
+      tags: prod.tags || [],
       tag: tagBadge,
       image: prod.featuredImage?.url || '/images/placeholder.webp',
       availableForSale: prod.availableForSale && (variant?.availableForSale ?? true),
@@ -164,6 +177,39 @@ export default function PromotionsPage() {
       handle: prod.handle,
     };
   });
+
+  const filteredProducts = displayProducts.filter((prod: any) => {
+    if (activeFilter === 'all') return true;
+
+    const titleLower = (prod.title || '').toLowerCase();
+    const tags = (prod.tags || []).map((t: string) => String(t).toLowerCase());
+
+    if (activeFilter === 'bogo') {
+      return (
+        prod.isBogo ||
+        tags.some((t: string) => t.includes('bogo') || t.includes('1+1') || t.includes('free') || t.includes('مجانا')) ||
+        titleLower.includes('bogo') || titleLower.includes('1+1') || titleLower.includes('مجانا')
+      );
+    }
+
+    if (activeFilter === 'gifts25') {
+      const isGift = tags.some((t: string) => t.includes('gift') || t.includes('box') || t.includes('هدية') || t.includes('هدايا') || t.includes('صندوق') || t.includes('باكج')) ||
+                     titleLower.includes('gift') || titleLower.includes('box') || titleLower.includes('هدية') || titleLower.includes('هدايا') || titleLower.includes('صندوق') || titleLower.includes('باكج');
+      const isAround25Pct = prod.discountPct >= 15 && prod.discountPct <= 35;
+      return isGift || isAround25Pct;
+    }
+
+    if (activeFilter === 'chocolates40') {
+      const isChoc = tags.some((t: string) => t.includes('choc') || t.includes('شوكول')) ||
+                     titleLower.includes('choc') || titleLower.includes('شوكول');
+      const isAround40Pct = prod.discountPct >= 30;
+      return isChoc || isAround40Pct;
+    }
+
+    return true;
+  });
+
+  const finalDisplayProducts = filteredProducts.length > 0 ? filteredProducts : displayProducts;
 
   const direction = isEn ? 'ltr' : 'rtl';
 
@@ -330,9 +376,10 @@ export default function PromotionsPage() {
             {/* Action Row: Button + Shoppers Count */}
             <div className="flex flex-row items-center gap-4 mt-2">
               {/* Button */}
-              <Link
-                to="/collections/all"
-                className="inline-flex items-center gap-2 px-8 h-[48px] bg-[#BBCFCD] hover:bg-[#ACC4C2] !text-[#234745] font-bold text-[14px] rounded-full transition-colors flex-shrink-0"
+              <button
+                type="button"
+                onClick={() => handleFilterClick('bogo')}
+                className="inline-flex items-center gap-2 px-8 h-[48px] bg-[#BBCFCD] hover:bg-[#ACC4C2] !text-[#234745] font-bold text-[14px] rounded-full transition-colors flex-shrink-0 cursor-pointer"
               >
                 {isEn ? (
                   <>
@@ -351,7 +398,7 @@ export default function PromotionsPage() {
                     </svg>
                   </>
                 )}
-              </Link>
+              </button>
 
               {/* Shoppers Count (Standard English digits) */}
               <span className="text-[#D61C4E] text-[13px] font-semibold whitespace-nowrap">
@@ -421,12 +468,13 @@ export default function PromotionsPage() {
                 {isEn ? <>Subscribe now and get <span style={{ fontFamily: "'EnglishDigits', sans-serif" }}>15%</span> discount on your first order</> : <>اشترك الآن واحصل على خصم <span style={{ fontFamily: "'EnglishDigits', sans-serif" }}>15%</span> على طلبك الأول من سعد الدين</>}
               </p>
             </div>
-            <Link
-              to="/collections/all"
-              className="px-6 h-[40px] inline-flex items-center justify-center bg-[#BBCFCD] hover:bg-[#ACC4C2] !text-[#234745] font-bold text-[13px] rounded-full transition-colors"
+            <button
+              type="button"
+              onClick={() => handleFilterClick('gifts25')}
+              className="px-6 h-[40px] inline-flex items-center justify-center bg-[#BBCFCD] hover:bg-[#ACC4C2] !text-[#234745] font-bold text-[13px] rounded-full transition-colors cursor-pointer"
             >
               {isEn ? 'Get Discount' : 'احصل على الخصم'}
-            </Link>
+            </button>
           </div>
 
           {/* Right card: 40% Chocolate */}
@@ -443,12 +491,13 @@ export default function PromotionsPage() {
                 {isEn ? <>More than <span style={{ fontFamily: "'EnglishDigits', sans-serif" }}>20</span> products with exceptional prices</> : <>أكثر من <span style={{ fontFamily: "'EnglishDigits', sans-serif" }}>20</span> منتج بأسعار استثنائية</>}
               </p>
             </div>
-            <Link
-              to="/collections/all"
-              className="px-6 h-[40px] inline-flex items-center justify-center bg-[#234745] hover:bg-[#1a3533] !text-white font-bold text-[13px] rounded-full transition-colors"
+            <button
+              type="button"
+              onClick={() => handleFilterClick('chocolates40')}
+              className="px-6 h-[40px] inline-flex items-center justify-center bg-[#234745] hover:bg-[#1a3533] !text-white font-bold text-[13px] rounded-full transition-colors cursor-pointer"
             >
               {isEn ? 'Shop Now' : 'تسوق الآن'}
-            </Link>
+            </button>
           </div>
 
         </section>
@@ -471,16 +520,66 @@ export default function PromotionsPage() {
         </section>
 
         {/* 6. Exclusive Products Grid ("منتجات مختارة بخصومات حصرية") */}
-        <section className="flex flex-col gap-6 mt-6">
-          <div className="flex justify-between items-center w-full">
+        <section id="promotions-grid" className="flex flex-col gap-6 mt-6 scroll-mt-6">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 w-full">
             <h2 className="text-[#171717] text-[24px] md:text-[30px] font-bold">
               {isEn ? 'Exclusive Products & Discounts' : 'منتجات مختارة بخصومات حصرية'}
             </h2>
-          </div>
 
-          {displayProducts.length > 0 ? (
+            {/* Filter Pills */}
+            <div className="flex items-center gap-2 overflow-x-auto pb-2 w-full md:w-auto hide-scrollbars">
+              <button
+                type="button"
+                onClick={() => handleFilterClick('all')}
+                className={`px-4 py-2 rounded-full text-[13px] font-bold transition-all cursor-pointer whitespace-nowrap ${
+                  activeFilter === 'all'
+                    ? 'bg-[#234745] text-white shadow-sm'
+                    : 'bg-white text-[#234745] border border-[#EBE3D5] hover:bg-[#FDF0D5]'
+                }`}
+              >
+                {isEn ? '✨ All Offers' : '✨ جميع العروض'}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleFilterClick('bogo')}
+                className={`px-4 py-2 rounded-full text-[13px] font-bold transition-all cursor-pointer whitespace-nowrap ${
+                  activeFilter === 'bogo'
+                    ? 'bg-[#234745] text-white shadow-sm'
+                    : 'bg-white text-[#234745] border border-[#EBE3D5] hover:bg-[#FDF0D5]'
+                }`}
+              >
+                {isEn ? '🎁 BOGO (1+1)' : '🎁 عروض 1+1 مجاناً'}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleFilterClick('gifts25')}
+                className={`px-4 py-2 rounded-full text-[13px] font-bold transition-all cursor-pointer whitespace-nowrap ${
+                  activeFilter === 'gifts25'
+                    ? 'bg-[#234745] text-white shadow-sm'
+                    : 'bg-white text-[#234745] border border-[#EBE3D5] hover:bg-[#FDF0D5]'
+                }`}
+              >
+                {isEn ? '📦 25% Gift Boxes' : '📦 25% صناديق الهدايا'}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleFilterClick('chocolates40')}
+                className={`px-4 py-2 rounded-full text-[13px] font-bold transition-all cursor-pointer whitespace-nowrap ${
+                  activeFilter === 'chocolates40'
+                    ? 'bg-[#234745] text-white shadow-sm'
+                    : 'bg-white text-[#234745] border border-[#EBE3D5] hover:bg-[#FDF0D5]'
+                }`}
+              >
+                {isEn ? '🍫 40% Chocolate' : '🍫 خصم 40% شوكولاتة'}
+              </button>
+            </div>
+          </div>
+          {finalDisplayProducts.length > 0 ? (
             <div className="flex flex-row overflow-x-auto gap-4 md:grid md:grid-cols-4 md:gap-6 pb-4 md:pb-0 snap-x snap-mandatory hide-scrollbars">
-              {displayProducts.map((prod: any) => {
+              {finalDisplayProducts.map((prod: any) => {
                 const isSelected = isInWishlist(prod.id);
                 return (
                   <div key={prod.id} className="bg-white border border-[#EBE3D5] rounded-[24px] overflow-hidden flex flex-col justify-between hover:shadow-md transition-shadow relative group w-[220px] sm:w-[260px] md:w-auto flex-shrink-0 md:flex-shrink snap-start">

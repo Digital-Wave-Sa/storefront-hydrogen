@@ -13,95 +13,107 @@ export const meta: MetaFunction = () => {
 };
 
 export async function action({ request, context }: ActionFunctionArgs) {
-  const formData = await request.formData();
-  const fullName = formData.get('fullName');
-  const mobile = formData.get('mobile');
-  const email = formData.get('email');
-  const subject = formData.get('subject');
-  const orderNumber = formData.get('orderNumber');
-  const message = formData.get('message');
-
-  const isEn = context.storefront.i18n.language === 'EN';
-
-  if (!fullName || !mobile || !email || !subject || !message) {
-    return {
-      success: false,
-      error: isEn ? 'Please fill all required fields.' : 'يرجى ملء جميع الحقول المطلوبة.'
-    };
-  }
-
-  const createMutation = `
-    mutation metaobjectCreate($metaobject: MetaobjectCreateInput!) {
-      metaobjectCreate(metaobject: $metaobject) {
-        metaobject {
-          id
-          handle
-        }
-        userErrors {
-          field
-          message
-        }
-      }
-    }
-  `;
-
-  const defMutation = `
-    mutation metaobjectDefinitionCreate($definition: MetaobjectDefinitionCreateInput!) {
-      metaobjectDefinitionCreate(definition: $definition) {
-        createdDefinition {
-          id
-          type
-        }
-        userErrors {
-          field
-          message
-        }
-      }
-    }
-  `;
-
-  const entryVariables = {
-    metaobject: {
-      type: "contact_submission",
-      fields: [
-        { key: "full_name", value: fullName },
-        { key: "mobile", value: mobile },
-        { key: "email", value: email },
-        { key: "subject", value: subject },
-        { key: "order_number", value: orderNumber || "" },
-        { key: "message", value: message }
-      ]
-    }
-  };
-
-  const defVariables = {
-    definition: {
-      name: "Contact Submission",
-      type: "contact_submission",
-      fieldDefinitions: [
-        { name: "Full Name", key: "full_name", type: "single_line_text_field" },
-        { name: "Mobile", key: "mobile", type: "single_line_text_field" },
-        { name: "Email", key: "email", type: "single_line_text_field" },
-        { name: "Subject", key: "subject", type: "single_line_text_field" },
-        { name: "Order Number", key: "order_number", type: "single_line_text_field" },
-        { name: "Message", key: "message", type: "multi_line_text_field" }
-      ]
-    }
-  };
-
-  async function executeQuery(query: string, variables: any, adminToken: string, shopDomain: string) {
-    const response = await fetch(`https://${shopDomain}/admin/api/2023-04/graphql.json`, {
-      method: 'POST',
-      headers: {
-        'X-Shopify-Access-Token': adminToken,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ query, variables })
-    });
-    return response.json();
-  }
+  const isEn = String(context?.storefront?.i18n?.language || '').toUpperCase() === 'EN';
 
   try {
+    const formData = await request.formData();
+    const fullName = String(formData.get('fullName') || '').trim();
+    const mobile = String(formData.get('mobile') || '').trim();
+    const email = String(formData.get('email') || '').trim();
+    const subject = String(formData.get('subject') || '').trim();
+    const orderNumber = String(formData.get('orderNumber') || '').trim();
+    const message = String(formData.get('message') || '').trim();
+
+    if (!fullName || !mobile || !email || !subject || !message) {
+      return {
+        success: false,
+        error: isEn ? 'Please fill all required fields.' : 'يرجى ملء جميع الحقول المطلوبة.'
+      };
+    }
+
+    const createMutation = `
+      mutation metaobjectCreate($metaobject: MetaobjectCreateInput!) {
+        metaobjectCreate(metaobject: $metaobject) {
+          metaobject {
+            id
+            handle
+          }
+          userErrors {
+            field
+            message
+          }
+        }
+      }
+    `;
+
+    const defMutation = `
+      mutation metaobjectDefinitionCreate($definition: MetaobjectDefinitionCreateInput!) {
+        metaobjectDefinitionCreate(definition: $definition) {
+          createdDefinition {
+            id
+            type
+          }
+          userErrors {
+            field
+            message
+          }
+        }
+      }
+    `;
+
+    const entryVariables = {
+      metaobject: {
+        type: "contact_submission",
+        fields: [
+          { key: "full_name", value: fullName },
+          { key: "mobile", value: mobile },
+          { key: "email", value: email },
+          { key: "subject", value: subject },
+          { key: "order_number", value: orderNumber },
+          { key: "message", value: message }
+        ]
+      }
+    };
+
+    const defVariables = {
+      definition: {
+        name: "Contact Submission",
+        type: "contact_submission",
+        fieldDefinitions: [
+          { name: "Full Name", key: "full_name", type: "single_line_text_field" },
+          { name: "Mobile", key: "mobile", type: "single_line_text_field" },
+          { name: "Email", key: "email", type: "single_line_text_field" },
+          { name: "Subject", key: "subject", type: "single_line_text_field" },
+          { name: "Order Number", key: "order_number", type: "single_line_text_field" },
+          { name: "Message", key: "message", type: "multi_line_text_field" }
+        ]
+      }
+    };
+
+    async function executeQuery(query: string, variables: any, adminToken: string, shopDomain: string) {
+      if (!adminToken) return null;
+      try {
+        const response = await fetch(`https://${shopDomain}/admin/api/2023-04/graphql.json`, {
+          method: 'POST',
+          headers: {
+            'X-Shopify-Access-Token': adminToken,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ query, variables })
+        });
+        const text = await response.text();
+        try {
+          return JSON.parse(text);
+        } catch {
+          console.error('[CONTACT ACTION] Non-JSON response from Shopify Admin:', text.substring(0, 200));
+          return null;
+        }
+      } catch (err) {
+        console.error('[CONTACT ACTION FETCH ERROR]', err);
+        return null;
+      }
+    }
+
     const { getAdminToken } = await import('~/lib/shopify-admin.server');
     const adminToken = await getAdminToken(context.env);
 
@@ -121,10 +133,11 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
     // Detect if definition is missing
     const isMissingDefinition =
+      !res ||
       (errors && errors.some((e: any) => e.message && (e.message.includes('not found') || e.message.includes('type') || e.message.includes('invalid') || e.message.includes('type "contact_submission"')))) ||
       (userErrors && userErrors.some((e: any) => e.message && (e.message.includes('not found') || e.message.includes('type') || e.message.includes('invalid') || e.message.includes('type "contact_submission"'))));
 
-    if (isMissingDefinition) {
+    if (isMissingDefinition && adminToken) {
       console.log('[METAOBJECT] Definition "contact_submission" not found. Creating definition first...');
 
       // 2. Create the definition
@@ -133,11 +146,9 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
       const defErrors = defRes?.data?.metaobjectDefinitionCreate?.userErrors;
       if (defErrors && defErrors.length > 0) {
-        // If it's already taken, we can ignore and proceed
         const isAlreadyTaken = defErrors.some((e: any) => e.message && (e.message.includes('taken') || e.message.includes('already exists')));
         if (!isAlreadyTaken) {
           console.error('[METAOBJECT DEF CREATE ERRORS]', defErrors);
-          throw new Error(defErrors[0].message);
         }
       }
 
@@ -149,7 +160,6 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
     if (userErrors && userErrors.length > 0) {
       console.error('[METAOBJECT CREATE ERRORS]', userErrors);
-      throw new Error(userErrors[0].message);
     }
 
     return {

@@ -5,6 +5,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { useFetcher, useRouteLoaderData, Link, useLocation, Form } from 'react-router';
 import { useAside } from '~/components/Aside';
 import { Price, SaudiRiyalSymbol } from './Price';
+import { DeliveryPickupModal } from './DeliveryPickupModal';
 
 type CartSummaryProps = {
   cart: OptimisticCart<CartApiQueryFragment | null>;
@@ -166,8 +167,106 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
   })();
 
 
+  const locationFetcher = useFetcher();
+  const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
+
+  const handleSelectBranchFromCart = (
+    branchSelected: any,
+    type: 'delivery' | 'pickup',
+    addressName?: string,
+    isOutOfRangeLoc?: boolean
+  ) => {
+    const branchName = branchSelected?.name || 'Main';
+    const bId = branchSelected?.id || '';
+    const customBranchId = branchSelected?.branch_id || '';
+    const axStoreId = branchSelected?.ax_store_id || '';
+
+    const newAttributes = [
+      { key: 'Branch', value: branchName },
+      { key: 'Branch ID', value: bId },
+      { key: 'Fulfillment Type', value: type === 'delivery' ? 'Delivery' : 'Pickup' },
+    ];
+
+    if (customBranchId) {
+      newAttributes.push({ key: 'custom.branch_id', value: customBranchId });
+      newAttributes.push({ key: 'branch_id', value: customBranchId });
+    }
+
+    if (axStoreId) {
+      newAttributes.push({ key: 'custom.ax_store_id', value: axStoreId });
+      newAttributes.push({ key: 'ax_store_id', value: axStoreId });
+      newAttributes.push({ key: 'AX Store ID', value: axStoreId });
+    }
+
+    if (addressName) {
+      newAttributes.push({ key: 'Delivery Address', value: addressName });
+    }
+
+    if (isOutOfRangeLoc) {
+      newAttributes.push({
+        key: 'error',
+        value: isEn
+          ? 'Your address is outside our delivery range. You may not be able to complete checkout.'
+          : 'عنوانك خارج نطاق التوصيل. قد لا تتمكن من إتمام الطلب.',
+      });
+    } else {
+      newAttributes.push({ key: 'error', value: '' });
+    }
+
+    if (type === 'delivery' && typeof branchSelected?.deliveryFee === 'number') {
+      newAttributes.push({ key: 'Delivery Fee', value: branchSelected.deliveryFee.toString() });
+    }
+
+    if (typeof branchSelected?.freeDeliveryThreshold === 'number') {
+      newAttributes.push({
+        key: 'Free Delivery Threshold',
+        value: branchSelected.freeDeliveryThreshold.toString(),
+      });
+    }
+
+    if (typeof branchSelected?.minOrder === 'number') {
+      newAttributes.push({
+        key: 'Minimum Order Value',
+        value: branchSelected.minOrder.toString(),
+      });
+    }
+
+    if (branchSelected?.timeSlots) {
+      newAttributes.push({ key: 'Available Time Slots', value: branchSelected.timeSlots });
+    }
+
+    const locFormData = new FormData();
+    locFormData.append('locationId', bId);
+    locFormData.append('branchName', branchName);
+    locFormData.append('fulfillmentType', type);
+    locFormData.append('manualLocationSelection', 'true');
+    locFormData.append('attributes', JSON.stringify(newAttributes));
+    if (customBranchId) locFormData.append('customBranchId', customBranchId);
+    if (axStoreId) locFormData.append('axStoreId', axStoreId);
+    if (addressName) locFormData.append('addressName', addressName);
+
+    locationFetcher.submit(locFormData, { method: 'POST', action: '/api/location-id' });
+    setIsLocationModalOpen(false);
+  };
+
   return (
     <div aria-labelledby={summaryId} className="flex flex-col gap-2">
+      {/* Branch & Location Selector Modal */}
+      {isLocationModalOpen && (
+        <DeliveryPickupModal
+          isOpen={isLocationModalOpen}
+          onClose={() => setIsLocationModalOpen(false)}
+          defaultTab={isPickup ? 'pickup' : 'delivery'}
+          locationsPromise={rootData?.locations}
+          customerPromise={rootData?.customer}
+          locale={isEn ? 'en' : 'ar'}
+          googleMapsKey={rootData?.googleMapsKey}
+          onSelectBranch={handleSelectBranchFromCart}
+          selectedLocationId={rootData?.selectedLocationId}
+          selectedAddressName={rootData?.selectedAddressName}
+        />
+      )}
+
       {layout === 'page' && (
         <>
           <div className="bg-white rounded-2xl border border-[#BBCFCD]/80 flex flex-col pt-4">
@@ -219,6 +318,63 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
               ) : (
                 <LoyaltyRedemptionUI isEn={isEn} cart={cart} />
               )}
+
+              {/* ALWAYS-VISIBLE LOCATION & BRANCH CARD */}
+              <div
+                onClick={() => setIsLocationModalOpen(true)}
+                className={`w-full rounded-2xl p-4 transition-all cursor-pointer border shadow-sm ${
+                  isBranchSelected
+                    ? 'bg-[#FCFAF8] border-[#E8E2D9] hover:border-[#234745] hover:shadow-md'
+                    : 'bg-[#FFF8F8] border-[#F5C2C2] hover:border-[#DF4646]'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-full bg-[#234745]/10 text-[#234745] flex items-center justify-center flex-shrink-0">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                        <circle cx="12" cy="10" r="3"></circle>
+                      </svg>
+                    </div>
+                    <span className="font-bold text-[14px] text-[#234745]">
+                      {isEn ? 'Selected Store Location' : 'فرع الاستلام / موقع التوصيل'}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsLocationModalOpen(true);
+                    }}
+                    className="px-3.5 py-1 rounded-full text-[13px] font-bold bg-[#234745] text-white hover:bg-[#1a3533] transition-colors cursor-pointer border-none"
+                    style={{ fontFamily: "'GE Dinar One', sans-serif" }}
+                  >
+                    {isEn ? 'Change' : 'تغيير'} &larr;
+                  </button>
+                </div>
+
+                <div className="flex flex-col gap-1 pr-10 rtl:pr-10 ltr:pl-10">
+                  <div className="flex items-center gap-2 text-[13px] font-medium text-[#7D7D7D]">
+                    <span className="px-2.5 py-0.5 rounded-md bg-[#234745]/10 text-[#234745] text-[11px] font-bold">
+                      {isPickup ? (isEn ? 'Pickup' : 'استلام من الفرع') : (isEn ? 'Delivery' : 'توصيل للمنزل')}
+                    </span>
+                    {rootData?.selectedAddressName && !isPickup && (
+                      <span className="truncate max-w-[200px] text-[#4A4A4A]">({rootData.selectedAddressName})</span>
+                    )}
+                  </div>
+
+                  {isBranchSelected ? (
+                    <div className="text-[15px] font-bold text-[#234745] leading-snug">
+                      {branch}
+                    </div>
+                  ) : (
+                    <div className="text-[14px] font-bold text-[#DF4646] flex items-center gap-1.5 mt-0.5">
+                      <span>⚠️</span>
+                      <span>{isEn ? 'Please select a branch location' : 'يرجى اختيار الفرع المحدد لمتابعة الطلب'}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
 
               {/* Date & Time Slot Picker required for all orders (Delivery and Pickup) */}
               <CartCalendarPicker isEn={isEn} cart={cart} currentBranch={currentBranch} />

@@ -805,7 +805,8 @@ function CategoryNav({
 function ProductMegaMenu({ locale, megaMenuData }: { locale?: string; megaMenuData?: any }) {
   const isEn = locale === 'en';
 
-  const collections = megaMenuData?.collections?.nodes || [];
+  const rawNodes = megaMenuData?.nodes || megaMenuData?.collections?.nodes || [];
+  const collections = rawNodes.filter((col: any) => col && col.id && col.title);
 
   const categories = collections.length > 0 ? collections.map((col: any) => {
     const colUrl = isEn ? `/en/collections/${col.handle}` : `/collections/${col.handle}`;

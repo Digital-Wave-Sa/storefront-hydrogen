@@ -179,9 +179,16 @@ export async function action({ request, context }: ActionFunctionArgs) {
   }
 }
 
+export async function loader() {
+  return {};
+}
+
 export default function ContactPage() {
   const rootData = useRouteLoaderData('root') as any;
-  const isEn = rootData?.consent?.language?.toLowerCase() === 'en';
+  const isEn = Boolean(
+    rootData?.locale?.toLowerCase()?.startsWith('en') ||
+    rootData?.consent?.language?.toLowerCase() === 'en'
+  );
   const actionData = useActionData<typeof action>();
   const navigation = useNavigation();
   const isSubmitting = navigation.state === 'submitting';

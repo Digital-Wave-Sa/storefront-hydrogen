@@ -712,10 +712,10 @@ function ModalContent({
     const isEn = locale === 'en';
     const [zoom, setZoom] = useState(14);
 
-    const branches = rawBranchesProp.map((b: any) => ({
+    const branches = (rawBranchesProp && rawBranchesProp.length > 0 ? rawBranchesProp : FALLBACK_BRANCHES).map((b: any) => ({
         ...b,
-        status: (activeTab === 'pickup' && b.pickupStatus) ? b.pickupStatus : (b.deliveryStatus || b.status),
-        openUntil: (activeTab === 'pickup' && b.pickupOpenUntil) ? b.pickupOpenUntil : (b.deliveryOpenUntil || b.openUntil),
+        status: (activeTab === 'pickup' && b?.pickupStatus) ? b.pickupStatus : (b?.deliveryStatus || b?.status || 'open'),
+        openUntil: (activeTab === 'pickup' && b?.pickupOpenUntil) ? b.pickupOpenUntil : (b?.deliveryOpenUntil || b?.openUntil || ''),
     }));
 
     const customerObj = customer?.customer || customer || {};
@@ -724,13 +724,13 @@ function ModalContent({
     // Ensure the selected branch belongs to the active tab's domain
     let effectiveSelectedBranch = selectedBranch;
     if (activeTab === 'delivery') {
-        let isValidAddress = addresses.some((a: any) => a.id === selectedBranch);
+        let isValidAddress = addresses.some((a: any) => a?.id === selectedBranch);
         
         // If we have a selectedAddressName from session but selectedBranch is a Store Location ID
         if (!isValidAddress && selectedAddressName) {
             const matchedAddress = addresses.find((a: any) => 
-                selectedAddressName.includes(a.address1) || 
-                selectedAddressName.includes(a.firstName)
+                (a?.address1 && selectedAddressName.includes(a.address1)) || 
+                (a?.firstName && selectedAddressName.includes(a.firstName))
             );
             if (matchedAddress) {
                 effectiveSelectedBranch = matchedAddress.id;
@@ -740,15 +740,15 @@ function ModalContent({
         
         if (!isValidAddress) effectiveSelectedBranch = addresses[0]?.id || '';
     } else {
-        const isValidBranch = branches.some((b: any) => b.id === selectedBranch && !b.hideFromStorefront);
+        const isValidBranch = branches.some((b: any) => b?.id === selectedBranch && !b?.hideFromStorefront);
         if (!isValidBranch) {
-            const firstActiveBranch = branches.find((b: any) => !b.hideFromStorefront);
+            const firstActiveBranch = branches.find((b: any) => !b?.hideFromStorefront);
             effectiveSelectedBranch = firstActiveBranch?.id || branches[0]?.id || '';
         }
     }
 
-    const currentAddress = activeTab === 'delivery' ? addresses.find((a: any) => a.id === effectiveSelectedBranch) : null;
-    const currentBranch = branches.find((b: any) => b.id === effectiveSelectedBranch) || branches[0];
+    const currentAddress = activeTab === 'delivery' ? addresses.find((a: any) => a?.id === effectiveSelectedBranch) : null;
+    const currentBranch = branches.find((b: any) => b?.id === effectiveSelectedBranch) || branches[0] || FALLBACK_BRANCHES[0];
     const isUserAddressSelected = activeTab === 'delivery' && !!currentAddress;
 
     const [hasAutoSelected, setHasAutoSelected] = useState(false);
@@ -783,10 +783,12 @@ function ModalContent({
     const getMapUrl = () => {
         if (isUserAddressSelected && currentAddress) {
             // Geocode by address string for user addresses
-            const query = encodeURIComponent(`${currentAddress.address1}, ${currentAddress.city}, SA`);
-            return `https://www.google.com/maps/embed/v1/place?key=${googleMapsKey}&q=${query}&zoom=16`;
+            const query = encodeURIComponent(`${currentAddress.address1 || ''}, ${currentAddress.city || ''}, SA`);
+            return `https://www.google.com/maps/embed/v1/place?key=${googleMapsKey || ''}&q=${query}&zoom=16`;
         }
-        return `https://www.google.com/maps/embed/v1/place?key=${googleMapsKey}&q=${currentBranch.lat},${currentBranch.lng}&zoom=${zoom}`;
+        const lat = currentBranch?.lat || 24.7136;
+        const lng = currentBranch?.lng || 46.6753;
+        return `https://www.google.com/maps/embed/v1/place?key=${googleMapsKey || ''}&q=${lat},${lng}&zoom=${zoom}`;
     };
 
     const mapUrl = getMapUrl();

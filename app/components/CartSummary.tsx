@@ -100,7 +100,8 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
 
   const minOrderMeta = currentBranch?.min_order_value || currentBranch?.metafields?.find((m: any) => m?.key === 'minimum_order_value');
   const minOrderAttr = attributes.find((a: any) => a.key.toLowerCase().trim() === 'minimum order value')?.value;
-  const minOrderValue = minOrderAttr ? parseFloat(minOrderAttr) : (minOrderMeta?.value ? parseFloat(minOrderMeta.value) : 50);
+  // Use specified branch minimum_order_value or fallback to 0 (no hardcoded 50 fallback)
+  const minOrderValue = minOrderAttr ? parseFloat(minOrderAttr) : (minOrderMeta?.value ? parseFloat(minOrderMeta.value) : (typeof currentBranch?.minOrder === 'number' ? currentBranch.minOrder : 0));
   const isMinOrderMet = subtotal >= minOrderValue;
   const thresholdMeta = currentBranch?.free_delivery_threshold || currentBranch?.metafields?.find((m: any) => m?.key === 'free_delivery_threshold');
   const feeMeta = currentBranch?.delivery_fee || currentBranch?.metafields?.find((m: any) => m?.key === 'delivery_fee');

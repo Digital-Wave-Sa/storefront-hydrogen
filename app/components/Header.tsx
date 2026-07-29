@@ -748,6 +748,7 @@ const STATIC_NAV_AR = [
   { title: 'المناسبات', url: '/occasions' },
   { title: 'الهدايا', url: '/gifting' },
   { title: 'الكيك المخصص', url: '/custom-cake' },
+  { title: 'القسائم', url: '/vouchers' },
   { title: 'العروض', url: '/promotions' },
 ];
 
@@ -757,6 +758,7 @@ const STATIC_NAV_EN = [
   { title: 'Occasions', url: '/en/occasions' },
   { title: 'Gifts', url: '/en/gifting' },
   { title: 'Custom Cake', url: '/en/custom-cake' },
+  { title: 'Vouchers', url: '/en/vouchers' },
   { title: 'Offers', url: '/en/promotions' },
 ];
 

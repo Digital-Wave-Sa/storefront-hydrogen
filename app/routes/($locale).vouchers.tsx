@@ -583,7 +583,7 @@ export default function VouchersPage() {
               expiryTextAr: 'تنتهي 31 ديسمبر 2026 . الحد الادنى 150 رس',
               expiryTextEn: 'Expires Dec 31, 2026 . Min spend 150 SAR',
             },
-          ]).map((v, index) => {
+          ]).slice(0, 3).map((v, index) => {
             const themeIndex = index % 3;
             const themes = [
               {

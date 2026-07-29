@@ -72,11 +72,31 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
 
   // Dynamic Settings from Metafields
   const locations = rootData?.locations?.locations?.nodes || rootData?.locations?.nodes || [];
-  // Try matching by ID first (more reliable), then fallback to name
-  const currentBranch = locations.find((loc: any) =>
-    (branchId && loc.id === branchId) ||
-    (branch && loc.name === branch)
-  );
+  // Match by numerical ID or full GID, then fallback to English or Arabic name matching
+  const currentBranch = locations.find((loc: any) => {
+    if (!loc) return false;
+    const locId = String(loc.id || '');
+    const numId = locId.split('/').pop();
+    const targetBranchId = String(branchId || '').split('/').pop();
+
+    const locName = String(loc.name || '').toLowerCase().trim();
+    const locArabicName = String(
+      loc.name_in_arabic?.value || loc.name_in_arabic || loc.metafields?.find((m: any) => m?.key === 'name_in_arabic')?.value || ''
+    ).toLowerCase().trim();
+    const searchBranch = String(branch || '').toLowerCase().trim();
+
+    return (
+      (targetBranchId && (locId === branchId || numId === targetBranchId)) ||
+      (searchBranch && (
+        locName === searchBranch ||
+        locArabicName === searchBranch ||
+        (locName && searchBranch.includes(locName)) ||
+        (locArabicName && searchBranch.includes(locArabicName)) ||
+        (locName && locName.includes(searchBranch)) ||
+        (locArabicName && locArabicName.includes(searchBranch))
+      ))
+    );
+  });
 
   const minOrderMeta = currentBranch?.min_order_value || currentBranch?.metafields?.find((m: any) => m?.key === 'minimum_order_value');
   const minOrderAttr = attributes.find((a: any) => a.key.toLowerCase().trim() === 'minimum order value')?.value;

@@ -192,6 +192,13 @@ export default function VouchersPage() {
   const isEn = pathname.startsWith('/en/') || pathname === '/en';
   const { shopifyVouchers = [] } = useLoaderData<typeof loader>() || {};
 
+  const [activeTab, setActiveTab] = useState<'active' | 'used' | 'expired'>('active');
+  const [voucherCodeInput, setVoucherCodeInput] = useState('');
+  const [balanceCheckInput, setBalanceCheckInput] = useState('');
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [appliedVoucherSuccess, setAppliedVoucherSuccess] = useState<string | null>(null);
+  const [balanceResult, setBalanceResult] = useState<string | null>(null);
+
   const activeVouchers = shopifyVouchers.filter((v) => v.status === 'active');
   const usedVouchers = shopifyVouchers.filter((v) => v.status === 'used');
   const expiredVouchers = shopifyVouchers.filter((v) => v.status === 'expired');

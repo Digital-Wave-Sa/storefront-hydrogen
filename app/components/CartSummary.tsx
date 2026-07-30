@@ -120,18 +120,19 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
   const isFreeDelivery = cartHasFreeShippingCode || (hasExplicitThreshold && threshold > 0 && subtotal >= threshold);
   
   const feeAttribute = attributes.find((a: any) => a.key.toLowerCase().trim() === 'delivery fee')?.value;
+  const feeAttrVal = feeAttribute ? parseFloat(feeAttribute) : null;
   
-  const rawDeliveryFee = feeAttribute
-    ? parseFloat(feeAttribute)
-    : (feeMeta?.value
+  const rawDeliveryFee = (typeof feeAttrVal === 'number' && !isNaN(feeAttrVal) && feeAttrVal > 0)
+    ? feeAttrVal
+    : (feeMeta?.value && parseFloat(feeMeta.value) > 0
         ? parseFloat(feeMeta.value)
-        : (typeof currentBranch?.delivery_fee === 'number'
+        : (typeof currentBranch?.delivery_fee === 'number' && currentBranch.delivery_fee > 0
             ? currentBranch.delivery_fee
-            : (typeof currentBranch?.delivery_fee?.value === 'string'
+            : (typeof currentBranch?.delivery_fee?.value === 'string' && parseFloat(currentBranch.delivery_fee.value) > 0
                 ? parseFloat(currentBranch.delivery_fee.value)
-                : (typeof currentBranch?.baseDeliveryFee === 'number'
+                : (typeof currentBranch?.baseDeliveryFee === 'number' && currentBranch.baseDeliveryFee > 0
                     ? currentBranch.baseDeliveryFee
-                    : (typeof currentBranch?.deliveryFee === 'number'
+                    : (typeof currentBranch?.deliveryFee === 'number' && currentBranch.deliveryFee > 0
                         ? currentBranch.deliveryFee
                         : 20)))));
 

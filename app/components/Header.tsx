@@ -66,8 +66,15 @@ export function Header({ header, isLoggedIn, cart, locations, customer, locale, 
       attributes.push({ key: 'error', value: '' }); // clear error
     }
 
-    if (type === 'delivery' && typeof branch?.deliveryFee === 'number') {
-      attributes.push({ key: 'Delivery Fee', value: branch.deliveryFee.toString() });
+    if (type === 'delivery') {
+      const calculatedFee = (typeof branch?.deliveryFee === 'number' && branch.deliveryFee > 0)
+        ? branch.deliveryFee
+        : (typeof branch?.baseDeliveryFee === 'number' && branch.baseDeliveryFee > 0)
+          ? branch.baseDeliveryFee
+          : (typeof branch?.delivery_fee === 'number' && branch.delivery_fee > 0)
+            ? branch.delivery_fee
+            : 20;
+      attributes.push({ key: 'Delivery Fee', value: calculatedFee.toString() });
     }
 
     if (typeof branch?.freeDeliveryThreshold === 'number' && branch.freeDeliveryThreshold > 0 && branch.freeDeliveryThreshold !== 300) {

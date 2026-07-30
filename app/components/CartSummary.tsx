@@ -117,27 +117,22 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
   // Free delivery applies ONLY if freeshipping code is active or if explicit branch threshold exists and subtotal >= threshold
   const isFreeDelivery = cartHasFreeShippingCode || (hasExplicitThreshold && threshold > 0 && subtotal >= threshold);
   
-  const shopifyDeliveryGroupOption = cart?.deliveryGroups?.nodes?.[0]?.selectedDeliveryOption || cart?.deliveryGroups?.nodes?.[0]?.deliveryOptions?.[0];
-  const shopifyLocalDeliveryFee = shopifyDeliveryGroupOption?.price?.amount ? parseFloat(shopifyDeliveryGroupOption.price.amount) : null;
-
   const feeAttribute = attributes.find((a: any) => a.key.toLowerCase().trim() === 'delivery fee')?.value;
   const isPickup = fulfillmentType?.toLowerCase() === 'pickup';
   
-  const rawDeliveryFee = typeof shopifyLocalDeliveryFee === 'number'
-    ? shopifyLocalDeliveryFee
-    : (feeAttribute
-        ? parseFloat(feeAttribute)
-        : (feeMeta?.value
-            ? parseFloat(feeMeta.value)
-            : (typeof currentBranch?.delivery_fee === 'number'
-                ? currentBranch.delivery_fee
-                : (typeof currentBranch?.delivery_fee?.value === 'string'
-                    ? parseFloat(currentBranch.delivery_fee.value)
-                    : (typeof currentBranch?.baseDeliveryFee === 'number'
-                        ? currentBranch.baseDeliveryFee
-                        : (typeof currentBranch?.deliveryFee === 'number'
-                            ? currentBranch.deliveryFee
-                            : 20))))));
+  const rawDeliveryFee = feeAttribute
+    ? parseFloat(feeAttribute)
+    : (feeMeta?.value
+        ? parseFloat(feeMeta.value)
+        : (typeof currentBranch?.delivery_fee === 'number'
+            ? currentBranch.delivery_fee
+            : (typeof currentBranch?.delivery_fee?.value === 'string'
+                ? parseFloat(currentBranch.delivery_fee.value)
+                : (typeof currentBranch?.baseDeliveryFee === 'number'
+                    ? currentBranch.baseDeliveryFee
+                    : (typeof currentBranch?.deliveryFee === 'number'
+                        ? currentBranch.deliveryFee
+                        : 20)))));
 
   const deliveryFee = (isFreeDelivery || isPickup) ? 0 : rawDeliveryFee;
   const subtotalAmount = parseFloat(cart?.cost?.subtotalAmount?.amount || cart?.cost?.totalAmount?.amount || '0');

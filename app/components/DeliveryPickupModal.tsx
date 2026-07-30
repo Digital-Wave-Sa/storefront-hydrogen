@@ -384,7 +384,7 @@ export function parseLocationToBranch(node: any, isEn: boolean = false): Branch 
         baseDeliveryFee: getMeta('delivery_fee', 0),
         perKmRate: getMeta('per_km_rate', 0),
         timeSlots: getMeta('time_slots', ''),
-        freeDeliveryThreshold: getMeta('free_delivery_threshold', 300),
+        freeDeliveryThreshold: getMeta('free_delivery_threshold', 0),
         hoursFrom: (node as any).working_hours_from?.value || node.metafields?.find((m: any) => m?.key === 'working_hours_from')?.value,
         hoursTo: (node as any).working_hours_to?.value || node.metafields?.find((m: any) => m?.key === 'working_hours_to')?.value,
         hoursFromShift2: (node as any).working_hours_from_shift2?.value || node.metafields?.find((m: any) => m?.key === 'working_hours_from_shift2')?.value,

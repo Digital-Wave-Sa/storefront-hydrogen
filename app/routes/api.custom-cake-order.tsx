@@ -1,5 +1,6 @@
 import { type ActionFunctionArgs, type LoaderFunctionArgs } from 'react-router';
 import { adminApiQuery } from '../lib/admin.server';
+import { getAdminToken, getAdminDomain } from '~/lib/shopify-admin.server';
 
 /**
  * GET /api/custom-cake-order — Returns 405
@@ -256,15 +257,16 @@ function getClosestPriceAndSku(targetPrice: number): PriceSkuMapping {
 export async function action({ request, context }: ActionFunctionArgs) {
   try {
     const env = context.env as any;
-    const rawShop = env.SHOPIFY_SHOP || env.PUBLIC_STORE_DOMAIN || 'the-beauty-secrets-ksa';
-    const shopDomain = rawShop.includes('myshopify.com') ? rawShop : `${rawShop.split('.')[0]}.myshopify.com`;
+    const shopDomain = getAdminDomain(env);
+    const token = await getAdminToken(env);
 
-    const potentialTokens = [
-      env.SHOPIFY_ADMIN_API_ACCESS_TOKENS,
-      env.SHOPIFY_ADMIN_API_ACCESS_TOKEN,
-      env.PRIVATE_STOREFRONT_API_TOKEN,
-    ].filter(Boolean) as string[];
-    console.log('[DEBUG] Potential tokens:', potentialTokens.map(t => t.substring(0, 15) + '...'));
+    if (!shopDomain || !token) {
+      console.error('[Custom Cake Order] Missing admin domain or token');
+      return Response.json(
+        { error: 'Server configuration error. Missing Admin API credentials.' },
+        { status: 500 }
+      );
+    }
 
     let body: any;
     try {
@@ -312,7 +314,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
                 }
               }
             `;
-            const searchRes = await adminApiQuery(shopDomain, potentialTokens[0], searchMutation, {
+            const searchRes = await adminApiQuery(shopDomain, token, searchMutation, {
               query: `phone:${cleanPhone}`
             }) as any;
 
@@ -394,129 +396,113 @@ export async function action({ request, context }: ActionFunctionArgs) {
       }
     `;
 
-    const allErrors: any[] = [];
-
-    for (const token of potentialTokens) {
-      try {
-        let finalImageAttr = uploadedImage ? 'Yes (Processing Upload...)' : null;
-        let previewImageAttr = cakePreviewImage ? 'Yes (Processing Upload...)' : null;
-        
-        // If there's a base64 image payload, upload it to Shopify Files first
-        if (uploadedImage && uploadedImage.startsWith('data:image')) {
-          const shopifyFileUrl = await uploadImageToShopify(shopDomain, token, uploadedImage);
-          if (shopifyFileUrl) {
-            finalImageAttr = shopifyFileUrl;
-          } else {
-            finalImageAttr = 'Yes (Upload Failed - Base64 provided but not saved)';
-          }
-        }
-        
-        // Upload the 3D Cake Preview screenshot
-        if (cakePreviewImage && cakePreviewImage.startsWith('data:image')) {
-          const shopifyPreviewUrl = await uploadImageToShopify(shopDomain, token, cakePreviewImage);
-          if (shopifyPreviewUrl) {
-            previewImageAttr = shopifyPreviewUrl;
-          } else {
-            previewImageAttr = 'Yes (Upload Failed - Base64 provided but not saved)';
-          }
-        }
-
-        // Get the closest SKU category mapping from the excel sheet definition
-        const closestMapping = getClosestPriceAndSku(priceNum);
-        const displayPrice = Number.isInteger(priceNum) ? priceNum : priceNum.toFixed(2);
-        const resolvedTitle = `طلبية خاصة فئة ${displayPrice} ريال`;
-
-        // Resolve the actual variant ID from Shopify using the SKU to support Local Pickup
-        let variantId: string | null = null;
-        try {
-          const findVariantQuery = `
-            query findVariantBySku($query: String!) {
-              productVariants(first: 1, query: $query) {
-                nodes {
-                  id
-                }
-              }
-            }
-          `;
-          const findVariantRes = await adminApiQuery(shopDomain, token, findVariantQuery, {
-            query: `sku:${closestMapping.sku}`
-          }) as any;
-          const resolvedVar = findVariantRes?.data?.productVariants?.nodes?.[0];
-          if (resolvedVar?.id) {
-            variantId = resolvedVar.id;
-            console.log(`[Custom Cake] Resolved catalog variant ID ${variantId} for SKU ${closestMapping.sku}`);
-          } else {
-            console.warn(`[Custom Cake] No catalog variant found for SKU ${closestMapping.sku}`);
-          }
-        } catch (variantErr) {
-          console.error(`[Custom Cake] Failed to resolve variant for SKU ${closestMapping.sku}:`, variantErr);
-        }
-
-        // Update the custom attributes with the final image URL or status
-        const draftOrderInput: any = {
-          lineItems: [
-            {
-              ...(variantId ? { variantId } : {}),
-              title: resolvedTitle,
-              sku: closestMapping.sku,
-              quantity: 1,
-              originalUnitPrice: priceNum.toFixed(2),
-              requiresShipping: true,
-              customAttributes: [
-                ...customAttributes,
-                ...(finalImageAttr ? [{ key: isEn ? 'Printed Image URL' : 'رابط صورة الطباعة', value: finalImageAttr }] : []),
-                ...(previewImageAttr ? [{ key: isEn ? 'Cake Preview Image' : 'صورة شكل الكيكة ثلاثية الأبعاد', value: previewImageAttr }] : [])
-              ],
-            },
-          ],
-          note: description,
-          tags: ['custom-cake', 'cake-builder'],
-          taxExempt: true,
-        };
-
-        if (customerId) {
-          draftOrderInput.customerId = customerId;
-        }
-        if (customerEmail) {
-          draftOrderInput.email = customerEmail;
-        }
-
-        const result = await adminApiQuery(shopDomain, token, mutation, {
-          input: draftOrderInput,
-        }) as any;
-
-
-
-        const draftOrder = result?.data?.draftOrderCreate?.draftOrder;
-        const userErrors = result?.data?.draftOrderCreate?.userErrors;
-
-        if (result.errors?.length) {
-          console.error(`[Custom Cake] API error (${token.substring(0, 10)}):`, JSON.stringify(result.errors));
-          allErrors.push({ type: 'graphql_error', errors: result.errors });
-          continue;
-        }
-
-        if (userErrors?.length) {
-          console.error(`[Custom Cake] User errors (${token.substring(0, 10)}):`, JSON.stringify(userErrors));
-          allErrors.push({ type: 'user_error', errors: userErrors });
-          continue;
-        }
-
-        if (draftOrder?.invoiceUrl) {
-          console.log(`[Custom Cake] ✅ Draft order created: ${draftOrder.id}`);
-          return Response.json({
-            success: true,
-            checkoutUrl: draftOrder.invoiceUrl,
-            draftOrderId: draftOrder.id,
-          });
-        }
-      } catch (e: any) {
-        console.error(`[Custom Cake] Exception (${token.substring(0, 10)}):`, e.message || e);
-        allErrors.push({ type: 'exception', error: e.message || String(e) });
+    let finalImageAttr = uploadedImage ? 'Yes (Processing Upload...)' : null;
+    let previewImageAttr = cakePreviewImage ? 'Yes (Processing Upload...)' : null;
+    
+    // If there's a base64 image payload, upload it to Shopify Files first
+    if (uploadedImage && uploadedImage.startsWith('data:image')) {
+      const shopifyFileUrl = await uploadImageToShopify(shopDomain, token, uploadedImage);
+      if (shopifyFileUrl) {
+        finalImageAttr = shopifyFileUrl;
+      } else {
+        finalImageAttr = 'Yes (Upload Failed - Base64 provided but not saved)';
+      }
+    }
+    
+    // Upload the 3D Cake Preview screenshot
+    if (cakePreviewImage && cakePreviewImage.startsWith('data:image')) {
+      const shopifyPreviewUrl = await uploadImageToShopify(shopDomain, token, cakePreviewImage);
+      if (shopifyPreviewUrl) {
+        previewImageAttr = shopifyPreviewUrl;
+      } else {
+        previewImageAttr = 'Yes (Upload Failed - Base64 provided but not saved)';
       }
     }
 
-    // console.error('FAILED TO CREATE DRAFT ORDER. ERRORS:', JSON.stringify(allErrors, null, 2));
+    // Get the closest SKU category mapping from the excel sheet definition
+    const closestMapping = getClosestPriceAndSku(priceNum);
+    const displayPrice = Number.isInteger(priceNum) ? priceNum : priceNum.toFixed(2);
+    const resolvedTitle = `طلبية خاصة فئة ${displayPrice} ريال`;
+
+    // Resolve the actual variant ID from Shopify using the SKU to support Local Pickup
+    let variantId: string | null = null;
+    try {
+      const findVariantQuery = `
+        query findVariantBySku($query: String!) {
+          productVariants(first: 1, query: $query) {
+            nodes {
+              id
+            }
+          }
+        }
+      `;
+      const findVariantRes = await adminApiQuery(shopDomain, token, findVariantQuery, {
+        query: `sku:${closestMapping.sku}`
+      }) as any;
+      const resolvedVar = findVariantRes?.data?.productVariants?.nodes?.[0];
+      if (resolvedVar?.id) {
+        variantId = resolvedVar.id;
+        console.log(`[Custom Cake] Resolved catalog variant ID ${variantId} for SKU ${closestMapping.sku}`);
+      } else {
+        console.warn(`[Custom Cake] No catalog variant found for SKU ${closestMapping.sku}`);
+      }
+    } catch (variantErr) {
+      console.error(`[Custom Cake] Failed to resolve variant for SKU ${closestMapping.sku}:`, variantErr);
+    }
+
+    // Update the custom attributes with the final image URL or status
+    const draftOrderInput: any = {
+      lineItems: [
+        {
+          ...(variantId ? { variantId } : {}),
+          title: resolvedTitle,
+          sku: closestMapping.sku,
+          quantity: 1,
+          originalUnitPrice: priceNum.toFixed(2),
+          requiresShipping: true,
+          customAttributes: [
+            ...customAttributes,
+            ...(finalImageAttr ? [{ key: isEn ? 'Printed Image URL' : 'رابط صورة الطباعة', value: finalImageAttr }] : []),
+            ...(previewImageAttr ? [{ key: isEn ? 'Cake Preview Image' : 'صورة شكل الكيكة ثلاثية الأبعاد', value: previewImageAttr }] : [])
+          ],
+        },
+      ],
+      note: description,
+      tags: ['custom-cake', 'cake-builder'],
+      taxExempt: true,
+    };
+
+    if (customerId) {
+      draftOrderInput.customerId = customerId;
+    }
+    if (customerEmail) {
+      draftOrderInput.email = customerEmail;
+    }
+
+    const result = await adminApiQuery(shopDomain, token, mutation, {
+      input: draftOrderInput,
+    }) as any;
+
+    const draftOrder = result?.data?.draftOrderCreate?.draftOrder;
+    const userErrors = result?.data?.draftOrderCreate?.userErrors;
+
+    if (result.errors?.length) {
+      console.error('[Custom Cake] API error:', JSON.stringify(result.errors));
+    }
+
+    if (userErrors?.length) {
+      console.error('[Custom Cake] User errors:', JSON.stringify(userErrors));
+    }
+
+    if (draftOrder?.invoiceUrl) {
+      console.log(`[Custom Cake] ✅ Draft order created: ${draftOrder.id}`);
+      return Response.json({
+        success: true,
+        checkoutUrl: draftOrder.invoiceUrl,
+        draftOrderId: draftOrder.id,
+      });
+    }
+
     return Response.json(
       { error: isEn ? 'Failed to create order. Please try again or contact us.' : 'فشل في إنشاء الطلب. يرجى المحاولة مرة أخرى أو التواصل معنا.' },
       { status: 500 }

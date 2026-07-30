@@ -1,5 +1,7 @@
-import { useState } from 'react';
-import { useLocation, Link, useLoaderData, type LoaderFunctionArgs, type MetaFunction } from 'react-router';
+import { useState, useEffect } from 'react';
+import { useLocation, Link, useLoaderData, useFetcher, type LoaderFunctionArgs, type MetaFunction } from 'react-router';
+import { CartForm } from '@shopify/hydrogen';
+import { useAside } from '~/components/Aside';
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
   const isEn = data?.lang === 'en';
@@ -192,12 +194,17 @@ export default function VouchersPage() {
   const isEn = pathname.startsWith('/en/') || pathname === '/en';
   const { shopifyVouchers = [] } = useLoaderData<typeof loader>() || {};
 
+  const cartFetcher = useFetcher<any>();
+  const { open } = useAside();
+
   const [activeTab, setActiveTab] = useState<'active' | 'used' | 'expired'>('active');
   const [voucherCodeInput, setVoucherCodeInput] = useState('');
   const [balanceCheckInput, setBalanceCheckInput] = useState('');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [appliedVoucherSuccess, setAppliedVoucherSuccess] = useState<string | null>(null);
+  const [appliedVoucherError, setAppliedVoucherError] = useState<string | null>(null);
   const [balanceResult, setBalanceResult] = useState<string | null>(null);
+  const [lastAppliedCode, setLastAppliedCode] = useState<string>('');
 
   const activeVouchers = shopifyVouchers.filter((v) => v.status === 'active');
   const usedVouchers = shopifyVouchers.filter((v) => v.status === 'used');
@@ -206,6 +213,52 @@ export default function VouchersPage() {
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3000);
+  };
+
+  useEffect(() => {
+    if (cartFetcher.state === 'idle' && cartFetcher.data) {
+      if (cartFetcher.data.error) {
+        setAppliedVoucherError(cartFetcher.data.error);
+        setAppliedVoucherSuccess(null);
+      } else {
+        setAppliedVoucherError(null);
+        const code = lastAppliedCode.toUpperCase();
+        setAppliedVoucherSuccess(
+          isEn
+            ? `Voucher "${code}" applied successfully to your cart!`
+            : `تم تطبيق القسيمة "${code}" بنجاح على سلتك!`
+        );
+        showToast(isEn ? 'Voucher code applied to cart!' : 'تم تطبيق القسيمة على السلة!');
+        open('cart');
+      }
+    }
+  }, [cartFetcher.state, cartFetcher.data]);
+
+  const applyCodeToCart = (codeToApply: string) => {
+    const codeClean = codeToApply.trim();
+    if (!codeClean) return;
+
+    const isAlreadyUsed = usedVouchers.some((v) => v.code.toLowerCase() === codeClean.toLowerCase());
+    if (isAlreadyUsed) {
+      setAppliedVoucherSuccess(null);
+      setAppliedVoucherError(
+        isEn
+          ? `Voucher "${codeClean.toUpperCase()}" has already been used by your account.`
+          : `لقد قمت باستخدام القسيمة "${codeClean.toUpperCase()}" سابقاً.`
+      );
+      return;
+    }
+
+    setLastAppliedCode(codeClean);
+    setAppliedVoucherError(null);
+
+    cartFetcher.submit(
+      {
+        action: CartForm.ACTIONS.DiscountCodesUpdate,
+        inputs: JSON.stringify({ discountCode: codeClean, discountCodes: [] }),
+      },
+      { method: 'post', action: isEn ? '/en/cart' : '/cart' }
+    );
   };
 
   const handleCopyCode = (code: string) => {
@@ -217,22 +270,7 @@ export default function VouchersPage() {
 
   const handleApplyVoucher = (e: React.FormEvent) => {
     e.preventDefault();
-    const codeClean = voucherCodeInput.trim();
-    if (!codeClean) return;
-
-    const isAlreadyUsed = usedVouchers.some((v) => v.code.toLowerCase() === codeClean.toLowerCase());
-    if (isAlreadyUsed) {
-      setAppliedVoucherSuccess(null);
-      showToast(isEn ? `Voucher "${codeClean.toUpperCase()}" has already been used by your account.` : `لقد قمت باستخدام القسيمة "${codeClean.toUpperCase()}" سابقاً.`);
-      return;
-    }
-
-    setAppliedVoucherSuccess(
-      isEn
-        ? `Voucher "${codeClean.toUpperCase()}" validated successfully! Applied to your cart.`
-        : `تم التحقق من القسيمة "${codeClean.toUpperCase()}" بنجاح! تم التطبيق على سلتك.`
-    );
-    showToast(isEn ? 'Voucher code applied!' : 'تم تطبيق كود القسيمة!');
+    applyCodeToCart(voucherCodeInput);
   };
 
   const handleCheckBalance = (e: React.FormEvent) => {
@@ -857,8 +895,9 @@ export default function VouchersPage() {
                       {isActiveState && (
                         <button
                           type="button"
-                          onClick={() => handleCopyCode(v.code)}
-                          className="hover:opacity-90 transition-all shadow-sm active:scale-95 border-none cursor-pointer"
+                          disabled={cartFetcher.state !== 'idle'}
+                          onClick={() => applyCodeToCart(v.code)}
+                          className="hover:opacity-90 transition-all shadow-sm active:scale-95 border-none cursor-pointer disabled:opacity-50"
                           style={{
                             color: '#FFFFFF',
                             fontFamily: "'GE Dinar One', 'GE SS Two', sans-serif",
@@ -878,7 +917,9 @@ export default function VouchersPage() {
                             textDecoration: 'none',
                           }}
                         >
-                          {isEn ? 'Use Now' : 'إستخدم الان'}
+                          {cartFetcher.state !== 'idle' && lastAppliedCode === v.code
+                            ? (isEn ? 'Applying...' : 'جاري التطبيق...')
+                            : (isEn ? 'Use Now' : 'إستخدم الان')}
                         </button>
                       )}
                     </div>
@@ -908,10 +949,11 @@ export default function VouchersPage() {
               <div dir="ltr" className="relative flex items-center">
                 <button
                   type="submit"
-                  className="absolute left-1.5 h-[42px] px-6 bg-[#234745] hover:bg-[#1A3533] text-white font-bold text-[14px] rounded-[12px] transition-all z-10 shadow-sm"
+                  disabled={cartFetcher.state !== 'idle' || !voucherCodeInput.trim()}
+                  className="absolute left-1.5 h-[42px] px-6 bg-[#234745] hover:bg-[#1A3533] text-white font-bold text-[14px] rounded-[12px] transition-all z-10 shadow-sm disabled:opacity-50"
                   style={{ fontFamily: "'GE Dinar One', 'GE SS Two', sans-serif" }}
                 >
-                  {isEn ? 'Apply' : 'تطبيق'}
+                  {cartFetcher.state !== 'idle' ? (isEn ? 'Applying...' : 'جاري التطبيق...') : (isEn ? 'Apply' : 'تطبيق')}
                 </button>
                 <input
                   type="text"
@@ -926,6 +968,12 @@ export default function VouchersPage() {
               {appliedVoucherSuccess && (
                 <p className="text-[12px] text-emerald-700 bg-emerald-50 p-3 rounded-xl border border-emerald-200 font-medium">
                   {appliedVoucherSuccess}
+                </p>
+              )}
+
+              {appliedVoucherError && (
+                <p className="text-[12px] text-red-600 bg-red-50 p-3 rounded-xl border border-red-200 font-medium">
+                  {appliedVoucherError}
                 </p>
               )}
 

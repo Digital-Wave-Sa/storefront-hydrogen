@@ -98,10 +98,12 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
     );
   });
 
+  const isPickup = fulfillmentType?.toLowerCase() === 'pickup';
   const minOrderMeta = currentBranch?.min_order_value || currentBranch?.metafields?.find((m: any) => m?.key === 'minimum_order_value');
   const minOrderAttr = attributes.find((a: any) => a.key.toLowerCase().trim() === 'minimum order value')?.value;
-  // Use specified branch minimum_order_value or fallback to 0 (no hardcoded 50 fallback)
-  const minOrderValue = minOrderAttr ? parseFloat(minOrderAttr) : (minOrderMeta?.value ? parseFloat(minOrderMeta.value) : (typeof currentBranch?.minOrder === 'number' ? currentBranch.minOrder : 0));
+  // Minimum order value only applies to Delivery, NOT to store Pickup
+  const rawMinOrderValue = minOrderAttr ? parseFloat(minOrderAttr) : (minOrderMeta?.value ? parseFloat(minOrderMeta.value) : (typeof currentBranch?.minOrder === 'number' ? currentBranch.minOrder : 0));
+  const minOrderValue = isPickup ? 0 : rawMinOrderValue;
   const isMinOrderMet = subtotal >= minOrderValue;
   const thresholdMeta = currentBranch?.free_delivery_threshold || currentBranch?.metafields?.find((m: any) => m?.key === 'free_delivery_threshold');
   const feeMeta = currentBranch?.delivery_fee || currentBranch?.metafields?.find((m: any) => m?.key === 'delivery_fee');
@@ -118,7 +120,6 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
   const isFreeDelivery = cartHasFreeShippingCode || (hasExplicitThreshold && threshold > 0 && subtotal >= threshold);
   
   const feeAttribute = attributes.find((a: any) => a.key.toLowerCase().trim() === 'delivery fee')?.value;
-  const isPickup = fulfillmentType?.toLowerCase() === 'pickup';
   
   const rawDeliveryFee = feeAttribute
     ? parseFloat(feeAttribute)
@@ -462,19 +463,21 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
                   </div>
                 )}
 
-                <div className="flex justify-between items-center text-[15px]">
-                  <dt className="text-[#9FB7AE] font-medium" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>{isEn ? 'Delivery Fees' : 'رسوم التوصيل'}</dt>
-                  <dd className="text-[#234745] font-bold font-en flex items-center gap-1">
-                    {isFreeDelivery ? (
-                      <span className="text-[#234745] font-black text-[15px]">{isEn ? 'Free' : 'مجاني'}</span>
-                    ) : (
-                      <div className="flex items-center gap-1 flex-row-reverse">
-                        <SaudiRiyalSymbol className="h-4 w-auto" />
-                        <span className="font-black">{deliveryFee.toFixed(2)}</span>
-                      </div>
-                    )}
-                  </dd>
-                </div>
+                {!isPickup && (
+                  <div className="flex justify-between items-center text-[15px]">
+                    <dt className="text-[#9FB7AE] font-medium" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>{isEn ? 'Delivery Fees' : 'رسوم التوصيل'}</dt>
+                    <dd className="text-[#234745] font-bold font-en flex items-center gap-1">
+                      {isFreeDelivery ? (
+                        <span className="text-[#234745] font-black text-[15px]">{isEn ? 'Free' : 'مجاني'}</span>
+                      ) : (
+                        <div className="flex items-center gap-1 flex-row-reverse">
+                          <SaudiRiyalSymbol className="h-4 w-auto" />
+                          <span className="font-black">{deliveryFee.toFixed(2)}</span>
+                        </div>
+                      )}
+                    </dd>
+                  </div>
+                )}
 
                 {cart?.cost?.totalTaxAmount && (
                   <div className="flex justify-between items-center text-[15px]">

@@ -637,16 +637,18 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
             </dd>
           </div>
 
-          <div className="flex justify-between items-center text-[14px]">
-            <dt className="text-gray-400 font-medium">{isEn ? 'Delivery' : 'التوصيل'}</dt>
-            <dd className="text-[#234745] font-bold font-en">
-              {isFreeDelivery ? (
-                <span className="text-green-600 uppercase text-[10px]">{isEn ? 'Free' : 'مجاني'}</span>
-              ) : (
-                <Price data={{ amount: deliveryFee.toString(), currencyCode }} isEn={isEn} size="xs" />
-              )}
-            </dd>
-          </div>
+          {!isPickup && (
+            <div className="flex justify-between items-center text-[14px]">
+              <dt className="text-gray-400 font-medium">{isEn ? 'Delivery' : 'التوصيل'}</dt>
+              <dd className="text-[#234745] font-bold font-en">
+                {isFreeDelivery ? (
+                  <span className="text-green-600 uppercase text-[10px]">{isEn ? 'Free' : 'مجاني'}</span>
+                ) : (
+                  <Price data={{ amount: deliveryFee.toString(), currencyCode }} isEn={isEn} size="xs" />
+                )}
+              </dd>
+            </div>
+          )}
 
           {cart?.cost?.totalTaxAmount && (
             <div className="flex justify-between items-center text-[14px]">

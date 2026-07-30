@@ -104,7 +104,7 @@ export function CartMain({ layout, cart: originalCart }: CartMainProps) {
   const hasExplicitThreshold = !!(thresholdAttr || thresholdMeta?.value);
   const threshold = thresholdAttr ? parseFloat(thresholdAttr) : (thresholdMeta?.value ? parseFloat(thresholdMeta.value) : 0);
   const fulfillmentType = cart?.attributes?.find(a => a.key.toLowerCase().trim() === 'fulfillment type')?.value;
-  const isPickup = fulfillmentType?.toLowerCase() === 'pickup';
+  const isPickup = (fulfillmentType?.toLowerCase() === 'pickup') || (rootData?.fulfillmentType?.toLowerCase() === 'pickup');
 
   const subtotal = cart?.cost?.subtotalAmount?.amount ? parseFloat(cart.cost.subtotalAmount.amount) : 0;
   const progress = threshold > 0 ? Math.min((subtotal / threshold) * 100, 100) : 0;

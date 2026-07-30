@@ -299,25 +299,33 @@ export async function action({ request, context }: ActionFunctionArgs) {
       if (crmShopifyId) {
         const numericId = String(crmShopifyId).split('/').pop()!;
         const verifyRes = await fetch(
-          `https://${adminDomain}/admin/api/2024-01/customers/${numericId}.json?fields=id,email`,
+          `https://${adminDomain}/admin/api/2024-01/customers/${numericId}.json?fields=id,email,phone`,
           { headers: { 'X-Shopify-Access-Token': adminToken } }
         );
         if (verifyRes.ok) {
           const verifyData = await verifyRes.json() as any;
-          resolvedCustomerId = numericId;
-          resolvedEmail = verifyData.customer?.email || resolvedEmail;
+          const custPhone = (verifyData.customer?.phone || '').replace(/\D/g, '');
+          const sp = savedPhone.replace(/\D/g, '');
+          if (!custPhone || custPhone === sp || custPhone.endsWith(sp) || sp.endsWith(custPhone)) {
+            resolvedCustomerId = numericId;
+            resolvedEmail = verifyData.customer?.email || resolvedEmail;
+          }
         }
       }
 
-      // 2. Search by phone
+      // 2. Search by primary account phone
       if (!resolvedCustomerId) {
         const searchRes = await fetch(
-          `https://${adminDomain}/admin/api/2024-01/customers/search.json?query=phone:"${encodeURIComponent(savedPhone)}"&fields=id,email`,
+          `https://${adminDomain}/admin/api/2024-01/customers/search.json?query=phone:"${encodeURIComponent(savedPhone)}"&fields=id,email,phone`,
           { headers: { 'X-Shopify-Access-Token': adminToken } }
         );
         if (searchRes.ok) {
           const searchData = await searchRes.json() as any;
-          const found = searchData.customers?.[0];
+          const found = (searchData.customers || []).find((c: any) => {
+            const cp = (c.phone || '').replace(/\D/g, '');
+            const sp = savedPhone.replace(/\D/g, '');
+            return cp && sp && (cp === sp || cp.endsWith(sp) || sp.endsWith(cp));
+          });
           if (found) {
             resolvedCustomerId = String(found.id);
             resolvedEmail = found.email || resolvedEmail;

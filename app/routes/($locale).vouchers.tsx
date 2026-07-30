@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useLocation, Link, useLoaderData, useFetcher, type LoaderFunctionArgs, type MetaFunction } from 'react-router';
+import { useLocation, Link, useLoaderData, useFetcher, data, type LoaderFunctionArgs, type ActionFunctionArgs, type MetaFunction } from 'react-router';
 import { CartForm } from '@shopify/hydrogen';
 import { useAside } from '~/components/Aside';
 
@@ -10,6 +10,75 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => {
     { name: 'description', content: isEn ? 'Discover exclusive gift vouchers, promo codes, and special discounts at Saadeddin Pastry.' : 'اكتشف قسائم الهدايا الحصرية وأكواد الخصم والعروض الترويجية لدى حلويات سعد الدين.' },
   ];
 };
+
+export async function action({ request, context }: ActionFunctionArgs) {
+  const { env, storefront } = context;
+  const isEn = storefront?.i18n?.language === 'EN';
+  const formData = await request.formData();
+  const intent = formData.get('intent');
+  const codeInput = String(formData.get('code') || '').trim();
+
+  if (intent === 'checkBalance' && codeInput) {
+    try {
+      const { getAdminToken, getAdminDomain } = await import('~/lib/shopify-admin.server');
+      const adminToken = await getAdminToken(env);
+      const adminDomain = getAdminDomain(env);
+
+      if (adminToken && adminDomain) {
+        // 1. Lookup discount code to get price rule
+        const lookupRes = await fetch(`https://${adminDomain}/admin/api/2024-01/discount_codes/lookup.json?code=${encodeURIComponent(codeInput)}`, {
+          headers: { 'X-Shopify-Access-Token': adminToken }
+        });
+        
+        if (lookupRes.ok || lookupRes.status === 303) {
+          const lookupJson = await lookupRes.json() as any;
+          const priceRuleId = lookupJson?.discount_code?.price_rule_id;
+
+          if (priceRuleId) {
+            const prRes = await fetch(`https://${adminDomain}/admin/api/2024-01/price_rules/${priceRuleId}.json`, {
+              headers: { 'X-Shopify-Access-Token': adminToken }
+            });
+            if (prRes.ok) {
+              const prJson = await prRes.json() as any;
+              const rule = prJson?.price_rule;
+              if (rule) {
+                const valNum = Math.abs(parseFloat(rule.value || '0'));
+                const isPercentage = rule.value_type === 'percentage';
+                const isFreeShipping = rule.target_type === 'shipping_line' || codeInput.toLowerCase() === 'freeshipping';
+
+                if (isFreeShipping) {
+                  return data({
+                    success: true,
+                    result: isEn ? `Voucher "${codeInput}": Valid for Free Delivery` : `القسيمة "${codeInput}": صالحة للحصول على توصيل مجاني`
+                  });
+                } else if (isPercentage) {
+                  return data({
+                    success: true,
+                    result: isEn ? `Voucher "${codeInput}": Valid for ${valNum}% OFF` : `القسيمة "${codeInput}": صالحة للحصول على خصم %${valNum}`
+                  });
+                } else {
+                  return data({
+                    success: true,
+                    result: isEn ? `Available balance for "${codeInput}": ${valNum.toFixed(2)} SAR` : `الرصيد المتاح للرمز "${codeInput}": ${valNum.toFixed(2)} ر.س`
+                  });
+                }
+              }
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.error('[Vouchers Action Check Balance Error]', e);
+    }
+
+    return data({
+      success: false,
+      error: isEn ? `Voucher code "${codeInput}" is invalid or not found.` : `رمز القسيمة "${codeInput}" غير صحيح أو غير موجود.`
+    }, { status: 400 });
+  }
+
+  return data({ error: 'Invalid intent' }, { status: 400 });
+}
 
 export async function loader({ context }: LoaderFunctionArgs) {
   const { storefront, env, customerAccount } = context;
@@ -229,6 +298,7 @@ export default function VouchersPage() {
   const { shopifyVouchers = [] } = useLoaderData<typeof loader>() || {};
 
   const cartFetcher = useFetcher<any>();
+  const balanceFetcher = useFetcher<any>();
   const { open } = useAside();
 
   const [activeTab, setActiveTab] = useState<'active' | 'used' | 'expired'>('active');
@@ -237,7 +307,6 @@ export default function VouchersPage() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [appliedVoucherSuccess, setAppliedVoucherSuccess] = useState<string | null>(null);
   const [appliedVoucherError, setAppliedVoucherError] = useState<string | null>(null);
-  const [balanceResult, setBalanceResult] = useState<string | null>(null);
   const [lastAppliedCode, setLastAppliedCode] = useState<string>('');
 
   const activeVouchers = shopifyVouchers.filter((v) => v.status === 'active');
@@ -315,10 +384,9 @@ export default function VouchersPage() {
   const handleCheckBalance = (e: React.FormEvent) => {
     e.preventDefault();
     if (!balanceCheckInput.trim()) return;
-    setBalanceResult(
-      isEn
-        ? `Current balance for "${balanceCheckInput.trim()}": 150.00 SAR`
-        : `الرصيد المتاح للرمز "${balanceCheckInput.trim()}": 150.00 ر.س`
+    balanceFetcher.submit(
+      { intent: 'checkBalance', code: balanceCheckInput.trim() },
+      { method: 'post' }
     );
   };
 
@@ -997,10 +1065,11 @@ export default function VouchersPage() {
                 <div dir="ltr" className="relative flex items-center">
                   <button
                     type="submit"
-                    className="absolute left-1.5 h-[42px] px-6 bg-white hover:bg-gray-50 text-[#234745] font-bold text-[14px] rounded-[12px] border border-[#234745] transition-all z-10"
+                    disabled={balanceFetcher.state !== 'idle' || !balanceCheckInput.trim()}
+                    className="absolute left-1.5 h-[42px] px-6 bg-white hover:bg-gray-50 text-[#234745] font-bold text-[14px] rounded-[12px] border border-[#234745] transition-all z-10 disabled:opacity-50"
                     style={{ fontFamily: "'GE Dinar One', 'GE SS Two', sans-serif" }}
                   >
-                    {isEn ? 'Check' : 'تحقق'}
+                    {balanceFetcher.state !== 'idle' ? (isEn ? 'Checking...' : 'جاري التحقق...') : (isEn ? 'Check' : 'تحقق')}
                   </button>
                   <input
                     type="text"
@@ -1012,9 +1081,15 @@ export default function VouchersPage() {
                   />
                 </div>
 
-                {balanceResult && (
-                  <p className="mt-3 text-[12px] text-[#234745] bg-[#F5F3EF] p-3 rounded-xl border border-[#C8A464]/30 font-bold">
-                    {balanceResult}
+                {balanceFetcher.data?.result && (
+                  <p className="mt-3 text-[12px] text-emerald-800 bg-emerald-50 p-3 rounded-xl border border-emerald-200 font-bold">
+                    {balanceFetcher.data.result}
+                  </p>
+                )}
+
+                {balanceFetcher.data?.error && (
+                  <p className="mt-3 text-[12px] text-red-600 bg-red-50 p-3 rounded-xl border border-red-200 font-bold">
+                    {balanceFetcher.data.error}
                   </p>
                 )}
               </form>

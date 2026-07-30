@@ -17,27 +17,59 @@ export async function loader({ context }: LoaderFunctionArgs) {
 
   let usedCodesSet = new Set<string>();
   try {
-    const isLoggedIn = await customerAccount?.isLoggedIn();
-    if (isLoggedIn) {
-      const customer = await customerAccount.getCustomer();
-      if (customer?.email || customer?.phone) {
-        const { getAdminToken, getAdminDomain } = await import('~/lib/shopify-admin.server');
-        const adminToken = await getAdminToken(env);
-        const adminDomain = getAdminDomain(env);
+    let searchPhone = await context.session.get('loginOtpPhone');
+    let searchEmail: string | undefined;
 
-        if (adminToken && adminDomain) {
-          const query = customer.email ? `email:${customer.email}` : `phone:${customer.phone}`;
-          const ordersRes = await fetch(`https://${adminDomain}/admin/api/2024-01/orders.json?status=any&fields=id,discount_codes&query=${encodeURIComponent(query)}`, {
-            headers: { 'X-Shopify-Access-Token': adminToken }
-          });
-          if (ordersRes.ok) {
-            const data = await ordersRes.json() as any;
-            for (const order of (data.orders || [])) {
-              if (Array.isArray(order.discount_codes)) {
-                for (const d of order.discount_codes) {
-                  if (d?.code) {
-                    usedCodesSet.add(d.code.trim().toLowerCase());
-                  }
+    const sessionToken = await context.session.get('customerAccessToken');
+    const tokenStr = typeof sessionToken === 'string' ? sessionToken : sessionToken?.accessToken;
+
+    if (tokenStr && tokenStr !== 'dev-bypass-token') {
+      const custRes = await storefront.query(`#graphql
+        query getVouchersCustomer($customerAccessToken: String!) {
+          customer(customerAccessToken: $customerAccessToken) {
+            id
+            phone
+            email
+          }
+        }
+      `, {
+        variables: { customerAccessToken: tokenStr },
+        cache: storefront.CacheNone(),
+      });
+
+      if (custRes?.customer) {
+        if (custRes.customer.phone) searchPhone = custRes.customer.phone;
+        if (custRes.customer.email) searchEmail = custRes.customer.email;
+      }
+    }
+
+    if (searchPhone || searchEmail) {
+      const { getAdminToken, getAdminDomain } = await import('~/lib/shopify-admin.server');
+      const adminToken = await getAdminToken(env);
+      const adminDomain = getAdminDomain(env);
+
+      if (adminToken && adminDomain) {
+        const queryTerms: string[] = [];
+        if (searchPhone) {
+          const cleanPhone = searchPhone.replace(/\D/g, '');
+          queryTerms.push(`phone:${cleanPhone}`);
+          queryTerms.push(`phone:${searchPhone}`);
+        }
+        if (searchEmail) {
+          queryTerms.push(`email:${searchEmail}`);
+        }
+
+        const queryStr = queryTerms.join(' OR ');
+        const ordersRes = await fetch(`https://${adminDomain}/admin/api/2024-01/orders.json?status=any&fields=id,discount_codes&query=${encodeURIComponent(queryStr)}`, {
+          headers: { 'X-Shopify-Access-Token': adminToken }
+        });
+        if (ordersRes.ok) {
+          const data = await ordersRes.json() as any;
+          for (const order of (data.orders || [])) {
+            if (Array.isArray(order.discount_codes)) {
+              for (const d of order.discount_codes) {
+                if (d?.code) {
+                  usedCodesSet.add(d.code.trim().toLowerCase());
                 }
               }
             }
@@ -95,7 +127,9 @@ export async function loader({ context }: LoaderFunctionArgs) {
           } catch (e) {}
 
           const codeLower = code.trim().toLowerCase();
-          const isUsed = usedCodesSet.has(codeLower) || usedCodesSet.has(rule.title.trim().toLowerCase());
+          const isUsedByOrders = usedCodesSet.has(codeLower) || usedCodesSet.has(rule.title.trim().toLowerCase());
+          const isUsageLimitReached = rule.usage_limit && rule.times_used >= rule.usage_limit;
+          const isUsed = isUsedByOrders || isUsageLimitReached;
           const isExpired = rule.ends_at ? new Date(rule.ends_at) < new Date() : false;
 
           let status: 'active' | 'used' | 'expired' = 'active';

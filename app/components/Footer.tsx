@@ -11,15 +11,19 @@ export function Footer({ footer, locale }: { footer: Promise<FooterQuery | null>
       <Await resolve={footer}>
         {() => {
           return (
-            <footer dir={isEn ? 'ltr' : 'rtl'} className={`w-full bg-[#234745] text-white flex flex-col items-center pt-12 pb-8 ${isEn ? 'font-en' : ''}`} style={isEn ? {} : { fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
-              <div className="w-full max-w-[1280px] flex flex-col gap-10 px-6 lg:px-12">
+            <footer dir={isEn ? 'ltr' : 'rtl'} className={`w-full bg-[#234745] text-white flex flex-col items-center pt-10 pb-8 ${isEn ? 'font-en' : ''}`} style={isEn ? {} : { fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
+              <div className="w-full max-w-[1280px] flex flex-col gap-8 px-6 lg:px-12">
 
-                {/* === MOBILE FOOTER (Logo, Social Media, App Badges ONLY) === */}
-                <div className="w-full flex flex-col items-center gap-5 lg:hidden border-b border-[#BBCFCD]/30 pb-10">
-                  <div style={{ width: '150px' }}>
-                    <LogoSplash className="px-0 items-center" />
+                {/* === LOGO ROW (Above First Column on Desktop, Centered on Mobile) === */}
+                <div className="w-full flex justify-center lg:justify-start">
+                  <div style={{ width: '150px' }} className="-ms-2">
+                    <LogoSplash className="px-0 items-center lg:items-start" />
                   </div>
-                  <h3 className="font-bold text-[18px] leading-[22px] text-[#BBCFCD] text-center m-0">
+                </div>
+
+                {/* === MOBILE FOOTER (Logo, Social Media Title, Social Icons, App Badges ONLY) === */}
+                <div className="w-full flex flex-col items-center gap-5 lg:hidden border-b border-[#BBCFCD]/30 pb-10">
+                  <h3 className="font-bold text-[18px] leading-[22px] text-white text-center m-0">
                     {isEn ? 'Social Media' : 'وسائل التواصل الاجتماعي'}
                   </h3>
                   {/* Social Icons */}
@@ -32,15 +36,12 @@ export function Footer({ footer, locale }: { footer: Promise<FooterQuery | null>
                   </div>
                 </div>
 
-                {/* === DESKTOP FOOTER (Hidden on Mobile) === */}
+                {/* === DESKTOP FOOTER (4 Columns Grid) === */}
                 <div className="hidden lg:grid w-full grid-cols-4 gap-8 lg:gap-12 items-start border-b border-[#BBCFCD]/30 pb-12">
 
-                  {/* Col 1 (Rightmost in RTL): Logo, Social Media, Social Icons, App Badges */}
+                  {/* Col 1 (Rightmost in RTL): Social Media Title, Social Icons, App Badges */}
                   <div className="flex flex-col items-start gap-4 text-start">
-                    <div style={{ width: '150px' }} className="-ms-2">
-                      <LogoSplash className="px-0 items-start" />
-                    </div>
-                    <h3 className="font-bold text-[18px] leading-[22px] text-[#BBCFCD] m-0">
+                    <h3 className="font-bold text-[18px] leading-[22px] text-white m-0">
                       {isEn ? 'Social Media' : 'وسائل التواصل الاجتماعي'}
                     </h3>
                     {/* Social Icons */}
@@ -55,35 +56,35 @@ export function Footer({ footer, locale }: { footer: Promise<FooterQuery | null>
 
                   {/* Col 2: About Saadeddin (عن سعد الدين) */}
                   <div className="flex flex-col items-start gap-5 text-start">
-                    <h3 className="font-bold text-[18px] lg:text-[20px] text-white m-0">
+                    <h3 className="font-bold text-[18px] leading-[22px] text-white m-0">
                       {isEn ? 'About Saadeddin' : 'عن سعد الدين'}
                     </h3>
-                    <div className="flex flex-col items-start gap-3.5 text-white/90">
-                      <NavLink to={isEn ? "/en/pages/about" : "/pages/about"} className="font-bold text-[16px] lg:text-[17px] hover:text-white transition-colors">{isEn ? 'About Us' : 'نبذة عن الشركة'}</NavLink>
-                      <NavLink to={isEn ? "/en/pages/branches" : "/pages/branches"} className="font-bold text-[16px] lg:text-[17px] hover:text-white transition-colors">{isEn ? 'Our Branches' : 'فروعنا'}</NavLink>
-                      <NavLink to={isEn ? "/en/blogs/news" : "/blogs/news"} className="font-bold text-[16px] lg:text-[17px] hover:text-white transition-colors">{isEn ? 'Blog' : 'المدونة'}</NavLink>
+                    <div className="flex flex-col items-start gap-3.5 text-[#BBCFCD]">
+                      <NavLink to={isEn ? "/en/pages/about" : "/pages/about"} className="font-normal text-[14px] hover:text-white transition-colors">{isEn ? 'About Us' : 'نبذة عن الشركة'}</NavLink>
+                      <NavLink to={isEn ? "/en/pages/branches" : "/pages/branches"} className="font-normal text-[14px] hover:text-white transition-colors">{isEn ? 'Our Branches' : 'فروعنا'}</NavLink>
+                      <NavLink to={isEn ? "/en/blogs/news" : "/blogs/news"} className="font-normal text-[14px] hover:text-white transition-colors">{isEn ? 'Blog' : 'المدونة'}</NavLink>
                     </div>
                   </div>
 
                   {/* Col 3: Customer Service (خدمة العملاء) */}
                   <div className="flex flex-col items-start gap-5 text-start">
-                    <h3 className="font-bold text-[18px] lg:text-[20px] text-white m-0">
+                    <h3 className="font-bold text-[18px] leading-[22px] text-white m-0">
                       {isEn ? 'Customer Service' : 'خدمة العملاء'}
                     </h3>
-                    <div className="flex flex-col items-start gap-3.5 text-white/90">
-                      <NavLink to={isEn ? "/en/pages/contact" : "/pages/contact"} className="font-bold text-[16px] lg:text-[17px] hover:text-white transition-colors">{isEn ? 'Contact Us' : 'تواصل معنا'}</NavLink>
-                      <NavLink to={isEn ? "/en/pages/faq" : "/pages/faq"} className="font-bold text-[16px] lg:text-[17px] hover:text-white transition-colors">{isEn ? 'FAQs' : 'الأسئلة الشائعة'}</NavLink>
+                    <div className="flex flex-col items-start gap-3.5 text-[#BBCFCD]">
+                      <NavLink to={isEn ? "/en/pages/contact" : "/pages/contact"} className="font-normal text-[14px] hover:text-white transition-colors">{isEn ? 'Contact Us' : 'تواصل معنا'}</NavLink>
+                      <NavLink to={isEn ? "/en/pages/faq" : "/pages/faq"} className="font-normal text-[14px] hover:text-white transition-colors">{isEn ? 'FAQs' : 'الأسئلة الشائعة'}</NavLink>
                     </div>
                   </div>
 
                   {/* Col 4: Shipping & Delivery (الشحن والتوصيل) */}
                   <div className="flex flex-col items-start gap-5 text-start">
-                    <h3 className="font-bold text-[18px] lg:text-[20px] text-white m-0">
+                    <h3 className="font-bold text-[18px] leading-[22px] text-white m-0">
                       {isEn ? 'Shipping & Delivery' : 'الشحن والتوصيل'}
                     </h3>
-                    <div className="flex flex-col items-start gap-3.5 text-white/90">
-                      <NavLink to={isEn ? "/en/export" : "/export"} className="font-bold text-[16px] lg:text-[17px] hover:text-white transition-colors">{isEn ? 'International Shipping / Export' : 'الشحن الدولي/التوصيل'}</NavLink>
-                      <NavLink to={isEn ? "/en/pages/branches" : "/pages/branches"} className="font-bold text-[16px] lg:text-[17px] hover:text-white transition-colors">{isEn ? 'Delivery Inside KSA' : 'التوصيل داخل المملكة'}</NavLink>
+                    <div className="flex flex-col items-start gap-3.5 text-[#BBCFCD]">
+                      <NavLink to={isEn ? "/en/export" : "/export"} className="font-normal text-[14px] hover:text-white transition-colors">{isEn ? 'International Shipping / Export' : 'الشحن الدولي/التوصيل'}</NavLink>
+                      <NavLink to={isEn ? "/en/pages/branches" : "/pages/branches"} className="font-normal text-[14px] hover:text-white transition-colors">{isEn ? 'Delivery Inside KSA' : 'التوصيل داخل المملكة'}</NavLink>
                     </div>
                   </div>
 

@@ -3,6 +3,21 @@ import { useLocation, Link, useLoaderData, useFetcher, data, type LoaderFunction
 import { CartForm } from '@shopify/hydrogen';
 import { useAside } from '~/components/Aside';
 
+function toEnglishDigits(str: string | number | undefined | null): string {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/[٠۰]/g, '0')
+    .replace(/[١۱]/g, '1')
+    .replace(/[٢۲]/g, '2')
+    .replace(/[٣۳]/g, '3')
+    .replace(/[٤۴]/g, '4')
+    .replace(/[٥۵]/g, '5')
+    .replace(/[٦۶]/g, '6')
+    .replace(/[٧۷]/g, '7')
+    .replace(/[٨۸]/g, '8')
+    .replace(/[٩۹]/g, '9');
+}
+
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
   const isEn = data?.lang === 'en';
   return [
@@ -719,22 +734,22 @@ export default function VouchersPage() {
                   <div
                     className="font-bold leading-none mb-4 flex items-baseline gap-2"
                     style={{
-                      fontFamily: "'Bahij Janna', 'Bahij', serif",
+                      fontFamily: "'EnglishDigits', 'Bahij Janna', 'Bahij', serif",
                       color: theme.textPrimary,
                     }}
                   >
                     <span style={{ fontSize: '42px', fontWeight: 700 }}>
-                      {isEn ? v.discountDisplayEn : v.discountDisplayAr}
+                      {toEnglishDigits(isEn ? v.discountDisplayEn : v.discountDisplayAr)}
                     </span>
                   </div>
                   {/* Description */}
                   <div
                     style={{
-                      fontFamily: "'GE Dinar One', 'GE SS Two', sans-serif",
+                      fontFamily: "'EnglishDigits', 'GE Dinar One', 'GE SS Two', sans-serif",
                       fontSize: '16px', color: theme.textSub, fontWeight: 400,
                     }}
                   >
-                    {isEn ? v.subtitleEn : v.subtitleAr}
+                    {toEnglishDigits(isEn ? v.subtitleEn : v.subtitleAr)}
                   </div>
                 </div>
 
@@ -775,11 +790,11 @@ export default function VouchersPage() {
                 <div
                   className="px-8 pb-6"
                   style={{
-                    fontFamily: "'GE Dinar One', 'GE SS Two', sans-serif",
+                    fontFamily: "'EnglishDigits', 'GE Dinar One', 'GE SS Two', sans-serif",
                     fontSize: '13px', color: theme.textSub, textAlign: isEn ? 'left' : 'right',
                   }}
                 >
-                  {isEn ? v.expiryTextEn : v.expiryTextAr}
+                  {toEnglishDigits(isEn ? v.expiryTextEn : v.expiryTextAr)}
                 </div>
               </div>
             );
@@ -805,9 +820,9 @@ export default function VouchersPage() {
                     ? 'bg-[#234745] text-white shadow-sm'
                     : 'bg-white text-[#7D7D7D] shadow-sm hover:text-[#234745]'
                     }`}
-                  style={{ fontFamily: "'GE Dinar One', 'GE SS Two', sans-serif" }}
+                  style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', 'GE SS Two', sans-serif" }}
                 >
-                  {isEn ? `Active (${activeVouchers.length || 2})` : `فعالة (${activeVouchers.length || 2})`}
+                  {isEn ? `Active (${toEnglishDigits(activeVouchers.length)})` : `فعالة (${toEnglishDigits(activeVouchers.length)})`}
                 </button>
                 <button
                   type="button"
@@ -816,9 +831,9 @@ export default function VouchersPage() {
                     ? 'bg-[#234745] text-white shadow-sm'
                     : 'bg-white text-[#7D7D7D] shadow-sm hover:text-[#234745]'
                     }`}
-                  style={{ fontFamily: "'GE Dinar One', 'GE SS Two', sans-serif" }}
+                  style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', 'GE SS Two', sans-serif" }}
                 >
-                  {isEn ? `Used (${usedVouchers.length || 1})` : `مستخدمة (${usedVouchers.length || 1})`}
+                  {isEn ? `Used (${toEnglishDigits(usedVouchers.length)})` : `مستخدمة (${toEnglishDigits(usedVouchers.length)})`}
                 </button>
                 <button
                   type="button"
@@ -827,9 +842,9 @@ export default function VouchersPage() {
                     ? 'bg-[#234745] text-white shadow-sm'
                     : 'bg-white text-[#7D7D7D] shadow-sm hover:text-[#234745]'
                     }`}
-                  style={{ fontFamily: "'GE Dinar One', 'GE SS Two', sans-serif" }}
+                  style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', 'GE SS Two', sans-serif" }}
                 >
-                  {isEn ? `Expired (${expiredVouchers.length || 1})` : `منتهية (${expiredVouchers.length || 1})`}
+                  {isEn ? `Expired (${toEnglishDigits(expiredVouchers.length)})` : `منتهية (${toEnglishDigits(expiredVouchers.length)})`}
                 </button>
               </div>
 
@@ -896,27 +911,27 @@ export default function VouchersPage() {
                         {/* Badge */}
                         <div
                           className="w-[88px] h-[88px] rounded-[20px] text-white font-bold text-[20px] flex items-center justify-center flex-shrink-0 shadow-sm"
-                          style={{ background: badgeBg }}
+                          style={{ background: badgeBg, fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
                         >
-                          {v.badgeText}
+                          {toEnglishDigits(v.badgeText)}
                         </div>
                         <div className="text-right flex flex-col gap-2">
                           <h4
                             style={{
                               color: isActiveState ? '#234745' : '#7D7D7D',
-                              fontFamily: "'Bahij Janna', 'Bahij', serif",
+                              fontFamily: "'EnglishDigits', 'Bahij Janna', 'Bahij', serif",
                               fontWeight: 700,
                               fontSize: '20px',
                               lineHeight: '100%',
                               textAlign: 'right',
                             }}
                           >
-                            {isEn ? v.discountDisplayEn : v.discountDisplayAr}
+                            {toEnglishDigits(isEn ? v.discountDisplayEn : v.discountDisplayAr)}
                           </h4>
                           <p
                             style={{
                               color: '#7D7D7D',
-                              fontFamily: "'GE Dinar One', 'GE SS Two', sans-serif",
+                              fontFamily: "'EnglishDigits', 'GE Dinar One', 'GE SS Two', sans-serif",
                               fontWeight: 500,
                               fontSize: '16px',
                               lineHeight: '100%',
@@ -928,14 +943,14 @@ export default function VouchersPage() {
                           <span
                             style={{
                               color: '#7D7D7D',
-                              fontFamily: "'GE Dinar One', 'GE SS Two', sans-serif",
+                              fontFamily: "'EnglishDigits', 'GE Dinar One', 'GE SS Two', sans-serif",
                               fontWeight: 500,
                               fontSize: '16px',
                               lineHeight: '100%',
                               textAlign: 'right',
                             }}
                           >
-                            {isEn ? v.expiryTextEn : v.expiryTextAr}
+                            {toEnglishDigits(isEn ? v.expiryTextEn : v.expiryTextAr)}
                           </span>
                         </div>
                       </div>

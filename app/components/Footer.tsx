@@ -1,18 +1,15 @@
-import { NavLink, Await, useOutletContext, useRouteLoaderData } from 'react-router';
+import { NavLink, Await } from 'react-router';
 import { Suspense } from 'react';
 import type { FooterQuery } from 'storefrontapi.generated';
 import { LogoSplash } from './LogoSplash';
 
-export function Footer({ footer, locale, megaMenuData }: { footer: Promise<FooterQuery | null>; header?: any; publicStoreDomain?: string; locale?: string; megaMenuData?: any }) {
+export function Footer({ footer, locale }: { footer: Promise<FooterQuery | null>; header?: any; publicStoreDomain?: string; locale?: string; megaMenuData?: any }) {
   const isEn = locale === 'en';
-
-  const rawNodes = megaMenuData?.nodes || megaMenuData?.collections?.nodes || [];
-  const dynamicCollections = rawNodes.filter((c: any) => c && c.handle && c.title).slice(0, 5);
 
   return (
     <Suspense fallback={null}>
       <Await resolve={footer}>
-        {(footerData) => {
+        {() => {
           return (
             <footer dir={isEn ? 'ltr' : 'rtl'} className={`w-full bg-[#234745] flex flex-col items-center pt-12 pb-10 ${isEn ? 'font-en' : ''}`} style={isEn ? {} : { fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
               <div className="w-full max-w-[1280px] flex flex-col items-center gap-10 px-6">
@@ -26,37 +23,46 @@ export function Footer({ footer, locale, megaMenuData }: { footer: Promise<Foote
                   <h3 className="font-bold text-[18px] leading-[22px] text-[#FFFFFF] text-center">
                     {isEn ? 'The future is sweet!' : 'المستقبل حلو!'}
                   </h3>
-                  <p className="font-medium text-[14px] leading-[20px] text-[#D2D2D2] text-center max-w-[280px]">
-                    {isEn ? 'Since 1919, we have been offering the finest sweets and luxury chocolate with love and passion.' : <span>منذ عام <span className="font-sans inline-block" dir="ltr">1919</span>، نقدم أجود الحلويات والشوكولاتة الفاخرة بعشق وشغف.</span>}
-                  </p>
 
                   {/* Social Icons */}
-                  <div className="flex flex-row flex-wrap items-center justify-center gap-3 mt-2 mb-4">
+                  <div className="flex flex-row flex-wrap items-center justify-center gap-3 mt-2 mb-2">
                     <SocialIcons />
                   </div>
 
-                  {/* Quick Links Header */}
-                  <div className="w-full text-start mb-2">
-                    <h3 className="font-bold text-[16px] leading-[22px] text-[#BBCFCD]">
-                      {isEn ? 'Quick Links' : 'روابط سريعة'}
-                    </h3>
-                  </div>
-
-                  {/* 2-Column Links Grid */}
-                  <div className="w-full grid grid-cols-2 gap-x-4 gap-y-6 text-[#D2D2D2]">
-                    {/* Right Column (Quick Links) */}
-                    <div className="flex flex-col gap-4 items-start">
-                      <NavLink to={isEn ? "/en" : "/"} className="font-medium hover:text-white transition-colors" style={{ fontSize: 'clamp(13px, 4vw, 15px)' }}>{isEn ? 'Home' : 'الرئيسية'}</NavLink>
-                      <NavLink to={isEn ? "/en/custom-cake" : "/custom-cake"} className="font-medium hover:text-white transition-colors" style={{ fontSize: 'clamp(13px, 4vw, 15px)' }}>{isEn ? 'Design Your Cake' : 'صمم كيكتك'}</NavLink>
-                      <NavLink to={isEn ? "/en/promotions" : "/promotions"} className="font-medium hover:text-white transition-colors" style={{ fontSize: 'clamp(13px, 4vw, 15px)' }}>{isEn ? 'Our Offers' : 'عروضنا'}</NavLink>
-                      <NavLink to={isEn ? "/en/pages/branches" : "/pages/branches"} className="font-medium hover:text-white transition-colors" style={{ fontSize: 'clamp(13px, 4vw, 15px)' }}>{isEn ? 'Our Branches' : 'فروعنا'}</NavLink>
+                  {/* Links Grid */}
+                  <div className="w-full grid grid-cols-1 sm:grid-cols-3 gap-6 text-[#D2D2D2] mt-4">
+                    {/* Col 2: About */}
+                    <div className="flex flex-col gap-3 items-center sm:items-start text-center sm:text-start">
+                      <h3 className="font-bold text-[16px] leading-[22px] text-[#BBCFCD]">
+                        {isEn ? 'About Saadeddin' : 'عن سعد الدين'}
+                      </h3>
+                      <div className="flex flex-col gap-2 items-center sm:items-start">
+                        <NavLink to={isEn ? "/en/pages/about" : "/pages/about"} className="font-medium text-[15px] hover:text-white transition-colors">{isEn ? 'About Us' : 'نبذة عن الشركة'}</NavLink>
+                        <NavLink to={isEn ? "/en/pages/branches" : "/pages/branches"} className="font-medium text-[15px] hover:text-white transition-colors">{isEn ? 'Our Branches' : 'فروعنا'}</NavLink>
+                        <NavLink to={isEn ? "/en/blogs/news" : "/blogs/news"} className="font-medium text-[15px] hover:text-white transition-colors">{isEn ? 'Blog' : 'المدونة'}</NavLink>
+                      </div>
                     </div>
 
-                    {/* Left Column (Customer Service) */}
-                    <div className="flex flex-col gap-4 items-start">
-                      <NavLink to={isEn ? "/en/track-order" : "/track-order"} className="font-medium hover:text-white transition-colors" style={{ fontSize: 'clamp(13px, 4vw, 15px)' }}>{isEn ? 'Track Your Order' : 'تتبع طلبك'}</NavLink>
-                      <NavLink to={isEn ? "/en/contact" : "/contact"} className="font-medium hover:text-white transition-colors" style={{ fontSize: 'clamp(13px, 4vw, 15px)' }}>{isEn ? 'Contact Us' : 'تواصل معنا'}</NavLink>
-                      <NavLink to={isEn ? "/en/faq" : "/faq"} className="font-medium hover:text-white transition-colors" style={{ fontSize: 'clamp(13px, 4vw, 15px)' }}>{isEn ? 'FAQs' : 'الأسئلة الشائعة'}</NavLink>
+                    {/* Col 3: Customer Service */}
+                    <div className="flex flex-col gap-3 items-center sm:items-start text-center sm:text-start">
+                      <h3 className="font-bold text-[16px] leading-[22px] text-[#BBCFCD]">
+                        {isEn ? 'Customer Service' : 'خدمة العملاء'}
+                      </h3>
+                      <div className="flex flex-col gap-2 items-center sm:items-start">
+                        <NavLink to={isEn ? "/en/pages/contact" : "/pages/contact"} className="font-medium text-[15px] hover:text-white transition-colors">{isEn ? 'Contact Us' : 'تواصل معنا'}</NavLink>
+                        <NavLink to={isEn ? "/en/pages/faq" : "/pages/faq"} className="font-medium text-[15px] hover:text-white transition-colors">{isEn ? 'FAQs' : 'الاسئلة الشائعة'}</NavLink>
+                      </div>
+                    </div>
+
+                    {/* Col 4: Shipping & Delivery */}
+                    <div className="flex flex-col gap-3 items-center sm:items-start text-center sm:text-start">
+                      <h3 className="font-bold text-[16px] leading-[22px] text-[#BBCFCD]">
+                        {isEn ? 'Shipping & Delivery' : 'الشحن والتوصيل'}
+                      </h3>
+                      <div className="flex flex-col gap-2 items-center sm:items-start">
+                        <NavLink to={isEn ? "/en/export" : "/export"} className="font-medium text-[15px] hover:text-white transition-colors">{isEn ? 'International Shipping / Export' : 'الشحن الدولي / التوصيل'}</NavLink>
+                        <NavLink to={isEn ? "/en/pages/branches" : "/pages/branches"} className="font-medium text-[15px] hover:text-white transition-colors">{isEn ? 'Delivery Inside KSA' : 'التوصيل داخل المملكة'}</NavLink>
+                      </div>
                     </div>
                   </div>
 
@@ -68,22 +74,17 @@ export function Footer({ footer, locale, megaMenuData }: { footer: Promise<Foote
 
                 {/* === DESKTOP FOOTER (Hidden on Mobile) === */}
                 <div className="hidden lg:flex w-full flex-col items-center gap-10">
-                  {/* Logo Section */}
-                  <div style={{ width: '162px' }}>
-                    <LogoSplash className="px-0" />
-                  </div>
-
                   {/* Columns Section */}
                   <div className="w-full grid grid-cols-4 gap-8 border-b border-[#BBCFCD]/50 pb-10">
 
-                    {/* Col 1: Future is Sweet & App Buttons */}
+                    {/* Col 1: Logo, Slogan, Social Icons, App Buttons */}
                     <div className="flex flex-col items-start gap-4">
-                      <h3 className="font-bold text-[16px] leading-[20px] text-[#FFFFFF]">
+                      <div style={{ width: '150px' }}>
+                        <LogoSplash className="px-0" />
+                      </div>
+                      <h3 className="font-bold text-[18px] leading-[22px] text-[#FFFFFF]">
                         {isEn ? 'The future is sweet!' : 'المستقبل حلو!'}
                       </h3>
-                      <p className="font-medium text-[16px] leading-[20px] text-[#D2D2D2] text-start max-w-[280px]">
-                        {isEn ? 'Since 1919, we have been offering the finest sweets and luxury chocolate with love and passion.' : <span>منذ عام <span className="font-sans inline-block" dir="ltr">1919</span>، نقدم أجود الحلويات والشوكولاتة الفاخرة بعشق وشغف.</span>}
-                      </p>
                       {/* Social Icons */}
                       <div className="flex flex-row flex-wrap items-center gap-2 mt-1">
                         <SocialIcons />
@@ -94,63 +95,42 @@ export function Footer({ footer, locale, megaMenuData }: { footer: Promise<Foote
                       </div>
                     </div>
 
-                    {/* Col 2: Quick Links */}
+                    {/* Col 2: About Saadeddin */}
                     <div className="flex flex-col items-start gap-6">
                       <h3 className="font-bold text-[18px] leading-[22px] text-[#BBCFCD]">
-                        {isEn ? 'Quick Links' : 'روابط سريعة'}
+                        {isEn ? 'About Saadeddin' : 'عن سعد الدين'}
                       </h3>
-                      <div className="flex flex-col items-start gap-2" style={{ color: '#D2D2D2' }}>
-                        <NavLink to={isEn ? "/en" : "/"} className="font-medium text-[16px] hover:text-white transition-colors">{isEn ? 'Home' : 'الرئيسية'}</NavLink>
-                        <NavLink to={isEn ? "/en/custom-cake" : "/custom-cake"} className="font-medium text-[16px] hover:text-white transition-colors">{isEn ? 'Design Your Cake' : 'صمم كيكتك'}</NavLink>
-                        <NavLink to={isEn ? "/en/promotions" : "/promotions"} className="font-medium text-[16px] hover:text-white transition-colors">{isEn ? 'Our Offers' : 'عروضنا'}</NavLink>
+                      <div className="flex flex-col items-start gap-3.5" style={{ color: '#D2D2D2' }}>
+                        <NavLink to={isEn ? "/en/pages/about" : "/pages/about"} className="font-medium text-[16px] hover:text-white transition-colors">{isEn ? 'About Us' : 'نبذة عن الشركة'}</NavLink>
                         <NavLink to={isEn ? "/en/pages/branches" : "/pages/branches"} className="font-medium text-[16px] hover:text-white transition-colors">{isEn ? 'Our Branches' : 'فروعنا'}</NavLink>
+                        <NavLink to={isEn ? "/en/blogs/news" : "/blogs/news"} className="font-medium text-[16px] hover:text-white transition-colors">{isEn ? 'Blog' : 'المدونة'}</NavLink>
                       </div>
                     </div>
 
-                    {/* Col 3: Products */}
-                    <div className="flex flex-col items-start gap-6">
-                      <h3 className="font-bold text-[18px] leading-[22px] text-[#BBCFCD]">
-                        {isEn ? 'Products' : 'المنتجات'}
-                      </h3>
-                      <div className="flex flex-col items-start gap-2" style={{ color: '#D2D2D2' }}>
-                        {dynamicCollections.length > 0 ? (
-                          dynamicCollections.map((col: any) => (
-                            <NavLink
-                              key={col.id || col.handle}
-                              to={isEn ? `/en/collections/${col.handle}` : `/collections/${col.handle}`}
-                              className="font-medium text-[16px] hover:text-white transition-colors"
-                            >
-                              {col.title}
-                            </NavLink>
-                          ))
-                        ) : (
-                          <>
-                            <NavLink to={isEn ? "/en/collections/oriental" : "/collections/oriental"} className="font-medium text-[16px] hover:text-white transition-colors">{isEn ? 'Oriental Sweets' : 'الحلويات الشرقية'}</NavLink>
-                            <NavLink to={isEn ? "/en/collections/dark-chocolate" : "/collections/dark-chocolate"} className="font-medium text-[16px] hover:text-white transition-colors">{isEn ? 'Dark Chocolate' : 'الشوكولاتة الداكنة'}</NavLink>
-                            <NavLink to={isEn ? "/en/custom-cake" : "/custom-cake"} className="font-medium text-[16px] hover:text-white transition-colors">{isEn ? 'Custom Cakes' : 'الكيك المخصص'}</NavLink>
-                            <NavLink to={isEn ? "/en/collections/gift-boxes" : "/collections/gift-boxes"} className="font-medium text-[16px] hover:text-white transition-colors">{isEn ? 'Gift Boxes' : 'صناديق الهدايا'}</NavLink>
-                            <NavLink to={isEn ? "/en/collections/arabic-coffee" : "/collections/arabic-coffee"} className="font-medium text-[16px] hover:text-white transition-colors">{isEn ? 'Arabic Coffee' : 'القهوة العربية'}</NavLink>
-                          </>
-                        )}
-                      </div>
-                    </div>
-
-
-                    {/* Col 4: Customer Service */}
+                    {/* Col 3: Customer Service */}
                     <div className="flex flex-col items-start gap-6">
                       <h3 className="font-bold text-[18px] leading-[22px] text-[#BBCFCD]">
                         {isEn ? 'Customer Service' : 'خدمة العملاء'}
                       </h3>
-                      <div className="flex flex-col items-start gap-2" style={{ color: '#D2D2D2' }}>
-                        <NavLink to={isEn ? "/en/track-order" : "/track-order"} className="font-medium text-[16px] hover:text-white transition-colors">{isEn ? 'Track Your Order' : 'تتبع طلبك'}</NavLink>
-                        <NavLink to={isEn ? "/en/contact" : "/contact"} className="font-medium text-[16px] hover:text-white transition-colors">{isEn ? 'Contact Us' : 'تواصل معنا'}</NavLink>
-                        <NavLink to={isEn ? "/en/faq" : "/faq"} className="font-medium text-[16px] hover:text-white transition-colors">{isEn ? 'FAQs' : 'الأسئلة الشائعة'}</NavLink>
+                      <div className="flex flex-col items-start gap-3.5" style={{ color: '#D2D2D2' }}>
+                        <NavLink to={isEn ? "/en/pages/contact" : "/pages/contact"} className="font-medium text-[16px] hover:text-white transition-colors">{isEn ? 'Contact Us' : 'تواصل معنا'}</NavLink>
+                        <NavLink to={isEn ? "/en/pages/faq" : "/pages/faq"} className="font-medium text-[16px] hover:text-white transition-colors">{isEn ? 'FAQs' : 'الاسئلة الشائعة'}</NavLink>
+                      </div>
+                    </div>
+
+                    {/* Col 4: Shipping & Delivery */}
+                    <div className="flex flex-col items-start gap-6">
+                      <h3 className="font-bold text-[18px] leading-[22px] text-[#BBCFCD]">
+                        {isEn ? 'Shipping & Delivery' : 'الشحن والتوصيل'}
+                      </h3>
+                      <div className="flex flex-col items-start gap-3.5" style={{ color: '#D2D2D2' }}>
+                        <NavLink to={isEn ? "/en/export" : "/export"} className="font-medium text-[16px] hover:text-white transition-colors">{isEn ? 'International Shipping / Export' : 'الشحن الدولي / التوصيل'}</NavLink>
+                        <NavLink to={isEn ? "/en/pages/branches" : "/pages/branches"} className="font-medium text-[16px] hover:text-white transition-colors">{isEn ? 'Delivery Inside KSA' : 'التوصيل داخل المملكة'}</NavLink>
                       </div>
                     </div>
 
                   </div>
                 </div>
-
 
                 {/* Bottom Bar */}
                 <div className="w-full flex flex-col md:flex-row justify-between items-center gap-6 md:gap-4" style={{ color: '#FEF8EB' }}>

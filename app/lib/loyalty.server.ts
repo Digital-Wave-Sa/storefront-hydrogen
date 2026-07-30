@@ -91,18 +91,21 @@ export async function getLoyaltyPoints(params: LoyaltyParams): Promise<number> {
   const sdlpAppUrl = env?.PUBLIC_SDLP_APP_URL || env?.SDLP_APP_URL || 'https://sdlp.saadeddin.top';
   const shop = env?.PUBLIC_SHOPIFY_STORE_DOMAIN || env?.PUBLIC_STORE_DOMAIN || 'saadeldeenshop-x21xumcd.myshopify.com';
 
+  const searchPhone = params.phone || (params.context?.session ? await params.context.session.get('loginOtpPhone') : null);
   const customerId = await getCustomerGid(params);
-  if (!customerId) {
-    console.warn('[Loyalty] Unable to resolve customerId for SDLP query.');
+
+  if (!customerId && !searchPhone) {
+    console.warn('[Loyalty] Neither customerId nor searchPhone available for SDLP query.');
     return 0;
   }
 
-  const searchPhone = params.phone || (params.context?.session ? await params.context.session.get('loginOtpPhone') : null);
-
   try {
-    let url = `${sdlpAppUrl}/api/storefront/loyalty?shop=${encodeURIComponent(shop)}&customerId=${encodeURIComponent(customerId)}`;
+    let url = `${sdlpAppUrl}/api/storefront/loyalty?shop=${encodeURIComponent(shop)}`;
     if (searchPhone) {
       url += `&phone=${encodeURIComponent(searchPhone)}`;
+    }
+    if (customerId) {
+      url += `&customerId=${encodeURIComponent(customerId)}`;
     }
     console.log('[SDLP Loyalty] GET Request:', url);
 

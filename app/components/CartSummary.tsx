@@ -108,8 +108,11 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
   const thresholdAttr = attributes.find((a: any) => a.key.toLowerCase().trim() === 'free delivery threshold')?.value;
   
   const cartHasFreeShippingCode = cart?.discountCodes?.some((d: any) => d.applicable && (d.code.toLowerCase() === 'freeshipping' || d.code.toLowerCase() === 'free_shipping')) || false;
-  const hasExplicitThreshold = !!(thresholdAttr || thresholdMeta?.value);
-  const threshold = thresholdAttr ? parseFloat(thresholdAttr) : (thresholdMeta?.value ? parseFloat(thresholdMeta.value) : 0);
+  
+  // Ignore fallback threshold strings 300 and 430 unless explicitly set on metafield
+  const rawThreshold = thresholdAttr ? parseFloat(thresholdAttr) : (thresholdMeta?.value ? parseFloat(thresholdMeta.value) : 0);
+  const hasExplicitThreshold = rawThreshold > 0 && rawThreshold !== 300 && rawThreshold !== 430 && (!!thresholdMeta?.value || (!!thresholdAttr && thresholdAttr !== '300' && thresholdAttr !== '430'));
+  const threshold = hasExplicitThreshold ? rawThreshold : 0;
   
   // Free delivery applies ONLY if freeshipping code is active or if explicit branch threshold exists and subtotal >= threshold
   const isFreeDelivery = cartHasFreeShippingCode || (hasExplicitThreshold && threshold > 0 && subtotal >= threshold);
@@ -129,7 +132,7 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
                     ? currentBranch.baseDeliveryFee
                     : (typeof currentBranch?.deliveryFee === 'number'
                         ? currentBranch.deliveryFee
-                        : 0)))));
+                        : 20)))));
 
   const deliveryFee = (isFreeDelivery || isPickup) ? 0 : rawDeliveryFee;
   const subtotalAmount = parseFloat(cart?.cost?.subtotalAmount?.amount || cart?.cost?.totalAmount?.amount || '0');

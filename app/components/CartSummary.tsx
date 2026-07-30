@@ -101,8 +101,15 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
   const isPickup = fulfillmentType?.toLowerCase() === 'pickup';
   const minOrderMeta = currentBranch?.min_order_value || currentBranch?.metafields?.find((m: any) => m?.key === 'minimum_order_value');
   const minOrderAttr = attributes.find((a: any) => a.key.toLowerCase().trim() === 'minimum order value')?.value;
-  // Minimum order value only applies to Delivery, NOT to store Pickup
-  const rawMinOrderValue = minOrderAttr ? parseFloat(minOrderAttr) : (minOrderMeta?.value ? parseFloat(minOrderMeta.value) : (typeof currentBranch?.minOrder === 'number' ? currentBranch.minOrder : 0));
+  const minOrderAttrVal = minOrderAttr ? parseFloat(minOrderAttr) : null;
+  // Default to 0 SAR for minimum order (matches Shopify Admin Local Delivery SAR 0.00 setting)
+  const rawMinOrderValue = (minOrderMeta?.value && parseFloat(minOrderMeta.value) >= 0)
+    ? parseFloat(minOrderMeta.value)
+    : (typeof minOrderAttrVal === 'number' && !isNaN(minOrderAttrVal) && minOrderAttrVal !== 50
+        ? minOrderAttrVal
+        : (typeof currentBranch?.minOrder === 'number' && currentBranch.minOrder !== 50
+            ? currentBranch.minOrder
+            : 0));
   const minOrderValue = isPickup ? 0 : rawMinOrderValue;
   const isMinOrderMet = subtotal >= minOrderValue;
   const thresholdMeta = currentBranch?.free_delivery_threshold || currentBranch?.metafields?.find((m: any) => m?.key === 'free_delivery_threshold');
@@ -134,7 +141,7 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
                     ? currentBranch.baseDeliveryFee
                     : (typeof currentBranch?.deliveryFee === 'number' && currentBranch.deliveryFee > 0
                         ? currentBranch.deliveryFee
-                        : 20)))));
+                        : 30)))));
 
   const deliveryFee = (isFreeDelivery || isPickup) ? 0 : rawDeliveryFee;
   const subtotalAmount = parseFloat(cart?.cost?.subtotalAmount?.amount || cart?.cost?.totalAmount?.amount || '0');

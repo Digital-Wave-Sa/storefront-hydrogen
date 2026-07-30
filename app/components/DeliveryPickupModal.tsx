@@ -379,7 +379,7 @@ export function parseLocationToBranch(node: any, isEn: boolean = false): Branch 
         deliveryOpenUntil: delivery.openUntil,
         deliveryAvailable: true,
         deliveryRadius: getMeta('delivery_radius', 99999),
-        minOrder: getMeta('minimum_order_value', 50),
+        minOrder: getMeta('minimum_order_value', 0),
         deliveryFee: getMeta('delivery_fee', 0),
         baseDeliveryFee: getMeta('delivery_fee', 0),
         perKmRate: getMeta('per_km_rate', 0),

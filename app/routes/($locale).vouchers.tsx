@@ -324,65 +324,10 @@ export default function VouchersPage() {
 
   const currentTabList =
     activeTab === 'active'
-      ? (activeVouchers.length > 0 ? activeVouchers : [
-          {
-            id: '1',
-            title: '15% OFF Oriental Sweets',
-            code: 'discount15',
-            status: 'active',
-            badgeText: '15%',
-            discountDisplayAr: 'خصم 15% . الحلويات الشرقية',
-            discountDisplayEn: '15% OFF . Oriental Sweets',
-            subtitleAr: 'discount15',
-            subtitleEn: 'discount15',
-            expiryTextAr: 'تنتهي 31 ديسمبر 2026',
-            expiryTextEn: 'Expires Dec 31, 2026',
-          },
-          {
-            id: '2',
-            title: 'Free Delivery',
-            code: 'freeshipping',
-            status: 'active',
-            badgeText: 'مجاني',
-            discountDisplayAr: 'توصيل مجاني على الطلب',
-            discountDisplayEn: 'Free Delivery on Order',
-            subtitleAr: 'freeshipping',
-            subtitleEn: 'freeshipping',
-            expiryTextAr: 'تنتهي 31 ديسمبر 2026',
-            expiryTextEn: 'Expires Dec 31, 2026',
-          },
-        ])
+      ? activeVouchers
       : activeTab === 'used'
-      ? (usedVouchers.length > 0 ? usedVouchers : [
-          {
-            id: '3',
-            title: '50 SAR Discount',
-            code: 'discount50',
-            status: 'used',
-            badgeText: '50 ر.س',
-            discountDisplayAr: 'خصم 50 ر.س',
-            discountDisplayEn: '50 SAR OFF',
-            subtitleAr: 'discount50',
-            subtitleEn: 'discount50',
-            expiryTextAr: 'تم الاستخدام',
-            expiryTextEn: 'Used',
-          },
-        ])
-      : (expiredVouchers.length > 0 ? expiredVouchers : [
-          {
-            id: '4',
-            title: 'Ramadan Special 25 SAR',
-            code: 'RAMADAN25',
-            status: 'expired',
-            badgeText: '25 ر.س',
-            discountDisplayAr: 'قسيمة رمضان 25 ر.س',
-            discountDisplayEn: 'Ramadan Voucher 25 SAR',
-            subtitleAr: 'RAMADAN25',
-            subtitleEn: 'RAMADAN25',
-            expiryTextAr: 'انتهت 10 ابريل 2025',
-            expiryTextEn: 'Expired April 10, 2025',
-          },
-        ]);
+      ? usedVouchers
+      : expiredVouchers;
 
   return (
     <div className={`min-h-screen bg-[#FAF8F5] pb-16 ${isEn ? 'font-en' : 'font-ar'}`} dir={isEn ? 'ltr' : 'rtl'}>
@@ -839,65 +784,96 @@ export default function VouchersPage() {
 
             {/* Voucher Cards List */}
             <div className="space-y-4 pt-2">
-              {currentTabList.map((v, i) => {
-                const isUsedState = v.status === 'used';
-                const isExpiredState = v.status === 'expired';
-                const isActiveState = v.status === 'active';
+              {currentTabList.length === 0 ? (
+                <div className="bg-white rounded-[24px] p-10 text-center border border-gray-200 shadow-sm flex flex-col items-center gap-3">
+                  <div className="w-14 h-14 rounded-full bg-[#FAF8F5] flex items-center justify-center text-[26px]">
+                    🎟️
+                  </div>
+                  <p className="text-[15px] font-bold text-[#234745]">
+                    {activeTab === 'active'
+                      ? isEn ? 'No active vouchers available at the moment.' : 'لا توجد قسائم فعالة حالياً.'
+                      : activeTab === 'used'
+                      ? isEn ? 'No used vouchers found for your account.' : 'لا توجد قسائم مستخدمة لحسابك.'
+                      : isEn ? 'No expired vouchers.' : 'لا توجد قسائم منتهية الصلاحية.'}
+                  </p>
+                </div>
+              ) : (
+                currentTabList.map((v, i) => {
+                  const isUsedState = v.status === 'used';
+                  const isExpiredState = v.status === 'expired';
+                  const isActiveState = v.status === 'active';
 
-                const badgeBg = isActiveState
-                  ? '#234745'
-                  : isUsedState
-                  ? '#E2C78A'
-                  : '#97A7AD';
+                  const badgeBg = isActiveState
+                    ? '#234745'
+                    : isUsedState
+                    ? '#E2C78A'
+                    : '#97A7AD';
 
-                return (
-                  <div
-                    key={v.id || i}
-                    className={`relative bg-white transition-all flex items-center justify-between ${
-                      !isActiveState ? 'shadow-sm border border-gray-100' : ''
-                    }`}
-                    style={{
-                      borderRight: '4px solid #234745',
-                      borderRadius: '12px',
-                      padding: '24px',
-                      gap: '24px',
-                      minHeight: '136px',
-                    }}
-                  >
-                    {/* Right Main Info + Badge */}
-                    <div className="flex items-center gap-5">
-                      {/* Badge */}
-                      <div
-                        className="w-[88px] h-[88px] rounded-[20px] text-white font-bold text-[20px] flex items-center justify-center flex-shrink-0 shadow-sm"
-                        style={{ background: badgeBg }}
-                      >
-                        {v.badgeText}
+                  return (
+                    <div
+                      key={v.id || i}
+                      className={`relative bg-white transition-all flex items-center justify-between ${
+                        !isActiveState ? 'shadow-sm border border-gray-100' : ''
+                      }`}
+                      style={{
+                        borderRight: '4px solid #234745',
+                        borderRadius: '12px',
+                        padding: '24px',
+                        gap: '24px',
+                        minHeight: '136px',
+                      }}
+                    >
+                      {/* Right Main Info + Badge */}
+                      <div className="flex items-center gap-5">
+                        {/* Badge */}
+                        <div
+                          className="w-[88px] h-[88px] rounded-[20px] text-white font-bold text-[20px] flex items-center justify-center flex-shrink-0 shadow-sm"
+                          style={{ background: badgeBg }}
+                        >
+                          {v.badgeText}
+                        </div>
+                        <div className="text-right flex flex-col gap-2">
+                          <h4
+                            style={{
+                              color: isActiveState ? '#234745' : '#7D7D7D',
+                              fontFamily: "'Bahij Janna', 'Bahij', serif",
+                              fontWeight: 700,
+                              fontSize: '20px',
+                              lineHeight: '100%',
+                              textAlign: 'right',
+                            }}
+                          >
+                            {isEn ? v.discountDisplayEn : v.discountDisplayAr}
+                          </h4>
+                          <p
+                            style={{
+                              color: '#7D7D7D',
+                              fontFamily: "'GE Dinar One', 'GE SS Two', sans-serif",
+                              fontWeight: 500,
+                              fontSize: '16px',
+                              lineHeight: '100%',
+                              textAlign: 'right',
+                            }}
+                          >
+                            {v.code}
+                          </p>
+                          <span
+                            style={{
+                              color: '#7D7D7D',
+                              fontFamily: "'GE Dinar One', 'GE SS Two', sans-serif",
+                              fontWeight: 500,
+                              fontSize: '16px',
+                              lineHeight: '100%',
+                              textAlign: 'right',
+                            }}
+                          >
+                            {isEn ? v.expiryTextEn : v.expiryTextAr}
+                          </span>
+                        </div>
                       </div>
-                      <div className="text-right flex flex-col gap-2">
-                        <h4
-                          style={{
-                            color: isActiveState ? '#234745' : '#7D7D7D',
-                            fontFamily: "'Bahij Janna', 'Bahij', serif",
-                            fontWeight: 700,
-                            fontSize: '20px',
-                            lineHeight: '100%',
-                            textAlign: 'right',
-                          }}
-                        >
-                          {isEn ? v.discountDisplayEn : v.discountDisplayAr}
-                        </h4>
-                        <p
-                          style={{
-                            color: '#7D7D7D',
-                            fontFamily: "'GE Dinar One', 'GE SS Two', sans-serif",
-                            fontWeight: 500,
-                            fontSize: '16px',
-                            lineHeight: '100%',
-                            textAlign: 'right',
-                          }}
-                        >
-                          {v.code}
-                        </p>
+
+                      {/* Left Action & Status */}
+                      <div className="flex flex-col items-center justify-between self-stretch gap-3">
                         <span
                           style={{
                             color: '#7D7D7D',
@@ -905,66 +881,50 @@ export default function VouchersPage() {
                             fontWeight: 500,
                             fontSize: '16px',
                             lineHeight: '100%',
-                            textAlign: 'right',
+                            textAlign: 'center',
                           }}
                         >
-                          {isEn ? v.expiryTextEn : v.expiryTextAr}
+                          {isActiveState
+                            ? isEn ? 'Active' : 'فعالة'
+                            : isUsedState
+                            ? isEn ? 'Used' : 'مستخدمة'
+                            : isEn ? 'Expired' : 'منتهية'}
                         </span>
+                        {isActiveState && (
+                          <button
+                            type="button"
+                            disabled={cartFetcher.state !== 'idle'}
+                            onClick={() => applyCodeToCart(v.code)}
+                            className="hover:opacity-90 transition-all shadow-sm active:scale-95 border-none cursor-pointer disabled:opacity-50"
+                            style={{
+                              color: '#FFFFFF',
+                              fontFamily: "'GE Dinar One', 'GE SS Two', sans-serif",
+                              fontWeight: 700,
+                              fontSize: '16px',
+                              lineHeight: '100%',
+                              textAlign: 'center',
+                              width: '148px',
+                              height: '48px',
+                              gap: '8px',
+                              borderRadius: '24px',
+                              padding: '12px 20px',
+                              background: '#234745',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              textDecoration: 'none',
+                            }}
+                          >
+                            {cartFetcher.state !== 'idle' && lastAppliedCode === v.code
+                              ? (isEn ? 'Applying...' : 'جاري التطبيق...')
+                              : (isEn ? 'Use Now' : 'إستخدم الان')}
+                          </button>
+                        )}
                       </div>
                     </div>
-
-                    {/* Left Action & Status */}
-                    <div className="flex flex-col items-center justify-between self-stretch gap-3">
-                      <span
-                        style={{
-                          color: '#7D7D7D',
-                          fontFamily: "'GE Dinar One', 'GE SS Two', sans-serif",
-                          fontWeight: 500,
-                          fontSize: '16px',
-                          lineHeight: '100%',
-                          textAlign: 'center',
-                        }}
-                      >
-                        {isActiveState
-                          ? isEn ? 'Active' : 'فعالة'
-                          : isUsedState
-                          ? isEn ? 'Used' : 'مستخدمة'
-                          : isEn ? 'Expired' : 'منتهية'}
-                      </span>
-                      {isActiveState && (
-                        <button
-                          type="button"
-                          disabled={cartFetcher.state !== 'idle'}
-                          onClick={() => applyCodeToCart(v.code)}
-                          className="hover:opacity-90 transition-all shadow-sm active:scale-95 border-none cursor-pointer disabled:opacity-50"
-                          style={{
-                            color: '#FFFFFF',
-                            fontFamily: "'GE Dinar One', 'GE SS Two', sans-serif",
-                            fontWeight: 700,
-                            fontSize: '16px',
-                            lineHeight: '100%',
-                            textAlign: 'center',
-                            width: '148px',
-                            height: '48px',
-                            gap: '8px',
-                            borderRadius: '24px',
-                            padding: '12px 20px',
-                            background: '#234745',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            textDecoration: 'none',
-                          }}
-                        >
-                          {cartFetcher.state !== 'idle' && lastAppliedCode === v.code
-                            ? (isEn ? 'Applying...' : 'جاري التطبيق...')
-                            : (isEn ? 'Use Now' : 'إستخدم الان')}
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                })
+              )}
             </div>
           </div>
 

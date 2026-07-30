@@ -252,11 +252,16 @@ export default function VouchersPage() {
     setLastAppliedCode(codeClean);
     setAppliedVoucherError(null);
 
-    cartFetcher.submit(
-      {
-        action: CartForm.ACTIONS.DiscountCodesUpdate,
-        inputs: JSON.stringify({ discountCode: codeClean, discountCodes: [] }),
+    const cartFormPayload = JSON.stringify({
+      action: CartForm.ACTIONS.DiscountCodesUpdate,
+      inputs: {
+        discountCode: codeClean,
+        discountCodes: [],
       },
+    });
+
+    cartFetcher.submit(
+      { cartFormInput: cartFormPayload },
       { method: 'post', action: isEn ? '/en/cart' : '/cart' }
     );
   };

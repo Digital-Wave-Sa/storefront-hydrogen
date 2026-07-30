@@ -280,7 +280,7 @@ const RECOMMENDED_PRODUCTS_QUERY = `#graphql
     }
 
     bestSellers: collection(handle: "best-sellers") {
-      products(first: 8) {
+      products(first: 20) {
         nodes {
           ...RecommendedProduct
         }
@@ -288,7 +288,7 @@ const RECOMMENDED_PRODUCTS_QUERY = `#graphql
     }
 
     kunafa: collection(handle: "kunafa") {
-      products(first: 8) {
+      products(first: 20) {
         nodes {
           ...RecommendedProduct
         }
@@ -296,7 +296,23 @@ const RECOMMENDED_PRODUCTS_QUERY = `#graphql
     }
 
     sweets: collection(handle: "sweets") {
-      products(first: 8) {
+      products(first: 20) {
+        nodes {
+          ...RecommendedProduct
+        }
+      }
+    }
+
+    arabic: collection(handle: "arabic") {
+      products(first: 20) {
+        nodes {
+          ...RecommendedProduct
+        }
+      }
+    }
+
+    cake: collection(handle: "cake") {
+      products(first: 20) {
         nodes {
           ...RecommendedProduct
         }
@@ -304,7 +320,7 @@ const RECOMMENDED_PRODUCTS_QUERY = `#graphql
     }
 
     chocolateCake: collection(handle: "chocolate-cake") {
-      products(first: 8) {
+      products(first: 20) {
         nodes {
           ...RecommendedProduct
         }
@@ -312,7 +328,7 @@ const RECOMMENDED_PRODUCTS_QUERY = `#graphql
     }
 
     cakes: collection(handle: "cakes") {
-      products(first: 8) {
+      products(first: 20) {
         nodes {
           ...RecommendedProduct
         }
@@ -320,7 +336,7 @@ const RECOMMENDED_PRODUCTS_QUERY = `#graphql
     }
 
     chocolate: collection(handle: "chocolate") {
-      products(first: 8) {
+      products(first: 20) {
         nodes {
           ...RecommendedProduct
         }
@@ -328,7 +344,7 @@ const RECOMMENDED_PRODUCTS_QUERY = `#graphql
     }
 
     gifts: collection(handle: "gifts") {
-      products(first: 8) {
+      products(first: 20) {
         nodes {
           ...RecommendedProduct
         }
@@ -336,7 +352,7 @@ const RECOMMENDED_PRODUCTS_QUERY = `#graphql
     }
 
     gifting: collection(handle: "gifting") {
-      products(first: 8) {
+      products(first: 20) {
         nodes {
           ...RecommendedProduct
         }

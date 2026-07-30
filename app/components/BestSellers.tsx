@@ -132,9 +132,10 @@ export function BestSellers({
                                     break;
                                 }
                                 case 2: { // Cakes
-                                    const chocCake = getNodes((resolvedData as any).chocolateCake);
+                                    const cake = getNodes((resolvedData as any).cake);
                                     const cakes = getNodes((resolvedData as any).cakes);
-                                    tabProducts = chocCake.length > 0 ? chocCake : (cakes.length > 0 ? cakes : []);
+                                    const chocCake = getNodes((resolvedData as any).chocolateCake);
+                                    tabProducts = cake.length > 0 ? cake : (cakes.length > 0 ? cakes : (chocCake.length > 0 ? chocCake : []));
                                     if (tabProducts.length === 0) {
                                         tabProducts = fallback.filter((p: any) => {
                                             const type = (p.productType || '').toLowerCase();

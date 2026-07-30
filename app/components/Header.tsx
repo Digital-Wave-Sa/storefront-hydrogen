@@ -73,7 +73,7 @@ export function Header({ header, isLoggedIn, cart, locations, customer, locale, 
           ? branch.baseDeliveryFee
           : (typeof branch?.delivery_fee === 'number' && branch.delivery_fee > 0)
             ? branch.delivery_fee
-            : 20;
+            : 30;
       attributes.push({ key: 'Delivery Fee', value: calculatedFee.toString() });
     }
 

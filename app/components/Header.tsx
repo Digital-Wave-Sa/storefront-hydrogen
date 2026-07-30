@@ -70,7 +70,7 @@ export function Header({ header, isLoggedIn, cart, locations, customer, locale, 
       attributes.push({ key: 'Delivery Fee', value: branch.deliveryFee.toString() });
     }
 
-    if (typeof branch?.freeDeliveryThreshold === 'number') {
+    if (typeof branch?.freeDeliveryThreshold === 'number' && branch.freeDeliveryThreshold > 0 && branch.freeDeliveryThreshold !== 300) {
       attributes.push({ key: 'Free Delivery Threshold', value: branch.freeDeliveryThreshold.toString() });
     }
 

@@ -103,8 +103,7 @@ export async function getLoyaltyPoints(params: LoyaltyParams): Promise<number> {
     let url = `${sdlpAppUrl}/api/storefront/loyalty?shop=${encodeURIComponent(shop)}`;
     if (searchPhone) {
       url += `&phone=${encodeURIComponent(searchPhone)}`;
-    }
-    if (customerId) {
+    } else if (customerId) {
       url += `&customerId=${encodeURIComponent(customerId)}`;
     }
     console.log('[SDLP Loyalty] GET Request:', url);

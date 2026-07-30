@@ -134,7 +134,11 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
           });
           if (res.ok) {
             const data = await res.json() as any;
-            adminCust = data.customers?.[0];
+            adminCust = (data.customers || []).find((c: any) => {
+              const cp = (c.phone || '').replace(/\D/g, '');
+              const sp = savedPhone.replace(/\D/g, '');
+              return cp && sp && (cp === sp || cp.endsWith(sp) || sp.endsWith(cp));
+            });
           }
         }
         if (!adminCust && savedEmail) {

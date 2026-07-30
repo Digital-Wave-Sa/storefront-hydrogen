@@ -1198,41 +1198,52 @@ function CustomPointsForm({ availablePoints, isEn }: { availablePoints: number; 
   const isValid = numVal >= 10 && numVal <= availablePoints;
 
   return (
-    <CartForm
-      route="/cart"
-      action="LoyaltyUpdate"
-      inputs={{ points: String(numVal), intent: 'apply' }}
-      className="flex gap-2 items-center"
-    >
-      {(fetcher: any) => (
-        <>
-          <div className="relative flex-1">
-            <input
-              type="number"
-              min={10}
-              max={availablePoints}
-              step={10}
-              value={val}
-              onChange={(e) => setVal(e.target.value)}
-              placeholder={isEn ? "e.g. 50" : "مثال: 50"}
-              className="w-full px-3 py-2 text-[12px] font-bold rounded-lg border border-gray-200 focus:border-[#234745] focus:outline-none"
-            />
-            {numVal > 0 && (
-              <span className="absolute right-3 top-2 text-[10px] text-emerald-700 font-bold">
-                ={discountVal} SAR
-              </span>
-            )}
-          </div>
-          <button
-            type="submit"
-            disabled={!isValid || fetcher.state !== 'idle'}
-            className="px-4 py-2 bg-[#234745] hover:bg-[#142e22] text-white rounded-lg text-[12px] font-bold disabled:opacity-40 transition-all shrink-0"
-          >
-            {fetcher.state !== 'idle' ? (isEn ? 'Applying...' : 'تطبيق...') : (isEn ? 'Apply' : 'تطبيق')}
-          </button>
-        </>
+    <div className="flex flex-col gap-1.5 w-full">
+      <CartForm
+        route="/cart"
+        action="LoyaltyUpdate"
+        inputs={{ points: String(numVal), intent: 'apply' }}
+        className="flex gap-2 items-center w-full"
+      >
+        {(fetcher: any) => (
+          <>
+            <div className="relative flex-1">
+              <input
+                type="number"
+                min={10}
+                max={availablePoints}
+                step={10}
+                value={val}
+                onChange={(e) => setVal(e.target.value)}
+                placeholder={isEn ? "Enter points (e.g. 50)" : "أدخل عدد النقاط (مثال: 50)"}
+                className="w-full px-3.5 py-2.5 text-[13px] font-bold rounded-lg border border-gray-200 focus:border-[#234745] focus:outline-none text-start bg-white"
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={!isValid || fetcher.state !== 'idle'}
+              className="px-5 py-2.5 bg-[#234745] hover:bg-[#142e22] text-white rounded-lg text-[13px] font-bold disabled:opacity-40 transition-all shrink-0 shadow-sm"
+            >
+              {fetcher.state !== 'idle' ? (isEn ? 'Applying...' : 'تطبيق...') : (isEn ? 'Apply' : 'تطبيق')}
+            </button>
+          </>
+        )}
+      </CartForm>
+
+      {numVal > 0 && (
+        <div className={`text-[11px] font-bold flex items-center gap-1 px-1 ${isValid ? 'text-emerald-700' : 'text-red-500'}`}>
+          {isValid ? (
+            <span>
+              {isEn ? `Equivalent discount: -${discountVal} SAR` : `قيمة الخصم المستحقة: -${discountVal} ر.س`}
+            </span>
+          ) : numVal < 10 ? (
+            <span>{isEn ? 'Minimum 10 points required' : 'الحد الأدنى 10 نقاط'}</span>
+          ) : (
+            <span>{isEn ? `Maximum ${availablePoints} points available` : `لديك ${availablePoints} نقطة كحد أقصى`}</span>
+          )}
+        </div>
       )}
-    </CartForm>
+    </div>
   );
 }
 

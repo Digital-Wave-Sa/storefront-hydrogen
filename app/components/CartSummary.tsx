@@ -1139,43 +1139,70 @@ function LoyaltyRedemptionUI({ isEn, cart }: { isEn: boolean, cart: any }) {
             <p className="text-[12px] text-gray-500 text-center py-2 font-medium">
               {isEn ? 'You currently have 0 loyalty points.' : 'لا توجد لديك نقاط ولاء حالياً.'}
             </p>
+          ) : availablePoints < 100 ? (
+            <div className="text-center py-2 text-[12px] text-gray-600 font-medium">
+              <p className="font-bold text-[#234745] mb-1">
+                {isEn ? `You have ${availablePoints} Points (${(availablePoints * 0.10).toFixed(2)} SAR)` : `لديك ${availablePoints} نقطة (تعادل ${(availablePoints * 0.10).toFixed(2)} ر.س)`}
+              </p>
+              <p className="text-[11px] text-amber-700 bg-amber-50 p-2 rounded-lg border border-amber-200 mt-1">
+                {isEn
+                  ? 'Minimum 100 points required to redeem a discount (100 pts = 10 SAR).'
+                  : 'يتطلب استبدال خصم 100 نقطة على الأقل (100 نقطة = 10 ر.س خصم).'}
+              </p>
+            </div>
           ) : (
             <>
               <div className="flex items-center justify-between text-[12px] font-medium text-gray-700">
-                <span>{isEn ? '10 Points = 1 SAR Discount' : '10 نقاط = 1 ر.س خصم'}</span>
+                <span>{isEn ? '100 Points = 10 SAR Discount' : '100 نقطة = 10 ر.س خصم'}</span>
                 <span className="text-[#234745] font-bold">
-                  {isEn ? `Max: ${(availablePoints * 0.10).toFixed(2)} SAR` : `أقصى خصم: ${(availablePoints * 0.10).toFixed(2)} ر.س`}
+                  {isEn ? `Max: ${(Math.floor(availablePoints / 100) * 10).toFixed(2)} SAR` : `أقصى خصم: ${(Math.floor(availablePoints / 100) * 10).toFixed(2)} ر.س`}
                 </span>
               </div>
 
-              {/* Quick Redeem Button for All Available Points */}
-              <CartForm
-                route="/cart"
-                action="LoyaltyUpdate"
-                inputs={{ points: String(availablePoints), intent: 'apply' }}
-                className="w-full"
-              >
-                {(fetcher: any) => (
-                  <button
-                    type="submit"
-                    disabled={fetcher.state !== 'idle' || availablePoints <= 0}
-                    className="w-full py-2.5 bg-[#234745] hover:bg-[#142e22] text-white rounded-lg text-[13px] font-bold transition-all shadow-sm flex items-center justify-center gap-2"
+              {/* Quick Redeem Button for Max 100-step Points */}
+              {(() => {
+                const maxRedeemable = Math.floor(availablePoints / 100) * 100;
+                const maxDiscountSAR = (maxRedeemable * 0.10).toFixed(2);
+                return (
+                  <CartForm
+                    route="/cart"
+                    action="LoyaltyUpdate"
+                    inputs={{ points: String(maxRedeemable), intent: 'apply' }}
+                    className="w-full"
                   >
-                    <span>⭐</span>
-                    <span>
-                      {fetcher.state !== 'idle'
-                        ? (isEn ? 'Redeeming...' : 'جاري الاستبدال...')
-                        : (isEn ? `Redeem ${availablePoints} Points (${(availablePoints * 0.10).toFixed(2)} SAR)` : `استبدال ${availablePoints} نقطة (${(availablePoints * 0.10).toFixed(2)} ر.س خصم)`)}
-                    </span>
-                  </button>
-                )}
-              </CartForm>
+                    {(fetcher: any) => {
+                      const actionError = fetcher.data?.error;
+                      return (
+                        <div className="w-full flex flex-col gap-1">
+                          <button
+                            type="submit"
+                            disabled={fetcher.state !== 'idle' || maxRedeemable <= 0}
+                            className="w-full py-2.5 bg-[#234745] hover:bg-[#142e22] text-white rounded-lg text-[13px] font-bold transition-all shadow-sm flex items-center justify-center gap-2"
+                          >
+                            <span>⭐</span>
+                            <span>
+                              {fetcher.state !== 'idle'
+                                ? (isEn ? 'Redeeming...' : 'جاري الاستبدال...')
+                                : (isEn ? `Redeem ${maxRedeemable} Points (-${maxDiscountSAR} SAR)` : `استبدال ${maxRedeemable} نقطة (خصم ${maxDiscountSAR} ر.س)`)}
+                            </span>
+                          </button>
+                          {actionError && (
+                            <p className="text-red-500 text-[11px] font-bold mt-1 text-center bg-red-50 p-2 rounded-lg border border-red-200">
+                              {actionError}
+                            </p>
+                          )}
+                        </div>
+                      );
+                    }}
+                  </CartForm>
+                );
+              })()}
 
-              {/* Custom Points Input (if availablePoints >= 20) */}
-              {availablePoints >= 20 && (
+              {/* Custom Points Input (if availablePoints >= 200) */}
+              {availablePoints >= 200 && (
                 <div className="pt-2 border-t border-[#f0ece8]">
                   <p className="text-[11px] text-gray-500 mb-1.5 font-medium">
-                    {isEn ? 'Or enter custom amount of points to use:' : 'أو أدخل عدد نقاط مخصص لاستخدامه:'}
+                    {isEn ? 'Or enter points in multiples of 100:' : 'أو أدخل مضاعفات الـ 100 نقطة:'}
                   </p>
                   <CustomPointsForm
                     availablePoints={availablePoints}
@@ -1195,7 +1222,7 @@ function CustomPointsForm({ availablePoints, isEn }: { availablePoints: number; 
   const [val, setVal] = useState<string>('');
   const numVal = parseInt(val) || 0;
   const discountVal = (numVal * 0.10).toFixed(2);
-  const isValid = numVal >= 10 && numVal <= availablePoints;
+  const isValid = numVal >= 100 && numVal % 100 === 0 && numVal <= availablePoints;
 
   return (
     <div className="flex flex-col gap-1.5 w-full">
@@ -1205,29 +1232,39 @@ function CustomPointsForm({ availablePoints, isEn }: { availablePoints: number; 
         inputs={{ points: String(numVal), intent: 'apply' }}
         className="flex gap-2 items-center w-full"
       >
-        {(fetcher: any) => (
-          <>
-            <div className="relative flex-1">
-              <input
-                type="number"
-                min={10}
-                max={availablePoints}
-                step={10}
-                value={val}
-                onChange={(e) => setVal(e.target.value)}
-                placeholder={isEn ? "Enter points (e.g. 50)" : "أدخل عدد النقاط (مثال: 50)"}
-                className="w-full px-3.5 py-2.5 text-[13px] font-bold rounded-lg border border-gray-200 focus:border-[#234745] focus:outline-none text-start bg-white"
-              />
+        {(fetcher: any) => {
+          const actionError = fetcher.data?.error;
+          return (
+            <div className="w-full flex flex-col gap-1.5">
+              <div className="flex gap-2 items-center w-full">
+                <div className="relative flex-1">
+                  <input
+                    type="number"
+                    min={100}
+                    max={availablePoints}
+                    step={100}
+                    value={val}
+                    onChange={(e) => setVal(e.target.value)}
+                    placeholder={isEn ? "e.g. 100, 200" : "مثال: 100، 200"}
+                    className="w-full px-3.5 py-2.5 text-[13px] font-bold rounded-lg border border-gray-200 focus:border-[#234745] focus:outline-none text-start bg-white"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={!isValid || fetcher.state !== 'idle'}
+                  className="px-5 py-2.5 bg-[#234745] hover:bg-[#142e22] text-white rounded-lg text-[13px] font-bold disabled:opacity-40 transition-all shrink-0 shadow-sm"
+                >
+                  {fetcher.state !== 'idle' ? (isEn ? 'Applying...' : 'تطبيق...') : (isEn ? 'Apply' : 'تطبيق')}
+                </button>
+              </div>
+              {actionError && (
+                <p className="text-red-500 text-[11px] font-bold text-center bg-red-50 p-2 rounded-lg border border-red-200">
+                  {actionError}
+                </p>
+              )}
             </div>
-            <button
-              type="submit"
-              disabled={!isValid || fetcher.state !== 'idle'}
-              className="px-5 py-2.5 bg-[#234745] hover:bg-[#142e22] text-white rounded-lg text-[13px] font-bold disabled:opacity-40 transition-all shrink-0 shadow-sm"
-            >
-              {fetcher.state !== 'idle' ? (isEn ? 'Applying...' : 'تطبيق...') : (isEn ? 'Apply' : 'تطبيق')}
-            </button>
-          </>
-        )}
+          );
+        }}
       </CartForm>
 
       {numVal > 0 && (
@@ -1236,8 +1273,10 @@ function CustomPointsForm({ availablePoints, isEn }: { availablePoints: number; 
             <span>
               {isEn ? `Equivalent discount: -${discountVal} SAR` : `قيمة الخصم المستحقة: -${discountVal} ر.س`}
             </span>
-          ) : numVal < 10 ? (
-            <span>{isEn ? 'Minimum 10 points required' : 'الحد الأدنى 10 نقاط'}</span>
+          ) : numVal < 100 ? (
+            <span>{isEn ? 'Minimum 100 points required' : 'الحد الأدنى 100 نقطة'}</span>
+          ) : numVal % 100 !== 0 ? (
+            <span>{isEn ? 'Points must be in increments of 100' : 'يجب إدخال عدد نقاط من مضاعفات الـ 100'}</span>
           ) : (
             <span>{isEn ? `Maximum ${availablePoints} points available` : `لديك ${availablePoints} نقطة كحد أقصى`}</span>
           )}

@@ -106,21 +106,32 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
   const thresholdMeta = currentBranch?.free_delivery_threshold || currentBranch?.metafields?.find((m: any) => m?.key === 'free_delivery_threshold');
   const feeMeta = currentBranch?.delivery_fee || currentBranch?.metafields?.find((m: any) => m?.key === 'delivery_fee');
   const thresholdAttr = attributes.find((a: any) => a.key.toLowerCase().trim() === 'free delivery threshold')?.value;
-  const threshold = thresholdAttr ? parseFloat(thresholdAttr) : (thresholdMeta?.value ? parseFloat(thresholdMeta.value) : 300);
-  // Free delivery only applies if threshold > 0 and subtotal is >= threshold
-  const isFreeDelivery = threshold > 0 && subtotal >= threshold;
+  
+  const cartHasFreeShippingCode = cart?.discountCodes?.some((d: any) => d.applicable && (d.code.toLowerCase() === 'freeshipping' || d.code.toLowerCase() === 'free_shipping')) || false;
+  const hasExplicitThreshold = !!(thresholdAttr || thresholdMeta?.value);
+  const threshold = thresholdAttr ? parseFloat(thresholdAttr) : (thresholdMeta?.value ? parseFloat(thresholdMeta.value) : 0);
+  
+  // Free delivery applies ONLY if freeshipping code is active or if explicit branch threshold exists and subtotal >= threshold
+  const isFreeDelivery = cartHasFreeShippingCode || (hasExplicitThreshold && threshold > 0 && subtotal >= threshold);
+  
   const feeAttribute = attributes.find((a: any) => a.key.toLowerCase().trim() === 'delivery fee')?.value;
   const isPickup = fulfillmentType?.toLowerCase() === 'pickup';
-  // Use dynamically calculated fee from attribute, otherwise fallback to location delivery fee or 0
-  const deliveryFee = (isFreeDelivery || isPickup)
-    ? 0
-    : (feeAttribute
-        ? parseFloat(feeAttribute)
-        : (feeMeta?.value
-            ? parseFloat(feeMeta.value)
-            : (typeof currentBranch?.delivery_fee === 'number'
-                ? currentBranch.delivery_fee
-                : 0)));
+  
+  const rawDeliveryFee = feeAttribute
+    ? parseFloat(feeAttribute)
+    : (feeMeta?.value
+        ? parseFloat(feeMeta.value)
+        : (typeof currentBranch?.delivery_fee === 'number'
+            ? currentBranch.delivery_fee
+            : (typeof currentBranch?.delivery_fee?.value === 'string'
+                ? parseFloat(currentBranch.delivery_fee.value)
+                : (typeof currentBranch?.baseDeliveryFee === 'number'
+                    ? currentBranch.baseDeliveryFee
+                    : (typeof currentBranch?.deliveryFee === 'number'
+                        ? currentBranch.deliveryFee
+                        : 0)))));
+
+  const deliveryFee = (isFreeDelivery || isPickup) ? 0 : rawDeliveryFee;
   const subtotalAmount = parseFloat(cart?.cost?.subtotalAmount?.amount || cart?.cost?.totalAmount?.amount || '0');
   const calculatedTotal = Math.max(0, subtotalAmount + deliveryFee - loyaltyDiscountDisplay);
 

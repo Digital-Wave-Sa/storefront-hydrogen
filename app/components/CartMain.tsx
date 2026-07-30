@@ -101,12 +101,13 @@ export function CartMain({ layout, cart: originalCart }: CartMainProps) {
 
   const thresholdMeta = currentBranch?.free_delivery_threshold || currentBranch?.metafields?.find((m: any) => m?.key === 'free_delivery_threshold');
   const thresholdAttr = cart?.attributes?.find(a => a.key.toLowerCase().trim() === 'free delivery threshold')?.value;
-  const threshold = thresholdAttr ? parseFloat(thresholdAttr) : (thresholdMeta?.value ? parseFloat(thresholdMeta.value) : 430);
+  const hasExplicitThreshold = !!(thresholdAttr || thresholdMeta?.value);
+  const threshold = thresholdAttr ? parseFloat(thresholdAttr) : (thresholdMeta?.value ? parseFloat(thresholdMeta.value) : 0);
   const fulfillmentType = cart?.attributes?.find(a => a.key.toLowerCase().trim() === 'fulfillment type')?.value;
   const isPickup = fulfillmentType?.toLowerCase() === 'pickup';
 
   const subtotal = cart?.cost?.subtotalAmount?.amount ? parseFloat(cart.cost.subtotalAmount.amount) : 0;
-  const progress = Math.min((subtotal / threshold) * 100, 100);
+  const progress = threshold > 0 ? Math.min((subtotal / threshold) * 100, 100) : 0;
   const remaining = Math.max(threshold - subtotal, 0);
   const currencyCode = cart?.cost?.subtotalAmount?.currencyCode || 'SAR';
 
@@ -169,7 +170,7 @@ export function CartMain({ layout, cart: originalCart }: CartMainProps) {
             {/* Left Column (Items) */}
             <div className="flex flex-col gap-4">
               {/* Free Delivery Progress (Restored) */}
-              {cartHasItems && !isPickup && (
+              {cartHasItems && !isPickup && hasExplicitThreshold && threshold > 0 && (
                 <div className="bg-white rounded-[24px] p-6 border border-[#BBCFCD]/80 mb-2">
                   <div className="flex justify-between items-center mb-3">
                     <p className="text-[14px] font-bold text-[#234745]">

@@ -335,10 +335,20 @@ export async function action({ request, context }: ActionFunctionArgs) {
             );
             if (searchRes.ok) {
               const searchData = await searchRes.json() as any;
-              const found = (searchData.customers || []).find((c: any) => {
+              const candidates = (searchData.customers || []).filter((c: any) => {
                 const cp = (c.phone || '').replace(/\D/g, '');
                 return cp && rawDigits && (cp === rawDigits || cp.endsWith(last9Digits) || rawDigits.endsWith(cp));
-              }) || searchData.customers?.[0];
+              });
+
+              // Prioritize original customer account: real email first, then oldest customer ID
+              candidates.sort((a: any, b: any) => {
+                const aPlaceholder = (a.email || '').endsWith('@saadeddin.placeholder');
+                const bPlaceholder = (b.email || '').endsWith('@saadeddin.placeholder');
+                if (aPlaceholder !== bPlaceholder) return aPlaceholder ? 1 : -1;
+                return Number(a.id) - Number(b.id);
+              });
+
+              const found = candidates[0] || searchData.customers?.[0];
 
               if (found) {
                 resolvedCustomerId = String(found.id);

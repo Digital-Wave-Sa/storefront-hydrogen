@@ -92,6 +92,7 @@ export default function GiftingPage() {
     const isEn = locale === 'en';
 
     const categories = [
+        { id: 'all', en: 'All', ar: 'الكل' },
         { id: 'father', en: 'Father', ar: 'الأب' },
         { id: 'mother', en: 'Mother', ar: 'الأم' },
         { id: 'friends', en: 'Friends', ar: 'الأصدقاء' },
@@ -102,7 +103,7 @@ export default function GiftingPage() {
 
     const [searchParams] = useSearchParams();
     const urlCategory = searchParams.get('category');
-    const [selectedCategory, setSelectedCategory] = useState(urlCategory || categories[0].id);
+    const [selectedCategory, setSelectedCategory] = useState(urlCategory || 'all');
 
     useEffect(() => {
         if (urlCategory) {
@@ -112,16 +113,17 @@ export default function GiftingPage() {
 
     // Filter products based on selected category tags
     const filteredProducts = products.filter((p: any) => {
-        // Find if the product has a tag matching the category id or its arabic/english name
-        const cat = categories.find(c => c.id === selectedCategory);
-        if (!cat) return false;
+        if (!selectedCategory || selectedCategory === 'all') return true;
 
-        const tags = p.tags.map((t: string) => t.toLowerCase());
+        const cat = categories.find(c => c.id === selectedCategory);
+        if (!cat) return true;
+
+        const tags = (p.tags || []).map((t: string) => t.toLowerCase());
         return tags.includes(cat.id.toLowerCase()) ||
             tags.includes(cat.en.toLowerCase()) ||
             tags.includes(cat.ar.toLowerCase()) ||
             tags.includes(`gifting_${cat.id}`) ||
-            tags.includes(`gifts-for-${cat.id}`); // Check common variations
+            tags.includes(`gifts-for-${cat.id}`);
     });
 
     const displayProducts = filteredProducts;
@@ -159,7 +161,9 @@ export default function GiftingPage() {
             {/* Products Section */}
             <div className="max-w-[1200px] mx-auto px-4 lg:px-8 pb-16">
                 <h2 className="text-[24px] lg:text-[32px] font-black text-[#1A1A1A] mb-8">
-                    {isEn ? `Suggestions for ${selectedCatLabel}` : `مقترحات لـ ${selectedCatLabel}`}
+                    {selectedCategory === 'all'
+                      ? (isEn ? 'All Gift Items' : 'جميع منتجات الهدايا')
+                      : (isEn ? `Suggestions for ${selectedCatLabel}` : `مقترحات لـ ${selectedCatLabel}`)}
                 </h2>
 
                 {displayProducts.length > 0 ? (

@@ -199,7 +199,11 @@ function renderTextWithRiyalSymbol(text: any, className = "h-[18px] md:h-[26px] 
   if (!text) return null;
   if (typeof text !== 'string') return text;
 
-  const parts = text.split(/(\{\{SAR\}\}|\[SAR\]|\{SAR\}|\{\{ريال\}\}|\[ريال\])/gi);
+  // Regex matches natural currency words & explicit tokens:
+  // SAR, S.R., SR, ر.س, ر.س., ريال سعودي, ريال, {{SAR}}, [SAR], {SAR}
+  const regex = /(\{\{SAR\}\}|\[SAR\]|\{SAR\}|\{\{ريال\}\}|\[ريال\]|\bSAR\b|\bSR\b|\bS\.R\.?\b|ر\.س\.?|ريال\s*سعودي|ريال)/gi;
+
+  const parts = text.split(regex);
 
   if (parts.length === 1) {
     return text;
@@ -208,8 +212,17 @@ function renderTextWithRiyalSymbol(text: any, className = "h-[18px] md:h-[26px] 
   return (
     <>
       {parts.map((part, index) => {
+        if (!part) return null;
         const lower = part.toLowerCase().trim();
         if (
+          lower === 'sar' ||
+          lower === 'sr' ||
+          lower === 's.r' ||
+          lower === 's.r.' ||
+          lower === 'ر.س' ||
+          lower === 'ر.س.' ||
+          lower === 'ريال' ||
+          lower === 'ريال سعودي' ||
           lower === '{{sar}}' ||
           lower === '[sar]' ||
           lower === '{sar}' ||
@@ -668,8 +681,8 @@ export default function PromotionsPage() {
           <h3 className="text-[#234745] text-[18px] md:text-[30px] font-bold text-center flex items-center justify-center flex-wrap gap-1 leading-tight">
             {renderTextWithRiyalSymbol(
               isEn
-                ? (bannerData?.textEn || '25% on gift boxes for orders over 200 {{SAR}}')
-                : (bannerData?.textAr || '25% على صناديق الهدايا للطلبات فوق 200 {{SAR}}'),
+                ? (bannerData?.textEn || '25% on gift boxes for orders over 200 SAR')
+                : (bannerData?.textAr || '25% على صناديق الهدايا للطلبات فوق 200 ر.س'),
               'h-[20px] md:h-[28px] w-auto text-[#234745] inline-block align-middle shrink-0 ms-1'
             )}
           </h3>

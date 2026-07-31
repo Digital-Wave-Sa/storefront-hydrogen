@@ -228,33 +228,39 @@ export default function SearchPage() {
     <div className={`w-full min-h-screen ${isEn ? '' : 'font-ar'} bg-[#FEF8EB] pb-20`} dir={isEn ? 'ltr' : 'rtl'}>
       <Analytics.SearchView data={{ searchTerm, searchResults }} />
       
-      {/* Top Header Bar */}
-      <header className="relative bg-[#234745] overflow-hidden flex items-center h-[80px] md:h-[112px]">
-         {/* Subtle Pattern */}
+      {/* Top Header Hero */}
+      <section className="relative h-[144px] w-full bg-[#234745] overflow-hidden flex items-center" dir={isEn ? 'ltr' : 'rtl'}>
          <div 
-             className="absolute inset-0"
+             className="absolute inset-0 bg-[length:1500px_800px] md:bg-[length:1900px_2000px]"
              style={{
                  backgroundImage: `url(${patternBg})`,
-                 backgroundSize: 'cover',
                  backgroundPosition: 'center',
+                 backgroundRepeat: 'no-repeat',
              }}
          />
-         <div className="max-w-[1440px] w-full mx-auto px-3 md:px-8 lg:px-12 relative z-10 flex flex-row items-center gap-2 md:gap-6" dir={isEn ? 'ltr' : 'rtl'}>
-            {/* Search bar — takes up all remaining space */}
-            <div className="flex-1 min-w-0">
+         <div className="max-w-[1440px] w-full mx-auto px-4 md:px-8 lg:px-12 relative z-10 flex items-center justify-between gap-4" dir={isEn ? 'ltr' : 'rtl'}>
+            <div className="flex items-center gap-2 md:gap-4" dir={isEn ? 'ltr' : 'rtl'}>
+               <button
+                  onClick={() => window.history.back()}
+                  className={`flex items-center gap-[8px] bg-[#9FB7AE] hover:bg-[#8BA19C] text-[#234745] px-4 md:px-6 py-2 rounded-[25px] text-[12px] md:text-[16px] font-bold transition-all ${isEn ? 'font-en' : ''}`}
+                  style={isEn ? {} : { fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
+                  dir={isEn ? 'ltr' : 'rtl'}
+               >
+                  <svg className={`w-3 h-3 md:w-5 md:h-5 ${isEn ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                  </svg>
+                  <span>{isEn ? 'Back' : 'رجوع'}</span>
+               </button>
+               <h1 className={`!text-[16px] md:!text-[38px] font-bold text-white drop-shadow-sm ${isEn ? 'text-left font-en' : 'text-right'}`} style={isEn ? {} : { fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
+                 {isEn ? 'Search' : 'البحث'}
+               </h1>
+            </div>
+
+            <div className="flex-1 max-w-[500px]">
                <SearchForm searchTerm={searchTerm} />
             </div>
-            {/* Back Button — compact on mobile */}
-            <button
-               onClick={() => window.history.back()}
-               className="shrink-0 flex items-center gap-[6px] bg-[#9FB7AE] hover:bg-[#8BA19C] text-[#234745] px-4 md:px-8 py-2.5 md:py-3 rounded-[25px] font-bold transition-all shadow-sm"
-               style={{ fontFamily: !isEn ? "'GE Dinar One', sans-serif" : undefined }}
-            >
-               <span className="text-[14px] md:text-[16px]">{isEn ? 'Back' : 'رجوع'}</span>
-               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={isEn ? '' : 'rotate-180'}><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
-            </button>
          </div>
-      </header>
+      </section>
 
       <div className="bg-[#FEF8EB] min-h-screen">
         <div className="px-4 md:px-8 lg:px-12 py-10 max-w-[1440px] mx-auto text-right">

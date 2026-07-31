@@ -617,16 +617,19 @@ export default function CustomCakeBuilder({
     <div className={`flex flex-col min-h-screen lg:h-screen w-full lg:overflow-hidden bg-white ${isEn ? 'font-en' : 'font-arabic'}`} dir={isEn ? 'ltr' : 'rtl'}>
 
       {/* HEADER */}
-      <div
-        className="bg-[#234745] text-white px-4 py-4 md:px-8 md:py-5 z-20 shrink-0 shadow-md relative overflow-hidden w-full"
-        style={{
-          backgroundImage: "url('/images/second-bg-pattern.svg')",
-          backgroundSize: '1600px 800px',
-          backgroundPosition: 'center',
-          backgroundRepeat: 'repeat'
-        }}
+      <section
+        className="relative h-[144px] w-full bg-[#234745] text-white shrink-0 shadow-md overflow-hidden flex items-center"
+        dir={isEn ? 'ltr' : 'rtl'}
       >
-        <div className="max-w-[1400px] mx-auto w-full flex items-center justify-between gap-2 md:gap-4">
+        <div
+          className="absolute inset-0 bg-[length:1500px_800px] md:bg-[length:1900px_2000px]"
+          style={{
+            backgroundImage: "url('/images/second-bg-pattern.svg')",
+            backgroundPosition: 'center',
+            backgroundRepeat: 'no-repeat',
+          }}
+        />
+        <div className="relative z-10 max-w-[1440px] mx-auto w-full px-4 md:px-8 lg:px-12 flex items-center justify-between gap-2 md:gap-4">
           {/* Right Group in RTL: Back Button + Title */}
           <div className="flex items-center gap-3 md:gap-6 shrink-0">
             <button
@@ -641,7 +644,7 @@ export default function CustomCakeBuilder({
               <span>{isEn ? 'Back' : 'رجوع'}</span>
             </button>
 
-            <h1 className="text-[16px] md:text-2xl font-extrabold leading-tight text-white m-0">
+            <h1 className="text-[18px] md:text-2xl font-extrabold leading-tight text-white m-0">
               {isEn ? 'Design Your Cake' : 'صمم كيكتك'}
             </h1>
           </div>
@@ -657,7 +660,7 @@ export default function CustomCakeBuilder({
             </div>
           </div>
         </div>
-      </div>
+      </section>
 
       <div className="flex flex-col-reverse lg:flex-row-reverse flex-1 min-h-0 lg:overflow-hidden">
 

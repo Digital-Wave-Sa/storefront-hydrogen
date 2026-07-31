@@ -945,18 +945,16 @@ export default function Product() {
       {/* 1. Styled PDP Header Header */}
       <div className="w-full">
         {/* Dark Green Patterned Section */}
-        <div className="w-full bg-[#234745] relative overflow-hidden py-6 md:py-10">
-          {/* Background Texture */}
+        <section className="relative h-[144px] w-full bg-[#234745] overflow-hidden flex items-center" dir={isEn ? 'ltr' : 'rtl'}>
           <div
-            className="absolute inset-0 pointer-events-none"
+            className="absolute inset-0 bg-[length:1500px_800px] md:bg-[length:1900px_2000px]"
             style={{
               backgroundImage: `url(${patternBg})`,
-              backgroundSize: 'max(100vw, 1200px) auto',
               backgroundPosition: 'center',
               backgroundRepeat: 'no-repeat',
             }}
           />
-          <div className={`max-w-[1400px] mx-auto px-4 md:px-8 relative z-10 flex ${isEn ? 'justify-end' : 'justify-start'}`}>
+          <div className="relative z-10 w-full max-w-[1440px] mx-auto px-4 md:px-8 lg:px-12 flex items-center justify-between" dir={isEn ? 'ltr' : 'rtl'}>
             <button
               onClick={() => window.history.back()}
               className={`flex items-center gap-[8px] bg-[#9FB7AE] hover:bg-[#8BA19C] text-[#234745] px-4 md:px-6 py-2.5 rounded-[25px] text-[12px] md:text-[16px] font-bold transition-all shrink-0 ${isEn ? 'font-en' : ''}`}
@@ -969,7 +967,7 @@ export default function Product() {
               <span>{isEn ? 'Back' : 'رجوع'}</span>
             </button>
           </div>
-        </div>
+        </section>
 
         {/* White Breadcrumb Section */}
         <div className="w-full bg-[#FFFFFF] border-b border-[#9FB7AE] h-[56px] flex items-center">

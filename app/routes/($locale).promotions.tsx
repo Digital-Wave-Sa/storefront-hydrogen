@@ -4,6 +4,7 @@ import { AddToCartButton } from '~/components/AddToCartButton';
 import { useWishlist } from '~/context/WishlistContext';
 import { PageHeader } from '~/components/layout/PageHeader';
 import { SaudiRiyalSymbol } from '~/components/Price';
+import { ProductItem } from '~/components/ProductItem';
 
 // GraphQL query to fetch promotional products and promotion page metaobjects
 const PROMOTIONS_QUERY = `#graphql
@@ -731,107 +732,10 @@ export default function PromotionsPage() {
             </div>
           </div>
           {finalDisplayProducts.length > 0 ? (
-            <div className="flex flex-row overflow-x-auto gap-4 md:grid md:grid-cols-4 md:gap-6 pb-4 md:pb-0 snap-x snap-mandatory hide-scrollbars">
-              {finalDisplayProducts.map((prod: any) => {
-                const isSelected = isInWishlist(prod.id);
-                return (
-                  <div key={prod.id} className="bg-white border border-[#EBE3D5] rounded-[24px] overflow-hidden flex flex-col justify-between hover:shadow-md transition-shadow relative group w-[220px] sm:w-[260px] md:w-auto flex-shrink-0 md:flex-shrink snap-start">
-                    {/* Top Badges */}
-                    <div className="absolute top-3 left-3 right-3 flex justify-between items-center z-10">
-                      {/* Wishlist Heart Icon */}
-                      <button
-                        type="button"
-                        onClick={() => toggleWishlist(prod)}
-                        className="w-[40px] h-[40px] bg-white rounded-full flex items-center justify-center shadow-md hover:scale-105 transition-transform active:scale-95 cursor-pointer"
-                      >
-                        <svg
-                          width="18"
-                          height="18"
-                          viewBox="0 0 24 24"
-                          fill={isSelected ? '#E24D55' : 'none'}
-                          stroke={isSelected ? '#E24D55' : '#1A1A1A'}
-                          strokeWidth="2"
-                        >
-                          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-                        </svg>
-                      </button>
-
-                      {/* Tag Badge */}
-                      {prod.tag && (
-                        <div className="bg-[#C5A96A] text-white font-bold text-[11px] px-3.5 py-1.5 rounded-full shadow-sm">
-                          {prod.tag}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Product Image (Flush to top/left/right) */}
-                    <div className="w-full aspect-[4/3] overflow-hidden bg-gray-50">
-                      {prod.handle ? (
-                        <Link to={`/products/${prod.handle}`}>
-                          <img
-                            src={prod.image}
-                            alt={prod.title}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                          />
-                        </Link>
-                      ) : (
-                        <img
-                          src={prod.image}
-                          alt={prod.title}
-                          className="w-full h-full object-cover"
-                        />
-                      )}
-                    </div>
-
-                    {/* Details & Button */}
-                    <div className="p-4 md:p-5 flex flex-col gap-3 w-full">
-                      <h4 className="text-[#171717] text-[16px] md:text-[18px] font-bold text-start line-clamp-1">
-                        {prod.title}
-                      </h4>
-
-                      {/* Prices */}
-                      <div className="flex items-center gap-3 text-start font-bold">
-                        {/* Price */}
-                        <div className={`flex items-center gap-1 text-[#234745] ${isEn ? 'flex-row' : 'flex-row-reverse'}`} dir="ltr">
-                          <span className="text-[18px] md:text-[20px]" style={{ fontFamily: "'EnglishDigits', sans-serif" }}>
-                            {prod.price}
-                          </span>
-                          <SaudiRiyalSymbol className="h-[14px] w-auto text-[#234745] mb-0.5" />
-                        </div>
-                        {/* Compare Price */}
-                        {prod.comparePrice && (
-                          <div className={`flex items-center gap-1 text-[#E64950] ${isEn ? 'flex-row' : 'flex-row-reverse'}`} dir="ltr">
-                            <span className="text-lg md:text-[14px] line-through font-black" style={{ fontFamily: "'EnglishDigits', sans-serif" }}>
-                              {prod.comparePrice}
-                            </span>
-                            <SaudiRiyalSymbol className="h-[11px] w-auto text-[#E64950] mb-0.5" />
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Add to Cart Button */}
-                      <div className="w-full mt-1">
-                        {prod.variantId ? (
-                          <AddToCartButton
-                            lines={[{ merchandiseId: prod.variantId, quantity: 1 }]}
-                            disabled={!prod.availableForSale}
-                            className="w-full h-[48px] bg-[#234745] hover:bg-[#1a3533] text-white font-bold text-[14px] rounded-[50px] transition-colors flex items-center justify-center cursor-pointer"
-                          >
-                            {isEn ? 'Add to Cart' : 'أضف إلي السلة'}
-                          </AddToCartButton>
-                        ) : (
-                          <button
-                            disabled
-                            className="w-full h-[48px] bg-[#BBCFCD] text-[#234745] font-bold text-[14px] rounded-[50px] cursor-not-allowed opacity-50 flex items-center justify-center"
-                          >
-                            {isEn ? 'Out of Stock' : 'نفذت الكمية'}
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+              {finalDisplayProducts.map((prod: any, index: number) => (
+                <ProductItem key={prod.id || index} product={prod} loading={index < 8 ? 'eager' : 'lazy'} />
+              ))}
             </div>
           ) : (
             <div className="w-full py-12 text-center text-[#7D7D7D] font-bold text-[16px] bg-white/60 rounded-[24px] border border-[#EBE3D5]">

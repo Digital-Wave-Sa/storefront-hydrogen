@@ -10,6 +10,10 @@ export async function action({ request, context }: ActionFunctionArgs) {
   if (!customerId) {
     return data({ wishlist, note: 'Guest wishlist, not synced to Shopify' });
   }
+
+  const targetId = String(customerId);
+  const formattedGid = targetId.startsWith('gid://') ? targetId : `gid://shopify/Customer/${targetId}`;
+
   const mutation = `
     mutation customerUpdateWishlist($input: CustomerInput!) {
       customerUpdate(input: $input) {
@@ -28,7 +32,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
     const result = await adminApiQuery(shopDomain, adminToken, mutation, {
       input: {
-        id: customerId,
+        id: formattedGid,
         metafields: [{ namespace: "custom", key: "wishlist", type: "json", value: JSON.stringify(wishlist) }],
       },
     }) as any;
@@ -52,6 +56,9 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
   const customerId = url.searchParams.get('customerId');
   if (!customerId) return data({ wishlist: [] });
 
+  const targetId = String(customerId);
+  const formattedGid = targetId.startsWith('gid://') ? targetId : `gid://shopify/Customer/${targetId}`;
+
   const shopDomain = getAdminDomain(env);
 
   const query = `
@@ -63,7 +70,7 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
   try {
     const adminToken = await getAdminToken(env);
     if (adminToken) {
-      const result = await adminApiQuery(shopDomain, adminToken, query, { id: customerId }) as any;
+      const result = await adminApiQuery(shopDomain, adminToken, query, { id: formattedGid }) as any;
       if (!result.errors && result.data?.customer) {
         const wishlistData = result.data.customer.metafield?.value;
         return data({ wishlist: wishlistData ? JSON.parse(wishlistData) : [] });

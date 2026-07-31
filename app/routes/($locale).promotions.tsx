@@ -195,6 +195,40 @@ export async function loader({ context }: LoaderFunctionArgs) {
   }
 }
 
+function renderTextWithRiyalSymbol(text: any, className = "h-[18px] md:h-[26px] w-auto text-current inline-block align-middle mx-1") {
+  if (!text) return null;
+  if (typeof text !== 'string') return text;
+
+  const parts = text.split(/(\{\{SAR\}\}|\[SAR\]|\{SAR\}|\{\{ريال\}\}|\[ريال\])/gi);
+
+  if (parts.length === 1) {
+    return text;
+  }
+
+  return (
+    <>
+      {parts.map((part, index) => {
+        const lower = part.toLowerCase().trim();
+        if (
+          lower === '{{sar}}' ||
+          lower === '[sar]' ||
+          lower === '{sar}' ||
+          lower === '{{ريال}}' ||
+          lower === '[ريال]'
+        ) {
+          return (
+            <SaudiRiyalSymbol
+              key={index}
+              className={className}
+            />
+          );
+        }
+        return <span key={index}>{part}</span>;
+      })}
+    </>
+  );
+}
+
 export default function PromotionsPage() {
   const { products, heroData, bogoData, gridData, bannerData } = useLoaderData<typeof loader>();
   const routeData = useRouteLoaderData('root') as { locale?: string };
@@ -380,7 +414,7 @@ export default function PromotionsPage() {
             <div className="flex">
               <div className="bg-[#E64950] px-[8px] py-[4px] rounded-[6px] flex items-center gap-1.5">
                 <span className="text-white font-bold text-[12px] tracking-wide whitespace-nowrap">
-                  {isEn ? (heroData?.badgeEn || 'LIMITED OFFER ⏳') : (heroData?.badgeAr || '⏳ عرض محدود')}
+                  {renderTextWithRiyalSymbol(isEn ? (heroData?.badgeEn || 'LIMITED OFFER ⏳') : (heroData?.badgeAr || '⏳ عرض محدود'))}
                 </span>
               </div>
             </div>
@@ -395,13 +429,15 @@ export default function PromotionsPage() {
                   lineHeight: '100%',
                 }}
               >
-                {isEn ? (heroData?.titleEn || 'Big Season Sales') : (heroData?.titleAr || 'تخفيضات الموسم الكبيرة')}
+                {renderTextWithRiyalSymbol(isEn ? (heroData?.titleEn || 'Big Season Sales') : (heroData?.titleAr || 'تخفيضات الموسم الكبيرة'))}
               </h2>
               <p className="text-[#906B51] text-[15px] font-medium leading-relaxed">
-                {isEn ? (
-                  heroData?.subtitleEn || <>Discounts up to <span style={{ fontFamily: "'EnglishDigits', sans-serif" }}>40%</span> on our best products for a limited time</>
-                ) : (
-                  heroData?.subtitleAr || <>خصومات حتى <span style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>40%</span> على أفضل منتجاتنا لفترة محدودة</>
+                {renderTextWithRiyalSymbol(
+                  isEn ? (
+                    heroData?.subtitleEn || 'Discounts up to 40% on our best products for a limited time'
+                  ) : (
+                    heroData?.subtitleAr || 'خصومات حتى 40% على أفضل منتجاتنا لفترة محدودة'
+                  )
                 )}
               </p>
             </div>
@@ -473,7 +509,7 @@ export default function PromotionsPage() {
               <div className="bg-[#1F3E35] px-3.5 py-1.5 rounded-full flex items-center gap-1.5">
                 <span className="text-white text-[12px] font-bold flex items-center gap-1">
                   <span>🎁</span>
-                  <span style={{ fontFamily: "'EnglishDigits', sans-serif" }}>{isEn ? (bogoData?.badgeEn || '1 + 1 Free') : (bogoData?.badgeAr || '1 + 1 مجاناً')}</span>
+                  <span>{renderTextWithRiyalSymbol(isEn ? (bogoData?.badgeEn || '1 + 1 Free') : (bogoData?.badgeAr || '1 + 1 مجاناً'))}</span>
                 </span>
               </div>
             </div>
@@ -487,10 +523,10 @@ export default function PromotionsPage() {
                   fontWeight: 700,
                 }}
               >
-                {isEn ? (bogoData?.titleEn || 'Buy One Get One Free') : (bogoData?.titleAr || 'اشتري واحد واحصل على الثاني مجاناً')}
+                {renderTextWithRiyalSymbol(isEn ? (bogoData?.titleEn || 'Buy One Get One Free') : (bogoData?.titleAr || 'اشتري واحد واحصل على الثاني مجاناً'))}
               </h3>
               <p className="text-[#7D7D7D] text-[14px] md:text-[15px] font-medium leading-relaxed [font-family:'GE Dinar One',sans-serif]">
-                {isEn ? (bogoData?.subtitleEn || 'On all dark chocolate types — Today only!') : (bogoData?.subtitleAr || 'على جميع أنواع الشوكولاتة الداكنة — اليوم فقط!')}
+                {renderTextWithRiyalSymbol(isEn ? (bogoData?.subtitleEn || 'On all dark chocolate types — Today only!') : (bogoData?.subtitleAr || 'على جميع أنواع الشوكولاتة الداكنة — اليوم فقط!'))}
               </p>
             </div>
 
@@ -579,16 +615,16 @@ export default function PromotionsPage() {
           <div className="bg-[#E64C53] rounded-[24px] p-6 md:p-8 flex flex-col items-start text-start justify-between min-h-[220px] shadow-sm relative overflow-hidden">
             <div className="flex items-center gap-2 !mb-6 self-start">
               <span className="text-white/80 font-bold text-[11px] uppercase tracking-wider">
-                {isEn ? (gridData?.card1TagEn || 'Special Partner') : (gridData?.card1TagAr || 'شريك مميز')}
+                {renderTextWithRiyalSymbol(isEn ? (gridData?.card1TagEn || 'Special Partner') : (gridData?.card1TagAr || 'شريك مميز'))}
               </span>
               <div className="w-[20px] h-[1px] bg-white/50"></div>
             </div>
             <div>
               <h3 className="text-white text-[26px] md:text-[34px] font-bold leading-tight mb-2">
-                {isEn ? (gridData?.card1TitleEn || <>25% on Gift Boxes</>) : (gridData?.card1TitleAr || <>25% على صناديق الهدايا</>)}
+                {renderTextWithRiyalSymbol(isEn ? (gridData?.card1TitleEn || '25% on Gift Boxes') : (gridData?.card1TitleAr || '25% على صناديق الهدايا'))}
               </h3>
               <p className="text-white/80 text-[14px] font-semibold !mb-6">
-                {isEn ? (gridData?.card1SubtitleEn || <>Subscribe now and get 15% discount on your first order</>) : (gridData?.card1SubtitleAr || <>اشترك الآن واحصل على خصم 15% على طلبك الأول من سعد الدين</>)}
+                {renderTextWithRiyalSymbol(isEn ? (gridData?.card1SubtitleEn || 'Subscribe now and get 15% discount on your first order') : (gridData?.card1SubtitleAr || 'اشترك الآن واحصل على خصم 15% على طلبك الأول من سعد الدين'))}
               </p>
             </div>
             <button
@@ -604,16 +640,16 @@ export default function PromotionsPage() {
           <div className="bg-[#D3E1DF] rounded-[24px] p-6 md:p-8 flex flex-col items-start text-start justify-between min-h-[220px] shadow-sm relative overflow-hidden">
             <div className="flex items-center gap-2 self-start">
               <span className="text-[#234745] font-bold text-[11px] uppercase tracking-wider">
-                {isEn ? (gridData?.card2TagEn || 'Seasonal Offer') : (gridData?.card2TagAr || 'عرض موسمي')}
+                {renderTextWithRiyalSymbol(isEn ? (gridData?.card2TagEn || 'Seasonal Offer') : (gridData?.card2TagAr || 'عرض موسمي'))}
               </span>
               <div className="w-[20px] h-[1px] bg-[#234745]"></div>
             </div>
             <div>
               <h3 className="text-[#1A1A1A] text-[26px] md:text-[34px] font-bold leading-tight mb-2">
-                {isEn ? (gridData?.card2TitleEn || <>40% on all chocolate</>) : (gridData?.card2TitleAr || <>خصم 40% على الشوكولاتة</>)}
+                {renderTextWithRiyalSymbol(isEn ? (gridData?.card2TitleEn || '40% on all chocolate') : (gridData?.card2TitleAr || 'خصم 40% على الشوكولاتة'))}
               </h3>
               <p className="text-[#7D7D7D] text-[14px] font-semibold mb-6">
-                {isEn ? (gridData?.card2SubtitleEn || <>More than 20 products with exceptional prices</>) : (gridData?.card2SubtitleAr || <>أكثر من 20 منتج بأسعار استثنائية</>)}
+                {renderTextWithRiyalSymbol(isEn ? (gridData?.card2SubtitleEn || 'More than 20 products with exceptional prices') : (gridData?.card2SubtitleAr || 'أكثر من 20 منتج بأسعار استثنائية'))}
               </p>
             </div>
             <button
@@ -629,11 +665,13 @@ export default function PromotionsPage() {
 
         {/* 5. Horizontal Gold Banner */}
         <section className="w-full bg-[#C5A96A] rounded-[16px] p-6 flex items-center justify-center shadow-sm">
-          <h3 className="text-[#234745] text-[18px] md:text-[30px] font-bold text-center flex items-center justify-center flex-wrap gap-2 leading-tight">
-            <span>
-              {isEn ? (bannerData?.textEn || '25% on gift boxes for orders over 200') : (bannerData?.textAr || '25% على صناديق الهدايا للطلبات فوق 200')}
-            </span>
-            <SaudiRiyalSymbol className="h-[20px] md:h-[28px] w-auto text-[#234745] inline-block align-middle shrink-0" />
+          <h3 className="text-[#234745] text-[18px] md:text-[30px] font-bold text-center flex items-center justify-center flex-wrap gap-1 leading-tight">
+            {renderTextWithRiyalSymbol(
+              isEn
+                ? (bannerData?.textEn || '25% on gift boxes for orders over 200 {{SAR}}')
+                : (bannerData?.textAr || '25% على صناديق الهدايا للطلبات فوق 200 {{SAR}}'),
+              'h-[20px] md:h-[28px] w-auto text-[#234745] inline-block align-middle shrink-0 ms-1'
+            )}
           </h3>
         </section>
 

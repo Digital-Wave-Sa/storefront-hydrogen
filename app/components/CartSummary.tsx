@@ -375,7 +375,12 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
 
               {/* ALWAYS-VISIBLE LOCATION & BRANCH CARD */}
               <div
-                onClick={() => setIsLocationModalOpen(true)}
+                onClick={() => {
+                  setIsLocationModalOpen(true);
+                  if (typeof window !== 'undefined') {
+                    window.dispatchEvent(new CustomEvent('openDeliveryModal'));
+                  }
+                }}
                 className={`w-full rounded-2xl p-4 transition-all cursor-pointer border shadow-sm ${
                   isBranchSelected
                     ? 'bg-[#FCFAF8] border-[#E8E2D9] hover:border-[#234745] hover:shadow-md'
@@ -399,6 +404,9 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
                     onClick={(e) => {
                       e.stopPropagation();
                       setIsLocationModalOpen(true);
+                      if (typeof window !== 'undefined') {
+                        window.dispatchEvent(new CustomEvent('openDeliveryModal'));
+                      }
                     }}
                     className="px-3.5 py-1 rounded-full text-[13px] font-bold bg-[#234745] text-white hover:bg-[#1a3533] transition-colors cursor-pointer border-none"
                     style={{ fontFamily: "'GE Dinar One', sans-serif" }}

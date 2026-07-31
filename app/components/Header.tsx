@@ -398,7 +398,11 @@ function TopBar({
   useEffect(() => {
     const handleOpen = () => setModalOpen(true);
     window.addEventListener('openDeliveryModal', handleOpen);
-    return () => window.removeEventListener('openDeliveryModal', handleOpen);
+    window.addEventListener('open-location-modal', handleOpen);
+    return () => {
+      window.removeEventListener('openDeliveryModal', handleOpen);
+      window.removeEventListener('open-location-modal', handleOpen);
+    };
   }, []);
 
   useEffect(() => {

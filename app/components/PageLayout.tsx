@@ -93,8 +93,10 @@ export function PageLayout({
 }
 
 function CartAside({cart}: {cart: PageLayoutProps['cart']}) {
+  const location = useLocation();
+  const isEn = location.pathname.split('/')[1]?.toLowerCase() === 'en';
   return (
-    <Aside type="cart" heading="CART">
+    <Aside type="cart" heading={isEn ? 'CART' : 'سلة التسوق'}>
       <Suspense fallback={<p>Loading cart ...</p>}>
         <Await resolve={cart}>
           {(cart) => {

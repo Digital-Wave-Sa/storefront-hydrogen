@@ -293,95 +293,81 @@ export async function action({ request, context }: ActionFunctionArgs) {
     } catch (_) {}
 
     if (adminToken) {
-      const crmShopifyId = crmProfile?.shopifyId;
+      const rawDigits = savedPhone.replace(/\D/g, ''); // e.g. "962790910041"
+      const last9Digits = rawDigits.slice(-9); // e.g. "790910041"
+      const localFormat = rawDigits.startsWith('962') ? '0' + rawDigits.slice(3) : (rawDigits.startsWith('966') ? '0' + rawDigits.slice(3) : rawDigits);
 
-      // 1. Verify CRM's shopifyId
-      if (crmShopifyId) {
-        const numericId = String(crmShopifyId).split('/').pop()!;
-        const verifyRes = await fetch(
-          `https://${adminDomain}/admin/api/2024-01/customers/${numericId}.json?fields=id,email,phone`,
-          { headers: { 'X-Shopify-Access-Token': adminToken } }
-        );
-        if (verifyRes.ok) {
-          const verifyData = await verifyRes.json() as any;
-          const custPhone = (verifyData.customer?.phone || '').replace(/\D/g, '');
-          const sp = savedPhone.replace(/\D/g, '');
-          if (!custPhone || custPhone === sp || custPhone.endsWith(sp) || sp.endsWith(custPhone)) {
-            resolvedCustomerId = numericId;
-            resolvedEmail = verifyData.customer?.email || resolvedEmail;
-          }
-        }
+      const searchQueries = [
+        `phone:${rawDigits}`,
+        `phone:${localFormat}`,
+        `phone:${savedPhone}`,
+        `${last9Digits}`,
+      ];
+
+      if (resolvedEmail && !resolvedEmail.endsWith('@saadeddin.placeholder')) {
+        searchQueries.unshift(`email:"${resolvedEmail}"`);
       }
 
-      // 2. Search by primary account phone across multiple format variations
-      if (!resolvedCustomerId) {
-        const rawDigits = savedPhone.replace(/\D/g, ''); // e.g. "962790910041"
-        const last9Digits = rawDigits.slice(-9); // e.g. "790910041"
-        const localFormat = rawDigits.startsWith('962') ? '0' + rawDigits.slice(3) : (rawDigits.startsWith('966') ? '0' + rawDigits.slice(3) : rawDigits);
-
-        const searchQueries = [
-          `phone:${rawDigits}`,
-          `phone:${localFormat}`,
-          `phone:${savedPhone}`,
-          `${last9Digits}`,
-        ];
-
-        for (const q of searchQueries) {
-          if (resolvedCustomerId) break;
-          try {
-            const searchRes = await fetch(
-              `https://${adminDomain}/admin/api/2024-01/customers/search.json?query=${encodeURIComponent(q)}&fields=id,email,phone,default_address,addresses`,
-              { headers: { 'X-Shopify-Access-Token': adminToken } }
-            );
-            if (searchRes.ok) {
-              const searchData = await searchRes.json() as any;
-              const candidates = (searchData.customers || []).filter((c: any) => {
-                const primaryPhone = (c.phone || '').replace(/\D/g, '');
-                const defaultAddressPhone = (c.default_address?.phone || '').replace(/\D/g, '');
-                const addressPhones = (c.addresses || []).map((addr: any) => (addr.phone || '').replace(/\D/g, ''));
-
-                const allPhones = [primaryPhone, defaultAddressPhone, ...addressPhones].filter(Boolean);
-
-                return allPhones.some((cp: string) => {
-                  return cp && rawDigits && (cp === rawDigits || cp.endsWith(last9Digits) || rawDigits.endsWith(cp));
-                });
-              });
-
-              // Prioritize original customer account: real email first, then oldest customer ID
-              candidates.sort((a: any, b: any) => {
-                const aPlaceholder = (a.email || '').endsWith('@saadeddin.placeholder');
-                const bPlaceholder = (b.email || '').endsWith('@saadeddin.placeholder');
-                if (aPlaceholder !== bPlaceholder) return aPlaceholder ? 1 : -1;
-                return Number(a.id) - Number(b.id);
-              });
-
-              const found = candidates[0] || searchData.customers?.[0];
-
-              if (found) {
-                resolvedCustomerId = String(found.id);
-                resolvedEmail = found.email || resolvedEmail;
-              }
-            }
-          } catch (_) {}
-        }
-      }
-
-      // 3. Search by email if still not found and email is available
-      if (!resolvedCustomerId && resolvedEmail && !resolvedEmail.endsWith('@saadeddin.placeholder')) {
+      for (const q of searchQueries) {
+        if (resolvedCustomerId) break;
         try {
-          const emailSearchRes = await fetch(
-            `https://${adminDomain}/admin/api/2024-01/customers/search.json?query=email:"${encodeURIComponent(resolvedEmail)}"&fields=id,email,phone`,
+          const searchRes = await fetch(
+            `https://${adminDomain}/admin/api/2024-01/customers/search.json?query=${encodeURIComponent(q)}&fields=id,email,phone,first_name,last_name,default_address,addresses`,
             { headers: { 'X-Shopify-Access-Token': adminToken } }
           );
-          if (emailSearchRes.ok) {
-            const emailSearchData = await emailSearchRes.json() as any;
-            const found = emailSearchData.customers?.[0];
+          if (searchRes.ok) {
+            const searchData = await searchRes.json() as any;
+            const candidates = (searchData.customers || []).filter((c: any) => {
+              const primaryPhone = (c.phone || '').replace(/\D/g, '');
+              const defaultAddressPhone = (c.default_address?.phone || '').replace(/\D/g, '');
+              const addressPhones = (c.addresses || []).map((addr: any) => (addr.phone || '').replace(/\D/g, ''));
+
+              const allPhones = [primaryPhone, defaultAddressPhone, ...addressPhones].filter(Boolean);
+
+              const matchesPhone = allPhones.some((cp: string) => {
+                return cp && rawDigits && (cp === rawDigits || cp.endsWith(last9Digits) || rawDigits.endsWith(cp));
+              });
+
+              const matchesEmail = resolvedEmail && c.email && c.email.toLowerCase() === resolvedEmail.toLowerCase();
+
+              return matchesPhone || matchesEmail;
+            });
+
+            // Prioritize original customer account: real email first, real first name, then oldest customer ID
+            candidates.sort((a: any, b: any) => {
+              const aPlaceholder = (a.email || '').endsWith('@saadeddin.placeholder');
+              const bPlaceholder = (b.email || '').endsWith('@saadeddin.placeholder');
+              if (aPlaceholder !== bPlaceholder) return aPlaceholder ? 1 : -1;
+
+              const aCustName = (a.first_name || '').toLowerCase() === 'customer';
+              const bCustName = (b.first_name || '').toLowerCase() === 'customer';
+              if (aCustName !== bCustName) return aCustName ? 1 : -1;
+
+              return Number(a.id) - Number(b.id);
+            });
+
+            const found = candidates[0];
+
             if (found) {
               resolvedCustomerId = String(found.id);
               resolvedEmail = found.email || resolvedEmail;
             }
           }
         } catch (_) {}
+      }
+
+      // Fallback: Verify CRM's shopifyId if no matching customer was found in search
+      if (!resolvedCustomerId && crmProfile?.shopifyId) {
+        const numericId = String(crmProfile.shopifyId).split('/').pop()!;
+        const verifyRes = await fetch(
+          `https://${adminDomain}/admin/api/2024-01/customers/${numericId}.json?fields=id,email,phone`,
+          { headers: { 'X-Shopify-Access-Token': adminToken } }
+        );
+        if (verifyRes.ok) {
+          const verifyData = await verifyRes.json() as any;
+          resolvedCustomerId = numericId;
+          resolvedEmail = verifyData.customer?.email || resolvedEmail;
+        }
       }
 
       // 4. Create customer ONLY if all search attempts returned 0 matches

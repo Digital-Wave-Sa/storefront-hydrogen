@@ -330,14 +330,21 @@ export async function action({ request, context }: ActionFunctionArgs) {
           if (resolvedCustomerId) break;
           try {
             const searchRes = await fetch(
-              `https://${adminDomain}/admin/api/2024-01/customers/search.json?query=${encodeURIComponent(q)}&fields=id,email,phone`,
+              `https://${adminDomain}/admin/api/2024-01/customers/search.json?query=${encodeURIComponent(q)}&fields=id,email,phone,default_address,addresses`,
               { headers: { 'X-Shopify-Access-Token': adminToken } }
             );
             if (searchRes.ok) {
               const searchData = await searchRes.json() as any;
               const candidates = (searchData.customers || []).filter((c: any) => {
-                const cp = (c.phone || '').replace(/\D/g, '');
-                return cp && rawDigits && (cp === rawDigits || cp.endsWith(last9Digits) || rawDigits.endsWith(cp));
+                const primaryPhone = (c.phone || '').replace(/\D/g, '');
+                const defaultAddressPhone = (c.default_address?.phone || '').replace(/\D/g, '');
+                const addressPhones = (c.addresses || []).map((addr: any) => (addr.phone || '').replace(/\D/g, ''));
+
+                const allPhones = [primaryPhone, defaultAddressPhone, ...addressPhones].filter(Boolean);
+
+                return allPhones.some((cp: string) => {
+                  return cp && rawDigits && (cp === rawDigits || cp.endsWith(last9Digits) || rawDigits.endsWith(cp));
+                });
               });
 
               // Prioritize original customer account: real email first, then oldest customer ID

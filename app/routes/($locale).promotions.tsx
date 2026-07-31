@@ -199,13 +199,13 @@ function renderTextWithRiyalSymbol(text: any, className = "h-[18px] md:h-[26px] 
   if (!text) return null;
   if (typeof text !== 'string') return text;
 
-  // Regex matches natural currency words & explicit tokens:
-  // SAR, S.R., SR, ر.س, ر.س., ريال سعودي, ريال, {{SAR}}, [SAR], {SAR}
-  const regex = /(\{\{SAR\}\}|\[SAR\]|\{SAR\}|\{\{ريال\}\}|\[ريال\]|\bSAR\b|\bSR\b|\bS\.R\.?\b|ر\.س\.?|ريال\s*سعودي|ريال)/gi;
+  const tokens = ['{{SAR}}', '[SAR]', '{SAR}', '{{ريال}}', '[ريال]', 'SAR', 'SR', 'S.R.', 'S.R', 'ر.س.', 'ر.س', 'ريال سعودي', 'ريال'];
+  
+  // Create regex pattern safely escaping all special regex characters
+  const pattern = new RegExp(`(${tokens.map(t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})`, 'gi');
+  const parts = text.split(pattern);
 
-  const parts = text.split(regex);
-
-  if (parts.length === 1) {
+  if (parts.length <= 1) {
     return text;
   }
 
@@ -213,22 +213,9 @@ function renderTextWithRiyalSymbol(text: any, className = "h-[18px] md:h-[26px] 
     <>
       {parts.map((part, index) => {
         if (!part) return null;
-        const lower = part.toLowerCase().trim();
-        if (
-          lower === 'sar' ||
-          lower === 'sr' ||
-          lower === 's.r' ||
-          lower === 's.r.' ||
-          lower === 'ر.س' ||
-          lower === 'ر.س.' ||
-          lower === 'ريال' ||
-          lower === 'ريال سعودي' ||
-          lower === '{{sar}}' ||
-          lower === '[sar]' ||
-          lower === '{sar}' ||
-          lower === '{{ريال}}' ||
-          lower === '[ريال]'
-        ) {
+        const clean = part.toLowerCase().trim();
+        const isMatch = tokens.some(t => t.toLowerCase() === clean);
+        if (isMatch) {
           return (
             <SaudiRiyalSymbol
               key={index}

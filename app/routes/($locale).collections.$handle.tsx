@@ -288,7 +288,16 @@ export default function Collection() {
 
             <Pagination connection={collection.products}>
               {({nodes, isLoading, PreviousLink, NextLink}) => {
-                const filteredNodes = q ? nodes.filter((n: any) => n.title.toLowerCase().includes(q)) : nodes;
+                const activeTagFilters = searchParams.getAll('filter.p.tag').concat(searchParams.getAll('tag'));
+                const filteredNodes = nodes.filter((n: any) => {
+                  if (q && !n.title.toLowerCase().includes(q)) return false;
+                  if (activeTagFilters.length > 0) {
+                    const pTags = (n.tags || []).map((t: string) => t.toLowerCase());
+                    const matchesTag = activeTagFilters.some(t => pTags.includes(t.toLowerCase()));
+                    if (!matchesTag) return false;
+                  }
+                  return true;
+                });
                 return (
                 <>
                   {filteredNodes.length === 0 && (

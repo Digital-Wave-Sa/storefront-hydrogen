@@ -313,27 +313,61 @@ export async function action({ request, context }: ActionFunctionArgs) {
         }
       }
 
-      // 2. Search by primary account phone
+      // 2. Search by primary account phone across multiple format variations
       if (!resolvedCustomerId) {
-        const searchRes = await fetch(
-          `https://${adminDomain}/admin/api/2024-01/customers/search.json?query=phone:"${encodeURIComponent(savedPhone)}"&fields=id,email,phone`,
-          { headers: { 'X-Shopify-Access-Token': adminToken } }
-        );
-        if (searchRes.ok) {
-          const searchData = await searchRes.json() as any;
-          const found = (searchData.customers || []).find((c: any) => {
-            const cp = (c.phone || '').replace(/\D/g, '');
-            const sp = savedPhone.replace(/\D/g, '');
-            return cp && sp && (cp === sp || cp.endsWith(sp) || sp.endsWith(cp));
-          });
-          if (found) {
-            resolvedCustomerId = String(found.id);
-            resolvedEmail = found.email || resolvedEmail;
-          }
+        const rawDigits = savedPhone.replace(/\D/g, ''); // e.g. "962790910041"
+        const last9Digits = rawDigits.slice(-9); // e.g. "790910041"
+        const localFormat = rawDigits.startsWith('962') ? '0' + rawDigits.slice(3) : (rawDigits.startsWith('966') ? '0' + rawDigits.slice(3) : rawDigits);
+
+        const searchQueries = [
+          `phone:${rawDigits}`,
+          `phone:${localFormat}`,
+          `phone:${savedPhone}`,
+          `${last9Digits}`,
+        ];
+
+        for (const q of searchQueries) {
+          if (resolvedCustomerId) break;
+          try {
+            const searchRes = await fetch(
+              `https://${adminDomain}/admin/api/2024-01/customers/search.json?query=${encodeURIComponent(q)}&fields=id,email,phone`,
+              { headers: { 'X-Shopify-Access-Token': adminToken } }
+            );
+            if (searchRes.ok) {
+              const searchData = await searchRes.json() as any;
+              const found = (searchData.customers || []).find((c: any) => {
+                const cp = (c.phone || '').replace(/\D/g, '');
+                return cp && rawDigits && (cp === rawDigits || cp.endsWith(last9Digits) || rawDigits.endsWith(cp));
+              }) || searchData.customers?.[0];
+
+              if (found) {
+                resolvedCustomerId = String(found.id);
+                resolvedEmail = found.email || resolvedEmail;
+              }
+            }
+          } catch (_) {}
         }
       }
 
-      // 3. Create customer if still not found
+      // 3. Search by email if still not found and email is available
+      if (!resolvedCustomerId && resolvedEmail && !resolvedEmail.endsWith('@saadeddin.placeholder')) {
+        try {
+          const emailSearchRes = await fetch(
+            `https://${adminDomain}/admin/api/2024-01/customers/search.json?query=email:"${encodeURIComponent(resolvedEmail)}"&fields=id,email,phone`,
+            { headers: { 'X-Shopify-Access-Token': adminToken } }
+          );
+          if (emailSearchRes.ok) {
+            const emailSearchData = await emailSearchRes.json() as any;
+            const found = emailSearchData.customers?.[0];
+            if (found) {
+              resolvedCustomerId = String(found.id);
+              resolvedEmail = found.email || resolvedEmail;
+            }
+          }
+        } catch (_) {}
+      }
+
+      // 4. Create customer ONLY if all search attempts returned 0 matches
       if (!resolvedCustomerId) {
         const nameParts = (crmProfile?.name || '').trim().split(/\s+/);
         const firstName = nameParts[0] || 'Customer';
@@ -365,19 +399,20 @@ export async function action({ request, context }: ActionFunctionArgs) {
           resolvedCustomerId = String(createData.customer?.id);
           resolvedEmail = createData.customer?.email || createEmail;
         } else {
-          // Customer exists with same phone/email — search by email
-          if (resolvedEmail) {
-            const emailSearchRes = await fetch(
-              `https://${adminDomain}/admin/api/2024-01/customers/search.json?query=email:"${encodeURIComponent(resolvedEmail)}"&fields=id,email`,
-              { headers: { 'X-Shopify-Access-Token': adminToken } }
-            );
-            if (emailSearchRes.ok) {
-              const emailSearchData = await emailSearchRes.json() as any;
-              const found = emailSearchData.customers?.[0];
-              if (found) {
-                resolvedCustomerId = String(found.id);
-                resolvedEmail = found.email || resolvedEmail;
-              }
+          // If creation failed because customer already exists in Shopify, query by raw digits or email
+          const rawDigits = savedPhone.replace(/\D/g, '');
+          const last9Digits = rawDigits.slice(-9);
+
+          const recoverRes = await fetch(
+            `https://${adminDomain}/admin/api/2024-01/customers/search.json?query=${encodeURIComponent(last9Digits)}&fields=id,email,phone`,
+            { headers: { 'X-Shopify-Access-Token': adminToken } }
+          );
+          if (recoverRes.ok) {
+            const recoverData = await recoverRes.json() as any;
+            const found = recoverData.customers?.[0];
+            if (found) {
+              resolvedCustomerId = String(found.id);
+              resolvedEmail = found.email || resolvedEmail;
             }
           }
         }

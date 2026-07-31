@@ -245,8 +245,8 @@ export default function SearchPage() {
                 style={isEn ? {} : { fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
                 dir={isEn ? 'ltr' : 'rtl'}
              >
-                <svg className={`w-3 h-3 md:w-5 md:h-5 ${isEn ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                <svg width="15" height="13" viewBox="0 0 15 13" fill="none" xmlns="http://www.w3.org/2000/svg" className={`${isEn ? 'rotate-180' : ''}`}>
+                  <path d="M0 6H12.25L7 0.75L7.66 0L14.16 6.5L7.66 13L7 12.25L12.25 7H0V6Z" fill="#234745"/>
                 </svg>
                 <span>{isEn ? 'Back' : 'رجوع'}</span>
              </button>

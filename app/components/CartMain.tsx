@@ -362,7 +362,7 @@ export function CartMain({ layout, cart: originalCart }: CartMainProps) {
 
       {/* Cart Summary Footer */}
       {cartHasItems && (
-        <div className="mt-auto bg-white border-t border-[#f0ece8] p-6 shadow-[0_-10px_40px_rgba(0,0,0,0.03)]">
+        <div className="mt-auto shrink-0 bg-white border-t border-[#f0ece8] p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom,1rem))] shadow-[0_-10px_40px_rgba(0,0,0,0.03)]">
           <CartSummary cart={cart} layout={layout} />
         </div>
       )}

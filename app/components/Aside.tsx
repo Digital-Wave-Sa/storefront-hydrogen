@@ -71,7 +71,7 @@ export function Aside({
       aria-labelledby={id}
     >
       <button className="close-outside" onClick={close} />
-      <aside className="bg-white shadow-2xl transition-transform duration-300 ease-in-out flex flex-col h-full w-full max-w-[400px]">
+      <aside className="bg-white shadow-2xl transition-transform duration-300 ease-in-out flex flex-col h-full h-[100dvh] max-h-[100dvh] w-full max-w-[400px]">
         <header className="flex items-center justify-between px-6 py-4 border-b border-[#f8f5f2] min-h-[70px]">
           {/* Placeholder to keep title centered */}
           <div className="w-8" />

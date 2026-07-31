@@ -13,7 +13,7 @@ import {
 } from '@shopify/hydrogen';
 
 import { SearchForm, SearchResults, NoSearchResults } from '~/components/Search';
-import patternBg from '~/assets/patteren-collection-header.svg';
+import patternBg from '/images/second-bg-pattern.svg';
 import { FilterSidebar, ActiveFilterChips } from '~/routes/($locale).collections.all';
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
@@ -239,9 +239,6 @@ export default function SearchPage() {
              }}
          />
          <div className="max-w-[1440px] w-full mx-auto px-4 md:px-8 lg:px-12 relative z-10 flex items-center justify-between gap-3 md:gap-4" dir={isEn ? 'ltr' : 'rtl'}>
-             <div className="flex-1 w-full min-w-0">
-                <SearchForm searchTerm={searchTerm} />
-             </div>
              <button
                 onClick={() => window.history.back()}
                 className={`flex items-center gap-[8px] bg-[#9FB7AE] hover:bg-[#8BA19C] text-[#234745] px-4 md:px-6 py-2.5 rounded-[25px] text-[12px] md:text-[16px] font-bold transition-all shrink-0 ${isEn ? 'font-en' : ''}`}
@@ -253,8 +250,11 @@ export default function SearchPage() {
                 </svg>
                 <span>{isEn ? 'Back' : 'رجوع'}</span>
              </button>
+             <div className="flex-1 w-full min-w-0">
+                <SearchForm searchTerm={searchTerm} />
+             </div>
           </div>
-      </section>
+       </section>
 
       <div className="bg-[#FEF8EB] min-h-screen">
         <div className="px-4 md:px-8 lg:px-12 py-10 max-w-[1440px] mx-auto text-right">

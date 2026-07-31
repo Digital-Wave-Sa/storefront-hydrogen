@@ -21,13 +21,21 @@ export function Footer({ footer, locale }: { footer: Promise<FooterQuery | null>
                   </div>
                 </div>
 
-                {/* === MOBILE FOOTER (Dropdown Accordion, Social Media Title, Social Icons, App Badges) === */}
+                {/* === MOBILE FOOTER (Dropdown Accordion, Brand Text, Social Icons, App Badges) === */}
                 <div className="w-full flex flex-col gap-5 lg:hidden border-b border-[#BBCFCD]/30 pb-10">
                   <MobileFooterAccordion isEn={isEn} />
 
-                  <h3 className="font-bold text-[18px] leading-[22px] text-white text-center m-0 mt-2">
-                    {isEn ? 'Social Media' : 'وسائل التواصل الاجتماعي'}
-                  </h3>
+                  <div className="flex flex-col items-center text-center gap-2 mt-2">
+                    <h3 className="font-bold text-[20px] leading-[24px] text-white m-0">
+                      {isEn ? 'The Future is Sweet!' : 'المستقبل حلو!'}
+                    </h3>
+                    <p className="text-[14px] text-[#BBCFCD] leading-snug max-w-[320px] m-0">
+                      {isEn
+                        ? 'Since 1919, offering the finest luxury sweets and chocolates with passion.'
+                        : 'منذ عام 1919، نقدم أجود الحلويات والشوكولاتة الفاخرة بعشق وشغف.'}
+                    </p>
+                  </div>
+
                   {/* Social Icons */}
                   <div className="flex flex-row flex-wrap items-center justify-center gap-3 mt-1">
                     <SocialIcons />
@@ -41,11 +49,19 @@ export function Footer({ footer, locale }: { footer: Promise<FooterQuery | null>
                 {/* === DESKTOP FOOTER (Custom Grid with wider First Column) === */}
                 <div className="hidden lg:grid w-full grid-cols-[1.4fr_1fr_1fr_1fr] gap-8 lg:gap-10 items-start border-b border-[#BBCFCD]/30 pb-12">
 
-                  {/* Col 1 (Rightmost in RTL): Social Media Title, Social Icons, App Badges in 1 row */}
+                  {/* Col 1 (Rightmost in RTL): Brand Text, Social Icons, App Badges in 1 row */}
                   <div className="flex flex-col items-start gap-4 text-start">
-                    <h3 className="font-bold text-[18px] leading-[22px] text-white m-0">
-                      {isEn ? 'Social Media' : 'وسائل التواصل الاجتماعي'}
-                    </h3>
+                    <div className="flex flex-col items-start gap-2">
+                      <h3 className="font-bold text-[20px] leading-[24px] text-white m-0">
+                        {isEn ? 'The Future is Sweet!' : 'المستقبل حلو!'}
+                      </h3>
+                      <p className="text-[14px] text-[#BBCFCD] leading-snug max-w-[340px] m-0">
+                        {isEn
+                          ? 'Since 1919, offering the finest luxury sweets and chocolates with passion.'
+                          : 'منذ عام 1919، نقدم أجود الحلويات والشوكولاتة الفاخرة بعشق وشغف.'}
+                      </p>
+                    </div>
+
                     {/* Social Icons */}
                     <div className="flex flex-row flex-wrap items-center gap-2.5 mt-1">
                       <SocialIcons />

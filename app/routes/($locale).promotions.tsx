@@ -628,23 +628,12 @@ export default function PromotionsPage() {
         </section>
 
         {/* 5. Horizontal Gold Banner */}
-        <section className="w-full bg-[#C5A96A] rounded-[16px] p-6 flex items-center justify-center shadow-sm ">
-          <h3 className="text-[#234745] text-[18px] md:text-[30px] font-bold text-center flex items-center justify-center flex-wrap gap-1.5 leading-none">
-            {isEn ? (
-              bannerData?.textEn || (
-                <>
-                  <span style={{ fontFamily: "'EnglishDigits', sans-serif" }}>25%</span> on gift boxes for orders over <span style={{ fontFamily: "'EnglishDigits', sans-serif" }}>200</span>
-                  <SaudiRiyalSymbol className="h-[20px] md:h-[28px] w-auto text-[#234745] mb-0.5" />
-                </>
-              )
-            ) : (
-              bannerData?.textAr || (
-                <>
-                  <span style={{ fontFamily: "'EnglishDigits', sans-serif" }}>25%</span> على صناديق الهدايا للطلبات فوق <span style={{ fontFamily: "'EnglishDigits', sans-serif" }}>200</span>
-                  <SaudiRiyalSymbol className="h-[20px] md:h-[28px] w-auto text-[#234745] mb-0.5" />
-                </>
-              )
-            )}
+        <section className="w-full bg-[#C5A96A] rounded-[16px] p-6 flex items-center justify-center shadow-sm">
+          <h3 className="text-[#234745] text-[18px] md:text-[30px] font-bold text-center flex items-center justify-center flex-wrap gap-2 leading-tight">
+            <span>
+              {isEn ? (bannerData?.textEn || '25% on gift boxes for orders over 200') : (bannerData?.textAr || '25% على صناديق الهدايا للطلبات فوق 200')}
+            </span>
+            <SaudiRiyalSymbol className="h-[20px] md:h-[28px] w-auto text-[#234745] inline-block align-middle shrink-0" />
           </h3>
         </section>
 

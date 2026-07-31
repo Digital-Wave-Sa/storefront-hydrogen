@@ -66,7 +66,16 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
     sortKey = 'RELEVANCE';
   }
   const reverse = searchParams.get('reverse') === 'true';
-  const q = searchParams.get('q') || '*';
+  
+  const activeTags = searchParams.getAll('filter.p.tag').concat(searchParams.getAll('tag'));
+  let q = searchParams.get('q') || '';
+  if (q === '*') q = '';
+
+  if (activeTags.length > 0) {
+    const tagQueries = activeTags.map(t => `tag:"${t}"`).join(' OR ');
+    q = q ? `(${q}) AND (${tagQueries})` : tagQueries;
+  }
+  if (!q) q = '*';
 
   try {
     const response = await storefront.query(CATALOG_QUERY, {
@@ -484,19 +493,41 @@ export function ActiveFilterChips({ isEn, collections }: { isEn: boolean, collec
       } else {
         label = isEn ? 'Out of stock' : 'غير متوفر';
       }
-    } else if (key.startsWith('filter.v.option.')) {
-      const lowerVal = String(value).toLowerCase();
-      const localValueTranslation: { [key: string]: string } = {
-        'in stock': 'متوفر',
-        'out of stock': 'غير متوفر',
-        'true': 'نعم',
-        'false': 'لا',
-        'yes': 'نعم',
-        'no': 'لا',
-        'gluten free': 'خالي من الجلوتين',
-        'gluten-free': 'خالي من الجلوتين',
+    } else if (key.startsWith('filter.v.option.') || key === 'filter.p.tag' || key === 'tag') {
+      const lowerVal = String(value).toLowerCase().trim();
+      const localValueTranslation: { [key: string]: { ar: string; en: string } } = {
+        'in stock': { ar: 'متوفر', en: 'In stock' },
+        'out of stock': { ar: 'غير متوفر', en: 'Out of stock' },
+        'true': { ar: 'نعم', en: 'Yes' },
+        'false': { ar: 'لا', en: 'No' },
+        'yes': { ar: 'نعم', en: 'Yes' },
+        'no': { ar: 'لا', en: 'No' },
+        'gluten free': { ar: 'خالي من الجلوتين', en: 'Gluten-Free' },
+        'gluten-free': { ar: 'خالي من الجلوتين', en: 'Gluten-Free' },
+        'gluten_free': { ar: 'خالي من الجلوتين', en: 'Gluten-Free' },
+        'خالي من الجلوتين': { ar: 'خالي من الجلوتين', en: 'Gluten-Free' },
+        'vegan': { ar: 'مناسب للنباتيين', en: 'Vegan / Vegetarian' },
+        'vegetarian': { ar: 'مناسب للنباتيين', en: 'Vegan / Vegetarian' },
+        'مناسب للنباتيين': { ar: 'مناسب للنباتيين', en: 'Vegan / Vegetarian' },
+        'healthy': { ar: 'منتجات صحية', en: 'Healthy Products' },
+        'منتجات صحية': { ar: 'منتجات صحية', en: 'Healthy Products' },
+        'sugar-free': { ar: 'خالي من السكر', en: 'Sugar-Free' },
+        'sugar_free': { ar: 'خالي من السكر', en: 'Sugar-Free' },
+        'خالي من السكر': { ar: 'خالي من السكر', en: 'Sugar-Free' },
+        'low-fat': { ar: 'قليل الدهون', en: 'Low-Fat' },
+        'low_fat': { ar: 'قليل الدهون', en: 'Low-Fat' },
+        'قليل الدهون': { ar: 'قليل الدهون', en: 'Low-Fat' },
+        'eid': { ar: 'عيد الفطر والاضحي', en: 'Eid Al-Fitr & Al-Adha' },
+        'ramadan': { ar: 'رمضان', en: 'Ramadan' },
+        'birthdays': { ar: 'أعياد الميلاد', en: 'Birthdays' },
+        'wedding': { ar: 'زفاف وخطوبة', en: 'Wedding' },
+        'graduation': { ar: 'تخرج', en: 'Graduation' },
+        'mothers-day': { ar: 'يوم الأم', en: 'Mother\'s Day' },
+        'national-day': { ar: 'اليوم الوطني', en: 'National Day' },
+        'new-baby': { ar: 'مواليد', en: 'New Baby' },
       };
-      label = !isEn && localValueTranslation[lowerVal] ? localValueTranslation[lowerVal] : value;
+      const foundTrans = localValueTranslation[lowerVal];
+      label = foundTrans ? (isEn ? foundTrans.en : foundTrans.ar) : value;
     }
 
     chips.push({ key, label });

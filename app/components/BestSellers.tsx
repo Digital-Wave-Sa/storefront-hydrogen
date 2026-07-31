@@ -183,7 +183,9 @@ export function BestSellers({
                                     tabProducts = fallback;
                             }
 
-                            const visibleProducts = tabProducts.filter((p: any) => !shouldHideProduct(p, selectedLocationId, selectedLocationName));
+                            const visibleProducts = tabProducts
+                                .filter((p: any) => !shouldHideProduct(p, selectedLocationId, selectedLocationName))
+                                .slice(0, 8);
 
                             if (visibleProducts.length === 0) {
                                 return (

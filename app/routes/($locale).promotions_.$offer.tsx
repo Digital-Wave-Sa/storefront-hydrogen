@@ -67,6 +67,18 @@ const PROMOTIONS_QUERY = `#graphql
           width
           height
         }
+        priceRange {
+          minVariantPrice {
+            amount
+            currencyCode
+          }
+        }
+        compareAtPriceRange {
+          minVariantPrice {
+            amount
+            currencyCode
+          }
+        }
         variants(first: 10) {
           nodes {
             id
@@ -79,6 +91,19 @@ const PROMOTIONS_QUERY = `#graphql
             compareAtPrice {
               amount
               currencyCode
+            }
+            selectedOptions {
+              name
+              value
+            }
+            storeAvailability(first: 250) {
+              nodes {
+                available
+                location {
+                  id
+                  name
+                }
+              }
             }
           }
         }

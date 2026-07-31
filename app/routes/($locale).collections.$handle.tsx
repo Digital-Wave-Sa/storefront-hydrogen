@@ -633,7 +633,9 @@ function FilterForm({ filters, onClose, isDesktop, isEn }: { filters: any[], onC
                 </div>
 
                 {filters?.map((filter: any) => {
-                    if (filter.id === 'filter.p.tag' || filter.label === 'More filters' || filter.label === 'المزيد من الفلاتر') return null;
+                    const lowerId = (filter.id || '').toLowerCase();
+                    const lowerLabel = (filter.label || '').toLowerCase();
+                    if (lowerId.includes('availability') || lowerLabel === 'availability' || filter.label === 'التوفر' || filter.id === 'filter.p.tag' || filter.label === 'More filters' || filter.label === 'المزيد من الفلاتر') return null;
                     const isOpen = openSections[filter.label] !== false;
                     
                     if (filter.type === 'PRICE_RANGE') {
@@ -691,6 +693,49 @@ function FilterForm({ filters, onClose, isDesktop, isEn }: { filters: any[], onC
                         </div>
                     );
                 })}
+            </div>
+
+            {/* Dietary Type Filter Section */}
+            <div className="mb-6 border-b border-gray-100 pb-6 mt-6">
+                <button onClick={() => toggleSection('النوع الغذائي')} className="w-full flex items-center justify-between group">
+                    <h3 className="text-[15px] font-black text-gray-800 tracking-wide">{isEn ? 'Dietary Preference' : 'النوع الغذائي'}</h3>
+                    <svg className={`w-4 h-4 text-gray-400 transition-transform duration-300 ${openSections['النوع الغذائي'] !== false ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                </button>
+                <div className={`mt-4 overflow-hidden transition-all duration-300 ${openSections['النوع الغذائي'] !== false ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'}`}>
+                    <div className="flex flex-col gap-3">
+                        {[
+                          { labelAr: 'خالي من الجلوتين', labelEn: 'Gluten-Free', tags: ['gluten-free', 'gluten_free', 'خالي من الجلوتين', 'dietary:gluten-free'] },
+                          { labelAr: 'مناسب للنباتيين', labelEn: 'Vegan / Vegetarian', tags: ['vegan', 'vegetarian', 'مناسب للنباتيين', 'dietary:vegan'] },
+                          { labelAr: 'منتجات صحية', labelEn: 'Healthy Products', tags: ['healthy', 'منتجات صحية', 'dietary:healthy'] },
+                          { labelAr: 'خالي من السكر', labelEn: 'Sugar-Free', tags: ['sugar-free', 'sugar_free', 'خالي من السكر', 'dietary:sugar-free'] },
+                          { labelAr: 'قليل الدهون', labelEn: 'Low-Fat', tags: ['low-fat', 'low_fat', 'قليل الدهون', 'dietary:low-fat'] },
+                        ].map((item, i) => {
+                            const activeTag = item.tags.find(t => searchParams.getAll('filter.p.tag').includes(t));
+                            const active = !!activeTag;
+                            const primaryTag = item.tags[0];
+
+                            return (
+                                <label key={i} className="flex items-center gap-3 cursor-pointer group" onClick={(e) => {
+                                    e.preventDefault();
+                                    const params = new URLSearchParams(searchParams);
+                                    if (active) {
+                                        const allVals = params.getAll('filter.p.tag').filter(v => !item.tags.includes(v));
+                                        params.delete('filter.p.tag');
+                                        allVals.forEach(v => params.append('filter.p.tag', v));
+                                    } else {
+                                        params.append('filter.p.tag', primaryTag);
+                                    }
+                                    setSearchParams(params, { preventScrollReset: true, replace: true });
+                                }}>
+                                    <div className={`w-4 h-4 rounded-[4px] border flex items-center justify-center transition-colors ${active ? 'bg-[#234745] border-[#234745]' : 'border-gray-300 bg-white group-hover:border-[#234745]'}`}>
+                                        {active && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
+                                    </div>
+                                    <span className={`text-[13px] font-bold ${active ? 'text-[#234745]' : 'text-gray-500 group-hover:text-gray-800'}`}>{isEn ? item.labelEn : item.labelAr}</span>
+                                </label>
+                            );
+                        })}
+                    </div>
+                </div>
             </div>
 
             {/* Custom Tag Filters */}

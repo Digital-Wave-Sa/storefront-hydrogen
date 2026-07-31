@@ -794,7 +794,7 @@ export default function Login() {
                     <div className="flex flex-col items-center gap-1">
                       {resendCooldown > 0 ? (
                         <p className="text-[#9FB7AE] text-sm font-medium" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
-                          {isEn ? `Resend code in ${resendCooldown}s` : `إعادة الإرسال بعد ${resendCooldown} ث`}
+                          {isEn ? `Resend code in ${resendCooldown}s` : `إعادة الإرسال بعد ${resendCooldown} ثانية`}
                         </p>
                       ) : (
                         <button

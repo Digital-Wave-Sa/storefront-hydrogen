@@ -415,12 +415,6 @@ export default function ExportPage() {
               <Pagination connection={products}>
                 {({ nodes, isLoading, PreviousLink, NextLink }) => (
                   <>
-                    <div className="flex justify-center mb-6">
-                      <PreviousLink className="text-[#234745] font-bold border border-[#234745]/20 px-8 py-2.5 rounded-full hover:bg-white transition-all">
-                        {isLoading ? (isEn ? 'Loading...' : 'جاري التحميل...') : <span>{isEn ? '↑ Load Previous' : '↑ تحميل المنتجات السابقة'}</span>}
-                      </PreviousLink>
-                    </div>
-
                     {nodes.length === 0 ? (
                       <div className="py-16 text-center text-[#234745] font-bold text-lg">
                         {isEn ? 'No export products match your filters.' : 'لا توجد منتجات تصدير تطابق الفلاتر.'}

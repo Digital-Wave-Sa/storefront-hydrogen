@@ -546,9 +546,8 @@ export default function PromotionsPage() {
             {/* Action Row: Button + Shoppers Count */}
             <div className="flex flex-row items-center gap-4 mt-2">
               {/* Button */}
-              <button
-                type="button"
-                onClick={() => handleFilterClick('bogo')}
+              <Link
+                to="/promotions/bogo"
                 className="inline-flex items-center gap-2 px-8 h-[48px] bg-[#BBCFCD] hover:bg-[#ACC4C2] !text-[#234745] font-bold text-[14px] rounded-full transition-colors flex-shrink-0 cursor-pointer"
               >
                 {isEn ? (
@@ -568,7 +567,7 @@ export default function PromotionsPage() {
                     </svg>
                   </>
                 )}
-              </button>
+              </Link>
 
               {/* Shoppers Count (Standard English digits) */}
               <span className="text-[#D61C4E] text-[13px] font-semibold whitespace-nowrap">
@@ -640,13 +639,12 @@ export default function PromotionsPage() {
                 {renderTextWithRiyalSymbol(isEn ? (gridData?.card1SubtitleEn || 'Subscribe now and get 15% discount on your first order') : (gridData?.card1SubtitleAr || 'اشترك الآن واحصل على خصم 15% على طلبك الأول من سعد الدين'))}
               </p>
             </div>
-            <button
-              type="button"
-              onClick={() => handleFilterClick('gifts25')}
+            <Link
+              to="/promotions/gifts25"
               className="px-6 h-[40px] inline-flex items-center justify-center bg-[#BBCFCD] hover:bg-[#ACC4C2] !text-[#234745] font-bold text-[13px] rounded-full transition-colors cursor-pointer"
             >
               {isEn ? (gridData?.card1ButtonTextEn || 'Get Discount') : (gridData?.card1ButtonTextAr || 'احصل على الخصم')}
-            </button>
+            </Link>
           </div>
 
           {/* Right card: 40% Chocolate */}
@@ -665,13 +663,12 @@ export default function PromotionsPage() {
                 {renderTextWithRiyalSymbol(isEn ? (gridData?.card2SubtitleEn || 'More than 20 products with exceptional prices') : (gridData?.card2SubtitleAr || 'أكثر من 20 منتج بأسعار استثنائية'))}
               </p>
             </div>
-            <button
-              type="button"
-              onClick={() => handleFilterClick('chocolates40')}
+            <Link
+              to="/promotions/chocolates40"
               className="px-6 h-[40px] inline-flex items-center justify-center bg-[#234745] hover:bg-[#1a3533] !text-white font-bold text-[13px] rounded-full transition-colors cursor-pointer"
             >
               {isEn ? (gridData?.card2ButtonTextEn || 'Shop Now') : (gridData?.card2ButtonTextAr || 'تسوق الآن')}
-            </button>
+            </Link>
           </div>
 
         </section>

@@ -352,12 +352,6 @@ export default function CollectionAll() {
 
                   return (
                     <>
-                      <div className="flex justify-center mb-6">
-                        <PreviousLink className="text-[#234745] font-black border-2 border-[#234745]/10 px-8 py-2.5 rounded-full hover:bg-gray-50 transition-all">
-                          {isLoading ? (isEn ? 'Loading...' : 'جاري التحميل...') : <span>{isEn ? '↑ Load Previous' : '↑ تحميل المنتجات السابقة'}</span>}
-                        </PreviousLink>
-                      </div>
-
                       {filteredNodes.length === 0 && (
                         <div className="py-12 text-center text-[#234745] font-bold text-lg w-full">
                           {isEn ? 'No products match your search.' : 'لا توجد منتجات تطابق بحثك.'}
@@ -449,7 +443,7 @@ export function ActiveFilterChips({ isEn, collections }: { isEn: boolean, collec
 
   const chips: { key: string, label: React.ReactNode }[] = [];
   params.forEach((value, key) => {
-    if (key === 'q' || key === 'cursor' || key === 'sortKey' || key === 'reverse' || key === 'category') return;
+    if (key === 'q' || key === 'cursor' || key === 'sortKey' || key === 'reverse' || key === 'category' || key === 'direction' || key === 'next' || key === 'previous' || value === 'next' || value === 'previous') return;
 
     let label: React.ReactNode = value;
     if (key === 'filter.v.price') {

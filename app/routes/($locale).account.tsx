@@ -209,6 +209,7 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
       const adminDomain = getAdminDomain(context.env);
 
       let adminCust: any = null;
+      let adminAddresses: any[] = [];
 
       if (adminToken && adminDomain) {
         if (savedCustomerId) {
@@ -221,7 +222,9 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
           }
         }
         if (!adminCust && savedPhone) {
-          const res = await fetch(`https://${adminDomain}/admin/api/2024-01/customers/search.json?query=phone:"${encodeURIComponent(savedPhone)}"`, {
+          const rawDigits = savedPhone.replace(/\D/g, '');
+          const last9 = rawDigits.slice(-9);
+          const res = await fetch(`https://${adminDomain}/admin/api/2024-01/customers/search.json?query=${encodeURIComponent(last9)}&fields=id,email,phone,default_address,addresses`, {
             headers: { 'X-Shopify-Access-Token': adminToken }
           });
           if (res.ok) {
@@ -230,8 +233,20 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
               const cp = (c.phone || '').replace(/\D/g, '');
               const sp = savedPhone.replace(/\D/g, '');
               return cp && sp && (cp === sp || cp.endsWith(sp) || sp.endsWith(cp));
-            });
+            }) || data.customers?.[0];
           }
+        }
+
+        if (adminCust?.id) {
+          try {
+            const addrRes = await fetch(`https://${adminDomain}/admin/api/2024-01/customers/${adminCust.id}/addresses.json`, {
+              headers: { 'X-Shopify-Access-Token': adminToken }
+            });
+            if (addrRes.ok) {
+              const addrData = await addrRes.json() as any;
+              adminAddresses = addrData.addresses || [];
+            }
+          } catch (_) {}
         }
       }
 
@@ -290,7 +305,7 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
         numberOfOrders: realOrderCount,
         orders: { nodes: mappedOrders },
         addresses: {
-          nodes: (adminCust?.addresses || []).map((addr: any) => ({
+          nodes: (adminAddresses.length > 0 ? adminAddresses : (adminCust?.default_address ? [adminCust.default_address] : (adminCust?.addresses || []))).map((addr: any) => ({
             id: `gid://shopify/MailingAddress/${addr.id}`,
             firstName: addr.first_name,
             lastName: addr.last_name,

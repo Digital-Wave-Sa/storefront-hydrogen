@@ -238,28 +238,22 @@ export default function SearchPage() {
                  backgroundRepeat: 'no-repeat',
              }}
          />
-         <div className="max-w-[1440px] w-full mx-auto px-4 md:px-8 lg:px-12 relative z-10 flex items-center justify-between gap-4" dir={isEn ? 'ltr' : 'rtl'}>
-            <div className="flex items-center gap-2 md:gap-4" dir={isEn ? 'ltr' : 'rtl'}>
-               <button
-                  onClick={() => window.history.back()}
-                  className={`flex items-center gap-[8px] bg-[#9FB7AE] hover:bg-[#8BA19C] text-[#234745] px-4 md:px-6 py-2 rounded-[25px] text-[12px] md:text-[16px] font-bold transition-all ${isEn ? 'font-en' : ''}`}
-                  style={isEn ? {} : { fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
-                  dir={isEn ? 'ltr' : 'rtl'}
-               >
-                  <svg className={`w-3 h-3 md:w-5 md:h-5 ${isEn ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                  </svg>
-                  <span>{isEn ? 'Back' : 'رجوع'}</span>
-               </button>
-               <h1 className={`!text-[16px] md:!text-[38px] font-bold text-white drop-shadow-sm ${isEn ? 'text-left font-en' : 'text-right'}`} style={isEn ? {} : { fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
-                 {isEn ? 'Search' : 'البحث'}
-               </h1>
-            </div>
-
-            <div className="flex-1 max-w-[500px]">
-               <SearchForm searchTerm={searchTerm} />
-            </div>
-         </div>
+         <div className="max-w-[1440px] w-full mx-auto px-4 md:px-8 lg:px-12 relative z-10 flex items-center justify-between gap-3 md:gap-4" dir={isEn ? 'ltr' : 'rtl'}>
+             <div className="flex-1 w-full min-w-0">
+                <SearchForm searchTerm={searchTerm} />
+             </div>
+             <button
+                onClick={() => window.history.back()}
+                className={`flex items-center gap-[8px] bg-[#9FB7AE] hover:bg-[#8BA19C] text-[#234745] px-4 md:px-6 py-2.5 rounded-[25px] text-[12px] md:text-[16px] font-bold transition-all shrink-0 ${isEn ? 'font-en' : ''}`}
+                style={isEn ? {} : { fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
+                dir={isEn ? 'ltr' : 'rtl'}
+             >
+                <svg className={`w-3 h-3 md:w-5 md:h-5 ${isEn ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                </svg>
+                <span>{isEn ? 'Back' : 'رجوع'}</span>
+             </button>
+          </div>
       </section>
 
       <div className="bg-[#FEF8EB] min-h-screen">
@@ -360,7 +354,7 @@ export default function SearchPage() {
             </div>
 
             <div className="hidden lg:block w-72 shrink-0">
-              <FilterSidebar filters={filterOptions} collections={globalCollections || []} onClose={() => {}} isDesktop={true} isEn={isEn} />
+              <FilterSidebar filters={filterOptions} collections={globalCollections || []} onClose={() => {}} isDesktop={true} isEn={isEn} hideSearchInput={true} />
             </div>
           </div>
         </div>
@@ -372,7 +366,7 @@ export default function SearchPage() {
               onClick={() => setIsFilterOpen(false)}
             />
             <div className={`fixed inset-y-0 ${isEn ? 'left-0' : 'right-0'} w-full max-w-sm bg-[#FEF8EB] shadow-2xl z-50 transform transition-transform duration-300 ease-in-out pointer-events-auto ${isFilterOpen ? 'translate-x-0' : (isEn ? '-translate-x-full' : 'translate-x-full')}`}>
-               <FilterSidebar filters={filterOptions} collections={globalCollections || []} onClose={() => setIsFilterOpen(false)} isEn={isEn} />
+               <FilterSidebar filters={filterOptions} collections={globalCollections || []} onClose={() => setIsFilterOpen(false)} isEn={isEn} hideSearchInput={true} />
             </div>
         </div>,
         document.body

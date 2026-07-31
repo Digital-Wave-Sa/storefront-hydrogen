@@ -16,29 +16,8 @@ export function AccountProfileHeader({
   balance?: number;
   wishlistCount?: number;
 }) {
-  const displayName = (() => {
-    const fName = (customer?.firstName || '').trim();
-    const lName = (customer?.lastName || '').trim();
-    const isGeneric = !fName || fName.toLowerCase() === 'customer' || fName.toLowerCase() === 'guest';
-    
-    if (!isGeneric) {
-      return `${fName} ${lName !== '(Company)' ? lName : ''}`.trim();
-    }
-    
-    const addr = (customer as any)?.defaultAddress || (customer as any)?.addresses?.nodes?.[0];
-    if (addr?.firstName && addr.firstName.toLowerCase() !== 'customer') {
-      return `${addr.firstName} ${addr.lastName || ''}`.trim();
-    }
-
-    if (customer?.email && !customer.email.endsWith('@saadeddin.placeholder')) {
-      const handle = customer.email.split('@')[0].replace(/[._-]/g, ' ');
-      return handle.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-    }
-
-    return isEn ? 'Valued Customer' : 'عميلنا العزيز';
-  })();
-
-  const initials = (displayName[0] || customer?.email?.[0] || 'U').toUpperCase();
+  const displayName = `${customer?.firstName || ''} ${customer?.lastName || ''}`.trim() || customer?.email?.split('@')[0] || (isEn ? 'Valued Customer' : 'عميلنا العزيز');
+  const initials = (customer?.firstName?.[0] || customer?.email?.[0] || 'C').toUpperCase();
   const joinYear = customer?.createdAt ? new Date(customer.createdAt).getFullYear() : new Date().getFullYear();
   const rootData = useRouteLoaderData('root') as any;
 

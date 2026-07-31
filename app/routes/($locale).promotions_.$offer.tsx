@@ -4,6 +4,7 @@ import { AddToCartButton } from '~/components/AddToCartButton';
 import { useWishlist } from '~/context/WishlistContext';
 import { PageHeader } from '~/components/layout/PageHeader';
 import { SaudiRiyalSymbol } from '~/components/Price';
+import { ProductItem } from '~/components/ProductItem';
 
 // GraphQL query to fetch promotional products and promotion page metaobjects
 const PROMOTIONS_QUERY = `#graphql
@@ -393,83 +394,14 @@ export default function SubPromotionPage() {
             </Link>
           </div>
         ) : (
-          <section className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 md:gap-6">
-            {products.map((product: any) => {
-              const inWishlist = isInWishlist(product.id);
-              return (
-                <div
-                  key={product.id}
-                  className="bg-white rounded-[20px] p-3 md:p-4 flex flex-col justify-between shadow-sm border border-[#F5EAD4] hover:shadow-md transition-shadow relative group"
-                >
-                  {/* Wishlist Button */}
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      toggleWishlist({
-                        id: product.id,
-                        title: product.title,
-                        price: product.price,
-                        image: product.image,
-                        handle: product.handle,
-                      });
-                    }}
-                    className="absolute top-3 right-3 z-10 w-8 h-8 rounded-full bg-white/80 backdrop-blur-sm flex items-center justify-center shadow-sm hover:scale-110 transition-transform"
-                  >
-                    <svg
-                      width="18"
-                      height="18"
-                      viewBox="0 0 24 24"
-                      fill={inWishlist ? '#E64950' : 'none'}
-                      stroke={inWishlist ? '#E64950' : '#234745'}
-                      strokeWidth="2"
-                    >
-                      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l8.78-8.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-                    </svg>
-                  </button>
-
-                  {/* Product Image Link */}
-                  <Link to={`/products/${product.handle}`} className="flex flex-col gap-3">
-                    <div className="w-full aspect-square rounded-[16px] overflow-hidden bg-[#FEF8EB] flex items-center justify-center">
-                      <img
-                        src={product.image}
-                        alt={product.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      />
-                    </div>
-                    <h3 className="text-[#171717] font-bold text-[14px] md:text-[15px] line-clamp-2 min-h-[42px]">
-                      {product.title}
-                    </h3>
-                  </Link>
-
-                  {/* Price & Add to Cart */}
-                  <div className="flex flex-col gap-3 mt-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[#234745] font-bold text-[16px] md:text-[18px] flex items-center gap-1">
-                        <span>{product.price}</span>
-                        <SaudiRiyalSymbol className="h-[14px] w-auto text-[#234745]" />
-                      </span>
-                      {product.comparePrice && (
-                        <span className="text-[#906B51] line-through text-[12px] md:text-[13px] flex items-center gap-0.5">
-                          <span>{product.comparePrice}</span>
-                        </span>
-                      )}
-                    </div>
-
-                    {product.variantId ? (
-                      <AddToCartButton
-                        lines={[{ merchandiseId: product.variantId, quantity: 1 }]}
-                        disabled={!product.availableForSale}
-                        className="w-full py-2.5 bg-[#234745] hover:bg-[#1a3533] text-white font-bold text-[13px] rounded-full transition-colors flex items-center justify-center gap-2"
-                      >
-                        {product.availableForSale ? (isEn ? 'Add to Cart' : 'أضف للسلة') : (isEn ? 'Out of Stock' : 'غير متوفر')}
-                      </AddToCartButton>
-                    ) : null}
-                  </div>
-                </div>
-              );
-            })}
+          <section className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+            {products.map((product: any, index: number) => (
+              <ProductItem
+                key={product.id || index}
+                product={product}
+                loading={index < 8 ? 'eager' : 'lazy'}
+              />
+            ))}
           </section>
         )}
       </div>

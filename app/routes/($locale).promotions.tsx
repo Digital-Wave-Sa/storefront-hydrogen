@@ -5,10 +5,10 @@ import { useWishlist } from '~/context/WishlistContext';
 import { PageHeader } from '~/components/layout/PageHeader';
 import { SaudiRiyalSymbol } from '~/components/Price';
 
-// GraphQL query to fetch promotional products and promotion hero metaobject
+// GraphQL query to fetch promotional products and promotion page metaobjects
 const PROMOTIONS_QUERY = `#graphql
   query getPromotionalProducts($country: CountryCode, $language: LanguageCode) @inContext(country: $country, language: $language) {
-    metaobjects(type: "promotions_hero", first: 1) {
+    heroMeta: metaobjects(type: "promotions_hero", first: 1) {
       nodes {
         id
         handle
@@ -23,6 +23,33 @@ const PROMOTIONS_QUERY = `#graphql
               }
             }
           }
+        }
+      }
+    }
+    bogoMeta: metaobjects(type: "promotions_bogo", first: 1) {
+      nodes {
+        id
+        fields {
+          key
+          value
+        }
+      }
+    }
+    gridMeta: metaobjects(type: "promotions_grid", first: 1) {
+      nodes {
+        id
+        fields {
+          key
+          value
+        }
+      }
+    }
+    bannerMeta: metaobjects(type: "promotions_banner", first: 1) {
+      nodes {
+        id
+        fields {
+          key
+          value
         }
       }
     }
@@ -72,34 +99,70 @@ export async function loader({ context }: LoaderFunctionArgs) {
 
     const allProducts = data?.products?.nodes || [];
 
-    // Extract Metaobject fields if configured in Shopify Admin
-    const heroNode = data?.metaobjects?.nodes?.[0];
-    let heroData: any = null;
-
-    if (heroNode?.fields) {
-      const fieldsMap: Record<string, any> = {};
-      for (const f of heroNode.fields) {
-        if (f.reference?.image?.url) {
-          fieldsMap[f.key] = f.reference.image.url;
-        } else {
-          fieldsMap[f.key] = f.value;
-        }
+    // Helper to map fields from metaobject nodes
+    const parseFields = (node: any) => {
+      if (!node?.fields) return null;
+      const map: Record<string, any> = {};
+      for (const f of node.fields) {
+        map[f.key] = f.reference?.image?.url || f.value;
       }
-      heroData = {
-        titleAr: fieldsMap.title_ar || fieldsMap.title,
-        titleEn: fieldsMap.title_en || fieldsMap.title,
-        subtitleAr: fieldsMap.subtitle_ar || fieldsMap.subtitle,
-        subtitleEn: fieldsMap.subtitle_en || fieldsMap.subtitle,
-        badgeAr: fieldsMap.badge_ar || fieldsMap.badge_text,
-        badgeEn: fieldsMap.badge_en || fieldsMap.badge_text,
-        discountCode: fieldsMap.discount_code || fieldsMap.code,
-        expirationDate: fieldsMap.expiration_date || fieldsMap.end_date || fieldsMap.expires_at,
-        image: fieldsMap.image || fieldsMap.banner_image,
-        buttonTextAr: fieldsMap.button_text_ar || fieldsMap.button_text,
-        buttonTextEn: fieldsMap.button_text_en || fieldsMap.button_text,
-        buttonLink: fieldsMap.button_link || fieldsMap.link,
-      };
-    }
+      return map;
+    };
+
+    const heroFields = parseFields(data?.heroMeta?.nodes?.[0]);
+    const heroData = heroFields ? {
+      titleAr: heroFields.title_ar || heroFields.title,
+      titleEn: heroFields.title_en || heroFields.title,
+      subtitleAr: heroFields.subtitle_ar || heroFields.subtitle,
+      subtitleEn: heroFields.subtitle_en || heroFields.subtitle,
+      badgeAr: heroFields.badge_ar || heroFields.badge_text,
+      badgeEn: heroFields.badge_en || heroFields.badge_text,
+      discountCode: heroFields.discount_code || heroFields.code,
+      expirationDate: heroFields.expiration_date || heroFields.end_date || heroFields.expires_at,
+      image: heroFields.image || heroFields.banner_image,
+      buttonTextAr: heroFields.button_text_ar || heroFields.button_text,
+      buttonTextEn: heroFields.button_text_en || heroFields.button_text,
+      buttonLink: heroFields.button_link || heroFields.link,
+    } : null;
+
+    const bogoFields = parseFields(data?.bogoMeta?.nodes?.[0]);
+    const bogoData = bogoFields ? {
+      badgeAr: bogoFields.badge_ar || bogoFields.badge,
+      badgeEn: bogoFields.badge_en || bogoFields.badge,
+      titleAr: bogoFields.title_ar || bogoFields.title,
+      titleEn: bogoFields.title_en || bogoFields.title,
+      subtitleAr: bogoFields.subtitle_ar || bogoFields.subtitle,
+      subtitleEn: bogoFields.subtitle_en || bogoFields.subtitle,
+      buttonTextAr: bogoFields.button_text_ar || bogoFields.button_text,
+      buttonTextEn: bogoFields.button_text_en || bogoFields.button_text,
+      shoppersCount: bogoFields.shoppers_count,
+    } : null;
+
+    const gridFields = parseFields(data?.gridMeta?.nodes?.[0]);
+    const gridData = gridFields ? {
+      card1TitleAr: gridFields.card1_title_ar || gridFields.card1_title,
+      card1TitleEn: gridFields.card1_title_en || gridFields.card1_title,
+      card1SubtitleAr: gridFields.card1_subtitle_ar || gridFields.card1_subtitle,
+      card1SubtitleEn: gridFields.card1_subtitle_en || gridFields.card1_subtitle,
+      card1TagAr: gridFields.card1_tag_ar || gridFields.card1_tag,
+      card1TagEn: gridFields.card1_tag_en || gridFields.card1_tag,
+      card1ButtonTextAr: gridFields.card1_button_text_ar || gridFields.card1_button_text,
+      card1ButtonTextEn: gridFields.card1_button_text_en || gridFields.card1_button_text,
+      card2TitleAr: gridFields.card2_title_ar || gridFields.card2_title,
+      card2TitleEn: gridFields.card2_title_en || gridFields.card2_title,
+      card2SubtitleAr: gridFields.card2_subtitle_ar || gridFields.card2_subtitle,
+      card2SubtitleEn: gridFields.card2_subtitle_en || gridFields.card2_subtitle,
+      card2TagAr: gridFields.card2_tag_ar || gridFields.card2_tag,
+      card2TagEn: gridFields.card2_tag_en || gridFields.card2_tag,
+      card2ButtonTextAr: gridFields.card2_button_text_ar || gridFields.card2_button_text,
+      card2ButtonTextEn: gridFields.card2_button_text_en || gridFields.card2_button_text,
+    } : null;
+
+    const bannerFields = parseFields(data?.bannerMeta?.nodes?.[0]);
+    const bannerData = bannerFields ? {
+      textAr: bannerFields.text_ar || bannerFields.text,
+      textEn: bannerFields.text_en || bannerFields.text,
+    } : null;
 
     // Filter ONLY products that have a discount (compareAtPrice > price) or discount/promotion tags
     const discountedProducts = allProducts.filter((product: any) => {
@@ -125,15 +188,15 @@ export async function loader({ context }: LoaderFunctionArgs) {
       return hasDiscountedVariant || hasDiscountTag;
     });
 
-    return { products: discountedProducts, heroData };
+    return { products: discountedProducts, heroData, bogoData, gridData, bannerData };
   } catch (error) {
     console.error('Error loading promotional products:', error);
-    return { products: [], heroData: null };
+    return { products: [], heroData: null, bogoData: null, gridData: null, bannerData: null };
   }
 }
 
 export default function PromotionsPage() {
-  const { products, heroData } = useLoaderData<typeof loader>();
+  const { products, heroData, bogoData, gridData, bannerData } = useLoaderData<typeof loader>();
   const routeData = useRouteLoaderData('root') as { locale?: string };
   const locale = routeData?.locale || 'ar';
   const isEn = locale.toLowerCase().startsWith('en');
@@ -384,11 +447,11 @@ export default function PromotionsPage() {
             {/* Shop Now Button */}
             <div className="flex w-full sm:w-auto">
               <Link
-                to="/collections/all"
+                to={heroData?.buttonLink || "/collections/all"}
                 className={`inline-flex items-center justify-center w-full sm:w-[216px] px-[20px] py-[12px] bg-[#BBCFCD] hover:bg-[#ACC4C2] font-bold text-[16px] rounded-full transition-colors !text-[#234745] ${isEn ? "[font-family:'Inter',sans-serif]" : "[font-family:'GE_Dinar_One',sans-serif]"
                   }`}
               >
-                {isEn ? 'Shop Now' : 'تسوق الآن'}
+                {isEn ? (heroData?.buttonTextEn || 'Shop Now') : (heroData?.buttonTextAr || 'تسوق الآن')}
               </Link>
             </div>
           </div>
@@ -410,8 +473,7 @@ export default function PromotionsPage() {
               <div className="bg-[#1F3E35] px-3.5 py-1.5 rounded-full flex items-center gap-1.5">
                 <span className="text-white text-[12px] font-bold flex items-center gap-1">
                   <span>🎁</span>
-                  <span style={{ fontFamily: "'EnglishDigits', sans-serif" }}>1 + 1</span>
-                  <span>{isEn ? ' Free' : ' مجاناً'}</span>
+                  <span style={{ fontFamily: "'EnglishDigits', sans-serif" }}>{isEn ? (bogoData?.badgeEn || '1 + 1 Free') : (bogoData?.badgeAr || '1 + 1 مجاناً')}</span>
                 </span>
               </div>
             </div>
@@ -425,10 +487,10 @@ export default function PromotionsPage() {
                   fontWeight: 700,
                 }}
               >
-                {isEn ? 'Buy One Get One Free' : 'اشتري واحد واحصل على الثاني مجاناً'}
+                {isEn ? (bogoData?.titleEn || 'Buy One Get One Free') : (bogoData?.titleAr || 'اشتري واحد واحصل على الثاني مجاناً')}
               </h3>
               <p className="text-[#7D7D7D] text-[14px] md:text-[15px] font-medium leading-relaxed [font-family:'GE Dinar One',sans-serif]">
-                {isEn ? 'On all dark chocolate types — Today only!' : 'على جميع أنواع الشوكولاتة الداكنة — اليوم فقط!'}
+                {isEn ? (bogoData?.subtitleEn || 'On all dark chocolate types — Today only!') : (bogoData?.subtitleAr || 'على جميع أنواع الشوكولاتة الداكنة — اليوم فقط!')}
               </p>
             </div>
 
@@ -442,7 +504,7 @@ export default function PromotionsPage() {
               >
                 {isEn ? (
                   <>
-                    <span>Shop Offer</span>
+                    <span>{bogoData?.buttonTextEn || 'Shop Offer'}</span>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                       <line x1="5" y1="12" x2="19" y2="12" />
                       <polyline points="12 5 19 12 12 19" />
@@ -450,7 +512,7 @@ export default function PromotionsPage() {
                   </>
                 ) : (
                   <>
-                    <span>تسوق العرض</span>
+                    <span>{bogoData?.buttonTextAr || 'تسوق العرض'}</span>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
                       <line x1="19" y1="12" x2="5" y2="12" />
                       <polyline points="12 19 5 12 12 5" />
@@ -461,7 +523,7 @@ export default function PromotionsPage() {
 
               {/* Shoppers Count (Standard English digits) */}
               <span className="text-[#D61C4E] text-[13px] font-semibold whitespace-nowrap">
-                <span style={{ fontFamily: "'EnglishDigits', sans-serif" }} className="font-bold">243</span>
+                <span style={{ fontFamily: "'EnglishDigits', sans-serif" }} className="font-bold">{bogoData?.shoppersCount || '243'}</span>
                 <span>{isEn ? ' people shopping now' : ' شخص يتسوق الآن'}</span>
               </span>
             </div>
@@ -516,15 +578,17 @@ export default function PromotionsPage() {
           {/* Left card: 25% Gifts */}
           <div className="bg-[#E64C53] rounded-[24px] p-6 md:p-8 flex flex-col items-start text-start justify-between min-h-[220px] shadow-sm relative overflow-hidden">
             <div className="flex items-center gap-2 !mb-6 self-start">
-              <span className="text-white/80 font-bold text-[11px] uppercase tracking-wider">{isEn ? 'Special Partner' : 'شريك مميز'}</span>
+              <span className="text-white/80 font-bold text-[11px] uppercase tracking-wider">
+                {isEn ? (gridData?.card1TagEn || 'Special Partner') : (gridData?.card1TagAr || 'شريك مميز')}
+              </span>
               <div className="w-[20px] h-[1px] bg-white/50"></div>
             </div>
             <div>
               <h3 className="text-white text-[26px] md:text-[34px] font-bold leading-tight mb-2">
-                {isEn ? <><span style={{ fontFamily: "'EnglishDigits', sans-serif" }}>25%</span> on Gift Boxes</> : <><span style={{ fontFamily: "'EnglishDigits', sans-serif" }}>25%</span> على صناديق الهدايا</>}
+                {isEn ? (gridData?.card1TitleEn || <>25% on Gift Boxes</>) : (gridData?.card1TitleAr || <>25% على صناديق الهدايا</>)}
               </h3>
               <p className="text-white/80 text-[14px] font-semibold !mb-6">
-                {isEn ? <>Subscribe now and get <span style={{ fontFamily: "'EnglishDigits', sans-serif" }}>15%</span> discount on your first order</> : <>اشترك الآن واحصل على خصم <span style={{ fontFamily: "'EnglishDigits', sans-serif" }}>15%</span> على طلبك الأول من سعد الدين</>}
+                {isEn ? (gridData?.card1SubtitleEn || <>Subscribe now and get 15% discount on your first order</>) : (gridData?.card1SubtitleAr || <>اشترك الآن واحصل على خصم 15% على طلبك الأول من سعد الدين</>)}
               </p>
             </div>
             <button
@@ -532,22 +596,24 @@ export default function PromotionsPage() {
               onClick={() => handleFilterClick('gifts25')}
               className="px-6 h-[40px] inline-flex items-center justify-center bg-[#BBCFCD] hover:bg-[#ACC4C2] !text-[#234745] font-bold text-[13px] rounded-full transition-colors cursor-pointer"
             >
-              {isEn ? 'Get Discount' : 'احصل على الخصم'}
+              {isEn ? (gridData?.card1ButtonTextEn || 'Get Discount') : (gridData?.card1ButtonTextAr || 'احصل على الخصم')}
             </button>
           </div>
 
           {/* Right card: 40% Chocolate */}
           <div className="bg-[#D3E1DF] rounded-[24px] p-6 md:p-8 flex flex-col items-start text-start justify-between min-h-[220px] shadow-sm relative overflow-hidden">
             <div className="flex items-center gap-2 self-start">
-              <span className="text-[#234745] font-bold text-[11px] uppercase tracking-wider">{isEn ? 'Seasonal Offer' : 'عرض موسمي'}</span>
+              <span className="text-[#234745] font-bold text-[11px] uppercase tracking-wider">
+                {isEn ? (gridData?.card2TagEn || 'Seasonal Offer') : (gridData?.card2TagAr || 'عرض موسمي')}
+              </span>
               <div className="w-[20px] h-[1px] bg-[#234745]"></div>
             </div>
             <div>
               <h3 className="text-[#1A1A1A] text-[26px] md:text-[34px] font-bold leading-tight mb-2">
-                {isEn ? <><span style={{ fontFamily: "'EnglishDigits', sans-serif" }}>40%</span> on all chocolate</> : <>خصم <span style={{ fontFamily: "'EnglishDigits', sans-serif" }}>40%</span> على الشوكولاتة</>}
+                {isEn ? (gridData?.card2TitleEn || <>40% on all chocolate</>) : (gridData?.card2TitleAr || <>خصم 40% على الشوكولاتة</>)}
               </h3>
               <p className="text-[#7D7D7D] text-[14px] font-semibold mb-6">
-                {isEn ? <>More than <span style={{ fontFamily: "'EnglishDigits', sans-serif" }}>20</span> products with exceptional prices</> : <>أكثر من <span style={{ fontFamily: "'EnglishDigits', sans-serif" }}>20</span> منتج بأسعار استثنائية</>}
+                {isEn ? (gridData?.card2SubtitleEn || <>More than 20 products with exceptional prices</>) : (gridData?.card2SubtitleAr || <>أكثر من 20 منتج بأسعار استثنائية</>)}
               </p>
             </div>
             <button
@@ -555,7 +621,7 @@ export default function PromotionsPage() {
               onClick={() => handleFilterClick('chocolates40')}
               className="px-6 h-[40px] inline-flex items-center justify-center bg-[#234745] hover:bg-[#1a3533] !text-white font-bold text-[13px] rounded-full transition-colors cursor-pointer"
             >
-              {isEn ? 'Shop Now' : 'تسوق الآن'}
+              {isEn ? (gridData?.card2ButtonTextEn || 'Shop Now') : (gridData?.card2ButtonTextAr || 'تسوق الآن')}
             </button>
           </div>
 
@@ -565,15 +631,19 @@ export default function PromotionsPage() {
         <section className="w-full bg-[#C5A96A] rounded-[16px] p-6 flex items-center justify-center shadow-sm ">
           <h3 className="text-[#234745] text-[18px] md:text-[30px] font-bold text-center flex items-center justify-center flex-wrap gap-1.5 leading-none">
             {isEn ? (
-              <>
-                <span style={{ fontFamily: "'EnglishDigits', sans-serif" }}>25%</span> on gift boxes for orders over <span style={{ fontFamily: "'EnglishDigits', sans-serif" }}>200</span>
-                <SaudiRiyalSymbol className="h-[20px] md:h-[28px] w-auto text-[#234745] mb-0.5" />
-              </>
+              bannerData?.textEn || (
+                <>
+                  <span style={{ fontFamily: "'EnglishDigits', sans-serif" }}>25%</span> on gift boxes for orders over <span style={{ fontFamily: "'EnglishDigits', sans-serif" }}>200</span>
+                  <SaudiRiyalSymbol className="h-[20px] md:h-[28px] w-auto text-[#234745] mb-0.5" />
+                </>
+              )
             ) : (
-              <>
-                <span style={{ fontFamily: "'EnglishDigits', sans-serif" }}>25%</span> على صناديق الهدايا للطلبات فوق <span style={{ fontFamily: "'EnglishDigits', sans-serif" }}>200</span>
-                <SaudiRiyalSymbol className="h-[20px] md:h-[28px] w-auto text-[#234745] mb-0.5" />
-              </>
+              bannerData?.textAr || (
+                <>
+                  <span style={{ fontFamily: "'EnglishDigits', sans-serif" }}>25%</span> على صناديق الهدايا للطلبات فوق <span style={{ fontFamily: "'EnglishDigits', sans-serif" }}>200</span>
+                  <SaudiRiyalSymbol className="h-[20px] md:h-[28px] w-auto text-[#234745] mb-0.5" />
+                </>
+              )
             )}
           </h3>
         </section>

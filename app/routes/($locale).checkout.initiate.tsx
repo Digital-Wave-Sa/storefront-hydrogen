@@ -31,16 +31,41 @@ export async function action({ request, context }: ActionFunctionArgs) {
     return redirect(lang === 'en' ? '/en/cart' : '/cart');
   }
 
-  // Associate customerAccessToken with Cart Buyer Identity to bypass checkout login prompt
+  // Associate customer email, phone, and customerAccessToken with Cart Buyer Identity so Shopify Checkout pre-fills customer info
+  const loginEmail = await session.get('loginCustomerEmail');
+  const loginPhone = await session.get('loginOtpPhone');
+
+  const buyerIdentity: any = {};
+
   if (customerAccessToken) {
     const token = typeof customerAccessToken === 'string' ? customerAccessToken : customerAccessToken.accessToken;
+    if (token && !token.startsWith('session-')) {
+      buyerIdentity.customerAccessToken = token;
+    }
+  }
+
+  if (loginEmail && !loginEmail.endsWith('@saadeddin.placeholder')) {
+    buyerIdentity.email = loginEmail;
+  }
+
+  if (loginPhone) {
+    const formattedPhone = loginPhone.startsWith('+') ? loginPhone : `+${loginPhone}`;
+    buyerIdentity.phone = formattedPhone;
+  }
+
+  if (Object.keys(buyerIdentity).length > 0) {
     try {
-      await context.cart.updateBuyerIdentity({
-        customerAccessToken: token,
-      });
-      console.log('[CHECKOUT DIAGNOSTIC] Successfully updated cart buyer identity');
-    } catch (err) {
-      console.error('[CHECKOUT DIAGNOSTIC] Failed to update cart buyer identity:', err);
+      await context.cart.updateBuyerIdentity(buyerIdentity);
+      console.log('[CHECKOUT DIAGNOSTIC] Successfully updated cart buyer identity:', buyerIdentity);
+    } catch (err: any) {
+      console.error('[CHECKOUT DIAGNOSTIC] Failed to update cart buyer identity:', err?.message || err);
+      // Fallback: retry without token if customerAccessToken was invalid
+      if (buyerIdentity.customerAccessToken) {
+        delete buyerIdentity.customerAccessToken;
+        try {
+          await context.cart.updateBuyerIdentity(buyerIdentity);
+        } catch (_) {}
+      }
     }
   }
   

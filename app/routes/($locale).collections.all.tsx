@@ -1073,7 +1073,7 @@ export function FilterSidebar({ filters, collections, onClose, isDesktop = false
 
               return (
                 <button type="button" key={i} onClick={() => {
-                  const params = new URLSearchParams(currentParams);
+                  const params = new URLSearchParams(window.location.search);
                   if (isActive) {
                     const allTags = params.getAll('filter.p.tag').filter(v => !item.tags.includes(v));
                     params.delete('filter.p.tag');
@@ -1081,7 +1081,7 @@ export function FilterSidebar({ filters, collections, onClose, isDesktop = false
                   } else {
                     params.append('filter.p.tag', primaryTag);
                   }
-                  setSearchParams(params, { preventScrollReset: true, replace: true });
+                  submit(params, { replace: true, preventScrollReset: true });
                 }} className="flex items-center justify-between w-full outline-none group text-start">
                   <div className="flex items-center gap-2">
                     <div className={`w-4 h-4 rounded flex items-center justify-center transition-colors ${isActive ? 'bg-[#234745]' : 'border-[1.14px] border-[#BBCFCD] bg-white group-hover:border-[#234745]'}`}>

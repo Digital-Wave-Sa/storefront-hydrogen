@@ -715,8 +715,7 @@ function FilterForm({ filters, onClose, isDesktop, isEn }: { filters: any[], onC
                             const primaryTag = item.tags[0];
 
                             return (
-                                <label key={i} className="flex items-center gap-3 cursor-pointer group" onClick={(e) => {
-                                    e.preventDefault();
+                                <button type="button" key={i} className="flex items-center gap-3 cursor-pointer group w-full text-start outline-none" onClick={() => {
                                     const params = new URLSearchParams(searchParams);
                                     if (active) {
                                         const allVals = params.getAll('filter.p.tag').filter(v => !item.tags.includes(v));
@@ -731,7 +730,7 @@ function FilterForm({ filters, onClose, isDesktop, isEn }: { filters: any[], onC
                                         {active && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
                                     </div>
                                     <span className={`text-[13px] font-bold ${active ? 'text-[#234745]' : 'text-gray-500 group-hover:text-gray-800'}`}>{isEn ? item.labelEn : item.labelAr}</span>
-                                </label>
+                                </button>
                             );
                         })}
                     </div>

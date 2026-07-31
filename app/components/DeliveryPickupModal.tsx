@@ -835,33 +835,7 @@ function ModalContent({
                     </div>
                 </div>
 
-                {/* Global Stock / International Visitor Option */}
-                <div className="mx-4 my-3 p-3.5 bg-[#234745]/5 border border-[#234745]/20 rounded-2xl flex items-center justify-between gap-3 text-right">
-                    <div className="flex items-center gap-2.5">
-                        <span className="text-2xl">🌍</span>
-                        <div>
-                            <h4 className="text-xs font-bold text-[#234745]">
-                                {isEn ? 'Visiting from Outside KSA?' : 'تزورنا من خارج المملكة؟'}
-                            </h4>
-                            <p className="text-[11px] text-gray-500 leading-snug">
-                                {isEn ? 'Browse all products with global inventory' : 'تصفّح المخزون الشامل لجميع المنتجات (المخزون العالمي)'}
-                            </p>
-                        </div>
-                    </div>
-                    <button
-                        onClick={() => {
-                            if (typeof window !== 'undefined') {
-                                localStorage.setItem('declaredLocation', 'true');
-                                sessionStorage.setItem('declaredLocation', 'true');
-                            }
-                            onSelectBranch({ id: '', name: isEn ? 'International Visitor' : 'زائر دولي' }, 'pickup');
-                            onClose();
-                        }}
-                        className="px-3 py-2 bg-[#234745] hover:bg-[#163529] text-white text-[11px] font-bold rounded-xl transition-all shadow-sm shrink-0"
-                    >
-                        {isEn ? 'Global Stock' : 'المخزون العالمي'}
-                    </button>
-                </div>
+
 
                 {activeTab === 'pickup' && (
                     <div className="dpm-search-box animate-fade-in">
@@ -1112,7 +1086,6 @@ function ModalContent({
                         }}
                     >
                         {isEn ? 'Confirm Selection' : 'تأكيد الاختيار'}
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6" /></svg>
                     </button>
                 </div>
             </div>

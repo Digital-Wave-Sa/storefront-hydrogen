@@ -117,15 +117,17 @@ export function CartMain({ layout, cart: originalCart }: CartMainProps) {
         <CartAnalyticsView cart={cart as any} />
 
         {/* 1. Full-Width Styled Header */}
-        <div className="w-full bg-[#234745] relative overflow-hidden py-8"
-          style={{
-            backgroundImage: `url(${patternBg})`,
-            backgroundSize: '1600px 800px',
-            backgroundPosition: 'center'
-          }}
-        >
-          <div className="max-w-[1400px] mx-auto px-4 md:px-8 relative z-10 flex w-full justify-start">
-            <div className="flex flex-row items-center justify-start gap-6 w-full">
+        <section className="relative h-[144px] w-full bg-[#234745] overflow-hidden flex items-center" dir={isEn ? 'ltr' : 'rtl'}>
+          <div
+            className="absolute inset-0 bg-[length:1500px_800px] md:bg-[length:1900px_2000px]"
+            style={{
+              backgroundImage: `url(${patternBg})`,
+              backgroundPosition: 'center',
+              backgroundRepeat: 'no-repeat',
+            }}
+          />
+          <div className="max-w-[1440px] w-full mx-auto px-4 md:px-8 lg:px-12 relative z-10 flex items-center justify-between" dir={isEn ? 'ltr' : 'rtl'}>
+            <div className="flex flex-row items-center justify-start gap-4 md:gap-6 w-full">
 
               {/* Back Button (First in DOM = Right in RTL) */}
               <button
@@ -142,17 +144,17 @@ export function CartMain({ layout, cart: originalCart }: CartMainProps) {
 
               {/* Title & Subtitle Block (Second in DOM = Left of button in RTL) */}
               <div className={`flex flex-col ${isEn ? 'text-left' : 'text-right'}`}>
-                <h1 className="!m-0 !mb-2 text-[38px] font-bold text-white leading-none" style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" }}>
+                <h1 className="!m-0 !mb-1 text-[24px] md:text-[34px] font-bold text-white leading-none" style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" }}>
                   {isEn ? 'Shopping Cart' : 'سلة التسوق'}
                 </h1>
-                <p className="!m-0 text-[16px] font-medium text-[#c4d0cc] leading-none" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
+                <p className="!m-0 text-[13px] md:text-[15px] font-medium text-[#c4d0cc] leading-none" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
                   {isEn ? `${cart?.totalQuantity || 0} products in your cart` : `${new Intl.NumberFormat('en-US').format(cart?.totalQuantity || 0)} منتجات في سلتك`}
                 </p>
               </div>
 
             </div>
           </div>
-        </div>
+        </section>
 
         {/* 2. White Breadcrumb Section */}
         <div className="w-full bg-white py-4 mb-10">

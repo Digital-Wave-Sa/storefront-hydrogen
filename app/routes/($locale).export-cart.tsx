@@ -254,15 +254,17 @@ export default function ExportCart() {
     return (
       <div className="export-cart-page" dir="rtl">
         {/* Full-Width Styled Header */}
-        <div className="w-full bg-[#234745] relative overflow-hidden py-8"
-          style={{
-            backgroundImage: "url('/images/second-bg-pattern.svg')",
-            backgroundSize: '1600px 800px',
-            backgroundPosition: 'center'
-          }}
-        >
-          <div className="max-w-[1400px] mx-auto px-4 md:px-8 relative z-10 flex w-full justify-start">
-            <div className="flex flex-row items-center justify-start gap-6 w-full">
+        <section className="relative h-[144px] w-full bg-[#234745] overflow-hidden flex items-center" dir="rtl">
+          <div
+            className="absolute inset-0 bg-[length:1500px_800px] md:bg-[length:1900px_2000px]"
+            style={{
+              backgroundImage: "url('/images/second-bg-pattern.svg')",
+              backgroundPosition: 'center',
+              backgroundRepeat: 'no-repeat',
+            }}
+          />
+          <div className="max-w-[1440px] w-full mx-auto px-4 md:px-8 lg:px-12 relative z-10 flex items-center justify-between" dir="rtl">
+            <div className="flex flex-row items-center justify-start gap-4 md:gap-6 w-full">
               <button
                 onClick={() => { if (typeof window !== 'undefined') window.history.back(); }}
                 className="flex items-center gap-[8px] bg-[#9FB7AE] hover:bg-[#8BA19C] text-[#234745] px-4 md:px-6 py-2.5 rounded-[25px] text-[12px] md:text-[16px] font-bold transition-all shrink-0"
@@ -276,16 +278,16 @@ export default function ExportCart() {
               </button>
 
               <div className="flex flex-col text-right">
-                <h1 className="!m-0 !mb-2 text-[38px] font-bold text-white leading-none" style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" }}>
+                <h1 className="!m-0 !mb-1 text-[24px] md:text-[34px] font-bold text-white leading-none" style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" }}>
                   سلة التسوق للتصدير
                 </h1>
-                <p className="!m-0 text-[16px] font-medium text-[#c4d0cc] leading-none" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
+                <p className="!m-0 text-[13px] md:text-[15px] font-medium text-[#c4d0cc] leading-none" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
                   سلة التسوق للتصدير حول العالم
                 </p>
               </div>
             </div>
           </div>
-        </div>
+        </section>
 
         {/* White Breadcrumb Section */}
         <div className="w-full bg-white py-4 mb-10 border-b border-gray-100">
@@ -309,15 +311,17 @@ export default function ExportCart() {
   return (
     <div className="export-cart-page" dir="rtl">
       {/* ─── 1. HEADER BANNER ───────────────────────────────────────────────── */}
-      <div className="w-full bg-[#234745] relative overflow-hidden py-8"
-        style={{
-          backgroundImage: "url('/images/second-bg-pattern.svg')",
-          backgroundSize: '1600px 800px',
-          backgroundPosition: 'center'
-        }}
-      >
-        <div className="max-w-[1400px] mx-auto px-4 md:px-8 relative z-10 flex w-full justify-start">
-          <div className="flex flex-row items-center justify-start gap-6 w-full">
+      <section className="relative h-[144px] w-full bg-[#234745] overflow-hidden flex items-center" dir="rtl">
+        <div
+          className="absolute inset-0 bg-[length:1500px_800px] md:bg-[length:1900px_2000px]"
+          style={{
+            backgroundImage: "url('/images/second-bg-pattern.svg')",
+            backgroundPosition: 'center',
+            backgroundRepeat: 'no-repeat',
+          }}
+        />
+        <div className="max-w-[1440px] w-full mx-auto px-4 md:px-8 lg:px-12 relative z-10 flex items-center justify-between" dir="rtl">
+          <div className="flex flex-row items-center justify-start gap-4 md:gap-6 w-full">
             <button
               onClick={() => { if (typeof window !== 'undefined') window.history.back(); }}
               className="flex items-center gap-[8px] bg-[#9FB7AE] hover:bg-[#8BA19C] text-[#234745] px-4 md:px-6 py-2.5 rounded-[25px] text-[12px] md:text-[16px] font-bold transition-all shrink-0"
@@ -331,16 +335,16 @@ export default function ExportCart() {
             </button>
 
             <div className="flex flex-col text-right">
-              <h1 className="!m-0 !mb-2 text-[38px] font-bold text-white leading-none" style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" }}>
+              <h1 className="!m-0 !mb-1 text-[24px] md:text-[34px] font-bold text-white leading-none" style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" }}>
                 سلة التسوق للتصدير
               </h1>
-              <p className="!m-0 text-[16px] font-medium text-[#c4d0cc] leading-none" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
+              <p className="!m-0 text-[13px] md:text-[15px] font-medium text-[#c4d0cc] leading-none" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
                 سلة التسوق للتصدير حول العالم
               </p>
             </div>
           </div>
         </div>
-      </div>
+      </section>
 
       {/* ─── BREADCRUMB ────────────────────────────────────────────────────── */}
       <div className="w-full bg-white py-4 mb-10 border-b border-gray-100">

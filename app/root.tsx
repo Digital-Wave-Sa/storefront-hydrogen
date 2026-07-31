@@ -571,10 +571,17 @@ export default function App() {
   const locationFetcher = useFetcher();
 
   useEffect(() => {
-    if (data?.customer && typeof (data.customer as any).then === 'function') {
-      (data.customer as any).then((res: any) => {
-        if (res?.customer?.id) setCustomerId(res.customer.id);
-      }).catch(() => {});
+    if (data?.customer) {
+      if (typeof (data.customer as any).then === 'function') {
+        (data.customer as any).then((res: any) => {
+          if (res?.customer?.id) setCustomerId(res.customer.id);
+          else if (res?.id) setCustomerId(res.id);
+        }).catch(() => {});
+      } else {
+        const custObj = data.customer as any;
+        if (custObj?.customer?.id) setCustomerId(custObj.customer.id);
+        else if (custObj?.id) setCustomerId(custObj.id);
+      }
     }
   }, [data?.customer]);
   

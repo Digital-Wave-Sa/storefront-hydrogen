@@ -5,9 +5,27 @@ import { useWishlist } from '~/context/WishlistContext';
 import { PageHeader } from '~/components/layout/PageHeader';
 import { SaudiRiyalSymbol } from '~/components/Price';
 
-// GraphQL query to fetch promotional products
+// GraphQL query to fetch promotional products and promotion hero metaobject
 const PROMOTIONS_QUERY = `#graphql
   query getPromotionalProducts($country: CountryCode, $language: LanguageCode) @inContext(country: $country, language: $language) {
+    metaobjects(type: "promotions_hero", first: 1) {
+      nodes {
+        id
+        handle
+        fields {
+          key
+          value
+          reference {
+            ... on MediaImage {
+              image {
+                url
+                altText
+              }
+            }
+          }
+        }
+      }
+    }
     products(first: 50) {
       nodes {
         id
@@ -54,6 +72,35 @@ export async function loader({ context }: LoaderFunctionArgs) {
 
     const allProducts = data?.products?.nodes || [];
 
+    // Extract Metaobject fields if configured in Shopify Admin
+    const heroNode = data?.metaobjects?.nodes?.[0];
+    let heroData: any = null;
+
+    if (heroNode?.fields) {
+      const fieldsMap: Record<string, any> = {};
+      for (const f of heroNode.fields) {
+        if (f.reference?.image?.url) {
+          fieldsMap[f.key] = f.reference.image.url;
+        } else {
+          fieldsMap[f.key] = f.value;
+        }
+      }
+      heroData = {
+        titleAr: fieldsMap.title_ar || fieldsMap.title,
+        titleEn: fieldsMap.title_en || fieldsMap.title,
+        subtitleAr: fieldsMap.subtitle_ar || fieldsMap.subtitle,
+        subtitleEn: fieldsMap.subtitle_en || fieldsMap.subtitle,
+        badgeAr: fieldsMap.badge_ar || fieldsMap.badge_text,
+        badgeEn: fieldsMap.badge_en || fieldsMap.badge_text,
+        discountCode: fieldsMap.discount_code || fieldsMap.code,
+        expirationDate: fieldsMap.expiration_date || fieldsMap.end_date || fieldsMap.expires_at,
+        image: fieldsMap.image || fieldsMap.banner_image,
+        buttonTextAr: fieldsMap.button_text_ar || fieldsMap.button_text,
+        buttonTextEn: fieldsMap.button_text_en || fieldsMap.button_text,
+        buttonLink: fieldsMap.button_link || fieldsMap.link,
+      };
+    }
+
     // Filter ONLY products that have a discount (compareAtPrice > price) or discount/promotion tags
     const discountedProducts = allProducts.filter((product: any) => {
       const variants = product.variants?.nodes || [];
@@ -78,15 +125,15 @@ export async function loader({ context }: LoaderFunctionArgs) {
       return hasDiscountedVariant || hasDiscountTag;
     });
 
-    return { products: discountedProducts };
+    return { products: discountedProducts, heroData };
   } catch (error) {
     console.error('Error loading promotional products:', error);
-    return { products: [] };
+    return { products: [], heroData: null };
   }
 }
 
 export default function PromotionsPage() {
-  const { products } = useLoaderData<typeof loader>();
+  const { products, heroData } = useLoaderData<typeof loader>();
   const routeData = useRouteLoaderData('root') as { locale?: string };
   const locale = routeData?.locale || 'ar';
   const isEn = locale.toLowerCase().startsWith('en');
@@ -96,29 +143,42 @@ export default function PromotionsPage() {
   const [showToast, setShowToast] = useState(false);
   const [activeFilter, setActiveFilter] = useState<'all' | 'bogo' | 'gifts25' | 'chocolates40'>('all');
 
-  // Live Countdown Timer state
-  const [timeLeft, setTimeLeft] = useState({ hours: 8, minutes: 32, seconds: 22 });
+  // Live Countdown Timer state (calculated from heroData.expirationDate or default 10h)
+  const [timeLeft, setTimeLeft] = useState({ hours: 8, minutes: 28, seconds: 45 });
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev.seconds > 0) {
-          return { ...prev, seconds: prev.seconds - 1 };
-        } else if (prev.minutes > 0) {
-          return { ...prev, minutes: prev.minutes - 1, seconds: 59 };
-        } else if (prev.hours > 0) {
-          return { hours: prev.hours - 1, minutes: 59, seconds: 59 };
-        } else {
-          clearInterval(timer);
-          return prev;
-        }
-      });
-    }, 1000);
+    const calculateTime = () => {
+      if (heroData?.expirationDate) {
+        const targetTime = new Date(heroData.expirationDate).getTime();
+        const diff = Math.max(0, targetTime - Date.now());
+        const hours = Math.floor(diff / (1000 * 60 * 60));
+        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+        setTimeLeft({ hours, minutes, seconds });
+      } else {
+        setTimeLeft((prev) => {
+          if (prev.seconds > 0) {
+            return { ...prev, seconds: prev.seconds - 1 };
+          } else if (prev.minutes > 0) {
+            return { ...prev, minutes: prev.minutes - 1, seconds: 59 };
+          } else if (prev.hours > 0) {
+            return { hours: prev.hours - 1, minutes: 59, seconds: 59 };
+          } else {
+            return prev;
+          }
+        });
+      }
+    };
+
+    calculateTime();
+    const timer = setInterval(calculateTime, 1000);
     return () => clearInterval(timer);
-  }, []);
+  }, [heroData?.expirationDate]);
+
+  const promoCode = heroData?.discountCode || 'SAAD20';
 
   const handleCopyCode = () => {
-    navigator.clipboard.writeText('SAAD20');
+    navigator.clipboard.writeText(promoCode);
     setShowToast(true);
     setTimeout(() => setShowToast(false), 2000);
   };
@@ -239,26 +299,25 @@ export default function PromotionsPage() {
           style={{ boxSizing: 'border-box', background: '#FEF8EB' }}
           className="w-full rounded-[24px] border border-[#906B51] flex flex-col lg:flex-row items-stretch gap-6 p-5 lg:p-8"
         >
-          {/* Top on Mobile: Table Image (Above text on mobile, second on desktop) */}
+          {/* Top on Mobile: Table Image */}
           <div className="w-full lg:w-[45%] h-[220px] sm:h-[260px] lg:h-[350px] flex-shrink-0 rounded-[16px] overflow-hidden order-1 lg:order-2">
             <img
-              src="/images/promotions/promotions-1st-section.webp"
-              alt="Season Specials"
+              src={heroData?.image || "/images/promotions/promotions-1st-section.webp"}
+              alt={heroData?.titleAr || "Season Specials"}
               className="w-full h-full object-cover object-center"
             />
           </div>
 
-          {/* Bottom on Mobile: Promotion Details (Below image on mobile, first on desktop) */}
+          {/* Bottom on Mobile: Promotion Details */}
           <div
             dir={direction}
             className="flex-1 flex flex-col justify-center gap-5 py-2 order-2 lg:order-1"
           >
-            {/* Tag Badge — aligned to start (right in RTL) */}
+            {/* Tag Badge */}
             <div className="flex">
               <div className="bg-[#E64950] px-[8px] py-[4px] rounded-[6px] flex items-center gap-1.5">
-
                 <span className="text-white font-bold text-[12px] tracking-wide whitespace-nowrap">
-                  {isEn ? 'LIMITED OFFER ⏳' : '⏳ عرض محدود'}
+                  {isEn ? (heroData?.badgeEn || 'LIMITED OFFER ⏳') : (heroData?.badgeAr || '⏳ عرض محدود')}
                 </span>
               </div>
             </div>
@@ -273,21 +332,21 @@ export default function PromotionsPage() {
                   lineHeight: '100%',
                 }}
               >
-                {isEn ? 'Big Season Sales' : 'تخفيضات الموسم الكبيرة'}
+                {isEn ? (heroData?.titleEn || 'Big Season Sales') : (heroData?.titleAr || 'تخفيضات الموسم الكبيرة')}
               </h2>
               <p className="text-[#906B51] text-[15px] font-medium leading-relaxed">
                 {isEn ? (
-                  <>Discounts up to <span style={{ fontFamily: "'EnglishDigits', sans-serif" }}>40%</span> on our best products for a limited time</>
+                  heroData?.subtitleEn || <>Discounts up to <span style={{ fontFamily: "'EnglishDigits', sans-serif" }}>40%</span> on our best products for a limited time</>
                 ) : (
-                  <>خصومات حتى <span style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>40%</span> على أفضل منتجاتنا لفترة محدودة</>
+                  heroData?.subtitleAr || <>خصومات حتى <span style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>40%</span> على أفضل منتجاتنا لفترة محدودة</>
                 )}
               </p>
             </div>
 
-            {/* Timer + Promo Code — grouped together, aligned to start */}
+            {/* Timer + Promo Code */}
             <div className="flex items-center gap-3 flex-wrap" suppressHydrationWarning>
 
-              {/* Timer: Hours | Minutes | Seconds — in RTL renders right-to-left naturally */}
+              {/* Timer: Hours | Minutes | Seconds */}
               <div className="flex items-center gap-2" suppressHydrationWarning>
                 {/* Hours */}
                 <div className="flex flex-col items-center gap-[7px] justify-center w-[60px] h-[64px] border border-[#9FB7AE] rounded-[8px]">
@@ -306,13 +365,13 @@ export default function PromotionsPage() {
                 </div>
               </div>
 
-              {/* Promo Code Box — always LTR inside so SAAD20 is left, button is right */}
+              {/* Promo Code Box */}
               <div
                 dir="ltr"
                 className="flex items-center justify-center sm:justify-between h-[64px] w-full sm:w-auto border border-[#9FB7AE] rounded-[8px] px-3 gap-2"
                 style={{ minWidth: '160px' }}
               >
-                <span className="text-[#234745] font-bold text-[18px] tracking-widest" style={{ fontFamily: "'EnglishDigits', 'Ge Dinar One', sans-serif" }}>SAAD20</span>
+                <span className="text-[#234745] font-bold text-[18px] tracking-widest" style={{ fontFamily: "'EnglishDigits', 'Ge Dinar One', sans-serif" }}>{promoCode}</span>
                 <button
                   onClick={handleCopyCode}
                   className="text-[#234745] text-[14px] font-normal px-2 py-1.5 hover:bg-[#FDF0D5] rounded-[6px] border border-[#F5EAD4] transition-colors whitespace-nowrap cursor-pointer"

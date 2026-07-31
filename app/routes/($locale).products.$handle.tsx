@@ -1172,20 +1172,44 @@ export default function Product() {
 
             {/* Premium Price Box */}
             <div className="w-full h-auto py-[16px] bg-[#FEF8EB] rounded-[16px] border border-[#BBCFCD]/50 flex flex-col justify-center px-[24px] mb-[24px] relative">
-              <div className="flex items-center gap-[12px] w-full justify-start">
-                <span
-                  className="text-[#234745] font-bold"
-                  style={{
-                    fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif",
-                    fontSize: '32px',
-                    lineHeight: '1.2',
-                    textAlign: isEn ? 'left' : 'right',
-                    verticalAlign: 'middle'
-                  }}
-                >
-                  {selectedVariant?.price?.amount || '0'}
-                </span>
-                <SaudiRiyalSymbol className="h-[28px] w-[28px] text-[#255441]" />
+              <div className="flex items-center gap-[12px] w-full justify-start flex-wrap">
+                <div className="flex items-center gap-2">
+                  <span
+                    className="text-[#234745] font-bold"
+                    style={{
+                      fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif",
+                      fontSize: '32px',
+                      lineHeight: '1.2',
+                      textAlign: isEn ? 'left' : 'right',
+                      verticalAlign: 'middle'
+                    }}
+                  >
+                    {selectedVariant?.price?.amount ? parseFloat(selectedVariant.price.amount).toLocaleString('en-US') : '0'}
+                  </span>
+                  <SaudiRiyalSymbol className="h-[28px] w-[28px] text-[#255441]" />
+                </div>
+
+                {/* Compare At Price (Strikethrough Before Price) */}
+                {selectedVariant?.compareAtPrice?.amount && parseFloat(selectedVariant.compareAtPrice.amount) > parseFloat(selectedVariant.price.amount || '0') && (
+                  <div className="flex items-center gap-2">
+                    <span
+                      className="text-[#906B51] line-through font-bold opacity-75"
+                      style={{
+                        fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif",
+                        fontSize: '22px',
+                        lineHeight: '1.2'
+                      }}
+                    >
+                      {parseFloat(selectedVariant.compareAtPrice.amount).toLocaleString('en-US')}
+                    </span>
+                    <SaudiRiyalSymbol className="h-[20px] w-[20px] text-[#906B51] opacity-75" />
+
+                    {/* Calculated Discount Badge */}
+                    <span className="bg-[#E64950] text-white font-bold text-[12px] px-2.5 py-1 rounded-full shadow-sm">
+                      {Math.round(((parseFloat(selectedVariant.compareAtPrice.amount) - parseFloat(selectedVariant.price.amount)) / parseFloat(selectedVariant.compareAtPrice.amount)) * 100)}% {isEn ? 'OFF' : 'خصم'}
+                    </span>
+                  </div>
+                )}
               </div>
               <span
                 className="text-[#9FB7AE] font-medium w-full mt-[4px]"

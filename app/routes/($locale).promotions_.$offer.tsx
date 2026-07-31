@@ -200,34 +200,16 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
       textEn: bannerFields.text_en || bannerFields.text,
     } : null;
 
-    // Process all products and calculate discounts
+    // Process all products while preserving raw GraphQL fields for ProductItem
     const processedProducts = allProducts.map((product: any) => {
       const variants = product.variants?.nodes || [];
-      const variant = variants.find((v: any) => {
-        const price = parseFloat(v.price?.amount || '0');
-        const comparePrice = parseFloat(v.compareAtPrice?.amount || '0');
-        return comparePrice > price;
-      }) || variants[0];
-
-      const priceNum = parseFloat(variant?.price?.amount || '0');
-      const compareNum = parseFloat(variant?.compareAtPrice?.amount || '0');
-      const discountPct = compareNum > priceNum ? Math.round(((compareNum - priceNum) / compareNum) * 100) : 0;
+      const variant = variants[0];
       const tags = (product.tags || []).map((t: string) => t.toLowerCase());
 
-      const hasBogo = tags.some((t: string) => t.includes('bogo') || t.includes('1+1') || t.includes('مجانا') || t.includes('free')) || product.title?.includes('1+1');
-
       return {
-        id: product.id,
-        title: product.title,
-        handle: product.handle,
+        ...product,
         tags,
-        price: Math.round(priceNum).toString(),
-        comparePrice: compareNum > priceNum ? Math.round(compareNum).toString() : '',
-        discountPct,
-        isBogo: hasBogo,
-        image: product.featuredImage?.url || '/images/placeholder/sample.png',
-        availableForSale: product.availableForSale && (variant?.availableForSale ?? true),
-        variantId: variant?.id,
+        availableForSale: product.availableForSale ?? variant?.availableForSale ?? true,
       };
     });
 

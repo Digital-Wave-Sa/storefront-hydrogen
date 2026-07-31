@@ -289,50 +289,25 @@ export default function PromotionsPage() {
     }
   };
 
-  // Dynamically map real discounted products from Shopify
+  // Dynamically map real discounted products from Shopify while preserving GraphQL fields
   const displayProducts = products.map((prod: any) => {
-    const variant = prod.variants?.nodes?.find((v: any) => {
+    const variants = prod.variants?.nodes || [];
+    const variant = variants.find((v: any) => {
       const price = parseFloat(v.price?.amount || '0');
       const comparePrice = parseFloat(v.compareAtPrice?.amount || '0');
       return comparePrice > price;
-    }) || prod.variants?.nodes?.[0];
+    }) || variants[0];
 
     const priceNum = parseFloat(variant?.price?.amount || '0');
     const compareNum = parseFloat(variant?.compareAtPrice?.amount || '0');
-
-    const priceStr = Math.round(priceNum).toString();
-    const compareStr = compareNum > priceNum ? Math.round(compareNum).toString() : '';
-
     const discountPct = compareNum > priceNum ? Math.round(((compareNum - priceNum) / compareNum) * 100) : 0;
-    const hasBogo = prod.tags?.some((t: string) => t.toUpperCase().includes('1+1') || t.toUpperCase().includes('BOGO')) || prod.title?.includes('1+1');
-
-    // Calculate dynamic discount percentage tag if compareAtPrice is higher
-    let tagBadge = '';
-    if (compareNum > priceNum) {
-      tagBadge = isEn ? `${discountPct}% OFF` : `خصم %${discountPct}`;
-    } else {
-      if (hasBogo) {
-        tagBadge = isEn ? 'BUY 1 GET 1' : '1+1 مجاناً';
-      } else if (prod.tags?.some((t: string) => t.includes('الأكثر طلباً') || t.toLowerCase().includes('best_seller'))) {
-        tagBadge = isEn ? 'Most Wanted' : 'الأكثر طلباً';
-      } else {
-        tagBadge = isEn ? 'Special Offer' : 'عرض خاص';
-      }
-    }
+    const hasBogo = prod.tags?.some((t: string) => String(t).toUpperCase().includes('1+1') || String(t).toUpperCase().includes('BOGO')) || prod.title?.includes('1+1');
 
     return {
-      id: prod.id,
-      title: prod.title,
-      price: priceStr,
-      comparePrice: compareStr,
+      ...prod,
       discountPct,
       isBogo: hasBogo,
-      tags: prod.tags || [],
-      tag: tagBadge,
-      image: prod.featuredImage?.url || '/images/placeholder/sample.png',
-      availableForSale: prod.availableForSale && (variant?.availableForSale ?? true),
-      variantId: variant?.id,
-      handle: prod.handle,
+      availableForSale: prod.availableForSale ?? variant?.availableForSale ?? true,
     };
   });
 

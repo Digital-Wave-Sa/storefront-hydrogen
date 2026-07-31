@@ -1,5 +1,5 @@
 import { NavLink, Await } from 'react-router';
-import { Suspense } from 'react';
+import { Suspense, useState } from 'react';
 import type { FooterQuery } from 'storefrontapi.generated';
 import { LogoSplash } from './LogoSplash';
 
@@ -21,9 +21,11 @@ export function Footer({ footer, locale }: { footer: Promise<FooterQuery | null>
                   </div>
                 </div>
 
-                {/* === MOBILE FOOTER (Logo, Social Media Title, Social Icons, App Badges ONLY) === */}
-                <div className="w-full flex flex-col items-center gap-5 lg:hidden border-b border-[#BBCFCD]/30 pb-10">
-                  <h3 className="font-bold text-[18px] leading-[22px] text-white text-center m-0">
+                {/* === MOBILE FOOTER (Dropdown Accordion, Social Media Title, Social Icons, App Badges) === */}
+                <div className="w-full flex flex-col gap-5 lg:hidden border-b border-[#BBCFCD]/30 pb-10">
+                  <MobileFooterAccordion isEn={isEn} />
+
+                  <h3 className="font-bold text-[18px] leading-[22px] text-white text-center m-0 mt-2">
                     {isEn ? 'Social Media' : 'وسائل التواصل الاجتماعي'}
                   </h3>
                   {/* Social Icons */}
@@ -164,5 +166,108 @@ function AppButtons() {
         />
       </a>
     </>
+  );
+}
+
+function MobileFooterAccordion({ isEn }: { isEn: boolean }) {
+  const [openSection, setOpenSection] = useState<string | null>(null);
+
+  const toggle = (section: string) => {
+    setOpenSection(openSection === section ? null : section);
+  };
+
+  return (
+    <div className="w-full flex flex-col border-t border-[#BBCFCD]/30 my-2">
+      {/* 1. About Saadeddin */}
+      <div className="border-b border-[#BBCFCD]/30 py-4">
+        <button
+          type="button"
+          onClick={() => toggle('about')}
+          className="w-full flex items-center justify-between text-start text-white font-bold text-[16px] cursor-pointer"
+        >
+          <span>{isEn ? 'About Saadeddin' : 'عن سعد الدين'}</span>
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className={`transition-transform duration-300 ${openSection === 'about' ? 'rotate-180' : ''}`}
+          >
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        </button>
+        {openSection === 'about' && (
+          <div className="flex flex-col items-start gap-3 mt-3.5 text-[#BBCFCD]">
+            <NavLink to={isEn ? "/en/pages/about" : "/pages/about"} className="font-normal text-[14px] hover:text-white transition-colors">{isEn ? 'About Us' : 'نبذة عن الشركة'}</NavLink>
+            <NavLink to={isEn ? "/en/pages/branches" : "/pages/branches"} className="font-normal text-[14px] hover:text-white transition-colors">{isEn ? 'Our Branches' : 'فروعنا'}</NavLink>
+            <NavLink to={isEn ? "/en/blogs/news" : "/blogs/news"} className="font-normal text-[14px] hover:text-white transition-colors">{isEn ? 'Blog' : 'المدونة'}</NavLink>
+          </div>
+        )}
+      </div>
+
+      {/* 2. Customer Service */}
+      <div className="border-b border-[#BBCFCD]/30 py-4">
+        <button
+          type="button"
+          onClick={() => toggle('customer-service')}
+          className="w-full flex items-center justify-between text-start text-white font-bold text-[16px] cursor-pointer"
+        >
+          <span>{isEn ? 'Customer Service' : 'خدمة العملاء'}</span>
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className={`transition-transform duration-300 ${openSection === 'customer-service' ? 'rotate-180' : ''}`}
+          >
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        </button>
+        {openSection === 'customer-service' && (
+          <div className="flex flex-col items-start gap-3 mt-3.5 text-[#BBCFCD]">
+            <NavLink to={isEn ? "/en/pages/contact" : "/pages/contact"} className="font-normal text-[14px] hover:text-white transition-colors">{isEn ? 'Contact Us' : 'تواصل معنا'}</NavLink>
+            <NavLink to={isEn ? "/en/pages/faq" : "/pages/faq"} className="font-normal text-[14px] hover:text-white transition-colors">{isEn ? 'FAQs' : 'الأسئلة الشائعة'}</NavLink>
+          </div>
+        )}
+      </div>
+
+      {/* 3. Shipping & Delivery */}
+      <div className="border-b border-[#BBCFCD]/30 py-4">
+        <button
+          type="button"
+          onClick={() => toggle('shipping')}
+          className="w-full flex items-center justify-between text-start text-white font-bold text-[16px] cursor-pointer"
+        >
+          <span>{isEn ? 'Shipping & Delivery' : 'الشحن والتوصيل'}</span>
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className={`transition-transform duration-300 ${openSection === 'shipping' ? 'rotate-180' : ''}`}
+          >
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        </button>
+        {openSection === 'shipping' && (
+          <div className="flex flex-col items-start gap-3 mt-3.5 text-[#BBCFCD]">
+            <NavLink to={isEn ? "/en/export" : "/export"} className="font-normal text-[14px] hover:text-white transition-colors">{isEn ? 'International Shipping / Export' : 'الشحن الدولي/التوصيل'}</NavLink>
+            <NavLink to={isEn ? "/en/pages/branches" : "/pages/branches"} className="font-normal text-[14px] hover:text-white transition-colors">{isEn ? 'Delivery Inside KSA' : 'التوصيل داخل المملكة'}</NavLink>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }

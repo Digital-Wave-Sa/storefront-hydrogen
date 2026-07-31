@@ -5,6 +5,33 @@ import { PageHeader } from '~/components/layout/PageHeader';
 
 function ProductSlider({ products }: { products: any[] }) {
     const sliderRef = useRef<HTMLDivElement>(null);
+    const [canScrollLeft, setCanScrollLeft] = useState(false);
+    const [canScrollRight, setCanScrollRight] = useState(false);
+
+    const checkScrollable = () => {
+        if (!sliderRef.current) return;
+        const { scrollLeft, scrollWidth, clientWidth } = sliderRef.current;
+        const maxScroll = scrollWidth - clientWidth;
+        if (maxScroll <= 5) {
+            setCanScrollLeft(false);
+            setCanScrollRight(false);
+            return;
+        }
+
+        const absScroll = Math.abs(scrollLeft);
+        setCanScrollLeft(absScroll > 5);
+        setCanScrollRight(absScroll < maxScroll - 5);
+    };
+
+    useEffect(() => {
+        checkScrollable();
+        const timer = setTimeout(checkScrollable, 100);
+        window.addEventListener('resize', checkScrollable);
+        return () => {
+            clearTimeout(timer);
+            window.removeEventListener('resize', checkScrollable);
+        };
+    }, [products]);
 
     const scroll = (direction: 'left' | 'right') => {
         if (!sliderRef.current) return;
@@ -18,31 +45,36 @@ function ProductSlider({ products }: { products: any[] }) {
     return (
         <div className="relative w-full group py-2">
             {/* Navigation Arrows */}
-            <button
-                onClick={() => scroll('left')}
-                className="hidden lg:flex absolute -left-5 top-1/2 -translate-y-1/2 z-20 w-12 h-12 bg-white hover:bg-gray-50 text-[#234745] border border-gray-200 rounded-full items-center justify-center shadow-lg transition-all hover:scale-110 active:scale-95 outline-none"
-                aria-label="Previous Product"
-                type="button"
-            >
-                <svg className="w-6 h-6 rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                </svg>
-            </button>
+            {canScrollLeft && (
+                <button
+                    onClick={() => scroll('left')}
+                    className="hidden lg:flex absolute -left-5 top-1/2 -translate-y-1/2 z-20 w-12 h-12 bg-white hover:bg-gray-50 text-[#234745] border border-gray-200 rounded-full items-center justify-center shadow-lg transition-all hover:scale-110 active:scale-95 outline-none"
+                    aria-label="Previous Product"
+                    type="button"
+                >
+                    <svg className="w-6 h-6 rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                    </svg>
+                </button>
+            )}
 
-            <button
-                onClick={() => scroll('right')}
-                className="hidden lg:flex absolute -right-5 top-1/2 -translate-y-1/2 z-20 w-12 h-12 bg-white hover:bg-gray-50 text-[#234745] border border-gray-200 rounded-full items-center justify-center shadow-lg transition-all hover:scale-110 active:scale-95 outline-none"
-                aria-label="Next Product"
-                type="button"
-            >
-                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                </svg>
-            </button>
+            {canScrollRight && (
+                <button
+                    onClick={() => scroll('right')}
+                    className="hidden lg:flex absolute -right-5 top-1/2 -translate-y-1/2 z-20 w-12 h-12 bg-white hover:bg-gray-50 text-[#234745] border border-gray-200 rounded-full items-center justify-center shadow-lg transition-all hover:scale-110 active:scale-95 outline-none"
+                    aria-label="Next Product"
+                    type="button"
+                >
+                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                    </svg>
+                </button>
+            )}
 
             {/* Scrollable Container with Padding (No Card Cropping) */}
             <div
                 ref={sliderRef}
+                onScroll={checkScrollable}
                 className="flex gap-6 overflow-x-auto hide-scrollbars py-4 px-2 snap-x snap-mandatory scroll-smooth"
             >
                 {products.map((product: any) => (

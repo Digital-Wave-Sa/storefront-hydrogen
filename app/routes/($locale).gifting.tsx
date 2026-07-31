@@ -1,7 +1,59 @@
 import { data, type LoaderFunctionArgs, type MetaFunction, useLoaderData, Link, useRouteLoaderData, useSearchParams } from 'react-router';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { ProductItem } from '~/components/ProductItem';
 import { PageHeader } from '~/components/layout/PageHeader';
+
+function ProductSlider({ products }: { products: any[] }) {
+    const sliderRef = useRef<HTMLDivElement>(null);
+
+    const scroll = (direction: 'left' | 'right') => {
+        if (!sliderRef.current) return;
+        const container = sliderRef.current;
+        const firstCard = container.querySelector<HTMLElement>('[data-slider-item]');
+        const step = firstCard ? firstCard.offsetWidth + 24 : 304;
+        const scrollAmount = direction === 'left' ? -step : step;
+        container.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+    };
+
+    return (
+        <div className="relative w-full group py-2">
+            {/* Navigation Arrows */}
+            <button
+                onClick={() => scroll('left')}
+                className="hidden lg:flex absolute -left-5 top-1/2 -translate-y-1/2 z-20 w-12 h-12 bg-white hover:bg-gray-50 text-[#234745] border border-gray-200 rounded-full items-center justify-center shadow-lg transition-all hover:scale-110 active:scale-95 outline-none"
+                aria-label="Previous Product"
+                type="button"
+            >
+                <svg className="w-6 h-6 rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                </svg>
+            </button>
+
+            <button
+                onClick={() => scroll('right')}
+                className="hidden lg:flex absolute -right-5 top-1/2 -translate-y-1/2 z-20 w-12 h-12 bg-white hover:bg-gray-50 text-[#234745] border border-gray-200 rounded-full items-center justify-center shadow-lg transition-all hover:scale-110 active:scale-95 outline-none"
+                aria-label="Next Product"
+                type="button"
+            >
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                </svg>
+            </button>
+
+            {/* Scrollable Container with Padding (No Card Cropping) */}
+            <div
+                ref={sliderRef}
+                className="flex gap-6 overflow-x-auto hide-scrollbars py-4 px-2 snap-x snap-mandatory scroll-smooth"
+            >
+                {products.map((product: any) => (
+                    <div key={product.id} data-slider-item className="w-[260px] sm:w-[280px] md:w-[290px] shrink-0 snap-start">
+                        <ProductItem product={product} loading="lazy" />
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
 
 export const meta: MetaFunction = () => {
     return [{ title: `Saadeddin | Gifting` }];
@@ -167,15 +219,7 @@ export default function GiftingPage() {
                 </h2>
 
                 {displayProducts.length > 0 ? (
-                    <div className="relative w-full overflow-hidden">
-                        <div className="flex gap-4 lg:gap-6 overflow-x-auto hide-scrollbars py-2 snap-x scroll-smooth">
-                            {displayProducts.map((product: any) => (
-                                <div key={product.id} className="w-[240px] sm:w-[260px] md:w-[280px] shrink-0 snap-start">
-                                    <ProductItem product={product} loading="lazy" />
-                                </div>
-                            ))}
-                        </div>
-                    </div>
+                    <ProductSlider products={displayProducts} />
                 ) : (
                     <div className="text-center py-12 text-[#8B8B8B] font-bold">
                         {isEn ? 'No products found for this category.' : 'لا توجد منتجات لهذه الفئة.'}

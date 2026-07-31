@@ -167,10 +167,14 @@ export default function GiftingPage() {
                 </h2>
 
                 {displayProducts.length > 0 ? (
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 lg:gap-6">
-                        {displayProducts.map((product: any) => (
-                            <ProductItem key={product.id} product={product} loading="lazy" />
-                        ))}
+                    <div className="relative w-full overflow-hidden">
+                        <div className="flex gap-4 lg:gap-6 overflow-x-auto hide-scrollbars py-2 snap-x scroll-smooth">
+                            {displayProducts.map((product: any) => (
+                                <div key={product.id} className="w-[240px] sm:w-[260px] md:w-[280px] shrink-0 snap-start">
+                                    <ProductItem product={product} loading="lazy" />
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 ) : (
                     <div className="text-center py-12 text-[#8B8B8B] font-bold">

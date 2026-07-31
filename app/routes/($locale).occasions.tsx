@@ -102,6 +102,7 @@ export default function OccasionsPage() {
     const isEn = locale === 'en';
 
     const categories = [
+        { id: 'all', en: 'All', ar: 'الكل' },
         { id: 'eid', en: 'Eid', ar: 'العيد' },
         { id: 'birthdays', en: 'Birthdays', ar: 'أعياد الميلاد' },
         { id: 'ramadan', en: 'Ramadan', ar: 'رمضان' },
@@ -114,7 +115,7 @@ export default function OccasionsPage() {
 
     const [searchParams] = useSearchParams();
     const urlCategory = searchParams.get('category');
-    const [selectedCategory, setSelectedCategory] = useState(urlCategory || categories[0].id);
+    const [selectedCategory, setSelectedCategory] = useState(urlCategory || 'all');
 
     useEffect(() => {
         if (urlCategory) {
@@ -124,15 +125,17 @@ export default function OccasionsPage() {
 
     // Filter products based on selected category tags
     const filteredProducts = products.filter((p: any) => {
-        const cat = categories.find(c => c.id === selectedCategory);
-        if (!cat) return false;
+        if (!selectedCategory || selectedCategory === 'all') return true;
 
-        const tags = p.tags.map((t: string) => t.toLowerCase());
+        const cat = categories.find(c => c.id === selectedCategory);
+        if (!cat) return true;
+
+        const tags = (p.tags || []).map((t: string) => t.toLowerCase());
         return tags.includes(cat.id.toLowerCase()) ||
             tags.includes(cat.en.toLowerCase()) ||
             tags.includes(cat.ar.toLowerCase()) ||
             tags.includes(`occasion-${cat.id}`) ||
-            tags.includes(cat.id.replace('-', '')); // Handle "mothersday" or "newbaby"
+            tags.includes(cat.id.replace('-', ''));
     });
 
     const displayProducts = filteredProducts;
@@ -151,7 +154,7 @@ export default function OccasionsPage() {
 
             {/* Filter Pills */}
             <div className="w-full overflow-hidden">
-                <div className="flex gap-3 lg:gap-4 overflow-x-auto hide-scrollbars py-8 max-w-[1200px] mx-auto px-4 lg:px-8 justify-start lg:justify-center flex-nowrap snap-x" style={{ direction: 'rtl' }}>
+                <div className="flex gap-3 lg:gap-4 overflow-x-auto hide-scrollbars py-8 max-w-[1200px] mx-auto px-4 lg:px-8 justify-start lg:justify-center flex-nowrap snap-x">
                     {categories.map(cat => (
                         <button
                             key={cat.id}
@@ -170,14 +173,20 @@ export default function OccasionsPage() {
             {/* Products Section */}
             <div className="max-w-[1200px] mx-auto px-4 lg:px-8 pb-16">
                 <h2 className="text-[24px] lg:text-[32px] font-black text-[#1A1A1A] mb-8">
-                    {isEn ? `Suggestions for ${selectedCatLabel}` : `مقترحات لـ ${selectedCatLabel}`}
+                    {selectedCategory === 'all'
+                      ? (isEn ? 'All Occasion Products' : 'جميع منتجات المناسبات')
+                      : (isEn ? `Suggestions for ${selectedCatLabel}` : `مقترحات لـ ${selectedCatLabel}`)}
                 </h2>
 
                 {displayProducts.length > 0 ? (
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 lg:gap-6">
-                        {displayProducts.map((product: any) => (
-                            <ProductItem key={product.id} product={product} loading="lazy" />
-                        ))}
+                    <div className="relative w-full overflow-hidden">
+                        <div className="flex gap-4 lg:gap-6 overflow-x-auto hide-scrollbars py-2 snap-x scroll-smooth">
+                            {displayProducts.map((product: any) => (
+                                <div key={product.id} className="w-[240px] sm:w-[260px] md:w-[280px] shrink-0 snap-start">
+                                    <ProductItem product={product} loading="lazy" />
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 ) : (
                     <div className="text-center py-12 text-[#8B8B8B] font-bold">

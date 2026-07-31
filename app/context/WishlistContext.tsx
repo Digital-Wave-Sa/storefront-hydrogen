@@ -98,35 +98,32 @@ export function WishlistProvider({
     }
   }, [wishlist, isLoaded]);
 
-  // 3. Sync to Cloud ONLY when user modifies wishlist
-  useEffect(() => {
-    if (!isLoaded || !customerId || !isModifiedRef.current) return;
-
-    const syncTimeout = setTimeout(async () => {
-      try {
-        const formattedId = customerId.startsWith('gid://') ? customerId : `gid://shopify/Customer/${customerId}`;
-        await fetch('/api/wishlist', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ customerId: formattedId, wishlist }),
-        });
-        isModifiedRef.current = false;
-      } catch (e) {
-        console.error('Cloud sync failed', e);
-      }
-    }, 1000);
-
-    return () => clearTimeout(syncTimeout);
-  }, [wishlist, customerId, isLoaded]);
+  const syncToCloud = async (newWishlist: WishlistItem[]) => {
+    if (!customerId) return;
+    try {
+      const formattedId = customerId.startsWith('gid://') ? customerId : `gid://shopify/Customer/${customerId}`;
+      await fetch('/api/wishlist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ customerId: formattedId, wishlist: newWishlist }),
+      });
+    } catch (e) {
+      console.error('Cloud sync failed', e);
+    }
+  };
 
   const toggleWishlist = (item: WishlistItem) => {
-    isModifiedRef.current = true;
     setWishlist((prev) => {
       const exists = prev.find((i) => i.id === item.id);
-      if (exists) {
-        return prev.filter((i) => i.id !== item.id);
+      const updated = exists
+        ? prev.filter((i) => i.id !== item.id)
+        : [...prev, item];
+      
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('wishlist', JSON.stringify(updated));
       }
-      return [...prev, item];
+      syncToCloud(updated);
+      return updated;
     });
   };
 

@@ -16,8 +16,30 @@ export function AccountProfileHeader({
   balance?: number;
   wishlistCount?: number;
 }) {
-  const initials = (customer.firstName?.[0] || customer.email?.[0] || 'U').toUpperCase();
-  const joinYear = customer.createdAt ? new Date(customer.createdAt).getFullYear() : new Date().getFullYear();
+  const displayName = (() => {
+    const fName = (customer?.firstName || '').trim();
+    const lName = (customer?.lastName || '').trim();
+    const isGeneric = !fName || fName.toLowerCase() === 'customer' || fName.toLowerCase() === 'guest';
+    
+    if (!isGeneric) {
+      return `${fName} ${lName !== '(Company)' ? lName : ''}`.trim();
+    }
+    
+    const addr = (customer as any)?.defaultAddress || (customer as any)?.addresses?.nodes?.[0];
+    if (addr?.firstName && addr.firstName.toLowerCase() !== 'customer') {
+      return `${addr.firstName} ${addr.lastName || ''}`.trim();
+    }
+
+    if (customer?.email && !customer.email.endsWith('@saadeddin.placeholder')) {
+      const handle = customer.email.split('@')[0].replace(/[._-]/g, ' ');
+      return handle.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+    }
+
+    return isEn ? 'Valued Customer' : 'عميلنا العزيز';
+  })();
+
+  const initials = (displayName[0] || customer?.email?.[0] || 'U').toUpperCase();
+  const joinYear = customer?.createdAt ? new Date(customer.createdAt).getFullYear() : new Date().getFullYear();
   const rootData = useRouteLoaderData('root') as any;
 
   return (
@@ -53,7 +75,7 @@ export function AccountProfileHeader({
                   className="text-[18px] md:text-[26px] font-bold leading-tight text-[#FEF8EB] !mb-0 !mt-0 truncate w-full"
                   style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" }}
                 >
-                  {customer.firstName} {customer.lastName}
+                  {displayName}
                 </h2>
                 <p
                   className="text-[14px] md:text-[18px] text-[#9FB7AE] font-medium flex gap-1 flex-wrap !m-0 items-center"

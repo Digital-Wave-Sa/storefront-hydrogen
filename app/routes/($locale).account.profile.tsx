@@ -441,7 +441,17 @@ export default function AccountProfile() {
                   </span>
                   <div className="bg-[#FEF8EB] border border-[#BBCFCD] rounded-[12px] h-[48px] px-4 flex items-center">
                     <span className="text-[14px] font-medium text-[#9FB7AE]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
-                      {customer.firstName} {customer.lastName !== '(Company)' ? customer.lastName : ''}
+                      {(() => {
+                        const fName = (customer?.firstName || '').trim();
+                        const lName = (customer?.lastName || '').trim();
+                        const isGeneric = !fName || fName.toLowerCase() === 'customer' || fName.toLowerCase() === 'guest';
+                        if (!isGeneric) return `${fName} ${lName !== '(Company)' ? lName : ''}`.trim();
+                        if (customer?.email && !customer.email.endsWith('@saadeddin.placeholder')) {
+                          const handle = customer.email.split('@')[0].replace(/[._-]/g, ' ');
+                          return handle.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+                        }
+                        return isEn ? 'Valued Customer' : 'عميلنا العزيز';
+                      })()}
                     </span>
                   </div>
                 </div>

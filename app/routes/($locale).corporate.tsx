@@ -940,37 +940,24 @@ export default function CorporatePage() {
                         <div className={`flex items-center gap-8 sm:gap-12 pt-2 ${isEn ? 'justify-start' : 'justify-start'}`}>
                             {/* Item 1: Custom Colors */}
                             <div className="flex flex-col items-center text-center gap-2">
-                                <div className="w-10 h-10 flex items-center justify-center text-[#906B51]">
-                                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#906B51" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-                                        <circle cx="13.5" cy="6.5" r=".5" fill="#906B51"/>
-                                        <circle cx="17.5" cy="10.5" r=".5" fill="#906B51"/>
-                                        <circle cx="8.5" cy="7.5" r=".5" fill="#906B51"/>
-                                        <circle cx="6.5" cy="12.5" r=".5" fill="#906B51"/>
-                                        <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.92 0 1.7-.71 1.7-1.63 0-.44-.18-.85-.49-1.15-.3-.3-.48-.71-.48-1.15 0-.92.75-1.67 1.67-1.67h1.93c3.13 0 5.67-2.54 5.67-5.67 0-5.17-4.43-8.73-10-8.73z"/>
-                                    </svg>
+                                <div className="w-10 h-10 flex items-center justify-center">
+                                    <img src="/images/corporate/custom-color.svg" alt="Custom Colors" className="w-8 h-8 object-contain" />
                                 </div>
                                 <span className="text-[#906B51] font-bold text-[14px]">{isEn ? 'Custom Colors' : 'ألوان مخصصة'}</span>
                             </div>
 
                             {/* Item 2: Custom Messages */}
                             <div className="flex flex-col items-center text-center gap-2">
-                                <div className="w-10 h-10 flex items-center justify-center text-[#906B51]">
-                                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#906B51" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-                                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-                                    </svg>
+                                <div className="w-10 h-10 flex items-center justify-center">
+                                    <img src="/images/corporate/custom-messages.svg" alt="Custom Messages" className="w-8 h-8 object-contain" />
                                 </div>
                                 <span className="text-[#906B51] font-bold text-[14px]">{isEn ? 'Custom Messages' : 'رسائل خاصة'}</span>
                             </div>
 
                             {/* Item 3: Premium Quality */}
                             <div className="flex flex-col items-center text-center gap-2">
-                                <div className="w-10 h-10 flex items-center justify-center text-[#906B51]">
-                                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#906B51" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-                                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                                        <polyline points="14 2 14 8 20 8"/>
-                                        <line x1="16" y1="13" x2="8" y2="13"/>
-                                        <line x1="16" y1="17" x2="8" y2="17"/>
-                                    </svg>
+                                <div className="w-10 h-10 flex items-center justify-center">
+                                    <img src="/images/corporate/heigh-quality.svg" alt="Premium Quality" className="w-8 h-8 object-contain" />
                                 </div>
                                 <span className="text-[#906B51] font-bold text-[14px]">{isEn ? 'Premium Quality' : 'جودة فاخرة'}</span>
                             </div>

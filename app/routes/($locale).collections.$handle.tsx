@@ -291,6 +291,11 @@ export default function Collection() {
                 const activeTagFilters = searchParams.getAll('filter.p.tag').concat(searchParams.getAll('tag'));
                 const filteredNodes = nodes.filter((n: any) => {
                   if (q && !n.title.toLowerCase().includes(q)) return false;
+                  // Exclude corporate tagged products unless browsing corporate collection
+                  if (collection.handle !== 'corporate' && collection.handle !== 'b2b') {
+                    const pTags = (n.tags || []).map((t: string) => t.toLowerCase());
+                    if (pTags.includes('corporate') || pTags.includes('b2b') || pTags.includes('package')) return false;
+                  }
                   if (activeTagFilters.length > 0) {
                     const pTags = (n.tags || []).map((t: string) => t.toLowerCase());
                     const matchesTag = activeTagFilters.some(t => pTags.includes(t.toLowerCase()));

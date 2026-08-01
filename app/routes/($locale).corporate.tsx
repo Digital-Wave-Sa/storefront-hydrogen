@@ -885,14 +885,14 @@ export default function CorporatePage() {
                                             )}
                                         </div>
                                     )}
-                                    <div className="absolute top-4 right-4">
+                                    <div className={`absolute top-4 ${isEn ? 'left-4' : 'right-4'}`}>
                                         <div className="bg-[#FEF8EB] px-4 py-1.5 rounded-[25px] shadow-sm">
                                             <span className="text-[#234745] font-bold text-[14px]">{pkg.badge}</span>
                                         </div>
                                     </div>
                                 </div>
 
-                                <div className="flex flex-col p-6 gap-4 flex-1">
+                                <div className={`flex flex-col p-6 gap-4 flex-1 ${isEn ? 'text-left' : 'text-right'}`}>
                                     <div className="flex flex-col gap-3">
                                         <h3 className={`text-[#234745] font-bold text-[18px] m-0 ${isEn ? 'text-left' : 'text-right'}`}>{pkg.title}</h3>
                                         <p className={`text-[#9FB7AE] font-medium text-[15px] leading-[22px] m-0 min-h-[44px] ${isEn ? 'text-left' : 'text-right'}`}>{pkg.description}</p>
@@ -921,120 +921,175 @@ export default function CorporatePage() {
             </section>
 
             {/* 6. Custom Identity */}
-            <section className="w-full bg-[#FEF8EB] py-20 px-4">
-                <div className="max-w-[1200px] mx-auto flex flex-col md:flex-row items-center gap-12 lg:gap-20">
-
-                    <div className="w-full md:w-1/2">
-                        <h2 className="text-[32px] md:text-[40px] font-bold text-[#1A1A1A] mb-6 leading-tight">
+            <section className="w-full bg-[#FAF4E8] py-20 px-4 sm:px-6 lg:px-8 border-t border-[#E8DFC8]">
+                <div className="max-w-[1280px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-16 items-center">
+                    {/* Left / Info Text Column */}
+                    <div className={`lg:col-span-6 flex flex-col ${isEn ? 'text-left items-start' : 'text-right items-start'}`}>
+                        <h2
+                            className="text-[#234745] text-[36px] sm:text-[46px] lg:text-[52px] font-bold leading-tight mb-4"
+                            style={{ fontFamily: isEn ? 'inherit' : "'Bahij Janna', sans-serif" }}
+                        >
                             {isEn ? 'A Design That Reflects Your Identity' : 'تصميم يعكس هويتك'}
                         </h2>
-                        <p className="text-[#8B8B8B] text-[16px] mb-10 font-medium leading-relaxed">
-                            {isEn ? 'We understand that your gift represents your brand. We give you full control to customize exactly what fits your corporate identity.' : 'نتفهم أن هديتك تمثل شركتك ولذلك نمنحك الحرية في التعديل على العلب وبطاقات الإهداء بشكل يتوافق مع هويتك.'}
+                        <p className="text-[#8B8275] text-[15px] sm:text-[16px] leading-[26px] mb-8 max-w-[540px]">
+                            {isEn
+                                ? 'We offer complete customization options to highlight your brand identity on packaging and gifts with the highest quality and innovation standards.'
+                                : 'نقدم لك خيارات تخصيص متكاملة لإبراز علامتك التجارية على التغليف والهدايا بأعلى معايير الجودة والابتكار'}
                         </p>
 
-                        <div className="flex justify-between items-start">
-                            <div className="flex flex-col items-center text-center w-1/3">
-                                <div className="w-14 h-14 bg-white rounded-full flex items-center justify-center shadow-sm mb-3">
-                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#234745" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path></svg>
+                        <div className={`flex items-center gap-8 sm:gap-12 pt-2 ${isEn ? 'justify-start' : 'justify-start'}`}>
+                            {/* Item 1: Custom Colors */}
+                            <div className="flex flex-col items-center text-center gap-2">
+                                <div className="w-10 h-10 flex items-center justify-center text-[#906B51]">
+                                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#906B51" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                                        <circle cx="13.5" cy="6.5" r=".5" fill="#906B51"/>
+                                        <circle cx="17.5" cy="10.5" r=".5" fill="#906B51"/>
+                                        <circle cx="8.5" cy="7.5" r=".5" fill="#906B51"/>
+                                        <circle cx="6.5" cy="12.5" r=".5" fill="#906B51"/>
+                                        <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.92 0 1.7-.71 1.7-1.63 0-.44-.18-.85-.49-1.15-.3-.3-.48-.71-.48-1.15 0-.92.75-1.67 1.67-1.67h1.93c3.13 0 5.67-2.54 5.67-5.67 0-5.17-4.43-8.73-10-8.73z"/>
+                                    </svg>
                                 </div>
-                                <span className="text-[#234745] font-bold text-[13px]">{isEn ? 'Custom Box' : 'تغليف مخصص'}</span>
+                                <span className="text-[#906B51] font-bold text-[14px]">{isEn ? 'Custom Colors' : 'ألوان مخصصة'}</span>
                             </div>
 
-                            <div className="flex flex-col items-center text-center w-1/3">
-                                <div className="w-14 h-14 bg-white rounded-full flex items-center justify-center shadow-sm mb-3">
-                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#234745" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1v12z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg>
+                            {/* Item 2: Custom Messages */}
+                            <div className="flex flex-col items-center text-center gap-2">
+                                <div className="w-10 h-10 flex items-center justify-center text-[#906B51]">
+                                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#906B51" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                                    </svg>
                                 </div>
-                                <span className="text-[#234745] font-bold text-[13px]">{isEn ? 'Ribbon Logo' : 'شريطة بشعارك'}</span>
+                                <span className="text-[#906B51] font-bold text-[14px]">{isEn ? 'Custom Messages' : 'رسائل خاصة'}</span>
                             </div>
 
-                            <div className="flex flex-col items-center text-center w-1/3">
-                                <div className="w-14 h-14 bg-white rounded-full flex items-center justify-center shadow-sm mb-3">
-                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#234745" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
+                            {/* Item 3: Premium Quality */}
+                            <div className="flex flex-col items-center text-center gap-2">
+                                <div className="w-10 h-10 flex items-center justify-center text-[#906B51]">
+                                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#906B51" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                        <polyline points="14 2 14 8 20 8"/>
+                                        <line x1="16" y1="13" x2="8" y2="13"/>
+                                        <line x1="16" y1="17" x2="8" y2="17"/>
+                                    </svg>
                                 </div>
-                                <span className="text-[#234745] font-bold text-[13px]">{isEn ? 'Card Print' : 'طباعة الكرت'}</span>
+                                <span className="text-[#906B51] font-bold text-[14px]">{isEn ? 'Premium Quality' : 'جودة فاخرة'}</span>
                             </div>
                         </div>
                     </div>
 
-                    <div className="w-full md:w-1/2">
-                        <div className="w-full aspect-[4/3] bg-[#234745] rounded-[32px] overflow-hidden shadow-2xl relative">
-                            {/* Image Placeholder */}
-                            <div className="absolute inset-0 opacity-80" style={{ backgroundImage: `url('https://images.unsplash.com/photo-1549465220-1a8b9238cd48?q=80&w=1200&auto=format&fit=crop')`, backgroundSize: 'cover', backgroundPosition: 'center', mixBlendMode: 'luminosity' }}></div>
-                            <div className="absolute inset-0 bg-[#234745]/30"></div>
+                    {/* Right Dark Teal Container Column */}
+                    <div className="lg:col-span-6">
+                        <div className="w-full h-[320px] sm:h-[380px] bg-[#1E3A37] rounded-[32px] overflow-hidden shadow-xl relative flex items-center justify-center">
+                            <div className="absolute inset-0 opacity-20 bg-[radial-gradient(#C5A96A_1px,transparent_1px)] [background-size:16px_16px]"></div>
                         </div>
                     </div>
-
                 </div>
             </section>
 
             {/* 7. Why Choose Us */}
-            <section className="w-full bg-white py-20 px-4">
-                <div className="max-w-[1200px] mx-auto text-center">
-                    <h4 className="text-[#8B8B8B] font-bold text-[14px] mb-2">{isEn ? 'Our Advantages' : 'ميزتنا'}</h4>
-                    <h2 className="text-[#1A1A1A] text-[28px] md:text-[36px] font-bold mb-12">{isEn ? 'Why Choose Us?' : 'لماذا تختارنا؟'}</h2>
+            <section className="w-full bg-[#FAF4E8] py-20 px-4 sm:px-6 lg:px-8 border-t border-[#E8DFC8]">
+                <div className="max-w-[1280px] mx-auto text-center flex flex-col items-center gap-12">
+                    {/* Header */}
+                    <div className="flex flex-col items-center text-center gap-3">
+                        <h4 className="text-[#906B51] font-bold text-[16px] tracking-wide">{isEn ? 'Our Advantages' : 'المزايا'}</h4>
+                        <h2
+                            className="text-[#234745] text-[36px] sm:text-[50px] font-bold leading-tight"
+                            style={{ fontFamily: isEn ? 'inherit' : "'Bahij Janna', sans-serif" }}
+                        >
+                            {isEn ? 'Why Choose Us?' : 'لماذا تختارنا؟'}
+                        </h2>
+                        <p className="text-[#8C8275] text-[16px] md:text-[18px] font-medium leading-relaxed max-w-[650px]">
+                            {isEn
+                                ? 'A corporate partnership combining refined taste, precision execution, and punctual delivery.'
+                                : 'شراكة مؤسسية تجمع بين الذوق الرفيع، الدقة في التنفيذ، والالتزام بالمواعيد.'}
+                        </p>
+                    </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-
-                        <div className="border border-gray-100 rounded-[20px] p-6 flex flex-col text-center items-center hover:border-[#234745] transition-colors bg-white hover:shadow-lg">
-                            <div className="w-12 h-12 bg-[#234745] rounded-lg flex items-center justify-center mb-4">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                    {/* 6 Grid Cards */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 w-full">
+                        {/* Card 1: Premium Quality */}
+                        <div className="bg-white rounded-[24px] p-8 border border-[#E2EBE8] flex flex-col items-center text-center shadow-sm hover:shadow-md transition-all hover:border-[#234745]/30">
+                            <div className="w-12 h-12 bg-[#234745] rounded-[14px] flex items-center justify-center text-white mb-5 shadow-sm">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <circle cx="12" cy="8" r="7"/>
+                                    <polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/>
+                                </svg>
                             </div>
-                            <h3 className="text-[#1A1A1A] font-bold text-[18px] mb-2">{isEn ? 'Premium Quality' : 'جودة فاخرة'}</h3>
-                            <p className="text-[#8B8B8B] text-[13px] font-medium leading-relaxed">
-                                {isEn ? 'The finest ingredients for the best taste.' : 'نستخدم أفضل المكونات لنضمن لك منتجاً يليق بمكانتك.'}
+                            <h3 className="text-[#234745] font-bold text-[20px] mb-3">{isEn ? 'Premium Quality' : 'جودة فاخرة'}</h3>
+                            <p className="text-[#8C8275] text-[14px] leading-relaxed">
+                                {isEn ? 'Handpicked collections and high-quality materials that reflect your brand prestige.' : 'تشكيلات منتقاة بعناية ومواد عالية الجودة تعكس مكانة علامتك التجارية.'}
                             </p>
                         </div>
 
-                        <div className="border border-gray-100 rounded-[20px] p-6 flex flex-col text-center items-center hover:border-[#234745] transition-colors bg-white hover:shadow-lg">
-                            <div className="w-12 h-12 bg-[#234745] rounded-lg flex items-center justify-center mb-4">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>
+                        {/* Card 2: Custom Identity */}
+                        <div className="bg-white rounded-[24px] p-8 border border-[#E2EBE8] flex flex-col items-center text-center shadow-sm hover:shadow-md transition-all hover:border-[#234745]/30">
+                            <div className="w-12 h-12 bg-[#234745] rounded-[14px] flex items-center justify-center text-white mb-5 shadow-sm">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 4.12c-.1.607-.241 1.2-.423 1.78"/>
+                                </svg>
                             </div>
-                            <h3 className="text-[#1A1A1A] font-bold text-[18px] mb-2">{isEn ? 'Fast Delivery' : 'توصيل سريع'}</h3>
-                            <p className="text-[#8B8B8B] text-[13px] font-medium leading-relaxed">
-                                {isEn ? 'Punctual delivery for your important occasions.' : 'نلتزم بالمواعيد لضمان وصول الهدايا في وقتها المحدد.'}
+                            <h3 className="text-[#234745] font-bold text-[20px] mb-3">{isEn ? 'Custom Identity' : 'هوية خاصة'}</h3>
+                            <p className="text-[#8C8275] text-[14px] leading-relaxed">
+                                {isEn ? 'Printing your company logo on packaging and products with elegance.' : 'طباعة شعارك على التغليف والمنتجات بأسلوب راقٍ ومتقن.'}
                             </p>
                         </div>
 
-                        <div className="border border-gray-100 rounded-[20px] p-6 flex flex-col text-center items-center hover:border-[#234745] transition-colors bg-white hover:shadow-lg">
-                            <div className="w-12 h-12 bg-[#234745] rounded-lg flex items-center justify-center mb-4">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                        {/* Card 3: Fast Delivery */}
+                        <div className="bg-white rounded-[24px] p-8 border border-[#E2EBE8] flex flex-col items-center text-center shadow-sm hover:shadow-md transition-all hover:border-[#234745]/30">
+                            <div className="w-12 h-12 bg-[#234745] rounded-[14px] flex items-center justify-center text-white mb-5 shadow-sm">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <rect x="1" y="3" width="15" height="13" rx="2"/>
+                                    <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/>
+                                    <circle cx="5.5" cy="18.5" r="2.5"/>
+                                    <circle cx="18.5" cy="18.5" r="2.5"/>
+                                </svg>
                             </div>
-                            <h3 className="text-[#1A1A1A] font-bold text-[18px] mb-2">{isEn ? 'Trusted Brand' : 'علامة موثوقة'}</h3>
-                            <p className="text-[#8B8B8B] text-[13px] font-medium leading-relaxed">
-                                {isEn ? 'Over 100 years of experience in sweet making.' : 'خبرة تتجاوز المئة عام في صناعة الحلويات.'}
+                            <h3 className="text-[#234745] font-bold text-[20px] mb-3">{isEn ? 'Fast Delivery' : 'توصيل سريع'}</h3>
+                            <p className="text-[#8C8275] text-[14px] leading-relaxed">
+                                {isEn ? 'Preparation and packaging within 24 hours and delivery to 35+ cities.' : 'تجهيز وتغليف خلال 24 ساعة وتوصيل إلى أكثر من 35 مدينة.'}
                             </p>
                         </div>
 
-                        <div className="border border-gray-100 rounded-[20px] p-6 flex flex-col text-center items-center hover:border-[#234745] transition-colors bg-white hover:shadow-lg">
-                            <div className="w-12 h-12 bg-[#234745] rounded-lg flex items-center justify-center mb-4">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                        {/* Card 4: Corporate Trust */}
+                        <div className="bg-white rounded-[24px] p-8 border border-[#E2EBE8] flex flex-col items-center text-center shadow-sm hover:shadow-md transition-all hover:border-[#234745]/30">
+                            <div className="w-12 h-12 bg-[#234745] rounded-[14px] flex items-center justify-center text-white mb-5 shadow-sm">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                                </svg>
                             </div>
-                            <h3 className="text-[#1A1A1A] font-bold text-[18px] mb-2">{isEn ? 'Dedicated Support' : 'دعم مخصص'}</h3>
-                            <p className="text-[#8B8B8B] text-[13px] font-medium leading-relaxed">
-                                {isEn ? 'A dedicated team to manage your corporate requests.' : 'فريق متخصص لتلبية متطلبات الشركات بكفاءة.'}
+                            <h3 className="text-[#234745] font-bold text-[20px] mb-3">{isEn ? 'Corporate Trust' : 'ثقة مؤسسية'}</h3>
+                            <p className="text-[#8C8275] text-[14px] leading-relaxed">
+                                {isEn ? 'Over 500 companies trusted us as their corporate gifting partner.' : 'أكثر من 500 شركة اختارتنا شريكاً لهدايا موظفيها وعملائها.'}
                             </p>
                         </div>
 
-                        <div className="border border-gray-100 rounded-[20px] p-6 flex flex-col text-center items-center hover:border-[#234745] transition-colors bg-white hover:shadow-lg">
-                            <div className="w-12 h-12 bg-[#234745] rounded-lg flex items-center justify-center mb-4">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
+                        {/* Card 5: Elegant Packaging */}
+                        <div className="bg-white rounded-[24px] p-8 border border-[#E2EBE8] flex flex-col items-center text-center shadow-sm hover:shadow-md transition-all hover:border-[#234745]/30">
+                            <div className="w-12 h-12 bg-[#234745] rounded-[14px] flex items-center justify-center text-white mb-5 shadow-sm">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/>
+                                    <path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/>
+                                </svg>
                             </div>
-                            <h3 className="text-[#1A1A1A] font-bold text-[18px] mb-2">{isEn ? 'Elegant Packaging' : 'تغليف أنيق'}</h3>
-                            <p className="text-[#8B8B8B] text-[13px] font-medium leading-relaxed">
-                                {isEn ? 'Luxurious boxes that add value to your gift.' : 'علب فاخرة مصممة لتضيف لمسة راقية لهديتك.'}
+                            <h3 className="text-[#234745] font-bold text-[20px] mb-3">{isEn ? 'Elegant Packaging' : 'تغليف أنيق'}</h3>
+                            <p className="text-[#8C8275] text-[14px] leading-relaxed">
+                                {isEn ? 'Sophisticated corporate packaging suited for official events and VIP clients.' : 'تغليف مؤسسي راقٍ يليق بالمناسبات الرسمية والعملاء المميزين.'}
                             </p>
                         </div>
 
-                        <div className="border border-gray-100 rounded-[20px] p-6 flex flex-col text-center items-center hover:border-[#234745] transition-colors bg-white hover:shadow-lg">
-                            <div className="w-12 h-12 bg-[#234745] rounded-lg flex items-center justify-center mb-4">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
+                        {/* Card 6: Dedicated Support */}
+                        <div className="bg-white rounded-[24px] p-8 border border-[#E2EBE8] flex flex-col items-center text-center shadow-sm hover:shadow-md transition-all hover:border-[#234745]/30">
+                            <div className="w-12 h-12 bg-[#234745] rounded-[14px] flex items-center justify-center text-white mb-5 shadow-sm">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M3 18v-6a9 9 0 0 1 18 0v6"/>
+                                    <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/>
+                                </svg>
                             </div>
-                            <h3 className="text-[#1A1A1A] font-bold text-[18px] mb-2">{isEn ? 'Custom Identity' : 'هوية مخصصة'}</h3>
-                            <p className="text-[#8B8B8B] text-[13px] font-medium leading-relaxed">
-                                {isEn ? 'Print your logo on boxes and ribbons.' : 'إمكانية دمج شعار شركتك على العلب والتغليف.'}
+                            <h3 className="text-[#234745] font-bold text-[20px] mb-3">{isEn ? 'Dedicated Support' : 'دعم مخصص'}</h3>
+                            <p className="text-[#8C8275] text-[14px] leading-relaxed">
+                                {isEn ? 'A dedicated team accompanying you from collection selection to final delivery.' : 'فريق متخصص يرافقك من اختيار التشكيلة وحتى التسليم النهائي.'}
                             </p>
                         </div>
-
                     </div>
                 </div>
             </section>

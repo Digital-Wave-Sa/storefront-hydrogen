@@ -356,6 +356,8 @@ export default function CollectionAll() {
                 {({ nodes, isLoading, PreviousLink, NextLink }) => {
                   const filteredNodes = nodes.filter((n: any) => {
                     if (q && !n.title.toLowerCase().includes(q)) return false;
+                    const pTags = (n.tags || []).map((t: string) => t.toLowerCase());
+                    if (pTags.includes('corporate') || pTags.includes('b2b') || pTags.includes('package')) return false;
                     return true;
                   });
 

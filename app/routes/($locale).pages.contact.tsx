@@ -121,7 +121,38 @@ export async function action({ request, context }: ActionFunctionArgs) {
     const rawShop = context.env.SHOPIFY_ADMIN_DOMAIN || context.env.SHOPIFY_SHOP || context.env.PUBLIC_SHOPIFY_STORE_DOMAIN || '';
     const shopDomain = rawShop.includes('myshopify.com') ? rawShop : 'saadeldeenshop-x21xumcd.myshopify.com';
 
-    // 1. Send submission to Shopify Native Contact Form Endpoint (Triggers Shopify store notification email)
+    // 1. Direct Email Dispatch via sendEmail (Office 365 / Resend / Mailer)
+    try {
+      const { sendEmail } = await import('~/lib/email.server');
+      const receiverEmail = context.env.CONTACT_RECEIVER_EMAIL || context.env.SMTP_USER || 'info@saadeddin.com';
+      
+      const emailHtml = `
+        <div dir="rtl" style="font-family: Arial, sans-serif; padding: 20px; color: #234745;">
+          <h2 style="color: #234745; border-bottom: 2px solid #906B51; padding-bottom: 10px;">رسالة جديدة من نموذج التواصل | New Contact Form Message</h2>
+          <p><strong>الاسم / Name:</strong> ${fullName}</p>
+          <p><strong>الجوال / Mobile:</strong> ${mobile}</p>
+          <p><strong>البريد الإلكتروني / Email:</strong> ${email}</p>
+          <p><strong>الموضوع / Subject:</strong> ${subject}</p>
+          <p><strong>رقم الطلب / Order Number:</strong> ${orderNumber || 'غير محدد'}</p>
+          <hr style="border: none; border-top: 1px solid #E6E2D8; margin: 20px 0;" />
+          <p><strong>الرسالة / Message:</strong></p>
+          <div style="background-color: #FEF8EB; padding: 15px; border-radius: 12px; border: 1px solid #E6E2D8; white-space: pre-wrap;">${message}</div>
+        </div>
+      `;
+
+      await sendEmail({
+        to: receiverEmail,
+        subject: `[Contact Form] ${subject} - ${fullName}`,
+        text: `Name: ${fullName}\nMobile: ${mobile}\nEmail: ${email}\nSubject: ${subject}\nOrder Number: ${orderNumber || 'N/A'}\nMessage:\n${message}`,
+        html: emailHtml,
+        env: context.env
+      });
+      console.log('[CONTACT FORM DIRECT EMAIL SENT TO]', receiverEmail);
+    } catch (emailErr) {
+      console.error('[CONTACT FORM DIRECT EMAIL ERROR]', emailErr);
+    }
+
+    // 2. Send submission to Shopify Native Contact Form Endpoint (Triggers Shopify store notification email)
     try {
       const shopifyFormBody = new URLSearchParams();
       shopifyFormBody.append('form_type', 'contact');

@@ -708,10 +708,11 @@ function parseHourString(hourStr: string): number {
 }
 
 function formatHour(h: number, isEn: boolean): string {
-  const period = h >= 12 ? (isEn ? 'PM' : 'م') : (isEn ? 'AM' : 'ص');
-  let displayHour = h % 12;
+  const normalizedHour = h % 24;
+  const period = normalizedHour >= 12 ? (isEn ? 'PM' : 'م') : (isEn ? 'AM' : 'ص');
+  let displayHour = normalizedHour % 12;
   if (displayHour === 0) displayHour = 12;
-  return `${displayHour} ${period}`;
+  return `${displayHour}:00 ${period}`;
 }
 
 function generateDynamicSlots(branch: any, isEn: boolean, fulfillmentType: string = 'delivery', targetDateStr?: string): string[] {
@@ -724,6 +725,18 @@ function generateDynamicSlots(branch: any, isEn: boolean, fulfillmentType: strin
     if (typeof branch[key] === 'string') return branch[key];
     const meta = branch.metafields?.find((m: any) => m?.key === key);
     return meta?.value;
+  };
+
+  // Helper to parse lead time in hours from location delivery_time metafield
+  const getLeadTimeHours = (): number => {
+    if (!branch) return 1;
+    const val = getMeta('delivery_time') || getMeta('delivery_lead_time') || getMeta('preparation_time');
+    if (!val) return 1;
+    const clean = String(val).toLowerCase().replace(/[٠-٩]/g, (d) => String.fromCharCode(d.charCodeAt(0) - 1632));
+    const num = parseFloat(clean.replace(/[^\d.]/g, ''));
+    if (isNaN(num)) return 1;
+    if (num >= 15) return Math.ceil(num / 60); // e.g., 60 mins -> 1 hour, 90 mins -> 2 hours
+    return Math.max(1, Math.ceil(num));
   };
 
   // Determine the weekday of the TARGET date (not always today)
@@ -803,52 +816,46 @@ function generateDynamicSlots(branch: any, isEn: boolean, fulfillmentType: strin
     }
   }
 
-  // Also get the current hour in Riyadh time to hide past slots for today
+  // Get current hour in Riyadh time & calculated lead time from location metafield
   const riyadhHourStr = new Intl.DateTimeFormat('en-US', {
     timeZone: 'Asia/Riyadh',
     hour: 'numeric',
     hour12: false
   }).format(new Date());
   const currentRiyadhHour = parseInt(riyadhHourStr) || 0;
+  const leadTimeHours = isDelivery ? getLeadTimeHours() : 1;
 
   const slots: string[] = [];
-  const interval = 2; // 2-hour interval slots for precise scheduling
 
   const addSlotsForWindow = (start: number, end: number, isTomorrow: boolean) => {
-    for (let h = start; h < end; h += interval) {
-      let nextH = h + interval;
-      if (nextH > end) nextH = end;
-
-      const fromFormatted = formatHour(h, isEn);
-      const toFormatted = formatHour(nextH, isEn);
-      const label = `${fromFormatted} - ${toFormatted}`;
+    for (let h = start; h <= end; h += 1) {
+      const label = formatHour(h, isEn);
 
       if (isTomorrow) {
-        slots.push(label);
+        if (!slots.includes(label)) slots.push(label);
       } else {
         if (isToday) {
-          // Hide slots that are already in the past today
-          // We add 1 hour buffer so they can't order a slot that is too close to current time
-          if (h > currentRiyadhHour + 1) {
-            slots.push(label);
+          // Hide hours that are past current Riyadh time + location delivery/preparation lead time
+          if (h >= currentRiyadhHour + leadTimeHours) {
+            if (!slots.includes(label)) slots.push(label);
           }
         } else {
-          // Future date: all slots are available
-          slots.push(label);
+          // Future date: all open hours are available
+          if (!slots.includes(label)) slots.push(label);
         }
       }
     }
   };
 
-  // 1. Try adding today's slots for Shift 1
+  // 1. Try adding today's exact hours for Shift 1
   addSlotsForWindow(startHour1, endHour1, false);
 
-  // 2. Try adding today's slots for Shift 2
+  // 2. Try adding today's exact hours for Shift 2
   if (startHour2 !== null && endHour2 !== null) {
     addSlotsForWindow(startHour2, endHour2, false);
   }
 
-  // 3. If all slots for today are in the past, show tomorrow's slots
+  // 3. If all hours for today are in the past, show tomorrow's hours
   if (slots.length === 0 && isToday) {
     addSlotsForWindow(startHour1, endHour1, true);
     if (startHour2 !== null && endHour2 !== null) {
@@ -1853,7 +1860,7 @@ function CartCalendarPicker({
       {localSelectedDate && (
         <div className="flex flex-col gap-2 border-t border-[#f0ece8] pt-4">
           <label className="text-[13px] font-bold text-[#234745] px-1">
-            {isPickup ? (isEn ? 'Preferred Pickup Window' : 'فترة الاستلام المفضلة') : (isEn ? 'Preferred Delivery Window' : 'فترة التوصيل المفضلة')}
+            {isPickup ? (isEn ? 'Preferred Pickup Time' : 'وقت الاستلام المفضل') : (isEn ? 'Preferred Delivery Time' : 'وقت التوصيل المفضل')}
           </label>
           <div className="relative">
             <select
@@ -1875,7 +1882,7 @@ function CartCalendarPicker({
               }}
               className="w-full bg-[#fcfaf8] border border-[#f0ece8] rounded-xl px-4 py-3 text-[14px] text-[#234745] font-medium appearance-none focus:outline-none focus:border-[#d4a06a] focus:ring-1 focus:ring-[#d4a06a] transition-all cursor-pointer"
             >
-              <option value="">{isPickup ? (isEn ? 'Select preferred pickup window' : 'اختر فترة الاستلام المفضلة') : (isEn ? 'Select preferred delivery window' : 'اختر فترة التوصيل المفضلة')}</option>
+              <option value="">{isPickup ? (isEn ? 'Select preferred pickup time' : 'اختر وقت الاستلام المفضل') : (isEn ? 'Select preferred delivery time' : 'اختر وقت التوصيل المفضل')}</option>
               {dynamicTimeSlots.map((slot: string, idx: number) => (
                 <option key={idx} value={slot}>{slot}</option>
               ))}

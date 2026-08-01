@@ -118,12 +118,8 @@ export async function action({ request, context }: ActionFunctionArgs) {
     const { getAdminToken } = await import('~/lib/shopify-admin.server');
     const adminToken = await getAdminToken(context.env);
 
-    const rawShop = context.env.SHOPIFY_SHOP || context.env.PUBLIC_STORE_DOMAIN || '';
-    let shopDomain = rawShop;
-    if (!shopDomain.includes('myshopify.com')) {
-      const handle = shopDomain.replace(/^https?:\/\//, '').split('.')[0];
-      shopDomain = `${handle}.myshopify.com`;
-    }
+    const rawShop = context.env.SHOPIFY_ADMIN_DOMAIN || context.env.SHOPIFY_SHOP || context.env.PUBLIC_SHOPIFY_STORE_DOMAIN || '';
+    const shopDomain = rawShop.includes('myshopify.com') ? rawShop : 'saadeldeenshop-x21xumcd.myshopify.com';
 
     // 1. Send submission to Shopify Native Contact Form Endpoint (Triggers Shopify store notification email)
     try {
@@ -223,7 +219,7 @@ export default function ContactPage() {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       (window as any).Shopify = (window as any).Shopify || {};
-      (window as any).Shopify.shop = 'saad-al-deen.myshopify.com';
+      (window as any).Shopify.shop = 'saadeldeenshop-x21xumcd.myshopify.com';
 
       const scriptId = 'shopify-forms-script';
       if (!document.getElementById(scriptId)) {

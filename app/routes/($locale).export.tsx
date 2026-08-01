@@ -186,9 +186,9 @@ export default function ExportPage() {
           <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/50 to-transparent rtl:bg-gradient-to-l" />
         </div>
 
-        {/* Content Container (Right-aligned) */}
-        <div className="relative z-10 max-w-[1440px] w-full mx-auto px-6 sm:px-10 lg:px-16 py-12 flex flex-col items-start text-right">
-          <div className="max-w-[720px] flex flex-col items-start text-right">
+        {/* Content Container */}
+        <div className={`relative z-10 max-w-[1440px] w-full mx-auto px-6 sm:px-10 lg:px-16 py-12 flex flex-col items-start ${isEn ? 'text-left' : 'text-right'}`}>
+          <div className={`max-w-[720px] flex flex-col items-start ${isEn ? 'text-left' : 'text-right'}`}>
             {/* Top Heritage Badge */}
             <div className="inline-flex items-center gap-2 px-6 py-1.5 rounded-full bg-[#C5A96A] text-[#1A3533] font-bold text-[13px] sm:text-[14px] mb-6 shadow-md">
               <span className="text-[#1A3533]/60">—</span>
@@ -198,7 +198,7 @@ export default function ExportPage() {
 
             {/* Main Title */}
             <h1
-              className="!text-[42px] sm:!text-[68px] lg:!text-[90px] font-bold text-white mb-6 !mt-0 text-right leading-[100%]"
+              className={`!text-[42px] sm:!text-[68px] lg:!text-[90px] font-bold text-white mb-6 !mt-0 leading-[100%] ${isEn ? '!text-left' : '!text-right'}`}
               style={{ fontFamily: "'Bahij Janna', sans-serif", fontWeight: 700 }}
             >
               {isEn ? (
@@ -210,7 +210,7 @@ export default function ExportPage() {
 
             {/* Subtitle */}
             <p
-              className="text-[14px] text-white font-normal max-w-[620px] mb-8 text-right leading-[140%] sm:leading-[100%] !mb-[20px]"
+              className={`text-[14px] text-white font-normal max-w-[620px] mb-8 leading-[140%] sm:leading-[100%] !mb-[20px] ${isEn ? 'text-left' : 'text-right'}`}
               style={{ fontFamily: "'GE Dinar One', sans-serif", fontWeight: 400 }}
             >
               {isEn
@@ -518,21 +518,21 @@ export default function ExportPage() {
       {/* ─── 5. B2B DISTRIBUTOR REQUEST FORM SECTION ──────────────────────── */}
       <section id="export-form" className="w-full bg-[#234745] py-16 text-white">
         <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
-          {/* Right Info Column (RTL) */}
-          <div className="lg:col-span-6 flex flex-col text-right">
+          {/* Info Column */}
+          <div className={`lg:col-span-6 flex flex-col ${isEn ? 'text-left items-start' : 'text-right items-start'}`}>
             <div className="inline-flex items-center gap-2 px-4 py-1 rounded-full bg-[#C5A96A] text-[#1A3533] font-medium text-[16px] mb-4 w-max">
               <span>{isEn ? 'Wholesale & B2B Distribution' : 'للطلبات بالجملة'}</span>
             </div>
 
             <h2
-              className="text-[32px] sm:text-[44px] md:text-[90px] text-white font-bold leading-tight mb-4"
+              className={`text-[32px] sm:text-[44px] md:text-[90px] text-white font-bold leading-tight mb-4 ${isEn ? 'text-left' : 'text-right'}`}
               style={{ fontFamily: isEn ? "'Bahij Janna', sans-serif" : "'Bahij Janna', 'Bahij', serif" }}
             >
               {isEn ? 'Join Our Network of Global Distributors' : 'انضم إلى شبكة موزعينا حول العالم'}
             </h2>
 
             <p
-              className="text-white font-normal text-[14px] sm:text-[14px] leading-relaxed mb-8"
+              className={`text-white font-normal text-[14px] sm:text-[14px] leading-relaxed mb-8 ${isEn ? 'text-left' : 'text-right'}`}
               style={{ fontFamily: "'GE Dinar One', sans-serif" }}
             >
               {isEn
@@ -540,23 +540,23 @@ export default function ExportPage() {
                 : 'املأ بياناتك وسيقوم فريق التصدير لدينا بالرد عليك خلال 48 ساعة بكتالوج جملة مخصص، والأسعار، وخيارات الشحن المناسبة لسوقك'}
             </p>
 
-            <div className="space-y-3 pt-4 border-t mt-[20px] border-white/15 text-[14px] text-gray-200 font-mono">
-              <div className="flex items-center gap-3 justify-start">
+            <div className="space-y-3 pt-4 border-t mt-[20px] border-white/15 text-[14px] text-gray-200 font-mono w-full">
+              <div className={`flex items-center gap-3 ${isEn ? 'justify-start' : 'justify-start'}`}>
                 <span dir='ltr'>+966 920000 123</span>
               </div>
-              <div className="flex items-center gap-3 justify-start">
+              <div className={`flex items-center gap-3 ${isEn ? 'justify-start' : 'justify-start'}`}>
                 <span>export@saadeddin.com</span>
               </div>
-              <div className="flex items-center gap-3 justify-start">
+              <div className={`flex items-center gap-3 ${isEn ? 'justify-start' : 'justify-start'}`}>
                 <span>WhatsApp Business: +966 50 123 4567</span>
               </div>
             </div>
           </div>
 
-          {/* Left Form Column (RTL) */}
+          {/* Form Column */}
           <div className="lg:col-span-6 bg-white text-[#234745] rounded-[12px] p-6 sm:p-8 shadow-lg">
             <h3
-              className="text-[26px] font-bold text-[#234745] text-right mb-6"
+              className={`text-[26px] font-bold text-[#234745] mb-6 ${isEn ? 'text-left' : 'text-right'}`}
               style={{ fontFamily: "'Bahij Janna', serif" }}
             >
               {isEn ? 'Export Quotation Request' : 'نموذج طلب التصدير'}
@@ -576,65 +576,65 @@ export default function ExportPage() {
               <form onSubmit={handleFormSubmit} className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-[14px] font-bold text-right text-gray-700 mb-1">
+                    <label className={`block text-[14px] font-bold text-gray-700 mb-1 ${isEn ? 'text-left' : 'text-right'}`}>
                       {isEn ? 'Full Name' : 'الاسم الكامل'}
                     </label>
                     <input
                       type="text"
                       required
                       placeholder={isEn ? 'John Doe' : 'أدخل الاسم الكامل'}
-                      className="w-full h-[46px] px-4 rounded-[12px] border border-gray-200 text-[14px] text-right focus:outline-none focus:border-[#234745]"
+                      className={`w-full h-[46px] px-4 rounded-[12px] border border-gray-200 text-[14px] focus:outline-none focus:border-[#234745] ${isEn ? 'text-left' : 'text-right'}`}
                     />
                   </div>
 
                   <div>
-                    <label className="block text-[14px] font-bold text-right text-gray-700 mb-1">
+                    <label className={`block text-[14px] font-bold text-gray-700 mb-1 ${isEn ? 'text-left' : 'text-right'}`}>
                       {isEn ? 'Company Name' : 'اسم الشركة'}
                     </label>
                     <input
                       type="text"
                       required
                       placeholder={isEn ? 'Company Ltd' : 'شركة التوزيع / المورد'}
-                      className="w-full h-[46px] px-4 rounded-[12px] border border-gray-200 text-[14px] text-right focus:outline-none focus:border-[#234745]"
+                      className={`w-full h-[46px] px-4 rounded-[12px] border border-gray-200 text-[14px] focus:outline-none focus:border-[#234745] ${isEn ? 'text-left' : 'text-right'}`}
                     />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-[14px] font-bold text-right text-gray-700 mb-1">
+                    <label className={`block text-[14px] font-bold text-gray-700 mb-1 ${isEn ? 'text-left' : 'text-right'}`}>
                       {isEn ? 'Destination Country' : 'البلد / الدولة'}
                     </label>
                     <input
                       type="text"
                       required
                       placeholder={isEn ? 'United Arab Emirates' : 'دبي / الإمارات / قطر...'}
-                      className="w-full h-[46px] px-4 rounded-[12px] border border-gray-200 text-[14px] text-right focus:outline-none focus:border-[#234745]"
+                      className={`w-full h-[46px] px-4 rounded-[12px] border border-gray-200 text-[14px] focus:outline-none focus:border-[#234745] ${isEn ? 'text-left' : 'text-right'}`}
                     />
                   </div>
 
                   <div>
-                    <label className="block text-[14px] font-bold text-right text-gray-700 mb-1">
+                    <label className={`block text-[14px] font-bold text-gray-700 mb-1 ${isEn ? 'text-left' : 'text-right'}`}>
                       {isEn ? 'Email Address' : 'البريد الإلكتروني'}
                     </label>
                     <input
                       type="email"
                       required
                       placeholder="name@company.com"
-                      className="w-full h-[46px] px-4 rounded-[12px] border border-gray-200 text-[14px] text-right focus:outline-none focus:border-[#234745]"
+                      className={`w-full h-[46px] px-4 rounded-[12px] border border-gray-200 text-[14px] focus:outline-none focus:border-[#234745] ${isEn ? 'text-left' : 'text-right'}`}
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-[14px] font-bold text-right text-gray-700 mb-1">
+                  <label className={`block text-[14px] font-bold text-gray-700 mb-1 ${isEn ? 'text-left' : 'text-right'}`}>
                     {isEn ? 'Requested Products & Estimated Quantity' : 'المنتجات والكميات المطلوبة'}
                   </label>
                   <textarea
                     rows={3}
                     required
                     placeholder={isEn ? 'Specify required products, quantities, packaging specs...' : 'اذكر أنواع الحلويات والمعمول والكميات التقديرية المطلوب تصديرها...'}
-                    className="w-full p-4 rounded-[12px] border border-gray-200 text-[14px] text-right focus:outline-none focus:border-[#234745]"
+                    className={`w-full p-4 rounded-[12px] border border-gray-200 text-[14px] focus:outline-none focus:border-[#234745] ${isEn ? 'text-left' : 'text-right'}`}
                   />
                 </div>
 

@@ -124,49 +124,75 @@ export async function action({ request, context }: ActionFunctionArgs) {
       shopDomain = `${handle}.myshopify.com`;
     }
 
-    // 1. Try to create the metaobject entry
-    let res = await executeQuery(createMutation, entryVariables, adminToken, shopDomain) as any;
-    console.log('[METAOBJECT CREATE RESP]', JSON.stringify(res));
+    // 1. Send submission to Shopify Native Contact Form Endpoint (Triggers Shopify store notification email)
+    try {
+      const shopifyFormBody = new URLSearchParams();
+      shopifyFormBody.append('form_type', 'contact');
+      shopifyFormBody.append('utf8', '✓');
+      shopifyFormBody.append('contact[Name]', fullName);
+      shopifyFormBody.append('contact[Email]', email);
+      shopifyFormBody.append('contact[Phone]', mobile);
+      shopifyFormBody.append('contact[Subject]', subject);
+      shopifyFormBody.append('contact[Body]', `Name: ${fullName}\nPhone: ${mobile}\nEmail: ${email}\nSubject: ${subject}\nOrder Number: ${orderNumber || 'N/A'}\n\nMessage:\n${message}`);
 
-    let userErrors = res?.data?.metaobjectCreate?.userErrors;
-    const errors = res?.errors;
-
-    // Detect if definition is missing
-    const isMissingDefinition =
-      !res ||
-      (errors && errors.some((e: any) => e.message && (e.message.includes('not found') || e.message.includes('type') || e.message.includes('invalid') || e.message.includes('type "contact_submission"')))) ||
-      (userErrors && userErrors.some((e: any) => e.message && (e.message.includes('not found') || e.message.includes('type') || e.message.includes('invalid') || e.message.includes('type "contact_submission"'))));
-
-    if (isMissingDefinition && adminToken) {
-      console.log('[METAOBJECT] Definition "contact_submission" not found. Creating definition first...');
-
-      // 2. Create the definition
-      const defRes = await executeQuery(defMutation, defVariables, adminToken, shopDomain) as any;
-      console.log('[METAOBJECT DEF CREATE RESP]', JSON.stringify(defRes));
-
-      const defErrors = defRes?.data?.metaobjectDefinitionCreate?.userErrors;
-      if (defErrors && defErrors.length > 0) {
-        const isAlreadyTaken = defErrors.some((e: any) => e.message && (e.message.includes('taken') || e.message.includes('already exists')));
-        if (!isAlreadyTaken) {
-          console.error('[METAOBJECT DEF CREATE ERRORS]', defErrors);
-        }
-      }
-
-      // 3. Retry creating the metaobject entry
-      res = await executeQuery(createMutation, entryVariables, adminToken, shopDomain);
-      console.log('[METAOBJECT RETRY RESP]', JSON.stringify(res));
-      userErrors = res?.data?.metaobjectCreate?.userErrors;
+      const shopifyResponse = await fetch(`https://${shopDomain}/contact#contact_form`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        },
+        body: shopifyFormBody.toString(),
+      });
+      console.log('[SHOPIFY NATIVE CONTACT FORM SUBMIT STATUS]', shopifyResponse.status);
+    } catch (err) {
+      console.error('[SHOPIFY NATIVE CONTACT FORM SUBMIT ERROR]', err);
     }
 
-    if (userErrors && userErrors.length > 0) {
-      console.error('[METAOBJECT CREATE ERRORS]', userErrors);
+    // 2. Also save to Shopify Admin Metaobject as backup record
+    try {
+      const { getAdminToken } = await import('~/lib/shopify-admin.server');
+      const adminToken = await getAdminToken(context.env);
+
+      if (adminToken) {
+        const createMutation = `
+          mutation metaobjectCreate($metaobject: MetaobjectCreateInput!) {
+            metaobjectCreate(metaobject: $metaobject) {
+              metaobject { id handle }
+              userErrors { field message }
+            }
+          }
+        `;
+        const entryVariables = {
+          metaobject: {
+            type: "contact_submission",
+            fields: [
+              { key: "full_name", value: fullName },
+              { key: "mobile", value: mobile },
+              { key: "email", value: email },
+              { key: "subject", value: subject },
+              { key: "order_number", value: orderNumber },
+              { key: "message", value: message }
+            ]
+          }
+        };
+        await fetch(`https://${shopDomain}/admin/api/2023-04/graphql.json`, {
+          method: 'POST',
+          headers: {
+            'X-Shopify-Access-Token': adminToken,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ query: createMutation, variables: entryVariables })
+        });
+      }
+    } catch (adminErr) {
+      console.error('[SHOPIFY ADMIN METAOBJECT ERROR]', adminErr);
     }
 
     return {
       success: true,
       message: isEn
-        ? 'Your message has been submitted successfully and saved to our records!'
-        : 'تم تقديم رسالتك بنجاح وحفظها في سجلاتنا!'
+        ? 'Your message has been sent successfully! Our team will contact you shortly.'
+        : 'تم إرسال رسالتك بنجاح! سيتواصل معك فريقنا في أقرب وقت.'
     };
   } catch (error: any) {
     console.error('[CONTACT ACTION ERROR]', error);

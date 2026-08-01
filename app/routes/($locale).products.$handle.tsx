@@ -526,6 +526,7 @@ export default function Product() {
   const [hideSender, setHideSender] = useState(false);
   const [showReviewForm, setShowReviewForm] = useState(false);
   const [cakeMessage, setCakeMessage] = useState('');
+  const [writeLocation, setWriteLocation] = useState<'cake' | 'board'>('cake');
   const [openAccordions, setOpenAccordions] = useState<Record<string, boolean>>({
     details: true,
     nutrition: true,
@@ -593,7 +594,11 @@ export default function Product() {
               value: bundleComponents.map((c: any) => c.variants?.nodes?.[0]?.sku).filter(Boolean).join(', ')
             }
           ] : []),
-          ...(cakeMessage ? [{ key: 'Cake Message', value: cakeMessage }] : []),
+          ...(cakeMessage ? [
+            { key: 'Cake Message', value: cakeMessage },
+            { key: 'Write On', value: writeLocation === 'cake' ? (isEn ? 'On Cake' : 'على الكيكة') : (isEn ? 'On Board' : 'على القاعدة') },
+            { key: '_writeOn', value: writeLocation }
+          ] : []),
           ...(isGiftMode ? [
             { key: '_isGift', value: 'true' },
             ...(recipientName ? [{ key: 'Recipient Name', value: recipientName }] : []),
@@ -1459,24 +1464,58 @@ export default function Product() {
                             className="font-bold text-[#234745] text-[18px]"
                             style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif", lineHeight: '100%' }}
                           >
-                            {isEn ? 'Custom Cake Text' : 'كتابة على الكيكة'}
+                            {isEn ? 'Write on Cake or Board' : 'الكتابة على الكيكة أو القاعدة'}
                           </span>
                           <span
                             className="text-[#7D7D7D] text-[14px] mt-[8px]"
                             style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", lineHeight: '100%' }}
                           >
-                            {isEn ? 'What would you like us to write on the cake?' : 'ماذا تود أن نكتب على الكيكة؟'}
+                            {isEn ? 'Select location and enter what you would like written:' : 'حدد موقع الكتابة وماذا تود أن نكتب لك:'}
                           </span>
                         </div>
+
+                        {/* Location Selector (Pills) */}
+                        <div className="flex items-center gap-3 w-full z-10">
+                          <button
+                            type="button"
+                            onClick={() => setWriteLocation('cake')}
+                            className={`flex-1 py-2.5 px-4 rounded-[12px] text-[14px] font-bold border transition-all flex items-center justify-center gap-2 ${
+                              writeLocation === 'cake'
+                                ? 'bg-[#234745] text-white border-[#234745] shadow-sm'
+                                : 'bg-white text-[#234745] border-[#BBCFCD]/60 hover:bg-gray-50'
+                            }`}
+                          >
+                            <span>🎂</span>
+                            <span>{isEn ? 'On the Cake' : 'على الكيكة'}</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => setWriteLocation('board')}
+                            className={`flex-1 py-2.5 px-4 rounded-[12px] text-[14px] font-bold border transition-all flex items-center justify-center gap-2 ${
+                              writeLocation === 'board'
+                                ? 'bg-[#234745] text-white border-[#234745] shadow-sm'
+                                : 'bg-white text-[#234745] border-[#BBCFCD]/60 hover:bg-gray-50'
+                            }`}
+                          >
+                            <span>🔳</span>
+                            <span>{isEn ? 'On the Board' : 'على القاعدة'}</span>
+                          </button>
+                        </div>
+
                         <input
                           type="text"
                           value={cakeMessage}
                           onChange={e => setCakeMessage(e.target.value)}
                           className="w-full p-3 text-[14px] border border-[#BBCFCD]/50 rounded-[8px] focus:ring-[#234745] focus:border-[#234745] bg-white font-medium text-start z-10 transition-colors shadow-inner"
-                          placeholder={isEn ? "e.g. Happy Birthday" : "مثال: عيد ميلاد سعيد"}
-                          maxLength={24}
+                          placeholder={
+                            writeLocation === 'cake'
+                              ? (isEn ? "e.g. Happy Birthday (written on cake)" : "مثال: عيد ميلاد سعيد (على الكيكة)")
+                              : (isEn ? "e.g. Happy Birthday (written on board)" : "مثال: عيد ميلاد سعيد (على القاعدة)")
+                          }
+                          maxLength={35}
                         />
-                        <div className="flex items-center gap-2 mt-2 z-10">
+                        <div className="flex items-center gap-2 mt-1 z-10">
                           <span className="text-[12px] text-[#d4a06a] font-semibold text-start">
                             {isEn
                               ? '⚠️ Note: If you do not enter a message, the cake will be prepared plain without any writing.'
@@ -1695,7 +1734,11 @@ export default function Product() {
                                       value: bundleComponents.map((c: any) => c.variants?.nodes?.[0]?.sku).filter(Boolean).join(', ')
                                     }
                                   ] : []),
-                                  ...(cakeMessage ? [{ key: 'Cake Message', value: cakeMessage }] : []),
+                                  ...(cakeMessage ? [
+                                    { key: 'Cake Message', value: cakeMessage },
+                                    { key: 'Write On', value: writeLocation === 'cake' ? (isEn ? 'On Cake' : 'على الكيكة') : (isEn ? 'On Board' : 'على القاعدة') },
+                                    { key: '_writeOn', value: writeLocation }
+                                  ] : []),
                                   ...(isGiftMode ? [
                                     { key: '_isGift', value: 'true' },
                                     ...(recipientName ? [{ key: 'Recipient Name', value: recipientName }] : []),
@@ -1970,7 +2013,11 @@ export default function Product() {
                                         value: bundleComponents.map((c: any) => c.variants?.nodes?.[0]?.sku).filter(Boolean).join(', ')
                                       }
                                     ] : []),
-                                    ...(cakeMessage ? [{ key: 'Cake Message', value: cakeMessage }] : []),
+                                    ...(cakeMessage ? [
+                                      { key: 'Cake Message', value: cakeMessage },
+                                      { key: 'Write On', value: writeLocation === 'cake' ? (isEn ? 'On Cake' : 'على الكيكة') : (isEn ? 'On Board' : 'على القاعدة') },
+                                      { key: '_writeOn', value: writeLocation }
+                                    ] : []),
                                     ...(isGiftMode ? [
                                       { key: '_isGift', value: 'true' },
                                       ...(recipientName ? [{ key: 'Recipient Name', value: recipientName }] : []),

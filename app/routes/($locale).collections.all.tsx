@@ -193,7 +193,7 @@ const COLLECTION_FILTER_QUERY = `#graphql
           amount
           currencyCode
         }
-        storeAvailability(first: 5) {
+        storeAvailability(first: 250) {
           nodes {
             available
             location {

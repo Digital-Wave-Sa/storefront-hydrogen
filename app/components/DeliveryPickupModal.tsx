@@ -175,6 +175,36 @@ export const FALLBACK_BRANCHES: Branch[] = [
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────
 
+export function formatTime12h(timeStr?: string, isEn: boolean = false): string {
+    if (!timeStr) return '';
+    const cleaned = String(timeStr).trim();
+    const match = cleaned.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(am|pm|ص|م)?$/i);
+    if (!match) return timeStr;
+
+    let hours = parseInt(match[1], 10);
+    const minutes = match[2];
+    const rawPeriod = match[4]?.toLowerCase();
+
+    let period = '';
+    if (rawPeriod) {
+        const isPm = rawPeriod === 'pm' || rawPeriod === 'م';
+        period = isPm ? (isEn ? 'PM' : 'م') : (isEn ? 'AM' : 'ص');
+        if (isPm && hours !== 12 && hours < 12) hours += 12;
+        if (!isPm && hours === 12) hours = 0;
+    } else {
+        period = hours >= 12 ? (isEn ? 'PM' : 'م') : (isEn ? 'AM' : 'ص');
+    }
+
+    if (hours === 0) {
+        hours = 12;
+    } else if (hours > 12) {
+        hours -= 12;
+    }
+
+    const formattedMinutes = minutes === '00' ? '' : `:${minutes}`;
+    return `${hours}${formattedMinutes} ${period}`;
+}
+
 export function getDistance(coords1: { lat: number; lng: number } | number, coords2: { lat: number; lng: number } | number, lat2?: number, lng2?: number) {
     if (typeof coords1 === 'number' && typeof coords2 === 'number' && lat2 !== undefined && lng2 !== undefined) {
         // Handle legacy lat1, lon1, lat2, lon2 signature
@@ -953,7 +983,7 @@ function ModalContent({
                                         </div>
                                         <div className="dpm-meta-row">
                                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
-                                             <span dir="ltr">
+                                             <span dir={isEn ? "ltr" : "rtl"}>
                                                  {(() => {
                                                      const day = new Intl.DateTimeFormat('en-US', {
                                                          timeZone: 'Asia/Riyadh',
@@ -985,9 +1015,9 @@ function ModalContent({
                                                          to = branch.saturdayHoursTo;
                                                      }
 
-                                                     const s1 = from && to ? `${from} - ${to}` : '';
-                                                     const s2 = branch.hoursFromShift2 && branch.hoursToShift2 ? `${branch.hoursFromShift2} - ${branch.hoursToShift2}` : '';
-                                                     return s1 && s2 ? `${s1} & ${s2}` : s1 || (isEn ? `Until ${branch.openUntil}` : `حتى ${branch.openUntil}`);
+                                                     const s1 = from && to ? `${formatTime12h(from, isEn)} - ${formatTime12h(to, isEn)}` : '';
+                                                     const s2 = branch.hoursFromShift2 && branch.hoursToShift2 ? `${formatTime12h(branch.hoursFromShift2, isEn)} - ${formatTime12h(branch.hoursToShift2, isEn)}` : '';
+                                                     return s1 && s2 ? `${s1} & ${s2}` : s1 || (isEn ? `Until ${formatTime12h(branch.openUntil, isEn)}` : `حتى ${formatTime12h(branch.openUntil, isEn)}`);
                                                  })()}
                                              </span>
                                             {branch.distance && (

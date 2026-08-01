@@ -68,6 +68,19 @@ export async function action({ request, context }: ActionFunctionArgs) {
       ? String(locationId).split('/').pop()
       : locationId || 'global';
 
+    // Helper for STOQ & Admin API myshopify domain
+    const getMyshopifyDomain = (envObj: any) => {
+      if (envObj?.SHOPIFY_SHOP && String(envObj.SHOPIFY_SHOP).includes('myshopify.com')) {
+        return envObj.SHOPIFY_SHOP;
+      }
+      if (envObj?.PUBLIC_STORE_DOMAIN && String(envObj.PUBLIC_STORE_DOMAIN).includes('myshopify.com')) {
+        return envObj.PUBLIC_STORE_DOMAIN;
+      }
+      return 'saaddeenshop-x21xumcd.myshopify.com';
+    };
+
+    const shopDomain = getMyshopifyDomain(env);
+
     // 1. Forward subscription to Saadeddin Backend Middleware for email dispatch
     const middlewareUrl = (env as any)?.SAADEDDIN_API_URL || 'https://api.saadeddin.top';
     try {
@@ -89,16 +102,11 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
     // 2. Forward subscription to STOQ App API for STOQ automated emails
     try {
-      const rawShop = (env as any)?.SHOPIFY_SHOP || PUBLIC_STORE_DOMAIN || 'saaddeenshop-x21xumcd.myshopify.com';
-      const shopDomain = rawShop.includes('myshopify.com')
-        ? rawShop
-        : `${rawShop.split('.')[0]}.myshopify.com`;
-
       const numericVariantId = String(variantId).includes('/')
         ? String(variantId).split('/').pop()
         : variantId;
 
-      await fetch('https://app.stoqapp.com/api/v1/intents.json', {
+      const stoqRes = await fetch('https://app.stoqapp.com/api/v1/intents.json', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -108,17 +116,13 @@ export async function action({ request, context }: ActionFunctionArgs) {
           intent_type: 'back_in_stock',
         }),
       });
+      console.log(`[STOQ_INTENT RES] Status: ${stoqRes.status} for shop: ${shopDomain}, variant: ${numericVariantId}`);
     } catch (stoqErr) {
       console.warn('[STOQ_INTENT WARN]', stoqErr);
     }
 
     // 3. Try saving to Shopify Metaobjects
     try {
-      const rawShop = (env as any)?.SHOPIFY_SHOP || PUBLIC_STORE_DOMAIN || 'saaddeenshop-x21xumcd.myshopify.com';
-      const shopDomain = rawShop.includes('myshopify.com')
-        ? rawShop
-        : `${rawShop.split('.')[0]}.myshopify.com`;
-
       const { getAdminToken } = await import('~/lib/shopify-admin.server');
       const adminToken = await getAdminToken(env || {}).catch(() => null);
 

@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { type MetaFunction, type ActionFunctionArgs } from 'react-router';
 import { useRouteLoaderData, useActionData, Form, useNavigation, Link } from 'react-router';
 import { PageLayout } from '~/components/PageLayout';
@@ -219,6 +220,19 @@ export default function ContactPage() {
   const navigation = useNavigation();
   const isSubmitting = navigation.state === 'submitting';
 
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const scriptId = 'shopify-forms-script';
+      if (!document.getElementById(scriptId)) {
+        const script = document.createElement('script');
+        script.id = scriptId;
+        script.src = 'https://cdn.shopify.com/shopifycloud/shopify_forms/latest/shopify_forms.js';
+        script.async = true;
+        document.body.appendChild(script);
+      }
+    }
+  }, []);
+
   const scrollToForm = () => {
     const formElem = document.getElementById('contact-form');
     if (formElem) {
@@ -362,6 +376,11 @@ export default function ContactPage() {
                   <h2 className="text-[20px] md:text-[26px] font-bold text-[#234745]" style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif", lineHeight: '100%', marginBottom: '25px' }}>
                     {isEn ? 'Send us a message' : 'أرسل لنا رسالة'}
                   </h2>
+
+                  {/* Official Shopify Forms App Embedded Container (Form ID: 1095413) */}
+                  <div className="w-full mb-6 min-h-[50px]">
+                    <div className="shopify-forms-embed" data-form-id="1095413"></div>
+                  </div>
 
                   {actionData?.success === false && (
                     <div className="mb-6 p-4 rounded-xl bg-red-50 text-red-800 border border-red-200 text-center font-bold text-[15px]" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>

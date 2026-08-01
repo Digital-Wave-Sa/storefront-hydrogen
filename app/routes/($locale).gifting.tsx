@@ -296,6 +296,121 @@ export default function GiftingPage() {
             };
         });
 
+    const containerRef = useRef<HTMLDivElement>(null);
+    const scrollbarTrackRef = useRef<HTMLDivElement>(null);
+    const [scrollProgress, setScrollProgress] = useState(0);
+    const [thumbWidth, setThumbWidth] = useState(30);
+    const [showScrollbar, setShowScrollbar] = useState(false);
+    const [isDragging, setIsDragging] = useState(false);
+
+    const isDraggingScrollbar = useRef(false);
+    const scrollbarStartX = useRef(0);
+    const scrollbarStartScrollLeft = useRef(0);
+
+    const handleScroll = () => {
+        if (!containerRef.current) return;
+        const { scrollLeft, scrollWidth, clientWidth } = containerRef.current;
+        const maxScroll = scrollWidth - clientWidth;
+        if (maxScroll <= 0) {
+            setShowScrollbar(false);
+            return;
+        }
+        setShowScrollbar(true);
+        const ratio = clientWidth / scrollWidth;
+        setThumbWidth(Math.max(15, ratio * 100));
+
+        const progress = (Math.abs(scrollLeft) / maxScroll) * 100;
+        setScrollProgress(Math.min(100, Math.max(0, progress)));
+    };
+
+    const handleScrollbarMouseMove = (e: MouseEvent) => {
+        if (!isDraggingScrollbar.current || !containerRef.current || !scrollbarTrackRef.current) return;
+
+        const deltaX = e.clientX - scrollbarStartX.current;
+        const trackWidth = scrollbarTrackRef.current.clientWidth;
+        const { scrollWidth, clientWidth } = containerRef.current;
+        const maxScroll = scrollWidth - clientWidth;
+
+        if (maxScroll <= 0) return;
+
+        const thumbPxWidth = (thumbWidth / 100) * trackWidth;
+        const draggablePathWidth = trackWidth - thumbPxWidth;
+        if (draggablePathWidth <= 0) return;
+
+        const scrollRatio = maxScroll / draggablePathWidth;
+        const scrollDelta = deltaX * scrollRatio;
+        containerRef.current.scrollLeft = scrollbarStartScrollLeft.current + scrollDelta;
+    };
+
+    const handleScrollbarMouseUp = () => {
+        isDraggingScrollbar.current = false;
+        setIsDragging(false);
+        document.body.style.userSelect = '';
+        window.removeEventListener('mousemove', handleScrollbarMouseMove);
+        window.removeEventListener('mouseup', handleScrollbarMouseUp);
+    };
+
+    const handleScrollbarMouseDown = (e: React.MouseEvent) => {
+        if (!containerRef.current || !scrollbarTrackRef.current) return;
+        isDraggingScrollbar.current = true;
+        setIsDragging(true);
+        document.body.style.userSelect = 'none';
+
+        scrollbarStartX.current = e.clientX;
+        scrollbarStartScrollLeft.current = containerRef.current.scrollLeft;
+
+        window.addEventListener('mousemove', handleScrollbarMouseMove);
+        window.addEventListener('mouseup', handleScrollbarMouseUp);
+    };
+
+    const handleScrollbarTouchMove = (e: TouchEvent) => {
+        if (!isDraggingScrollbar.current || !containerRef.current || !scrollbarTrackRef.current || e.touches.length === 0) return;
+        e.preventDefault();
+
+        const deltaX = e.touches[0].clientX - scrollbarStartX.current;
+        const trackWidth = scrollbarTrackRef.current.clientWidth;
+        const { scrollWidth, clientWidth } = containerRef.current;
+        const maxScroll = scrollWidth - clientWidth;
+
+        if (maxScroll <= 0) return;
+
+        const thumbPxWidth = (thumbWidth / 100) * trackWidth;
+        const draggablePathWidth = trackWidth - thumbPxWidth;
+        if (draggablePathWidth <= 0) return;
+
+        const scrollRatio = maxScroll / draggablePathWidth;
+        const scrollDelta = deltaX * scrollRatio;
+        containerRef.current.scrollLeft = scrollbarStartScrollLeft.current + scrollDelta;
+    };
+
+    const handleScrollbarTouchEnd = () => {
+        isDraggingScrollbar.current = false;
+        setIsDragging(false);
+        window.removeEventListener('touchmove', handleScrollbarTouchMove);
+        window.removeEventListener('touchend', handleScrollbarTouchEnd);
+    };
+
+    const handleScrollbarTouchStart = (e: React.TouchEvent) => {
+        if (!containerRef.current || !scrollbarTrackRef.current || e.touches.length === 0) return;
+        isDraggingScrollbar.current = true;
+        setIsDragging(true);
+
+        scrollbarStartX.current = e.touches[0].clientX;
+        scrollbarStartScrollLeft.current = containerRef.current.scrollLeft;
+
+        window.addEventListener('touchmove', handleScrollbarTouchMove, { passive: false });
+        window.addEventListener('touchend', handleScrollbarTouchEnd);
+    };
+
+    useEffect(() => {
+        return () => {
+            window.removeEventListener('mousemove', handleScrollbarMouseMove);
+            window.removeEventListener('mouseup', handleScrollbarMouseUp);
+            window.removeEventListener('touchmove', handleScrollbarTouchMove);
+            window.removeEventListener('touchend', handleScrollbarTouchEnd);
+        };
+    }, [thumbWidth]);
+
     // Filter products based on selected category tags
     const filteredProducts = products.filter((p: any) => {
         if (!selectedCategory || selectedCategory === 'all') return true;
@@ -326,6 +441,15 @@ export default function GiftingPage() {
 
     const isInitialLanding = !selectedCategory;
 
+    useEffect(() => {
+        if (!isInitialLanding) return;
+        handleScroll();
+        window.addEventListener('resize', handleScroll);
+        return () => {
+            window.removeEventListener('resize', handleScroll);
+        };
+    }, [isInitialLanding, recipientCards]);
+
     return (
         <div className={`min-h-screen bg-white ${isEn ? 'font-en' : "font-['GE_Dinar_One']"}`} dir={isEn ? 'ltr' : 'rtl'}>
 
@@ -336,16 +460,20 @@ export default function GiftingPage() {
                 isEn={isEn}
             />
 
-            {/* FIRST LOAD: Gifting Cards Slider */}
+            {/* FIRST LOAD: Gifting Cards Slider with Scroll Progress Bar */}
             {isInitialLanding ? (
                 <div className="max-w-[1400px] mx-auto px-4 lg:px-8 py-10 pb-16">
-                    <div className="flex gap-4 lg:gap-6 overflow-x-auto hide-scrollbars pb-6 snap-x snap-mandatory scroll-smooth px-2">
+                    <div
+                        ref={containerRef}
+                        onScroll={handleScroll}
+                        className={`flex flex-nowrap justify-start gap-4 lg:gap-6 overflow-x-auto pb-4 px-2 hide-scrollbars select-none ${isDragging ? 'snap-none' : 'snap-x snap-mandatory'}`}
+                    >
                         {recipientCards.map((recipient, index) => (
                             <Link
                                 key={index}
                                 to={isEn ? `/en/gifting?category=${recipient.catId}` : `/gifting?category=${recipient.catId}`}
                                 onClick={() => setSelectedCategory(recipient.catId)}
-                                className="group flex-shrink-0 w-[180px] sm:w-[220px] md:w-[260px] lg:w-[280px] relative rounded-[16px] overflow-hidden snap-start transition-all duration-500 hover:shadow-2xl hover:-translate-y-2 shadow-sm"
+                                className="group flex-shrink-0 w-[180px] sm:w-[220px] md:w-[260px] lg:w-[280px] relative rounded-[16px] overflow-hidden snap-center transition-all duration-500 hover:shadow-2xl hover:-translate-y-2 shadow-sm"
                                 style={{ aspectRatio: '1/1' }}
                             >
                                 <div className="w-full h-full relative">
@@ -367,6 +495,30 @@ export default function GiftingPage() {
                             </Link>
                         ))}
                     </div>
+
+                    {/* Horizontal Scroll Progress Bar */}
+                    {showScrollbar && (
+                        <div
+                            onMouseDown={handleScrollbarMouseDown}
+                            onTouchStart={handleScrollbarTouchStart}
+                            className="w-full max-w-[1200px] px-6 mx-auto h-[16px] bg-transparent mt-8 relative cursor-pointer flex items-center justify-center select-none"
+                            style={{ touchAction: 'none' }}
+                        >
+                            <div
+                                ref={scrollbarTrackRef}
+                                className="w-full h-[3px] bg-[#EBEBEB] rounded-full relative overflow-hidden pointer-events-none"
+                            >
+                                <div
+                                    className={`absolute top-0 bottom-0 bg-[#234745] rounded-full ${isDragging ? '' : 'transition-all duration-150'}`}
+                                    style={{
+                                        width: `${thumbWidth}%`,
+                                        left: isEn ? `${scrollProgress * (100 - thumbWidth) / 100}%` : 'auto',
+                                        right: !isEn ? `${scrollProgress * (100 - thumbWidth) / 100}%` : 'auto',
+                                    }}
+                                />
+                            </div>
+                        </div>
+                    )}
                 </div>
             ) : (
                 /* INNER PAGE: Gifting Category View with Back Button, Filter Pills & Products */

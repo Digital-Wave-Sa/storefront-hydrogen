@@ -527,13 +527,16 @@ export default function Product() {
   const [showReviewForm, setShowReviewForm] = useState(false);
   const [cakeMessage, setCakeMessage] = useState('');
   const [writeLocation, setWriteLocation] = useState<'cake' | 'board'>('cake');
-  const [openAccordions, setOpenAccordions] = useState<Record<string, boolean>>({
-    details: true,
-    nutrition: true,
-    reviews: false,
-  });
+  const [companyName, setCompanyName] = useState('');
+  const [companyLogoName, setCompanyLogoName] = useState('');
+  const [companyMessage, setCompanyMessage] = useState('');
 
   const isCakeProduct = product.productType?.toLowerCase().includes('cake') || product.tags?.some((t: string) => t.toLowerCase().includes('cake')) || product.title?.toLowerCase().includes('cake') || false;
+
+  const isCorporateProduct = product.tags?.some((t: string) => {
+    const lowerTag = t.toLowerCase();
+    return lowerTag.includes('corporate') || lowerTag.includes('b2b') || lowerTag.includes('package');
+  }) || ['classic-collection', 'premium-collection', 'custom-collection'].includes(product.handle);
 
   const isGiftable = product.tags?.some((t: string) => {
     const lowerTag = t.toLowerCase();
@@ -1527,6 +1530,96 @@ export default function Product() {
                     </div>
                   )}
 
+                  {/* Corporate Product Customization Section (Company Logo, Company Name, Card Message) */}
+                  {isCorporateProduct && (
+                    <div className="w-full mt-[8px] max-w-[519px]">
+                      <div className="bg-[#FEF8EB] border border-[#E6E2D8] rounded-[16px] p-[16px] flex flex-col items-start gap-4 shadow-sm relative overflow-hidden">
+                        <div className="flex flex-col justify-center items-start z-10 w-full text-start">
+                          <span
+                            className="font-bold text-[#234745] text-[18px] flex items-center gap-2"
+                            style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif", lineHeight: '100%' }}
+                          >
+                            <span>🏢</span>
+                            <span>{isEn ? 'Corporate Customization & Branding' : 'تخصيص وشعار الشركة'}</span>
+                          </span>
+                          <span
+                            className="text-[#7D7D7D] text-[14px] mt-[6px]"
+                            style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", lineHeight: '120%' }}
+                          >
+                            {isEn
+                              ? 'Upload your company logo and customize your greeting card text for this package:'
+                              : 'أرفق شعار شركتك وخصص نص بطاقة الإهداء الخاصة بهذه الباقة:'}
+                          </span>
+                        </div>
+
+                        {/* 1. Company Name Field */}
+                        <div className="flex flex-col gap-1.5 w-full text-start z-10">
+                          <label className="text-[13px] font-bold text-[#234745]">
+                            {isEn ? 'Company Name' : 'اسم الشركة'}
+                          </label>
+                          <input
+                            type="text"
+                            value={companyName}
+                            onChange={(e) => setCompanyName(e.target.value)}
+                            placeholder={isEn ? 'e.g. Acme Corp' : 'مثال: شركة الأمانة'}
+                            className="w-full h-[46px] px-4 border border-[#BBCFCD]/60 rounded-[10px] bg-white text-[#234745] text-[14px] font-medium focus:outline-none focus:border-[#234745]"
+                          />
+                        </div>
+
+                        {/* 2. Logo Upload Field */}
+                        <div className="flex flex-col gap-1.5 w-full text-start z-10">
+                          <label className="text-[13px] font-bold text-[#234745]">
+                            {isEn ? 'Upload Company Logo' : 'إرفاق شعار الشركة'}
+                          </label>
+                          <label className="border-2 border-dashed border-[#906B51]/60 rounded-[12px] p-4 flex flex-col items-center justify-center text-center cursor-pointer hover:bg-white transition-colors bg-white/70">
+                            <input
+                              type="file"
+                              accept="image/png,image/jpeg,image/svg+xml,application/pdf"
+                              className="hidden"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  setCompanyLogoName(file.name);
+                                }
+                              }}
+                            />
+                            {companyLogoName ? (
+                              <div className="flex items-center gap-2 text-emerald-700 font-bold text-[14px]">
+                                <span>✅</span>
+                                <span className="truncate max-w-[220px]">{companyLogoName}</span>
+                                <span className="text-[12px] text-gray-500 font-normal">({isEn ? 'Click to change' : 'اضغط للتغيير'})</span>
+                              </div>
+                            ) : (
+                              <div className="flex flex-col items-center gap-1">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#906B51" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                  <polyline points="17 8 12 3 7 8"/>
+                                  <line x1="12" y1="3" x2="12" y2="15"/>
+                                </svg>
+                                <span className="text-[#234745] font-bold text-[14px]">{isEn ? 'Choose Logo File' : 'اختر ملف الشعار'}</span>
+                                <span className="text-[#8B9895] text-[12px]">{isEn ? 'PNG, JPG, SVG, or PDF (Max 10MB)' : 'صورة PNG، JPG، SVG أو ملف PDF'}</span>
+                              </div>
+                            )}
+                          </label>
+                        </div>
+
+                        {/* 3. Card Greeting / Message Text */}
+                        <div className="flex flex-col gap-1.5 w-full text-start z-10">
+                          <label className="text-[13px] font-bold text-[#234745]">
+                            {isEn ? 'Ribbon & Card Greeting Text' : 'نص الشريطة وبطاقة الإهداء'}
+                          </label>
+                          <textarea
+                            rows={2}
+                            value={companyMessage}
+                            onChange={(e) => setCompanyMessage(e.target.value)}
+                            placeholder={isEn ? 'Write text to be printed on card or ribbon...' : 'اكتب النص المطلوب طباعته على الشريطة أو بطاقة الإهداء...'}
+                            className="w-full p-3 border border-[#BBCFCD]/60 rounded-[10px] bg-white text-[#234745] text-[14px] font-medium focus:outline-none focus:border-[#234745] resize-none"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Old Tags section removed as they are now at the top */}
                 </div>
               )}
@@ -1739,6 +1832,9 @@ export default function Product() {
                                     { key: 'Write On', value: writeLocation === 'cake' ? (isEn ? 'On Cake' : 'على الكيكة') : (isEn ? 'On Board' : 'على القاعدة') },
                                     { key: '_writeOn', value: writeLocation }
                                   ] : []),
+                                  ...(companyName ? [{ key: 'Company Name', value: companyName }] : []),
+                                  ...(companyLogoName ? [{ key: 'Company Logo', value: companyLogoName }] : []),
+                                  ...(companyMessage ? [{ key: 'Card Message', value: companyMessage }] : []),
                                   ...(isGiftMode ? [
                                     { key: '_isGift', value: 'true' },
                                     ...(recipientName ? [{ key: 'Recipient Name', value: recipientName }] : []),
@@ -2018,6 +2114,9 @@ export default function Product() {
                                       { key: 'Write On', value: writeLocation === 'cake' ? (isEn ? 'On Cake' : 'على الكيكة') : (isEn ? 'On Board' : 'على القاعدة') },
                                       { key: '_writeOn', value: writeLocation }
                                     ] : []),
+                                    ...(companyName ? [{ key: 'Company Name', value: companyName }] : []),
+                                    ...(companyLogoName ? [{ key: 'Company Logo', value: companyLogoName }] : []),
+                                    ...(companyMessage ? [{ key: 'Card Message', value: companyMessage }] : []),
                                     ...(isGiftMode ? [
                                       { key: '_isGift', value: 'true' },
                                       ...(recipientName ? [{ key: 'Recipient Name', value: recipientName }] : []),

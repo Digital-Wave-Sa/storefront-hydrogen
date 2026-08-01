@@ -43,9 +43,10 @@ export function CartMain({ layout, cart: originalCart }: CartMainProps) {
   const isEn = location.pathname.split('/')[1]?.toLowerCase() === 'en';
   const rootData = useRouteLoaderData('root') as any;
 
-  const linesCount = Boolean(cart?.lines?.nodes?.length || 0);
-  const cartHasItems = cart?.totalQuantity ? cart.totalQuantity > 0 : false;
-  const childrenMap = getLineItemChildrenMap(cart?.lines?.nodes ?? []);
+  const cartLines = cart?.lines?.nodes || [];
+  const linesCount = cartLines.length;
+  const cartHasItems = (cart?.totalQuantity ? cart.totalQuantity > 0 : false) || linesCount > 0;
+  const childrenMap = getLineItemChildrenMap(cartLines);
 
   // --- UNDO REMOVED ITEM LOGIC ---
   const prevLinesRef = useRef<CartLine[]>([]);
@@ -229,7 +230,7 @@ export function CartMain({ layout, cart: originalCart }: CartMainProps) {
                 </div>
               )}
 
-              <CartEmpty hidden={linesCount} layout={layout} isEn={isEn} />
+              {!cartHasItems && <CartEmpty layout={layout} isEn={isEn} />}
 
               {cartHasItems && (
                 <div className="flex flex-col gap-4">
@@ -342,7 +343,7 @@ export function CartMain({ layout, cart: originalCart }: CartMainProps) {
           </div>
         )}
 
-        <CartEmpty hidden={linesCount} layout={layout} isEn={isEn} />
+        {!cartHasItems && <CartEmpty layout={layout} isEn={isEn} />}
 
         {cartHasItems && (
           <ul className="flex flex-col gap-5">

@@ -75,10 +75,16 @@ export function AddToCartButton({
       }))
     : lines;
 
+  // Sanitize lines to strip non-standard frontend properties (e.g. selectedVariant used for analytics)
+  const cartFormLines = exportLines.map((l: any) => {
+    const { selectedVariant, ...rest } = l;
+    return rest;
+  });
+
   return (
     <CartForm 
       route="/cart" 
-      inputs={{lines: exportLines}} 
+      inputs={{lines: cartFormLines}} 
       action={CartForm.ACTIONS.LinesAdd}
     >
       {(fetcher: FetcherWithComponents<any>) => (

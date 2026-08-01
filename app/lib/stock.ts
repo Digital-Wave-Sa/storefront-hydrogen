@@ -51,9 +51,8 @@ export function getIsOutOfStock(
   // If we found the specific location in the stock list, use its status
   if (availableNode) return !availableNode.available;
 
-  // STRICT RULE: If a location was selected but no stock info was found for it, 
-  // it is considered Out of Stock at that specific location.
-  return true;
+  // If no location-specific node was found, fallback to global availableForSale status
+  return !availableForSale;
 }
 
 /**

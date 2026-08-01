@@ -52,12 +52,8 @@ export function getIsOutOfStock(
   // If we found the specific location in the stock list, use its status
   if (availableNode) return !availableNode.available;
 
-  // If store availability nodes exist for other locations, but not for ours, it's out of stock at ours!
-  if (storeAvailabilityNodes && storeAvailabilityNodes.length > 0) {
-    return true;
-  }
-
-  return false;
+  // Fallback to global Shopify availableForSale status
+  return !availableForSale;
 }
 
 /**

@@ -380,17 +380,6 @@ export default function ContactPage() {
                     {isEn ? 'Send us a message' : 'أرسل لنا رسالة'}
                   </h2>
 
-                  {/* Official Shopify Forms App Embedded Container & iFrame (Form ID: 1095413) */}
-                  <div className="w-full mb-8 flex flex-col gap-4">
-                    <iframe
-                      src="https://forms.shopify.com/embed/1095413"
-                      title="Shopify Contact Form"
-                      className="w-full min-h-[550px] border-none rounded-2xl bg-transparent"
-                      style={{ minHeight: '550px', border: 'none', width: '100%' }}
-                    />
-                    <div className="shopify-forms-embed" data-form-id="1095413"></div>
-                  </div>
-
                   {actionData?.success === false && (
                     <div className="mb-6 p-4 rounded-xl bg-red-50 text-red-800 border border-red-200 text-center font-bold text-[15px]" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
                       {actionData.error}

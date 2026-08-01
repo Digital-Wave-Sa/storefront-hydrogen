@@ -204,6 +204,35 @@ const englishNameMap: Record<string, string> = {
     'gifts-for-companies': 'Corporate',
 };
 
+function getCategoryLabel(catId: string | null, isEn: boolean) {
+    if (!catId) return '';
+    const normalized = catId.toLowerCase().trim();
+
+    const labelMap: Record<string, { en: string; ar: string }> = {
+        father: { en: 'Father', ar: 'الأب' },
+        fathers: { en: 'Father', ar: 'الأب' },
+        mother: { en: 'Mother', ar: 'الأم' },
+        mothers: { en: 'Mother', ar: 'الأم' },
+        friend: { en: 'Friends', ar: 'الأصدقاء' },
+        friends: { en: 'Friends', ar: 'الأصدقاء' },
+        colleague: { en: 'Colleagues', ar: 'الزملاء' },
+        colleagues: { en: 'Colleagues', ar: 'الزملاء' },
+        child: { en: 'Children', ar: 'الأطفال' },
+        children: { en: 'Children', ar: 'الأطفال' },
+        kid: { en: 'Children', ar: 'الأطفال' },
+        kids: { en: 'Children', ar: 'الأطفال' },
+        corporate: { en: 'Corporate', ar: 'الشركات' },
+        company: { en: 'Corporate', ar: 'الشركات' },
+        companies: { en: 'Corporate', ar: 'الشركات' },
+    };
+
+    if (labelMap[normalized]) {
+        return isEn ? labelMap[normalized].en : labelMap[normalized].ar;
+    }
+
+    return catId;
+}
+
 const staticRecipientsEn = [
     { name: 'Mother', handle: 'gifts-for-mother', fallbackImg: 'https://images.unsplash.com/photo-1596464522432-843818e6c79a?q=80&w=800&auto=format&fit=crop' },
     { name: 'Father', handle: 'gifts-for-father', fallbackImg: 'https://images.unsplash.com/photo-1620052581693-559d7d4f1345?q=80&w=800&auto=format&fit=crop' },
@@ -228,16 +257,6 @@ export default function GiftingPage() {
     const locale = rootData?.locale || 'ar';
     const isEn = locale === 'en';
 
-    const categories = [
-        { id: 'all', en: 'All', ar: 'الكل' },
-        { id: 'father', en: 'Father', ar: 'الأب' },
-        { id: 'mother', en: 'Mother', ar: 'الأم' },
-        { id: 'friends', en: 'Friends', ar: 'الأصدقاء' },
-        { id: 'colleagues', en: 'Colleagues', ar: 'الزملاء' },
-        { id: 'children', en: 'Children', ar: 'الأطفال' },
-        { id: 'corporate', en: 'Corporate', ar: 'الشركات' },
-    ];
-
     const [searchParams, setSearchParams] = useSearchParams();
     const urlCategory = searchParams.get('category');
     const [selectedCategory, setSelectedCategory] = useState<string | null>(urlCategory || null);
@@ -255,10 +274,10 @@ export default function GiftingPage() {
             const catId = c.handle.replace('gifts-for-', '');
             let name = c.title;
             if (isEn) {
-                name = englishNameMap[handleKey] || c.title;
+                name = englishNameMap[handleKey] || getCategoryLabel(catId, true);
             } else {
                 const hasArabicLetters = /[\u0600-\u06FF]/.test(c.title || '');
-                name = hasArabicLetters ? c.title : (arabicNameMap[handleKey] || c.title);
+                name = hasArabicLetters ? c.title : (arabicNameMap[handleKey] || getCategoryLabel(catId, false));
             }
             return {
                 name,
@@ -281,21 +300,29 @@ export default function GiftingPage() {
     const filteredProducts = products.filter((p: any) => {
         if (!selectedCategory || selectedCategory === 'all') return true;
 
-        const cat = categories.find(c => c.id === selectedCategory);
-        if (!cat) return true;
+        const normCat = selectedCategory.toLowerCase();
+        const synonyms = [
+            normCat,
+            normCat.replace(/s$/, ''),
+            `gifts-for-${normCat}`,
+            `gifts-for-${normCat.replace(/s$/, '')}`,
+            `gifting_${normCat}`,
+            `gifting_${normCat.replace(/s$/, '')}`,
+        ];
+
+        if (normCat === 'kids' || normCat === 'children' || normCat === 'kid' || normCat === 'child') {
+            synonyms.push('kids', 'kid', 'children', 'child', 'gifts-for-kids', 'gifts-for-children');
+        }
+        if (normCat === 'father' || normCat === 'fathers') {
+            synonyms.push('father', 'fathers', 'gifts-for-father', 'gifts-for-fathers');
+        }
 
         const tags = (p.tags || []).map((t: string) => t.toLowerCase());
-        return tags.includes(cat.id.toLowerCase()) ||
-            tags.includes(cat.en.toLowerCase()) ||
-            tags.includes(cat.ar.toLowerCase()) ||
-            tags.includes(`gifting_${cat.id}`) ||
-            tags.includes(`gifts-for-${cat.id}`);
+        return tags.some((t: string) => synonyms.some(s => t.includes(s)));
     });
 
     const displayProducts = filteredProducts;
-    const selectedCatLabel = isEn
-        ? (categories.find(c => c.id === selectedCategory)?.en || selectedCategory)
-        : (categories.find(c => c.id === selectedCategory)?.ar || selectedCategory);
+    const selectedCatLabel = getCategoryLabel(selectedCategory, isEn);
 
     const isInitialLanding = !selectedCategory;
 
@@ -309,16 +336,16 @@ export default function GiftingPage() {
                 isEn={isEn}
             />
 
-            {/* FIRST LOAD: Gifting Cards Grid (Homepage Style) */}
+            {/* FIRST LOAD: Gifting Cards Slider */}
             {isInitialLanding ? (
-                <div className="max-w-[1200px] mx-auto px-4 lg:px-8 py-10 pb-16">
-                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 lg:gap-6">
+                <div className="max-w-[1400px] mx-auto px-4 lg:px-8 py-10 pb-16">
+                    <div className="flex gap-4 lg:gap-6 overflow-x-auto hide-scrollbars pb-6 snap-x snap-mandatory scroll-smooth px-2">
                         {recipientCards.map((recipient, index) => (
                             <Link
                                 key={index}
                                 to={isEn ? `/en/gifting?category=${recipient.catId}` : `/gifting?category=${recipient.catId}`}
                                 onClick={() => setSelectedCategory(recipient.catId)}
-                                className="group flex flex-col relative rounded-[16px] overflow-hidden transition-all duration-500 hover:shadow-2xl hover:-translate-y-2 shadow-sm"
+                                className="group flex-shrink-0 w-[180px] sm:w-[220px] md:w-[260px] lg:w-[280px] relative rounded-[16px] overflow-hidden snap-start transition-all duration-500 hover:shadow-2xl hover:-translate-y-2 shadow-sm"
                                 style={{ aspectRatio: '1/1' }}
                             >
                                 <div className="w-full h-full relative">

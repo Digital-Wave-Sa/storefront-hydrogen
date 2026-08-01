@@ -179,16 +179,7 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
   const isOutOfRange = !!attributes.find((a: any) => a.key === 'error')?.value;
 
   const outOfStockItems = cart?.lines?.nodes?.filter((line: any) => {
-    if (!currentBranch) return false;
-
-    const availabilityNodes = line.merchandise?.storeAvailability?.nodes || [];
-    if (availabilityNodes.length === 0) return false;
-
-    const currentBranchAvailability = availabilityNodes.find((node: any) =>
-      node.location?.name === currentBranch.name || node.location?.id === currentBranch.id
-    );
-
-    return currentBranchAvailability && !currentBranchAvailability.available;
+    return line.merchandise?.availableForSale === false;
   }) || [];
 
   const hasOutOfStockItems = outOfStockItems.length > 0;

@@ -49,18 +49,8 @@ export function CartLineItem({
   );
 
   let isOutOfStock = merchandise?.availableForSale === false;
-
   if (line.isOptimistic) {
     isOutOfStock = false;
-  } else if (!isOutOfStock && currentBranch) {
-    const availabilityNodes = (merchandise as any)?.storeAvailability?.nodes || [];
-    if (availabilityNodes.length > 0) {
-      const selectedLocId = currentBranch.id.split('/').pop();
-      const branchNode = availabilityNodes.find((node: any) => node.location?.id?.split('/').pop() === selectedLocId);
-      if (branchNode && branchNode.available === false) {
-        isOutOfStock = true;
-      }
-    }
   }
 
   // NORMAL LAYOUT

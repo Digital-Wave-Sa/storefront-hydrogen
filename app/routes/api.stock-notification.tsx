@@ -58,7 +58,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
   try {
     const body = await request.json() as any;
-    const { email, variantId, productTitle, locationId, locationName } = body;
+    const { email, variantId, productId, productTitle, locationId, locationName } = body;
 
     if (!email || !variantId) {
       return data({ error: 'Email and variant ID are required' }, { status: 400 });
@@ -76,7 +76,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
       if (envObj?.PUBLIC_STORE_DOMAIN && String(envObj.PUBLIC_STORE_DOMAIN).includes('myshopify.com')) {
         return envObj.PUBLIC_STORE_DOMAIN;
       }
-      return 'saaddeenshop-x21xumcd.myshopify.com';
+      return 'saadeldeenshop-x21xumcd.myshopify.com';
     };
 
     const shopDomain = getMyshopifyDomain(env);
@@ -100,52 +100,70 @@ export async function action({ request, context }: ActionFunctionArgs) {
       console.warn('[STOCK_NOTIFICATION MW ERR]', mwErr);
     }
 
-    // 2. Forward subscription to STOQ App API for STOQ automated emails & waitlist sync
+    // 2. Forward subscription to STOQ App API (v2 action API for headless waitlist sync)
     try {
       const numericVariantId = String(variantId).includes('/')
         ? String(variantId).split('/').pop()
         : variantId;
 
-      const stoqApiKey = (env as any)?.STOQ_API_KEY || (env as any)?.STOQ_KEY || (env as any)?.PUBLIC_STOQ_API_KEY;
+      let numericProductId = productId ? (String(productId).includes('/') ? String(productId).split('/').pop() : productId) : null;
+
+      const stoqApiKey = (env as any)?.STOQ_API_KEY || (env as any)?.STOQ_KEY || (env as any)?.PUBLIC_STOQ_API_KEY || 'stoq_api_key_61aaceb43c5ffcf013318e26fe6eb854';
+
+      // If productId was not provided, resolve shopify_product_id from Admin API
+      if (!numericProductId && numericVariantId) {
+        try {
+          const { getAdminToken } = await import('~/lib/shopify-admin.server');
+          const adminToken = await getAdminToken(env || {}).catch(() => null);
+          if (adminToken) {
+            const varRes = await fetch(`https://${shopDomain}/admin/api/2024-01/variants/${numericVariantId}.json`, {
+              headers: { 'X-Shopify-Access-Token': adminToken }
+            });
+            if (varRes.ok) {
+              const varData = await varRes.json() as any;
+              numericProductId = varData?.variant?.product_id ? String(varData.variant.product_id) : null;
+            }
+          }
+        } catch (_) {}
+      }
 
       const stoqHeaders: Record<string, string> = {
         'Content-Type': 'application/json',
         'X-Shopify-Shop-Domain': shopDomain,
       };
-
       if (stoqApiKey) {
         stoqHeaders['X-Auth-Token'] = stoqApiKey;
       }
 
-      // 1. Try official v1 intent payload
-      let stoqRes = await fetch('https://app.stoqapp.com/api/v1/intents.json', {
+      // 1. STOQ v2 Action API: POST /api/v2/external/back_in_stock/signups
+      let stoqRes = await fetch('https://app.stoqapp.com/api/v2/external/back_in_stock/signups', {
         method: 'POST',
         headers: stoqHeaders,
         body: JSON.stringify({
-          intent: {
-            email,
-            variant_id: Number(numericVariantId) || numericVariantId,
-          }
+          channel: 'email',
+          shopify_variant_id: Number(numericVariantId) || numericVariantId,
+          ...(numericProductId ? { shopify_product_id: Number(numericProductId) || numericProductId } : {}),
+          email,
         }),
       });
 
-      // 2. Fallback to flat payload if needed
+      // 2. Fallback to v1 intents API if v2 fails
       if (!stoqRes.ok) {
         stoqRes = await fetch('https://app.stoqapp.com/api/v1/intents.json', {
           method: 'POST',
           headers: stoqHeaders,
           body: JSON.stringify({
-            shop: shopDomain,
-            email,
-            variant_id: numericVariantId,
-            intent_type: 'back_in_stock',
+            intent: {
+              email,
+              variant_id: Number(numericVariantId) || numericVariantId,
+            }
           }),
         });
       }
 
-      console.log(`[STOQ_INTENT RES] Status: ${stoqRes.status} for shop: ${shopDomain}, variant: ${numericVariantId}, hasApiKey: ${!!stoqApiKey}`);
+      console.log(`[STOQ_SIGNUP RES] Status: ${stoqRes.status} for shop: ${shopDomain}, variant: ${numericVariantId}, product: ${numericProductId}`);
     } catch (stoqErr) {
-      console.warn('[STOQ_INTENT WARN]', stoqErr);
+      console.warn('[STOQ_SIGNUP WARN]', stoqErr);
     }
 
     // 3. Try saving to Shopify Metaobjects

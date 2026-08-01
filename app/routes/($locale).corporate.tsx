@@ -59,20 +59,33 @@ const PRODUCT_ITEM_FRAGMENT = `#graphql
 export async function loader({ context }: LoaderFunctionArgs) {
     const { storefront } = context;
 
-    // Fetch products strictly for the corporate B2B grid (using corporate or b2b tags)
+    // Fetch products and collections strictly for corporate B2B and packages
     const query = `#graphql
     ${PRODUCT_ITEM_FRAGMENT}
     query CorporateProducts($country: CountryCode, $language: LanguageCode) @inContext(country: $country, language: $language) {
-      products(first: 20, query: "tag:corporate OR tag:b2b") {
+      products(first: 20, query: "tag:corporate OR tag:b2b OR tag:package") {
         nodes {
           ...CorporateProductItem
+        }
+      }
+      collections(first: 20) {
+        nodes {
+          id
+          handle
+          title
+          description
+          image {
+            id
+            url
+            altText
+          }
         }
       }
     }
   `;
 
     try {
-        const { products } = await storefront.query(query, {
+        const { products, collections } = await storefront.query(query, {
             variables: {
                 country: storefront.i18n.country,
                 language: storefront.i18n.language,
@@ -80,9 +93,12 @@ export async function loader({ context }: LoaderFunctionArgs) {
             cache: storefront.CacheNone(),
         });
 
-        return data({ products: products.nodes });
+        return data({
+            products: products?.nodes || [],
+            collections: collections?.nodes || [],
+        });
     } catch (e: any) {
-        return data({ products: [], error: e.message });
+        return data({ products: [], collections: [], error: e.message });
     }
 }
 
@@ -255,7 +271,7 @@ function CorporateProductCard({ product, isEn }: { product: any; isEn: boolean }
 }
 
 export default function CorporatePage() {
-    const { products } = useLoaderData<typeof loader>();
+    const { products, collections } = useLoaderData<typeof loader>();
     const rootData = useRouteLoaderData('root') as any;
     const locale = rootData?.locale || 'ar';
     const isEn = locale === 'en';
@@ -263,6 +279,73 @@ export default function CorporatePage() {
     // State for mode toggle: 'self' (طلب ذاتي) vs 'custom' (عرض سعر مخصص)
     const [activeMode, setActiveMode] = useState<'self' | 'custom'>('self');
     const [formSubmitted, setFormSubmitted] = useState(false);
+    const [selectedPackage, setSelectedPackage] = useState<string>('');
+
+    // Dynamic Packages Builder (Shopify Collections/Products or Default Config)
+    const packageCollections = (collections || []).filter((c: any) =>
+        c.handle.includes('corporate') || c.handle.includes('package') || c.handle.includes('b2b')
+    );
+
+    const defaultPackages = [
+        {
+            id: 'classic',
+            badge: isEn ? 'Classic' : 'كلاسيك',
+            title: isEn ? 'Classic Collection' : 'التشكيلة الكلاسيكية',
+            description: isEn ? 'An elegant gift for various corporate occasions with premium packaging and your company logo.' : 'هدية أنيقة لمختلف المناسبات الرسمية مع تغليف فاخر وشعار شركتك.',
+            minQty: isEn ? 'Starts from 20 Boxes' : 'تبدأ من ٢٠ علبة',
+            bgColor: '#BBCFCD',
+            icon: 'box',
+            image: null,
+        },
+        {
+            id: 'premium',
+            badge: isEn ? 'Premium' : 'المميزة',
+            title: isEn ? 'Premium Collection' : 'التشكيلة المميزة',
+            description: isEn ? 'A sophisticated choice for VIP clients and partners, with curated contents and striking packaging.' : 'اختيار راقٍ للعملاء وكبار الشركاء، بمحتوى مدروس وتغليف لافت.',
+            minQty: isEn ? 'Starts from 20 Boxes' : 'تبدأ من ٢٠ علبة',
+            bgColor: '#234745',
+            icon: 'star',
+            image: null,
+        },
+        {
+            id: 'custom',
+            badge: isEn ? 'Custom' : 'مخصصة',
+            title: isEn ? 'Custom Collection' : 'التشكيلة المخصصة',
+            description: isEn ? 'Design your gift to reflect your identity — contents, packaging, and logo as requested.' : 'صمّم هديتك بما يعكس هويتك — محتوى وتغليف وشعار حسب طلبك.',
+            minQty: isEn ? 'Custom +200 Boxes' : 'حسب الطلب +٢٠٠ علبة',
+            bgColor: '#BBCFCD',
+            icon: 'tool',
+            image: null,
+        },
+    ];
+
+    const packages = packageCollections.length > 0
+        ? packageCollections.map((c: any, idx: number) => {
+            const isPremium = c.handle.includes('premium') || idx === 1;
+            const isCustom = c.handle.includes('custom') || idx === 2;
+            return {
+                id: c.id,
+                badge: isPremium ? (isEn ? 'Premium' : 'المميزة') : (isCustom ? (isEn ? 'Custom' : 'مخصصة') : (isEn ? 'Classic' : 'كلاسيك')),
+                title: c.title,
+                description: c.description || (isEn ? 'Custom corporate gift package tailored to your company needs.' : 'باقة إهداء مؤسسي مميزة مصممة لتلبية احتياجات شركتك.'),
+                minQty: isEn ? 'Starts from 20 Boxes' : 'تبدأ من ٢٠ علبة',
+                bgColor: isPremium ? '#234745' : '#BBCFCD',
+                icon: isPremium ? 'star' : (isCustom ? 'tool' : 'box'),
+                image: c.image?.url || null,
+            };
+        })
+        : defaultPackages;
+
+    const handlePackageSelect = (pkgTitle: string) => {
+        setSelectedPackage(pkgTitle);
+        setActiveMode('custom');
+        setTimeout(() => {
+            const formEl = document.getElementById('custom-quote');
+            if (formEl) {
+                formEl.scrollIntoView({ behavior: 'smooth' });
+            }
+        }, 100);
+    };
 
     const handleFormSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -485,12 +568,32 @@ export default function CorporatePage() {
 
                         {/* Left Side: White Form Card */}
                         <div className="lg:col-span-7 bg-white rounded-[24px] p-6 sm:p-8 md:p-10 border border-[#E6E2D8] shadow-sm flex flex-col gap-6">
-                            <h3
-                                className="text-[#234745] font-bold text-[22px] sm:text-[26px] text-start m-0 leading-tight"
-                                style={{ fontFamily: isEn ? 'inherit' : "'Bahij Janna', sans-serif" }}
-                            >
-                                {isEn ? 'Send Us Your Custom Quote Request' : 'أرسل لنا عرض السعر المخصص'}
-                            </h3>
+                            <div className="flex flex-col gap-2">
+                                <h3
+                                    className="text-[#234745] font-bold text-[22px] sm:text-[26px] text-start m-0 leading-tight"
+                                    style={{ fontFamily: isEn ? 'inherit' : "'Bahij Janna', sans-serif" }}
+                                >
+                                    {isEn ? 'Send Us Your Custom Quote Request' : 'أرسل لنا عرض السعر المخصص'}
+                                </h3>
+
+                                {selectedPackage && (
+                                    <div className="bg-[#FEF8EB] border border-[#C5A96A]/60 rounded-[12px] px-4 py-2.5 flex items-center justify-between mt-2 animate-fade-in">
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-lg">🎁</span>
+                                            <span className="text-[#234745] font-bold text-[14px]">
+                                                {isEn ? `Selected Package: ${selectedPackage}` : `الباقة المختارة: ${selectedPackage}`}
+                                            </span>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => setSelectedPackage('')}
+                                            className="text-[#906B51] hover:underline font-bold text-[12px]"
+                                        >
+                                            {isEn ? 'Change' : 'تغيير الباقة'}
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
 
                             {formSubmitted ? (
                                 <div className="bg-[#234745]/5 border border-[#234745]/20 rounded-[16px] p-8 text-center flex flex-col items-center gap-4 my-6">
@@ -766,94 +869,53 @@ export default function CorporatePage() {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-4">
-
-                        {/* Classic Package (Right-most in RTL) */}
-                        <div className="w-full max-w-[411px] mx-auto bg-[#FEF8EB] rounded-[20px] overflow-hidden flex flex-col hover:shadow-lg transition-shadow">
-                            <div className="relative w-full h-[216px] bg-[#BBCFCD] flex items-center justify-center">
-                                <div className="absolute top-4 right-4">
-                                    <div className="bg-[#FEF8EB] px-4 py-1.5 rounded-[25px]">
-                                        <span className="text-[#234745] font-bold text-[14px]">{isEn ? 'Classic' : 'كلاسيك'}</span>
+                        {packages.map((pkg: any) => (
+                            <div key={pkg.id} className="w-full max-w-[411px] mx-auto bg-[#FEF8EB] rounded-[20px] overflow-hidden flex flex-col hover:shadow-lg transition-all duration-300">
+                                <div className="relative w-full h-[216px] flex items-center justify-center overflow-hidden" style={{ backgroundColor: pkg.bgColor || '#BBCFCD' }}>
+                                    {pkg.image ? (
+                                        <img src={pkg.image} alt={pkg.title} className="w-full h-full object-cover transition-transform duration-700 hover:scale-105" />
+                                    ) : (
+                                        <div className="flex items-center justify-center w-full h-full">
+                                            {pkg.icon === 'star' ? (
+                                                <svg width="80" height="80" viewBox="0 0 24 24" fill="#C5A96A" stroke="#C5A96A" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                                            ) : pkg.icon === 'tool' ? (
+                                                <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="#234745" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg>
+                                            ) : (
+                                                <svg width="80" height="80" viewBox="0 0 24 24" fill="#234745" stroke="#234745" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"><polyline points="21 8 21 21 3 21 3 8"></polyline><rect x="1" y="3" width="22" height="5"></rect><line x1="10" y1="12" x2="14" y2="12"></line></svg>
+                                            )}
+                                        </div>
+                                    )}
+                                    <div className="absolute top-4 right-4">
+                                        <div className="bg-[#FEF8EB] px-4 py-1.5 rounded-[25px] shadow-sm">
+                                            <span className="text-[#234745] font-bold text-[14px]">{pkg.badge}</span>
+                                        </div>
                                     </div>
                                 </div>
-                                <svg width="80" height="80" viewBox="0 0 24 24" fill="#234745" stroke="#234745" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"><polyline points="21 8 21 21 3 21 3 8"></polyline><rect x="1" y="3" width="22" height="5"></rect><line x1="10" y1="12" x2="14" y2="12"></line></svg>
-                            </div>
 
-                            <div className="flex flex-col p-6 gap-4 flex-1">
-                                <div className="flex flex-col gap-3">
-                                    <h3 className="text-[#234745] font-bold text-[16px] text-right m-0">{isEn ? 'Classic Collection' : 'التشكيلة الكلاسيكية'}</h3>
-                                    <p className="text-[#9FB7AE] font-medium text-[16px] leading-[20px] text-right m-0 h-[40px] md:h-[60px] lg:h-[40px]">{isEn ? 'An elegant gift for various corporate occasions with premium packaging and your company logo.' : 'هدية أنيقة لمختلف المناسبات الرسمية مع تغليف فاخر وشعار شركتك.'}</p>
-                                </div>
-
-                                <div className="w-full border-t border-[#9FB7AE] mt-2 mb-1"></div>
-
-                                <div className="flex justify-between items-center mt-auto flex-row-reverse">
-                                    <span className="text-[#7D7D7D] font-medium text-[16px]">{isEn ? 'Starts from 20 Boxes' : 'تبدأ من ٢٠ علبة'}</span>
-                                    <div className="flex items-center gap-2 flex-row-reverse group cursor-pointer">
-                                        <span className="text-[#906B51] font-bold text-[16px]">{isEn ? 'View Details' : 'عرض التفاصيل'}</span>
-                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#906B51" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="group-hover:-translate-x-1 transition-transform"><path d="M19 12H5M5 12L12 19M5 12L12 5"></path></svg>
+                                <div className="flex flex-col p-6 gap-4 flex-1">
+                                    <div className="flex flex-col gap-3">
+                                        <h3 className={`text-[#234745] font-bold text-[18px] m-0 ${isEn ? 'text-left' : 'text-right'}`}>{pkg.title}</h3>
+                                        <p className={`text-[#9FB7AE] font-medium text-[15px] leading-[22px] m-0 min-h-[44px] ${isEn ? 'text-left' : 'text-right'}`}>{pkg.description}</p>
                                     </div>
-                                </div>
-                            </div>
-                        </div>
 
-                        {/* Premium Package (Center) */}
-                        <div className="w-full max-w-[411px] mx-auto bg-[#FEF8EB] rounded-[20px] overflow-hidden flex flex-col hover:shadow-lg transition-shadow">
-                            <div className="relative w-full h-[216px] bg-[#234745] flex items-center justify-center">
-                                <div className="absolute top-4 right-4">
-                                    <div className="bg-[#FEF8EB] px-4 py-1.5 rounded-[25px]">
-                                        <span className="text-[#234745] font-bold text-[14px]">{isEn ? 'Premium' : 'المميزة'}</span>
-                                    </div>
-                                </div>
-                                <svg width="80" height="80" viewBox="0 0 24 24" fill="#C5A96A" stroke="#C5A96A" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
-                            </div>
+                                    <div className="w-full border-t border-[#9FB7AE]/30 mt-auto pt-3"></div>
 
-                            <div className="flex flex-col p-6 gap-4 flex-1">
-                                <div className="flex flex-col gap-3">
-                                    <h3 className="text-[#234745] font-bold text-[16px] text-right m-0">{isEn ? 'Premium Collection' : 'التشكيلة المميزة'}</h3>
-                                    <p className="text-[#9FB7AE] font-medium text-[16px] leading-[20px] text-right m-0 h-[40px] md:h-[60px] lg:h-[40px]">{isEn ? 'A sophisticated choice for VIP clients and partners, with curated contents and striking packaging.' : 'اختيار راقٍ للعملاء وكبار الشركاء، بمحتوى مدروس وتغليف لافت.'}</p>
-                                </div>
-
-                                <div className="w-full border-t border-[#9FB7AE] mt-2 mb-1"></div>
-
-                                <div className="flex justify-between items-center mt-auto flex-row-reverse">
-                                    <span className="text-[#7D7D7D] font-medium text-[16px]">{isEn ? 'Starts from 20 Boxes' : 'تبدأ من ٢٠ علبة'}</span>
-                                    <div className="flex items-center gap-2 flex-row-reverse group cursor-pointer">
-                                        <span className="text-[#906B51] font-bold text-[16px]">{isEn ? 'View Details' : 'عرض التفاصيل'}</span>
-                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#906B51" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="group-hover:-translate-x-1 transition-transform"><path d="M19 12H5M5 12L12 19M5 12L12 5"></path></svg>
+                                    <div className={`flex justify-between items-center ${isEn ? 'flex-row' : 'flex-row-reverse'}`}>
+                                        <span className="text-[#7D7D7D] font-medium text-[14px]">{pkg.minQty}</span>
+                                        <button
+                                            type="button"
+                                            onClick={() => handlePackageSelect(pkg.title)}
+                                            className={`flex items-center gap-2 group cursor-pointer border-none bg-transparent ${isEn ? 'flex-row' : 'flex-row-reverse'}`}
+                                        >
+                                            <span className="text-[#906B51] font-bold text-[15px] hover:underline">{isEn ? 'View Details' : 'عرض التفاصيل'}</span>
+                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#906B51" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`transition-transform ${isEn ? 'group-hover:translate-x-1' : 'group-hover:-translate-x-1'}`}>
+                                                <path d={isEn ? "M5 12h14M12 5l7 7-7 7" : "M19 12H5M5 12L12 19M5 12L12 5"}></path>
+                                            </svg>
+                                        </button>
                                     </div>
                                 </div>
                             </div>
-                        </div>
-
-                        {/* Custom Package (Left-most in RTL) */}
-                        <div className="w-full max-w-[411px] mx-auto bg-[#FEF8EB] rounded-[20px] overflow-hidden flex flex-col hover:shadow-lg transition-shadow">
-                            <div className="relative w-full h-[216px] bg-[#BBCFCD] flex items-center justify-center">
-                                <div className="absolute top-4 right-4">
-                                    <div className="bg-[#FEF8EB] px-4 py-1.5 rounded-[25px]">
-                                        <span className="text-[#234745] font-bold text-[14px]">{isEn ? 'Custom' : 'مخصصة'}</span>
-                                    </div>
-                                </div>
-                                <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="#234745" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg>
-                            </div>
-
-                            <div className="flex flex-col p-6 gap-4 flex-1">
-                                <div className="flex flex-col gap-3">
-                                    <h3 className="text-[#234745] font-bold text-[16px] text-right m-0">{isEn ? 'Custom Collection' : 'التشكيلة المخصصة'}</h3>
-                                    <p className="text-[#9FB7AE] font-medium text-[16px] leading-[20px] text-right m-0 h-[40px] md:h-[60px] lg:h-[40px]">{isEn ? 'Design your gift to reflect your identity — contents, packaging, and logo as requested.' : 'صمّم هديتك بما يعكس هويتك — محتوى وتغليف وشعار حسب طلبك.'}</p>
-                                </div>
-
-                                <div className="w-full border-t border-[#9FB7AE] mt-2 mb-1"></div>
-
-                                <div className="flex justify-between items-center mt-auto flex-row-reverse">
-                                    <span className="text-[#7D7D7D] font-medium text-[16px]">{isEn ? 'Custom +200 Boxes' : 'حسب الطلب +٢٠٠ علبة'}</span>
-                                    <div className="flex items-center gap-2 flex-row-reverse group cursor-pointer">
-                                        <span className="text-[#906B51] font-bold text-[16px]">{isEn ? 'View Details' : 'عرض التفاصيل'}</span>
-                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#906B51" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="group-hover:-translate-x-1 transition-transform"><path d="M19 12H5M5 12L12 19M5 12L12 5"></path></svg>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
+                        ))}
                     </div>
                 </div>
             </section>

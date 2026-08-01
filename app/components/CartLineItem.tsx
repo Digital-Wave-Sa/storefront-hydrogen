@@ -44,13 +44,15 @@ export function CartLineItem({
   const locations = rootData?.locations?.locations?.nodes || rootData?.locations?.nodes || [];
 
   const currentBranch = locations.find((loc: any) =>
-    (branchId && loc.id === branchId) ||
-    (branchName && loc.name === branchName)
+    (branchId && (loc.id === branchId || loc.id.split('/').pop() === String(branchId).split('/').pop())) ||
+    (branchName && loc.name?.trim().toLowerCase() === branchName?.trim().toLowerCase())
   );
 
   let isOutOfStock = merchandise?.availableForSale === false;
 
-  if (!isOutOfStock && currentBranch) {
+  if (line.isOptimistic) {
+    isOutOfStock = false;
+  } else if (!isOutOfStock && currentBranch) {
     const availabilityNodes = (merchandise as any)?.storeAvailability?.nodes || [];
     if (availabilityNodes.length > 0) {
       const selectedLocId = currentBranch.id.split('/').pop();

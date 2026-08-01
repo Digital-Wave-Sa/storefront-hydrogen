@@ -222,6 +222,9 @@ export default function ContactPage() {
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
+      (window as any).Shopify = (window as any).Shopify || {};
+      (window as any).Shopify.shop = 'saad-al-deen.myshopify.com';
+
       const scriptId = 'shopify-forms-script';
       if (!document.getElementById(scriptId)) {
         const script = document.createElement('script');
@@ -377,8 +380,14 @@ export default function ContactPage() {
                     {isEn ? 'Send us a message' : 'أرسل لنا رسالة'}
                   </h2>
 
-                  {/* Official Shopify Forms App Embedded Container (Form ID: 1095413) */}
-                  <div className="w-full mb-6 min-h-[50px]">
+                  {/* Official Shopify Forms App Embedded Container & iFrame (Form ID: 1095413) */}
+                  <div className="w-full mb-8 flex flex-col gap-4">
+                    <iframe
+                      src="https://forms.shopify.com/embed/1095413"
+                      title="Shopify Contact Form"
+                      className="w-full min-h-[550px] border-none rounded-2xl bg-transparent"
+                      style={{ minHeight: '550px', border: 'none', width: '100%' }}
+                    />
                     <div className="shopify-forms-embed" data-form-id="1095413"></div>
                   </div>
 

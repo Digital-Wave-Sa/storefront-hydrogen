@@ -152,10 +152,21 @@ const PRODUCT_ITEM_FRAGMENT = `#graphql
 export async function loader({ context }: LoaderFunctionArgs) {
     const { storefront } = context;
 
-    // Fetch products that match ANY of the standard occasion tags
+    // Fetch products and collections to dynamically map occasion images from Shopify
     const query = `#graphql
     ${PRODUCT_ITEM_FRAGMENT}
     query OccasionsProducts($country: CountryCode, $language: LanguageCode) @inContext(country: $country, language: $language) {
+      collections(first: 100) {
+        nodes {
+          id
+          title
+          handle
+          image {
+            url
+            altText
+          }
+        }
+      }
       products(first: 200, query: "tag:wedding OR tag:ramadan OR tag:birthdays OR tag:eid OR tag:new-baby OR tag:national-day OR tag:mothers-day OR tag:graduation OR tag:occasion") {
         nodes {
           ...OccasionsProductItem
@@ -165,7 +176,7 @@ export async function loader({ context }: LoaderFunctionArgs) {
   `;
 
     try {
-        const { products } = await storefront.query(query, {
+        const { products, collections } = await storefront.query(query, {
             variables: {
                 country: storefront.i18n.country,
                 language: storefront.i18n.language,
@@ -173,36 +184,36 @@ export async function loader({ context }: LoaderFunctionArgs) {
             cache: storefront.CacheNone(),
         });
 
-        return data({ products: products.nodes, error: null });
+        return data({ products: products.nodes, collections: collections.nodes, error: null });
     } catch (e: any) {
-        return data({ products: [], error: e.message });
+        return data({ products: [], collections: [], error: e.message });
     }
 }
 
 const homepageOccasionsEn = [
-    { name: 'Wedding', handle: 'wedding', image: 'https://cdn.shopify.com/s/files/1/0809/4253/0869/files/wedding_design.png?v=1711234567' },
-    { name: 'Ramadan', handle: 'ramadan', image: 'https://cdn.shopify.com/s/files/1/0809/4253/0869/files/ramadan_design.png?v=1711234568' },
-    { name: 'Birthdays', handle: 'birthdays', image: 'https://cdn.shopify.com/s/files/1/0809/4253/0869/files/birthday_design.png?v=1711234569' },
-    { name: 'Eid', handle: 'eid', image: 'https://cdn.shopify.com/s/files/1/0809/4253/0869/files/eid_design.png?v=1711234570' },
-    { name: 'New Baby', handle: 'new-baby', image: 'https://cdn.shopify.com/s/files/1/0809/4253/0869/files/new_baby_design.png?v=1711234571' },
-    { name: 'National Day', handle: 'national-day', image: 'https://cdn.shopify.com/s/files/1/0809/4253/0869/files/national_day_design.png?v=1711234572' },
-    { name: 'Mother\'s Day', handle: 'mothers-day', image: 'https://cdn.shopify.com/s/files/1/0809/4253/0869/files/mothers_day_design.png?v=1711234573' },
-    { name: 'Graduation', handle: 'graduation', image: 'https://cdn.shopify.com/s/files/1/0809/4253/0869/files/graduation_design.png?v=1711234574' },
+    { name: 'Wedding', handle: 'wedding', image: '' },
+    { name: 'Ramadan', handle: 'ramadan', image: '' },
+    { name: 'Birthdays', handle: 'birthdays', image: '' },
+    { name: 'Eid', handle: 'eid', image: '' },
+    { name: 'New Baby', handle: 'new-baby', image: '' },
+    { name: 'National Day', handle: 'national-day', image: '' },
+    { name: 'Mother\'s Day', handle: 'mothers-day', image: '' },
+    { name: 'Graduation', handle: 'graduation', image: '' },
 ];
 
 const homepageOccasionsAr = [
-    { name: 'زفاف', handle: 'wedding', image: 'https://cdn.shopify.com/s/files/1/0809/4253/0869/files/wedding_design.png?v=1711234567' },
-    { name: 'رمضان', handle: 'ramadan', image: 'https://cdn.shopify.com/s/files/1/0809/4253/0869/files/ramadan_design.png?v=1711234568' },
-    { name: 'أعياد الميلاد', handle: 'birthdays', image: 'https://cdn.shopify.com/s/files/1/0809/4253/0869/files/birthday_design.png?v=1711234569' },
-    { name: 'العيد', handle: 'eid', image: 'https://cdn.shopify.com/s/files/1/0809/4253/0869/files/eid_design.png?v=1711234570' },
-    { name: 'مواليد', handle: 'new-baby', image: 'https://cdn.shopify.com/s/files/1/0809/4253/0869/files/new_baby_design.png?v=1711234571' },
-    { name: 'اليوم الوطني', handle: 'national-day', image: 'https://cdn.shopify.com/s/files/1/0809/4253/0869/files/national_day_design.png?v=1711234572' },
-    { name: 'يوم الأم', handle: 'mothers-day', image: 'https://cdn.shopify.com/s/files/1/0809/4253/0869/files/mothers_day_design.png?v=1711234573' },
-    { name: 'التخرج', handle: 'graduation', image: 'https://cdn.shopify.com/s/files/1/0809/4253/0869/files/graduation_design.png?v=1711234574' },
+    { name: 'زفاف', handle: 'wedding', image: '' },
+    { name: 'رمضان', handle: 'ramadan', image: '' },
+    { name: 'أعياد الميلاد', handle: 'birthdays', image: '' },
+    { name: 'العيد', handle: 'eid', image: '' },
+    { name: 'مواليد', handle: 'new-baby', image: '' },
+    { name: 'اليوم الوطني', handle: 'national-day', image: '' },
+    { name: 'يوم الأم', handle: 'mothers-day', image: '' },
+    { name: 'التخرج', handle: 'graduation', image: '' },
 ];
 
 export default function OccasionsPage() {
-    const { products, error } = useLoaderData<typeof loader>();
+    const { products, collections, error } = useLoaderData<typeof loader>();
     const rootData = useRouteLoaderData('root') as any;
     const locale = rootData?.locale || 'ar';
     const isEn = locale === 'en';
@@ -227,7 +238,21 @@ export default function OccasionsPage() {
         setSelectedCategory(urlCategory || null);
     }, [urlCategory]);
 
-    const occasionCards = isEn ? homepageOccasionsEn : homepageOccasionsAr;
+    const baseOccasions = isEn ? homepageOccasionsEn : homepageOccasionsAr;
+
+    const occasionCards = baseOccasions.map(occ => {
+        const shopifyColl = (collections || []).find((c: any) => c.handle === occ.handle);
+        const matchingProd = (products || []).find((p: any) => {
+            const tags = (p.tags || []).map((t: string) => t.toLowerCase());
+            return tags.includes(occ.handle.toLowerCase());
+        });
+
+        return {
+            ...occ,
+            image: shopifyColl?.image?.url || matchingProd?.featuredImage?.url || occ.image || '/images/custom-cake.webp',
+            name: shopifyColl?.title || occ.name,
+        };
+    });
 
     // Filter products based on selected category tags
     const filteredProducts = products.filter((p: any) => {

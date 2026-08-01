@@ -972,7 +972,7 @@ export function HeaderMenu({
                 className={({ isActive }) => `
                   flex items-center justify-between px-6 py-4 rounded-2xl text-[16px] font-bold transition-all
                   ${isOffers
-                    ? 'bg-[#b91c1c] !text-white'
+                    ? 'bg-[#e64950] !text-white'
                     : isActive
                       ? 'bg-[#234745] !text-white shadow-md'
                       : 'bg-white text-[#234745] shadow-sm hover:bg-gray-50'
@@ -980,7 +980,7 @@ export function HeaderMenu({
                 `}
                 style={({ isActive }) => (
                   isOffers
-                    ? { color: '#FFFFFF' }
+                    ? { color: '#FFFFFF', backgroundColor: '#e64950' }
                     : isActive
                       ? { color: '#FFFFFF', backgroundColor: '#234745' }
                       : { color: '#234745' }

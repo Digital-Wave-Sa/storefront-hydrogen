@@ -223,7 +223,14 @@ function CorporateProductCard({ product, isEn }: { product: any; isEn: boolean }
                             className="text-[#234745] font-bold text-[16px] hover:text-[#906B51] transition-colors m-0 leading-snug"
                             style={{ fontFamily: isEn ? 'inherit' : "'Bahij Janna', sans-serif" }}
                         >
-                            {product.title}
+                            {(() => {
+                                if (isEn) return product.title;
+                                const lower = (product.title + ' ' + (product.handle || '')).toLowerCase();
+                                if (lower.includes('classic') || lower.includes('كلاسيك')) return 'التشكيلة الكلاسيكية';
+                                if (lower.includes('premium') || lower.includes('مميز') || lower.includes('فاخر')) return 'التشكيلة الفاخرة';
+                                if (lower.includes('custom') || lower.includes('مخصص')) return 'التشكيلة المخصصة';
+                                return product.title;
+                            })()}
                         </h3>
                     </Link>
                     <p className="text-[#8B9895] font-medium text-[13px] sm:text-[14px] m-0 line-clamp-1">
@@ -260,8 +267,8 @@ function CorporateProductCard({ product, isEn }: { product: any; isEn: boolean }
                 {/* Action Button: اختر وخصص */}
                 <Link
                     to={productUrl}
-                    className="w-full bg-[#234745] text-white font-bold text-[16px] py-3 rounded-full hover:bg-[#1a3533] transition-colors text-center block mt-1 shadow-sm"
-                    style={{ fontFamily: isEn ? 'inherit' : "'Bahij Janna', sans-serif" }}
+                    className="w-full bg-[#234745] !text-white font-bold text-[16px] py-3 rounded-full hover:bg-[#1a3533] transition-colors text-center block mt-1 shadow-sm"
+                    style={{ fontFamily: isEn ? 'inherit' : "'Bahij Janna', sans-serif", color: '#ffffff' }}
                 >
                     {isEn ? 'Choose & Customize' : 'إختر وخصص'}
                 </Link>

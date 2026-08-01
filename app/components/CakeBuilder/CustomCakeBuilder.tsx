@@ -937,7 +937,7 @@ export default function CustomCakeBuilder({
         {/* RIGHT COLUMN */}
         <div
           className="w-full lg:w-1/2 relative flex flex-col items-center justify-center py-10 lg:py-0 lg:h-full shrink-0 overflow-hidden bg-[#EED5D7]"
-          style={{ backgroundImage: "url('/images/cake-builder/cake-pattern.svg')", backgroundRepeat: 'repeat', backgroundSize: '600px' }}
+          style={{ backgroundImage: "url('/images/pattern.svg')", backgroundRepeat: 'repeat', backgroundSize: '600px' }}
         >
 
           {/* Center Content Group (Pills + Circle) */}

@@ -337,7 +337,7 @@ export default function OccasionsPage() {
                 /* INNER PAGE: Occasion Category View with Back Button, Filter Pills & Products */
                 <>
                     {/* Back to All Occasions Navigation */}
-                    <div className="max-w-[1200px] mx-auto px-4 lg:px-8 pt-6">
+                    <div className="max-w-[1200px] mx-auto px-4 lg:px-8 pt-8 pb-4">
                         <button
                             onClick={() => {
                                 setSelectedCategory(null);
@@ -350,32 +350,6 @@ export default function OccasionsPage() {
                             </svg>
                             <span>{isEn ? 'All Occasions' : 'جميع المناسبات'}</span>
                         </button>
-                    </div>
-
-                    {/* Filter Pills */}
-                    <div className="w-full overflow-hidden">
-                        <div className="flex gap-3 lg:gap-4 overflow-x-auto hide-scrollbars py-6 max-w-[1200px] mx-auto px-4 lg:px-8 justify-start lg:justify-center flex-nowrap snap-x">
-                            {categories.map(cat => (
-                                <button
-                                    key={cat.id}
-                                    onClick={() => {
-                                        if (cat.id === 'all') {
-                                            setSelectedCategory(null);
-                                            setSearchParams({});
-                                        } else {
-                                            setSelectedCategory(cat.id);
-                                            setSearchParams({ category: cat.id });
-                                        }
-                                    }}
-                                    className={`shrink-0 snap-start px-6 py-2.5 rounded-full border-[1.5px] font-bold transition-all ${selectedCategory === cat.id
-                                        ? 'bg-[#BBCFCD] border-[#BBCFCD] text-[#234745]'
-                                        : 'bg-transparent border-[#234745] text-[#234745] hover:bg-gray-50'
-                                        }`}
-                                >
-                                    {isEn ? cat.en : cat.ar}
-                                </button>
-                            ))}
-                        </div>
                     </div>
 
                     {/* Products Section */}

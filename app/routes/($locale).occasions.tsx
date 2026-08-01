@@ -179,6 +179,28 @@ export async function loader({ context }: LoaderFunctionArgs) {
     }
 }
 
+const homepageOccasionsEn = [
+    { name: 'Wedding', handle: 'wedding', image: 'https://cdn.shopify.com/s/files/1/0809/4253/0869/files/wedding_design.png?v=1711234567' },
+    { name: 'Ramadan', handle: 'ramadan', image: 'https://cdn.shopify.com/s/files/1/0809/4253/0869/files/ramadan_design.png?v=1711234568' },
+    { name: 'Birthdays', handle: 'birthdays', image: 'https://cdn.shopify.com/s/files/1/0809/4253/0869/files/birthday_design.png?v=1711234569' },
+    { name: 'Eid', handle: 'eid', image: 'https://cdn.shopify.com/s/files/1/0809/4253/0869/files/eid_design.png?v=1711234570' },
+    { name: 'New Baby', handle: 'new-baby', image: 'https://cdn.shopify.com/s/files/1/0809/4253/0869/files/new_baby_design.png?v=1711234571' },
+    { name: 'National Day', handle: 'national-day', image: 'https://cdn.shopify.com/s/files/1/0809/4253/0869/files/national_day_design.png?v=1711234572' },
+    { name: 'Mother\'s Day', handle: 'mothers-day', image: 'https://cdn.shopify.com/s/files/1/0809/4253/0869/files/mothers_day_design.png?v=1711234573' },
+    { name: 'Graduation', handle: 'graduation', image: 'https://cdn.shopify.com/s/files/1/0809/4253/0869/files/graduation_design.png?v=1711234574' },
+];
+
+const homepageOccasionsAr = [
+    { name: 'زفاف', handle: 'wedding', image: 'https://cdn.shopify.com/s/files/1/0809/4253/0869/files/wedding_design.png?v=1711234567' },
+    { name: 'رمضان', handle: 'ramadan', image: 'https://cdn.shopify.com/s/files/1/0809/4253/0869/files/ramadan_design.png?v=1711234568' },
+    { name: 'أعياد الميلاد', handle: 'birthdays', image: 'https://cdn.shopify.com/s/files/1/0809/4253/0869/files/birthday_design.png?v=1711234569' },
+    { name: 'العيد', handle: 'eid', image: 'https://cdn.shopify.com/s/files/1/0809/4253/0869/files/eid_design.png?v=1711234570' },
+    { name: 'مواليد', handle: 'new-baby', image: 'https://cdn.shopify.com/s/files/1/0809/4253/0869/files/new_baby_design.png?v=1711234571' },
+    { name: 'اليوم الوطني', handle: 'national-day', image: 'https://cdn.shopify.com/s/files/1/0809/4253/0869/files/national_day_design.png?v=1711234572' },
+    { name: 'يوم الأم', handle: 'mothers-day', image: 'https://cdn.shopify.com/s/files/1/0809/4253/0869/files/mothers_day_design.png?v=1711234573' },
+    { name: 'التخرج', handle: 'graduation', image: 'https://cdn.shopify.com/s/files/1/0809/4253/0869/files/graduation_design.png?v=1711234574' },
+];
+
 export default function OccasionsPage() {
     const { products, error } = useLoaderData<typeof loader>();
     const rootData = useRouteLoaderData('root') as any;
@@ -197,15 +219,15 @@ export default function OccasionsPage() {
         { id: 'new-baby', en: 'New Baby', ar: 'مواليد' },
     ];
 
-    const [searchParams] = useSearchParams();
+    const [searchParams, setSearchParams] = useSearchParams();
     const urlCategory = searchParams.get('category');
-    const [selectedCategory, setSelectedCategory] = useState(urlCategory || 'all');
+    const [selectedCategory, setSelectedCategory] = useState<string | null>(urlCategory || null);
 
     useEffect(() => {
-        if (urlCategory) {
-            setSelectedCategory(urlCategory);
-        }
+        setSelectedCategory(urlCategory || null);
     }, [urlCategory]);
+
+    const occasionCards = isEn ? homepageOccasionsEn : homepageOccasionsAr;
 
     // Filter products based on selected category tags
     const filteredProducts = products.filter((p: any) => {
@@ -223,8 +245,11 @@ export default function OccasionsPage() {
     });
 
     const displayProducts = filteredProducts;
+    const selectedCatLabel = isEn
+        ? (categories.find(c => c.id === selectedCategory)?.en || selectedCategory)
+        : (categories.find(c => c.id === selectedCategory)?.ar || selectedCategory);
 
-    const selectedCatLabel = isEn ? categories.find(c => c.id === selectedCategory)?.en : categories.find(c => c.id === selectedCategory)?.ar;
+    const isInitialLanding = !selectedCategory;
 
     return (
         <div className={`min-h-screen bg-white ${isEn ? 'font-en' : "font-['GE_Dinar_One']"}`} dir={isEn ? 'ltr' : 'rtl'}>
@@ -236,40 +261,116 @@ export default function OccasionsPage() {
                 isEn={isEn}
             />
 
-            {/* Filter Pills */}
-            <div className="w-full overflow-hidden">
-                <div className="flex gap-3 lg:gap-4 overflow-x-auto hide-scrollbars py-8 max-w-[1200px] mx-auto px-4 lg:px-8 justify-start lg:justify-center flex-nowrap snap-x">
-                    {categories.map(cat => (
-                        <button
-                            key={cat.id}
-                            onClick={() => setSelectedCategory(cat.id)}
-                            className={`shrink-0 snap-start px-6 py-2.5 rounded-full border-[1.5px] font-bold transition-all ${selectedCategory === cat.id
-                                ? 'bg-[#BBCFCD] border-[#BBCFCD] text-[#234745]'
-                                : 'bg-transparent border-[#234745] text-[#234745] hover:bg-gray-50'
-                                }`}
-                        >
-                            {isEn ? cat.en : cat.ar}
-                        </button>
-                    ))}
-                </div>
-            </div>
+            {/* FIRST LOAD: Occasion Cards Grid */}
+            {isInitialLanding ? (
+                <div className="max-w-[1200px] mx-auto px-4 lg:px-8 py-10 pb-16">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 lg:gap-6">
+                        {occasionCards.map((occasion, index) => (
+                            <Link
+                                key={index}
+                                to={isEn ? `/en/occasions?category=${occasion.handle}` : `/occasions?category=${occasion.handle}`}
+                                onClick={() => setSelectedCategory(occasion.handle)}
+                                className="group flex flex-col bg-[#EED5D7] rounded-[16px] overflow-hidden transition-all duration-500 hover:shadow-xl hover:-translate-y-2 relative shadow-sm"
+                                style={{ aspectRatio: '280/328' }}
+                            >
+                                {/* Pattern Overlay Layer */}
+                                <div
+                                    className="absolute bottom-0 left-0 right-0 h-[30%] z-0 pointer-events-none"
+                                    style={{
+                                        backgroundImage: `url('/assets/patterns/occassions-bg.svg')`,
+                                        backgroundSize: 'cover',
+                                        backgroundPosition: 'bottom center',
+                                        backgroundRepeat: 'no-repeat',
+                                        opacity: 0.4,
+                                        maskImage: 'linear-gradient(to top, rgba(0,0,0,1) 20%, rgba(0,0,0,0) 100%)',
+                                        WebkitMaskImage: 'linear-gradient(to top, rgba(0,0,0,1) 20%, rgba(0,0,0,0) 100%)'
+                                    }}
+                                />
 
-            {/* Products Section */}
-            <div className="max-w-[1200px] mx-auto px-4 lg:px-8 pb-16">
-                <h2 className="text-[24px] lg:text-[32px] font-black text-[#1A1A1A] mb-8">
-                    {selectedCategory === 'all'
-                      ? (isEn ? 'All Occasion Products' : 'جميع منتجات المناسبات')
-                      : (isEn ? `Suggestions for ${selectedCatLabel}` : `مقترحات لـ ${selectedCatLabel}`)}
-                </h2>
+                                <div className="p-2.5 flex flex-col h-full relative z-10">
+                                    {/* Image Container */}
+                                    <div className="w-full aspect-square rounded-[12px] overflow-hidden bg-white relative">
+                                        <img
+                                            src={occasion.image}
+                                            alt={occasion.name}
+                                            className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
+                                        />
+                                    </div>
 
-                {displayProducts.length > 0 ? (
-                    <ProductSlider products={displayProducts} />
-                ) : (
-                    <div className="text-center py-12 text-[#8B8B8B] font-bold">
-                        {isEn ? 'No products found for this occasion.' : 'لا توجد منتجات لهذه المناسبة.'}
+                                    {/* Label Area */}
+                                    <div className="relative w-full mt-auto flex-1 flex items-center justify-center">
+                                        <h3 className="relative pt-2 text-[20px] lg:text-[24px] font-bold text-[#171717] z-10 px-2 text-center leading-tight" style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" }}>
+                                            {occasion.name}
+                                        </h3>
+                                    </div>
+                                </div>
+                            </Link>
+                        ))}
                     </div>
-                )}
-            </div>
+                </div>
+            ) : (
+                /* INNER PAGE: Occasion Category View with Back Button, Filter Pills & Products */
+                <>
+                    {/* Back to All Occasions Navigation */}
+                    <div className="max-w-[1200px] mx-auto px-4 lg:px-8 pt-6">
+                        <button
+                            onClick={() => {
+                                setSelectedCategory(null);
+                                setSearchParams({});
+                            }}
+                            className="inline-flex items-center gap-2 text-[#234745] hover:text-[#1a3533] font-bold text-[15px] transition-colors bg-[#FEF8EB] px-5 py-2 rounded-full border border-[#234745]/20 hover:border-[#234745]"
+                        >
+                            <svg className={`w-4 h-4 ${isEn ? '' : 'rotate-180'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                            </svg>
+                            <span>{isEn ? 'All Occasions' : 'جميع المناسبات'}</span>
+                        </button>
+                    </div>
+
+                    {/* Filter Pills */}
+                    <div className="w-full overflow-hidden">
+                        <div className="flex gap-3 lg:gap-4 overflow-x-auto hide-scrollbars py-6 max-w-[1200px] mx-auto px-4 lg:px-8 justify-start lg:justify-center flex-nowrap snap-x">
+                            {categories.map(cat => (
+                                <button
+                                    key={cat.id}
+                                    onClick={() => {
+                                        if (cat.id === 'all') {
+                                            setSelectedCategory(null);
+                                            setSearchParams({});
+                                        } else {
+                                            setSelectedCategory(cat.id);
+                                            setSearchParams({ category: cat.id });
+                                        }
+                                    }}
+                                    className={`shrink-0 snap-start px-6 py-2.5 rounded-full border-[1.5px] font-bold transition-all ${selectedCategory === cat.id
+                                        ? 'bg-[#BBCFCD] border-[#BBCFCD] text-[#234745]'
+                                        : 'bg-transparent border-[#234745] text-[#234745] hover:bg-gray-50'
+                                        }`}
+                                >
+                                    {isEn ? cat.en : cat.ar}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Products Section */}
+                    <div className="max-w-[1200px] mx-auto px-4 lg:px-8 pb-16">
+                        <h2 className="text-[24px] lg:text-[32px] font-black text-[#1A1A1A] mb-8">
+                            {selectedCategory === 'all'
+                              ? (isEn ? 'All Occasion Products' : 'جميع منتجات المناسبات')
+                              : (isEn ? `Suggestions for ${selectedCatLabel}` : `مقترحات لـ ${selectedCatLabel}`)}
+                        </h2>
+
+                        {displayProducts.length > 0 ? (
+                            <ProductSlider products={displayProducts} />
+                        ) : (
+                            <div className="text-center py-12 text-[#8B8B8B] font-bold">
+                                {isEn ? 'No products found for this occasion.' : 'لا توجد منتجات لهذه المناسبة.'}
+                            </div>
+                        )}
+                    </div>
+                </>
+            )}
 
             {/* Promotional Banners */}
             <div className="max-w-[1200px] mx-auto px-4 lg:px-8 pb-32 lg:pb-48 flex flex-col gap-12 lg:gap-20">

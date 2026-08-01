@@ -146,7 +146,18 @@ export async function loader({ context }: LoaderFunctionArgs) {
     const query = `#graphql
     ${PRODUCT_ITEM_FRAGMENT}
     query GiftingProducts($country: CountryCode, $language: LanguageCode) @inContext(country: $country, language: $language) {
-      products(first: 100, query: "tag:gifting") {
+      collections(first: 100) {
+        nodes {
+          id
+          title
+          handle
+          image {
+            url
+            altText
+          }
+        }
+      }
+      products(first: 200, query: "tag:gifting OR tag:gift") {
         nodes {
           ...GiftingProductItem
         }
@@ -155,7 +166,7 @@ export async function loader({ context }: LoaderFunctionArgs) {
   `;
 
     try {
-        const { products } = await storefront.query(query, {
+        const { products, collections } = await storefront.query(query, {
             variables: {
                 country: storefront.i18n.country,
                 language: storefront.i18n.language,
@@ -163,14 +174,56 @@ export async function loader({ context }: LoaderFunctionArgs) {
             cache: storefront.CacheNone(),
         });
 
-        return data({ products: products.nodes, error: null });
+        return data({ products: products.nodes, collections: collections.nodes, error: null });
     } catch (e: any) {
-        return data({ products: [], error: e.message });
+        return data({ products: [], collections: [], error: e.message });
     }
 }
 
+const arabicNameMap: Record<string, string> = {
+    'gifts-for-mother': 'الأم',
+    'gifts-for-father': 'الأب',
+    'gifts-for-fathers': 'الأب',
+    'gifts-for-friends': 'الأصدقاء',
+    'gifts-for-colleagues': 'الزملاء',
+    'gifts-for-children': 'الأطفال',
+    'gifts-for-kids': 'الأطفال',
+    'gifts-for-corporate': 'الشركات',
+    'gifts-for-companies': 'الشركات',
+};
+
+const englishNameMap: Record<string, string> = {
+    'gifts-for-mother': 'Mother',
+    'gifts-for-father': 'Father',
+    'gifts-for-fathers': 'Father',
+    'gifts-for-friends': 'Friends',
+    'gifts-for-colleagues': 'Colleagues',
+    'gifts-for-children': 'Children',
+    'gifts-for-kids': 'Children',
+    'gifts-for-corporate': 'Corporate',
+    'gifts-for-companies': 'Corporate',
+};
+
+const staticRecipientsEn = [
+    { name: 'Mother', handle: 'gifts-for-mother', fallbackImg: 'https://images.unsplash.com/photo-1596464522432-843818e6c79a?q=80&w=800&auto=format&fit=crop' },
+    { name: 'Father', handle: 'gifts-for-father', fallbackImg: 'https://images.unsplash.com/photo-1620052581693-559d7d4f1345?q=80&w=800&auto=format&fit=crop' },
+    { name: 'Friends', handle: 'gifts-for-friends', fallbackImg: 'https://images.unsplash.com/photo-1529156069898-49953eb1b5ae?q=80&w=800&auto=format&fit=crop' },
+    { name: 'Colleagues', handle: 'gifts-for-colleagues', fallbackImg: 'https://images.unsplash.com/photo-1556761175-4b46a572b786?q=80&w=800&auto=format&fit=crop' },
+    { name: 'Children', handle: 'gifts-for-children', fallbackImg: 'https://images.unsplash.com/photo-1510439401736-22463e26f59c?q=80&w=800&auto=format&fit=crop' },
+    { name: 'Corporate', handle: 'gifts-for-corporate', fallbackImg: 'https://images.unsplash.com/photo-1556761175-4b46a572b786?q=80&w=800&auto=format&fit=crop' },
+];
+
+const staticRecipientsAr = [
+    { name: 'الأم', handle: 'gifts-for-mother', fallbackImg: 'https://images.unsplash.com/photo-1596464522432-843818e6c79a?q=80&w=800&auto=format&fit=crop' },
+    { name: 'الأب', handle: 'gifts-for-father', fallbackImg: 'https://images.unsplash.com/photo-1620052581693-559d7d4f1345?q=80&w=800&auto=format&fit=crop' },
+    { name: 'الأصدقاء', handle: 'gifts-for-friends', fallbackImg: 'https://images.unsplash.com/photo-1529156069898-49953eb1b5ae?q=80&w=800&auto=format&fit=crop' },
+    { name: 'الزملاء', handle: 'gifts-for-colleagues', fallbackImg: 'https://images.unsplash.com/photo-1556761175-4b46a572b786?q=80&w=800&auto=format&fit=crop' },
+    { name: 'الأطفال', handle: 'gifts-for-children', fallbackImg: 'https://images.unsplash.com/photo-1510439401736-22463e26f59c?q=80&w=800&auto=format&fit=crop' },
+    { name: 'الشركات', handle: 'gifts-for-corporate', fallbackImg: 'https://images.unsplash.com/photo-1556761175-4b46a572b786?q=80&w=800&auto=format&fit=crop' },
+];
+
 export default function GiftingPage() {
-    const { products, error } = useLoaderData<typeof loader>();
+    const { products, collections, error } = useLoaderData<typeof loader>();
     const rootData = useRouteLoaderData('root') as any;
     const locale = rootData?.locale || 'ar';
     const isEn = locale === 'en';
@@ -182,18 +235,47 @@ export default function GiftingPage() {
         { id: 'friends', en: 'Friends', ar: 'الأصدقاء' },
         { id: 'colleagues', en: 'Colleagues', ar: 'الزملاء' },
         { id: 'children', en: 'Children', ar: 'الأطفال' },
-        { id: 'companies', en: 'Companies', ar: 'الشركات' },
+        { id: 'corporate', en: 'Corporate', ar: 'الشركات' },
     ];
 
-    const [searchParams] = useSearchParams();
+    const [searchParams, setSearchParams] = useSearchParams();
     const urlCategory = searchParams.get('category');
-    const [selectedCategory, setSelectedCategory] = useState(urlCategory || 'all');
+    const [selectedCategory, setSelectedCategory] = useState<string | null>(urlCategory || null);
 
     useEffect(() => {
-        if (urlCategory) {
-            setSelectedCategory(urlCategory);
-        }
+        setSelectedCategory(urlCategory || null);
     }, [urlCategory]);
+
+    // Build Gifting Cards using Shopify Collections or Static Metadata
+    const giftingCollections = (collections || []).filter((c: any) => c.handle.startsWith('gifts-for-'));
+
+    const recipientCards = giftingCollections.length > 0
+        ? giftingCollections.map((c: any) => {
+            const handleKey = c.handle.toLowerCase();
+            const catId = c.handle.replace('gifts-for-', '');
+            let name = c.title;
+            if (isEn) {
+                name = englishNameMap[handleKey] || c.title;
+            } else {
+                const hasArabicLetters = /[\u0600-\u06FF]/.test(c.title || '');
+                name = hasArabicLetters ? c.title : (arabicNameMap[handleKey] || c.title);
+            }
+            return {
+                name,
+                catId,
+                handle: c.handle,
+                image: c.image?.url || 'https://images.unsplash.com/photo-1596464522432-843818e6c79a?q=80&w=800&auto=format&fit=crop'
+            };
+        })
+        : (isEn ? staticRecipientsEn : staticRecipientsAr).map(r => {
+            const shopifyColl = collections?.find((c: any) => c.handle === r.handle || c.handle === r.handle + 's');
+            const catId = r.handle.replace('gifts-for-', '');
+            return {
+                ...r,
+                catId,
+                image: shopifyColl?.image?.url || r.fallbackImg,
+            };
+        });
 
     // Filter products based on selected category tags
     const filteredProducts = products.filter((p: any) => {
@@ -211,8 +293,11 @@ export default function GiftingPage() {
     });
 
     const displayProducts = filteredProducts;
+    const selectedCatLabel = isEn
+        ? (categories.find(c => c.id === selectedCategory)?.en || selectedCategory)
+        : (categories.find(c => c.id === selectedCategory)?.ar || selectedCategory);
 
-    const selectedCatLabel = isEn ? categories.find(c => c.id === selectedCategory)?.en : categories.find(c => c.id === selectedCategory)?.ar;
+    const isInitialLanding = !selectedCategory;
 
     return (
         <div className={`min-h-screen bg-white ${isEn ? 'font-en' : "font-['GE_Dinar_One']"}`} dir={isEn ? 'ltr' : 'rtl'}>
@@ -224,40 +309,101 @@ export default function GiftingPage() {
                 isEn={isEn}
             />
 
-            {/* Filter Pills */}
-            <div className="w-full overflow-hidden">
-                <div className="flex gap-3 lg:gap-4 overflow-x-auto hide-scrollbars py-8 max-w-[1200px] mx-auto px-4 lg:px-8 justify-start lg:justify-center flex-nowrap snap-x">
-                    {categories.map(cat => (
-                        <button
-                            key={cat.id}
-                            onClick={() => setSelectedCategory(cat.id)}
-                            className={`shrink-0 snap-start px-6 py-2.5 rounded-full border-[1.5px] font-bold transition-all ${selectedCategory === cat.id
-                                ? 'bg-[#BBCFCD] border-[#BBCFCD] text-[#234745]'
-                                : 'bg-transparent border-[#234745] text-[#234745] hover:bg-gray-50'
-                                }`}
-                        >
-                            {isEn ? cat.en : cat.ar}
-                        </button>
-                    ))}
-                </div>
-            </div>
+            {/* FIRST LOAD: Gifting Cards Grid (Homepage Style) */}
+            {isInitialLanding ? (
+                <div className="max-w-[1200px] mx-auto px-4 lg:px-8 py-10 pb-16">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 lg:gap-6">
+                        {recipientCards.map((recipient, index) => (
+                            <Link
+                                key={index}
+                                to={isEn ? `/en/gifting?category=${recipient.catId}` : `/gifting?category=${recipient.catId}`}
+                                onClick={() => setSelectedCategory(recipient.catId)}
+                                className="group flex flex-col relative rounded-[16px] overflow-hidden transition-all duration-500 hover:shadow-2xl hover:-translate-y-2 shadow-sm"
+                                style={{ aspectRatio: '1/1' }}
+                            >
+                                <div className="w-full h-full relative">
+                                    <img
+                                        src={recipient.image}
+                                        alt={recipient.name}
+                                        className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
+                                    />
+                                    {/* Bottom Gradient Overlay */}
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
 
-            {/* Products Section */}
-            <div className="max-w-[1200px] mx-auto px-4 lg:px-8 pb-16">
-                <h2 className="text-[24px] lg:text-[32px] font-black text-[#1A1A1A] mb-8">
-                    {selectedCategory === 'all'
-                      ? (isEn ? 'All Gift Items' : 'جميع منتجات الهدايا')
-                      : (isEn ? `Suggestions for ${selectedCatLabel}` : `مقترحات لـ ${selectedCatLabel}`)}
-                </h2>
-
-                {displayProducts.length > 0 ? (
-                    <ProductSlider products={displayProducts} />
-                ) : (
-                    <div className="text-center py-12 text-[#8B8B8B] font-bold">
-                        {isEn ? 'No products found for this category.' : 'لا توجد منتجات لهذه الفئة.'}
+                                    {/* Label Text Overlay */}
+                                    <div className="absolute bottom-4 left-0 right-0 text-center px-3">
+                                        <h3 className="text-[20px] md:text-[24px] lg:text-[28px] font-bold text-white drop-shadow-md">
+                                            {recipient.name}
+                                        </h3>
+                                    </div>
+                                </div>
+                            </Link>
+                        ))}
                     </div>
-                )}
-            </div>
+                </div>
+            ) : (
+                /* INNER PAGE: Gifting Category View with Back Button, Filter Pills & Products */
+                <>
+                    {/* Back to All Gifts Navigation */}
+                    <div className="max-w-[1200px] mx-auto px-4 lg:px-8 pt-6">
+                        <button
+                            onClick={() => {
+                                setSelectedCategory(null);
+                                setSearchParams({});
+                            }}
+                            className="inline-flex items-center gap-2 text-[#234745] hover:text-[#1a3533] font-bold text-[15px] transition-colors bg-[#FEF8EB] px-5 py-2 rounded-full border border-[#234745]/20 hover:border-[#234745]"
+                        >
+                            <svg className={`w-4 h-4 ${isEn ? '' : 'rotate-180'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                            </svg>
+                            <span>{isEn ? 'All Gifts' : 'جميع الهدايا'}</span>
+                        </button>
+                    </div>
+
+                    {/* Filter Pills */}
+                    <div className="w-full overflow-hidden">
+                        <div className="flex gap-3 lg:gap-4 overflow-x-auto hide-scrollbars py-6 max-w-[1200px] mx-auto px-4 lg:px-8 justify-start lg:justify-center flex-nowrap snap-x">
+                            {categories.map(cat => (
+                                <button
+                                    key={cat.id}
+                                    onClick={() => {
+                                        if (cat.id === 'all') {
+                                            setSelectedCategory(null);
+                                            setSearchParams({});
+                                        } else {
+                                            setSelectedCategory(cat.id);
+                                            setSearchParams({ category: cat.id });
+                                        }
+                                    }}
+                                    className={`shrink-0 snap-start px-6 py-2.5 rounded-full border-[1.5px] font-bold transition-all ${selectedCategory === cat.id
+                                        ? 'bg-[#BBCFCD] border-[#BBCFCD] text-[#234745]'
+                                        : 'bg-transparent border-[#234745] text-[#234745] hover:bg-gray-50'
+                                        }`}
+                                >
+                                    {isEn ? cat.en : cat.ar}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Products Section */}
+                    <div className="max-w-[1200px] mx-auto px-4 lg:px-8 pb-16">
+                        <h2 className="text-[24px] lg:text-[32px] font-black text-[#1A1A1A] mb-8">
+                            {selectedCategory === 'all'
+                              ? (isEn ? 'All Gift Items' : 'جميع منتجات الهدايا')
+                              : (isEn ? `Suggestions for ${selectedCatLabel}` : `مقترحات لـ ${selectedCatLabel}`)}
+                        </h2>
+
+                        {displayProducts.length > 0 ? (
+                            <ProductSlider products={displayProducts} />
+                        ) : (
+                            <div className="text-center py-12 text-[#8B8B8B] font-bold">
+                                {isEn ? 'No products found for this category.' : 'لا توجد منتجات لهذه الفئة.'}
+                            </div>
+                        )}
+                    </div>
+                </>
+            )}
 
             {/* Promotional Banners */}
             <div className="max-w-[1200px] mx-auto px-4 lg:px-8 pb-32 lg:pb-48 flex flex-col gap-12 lg:gap-20">

@@ -877,11 +877,20 @@ export default function CorporatePage() {
                                     ) : (
                                         <div className="flex items-center justify-center w-full h-full">
                                             {pkg.icon === 'star' ? (
-                                                <svg width="80" height="80" viewBox="0 0 24 24" fill="#C5A96A" stroke="#C5A96A" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                                                <svg width="67" height="60" viewBox="0 0 67 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                    <path d="M10 60V53.3333H56.6667V60H10ZM10 48.3333L5.75001 21.5833C5.6389 21.5833 5.51334 21.5978 5.37334 21.6267C5.23334 21.6556 5.1089 21.6689 5.00001 21.6667C3.61112 21.6667 2.43112 21.18 1.46001 20.2067C0.488896 19.2333 0.0022298 18.0533 7.57576e-06 16.6667C-0.00221465 15.28 0.484452 14.1 1.46001 13.1267C2.43556 12.1533 3.61556 11.6667 5.00001 11.6667C6.38445 11.6667 7.56556 12.1533 8.54334 13.1267C9.52112 14.1 10.0067 15.28 10 16.6667C10 17.0556 9.95779 17.4167 9.87334 17.75C9.7889 18.0833 9.69223 18.3889 9.58334 18.6667L20 23.3333L30.4167 9.08334C29.8056 8.6389 29.3056 8.05556 28.9167 7.33334C28.5278 6.61112 28.3333 5.83334 28.3333 5.00001C28.3333 3.61112 28.82 2.43001 29.7933 1.45667C30.7667 0.483341 31.9467 -0.00221463 33.3333 7.59301e-06C34.72 0.00222982 35.9011 0.488896 36.8767 1.46001C37.8522 2.43112 38.3378 3.61112 38.3333 5.00001C38.3333 5.83334 38.1389 6.61112 37.75 7.33334C37.3611 8.05556 36.8611 8.6389 36.25 9.08334L46.6667 23.3333L57.0833 18.6667C56.9722 18.3889 56.8745 18.0833 56.79 17.75C56.7056 17.4167 56.6644 17.0556 56.6667 16.6667C56.6667 15.2778 57.1533 14.0967 58.1267 13.1233C59.1 12.15 60.28 11.6645 61.6667 11.6667C63.0533 11.6689 64.2345 12.1556 65.21 13.1267C66.1856 14.0978 66.6711 15.2778 66.6667 16.6667C66.6622 18.0556 66.1767 19.2367 65.21 20.21C64.2433 21.1833 63.0622 21.6689 61.6667 21.6667C61.5556 21.6667 61.4311 21.6533 61.2933 21.6267C61.1556 21.6 61.03 21.5856 60.9167 21.5833L56.6667 48.3333H10Z" fill="#C5A96A" />
+                                                </svg>
+
                                             ) : pkg.icon === 'tool' ? (
-                                                <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="#234745" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg>
+                                                <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                    <path d="M73.3294 2.92969L76.9856 6.58594C80.8919 10.4922 80.8919 16.8203 76.9856 20.7266L68.1731 29.5391L50.3606 11.7422L59.1731 2.92969C63.0794 -0.976562 69.4075 -0.976562 73.3137 2.92969H73.3294ZM7.01686 55.1016L46.8294 15.2734L64.6419 33.0859L24.8137 72.8984C23.7669 73.9453 22.4544 74.7109 21.0325 75.1172L4.78249 79.7578C3.46999 80.1328 2.06374 79.7734 1.09499 78.8047C0.126237 77.8359 -0.233138 76.4297 0.141862 75.1172L4.78249 58.8672C5.18874 57.4297 5.95436 56.1328 7.00124 55.0859L7.01686 55.1016ZM38.97 16.0703L16.1575 38.8828L2.50124 25.2109C-0.420638 22.2891 -0.420638 17.5391 2.50124 14.6016L14.7044 2.41406C17.6262 -0.507812 22.3762 -0.507812 25.3137 2.41406L28.4075 5.50781C28.3606 5.55469 28.2981 5.60156 28.2512 5.64844L18.2512 15.6484C17.2825 16.6172 17.2825 18.2109 18.2512 19.1797C19.22 20.1484 20.8137 20.1484 21.7825 19.1797L31.7825 9.17969C31.8294 9.13281 31.8762 9.07031 31.9231 9.02344L38.97 16.0703ZM63.845 40.9453L70.8919 47.9922C70.845 48.0391 70.7825 48.0859 70.7356 48.1328L60.7356 58.1328C59.7669 59.1016 59.7669 60.6953 60.7356 61.6641C61.7044 62.6328 63.2981 62.6328 64.2669 61.6641L74.2669 51.6641C74.3137 51.6172 74.3606 51.5547 74.4075 51.5078L77.5012 54.6172C80.4231 57.5391 80.4231 62.2891 77.5012 65.2266L65.2981 77.4141C62.3762 80.3359 57.6262 80.3359 54.6887 77.4141L41.0325 63.7578L63.845 40.9453Z" fill="#234745" />
+                                                </svg>
+
                                             ) : (
-                                                <svg width="80" height="80" viewBox="0 0 24 24" fill="#234745" stroke="#234745" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"><polyline points="21 8 21 21 3 21 3 8"></polyline><rect x="1" y="3" width="22" height="5"></rect><line x1="10" y1="12" x2="14" y2="12"></line></svg>
+                                                <svg width="100" height="80" viewBox="0 0 100 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                    <path d="M31.3438 4.99991C32.0312 3.04678 31.0156 0.906159 29.0625 0.218659C27.1094 -0.468841 24.9688 0.546784 24.2812 2.49991L22.6094 7.21866L21.0625 2.56241C20.4062 0.593659 18.2812 -0.468841 16.3125 0.187409C14.3438 0.843659 13.2812 2.96866 13.9375 4.93741L15.2344 8.84366L10.9531 5.71866C9.28125 4.49991 6.9375 4.87491 5.71875 6.54678C4.5 8.21866 4.875 10.5624 6.54688 11.7812L10.9688 14.9999H7.5C3.35938 14.9999 0 18.3593 0 22.4999V72.4999C0 76.6405 3.35938 79.9999 7.5 79.9999H31.3438C30.5 78.5312 30 76.828 30 74.9999V39.9999C30 35.328 33.2031 31.4062 37.5312 30.3124C37.8125 25.4687 40.2031 21.2187 43.7969 18.4218C42.4531 16.3593 40.1406 14.9999 37.5 14.9999H34.0312L38.4531 11.7812C40.125 10.5624 40.5 8.21866 39.2812 6.54678C38.0625 4.87491 35.7188 4.49991 34.0469 5.71866L30.0781 8.60928L31.3438 4.99991ZM56.7969 28.9843L61.4219 34.9999H53.75C51.6719 34.9999 50 33.328 50 31.2499C50 29.203 51.6875 27.4999 53.7812 27.4999C54.9688 27.4999 56.0781 28.0468 56.7969 28.9843ZM42.5 31.2499C42.5 32.5624 42.7188 33.828 43.1406 34.9999H42.5C38.3594 34.9999 35 38.3593 35 42.4999V54.9999H65V39.9999H70V54.9999H100V42.4999C100 38.3593 96.6406 34.9999 92.5 34.9999H91.8594C92.2813 33.828 92.5 32.5624 92.5 31.2499C92.5 25.0155 87.4219 19.9999 81.2188 19.9999C77.7188 19.9999 74.4062 21.6249 72.2656 24.4062L67.5 30.5937L62.7344 24.4062C60.5938 21.6249 57.2656 19.9999 53.7812 19.9999C47.5781 19.9999 42.5 25.0155 42.5 31.2499ZM35 72.4999C35 76.6405 38.3594 79.9999 42.5 79.9999H65V59.9999H35V72.4999ZM70 79.9999H92.5C96.6406 79.9999 100 76.6405 100 72.4999V59.9999H70V79.9999ZM85 31.2499C85 33.328 83.3281 34.9999 81.25 34.9999H73.5781L78.2031 28.9843C78.9219 28.0624 80.0312 27.4999 81.2188 27.4999C83.3125 27.4999 85 29.203 85 31.2499Z" fill="#234745" />
+                                                </svg>
+
                                             )}
                                         </div>
                                     )}
@@ -901,17 +910,19 @@ export default function CorporatePage() {
                                     <div className="w-full border-t border-[#9FB7AE]/30 mt-auto pt-3"></div>
 
                                     <div className={`flex justify-between items-center ${isEn ? 'flex-row' : 'flex-row-reverse'}`}>
-                                        <span className="text-[#7D7D7D] font-medium text-[14px]">{pkg.minQty}</span>
+
                                         <button
                                             type="button"
                                             onClick={() => handlePackageSelect(pkg.title)}
                                             className={`flex items-center gap-2 group cursor-pointer border-none bg-transparent ${isEn ? 'flex-row' : 'flex-row-reverse'}`}
                                         >
-                                            <span className="text-[#906B51] font-bold text-[15px] hover:underline">{isEn ? 'View Details' : 'عرض التفاصيل'}</span>
                                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#906B51" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`transition-transform ${isEn ? 'group-hover:translate-x-1' : 'group-hover:-translate-x-1'}`}>
                                                 <path d={isEn ? "M5 12h14M12 5l7 7-7 7" : "M19 12H5M5 12L12 19M5 12L12 5"}></path>
                                             </svg>
+                                            <span className="text-[#906B51] font-bold text-[15px] hover:underline">{isEn ? 'View Details' : 'عرض التفاصيل'}</span>
+
                                         </button>
+                                        <span className="text-[#7D7D7D] font-medium text-[14px]">{pkg.minQty}</span>
                                     </div>
                                 </div>
                             </div>
@@ -998,8 +1009,8 @@ export default function CorporatePage() {
                         <div className="bg-white rounded-[24px] p-8 border border-[#E2EBE8] flex flex-col items-center text-center shadow-sm hover:shadow-md transition-all hover:border-[#234745]/30">
                             <div className="w-12 h-12 bg-[#234745] rounded-[14px] flex items-center justify-center text-white mb-5 shadow-sm">
                                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <circle cx="12" cy="8" r="7"/>
-                                    <polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/>
+                                    <circle cx="12" cy="8" r="7" />
+                                    <polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88" />
                                 </svg>
                             </div>
                             <h3 className="text-[#234745] font-bold text-[20px] mb-3">{isEn ? 'Premium Quality' : 'جودة فاخرة'}</h3>
@@ -1012,7 +1023,7 @@ export default function CorporatePage() {
                         <div className="bg-white rounded-[24px] p-8 border border-[#E2EBE8] flex flex-col items-center text-center shadow-sm hover:shadow-md transition-all hover:border-[#234745]/30">
                             <div className="w-12 h-12 bg-[#234745] rounded-[14px] flex items-center justify-center text-white mb-5 shadow-sm">
                                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <path d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 4.12c-.1.607-.241 1.2-.423 1.78"/>
+                                    <path d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 4.12c-.1.607-.241 1.2-.423 1.78" />
                                 </svg>
                             </div>
                             <h3 className="text-[#234745] font-bold text-[20px] mb-3">{isEn ? 'Custom Identity' : 'هوية خاصة'}</h3>
@@ -1025,10 +1036,10 @@ export default function CorporatePage() {
                         <div className="bg-white rounded-[24px] p-8 border border-[#E2EBE8] flex flex-col items-center text-center shadow-sm hover:shadow-md transition-all hover:border-[#234745]/30">
                             <div className="w-12 h-12 bg-[#234745] rounded-[14px] flex items-center justify-center text-white mb-5 shadow-sm">
                                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <rect x="1" y="3" width="15" height="13" rx="2"/>
-                                    <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/>
-                                    <circle cx="5.5" cy="18.5" r="2.5"/>
-                                    <circle cx="18.5" cy="18.5" r="2.5"/>
+                                    <rect x="1" y="3" width="15" height="13" rx="2" />
+                                    <polygon points="16 8 20 8 23 11 23 16 16 16 16 8" />
+                                    <circle cx="5.5" cy="18.5" r="2.5" />
+                                    <circle cx="18.5" cy="18.5" r="2.5" />
                                 </svg>
                             </div>
                             <h3 className="text-[#234745] font-bold text-[20px] mb-3">{isEn ? 'Fast Delivery' : 'توصيل سريع'}</h3>
@@ -1041,7 +1052,7 @@ export default function CorporatePage() {
                         <div className="bg-white rounded-[24px] p-8 border border-[#E2EBE8] flex flex-col items-center text-center shadow-sm hover:shadow-md transition-all hover:border-[#234745]/30">
                             <div className="w-12 h-12 bg-[#234745] rounded-[14px] flex items-center justify-center text-white mb-5 shadow-sm">
                                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
                                 </svg>
                             </div>
                             <h3 className="text-[#234745] font-bold text-[20px] mb-3">{isEn ? 'Corporate Trust' : 'ثقة مؤسسية'}</h3>
@@ -1054,8 +1065,8 @@ export default function CorporatePage() {
                         <div className="bg-white rounded-[24px] p-8 border border-[#E2EBE8] flex flex-col items-center text-center shadow-sm hover:shadow-md transition-all hover:border-[#234745]/30">
                             <div className="w-12 h-12 bg-[#234745] rounded-[14px] flex items-center justify-center text-white mb-5 shadow-sm">
                                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/>
-                                    <path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/>
+                                    <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z" />
+                                    <path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12" />
                                 </svg>
                             </div>
                             <h3 className="text-[#234745] font-bold text-[20px] mb-3">{isEn ? 'Elegant Packaging' : 'تغليف أنيق'}</h3>
@@ -1068,8 +1079,8 @@ export default function CorporatePage() {
                         <div className="bg-white rounded-[24px] p-8 border border-[#E2EBE8] flex flex-col items-center text-center shadow-sm hover:shadow-md transition-all hover:border-[#234745]/30">
                             <div className="w-12 h-12 bg-[#234745] rounded-[14px] flex items-center justify-center text-white mb-5 shadow-sm">
                                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <path d="M3 18v-6a9 9 0 0 1 18 0v6"/>
-                                    <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/>
+                                    <path d="M3 18v-6a9 9 0 0 1 18 0v6" />
+                                    <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z" />
                                 </svg>
                             </div>
                             <h3 className="text-[#234745] font-bold text-[20px] mb-3">{isEn ? 'Dedicated Support' : 'دعم مخصص'}</h3>

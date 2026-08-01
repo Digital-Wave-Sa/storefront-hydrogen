@@ -100,23 +100,50 @@ export async function action({ request, context }: ActionFunctionArgs) {
       console.warn('[STOCK_NOTIFICATION MW ERR]', mwErr);
     }
 
-    // 2. Forward subscription to STOQ App API for STOQ automated emails
+    // 2. Forward subscription to STOQ App API for STOQ automated emails & waitlist sync
     try {
       const numericVariantId = String(variantId).includes('/')
         ? String(variantId).split('/').pop()
         : variantId;
 
-      const stoqRes = await fetch('https://app.stoqapp.com/api/v1/intents.json', {
+      const stoqApiKey = (env as any)?.STOQ_API_KEY || (env as any)?.STOQ_KEY || (env as any)?.PUBLIC_STOQ_API_KEY;
+
+      const stoqHeaders: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'X-Shopify-Shop-Domain': shopDomain,
+      };
+
+      if (stoqApiKey) {
+        stoqHeaders['X-Auth-Token'] = stoqApiKey;
+      }
+
+      // 1. Try official v1 intent payload
+      let stoqRes = await fetch('https://app.stoqapp.com/api/v1/intents.json', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: stoqHeaders,
         body: JSON.stringify({
-          shop: shopDomain,
-          email,
-          variant_id: numericVariantId,
-          intent_type: 'back_in_stock',
+          intent: {
+            email,
+            variant_id: Number(numericVariantId) || numericVariantId,
+          }
         }),
       });
-      console.log(`[STOQ_INTENT RES] Status: ${stoqRes.status} for shop: ${shopDomain}, variant: ${numericVariantId}`);
+
+      // 2. Fallback to flat payload if needed
+      if (!stoqRes.ok) {
+        stoqRes = await fetch('https://app.stoqapp.com/api/v1/intents.json', {
+          method: 'POST',
+          headers: stoqHeaders,
+          body: JSON.stringify({
+            shop: shopDomain,
+            email,
+            variant_id: numericVariantId,
+            intent_type: 'back_in_stock',
+          }),
+        });
+      }
+
+      console.log(`[STOQ_INTENT RES] Status: ${stoqRes.status} for shop: ${shopDomain}, variant: ${numericVariantId}, hasApiKey: ${!!stoqApiKey}`);
     } catch (stoqErr) {
       console.warn('[STOQ_INTENT WARN]', stoqErr);
     }

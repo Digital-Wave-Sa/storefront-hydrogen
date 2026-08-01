@@ -104,27 +104,29 @@ export function StockNotificationModal({
                             <h3 className="text-2xl font-black text-[#234745] mb-4">
                                 {isEn ? 'You\'re on the list!' : 'تمت إضافتك للقائمة!'}
                             </h3>
-                            <p className="text-gray-500 font-bold mb-8 leading-relaxed">
+                            <p className="text-gray-500 font-bold mb-8 mt-2 leading-relaxed px-2">
                                 {isEn 
                                     ? `We'll email you at ${email} as soon as ${productTitle} is back in stock.` 
                                     : `سنقوم بإرسال بريد إلكتروني إلى ${email} بمجرد توفر ${productTitle} مرة أخرى.`}
                             </p>
-                            <Button fullWidth onClick={onClose} size="lg">
-                                {isEn ? 'Got it!' : 'حسناً!'}
-                            </Button>
+                            <div className="w-full mt-4">
+                                <Button fullWidth onClick={onClose} size="lg">
+                                    {isEn ? 'Got it!' : 'حسناً!'}
+                                </Button>
+                            </div>
                         </>
                     ) : (
                         <>
-                            <h3 className="text-2xl font-black text-[#234745] mb-2 leading-tight">
+                            <h3 className="text-2xl font-black text-[#234745] mb-3 leading-tight">
                                 {isEn ? 'Notify Me' : 'أبلغني عن التوفر'}
                             </h3>
-                            <p className="text-[#A2A491] font-bold text-sm mb-8 leading-relaxed">
+                            <p className="text-[#A2A491] font-bold text-sm mb-6 leading-relaxed px-2">
                                 {isEn 
                                     ? `We'll let you know when ${productTitle} is available again.` 
                                     : `سنقوم بإبلاغك فور توفر ${productTitle} من جديد.`}
                             </p>
 
-                            <form onSubmit={handleSubmit} className="w-full">
+                            <form onSubmit={handleSubmit} className="w-full mt-4">
                                 {showEmailForm ? (
                                     <div className="mb-6 relative group">
                                         <input 

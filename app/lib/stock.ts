@@ -29,11 +29,12 @@ export function getIsOutOfStock(
   storeAvailabilityNodes: any[],
   availableForSale: boolean
 ): boolean {
-  if (!selectedLocationId) return !availableForSale;
+  if (!availableForSale) return true;
+  if (!selectedLocationId) return false;
 
   // Fallback branches (not in Shopify)
   if (selectedLocationId.startsWith('fallback-')) {
-    return !availableForSale;
+    return false;
   }
 
   const availableNode = storeAvailabilityNodes.find((node: any) => {
@@ -51,8 +52,12 @@ export function getIsOutOfStock(
   // If we found the specific location in the stock list, use its status
   if (availableNode) return !availableNode.available;
 
-  // If no location-specific node was found, fallback to global availableForSale status
-  return !availableForSale;
+  // If store availability nodes exist for other locations, but not for ours, it's out of stock at ours!
+  if (storeAvailabilityNodes && storeAvailabilityNodes.length > 0) {
+    return true;
+  }
+
+  return false;
 }
 
 /**

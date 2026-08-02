@@ -67,19 +67,22 @@ export async function loader({ context }: LoaderFunctionArgs) {
     const data = await storefront.query(CAKE_ATTRIBUTES_QUERY, {
       variables: { language: storefront.i18n.language },
       cache: storefront.CacheShort(),
+    }).catch((err: any) => {
+      console.warn('[Cake Builder Loader] Storefront query error (403/network):', err?.message || err);
+      return null;
     }) as any;
 
-    const rawHours = data.cakeSettings?.nodes?.[0]?.preparationHours?.value;
+    const rawHours = data?.cakeSettings?.nodes?.[0]?.preparationHours?.value;
     const preparationHours = rawHours ? parseInt(rawHours, 10) : 24;
     
     return {
       locale: storefront.i18n.language.toLowerCase(),
-      cakeAttributes: data.cakeAttributes?.nodes || [],
-      toppingDesigns: data.toppingDesigns?.nodes || [],
+      cakeAttributes: data?.cakeAttributes?.nodes || [],
+      toppingDesigns: data?.toppingDesigns?.nodes || [],
       preparationHours: isNaN(preparationHours) ? 24 : preparationHours
     };
   } catch (error) {
-    console.error('[Cake Builder Loader] GraphQL Query Error:', error);
+    console.error('[Cake Builder Loader] Error:', error);
     return { locale: 'en', cakeAttributes: [], toppingDesigns: [], preparationHours: 24 };
   }
 }

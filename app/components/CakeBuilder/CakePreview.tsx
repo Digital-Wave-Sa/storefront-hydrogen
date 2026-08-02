@@ -59,14 +59,14 @@ const flavorAssets: Record<string, string> = {
 // Map topping IDs to their layered assets
 const toppingAssets: Record<string, { front: string; top?: string; sliced?: string }> = {
   'witches-dont-age': {
-    front: '/cake/toppings/witches_dont_age/front.png',
-    top: '/cake/toppings/witches_dont_age/top.png',
-    sliced: '/cake/toppings/witches_dont_age/sliced.png',
+    front: '/cake/toppings/witches_dont_age/standard_front.png',
+    top: '/cake/toppings/witches_dont_age/standard_front.png',
+    sliced: '/cake/toppings/witches_dont_age/standard_front.png',
   },
   'witches_dont_age': {
-    front: '/cake/toppings/witches_dont_age/front.png',
-    top: '/cake/toppings/witches_dont_age/top.png',
-    sliced: '/cake/toppings/witches_dont_age/sliced.png',
+    front: '/cake/toppings/witches_dont_age/standard_front.png',
+    top: '/cake/toppings/witches_dont_age/standard_front.png',
+    sliced: '/cake/toppings/witches_dont_age/standard_front.png',
   }
 };
 
@@ -158,8 +158,9 @@ export function CakePreview({
       return attr.id === shape || rawId === shape || (shopifyName && cleanShape && cleanShape === shopifyName);
     });
 
-    const hasTop = !!(shapeMatch?.imageTop?.reference?.image?.url || ['classic_round', 'standard', 'mini_cake', 'small_standard', 'circle'].includes(shape || ''));
-    const hasSliced = !!(shapeMatch?.imageSliced?.reference?.image?.url || ['classic_round', 'standard', 'mini_cake', 'small_standard', 'circle'].includes(shape || ''));
+    const isRoundOrTall = ['classic_round', 'standard', 'standard_tall', 'mini_cake', 'small_standard', 'circle'].includes(shape || '');
+    const hasTop = !!(shapeMatch?.imageTop?.reference?.image?.url || isRoundOrTall);
+    const hasSliced = !!(shapeMatch?.imageSliced?.reference?.image?.url || isRoundOrTall);
 
     return {
       front: true,
@@ -254,7 +255,14 @@ export function CakePreview({
     if (resolvedToppingImg) {
       toppingImg = resolvedToppingImg;
     } else {
-      toppingImg = undefined;
+      const cleanKey = (toppingId || '').replace(/_/g, '-');
+      const underscoreKey = (toppingId || '').replace(/-/g, '_');
+      const fallbackAsset = toppingAssets[toppingId] || toppingAssets[cleanKey] || toppingAssets[underscoreKey];
+      if (fallbackAsset) {
+        toppingImg = view === 'top' && fallbackAsset.top ? fallbackAsset.top : view === 'sliced' && fallbackAsset.sliced ? fallbackAsset.sliced : fallbackAsset.front;
+      } else {
+        toppingImg = undefined;
+      }
     }
 
     let tintImg = undefined;
@@ -293,7 +301,9 @@ export function CakePreview({
 
     const { shapeImg, tintImg, toppingImg, toppingId } = activeSources;
 
-    const imagesToLoad: { key: string; src: string }[] = [];
+    const imagesToLoad: { key: string; src: string }[] = [
+      { key: 'board', src: '/cake/saad-cake-board.png' }
+    ];
     if (shapeImg) {
       imagesToLoad.push({ key: 'shape', src: shapeImg });
     }
@@ -335,26 +345,20 @@ export function CakePreview({
       if (!ctx) return;
       ctx.clearRect(0, 0, width, height);
 
-      // Define bounding box to center the cake
-      let cakeW = 560;
-      let cakeH = 560;
-      let cakeX = (width - cakeW) / 2;
-      let cakeY = (height - cakeH) / 2;
+      // Consistent, fixed bounding box so all cake shapes remain stationary when switching shapes
+      const cakeW = 560;
+      const cakeH = 560;
+      const cakeX = (width - cakeW) / 2;
+      const cakeY = (height - cakeH) / 2 - (view === 'top' ? 0 : 30);
 
-      // Adjust height for aspect ratios of standard/heart shapes
-      const isRoundShape = shape === 'standard' || shape === 'circle' || shape === 'classic_round' || shape === 'mini_cake' || shape === 'small_standard';
-      if (isRoundShape) {
-        cakeH = 560 * (578 / 500); // aspect ratio ~1.156
-        cakeY = (height - cakeH) / 2;
-        if (view !== 'top') {
-          cakeY -= 70; // Center visually in front/sliced view by offsetting empty space on top
-        }
-      } else if (shape === 'heart') {
-        cakeH = 560 * (521 / 500); // aspect ratio ~1.042
-        cakeY = (height - cakeH) / 2;
-        if (view !== 'top') {
-          cakeY -= 70; // Center visually in front/sliced view by offsetting empty space on top
-        }
+      // 1. Draw custom realistic cake board image under the cake in front/sliced view
+      if (view !== 'top' && loadedImages.board) {
+        const boardW = cakeW * 0.85;
+        const aspect = loadedImages.board.height / loadedImages.board.width;
+        const boardH = boardW * (aspect || 0.3);
+        const boardX = (width - boardW) / 2;
+        const boardY = cakeY + cakeH - boardH * 0.88;
+        ctx.drawImage(loadedImages.board, boardX, boardY, boardW, boardH);
       }
 
       // 2. Draw cake shape and apply dynamic coloring mask

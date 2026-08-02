@@ -338,7 +338,7 @@ export default function ContactPage() {
                 {isEn ? 'Contact Information' : 'معلومات التواصل'}
               </h2>
               <div className="space-y-0">
-                <InfoRow label="WhatsApp" value="+966 9200 17020" isEn={isEn} isLtrValue />
+                <InfoRow label="WhatsApp" value="+966 9200 17070" isEn={isEn} isLtrValue />
                 <InfoRow label={isEn ? 'Phone' : 'الهاتف'} value="920017070" isEn={isEn} isLtrValue />
                 <InfoRow label={isEn ? 'Email' : 'البريد الإلكتروني'} value="info@saadeddin.com" isEn={isEn} isLtrValue />
               </div>

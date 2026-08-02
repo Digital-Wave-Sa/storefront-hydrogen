@@ -307,8 +307,8 @@ export default function ContactPage() {
           <ContactCard
             title="WhatsApp"
             subtitle={isEn ? 'Fastest — Instant response' : 'الأسرع — رد فوري'}
-            pill={isEn ? '+966 9200 17020' : '+966 9200 17020'}
-            href="https://wa.me/966920017020"
+            pill="+966 9200 17070"
+            href="https://wa.me/966920017070"
           />
           <ContactCard
             title={isEn ? 'Phone' : 'الهاتف'}

@@ -234,10 +234,11 @@ export function CakePreview({
   
   const supportedViews = useMemo(() => {
     const shapeMatch = cakeAttributes?.find(attr => {
-      if (!attr.nameEn?.value) return false;
-      const shopifyName = attr.nameEn.value.toLowerCase();
+      const isShapeType = attr.attributeType?.value?.toLowerCase() === 'shape' || attr.attributeType?.value?.toLowerCase() === 'base';
+      if (!isShapeType) return false;
+      const shopifyName = (attr.nameEn?.value || '').toLowerCase().replace(/[-_]/g, ' ');
       const cleanShape = (shape || '').toLowerCase().replace(/[-_]/g, ' ');
-      return cleanShape.includes(shopifyName) || cleanShape === shopifyName;
+      return attr.id === shape || cleanShape === shopifyName || (shopifyName && cleanShape.includes(shopifyName)) || (cleanShape && shopifyName.includes(cleanShape));
     });
 
     const hasTop = !!(shapeMatch?.imageTop?.reference?.image?.url || ['classic_round', 'standard', 'mini_cake', 'small_standard', 'circle'].includes(shape || ''));
@@ -265,10 +266,11 @@ export function CakePreview({
     
     // Find the current shape attribute
     const shapeMatch = cakeAttributes?.find(attr => {
-      if (!attr.nameEn?.value) return false;
-      const shopifyName = attr.nameEn.value.toLowerCase();
+      const isShapeType = attr.attributeType?.value?.toLowerCase() === 'shape' || attr.attributeType?.value?.toLowerCase() === 'base';
+      if (!isShapeType) return false;
+      const shopifyName = (attr.nameEn?.value || '').toLowerCase().replace(/[-_]/g, ' ');
       const cleanShape = (shape || '').toLowerCase().replace(/[-_]/g, ' ');
-      return cleanShape.includes(shopifyName) || cleanShape === shopifyName;
+      return attr.id === shape || cleanShape === shopifyName || (shopifyName && cleanShape.includes(shopifyName)) || (cleanShape && shopifyName.includes(cleanShape));
     });
 
     // Check if Shopify has the shape image uploaded
@@ -293,7 +295,7 @@ export function CakePreview({
     let toppingImg = undefined;
 
     // Resolve topping from Shopify Metaobjects via connecting design metaobjects
-    const toppingMatch = cakeAttributes?.find(attr => attr.attributeType?.value === 'Topping' && (attr.id === toppingId || attr.nameEn?.value?.toLowerCase() === toppingId.toLowerCase() || attr.nameEn?.value?.toLowerCase()?.replace(/[-_\s]+/g, ' ') === toppingId.toLowerCase()?.replace(/[-_\s]+/g, ' ')));
+    const toppingMatch = cakeAttributes?.find(attr => (attr.attributeType?.value?.toLowerCase() === 'topping' || attr.attributeType?.value?.toLowerCase() === 'style') && (attr.id === toppingId || attr.nameEn?.value?.toLowerCase() === toppingId.toLowerCase() || attr.nameEn?.value?.toLowerCase()?.replace(/[-_\s]+/g, ' ') === toppingId.toLowerCase()?.replace(/[-_\s]+/g, ' ')));
     
     let resolvedToppingImg = undefined;
     if (toppingMatch && shapeMatch && toppingDesigns?.length) {
@@ -318,7 +320,8 @@ export function CakePreview({
     }
 
     let tintImg = undefined;
-    if (view === 'front') {
+    // Only use static local fallback tint overlay if NO custom Shopify shape image was uploaded
+    if (view === 'front' && !resolvedShapeImg) {
       if (shape === 'classic_round') {
         tintImg = '/cake/shapes/classic-round-tint.png';
       } else if (shape === 'standard') {

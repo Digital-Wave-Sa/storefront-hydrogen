@@ -750,9 +750,6 @@ const ORDER_ITEM_FRAGMENT = `#graphql
     fulfillmentStatus
     canceledAt
     id
-    shippingLine {
-      title
-    }
     customAttributes {
       key
       value

@@ -2985,7 +2985,7 @@ const PRODUCT_FRAGMENT = `#graphql
     productType
     isGiftCard
     tags
-    collections(first: 5) {
+    collections(first: 10) {
       nodes {
         id
         title
@@ -3000,6 +3000,9 @@ const PRODUCT_FRAGMENT = `#graphql
           value
         }
         name_ar: metafield(namespace: "custom", key: "name_ar") {
+          value
+        }
+        leadTime: metafield(namespace: "custom", key: "delivery_lead_time") {
           value
         }
       }
@@ -3143,14 +3146,6 @@ const PRODUCT_FRAGMENT = `#graphql
     }
     expected_restock_date: metafield(namespace: "custom", key: "expected_restock_date") {
       value
-    }
-    collections(first: 10) {
-      nodes {
-        id
-        leadTime: metafield(namespace: "custom", key: "delivery_lead_time") {
-          value
-        }
-      }
     }
     related_products: metafield(namespace: "custom", key: "related_products") {
       references(first: 4) {

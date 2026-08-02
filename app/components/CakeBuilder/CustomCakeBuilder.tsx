@@ -182,6 +182,7 @@ export default function CustomCakeBuilder({
 
         return {
           id,
+          gid: attr.id,
           name: nameAr ? `${nameAr} (${nameEn})` : nameEn,
           price,
           image: thumbnail,
@@ -205,6 +206,7 @@ export default function CustomCakeBuilder({
 
         return {
           id,
+          gid: attr.id,
           name: nameAr ? `${nameAr} (${nameEn})` : nameEn,
           price,
           image: thumbnail,
@@ -225,6 +227,7 @@ export default function CustomCakeBuilder({
 
         return {
           id,
+          gid: attr.id,
           name: nameAr ? `${nameAr} (${nameEn})` : nameEn,
           price,
           image: thumbnail,
@@ -236,11 +239,17 @@ export default function CustomCakeBuilder({
 
     // Add default "Smooth Minimalist" (basic) option as index 0 for toppings
     const basicStyle = { id: 'basic', name: isEn ? 'Smooth Minimalist' : 'ناعم (Smooth Minimalist)', price: 0, image: '' };
-    const styles = [basicStyle, ...toppingsList];
+    const toppingsFallback = [
+      basicStyle,
+      { id: 'witches-dont-age', name: isEn ? 'Witches Dont Age' : 'الساحرات لا يشيخن (Witches Dont Age)', price: 30, image: '/cake/toppings/witches_dont_age/standard_front.png', imageFront: '/cake/toppings/witches_dont_age/standard_front.png' },
+      { id: 'fresh-berries', name: isEn ? 'Fresh Berries' : 'توت بري طازج (Fresh Berries)', price: 35, image: '/cake/flavors/chocolate.png', imageFront: undefined }
+    ];
+    const styles = toppingsList.length > 0 ? [basicStyle, ...toppingsList] : toppingsFallback;
 
     // Fallbacks if lists are empty (to prevent crash)
     const finalShapes = shapes.length ? shapes : [
-      { id: 'classic_round', name: 'دائري كلاسيكي (Classic Round)', price: 250, image: '/images/cake-builder/cake-round.webp', imageFront: undefined, imageTop: undefined, imageSliced: undefined, is3D: true }
+      { id: 'classic_round', name: 'دائري كلاسيكي (Classic Round)', price: 250, image: '/images/cake-builder/cake-round.webp', imageFront: undefined, imageTop: undefined, imageSliced: undefined, is3D: true },
+      { id: 'standard_tall', name: 'ستاندرد طولي (Standard Tall)', price: 270, image: '/images/cake-builder/cake-tall.webp', imageFront: undefined, imageTop: undefined, imageSliced: undefined, is3D: true }
     ];
     const finalFlavors = flavors.length ? flavors : [
       { id: 'vanilla', name: 'فانيلا (Vanilla)', price: 0, image: '/cake/flavors/vanilla.png', color: '#f5deb3' }
@@ -955,7 +964,7 @@ export default function CustomCakeBuilder({
                   shape={selections.shape.id}
                   layers={selections.tier.count === 3 ? 'three' : selections.tier.count === 2 ? 'two' : 'one'}
                   color={selections.color.color}
-                  toppings={[{ id: selections.style.id, name: selections.style.id }]}
+                  toppings={[{ id: selections.style.id, gid: (selections.style as any)?.gid, name: selections.style.name }]}
                   scale={selections.size.scale}
                   message={selections.message}
                   flavorName={selections.flavor.name}

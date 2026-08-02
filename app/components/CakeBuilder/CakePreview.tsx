@@ -210,6 +210,7 @@ export function CakePreview({
     }
 
     const toppingId = toppings?.[0]?.id || '';
+    const toppingGid = (toppings?.[0] as any)?.gid || '';
     let toppingImg = undefined;
 
     // Resolve topping from Shopify Metaobjects via connecting design metaobjects
@@ -220,15 +221,17 @@ export function CakePreview({
       const attrId = (attr.id || '').toLowerCase();
       const attrNameEn = (attr.nameEn?.value || '').toLowerCase().replace(/[-_\s]+/g, ' ');
       const attrNameAr = (attr.nameAr?.value || '').toLowerCase().replace(/[-_\s]+/g, ' ');
-      return attrId === toppingId || attrNameEn === cleanToppingId || attrNameAr === cleanToppingId || (cleanToppingId && attrNameEn && (cleanToppingId.includes(attrNameEn) || attrNameEn.includes(cleanToppingId)));
+      return attr.id === toppingGid || attrId === toppingId.toLowerCase() || attrNameEn === cleanToppingId || attrNameAr === cleanToppingId || (cleanToppingId && attrNameEn && (cleanToppingId.includes(attrNameEn) || attrNameEn.includes(cleanToppingId)));
     });
     
     let resolvedToppingImg = undefined;
     if (toppingMatch && shapeMatch && toppingDesigns?.length) {
       const design = toppingDesigns.find(d => {
-        const tRefId = d.topping?.reference?.id;
-        const sRefId = d.shape?.reference?.id;
-        return tRefId && sRefId && tRefId === toppingMatch.id && sRefId === shapeMatch.id;
+        const tRefId = (d.topping?.reference?.id || d.topping?.value || '').toLowerCase();
+        const sRefId = (d.shape?.reference?.id || d.shape?.value || '').toLowerCase();
+        const tMatchId = (toppingMatch.id || '').toLowerCase();
+        const sMatchId = (shapeMatch.id || '').toLowerCase();
+        return tRefId && sRefId && (tRefId === tMatchId || tRefId.includes(tMatchId)) && (sRefId === sMatchId || sRefId.includes(sMatchId));
       });
       if (design) {
         resolvedToppingImg = view === 'top' && design.imageTop?.reference?.image?.url

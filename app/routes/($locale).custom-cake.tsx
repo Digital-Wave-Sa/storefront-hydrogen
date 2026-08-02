@@ -35,6 +35,7 @@ const CAKE_ATTRIBUTES_QUERY = `#graphql
       nodes {
         id
         topping: field(key: "topping") {
+          value
           reference {
             ... on Metaobject {
               id
@@ -42,6 +43,7 @@ const CAKE_ATTRIBUTES_QUERY = `#graphql
           }
         }
         shape: field(key: "shape") {
+          value
           reference {
             ... on Metaobject {
               id

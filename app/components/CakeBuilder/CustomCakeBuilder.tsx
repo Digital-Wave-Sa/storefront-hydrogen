@@ -337,6 +337,69 @@ export default function CustomCakeBuilder({
     }
   }, [mergedOptions, cakeAttributes, savedSelections]);
 
+  // Dynamically filter available toppings (styles) for the selected shape based on cake_topping_design metaobjects
+  const availableStyles = useMemo(() => {
+    if (!mergedOptions.styles || mergedOptions.styles.length === 0) return [];
+
+    if (selections.shape?.id === 'square' || selections.shape?.id === 'sheet') {
+      return mergedOptions.styles.filter(s => s.id === 'basic');
+    }
+
+    if (!toppingDesigns || toppingDesigns.length === 0) {
+      return mergedOptions.styles;
+    }
+
+    const currentShapeGid = ((selections.shape as any)?.gid || selections.shape?.id || '').toLowerCase();
+    const currentShapeName = (selections.shape?.name || '').toLowerCase();
+
+    return mergedOptions.styles.filter(style => {
+      if (style.id === 'basic') return true;
+
+      const styleGid = ((style as any)?.gid || style.id || '').toLowerCase();
+
+      // Find designs specifically registered for this topping
+      const designsForTopping = toppingDesigns.filter(d => {
+        const tRefId = (d.topping?.reference?.id || d.topping?.value || '').toLowerCase();
+        return tRefId && styleGid && (tRefId === styleGid || tRefId.includes(styleGid) || styleGid.includes(tRefId));
+      });
+
+      // If no shape-specific designs exist for this topping, assume it's generic and available for all shapes
+      if (designsForTopping.length === 0) {
+        return true;
+      }
+
+      // If shape-specific designs exist, check if ONE of them links to the currently selected shape
+      return designsForTopping.some(d => {
+        const sRefId = (d.shape?.reference?.id || d.shape?.value || '').toLowerCase();
+
+        if (sRefId && currentShapeGid && (sRefId === currentShapeGid || sRefId.includes(currentShapeGid) || currentShapeGid.includes(sRefId))) {
+          return true;
+        }
+
+        const shapeMatchAttr = cakeAttributes?.find(attr => (attr.id || '').toLowerCase() === sRefId);
+        if (shapeMatchAttr) {
+          const shopifyShapeNameEn = (shapeMatchAttr.nameEn?.value || '').toLowerCase().replace(/[-_\s]+/g, ' ');
+          const cleanCurrentShape = currentShapeName.replace(/[-_\s]+/g, ' ');
+          if (shopifyShapeNameEn && cleanCurrentShape && (cleanCurrentShape.includes(shopifyShapeNameEn) || shopifyShapeNameEn.includes(cleanCurrentShape))) {
+            return true;
+          }
+        }
+
+        return false;
+      });
+    });
+  }, [mergedOptions.styles, selections.shape, toppingDesigns, cakeAttributes]);
+
+  // Keep selected style synced if shape changes and previous style becomes unavailable
+  React.useEffect(() => {
+    if (availableStyles.length > 0) {
+      const isAvailable = availableStyles.some(s => s.id === selections.style?.id);
+      if (!isAvailable) {
+        setSelections(prev => ({ ...prev, style: availableStyles[0] }));
+      }
+    }
+  }, [availableStyles, selections.style?.id]);
+
   // Auto-save selections to localStorage on change
   React.useEffect(() => {
     if (hasLoadedRef.current) {
@@ -767,10 +830,7 @@ export default function CustomCakeBuilder({
                     </div>
                   ) : null}
 
-                  {renderOptionsGrid('style', selections.shape.id === 'square' || selections.shape.id === 'sheet'
-                    ? mergedOptions.styles.filter(s => s.id === 'basic')
-                    : mergedOptions.styles
-                  )}
+                  {renderOptionsGrid('style', availableStyles)}
                 </div>
               )}
 

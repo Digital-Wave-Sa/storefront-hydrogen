@@ -312,8 +312,8 @@ export default function Collection() {
                   )}
                   <ProductsGrid products={filteredNodes} view={view} />
                   <div className="flex justify-center mt-16">
-                    <NextLink className="bg-[#234745] text-white px-16 py-4 rounded-full font-black shadow-[0_10px_30px_rgba(27,61,46,0.3)] hover:shadow-[0_15px_40px_rgba(27,61,46,0.4)] hover:-translate-y-1 transition-all duration-300">
-                      {isLoading ? (isEn ? 'Loading...' : 'جاري التحميل...') : <span>{isEn ? 'Browse More ↓' : 'تصفح المزيد ↓'}</span>}
+                    <NextLink className="bg-[#234745] !text-white px-16 py-4 rounded-full font-black shadow-[0_10px_30px_rgba(27,61,46,0.3)] hover:shadow-[0_15px_40px_rgba(27,61,46,0.4)] hover:-translate-y-1 transition-all duration-300" style={{ color: '#ffffff' }}>
+                      {isLoading ? (isEn ? 'Loading...' : 'جاري التحميل...') : <span className="!text-white" style={{ color: '#ffffff' }}>{isEn ? 'Browse More ↓' : 'تصفح المزيد ↓'}</span>}
                     </NextLink>
                   </div>
                 </>
@@ -322,7 +322,7 @@ export default function Collection() {
           </div>
 
           {/* Desktop Sidebar (Right side in RTL) */}
-          <div className="w-[320px] shrink-0 lg:order-1 border border-gray-200 rounded-3xl bg-white sticky top-24 self-start h-fit overflow-hidden">
+          <div className="hidden lg:block w-[320px] shrink-0 lg:order-1 border border-gray-200 rounded-3xl bg-white sticky top-24 self-start h-fit overflow-hidden">
              <FilterSidebar filters={collection.products.filters} onClose={() => {}} isDesktop={true} isEn={isEn} />
           </div>
 

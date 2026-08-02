@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { data, redirect, type ActionFunctionArgs, type LoaderFunctionArgs, type MetaFunction } from 'react-router';
-import { Form, Link, useActionData, useNavigation, useRouteLoaderData, useFetcher, useLoaderData } from 'react-router';
+import { Form, Link, useActionData, useNavigation, useRouteLoaderData, useFetcher, useLoaderData, useLocation } from 'react-router';
 import { LogoSplash } from '~/components/LogoSplash';
 import { SaadeddinApi } from '~/lib/saadeddin-api.server';
 import { derivePassword } from '~/lib/auth.server';
@@ -505,8 +505,9 @@ export default function Register() {
     }
   }
 
+  const location = useLocation();
   const rootData = useRouteLoaderData('root') as any;
-  const isEn = rootData?.locale?.language === 'EN';
+  const isEn = location.pathname.startsWith('/en') || rootData?.locale === 'en' || rootData?.consent?.language?.toLowerCase() === 'en';
   const actionData = useActionData() as any;
   const navigation = useNavigation();
   const isLoading = navigation.state === 'submitting';
@@ -518,6 +519,8 @@ export default function Register() {
     fullName: '',
     companyName: '',
     taxRegistration: '',
+    nationalAddress: '',
+    commercialRegister: '',
     companyAddress: '',
     phone: initialPhone,
     countryCode: initialCountryCode,
@@ -612,10 +615,10 @@ export default function Register() {
       <div className="w-full max-w-[1280px] flex flex-col lg:flex-row-reverse gap-6 relative min-h-[880px]">
 
         {/* Left Pane - Form Area */}
-        <div className="w-full lg:w-1/2 bg-white border border-[#BBCFCD]/50 rounded-[24px] flex flex-col items-center justify-center p-4 lg:p-12 relative shadow-sm">
+        <div className="w-full lg:w-1/2 bg-white border border-[#BBCFCD]/50 rounded-[24px] overflow-hidden flex flex-col items-center justify-center p-0 lg:p-12 relative shadow-sm">
 
-          {/* Mobile Green Header Box (Visible only on mobile lg:hidden) */}
-          <div className="w-full bg-[#234745] text-white rounded-[28px] p-6 flex flex-col items-center justify-center text-center relative overflow-hidden mb-6 lg:hidden shadow-md">
+          {/* Mobile Green Header Box (Visible only on mobile lg:hidden, full width inside container with no padding) */}
+          <div className="w-full bg-[#234745] text-white rounded-b-[24px] p-6 flex flex-col items-center justify-center text-center relative overflow-hidden lg:hidden shadow-md">
             {/* Top Pill: Back to Store */}
             <div className="w-full flex justify-end mb-2">
               <Link
@@ -641,7 +644,7 @@ export default function Register() {
               {isEn ? 'Since 1919, we have been offering the finest pastries and luxury chocolates with passion.' : 'منذ عام 1919، نقدم أجود الحلويات والشوكولاتة الفاخرة بعشق وشغف.'}
             </p>
           </div>
-          <div className="w-full flex flex-col items-center">
+          <div className="w-full flex flex-col items-center p-6 lg:p-0">
 
             {/* Header */}
             <div className="flex flex-col items-center mb-6 gap-2 w-full border-b border-[#BBCFCD]/50 pb-6">
@@ -732,7 +735,8 @@ export default function Register() {
 
                         <div className="flex flex-col gap-2 w-full">
                           <label className={`text-[12px] font-bold text-[#171717] px-1 w-full flex gap-1 ${isEn ? 'flex-row' : 'flex-row-reverse justify-end'}`} style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
-                            <span>{isEn ? 'Tax Registration (Optional)' : 'الرقم الضريبي (اختياري)'}</span>
+                            <span className="text-[#E55C5C]">*</span>
+                            <span>{isEn ? 'Tax Registration Number' : 'الرقم الضريبي'}</span>
                           </label>
                           <input
                             name="taxRegistration"
@@ -741,6 +745,41 @@ export default function Register() {
                             className="w-full bg-white border border-[#BBCFCD] rounded-[12px] px-4 py-3 h-[48px] focus:border-[#234745] outline-none text-[#171717] font-medium text-[14px] placeholder:text-[#BBCFCD] transition-colors"
                             value={formData.taxRegistration}
                             onChange={(e) => setFormData({ ...formData, taxRegistration: e.target.value })}
+                            required={formData.accountType === 'company'}
+                            style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
+                          />
+                        </div>
+
+                        <div className="flex flex-col gap-2 w-full">
+                          <label className={`text-[12px] font-bold text-[#171717] px-1 w-full flex gap-1 ${isEn ? 'flex-row' : 'flex-row-reverse justify-end'}`} style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
+                            <span className="text-[#E55C5C]">*</span>
+                            <span>{isEn ? 'National Address' : 'العنوان الوطني'}</span>
+                          </label>
+                          <input
+                            name="nationalAddress"
+                            type="text"
+                            placeholder={isEn ? "RRRD2929, Riyadh 12345" : "RRRD2929، الرياض 12345"}
+                            className="w-full bg-white border border-[#BBCFCD] rounded-[12px] px-4 py-3 h-[48px] focus:border-[#234745] outline-none text-[#171717] font-medium text-[14px] placeholder:text-[#BBCFCD] transition-colors"
+                            value={formData.nationalAddress}
+                            onChange={(e) => setFormData({ ...formData, nationalAddress: e.target.value })}
+                            required={formData.accountType === 'company'}
+                            style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
+                          />
+                        </div>
+
+                        <div className="flex flex-col gap-2 w-full">
+                          <label className={`text-[12px] font-bold text-[#171717] px-1 w-full flex gap-1 ${isEn ? 'flex-row' : 'flex-row-reverse justify-end'}`} style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
+                            <span className="text-[#E55C5C]">*</span>
+                            <span>{isEn ? 'Commercial Register (CR)' : 'السجل التجاري'}</span>
+                          </label>
+                          <input
+                            name="commercialRegister"
+                            type="text"
+                            placeholder="1010000000"
+                            className="w-full bg-white border border-[#BBCFCD] rounded-[12px] px-4 py-3 h-[48px] focus:border-[#234745] outline-none text-[#171717] font-medium text-[14px] placeholder:text-[#BBCFCD] transition-colors"
+                            value={formData.commercialRegister}
+                            onChange={(e) => setFormData({ ...formData, commercialRegister: e.target.value })}
+                            required={formData.accountType === 'company'}
                             style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
                           />
                         </div>
@@ -877,6 +916,8 @@ export default function Register() {
                   <input type="hidden" name="fullName" value={formData.fullName} />
                   <input type="hidden" name="companyName" value={formData.companyName} />
                   <input type="hidden" name="taxRegistration" value={formData.taxRegistration} />
+                  <input type="hidden" name="nationalAddress" value={formData.nationalAddress} />
+                  <input type="hidden" name="commercialRegister" value={formData.commercialRegister} />
                   <input type="hidden" name="companyAddress" value={formData.companyAddress} />
                   <input type="hidden" name="email" value={formData.email} />
                   <input type="hidden" name="language" value={formData.language} />

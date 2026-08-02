@@ -108,11 +108,11 @@ export default function AboutPage() {
       {/* Hero Section */}
       <div className="relative w-full bg-[#234745] overflow-hidden flex flex-col items-center justify-center text-white px-[20px] py-10">
         <div
-          className="absolute inset-0 pointer-events-none opacity-100"
+          className="absolute inset-0 pointer-events-none opacity-100 bg-[length:950px_800px] md:bg-[length:1900px_2000px]"
           style={{
             backgroundImage: `url(${patternBg})`,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center'
+            backgroundPosition: 'center',
+            backgroundRepeat: 'no-repeat',
           }}
         />
         <div className="relative z-10 text-center max-w-[800px]">

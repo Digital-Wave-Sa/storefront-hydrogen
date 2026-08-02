@@ -336,20 +336,47 @@ export default function OccasionsPage() {
             ) : (
                 /* INNER PAGE: Occasion Category View with Back Button, Filter Pills & Products */
                 <>
-                    {/* Back to All Occasions Navigation */}
-                    <div className="max-w-[1200px] mx-auto px-4 lg:px-8 pt-8 pb-4">
-                        <button
-                            onClick={() => {
-                                setSelectedCategory(null);
-                                setSearchParams({});
-                            }}
-                            className="inline-flex items-center gap-2 text-[#234745] hover:text-[#1a3533] font-bold text-[15px] transition-colors bg-[#FEF8EB] px-5 py-2 rounded-full border border-[#234745]/20 hover:border-[#234745]"
-                        >
-                            <svg className={`w-4 h-4 ${isEn ? '' : 'rotate-180'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                            </svg>
-                            <span>{isEn ? 'All Occasions' : 'جميع المناسبات'}</span>
-                        </button>
+                    {/* Category Filter Pills Tabs Bar */}
+                    <div className="max-w-[1200px] mx-auto px-4 lg:px-8 pt-8 pb-4 flex justify-center">
+                        <div className="flex items-center justify-center gap-2.5 overflow-x-auto hide-scrollbars py-2 px-1 w-full max-w-full">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setSelectedCategory(null);
+                                    setSearchParams({});
+                                }}
+                                className={`shrink-0 h-[40px] px-4 py-[10px] rounded-[25px] text-[16px] leading-[100%] text-center inline-flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                                    !selectedCategory || selectedCategory === 'all'
+                                        ? 'bg-[#BBCFCD] text-[#234745] font-bold shadow-sm border-0'
+                                        : 'bg-white border border-[#234745] text-[#234745] font-medium hover:bg-[#BBCFCD]/20'
+                                }`}
+                                style={{ fontFamily: "'GE Dinar One', sans-serif" }}
+                            >
+                                {isEn ? 'All Occasions' : 'جميع المناسبات'}
+                            </button>
+
+                            {occasionCards.map((cat, idx) => {
+                                const isSelected = selectedCategory === cat.handle;
+                                return (
+                                    <button
+                                        key={idx}
+                                        type="button"
+                                        onClick={() => {
+                                            setSelectedCategory(cat.handle);
+                                            setSearchParams({ category: cat.handle });
+                                        }}
+                                        className={`shrink-0 h-[40px] px-4 py-[10px] rounded-[25px] text-[16px] leading-[100%] text-center inline-flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                                            isSelected
+                                                ? 'bg-[#BBCFCD] text-[#234745] font-bold shadow-sm border-0'
+                                                : 'bg-white border border-[#234745] text-[#234745] font-medium hover:bg-[#BBCFCD]/20'
+                                        }`}
+                                        style={{ fontFamily: "'GE Dinar One', sans-serif" }}
+                                    >
+                                        {cat.name}
+                                    </button>
+                                );
+                            })}
+                        </div>
                     </div>
 
                     {/* Products Section */}

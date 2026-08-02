@@ -407,7 +407,7 @@ function CollectionAllHero({ title, productsCount, isEn }: { title: string, prod
   return (
     <section className="relative h-[144px] w-full bg-[#234745] overflow-hidden flex items-center" dir={isEn ? 'ltr' : 'rtl'}>
       <div
-        className="absolute inset-0 bg-[length:1500px_800px] md:bg-[length:1900px_2000px]"
+        className="absolute inset-0 bg-[length:950px_800px] md:bg-[length:1900px_2000px]"
         style={{
           backgroundImage: `url(${patternBg})`,
           backgroundPosition: 'center',

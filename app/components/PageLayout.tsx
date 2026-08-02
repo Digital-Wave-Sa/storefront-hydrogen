@@ -15,6 +15,7 @@ import {
 } from '~/components/SearchFormPredictive';
 import {SearchResultsPredictive} from '~/components/SearchResultsPredictive';
 import {MobileSearchModal} from '~/components/MobileSearchModal';
+import {LocationDiscountModal} from '~/components/LocationDiscountModal';
 
 interface PageLayoutProps {
   cart: Promise<CartApiQueryFragment | null>;
@@ -78,7 +79,7 @@ export function PageLayout({
           />
         )
       )}
-      <main>{children}</main>
+      <main className="max-w-full overflow-x-clip">{children}</main>
       {!isCustomCakePage && (
         <Footer
           footer={footer}
@@ -88,6 +89,13 @@ export function PageLayout({
           megaMenuData={megaMenuData}
         />
       )}
+      <LocationDiscountModal
+        branchId={rootData?.selectedLocationId}
+        branchName={rootData?.selectedLocationName}
+        region={rootData?.selectedCity}
+        locationDiscounts={rootData?.locationDiscounts || []}
+        isEn={locale === 'en'}
+      />
     </Aside.Provider>
   );
 }

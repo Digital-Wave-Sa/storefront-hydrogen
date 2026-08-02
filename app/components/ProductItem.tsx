@@ -3,7 +3,7 @@ import { Image } from '@shopify/hydrogen';
 import { useState, useEffect, useMemo } from 'react';
 import { useVariantUrl } from '~/utils';
 import { useI18n } from '~/lib/i18n';
-import { getIsOutOfStock } from '~/lib/stock';
+import { getIsOutOfStock, isCorporateProduct } from '~/lib/stock';
 import { getVisibilityStatus } from '~/lib/visibility';
 import { Price } from '~/components/Price';
 import { AddToCartButton } from '~/components/AddToCartButton';
@@ -32,6 +32,12 @@ export function ProductItem({
   /** When true: add-to-cart goes to the export journey (/export-cart) */
   isExport?: boolean;
 }) {
+  const location = useLocation();
+  const isCorporatePage = location.pathname.includes('/corporate');
+  if (isCorporateProduct(product) && !isCorporatePage) {
+    return null;
+  }
+
   const [isNotifyModalOpen, setIsNotifyModalOpen] = useState(false);
   const { selectedLocationId, selectedLocationName } = useOutletContext<{ selectedLocationId?: string, selectedLocationName?: string }>() || {};
 
@@ -75,7 +81,6 @@ export function ProductItem({
   );
   const isAvailable = !isOutOfStock && !!variant;
 
-  const location = useLocation();
   const rootData = useRouteLoaderData('root') as any;
   const isEn = location.pathname.startsWith('/en') || rootData?.locale === 'en';
   const locale = isEn ? 'en' : 'ar';
@@ -196,13 +201,18 @@ export function ProductItem({
             <h4 className={`text-[16px] font-black text-gray-800 mb-2 truncate transition-colors ${isVisibilityBlocked ? '' : 'group-hover:text-[#234745]'}`} style={{ opacity: showOutOfStock ? 0.4 : 1 }}>{formatNumbers(product.title)}</h4>
           </Link>
           {!isVisibilityBlocked && product.priceRange && (
-            <div style={{ opacity: showOutOfStock ? 0.4 : 1 }}>
+            <div className="flex items-center gap-1.5" style={{ opacity: showOutOfStock ? 0.4 : 1 }}>
               <Price
                 data={product.priceRange.minVariantPrice}
                 size="lg"
                 isEn={isEn}
                 className="mt-1"
               />
+              {isExport && (
+                <span className="text-[13px] font-bold text-[#8B9895] inline-block font-en" dir="ltr">
+                  (${(parseFloat(product.priceRange.minVariantPrice.amount) / 3.75).toFixed(2)} USD)
+                </span>
+              )}
             </div>
           )}
           <div className="mt-4 flex items-center justify-end gap-3">
@@ -348,8 +358,13 @@ export function ProductItem({
         <div className={`mt-[8px] mb-[16px] flex ${isEn ? 'justify-start' : 'justify-start'} items-center gap-[8px] min-h-[28px]`} style={{ opacity: showOutOfStock ? 0.4 : 1 }}>
           {!isVisibilityBlocked && product.priceRange ? (
             <>
-              <div className="flex items-center text-[#255441]">
+              <div className="flex items-center gap-1.5 text-[#255441]">
                 <Price data={product.priceRange.minVariantPrice} size="lg" isEn={isEn} />
+                {isExport && (
+                  <span className="text-[13px] font-bold text-[#8B9895] inline-block font-en" dir="ltr">
+                    (${(parseFloat(product.priceRange.minVariantPrice.amount) / 3.75).toFixed(2)} USD)
+                  </span>
+                )}
               </div>
               {product.compareAtPriceRange?.minVariantPrice && parseFloat(product.compareAtPriceRange.minVariantPrice.amount) > parseFloat(product.priceRange.minVariantPrice.amount) && (
                 <div className="flex items-center text-[#E64950] line-through">

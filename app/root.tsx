@@ -490,7 +490,7 @@ export function Layout({children}: {children?: React.ReactNode}) {
   const enUrl = `https://saadeddin.com${enPath}`;
 
   return (
-    <html lang={locale} dir={isEn ? 'ltr' : 'rtl'} className="overflow-x-hidden" suppressHydrationWarning>
+    <html lang={locale} dir={isEn ? 'ltr' : 'rtl'} suppressHydrationWarning>
       <head suppressHydrationWarning>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width,initial-scale=1" />
@@ -535,7 +535,7 @@ export function Layout({children}: {children?: React.ReactNode}) {
         />
       </head>
       <body
-        className={`bg-[#FEF8EB] overflow-x-hidden w-full ${isEn ? 'font-en' : 'font-ar'} ${isReady ? 'show-content' : ''}`}
+        className={`bg-[#FEF8EB] w-full ${isEn ? 'font-en' : 'font-ar'} ${isReady ? 'show-content' : ''}`}
         style={!isReady ? { opacity: 0, visibility: 'hidden', backgroundColor: '#FEF8EB' } : undefined}
         suppressHydrationWarning
       >

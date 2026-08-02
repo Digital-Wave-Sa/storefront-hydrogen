@@ -435,8 +435,8 @@ function AccountLayout({
       style={{
         backgroundColor: '#234745',
         backgroundImage: "url('/images/second-bg-pattern.svg')",
-        backgroundRepeat: 'repeat',
-        backgroundSize: '350px',
+        backgroundRepeat: 'no-repeat',
+        backgroundSize: '950px 800px',
         backgroundPosition: 'center',
       }}
       dir={isEn ? 'ltr' : 'rtl'}

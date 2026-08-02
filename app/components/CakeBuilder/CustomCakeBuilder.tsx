@@ -622,7 +622,7 @@ export default function CustomCakeBuilder({
         dir={isEn ? 'ltr' : 'rtl'}
       >
         <div
-          className="absolute inset-0 bg-[length:1500px_800px] md:bg-[length:1900px_2000px]"
+          className="absolute inset-0 bg-[length:950px_800px] md:bg-[length:1900px_2000px]"
           style={{
             backgroundImage: "url('/images/second-bg-pattern.svg')",
             backgroundPosition: 'center',

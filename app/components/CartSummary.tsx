@@ -387,7 +387,7 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
                       </svg>
                     </div>
                     <span className="font-bold text-[14px] text-[#234745]">
-                      {isEn ? 'Selected Store Location' : 'فرع الاستلام / موقع التوصيل'}
+                      {isEn ? 'Selected Store Location' : 'فرع الاستلام أو التوصيل'}
                     </span>
                   </div>
                   <button
@@ -402,7 +402,7 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
                     className="px-3.5 py-1 rounded-full text-[13px] font-bold bg-[#234745] text-white hover:bg-[#1a3533] transition-colors cursor-pointer border-none"
                     style={{ fontFamily: "'GE Dinar One', sans-serif" }}
                   >
-                    {isEn ? 'Change' : 'تغيير'} &larr;
+                    {isEn ? 'Change' : 'تغيير'}
                   </button>
                 </div>
 

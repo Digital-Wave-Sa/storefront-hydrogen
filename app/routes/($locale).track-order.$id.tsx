@@ -722,20 +722,31 @@ export default function TrackOrderPage() {
                             <h2 className="text-[20px] font-black text-[#1A1A1A] mb-6">{isEn ? 'Help and Support' : 'المساعدة والدعم'}</h2>
 
                             <div className="flex flex-col gap-4">
-                                <button className="w-full bg-[#FEF8EB] hover:bg-[#F8EFE3] transition-colors py-4 px-6 rounded-[16px] flex justify-between items-center">
-                                    <span className="text-[16px] font-bold text-[#1A1A1A]">{isEn ? 'Contact us via WhatsApp' : 'تواصل معنا عبر WhatsApp'}</span>
+                                <a
+                                    href="https://wa.me/966920017070"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="w-full bg-[#FEF8EB] hover:bg-[#F8EFE3] transition-colors py-4 px-6 rounded-[16px] flex justify-between items-center"
+                                >
+                                    <span className="text-[16px] font-bold text-[#1A1A1A]">{isEn ? 'Contact us via WhatsApp (+966 9200 17070)' : 'تواصل معنا عبر WhatsApp (+966 9200 17070)'}</span>
                                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#234745" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
-                                </button>
+                                </a>
 
-                                <button className="w-full bg-[#FEF8EB] hover:bg-[#F8EFE3] transition-colors py-4 px-6 rounded-[16px] flex justify-between items-center">
+                                <Link
+                                    to={isEn ? "/en/pages/contact" : "/pages/contact"}
+                                    className="w-full bg-[#FEF8EB] hover:bg-[#F8EFE3] transition-colors py-4 px-6 rounded-[16px] flex justify-between items-center"
+                                >
                                     <span className="text-[16px] font-bold text-[#1A1A1A]">{isEn ? 'Report an Issue' : 'الإبلاغ عن مشكلة'}</span>
                                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#234745" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
-                                </button>
+                                </Link>
 
-                                <button className="w-full bg-[#FEF8EB] hover:bg-[#F8EFE3] transition-colors py-4 px-6 rounded-[16px] flex justify-between items-center">
+                                <Link
+                                    to={isEn ? "/en/pages/faq" : "/pages/faq"}
+                                    className="w-full bg-[#FEF8EB] hover:bg-[#F8EFE3] transition-colors py-4 px-6 rounded-[16px] flex justify-between items-center"
+                                >
                                     <span className="text-[16px] font-bold text-[#1A1A1A]">{isEn ? 'Delivery FAQ' : 'الأسئلة الشائعة للتوصيل'}</span>
                                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#234745" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
-                                </button>
+                                </Link>
                             </div>
                         </div>
 

@@ -4,6 +4,8 @@ import { Image, Money } from '@shopify/hydrogen';
 import { useI18n } from '~/lib/i18n';
 import type { NormalizedPredictiveSearchResults } from './Search';
 
+import { isCorporateProduct } from '~/lib/stock';
+
 export function GlobalSearchBar({ locale, isMobile }: { locale?: string, isMobile?: boolean }) {
   const isEn = locale === 'en';
   const fetcher = useFetcher<any>();
@@ -28,9 +30,15 @@ export function GlobalSearchBar({ locale, isMobile }: { locale?: string, isMobil
   }, []);
 
   const addToHistory = (term: string) => {
-    const cleanTerm = term.trim();
-    if (!cleanTerm || cleanTerm.length < 2) return;
-    const newHistory = [cleanTerm, ...history.filter(h => h !== cleanTerm)].slice(0, 5);
+    if (!term.trim()) return;
+    const newHistory = [term, ...history.filter(h => h.toLowerCase() !== term.toLowerCase())].slice(0, 5);
+    setHistory(newHistory);
+    sessionStorage.setItem('searchHistory', JSON.stringify(newHistory));
+  };
+
+  const removeFromHistory = (e: React.MouseEvent, term: string) => {
+    e.stopPropagation();
+    const newHistory = history.filter(h => h !== term);
     setHistory(newHistory);
     sessionStorage.setItem('searchHistory', JSON.stringify(newHistory));
   };
@@ -41,27 +49,33 @@ export function GlobalSearchBar({ locale, isMobile }: { locale?: string, isMobil
     sessionStorage.removeItem('searchHistory');
   };
 
-  // Debounce logic
+  // Debounce typing state for smoother spinner transition
   useEffect(() => {
-    if (query.length < 1) {
+    if (!query) {
       setIsTyping(false);
       return;
     }
     setIsTyping(true);
-    setIsOpen(true);
     const timer = setTimeout(() => {
-      const searchAction = isEn ? '/en/predictive-search' : '/predictive-search';
-      fetcher.submit({ q: query, limit: '6', type: 'PRODUCT,QUERY' }, { method: 'GET', action: searchAction });
       setIsTyping(false);
-    }, 200);
-
+    }, 300);
     return () => clearTimeout(timer);
+  }, [query]);
+
+  // Submit search query when typed
+  useEffect(() => {
+    if (!query.trim()) return;
+    const searchEndpoint = isEn ? "/en/search" : "/search";
+    fetcher.submit(
+      { q: query, predictive: 'true' },
+      { method: 'get', action: searchEndpoint }
+    );
   }, [query, isEn]);
 
-  // Click outside to close
+  // Click outside listener
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
+    function handleClickOutside(e: MouseEvent) {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
         setIsOpen(false);
       }
     }
@@ -69,7 +83,11 @@ export function GlobalSearchBar({ locale, isMobile }: { locale?: string, isMobil
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const results = fetcher.data?.searchResults?.results as NormalizedPredictiveSearchResults | undefined;
+  const rawResults = fetcher.data?.searchResults?.results as NormalizedPredictiveSearchResults | undefined;
+  const results = rawResults?.map(group => ({
+    ...group,
+    items: group.items.filter((item: any) => !isCorporateProduct(item))
+  }));
   
   // Flatten items for keyboard navigation
   const historyItemsCount = query.length < 1 ? history.length : 0;

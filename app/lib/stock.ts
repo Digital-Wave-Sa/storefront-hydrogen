@@ -57,16 +57,37 @@ export function getIsOutOfStock(
 }
 
 /**
+ * Checks if a product is a B2B/Corporate product intended only for /corporate.
+ */
+export function isCorporateProduct(product: any): boolean {
+  if (!product) return false;
+  const tags = product.tags || product.product?.tags || [];
+  if (Array.isArray(tags)) {
+    return tags.some((t: string) => {
+      const tagLower = String(t).toLowerCase().trim();
+      return tagLower === 'corporate' || tagLower === 'b2b' || tagLower === 'package';
+    });
+  }
+  return false;
+}
+
+/**
  * Checks if a product should be hidden entirely from the storefront.
- * A product is hidden if its hide_if_unavailable metafield is 'true'
- * and it is out of stock at the selected location/globally.
+ * A product is hidden if it is a corporate product (outside /corporate)
+ * or if its hide_if_unavailable metafield is 'true' and it is out of stock.
  */
 export function shouldHideProduct(
   product: any,
   selectedLocationId: string | undefined | null,
-  selectedLocationName: string | undefined | null
+  selectedLocationName: string | undefined | null,
+  isCorporatePage: boolean = false
 ): boolean {
   if (!product) return false;
+
+  // Always hide corporate/b2b products outside the /corporate page
+  if (!isCorporatePage && isCorporateProduct(product)) {
+    return true;
+  }
 
   const hideIfUnavailable = product.hide_if_unavailable?.value === 'true';
   if (!hideIfUnavailable) return false;

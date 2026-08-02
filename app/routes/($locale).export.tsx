@@ -64,17 +64,17 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
   if (sortKey !== 'RELEVANCE' && sortKey !== 'PRICE') {
     sortKey = 'RELEVANCE';
   }
-  const reverse = searchParams.get('reverse') === 'true';
-  const q = searchParams.get('q') || '*';
+  const userQuery = searchParams.get('q');
+  const exportQuery = userQuery && userQuery !== '*' ? userQuery : '*';
 
   try {
     const response = await storefront.query(EXPORT_CATALOG_QUERY, {
       variables: {
         ...paginationVariables,
-        query: q,
+        query: exportQuery,
         filters: filters.length > 0 ? filters : undefined,
         sortKey: sortKey as any,
-        country: storefront.i18n.country,
+        country: 'US', // International Market context
         language: storefront.i18n.language,
       },
       cache: storefront.CacheNone(),
@@ -89,12 +89,12 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
         ...colProds,
         productFilters: colProds.filters || colProds.productFilters || [],
       };
-      if (q && q !== '*') {
-        const searchLower = q.toLowerCase();
+      if (userQuery && userQuery !== '*') {
+        const searchLower = userQuery.toLowerCase();
         products.nodes = products.nodes.filter((n: any) => n.title?.toLowerCase().includes(searchLower));
       }
     } else {
-      products = response.search;
+      products = response.search || { nodes: [], productFilters: [] };
     }
 
     if (selectedCategories.length > 0) {
@@ -173,7 +173,7 @@ export default function ExportPage() {
   };
 
   return (
-    <div className="bg-[#FEF8EB] min-h-screen" dir={isEn ? 'ltr' : 'rtl'}>
+    <div className="bg-[#FEF8EB] min-h-screen max-w-full overflow-x-clip" dir={isEn ? 'ltr' : 'rtl'}>
       {/* ─── 1. HERO BANNER SECTION ────────────────────────────────────────── */}
       <section className="relative w-full min-h-[560px] sm:min-h-[640px] lg:min-h-[720px] flex items-center overflow-hidden">
         {/* Background Image & Soft Gradient Overlay */}
@@ -335,7 +335,7 @@ export default function ExportPage() {
             <div className="flex-1 min-w-0 w-full lg:order-2">
               {/* Mobile Layout Controls (< lg) */}
               <div className="lg:hidden flex flex-col gap-4 mb-4" dir={isEn ? 'ltr' : 'rtl'}>
-                <div className="flex items-center justify-between w-full gap-2">
+                <div className="lg:hidden flex flex-wrap items-center justify-between gap-2.5 mb-4 w-full max-w-full">
                   <button
                     type="button"
                     onClick={() => setIsFilterOpen(true)}

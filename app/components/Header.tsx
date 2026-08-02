@@ -153,7 +153,7 @@ export function Header({ header, isLoggedIn, cart, locations, customer, locale, 
 
   return (
     <header
-      className={`w-full ${isEn ? 'font-en' : 'font-ar'} bg-[#FEF8EB] relative z-50`}
+      className={`w-full ${isEn ? 'font-en' : 'font-ar'} bg-[#FEF8EB] sticky top-0 z-50 shadow-sm`}
       dir={isEn ? 'ltr' : 'rtl'}
       onMouseLeave={() => setActiveMega(null)}
     >
@@ -549,6 +549,9 @@ function TopBar({
               localStorage.setItem('declaredLocation', 'true');
               sessionStorage.setItem('declaredLocation', 'true');
             } catch (e) {}
+          }
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('branchSelected', { detail: { branch, type } }));
           }
           onSelectBranch(branch, type);
         }}

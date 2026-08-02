@@ -460,34 +460,45 @@ export default function GiftingPage() {
                 isEn={isEn}
             />
 
-            {/* FIRST LOAD: Gifting Cards Slider with Scroll Progress Bar */}
+            {/* FIRST LOAD: Gifting Cards Grid (Exact Grid as Occasions) */}
             {isInitialLanding ? (
-                <div className="max-w-[1400px] mx-auto px-4 lg:px-8 py-10 pb-16">
-                    <div
-                        ref={containerRef}
-                        onScroll={handleScroll}
-                        className={`flex flex-nowrap justify-start gap-4 lg:gap-6 overflow-x-auto pb-4 px-2 hide-scrollbars select-none ${isDragging ? 'snap-none' : 'snap-x snap-mandatory'}`}
-                    >
+                <div className="max-w-[1200px] mx-auto px-4 lg:px-8 py-10 pb-16">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 lg:gap-6">
                         {recipientCards.map((recipient, index) => (
                             <Link
                                 key={index}
                                 to={isEn ? `/en/gifting?category=${recipient.catId}` : `/gifting?category=${recipient.catId}`}
                                 onClick={() => setSelectedCategory(recipient.catId)}
-                                className="group flex-shrink-0 w-[180px] sm:w-[220px] md:w-[260px] lg:w-[280px] relative rounded-[16px] overflow-hidden snap-center transition-all duration-500 hover:shadow-2xl hover:-translate-y-2 shadow-sm"
-                                style={{ aspectRatio: '1/1' }}
+                                className="group flex flex-col bg-[#EED5D7] rounded-[16px] overflow-hidden transition-all duration-500 hover:shadow-xl hover:-translate-y-2 relative shadow-sm"
+                                style={{ aspectRatio: '280/328' }}
                             >
-                                <div className="w-full h-full relative">
-                                    <img
-                                        src={recipient.image}
-                                        alt={recipient.name}
-                                        className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
-                                    />
-                                    {/* Bottom Gradient Overlay */}
-                                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
+                                {/* Pattern Overlay Layer */}
+                                <div
+                                    className="absolute bottom-0 left-0 right-0 h-[30%] z-0 pointer-events-none"
+                                    style={{
+                                        backgroundImage: `url('/assets/patterns/occassions-bg.svg')`,
+                                        backgroundSize: 'cover',
+                                        backgroundPosition: 'bottom center',
+                                        backgroundRepeat: 'no-repeat',
+                                        opacity: 0.4,
+                                        maskImage: 'linear-gradient(to top, rgba(0,0,0,1) 20%, rgba(0,0,0,0) 100%)',
+                                        WebkitMaskImage: 'linear-gradient(to top, rgba(0,0,0,1) 20%, rgba(0,0,0,0) 100%)'
+                                    }}
+                                />
 
-                                    {/* Label Text Overlay */}
-                                    <div className="absolute bottom-4 left-0 right-0 text-center px-3">
-                                        <h3 className="text-[20px] md:text-[24px] lg:text-[28px] font-bold text-white drop-shadow-md">
+                                <div className="p-2.5 flex flex-col h-full relative z-10">
+                                    {/* Image Container */}
+                                    <div className="w-full aspect-square rounded-[12px] overflow-hidden bg-white relative">
+                                        <img
+                                            src={recipient.image}
+                                            alt={recipient.name}
+                                            className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
+                                        />
+                                    </div>
+
+                                    {/* Label Area */}
+                                    <div className="relative w-full mt-auto flex-1 flex items-center justify-center">
+                                        <h3 className="relative pt-2 text-[20px] lg:text-[24px] font-bold text-[#171717] z-10 px-2 text-center leading-tight" style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" }}>
                                             {recipient.name}
                                         </h3>
                                     </div>
@@ -495,48 +506,51 @@ export default function GiftingPage() {
                             </Link>
                         ))}
                     </div>
-
-                    {/* Horizontal Scroll Progress Bar */}
-                    {showScrollbar && (
-                        <div
-                            onMouseDown={handleScrollbarMouseDown}
-                            onTouchStart={handleScrollbarTouchStart}
-                            className="w-full max-w-[1200px] px-6 mx-auto h-[16px] bg-transparent mt-8 relative cursor-pointer flex items-center justify-center select-none"
-                            style={{ touchAction: 'none' }}
-                        >
-                            <div
-                                ref={scrollbarTrackRef}
-                                className="w-full h-[3px] bg-[#EBEBEB] rounded-full relative overflow-hidden pointer-events-none"
-                            >
-                                <div
-                                    className={`absolute top-0 bottom-0 bg-[#234745] rounded-full ${isDragging ? '' : 'transition-all duration-150'}`}
-                                    style={{
-                                        width: `${thumbWidth}%`,
-                                        left: isEn ? `${scrollProgress * (100 - thumbWidth) / 100}%` : 'auto',
-                                        right: !isEn ? `${scrollProgress * (100 - thumbWidth) / 100}%` : 'auto',
-                                    }}
-                                />
-                            </div>
-                        </div>
-                    )}
                 </div>
             ) : (
                 /* INNER PAGE: Gifting Category View with Back Button, Filter Pills & Products */
                 <>
-                    {/* Back to All Gifts Navigation */}
-                    <div className="max-w-[1200px] mx-auto px-4 lg:px-8 pt-8 pb-4">
-                        <button
-                            onClick={() => {
-                                setSelectedCategory(null);
-                                setSearchParams({});
-                            }}
-                            className="inline-flex items-center gap-2 text-[#234745] hover:text-[#1a3533] font-bold text-[15px] transition-colors bg-[#FEF8EB] px-5 py-2 rounded-full border border-[#234745]/20 hover:border-[#234745]"
-                        >
-                            <svg className={`w-4 h-4 ${isEn ? '' : 'rotate-180'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                            </svg>
-                            <span>{isEn ? 'All Gifts' : 'جميع الهدايا'}</span>
-                        </button>
+                    {/* Category Filter Pills Tabs Bar */}
+                    <div className="max-w-[1200px] mx-auto px-4 lg:px-8 pt-8 pb-4 flex justify-center">
+                        <div className="flex items-center justify-center gap-2.5 overflow-x-auto hide-scrollbars py-2 px-1 w-full max-w-full">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setSelectedCategory(null);
+                                    setSearchParams({});
+                                }}
+                                className={`shrink-0 h-[40px] px-4 py-[10px] rounded-[25px] text-[16px] leading-[100%] text-center inline-flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                                    !selectedCategory || selectedCategory === 'all'
+                                        ? 'bg-[#BBCFCD] text-[#234745] font-bold shadow-sm border-0'
+                                        : 'bg-white border border-[#234745] text-[#234745] font-medium hover:bg-[#BBCFCD]/20'
+                                }`}
+                                style={{ fontFamily: "'GE Dinar One', sans-serif" }}
+                            >
+                                {isEn ? 'All Gifts' : 'جميع الهدايا'}
+                            </button>
+
+                            {recipientCards.map((cat, idx) => {
+                                const isSelected = selectedCategory === cat.catId;
+                                return (
+                                    <button
+                                        key={idx}
+                                        type="button"
+                                        onClick={() => {
+                                            setSelectedCategory(cat.catId);
+                                            setSearchParams({ category: cat.catId });
+                                        }}
+                                        className={`shrink-0 h-[40px] px-4 py-[10px] rounded-[25px] text-[16px] leading-[100%] text-center inline-flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                                            isSelected
+                                                ? 'bg-[#BBCFCD] text-[#234745] font-bold shadow-sm border-0'
+                                                : 'bg-white border border-[#234745] text-[#234745] font-medium hover:bg-[#BBCFCD]/20'
+                                        }`}
+                                        style={{ fontFamily: "'GE Dinar One', sans-serif" }}
+                                    >
+                                        {cat.name}
+                                    </button>
+                                );
+                            })}
+                        </div>
                     </div>
 
                     {/* Products Section */}

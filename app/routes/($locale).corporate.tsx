@@ -364,27 +364,27 @@ export default function CorporatePage() {
             </PageHeader>
 
             {/* Overlapping Stats Pills */}
-            <div className="w-full relative z-20 -mt-[20px] mb-20 px-4">
-                <div className="max-w-[1000px] mx-auto flex flex-wrap justify-center gap-4 md:gap-5">
+            <div className="w-full relative z-20 -mt-[28px] md:-mt-[20px] mb-12 md:mb-20 px-2 sm:px-4">
+                <div className="max-w-[1000px] mx-auto grid grid-cols-4 gap-2 sm:gap-3 md:flex md:flex-wrap md:justify-center md:gap-5">
 
-                    <div className="bg-[#FEF8EB] px-8 py-4 rounded-[8px] border border-[#9FB7AE] flex flex-col items-center min-w-[150px]">
-                        <span className="text-[#234745] font-bold text-[24px] mb-1 leading-none" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One'" }}>{isEn ? '500+' : '+500'}</span>
-                        <span className="text-[#9FB7AE] text-[14px] font-medium">{isEn ? 'Companies trust us' : 'شركة تثق بنا'}</span>
+                    <div className="bg-[#FEF8EB] px-[8px] py-[16px] md:px-8 md:py-4 rounded-[8px] border border-[#9FB7AE] flex flex-col items-center justify-center text-center gap-[8px] h-[80px] md:h-auto shadow-sm">
+                        <span className="text-[#234745] font-bold text-[15px] sm:text-[20px] md:text-[24px] leading-none" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One'" }}>{isEn ? '500+' : '+500'}</span>
+                        <span className="text-[#9FB7AE] text-[11px] sm:text-[13px] md:text-[14px] font-medium leading-tight text-center">{isEn ? 'Companies trust us' : 'شركة تثق بنا'}</span>
                     </div>
 
-                    <div className="bg-[#FEF8EB] px-8 py-4 rounded-[8px] border border-[#9FB7AE] flex flex-col items-center min-w-[150px]">
-                        <span className="text-[#234745] font-bold text-[24px] mb-1 leading-none" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One'" }}>{isEn ? '24 Hours' : '24 ساعة'}</span>
-                        <span className="text-[#9FB7AE] text-[14px] font-medium">{isEn ? 'Guaranteed response' : 'استجابة مضمونة'}</span>
+                    <div className="bg-[#FEF8EB] px-[8px] py-[16px] md:px-8 md:py-4 rounded-[8px] border border-[#9FB7AE] flex flex-col items-center justify-center text-center gap-[8px] h-[80px] md:h-auto shadow-sm">
+                        <span className="text-[#234745] font-bold text-[15px] sm:text-[20px] md:text-[24px] leading-none" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One'" }}>{isEn ? '24 Hours' : '24 ساعة'}</span>
+                        <span className="text-[#9FB7AE] text-[11px] sm:text-[13px] md:text-[14px] font-medium leading-tight text-center">{isEn ? 'Guaranteed response' : 'استجابة مضمونة'}</span>
                     </div>
 
-                    <div className="bg-[#FEF8EB] px-8 py-4 rounded-[8px] border border-[#9FB7AE] flex flex-col items-center min-w-[150px]">
-                        <span className="text-[#234745] font-bold text-[24px] mb-1 leading-none" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One'" }}>{isEn ? '+35 Cities' : '+35 مدينة'}</span>
-                        <span className="text-[#9FB7AE] text-[14px] font-medium">{isEn ? 'We deliver to' : 'نوصل لها'}</span>
+                    <div className="bg-[#FEF8EB] px-[8px] py-[16px] md:px-8 md:py-4 rounded-[8px] border border-[#9FB7AE] flex flex-col items-center justify-center text-center gap-[8px] h-[80px] md:h-auto shadow-sm">
+                        <span className="text-[#234745] font-bold text-[15px] sm:text-[20px] md:text-[24px] leading-none" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One'" }}>{isEn ? '+35 Cities' : '+35 مدينة'}</span>
+                        <span className="text-[#9FB7AE] text-[11px] sm:text-[13px] md:text-[14px] font-medium leading-tight text-center">{isEn ? 'We deliver to' : 'نوصل لها'}</span>
                     </div>
 
-                    <div className="bg-[#FEF8EB] px-8 py-4 rounded-[8px] border border-[#9FB7AE] flex flex-col items-center min-w-[150px]">
-                        <span className="text-[#234745] font-bold text-[24px] mb-1 leading-none" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One'" }}>{isEn ? '20 Boxes' : '20 علبة'}</span>
-                        <span className="text-[#9FB7AE] text-[14px] font-medium">{isEn ? 'Minimum order' : 'حد أدنى'}</span>
+                    <div className="bg-[#FEF8EB] px-[8px] py-[16px] md:px-8 md:py-4 rounded-[8px] border border-[#9FB7AE] flex flex-col items-center justify-center text-center gap-[8px] h-[80px] md:h-auto shadow-sm">
+                        <span className="text-[#234745] font-bold text-[15px] sm:text-[20px] md:text-[24px] leading-none" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One'" }}>{isEn ? '20 Boxes' : '20 علبة'}</span>
+                        <span className="text-[#9FB7AE] text-[11px] sm:text-[13px] md:text-[14px] font-medium leading-tight text-center">{isEn ? 'Minimum order' : 'حد أدنى'}</span>
                     </div>
 
                 </div>
@@ -401,30 +401,32 @@ export default function CorporatePage() {
                         <p className="text-[#9FB7AE] text-[16px] md:text-[18px] font-medium leading-[22px]">{isEn ? 'Three simple steps from choosing your path to delivering the gift' : 'ثلاث خطوات بسبطة من اختيار المسار وحتي وصول الهدية إلي المُستلم'}</p>
                     </div>
 
-                    {/* Steps Grid */}
-                    <div className="flex flex-col md:flex-row justify-center items-center w-full gap-8">
+                    {/* Steps Container (Horizontal Slider on Mobile, Flex Row on Desktop) */}
+                    <div className="w-full overflow-x-auto snap-x snap-mandatory scrollbar-none py-2 px-4 md:px-0">
+                        <div className="flex flex-nowrap md:flex-row md:justify-center items-center gap-4 md:gap-8 min-w-max md:min-w-0 md:w-full">
 
-                        {/* Step 1 */}
-                        <div className="flex-1 flex flex-col items-center p-8 gap-4 w-full md:max-w-[405px] bg-[#274D4B] border border-[#9FB7AE] rounded-[20px] text-center h-[208px] justify-center">
-                            <div className="py-1 px-3.5 rounded-full bg-[#C5A96A] text-[#234745] flex items-center justify-center font-bold text-[20px]" style={{ fontFamily: "EnglishDigits" }}>1</div>
-                            <h3 className="text-[#FEF8EB] font-bold text-[22px] md:text-[26px] leading-[42px] m-0" style={{ fontFamily: "'Bahij Janna', sans-serif" }}>{isEn ? 'Choose Path' : 'اختر المسار'}</h3>
-                            <p className="text-[#9FB7AE] text-[14px] leading-[17px] m-0 max-w-[300px]">{isEn ? 'Select a ready order or a custom quote that suits your company needs.' : 'حدّد بين طلب جاهز أو عرض سعر مخصص يناسب احتياج شركتك.'}</p>
+                            {/* Step 1 */}
+                            <div className="snap-center shrink-0 w-[80vw] max-w-[320px] md:max-w-[405px] md:w-full md:flex-1 flex flex-col items-center p-8 gap-4 bg-[#274D4B] border border-[#9FB7AE] rounded-[20px] text-center h-[208px] justify-center">
+                                <div className="py-1 px-3.5 rounded-full bg-[#C5A96A] text-[#234745] flex items-center justify-center font-bold text-[20px]" style={{ fontFamily: "EnglishDigits" }}>1</div>
+                                <h3 className="text-[#FEF8EB] font-bold text-[22px] md:text-[26px] leading-[42px] m-0" style={{ fontFamily: "'Bahij Janna', sans-serif" }}>{isEn ? 'Choose Path' : 'اختر المسار'}</h3>
+                                <p className="text-[#9FB7AE] text-[14px] leading-[17px] m-0 max-w-[300px]">{isEn ? 'Select a ready order or a custom quote that suits your company needs.' : 'حدّد بين طلب جاهز أو عرض سعر مخصص يناسب احتياج شركتك.'}</p>
+                            </div>
+
+                            {/* Step 2 */}
+                            <div className="snap-center shrink-0 w-[80vw] max-w-[320px] md:max-w-[405px] md:w-full md:flex-1 flex flex-col items-center p-8 gap-4 bg-[#274D4B] border border-[#9FB7AE] rounded-[20px] text-center h-[208px] justify-center">
+                                <div className="py-1 px-3.5 rounded-full bg-[#C5A96A] text-[#234745] flex items-center justify-center font-bold text-[20px]" style={{ fontFamily: "EnglishDigits" }}>2</div>
+                                <h3 className="text-[#FEF8EB] font-bold text-[22px] md:text-[26px] leading-[42px] m-0" style={{ fontFamily: "'Bahij Janna', sans-serif" }}>{isEn ? 'Customize Details' : 'خصّص التفاصيل'}</h3>
+                                <p className="text-[#9FB7AE] text-[14px] leading-[17px] m-0 max-w-[300px]">{isEn ? 'Choose the collection, add your logo, and specify quantity and packaging.' : 'اختر التشكيلة، أضف الشعار، وحدّد الكمية والتغليف المناسب.'}</p>
+                            </div>
+
+                            {/* Step 3 */}
+                            <div className="snap-center shrink-0 w-[80vw] max-w-[320px] md:max-w-[405px] md:w-full md:flex-1 flex flex-col items-center p-8 gap-4 bg-[#274D4B] border border-[#9FB7AE] rounded-[20px] text-center h-[208px] justify-center">
+                                <div className="py-1 px-3.5 !rounded-full bg-[#C5A96A] text-[#234745] flex items-center justify-center font-bold text-[20px]" style={{ fontFamily: "EnglishDigits" }}>3</div>
+                                <h3 className="text-[#FEF8EB] font-bold text-[22px] md:text-[26px] leading-[42px] m-0">{isEn ? 'Receive Gifts' : 'استلم الهدايا'}</h3>
+                                <p className="text-[#9FB7AE] text-[14px] leading-[17px] m-0 max-w-[300px]">{isEn ? 'We prepare and pack within 24h and deliver to any city.' : 'نجهّز ونغلّف خلال ٢٤ ساعة ونوصل إلى أي مدينة تختارها.'}</p>
+                            </div>
+
                         </div>
-
-                        {/* Step 2 */}
-                        <div className="flex-1 flex flex-col items-center p-8 gap-4 w-full md:max-w-[405px] bg-[#274D4B] border border-[#9FB7AE] rounded-[20px] text-center h-[208px] justify-center">
-                            <div className="py-1 px-3.5 rounded-full bg-[#C5A96A] text-[#234745] flex items-center justify-center font-bold text-[20px]" style={{ fontFamily: "EnglishDigits" }}>2</div>
-                            <h3 className="text-[#FEF8EB] font-bold text-[22px] md:text-[26px] leading-[42px] m-0" style={{ fontFamily: "'Bahij Janna', sans-serif" }}>{isEn ? 'Customize Details' : 'خصص التفاصيل'}</h3>
-                            <p className="text-[#9FB7AE] text-[14px] leading-[17px] m-0 max-w-[300px]">{isEn ? 'Choose the collection, add your logo, and specify quantity and packaging.' : 'اختر التشكيلة، أضف الشعار، وحدّد الكمية والتغليف المناسب.'}</p>
-                        </div>
-
-                        {/* Step 3 */}
-                        <div className="flex-1 flex flex-col items-center p-8 gap-4 w-full md:max-w-[405px] bg-[#274D4B] border border-[#9FB7AE] rounded-[20px] text-center h-[208px] justify-center">
-                            <div className="py-1 px-3.5 !rounded-full bg-[#C5A96A] text-[#234745] flex items-center justify-center font-bold text-[20px]" style={{ fontFamily: "EnglishDigits" }}>3</div>
-                            <h3 className="text-[#FEF8EB] font-bold text-[22px] md:text-[26px] leading-[42px] m-0">{isEn ? 'Receive Gifts' : 'استلم الهدايا'}</h3>
-                            <p className="text-[#9FB7AE] text-[14px] leading-[17px] m-0 max-w-[300px]">{isEn ? 'We prepare and pack within 24h and deliver to any city.' : 'نجهّز ونغلّف خلال ٢٤ ساعة ونوصل إلى أي مدينة تختارها.'}</p>
-                        </div>
-
                     </div>
                 </div>
             </section>
@@ -927,90 +929,94 @@ export default function CorporatePage() {
                         </p>
                     </div>
 
-                    {/* 6 Grid Cards */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 w-full">
-                        {/* Card 1: Premium Quality */}
-                        <div className="bg-white rounded-[24px] p-8 border border-[#E2EBE8] flex flex-col items-center text-center shadow-sm hover:shadow-md transition-all hover:border-[#234745]/30">
-                            <div className="w-12 h-12 bg-[#234745] rounded-[14px] flex items-center justify-center text-white mb-5 shadow-sm">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <circle cx="12" cy="8" r="7" />
-                                    <polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88" />
-                                </svg>
-                            </div>
-                            <h3 className="text-[#234745] font-bold text-[20px] mb-3">{isEn ? 'Premium Quality' : 'جودة فاخرة'}</h3>
-                            <p className="text-[#8C8275] text-[14px] leading-relaxed">
-                                {isEn ? 'Handpicked collections and high-quality materials that reflect your brand prestige.' : 'تشكيلات منتقاة بعناية ومواد عالية الجودة تعكس مكانة علامتك التجارية.'}
-                            </p>
-                        </div>
+                    {/* 6 Cards Container (Horizontal Slider on Mobile, Grid on Desktop) */}
+                    <div className="w-full overflow-x-auto snap-x snap-mandatory scrollbar-none py-2 px-4 md:px-0">
+                        <div className="flex flex-nowrap md:grid md:grid-cols-3 gap-4 md:gap-6 min-w-max md:min-w-0 md:w-full">
 
-                        {/* Card 2: Custom Identity */}
-                        <div className="bg-white rounded-[24px] p-8 border border-[#E2EBE8] flex flex-col items-center text-center shadow-sm hover:shadow-md transition-all hover:border-[#234745]/30">
-                            <div className="w-12 h-12 bg-[#234745] rounded-[14px] flex items-center justify-center text-white mb-5 shadow-sm">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <path d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 4.12c-.1.607-.241 1.2-.423 1.78" />
-                                </svg>
+                            {/* Card 1: Premium Quality */}
+                            <div className="snap-center shrink-0 w-[80vw] max-w-[320px] md:max-w-none md:w-full bg-white rounded-[24px] p-8 border border-[#E2EBE8] flex flex-col items-center text-center shadow-sm hover:shadow-md transition-all hover:border-[#234745]/30">
+                                <div className="w-12 h-12 bg-[#234745] rounded-[14px] flex items-center justify-center text-white mb-5 shadow-sm">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <circle cx="12" cy="8" r="7" />
+                                        <polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88" />
+                                    </svg>
+                                </div>
+                                <h3 className="text-[#234745] font-bold text-[20px] mb-3">{isEn ? 'Premium Quality' : 'جودة فاخرة'}</h3>
+                                <p className="text-[#9FB7AE] font-bold text-[14px] leading-tight" style={{ fontFamily: isEn ? 'inherit' : "'Bahij Janna', sans-serif" }}>
+                                    {isEn ? 'Handpicked collections and high-quality materials that reflect your brand prestige.' : 'تشكيلات منتقاة بعناية ومواد عالية الجودة تعكس مكانة علامتك التجارية.'}
+                                </p>
                             </div>
-                            <h3 className="text-[#234745] font-bold text-[20px] mb-3">{isEn ? 'Custom Identity' : 'هوية خاصة'}</h3>
-                            <p className="text-[#8C8275] text-[14px] leading-relaxed">
-                                {isEn ? 'Printing your company logo on packaging and products with elegance.' : 'طباعة شعارك على التغليف والمنتجات بأسلوب راقٍ ومتقن.'}
-                            </p>
-                        </div>
 
-                        {/* Card 3: Fast Delivery */}
-                        <div className="bg-white rounded-[24px] p-8 border border-[#E2EBE8] flex flex-col items-center text-center shadow-sm hover:shadow-md transition-all hover:border-[#234745]/30">
-                            <div className="w-12 h-12 bg-[#234745] rounded-[14px] flex items-center justify-center text-white mb-5 shadow-sm">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <rect x="1" y="3" width="15" height="13" rx="2" />
-                                    <polygon points="16 8 20 8 23 11 23 16 16 16 16 8" />
-                                    <circle cx="5.5" cy="18.5" r="2.5" />
-                                    <circle cx="18.5" cy="18.5" r="2.5" />
-                                </svg>
+                            {/* Card 2: Custom Identity */}
+                            <div className="snap-center shrink-0 w-[80vw] max-w-[320px] md:max-w-none md:w-full bg-white rounded-[24px] p-8 border border-[#E2EBE8] flex flex-col items-center text-center shadow-sm hover:shadow-md transition-all hover:border-[#234745]/30">
+                                <div className="w-12 h-12 bg-[#234745] rounded-[14px] flex items-center justify-center text-white mb-5 shadow-sm">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 4.12c-.1.607-.241 1.2-.423 1.78" />
+                                    </svg>
+                                </div>
+                                <h3 className="text-[#234745] font-bold text-[20px] mb-3">{isEn ? 'Custom Identity' : 'هوية خاصة'}</h3>
+                                <p className="text-[#9FB7AE] font-bold text-[14px] leading-tight" style={{ fontFamily: isEn ? 'inherit' : "'Bahij Janna', sans-serif" }}>
+                                    {isEn ? 'Printing your company logo on packaging and products with elegance.' : 'طباعة شعارك على التغليف والمنتجات بأسلوب راقٍ ومتقن.'}
+                                </p>
                             </div>
-                            <h3 className="text-[#234745] font-bold text-[20px] mb-3">{isEn ? 'Fast Delivery' : 'توصيل سريع'}</h3>
-                            <p className="text-[#8C8275] text-[14px] leading-relaxed">
-                                {isEn ? 'Preparation and packaging within 24 hours and delivery to 35+ cities.' : 'تجهيز وتغليف خلال 24 ساعة وتوصيل إلى أكثر من 35 مدينة.'}
-                            </p>
-                        </div>
 
-                        {/* Card 4: Corporate Trust */}
-                        <div className="bg-white rounded-[24px] p-8 border border-[#E2EBE8] flex flex-col items-center text-center shadow-sm hover:shadow-md transition-all hover:border-[#234745]/30">
-                            <div className="w-12 h-12 bg-[#234745] rounded-[14px] flex items-center justify-center text-white mb-5 shadow-sm">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-                                </svg>
+                            {/* Card 3: Fast Delivery */}
+                            <div className="snap-center shrink-0 w-[80vw] max-w-[320px] md:max-w-none md:w-full bg-white rounded-[24px] p-8 border border-[#E2EBE8] flex flex-col items-center text-center shadow-sm hover:shadow-md transition-all hover:border-[#234745]/30">
+                                <div className="w-12 h-12 bg-[#234745] rounded-[14px] flex items-center justify-center text-white mb-5 shadow-sm">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <rect x="1" y="3" width="15" height="13" rx="2" />
+                                        <polygon points="16 8 20 8 23 11 23 16 16 16 16 8" />
+                                        <circle cx="5.5" cy="18.5" r="2.5" />
+                                        <circle cx="18.5" cy="18.5" r="2.5" />
+                                    </svg>
+                                </div>
+                                <h3 className="text-[#234745] font-bold text-[20px] mb-3">{isEn ? 'Fast Delivery' : 'توصيل سريع'}</h3>
+                                <p className="text-[#9FB7AE] font-bold text-[14px] leading-tight" style={{ fontFamily: isEn ? 'inherit' : "'Bahij Janna', sans-serif" }}>
+                                    {isEn ? 'Preparation and packaging within 24 hours and delivery to 35+ cities.' : 'تجهيز وتغليف خلال 24 ساعة وتوصيل إلى أكثر من 35 مدينة.'}
+                                </p>
                             </div>
-                            <h3 className="text-[#234745] font-bold text-[20px] mb-3">{isEn ? 'Corporate Trust' : 'ثقة مؤسسية'}</h3>
-                            <p className="text-[#8C8275] text-[14px] leading-relaxed">
-                                {isEn ? 'Over 500 companies trusted us as their corporate gifting partner.' : 'أكثر من 500 شركة اختارتنا شريكاً لهدايا موظفيها وعملائها.'}
-                            </p>
-                        </div>
 
-                        {/* Card 5: Elegant Packaging */}
-                        <div className="bg-white rounded-[24px] p-8 border border-[#E2EBE8] flex flex-col items-center text-center shadow-sm hover:shadow-md transition-all hover:border-[#234745]/30">
-                            <div className="w-12 h-12 bg-[#234745] rounded-[14px] flex items-center justify-center text-white mb-5 shadow-sm">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z" />
-                                    <path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12" />
-                                </svg>
+                            {/* Card 4: Corporate Trust */}
+                            <div className="snap-center shrink-0 w-[80vw] max-w-[320px] md:max-w-none md:w-full bg-white rounded-[24px] p-8 border border-[#E2EBE8] flex flex-col items-center text-center shadow-sm hover:shadow-md transition-all hover:border-[#234745]/30">
+                                <div className="w-12 h-12 bg-[#234745] rounded-[14px] flex items-center justify-center text-white mb-5 shadow-sm">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                                    </svg>
+                                </div>
+                                <h3 className="text-[#234745] font-bold text-[20px] mb-3">{isEn ? 'Corporate Trust' : 'ثقة مؤسسية'}</h3>
+                                <p className="text-[#9FB7AE] font-bold text-[14px] leading-tight" style={{ fontFamily: isEn ? 'inherit' : "'Bahij Janna', sans-serif" }}>
+                                    {isEn ? 'Over 500 companies trusted us as their corporate gifting partner.' : 'أكثر من 500 شركة اختارتنا شريكاً لهدايا موظفيها وعملائها.'}
+                                </p>
                             </div>
-                            <h3 className="text-[#234745] font-bold text-[20px] mb-3">{isEn ? 'Elegant Packaging' : 'تغليف أنيق'}</h3>
-                            <p className="text-[#8C8275] text-[14px] leading-relaxed">
-                                {isEn ? 'Sophisticated corporate packaging suited for official events and VIP clients.' : 'تغليف مؤسسي راقٍ يليق بالمناسبات الرسمية والعملاء المميزين.'}
-                            </p>
-                        </div>
 
-                        {/* Card 6: Dedicated Support */}
-                        <div className="bg-white rounded-[24px] p-8 border border-[#E2EBE8] flex flex-col items-center text-center shadow-sm hover:shadow-md transition-all hover:border-[#234745]/30">
-                            <div className="w-12 h-12 bg-[#234745] rounded-[14px] flex items-center justify-center text-white mb-5 shadow-sm">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <path d="M3 18v-6a9 9 0 0 1 18 0v6" />
-                                    <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z" />
-                                </svg>
+                            {/* Card 5: Elegant Packaging */}
+                            <div className="snap-center shrink-0 w-[80vw] max-w-[320px] md:max-w-none md:w-full bg-white rounded-[24px] p-8 border border-[#E2EBE8] flex flex-col items-center text-center shadow-sm hover:shadow-md transition-all hover:border-[#234745]/30">
+                                <div className="w-12 h-12 bg-[#234745] rounded-[14px] flex items-center justify-center text-white mb-5 shadow-sm">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z" />
+                                        <path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12" />
+                                    </svg>
+                                </div>
+                                <h3 className="text-[#234745] font-bold text-[20px] mb-3">{isEn ? 'Elegant Packaging' : 'تغليف أنيق'}</h3>
+                                <p className="text-[#9FB7AE] font-bold text-[14px] leading-tight" style={{ fontFamily: isEn ? 'inherit' : "'Bahij Janna', sans-serif" }}>
+                                    {isEn ? 'Sophisticated corporate packaging suited for official events and VIP clients.' : 'تغليف مؤسسي راقٍ يليق بالمناسبات الرسمية والعملاء المميزين.'}
+                                </p>
                             </div>
-                            <h3 className="text-[#234745] font-bold text-[20px] mb-3">{isEn ? 'Dedicated Support' : 'دعم مخصص'}</h3>
-                            <p className="text-[#8C8275] text-[14px] leading-relaxed">
-                                {isEn ? 'A dedicated team accompanying you from collection selection to final delivery.' : 'فريق متخصص يرافقك من اختيار التشكيلة وحتى التسليم النهائي.'}
-                            </p>
+
+                            {/* Card 6: Dedicated Support */}
+                            <div className="snap-center shrink-0 w-[80vw] max-w-[320px] md:max-w-none md:w-full bg-white rounded-[24px] p-8 border border-[#E2EBE8] flex flex-col items-center text-center shadow-sm hover:shadow-md transition-all hover:border-[#234745]/30">
+                                <div className="w-12 h-12 bg-[#234745] rounded-[14px] flex items-center justify-center text-white mb-5 shadow-sm">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M3 18v-6a9 9 0 0 1 18 0v6" />
+                                        <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z" />
+                                    </svg>
+                                </div>
+                                <h3 className="text-[#234745] font-bold text-[20px] mb-3">{isEn ? 'Dedicated Support' : 'دعم مخصص'}</h3>
+                                <p className="text-[#9FB7AE] font-bold text-[14px] leading-tight" style={{ fontFamily: isEn ? 'inherit' : "'Bahij Janna', sans-serif" }}>
+                                    {isEn ? 'A dedicated team accompanying you from collection selection to final delivery.' : 'فريق متخصص يرافقك من اختيار التشكيلة وحتى التسليم النهائي.'}
+                                </p>
+                            </div>
+
                         </div>
                     </div>
                 </div>

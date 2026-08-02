@@ -424,9 +424,9 @@ export default function VouchersPage() {
         </div>
       )}
 
-      {/* ─── 1. HERO BANNER SECTION (Figma: 1440px max-width, 610px height, border-radius 20px) ─── */}
-      <section className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
-        <div className="relative w-full h-[360px] sm:h-[480px] lg:h-[610px] rounded-[20px] overflow-hidden shadow-2xl">
+      {/* ─── 1. HERO BANNER SECTION (Full-Width Edge-to-Edge) ─── */}
+      <section className="w-full relative mb-8">
+        <div className="relative w-full h-[360px] sm:h-[480px] lg:h-[610px] overflow-hidden shadow-md">
 
           {/* Background Image — full cover */}
           <img
@@ -457,7 +457,7 @@ export default function VouchersPage() {
             className="absolute z-20"
             style={isEn
               ? {
-                top: '32px', bottom: '24px', left: '56px',
+                top: '32px', bottom: '24px', left: 'clamp(24px, 5vw, 80px)',
                 display: 'flex', flexDirection: 'column',
                 justifyContent: 'center',
                 alignItems: 'flex-start',
@@ -465,7 +465,7 @@ export default function VouchersPage() {
                 maxWidth: '620px',
               }
               : {
-                top: '32px', bottom: '24px', right: '56px',
+                top: '32px', bottom: '24px', right: 'clamp(24px, 5vw, 80px)',
                 display: 'flex', flexDirection: 'column',
                 justifyContent: 'center',
                 alignItems: 'flex-start',

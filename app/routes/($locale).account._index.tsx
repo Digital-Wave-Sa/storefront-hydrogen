@@ -25,7 +25,7 @@ export default function AccountDashboard() {
   const searchParams = new URLSearchParams(location.search);
   const showOverviewOnMobile = searchParams.get('view') === 'overview';
 
-  const totalSpending = customer.orders?.nodes?.reduce((acc, order) => {
+  const totalSpending = customer?.orders?.nodes?.reduce((acc, order) => {
     return acc + (parseFloat(order.currentTotalPrice?.amount || "0"));
   }, 0) || 0;
 
@@ -106,7 +106,7 @@ export default function AccountDashboard() {
                       {isEn ? 'My Orders' : 'طلباتي'}
                     </h3>
                     <span className="text-[12px] md:text-[13px] font-medium text-[#9FB7AE] select-none truncate">
-                      {isEn ? `${customer.numberOfOrders || 0} Orders` : <><span className="font-en">{(customer.numberOfOrders || 0).toLocaleString('en-US')}</span> طلبات</>}
+                      {isEn ? `${customer?.numberOfOrders || 0} Orders` : <><span className="font-en">{(customer?.numberOfOrders || 0).toLocaleString('en-US')}</span> طلبات</>}
                     </span>
                   </div>
 
@@ -214,7 +214,7 @@ export default function AccountDashboard() {
                 {/* Total Orders */}
                 <div className="bg-white border border-[#9FB7AE] rounded-[12px] py-8 px-4 flex flex-col items-center justify-center text-center gap-2">
                   <span className="text-[28px] md:text-[34px] font-bold text-[#234745] leading-none font-en">
-                    {customer.numberOfOrders ?? customer.orders?.nodes?.length ?? 0}
+                    {customer?.numberOfOrders ?? customer?.orders?.nodes?.length ?? 0}
                   </span>
                   <p className="text-[14px] text-[#A6BFB9] font-medium" style={!isEn ? { fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" } : undefined}>
                     {isEn ? 'Total Orders' : 'إجمالي الطلبات'}
@@ -223,13 +223,13 @@ export default function AccountDashboard() {
               </div>
 
               {/* Last Order Card */}
-              {customer.orders?.nodes?.[0] && (() => {
+              {customer?.orders?.nodes?.[0] && (() => {
                 const lastOrder = customer.orders.nodes[0];
                 const productCount = lastOrder.lineItems?.nodes?.length || 0;
                 const firstItem = lastOrder.lineItems?.nodes?.[0];
                 const imageUrl = firstItem?.variant?.image?.url || "https://cdn.shopify.com/s/files/1/0809/4209/4648/files/cake-slice.jpg?v=1710400000";
                 const totalAmount = lastOrder.currentTotalPrice?.amount || "0.00";
-                const trackOrderNumber = lastOrder.orderNumber || (lastOrder.name ? lastOrder.name.replace('#', '') : null) || (lastOrder.id ? lastOrder.id.split('/').pop() : '');
+                const trackOrderNumber = lastOrder.orderNumber || ((lastOrder as any).name ? (lastOrder as any).name.replace('#', '') : null) || (lastOrder.id ? lastOrder.id.split('/').pop() : '');
                 const trackUrl = isEn ? `/en/track-order/${trackOrderNumber}` : `/track-order/${trackOrderNumber}`;
 
                 const isPickup = checkIsPickupOrder(lastOrder);

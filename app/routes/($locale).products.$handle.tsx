@@ -942,6 +942,7 @@ export default function Product() {
         onClose={() => setIsNotifyModalOpen(false)}
         productTitle={product.title}
         variantId={selectedVariant?.id || ''}
+        productId={product.id}
         isEn={isEn}
         customerEmail={customerEmail}
         locationId={selectedLocationId || undefined}

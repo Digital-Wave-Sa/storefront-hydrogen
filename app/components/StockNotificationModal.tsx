@@ -7,10 +7,15 @@ export interface StockNotificationModalProps {
     onClose: () => void;
     productTitle: string;
     variantId: string;
+    productId?: string;
     isEn: boolean;
     customerEmail?: string;
     locationId?: string;
     locationName?: string;
+    country?: string;
+    shopifyMarketId?: string;
+    customerName?: string;
+    acceptsMarketing?: boolean;
 }
 
 export function StockNotificationModal({
@@ -18,10 +23,15 @@ export function StockNotificationModal({
     onClose,
     productTitle,
     variantId,
+    productId,
     isEn,
     customerEmail,
     locationId,
-    locationName
+    locationName,
+    country,
+    shopifyMarketId,
+    customerName,
+    acceptsMarketing,
 }: StockNotificationModalProps) {
     const [mounted, setMounted] = useState(false);
     const [email, setEmail] = useState(customerEmail || '');
@@ -63,9 +73,14 @@ export function StockNotificationModal({
                 body: JSON.stringify({
                     email,
                     variantId,
+                    productId,
                     productTitle,
                     locationId,
                     locationName,
+                    country: country || (isEn ? 'US' : 'SA'),
+                    shopifyMarketId,
+                    customerName,
+                    acceptsMarketing: acceptsMarketing !== undefined ? acceptsMarketing : true,
                 }),
             });
 

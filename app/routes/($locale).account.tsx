@@ -199,20 +199,25 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
     );
   } catch (error) {
     console.warn('[Account Loader] Storefront customer query failed, attempting Admin API fallback:', error);
+  try {
+    const savedPhone = await session.get('loginOtpPhone');
+    const savedEmail = await session.get('loginCustomerEmail');
+    const savedCustomerId = await session.get('loginCustomerId');
+
+    let adminToken: string | null = null;
+    let adminDomain: string = '';
     try {
-      const savedPhone = session.get('loginOtpPhone');
-      const savedEmail = session.get('loginCustomerEmail');
-      const savedCustomerId = session.get('loginCustomerId');
-
       const { getAdminToken, getAdminDomain } = await import('~/lib/shopify-admin.server');
-      const adminToken = await getAdminToken(context.env);
-      const adminDomain = getAdminDomain(context.env);
+      adminToken = await getAdminToken(context.env);
+      adminDomain = getAdminDomain(context.env);
+    } catch (_) {}
 
-      let adminCust: any = null;
-      let adminAddresses: any[] = [];
+    let adminCust: any = null;
+    let adminAddresses: any[] = [];
 
-      if (adminToken && adminDomain) {
-        if (savedCustomerId) {
+    if (adminToken && adminDomain && adminDomain.trim() !== '') {
+      if (savedCustomerId) {
+        try {
           const res = await fetch(`https://${adminDomain}/admin/api/2024-01/customers/${savedCustomerId}.json`, {
             headers: { 'X-Shopify-Access-Token': adminToken }
           });
@@ -220,8 +225,10 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
             const data = await res.json() as any;
             adminCust = data.customer;
           }
-        }
-        if (!adminCust && savedPhone) {
+        } catch (_) {}
+      }
+      if (!adminCust && savedPhone) {
+        try {
           const rawDigits = savedPhone.replace(/\D/g, '');
           const last9 = rawDigits.slice(-9);
           const res = await fetch(`https://${adminDomain}/admin/api/2024-01/customers/search.json?query=${encodeURIComponent(last9)}&fields=id,email,phone,default_address,addresses`, {
@@ -235,7 +242,8 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
               return cp && sp && (cp === sp || cp.endsWith(sp) || sp.endsWith(cp));
             }) || data.customers?.[0];
           }
-        }
+        } catch (_) {}
+      }
 
         if (adminCust?.id) {
           try {

@@ -214,7 +214,15 @@ export function CakePreview({
     let toppingImg = undefined;
 
     // Resolve topping from Shopify Metaobjects via connecting design metaobjects
-    const toppingMatch = cakeAttributes?.find(attr => (attr.attributeType?.value?.toLowerCase() === 'topping' || attr.attributeType?.value?.toLowerCase() === 'style') && (attr.id === toppingId || attr.nameEn?.value?.toLowerCase() === toppingId.toLowerCase() || attr.nameEn?.value?.toLowerCase()?.replace(/[-_\s]+/g, ' ') === toppingId.toLowerCase()?.replace(/[-_\s]+/g, ' ')));
+    const cleanToppingId = (toppingId || '').toLowerCase().replace(/[-_\s]+/g, ' ');
+    const toppingMatch = cakeAttributes?.find(attr => {
+      const isToppingType = attr.attributeType?.value?.toLowerCase() === 'topping' || attr.attributeType?.value?.toLowerCase() === 'style';
+      if (!isToppingType) return false;
+      const attrId = (attr.id || '').toLowerCase();
+      const attrNameEn = (attr.nameEn?.value || '').toLowerCase().replace(/[-_\s]+/g, ' ');
+      const attrNameAr = (attr.nameAr?.value || '').toLowerCase().replace(/[-_\s]+/g, ' ');
+      return attrId === toppingId || attrNameEn === cleanToppingId || attrNameAr === cleanToppingId || (cleanToppingId && attrNameEn && (cleanToppingId.includes(attrNameEn) || attrNameEn.includes(cleanToppingId)));
+    });
     
     let resolvedToppingImg = undefined;
     if (toppingMatch && shapeMatch && toppingDesigns?.length) {
@@ -230,6 +238,15 @@ export function CakePreview({
             ? design.imageSliced.reference.image.url
             : design.imageFront?.reference?.image?.url;
       }
+    }
+
+    // Direct fallback from the cake_attribute metaobject itself
+    if (!resolvedToppingImg && toppingMatch) {
+      resolvedToppingImg = view === 'top' && toppingMatch.imageTop?.reference?.image?.url
+        ? toppingMatch.imageTop.reference.image.url
+        : view === 'sliced' && toppingMatch.imageSliced?.reference?.image?.url
+          ? toppingMatch.imageSliced.reference.image.url
+          : toppingMatch.imageFront?.reference?.image?.url || toppingMatch.thumbnailUrl?.reference?.image?.url;
     }
 
     if (resolvedToppingImg) {

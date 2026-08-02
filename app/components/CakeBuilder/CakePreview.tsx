@@ -97,9 +97,6 @@ function checkIsCakeFrosting(
   return true;
 }
 
-  return false;
-}
-
 function getStandardShapeAsset(view: 'front' | 'top' | 'sliced', flavorName: string): string {
   const normFlavor = flavorName.toLowerCase();
   

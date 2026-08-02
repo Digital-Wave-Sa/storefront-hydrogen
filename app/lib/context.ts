@@ -39,9 +39,14 @@ export async function createHydrogenRouterContext(
     AppSession.init(request, [sessionSecret]),
   ]);
 
+  const cleanEnv = { ...env };
+  if (process.env.NODE_ENV === 'development') {
+    delete (cleanEnv as any).PRIVATE_STOREFRONT_API_TOKEN;
+  }
+
   const hydrogenContext = createHydrogenContext(
     {
-      env,
+      env: cleanEnv,
       request,
       cache,
       waitUntil,

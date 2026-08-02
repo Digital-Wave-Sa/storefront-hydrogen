@@ -155,9 +155,10 @@ export function CakePreview({
     const shapeMatch = cakeAttributes?.find(attr => {
       const isShapeType = attr.attributeType?.value?.toLowerCase() === 'shape' || attr.attributeType?.value?.toLowerCase() === 'base';
       if (!isShapeType) return false;
-      const shopifyName = (attr.nameEn?.value || '').toLowerCase().replace(/[-_]/g, ' ');
-      const cleanShape = (shape || '').toLowerCase().replace(/[-_]/g, ' ');
-      return attr.id === shape || cleanShape === shopifyName || (shopifyName && cleanShape.includes(shopifyName)) || (cleanShape && shopifyName.includes(cleanShape));
+      const shopifyName = (attr.nameEn?.value || '').toLowerCase().replace(/[-_\s]+/g, ' ');
+      const cleanShape = (shape || '').toLowerCase().replace(/[-_\s]+/g, ' ');
+      const rawId = (attr.nameEn?.value || '').toLowerCase().replace(/[\s\-_]+/g, '_');
+      return attr.id === shape || rawId === shape || (shopifyName && cleanShape && cleanShape === shopifyName);
     });
 
     const hasTop = !!(shapeMatch?.imageTop?.reference?.image?.url || ['classic_round', 'standard', 'mini_cake', 'small_standard', 'circle'].includes(shape || ''));
@@ -187,9 +188,10 @@ export function CakePreview({
     const shapeMatch = cakeAttributes?.find(attr => {
       const isShapeType = attr.attributeType?.value?.toLowerCase() === 'shape' || attr.attributeType?.value?.toLowerCase() === 'base';
       if (!isShapeType) return false;
-      const shopifyName = (attr.nameEn?.value || '').toLowerCase().replace(/[-_]/g, ' ');
-      const cleanShape = (shape || '').toLowerCase().replace(/[-_]/g, ' ');
-      return attr.id === shape || cleanShape === shopifyName || (shopifyName && cleanShape.includes(shopifyName)) || (cleanShape && shopifyName.includes(cleanShape));
+      const shopifyName = (attr.nameEn?.value || '').toLowerCase().replace(/[-_\s]+/g, ' ');
+      const cleanShape = (shape || '').toLowerCase().replace(/[-_\s]+/g, ' ');
+      const rawId = (attr.nameEn?.value || '').toLowerCase().replace(/[\s\-_]+/g, '_');
+      return attr.id === shape || rawId === shape || (shopifyName && cleanShape && cleanShape === shopifyName);
     });
 
     // Check if Shopify has the shape image uploaded

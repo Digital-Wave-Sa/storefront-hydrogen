@@ -260,7 +260,9 @@ export default function FAQPage() {
           <div className="flex flex-wrap justify-center gap-4" dir={isEn ? 'ltr' : 'rtl'}>
             {/* WhatsApp */}
             <a
-              href="https://wa.me/..."
+              href="https://wa.me/966920004344"
+              target="_blank"
+              rel="noopener noreferrer"
               className="flex items-center gap-2 bg-[#FEF8EB] text-[#234745] px-6 py-3 rounded-xl font-bold text-sm hover:bg-[#f5ebd4] transition-colors"
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12.012 2c-5.506 0-9.989 4.478-9.99 9.984a9.96 9.96 0 0 0 1.335 4.993L2 22l5.233-1.373a9.92 9.92 0 0 0 4.779 1.224h.005c5.505 0 9.988-4.478 9.989-9.984 0-2.669-1.037-5.176-2.922-7.062A9.92 9.92 0 0 0 12.012 2zm6.918 14.153c-.3.843-1.491 1.538-2.052 1.636-.562.097-1.125.138-1.787-.044-.424-.117-.962-.275-1.579-.537-2.627-1.116-4.321-3.791-4.453-3.967-.132-.176-1.069-1.424-1.069-2.716 0-1.292.661-1.927.892-2.193.232-.265.507-.331.676-.331.169 0 .338.005.485.012.152.007.354-.058.554.425.203.491.693 1.692.753 1.814.06.121.1.262.019.42-.081.158-.121.262-.242.404-.121.142-.254.316-.363.425-.121.121-.248.254-.107.496.142.242.628 1.033 1.348 1.674.928.824 1.71 1.08 1.952 1.201.242.121.383.1.524-.06.142-.162.605-.705.766-.947.161-.242.323-.202.544-.121.222.081 1.41.665 1.652.786.242.121.403.182.463.282.06.1.06.581-.24.153z" /></svg>
@@ -269,7 +271,7 @@ export default function FAQPage() {
 
             {/* Call Us */}
             <a
-              href="tel:..."
+              href="tel:920004344"
               className="flex items-center gap-2 bg-[#FEF8EB] text-[#234745] px-6 py-3 rounded-xl font-bold text-sm hover:bg-[#f5ebd4] transition-colors"
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" /></svg>
@@ -278,7 +280,7 @@ export default function FAQPage() {
 
             {/* Email Us */}
             <a
-              href="mailto:..."
+              href="mailto:customercare@saadeddin.com"
               className="flex items-center gap-2 bg-[#FEF8EB] text-[#234745] px-6 py-3 rounded-xl font-bold text-sm hover:bg-[#f5ebd4] transition-colors"
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" /><polyline points="22,6 12,13 2,6" /></svg>

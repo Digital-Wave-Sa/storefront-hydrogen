@@ -83,15 +83,17 @@ export function AddToCartButton({
       }))
     : lines;
 
-  // Sanitize lines to ensure only valid Shopify CartLineInput fields are sent
+  // Sanitize lines to ensure valid Shopify CartLineInput fields + selectedVariant for useOptimisticCart
   const cleanLines = exportLines.map(line => {
     const { merchandiseId, quantity, attributes, sellingPlanId } = line as any;
+    const variant = (line as any).selectedVariant || selectedVariant;
     const cleanAttrs = Array.isArray(attributes)
       ? attributes.map((a: any) => ({ key: String(a.key), value: String(a.value ?? '') }))
       : [];
     return {
       merchandiseId,
       quantity,
+      ...(variant ? { selectedVariant: variant } : {}),
       ...(cleanAttrs.length > 0 ? { attributes: cleanAttrs } : {}),
       ...(sellingPlanId ? { sellingPlanId } : {}),
     };

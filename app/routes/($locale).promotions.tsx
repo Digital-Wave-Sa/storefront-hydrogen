@@ -257,8 +257,9 @@ function renderTextWithRiyalSymbol(text: any, className = "h-[18px] md:h-[26px] 
 
 export default function PromotionsPage() {
   const { products, heroData, bogoData, gridData, bannerData } = useLoaderData<typeof loader>();
-  const routeData = useRouteLoaderData('root') as { locale?: string };
+  const routeData = useRouteLoaderData('root') as any;
   const locale = routeData?.locale || 'ar';
+  const selectedLocationName = routeData?.selectedLocationName || (locale.startsWith('en') ? 'Olaya Branch' : 'فرع العليا');
   const isEn = locale.toLowerCase().startsWith('en');
   const { isInWishlist, toggleWishlist } = useWishlist();
 
@@ -390,6 +391,47 @@ export default function PromotionsPage() {
 
       {/* Main Container */}
       <div className="max-w-[1280px] mx-auto px-4 mt-12 md:mt-8 flex flex-col gap-8">
+
+        {/* Branch Location Promotion Card */}
+        {selectedLocationName && (
+          <section className="w-full bg-[#234745] text-white rounded-[24px] p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-md border border-[#9FB7AE]/30">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 bg-[#C5A96A] text-[#234745] rounded-2xl flex items-center justify-center shrink-0 font-bold text-[24px]">
+                📍
+              </div>
+              <div className="flex flex-col gap-1 text-start">
+                <div className="inline-flex items-center gap-2 bg-[#C5A96A]/20 px-3 py-1 rounded-full w-fit">
+                  <span className="text-[#C5A96A] font-bold text-[12px]">
+                    {isEn ? `Exclusive for ${selectedLocationName}` : `خصم خاص لـ ${selectedLocationName}`}
+                  </span>
+                </div>
+                <h3 className="text-white font-bold text-[20px] md:text-[24px] leading-snug">
+                  {isEn ? `Olaya Branch Special Offer 🎉` : `عرض فرع العليا المميز 🎉`}
+                </h3>
+                <p className="text-gray-300 text-[14px] font-medium">
+                  {isEn ? `Enjoy 50% off on all orders from Olaya Branch!` : `احصل على خصم 50% على جميع الطلبات من فرع العليا!`}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 w-full md:w-auto shrink-0" dir="ltr">
+              <div className="bg-[#1a3533] border border-[#C5A96A]/40 rounded-xl px-4 py-2.5 flex items-center justify-between gap-3 flex-1 md:flex-initial">
+                <span className="text-gray-400 text-[12px] font-bold">{isEn ? 'Code:' : 'كود:'}</span>
+                <span className="font-mono text-[18px] font-extrabold text-[#C5A96A] tracking-wider select-all">RIYADH50</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard.writeText('RIYADH50');
+                  setShowToast(true);
+                  setTimeout(() => setShowToast(false), 2000);
+                }}
+                className="px-5 py-3 bg-[#C5A96A] hover:bg-[#b5995a] text-[#234745] font-bold text-[14px] rounded-xl transition-all shadow-sm active:scale-95 cursor-pointer whitespace-nowrap"
+              >
+                {isEn ? 'Copy Code' : 'نسخ الكود'}
+              </button>
+            </div>
+          </section>
+        )}
 
         {/* 2. Hero Offer Card */}
         <section

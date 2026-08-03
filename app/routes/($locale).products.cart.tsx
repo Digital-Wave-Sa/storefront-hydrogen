@@ -32,7 +32,10 @@ export async function action({ request, context }: ActionFunctionArgs) {
     console.error('[PRODUCTS/CART ACTION ERROR]', err);
   }
 
-  return redirect(isEn ? '/en/cart' : '/cart', 302);
+  return data(
+    { cart: null, errors: [{ message: 'Cart action processed' }] },
+    { status: 200 }
+  );
 }
 
 export default function ProductsCartCatchAll() {

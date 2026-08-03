@@ -184,6 +184,11 @@ export async function loader(args: LoaderFunctionArgs) {
   // Ensure handle is decoded (for Arabic characters)
   const decodedHandle = decodeURIComponent(handle);
 
+  if (decodedHandle === 'cart') {
+    const isEn = storefront.i18n.language === 'EN';
+    return redirect(isEn ? '/en/cart' : '/cart');
+  }
+
   let {product} = await storefront.query(PRODUCT_QUERY, {
     variables: {
       handle: decodedHandle,

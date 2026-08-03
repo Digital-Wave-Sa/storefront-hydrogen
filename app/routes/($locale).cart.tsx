@@ -97,9 +97,22 @@ export async function action({request, context}: Route.ActionArgs) {
 
 
   switch (action) {
-    case CartForm.ACTIONS.LinesAdd:
-      result = await withRetry(() => cart.addLines(inputs.lines));
+    case CartForm.ACTIONS.LinesAdd: {
+      const cleanLines = (inputs.lines || []).map((line: any) => ({
+        merchandiseId: line.merchandiseId,
+        quantity: line.quantity || 1,
+        ...(Array.isArray(line.attributes)
+          ? {
+              attributes: line.attributes
+                .filter((a: any) => a && a.key)
+                .map((a: any) => ({ key: String(a.key), value: String(a.value ?? '') })),
+            }
+          : {}),
+        ...(line.sellingPlanId ? { sellingPlanId: line.sellingPlanId } : {}),
+      }));
+      result = await withRetry(() => cart.addLines(cleanLines));
       break;
+    }
     case CartForm.ACTIONS.LinesUpdate:
       result = await withRetry(() => cart.updateLines(inputs.lines));
       break;
@@ -537,7 +550,7 @@ export async function action({request, context}: Route.ActionArgs) {
         error: errMsg,
       },
       {
-        status: isThrottled ? 429 : 400,
+        status: 200,
         headers,
       }
     );

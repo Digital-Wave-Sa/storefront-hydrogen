@@ -494,11 +494,11 @@ export function Layout({children}: {children?: React.ReactNode}) {
       <head suppressHydrationWarning>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <Meta />
         <link rel="canonical" href={canonicalUrl} />
         <link rel="alternate" hrefLang="ar" href={arUrl} />
         <link rel="alternate" hrefLang="en" href={enUrl} />
         <link rel="alternate" hrefLang="x-default" href={arUrl} />
-        <Meta />
         <Links />
         {/* Critical CSS to prevent FOUC */}
         <style dangerouslySetInnerHTML={{ __html: `

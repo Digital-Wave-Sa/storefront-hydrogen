@@ -52,7 +52,13 @@ export function getIsOutOfStock(
   // If we found the specific location in the stock list, use its status
   if (availableNode) return !availableNode.available;
 
-  // Fallback to global Shopify availableForSale status
+  // If storeAvailability data exists for this variant but the selected branch is not listed,
+  // it means the product is out of stock at this specific branch.
+  if (Array.isArray(storeAvailabilityNodes) && storeAvailabilityNodes.length > 0) {
+    return true;
+  }
+
+  // Fallback to global Shopify availableForSale status only if storeAvailability data is absent
   return !availableForSale;
 }
 

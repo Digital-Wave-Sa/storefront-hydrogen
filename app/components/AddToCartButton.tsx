@@ -1,6 +1,6 @@
-import {type FetcherWithComponents, useNavigate} from 'react-router';
-import {CartForm, type OptimisticCartLineInput} from '@shopify/hydrogen';
-import {useAside} from './Aside';
+import { useFetcher, useNavigate, useLocation } from 'react-router';
+import { CartForm, type OptimisticCartLineInput } from '@shopify/hydrogen';
+import { useAside } from './Aside';
 
 export function AddToCartButton({
   analytics,
@@ -8,6 +8,7 @@ export function AddToCartButton({
   disabled,
   lines,
   onClick,
+  onAddToCartSuccess,
   selectedVariant,
   className,
   style,
@@ -18,14 +19,21 @@ export function AddToCartButton({
   disabled?: boolean;
   lines: Array<OptimisticCartLineInput>;
   onClick?: () => void;
+  onAddToCartSuccess?: () => void;
   selectedVariant?: any;
   className?: string;
   style?: React.CSSProperties;
   /** When true: tags line with _export=true and redirects to /export-cart */
   isExport?: boolean;
 }) {
-  const {open} = useAside();
+  const { open } = useAside();
   const navigate = useNavigate();
+  const location = useLocation();
+  const fetcher = useFetcher();
+
+  const isEn = location.pathname.startsWith('/en');
+  const cartRoute = isEn ? '/en/cart' : '/cart';
+  const isSubmitting = fetcher.state !== 'idle';
 
   const fireAddToCartEvent = () => {
     try {
@@ -75,57 +83,82 @@ export function AddToCartButton({
       }))
     : lines;
 
-  // Sanitize lines to strip non-standard frontend properties (e.g. selectedVariant used for analytics)
-  const cartFormLines = exportLines.map((l: any) => {
-    const { selectedVariant, ...rest } = l;
-    return rest;
+  // Sanitize lines to ensure only valid Shopify CartLineInput fields are sent
+  const cleanLines = exportLines.map(line => {
+    const { merchandiseId, quantity, attributes, sellingPlanId } = line as any;
+    const cleanAttrs = Array.isArray(attributes)
+      ? attributes.map((a: any) => ({ key: String(a.key), value: String(a.value ?? '') }))
+      : [];
+    return {
+      merchandiseId,
+      quantity,
+      ...(cleanAttrs.length > 0 ? { attributes: cleanAttrs } : {}),
+      ...(sellingPlanId ? { sellingPlanId } : {}),
+    };
   });
 
+  const handleSubmit = (e: React.MouseEvent) => {
+    // Prevent any default browser behavior or tab opening
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.nativeEvent && typeof e.nativeEvent.stopImmediatePropagation === 'function') {
+      e.nativeEvent.stopImmediatePropagation();
+    }
+
+    // Ignore middle-clicks, right-clicks, or clicks with modifier keys (Ctrl/Cmd) that browsers use to open new tabs
+    if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) {
+      return;
+    }
+
+    if (disabled || isSubmitting) return;
+
+    fireAddToCartEvent();
+    if (onClick) onClick();
+
+    const formData = new FormData();
+    const cartInput = {
+      action: CartForm.ACTIONS.LinesAdd,
+      inputs: { lines: cleanLines },
+    };
+    formData.append('cartFormInput', JSON.stringify(cartInput));
+    if (analytics) {
+      formData.append('analytics', JSON.stringify(analytics));
+    }
+
+    // Post to current page route (or /cart) to ensure action matches target route without relative URL 404s
+    const targetAction = location.pathname.includes('/products/') ? location.pathname : cartRoute;
+    fetcher.submit(formData, { method: 'POST', action: targetAction });
+
+    if (onAddToCartSuccess) {
+      onAddToCartSuccess();
+    } else if (isExport) {
+      // Export flow: don't open cart aside, navigate to export cart
+      navigate('/export-cart');
+    } else {
+      open('cart');
+    }
+  };
+
   return (
-    <CartForm 
-      route="/cart" 
-      inputs={{lines: cartFormLines}} 
-      action={CartForm.ACTIONS.LinesAdd}
+    <button
+      type="button"
+      onClick={handleSubmit}
+      disabled={disabled || isSubmitting}
+      className={className}
+      style={style}
     >
-      {(fetcher: FetcherWithComponents<any>) => (
-        <>
-          <input
-            name="analytics"
-            type="hidden"
-            value={JSON.stringify(analytics)}
-          />
-          <button
-            type="submit"
-            onClick={(e) => {
-              fireAddToCartEvent();
-              if (onClick) onClick();
-              if (isExport) {
-                // Export flow: don't open cart aside, navigate to export cart
-                // Small delay to let the cart mutation fire first
-                setTimeout(() => navigate('/export-cart'), 100);
-              } else {
-                open('cart');
-              }
-            }}
-            disabled={disabled ?? fetcher.state !== 'idle'}
-            className={className}
-            style={style}
-          >
-            {fetcher.state !== 'idle' ? (
-              <span className="flex items-center justify-center gap-2">
-                <svg className="animate-spin h-5 w-5 text-current" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-                </svg>
-                {children}
-              </span>
-            ) : (
-              children
-            )}
-          </button>
-        </>
+      {isSubmitting ? (
+        <span className="flex items-center justify-center gap-2">
+          <svg className="animate-spin h-5 w-5 text-current" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+          </svg>
+          {children}
+        </span>
+      ) : (
+        children
       )}
-    </CartForm>
+    </button>
   );
 }
 

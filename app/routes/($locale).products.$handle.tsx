@@ -2,12 +2,14 @@ import { Suspense, useState, useEffect, useMemo } from 'react';
 import { getVisibilityStatus, getProductVisibility, type VisibilityResult } from '~/lib/visibility';
 import { getIsOutOfStock } from '~/lib/stock';
 import { StockNotificationModal } from '~/components/StockNotificationModal';
+import { ProductUpsellModal } from '~/components/ProductUpsellModal';
 import { Price, SaudiRiyalSymbol } from '~/components/Price';
 import { AddToCartButton } from '~/components/AddToCartButton';
 import { StarRating, parseRatingValue } from '~/components/StarRating';
 import { ProductItem } from '~/components/ProductItem';
 import { ReviewForm } from '~/components/ReviewForm';
 import { useWishlist } from '~/context/WishlistContext';
+import { fixMojibake } from '~/lib/mojibake';
 import { adminApiQuery } from '~/lib/admin.server';
 import { getAdminToken } from '~/lib/shopify-admin.server';
 import { createPortal } from 'react-dom';
@@ -40,6 +42,33 @@ export const shouldRevalidate = ({ currentUrl, nextUrl, defaultShouldRevalidate 
   }
   return defaultShouldRevalidate;
 };
+
+export async function action({ request, context }: any) {
+  const { cart } = context;
+  const isEn = context.storefront.i18n.language === 'EN';
+
+  try {
+    const formData = await request.formData();
+    const { action: rawAction, inputs: rawInputs } = CartForm.getFormInput(formData);
+    const action = rawAction as any;
+    const inputs = rawInputs as any;
+
+    if (action === CartForm.ACTIONS.LinesAdd) {
+      const result = await cart.addLines(inputs.lines);
+      const cartId = result?.cart?.id;
+      const headers = cartId ? cart.setCartId(result.cart.id) : new Headers();
+      if (context.session?.isPending) {
+        headers.append('Set-Cookie', await context.session.commit());
+      }
+      return data({ cart: result?.cart, errors: result?.errors || [] }, { status: 200, headers });
+    }
+
+    return data({ error: 'Action not supported' }, { status: 400 });
+  } catch (err: any) {
+    console.error('[PRODUCT ACTION ERROR]', err);
+    return data({ error: err?.message || 'Error processing cart action' }, { status: 500 });
+  }
+}
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
   if (!data?.product) {
@@ -129,8 +158,8 @@ export async function loader(args: LoaderFunctionArgs) {
   const decodedHandle = decodeURIComponent(handle);
 
   let { product } = await storefront.query(PRODUCT_QUERY, {
-    variables: { 
-      handle: decodedHandle, 
+    variables: {
+      handle: decodedHandle,
       selectedOptions,
       country: storefront.i18n.country,
       language: storefront.i18n.language,
@@ -516,7 +545,19 @@ export default function Product() {
   }, [customer]);
 
   const [isNotifyModalOpen, setIsNotifyModalOpen] = useState(false);
+  const [isUpsellModalOpen, setIsUpsellModalOpen] = useState(false);
   const [quantity, setQuantity] = useState(1);
+
+  const upsellProducts = useMemo(() => {
+    const directUpsells = (product as any).upsell_products?.references?.nodes || [];
+    if (directUpsells.length > 0) return directUpsells;
+
+    const addons = (product as any).addons?.references?.nodes || [];
+    if (addons.length > 0) return addons;
+
+    const related = (product as any).related_products?.references?.nodes || [];
+    return related;
+  }, [product]);
   const [isBuyingNow, setIsBuyingNow] = useState(false);
   const [activeTab, setActiveTab] = useState('details');
   const [selectedAddons, setSelectedAddons] = useState<string[]>([]); // Array of Variant IDs
@@ -599,7 +640,7 @@ export default function Product() {
           ] : []),
           ...(cakeMessage ? [
             { key: 'Cake Message', value: cakeMessage },
-            { key: 'Write On', value: writeLocation === 'cake' ? (isEn ? 'On Cake' : 'على الكيكة') : (isEn ? 'On Board' : 'على القاعدة') },
+            { key: isEn ? 'Write On' : 'الكتابة على', value: writeLocation === 'cake' ? (isEn ? 'On Cake' : 'على الكيكة') : (isEn ? 'On Board' : 'على القاعدة') },
             { key: '_writeOn', value: writeLocation }
           ] : []),
           ...(isGiftMode ? [
@@ -651,22 +692,22 @@ export default function Product() {
       };
       formData.append('cartFormInput', JSON.stringify(cartInput));
 
-      const res = await fetch('/cart', {
+      const res = await fetch(isEn ? '/en/cart' : '/cart', {
         method: 'POST',
         body: formData,
       });
 
       const data = await res.json() as any;
-      const checkoutUrl = data?.cart?.checkoutUrl || (rootData?.cart?.checkoutUrl);
+      const checkoutUrl = data?.cart?.checkoutUrl || rootData?.cart?.checkoutUrl;
 
-      if (checkoutUrl) {
+      if (checkoutUrl && (checkoutUrl.startsWith('http://') || checkoutUrl.startsWith('https://')) && !checkoutUrl.includes('localhost')) {
         window.location.href = checkoutUrl;
       } else {
-        window.location.href = isEn ? '/en/cart' : '/cart';
+        open('cart');
       }
     } catch (err) {
       console.error('Buy Now error:', err);
-      window.location.href = isEn ? '/en/cart' : '/cart';
+      open('cart');
     } finally {
       setIsBuyingNow(false);
     }
@@ -949,6 +990,15 @@ export default function Product() {
         locationName={selectedLocationName || undefined}
       />
 
+      {/* Product Upsell Modal (Post Add-To-Cart) */}
+      <ProductUpsellModal
+        isOpen={isUpsellModalOpen}
+        onClose={() => setIsUpsellModalOpen(false)}
+        upsellProducts={upsellProducts}
+        isEn={isEn}
+        onOpenCart={() => open('cart')}
+      />
+
 
 
       {/* 1. Styled PDP Header Header */}
@@ -971,7 +1021,7 @@ export default function Product() {
               dir={isEn ? 'ltr' : 'rtl'}
             >
               <svg width="15" height="13" viewBox="0 0 15 13" fill="none" xmlns="http://www.w3.org/2000/svg" className={`${isEn ? 'rotate-180' : ''}`}>
-                <path d="M0 6H12.25L7 0.75L7.66 0L14.16 6.5L7.66 13L7 12.25L12.25 7H0V6Z" fill="#234745"/>
+                <path d="M0 6H12.25L7 0.75L7.66 0L14.16 6.5L7.66 13L7 12.25L12.25 7H0V6Z" fill="#234745" />
               </svg>
               <span>{isEn ? 'Back' : 'رجوع'}</span>
             </button>
@@ -1042,7 +1092,7 @@ export default function Product() {
               return collectionUrl ? (
                 <Link
                   to={collectionUrl}
-                  className="text-[#906B51] hover:underline block mb-[16px] text-start transition-colors"
+                  className="!text-[#906B51] hover:underline block mb-[16px] text-start transition-colors"
                   style={{
                     fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
                     fontWeight: 700,
@@ -1082,17 +1132,19 @@ export default function Product() {
                 }}
               >
                 {(() => {
-                  if (isEn) return product.title;
-                  const hasArabicInTitle = /[\u0600-\u06FF]/.test(product.title || '');
-                  if (hasArabicInTitle) return product.title;
-                  const arMetafield = 
+                  const cleanTitle = fixMojibake(product.title || '');
+                  if (isEn) return cleanTitle;
+                  const hasArabicInTitle = /[\u0600-\u06FF]/.test(cleanTitle);
+                  if (hasArabicInTitle) return cleanTitle;
+                  const arMetafield =
                     (product as any).name_in_arabic?.value ||
                     (product as any).title_in_arabic?.value ||
                     (product as any).name_ar?.value ||
                     (product as any).title_ar?.value ||
                     (product as any).arabic_name?.value ||
                     (product as any).arabic_title?.value;
-                  return (arMetafield && String(arMetafield).trim()) ? String(arMetafield).trim() : product.title;
+                  const cleanArMeta = fixMojibake(arMetafield ? String(arMetafield).trim() : '');
+                  return cleanArMeta || cleanTitle;
                 })()}
               </h1>
 
@@ -1483,11 +1535,10 @@ export default function Product() {
                           <button
                             type="button"
                             onClick={() => setWriteLocation('cake')}
-                            className={`flex-1 py-2.5 px-4 rounded-[12px] text-[14px] font-bold border transition-all flex items-center justify-center gap-2 ${
-                              writeLocation === 'cake'
-                                ? 'bg-[#234745] text-white border-[#234745] shadow-sm'
-                                : 'bg-white text-[#234745] border-[#BBCFCD]/60 hover:bg-gray-50'
-                            }`}
+                            className={`flex-1 py-2.5 px-4 rounded-[12px] text-[14px] font-bold border transition-all flex items-center justify-center gap-2 ${writeLocation === 'cake'
+                              ? 'bg-[#234745] text-white border-[#234745] shadow-sm'
+                              : 'bg-white text-[#234745] border-[#BBCFCD]/60 hover:bg-gray-50'
+                              }`}
                           >
                             <span>🎂</span>
                             <span>{isEn ? 'On the Cake' : 'على الكيكة'}</span>
@@ -1496,11 +1547,10 @@ export default function Product() {
                           <button
                             type="button"
                             onClick={() => setWriteLocation('board')}
-                            className={`flex-1 py-2.5 px-4 rounded-[12px] text-[14px] font-bold border transition-all flex items-center justify-center gap-2 ${
-                              writeLocation === 'board'
-                                ? 'bg-[#234745] text-white border-[#234745] shadow-sm'
-                                : 'bg-white text-[#234745] border-[#BBCFCD]/60 hover:bg-gray-50'
-                            }`}
+                            className={`flex-1 py-2.5 px-4 rounded-[12px] text-[14px] font-bold border transition-all flex items-center justify-center gap-2 ${writeLocation === 'board'
+                              ? 'bg-[#234745] text-white border-[#234745] shadow-sm'
+                              : 'bg-white text-[#234745] border-[#BBCFCD]/60 hover:bg-gray-50'
+                              }`}
                           >
                             <span>🔳</span>
                             <span>{isEn ? 'On the Board' : 'على القاعدة'}</span>
@@ -1593,9 +1643,9 @@ export default function Product() {
                             ) : (
                               <div className="flex flex-col items-center gap-1">
                                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#906B51" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                                  <polyline points="17 8 12 3 7 8"/>
-                                  <line x1="12" y1="3" x2="12" y2="15"/>
+                                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                  <polyline points="17 8 12 3 7 8" />
+                                  <line x1="12" y1="3" x2="12" y2="15" />
                                 </svg>
                                 <span className="text-[#234745] font-bold text-[14px]">{isEn ? 'Choose Logo File' : 'اختر ملف الشعار'}</span>
                                 <span className="text-[#8B9895] text-[12px]">{isEn ? 'PNG, JPG, SVG, or PDF (Max 10MB)' : 'صورة PNG، JPG، SVG أو ملف PDF'}</span>
@@ -1806,6 +1856,13 @@ export default function Product() {
                         }}
                         disabled={!selectedVariant}
                         onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                        onAddToCartSuccess={() => {
+                          if (upsellProducts.length > 0) {
+                            setIsUpsellModalOpen(true);
+                          } else {
+                            open('cart');
+                          }
+                        }}
                         lines={
                           selectedVariant
                             ? (() => {
@@ -2088,6 +2145,13 @@ export default function Product() {
                           }}
                           disabled={!selectedVariant || effectiveOutOfStock}
                           onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                          onAddToCartSuccess={() => {
+                            if (upsellProducts.length > 0) {
+                              setIsUpsellModalOpen(true);
+                            } else {
+                              open('cart');
+                            }
+                          }}
                           lines={
                             selectedVariant
                               ? (() => {
@@ -2112,7 +2176,7 @@ export default function Product() {
                                     ] : []),
                                     ...(cakeMessage ? [
                                       { key: 'Cake Message', value: cakeMessage },
-                                      { key: 'Write On', value: writeLocation === 'cake' ? (isEn ? 'On Cake' : 'على الكيكة') : (isEn ? 'On Board' : 'على القاعدة') },
+                                      { key: isEn ? 'Write On' : 'الكتابة على', value: writeLocation === 'cake' ? (isEn ? 'On Cake' : 'على الكيكة') : (isEn ? 'On Board' : 'على القاعدة') },
                                       { key: '_writeOn', value: writeLocation }
                                     ] : []),
                                     ...(companyName ? [{ key: 'Company Name', value: companyName }] : []),
@@ -2480,7 +2544,7 @@ export default function Product() {
             >
               <span>{isEn ? 'View All' : 'عرض الكل'}</span>
               <svg width="12" height="9" viewBox="0 0 12 9" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M4.5 8.5L0.5 4.5L4.5 0.5M0.5 4.5H7.5M11.1667 4.5H9.5" stroke="black" stroke-linecap="round" stroke-linejoin="round" />
+                <path d="M4.5 8.5L0.5 4.5L4.5 0.5M0.5 4.5H7.5M11.1667 4.5H9.5" stroke="black" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </Link>
           </div>
@@ -2552,7 +2616,7 @@ function ProductGallery({ images, product }: { images: any[], product: any }) {
   return (
     <div className="flex flex-col gap-4 relative w-full">
       {/* Main Image with Zoom on Desktop, Swipe on Mobile */}
-      <div className="relative w-full aspect-square bg-[#f9f9f9] rounded-[2.5rem] overflow-hidden group border border-gray-100 shadow-sm">
+      <div className="relative w-full aspect-square bg-[#f9f9f9] rounded-[20px] overflow-hidden group border border-[#9FB7AE]">
 
         {/* Top Heart Icon (Left Side) */}
         <div className="absolute top-6 left-6 z-20">
@@ -3076,6 +3140,84 @@ const PRODUCT_FRAGMENT = `#graphql
                 altText
                 width
                 height
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  upsell_products: metafield(namespace: "custom", key: "upsell_products") {
+    references(first: 10) {
+      nodes {
+        ... on Product {
+          id
+          title
+          handle
+          availableForSale
+          featuredImage {
+            url
+            altText
+            width
+            height
+          }
+          priceRange {
+            minVariantPrice {
+              amount
+              currencyCode
+            }
+          }
+          variants(first: 1) {
+            nodes {
+              id
+              sku
+              availableForSale
+              price {
+                amount
+                currencyCode
+              }
+              image {
+                url
+                altText
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  product_upsells: metafield(namespace: "custom", key: "product_upsells") {
+    references(first: 10) {
+      nodes {
+        ... on Product {
+          id
+          title
+          handle
+          availableForSale
+          featuredImage {
+            url
+            altText
+            width
+            height
+          }
+          priceRange {
+            minVariantPrice {
+              amount
+              currencyCode
+            }
+          }
+          variants(first: 1) {
+            nodes {
+              id
+              sku
+              availableForSale
+              price {
+                amount
+                currencyCode
+              }
+              image {
+                url
+                altText
               }
             }
           }

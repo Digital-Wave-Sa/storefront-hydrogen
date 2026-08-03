@@ -2,7 +2,7 @@ import type { CartLineUpdateInput } from '@shopify/hydrogen/storefront-api-types
 import type { CartLayout, LineItemChildrenMap } from '~/components/CartMain';
 import { CartForm, Image, type OptimisticCartLine } from '@shopify/hydrogen';
 import { useVariantUrl } from '~/lib/variants';
-import { Link, useRouteLoaderData } from 'react-router';
+import { Link, useRouteLoaderData, useLocation } from 'react-router';
 import { useState, useEffect } from 'react';
 import { ProductPrice } from './ProductPrice';
 import { useAside } from './Aside';
@@ -11,6 +11,7 @@ import type {
   CartLineFragment,
 } from 'storefrontapi.generated';
 import { SaudiRiyalSymbol } from './Price';
+import { fixMojibake } from '~/lib/mojibake';
 
 export type CartLine = OptimisticCartLine<CartApiQueryFragment>;
 
@@ -29,10 +30,12 @@ export function CartLineItem({
   const { product, title, image, selectedOptions } = merchandise || {};
   const lineItemUrl = product?.handle ? useVariantUrl(product.handle, selectedOptions) : '#';
   const { close } = useAside();
+  const location = useLocation();
+  const cartRoute = location.pathname.startsWith('/en') ? '/en/cart' : '/cart';
   const lineItemChildren = childrenMap[id];
   const childrenLabelId = `cart-line-children-${id}`;
   const rootData = useRouteLoaderData('root') as any;
-  const isEn = rootData?.consent?.language?.toLowerCase() === 'en';
+  const isEn = rootData?.consent?.language?.toLowerCase() === 'en' || location.pathname.startsWith('/en');
   const isFreeItem = line.attributes?.some((attr: any) => attr.key === '_is_free' && attr.value === 'true') || false;
 
   // Filter out default title option
@@ -107,7 +110,7 @@ export function CartLineItem({
           </div>
 
           <h4 className="font-bold text-[16px] text-[#1a1a1a] line-clamp-2 leading-tight mb-2" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
-            {product?.title || title}
+            {fixMojibake(product?.title || title || '')}
           </h4>
 
           {(() => {
@@ -134,17 +137,28 @@ export function CartLineItem({
               {line.attributes
                 ?.filter((a: any) => a.value && !a.key.startsWith('_'))
                 .map((a: any) => {
-                  const isCakeMsg = a.key === 'Cake Message';
-                  const isGiftMsg = a.key === 'Gift Message';
-                  const isRecipient = a.key === 'Recipient Name';
-                  const isNote = a.key === 'Order Note';
+                  const writeOnVal = line.attributes?.find((attr: any) => attr.key === '_writeOn' || attr.key === 'Write On' || attr.key === 'الكتابة على')?.value;
+                  const isBoardWrite = writeOnVal === 'board' || writeOnVal === 'On Board' || writeOnVal === 'على القاعدة';
+
+                  const isCakeMsg = a.key === 'Cake Message' || a.key === 'كتابة على الكيكة' || a.key === 'Board Message' || a.key === 'كتابة على القاعدة';
+                  const isGiftMsg = a.key === 'Gift Message' || a.key === 'رسالة إهداء';
+                  const isRecipient = a.key === 'Recipient Name' || a.key === 'اسم المستلم';
+                  const isNote = a.key === 'Order Note' || a.key === 'ملاحظة الطلب';
+                  const isWriteOn = a.key === 'Write On' || a.key === 'الكتابة على';
 
                   let keyName = a.key;
                   if (!isEn) {
-                    if (isCakeMsg) keyName = 'كتابة على الكيكة';
+                    if (isCakeMsg) keyName = isBoardWrite ? 'كتابة على القاعدة' : 'كتابة على الكيكة';
                     else if (isGiftMsg) keyName = 'رسالة إهداء';
                     else if (isRecipient) keyName = 'اسم المستلم';
                     else if (isNote) keyName = 'ملاحظة الطلب';
+                    else if (isWriteOn) keyName = 'الكتابة على';
+                  } else {
+                    if (isCakeMsg) keyName = isBoardWrite ? 'Board Message' : 'Cake Message';
+                    else if (isGiftMsg) keyName = 'Gift Message';
+                    else if (isRecipient) keyName = 'Recipient Name';
+                    else if (isNote) keyName = 'Order Note';
+                    else if (isWriteOn) keyName = 'Write On';
                   }
 
                   const displayVal = a.value.length > 25 ? `${a.value.substring(0, 25)}...` : a.value;
@@ -284,10 +298,10 @@ export function CartLineItem({
 
           {/* Details */}
           <div className={`flex-1 min-w-0 ${isEn ? 'text-left' : 'text-right'}`}>
-            <span className="text-[12px] font-bold text-[#A67B5B] block mb-1" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
+            <span className="text-[12px] font-bold text-[#906B51] block mb-1" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
               {product?.vendor || (isEn ? 'Saadeddin' : 'الكيك المخصص')}
             </span>
-            <h4 className="font-bold text-[15px] text-[#1a1a1a] mb-1.5 leading-snug line-clamp-2" style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" }}>
+            <h4 className="font-bold text-[16px] text-[#171717] mb-1.5 leading-snug line-clamp-2" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
               {product?.title || title}
             </h4>
 
@@ -302,17 +316,28 @@ export function CartLineItem({
                 {line.attributes
                   ?.filter((a: any) => a.value && !a.key.startsWith('_'))
                   .map((a: any) => {
-                    const isCakeMsg = a.key === 'Cake Message';
-                    const isGiftMsg = a.key === 'Gift Message';
-                    const isRecipient = a.key === 'Recipient Name';
-                    const isNote = a.key === 'Order Note';
+                    const writeOnVal = line.attributes?.find((attr: any) => attr.key === '_writeOn' || attr.key === 'Write On' || attr.key === 'الكتابة على')?.value;
+                    const isBoardWrite = writeOnVal === 'board' || writeOnVal === 'On Board' || writeOnVal === 'على القاعدة';
+
+                    const isCakeMsg = a.key === 'Cake Message' || a.key === 'كتابة على الكيكة' || a.key === 'Board Message' || a.key === 'كتابة على القاعدة';
+                    const isGiftMsg = a.key === 'Gift Message' || a.key === 'رسالة إهداء';
+                    const isRecipient = a.key === 'Recipient Name' || a.key === 'اسم المستلم';
+                    const isNote = a.key === 'Order Note' || a.key === 'ملاحظة الطلب';
+                    const isWriteOn = a.key === 'Write On' || a.key === 'الكتابة على';
 
                     let keyName = a.key;
                     if (!isEn) {
-                      if (isCakeMsg) keyName = 'كتابة على الكيكة';
+                      if (isCakeMsg) keyName = isBoardWrite ? 'كتابة على القاعدة' : 'كتابة على الكيكة';
                       else if (isGiftMsg) keyName = 'رسالة إهداء';
                       else if (isRecipient) keyName = 'اسم المستلم';
                       else if (isNote) keyName = 'ملاحظة الطلب';
+                      else if (isWriteOn) keyName = 'الكتابة على';
+                    } else {
+                      if (isCakeMsg) keyName = isBoardWrite ? 'Board Message' : 'Cake Message';
+                      else if (isGiftMsg) keyName = 'Gift Message';
+                      else if (isRecipient) keyName = 'Recipient Name';
+                      else if (isNote) keyName = 'Order Note';
+                      else if (isWriteOn) keyName = 'Write On';
                     }
 
                     const displayVal = a.value.length > 25 ? `${a.value.substring(0, 25)}...` : a.value;
@@ -451,7 +476,7 @@ export function CartLineItem({
               {isEn ? 'Show alternatives' : 'عرض البدائل'}
             </Link>
             {/* إزالة من السلة */}
-            <CartForm fetcherKey={`remove-oos-${id}`} route="/cart" action={CartForm.ACTIONS.LinesRemove} inputs={{ lineIds: [id] }}>
+            <CartForm fetcherKey={`remove-oos-${id}`} route={cartRoute} action={CartForm.ACTIONS.LinesRemove} inputs={{ lineIds: [id] }}>
               <button
                 type="submit"
                 disabled={!!line.isOptimistic}
@@ -553,10 +578,12 @@ function CartLineRemoveButton({
   isOosButton?: boolean;
   isEn?: boolean;
 }) {
+  const location = useLocation();
+  const cartRoute = location.pathname.startsWith('/en') ? '/en/cart' : '/cart';
   return (
     <CartForm
       fetcherKey={getRemoveKey(lineIds)}
-      route="/cart"
+      route={cartRoute}
       action={CartForm.ACTIONS.LinesRemove}
       inputs={{ lineIds }}
     >
@@ -613,11 +640,12 @@ function CartLineUpdateButton({
   lines: CartLineUpdateInput[];
 }) {
   const lineIds = lines.map((line) => line.id);
-
+  const location = useLocation();
+  const cartRoute = location.pathname.startsWith('/en') ? '/en/cart' : '/cart';
   return (
     <CartForm
       fetcherKey={getUpdateKey(lineIds)}
-      route="/cart"
+      route={cartRoute}
       action={CartForm.ACTIONS.LinesUpdate}
       inputs={{ lines }}
     >

@@ -517,7 +517,6 @@ export default function CustomCakeBuilder({
     if (selections.color && !isNaN(Number(selections.color.price))) total += Number(selections.color.price);
     if (selections.uploadedImage && !isNaN(photoPrintPrice)) total += photoPrintPrice;
     if (selections.prepTime && !isNaN(Number(selections.prepTime.price))) total += Number(selections.prepTime.price);
-    console.log('[DEBUG Price] shape:', selections.shape?.name, selections.shape?.price, 'size:', selections.size?.name, selections.size?.price, 'flavor:', selections.flavor?.name, selections.flavor?.price, 'style:', selections.style?.name, selections.style?.price, 'total:', total);
     return total;
   };
 

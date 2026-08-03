@@ -545,6 +545,7 @@ export default function Login() {
   }
 
   const actionData = useActionData<any>();
+  const navigation = useNavigation();
   const location = useLocation();
   const rootData = useRouteLoaderData('root') as any;
   const isEn = location.pathname.startsWith('/en') || rootData?.locale === 'en' || rootData?.consent?.language?.toLowerCase() === 'en';

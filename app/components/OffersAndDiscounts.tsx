@@ -1,4 +1,5 @@
 import { Link, useOutletContext } from 'react-router';
+import { fixMojibake } from '~/lib/mojibake';
 
 export function OffersAndDiscounts({ config }: { config?: any }) {
     const { locale } = useOutletContext<{ locale: string }>();
@@ -9,7 +10,7 @@ export function OffersAndDiscounts({ config }: { config?: any }) {
     const isSecHidden = secNode?.fields?.find((f: any) => f.key === 'is_hidden')?.value;
     if (isSecHidden === 'true' || isSecHidden === '1' || isSecHidden === true) return null;
 
-    const getSecVal = (k: string) => secNode?.fields?.find((f: any) => f.key === k)?.value;
+    const getSecVal = (k: string) => fixMojibake(secNode?.fields?.find((f: any) => f.key === k)?.value || '');
     const secTitleEn = getSecVal('title_en') || 'Offers & Discounts';
     const secTitleAr = getSecVal('title_ar') || 'العروض والتخفيضات';
     const secSubtitleEn = getSecVal('subtitle_en') || 'Strongest offers for a limited time';
@@ -23,7 +24,7 @@ export function OffersAndDiscounts({ config }: { config?: any }) {
 
     // Card 1 (Voucher / Large Card)
     const card1Node = cardNodes[0];
-    const getC1Val = (k: string) => card1Node?.fields?.find((f: any) => f.key === k)?.value;
+    const getC1Val = (k: string) => fixMojibake(card1Node?.fields?.find((f: any) => f.key === k)?.value || '');
     const getC1Img = (k: string) => card1Node?.fields?.find((f: any) => f.key === k)?.reference?.image?.url;
 
     const c1BadgeEn = getC1Val('badge_en') || 'Gift Voucher';

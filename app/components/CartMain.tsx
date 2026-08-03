@@ -41,6 +41,7 @@ export function CartMain({ layout, cart: originalCart }: CartMainProps) {
   const cart = useOptimisticCart(originalCart);
   const location = useLocation();
   const isEn = location.pathname.split('/')[1]?.toLowerCase() === 'en';
+  const cartRoute = isEn ? '/en/cart' : '/cart';
   const rootData = useRouteLoaderData('root') as any;
 
   const cartLines = cart?.lines?.nodes || [];
@@ -239,7 +240,7 @@ export function CartMain({ layout, cart: originalCart }: CartMainProps) {
                       {isEn ? `Products (${cart?.totalQuantity || 0})` : `المنتجات (${new Intl.NumberFormat('en-US').format(cart?.totalQuantity || 0)})`}
                     </h3>
                     <CartForm
-                      route="/cart"
+                      route={cartRoute}
                       action={CartForm.ACTIONS.LinesRemove}
                       inputs={{ lineIds: (cart?.lines?.nodes ?? []).map(line => line.id) }}
                     >
@@ -378,7 +379,7 @@ export function CartMain({ layout, cart: originalCart }: CartMainProps) {
             <span className="text-[11px] text-gray-300 truncate max-w-[200px]">{deletedLine.merchandise.product.title}</span>
           </div>
           <CartForm
-            route="/cart"
+            route={cartRoute}
             action={CartForm.ACTIONS.LinesAdd}
             inputs={{
               lines: [

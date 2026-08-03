@@ -9,10 +9,12 @@ import { Price } from '~/components/Price';
 import { AddToCartButton } from '~/components/AddToCartButton';
 import { StockNotificationModal } from '~/components/StockNotificationModal';
 import { useWishlist } from '~/context/WishlistContext';
+import { fixMojibake } from '~/lib/mojibake';
 
 function formatNumbers(text: string) {
   if (!text) return text;
-  return text.split(/(\d+)/).map((part, i) => {
+  const cleanText = fixMojibake(text);
+  return cleanText.split(/(\d+)/).map((part, i) => {
     if (/^\d+$/.test(part)) {
       return <span key={i} className="font-en">{part}</span>;
     }

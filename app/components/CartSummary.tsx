@@ -21,6 +21,7 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
 
   const location = useLocation();
   const isEn = location.pathname.split('/')[1]?.toLowerCase() === 'en';
+  const cartRoute = isEn ? '/en/cart' : '/cart';
   const rootData = useRouteLoaderData('root') as any;
 
   const subtotal = Number(cart?.cost?.subtotalAmount?.amount ?? 0);
@@ -869,7 +870,7 @@ function CartTimeSlot({ isEn, cart, currentBranch, hasError }: { isEn: boolean, 
       <label className="text-[13px] font-bold text-[#234745] px-1">
         {isEn ? 'Preferred Delivery Time' : 'وقت التوصيل المفضل'}
       </label>
-      <CartForm route="/cart" action={'AttributesUpdate' as any}>
+      <CartForm route={cartRoute} action={'AttributesUpdate' as any}>
         <input type="hidden" name="attributes[0][key]" value="Time Slot" />
         <div className="relative">
           <select
@@ -901,7 +902,7 @@ function CartOrderNotes({ isEn, cart }: { isEn: boolean; cart: any }) {
   return (
     <div className="flex flex-col gap-2">
       <label className="text-[13px] font-bold text-[#234745] px-1">{isEn ? 'Order Notes' : 'ملاحظات الطلب'}</label>
-      <CartForm route="/cart" action={'NoteUpdate' as any}>
+      <CartForm route={cartRoute} action={'NoteUpdate' as any}>
         <textarea
           name="note"
           defaultValue={note}
@@ -1149,7 +1150,7 @@ function LoyaltyRedemptionUI({ isEn, cart }: { isEn: boolean, cart: any }) {
             </span>
           </div>
           <CartForm
-            route="/cart"
+            route={cartRoute}
             action="LoyaltyUpdate"
             inputs={{ points: '0', intent: 'remove' }}
             className="w-full mt-1"
@@ -1183,7 +1184,7 @@ function LoyaltyRedemptionUI({ isEn, cart }: { isEn: boolean, cart: any }) {
 
               {/* Quick Redeem Button for All Available Points */}
               <CartForm
-                route="/cart"
+                route={cartRoute}
                 action="LoyaltyUpdate"
                 inputs={{ points: String(availablePoints), intent: 'apply' }}
                 className="w-full"
@@ -1244,7 +1245,7 @@ function CustomPointsForm({ availablePoints, isEn }: { availablePoints: number; 
   return (
     <div className="flex flex-col gap-1.5 w-full">
       <CartForm
-        route="/cart"
+        route={cartRoute}
         action="LoyaltyUpdate"
         inputs={{ points: String(numVal), intent: 'apply' }}
         className="flex gap-2 items-center w-full"
@@ -1450,7 +1451,7 @@ function UpdateDiscountForm({
 }) {
   return (
     <CartForm
-      route="/cart"
+      route={cartRoute}
       action={CartForm.ACTIONS.DiscountCodesUpdate}
       inputs={{
         discountCodes: discountCodes || [],
@@ -1555,7 +1556,7 @@ function UpdateGiftCardForm({
 }) {
   return (
     <CartForm
-      route="/cart"
+      route={cartRoute}
       action={CartForm.ACTIONS.GiftCardCodesUpdate}
       inputs={{
         giftCardCodes: giftCardCodes || [],
@@ -1580,6 +1581,7 @@ function CartCalendarPicker({
   currentBranch: any;
 }) {
   const fetcher = useFetcher();
+  const cartRoute = isEn ? '/en/cart' : '/cart';
   const selectedDate = cart?.attributes?.find((a: any) => a.key === 'delivery_date')?.value || '';
   const selectedTimeSlot = cart?.attributes?.find((a: any) => a.key === 'Time Slot')?.value || '';
   const fulfillmentType = cart?.attributes?.find((a: any) => a.key === 'Fulfillment Type')?.value || 'delivery';
@@ -1830,7 +1832,7 @@ function CartCalendarPicker({
                       ]
                     }
                   }));
-                  fetcher.submit(formData, { method: 'POST', action: '/cart' });
+                  fetcher.submit(formData, { method: 'POST', action: cartRoute });
                 }}
                 className={`
                                   py-2 rounded-xl text-[13px] font-medium transition-all relative
@@ -1869,7 +1871,7 @@ function CartCalendarPicker({
                     ]
                   }
                 }));
-                fetcher.submit(formData, { method: 'POST', action: '/cart' });
+                fetcher.submit(formData, { method: 'POST', action: cartRoute });
               }}
               className="w-full bg-[#fcfaf8] border border-[#f0ece8] rounded-xl px-4 py-3 text-[14px] text-[#234745] font-medium appearance-none focus:outline-none focus:border-[#d4a06a] focus:ring-1 focus:ring-[#d4a06a] transition-all cursor-pointer"
             >

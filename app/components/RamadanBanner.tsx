@@ -1,5 +1,6 @@
 import { Link, useOutletContext } from 'react-router';
 import { useEffect, useState } from 'react';
+import { fixMojibake } from '~/lib/mojibake';
 
 export function RamadanBanner({ config }: { config?: any }) {
     const { locale } = useOutletContext<{ locale: string }>();
@@ -10,7 +11,7 @@ export function RamadanBanner({ config }: { config?: any }) {
     const isHidden = rNode?.fields?.find((f: any) => f.key === 'is_hidden')?.value;
     if (isHidden === 'true' || isHidden === '1' || isHidden === true) return null;
 
-    const getField = (key: string) => rNode?.fields?.find((f: any) => f.key === key)?.value;
+    const getField = (key: string) => fixMojibake(rNode?.fields?.find((f: any) => f.key === key)?.value || '');
     const getRefUrl = (key: string) => rNode?.fields?.find((f: any) => f.key === key)?.reference?.image?.url;
 
     const customTitleEn = getField('title_en');

@@ -97,7 +97,7 @@ export async function action({request, context}: ActionFunctionArgs) {
     if (intent === 'deleteAccount') {
       const {customer: currentCustomer} = await storefront.query(
         `#graphql
-        query getProfileCustomerId($customerAccessToken: String!) {
+        query getDeleteProfileCustomerId($customerAccessToken: String!) {
           customer(customerAccessToken: $customerAccessToken) {
             id
           }

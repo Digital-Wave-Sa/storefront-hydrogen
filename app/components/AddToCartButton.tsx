@@ -125,9 +125,8 @@ export function AddToCartButton({
       formData.append('analytics', JSON.stringify(analytics));
     }
 
-    // Post to current page route (or /cart) to ensure action matches target route without relative URL 404s
-    const targetAction = location.pathname.includes('/products/') ? location.pathname : cartRoute;
-    fetcher.submit(formData, { method: 'POST', action: targetAction });
+    // Post directly to /cart (or /en/cart) to execute cart addition cleanly
+    fetcher.submit(formData, { method: 'POST', action: cartRoute });
 
     if (onAddToCartSuccess) {
       onAddToCartSuccess();

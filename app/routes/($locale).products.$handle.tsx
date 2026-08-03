@@ -2812,11 +2812,7 @@ export default function Product() {
                           window.scrollTo({top: 0, behavior: 'smooth'})
                         }
                         onAddToCartSuccess={() => {
-                          if (upsellProducts.length > 0) {
-                            setIsUpsellModalOpen(true);
-                          } else {
-                            open('cart');
-                          }
+                          open('cart');
                         }}
                         lines={
                           selectedVariant
@@ -3411,11 +3407,7 @@ export default function Product() {
                             window.scrollTo({top: 0, behavior: 'smooth'})
                           }
                           onAddToCartSuccess={() => {
-                            if (upsellProducts.length > 0) {
-                              setIsUpsellModalOpen(true);
-                            } else {
-                              open('cart');
-                            }
+                            open('cart');
                           }}
                           lines={
                             selectedVariant

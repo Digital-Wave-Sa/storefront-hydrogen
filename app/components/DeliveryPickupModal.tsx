@@ -487,6 +487,7 @@ export function DeliveryPickupModal({
 
     useEffect(() => {
         if (isOpen) {
+            setActiveTab(defaultTab || 'delivery');
             setIsAnimating(true);
             fetch('/api/locations-meta')
                 .then(res => res.json())
@@ -755,7 +756,20 @@ function ModalContent({
     } else {
         const isValidBranch = branches.some((b: any) => b.id === selectedBranch && !b.hideFromStorefront);
         if (!isValidBranch) {
-            const firstActiveBranch = branches.find((b: any) => !b.hideFromStorefront);
+            // First check if user coords exist (GPS enabled), it will be branches[0] which is already sorted by nearest
+            // If no GPS, try to find Al Olaya branch as the fallback default
+            let fallbackBranch = branches[0];
+            if (!userCoords || geoError) {
+                const olayaBranch = branches.find((b: any) => 
+                    !b.hideFromStorefront && 
+                    (b.name.includes('العليا') || b.name.toLowerCase().includes('olaya'))
+                );
+                if (olayaBranch) {
+                    fallbackBranch = olayaBranch;
+                }
+            }
+            
+            const firstActiveBranch = fallbackBranch?.hideFromStorefront ? branches.find((b: any) => !b.hideFromStorefront) : fallbackBranch;
             effectiveSelectedBranch = firstActiveBranch?.id || branches[0]?.id || '';
         }
     }

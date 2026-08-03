@@ -63,13 +63,24 @@ export async function getCustomerGid({ customerId, phone, email, env, context }:
 
       if (adminToken && adminDomain) {
         const res = await fetch(
-          `https://${adminDomain}/admin/api/2024-01/customers/search.json?query=${encodeURIComponent(query)}&fields=id`,
+          `https://${adminDomain}/admin/api/2024-01/customers/search.json?query=${encodeURIComponent(query)}&fields=id,phone,email`,
           { headers: { 'X-Shopify-Access-Token': adminToken, 'Content-Type': 'application/json' } }
         );
         if (res.ok) {
           const data = (await res.json()) as any;
-          if (data.customers?.[0]?.id) {
-            return `gid://shopify/Customer/${data.customers[0].id}`;
+          const found = (data.customers || []).find((c: any) => {
+            if (searchPhone) {
+              const cp = (c.phone || '').replace(/\D/g, '');
+              const sp = searchPhone.replace(/\D/g, '');
+              if (!cp || !sp) return false;
+              return cp === sp || cp.endsWith(sp.slice(-9));
+            } else if (searchEmail) {
+              return c.email && c.email.toLowerCase() === searchEmail.toLowerCase();
+            }
+            return false;
+          });
+          if (found?.id) {
+            return `gid://shopify/Customer/${found.id}`;
           }
         }
       }

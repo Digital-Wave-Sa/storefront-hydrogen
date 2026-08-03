@@ -1,9 +1,9 @@
-import { useState } from 'react';
-import { useLoaderData, useFetcher, Link } from 'react-router';
-import type { LoaderFunctionArgs, ActionFunctionArgs } from 'react-router';
-import { getLoyaltyPoints, redeemLoyaltyPoints } from '~/lib/loyalty.server';
+import {useState} from 'react';
+import {useLoaderData, useFetcher, Link} from 'react-router';
+import type {LoaderFunctionArgs, ActionFunctionArgs} from 'react-router';
+import {getLoyaltyPoints, redeemLoyaltyPoints} from '~/lib/loyalty.server';
 
-export async function loader({ request, context }: LoaderFunctionArgs) {
+export async function loader({request, context}: LoaderFunctionArgs) {
   const isEn = new URL(request.url).pathname.startsWith('/en');
 
   let customerId: string | undefined = undefined;
@@ -11,15 +11,21 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
   if (context?.session) {
     try {
       const sessionToken = await context.session.get('customerAccessToken');
-      const tokenStr = typeof sessionToken === 'string' ? sessionToken : sessionToken?.accessToken;
+      const tokenStr =
+        typeof sessionToken === 'string'
+          ? sessionToken
+          : sessionToken?.accessToken;
       if (tokenStr && tokenStr !== 'dev-bypass-token' && context.storefront) {
-        const { customer } = await context.storefront.query(
+        const {customer} = await context.storefront.query(
           `#graphql
           query getLoyaltyCustomer($customerAccessToken: String!) {
             customer(customerAccessToken: $customerAccessToken) { id phone email }
           }
           `,
-          { variables: { customerAccessToken: tokenStr }, cache: context.storefront.CacheNone() }
+          {
+            variables: {customerAccessToken: tokenStr},
+            cache: context.storefront.CacheNone(),
+          },
         );
         if (customer?.id) customerId = customer.id;
       }
@@ -31,7 +37,7 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
   }
 
   if (!customerId) {
-    return { customer: null, loyalty: { balance: 0, error: null }, isEn };
+    return {customer: null, loyalty: {balance: 0, error: null}, isEn};
   }
 
   const balance = await getLoyaltyPoints({
@@ -41,33 +47,42 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
   });
 
   return {
-    customer: { id: customerId },
-    loyalty: { balance, error: null },
+    customer: {id: customerId},
+    loyalty: {balance, error: null},
     isEn,
   };
 }
 
-export async function action({ request, context }: ActionFunctionArgs) {
+export async function action({request, context}: ActionFunctionArgs) {
   const formData = await request.formData();
   const points = parseInt(formData.get('points')?.toString() || '0');
 
   if (points <= 0 || points % 100 !== 0) {
-    return { success: false, error: 'Points must be redeemed in increments of 100.' };
+    return {
+      success: false,
+      error: 'Points must be redeemed in increments of 100.',
+    };
   }
 
   let customerId: string | undefined = undefined;
   if (context?.session) {
     try {
       const sessionToken = await context.session.get('customerAccessToken');
-      const tokenStr = typeof sessionToken === 'string' ? sessionToken : sessionToken?.accessToken;
+      const tokenStr =
+        typeof sessionToken === 'string'
+          ? sessionToken
+          : sessionToken?.accessToken;
       if (tokenStr && tokenStr !== 'dev-bypass-token' && context.storefront) {
-        const { customer } = await context.storefront.query(
+        const {customer} = await context.storefront.query(
           `#graphql
           query getLoyaltyCustomerId($customerAccessToken: String!) {
             customer(customerAccessToken: $customerAccessToken) { id }
           }
           `,
-          { variables: { customerAccessToken: tokenStr }, cache: context.storefront.CacheNone() }
+          {
+            variables: {customerAccessToken: tokenStr},
+            cache: context.storefront.CacheNone(),
+          },
         );
         if (customer?.id) customerId = customer.id;
       }
@@ -79,7 +94,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
   }
 
   if (!customerId) {
-    return { success: false, error: 'Unauthorized' };
+    return {success: false, error: 'Unauthorized'};
   }
 
   const res = await redeemLoyaltyPoints({
@@ -107,7 +122,9 @@ export default function LoyaltyPage() {
           {isEn ? 'Loyalty Rewards' : 'نقاط الولاء'}
         </h2>
         <p className="text-gray-500 mb-4 text-sm">
-          {isEn ? 'Please log in to view your loyalty points.' : 'يرجى تسجيل الدخول لعرض نقاط الولاء الخاصة بك.'}
+          {isEn
+            ? 'Please log in to view your loyalty points.'
+            : 'يرجى تسجيل الدخول لعرض نقاط الولاء الخاصة بك.'}
         </p>
         <Link
           to={isEn ? '/en/account/login' : '/account/login'}
@@ -127,7 +144,10 @@ export default function LoyaltyPage() {
       ? actionData.newBalance
       : initialLoyalty?.balance || 0;
 
-  const redeemOptions = Array.from({ length: Math.floor(currentBalance / 100) }, (_, i) => (i + 1) * 100);
+  const redeemOptions = Array.from(
+    {length: Math.floor(currentBalance / 100)},
+    (_, i) => (i + 1) * 100,
+  );
 
   return (
     <div className="loyalty-card p-6 bg-white rounded-xl shadow-md max-w-md mx-auto border border-gray-100 my-6 text-start">
@@ -180,7 +200,10 @@ export default function LoyaltyPage() {
       {/* Point Redemption Form */}
       <fetcher.Form method="post" className="space-y-4">
         <div>
-          <label htmlFor="points" className="block text-sm font-medium text-gray-700 mb-1">
+          <label
+            htmlFor="points"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
             {isEn
               ? 'Redeem Points (in increments of 100):'
               : 'استبدال النقاط (مضاعفات 100):'}
@@ -192,11 +215,16 @@ export default function LoyaltyPage() {
             disabled={isSubmitting || currentBalance < 100}
           >
             {redeemOptions.length === 0 ? (
-              <option value="">{isEn ? 'Insufficient points to redeem' : 'نقاط غير كافية للاستبدال'}</option>
+              <option value="">
+                {isEn
+                  ? 'Insufficient points to redeem'
+                  : 'نقاط غير كافية للاستبدال'}
+              </option>
             ) : (
               redeemOptions.map((pts) => (
                 <option key={pts} value={pts}>
-                  {pts} {isEn ? 'points =' : 'نقطة ='} {(pts / 10).toFixed(2)} {isEn ? 'SAR discount' : 'ر.س خصم'}
+                  {pts} {isEn ? 'points =' : 'نقطة ='} {(pts / 10).toFixed(2)}{' '}
+                  {isEn ? 'SAR discount' : 'ر.س خصم'}
                 </option>
               ))
             )}
@@ -208,8 +236,12 @@ export default function LoyaltyPage() {
           className="w-full bg-[#234745] hover:bg-[#183432] disabled:bg-gray-300 text-white font-bold py-3 px-4 rounded-md transition-colors"
         >
           {isSubmitting
-            ? isEn ? 'Redeeming...' : 'جاري الاستبدال...'
-            : isEn ? 'Redeem Points' : 'استبدال النقاط'}
+            ? isEn
+              ? 'Redeeming...'
+              : 'جاري الاستبدال...'
+            : isEn
+              ? 'Redeem Points'
+              : 'استبدال النقاط'}
         </button>
       </fetcher.Form>
     </div>

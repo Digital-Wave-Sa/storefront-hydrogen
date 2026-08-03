@@ -6,7 +6,10 @@ export const meta: MetaFunction = () => {
   return [{title: 'Saadeddin | Blogs'}];
 };
 
-export const loader = async ({request, context: {storefront}}: LoaderFunctionArgs) => {
+export const loader = async ({
+  request,
+  context: {storefront},
+}: LoaderFunctionArgs) => {
   const paginationVariables = getPaginationVariables(request, {
     pageBy: 10,
   });
@@ -27,14 +30,22 @@ export default function Blogs() {
 
   return (
     <div className="blogs" dir={isEn ? 'ltr' : 'rtl'}>
-      <h1 className="text-3xl font-black text-[#234745] mb-8">{isEn ? 'Blogs' : 'المدونات'}</h1>
+      <h1 className="text-3xl font-black text-[#234745] mb-8">
+        {isEn ? 'Blogs' : 'المدونات'}
+      </h1>
       <div className="blogs-grid">
         <Pagination connection={blogs}>
           {({nodes, isLoading, PreviousLink, NextLink}) => {
             return (
               <>
                 <PreviousLink className="mb-8 block text-[#234745]">
-                  {isLoading ? (isEn ? 'Loading...' : 'جاري التحميل...') : (isEn ? '↑ Load previous' : '↑ تحميل السابقة')}
+                  {isLoading
+                    ? isEn
+                      ? 'Loading...'
+                      : 'جاري التحميل...'
+                    : isEn
+                      ? '↑ Load previous'
+                      : '↑ تحميل السابقة'}
                 </PreviousLink>
                 {nodes.map((blog) => {
                   return (
@@ -49,7 +60,13 @@ export default function Blogs() {
                   );
                 })}
                 <NextLink className="mt-8 block text-[#234745]">
-                  {isLoading ? (isEn ? 'Loading...' : 'جاري التحميل...') : (isEn ? 'Load more ↓' : 'تحميل المزيد ↓')}
+                  {isLoading
+                    ? isEn
+                      ? 'Loading...'
+                      : 'جاري التحميل...'
+                    : isEn
+                      ? 'Load more ↓'
+                      : 'تحميل المزيد ↓'}
                 </NextLink>
               </>
             );

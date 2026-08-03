@@ -9,17 +9,17 @@
  * - Live interactive preview card updating in real time
  */
 
-import { useState } from 'react';
-import { useLocation, Link, useNavigate } from 'react-router';
-import type { MetaFunction } from 'react-router';
-import { SaudiRiyalSymbol } from '~/components/Price';
+import {useState} from 'react';
+import {useLocation, Link, useNavigate} from 'react-router';
+import type {MetaFunction} from 'react-router';
+import {SaudiRiyalSymbol} from '~/components/Price';
 
 export const meta: MetaFunction = () => [
-  { title: 'أهدِ قسيمة | حلويات سعد الدين' },
+  {title: 'أهدِ قسيمة | حلويات سعد الدين'},
 ];
 
 export default function BuyGiftCard() {
-  const { pathname } = useLocation();
+  const {pathname} = useLocation();
   const isEn = pathname.startsWith('/en');
   const navigate = useNavigate();
 
@@ -33,7 +33,9 @@ export default function BuyGiftCard() {
 
   // Design State
   const [occasion, setOccasion] = useState('عيد ميلاد');
-  const [themeColor, setThemeColor] = useState<'green' | 'gold' | 'cream'>('green');
+  const [themeColor, setThemeColor] = useState<'green' | 'gold' | 'cream'>(
+    'green',
+  );
 
   // Recipient / Sender Message Form State
   const [senderName, setSenderName] = useState('أحمد');
@@ -47,7 +49,10 @@ export default function BuyGiftCard() {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const finalAmount = isCustomAmount && customAmountInput ? parseFloat(customAmountInput) || 100 : selectedAmount;
+  const finalAmount =
+    isCustomAmount && customAmountInput
+      ? parseFloat(customAmountInput) || 100
+      : selectedAmount;
   const vatAmount = finalAmount * 0.15;
   const totalAmount = finalAmount + vatAmount;
 
@@ -73,18 +78,18 @@ export default function BuyGiftCard() {
               merchandiseId: 'gid://shopify/ProductVariant/default', // fallback
               quantity: 1,
               attributes: [
-                { key: '_gift_voucher', value: 'true' },
-                { key: 'Voucher Amount', value: `${finalAmount} SAR` },
-                { key: 'Recipient Name', value: recipientName },
-                { key: 'Recipient Email', value: recipientEmail },
-                { key: 'Recipient Phone', value: recipientPhone },
-                { key: 'Sender Name', value: senderName },
-                { key: 'Personal Message', value: personalMessage },
-                { key: 'Occasion', value: occasion },
-              ]
-            }
-          ]
-        }
+                {key: '_gift_voucher', value: 'true'},
+                {key: 'Voucher Amount', value: `${finalAmount} SAR`},
+                {key: 'Recipient Name', value: recipientName},
+                {key: 'Recipient Email', value: recipientEmail},
+                {key: 'Recipient Phone', value: recipientPhone},
+                {key: 'Sender Name', value: senderName},
+                {key: 'Personal Message', value: personalMessage},
+                {key: 'Occasion', value: occasion},
+              ],
+            },
+          ],
+        },
       };
 
       formData.append('cartFormInput', JSON.stringify(lineItem));
@@ -94,7 +99,7 @@ export default function BuyGiftCard() {
         body: formData,
       });
 
-      const data = await res.json() as any;
+      const data = (await res.json()) as any;
       const checkoutUrl = data?.cart?.checkoutUrl || '/cart';
       window.location.href = checkoutUrl;
     } catch {
@@ -119,28 +124,66 @@ export default function BuyGiftCard() {
           <div className="gift-step-bar">
             {/* Step 1 & 2: Amount & Design */}
             <div className="gift-step-item">
-              <span className={`gift-step-label ${currentStep >= 1 ? 'active' : ''}`}>إختر القيمة</span>
-              <div className={`gift-step-circle ${currentStep >= 1 ? 'active' : ''}`}>1</div>
+              <span
+                className={`gift-step-label ${currentStep >= 1 ? 'active' : ''}`}
+              >
+                إختر القيمة
+              </span>
+              <div
+                className={`gift-step-circle ${currentStep >= 1 ? 'active' : ''}`}
+              >
+                1
+              </div>
             </div>
-            <div className={`gift-step-line ${currentStep >= 1 ? 'active' : ''}`} />
+            <div
+              className={`gift-step-line ${currentStep >= 1 ? 'active' : ''}`}
+            />
 
             <div className="gift-step-item">
-              <span className={`gift-step-label ${currentStep >= 1 ? 'active' : ''}`}>إختر التصميم</span>
-              <div className={`gift-step-circle ${currentStep >= 1 ? 'active' : ''}`}>2</div>
+              <span
+                className={`gift-step-label ${currentStep >= 1 ? 'active' : ''}`}
+              >
+                إختر التصميم
+              </span>
+              <div
+                className={`gift-step-circle ${currentStep >= 1 ? 'active' : ''}`}
+              >
+                2
+              </div>
             </div>
-            <div className={`gift-step-line ${currentStep >= 2 ? 'active' : ''}`} />
+            <div
+              className={`gift-step-line ${currentStep >= 2 ? 'active' : ''}`}
+            />
 
             {/* Step 3: Message */}
             <div className="gift-step-item">
-              <span className={`gift-step-label ${currentStep >= 2 ? 'active' : ''}`}>أضف رسالتك</span>
-              <div className={`gift-step-circle ${currentStep >= 2 ? 'active' : ''}`}>3</div>
+              <span
+                className={`gift-step-label ${currentStep >= 2 ? 'active' : ''}`}
+              >
+                أضف رسالتك
+              </span>
+              <div
+                className={`gift-step-circle ${currentStep >= 2 ? 'active' : ''}`}
+              >
+                3
+              </div>
             </div>
-            <div className={`gift-step-line ${currentStep >= 3 ? 'active' : ''}`} />
+            <div
+              className={`gift-step-line ${currentStep >= 3 ? 'active' : ''}`}
+            />
 
             {/* Step 4: Checkout */}
             <div className="gift-step-item">
-              <span className={`gift-step-label ${currentStep === 3 ? 'active' : ''}`}>الدفع والارسال</span>
-              <div className={`gift-step-circle ${currentStep === 3 ? 'active' : ''}`}>4</div>
+              <span
+                className={`gift-step-label ${currentStep === 3 ? 'active' : ''}`}
+              >
+                الدفع والارسال
+              </span>
+              <div
+                className={`gift-step-circle ${currentStep === 3 ? 'active' : ''}`}
+              >
+                4
+              </div>
             </div>
           </div>
         </div>
@@ -149,7 +192,6 @@ export default function BuyGiftCard() {
       {/* ─── MAIN 2-COLUMN WIZARD LAYOUT ────────────────────────────────────── */}
       <div className="gift-container">
         <div className="gift-main-grid">
-
           {/* ─── LEFT COLUMN: LIVE VOUCHER CARD PREVIEW ─── */}
           <div className="gift-preview-col">
             <div className="gift-preview-box">
@@ -169,7 +211,8 @@ export default function BuyGiftCard() {
 
                 {recipientName && (
                   <div className="voucher-card-recipient">
-                    <span className="label">إلي :</span> <span className="val">{recipientName}</span>
+                    <span className="label">إلي :</span>{' '}
+                    <span className="val">{recipientName}</span>
                   </div>
                 )}
 
@@ -209,7 +252,9 @@ export default function BuyGiftCard() {
                 </div>
                 <div className="mini-row">
                   <span>الإرسال</span>
-                  <strong>{isScheduled ? `محدد (${scheduledDate})` : 'فوري'}</strong>
+                  <strong>
+                    {isScheduled ? `محدد (${scheduledDate})` : 'فوري'}
+                  </strong>
                 </div>
                 <div className="mini-row">
                   <span>المبلغ</span>
@@ -222,7 +267,9 @@ export default function BuyGiftCard() {
                 <div className="mini-divider" />
                 <div className="mini-row total">
                   <span>الإجمالي</span>
-                  <strong className="font-en">{totalAmount.toFixed(2)} ر.س</strong>
+                  <strong className="font-en">
+                    {totalAmount.toFixed(2)} ر.س
+                  </strong>
                 </div>
               </div>
             )}
@@ -230,7 +277,6 @@ export default function BuyGiftCard() {
 
           {/* ─── RIGHT COLUMN: WIZARD FORM STEPS ─── */}
           <div className="gift-form-col">
-            
             {/* ── STEP 1 & 2: Select Amount & Design ── */}
             {currentStep === 1 && (
               <div className="gift-step-card">
@@ -238,7 +284,7 @@ export default function BuyGiftCard() {
                 <div className="gift-step-block">
                   <h2 className="gift-block-title">1- أختر قيمة القيمة ؟</h2>
                   <div className="amounts-grid font-en">
-                    {[50, 100, 200, 500, 1000].map(amt => (
+                    {[50, 100, 200, 500, 1000].map((amt) => (
                       <button
                         key={amt}
                         type="button"
@@ -248,7 +294,9 @@ export default function BuyGiftCard() {
                         }}
                         className={`amount-pill ${!isCustomAmount && selectedAmount === amt ? 'selected' : ''}`}
                       >
-                        {!isCustomAmount && selectedAmount === amt && <span className="check-icon">✓</span>}
+                        {!isCustomAmount && selectedAmount === amt && (
+                          <span className="check-icon">✓</span>
+                        )}
                         {amt} ر.س
                       </button>
                     ))}
@@ -269,7 +317,7 @@ export default function BuyGiftCard() {
                         type="number"
                         placeholder="أدخل المبلغ بالريال"
                         value={customAmountInput}
-                        onChange={e => setCustomAmountInput(e.target.value)}
+                        onChange={(e) => setCustomAmountInput(e.target.value)}
                         className="custom-amount-input font-en"
                         dir="ltr"
                       />
@@ -279,20 +327,24 @@ export default function BuyGiftCard() {
 
                 {/* 2- Select Design & Occasion */}
                 <div className="gift-step-block">
-                  <h2 className="gift-block-title">2- أختر التصميم والمناسبة ؟</h2>
+                  <h2 className="gift-block-title">
+                    2- أختر التصميم والمناسبة ؟
+                  </h2>
 
                   {/* Category Tags */}
                   <div className="occasions-row">
-                    {['عيد ميلاد', 'زفاف', 'العيد', 'تخرج', 'شكراً'].map(occ => (
-                      <button
-                        key={occ}
-                        type="button"
-                        onClick={() => setOccasion(occ)}
-                        className={`occasion-chip ${occasion === occ ? 'active' : ''}`}
-                      >
-                        {occ}
-                      </button>
-                    ))}
+                    {['عيد ميلاد', 'زفاف', 'العيد', 'تخرج', 'شكراً'].map(
+                      (occ) => (
+                        <button
+                          key={occ}
+                          type="button"
+                          onClick={() => setOccasion(occ)}
+                          className={`occasion-chip ${occasion === occ ? 'active' : ''}`}
+                        >
+                          {occ}
+                        </button>
+                      ),
+                    )}
                   </div>
 
                   {/* Theme Color Cards */}
@@ -301,21 +353,27 @@ export default function BuyGiftCard() {
                       onClick={() => setThemeColor('cream')}
                       className={`theme-card cream ${themeColor === 'cream' ? 'active' : ''}`}
                     >
-                      {themeColor === 'cream' && <span className="check">✓</span>}
+                      {themeColor === 'cream' && (
+                        <span className="check">✓</span>
+                      )}
                     </div>
 
                     <div
                       onClick={() => setThemeColor('gold')}
                       className={`theme-card gold ${themeColor === 'gold' ? 'active' : ''}`}
                     >
-                      {themeColor === 'gold' && <span className="check">✓</span>}
+                      {themeColor === 'gold' && (
+                        <span className="check">✓</span>
+                      )}
                     </div>
 
                     <div
                       onClick={() => setThemeColor('green')}
                       className={`theme-card green ${themeColor === 'green' ? 'active' : ''}`}
                     >
-                      {themeColor === 'green' && <span className="check">✓</span>}
+                      {themeColor === 'green' && (
+                        <span className="check">✓</span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -333,12 +391,14 @@ export default function BuyGiftCard() {
                 <div className="gift-fields-stack">
                   {/* Sender Name */}
                   <div className="gift-field">
-                    <label className="gift-label">إسم المرسل <span className="req">*</span></label>
+                    <label className="gift-label">
+                      إسم المرسل <span className="req">*</span>
+                    </label>
                     <input
                       type="text"
                       placeholder="أحمد"
                       value={senderName}
-                      onChange={e => setSenderName(e.target.value)}
+                      onChange={(e) => setSenderName(e.target.value)}
                       className="gift-input"
                       dir="rtl"
                     />
@@ -346,12 +406,14 @@ export default function BuyGiftCard() {
 
                   {/* Recipient Name */}
                   <div className="gift-field">
-                    <label className="gift-label">إسم المستلم <span className="req">*</span></label>
+                    <label className="gift-label">
+                      إسم المستلم <span className="req">*</span>
+                    </label>
                     <input
                       type="text"
                       placeholder="سارة"
                       value={recipientName}
-                      onChange={e => setRecipientName(e.target.value)}
+                      onChange={(e) => setRecipientName(e.target.value)}
                       className="gift-input"
                       dir="rtl"
                     />
@@ -359,12 +421,14 @@ export default function BuyGiftCard() {
 
                   {/* Recipient Email */}
                   <div className="gift-field">
-                    <label className="gift-label">البريد الإلكتروني للمستلم <span className="req">*</span></label>
+                    <label className="gift-label">
+                      البريد الإلكتروني للمستلم <span className="req">*</span>
+                    </label>
                     <input
                       type="email"
                       placeholder="sara@example.com"
                       value={recipientEmail}
-                      onChange={e => setRecipientEmail(e.target.value)}
+                      onChange={(e) => setRecipientEmail(e.target.value)}
                       className="gift-input font-en"
                       dir="ltr"
                     />
@@ -372,14 +436,16 @@ export default function BuyGiftCard() {
 
                   {/* Recipient Phone (Optional SMS) */}
                   <div className="gift-field">
-                    <label className="gift-label">رقم جوال المستلم (اختياري - لإشعار sms)</label>
+                    <label className="gift-label">
+                      رقم جوال المستلم (اختياري - لإشعار sms)
+                    </label>
                     <div className="phone-input-row" dir="ltr">
                       <span className="code">+966</span>
                       <input
                         type="tel"
                         placeholder="123152"
                         value={recipientPhone}
-                        onChange={e => setRecipientPhone(e.target.value)}
+                        onChange={(e) => setRecipientPhone(e.target.value)}
                         className="phone-input font-en"
                       />
                     </div>
@@ -391,16 +457,20 @@ export default function BuyGiftCard() {
                     <textarea
                       placeholder="كل عام وانت بخير"
                       value={personalMessage}
-                      onChange={e => setPersonalMessage(e.target.value.slice(0, 150))}
+                      onChange={(e) =>
+                        setPersonalMessage(e.target.value.slice(0, 150))
+                      }
                       rows={3}
                       className="gift-textarea"
                       dir="rtl"
                     />
-                    <span className="char-counter font-en">{personalMessage.length}/150 حرف</span>
+                    <span className="char-counter font-en">
+                      {personalMessage.length}/150 حرف
+                    </span>
 
                     {/* Quick Message Chips */}
                     <div className="quick-msgs-row">
-                      {quickMessages.map(msg => (
+                      {quickMessages.map((msg) => (
                         <button
                           key={msg}
                           type="button"
@@ -419,7 +489,7 @@ export default function BuyGiftCard() {
                       type="checkbox"
                       id="scheduleCheck"
                       checked={isScheduled}
-                      onChange={e => setIsScheduled(e.target.checked)}
+                      onChange={(e) => setIsScheduled(e.target.checked)}
                     />
                     <label htmlFor="scheduleCheck">إرسال في موعد محدد</label>
                   </div>
@@ -429,7 +499,7 @@ export default function BuyGiftCard() {
                       <input
                         type="date"
                         value={scheduledDate}
-                        onChange={e => setScheduledDate(e.target.value)}
+                        onChange={(e) => setScheduledDate(e.target.value)}
                         className="gift-input font-en"
                       />
                     </div>
@@ -466,7 +536,8 @@ export default function BuyGiftCard() {
 
                 <div className="checkout-notice-box">
                   <p className="notice-text">
-                    سيتم تحويلك فوراً إلى <strong>Shopify Checkout</strong> لإتمام عملية الشراء والدفع بأمان تام.
+                    سيتم تحويلك فوراً إلى <strong>Shopify Checkout</strong>{' '}
+                    لإتمام عملية الشراء والدفع بأمان تام.
                   </p>
                 </div>
 
@@ -474,7 +545,9 @@ export default function BuyGiftCard() {
                   <h3 className="summary-h3">ملخص القسيمة</h3>
                   <div className="summary-row">
                     <span>قيمة القسيمة:</span>
-                    <strong className="font-en">{finalAmount.toFixed(2)} ر.س</strong>
+                    <strong className="font-en">
+                      {finalAmount.toFixed(2)} ر.س
+                    </strong>
                   </div>
                   <div className="summary-row">
                     <span>المستلم:</span>
@@ -492,9 +565,11 @@ export default function BuyGiftCard() {
                     type="checkbox"
                     id="termsCheck"
                     checked={agreeTerms}
-                    onChange={e => setAgreeTerms(e.target.checked)}
+                    onChange={(e) => setAgreeTerms(e.target.checked)}
                   />
-                  <label htmlFor="termsCheck">أوافق علي الشروط والأحكام الخاصة بالقسائم</label>
+                  <label htmlFor="termsCheck">
+                    أوافق علي الشروط والأحكام الخاصة بالقسائم
+                  </label>
                 </div>
 
                 {/* Submit / Proceed Button */}
@@ -505,7 +580,9 @@ export default function BuyGiftCard() {
                     disabled={isSubmitting || !agreeTerms}
                     className="btn-checkout-submit"
                   >
-                    {isSubmitting ? 'جاري التحويل لدفع Shopify Checkout...' : `ادفع وأرسل القسيمة - ${totalAmount.toFixed(2)} ر.س`}
+                    {isSubmitting
+                      ? 'جاري التحويل لدفع Shopify Checkout...'
+                      : `ادفع وأرسل القسيمة - ${totalAmount.toFixed(2)} ر.س`}
                   </button>
 
                   <button
@@ -518,9 +595,7 @@ export default function BuyGiftCard() {
                 </div>
               </div>
             )}
-
           </div>
-
         </div>
       </div>
 

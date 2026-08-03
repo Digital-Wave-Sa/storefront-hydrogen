@@ -1,7 +1,11 @@
-import { redirect, type LoaderFunctionArgs, type MetaFunction } from 'react-router';
-export { default } from './($locale).track-order.$id';
+import {
+  redirect,
+  type LoaderFunctionArgs,
+  type MetaFunction,
+} from 'react-router';
+export {default} from './($locale).track-order.$id';
 
-export async function loader({ params, request }: LoaderFunctionArgs) {
+export async function loader({params, request}: LoaderFunctionArgs) {
   const isEn = new URL(request.url).pathname.startsWith('/en');
   const localePrefix = isEn ? '/en' : '';
   let rawId = params.id || '';
@@ -20,5 +24,5 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
 }
 
 export const meta: MetaFunction = () => {
-  return [{ title: 'Order Details | Saadeddin' }];
+  return [{title: 'Order Details | Saadeddin'}];
 };

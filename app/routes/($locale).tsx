@@ -22,13 +22,19 @@ import {Outlet, useRouteLoaderData, useParams} from 'react-router';
 export default function LocaleLayout() {
   const data = useRouteLoaderData('root') as any;
   const params = useParams();
-  const locale = params.locale?.toLowerCase() || data?.consent?.language?.toLowerCase() || 'ar';
-  
-  return <Outlet context={{ 
-    locale,
-    selectedLocationId: data?.selectedLocationId,
-    selectedLocationName: data?.selectedLocationName,
-    fulfillmentType: data?.fulfillmentType 
-  }} />;
-}
+  const locale =
+    params.locale?.toLowerCase() ||
+    data?.consent?.language?.toLowerCase() ||
+    'ar';
 
+  return (
+    <Outlet
+      context={{
+        locale,
+        selectedLocationId: data?.selectedLocationId,
+        selectedLocationName: data?.selectedLocationName,
+        fulfillmentType: data?.fulfillmentType,
+      }}
+    />
+  );
+}

@@ -52,12 +52,17 @@ export default function Policy() {
       <br />
       <div className={isEn ? 'text-left' : 'text-right'}>
         <Link to="/policies" className="hover:underline">
-            {isEn ? '← Back to Policies' : '← العودة للسياسات'}
+          {isEn ? '← Back to Policies' : '← العودة للسياسات'}
         </Link>
       </div>
       <br />
-      <h1 className="text-3xl font-black text-[#234745] mb-6">{policy.title}</h1>
-      <div className="prose max-w-none" dangerouslySetInnerHTML={{__html: policy.body}} />
+      <h1 className="text-3xl font-black text-[#234745] mb-6">
+        {policy.title}
+      </h1>
+      <div
+        className="prose max-w-none"
+        dangerouslySetInnerHTML={{__html: policy.body}}
+      />
     </div>
   );
 }

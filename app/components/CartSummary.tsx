@@ -859,6 +859,7 @@ function generateDynamicSlots(branch: any, isEn: boolean, fulfillmentType: strin
 }
 
 function CartTimeSlot({ isEn, cart, currentBranch, hasError }: { isEn: boolean, cart: any, currentBranch: any, hasError?: boolean }) {
+  const cartRoute = isEn ? '/en/cart' : '/cart';
   const timeSlot = cart?.attributes?.find((a: any) => a.key === 'Time Slot')?.value || '';
   const fulfillmentType = cart?.attributes?.find((a: any) => a.key === 'Fulfillment Type')?.value || 'delivery';
 
@@ -898,6 +899,7 @@ function CartTimeSlot({ isEn, cart, currentBranch, hasError }: { isEn: boolean, 
 
 // ─── NEW: ORDER NOTES ───────────────────────────────────────────────────────
 function CartOrderNotes({ isEn, cart }: { isEn: boolean; cart: any }) {
+  const cartRoute = isEn ? '/en/cart' : '/cart';
   const note = cart?.note || '';
   return (
     <div className="flex flex-col gap-2">
@@ -1024,6 +1026,7 @@ function CartCheckoutActions({
 
 // ─── NEW: LOYALTY POINTS REDEMPTION ─────────────────────────────────────────
 function LoyaltyRedemptionUI({ isEn, cart }: { isEn: boolean, cart: any }) {
+  const cartRoute = isEn ? '/en/cart' : '/cart';
   const rootData = useRouteLoaderData('root') as any;
   const appliedPointsStr = cart?.attributes?.find((a: any) => a.key === 'loyalty_points')?.value;
   const initialPoints = parseInt(appliedPointsStr) || 0;
@@ -1237,6 +1240,7 @@ function LoyaltyRedemptionUI({ isEn, cart }: { isEn: boolean, cart: any }) {
 }
 
 function CustomPointsForm({ availablePoints, isEn }: { availablePoints: number; isEn: boolean }) {
+  const cartRoute = isEn ? '/en/cart' : '/cart';
   const [val, setVal] = useState<string>('');
   const numVal = parseInt(val) || 0;
   const discountVal = (numVal * 0.10).toFixed(2);
@@ -1449,6 +1453,8 @@ function UpdateDiscountForm({
   discountCodes?: string[];
   children: React.ReactNode | ((fetcher: any) => React.ReactNode);
 }) {
+  const location = useLocation();
+  const cartRoute = location.pathname.startsWith('/en') ? '/en/cart' : '/cart';
   return (
     <CartForm
       route={cartRoute}
@@ -1554,6 +1560,8 @@ function UpdateGiftCardForm({
   saveAppliedCode?: (code: string) => void;
   children: React.ReactNode;
 }) {
+  const location = useLocation();
+  const cartRoute = location.pathname.startsWith('/en') ? '/en/cart' : '/cart';
   return (
     <CartForm
       route={cartRoute}

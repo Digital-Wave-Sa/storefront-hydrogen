@@ -10,24 +10,24 @@
  * - 100% pixel-perfect match to Figma specification
  */
 
-import { useLoaderData, Link, useNavigate } from 'react-router';
-import { CartForm, useOptimisticCart } from '@shopify/hydrogen';
-import { useState, useMemo, type FetcherWithComponents } from 'react';
-import type { Route } from './+types/($locale).cart';
-import type { CartApiQueryFragment } from 'storefrontapi.generated';
-import { getShopTitle } from '~/lib/seo';
-import { SaudiRiyalSymbol } from '~/components/Price';
+import {useLoaderData, Link, useNavigate} from 'react-router';
+import {CartForm, useOptimisticCart} from '@shopify/hydrogen';
+import {useState, useMemo, type FetcherWithComponents} from 'react';
+import type {Route} from './+types/($locale).cart';
+import type {CartApiQueryFragment} from 'storefrontapi.generated';
+import {getShopTitle} from '~/lib/seo';
+import {SaudiRiyalSymbol} from '~/components/Price';
 
 // ─── Meta ────────────────────────────────────────────────────────────────────
 
-export const meta: Route.MetaFunction = ({ matches }) => [
-  { title: getShopTitle('سلة التسوق للتصدير | سعد الدين', matches) },
+export const meta: Route.MetaFunction = ({matches}) => [
+  {title: getShopTitle('سلة التسوق للتصدير | سعد الدين', matches)},
 ];
 
 // ─── Loader ──────────────────────────────────────────────────────────────────
 
-export async function loader({ context }: Route.LoaderArgs) {
-  const { cart } = context;
+export async function loader({context}: Route.LoaderArgs) {
+  const {cart} = context;
   try {
     return await cart.get();
   } catch {
@@ -38,18 +38,18 @@ export async function loader({ context }: Route.LoaderArgs) {
 // ─── Countries list ───────────────────────────────────────────────────────────
 
 const COUNTRIES = [
-  { code: 'AE', name: 'الإمارات العربية المتحدة' },
-  { code: 'KW', name: 'الكويت' },
-  { code: 'QA', name: 'قطر' },
-  { code: 'BH', name: 'البحرين' },
-  { code: 'OM', name: 'عُمان' },
-  { code: 'JO', name: 'الأردن' },
-  { code: 'EG', name: 'مصر' },
-  { code: 'GB', name: 'المملكة المتحدة' },
-  { code: 'US', name: 'الولايات المتحدة الأمريكية' },
-  { code: 'CA', name: 'كندا' },
-  { code: 'DE', name: 'ألمانيا' },
-  { code: 'FR', name: 'فرنسا' },
+  {code: 'AE', name: 'الإمارات العربية المتحدة'},
+  {code: 'KW', name: 'الكويت'},
+  {code: 'QA', name: 'قطر'},
+  {code: 'BH', name: 'البحرين'},
+  {code: 'OM', name: 'عُمان'},
+  {code: 'JO', name: 'الأردن'},
+  {code: 'EG', name: 'مصر'},
+  {code: 'GB', name: 'المملكة المتحدة'},
+  {code: 'US', name: 'الولايات المتحدة الأمريكية'},
+  {code: 'CA', name: 'كندا'},
+  {code: 'DE', name: 'ألمانيا'},
+  {code: 'FR', name: 'فرنسا'},
 ];
 
 // ─── Aramex Red Badge ────────────────────────────────────────────────────────
@@ -64,11 +64,11 @@ function AramexBadge() {
 
 // ─── Step Progress Bar ────────────────────────────────────────────────────────
 
-function ExportStepBar({ step }: { step: 1 | 2 | 3 }) {
+function ExportStepBar({step}: {step: 1 | 2 | 3}) {
   const steps = [
-    { num: 1, label: 'السلة' },
-    { num: 2, label: 'الشحن' },
-    { num: 3, label: 'التأكيد' },
+    {num: 1, label: 'السلة'},
+    {num: 2, label: 'الشحن'},
+    {num: 3, label: 'التأكيد'},
   ];
 
   return (
@@ -80,13 +80,21 @@ function ExportStepBar({ step }: { step: 1 | 2 | 3 }) {
           return (
             <div key={s.num} className="export-step-wrapper">
               <div className="export-step-item">
-                <span className={`export-step-label ${isActive ? 'active' : ''}`}>{s.label}</span>
-                <div className={`export-step-circle ${isActive ? 'active' : isDone ? 'done' : ''}`}>
+                <span
+                  className={`export-step-label ${isActive ? 'active' : ''}`}
+                >
+                  {s.label}
+                </span>
+                <div
+                  className={`export-step-circle ${isActive ? 'active' : isDone ? 'done' : ''}`}
+                >
                   {s.num}
                 </div>
               </div>
               {i < steps.length - 1 && (
-                <div className={`export-step-line ${isDone || isActive ? 'active' : ''}`} />
+                <div
+                  className={`export-step-line ${isDone || isActive ? 'active' : ''}`}
+                />
               )}
             </div>
           );
@@ -98,22 +106,42 @@ function ExportStepBar({ step }: { step: 1 | 2 | 3 }) {
 
 // ─── Quantity Controls ─────────────────────────────────────────────────────
 
-function ExportCartLineQty({ line }: { line: any }) {
+function ExportCartLineQty({line}: {line: any}) {
   const qty = line.quantity;
 
   return (
     <div className="export-qty-wrapper">
       <span className="export-qty-label">الكمية</span>
       <div className="export-qty-stepper">
-        <CartForm route="/cart" action={CartForm.ACTIONS.LinesUpdate} inputs={{ lines: [{ id: line.id, quantity: qty + 1 }] }}>
+        <CartForm
+          route="/cart"
+          action={CartForm.ACTIONS.LinesUpdate}
+          inputs={{lines: [{id: line.id, quantity: qty + 1}]}}
+        >
           {(f: FetcherWithComponents<any>) => (
-            <button type="submit" className="export-qty-btn" disabled={f.state !== 'idle'}>+</button>
+            <button
+              type="submit"
+              className="export-qty-btn"
+              disabled={f.state !== 'idle'}
+            >
+              +
+            </button>
           )}
         </CartForm>
         <span className="export-qty-val font-en">{qty}</span>
-        <CartForm route="/cart" action={CartForm.ACTIONS.LinesUpdate} inputs={{ lines: [{ id: line.id, quantity: Math.max(1, qty - 1) }] }}>
+        <CartForm
+          route="/cart"
+          action={CartForm.ACTIONS.LinesUpdate}
+          inputs={{lines: [{id: line.id, quantity: Math.max(1, qty - 1)}]}}
+        >
           {(f: FetcherWithComponents<any>) => (
-            <button type="submit" className="export-qty-btn" disabled={f.state !== 'idle' || qty <= 1}>−</button>
+            <button
+              type="submit"
+              className="export-qty-btn"
+              disabled={f.state !== 'idle' || qty <= 1}
+            >
+              −
+            </button>
           )}
         </CartForm>
       </div>
@@ -123,12 +151,29 @@ function ExportCartLineQty({ line }: { line: any }) {
 
 // ─── Remove Line Form ─────────────────────────────────────────────────────
 
-function ExportRemoveLine({ lineId }: { lineId: string }) {
+function ExportRemoveLine({lineId}: {lineId: string}) {
   return (
-    <CartForm route="/cart" action={CartForm.ACTIONS.LinesRemove} inputs={{ lineIds: [lineId] }}>
+    <CartForm
+      route="/cart"
+      action={CartForm.ACTIONS.LinesRemove}
+      inputs={{lineIds: [lineId]}}
+    >
       {(f: FetcherWithComponents<any>) => (
-        <button type="submit" className="export-action-link" disabled={f.state !== 'idle'}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+        <button
+          type="submit"
+          className="export-action-link"
+          disabled={f.state !== 'idle'}
+        >
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
+            <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
+          </svg>
           حذف
         </button>
       )}
@@ -138,12 +183,29 @@ function ExportRemoveLine({ lineId }: { lineId: string }) {
 
 // ─── Empty Cart Form ──────────────────────────────────────────────────────
 
-function ClearCartButton({ lineIds }: { lineIds: string[] }) {
+function ClearCartButton({lineIds}: {lineIds: string[]}) {
   return (
-    <CartForm route="/cart" action={CartForm.ACTIONS.LinesRemove} inputs={{ lineIds }}>
+    <CartForm
+      route="/cart"
+      action={CartForm.ACTIONS.LinesRemove}
+      inputs={{lineIds}}
+    >
       {(f: FetcherWithComponents<any>) => (
-        <button type="submit" className="export-clear-btn" disabled={f.state !== 'idle'}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+        <button
+          type="submit"
+          className="export-clear-btn"
+          disabled={f.state !== 'idle'}
+        >
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
+            <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
+          </svg>
           إفراغ السلة
         </button>
       )}
@@ -158,7 +220,10 @@ function ExportCartEmpty() {
     <div className="export-empty-container">
       <div className="export-empty-icon">📦</div>
       <h2 className="export-empty-title">سلة التسوق للتصدير فارغة</h2>
-      <p className="export-empty-desc">لم تقم بإضافة أي منتجات مخصصة للتصدير بعد. استعرض المنتجات المتاحة للتصدير الآن.</p>
+      <p className="export-empty-desc">
+        لم تقم بإضافة أي منتجات مخصصة للتصدير بعد. استعرض المنتجات المتاحة
+        للتصدير الآن.
+      </p>
       <Link to="/export" className="export-empty-btn">
         استعرض منتجات التصدير
       </Link>
@@ -170,7 +235,9 @@ function ExportCartEmpty() {
 
 export default function ExportCart() {
   const cartData = useLoaderData<typeof loader>();
-  const optimisticCart = useOptimisticCart(cartData as CartApiQueryFragment | null);
+  const optimisticCart = useOptimisticCart(
+    cartData as CartApiQueryFragment | null,
+  );
   const navigate = useNavigate();
 
   const [shippingCountry, setShippingCountry] = useState('AE');
@@ -184,37 +251,60 @@ export default function ExportCart() {
   const exportLines = useMemo(() => {
     const allLines = (optimisticCart as any)?.lines?.nodes || [];
     return allLines.filter((line: any) =>
-      line.attributes?.some((a: any) => a.key === '_export' && a.value === 'true')
+      line.attributes?.some(
+        (a: any) => a.key === '_export' && a.value === 'true',
+      ),
     );
   }, [optimisticCart]);
 
-  const lineIds = useMemo(() => exportLines.map((l: any) => l.id), [exportLines]);
+  const lineIds = useMemo(
+    () => exportLines.map((l: any) => l.id),
+    [exportLines],
+  );
 
   // Weight estimation dynamically from items
-  const totalWeightKg = useMemo(() =>
-    exportLines.reduce((sum: number, line: any) => sum + (line.quantity || 1) * 0.5, 0),
-    [exportLines]
+  const totalWeightKg = useMemo(
+    () =>
+      exportLines.reduce(
+        (sum: number, line: any) => sum + (line.quantity || 1) * 0.5,
+        0,
+      ),
+    [exportLines],
   );
 
   // Subtotal calculated dynamically from lines
-  const subtotal = useMemo(() =>
-    exportLines.reduce((sum: number, line: any) => {
-      const price = parseFloat(line.cost?.totalAmount?.amount || line.merchandise?.price?.amount || '0');
-      return sum + price;
-    }, 0),
-    [exportLines]
+  const subtotal = useMemo(
+    () =>
+      exportLines.reduce((sum: number, line: any) => {
+        const price = parseFloat(
+          line.cost?.totalAmount?.amount ||
+            line.merchandise?.price?.amount ||
+            '0',
+        );
+        return sum + price;
+      }, 0),
+    [exportLines],
   );
 
   // Applied discount codes on cart dynamically
   const appliedDiscountCodes = (optimisticCart as any)?.discountCodes || [];
   const cartDiscountAmount = useMemo(() => {
-    const totalDiscount = (optimisticCart as any)?.cost?.totalDiscountAmount?.amount;
+    const totalDiscount = (optimisticCart as any)?.cost?.totalDiscountAmount
+      ?.amount;
     return totalDiscount ? parseFloat(totalDiscount) : 0;
   }, [optimisticCart]);
 
   const coldPackagingFee = subtotal > 0 ? 24.56 : 0;
-  const exportDiscount = cartDiscountAmount > 0 ? cartDiscountAmount : (subtotal > 0 ? subtotal * 0.05 : 0);
-  const grandTotal = Math.max(0, subtotal + shippingRate + coldPackagingFee - exportDiscount);
+  const exportDiscount =
+    cartDiscountAmount > 0
+      ? cartDiscountAmount
+      : subtotal > 0
+        ? subtotal * 0.05
+        : 0;
+  const grandTotal = Math.max(
+    0,
+    subtotal + shippingRate + coldPackagingFee - exportDiscount,
+  );
 
   const handleCalculateShipping = async () => {
     setCalcLoading(true);
@@ -222,10 +312,14 @@ export default function ExportCart() {
     try {
       const res = await fetch('/api/aramex-rate', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ destinationCountry: shippingCountry, destinationZip: shippingZip, weightKg: totalWeightKg }),
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          destinationCountry: shippingCountry,
+          destinationZip: shippingZip,
+          weightKg: totalWeightKg,
+        }),
       });
-      const json = await res.json() as any;
+      const json = (await res.json()) as any;
       if (json.success && json.rate) {
         setShippingRate(json.rate);
       }
@@ -238,15 +332,18 @@ export default function ExportCart() {
   };
 
   const handleProceedToShipping = () => {
-    sessionStorage.setItem('exportCartSummary', JSON.stringify({
-      subtotal,
-      shippingRate,
-      shippingCountry,
-      coldPackagingFee,
-      exportDiscount,
-      grandTotal,
-      itemCount: exportLines.length,
-    }));
+    sessionStorage.setItem(
+      'exportCartSummary',
+      JSON.stringify({
+        subtotal,
+        shippingRate,
+        shippingCountry,
+        coldPackagingFee,
+        exportDiscount,
+        grandTotal,
+        itemCount: exportLines.length,
+      }),
+    );
     navigate('/export-cart/shipping');
   };
 
@@ -254,7 +351,10 @@ export default function ExportCart() {
     return (
       <div className="export-cart-page" dir="rtl">
         {/* Full-Width Styled Header */}
-        <section className="relative h-[144px] w-full bg-[#234745] overflow-hidden flex items-center" dir="rtl">
+        <section
+          className="relative h-[144px] w-full bg-[#234745] overflow-hidden flex items-center"
+          dir="rtl"
+        >
           <div
             className="absolute inset-0 bg-[length:950px_800px] md:bg-[length:1900px_2000px]"
             style={{
@@ -263,25 +363,51 @@ export default function ExportCart() {
               backgroundRepeat: 'no-repeat',
             }}
           />
-          <div className="max-w-[1440px] w-full mx-auto px-4 md:px-8 lg:px-12 relative z-10 flex items-center justify-between" dir="rtl">
+          <div
+            className="max-w-[1440px] w-full mx-auto px-4 md:px-8 lg:px-12 relative z-10 flex items-center justify-between"
+            dir="rtl"
+          >
             <div className="flex flex-row items-center justify-start gap-4 md:gap-6 w-full">
               <button
-                onClick={() => { if (typeof window !== 'undefined') window.history.back(); }}
+                onClick={() => {
+                  if (typeof window !== 'undefined') window.history.back();
+                }}
                 className="flex items-center gap-[8px] bg-[#9FB7AE] hover:bg-[#8BA19C] text-[#234745] px-4 md:px-6 py-2.5 rounded-[25px] text-[12px] md:text-[16px] font-bold transition-all shrink-0"
-                style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
+                style={{
+                  fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
+                }}
                 dir="rtl"
               >
-                <svg width="15" height="13" viewBox="0 0 15 13" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M0 6H12.25L7 0.75L7.66 0L14.16 6.5L7.66 13L7 12.25L12.25 7H0V6Z" fill="#234745"/>
+                <svg
+                  width="15"
+                  height="13"
+                  viewBox="0 0 15 13"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M0 6H12.25L7 0.75L7.66 0L14.16 6.5L7.66 13L7 12.25L12.25 7H0V6Z"
+                    fill="#234745"
+                  />
                 </svg>
                 <span>رجوع</span>
               </button>
 
               <div className="flex flex-col text-right">
-                <h1 className="!m-0 !mb-1 text-[24px] md:text-[34px] font-bold text-white leading-none" style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" }}>
+                <h1
+                  className="!m-0 !mb-1 text-[24px] md:text-[34px] font-bold text-white leading-none"
+                  style={{
+                    fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif",
+                  }}
+                >
                   سلة التسوق للتصدير
                 </h1>
-                <p className="!m-0 text-[13px] md:text-[15px] font-medium text-[#c4d0cc] leading-none" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
+                <p
+                  className="!m-0 text-[13px] md:text-[15px] font-medium text-[#c4d0cc] leading-none"
+                  style={{
+                    fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
+                  }}
+                >
                   سلة التسوق للتصدير حول العالم
                 </p>
               </div>
@@ -292,8 +418,18 @@ export default function ExportCart() {
         {/* White Breadcrumb Section */}
         <div className="w-full bg-white py-4 mb-10 border-b border-gray-100">
           <div className="max-w-[1400px] mx-auto px-4 md:px-8">
-            <div className="flex items-center gap-2 text-[14px] font-bold text-right" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
-              <Link to="/" className="text-gray-400 hover:text-[#234745] transition-colors">الرئيسية</Link>
+            <div
+              className="flex items-center gap-2 text-[14px] font-bold text-right"
+              style={{
+                fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
+              }}
+            >
+              <Link
+                to="/"
+                className="text-gray-400 hover:text-[#234745] transition-colors"
+              >
+                الرئيسية
+              </Link>
               <span className="text-gray-300">/</span>
               <span className="text-[#234745]">سلة التسوق للتصدير</span>
             </div>
@@ -311,7 +447,10 @@ export default function ExportCart() {
   return (
     <div className="export-cart-page" dir="rtl">
       {/* ─── 1. HEADER BANNER ───────────────────────────────────────────────── */}
-      <section className="relative h-[144px] w-full bg-[#234745] overflow-hidden flex items-center" dir="rtl">
+      <section
+        className="relative h-[144px] w-full bg-[#234745] overflow-hidden flex items-center"
+        dir="rtl"
+      >
         <div
           className="absolute inset-0 bg-[length:1500px_800px] md:bg-[length:1900px_2000px]"
           style={{
@@ -320,25 +459,51 @@ export default function ExportCart() {
             backgroundRepeat: 'no-repeat',
           }}
         />
-        <div className="max-w-[1440px] w-full mx-auto px-4 md:px-8 lg:px-12 relative z-10 flex items-center justify-between" dir="rtl">
+        <div
+          className="max-w-[1440px] w-full mx-auto px-4 md:px-8 lg:px-12 relative z-10 flex items-center justify-between"
+          dir="rtl"
+        >
           <div className="flex flex-row items-center justify-start gap-4 md:gap-6 w-full">
             <button
-              onClick={() => { if (typeof window !== 'undefined') window.history.back(); }}
+              onClick={() => {
+                if (typeof window !== 'undefined') window.history.back();
+              }}
               className="flex items-center gap-[8px] bg-[#9FB7AE] hover:bg-[#8BA19C] text-[#234745] px-4 md:px-6 py-2.5 rounded-[25px] text-[12px] md:text-[16px] font-bold transition-all shrink-0"
-              style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
+              style={{
+                fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
+              }}
               dir="rtl"
             >
-              <svg width="15" height="13" viewBox="0 0 15 13" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M0 6H12.25L7 0.75L7.66 0L14.16 6.5L7.66 13L7 12.25L12.25 7H0V6Z" fill="#234745"/>
+              <svg
+                width="15"
+                height="13"
+                viewBox="0 0 15 13"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M0 6H12.25L7 0.75L7.66 0L14.16 6.5L7.66 13L7 12.25L12.25 7H0V6Z"
+                  fill="#234745"
+                />
               </svg>
               <span>رجوع</span>
             </button>
 
             <div className="flex flex-col text-right">
-              <h1 className="!m-0 !mb-1 text-[24px] md:text-[34px] font-bold text-white leading-none" style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" }}>
+              <h1
+                className="!m-0 !mb-1 text-[24px] md:text-[34px] font-bold text-white leading-none"
+                style={{
+                  fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif",
+                }}
+              >
                 سلة التسوق للتصدير
               </h1>
-              <p className="!m-0 text-[13px] md:text-[15px] font-medium text-[#c4d0cc] leading-none" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
+              <p
+                className="!m-0 text-[13px] md:text-[15px] font-medium text-[#c4d0cc] leading-none"
+                style={{
+                  fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
+                }}
+              >
                 سلة التسوق للتصدير حول العالم
               </p>
             </div>
@@ -349,8 +514,16 @@ export default function ExportCart() {
       {/* ─── BREADCRUMB ────────────────────────────────────────────────────── */}
       <div className="w-full bg-white py-4 mb-10 border-b border-gray-100">
         <div className="max-w-[1400px] mx-auto px-4 md:px-8">
-          <div className="flex items-center gap-2 text-[14px] font-bold text-right" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
-            <Link to="/" className="text-gray-400 hover:text-[#234745] transition-colors">الرئيسية</Link>
+          <div
+            className="flex items-center gap-2 text-[14px] font-bold text-right"
+            style={{fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif"}}
+          >
+            <Link
+              to="/"
+              className="text-gray-400 hover:text-[#234745] transition-colors"
+            >
+              الرئيسية
+            </Link>
             <span className="text-gray-300">/</span>
             <span className="text-[#234745]">سلة التسوق للتصدير</span>
           </div>
@@ -365,11 +538,12 @@ export default function ExportCart() {
       {/* ─── 3. MAIN GRID LAYOUT ─────────────────────────────────────────────── */}
       <div className="export-container">
         <div className="export-main-grid">
-          
           {/* ─── RIGHT COLUMN: Products List ─── */}
           <div className="export-products-col">
             <div className="export-products-header">
-              <h2 className="export-products-title">المنتجات ({exportLines.length})</h2>
+              <h2 className="export-products-title">
+                المنتجات ({exportLines.length})
+              </h2>
               <ClearCartButton lineIds={lineIds} />
             </div>
 
@@ -379,13 +553,19 @@ export default function ExportCart() {
                 const product = merch?.product;
                 const title = product?.title || merch?.title || 'منتج';
                 const image = merch?.image || product?.featuredImage;
-                const lineTotal = parseFloat(line.cost?.totalAmount?.amount || merch?.price?.amount || '0');
-                const comparePrice = merch?.compareAtPrice?.amount ? parseFloat(merch.compareAtPrice.amount) : null;
+                const lineTotal = parseFloat(
+                  line.cost?.totalAmount?.amount || merch?.price?.amount || '0',
+                );
+                const comparePrice = merch?.compareAtPrice?.amount
+                  ? parseFloat(merch.compareAtPrice.amount)
+                  : null;
 
                 // Dynamically fetch options & attributes
                 const selectedOptions = merch?.selectedOptions || [];
-                const optionChips = selectedOptions.filter((o: any) => o.value !== 'Default Title').map((o: any) => `${o.name} : ${o.value}`);
-                
+                const optionChips = selectedOptions
+                  .filter((o: any) => o.value !== 'Default Title')
+                  .map((o: any) => `${o.name} : ${o.value}`);
+
                 // Add attributes if present
                 if (line.attributes?.length) {
                   line.attributes.forEach((attr: any) => {
@@ -402,7 +582,11 @@ export default function ExportCart() {
                     {/* Right: Product Image */}
                     <div className="export-line-thumb">
                       {image?.url ? (
-                        <img src={image.url} alt={title} className="export-line-img" />
+                        <img
+                          src={image.url}
+                          alt={title}
+                          className="export-line-img"
+                        />
                       ) : (
                         <div className="export-thumb-placeholder">🍬</div>
                       )}
@@ -417,7 +601,9 @@ export default function ExportCart() {
                       <div className="export-chips-row">
                         {optionChips.length > 0 ? (
                           optionChips.map((chip: string, i: number) => (
-                            <span key={i} className="export-chip">{chip}</span>
+                            <span key={i} className="export-chip">
+                              {chip}
+                            </span>
                           ))
                         ) : (
                           <>
@@ -431,11 +617,30 @@ export default function ExportCart() {
                       <div className="export-actions-row">
                         <ExportRemoveLine lineId={line.id} />
                         <button className="export-action-link">
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l8.78-8.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+                          <svg
+                            width="14"
+                            height="14"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                          >
+                            <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l8.78-8.78 1.06-1.06a5.5 5.5 0 000-7.78z" />
+                          </svg>
                           حفظ لاحقاً
                         </button>
                         <button className="export-action-link">
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="8" width="18" height="12" rx="2"/><path d="M12 8v12M3 12h18M12 3a3 3 0 00-3 3c0 1.5 3 2 3 2s3-.5 3-2a3 3 0 00-3-3z"/></svg>
+                          <svg
+                            width="14"
+                            height="14"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                          >
+                            <rect x="3" y="8" width="18" height="12" rx="2" />
+                            <path d="M12 8v12M3 12h18M12 3a3 3 0 00-3 3c0 1.5 3 2 3 2s3-.5 3-2a3 3 0 00-3-3z" />
+                          </svg>
                           إجعلها هدية
                         </button>
                       </div>
@@ -446,11 +651,13 @@ export default function ExportCart() {
                       <div className="export-price-block">
                         {comparePrice && comparePrice > lineTotal && (
                           <span className="export-compare-price font-en flex items-center justify-end gap-1">
-                            {comparePrice.toFixed(2)} <SaudiRiyalSymbol className="h-2.5 w-auto" />
+                            {comparePrice.toFixed(2)}{' '}
+                            <SaudiRiyalSymbol className="h-2.5 w-auto" />
                           </span>
                         )}
                         <span className="export-current-price font-en flex items-center justify-end gap-1">
-                          {lineTotal.toFixed(2)} <SaudiRiyalSymbol className="h-3.5 w-auto text-[#234745]" />
+                          {lineTotal.toFixed(2)}{' '}
+                          <SaudiRiyalSymbol className="h-3.5 w-auto text-[#234745]" />
                         </span>
                       </div>
                       <ExportCartLineQty line={line} />
@@ -470,7 +677,8 @@ export default function ExportCart() {
                 <div className="export-summary-item">
                   <span className="label">المجموع الفرعي</span>
                   <span className="val font-en flex items-center gap-1">
-                    {subtotal.toFixed(2)} <SaudiRiyalSymbol className="h-3 w-auto text-[#234745]" />
+                    {subtotal.toFixed(2)}{' '}
+                    <SaudiRiyalSymbol className="h-3 w-auto text-[#234745]" />
                   </span>
                 </div>
                 <div className="export-summary-item">
@@ -478,19 +686,22 @@ export default function ExportCart() {
                     الشحن <AramexBadge />
                   </span>
                   <span className="val font-en flex items-center gap-1">
-                    {shippingRate.toFixed(2)} <SaudiRiyalSymbol className="h-3 w-auto text-[#234745]" />
+                    {shippingRate.toFixed(2)}{' '}
+                    <SaudiRiyalSymbol className="h-3 w-auto text-[#234745]" />
                   </span>
                 </div>
                 <div className="export-summary-item">
                   <span className="label">رسوم التغليف المبرد</span>
                   <span className="val font-en flex items-center gap-1">
-                    {coldPackagingFee.toFixed(2)} <SaudiRiyalSymbol className="h-3 w-auto text-[#234745]" />
+                    {coldPackagingFee.toFixed(2)}{' '}
+                    <SaudiRiyalSymbol className="h-3 w-auto text-[#234745]" />
                   </span>
                 </div>
                 <div className="export-summary-item discount">
                   <span className="label">خصم التصدير</span>
                   <span className="val font-en flex items-center gap-1">
-                    − {exportDiscount.toFixed(2)} <SaudiRiyalSymbol className="h-3 w-auto text-[#234745]" />
+                    − {exportDiscount.toFixed(2)}{' '}
+                    <SaudiRiyalSymbol className="h-3 w-auto text-[#234745]" />
                   </span>
                 </div>
               </div>
@@ -501,18 +712,28 @@ export default function ExportCart() {
                 <div className="export-total-row">
                   <span className="total-label">الإجمالي</span>
                   <span className="total-val font-en flex items-center gap-1.5">
-                    {grandTotal.toFixed(2)} <SaudiRiyalSymbol className="h-4.5 w-auto text-[#234745]" />
+                    {grandTotal.toFixed(2)}{' '}
+                    <SaudiRiyalSymbol className="h-4.5 w-auto text-[#234745]" />
                   </span>
                 </div>
                 <p className="vat-note">شامل ضريبة القيمة المضافة 15%</p>
               </div>
 
-              <button onClick={handleProceedToShipping} className="export-checkout-btn">
+              <button
+                onClick={handleProceedToShipping}
+                className="export-checkout-btn"
+              >
                 إتمام الطلب
               </button>
 
               {/* Discount Code Form with Hydrogen CartForm */}
-              <CartForm route="/cart" action={CartForm.ACTIONS.DiscountCodesUpdate} inputs={{ discountCodes: discountCodeInput ? [discountCodeInput] : [] }}>
+              <CartForm
+                route="/cart"
+                action={CartForm.ACTIONS.DiscountCodesUpdate}
+                inputs={{
+                  discountCodes: discountCodeInput ? [discountCodeInput] : [],
+                }}
+              >
                 {(f: FetcherWithComponents<any>) => (
                   <div className="export-discount-form">
                     <input
@@ -520,7 +741,7 @@ export default function ExportCart() {
                       name="discountCode"
                       placeholder="كود الخصم"
                       value={discountCodeInput}
-                      onChange={e => setDiscountCodeInput(e.target.value)}
+                      onChange={(e) => setDiscountCodeInput(e.target.value)}
                       className="export-discount-input"
                       dir="rtl"
                     />
@@ -538,7 +759,10 @@ export default function ExportCart() {
               {appliedDiscountCodes.length > 0 && (
                 <div className="export-applied-discounts">
                   {appliedDiscountCodes.map((dc: any) => (
-                    <span key={dc.code} className="export-discount-badge flex items-center gap-1 justify-between">
+                    <span
+                      key={dc.code}
+                      className="export-discount-badge flex items-center gap-1 justify-between"
+                    >
                       <span>✓ كود: {dc.code}</span>
                     </span>
                   ))}
@@ -555,7 +779,6 @@ export default function ExportCart() {
               </div>
             </div>
           </div>
-
         </div>
 
         {/* ─── 4. BOTTOM SHIPPING CALCULATOR & FEATURE CARDS ─────────────────────── */}
@@ -567,12 +790,14 @@ export default function ExportCart() {
               <label className="export-calc-label">دولة الوجهة</label>
               <select
                 value={shippingCountry}
-                onChange={e => setShippingCountry(e.target.value)}
+                onChange={(e) => setShippingCountry(e.target.value)}
                 className="export-calc-select"
                 dir="rtl"
               >
-                {COUNTRIES.map(c => (
-                  <option key={c.code} value={c.code}>{c.name}</option>
+                {COUNTRIES.map((c) => (
+                  <option key={c.code} value={c.code}>
+                    {c.name}
+                  </option>
                 ))}
               </select>
             </div>
@@ -583,13 +808,17 @@ export default function ExportCart() {
                 type="text"
                 placeholder="00000"
                 value={shippingZip}
-                onChange={e => setShippingZip(e.target.value)}
+                onChange={(e) => setShippingZip(e.target.value)}
                 className="export-calc-input font-en"
                 dir="ltr"
               />
             </div>
 
-            <button onClick={handleCalculateShipping} disabled={calcLoading} className="export-calc-btn">
+            <button
+              onClick={handleCalculateShipping}
+              disabled={calcLoading}
+              className="export-calc-btn"
+            >
               {calcLoading ? 'جاري الاحتساب...' : 'احسب الشحن'}
             </button>
           </div>
@@ -597,7 +826,9 @@ export default function ExportCart() {
           {/* Aramex Calculation Status */}
           <div className="export-calc-status-row">
             {calcLoading ? (
-              <span className="export-calc-status loading">جاري الاتصال بـ Aramex لحساب تكلفة الشحن...</span>
+              <span className="export-calc-status loading">
+                جاري الاتصال بـ Aramex لحساب تكلفة الشحن...
+              </span>
             ) : calcDone ? (
               <span className="export-calc-status done flex items-center gap-2 justify-end">
                 <span>تم حساب الشحن بنجاح عبر Aramex</span>
@@ -622,7 +853,6 @@ export default function ExportCart() {
             </div>
           </div>
         </div>
-
       </div>
 
       <ExportCartStyles />

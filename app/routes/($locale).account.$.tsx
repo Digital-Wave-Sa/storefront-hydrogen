@@ -7,8 +7,3 @@ export async function loader({context}: LoaderFunctionArgs) {
   }
   return redirect('/account/login');
 }
-
-
-
-
-

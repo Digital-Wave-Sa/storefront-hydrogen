@@ -51,7 +51,7 @@ export const shouldRevalidate: ShouldRevalidateFunction = ({
   // Use with caution. If you are uncomfortable with this optimization, update the
   // line below to `return defaultShouldRevalidate` instead.
   // For more details see: https://remix.run/docs/en/main/route/should-revalidate
-  return true; // ALWAYS REVALIDATE to ensure session changes (like location) update the UI
+  return false;
 };
 
 /**
@@ -119,7 +119,7 @@ export async function loader(args: Route.LoaderArgs) {
     const urlLocale = new URL(args.request.url).pathname.split('/')[1]?.toLowerCase();
     selectedLocId = '';
     selectedLocName = urlLocale === 'en' ? 'Select Your Branch' : 'اختر الفرع';
-    fType = 'pickup';
+    fType = 'delivery';
     
     session.set('selectedLocationId', selectedLocId);
     session.set('selectedLocationName', selectedLocName);
@@ -140,13 +140,13 @@ export async function loader(args: Route.LoaderArgs) {
           const urlLocale = new URL(args.request.url).pathname.split('/')[1]?.toLowerCase();
           selectedLocId = '';
           selectedLocName = urlLocale === 'en' ? 'Select Your Branch' : 'اختر الفرع';
-          fType = 'pickup';
+          fType = 'delivery';
         } else {
           const isTesting = env.PUBLIC_STORE_DOMAIN?.includes('belivagloire');
           selectedLocId = isTesting ? 'gid://shopify/Location/114186715445' : 'gid://shopify/Location/80198500503';
           const urlLocale = new URL(args.request.url).pathname.split('/')[1]?.toLowerCase();
           selectedLocName = urlLocale === 'en' ? 'Olaya Branch' : 'فرع العليا';
-          fType = 'pickup';
+          fType = 'delivery';
         }
         session.set('selectedLocationId', selectedLocId);
         session.set('selectedLocationName', selectedLocName);
@@ -332,7 +332,17 @@ function loadDeferredData(
         });
         if (res.ok) {
           const d = await res.json() as any;
-          adminCust = d.customers?.[0];
+          adminCust = (d.customers || []).find((c: any) => {
+            if (loginOtpPhone) {
+              const cp = (c.phone || '').replace(/\D/g, '');
+              const sp = loginOtpPhone.replace(/\D/g, '');
+              if (!cp || !sp) return false;
+              return cp === sp || cp.endsWith(sp.slice(-9));
+            } else if (loginCustomerEmail) {
+              return c.email && c.email.toLowerCase() === loginCustomerEmail.toLowerCase();
+            }
+            return false;
+          });
         }
       }
 
@@ -625,7 +635,7 @@ export default function App() {
         const formData = new FormData();
         formData.append('locationId', '');
         formData.append('branchName', locale === 'en' ? 'Select Your Branch' : 'اختر الفرع');
-        formData.append('fulfillmentType', 'pickup');
+        formData.append('fulfillmentType', 'delivery');
         formData.append('isInternational', 'true');
         
         locationFetcher.submit(formData, {
@@ -837,7 +847,6 @@ const CUSTOMER_ADDRESSES_QUERY = `#graphql
       id
       email
       phone
-      tags
       firstName
       lastName
       addresses(first: 20) {

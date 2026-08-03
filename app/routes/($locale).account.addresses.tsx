@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from 'react';
-import type { MailingAddressInput } from '@shopify/hydrogen/storefront-api-types';
-import type { AddressFragment, CustomerFragment } from 'storefrontapi.generated';
+import {useState, useEffect, useRef} from 'react';
+import type {MailingAddressInput} from '@shopify/hydrogen/storefront-api-types';
+import type {AddressFragment, CustomerFragment} from 'storefrontapi.generated';
 import {
   data,
   redirect,
@@ -14,7 +14,7 @@ import {
   useNavigation,
   useOutletContext,
 } from 'react-router';
-import { Button } from '~/components/layout/Button';
+import {Button} from '~/components/layout/Button';
 
 export type ActionResponse = {
   addressId?: string | null;
@@ -26,23 +26,25 @@ export type ActionResponse = {
 };
 
 export const meta: MetaFunction = () => {
-  return [{ title: 'Addresses | Saadeddin' }];
+  return [{title: 'Addresses | Saadeddin'}];
 };
 
 // Loader removed to ensure instant client-side navigation using parent's OutletContext
 
-export async function action({ request, context }: ActionFunctionArgs) {
-  const { storefront, session } = context;
+export async function action({request, context}: ActionFunctionArgs) {
+  const {storefront, session} = context;
 
   try {
     const form = await request.formData();
-    const addressId = form.has('addressId') ? String(form.get('addressId')) : 'new';
+    const addressId = form.has('addressId')
+      ? String(form.get('addressId'))
+      : 'new';
     const customerAccessToken = await session.get('customerAccessToken');
 
     if (!customerAccessToken) {
-      return data({ error: { [addressId]: 'Unauthorized' } }, { status: 401 });
+      return data({error: {[addressId]: 'Unauthorized'}}, {status: 401});
     }
-    const { accessToken } = customerAccessToken;
+    const {accessToken} = customerAccessToken;
 
     const defaultAddress = String(form.get('defaultAddress')) === 'on';
     const address: MailingAddressInput = {};
@@ -57,7 +59,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
       'lng',
     ];
 
-    const latlng = { lat: '', lng: '' };
+    const latlng = {lat: '', lng: ''};
 
     for (const key of keys) {
       const value = form.get(key);
@@ -71,7 +73,9 @@ export async function action({ request, context }: ActionFunctionArgs) {
           } else if (cleanPhone.startsWith('966')) {
             address.phone = `+${cleanPhone}`;
           } else {
-            const finalPhone = cleanPhone.startsWith('0') ? cleanPhone.substring(1) : cleanPhone;
+            const finalPhone = cleanPhone.startsWith('0')
+              ? cleanPhone.substring(1)
+              : cleanPhone;
             address.phone = finalPhone ? `+966${finalPhone}` : undefined;
           }
         } else if (key === 'lat') {
@@ -91,9 +95,12 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
     switch (request.method) {
       case 'POST': {
-        const { customerAddressCreate } = await storefront.mutate(CREATE_ADDRESS_MUTATION, {
-          variables: { customerAccessToken: accessToken, address },
-        });
+        const {customerAddressCreate} = await storefront.mutate(
+          CREATE_ADDRESS_MUTATION,
+          {
+            variables: {customerAccessToken: accessToken, address},
+          },
+        );
 
         if (customerAddressCreate?.customerUserErrors?.length) {
           throw new Error(customerAddressCreate.customerUserErrors[0].message);
@@ -104,21 +111,24 @@ export async function action({ request, context }: ActionFunctionArgs) {
           await storefront.mutate(UPDATE_DEFAULT_ADDRESS_MUTATION, {
             variables: {
               customerAccessToken: accessToken,
-              addressId: decodeURIComponent(createdAddress.id) as any
+              addressId: decodeURIComponent(createdAddress.id) as any,
             },
           });
         }
-        return data({ error: null, createdAddress, defaultAddress });
+        return data({error: null, createdAddress, defaultAddress});
       }
 
       case 'PUT': {
-        const { customerAddressUpdate } = await storefront.mutate(UPDATE_ADDRESS_MUTATION, {
-          variables: {
-            address,
-            customerAccessToken: accessToken,
-            id: decodeURIComponent(addressId) as any
+        const {customerAddressUpdate} = await storefront.mutate(
+          UPDATE_ADDRESS_MUTATION,
+          {
+            variables: {
+              address,
+              customerAccessToken: accessToken,
+              id: decodeURIComponent(addressId) as any,
+            },
           },
-        });
+        );
 
         if (customerAddressUpdate?.customerUserErrors?.length) {
           throw new Error(customerAddressUpdate.customerUserErrors[0].message);
@@ -128,40 +138,53 @@ export async function action({ request, context }: ActionFunctionArgs) {
           await storefront.mutate(UPDATE_DEFAULT_ADDRESS_MUTATION, {
             variables: {
               customerAccessToken: accessToken,
-              addressId: decodeURIComponent(addressId) as any
+              addressId: decodeURIComponent(addressId) as any,
             },
           });
         }
-        return data({ error: null, updatedAddress: customerAddressUpdate?.customerAddress, defaultAddress });
+        return data({
+          error: null,
+          updatedAddress: customerAddressUpdate?.customerAddress,
+          defaultAddress,
+        });
       }
 
       case 'DELETE': {
-        const { customerAddressDelete } = await storefront.mutate(DELETE_ADDRESS_MUTATION, {
-          variables: {
-            customerAccessToken: accessToken,
-            id: decodeURIComponent(addressId) as any
+        const {customerAddressDelete} = await storefront.mutate(
+          DELETE_ADDRESS_MUTATION,
+          {
+            variables: {
+              customerAccessToken: accessToken,
+              id: decodeURIComponent(addressId) as any,
+            },
           },
-        });
+        );
 
         if (customerAddressDelete?.customerUserErrors?.length) {
           throw new Error(customerAddressDelete.customerUserErrors[0].message);
         }
-        return data({ error: null, deletedAddress: addressId });
+        return data({error: null, deletedAddress: addressId});
       }
 
       default:
-        return data({ error: { [addressId]: 'Method not allowed' } }, { status: 405 });
+        return data(
+          {error: {[addressId]: 'Method not allowed'}},
+          {status: 405},
+        );
     }
   } catch (error: any) {
-    return data({ error: { 'form': error.message } }, { status: 400 });
+    return data({error: {form: error.message}}, {status: 400});
   }
 }
 
 export default function Addresses() {
-  const { customer } = useOutletContext<{ customer: CustomerFragment }>();
-  const { defaultAddress, addresses } = customer;
-  const [activeModal, setActiveModal] = useState<{ type: 'create' | 'edit', address?: AddressFragment } | null>(null);
-  const locale = useOutletContext<{ locale: string }>().locale;
+  const {customer} = useOutletContext<{customer: CustomerFragment}>();
+  const {defaultAddress, addresses} = customer;
+  const [activeModal, setActiveModal] = useState<{
+    type: 'create' | 'edit';
+    address?: AddressFragment;
+  } | null>(null);
+  const locale = useOutletContext<{locale: string}>().locale;
   const isEn = locale === 'en';
   const [addressToDelete, setAddressToDelete] = useState<string | null>(null);
 
@@ -172,35 +195,52 @@ export default function Addresses() {
         {/* Title */}
         <h2
           className="font-bold text-[18px] md:text-2xl text-[#171717] !m-0"
-          style={{ fontFamily: isEn ? "'Inter', sans-serif" : "'GE Dinar One', sans-serif" }}
+          style={{
+            fontFamily: isEn
+              ? "'Inter', sans-serif"
+              : "'GE Dinar One', sans-serif",
+          }}
         >
           {isEn ? 'Delivery Addresses' : 'عناوين التوصيل'}
         </h2>
 
         {/* Cards container */}
         <div className="flex flex-col gap-3 mt-2">
-
           {addresses.nodes.map((address) => {
             const isDefault = defaultAddress?.id === address.id;
             const label = address.firstName || (isEn ? 'Address' : 'عنوان');
-            const addressText = [address.address1, address.city].filter(Boolean).join('، ');
+            const addressText = [address.address1, address.city]
+              .filter(Boolean)
+              .join('، ');
 
             return (
               <div
                 key={address.id}
-                className={`flex flex-col p-4 gap-3.5 rounded-[12px] border-1 transition-all ${isDefault ? 'bg-[#FEF8EB] border-[#234745]' : 'bg-transparent border-[#BBCFCD]'
-                  }`}
+                className={`flex flex-col p-4 gap-3.5 rounded-[12px] border-1 transition-all ${
+                  isDefault
+                    ? 'bg-[#FEF8EB] border-[#234745]'
+                    : 'bg-transparent border-[#BBCFCD]'
+                }`}
               >
                 {/* Top row: Radio + Label + Badge | Actions */}
                 <div className="flex flex-row flex-wrap items-center justify-between gap-2.5 w-full">
                   {/* Radio + Label + Badge */}
                   <div className="flex items-center gap-2.5">
                     {/* Radio dot */}
-                    <div className={`w-5.5 h-5.5 rounded-full flex items-center justify-center flex-shrink-0 border-2 transition-all ${isDefault ? 'bg-[#234745] border-transparent' : 'bg-transparent border-[#BBCFCD]'
-                      }`}>
-                      {isDefault && <div className="w-2.5 h-2.5 rounded-full bg-white" />}
+                    <div
+                      className={`w-5.5 h-5.5 rounded-full flex items-center justify-center flex-shrink-0 border-2 transition-all ${
+                        isDefault
+                          ? 'bg-[#234745] border-transparent'
+                          : 'bg-transparent border-[#BBCFCD]'
+                      }`}
+                    >
+                      {isDefault && (
+                        <div className="w-2.5 h-2.5 rounded-full bg-white" />
+                      )}
                     </div>
-                    <span className="font-bold text-base md:text-lg text-[#234745]">{label}</span>
+                    <span className="font-bold text-base md:text-lg text-[#234745]">
+                      {label}
+                    </span>
                     {isDefault && (
                       <div className="border border-[#906B51] rounded-full px-3 py-0.5 inline-flex items-center">
                         <span className="text-[10px] md:text-xs font-semibold text-[#906B51] whitespace-nowrap">
@@ -214,21 +254,49 @@ export default function Addresses() {
                   <div className="flex flex-row items-center gap-3.5 flex-wrap text-xs md:text-sm font-semibold">
                     <button
                       type="button"
-                      onClick={() => setActiveModal({ type: 'edit', address })}
+                      onClick={() => setActiveModal({type: 'edit', address})}
                       className="text-[#906B51] hover:text-[#906B51]/80 underline transition-colors"
                     >
                       {isEn ? 'Edit' : 'تعديل'}
                     </button>
                     {!isDefault && (
-                      <Form method="PUT" style={{ display: 'contents' }}>
-                        <input type="hidden" name="addressId" value={address.id} />
+                      <Form method="PUT" style={{display: 'contents'}}>
+                        <input
+                          type="hidden"
+                          name="addressId"
+                          value={address.id}
+                        />
                         <input type="hidden" name="defaultAddress" value="on" />
-                        <input type="hidden" name="address1" value={address.address1 ?? ''} />
-                        <input type="hidden" name="address2" value={address.address2 ?? ''} />
-                        <input type="hidden" name="city" value={address.city ?? ''} />
-                        <input type="hidden" name="firstName" value={address.firstName ?? ''} />
-                        <input type="hidden" name="lastName" value={address.lastName ?? ''} />
-                        <input type="hidden" name="phone" value={address.phone ?? ''} />
+                        <input
+                          type="hidden"
+                          name="address1"
+                          value={address.address1 ?? ''}
+                        />
+                        <input
+                          type="hidden"
+                          name="address2"
+                          value={address.address2 ?? ''}
+                        />
+                        <input
+                          type="hidden"
+                          name="city"
+                          value={address.city ?? ''}
+                        />
+                        <input
+                          type="hidden"
+                          name="firstName"
+                          value={address.firstName ?? ''}
+                        />
+                        <input
+                          type="hidden"
+                          name="lastName"
+                          value={address.lastName ?? ''}
+                        />
+                        <input
+                          type="hidden"
+                          name="phone"
+                          value={address.phone ?? ''}
+                        />
                         <button
                           type="submit"
                           className="text-[#234745] hover:text-[#234745]/80 underline transition-colors whitespace-nowrap"
@@ -258,12 +326,28 @@ export default function Addresses() {
           {/* Add New Address Button */}
           <button
             type="button"
-            onClick={() => setActiveModal({ type: 'create' })}
+            onClick={() => setActiveModal({type: 'create'})}
             className="w-full flex items-center justify-center gap-2 p-3.5 bg-transparent border-2 border-[#BBCFCD] hover:border-[#234745] rounded-2xl transition-all mt-1"
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-              <line x1="12" y1="6" x2="12" y2="18" stroke="#234745" strokeWidth="2.5" strokeLinecap="round" />
-              <line x1="6" y1="12" x2="18" y2="12" stroke="#234745" strokeWidth="2.5" strokeLinecap="round" />
+              <line
+                x1="12"
+                y1="6"
+                x2="12"
+                y2="18"
+                stroke="#234745"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+              />
+              <line
+                x1="6"
+                y1="12"
+                x2="18"
+                y2="12"
+                stroke="#234745"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+              />
             </svg>
             <span className="font-bold text-sm md:text-base text-[#234745]">
               {isEn ? 'Add New Address' : 'إضافة عنوان جديد'}
@@ -292,11 +376,26 @@ export default function Addresses() {
   );
 }
 
-function DeleteConfirmationModal({ onClose, addressId, locale }: { onClose: () => void, addressId: string, locale: string }) {
+function DeleteConfirmationModal({
+  onClose,
+  addressId,
+  locale,
+}: {
+  onClose: () => void;
+  addressId: string;
+  locale: string;
+}) {
   const isEn = locale === 'en';
   return (
-    <div className="address-modal-overlay" onClick={onClose} style={{ zIndex: 1001 }}>
-      <div className="address-modal-container !max-w-[400px] !p-8 text-center" onClick={e => e.stopPropagation()}>
+    <div
+      className="address-modal-overlay"
+      onClick={onClose}
+      style={{zIndex: 1001}}
+    >
+      <div
+        className="address-modal-container !max-w-[400px] !p-8 text-center"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="w-20 h-20 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6 text-3xl">
           🗑️
         </div>
@@ -304,16 +403,30 @@ function DeleteConfirmationModal({ onClose, addressId, locale }: { onClose: () =
           {isEn ? 'Delete Address?' : 'حذف العنوان؟'}
         </h3>
         <p className="text-gray-500 text-sm font-bold mb-8 leading-relaxed">
-          {isEn ? 'Are you sure you want to remove this address? This action cannot be undone.' : 'هل أنت متأكد من رغبتك في حذف هذا العنوان؟ لا يمكن التراجع عن هذا الإجراء.'}
+          {isEn
+            ? 'Are you sure you want to remove this address? This action cannot be undone.'
+            : 'هل أنت متأكد من رغبتك في حذف هذا العنوان؟ لا يمكن التراجع عن هذا الإجراء.'}
         </p>
         <div className="flex gap-3">
           <Form method="DELETE" className="flex-1" onSubmit={onClose}>
             <input type="hidden" name="addressId" value={addressId} />
-            <Button type="submit" variant="primary" fullWidth size="lg" className="!bg-red-500 hover:!bg-red-600 !border-red-500">
+            <Button
+              type="submit"
+              variant="primary"
+              fullWidth
+              size="lg"
+              className="!bg-red-500 hover:!bg-red-600 !border-red-500"
+            >
               {isEn ? 'Delete' : 'حذف'}
             </Button>
           </Form>
-          <Button type="button" variant="secondary" className="flex-1" size="lg" onClick={onClose}>
+          <Button
+            type="button"
+            variant="secondary"
+            className="flex-1"
+            size="lg"
+            onClick={onClose}
+          >
             {isEn ? 'Cancel' : 'إلغاء'}
           </Button>
         </div>
@@ -322,9 +435,22 @@ function DeleteConfirmationModal({ onClose, addressId, locale }: { onClose: () =
   );
 }
 
-function AddressModal({ type, address, isDefault, onClose }: { type: 'create' | 'edit', address?: AddressFragment, isDefault?: boolean, onClose: () => void }) {
+function AddressModal({
+  type,
+  address,
+  isDefault,
+  onClose,
+}: {
+  type: 'create' | 'edit';
+  address?: AddressFragment;
+  isDefault?: boolean;
+  onClose: () => void;
+}) {
   const navigation = useNavigation();
-  const { googleMapsKey, locale } = useOutletContext<{ googleMapsKey: string, locale: string }>();
+  const {googleMapsKey, locale} = useOutletContext<{
+    googleMapsKey: string;
+    locale: string;
+  }>();
   const isEn = locale === 'en';
   const isLoading = navigation.state !== 'idle';
 
@@ -338,27 +464,36 @@ function AddressModal({ type, address, isDefault, onClose }: { type: 'create' | 
   // Initial preview URL if we have an address already
   useEffect(() => {
     if (address?.address1 && !mapUrl) {
-      setMapUrl(`https://www.google.com/maps/embed/v1/place?key=${googleMapsKey}&q=${encodeURIComponent(address.address1 + ' ' + (address.city || ''))}&zoom=16`);
+      setMapUrl(
+        `https://www.google.com/maps/embed/v1/place?key=${googleMapsKey}&q=${encodeURIComponent(address.address1 + ' ' + (address.city || ''))}&zoom=16`,
+      );
     }
   }, [address, googleMapsKey, mapUrl]);
 
   // State to hold coordinates
-  const [coords, setCoords] = useState<{ lat: number, lng: number } | null>(() => {
-    if (address?.address2?.includes('COORDS:')) {
-      const match = address.address2.match(/COORDS:(-?\d+\.\d+),(-?\d+\.\d+)/);
-      if (match) return { lat: parseFloat(match[1]), lng: parseFloat(match[2]) };
-    }
-    return null;
-  });
+  const [coords, setCoords] = useState<{lat: number; lng: number} | null>(
+    () => {
+      if (address?.address2?.includes('COORDS:')) {
+        const match = address.address2.match(
+          /COORDS:(-?\d+\.\d+),(-?\d+\.\d+)/,
+        );
+        if (match)
+          return {lat: parseFloat(match[1]), lng: parseFloat(match[2])};
+      }
+      return null;
+    },
+  );
 
   const handleLocationConfirm = (result: any) => {
     setAddressLine1(result.address);
     setCity(result.city);
-    setCoords({ lat: result.lat, lng: result.lng });
+    setCoords({lat: result.lat, lng: result.lng});
 
     // Update preview map
-    const { lat, lng } = result;
-    setMapUrl(`https://www.google.com/maps/embed/v1/view?key=${googleMapsKey}&center=${lat},${lng}&zoom=17`);
+    const {lat, lng} = result;
+    setMapUrl(
+      `https://www.google.com/maps/embed/v1/view?key=${googleMapsKey}&center=${lat},${lng}&zoom=17`,
+    );
 
     setIsValidated(true);
     setIsMapPickerOpen(false);
@@ -368,21 +503,25 @@ function AddressModal({ type, address, isDefault, onClose }: { type: 'create' | 
     if (!navigator.geolocation) return;
     setIsValidating(true);
     navigator.geolocation.getCurrentPosition(async (pos) => {
-      const { latitude, longitude } = pos.coords;
+      const {latitude, longitude} = pos.coords;
       const url = `https://www.google.com/maps/embed/v1/place?key=${googleMapsKey}&q=${latitude},${longitude}&zoom=16`;
       setMapUrl(url);
 
       try {
-        const response = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${googleMapsKey}&language=${isEn ? 'en' : 'ar'}`);
-        const data = await response.json() as any;
+        const response = await fetch(
+          `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${googleMapsKey}&language=${isEn ? 'en' : 'ar'}`,
+        );
+        const data = (await response.json()) as any;
         if (data.results?.[0]) {
           const result = data.results[0];
           setAddressLine1(result.formatted_address);
-          const cityObj = result.address_components.find((c: any) => c.types.includes('locality'));
+          const cityObj = result.address_components.find((c: any) =>
+            c.types.includes('locality'),
+          );
           if (cityObj) setCity(cityObj.long_name);
           setIsValidated(true);
         }
-      } catch (e) { }
+      } catch (e) {}
       setIsValidating(false);
     });
   };
@@ -394,39 +533,59 @@ function AddressModal({ type, address, isDefault, onClose }: { type: 'create' | 
     setMapUrl(url);
 
     try {
-      const response = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(query)}&key=${googleMapsKey}&language=${isEn ? 'en' : 'ar'}`);
-      const data = await response.json() as any;
+      const response = await fetch(
+        `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(query)}&key=${googleMapsKey}&language=${isEn ? 'en' : 'ar'}`,
+      );
+      const data = (await response.json()) as any;
       if (data.results?.[0]) {
         const result = data.results[0];
         setAddressLine1(result.formatted_address);
-        const cityObj = result.address_components.find((c: any) => c.types.includes('locality'));
+        const cityObj = result.address_components.find((c: any) =>
+          c.types.includes('locality'),
+        );
         if (cityObj) setCity(cityObj.long_name);
         setIsValidated(true);
       }
-    } catch (e) { }
+    } catch (e) {}
     setIsValidating(false);
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={onClose}>
-      <div className="bg-[#fcfaf5] w-full max-w-2xl rounded-3xl p-6 md:p-8 relative shadow-2xl overflow-y-auto max-h-[90vh]" onClick={e => e.stopPropagation()}>
-        <h3 className="account-heading" style={{ fontSize: '22px' }}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-[#fcfaf5] w-full max-w-2xl rounded-3xl p-6 md:p-8 relative shadow-2xl overflow-y-auto max-h-[90vh]"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h3 className="account-heading" style={{fontSize: '22px'}}>
           {type === 'create' ? 'إضافة عنوان جديد' : 'تعديل العنوان'}
         </h3>
 
-        <Form method={type === 'create' ? 'POST' : 'PUT'} onSubmit={() => setTimeout(onClose, 1000)}>
+        <Form
+          method={type === 'create' ? 'POST' : 'PUT'}
+          onSubmit={() => setTimeout(onClose, 1000)}
+        >
           <input type="hidden" name="addressId" value={address?.id ?? 'new'} />
           <input type="hidden" name="lat" value={coords?.lat ?? ''} />
           <input type="hidden" name="lng" value={coords?.lng ?? ''} />
 
-          <div style={{ marginBottom: '24px' }}>
-            <label className="account-field-label">{isEn ? 'Validate Location on Map' : 'تأكيد الموقع على الخريطة'}</label>
+          <div style={{marginBottom: '24px'}}>
+            <label className="account-field-label">
+              {isEn ? 'Validate Location on Map' : 'تأكيد الموقع على الخريطة'}
+            </label>
             <div className="flex gap-2 mb-3">
               <input
                 type="text"
-                placeholder={isEn ? "Search area, street..." : "ابحث عن منطقة، شارع..."}
+                placeholder={
+                  isEn ? 'Search area, street...' : 'ابحث عن منطقة، شارع...'
+                }
                 className="account-input"
-                onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleSearchOnMap(e.currentTarget.value))}
+                onKeyDown={(e) =>
+                  e.key === 'Enter' &&
+                  (e.preventDefault(), handleSearchOnMap(e.currentTarget.value))
+                }
               />
               <button
                 type="button"
@@ -445,7 +604,7 @@ function AddressModal({ type, address, isDefault, onClose }: { type: 'create' | 
                     src={mapUrl}
                     width="100%"
                     height="100%"
-                    style={{ border: 0 }}
+                    style={{border: 0}}
                     loading="lazy"
                   />
                   <div className="absolute inset-0 bg-black/5 group-hover:bg-black/10 transition-colors flex items-center justify-center pointer-events-none">
@@ -460,7 +619,11 @@ function AddressModal({ type, address, isDefault, onClose }: { type: 'create' | 
                 </>
               ) : (
                 <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center">
-                  <p className="text-[13px] text-gray-400 mb-3">{isEn ? 'Pin your location on the map' : 'قم بتحديد موقعك على الخريطة'}</p>
+                  <p className="text-[13px] text-gray-400 mb-3">
+                    {isEn
+                      ? 'Pin your location on the map'
+                      : 'قم بتحديد موقعك على الخريطة'}
+                  </p>
                   <button
                     type="button"
                     onClick={() => setIsMapPickerOpen(true)}
@@ -473,7 +636,9 @@ function AddressModal({ type, address, isDefault, onClose }: { type: 'create' | 
             </div>
             {!isValidated && (
               <p className="text-[11px] text-red-500 mt-2 font-bold uppercase tracking-tight">
-                {isEn ? '* Map selection required for delivery accuracy' : '* تحديد الموقع على الخريطة مطلوب لدقة التوصيل'}
+                {isEn
+                  ? '* Map selection required for delivery accuracy'
+                  : '* تحديد الموقع على الخريطة مطلوب لدقة التوصيل'}
               </p>
             )}
           </div>
@@ -490,16 +655,28 @@ function AddressModal({ type, address, isDefault, onClose }: { type: 'create' | 
           <div className="account-form-grid">
             <div>
               <label className="account-field-label">الاسم الأول</label>
-              <input name="firstName" defaultValue={address?.firstName ?? ''} className="account-input" required />
+              <input
+                name="firstName"
+                defaultValue={address?.firstName ?? ''}
+                className="account-input"
+                required
+              />
             </div>
             <div>
               <label className="account-field-label">الاسم الأخير</label>
-              <input name="lastName" defaultValue={address?.lastName ?? ''} className="account-input" required />
+              <input
+                name="lastName"
+                defaultValue={address?.lastName ?? ''}
+                className="account-input"
+                required
+              />
             </div>
           </div>
 
-          <div style={{ marginTop: '20px' }}>
-            <label className="account-field-label">العنوان (الشارع، الحي)</label>
+          <div style={{marginTop: '20px'}}>
+            <label className="account-field-label">
+              العنوان (الشارع، الحي)
+            </label>
             <input
               name="address1"
               value={addressLine1}
@@ -509,7 +686,7 @@ function AddressModal({ type, address, isDefault, onClose }: { type: 'create' | 
             />
           </div>
 
-          <div style={{ marginTop: '20px' }}>
+          <div style={{marginTop: '20px'}}>
             <label className="account-field-label">المدينة</label>
             <input
               name="city"
@@ -520,21 +697,57 @@ function AddressModal({ type, address, isDefault, onClose }: { type: 'create' | 
             />
           </div>
 
-          <div style={{ marginTop: '20px' }}>
+          <div style={{marginTop: '20px'}}>
             <label className="account-field-label">رقم الجوال</label>
-            <input name="phone" defaultValue={address?.phone ?? ''} className="account-input" placeholder="+966XXXXXXXXX" required />
+            <input
+              name="phone"
+              defaultValue={address?.phone ?? ''}
+              className="account-input"
+              placeholder="+966XXXXXXXXX"
+              required
+            />
           </div>
 
-          <div style={{ marginTop: '24px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <input type="checkbox" name="defaultAddress" id="defaultAddress" defaultChecked={isDefault} style={{ width: '18px', height: '18px' }} />
-            <label htmlFor="defaultAddress" style={{ fontSize: '14px', fontWeight: '600', color: '#666' }}>تعيين كعنوان افتراضي</label>
+          <div
+            style={{
+              marginTop: '24px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+            }}
+          >
+            <input
+              type="checkbox"
+              name="defaultAddress"
+              id="defaultAddress"
+              defaultChecked={isDefault}
+              style={{width: '18px', height: '18px'}}
+            />
+            <label
+              htmlFor="defaultAddress"
+              style={{fontSize: '14px', fontWeight: '600', color: '#666'}}
+            >
+              تعيين كعنوان افتراضي
+            </label>
           </div>
 
-          <div style={{ marginTop: '40px', display: 'flex', gap: '16px' }}>
-            <Button type="submit" variant="primary" fullWidth size="lg" disabled={isLoading || (!isValidated && type === 'create')}>
+          <div style={{marginTop: '40px', display: 'flex', gap: '16px'}}>
+            <Button
+              type="submit"
+              variant="primary"
+              fullWidth
+              size="lg"
+              disabled={isLoading || (!isValidated && type === 'create')}
+            >
               {isLoading ? 'جاري الحفظ...' : 'حفظ العنوان'}
             </Button>
-            <Button type="button" variant="secondary" fullWidth size="lg" onClick={onClose}>
+            <Button
+              type="button"
+              variant="secondary"
+              fullWidth
+              size="lg"
+              onClick={onClose}
+            >
               إلغاء
             </Button>
           </div>
@@ -585,18 +798,23 @@ function MapPickerDialog({
   googleMapsKey,
   isEn,
   onClose,
-  onConfirm
+  onConfirm,
 }: {
   googleMapsKey: string;
   isEn: boolean;
   onClose: () => void;
-  onConfirm: (res: { address: string; city: string; lat: number; lng: number }) => void;
+  onConfirm: (res: {
+    address: string;
+    city: string;
+    lat: number;
+    lng: number;
+  }) => void;
 }) {
   const mapRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const [address, setAddress] = useState('');
   const [city, setCity] = useState('');
-  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [coords, setCoords] = useState<{lat: number; lng: number} | null>(null);
   const [isResolving, setIsResolving] = useState(false);
   const [isSdkLoaded, setIsSdkLoaded] = useState(false);
 
@@ -618,7 +836,7 @@ function MapPickerDialog({
   useEffect(() => {
     if (!isSdkLoaded || !mapRef.current) return;
 
-    const defaultLoc = { lat: 24.7136, lng: 46.6753 }; // Riyadh
+    const defaultLoc = {lat: 24.7136, lng: 46.6753}; // Riyadh
     const map = new (window as any).google.maps.Map(mapRef.current, {
       center: defaultLoc,
       zoom: 15,
@@ -627,18 +845,22 @@ function MapPickerDialog({
     });
 
     const geocoder = new (window as any).google.maps.Geocoder();
-    const autocomplete = new (window as any).google.maps.places.Autocomplete(searchRef.current!);
+    const autocomplete = new (window as any).google.maps.places.Autocomplete(
+      searchRef.current!,
+    );
     autocomplete.bindTo('bounds', map);
 
     const resolveAddress = (lat: number, lng: number) => {
       setIsResolving(true);
-      geocoder.geocode({ location: { lat, lng } }, (results: any, status: any) => {
+      geocoder.geocode({location: {lat, lng}}, (results: any, status: any) => {
         if (status === 'OK' && results?.[0]) {
           const res = results[0];
           setAddress(res.formatted_address);
-          const cityComp = res.address_components.find((c: any) => c.types.includes('locality'));
+          const cityComp = res.address_components.find((c: any) =>
+            c.types.includes('locality'),
+          );
           if (cityComp) setCity(cityComp.long_name);
-          setCoords({ lat, lng });
+          setCoords({lat, lng});
         }
         setIsResolving(false);
       });
@@ -666,7 +888,7 @@ function MapPickerDialog({
     const locateMe = () => {
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition((pos) => {
-          const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+          const loc = {lat: pos.coords.latitude, lng: pos.coords.longitude};
           map.setCenter(loc);
           map.setZoom(17);
         });
@@ -681,18 +903,34 @@ function MapPickerDialog({
   }, [isSdkLoaded]);
 
   return (
-    <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/60 p-4 sm:p-6" onClick={onClose}>
-      <div className="relative w-full max-w-[800px] h-[80vh] bg-white rounded-3xl overflow-hidden shadow-2xl flex flex-col" onClick={e => e.stopPropagation()}>
+    <div
+      className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/60 p-4 sm:p-6"
+      onClick={onClose}
+    >
+      <div
+        className="relative w-full max-w-[800px] h-[80vh] bg-white rounded-3xl overflow-hidden shadow-2xl flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header Search */}
         <div className="absolute top-4 left-4 right-4 z-[10] flex gap-2">
           <div className="flex-1 relative bg-white rounded-2xl shadow-lg border-2 border-[#234745]/5 overflow-hidden">
             <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+              >
+                <circle cx="11" cy="11" r="8" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+              </svg>
             </div>
             <input
               ref={searchRef}
               type="text"
-              placeholder={isEn ? "Search for location..." : "ابحث عن موقع..."}
+              placeholder={isEn ? 'Search for location...' : 'ابحث عن موقع...'}
               className="w-full h-12 pl-12 pr-4 text-[14px] font-bold text-gray-700 outline-none"
             />
           </div>
@@ -700,7 +938,16 @@ function MapPickerDialog({
             onClick={() => (window as any)._locateMe?.()}
             className="w-12 h-12 bg-white rounded-2xl shadow-lg flex items-center justify-center text-[#234745] shrink-0 border-2 border-[#234745]/5 active:scale-95 transition-transform"
           >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 2L2 12h3v8h6v-6h2v6h6v-8h3L12 2z" /></svg>
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+            >
+              <path d="M12 2L2 12h3v8h6v-6h2v6h6v-8h3L12 2z" />
+            </svg>
           </button>
           <button
             onClick={onClose}
@@ -729,17 +976,32 @@ function MapPickerDialog({
         {/* Footer Confirmation */}
         <div className="bg-white p-5 sm:p-6 border-t border-gray-100">
           <div className="mb-5">
-            <p className="text-[11px] font-bold text-[#234745]/40 uppercase tracking-widest mb-1.5">{isEn ? 'Confirm Delivery Spot' : 'تأكيد موقع التوصيل'}</p>
+            <p className="text-[11px] font-bold text-[#234745]/40 uppercase tracking-widest mb-1.5">
+              {isEn ? 'Confirm Delivery Spot' : 'تأكيد موقع التوصيل'}
+            </p>
             <div className="flex items-start gap-3">
               <div className="mt-1 text-[#234745]">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" /><circle cx="12" cy="10" r="3" /></svg>
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                >
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" />
+                  <circle cx="12" cy="10" r="3" />
+                </svg>
               </div>
               <div className="flex-1">
                 {isResolving ? (
                   <div className="h-4 w-2/3 bg-gray-100 rounded animate-pulse" />
                 ) : (
                   <p className="text-[14px] font-bold text-gray-800 leading-snug line-clamp-2">
-                    {address || (isEn ? 'Move the map to select address' : 'حرك الخريطة لتحديد العنوان')}
+                    {address ||
+                      (isEn
+                        ? 'Move the map to select address'
+                        : 'حرك الخريطة لتحديد العنوان')}
                   </p>
                 )}
               </div>
@@ -749,8 +1011,8 @@ function MapPickerDialog({
           <button
             type="button"
             disabled={!coords || isResolving}
-            onClick={() => coords && onConfirm({ address, city, ...coords })}
-            className={`w-full py-4 rounded-2xl font-bold text-[15px] shadow-lg transition-all ${(!coords || isResolving) ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-[#234745] text-white hover:bg-[#153125] active:scale-[0.98] shadow-[#234745]/20'}`}
+            onClick={() => coords && onConfirm({address, city, ...coords})}
+            className={`w-full py-4 rounded-2xl font-bold text-[15px] shadow-lg transition-all ${!coords || isResolving ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-[#234745] text-white hover:bg-[#153125] active:scale-[0.98] shadow-[#234745]/20'}`}
           >
             {isEn ? 'Confirm Location' : 'تأكيد الموقع'}
           </button>
@@ -759,9 +1021,3 @@ function MapPickerDialog({
     </div>
   );
 }
-
-
-
-
-
-

@@ -1,31 +1,36 @@
-import { data, type ActionFunctionArgs } from 'react-router';
-import { sendEmail, getBackInStockTemplate } from '../lib/email.server';
+import {data, type ActionFunctionArgs} from 'react-router';
+import {sendEmail, getBackInStockTemplate} from '../lib/email.server';
 
 /**
  * Webhook Handler: inventory_levels/update
  * Triggered when stock levels change in Shopify
  */
-export async function action({ request, context }: ActionFunctionArgs) {
+export async function action({request, context}: ActionFunctionArgs) {
   if (request.method !== 'POST') {
-    return data({ error: 'Method not allowed' }, { status: 405 });
+    return data({error: 'Method not allowed'}, {status: 405});
   }
 
-  const { env } = context;
-  const { SHOPIFY_ADMIN_API_ACCESS_TOKEN, PUBLIC_STORE_DOMAIN } = env as any;
+  const {env} = context;
+  const {SHOPIFY_ADMIN_API_ACCESS_TOKEN, PUBLIC_STORE_DOMAIN} = env as any;
 
   try {
     const payload = (await request.json()) as any;
-    const { inventory_item_id, location_id, available } = payload;
+    const {inventory_item_id, location_id, available} = payload;
 
-    console.log(`[INVENTORY WEBHOOK] Processing: Item ${inventory_item_id}, Location ${location_id}, Available: ${available}`);
+    console.log(
+      `[INVENTORY WEBHOOK] Processing: Item ${inventory_item_id}, Location ${location_id}, Available: ${available}`,
+    );
 
     // We only care if it's back in stock (available > 0)
     if (available <= 0) {
-      return data({ success: true, message: 'Stock still empty, no action taken' });
+      return data({
+        success: true,
+        message: 'Stock still empty, no action taken',
+      });
     }
 
     if (!SHOPIFY_ADMIN_API_ACCESS_TOKEN) {
-      return data({ error: 'Config missing: Admin Token' }, { status: 500 });
+      return data({error: 'Config missing: Admin Token'}, {status: 500});
     }
 
     const adminApiUrl = `https://${PUBLIC_STORE_DOMAIN}/admin/api/2024-04/graphql.json`;
@@ -56,18 +61,21 @@ export async function action({ request, context }: ActionFunctionArgs) {
         'Content-Type': 'application/json',
         'X-Shopify-Access-Token': SHOPIFY_ADMIN_API_ACCESS_TOKEN,
       },
-      body: JSON.stringify({ 
-        query: findVariantQuery, 
-        variables: { itemId: `gid://shopify/InventoryItem/${inventory_item_id}` } 
+      body: JSON.stringify({
+        query: findVariantQuery,
+        variables: {itemId: `gid://shopify/InventoryItem/${inventory_item_id}`},
       }),
     });
 
-    const variantData = await findVariantRes.json() as any;
+    const variantData = (await findVariantRes.json()) as any;
     const variant = variantData.data?.inventoryItem?.variant;
     const branchName = variantData.data?.location?.name || 'Your Branch';
 
     if (!variant) {
-      return data({ error: 'Variant not found for this inventory item' }, { status: 404 });
+      return data(
+        {error: 'Variant not found for this inventory item'},
+        {status: 404},
+      );
     }
 
     const variantId = variant.id;
@@ -97,37 +105,52 @@ export async function action({ request, context }: ActionFunctionArgs) {
         'Content-Type': 'application/json',
         'X-Shopify-Access-Token': SHOPIFY_ADMIN_API_ACCESS_TOKEN,
       },
-      body: JSON.stringify({ query: getSubscriptionsQuery }),
+      body: JSON.stringify({query: getSubscriptionsQuery}),
     });
 
-    const subData = await subRes.json() as any;
+    const subData = (await subRes.json()) as any;
     const allSubs = subData.data?.metaobjects?.nodes || [];
 
     // Filter relevant subs (matching variant and location)
     // location_id from webhook is usually the legacy ID (number)
     const relevantSubs = allSubs.filter((node: any) => {
-      const fields = node.fields.reduce((acc: any, f: any) => ({ ...acc, [f.key]: f.value }), {});
+      const fields = node.fields.reduce(
+        (acc: any, f: any) => ({...acc, [f.key]: f.value}),
+        {},
+      );
       const matchesVariant = fields.variant_id === variantId;
-      const matchesLocation = fields.location_id === location_id.toString() || fields.location_id === "global";
+      const matchesLocation =
+        fields.location_id === location_id.toString() ||
+        fields.location_id === 'global';
       return matchesVariant && matchesLocation;
     });
 
-    console.log(`[INVENTORY WEBHOOK] Found ${relevantSubs.length} relevant subscriptions for ${productTitle}`);
+    console.log(
+      `[INVENTORY WEBHOOK] Found ${relevantSubs.length} relevant subscriptions for ${productTitle}`,
+    );
 
     // 3. Process each subscription
     for (const sub of relevantSubs) {
-      const fields = sub.fields.reduce((acc: any, f: any) => ({ ...acc, [f.key]: f.value }), {});
+      const fields = sub.fields.reduce(
+        (acc: any, f: any) => ({...acc, [f.key]: f.value}),
+        {},
+      );
       const emailRecipient = fields.email;
 
       // Send Email
-      const emailTemplate = getBackInStockTemplate(productTitle, variantTitle, branchName, PUBLIC_STORE_DOMAIN);
-      
+      const emailTemplate = getBackInStockTemplate(
+        productTitle,
+        variantTitle,
+        branchName,
+        PUBLIC_STORE_DOMAIN,
+      );
+
       const emailResult = await sendEmail({
         to: emailRecipient,
         subject: emailTemplate.subject,
         text: emailTemplate.text,
         html: emailTemplate.html,
-        env
+        env,
       });
 
       if (emailResult.success) {
@@ -149,22 +172,21 @@ export async function action({ request, context }: ActionFunctionArgs) {
             'Content-Type': 'application/json',
             'X-Shopify-Access-Token': SHOPIFY_ADMIN_API_ACCESS_TOKEN,
           },
-          body: JSON.stringify({ 
-            query: deleteMutation, 
-            variables: { id: sub.id } 
+          body: JSON.stringify({
+            query: deleteMutation,
+            variables: {id: sub.id},
           }),
         });
-        
-        console.log(`[INVENTORY WEBHOOK] Alerted and Deleted: ${emailRecipient}`);
+
+        console.log(
+          `[INVENTORY WEBHOOK] Alerted and Deleted: ${emailRecipient}`,
+        );
       }
     }
 
-    return data({ success: true, processed: relevantSubs.length });
+    return data({success: true, processed: relevantSubs.length});
   } catch (error: any) {
     console.error('[INVENTORY WEBHOOK ERROR]', error);
-    return data({ error: error.message }, { status: 500 });
+    return data({error: error.message}, {status: 500});
   }
 }
-
-
-

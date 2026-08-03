@@ -1,5 +1,5 @@
 import type {ActionFunctionArgs, LoaderFunctionArgs} from 'react-router';
-import { data, redirect} from 'react-router';
+import {data, redirect} from 'react-router';
 import {Form, useActionData, type MetaFunction} from 'react-router';
 
 type ActionResponse = {
@@ -155,8 +155,3 @@ const CUSTOMER_ACTIVATE_MUTATION = `#graphql
     }
   }
 ` as const;
-
-
-
-
-

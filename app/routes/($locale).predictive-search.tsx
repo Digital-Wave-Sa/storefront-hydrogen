@@ -29,7 +29,9 @@ export async function loader({request, params, context}: LoaderFunctionArgs) {
     },
   });
 
-  console.log(`[PredictiveSearch] query="${q}" locale="${locale}" results: products=${predictiveSearch?.products?.length || 0}, queries=${predictiveSearch?.queries?.length || 0}, collections=${predictiveSearch?.collections?.length || 0}`);
+  console.log(
+    `[PredictiveSearch] query="${q}" locale="${locale}" results: products=${predictiveSearch?.products?.length || 0}, queries=${predictiveSearch?.queries?.length || 0}, collections=${predictiveSearch?.collections?.length || 0}`,
+  );
 
   if (!predictiveSearch) {
     return data({
@@ -43,7 +45,7 @@ export async function loader({request, params, context}: LoaderFunctionArgs) {
 
   // Normalize results to match NormalizedPredictiveSearchResults type
   const results: any[] = [];
-  
+
   if (predictiveSearch.queries?.length > 0) {
     results.push({
       type: 'queries',
@@ -90,7 +92,10 @@ export async function loader({request, params, context}: LoaderFunctionArgs) {
     });
   }
 
-  const totalResults = results.reduce((acc, group) => acc + group.items.length, 0);
+  const totalResults = results.reduce(
+    (acc, group) => acc + group.items.length,
+    0,
+  );
 
   return data({
     searchResults: {

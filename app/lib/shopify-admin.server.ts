@@ -39,15 +39,7 @@ export async function getAdminToken(env: any): Promise<string> {
     return cachedToken;
   }
 
-  // 1. Try static Admin API token first (fastest path)
-  const adminToken = env.SHOPIFY_ADMIN_API_ACCESS_TOKEN || (env as any).SHOPIFY_ADMIN_API_ACCESS_TOKENS;
-  if (adminToken) {
-    cachedToken = adminToken;
-    tokenExpiry = currentTime + 86400; // Assume 24h validity for static tokens
-    return adminToken;
-  }
-
-  // 2. Try exchange via client credentials
+  // 1. Try exchange via client credentials
   const shopDomain = getAdminDomain(env);
   const clientId = env.SHOPIFY_CLIENT_ID || env.SHOPIFY_ADMIN_CLIENT_ID;
   const clientSecret = env.SHOPIFY_CLIENT_SECRET || env.SHOPIFY_ADMIN_CLIENT_SECRET;

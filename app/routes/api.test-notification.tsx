@@ -1,7 +1,7 @@
-import { type LoaderFunctionArgs } from 'react-router';
-import { notifyOrderUpdate } from '../lib/notifications.server';
+import {type LoaderFunctionArgs} from 'react-router';
+import {notifyOrderUpdate} from '../lib/notifications.server';
 
-export async function loader({ request, context }: LoaderFunctionArgs) {
+export async function loader({request, context}: LoaderFunctionArgs) {
   const url = new URL(request.url);
   const email = url.searchParams.get('email');
   const phone = url.searchParams.get('phone');
@@ -9,9 +9,13 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
   const stage = url.searchParams.get('stage') || 'CONFIRMED';
 
   if (!email || !phone) {
-    return Response.json({ 
-      error: 'Missing parameters. Please provide ?email=...&phone=...&lang=EN' 
-    }, { status: 400 });
+    return Response.json(
+      {
+        error:
+          'Missing parameters. Please provide ?email=...&phone=...&lang=EN',
+      },
+      {status: 400},
+    );
   }
 
   // Mock Order Data for Testing
@@ -22,13 +26,13 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
       lastName: 'User',
       email: email,
       phone: phone,
-      locale: lang
+      locale: lang,
     },
     totalPriceSet: {
       shopMoney: {
         amount: '150.00',
-        currencyCode: 'SAR'
-      }
+        currencyCode: 'SAR',
+      },
     },
     lineItems: {
       nodes: [
@@ -36,11 +40,11 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
           title: 'Premium Chocolate Cake',
           quantity: 1,
           originalTotalPriceSet: {
-            shopMoney: { amount: '150.00', currencyCode: 'SAR' }
-          }
-        }
-      ]
-    }
+            shopMoney: {amount: '150.00', currencyCode: 'SAR'},
+          },
+        },
+      ],
+    },
   };
 
   try {
@@ -48,15 +52,15 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
     const results = await notifyOrderUpdate({
       order: mockOrder,
       stage: stage as any,
-      env: context.env
+      env: context.env,
     });
 
     return Response.json({
       success: true,
       message: 'Test notification sent!',
-      results
+      results,
     });
   } catch (error: any) {
-    return Response.json({ error: error.message }, { status: 500 });
+    return Response.json({error: error.message}, {status: 500});
   }
 }

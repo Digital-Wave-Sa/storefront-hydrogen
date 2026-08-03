@@ -18,8 +18,10 @@ export const meta: Route.MetaFunction = ({matches}) => {
   const rootData = (rootMatch as any)?.data as any;
   const isEn = rootData?.consent?.language?.toLowerCase() === 'en';
 
-  const titleText = isEn ? 'Premium Sweets, Cakes & Chocolate' : 'حلويات، كيك وشوكولاتة فاخرة';
-  const description = isEn 
+  const titleText = isEn
+    ? 'Premium Sweets, Cakes & Chocolate'
+    : 'حلويات، كيك وشوكولاتة فاخرة';
+  const description = isEn
     ? 'Discover Saadeddin Pastry - The destination for premium Arabic sweets, European cakes, and fine chocolate. Freshly prepared daily with the finest ingredients.'
     : 'اكتشف حلويات سعد الدين - وجهتك للحلويات العربية الفاخرة، الكيك الأوروبي، والشوكولاتة الراقية. تُحضر طازجة يومياً بأجود المكونات.';
 
@@ -56,24 +58,28 @@ async function loadCriticalData({context}: Route.LoaderArgs) {
         language: context.storefront.i18n.language,
       },
     }),
-    context.storefront.query(OCCASIONS_QUERY, {
-      variables: {
-        country: context.storefront.i18n.country,
-        language: context.storefront.i18n.language,
-      },
-    }).catch((error) => {
-      console.error('Failed to fetch occasions:', error);
-      return { collections: { nodes: [] } };
-    }),
-    context.storefront.query(HOMEPAGE_CONFIG_QUERY, {
-      variables: {
-        country: context.storefront.i18n.country,
-        language: context.storefront.i18n.language,
-      },
-    }).catch((error) => {
-      console.error('Failed to fetch homepage config:', error);
-      return { metaobjects: { nodes: [] } };
-    }),
+    context.storefront
+      .query(OCCASIONS_QUERY, {
+        variables: {
+          country: context.storefront.i18n.country,
+          language: context.storefront.i18n.language,
+        },
+      })
+      .catch((error) => {
+        console.error('Failed to fetch occasions:', error);
+        return {collections: {nodes: []}};
+      }),
+    context.storefront
+      .query(HOMEPAGE_CONFIG_QUERY, {
+        variables: {
+          country: context.storefront.i18n.country,
+          language: context.storefront.i18n.language,
+        },
+      })
+      .catch((error) => {
+        console.error('Failed to fetch homepage config:', error);
+        return {metaobjects: {nodes: []}};
+      }),
   ]);
 
   return {

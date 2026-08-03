@@ -4,7 +4,7 @@ import {
   type ActionFunctionArgs,
   type MetaFunction,
 } from 'react-router';
-import { SaadeddinApi } from '~/lib/saadeddin-api.server';
+import {SaadeddinApi} from '~/lib/saadeddin-api.server';
 
 export const meta: MetaFunction<typeof loader> = () => {
   return [{title: 'Logout'}];
@@ -16,7 +16,7 @@ export async function loader() {
 
 export async function action({request, context}: ActionFunctionArgs) {
   const {session, env} = context;
-  
+
   if (request.method !== 'POST') {
     return data({error: 'Method not allowed'}, {status: 405});
   }
@@ -44,7 +44,10 @@ export async function action({request, context}: ActionFunctionArgs) {
 
   const headers = new Headers();
   headers.append('Set-Cookie', await session.commit());
-  headers.append('Set-Cookie', 'cart=; Path=/; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT');
+  headers.append(
+    'Set-Cookie',
+    'cart=; Path=/; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT',
+  );
 
   return redirect('/', {
     headers,
@@ -54,8 +57,3 @@ export async function action({request, context}: ActionFunctionArgs) {
 export default function Logout() {
   return null;
 }
-
-
-
-
-

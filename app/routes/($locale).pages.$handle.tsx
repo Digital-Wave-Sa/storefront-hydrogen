@@ -5,15 +5,18 @@ export const meta: MetaFunction<typeof loader> = ({data}) => {
   if (!data?.page) {
     return [{title: 'Saadeddin Page'}];
   }
-  const { page } = data;
+  const {page} = data;
   const title = page.seo?.title || `${page.title} | Saadeddin`;
-  const description = page.seo?.description || (page.body?.replace(/<[^>]*>?/gm, '').substring(0, 155) || `View ${page.title} at Saadeddin.`);
-  
+  const description =
+    page.seo?.description ||
+    page.body?.replace(/<[^>]*>?/gm, '').substring(0, 155) ||
+    `View ${page.title} at Saadeddin.`;
+
   return [
-    { title: title.substring(0, 60) },
-    { name: 'description', content: description.substring(0, 160) },
-    { property: 'og:title', content: title.substring(0, 60) },
-    { property: 'og:description', content: description.substring(0, 160) },
+    {title: title.substring(0, 60)},
+    {name: 'description', content: description.substring(0, 160)},
+    {property: 'og:title', content: title.substring(0, 60)},
+    {property: 'og:description', content: description.substring(0, 160)},
   ];
 };
 
@@ -40,7 +43,8 @@ export default function Page() {
   const rootData = useRouteLoaderData('root') as any;
   const isEn = rootData?.locale === 'en';
 
-  const isBranchPage = page.handle.includes('branch') || page.handle.includes('location');
+  const isBranchPage =
+    page.handle.includes('branch') || page.handle.includes('location');
 
   return (
     <div className="page" dir={isEn ? 'ltr' : 'rtl'}>
@@ -48,20 +52,20 @@ export default function Page() {
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
-             __html: JSON.stringify({
-                "@context": "https://schema.org",
-                "@type": "LocalBusiness",
-                "name": "Saadeddin Pastry",
-                "image": "https://saadeddin.com/logo.png",
-                "url": `https://saadeddin.com/pages/${page.handle}`,
-                "telephone": "920017070",
-                "priceRange": "$$",
-                "address": {
-                  "@type": "PostalAddress",
-                  "addressCountry": "SA",
-                  "addressRegion": "Riyadh"
-                }
-             })
+            __html: JSON.stringify({
+              '@context': 'https://schema.org',
+              '@type': 'LocalBusiness',
+              name: 'Saadeddin Pastry',
+              image: 'https://saadeddin.com/logo.png',
+              url: `https://saadeddin.com/pages/${page.handle}`,
+              telephone: '920017070',
+              priceRange: '$$',
+              address: {
+                '@type': 'PostalAddress',
+                addressCountry: 'SA',
+                addressRegion: 'Riyadh',
+              },
+            }),
           }}
         />
       )}

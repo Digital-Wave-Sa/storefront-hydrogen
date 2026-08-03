@@ -17,7 +17,7 @@
  *   ARAMEX_ACCOUNT_COUNTRY_CODE=SA
  */
 
-import { data, type ActionFunctionArgs } from 'react-router';
+import {data, type ActionFunctionArgs} from 'react-router';
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 
@@ -30,7 +30,7 @@ interface AramexRateRequest {
 
 interface AramexRateResponse {
   success: boolean;
-  rate?: number;          // Total shipping cost in SAR
+  rate?: number; // Total shipping cost in SAR
   currency?: string;
   deliveryDays?: number;
   serviceType?: string;
@@ -40,22 +40,25 @@ interface AramexRateResponse {
 // ─── Mock rates table (SAR) ────────────────────────────────────────────────
 // Replace with real Aramex API when credentials are ready.
 
-const MOCK_RATES_BY_COUNTRY: Record<string, { base: number; perKg: number; days: number }> = {
-  AE: { base: 120, perKg: 18, days: 2 },  // UAE
-  KW: { base: 140, perKg: 20, days: 3 },  // Kuwait
-  QA: { base: 135, perKg: 19, days: 3 },  // Qatar
-  BH: { base: 130, perKg: 18, days: 3 },  // Bahrain
-  OM: { base: 145, perKg: 21, days: 4 },  // Oman
-  JO: { base: 155, perKg: 22, days: 4 },  // Jordan
-  EG: { base: 160, perKg: 22, days: 5 },  // Egypt
-  GB: { base: 280, perKg: 35, days: 7 },  // UK
-  US: { base: 320, perKg: 40, days: 8 },  // USA
-  CA: { base: 330, perKg: 42, days: 9 },  // Canada
-  DE: { base: 290, perKg: 37, days: 7 },  // Germany
-  FR: { base: 295, perKg: 37, days: 7 },  // France
+const MOCK_RATES_BY_COUNTRY: Record<
+  string,
+  {base: number; perKg: number; days: number}
+> = {
+  AE: {base: 120, perKg: 18, days: 2}, // UAE
+  KW: {base: 140, perKg: 20, days: 3}, // Kuwait
+  QA: {base: 135, perKg: 19, days: 3}, // Qatar
+  BH: {base: 130, perKg: 18, days: 3}, // Bahrain
+  OM: {base: 145, perKg: 21, days: 4}, // Oman
+  JO: {base: 155, perKg: 22, days: 4}, // Jordan
+  EG: {base: 160, perKg: 22, days: 5}, // Egypt
+  GB: {base: 280, perKg: 35, days: 7}, // UK
+  US: {base: 320, perKg: 40, days: 8}, // USA
+  CA: {base: 330, perKg: 42, days: 9}, // Canada
+  DE: {base: 290, perKg: 37, days: 7}, // Germany
+  FR: {base: 295, perKg: 37, days: 7}, // France
 };
 
-const DEFAULT_RATE = { base: 350, perKg: 45, days: 10 };
+const DEFAULT_RATE = {base: 350, perKg: 45, days: 10};
 
 // ─── Real Aramex API call (commented out until credentials available) ──────
 
@@ -117,9 +120,11 @@ async function calculateAramexRateLive(req: AramexRateRequest, env: any): Promis
 
 // ─── Mock implementation ────────────────────────────────────────────────────
 
-async function calculateAramexRateMock(req: AramexRateRequest): Promise<AramexRateResponse> {
+async function calculateAramexRateMock(
+  req: AramexRateRequest,
+): Promise<AramexRateResponse> {
   // Simulate a short network delay
-  await new Promise(resolve => setTimeout(resolve, 600));
+  await new Promise((resolve) => setTimeout(resolve, 600));
 
   const country = (req.destinationCountry || '').toUpperCase();
   const table = MOCK_RATES_BY_COUNTRY[country] || DEFAULT_RATE;
@@ -137,20 +142,23 @@ async function calculateAramexRateMock(req: AramexRateRequest): Promise<AramexRa
 
 // ─── Route handler ──────────────────────────────────────────────────────────
 
-export async function action({ request, context }: ActionFunctionArgs) {
+export async function action({request, context}: ActionFunctionArgs) {
   if (request.method !== 'POST') {
-    return data({ success: false, error: 'Method not allowed' }, { status: 405 });
+    return data({success: false, error: 'Method not allowed'}, {status: 405});
   }
 
   let body: AramexRateRequest;
   try {
-    body = await request.json() as AramexRateRequest;
+    body = (await request.json()) as AramexRateRequest;
   } catch {
-    return data({ success: false, error: 'Invalid JSON body' }, { status: 400 });
+    return data({success: false, error: 'Invalid JSON body'}, {status: 400});
   }
 
   if (!body.destinationCountry || !body.weightKg) {
-    return data({ success: false, error: 'destinationCountry and weightKg are required' }, { status: 400 });
+    return data(
+      {success: false, error: 'destinationCountry and weightKg are required'},
+      {status: 400},
+    );
   }
 
   try {
@@ -159,6 +167,9 @@ export async function action({ request, context }: ActionFunctionArgs) {
     return data(result);
   } catch (err: any) {
     console.error('[ARAMEX_RATE] Error:', err);
-    return data({ success: false, error: err?.message || 'Failed to calculate rate' }, { status: 500 });
+    return data(
+      {success: false, error: err?.message || 'Failed to calculate rate'},
+      {status: 500},
+    );
   }
 }

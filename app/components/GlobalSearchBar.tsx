@@ -65,7 +65,7 @@ export function GlobalSearchBar({ locale, isMobile }: { locale?: string, isMobil
   // Submit search query when typed
   useEffect(() => {
     if (!query.trim()) return;
-    const searchEndpoint = isEn ? "/en/search" : "/search";
+    const searchEndpoint = isEn ? "/en/predictive-search" : "/predictive-search";
     fetcher.submit(
       { q: query, predictive: 'true' },
       { method: 'get', action: searchEndpoint }

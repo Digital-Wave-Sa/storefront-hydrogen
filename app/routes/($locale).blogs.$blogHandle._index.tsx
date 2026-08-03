@@ -49,7 +49,13 @@ export default function Blog() {
             return (
               <>
                 <PreviousLink className="mb-8 block text-[#234745]">
-                  {isLoading ? (isEn ? 'Loading...' : 'جاري التحميل...') : (isEn ? '↑ Load previous' : '↑ تحميل السابقة')}
+                  {isLoading
+                    ? isEn
+                      ? 'Loading...'
+                      : 'جاري التحميل...'
+                    : isEn
+                      ? '↑ Load previous'
+                      : '↑ تحميل السابقة'}
                 </PreviousLink>
                 {nodes.map((article, index) => {
                   return (
@@ -61,7 +67,13 @@ export default function Blog() {
                   );
                 })}
                 <NextLink className="mt-8 block text-[#234745]">
-                  {isLoading ? (isEn ? 'Loading...' : 'جاري التحميل...') : (isEn ? 'Load more ↓' : 'تحميل المزيد ↓')}
+                  {isLoading
+                    ? isEn
+                      ? 'Loading...'
+                      : 'جاري التحميل...'
+                    : isEn
+                      ? 'Load more ↓'
+                      : 'تحميل المزيد ↓'}
                 </NextLink>
               </>
             );

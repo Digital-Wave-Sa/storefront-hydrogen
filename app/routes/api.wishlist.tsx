@@ -1,18 +1,24 @@
-import { data, type ActionFunctionArgs, type LoaderFunctionArgs } from 'react-router';
-import { adminApiQuery } from '../lib/admin.server';
-import { getAdminToken, getAdminDomain } from '../lib/shopify-admin.server';
+import {
+  data,
+  type ActionFunctionArgs,
+  type LoaderFunctionArgs,
+} from 'react-router';
+import {adminApiQuery} from '../lib/admin.server';
+import {getAdminToken, getAdminDomain} from '../lib/shopify-admin.server';
 
-export async function action({ request, context }: ActionFunctionArgs) {
+export async function action({request, context}: ActionFunctionArgs) {
   const env = context.env as any;
   const shopDomain = getAdminDomain(env);
 
-  const { customerId, wishlist } = await request.json() as any;
+  const {customerId, wishlist} = (await request.json()) as any;
   if (!customerId) {
-    return data({ wishlist, note: 'Guest wishlist, not synced to Shopify' });
+    return data({wishlist, note: 'Guest wishlist, not synced to Shopify'});
   }
 
   const targetId = String(customerId);
-  const formattedGid = targetId.startsWith('gid://') ? targetId : `gid://shopify/Customer/${targetId}`;
+  const formattedGid = targetId.startsWith('gid://')
+    ? targetId
+    : `gid://shopify/Customer/${targetId}`;
 
   const mutation = `
     mutation customerUpdateWishlist($input: CustomerInput!) {
@@ -27,34 +33,44 @@ export async function action({ request, context }: ActionFunctionArgs) {
     const adminToken = await getAdminToken(env);
     if (!adminToken) {
       console.error('[WISHLIST SYNC ERROR] Could not retrieve Admin API token');
-      return data({ error: 'Sync failed: No admin token' }, { status: 401 });
+      return data({error: 'Sync failed: No admin token'}, {status: 401});
     }
 
-    const result = await adminApiQuery(shopDomain, adminToken, mutation, {
+    const result = (await adminApiQuery(shopDomain, adminToken, mutation, {
       input: {
         id: formattedGid,
-        metafields: [{ namespace: "custom", key: "wishlist", type: "json", value: JSON.stringify(wishlist) }],
+        metafields: [
+          {
+            namespace: 'custom',
+            key: 'wishlist',
+            type: 'json',
+            value: JSON.stringify(wishlist),
+          },
+        ],
       },
-    }) as any;
+    })) as any;
 
     if (!result.errors && !result.data?.customerUpdate?.userErrors?.length) {
       return data(result);
     } else {
       const errors = result.errors || result.data?.customerUpdate?.userErrors;
-      console.error('[WISHLIST SYNC ERROR] Wishlist Admin API error:', JSON.stringify(errors));
-      return data({ error: 'Sync failed', details: errors }, { status: 400 });
+      console.error(
+        '[WISHLIST SYNC ERROR] Wishlist Admin API error:',
+        JSON.stringify(errors),
+      );
+      return data({error: 'Sync failed', details: errors}, {status: 400});
     }
   } catch (e: any) {
     console.error('Wishlist sync exception:', e.message || e);
-    return data({ error: e.message || 'Sync exception' }, { status: 500 });
+    return data({error: e.message || 'Sync exception'}, {status: 500});
   }
 }
 
-export async function loader({ request, context }: LoaderFunctionArgs) {
+export async function loader({request, context}: LoaderFunctionArgs) {
   const env = context.env as any;
   const url = new URL(request.url);
   const customerId = url.searchParams.get('customerId');
-  if (!customerId) return data({ wishlist: [] });
+  if (!customerId) return data({wishlist: []});
 
   const shopDomain = getAdminDomain(env);
 
@@ -62,7 +78,9 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
     const adminToken = await getAdminToken(env);
     if (adminToken) {
       const targetId = String(customerId);
-      const formattedGid = targetId.startsWith('gid://') ? targetId : `gid://shopify/Customer/${targetId}`;
+      const formattedGid = targetId.startsWith('gid://')
+        ? targetId
+        : `gid://shopify/Customer/${targetId}`;
 
       const query = `
         query getCustomerWishlist($id: ID!) {
@@ -75,7 +93,9 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
         }
       `;
 
-      let result = await adminApiQuery(shopDomain, adminToken, query, { id: formattedGid }) as any;
+      let result = (await adminApiQuery(shopDomain, adminToken, query, {
+        id: formattedGid,
+      })) as any;
       let wishlistData = result?.data?.customer?.metafield?.value;
 
       // Fallback: If active session customer has empty wishlist, search by email/phone for original profile wishlist
@@ -102,7 +122,12 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
               }
             }
           `;
-          const searchRes = await adminApiQuery(shopDomain, adminToken, searchGql, { query: searchQuery }) as any;
+          const searchRes = (await adminApiQuery(
+            shopDomain,
+            adminToken,
+            searchGql,
+            {query: searchQuery},
+          )) as any;
           const candidates = searchRes?.data?.customers?.nodes || [];
           for (const cand of candidates) {
             if (cand.metafield?.value && cand.metafield.value !== '[]') {
@@ -115,7 +140,7 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
 
       if (wishlistData) {
         try {
-          return data({ wishlist: JSON.parse(wishlistData) });
+          return data({wishlist: JSON.parse(wishlistData)});
         } catch (_) {}
       }
     }
@@ -123,5 +148,5 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
     console.error('[WISHLIST LOADER ERROR]:', e.message || e);
   }
 
-  return data({ wishlist: [] });
+  return data({wishlist: []});
 }

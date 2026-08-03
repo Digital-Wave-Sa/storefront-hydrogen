@@ -1,1 +1,1 @@
-export { action } from './api.location-id';
+export {action} from './api.location-id';

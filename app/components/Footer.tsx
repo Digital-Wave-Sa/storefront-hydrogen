@@ -101,7 +101,7 @@ export function Footer({ footer, locale }: { footer: Promise<FooterQuery | null>
                       {isEn ? 'Shipping & Delivery' : 'الشحن والتوصيل'}
                     </h3>
                     <div className="flex flex-col items-start gap-3.5 text-[#BBCFCD]">
-                      <NavLink to={isEn ? "/en/export" : "/export"} className="font-normal text-[14px] hover:text-white transition-colors">{isEn ? 'International Shipping / Export' : 'الشحن الدولي/التوصيل'}</NavLink>
+                      <NavLink to={isEn ? "/en/export" : "/export"} className="font-normal text-[14px] hover:text-white transition-colors">{isEn ? 'International Shipping / Export' : 'الشحن الدولي'}</NavLink>
                       <NavLink to={isEn ? "/en/pages/branches" : "/pages/branches"} className="font-normal text-[14px] hover:text-white transition-colors">{isEn ? 'Delivery Inside KSA' : 'التوصيل داخل المملكة'}</NavLink>
                     </div>
                   </div>
@@ -279,7 +279,7 @@ function MobileFooterAccordion({ isEn }: { isEn: boolean }) {
         </button>
         {openSection === 'shipping' && (
           <div className="flex flex-col items-start gap-3 mt-3.5 text-[#BBCFCD]">
-            <NavLink to={isEn ? "/en/export" : "/export"} className="font-normal text-[14px] hover:text-white transition-colors">{isEn ? 'International Shipping / Export' : 'الشحن الدولي/التوصيل'}</NavLink>
+            <NavLink to={isEn ? "/en/export" : "/export"} className="font-normal text-[14px] hover:text-white transition-colors">{isEn ? 'International Shipping / Export' : 'الشحن الدولي'}</NavLink>
             <NavLink to={isEn ? "/en/pages/branches" : "/pages/branches"} className="font-normal text-[14px] hover:text-white transition-colors">{isEn ? 'Delivery Inside KSA' : 'التوصيل داخل المملكة'}</NavLink>
           </div>
         )}

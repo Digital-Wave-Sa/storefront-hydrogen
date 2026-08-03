@@ -8,24 +8,24 @@
  * - Uses official <SaudiRiyalSymbol /> SVG for all currency representations.
  */
 
-import { useLoaderData, Link } from 'react-router';
-import { useState, useEffect, useMemo } from 'react';
-import { useOptimisticCart } from '@shopify/hydrogen';
-import type { Route } from './+types/($locale).cart';
-import type { CartApiQueryFragment } from 'storefrontapi.generated';
-import { getShopTitle } from '~/lib/seo';
-import { SaudiRiyalSymbol } from '~/components/Price';
+import {useLoaderData, Link} from 'react-router';
+import {useState, useEffect, useMemo} from 'react';
+import {useOptimisticCart} from '@shopify/hydrogen';
+import type {Route} from './+types/($locale).cart';
+import type {CartApiQueryFragment} from 'storefrontapi.generated';
+import {getShopTitle} from '~/lib/seo';
+import {SaudiRiyalSymbol} from '~/components/Price';
 
 // ─── Meta ────────────────────────────────────────────────────────────────────
 
-export const meta: Route.MetaFunction = ({ matches }) => [
-  { title: getShopTitle('عنوان الشحن للتصدير | سعد الدين', matches) },
+export const meta: Route.MetaFunction = ({matches}) => [
+  {title: getShopTitle('عنوان الشحن للتصدير | سعد الدين', matches)},
 ];
 
 // ─── Loader ──────────────────────────────────────────────────────────────────
 
-export async function loader({ context }: Route.LoaderArgs) {
-  const { cart, session, storefront } = context;
+export async function loader({context}: Route.LoaderArgs) {
+  const {cart, session, storefront} = context;
   let cartData = null;
   let customerData = null;
 
@@ -34,9 +34,13 @@ export async function loader({ context }: Route.LoaderArgs) {
   } catch {}
 
   const customerAccessToken = await session.get('customerAccessToken');
-  if (customerAccessToken?.accessToken && customerAccessToken.accessToken !== 'dev-bypass-token') {
+  if (
+    customerAccessToken?.accessToken &&
+    customerAccessToken.accessToken !== 'dev-bypass-token'
+  ) {
     try {
-      const res = await storefront.query(`#graphql
+      const res = await storefront.query(
+        `#graphql
         query getShippingCustomer($customerAccessToken: String!) {
           customer(customerAccessToken: $customerAccessToken) {
             firstName
@@ -55,34 +59,56 @@ export async function loader({ context }: Route.LoaderArgs) {
             }
           }
         }
-      `, {
-        variables: { customerAccessToken: customerAccessToken.accessToken },
-        cache: storefront.CacheNone(),
-      });
+      `,
+        {
+          variables: {customerAccessToken: customerAccessToken.accessToken},
+          cache: storefront.CacheNone(),
+        },
+      );
       customerData = res?.customer || null;
     } catch (e) {
       console.error('[EXPORT SHIPPING LOADER CUSTOMER QUERY ERROR]', e);
     }
   }
 
-  return { cart: cartData, customer: customerData };
+  return {cart: cartData, customer: customerData};
 }
 
 // ─── Countries & Cities ───────────────────────────────────────────────────────
 
 const COUNTRIES = [
-  { code: 'AE', name: 'الإمارات العربية المتحدة', cities: ['دبي', 'أبوظبي', 'الشارقة', 'عجمان', 'رأس الخيمة', 'العين'] },
-  { code: 'KW', name: 'الكويت', cities: ['الكويت', 'حولي', 'الأحمدي', 'الجهراء', 'الفروانية'] },
-  { code: 'QA', name: 'قطر', cities: ['الدوحة', 'الريان', 'الوكرة', 'الخور'] },
-  { code: 'BH', name: 'البحرين', cities: ['المنامة', 'المحرق', 'الرفاع', 'مدينة عيسى'] },
-  { code: 'OM', name: 'عُمان', cities: ['مسقط', 'صلالة', 'صحار', 'نزوى'] },
-  { code: 'JO', name: 'الأردن', cities: ['عمان', 'إربد', 'الزرقاء', 'العقبة'] },
-  { code: 'EG', name: 'مصر', cities: ['القاهرة', 'الإسكندرية', 'الجيزة'] },
-  { code: 'GB', name: 'المملكة المتحدة', cities: ['London', 'Manchester', 'Birmingham'] },
-  { code: 'US', name: 'الولايات المتحدة الأمريكية', cities: ['New York', 'Los Angeles', 'Chicago', 'Houston'] },
-  { code: 'CA', name: 'كندا', cities: ['Toronto', 'Vancouver', 'Montreal'] },
-  { code: 'DE', name: 'ألمانيا', cities: ['Berlin', 'Munich', 'Frankfurt'] },
-  { code: 'FR', name: 'فرنسا', cities: ['Paris', 'Lyon', 'Marseille'] },
+  {
+    code: 'AE',
+    name: 'الإمارات العربية المتحدة',
+    cities: ['دبي', 'أبوظبي', 'الشارقة', 'عجمان', 'رأس الخيمة', 'العين'],
+  },
+  {
+    code: 'KW',
+    name: 'الكويت',
+    cities: ['الكويت', 'حولي', 'الأحمدي', 'الجهراء', 'الفروانية'],
+  },
+  {code: 'QA', name: 'قطر', cities: ['الدوحة', 'الريان', 'الوكرة', 'الخور']},
+  {
+    code: 'BH',
+    name: 'البحرين',
+    cities: ['المنامة', 'المحرق', 'الرفاع', 'مدينة عيسى'],
+  },
+  {code: 'OM', name: 'عُمان', cities: ['مسقط', 'صلالة', 'صحار', 'نزوى']},
+  {code: 'JO', name: 'الأردن', cities: ['عمان', 'إربد', 'الزرقاء', 'العقبة']},
+  {code: 'EG', name: 'مصر', cities: ['القاهرة', 'الإسكندرية', 'الجيزة']},
+  {
+    code: 'GB',
+    name: 'المملكة المتحدة',
+    cities: ['London', 'Manchester', 'Birmingham'],
+  },
+  {
+    code: 'US',
+    name: 'الولايات المتحدة الأمريكية',
+    cities: ['New York', 'Los Angeles', 'Chicago', 'Houston'],
+  },
+  {code: 'CA', name: 'كندا', cities: ['Toronto', 'Vancouver', 'Montreal']},
+  {code: 'DE', name: 'ألمانيا', cities: ['Berlin', 'Munich', 'Frankfurt']},
+  {code: 'FR', name: 'فرنسا', cities: ['Paris', 'Lyon', 'Marseille']},
 ];
 
 // ─── Aramex Red Badge ────────────────────────────────────────────────────────
@@ -97,11 +123,11 @@ function AramexBadge() {
 
 // ─── Step Progress Bar (3 Steps: 1. السلة, 2. الشحن, 3. التأكيد) ─────────────
 
-function ExportStepBar({ step }: { step: 1 | 2 | 3 }) {
+function ExportStepBar({step}: {step: 1 | 2 | 3}) {
   const steps = [
-    { num: 1, label: 'السلة' },
-    { num: 2, label: 'الشحن' },
-    { num: 3, label: 'التأكيد' },
+    {num: 1, label: 'السلة'},
+    {num: 2, label: 'الشحن'},
+    {num: 3, label: 'التأكيد'},
   ];
 
   return (
@@ -113,13 +139,21 @@ function ExportStepBar({ step }: { step: 1 | 2 | 3 }) {
           return (
             <div key={s.num} className="export-step-wrapper">
               <div className="export-step-item">
-                <span className={`export-step-label ${isActive ? 'active' : ''}`}>{s.label}</span>
-                <div className={`export-step-circle ${isActive ? 'active' : isDone ? 'done' : ''}`}>
+                <span
+                  className={`export-step-label ${isActive ? 'active' : ''}`}
+                >
+                  {s.label}
+                </span>
+                <div
+                  className={`export-step-circle ${isActive ? 'active' : isDone ? 'done' : ''}`}
+                >
                   {s.num}
                 </div>
               </div>
               {i < steps.length - 1 && (
-                <div className={`export-step-line ${isDone || isActive ? 'active' : ''}`} />
+                <div
+                  className={`export-step-line ${isDone || isActive ? 'active' : ''}`}
+                />
               )}
             </div>
           );
@@ -135,7 +169,9 @@ export default function ExportShipping() {
   const loaderData = useLoaderData<typeof loader>();
   const cartData = loaderData?.cart || null;
   const customer = loaderData?.customer || null;
-  const optimisticCart = useOptimisticCart(cartData as CartApiQueryFragment | null);
+  const optimisticCart = useOptimisticCart(
+    cartData as CartApiQueryFragment | null,
+  );
 
   // Auto-prefill form state from logged-in customer profile if available
   const [fullName, setFullName] = useState(() => {
@@ -145,12 +181,20 @@ export default function ExportShipping() {
     return '';
   });
 
-  const [phone, setPhone] = useState(() => customer?.phone || customer?.defaultAddress?.phone || '');
+  const [phone, setPhone] = useState(
+    () => customer?.phone || customer?.defaultAddress?.phone || '',
+  );
   const [email, setEmail] = useState(() => customer?.email || '');
   const [countryCode, setCountryCode] = useState('AE');
-  const [city, setCity] = useState(() => customer?.defaultAddress?.city || 'دبي');
-  const [zip, setZip] = useState(() => customer?.defaultAddress?.zip || '123152');
-  const [addressDetails, setAddressDetails] = useState(() => customer?.defaultAddress?.address1 || '');
+  const [city, setCity] = useState(
+    () => customer?.defaultAddress?.city || 'دبي',
+  );
+  const [zip, setZip] = useState(
+    () => customer?.defaultAddress?.zip || '123152',
+  );
+  const [addressDetails, setAddressDetails] = useState(
+    () => customer?.defaultAddress?.address1 || '',
+  );
   const [saveAddress, setSaveAddress] = useState(false);
   const [instructions, setInstructions] = useState('');
 
@@ -161,17 +205,24 @@ export default function ExportShipping() {
   const exportLines = useMemo(() => {
     const allLines = (optimisticCart as any)?.lines?.nodes || [];
     return allLines.filter((line: any) =>
-      line.attributes?.some((a: any) => a.key === '_export' && a.value === 'true')
+      line.attributes?.some(
+        (a: any) => a.key === '_export' && a.value === 'true',
+      ),
     );
   }, [optimisticCart]);
 
   // Subtotal calculated dynamically from lines
-  const calculatedSubtotal = useMemo(() =>
-    exportLines.reduce((sum: number, line: any) => {
-      const price = parseFloat(line.cost?.totalAmount?.amount || line.merchandise?.price?.amount || '0');
-      return sum + price;
-    }, 0),
-    [exportLines]
+  const calculatedSubtotal = useMemo(
+    () =>
+      exportLines.reduce((sum: number, line: any) => {
+        const price = parseFloat(
+          line.cost?.totalAmount?.amount ||
+            line.merchandise?.price?.amount ||
+            '0',
+        );
+        return sum + price;
+      }, 0),
+    [exportLines],
   );
 
   // Restored summary costs from sessionStorage or dynamically computed
@@ -198,9 +249,9 @@ export default function ExportShipping() {
     }
   }, []);
 
-  const selectedCountryObj = useMemo(() =>
-    COUNTRIES.find(c => c.code === countryCode) || COUNTRIES[0],
-    [countryCode]
+  const selectedCountryObj = useMemo(
+    () => COUNTRIES.find((c) => c.code === countryCode) || COUNTRIES[0],
+    [countryCode],
   );
 
   const availableCities = selectedCountryObj.cities;
@@ -209,7 +260,8 @@ export default function ExportShipping() {
     const errs: Record<string, string> = {};
     if (!fullName.trim()) errs.fullName = 'الاسم الكامل مطلوب';
     if (!phone.trim()) errs.phone = 'رقم الجوال مطلوب';
-    if (!email.trim() || !email.includes('@')) errs.email = 'بريد إلكتروني غير صحيح';
+    if (!email.trim() || !email.includes('@'))
+      errs.email = 'بريد إلكتروني غير صحيح';
     if (!addressDetails.trim()) errs.addressDetails = 'العنوان التفصيلي مطلوب';
     setFormErrors(errs);
     return Object.keys(errs).length === 0;
@@ -235,14 +287,14 @@ export default function ExportShipping() {
                 zip,
                 firstName: fullName,
                 phone,
-              }
-            }
-          ]
+              },
+            },
+          ],
         };
 
         const cartInput = {
           action: 'BuyerIdentityUpdate',
-          inputs: { buyerIdentity: buyerIdentityInput }
+          inputs: {buyerIdentity: buyerIdentityInput},
         };
 
         formData.append('cartFormInput', JSON.stringify(cartInput));
@@ -258,18 +310,42 @@ export default function ExportShipping() {
       // 2. Pre-fill checkout URL query params as additional guarantee
       const checkoutUrl = (optimisticCart as any)?.checkoutUrl;
       if (checkoutUrl) {
-        sessionStorage.setItem('exportShippingDetails', JSON.stringify({
-          fullName, phone, email, country: selectedCountryObj.name, city, zip, addressDetails, instructions
-        }));
+        sessionStorage.setItem(
+          'exportShippingDetails',
+          JSON.stringify({
+            fullName,
+            phone,
+            email,
+            country: selectedCountryObj.name,
+            city,
+            zip,
+            addressDetails,
+            instructions,
+          }),
+        );
 
         const url = new URL(checkoutUrl);
         if (email) url.searchParams.set('checkout[email]', email);
-        if (fullName) url.searchParams.set('checkout[shipping_address][first_name]', fullName);
-        if (addressDetails) url.searchParams.set('checkout[shipping_address][address1]', addressDetails);
-        if (city) url.searchParams.set('checkout[shipping_address][city]', city);
+        if (fullName)
+          url.searchParams.set(
+            'checkout[shipping_address][first_name]',
+            fullName,
+          );
+        if (addressDetails)
+          url.searchParams.set(
+            'checkout[shipping_address][address1]',
+            addressDetails,
+          );
+        if (city)
+          url.searchParams.set('checkout[shipping_address][city]', city);
         if (zip) url.searchParams.set('checkout[shipping_address][zip]', zip);
-        if (countryCode) url.searchParams.set('checkout[shipping_address][country]', countryCode);
-        if (phone) url.searchParams.set('checkout[shipping_address][phone]', phone);
+        if (countryCode)
+          url.searchParams.set(
+            'checkout[shipping_address][country]',
+            countryCode,
+          );
+        if (phone)
+          url.searchParams.set('checkout[shipping_address][phone]', phone);
 
         window.location.href = url.toString();
       } else {
@@ -285,7 +361,10 @@ export default function ExportShipping() {
   return (
     <div className="export-cart-page" dir="rtl">
       {/* ─── 1. HEADER BANNER ───────────────────────────────────────────────── */}
-      <section className="relative h-[144px] w-full bg-[#234745] overflow-hidden flex items-center" dir="rtl">
+      <section
+        className="relative h-[144px] w-full bg-[#234745] overflow-hidden flex items-center"
+        dir="rtl"
+      >
         <div
           className="absolute inset-0 bg-[length:950px_800px] md:bg-[length:1900px_2000px]"
           style={{
@@ -294,25 +373,51 @@ export default function ExportShipping() {
             backgroundRepeat: 'no-repeat',
           }}
         />
-        <div className="max-w-[1440px] w-full mx-auto px-4 md:px-8 lg:px-12 relative z-10 flex items-center justify-between" dir="rtl">
+        <div
+          className="max-w-[1440px] w-full mx-auto px-4 md:px-8 lg:px-12 relative z-10 flex items-center justify-between"
+          dir="rtl"
+        >
           <div className="flex flex-row items-center justify-start gap-4 md:gap-6 w-full">
             <button
-              onClick={() => { if (typeof window !== 'undefined') window.history.back(); }}
+              onClick={() => {
+                if (typeof window !== 'undefined') window.history.back();
+              }}
               className="flex items-center gap-[8px] bg-[#9FB7AE] hover:bg-[#8BA19C] text-[#234745] px-4 md:px-6 py-2.5 rounded-[25px] text-[12px] md:text-[16px] font-bold transition-all shrink-0"
-              style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
+              style={{
+                fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
+              }}
               dir="rtl"
             >
-              <svg width="15" height="13" viewBox="0 0 15 13" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M0 6H12.25L7 0.75L7.66 0L14.16 6.5L7.66 13L7 12.25L12.25 7H0V6Z" fill="#234745"/>
+              <svg
+                width="15"
+                height="13"
+                viewBox="0 0 15 13"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M0 6H12.25L7 0.75L7.66 0L14.16 6.5L7.66 13L7 12.25L12.25 7H0V6Z"
+                  fill="#234745"
+                />
               </svg>
               <span>رجوع</span>
             </button>
 
             <div className="flex flex-col text-right">
-              <h1 className="!m-0 !mb-1 text-[24px] md:text-[34px] font-bold text-white leading-none" style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" }}>
+              <h1
+                className="!m-0 !mb-1 text-[24px] md:text-[34px] font-bold text-white leading-none"
+                style={{
+                  fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif",
+                }}
+              >
                 سلة التسوق للتصدير
               </h1>
-              <p className="!m-0 text-[13px] md:text-[15px] font-medium text-[#c4d0cc] leading-none" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
+              <p
+                className="!m-0 text-[13px] md:text-[15px] font-medium text-[#c4d0cc] leading-none"
+                style={{
+                  fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
+                }}
+              >
                 سلة التسوق للتصدير حول العالم
               </p>
             </div>
@@ -323,8 +428,16 @@ export default function ExportShipping() {
       {/* ─── BREADCRUMB ────────────────────────────────────────────────────── */}
       <div className="w-full bg-white py-4 mb-10 border-b border-gray-100">
         <div className="max-w-[1400px] mx-auto px-4 md:px-8">
-          <div className="flex items-center gap-2 text-[14px] font-bold text-right" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
-            <Link to="/" className="text-gray-400 hover:text-[#234745] transition-colors">الرئيسية</Link>
+          <div
+            className="flex items-center gap-2 text-[14px] font-bold text-right"
+            style={{fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif"}}
+          >
+            <Link
+              to="/"
+              className="text-gray-400 hover:text-[#234745] transition-colors"
+            >
+              الرئيسية
+            </Link>
             <span className="text-gray-300">/</span>
             <span className="text-[#234745]">سلة التسوق للتصدير</span>
           </div>
@@ -339,7 +452,6 @@ export default function ExportShipping() {
       {/* ─── 3. MAIN GRID LAYOUT ─────────────────────────────────────────────── */}
       <div className="export-container">
         <div className="export-main-grid">
-          
           {/* ─── RIGHT COLUMN: Shipping Address Form ─── */}
           <div className="export-form-col">
             <div className="export-section-card">
@@ -352,56 +464,76 @@ export default function ExportShipping() {
                 <div className="export-form-grid">
                   {/* Full Name */}
                   <div className="export-field">
-                    <label className="export-label">الاسم الكامل <span className="req">*</span></label>
+                    <label className="export-label">
+                      الاسم الكامل <span className="req">*</span>
+                    </label>
                     <input
                       type="text"
                       placeholder="محمد العبدلي"
                       value={fullName}
-                      onChange={e => setFullName(e.target.value)}
+                      onChange={(e) => setFullName(e.target.value)}
                       className={`export-input ${formErrors.fullName ? 'error' : ''}`}
                       dir="rtl"
                     />
-                    {formErrors.fullName && <span className="export-err-text">{formErrors.fullName}</span>}
+                    {formErrors.fullName && (
+                      <span className="export-err-text">
+                        {formErrors.fullName}
+                      </span>
+                    )}
                   </div>
 
                   {/* Phone */}
                   <div className="export-field">
-                    <label className="export-label">رقم الجوال <span className="req">*</span></label>
+                    <label className="export-label">
+                      رقم الجوال <span className="req">*</span>
+                    </label>
                     <input
                       type="tel"
                       placeholder="رقم الجوال"
                       value={phone}
-                      onChange={e => setPhone(e.target.value)}
+                      onChange={(e) => setPhone(e.target.value)}
                       className={`export-input font-en ${formErrors.phone ? 'error' : ''}`}
                       dir="ltr"
                     />
-                    {formErrors.phone && <span className="export-err-text">{formErrors.phone}</span>}
+                    {formErrors.phone && (
+                      <span className="export-err-text">
+                        {formErrors.phone}
+                      </span>
+                    )}
                   </div>
                 </div>
 
                 {/* Email */}
                 <div className="export-field">
-                  <label className="export-label">البريد الإلكتروني <span className="req">*</span></label>
+                  <label className="export-label">
+                    البريد الإلكتروني <span className="req">*</span>
+                  </label>
                   <input
                     type="email"
                     placeholder="البريد الإلكتروني"
                     value={email}
-                    onChange={e => setEmail(e.target.value)}
+                    onChange={(e) => setEmail(e.target.value)}
                     className={`export-input font-en ${formErrors.email ? 'error' : ''}`}
                     dir="ltr"
                   />
-                  {formErrors.email && <span className="export-err-text">{formErrors.email}</span>}
+                  {formErrors.email && (
+                    <span className="export-err-text">{formErrors.email}</span>
+                  )}
                 </div>
 
                 {/* Country & City */}
                 <div className="export-form-grid">
                   <div className="export-field">
-                    <label className="export-label">الدولة <span className="req">*</span></label>
+                    <label className="export-label">
+                      الدولة <span className="req">*</span>
+                    </label>
                     <select
                       value={countryCode}
-                      onChange={e => {
+                      onChange={(e) => {
                         setCountryCode(e.target.value);
-                        const newCountryObj = COUNTRIES.find(c => c.code === e.target.value);
+                        const newCountryObj = COUNTRIES.find(
+                          (c) => c.code === e.target.value,
+                        );
                         if (newCountryObj && newCountryObj.cities.length > 0) {
                           setCity(newCountryObj.cities[0]);
                         }
@@ -409,22 +541,28 @@ export default function ExportShipping() {
                       className="export-select"
                       dir="rtl"
                     >
-                      {COUNTRIES.map(c => (
-                        <option key={c.code} value={c.code}>{c.name}</option>
+                      {COUNTRIES.map((c) => (
+                        <option key={c.code} value={c.code}>
+                          {c.name}
+                        </option>
                       ))}
                     </select>
                   </div>
 
                   <div className="export-field">
-                    <label className="export-label">المدينة <span className="req">*</span></label>
+                    <label className="export-label">
+                      المدينة <span className="req">*</span>
+                    </label>
                     <select
                       value={city}
-                      onChange={e => setCity(e.target.value)}
+                      onChange={(e) => setCity(e.target.value)}
                       className="export-select"
                       dir="rtl"
                     >
-                      {availableCities.map(ct => (
-                        <option key={ct} value={ct}>{ct}</option>
+                      {availableCities.map((ct) => (
+                        <option key={ct} value={ct}>
+                          {ct}
+                        </option>
                       ))}
                     </select>
                   </div>
@@ -437,7 +575,7 @@ export default function ExportShipping() {
                     type="text"
                     placeholder="123152"
                     value={zip}
-                    onChange={e => setZip(e.target.value)}
+                    onChange={(e) => setZip(e.target.value)}
                     className="export-input font-en"
                     dir="ltr"
                   />
@@ -445,16 +583,22 @@ export default function ExportShipping() {
 
                 {/* Detailed Address */}
                 <div className="export-field">
-                  <label className="export-label">العنوان التفصيلي <span className="req">*</span></label>
+                  <label className="export-label">
+                    العنوان التفصيلي <span className="req">*</span>
+                  </label>
                   <input
                     type="text"
                     placeholder="الحي، الشارع، رقم المبني"
                     value={addressDetails}
-                    onChange={e => setAddressDetails(e.target.value)}
+                    onChange={(e) => setAddressDetails(e.target.value)}
                     className={`export-input ${formErrors.addressDetails ? 'error' : ''}`}
                     dir="rtl"
                   />
-                  {formErrors.addressDetails && <span className="export-err-text">{formErrors.addressDetails}</span>}
+                  {formErrors.addressDetails && (
+                    <span className="export-err-text">
+                      {formErrors.addressDetails}
+                    </span>
+                  )}
                 </div>
 
                 {/* Save Address Checkbox */}
@@ -463,10 +607,13 @@ export default function ExportShipping() {
                     type="checkbox"
                     id="saveAddress"
                     checked={saveAddress}
-                    onChange={e => setSaveAddress(e.target.checked)}
+                    onChange={(e) => setSaveAddress(e.target.checked)}
                     className="export-checkbox"
                   />
-                  <label htmlFor="saveAddress" className="export-checkbox-label">
+                  <label
+                    htmlFor="saveAddress"
+                    className="export-checkbox-label"
+                  >
                     حفظ هذا العنوان للطلبات القادمة
                   </label>
                 </div>
@@ -478,7 +625,7 @@ export default function ExportShipping() {
                     type="text"
                     placeholder="مثال: الرجاء الاتصال قبل الوصول"
                     value={instructions}
-                    onChange={e => setInstructions(e.target.value)}
+                    onChange={(e) => setInstructions(e.target.value)}
                     className="export-input"
                     dir="rtl"
                   />
@@ -499,15 +646,25 @@ export default function ExportShipping() {
                   const product = merch?.product;
                   const title = product?.title || merch?.title || 'منتج';
                   const image = merch?.image || product?.featuredImage;
-                  const price = parseFloat(line.cost?.totalAmount?.amount || merch?.price?.amount || '0');
+                  const price = parseFloat(
+                    line.cost?.totalAmount?.amount ||
+                      merch?.price?.amount ||
+                      '0',
+                  );
                   const options = merch?.selectedOptions || [];
-                  const optionChips = options.filter((o: any) => o.value !== 'Default Title').map((o: any) => o.value);
+                  const optionChips = options
+                    .filter((o: any) => o.value !== 'Default Title')
+                    .map((o: any) => o.value);
 
                   return (
                     <div key={line.id} className="export-mini-item">
                       <div className="export-mini-thumb">
                         {image?.url ? (
-                          <img src={image.url} alt={title} className="export-mini-img" />
+                          <img
+                            src={image.url}
+                            alt={title}
+                            className="export-mini-img"
+                          />
                         ) : (
                           <div className="export-mini-placeholder">🍬</div>
                         )}
@@ -517,18 +674,23 @@ export default function ExportShipping() {
                         <div className="export-mini-chips">
                           {optionChips.length > 0 ? (
                             optionChips.map((c: string, i: number) => (
-                              <span key={i} className="export-mini-chip">{c}</span>
+                              <span key={i} className="export-mini-chip">
+                                {c}
+                              </span>
                             ))
                           ) : (
                             <>
                               <span className="export-mini-chip">وسط</span>
-                              <span className="export-mini-chip">تغليف فاخر</span>
+                              <span className="export-mini-chip">
+                                تغليف فاخر
+                              </span>
                             </>
                           )}
                         </div>
                       </div>
                       <span className="export-mini-price font-en flex items-center gap-0.5">
-                        {price.toFixed(2)} <SaudiRiyalSymbol className="h-2.5 w-auto text-[#234745]" />
+                        {price.toFixed(2)}{' '}
+                        <SaudiRiyalSymbol className="h-2.5 w-auto text-[#234745]" />
                       </span>
                     </div>
                   );
@@ -541,7 +703,8 @@ export default function ExportShipping() {
                 <div className="export-summary-item">
                   <span className="label">المجموع الفرعي</span>
                   <span className="val font-en flex items-center gap-1">
-                    {summaryData.subtotal.toFixed(2)} <SaudiRiyalSymbol className="h-3 w-auto text-[#234745]" />
+                    {summaryData.subtotal.toFixed(2)}{' '}
+                    <SaudiRiyalSymbol className="h-3 w-auto text-[#234745]" />
                   </span>
                 </div>
                 <div className="export-summary-item">
@@ -549,19 +712,22 @@ export default function ExportShipping() {
                     الشحن <AramexBadge />
                   </span>
                   <span className="val font-en flex items-center gap-1">
-                    {summaryData.shippingRate.toFixed(2)} <SaudiRiyalSymbol className="h-3 w-auto text-[#234745]" />
+                    {summaryData.shippingRate.toFixed(2)}{' '}
+                    <SaudiRiyalSymbol className="h-3 w-auto text-[#234745]" />
                   </span>
                 </div>
                 <div className="export-summary-item">
                   <span className="label">رسوم التغليف المبرد</span>
                   <span className="val font-en flex items-center gap-1">
-                    {summaryData.coldPackagingFee.toFixed(2)} <SaudiRiyalSymbol className="h-3 w-auto text-[#234745]" />
+                    {summaryData.coldPackagingFee.toFixed(2)}{' '}
+                    <SaudiRiyalSymbol className="h-3 w-auto text-[#234745]" />
                   </span>
                 </div>
                 <div className="export-summary-item discount">
                   <span className="label">خصم التصدير</span>
                   <span className="val font-en flex items-center gap-1">
-                    − {summaryData.exportDiscount.toFixed(2)} <SaudiRiyalSymbol className="h-3 w-auto text-[#234745]" />
+                    − {summaryData.exportDiscount.toFixed(2)}{' '}
+                    <SaudiRiyalSymbol className="h-3 w-auto text-[#234745]" />
                   </span>
                 </div>
               </div>
@@ -572,7 +738,8 @@ export default function ExportShipping() {
                 <div className="export-total-row">
                   <span className="total-label">الإجمالي</span>
                   <span className="total-val font-en flex items-center gap-1.5">
-                    {summaryData.grandTotal.toFixed(2)} <SaudiRiyalSymbol className="h-4.5 w-auto text-[#234745]" />
+                    {summaryData.grandTotal.toFixed(2)}{' '}
+                    <SaudiRiyalSymbol className="h-4.5 w-auto text-[#234745]" />
                   </span>
                 </div>
                 <p className="vat-note">شامل ضريبة القيمة المضافة 15%</p>
@@ -596,7 +763,6 @@ export default function ExportShipping() {
               </div>
             </div>
           </div>
-
         </div>
       </div>
 

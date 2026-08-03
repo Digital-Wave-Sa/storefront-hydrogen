@@ -204,18 +204,6 @@ export function CartMain({ layout, cart: originalCart }: CartMainProps) {
                 </div>
               )}
 
-              {/* Pickup Info Alert */}
-              {cartHasItems && isPickup && (
-                <div className="bg-[#fcfaf8] rounded-[24px] p-6 border border-[#f0ece8] shadow-sm mb-2 flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center text-[#234745] shadow-sm">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" /><polyline points="9 22 9 12 15 12 15 22" /></svg>
-                  </div>
-                  <div>
-                    <p className="text-[15px] font-black text-[#234745]">{isEn ? 'Store Pickup Selected' : 'تم اختيار الاستلام من الفرع'}</p>
-                    <p className="text-[13px] text-gray-500 font-medium">{isEn ? 'No delivery fees apply for pickup orders.' : 'لا يتم تطبيق رسوم توصيل على طلبات الاستلام.'}</p>
-                  </div>
-                </div>
-              )}
 
               {/* Dynamic Delivery Alert (Only shows if relevant) */}
               {(cart?.attributes?.find(a => a.key === 'error')?.value) && (

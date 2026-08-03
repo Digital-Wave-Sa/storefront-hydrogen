@@ -1,23 +1,33 @@
-import { useState, useEffect, useRef } from 'react';
-import { data, redirect, type LoaderFunctionArgs, type ActionFunctionArgs } from 'react-router';
-import { Form, useNavigation, useActionData, useLoaderData } from 'react-router';
-import { Button } from '~/components/layout/Button';
-import { SaadeddinApi } from '~/lib/saadeddin-api.server';
+import {useState, useEffect, useRef} from 'react';
+import {
+  data,
+  redirect,
+  type LoaderFunctionArgs,
+  type ActionFunctionArgs,
+} from 'react-router';
+import {Form, useNavigation, useActionData, useLoaderData} from 'react-router';
+import {Button} from '~/components/layout/Button';
+import {SaadeddinApi} from '~/lib/saadeddin-api.server';
 
-export async function loader({ request, context }: LoaderFunctionArgs) {
-  const { session, storefront } = context;
+export async function loader({request, context}: LoaderFunctionArgs) {
+  const {session, storefront} = context;
   const customerAccessToken = await session.get('customerAccessToken');
-  const { pathname } = new URL(request.url);
-  const localePrefix = /^\/([a-z]{2})\//.test(pathname + '/') ? `/${pathname.split('/')[1]}` : '';
+  const {pathname} = new URL(request.url);
+  const localePrefix = /^\/([a-z]{2})\//.test(pathname + '/')
+    ? `/${pathname.split('/')[1]}`
+    : '';
 
   if (!customerAccessToken) {
     return redirect(`${localePrefix}/account/login`);
   }
 
   // Fetch the customer's current phone number
-  const { customer } = await storefront.query(CUSTOMER_PHONE_QUERY, {
+  const {customer} = await storefront.query(CUSTOMER_PHONE_QUERY, {
     variables: {
-      customerAccessToken: typeof customerAccessToken === 'string' ? customerAccessToken : customerAccessToken?.accessToken,
+      customerAccessToken:
+        typeof customerAccessToken === 'string'
+          ? customerAccessToken
+          : customerAccessToken?.accessToken,
     },
     cache: storefront.CacheNone(),
   });
@@ -37,18 +47,20 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
   }
 
   const isEn = storefront.i18n.language === 'EN';
-  return data({ isEn, localePrefix });
+  return data({isEn, localePrefix});
 }
 
-export async function action({ request, context }: ActionFunctionArgs) {
-  const { session, storefront } = context;
+export async function action({request, context}: ActionFunctionArgs) {
+  const {session, storefront} = context;
   const customerAccessToken = await session.get('customerAccessToken');
   const isEn = storefront.i18n.language === 'EN';
-  const { pathname } = new URL(request.url);
-  const localePrefix = /^\/([a-z]{2})\//.test(pathname + '/') ? `/${pathname.split('/')[1]}` : '';
+  const {pathname} = new URL(request.url);
+  const localePrefix = /^\/([a-z]{2})\//.test(pathname + '/')
+    ? `/${pathname.split('/')[1]}`
+    : '';
 
   if (!customerAccessToken) {
-    return data({ error: isEn ? 'Unauthorized' : 'غير مصرح به' }, { status: 401 });
+    return data({error: isEn ? 'Unauthorized' : 'غير مصرح به'}, {status: 401});
   }
 
   const form = await request.formData();
@@ -62,19 +74,30 @@ export async function action({ request, context }: ActionFunctionArgs) {
     const countryCode = String(form.get('countryCode') || '+966');
     let cleanPhone = rawPhone.replace(/\D/g, '');
     const countryDigits = countryCode.replace(/\D/g, '');
-    
+
     // Normalize phone format dynamically for any country code (E.164)
-    if (cleanPhone.startsWith('00' + countryDigits)) cleanPhone = cleanPhone.substring(2 + countryDigits.length);
-    else if (cleanPhone.startsWith(countryDigits)) cleanPhone = cleanPhone.substring(countryDigits.length);
+    if (cleanPhone.startsWith('00' + countryDigits))
+      cleanPhone = cleanPhone.substring(2 + countryDigits.length);
+    else if (cleanPhone.startsWith(countryDigits))
+      cleanPhone = cleanPhone.substring(countryDigits.length);
     else if (cleanPhone.startsWith('0')) cleanPhone = cleanPhone.substring(1);
-    
+
     const formattedPhone = `${countryCode}${cleanPhone}`;
 
     try {
       await api.requestOtp(formattedPhone, 'login');
-      return data({ success: true, otpSent: true, phone: formattedPhone });
+      return data({success: true, otpSent: true, phone: formattedPhone});
     } catch (e: any) {
-      return data({ error: e.message || (isEn ? 'Failed to send verification code.' : 'فشل إرسال رمز التحقق.') }, { status: 400 });
+      return data(
+        {
+          error:
+            e.message ||
+            (isEn
+              ? 'Failed to send verification code.'
+              : 'فشل إرسال رمز التحقق.'),
+        },
+        {status: 400},
+      );
     }
   }
 
@@ -89,14 +112,17 @@ export async function action({ request, context }: ActionFunctionArgs) {
       // 2. Write the verified phone number to the customer profile in Shopify
       const updated = await storefront.mutate(CUSTOMER_PHONE_UPDATE_MUTATION, {
         variables: {
-          customerAccessToken: typeof customerAccessToken === 'string' ? customerAccessToken : customerAccessToken?.accessToken,
-          customer: { phone }
-        }
+          customerAccessToken:
+            typeof customerAccessToken === 'string'
+              ? customerAccessToken
+              : customerAccessToken?.accessToken,
+          customer: {phone},
+        },
       });
 
       if (updated.customerUpdate?.customerUserErrors?.length) {
         const errorMsg = updated.customerUpdate.customerUserErrors[0].message;
-        return data({ error: errorMsg }, { status: 400 });
+        return data({error: errorMsg}, {status: 400});
       }
 
       // 3. Save verified phone inside user session
@@ -104,19 +130,26 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
       return redirect(`${localePrefix}/account`, {
         headers: {
-          'Set-Cookie': await session.commit()
-        }
+          'Set-Cookie': await session.commit(),
+        },
       });
     } catch (e: any) {
-      return data({ error: e.message || (isEn ? 'Invalid verification code.' : 'رمز التحقق غير صحيح.') }, { status: 400 });
+      return data(
+        {
+          error:
+            e.message ||
+            (isEn ? 'Invalid verification code.' : 'رمز التحقق غير صحيح.'),
+        },
+        {status: 400},
+      );
     }
   }
 
-  return data({ error: 'Invalid intent' }, { status: 400 });
+  return data({error: 'Invalid intent'}, {status: 400});
 }
 
 export default function VerifyPhone() {
-  const { isEn, localePrefix } = useLoaderData<typeof loader>();
+  const {isEn, localePrefix} = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
   const navigation = useNavigation();
 
@@ -124,7 +157,7 @@ export default function VerifyPhone() {
   const [phone, setPhone] = useState('');
   const [timer, setTimer] = useState(0);
 
-  const otpValue = ['','','','','',''];
+  const otpValue = ['', '', '', '', '', ''];
   const [otpArray, setOtpArray] = useState(otpValue);
 
   const otpRefs = [
@@ -133,7 +166,7 @@ export default function VerifyPhone() {
     useRef<HTMLInputElement>(null),
     useRef<HTMLInputElement>(null),
     useRef<HTMLInputElement>(null),
-    useRef<HTMLInputElement>(null)
+    useRef<HTMLInputElement>(null),
   ];
 
   const isSubmitting = navigation.state === 'submitting';
@@ -146,7 +179,7 @@ export default function VerifyPhone() {
       if (actionData.phone) setPhone(actionData.phone);
     }
     if (actionData && 'error' in actionData && actionData.error) {
-      setOtpArray(['','','','','','']);
+      setOtpArray(['', '', '', '', '', '']);
       otpRefs[0].current?.focus();
     }
   }, [actionData]);
@@ -173,7 +206,10 @@ export default function VerifyPhone() {
     }
   };
 
-  const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleKeyDown = (
+    index: number,
+    e: React.KeyboardEvent<HTMLInputElement>,
+  ) => {
     if (e.key === 'Backspace' && !otpArray[index] && index > 0) {
       otpRefs[index - 1].current?.focus();
     }
@@ -183,12 +219,21 @@ export default function VerifyPhone() {
     <div className="otp-login-container" dir={isEn ? 'ltr' : 'rtl'}>
       <div className="otp-login-card">
         <div className="otp-login-header">
-          <img src="/logo.svg" alt="Saadeddin" className="otp-logo" style={{ height: '50px', objectFit: 'contain', marginBottom: '24px' }} />
+          <img
+            src="/logo.svg"
+            alt="Saadeddin"
+            className="otp-logo"
+            style={{height: '50px', objectFit: 'contain', marginBottom: '24px'}}
+          />
           <h1>{isEn ? 'Phone Verification' : 'التحقق من رقم الجوال'}</h1>
           <p className="text-gray-500 text-sm">
-            {step === 'mobile' 
-              ? (isEn ? 'Please register your phone number to secure your account and access rewards.' : 'يرجى تسجيل رقم جوالك لتأمين حسابك والوصول إلى المكافآت.')
-              : (isEn ? `Enter the 6-digit code sent to ${phone}` : `أدخل الرمز المكون من 6 أرقام المرسل إلى ${phone}`)}
+            {step === 'mobile'
+              ? isEn
+                ? 'Please register your phone number to secure your account and access rewards.'
+                : 'يرجى تسجيل رقم جوالك لتأمين حسابك والوصول إلى المكافآت.'
+              : isEn
+                ? `Enter the 6-digit code sent to ${phone}`
+                : `أدخل الرمز المكون من 6 أرقام المرسل إلى ${phone}`}
           </p>
         </div>
 
@@ -202,7 +247,9 @@ export default function VerifyPhone() {
           <Form method="POST" className="otp-form animate-fade-in">
             <input type="hidden" name="intent" value="send-otp" />
             <div className="phone-input-wrapper">
-              <span className="country-code font-bold text-[#234745]">+966</span>
+              <span className="country-code font-bold text-[#234745]">
+                +966
+              </span>
               <input
                 type="tel"
                 name="phone"
@@ -224,9 +271,13 @@ export default function VerifyPhone() {
               className="otp-submit-btn"
               disabled={phone.replace('+966', '').length < 9 || isSubmitting}
             >
-              {isSubmitting 
-                ? (isEn ? 'Sending...' : 'جاري الإرسال...') 
-                : (isEn ? 'Send Verification Code' : 'إرسال رمز التحقق')}
+              {isSubmitting
+                ? isEn
+                  ? 'Sending...'
+                  : 'جاري الإرسال...'
+                : isEn
+                  ? 'Send Verification Code'
+                  : 'إرسال رمز التحقق'}
             </Button>
           </Form>
         ) : (
@@ -234,8 +285,11 @@ export default function VerifyPhone() {
             <input type="hidden" name="intent" value="verify-otp" />
             <input type="hidden" name="phone" value={phone} />
             <input type="hidden" name="otp" value={otpArray.join('')} />
-            
-            <div className="otp-inputs flex justify-center gap-2 mb-6" style={{ direction: 'ltr' }}>
+
+            <div
+              className="otp-inputs flex justify-center gap-2 mb-6"
+              style={{direction: 'ltr'}}
+            >
               {otpArray.map((digit, i) => (
                 <input
                   key={i}
@@ -261,15 +315,21 @@ export default function VerifyPhone() {
               className="otp-submit-btn"
               disabled={otpArray.join('').length < 6 || isSubmitting}
             >
-              {isSubmitting 
-                ? (isEn ? 'Verifying...' : 'جاري التحقق...') 
-                : (isEn ? 'Verify' : 'تحقق')}
+              {isSubmitting
+                ? isEn
+                  ? 'Verifying...'
+                  : 'جاري التحقق...'
+                : isEn
+                  ? 'Verify'
+                  : 'تحقق'}
             </Button>
 
             <div className="otp-resend text-center mt-4">
               {timer > 0 ? (
                 <p className="text-gray-500 text-[13px]">
-                  {isEn ? `Resend code in ${timer}s` : `إعادة إرسال الرمز خلال ${timer} ثانية`}
+                  {isEn
+                    ? `Resend code in ${timer}s`
+                    : `إعادة إرسال الرمز خلال ${timer} ثانية`}
                 </p>
               ) : (
                 <Form method="POST" className="inline">

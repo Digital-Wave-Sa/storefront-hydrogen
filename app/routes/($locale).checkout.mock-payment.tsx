@@ -1,5 +1,5 @@
-import { useLocation, useNavigate } from 'react-router';
-import { useState } from 'react';
+import {useLocation, useNavigate} from 'react-router';
+import {useState} from 'react';
 
 export default function MockPayment() {
   const isEn = useLocation().pathname.startsWith('/en');
@@ -23,9 +23,11 @@ export default function MockPayment() {
   };
 
   return (
-    <div className={`min-h-screen bg-[#FEF8EB] flex items-center justify-center p-4 ${isEn ? 'font-en' : 'font-ar'}`} dir={isEn ? 'ltr' : 'rtl'}>
+    <div
+      className={`min-h-screen bg-[#FEF8EB] flex items-center justify-center p-4 ${isEn ? 'font-en' : 'font-ar'}`}
+      dir={isEn ? 'ltr' : 'rtl'}
+    >
       <div className="max-w-md w-full bg-white rounded-3xl shadow-xl border border-[#F2E3C6] overflow-hidden p-6 md:p-8">
-        
         {/* Logo/Header */}
         <div className="text-center mb-8">
           <div className="inline-block bg-[#1B3B36] text-[#FEF8EB] px-4 py-2 rounded-full text-sm font-bold tracking-widest mb-3 uppercase">
@@ -35,7 +37,9 @@ export default function MockPayment() {
             {isEn ? 'Complete Your Payment' : 'إتمام عملية الدفع'}
           </h2>
           <p className="text-sm text-gray-500 mt-1">
-            {isEn ? 'Simulated payment gateway for local testing' : 'محاكاة لبوابة الدفع للاختبار المحلي'}
+            {isEn
+              ? 'Simulated payment gateway for local testing'
+              : 'محاكاة لبوابة الدفع للاختبار المحلي'}
           </p>
         </div>
 
@@ -44,18 +48,26 @@ export default function MockPayment() {
           <div className="absolute top-0 right-0 w-32 h-32 bg-[#2E5E56] opacity-20 rounded-full -mr-8 -mt-8"></div>
           <div className="flex justify-between items-start">
             <span className="text-lg font-bold">Saadeddin</span>
-            <span className="text-xs uppercase font-semibold tracking-wider">Mada / Visa</span>
+            <span className="text-xs uppercase font-semibold tracking-wider">
+              Mada / Visa
+            </span>
           </div>
           <div className="mt-8 text-xl tracking-widest font-mono">
             {cardNumber || '•••• •••• •••• ••••'}
           </div>
           <div className="mt-6 flex justify-between">
             <div>
-              <span className="text-[10px] text-gray-300 block uppercase">{isEn ? 'Card Holder' : 'صاحب البطاقة'}</span>
-              <span className="text-sm tracking-wide font-medium">{name || 'YOUR NAME'}</span>
+              <span className="text-[10px] text-gray-300 block uppercase">
+                {isEn ? 'Card Holder' : 'صاحب البطاقة'}
+              </span>
+              <span className="text-sm tracking-wide font-medium">
+                {name || 'YOUR NAME'}
+              </span>
             </div>
             <div>
-              <span className="text-[10px] text-gray-300 block uppercase">{isEn ? 'Expires' : 'ينتهي في'}</span>
+              <span className="text-[10px] text-gray-300 block uppercase">
+                {isEn ? 'Expires' : 'ينتهي في'}
+              </span>
               <span className="text-sm font-medium">{expiry || 'MM/YY'}</span>
             </div>
           </div>
@@ -67,8 +79,8 @@ export default function MockPayment() {
             <label className="block text-xs font-semibold text-gray-600 mb-1">
               {isEn ? 'CARDHOLDER NAME' : 'اسم صاحب البطاقة'}
             </label>
-            <input 
-              type="text" 
+            <input
+              type="text"
               placeholder="e.g. John Doe"
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -80,12 +92,19 @@ export default function MockPayment() {
             <label className="block text-xs font-semibold text-gray-600 mb-1">
               {isEn ? 'CARD NUMBER' : 'رقم البطاقة'}
             </label>
-            <input 
-              type="text" 
+            <input
+              type="text"
               maxLength={19}
               placeholder="4000 1234 5678 9010"
               value={cardNumber}
-              onChange={(e) => setCardNumber(e.target.value.replace(/\s?/g, '').replace(/(\d{4})/g, '$1 ').trim())}
+              onChange={(e) =>
+                setCardNumber(
+                  e.target.value
+                    .replace(/\s?/g, '')
+                    .replace(/(\d{4})/g, '$1 ')
+                    .trim(),
+                )
+              }
               className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#1B3B36] text-sm font-mono"
             />
           </div>
@@ -95,8 +114,8 @@ export default function MockPayment() {
               <label className="block text-xs font-semibold text-gray-600 mb-1">
                 {isEn ? 'EXPIRY DATE' : 'تاريخ الانتهاء'}
               </label>
-              <input 
-                type="text" 
+              <input
+                type="text"
                 placeholder="MM/YY"
                 maxLength={5}
                 value={expiry}
@@ -108,8 +127,8 @@ export default function MockPayment() {
               <label className="block text-xs font-semibold text-gray-600 mb-1">
                 CVV
               </label>
-              <input 
-                type="password" 
+              <input
+                type="password"
                 placeholder="•••"
                 maxLength={3}
                 value={cvv}
@@ -130,7 +149,9 @@ export default function MockPayment() {
             {loading ? (
               <span className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
             ) : (
-              <span>{isEn ? 'Simulate Payment Success' : 'محاكاة نجاح عملية الدفع'}</span>
+              <span>
+                {isEn ? 'Simulate Payment Success' : 'محاكاة نجاح عملية الدفع'}
+              </span>
             )}
           </button>
 

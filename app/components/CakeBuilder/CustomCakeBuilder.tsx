@@ -279,37 +279,31 @@ export default function CustomCakeBuilder({
     prepTime: DEFAULT_PREP_OPTION
   });
 
-  const [savedSelections, setSavedSelections] = useState<any | null>(null);
   const hasLoadedRef = useRef(false);
-
-  // Load from localStorage on mount
-  React.useEffect(() => {
-    try {
-      const saved = localStorage.getItem('custom_cake_selections');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed) {
-          setSavedSelections(parsed);
-        }
-      }
-    } catch (e) {
-      console.error('Failed to load selections from localStorage:', e);
-    }
-  }, []);
 
   // Sync dynamic selections when options load exactly once
   React.useEffect(() => {
     if (cakeAttributes?.length > 0 && !hasLoadedRef.current) {
       hasLoadedRef.current = true;
 
-      if (savedSelections) {
-        const shape = mergedOptions.shapes.find(s => s.id === savedSelections.shapeId) || mergedOptions.shapes[0];
-        const size = cakeOptions.sizes.find(s => s.id === savedSelections.sizeId) || selections.size;
-        const tier = cakeOptions.tiers.find(t => t.id === savedSelections.tierId) || selections.tier;
-        const flavor = mergedOptions.flavors.find(f => f.id === savedSelections.flavorId) || mergedOptions.flavors[0];
-        const style = mergedOptions.styles.find(s => s.id === savedSelections.styleId) || mergedOptions.styles[0];
-        const color = cakeOptions.colors.find(c => c.id === savedSelections.colorId) || selections.color;
-        const prepTime = prepTimeOptions.find(p => p.id === savedSelections.prepTimeId) || prepTimeOptions[0];
+      let savedData = null;
+      try {
+        const saved = localStorage.getItem('custom_cake_selections');
+        if (saved) {
+          savedData = JSON.parse(saved);
+        }
+      } catch (e) {
+        console.error('Failed to load selections from localStorage:', e);
+      }
+
+      if (savedData) {
+        const shape = mergedOptions.shapes.find(s => s.id === savedData.shapeId) || mergedOptions.shapes[0];
+        const size = cakeOptions.sizes.find(s => s.id === savedData.sizeId) || selections.size;
+        const tier = cakeOptions.tiers.find(t => t.id === savedData.tierId) || selections.tier;
+        const flavor = mergedOptions.flavors.find(f => f.id === savedData.flavorId) || mergedOptions.flavors[0];
+        const style = mergedOptions.styles.find(s => s.id === savedData.styleId) || mergedOptions.styles[0];
+        const color = cakeOptions.colors.find(c => c.id === savedData.colorId) || selections.color;
+        const prepTime = prepTimeOptions.find(p => p.id === savedData.prepTimeId) || prepTimeOptions[0];
 
         setSelections({
           shape,
@@ -318,12 +312,15 @@ export default function CustomCakeBuilder({
           flavor,
           style,
           color,
-          message: savedSelections.message || '',
-          textColor: savedSelections.textColor || '#4a2511',
-          textFont: savedSelections.textFont || 'Classic',
-          uploadedImage: savedSelections.uploadedImage || null,
+          message: savedData.message || '',
+          textColor: savedData.textColor || '#4a2511',
+          textFont: savedData.textFont || 'Classic',
+          uploadedImage: savedData.uploadedImage || null,
           prepTime
         });
+
+        // Set to the last step so they can proceed with checkout immediately after login
+        setCurrentStep(4);
       } else {
         const defaultPrep = prepTimeOptions[0];
         setSelections(prev => ({
@@ -335,7 +332,7 @@ export default function CustomCakeBuilder({
         }));
       }
     }
-  }, [mergedOptions, cakeAttributes, savedSelections]);
+  }, [mergedOptions, cakeAttributes, prepTimeOptions]);
 
   // Dynamically filter available toppings (styles) for the selected shape based on cake_topping_design metaobjects
   const availableStyles = useMemo(() => {

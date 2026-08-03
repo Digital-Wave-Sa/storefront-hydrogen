@@ -98,6 +98,14 @@ export function AddToCartButton({
   });
 
   const handleSubmit = (e: React.MouseEvent) => {
+    console.log('[ADD TO CART CLICKED]', {
+      url: typeof window !== 'undefined' ? window.location.href : '',
+      linesCount: cleanLines.length,
+      isExport,
+      disabled,
+      isSubmitting,
+    });
+
     // Prevent any default browser behavior or tab opening
     e.preventDefault();
     e.stopPropagation();
@@ -107,10 +115,14 @@ export function AddToCartButton({
 
     // Ignore middle-clicks, right-clicks, or clicks with modifier keys (Ctrl/Cmd) that browsers use to open new tabs
     if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) {
+      console.warn('[ADD TO CART IGNORED] Non-standard click or modifier key used.');
       return;
     }
 
-    if (disabled || isSubmitting) return;
+    if (disabled || isSubmitting) {
+      console.warn('[ADD TO CART IGNORED] Button is disabled or submitting.', { disabled, isSubmitting });
+      return;
+    }
 
     fireAddToCartEvent();
     if (onClick) onClick();
@@ -125,15 +137,18 @@ export function AddToCartButton({
       formData.append('analytics', JSON.stringify(analytics));
     }
 
+    console.log('[ADD TO CART SUBMITTING TO]', cartRoute);
     // Post directly to /cart (or /en/cart) to execute cart addition cleanly
     fetcher.submit(formData, { method: 'POST', action: cartRoute });
 
     if (onAddToCartSuccess) {
+      console.log('[ADD TO CART] Executing onAddToCartSuccess callback');
       onAddToCartSuccess();
     } else if (isExport) {
-      // Export flow: don't open cart aside, navigate to export cart
+      console.log('[ADD TO CART] Navigating to /export-cart');
       navigate('/export-cart');
     } else {
+      console.log('[ADD TO CART] Opening cart drawer directly: open("cart")');
       open('cart');
     }
   };

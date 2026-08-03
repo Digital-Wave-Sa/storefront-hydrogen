@@ -2812,6 +2812,7 @@ export default function Product() {
                           window.scrollTo({top: 0, behavior: 'smooth'})
                         }
                         onAddToCartSuccess={() => {
+                          console.log('[PDP DESKTOP] onAddToCartSuccess opening cart drawer');
                           open('cart');
                         }}
                         lines={
@@ -3407,6 +3408,7 @@ export default function Product() {
                             window.scrollTo({top: 0, behavior: 'smooth'})
                           }
                           onAddToCartSuccess={() => {
+                            console.log('[PDP MOBILE] onAddToCartSuccess opening cart drawer');
                             open('cart');
                           }}
                           lines={

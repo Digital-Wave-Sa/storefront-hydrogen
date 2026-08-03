@@ -103,8 +103,14 @@ Aside.Provider = function AsideProvider({children}: {children: ReactNode}) {
     <AsideContext.Provider
       value={{
         type,
-        open: setType,
-        close: () => setType('closed'),
+        open: (mode: AsideType) => {
+          console.log('[ASIDE OPEN CALLED]', mode);
+          setType(mode);
+        },
+        close: () => {
+          console.log('[ASIDE CLOSE CALLED]');
+          setType('closed');
+        },
       }}
     >
       {children}

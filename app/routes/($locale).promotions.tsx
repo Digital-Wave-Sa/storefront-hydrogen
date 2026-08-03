@@ -5,6 +5,7 @@ import { useWishlist } from '~/context/WishlistContext';
 import { PageHeader } from '~/components/layout/PageHeader';
 import { SaudiRiyalSymbol } from '~/components/Price';
 import { ProductItem } from '~/components/ProductItem';
+import { isDiscountValidForLocation, parseLocationDiscountsJSON } from '~/lib/discounts';
 
 // GraphQL query to fetch promotional products and promotion page metaobjects
 const PROMOTIONS_QUERY = `#graphql
@@ -255,11 +256,53 @@ function renderTextWithRiyalSymbol(text: any, className = "h-[18px] md:h-[26px] 
   );
 }
 
+const DEFAULT_LOCATION_DISCOUNTS = [
+  {
+    code: 'RIYADH50',
+    title: {
+      ar: 'عرض فرع العليا المميز 🎉',
+      en: 'Olaya Branch Special Offer 🎉'
+    },
+    description: {
+      ar: 'احصل على خصم 50% على جميع الطلبات من فرع العليا!',
+      en: 'Enjoy 50% off on all orders from Olaya Branch!'
+    },
+    type: 'branch' as const,
+    ids: ['91178139881', '80198500503', '114186715445', 'olaya', 'عليا', 'العليا']
+  },
+  {
+    code: 'JEDDAH20',
+    title: {
+      ar: 'عرض فرع الملز / جدة 🎉',
+      en: 'Al Malaz / Jeddah Branch Offer 🎉'
+    },
+    description: {
+      ar: 'خصم 20% حصري على طلبات فرع الملز / جدة',
+      en: 'Exclusive 20% off on Al Malaz / Jeddah branch orders'
+    },
+    type: 'branch' as const,
+    ids: ['91178074345', 'malaz', 'jeddah', 'جدة', 'الملز']
+  }
+];
+
 export default function PromotionsPage() {
   const { products, heroData, bogoData, gridData, bannerData } = useLoaderData<typeof loader>();
   const routeData = useRouteLoaderData('root') as any;
   const locale = routeData?.locale || 'ar';
-  const selectedLocationName = routeData?.selectedLocationName || (locale.startsWith('en') ? 'Olaya Branch' : 'فرع العليا');
+  const selectedLocationId = routeData?.selectedLocationId;
+  const selectedLocationName = routeData?.selectedLocationName;
+  const selectedCity = routeData?.selectedCity;
+  const rawLocationDiscounts = routeData?.locationDiscounts;
+
+  const parsedDiscounts = parseLocationDiscountsJSON(rawLocationDiscounts);
+  const discountsToEvaluate = parsedDiscounts.length > 0 ? parsedDiscounts : DEFAULT_LOCATION_DISCOUNTS;
+
+  const activeLocationDiscount = discountsToEvaluate.find((d: any) => {
+    const validById = selectedLocationId ? isDiscountValidForLocation(d, selectedLocationId, selectedCity) : false;
+    const validByName = selectedLocationName ? isDiscountValidForLocation(d, selectedLocationName, selectedCity) : false;
+    return validById || validByName;
+  });
+
   const isEn = locale.toLowerCase().startsWith('en');
   const { isInWishlist, toggleWishlist } = useWishlist();
 
@@ -392,46 +435,160 @@ export default function PromotionsPage() {
       {/* Main Container */}
       <div className="max-w-[1280px] mx-auto px-4 mt-12 md:mt-8 flex flex-col gap-8">
 
-        {/* Branch Location Promotion Card */}
-        {selectedLocationName && (
-          <section className="w-full bg-[#234745] text-white rounded-[24px] p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-md border border-[#9FB7AE]/30">
-            <div className="flex items-center gap-4">
-              <div className="w-14 h-14 bg-[#C5A96A] text-[#234745] rounded-2xl flex items-center justify-center shrink-0 font-bold text-[24px]">
-                📍
-              </div>
-              <div className="flex flex-col gap-1 text-start">
-                <div className="inline-flex items-center gap-2 bg-[#C5A96A]/20 px-3 py-1 rounded-full w-fit">
-                  <span className="text-[#C5A96A] font-bold text-[12px]">
-                    {isEn ? `Exclusive for ${selectedLocationName}` : `خصم خاص لـ ${selectedLocationName}`}
+        {/* 3. BOGO & Branch Location Offer Section */}
+        <div className={`w-full ${activeLocationDiscount ? 'grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch' : ''}`}>
+
+          {/* BOGO Banner Card (Buy 1 Get 1 Free) */}
+          <section
+            dir={direction}
+            className="w-full bg-[#EED5D7] rounded-[24px] p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden"
+          >
+
+            {/* Left Side: Promotion Details */}
+            <div
+              dir={direction}
+              className="flex-1 flex flex-col gap-4 text-start w-full"
+            >
+              {/* Green Badge */}
+              <div className="flex">
+                <div className="bg-[#1F3E35] px-3.5 py-1.5 rounded-full flex items-center gap-1.5">
+                  <span className="text-white text-[12px] font-bold flex items-center gap-1">
+                    <span>🎁</span>
+                    <span>{renderTextWithRiyalSymbol(isEn ? (bogoData?.badgeEn || '1 + 1 Free') : (bogoData?.badgeAr || '1 + 1 مجاناً'))}</span>
                   </span>
                 </div>
-                <h3 className="text-white font-bold text-[20px] md:text-[24px] leading-snug">
-                  {isEn ? `Olaya Branch Special Offer 🎉` : `عرض فرع العليا المميز 🎉`}
+              </div>
+
+              {/* Title + Subtitle */}
+              <div className="flex flex-col gap-2">
+                <h3
+                  className="text-[#171717] text-[24px] md:text-[30px] font-bold leading-tight ![line-height:normal]"
+                  style={{
+                    fontFamily: isEn ? 'inherit' : "'Bahij Janna', sans-serif",
+                    fontWeight: 700,
+                  }}
+                >
+                  {renderTextWithRiyalSymbol(isEn ? (bogoData?.titleEn || 'Buy One Get One Free') : (bogoData?.titleAr || 'اشتري واحد واحصل على الثاني مجاناً'))}
                 </h3>
-                <p className="text-gray-300 text-[14px] font-medium">
-                  {isEn ? `Enjoy 50% off on all orders from Olaya Branch!` : `احصل على خصم 50% على جميع الطلبات من فرع العليا!`}
+                <p className="text-[#7D7D7D] text-[13px] md:text-[14px] font-medium leading-relaxed [font-family:'GE Dinar One',sans-serif]">
+                  {renderTextWithRiyalSymbol(isEn ? (bogoData?.subtitleEn || 'On all dark chocolate types — Today only!') : (bogoData?.subtitleAr || 'على جميع أنواع الشوكولاتة الداكنة — اليوم فقط!'))}
                 </p>
               </div>
-            </div>
-            <div className="flex items-center gap-3 w-full md:w-auto shrink-0" dir="ltr">
-              <div className="bg-[#1a3533] border border-[#C5A96A]/40 rounded-xl px-4 py-2.5 flex items-center justify-between gap-3 flex-1 md:flex-initial">
-                <span className="text-gray-400 text-[12px] font-bold">{isEn ? 'Code:' : 'كود:'}</span>
-                <span className="font-mono text-[18px] font-extrabold text-[#C5A96A] tracking-wider select-all">RIYADH50</span>
+
+              {/* Action Row: Button + Shoppers Count */}
+              <div className="flex flex-row items-center gap-4 mt-2">
+                {/* Button */}
+                <Link
+                  to="/promotions/bogo"
+                  className="inline-flex items-center gap-2 px-6 h-[44px] bg-[#BBCFCD] hover:bg-[#ACC4C2] !text-[#234745] font-bold text-[13px] rounded-full transition-colors flex-shrink-0 cursor-pointer"
+                >
+                  {isEn ? (
+                    <>
+                      <span>{bogoData?.buttonTextEn || 'Shop Offer'}</span>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="5" y1="12" x2="19" y2="12" />
+                        <polyline points="12 5 19 12 12 19" />
+                      </svg>
+                    </>
+                  ) : (
+                    <>
+                      <span>{bogoData?.buttonTextAr || 'تسوق العرض'}</span>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
+                        <line x1="19" y1="12" x2="5" y2="12" />
+                        <polyline points="12 19 5 12 12 5" />
+                      </svg>
+                    </>
+                  )}
+                </Link>
+
+                {/* Shoppers Count */}
+                <span className="text-[#D61C4E] text-[12px] font-semibold whitespace-nowrap">
+                  <span style={{ fontFamily: "'EnglishDigits', sans-serif" }} className="font-bold">{bogoData?.shoppersCount || '243'}</span>
+                  <span>{isEn ? ' shopping now' : ' يتسوقون الآن'}</span>
+                </span>
               </div>
-              <button
-                type="button"
-                onClick={() => {
-                  navigator.clipboard.writeText('RIYADH50');
-                  setShowToast(true);
-                  setTimeout(() => setShowToast(false), 2000);
-                }}
-                className="px-5 py-3 bg-[#C5A96A] hover:bg-[#b5995a] text-[#234745] font-bold text-[14px] rounded-xl transition-all shadow-sm active:scale-95 cursor-pointer whitespace-nowrap"
-              >
-                {isEn ? 'Copy Code' : 'نسخ الكود'}
-              </button>
+            </div>
+
+            {/* Right Side: Chocolate Bar Illustration */}
+            <div className="w-[140px] h-[130px] flex items-center justify-center flex-shrink-0 relative hidden sm:flex">
+              <div className="transform rotate-[-38deg] drop-shadow-[0_8px_16px_rgba(0,0,0,0.12)]">
+                <svg width="100" height="130" viewBox="0 0 120 150" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <rect x="15" y="10" width="90" height="130" rx="8" fill="#784A34" />
+                  <rect x="22" y="17" width="34" height="24" rx="4" fill="#603722" />
+                  <rect x="25" y="19" width="28" height="18" rx="2" fill="#6A3F28" />
+                  <rect x="64" y="17" width="34" height="24" rx="4" fill="#603722" />
+                  <rect x="67" y="19" width="28" height="18" rx="2" fill="#6A3F28" />
+                  <rect x="22" y="47" width="34" height="24" rx="4" fill="#603722" />
+                  <rect x="25" y="49" width="28" height="18" rx="2" fill="#6A3F28" />
+                  <rect x="64" y="47" width="34" height="24" rx="4" fill="#603722" />
+                  <rect x="67" y="49" width="28" height="18" rx="2" fill="#6A3F28" />
+                  <rect x="22" y="77" width="34" height="24" rx="4" fill="#603722" />
+                  <rect x="25" y="79" width="28" height="18" rx="2" fill="#6A3F28" />
+                  <rect x="64" y="77" width="34" height="24" rx="4" fill="#603722" />
+                  <rect x="67" y="79" width="28" height="18" rx="2" fill="#6A3F28" />
+                  <path d="M10 75 L110 50 L110 145 L10 145 Z" fill="#E2E8F0" />
+                  <path d="M10 82 L110 57 L110 145 L10 145 Z" fill="#C41230" />
+                  <path d="M10 102 L110 77 L110 97 L10 122 Z" fill="#FFFFFF" />
+                </svg>
+              </div>
             </div>
           </section>
-        )}
+
+          {/* Side-by-Side Branch Location Offer Card (Shown ONLY when active store has a matching location offer) */}
+          {activeLocationDiscount && (
+            <section className="w-full bg-[#234745] text-white rounded-[24px] p-6 md:p-8 flex flex-col justify-between gap-6 shadow-md border border-[#9FB7AE]/30 relative overflow-hidden">
+              {/* Decorative accent circle */}
+              <div className="absolute top-0 right-0 w-32 h-32 bg-[#C5A96A]/10 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none" />
+
+              <div className="flex flex-col gap-3 text-start">
+                <div className="flex items-center gap-2">
+                  <div className="w-10 h-10 bg-[#C5A96A] text-[#234745] rounded-xl flex items-center justify-center shrink-0 font-bold text-[18px]">
+                    📍
+                  </div>
+                  <div className="inline-flex items-center gap-1.5 bg-[#C5A96A]/20 px-3 py-1 rounded-full">
+                    <span className="text-[#C5A96A] font-bold text-[12px]">
+                      {isEn ? `Exclusive for ${selectedLocationName || 'Selected Store'}` : `خصم خاص لـ ${selectedLocationName || 'الفرع المختار'}`}
+                    </span>
+                  </div>
+                </div>
+
+                <h3 className="text-white font-bold text-[22px] md:text-[26px] leading-tight">
+                  {typeof activeLocationDiscount.title === 'object'
+                    ? (isEn ? activeLocationDiscount.title?.en || activeLocationDiscount.title?.ar : activeLocationDiscount.title?.ar || activeLocationDiscount.title?.en)
+                    : activeLocationDiscount.title || (isEn ? `Special Offer for ${selectedLocationName} 🎉` : `عرض فرع ${selectedLocationName} المميز 🎉`)}
+                </h3>
+
+                <p className="text-gray-300 text-[13px] md:text-[14px] font-medium leading-relaxed">
+                  {typeof activeLocationDiscount.description === 'object'
+                    ? (isEn ? activeLocationDiscount.description?.en || activeLocationDiscount.description?.ar : activeLocationDiscount.description?.ar || activeLocationDiscount.description?.en)
+                    : activeLocationDiscount.description || (isEn ? 'Special discount available for your selected branch!' : 'احصل على خصومات حصرية لفرعك المختار!')}
+                </p>
+              </div>
+
+              {/* Promo Code & Copy Action */}
+              <div className="flex items-center gap-3 w-full pt-2" dir="ltr">
+                <div className="bg-[#1a3533] border border-[#C5A96A]/40 rounded-xl px-4 py-2.5 flex items-center justify-between gap-3 flex-1">
+                  <span className="text-gray-400 text-[12px] font-bold">{isEn ? 'Code:' : 'كود:'}</span>
+                  <span className="font-mono text-[17px] font-extrabold text-[#C5A96A] tracking-wider select-all">
+                    {activeLocationDiscount.code || 'RIYADH50'}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(activeLocationDiscount.code || 'RIYADH50');
+                    setShowToast(true);
+                    setTimeout(() => setShowToast(false), 2000);
+                  }}
+                  className="px-5 py-3 bg-[#C5A96A] hover:bg-[#b5995a] text-[#234745] font-bold text-[13px] rounded-xl transition-all shadow-sm active:scale-95 cursor-pointer whitespace-nowrap"
+                >
+                  {isEn ? 'Copy Code' : 'نسخ الكود'}
+                </button>
+              </div>
+            </section>
+          )}
+
+        </div>
 
         {/* 2. Hero Offer Card */}
         <section

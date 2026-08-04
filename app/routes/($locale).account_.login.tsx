@@ -1136,6 +1136,26 @@ export default function Login() {
                     </div>
                   </div>
 
+                  {verifyCooldown > 0 && (
+                    <div
+                      className="w-full bg-[#FFF1F1] border border-[#FCA5A5] rounded-full py-3 px-4 flex items-center justify-center gap-2 text-[#D93838] text-[14px] font-bold my-1 text-center"
+                      dir={isEn ? 'ltr' : 'rtl'}
+                      style={{
+                        fontFamily:
+                          "'EnglishDigits', 'GE Dinar One', sans-serif",
+                      }}
+                    >
+                      <span className="w-5 h-5 rounded-full border-2 border-[#D93838] flex items-center justify-center text-[12px] font-extrabold shrink-0">
+                        !
+                      </span>
+                      <span>
+                        {isEn
+                          ? `Please wait ${verifyCooldown} seconds before requesting a new code.`
+                          : `يرجى الانتظار ${verifyCooldown} ثانية قبل طلب رمز تحقق جديد.`}
+                      </span>
+                    </div>
+                  )}
+
                   {actionData?.error && (
                     <div
                       className="w-full border border-[#F38C8C] bg-[#FFF5F5] rounded-[12px] py-3 px-4 flex items-center gap-3 text-[#E55C5C] text-sm font-semibold justify-center"
@@ -1233,8 +1253,7 @@ export default function Login() {
                         <button
                           type="button"
                           onClick={() => setStep('input')}
-                          disabled={blockCooldown > 0 || verifyCooldown > 0}
-                          className="text-[#234745] font-bold underline hover:text-[#1a3533] ml-1 disabled:opacity-50 disabled:no-underline disabled:cursor-not-allowed"
+                          className="text-[#234745] font-bold underline hover:text-[#1a3533] ml-1 cursor-pointer"
                         >
                           {isEn ? 'Edit' : 'تعديل'}
                         </button>

@@ -509,10 +509,13 @@ function CustomQuoteModal({
 
   return (
     <div
-      className="fixed inset-0 z-[999999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in"
+      className="fixed inset-0 z-[999999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in font-en"
       dir={isEn ? 'ltr' : 'rtl'}
     >
-      <div className="bg-[#FFFDF9] rounded-[24px] max-w-[640px] w-full p-6 sm:p-8 relative max-h-[92vh] overflow-y-auto border border-[#E6E2D8] text-start">
+      <div
+        className="bg-[#FFFDF9] rounded-[24px] max-w-[640px] w-full p-6 sm:p-8 relative max-h-[92vh] overflow-y-auto border border-[#E6E2D8] text-start"
+        style={{fontFamily: "'EnglishDigits', 'GE Dinar One', 'Bahij Janna', sans-serif"}}
+      >
         {/* Close Button */}
         <button
           onClick={onClose}

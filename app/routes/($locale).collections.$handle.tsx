@@ -29,7 +29,6 @@ import {Price} from '~/components/Price';
 import {AddToCartButton} from '~/components/AddToCartButton';
 import {StockNotificationModal} from '~/components/StockNotificationModal';
 import patternBg from '/images/second-bg-pattern.svg';
-import {adminApiQuery} from '~/lib/admin.server';
 
 export const meta: MetaFunction<typeof loader> = ({data}) => {
   if (!data?.collection) {
@@ -177,32 +176,19 @@ export async function loader({request, params, context}: LoaderFunctionArgs) {
       })
       .catch(() => null);
 
-    const target = fallbackRes?.targetProduct ? [fallbackRes.targetProduct] : [];
-    const tagged = fallbackRes?.taggedCorporate?.nodes || [];
-    const latest = fallbackRes?.latestProducts?.nodes || [];
     const all = fallbackRes?.allProducts?.nodes || [];
-    const combined = Array.from(
-      new Map([...target, ...tagged, ...latest, ...all].map((p: any) => [p.id, p])).values()
-    );
-
-    let productNodes = combined.filter((p: any) =>
+    const matchingProducts = all.filter((p: any) =>
       p.tags?.some((t: string) => {
-        const lower = t.toLowerCase().trim();
-        const clean = lower.replace(/[-_]/g, '');
+        const clean = t.toLowerCase().replace(/[-_]/g, '');
         return (
-          lower === 'corporate-classic' ||
-          lower === 'corporate_classic' ||
-          lower === 'classic-packages' ||
-          lower === 'classic' ||
-          lower === 'corporate' ||
           clean === 'corporateclassic' ||
           clean === 'classicpackages' ||
-          clean.includes('corporateclassic')
+          clean === 'corporateclassicpackage'
         );
       }),
     );
 
-
+    const productNodes = matchingProducts;
     const edges = productNodes.map((node: any) => ({
       cursor: node.id,
       node,
@@ -245,29 +231,19 @@ export async function loader({request, params, context}: LoaderFunctionArgs) {
       })
       .catch(() => null);
 
-    const tagged = fallbackRes?.taggedCorporate?.nodes || [];
-    const latest = fallbackRes?.latestProducts?.nodes || [];
     const all = fallbackRes?.allProducts?.nodes || [];
-    const combined = Array.from(
-      new Map([...tagged, ...latest, ...all].map((p: any) => [p.id, p])).values()
-    );
-
-    const productNodes = combined.filter((p: any) =>
+    const matchingProducts = all.filter((p: any) =>
       p.tags?.some((t: string) => {
-        const lower = t.toLowerCase().trim();
-        const clean = lower.replace(/[-_]/g, '');
+        const clean = t.toLowerCase().replace(/[-_]/g, '');
         return (
-          lower === 'corporate-featured' ||
-          lower === 'corporate_featured' ||
-          lower === 'featured-packages' ||
-          lower === 'featured' ||
           clean === 'corporatefeatured' ||
           clean === 'featuredpackages' ||
-          clean.includes('corporatefeatured')
+          clean === 'corporatefeaturedpackage'
         );
       }),
     );
 
+    const productNodes = matchingProducts;
     const edges = productNodes.map((node: any) => ({
       cursor: node.id,
       node,
@@ -1822,19 +1798,6 @@ const CORPORATE_PRODUCTS_FALLBACK_QUERY = `#graphql
     $country: CountryCode
     $language: LanguageCode
   ) @inContext(country: $country, language: $language) {
-    targetProduct: product(id: "gid://shopify/Product/9360448848105") {
-      ...HandleProductItem
-    }
-    taggedCorporate: products(first: 250, query: "tag:corporate* OR tag:classic* OR tag:featured* OR corporate") {
-      nodes {
-        ...HandleProductItem
-      }
-    }
-    latestProducts: products(first: 250, sortKey: CREATED_AT, reverse: true) {
-      nodes {
-        ...HandleProductItem
-      }
-    }
     allProducts: products(first: 250) {
       nodes {
         ...HandleProductItem

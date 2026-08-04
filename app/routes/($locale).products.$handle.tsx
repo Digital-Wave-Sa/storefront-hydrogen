@@ -750,6 +750,13 @@ export default function Product() {
       product.handle,
     );
 
+  const isClassicCorporate =
+    isCorporateProduct &&
+    (product.tags?.some((t: string) => {
+      const clean = t.toLowerCase().replace(/[-_\s]/g, '');
+      return clean === 'corporateclassic' || clean === 'classicpackages';
+    }) || product.handle.includes('classic'));
+
   const minQuantity = isCorporateProduct ? 20 : 1;
 
   useEffect(() => {
@@ -2359,7 +2366,7 @@ export default function Product() {
                           </span>
                         </div>
 
-                        {/* Logo Upload Field (For Classic: Logo Only) */}
+                        {/* Logo Upload Field (Included for all corporate products) */}
                         <div className="flex flex-col gap-1.5 w-full text-start z-10">
                           <label className="text-[13px] font-bold text-[#234745]">
                             {isEn ? 'Upload Company Logo' : 'إرفاق شعار الشركة'}
@@ -2416,6 +2423,47 @@ export default function Product() {
                             )}
                           </label>
                         </div>
+
+                        {/* Greeting Message & Company Name (For Featured / Premium Corporate Packages: Content + Packaging + Logo + Message) */}
+                        {!isClassicCorporate && (
+                          <>
+                            {/* Company Name */}
+                            <div className="flex flex-col gap-1.5 w-full text-start z-10">
+                              <label className="text-[13px] font-bold text-[#234745]">
+                                {isEn ? 'Company Name' : 'اسم الشركة'}
+                              </label>
+                              <input
+                                type="text"
+                                value={companyName}
+                                onChange={(e) => setCompanyName(e.target.value)}
+                                placeholder={
+                                  isEn ? 'e.g. Acme Corp' : 'مثال: شركة الأمانة'
+                                }
+                                className="w-full h-[46px] px-4 border border-[#BBCFCD]/60 rounded-[10px] bg-white text-[#234745] text-[14px] font-medium focus:outline-none focus:border-[#234745]"
+                              />
+                            </div>
+
+                            {/* Card Greeting / Message Text */}
+                            <div className="flex flex-col gap-1.5 w-full text-start z-10">
+                              <label className="text-[13px] font-bold text-[#234745]">
+                                {isEn
+                                  ? 'Ribbon & Card Greeting Text'
+                                  : 'نص الشريطة وبطاقة الإهداء'}
+                              </label>
+                              <textarea
+                                rows={2}
+                                value={companyMessage}
+                                onChange={(e) => setCompanyMessage(e.target.value)}
+                                placeholder={
+                                  isEn
+                                    ? 'Write text to be printed on card or ribbon...'
+                                    : 'اكتب النص المطلوب طباعته على الشريطة أو بطاقة الإهداء...'
+                                }
+                                className="w-full p-3 border border-[#BBCFCD]/60 rounded-[10px] bg-white text-[#234745] text-[14px] font-medium focus:outline-none focus:border-[#234745] resize-none"
+                              />
+                            </div>
+                          </>
+                        )}
                       </div>
                     </div>
                   )}

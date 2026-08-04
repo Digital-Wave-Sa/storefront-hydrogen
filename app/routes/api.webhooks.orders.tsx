@@ -31,20 +31,29 @@ export async function action({request, context}: ActionFunctionArgs) {
 
     let stage: 'CONFIRMED' | 'OUT_FOR_DELIVERY' | 'DELIVERED' | null = null;
 
-    const isDelivered =
+    const tagsLower = (payload.tags || '').toLowerCase();
+    const isDeliveredOrPickedUp =
       payload.fulfillments?.some(
-        (f: any) => f.shipment_status === 'delivered',
+        (f: any) =>
+          f.shipment_status === 'delivered' ||
+          f.shipment_status === 'picked_up' ||
+          f.status === 'success',
       ) ||
-      (payload.fulfillment_status === 'fulfilled' &&
-        (payload.tags?.toLowerCase().includes('delivered') ||
-          payload.tags?.toLowerCase().includes('تم التوصيل')));
+      payload.fulfillment_status === 'fulfilled' ||
+      tagsLower.includes('delivered') ||
+      tagsLower.includes('pickedup') ||
+      tagsLower.includes('picked_up') ||
+      tagsLower.includes('completed') ||
+      tagsLower.includes('تم التوصيل') ||
+      tagsLower.includes('تم الاستلام') ||
+      tagsLower.includes('مكتمل');
 
     if (topic === 'orders/create') {
       stage = 'CONFIRMED';
     } else if (topic === 'orders/fulfilled') {
-      stage = isDelivered ? 'DELIVERED' : 'OUT_FOR_DELIVERY';
+      stage = isDeliveredOrPickedUp ? 'DELIVERED' : 'OUT_FOR_DELIVERY';
     } else if (topic === 'orders/updated') {
-      if (isDelivered) {
+      if (isDeliveredOrPickedUp) {
         stage = 'DELIVERED';
       }
     }

@@ -72,14 +72,14 @@ function getEmailTemplate(stage: OrderStage, lang: Language, data: OrderData) {
     CONFIRMED: isEn ? 'Order Confirmed' : 'تم تأكيد طلبك',
     PREPARING: isEn ? 'Preparing Your Order' : 'تحضير طلبك',
     OUT_FOR_DELIVERY: isEn ? 'Out for Delivery' : 'قيد التوصيل',
-    DELIVERED: isEn ? 'Delivered' : 'تم التوصيل'
+    DELIVERED: isEn ? 'Order Completed — How Was Your Experience?' : 'تم استلام/توصيل طلبك — كيف كانت تجربتك؟'
   };
 
   const stageMessages = {
     CONFIRMED: isEn ? 'We have received your order and started processing it.' : 'لقد استلمنا طلبك وبدأنا في معالجته.',
     PREPARING: isEn ? 'Your favorite treats are being freshly prepared right now.' : 'تجري حالياً عملية تحضير حلوياتك المفضلة بعناية.',
     OUT_FOR_DELIVERY: isEn ? 'Our driver is on the way to your doorstep!' : 'مندوبنا في الطريق إلى باب منزلك الآن!',
-    DELIVERED: isEn ? 'Your order has arrived. We hope you love it!' : 'وصل طلبك بنجاح. نأمل أن ينال إعجابك!'
+    DELIVERED: isEn ? 'Your order is completed! We would love to hear your feedback and review of your experience.' : 'تم استلام/توصيل طلبك بنجاح! نود سماع رأيك وتقييمك لتجربتك معنا.'
   };
 
   // Progress Bar Logic

@@ -161,6 +161,88 @@ export async function loader({request, params, context}: LoaderFunctionArgs) {
     };
   }
 
+  if (
+    !targetCollection &&
+    (handle === 'classic-packages' || handle === 'classic')
+  ) {
+    const isEn = storefront.i18n.language === 'EN';
+    const fallbackRes: any = await storefront
+      .query(CORPORATE_PRODUCTS_FALLBACK_QUERY, {
+        variables: {
+          query: 'tag:corporate-classic OR tag:corporate OR tag:classic-packages',
+          country: storefront.i18n.country,
+          language: storefront.i18n.language,
+        },
+        cache: storefront.CacheNone(),
+      })
+      .catch(() => null);
+
+    const tagged = fallbackRes?.taggedProducts?.nodes || [];
+    const all = fallbackRes?.allProducts?.nodes || [];
+    const productNodes = tagged.length > 0 ? tagged : all;
+
+    targetCollection = {
+      id: 'gid://shopify/Collection/classic-packages',
+      handle: 'classic-packages',
+      title: isEn ? 'Classic Corporate Packages' : 'الباقة الكلاسيكية',
+      description: isEn
+        ? 'An elegant gift for various corporate occasions with premium packaging and your company logo.'
+        : 'هدية أنيقة لمختلف المناسبات الرسمية مع تغليف فاخر وشعار شركتك.',
+      image: null,
+      products: {
+        nodes: productNodes,
+        filters: [],
+        pageInfo: {
+          hasPreviousPage: false,
+          hasNextPage: false,
+          startCursor: null,
+          endCursor: null,
+        },
+      },
+    };
+  }
+
+  if (
+    !targetCollection &&
+    (handle === 'featured-packages' || handle === 'featured-corporate')
+  ) {
+    const isEn = storefront.i18n.language === 'EN';
+    const fallbackRes: any = await storefront
+      .query(CORPORATE_PRODUCTS_FALLBACK_QUERY, {
+        variables: {
+          query: 'tag:corporate-featured OR tag:corporate OR tag:featured-packages',
+          country: storefront.i18n.country,
+          language: storefront.i18n.language,
+        },
+        cache: storefront.CacheNone(),
+      })
+      .catch(() => null);
+
+    const tagged = fallbackRes?.taggedProducts?.nodes || [];
+    const all = fallbackRes?.allProducts?.nodes || [];
+    const productNodes = tagged.length > 0 ? tagged : all;
+
+    targetCollection = {
+      id: 'gid://shopify/Collection/featured-packages',
+      handle: 'featured-packages',
+      title: isEn ? 'Featured Corporate Packages' : 'الباقة المميزة',
+      description: isEn
+        ? 'A sophisticated choice for VIP clients and partners, with curated contents and striking packaging.'
+        : 'اختيار راقٍ للعملاء وكبار الشركاء، بمحتوى مدروس وتغليف لافت.',
+      image: null,
+      products: {
+        nodes: productNodes,
+        filters: [],
+        pageInfo: {
+          hasPreviousPage: false,
+          hasNextPage: false,
+          startCursor: null,
+          endCursor: null,
+        },
+      },
+    };
+  }
+
   if (!targetCollection) {
     return redirect(
       params.locale ? `/${params.locale}/collections` : '/collections',
@@ -1660,6 +1742,26 @@ const FEATURED_PRODUCTS_FALLBACK_QUERY = `#graphql
     $language: LanguageCode
   ) @inContext(country: $country, language: $language) {
     taggedProducts: products(first: 100, query: "tag:special-collection OR tag:special_collection OR tag:featured") {
+      nodes {
+        ...HandleProductItem
+      }
+    }
+    allProducts: products(first: 100) {
+      nodes {
+        ...HandleProductItem
+      }
+    }
+  }
+` as const;
+
+const CORPORATE_PRODUCTS_FALLBACK_QUERY = `#graphql
+  ${PRODUCT_ITEM_FRAGMENT}
+  query CorporateProductsFallback(
+    $query: String!
+    $country: CountryCode
+    $language: LanguageCode
+  ) @inContext(country: $country, language: $language) {
+    taggedProducts: products(first: 100, query: $query) {
       nodes {
         ...HandleProductItem
       }

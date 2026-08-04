@@ -169,7 +169,7 @@ export async function loader({request, params, context}: LoaderFunctionArgs) {
     const fallbackRes: any = await storefront
       .query(CORPORATE_PRODUCTS_FALLBACK_QUERY, {
         variables: {
-          query: 'tag:corporate-classic OR tag:corporate OR tag:classic-packages',
+          query: 'tag:corporate-classic OR tag:corporate OR tag:classic',
           country: storefront.i18n.country,
           language: storefront.i18n.language,
         },
@@ -179,7 +179,26 @@ export async function loader({request, params, context}: LoaderFunctionArgs) {
 
     const tagged = fallbackRes?.taggedProducts?.nodes || [];
     const all = fallbackRes?.allProducts?.nodes || [];
-    const productNodes = tagged.length > 0 ? tagged : all;
+    const combined = [...tagged, ...all];
+    const matchingProducts = combined.filter((p: any) =>
+      p.tags?.some((t: string) => {
+        const lower = t.toLowerCase();
+        return (
+          lower.includes('corporate-classic') ||
+          lower.includes('classic') ||
+          lower.includes('corporate')
+        );
+      }),
+    );
+
+    const uniqueProducts = Array.from(
+      new Map(
+        (matchingProducts.length > 0 ? matchingProducts : all).map((p: any) => [
+          p.id,
+          p,
+        ]),
+      ).values(),
+    );
 
     targetCollection = {
       id: 'gid://shopify/Collection/classic-packages',
@@ -190,7 +209,7 @@ export async function loader({request, params, context}: LoaderFunctionArgs) {
         : 'هدية أنيقة لمختلف المناسبات الرسمية مع تغليف فاخر وشعار شركتك.',
       image: null,
       products: {
-        nodes: productNodes,
+        nodes: uniqueProducts,
         filters: [],
         pageInfo: {
           hasPreviousPage: false,
@@ -210,7 +229,7 @@ export async function loader({request, params, context}: LoaderFunctionArgs) {
     const fallbackRes: any = await storefront
       .query(CORPORATE_PRODUCTS_FALLBACK_QUERY, {
         variables: {
-          query: 'tag:corporate-featured OR tag:corporate OR tag:featured-packages',
+          query: 'tag:corporate-featured OR tag:corporate OR tag:featured',
           country: storefront.i18n.country,
           language: storefront.i18n.language,
         },
@@ -220,7 +239,26 @@ export async function loader({request, params, context}: LoaderFunctionArgs) {
 
     const tagged = fallbackRes?.taggedProducts?.nodes || [];
     const all = fallbackRes?.allProducts?.nodes || [];
-    const productNodes = tagged.length > 0 ? tagged : all;
+    const combined = [...tagged, ...all];
+    const matchingProducts = combined.filter((p: any) =>
+      p.tags?.some((t: string) => {
+        const lower = t.toLowerCase();
+        return (
+          lower.includes('corporate-featured') ||
+          lower.includes('featured') ||
+          lower.includes('corporate')
+        );
+      }),
+    );
+
+    const uniqueProducts = Array.from(
+      new Map(
+        (matchingProducts.length > 0 ? matchingProducts : all).map((p: any) => [
+          p.id,
+          p,
+        ]),
+      ).values(),
+    );
 
     targetCollection = {
       id: 'gid://shopify/Collection/featured-packages',
@@ -231,7 +269,7 @@ export async function loader({request, params, context}: LoaderFunctionArgs) {
         : 'اختيار راقٍ للعملاء وكبار الشركاء، بمحتوى مدروس وتغليف لافت.',
       image: null,
       products: {
-        nodes: productNodes,
+        nodes: uniqueProducts,
         filters: [],
         pageInfo: {
           hasPreviousPage: false,

@@ -422,6 +422,68 @@ function CorporateProductCard({
   );
 }
 
+function B2BCompanyModal({
+  isOpen,
+  onClose,
+  onOpenCustomQuote,
+  isEn,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onOpenCustomQuote: () => void;
+  isEn: boolean;
+}) {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in" dir={isEn ? 'ltr' : 'rtl'}>
+      <div className="bg-white rounded-[24px] max-w-[540px] w-full p-6 sm:p-8 shadow-2xl relative border border-[#E6E2D8] text-center">
+        {/* Close Button */}
+        <button
+          onClick={onClose}
+          className="absolute top-4 start-4 w-9 h-9 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 flex items-center justify-center font-bold text-[16px] transition-colors cursor-pointer"
+        >
+          ✕
+        </button>
+
+        <div className="w-16 h-16 bg-[#FEF8EB] text-[#234745] border border-[#C5A96A]/40 rounded-full flex items-center justify-center text-3xl mx-auto mb-4">
+          🏢
+        </div>
+
+        <h3 className="text-[22px] sm:text-[24px] font-bold text-[#234745] mb-2" style={{fontFamily: isEn ? 'inherit' : "'Bahij Janna', sans-serif"}}>
+          {isEn ? 'Corporate Accounts Only' : 'حسابات الشركات والمؤسسات فقط'}
+        </h3>
+
+        <p className="text-[14px] text-[#8B9895] leading-relaxed mb-6">
+          {isEn
+            ? 'This collection and wholesale pricing are reserved exclusively for registered Corporate & Company accounts. Please log in with a corporate account or request a custom quote.'
+            : 'هذه التشكيلة وأسعار الجملة مخصصة حصرياً لحسابات الشركات والمؤسسات المسجلة. يرجى تسجيل الدخول بحساب شركة أو تقديم طلب عرض سعر مخصص.'}
+        </p>
+
+        <div className="flex flex-col gap-3">
+          <Link
+            to={isEn ? '/en/account/login' : '/account/login'}
+            className="w-full bg-[#234745] text-white font-bold py-3.5 rounded-full text-[15px] hover:bg-[#1b3735] transition-all shadow-sm block"
+          >
+            {isEn ? 'Log in as Corporate Account' : 'تسجيل الدخول بحساب شركة'}
+          </Link>
+
+          <button
+            type="button"
+            onClick={() => {
+              onClose();
+              onOpenCustomQuote();
+            }}
+            className="w-full bg-[#FEF8EB] text-[#906B51] border border-[#C5A96A]/60 font-bold py-3.5 rounded-full text-[15px] hover:bg-[#fbf2dd] transition-all cursor-pointer"
+          >
+            {isEn ? 'Request Custom Quote' : 'طلب عرض سعر مخصص'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function CustomQuoteModal({
   isOpen,
   onClose,
@@ -641,6 +703,7 @@ export default function CorporatePage() {
   const [formSubmitted, setFormSubmitted] = useState(false);
   const [selectedPackage, setSelectedPackage] = useState<string>('');
   const [isCustomModalOpen, setIsCustomModalOpen] = useState(false);
+  const [isB2BModalOpen, setIsB2BModalOpen] = useState(false);
 
   // Dynamic Packages Builder (Shopify Collections/Products or Default Config)
   const packageCollections = (collections || []).filter(
@@ -1955,6 +2018,14 @@ export default function CorporatePage() {
       <CustomQuoteModal
         isOpen={isCustomModalOpen}
         onClose={() => setIsCustomModalOpen(false)}
+        isEn={isEn}
+      />
+
+      {/* B2B Company Account Restriction Modal */}
+      <B2BCompanyModal
+        isOpen={isB2BModalOpen}
+        onClose={() => setIsB2BModalOpen(false)}
+        onOpenCustomQuote={() => setIsCustomModalOpen(true)}
         isEn={isEn}
       />
     </div>

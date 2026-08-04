@@ -1764,17 +1764,18 @@ export default function CorporatePage() {
 
                 {/* Contact 2: Direct Line */}
                 <div className="flex flex-col gap-1">
-                  <span className="text-[#234745] font-bold text-[16px] flex flex-wrap items-center gap-2">
-                    <span>{isEn ? 'Direct Line' : 'خط الشركات المباشر'}</span>
+                  <div className="text-[#234745] font-bold text-[16px] flex items-center gap-2" dir={isEn ? 'ltr' : 'rtl'}>
+                    <span>{isEn ? 'Direct Line: ' : 'خط الشركات المباشر: '}</span>
                     <a
                       href="https://wa.me/966920017070"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-[#906B51] hover:underline font-bold text-[16px] dir-ltr inline-block font-en"
+                      className="text-[#906B51] hover:underline font-bold text-[16px] font-en"
+                      dir="ltr"
                     >
                       +966 9200 17070
                     </a>
-                  </span>
+                  </div>
                 </div>
 
                 {/* Contact 3: Email */}

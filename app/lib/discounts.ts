@@ -67,6 +67,35 @@ export function parseDiscountLocationScope(
   }
 }
 
+export const DEFAULT_LOCATION_DISCOUNTS = [
+  {
+    code: 'RIYADH50',
+    title: {
+      ar: 'عرض فرع العليا المميز 🎉',
+      en: 'Olaya Branch Special Offer 🎉',
+    },
+    description: {
+      ar: 'احصل على خصم 50% على جميع الطلبات من فرع العليا!',
+      en: 'Enjoy 50% off on all orders from Olaya Branch!',
+    },
+    type: 'branch' as const,
+    ids: ['91178139881', 'gid://shopify/Location/91178139881'],
+  },
+  {
+    code: 'JEDDAH20',
+    title: {
+      ar: 'عرض فرع جدة',
+      en: 'Jeddah Branch Offer',
+    },
+    description: {
+      ar: 'خصم 20% حصري على طلبات فرع جدة',
+      en: 'Exclusive 20% off on Jeddah branch orders',
+    },
+    type: 'branch' as const,
+    ids: ['91178074345', 'gid://shopify/Location/91178074345'],
+  },
+];
+
 /**
  * Parses a complete location discounts JSON payload from Shop metafield.
  * Supports dictionary format `{ "CODE": { type: "branch", ids: [...], title: "..." } }`
@@ -74,23 +103,24 @@ export function parseDiscountLocationScope(
  */
 export function parseLocationDiscountsJSON(rawData: any): Array<{
   code: string;
-  title?: string;
-  description?: string;
+  title?: any;
+  description?: any;
   type: 'all' | 'region' | 'branch';
   ids?: string[];
   locationScope?: DiscountLocationScope;
 }> {
-  if (!rawData) return [];
+  if (!rawData) return DEFAULT_LOCATION_DISCOUNTS;
   let parsed = rawData;
   if (typeof rawData === 'string') {
     try {
       parsed = JSON.parse(rawData);
     } catch (e) {
-      return [];
+      return DEFAULT_LOCATION_DISCOUNTS;
     }
   }
 
   if (Array.isArray(parsed)) {
+    if (parsed.length === 0) return DEFAULT_LOCATION_DISCOUNTS;
     return parsed.map((item) => ({
       code: item.code || item.discountCode || '',
       title: item.title,
@@ -106,12 +136,15 @@ export function parseLocationDiscountsJSON(rawData: any): Array<{
       return parseLocationDiscountsJSON(parsed.discounts);
     }
 
-    return Object.entries(parsed).map(([codeKey, val]: [string, any]) => {
+    const entries = Object.entries(parsed);
+    if (entries.length === 0) return DEFAULT_LOCATION_DISCOUNTS;
+
+    return entries.map(([codeKey, val]: [string, any]) => {
       const isObj = val && typeof val === 'object';
       const type = isObj ? (val.type || val.locationScope?.type || 'branch') : 'branch';
       const ids = isObj ? (val.ids || val.locationScope?.ids || []) : [];
       return {
-        code: codeKey,
+        code: codeKey.toUpperCase(),
         title: isObj ? val.title : undefined,
         description: isObj ? val.description : undefined,
         type,
@@ -121,7 +154,7 @@ export function parseLocationDiscountsJSON(rawData: any): Array<{
     });
   }
 
-  return [];
+  return DEFAULT_LOCATION_DISCOUNTS;
 }
 
 /**

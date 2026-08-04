@@ -234,6 +234,63 @@ export async function action({request, context}: Route.ActionArgs) {
         const isEn = context.storefront.i18n.language === 'EN';
 
         if (formDiscountCode) {
+          const submittedCode = String(formDiscountCode).trim().toUpperCase();
+
+          // --- LOCATION BASED DISCOUNT VALIDATION ---
+          try {
+            const { parseLocationDiscountsJSON, isDiscountValidForLocation } = await import('~/lib/discounts');
+            let locationDiscountsData: any = null;
+            try {
+              const shopMetaRes = (await context.storefront.query(`#graphql
+                query GetLocationDiscountsForCart {
+                  shop {
+                    locationDiscounts: metafield(namespace: "custom", key: "location_discounts") { value }
+                    locationDiscountsAlt: metafield(namespace: "location", key: "discounts") { value }
+                  }
+                }
+              `, { cache: context.storefront.CacheNone() })) as any;
+              locationDiscountsData = shopMetaRes?.shop?.locationDiscounts?.value || shopMetaRes?.shop?.locationDiscountsAlt?.value || null;
+            } catch (e) {}
+
+            const locationDiscounts = parseLocationDiscountsJSON(locationDiscountsData);
+            const matchedLocDiscount = locationDiscounts.find((d: any) => d.code?.toUpperCase() === submittedCode);
+
+            if (matchedLocDiscount) {
+              const currentCart = await cart.get();
+              const cartAttributes = currentCart?.attributes || [];
+
+              const selectedBranchId =
+                cartAttributes.find((a: any) => ['branch id', 'branch_id', 'custom.branch_id'].includes(a.key.toLowerCase().trim()))?.value ||
+                (await context.session.get('selectedLocationId')) ||
+                '';
+
+              const selectedCity =
+                cartAttributes.find((a: any) => ['city', 'region'].includes(a.key.toLowerCase().trim()))?.value ||
+                (await context.session.get('selectedCity')) ||
+                '';
+
+              const isValidLoc = isDiscountValidForLocation(matchedLocDiscount, selectedBranchId, selectedCity);
+
+              if (!isValidLoc) {
+                const selectedBranchName =
+                  cartAttributes.find((a: any) => a.key.toLowerCase().trim() === 'branch')?.value ||
+                  (await context.session.get('selectedLocationName')) ||
+                  '';
+
+                return data(
+                  {
+                    error: isEn
+                      ? `Discount code "${submittedCode}" is only valid for its specific branch and cannot be used with ${selectedBranchName || 'your selected branch'}.`
+                      : `كود الخصم "${submittedCode}" مخصص لفرع محدد ولا يمكن استخدامه مع ${selectedBranchName || 'الفرع الحالي'}.`,
+                  },
+                  {status: 400},
+                );
+              }
+            }
+          } catch (locErr) {
+            console.error('[CART] Location discount check error:', locErr);
+          }
+
           try {
             const {getAdminToken} = await import('~/lib/shopify-admin.server');
             const adminToken = await getAdminToken(context.env);

@@ -7,6 +7,8 @@ import { useAside } from '~/components/Aside';
 import { Price, SaudiRiyalSymbol } from './Price';
 import { DeliveryPickupModal } from './DeliveryPickupModal';
 
+import { isDiscountValidForLocation, parseLocationDiscountsJSON } from '~/lib/discounts';
+
 type CartSummaryProps = {
   cart: OptimisticCart<CartApiQueryFragment | null>;
   layout: CartLayout;
@@ -198,7 +200,17 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
   const dynamicTimeSlots = selectedDate ? generateDynamicSlots(currentBranch, isEn, fulfillmentType, selectedDate) : [];
   const isTimeSlotInvalid = !!timeSlot && !dynamicTimeSlots.includes(timeSlot);
 
-  const canCheckout = isMinOrderMet && isBranchSelected && !isBranchHidden && !isOutOfRange && !hasOutOfStockItems && !isTimeSlotInvalid && !!selectedDate && !!timeSlot;
+  // Validate active discount codes against location restrictions
+  const locationDiscountsList = parseLocationDiscountsJSON(rootData?.locationDiscounts);
+  const activeDiscountCodes = cart?.discountCodes?.filter((d: any) => d.applicable)?.map((d: any) => d.code) || [];
+
+  const invalidActiveDiscount = activeDiscountCodes.find((code: string) => {
+    const matched = locationDiscountsList.find((d: any) => d.code?.toUpperCase() === code.toUpperCase());
+    if (!matched) return false;
+    return !isDiscountValidForLocation(matched, branchId, rootData?.selectedCity);
+  });
+
+  const canCheckout = isMinOrderMet && isBranchSelected && !isBranchHidden && !isOutOfRange && !hasOutOfStockItems && !isTimeSlotInvalid && !!selectedDate && !!timeSlot && !invalidActiveDiscount;
 
   const branchHoursStr = (() => {
     if (!currentBranch) return '';
@@ -338,6 +350,8 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
                 discountsHeadingId={discountsHeadingId}
                 discountCodeInputId={discountCodeInputId}
                 isEn={isEn}
+                invalidActiveDiscount={invalidActiveDiscount}
+                branchName={branch}
               />
 
               {/* Loyalty Redemption */}
@@ -590,7 +604,11 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
                         : null
                   }
                   validationError={
-                    !isMinOrderMet ? (
+                    invalidActiveDiscount ? (
+                      isEn
+                        ? `Discount code "${invalidActiveDiscount}" is not valid for ${branch || 'the selected branch'}`
+                        : `كود الخصم "${invalidActiveDiscount}" غير صالح لـ ${branch || 'الفرع المختار'}`
+                    ) : !isMinOrderMet ? (
                       isEn ? (
                         <span className="flex items-center justify-center gap-1">Minimum order is <SaudiRiyalSymbol className="h-3 w-auto" /> {minOrderValue}</span>
                       ) : (
@@ -1354,12 +1372,16 @@ function CartDiscounts({
   discountsHeadingId,
   discountCodeInputId,
   isEn,
+  invalidActiveDiscount,
+  branchName,
 }: {
   discountCodes?: CartApiQueryFragment['discountCodes'];
   cart?: any;
   discountsHeadingId: string;
   discountCodeInputId: string;
   isEn: boolean;
+  invalidActiveDiscount?: string;
+  branchName?: string;
 }) {
   const [showInput, setShowInput] = useState(false);
   const codes: string[] =
@@ -1375,34 +1397,45 @@ function CartDiscounts({
   const hasAutomaticDiscount = hasAllocations && codes.length === 0;
 
   return (
-    <div aria-label="Discounts" className="w-full relative">
+    <div aria-label="Discounts" className="w-full relative space-y-2">
       <dl hidden={!codes.length}>
         <div>
           <dt id={discountsHeadingId} className="sr-only">Discounts</dt>
           <UpdateDiscountForm>
             {(fetcher: any) => {
               const isRemoving = fetcher.state !== 'idle';
+              const isInvalid = !!invalidActiveDiscount;
               return (
-                <div className={`flex items-center justify-between bg-green-50 border border-green-200 rounded-xl px-4 py-3 transition-opacity ${isRemoving ? 'opacity-50' : 'opacity-100'}`}>
-                  <div className="flex items-center gap-2 text-green-700">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>
-                    <div>
-                      <span className="font-bold text-[14px] leading-none block">
-                        {codes?.join(', ')}
-                      </span>
-                      <span className="text-[11px] font-medium opacity-80 block mt-0.5">
-                        {isEn ? 'Voucher applied' : 'تم تطبيق الكود'}
-                      </span>
+                <div className="flex flex-col gap-2">
+                  <div className={`flex items-center justify-between border rounded-xl px-4 py-3 transition-opacity ${
+                    isInvalid ? 'bg-red-50 border-red-300 text-red-800' : 'bg-green-50 border-green-200 text-green-700'
+                  } ${isRemoving ? 'opacity-50' : 'opacity-100'}`}>
+                    <div className="flex items-center gap-2">
+                      {isInvalid ? (
+                        <span className="text-base">⚠️</span>
+                      ) : (
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>
+                      )}
+                      <div>
+                        <span className="font-bold text-[14px] leading-none block">
+                          {codes?.join(', ')}
+                        </span>
+                        <span className="text-[11px] font-medium opacity-80 block mt-0.5">
+                          {isInvalid
+                            ? (isEn ? `Not valid for ${branchName || 'selected branch'}` : `غير متاح لـ ${branchName || 'الفرع المختار'}`)
+                            : (isEn ? 'Voucher applied' : 'تم تطبيق الكود')}
+                        </span>
+                      </div>
                     </div>
+                    <button
+                      type="submit"
+                      aria-label="Remove discount"
+                      disabled={isRemoving}
+                      className={`${isInvalid ? 'text-red-600 hover:text-red-800' : 'text-green-600 hover:text-red-500'} transition-colors p-1`}
+                    >
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    </button>
                   </div>
-                  <button
-                    type="submit"
-                    aria-label="Remove discount"
-                    disabled={isRemoving}
-                    className="text-green-600 hover:text-red-500 transition-colors p-1"
-                  >
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                  </button>
                 </div>
               );
             }}

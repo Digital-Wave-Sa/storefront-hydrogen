@@ -248,9 +248,20 @@ async function loadCriticalData({context}: Route.LoaderArgs) {
       console.error('Failed to fetch megamenu data:', error);
       return { nodes: [] };
     }),
+    storefront.query(`#graphql
+      query GetShopLocationDiscounts {
+        shop {
+          locationDiscounts: metafield(namespace: "custom", key: "location_discounts") { value }
+          locationDiscountsAlt: metafield(namespace: "location", key: "discounts") { value }
+        }
+      }
+    `, {
+      cache: storefront.CacheLong(),
+    }).then(res => res.shop?.locationDiscounts?.value || res.shop?.locationDiscountsAlt?.value || null)
+      .catch(() => null),
   ]);
 
-  return {header, locations, reviews, megaMenuData};
+  return {header, locations, reviews, megaMenuData, locationDiscounts: locationDiscountsRaw};
 }
 
 /**

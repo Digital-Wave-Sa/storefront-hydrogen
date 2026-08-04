@@ -126,13 +126,22 @@ function SearchResultsPredictiveCollections({
   collections,
   closeSearch,
 }: PartialPredictiveSearchResult<'collections'>) {
-  if (!collections.length) return null;
+  const filteredCollections = collections.filter(
+    (c) =>
+      !c.handle.includes('corporate') &&
+      !c.handle.includes('package') &&
+      !c.handle.includes('b2b') &&
+      c.handle !== 'classic-packages' &&
+      c.handle !== 'featured-packages' &&
+      c.handle !== 'custom-packages',
+  );
+  if (!filteredCollections.length) return null;
 
   return (
     <div className="predictive-search-result" key="collections">
       <h5>Collections</h5>
       <ul>
-        {collections.map((collection) => {
+        {filteredCollections.map((collection) => {
           const collectionUrl = urlWithTrackingParams({
             baseUrl: `/collections/${collection.handle}`,
             trackingParams: (collection as any).trackingParameters,

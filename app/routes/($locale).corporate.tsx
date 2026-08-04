@@ -514,7 +514,7 @@ function CustomQuoteModal({
     >
       <div
         className="bg-[#FFFDF9] rounded-[24px] max-w-[640px] w-full p-6 sm:p-8 relative max-h-[92vh] overflow-y-auto border border-[#E6E2D8] text-start"
-        style={{fontFamily: isEn ? 'inherit' : "'EnglishDigits', 'GE Dinar One', sans-serif"}}
+        style={{fontFamily: isEn ? "'EnglishDigits', 'Gotham Light', 'Gotham', 'Inter', 'Segoe UI', sans-serif" : "'EnglishDigits', 'GE Dinar One', 'Gotham Light', 'Gotham', 'Inter', 'Segoe UI', sans-serif"}}
       >
         {/* Close Button */}
         <button
@@ -536,7 +536,7 @@ function CustomQuoteModal({
           </div>
           <h3
             className="text-[24px] sm:text-[26px] font-bold text-[#234745] m-0 leading-tight"
-            style={{fontFamily: isEn ? 'inherit' : "'EnglishDigits', 'GE Dinar One', sans-serif"}}
+            style={{fontFamily: isEn ? "'EnglishDigits', 'Gotham Light', 'Gotham', 'Inter', 'Segoe UI', sans-serif" : "'EnglishDigits', 'GE Dinar One', 'Gotham Light', 'Gotham', 'Inter', 'Segoe UI', sans-serif"}}
           >
             {isEn
               ? 'Export & Custom Corporate Quote Request'

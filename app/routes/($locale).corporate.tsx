@@ -1753,7 +1753,7 @@ export default function CorporatePage() {
                     rel="noopener noreferrer"
                     className="text-[#234745] font-bold text-[16px] hover:underline"
                   >
-                    {isEn ? 'Corporate WhatsApp' : 'WhatsApp للشركات'}
+                    {isEn ? 'Corporate WhatsApp' : 'واتساب للشركات'}
                   </a>
                   <span className="text-[#9FB7AE] font-medium text-[14px]">
                     {isEn

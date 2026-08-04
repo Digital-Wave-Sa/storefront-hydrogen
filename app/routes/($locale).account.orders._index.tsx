@@ -792,107 +792,79 @@ function OrderCard({order, isEn}: {order: OrderItemFragment; isEn: boolean}) {
   const isPickup = checkIsPickupOrder(order);
 
   const fulfillments = (order as any).fulfillments || [];
-  const shipmentStatuses = fulfillments
-    .map((f: any) => (f.shipment_status || f.shipmentStatus || f.displayStatus || f.status || '').toLowerCase())
-    .filter(Boolean);
 
+  // Collect ERP-assigned Shopify API tags as exact keys (per ERP→Shopify status mapping)
   const rawTags = (order as any).tags
     ? typeof (order as any).tags === 'string'
-      ? (order as any).tags.split(',').map((t: string) => t.trim().toLowerCase())
+      ? (order as any).tags.split(',').map((t: string) => t.trim().toLowerCase().replace(/[\s]/g, '_'))
       : Array.isArray((order as any).tags)
-        ? (order as any).tags.map((t: string) => String(t).toLowerCase())
+        ? (order as any).tags.map((t: string) => String(t).trim().toLowerCase().replace(/[\s]/g, '_'))
         : []
     : [];
 
-  const customAttrs = (order as any).customAttributes || (order as any).note_attributes || [];
-  const attrValues = customAttrs.map((a: any) => String(a.value || '').toLowerCase());
+  const tagSet = new Set(rawTags);
 
-  const allStatusTokens = [
-    ...rawTags,
-    ...attrValues,
-    ...shipmentStatuses,
-    String(order.fulfillmentStatus || '').toLowerCase(),
-  ].map((s) => s.replace(/[\s_]/g, '-').trim()).filter(Boolean);
+  // Shipment-level statuses from fulfillment records
+  const shipmentStatuses = fulfillments
+    .map((f: any) => (f.shipment_status || f.shipmentStatus || f.displayStatus || f.status || '').toLowerCase().replace(/[\s]/g, '_'))
+    .filter(Boolean);
+  const shipmentSet = new Set(shipmentStatuses);
 
-  const hasStatus = (...keywords: string[]) => {
-    return keywords.some((kw) => {
-      const target = kw.toLowerCase().replace(/[\s_]/g, '-').trim();
-      return allStatusTokens.some(
-        (st) => st === target || st.includes(target) || target.includes(st),
-      );
-    });
-  };
+  // Primary: Shopify native displayFulfillmentStatus
+  const fs = String(order.fulfillmentStatus || 'UNFULFILLED').toUpperCase();
+
+  // Helper: check if any ERP tag exactly matches any of the given keys
+  const hasTag = (...keys: string[]) => keys.some((k) => tagSet.has(k));
+  const hasShipment = (...keys: string[]) => keys.some((k) => shipmentSet.has(k));
 
   const isCancelled = !!(
     (order as any).canceledAt ||
     order.financialStatus === 'REFUNDED' ||
-    (order.fulfillmentStatus as any) === 'CANCELLED'
+    fs === 'CANCELLED'
   );
 
-  // Default: UNFULFILLED / new order = "Order Received" (Step 1)
+  // Default: UNFULFILLED / new order = “Order Received” (Step 1)
   let statusEn = 'Order Received';
   let statusAr = 'تم استلام الطلب';
-  let statusColor = '#906B51'; // Gold/Brown
+  let statusColor = '#906B51';
 
   if (isCancelled) {
     statusEn = 'Cancelled';
     statusAr = 'ملغاة';
-    statusColor = '#E64950'; // Red
+    statusColor = '#E64950';
   } else if (
-    hasStatus('failure', 'failed', 'expired', 'attempted_delivery', 'تعذر', 'انتهت')
+    hasTag('failure', 'تعذر_التسليم', 'انتهت_مدة_الاستلام') ||
+    hasShipment('failure', 'failed', 'attempted_delivery')
   ) {
     statusEn = isPickup ? 'Pickup Period Expired' : 'Delivery Attempt Failed';
     statusAr = isPickup ? 'انتهت مدة الاستلام' : 'تعذر التسليم';
-    statusColor = '#E64950'; // Red
+    statusColor = '#E64950';
   } else if (
-    order.fulfillmentStatus === 'FULFILLED' ||
-    hasStatus('delivered', 'picked-up', 'picked_up', 'picked', 'تم-التسليم', 'تم-الاستلام')
+    fs === 'FULFILLED' ||
+    hasTag('delivered', 'picked_up', 'تم_التسليم', 'تم_الاستلام') ||
+    hasShipment('delivered', 'picked_up')
   ) {
     statusEn = isPickup ? 'Order Picked Up' : 'Delivered Successfully';
     statusAr = isPickup ? 'تم استلام الطلب' : 'تم التسليم بنجاح';
-    statusColor = '#234745'; // Dark green
+    statusColor = '#234745';
   } else if (
-    hasStatus(
-      'ready-for-pickup',
-      'ready_for_pickup',
-      'ready-for-delivery',
-      'out-for-delivery',
-      'out_for_delivery',
-      'in-transit',
-      'in_transit',
-      'on-the-way',
-      'on_the_way',
-      'جاهز',
-      'جاهز-للاستلام',
-      'جاهز-للتسليم',
-      'في-الطريق',
-    )
+    hasTag('ready_for_pickup', 'in_transit', 'out_for_delivery', 'جاهز_للاستلام', 'في_الطريق') ||
+    hasShipment('ready_for_pickup', 'in_transit', 'out_for_delivery')
   ) {
     statusEn = isPickup ? 'Ready for Pickup' : 'Out for Delivery';
     statusAr = isPickup ? 'الطلب جاهز للاستلام' : 'الطلب في الطريق إليك';
-    statusColor = '#004F59'; // Teal
+    statusColor = '#004F59';
   } else if (
-    order.fulfillmentStatus === 'IN_PROGRESS' ||
-    order.fulfillmentStatus === 'PARTIALLY_FULFILLED' ||
-    hasStatus(
-      'in-progress',
-      'in_progress',
-      'processing',
-      'submitted',
-      'label-printed',
-      'preparing',
-      'being-prepared',
-      'جاري-تجهيز-الطلب',
-      'جاري-التجهيز',
-      'قيد-التجهيز',
-      'تجهيز',
-    )
+    fs === 'IN_PROGRESS' ||
+    fs === 'PARTIALLY_FULFILLED' ||
+    hasTag('in_progress', 'processing', 'جاري_التجهيز') ||
+    hasShipment('in_progress', 'label_printed', 'submitted')
   ) {
     statusEn = 'Order is Being Prepared';
     statusAr = 'جاري تجهيز الطلب';
-    statusColor = '#906B51'; // Gold/Brown
+    statusColor = '#906B51';
   } else if (
-    hasStatus('confirmed', 'تأكيد')
+    hasTag('confirmed', 'تم_التأكيد')
   ) {
     statusEn = 'Order Confirmed';
     statusAr = 'تم التأكيد';

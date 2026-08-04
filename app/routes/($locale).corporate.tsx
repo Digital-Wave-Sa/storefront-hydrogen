@@ -657,8 +657,8 @@ function CustomQuoteModal({
                 </label>
                 <input
                   type="text"
-                  placeholder={isEn ? 'e.g. 150-250 SAR' : 'مثال: ١٥٠ - ٢٥٠ ريال'}
-                  className="w-full border border-[#E6E2D8] rounded-[12px] px-4 py-3 text-[14px] text-[#234745] focus:outline-none focus:border-[#234745] bg-white"
+                  placeholder={isEn ? 'e.g. 150-250 SAR' : 'مثال: 150 - 250 ريال'}
+                  className="w-full border border-[#E6E2D8] rounded-[12px] px-4 py-3 text-[14px] text-[#234745] focus:outline-none focus:border-[#234745] bg-white font-en"
                 />
               </div>
             </div>

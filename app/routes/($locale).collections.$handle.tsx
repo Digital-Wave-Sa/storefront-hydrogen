@@ -176,8 +176,14 @@ export async function loader({request, params, context}: LoaderFunctionArgs) {
       })
       .catch(() => null);
 
+    const tagged = fallbackRes?.taggedCorporate?.nodes || [];
+    const latest = fallbackRes?.latestProducts?.nodes || [];
     const all = fallbackRes?.allProducts?.nodes || [];
-    const productNodes = all.filter((p: any) =>
+    const combined = Array.from(
+      new Map([...tagged, ...latest, ...all].map((p: any) => [p.id, p])).values()
+    );
+
+    const productNodes = combined.filter((p: any) =>
       p.tags?.some((t: string) => {
         const lower = t.toLowerCase().trim();
         const clean = lower.replace(/[-_]/g, '');
@@ -236,8 +242,14 @@ export async function loader({request, params, context}: LoaderFunctionArgs) {
       })
       .catch(() => null);
 
+    const tagged = fallbackRes?.taggedCorporate?.nodes || [];
+    const latest = fallbackRes?.latestProducts?.nodes || [];
     const all = fallbackRes?.allProducts?.nodes || [];
-    const productNodes = all.filter((p: any) =>
+    const combined = Array.from(
+      new Map([...tagged, ...latest, ...all].map((p: any) => [p.id, p])).values()
+    );
+
+    const productNodes = combined.filter((p: any) =>
       p.tags?.some((t: string) => {
         const lower = t.toLowerCase().trim();
         const clean = lower.replace(/[-_]/g, '');
@@ -1807,6 +1819,16 @@ const CORPORATE_PRODUCTS_FALLBACK_QUERY = `#graphql
     $country: CountryCode
     $language: LanguageCode
   ) @inContext(country: $country, language: $language) {
+    taggedCorporate: products(first: 250, query: "tag:corporate* OR tag:classic* OR tag:featured* OR corporate") {
+      nodes {
+        ...HandleProductItem
+      }
+    }
+    latestProducts: products(first: 250, sortKey: CREATED_AT, reverse: true) {
+      nodes {
+        ...HandleProductItem
+      }
+    }
     allProducts: products(first: 250) {
       nodes {
         ...HandleProductItem

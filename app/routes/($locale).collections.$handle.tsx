@@ -533,9 +533,9 @@ export default function Collection() {
               <Pagination connection={collection.products}>
                 {({nodes, isLoading, PreviousLink, NextLink}) => {
                   const effectiveNodes =
-                    nodes && nodes.length > 0
+                    (nodes && nodes.length > 0)
                       ? nodes
-                      : collection.products.nodes || [];
+                      : (collection.products.nodes || []);
                   const activeTagFilters = searchParams
                     .getAll('filter.p.tag')
                     .concat(searchParams.getAll('tag'));
@@ -1765,6 +1765,12 @@ const COLLECTION_QUERY = `#graphql
       ) {
         nodes {
           ...HandleProductItem
+        }
+        edges {
+          cursor
+          node {
+            id
+          }
         }
         filters {
           id

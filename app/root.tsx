@@ -203,7 +203,7 @@ export async function loader(args: Route.LoaderArgs) {
 async function loadCriticalData({context}: Route.LoaderArgs) {
   const {storefront} = context;
 
-  const [header, locations, reviews, megaMenuData] = await Promise.all([
+  const [header, locations, reviews, megaMenuData, locationDiscountsRaw] = await Promise.all([
     storefront.query(HEADER_QUERY, {
       cache: storefront.CacheLong(),
       variables: {

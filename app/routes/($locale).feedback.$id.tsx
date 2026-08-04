@@ -8,31 +8,148 @@ import {useI18n} from '~/lib/i18n';
 export async function loader({params, context}: Route.LoaderArgs) {
   const {id} = params;
   const locale = params.locale || 'ar';
+  const isEn = locale === 'en';
 
-  // In a real scenario, we would fetch order details here using the Admin API
-  // For now, we'll mock the order data with Olaya Branch Location ID
+  // Try to fetch real order from Admin API
+  try {
+    const {getAdminToken, getAdminDomain} = await import('~/lib/shopify-admin.server');
+    const adminToken = await getAdminToken(context.env);
+    const adminDomain = getAdminDomain(context.env);
+
+    // Search by order number (id param may be "1072" or "#1072")
+    const orderNum = String(id).replace('#', '');
+    const res = await fetch(
+      `https://${adminDomain}/admin/api/2024-01/orders.json?name=%23${orderNum}&status=any`,
+      {
+        headers: {
+          'X-Shopify-Access-Token': adminToken,
+          'Content-Type': 'application/json',
+        },
+      },
+    );
+
+    if (res.ok) {
+      const {orders} = (await res.json()) as any;
+      const o = orders?.[0];
+
+      if (o) {
+        // Build items from real line items
+        const items = (o.line_items || []).map((li: any) => ({
+          id: String(li.id),
+          variantId: li.variant_id ? String(li.variant_id) : null,
+          handle: li.handle || li.product_id ? `product-${li.product_id}` : 'general-feedback',
+          title: li.title || (isEn ? 'Product' : 'منتج'),
+          image:
+            li.image?.src ||
+            'https://cdn.shopify.com/s/files/1/0533/2089/files/placeholder-images-image_large.png',
+          quantity: li.quantity || 1,
+        }));
+
+        // Enrich items with Storefront API translated titles + real images
+        try {
+          if (items.some((i: any) => i.variantId)) {
+            const variantIds = items
+              .filter((i: any) => i.variantId)
+              .map((i: any) => `gid://shopify/ProductVariant/${i.variantId}`);
+
+            const lang = context.storefront.i18n.language;
+            const country = context.storefront.i18n.country;
+            const variantQuery = `
+              query GetVariantInfo($ids: [ID!]!) @inContext(language: ${lang}, country: ${country}) {
+                nodes(ids: $ids) {
+                  ... on ProductVariant {
+                    id
+                    image { url }
+                    product {
+                      title
+                      handle
+                    }
+                  }
+                }
+              }
+            `;
+            const variantResult = (await context.storefront.query(variantQuery as any, {
+              variables: {ids: variantIds},
+              cache: context.storefront.CacheShort(),
+            })) as any;
+
+            const variantMap: Record<string, any> = {};
+            for (const node of variantResult?.nodes || []) {
+              if (node?.id) variantMap[node.id] = node;
+            }
+
+            for (const item of items) {
+              if (item.variantId) {
+                const gid = `gid://shopify/ProductVariant/${item.variantId}`;
+                const v = variantMap[gid];
+                if (v) {
+                  if (v.product?.title) item.title = v.product.title;
+                  if (v.product?.handle) item.handle = v.product.handle;
+                  if (v.image?.url) item.image = v.image.url;
+                }
+              }
+            }
+          }
+        } catch (e) {
+          console.warn('[Feedback Loader] Could not enrich variant data:', e);
+        }
+
+        // Detect branch from shipping line or note_attributes
+        const shippingTitle = o.shipping_lines?.[0]?.title || '';
+        const noteAttrs: Record<string, string> = {};
+        for (const a of o.note_attributes || []) {
+          noteAttrs[(a.name || a.key || '').toLowerCase()] = String(a.value || '');
+        }
+        const branchName =
+          noteAttrs['branch'] ||
+          noteAttrs['فرع'] ||
+          noteAttrs['branch_name'] ||
+          shippingTitle ||
+          (isEn ? 'Saadeddin Branch' : 'فرع سعد الدين');
+
+        const locationId =
+          noteAttrs['location_id'] ||
+          noteAttrs['locationid'] ||
+          o.location_id?.toString() ||
+          '';
+
+        const customerName =
+          o.billing_address?.name ||
+          o.shipping_address?.name ||
+          o.customer?.first_name ||
+          (isEn ? 'Valued Customer' : 'عزيزنا العميل');
+
+        return {
+          orderId: id,
+          locale,
+          order: {
+            name: `#${o.order_number}`,
+            customerName,
+            items,
+            branchName,
+            locationId,
+          },
+        };
+      }
+    }
+  } catch (e) {
+    console.error('[Feedback Loader] Failed to fetch order:', e);
+  }
+
+  // Fallback if order not found
   return {
     orderId: id,
     locale,
     order: {
-      name: `#${id?.substring(0, 4) || '1234'}`,
-      items: [
-        {
-          id: '1',
-          title:
-            locale === 'en'
-              ? 'Pistachio Chocolate Box'
-              : 'بوكس شوكولاتة الفستق',
-          image:
-            'https://cdn.shopify.com/s/files/1/0664/1151/2053/products/pistachio.jpg?v=1664115120',
-          handle: 'pistachio-chocolate',
-        },
-      ],
-      branchName: locale === 'en' ? 'Olaya Branch' : 'فرع العليا',
-      locationId: '114186715445',
+      name: `#${id}`,
+      customerName: isEn ? 'Valued Customer' : 'عزيزنا العميل',
+      items: [],
+      branchName: isEn ? 'Saadeddin Branch' : 'فرع سعد الدين',
+      locationId: '',
     },
   };
 }
+
 
 export default function FeedbackPage() {
   const {orderId, locale, order} = useLoaderData<typeof loader>();
@@ -128,6 +245,7 @@ export default function FeedbackPage() {
               <input type="hidden" name="orderId" value={orderId} />
               <input type="hidden" name="branchName" value={order.branchName} />
               <input type="hidden" name="locationId" value={order.locationId} />
+              <input type="hidden" name="customerName" value={(order as any).customerName || ''} />
 
               {/* Product Rating section */}
               <div className="space-y-4">
@@ -162,6 +280,11 @@ export default function FeedbackPage() {
                         type="hidden"
                         name={`product_${item.id}_rating`}
                         value={productRatings[item.id] || 0}
+                      />
+                      <input
+                        type="hidden"
+                        name={`product_${item.id}_handle`}
+                        value={(item as any).handle || 'general-feedback'}
                       />
                     </div>
                   </div>
@@ -286,30 +409,33 @@ export async function action({request, context, params}: Route.ActionArgs) {
   const formData = await request.formData();
   const orderId = formData.get('orderId');
   const branchName = formData.get('branchName');
-  const locationId = formData.get('locationId') || '114186715445';
+  const locationId = formData.get('locationId') || '';
   const branchRating = formData.get('branch_rating');
   const comment = formData.get('comment');
   const language = params.locale || 'ar';
+  const customerName = formData.get('customerName') || 'Verified Customer';
 
-  // Find all rated products
-  const productRatings: Record<string, number> = {};
+  // Find all rated products — keys are product_{itemId}_rating and product_{itemId}_handle
+  const productRatings: Record<string, {rating: number; handle: string}> = {};
   for (const [key, value] of formData.entries()) {
     if (key.startsWith('product_') && key.endsWith('_rating')) {
       const productId = key.replace('product_', '').replace('_rating', '');
-      productRatings[productId] = parseInt(String(value)) || 0;
+      const handle = String(formData.get(`product_${productId}_handle`) || 'general-feedback');
+      productRatings[productId] = {
+        rating: parseInt(String(value)) || 0,
+        handle,
+      };
     }
   }
 
-  // Submit a review metafield/metaobject entry for each product
-  const promises = Object.entries(productRatings).map(
-    async ([productId, rating]) => {
-      // In our mock loader, product ID 1 maps to pistachio-chocolate
-      const productHandle =
-        productId === '1' ? 'pistachio-chocolate' : 'general-feedback';
+  // If no products rated, still submit a general review with the branch rating
+  const entries = Object.entries(productRatings);
+  const reviewEntries = entries.length > 0 ? entries : [['general', {rating: 0, handle: 'general-feedback'}]];
 
+  const promises = reviewEntries.map(async ([productId, {rating, handle}]) => {
       const apiSubmitData = new FormData();
-      apiSubmitData.append('productHandle', productHandle);
-      apiSubmitData.append('customerName', 'Verified Customer');
+      apiSubmitData.append('productHandle', handle);
+      apiSubmitData.append('customerName', String(customerName));
       apiSubmitData.append('orderId', String(orderId));
       apiSubmitData.append('rating', String(rating));
       apiSubmitData.append('branchRating', String(branchRating));
@@ -323,26 +449,18 @@ export async function action({request, context, params}: Route.ActionArgs) {
 
       const mockRequest = new Request(
         'http://localhost:3000/api/submit-review',
-        {
-          method: 'POST',
-          body: apiSubmitData,
-        },
+        {method: 'POST', body: apiSubmitData},
       );
 
       try {
-        const response = await submitAction({
-          request: mockRequest,
-          context,
-          params: {},
-        } as any);
-        return response;
+        return await submitAction({request: mockRequest, context, params: {}} as any);
       } catch (err) {
-        console.error('Failed to submit product review:', productId, err);
+        console.error('Failed to submit review for product:', productId, err);
         return null;
       }
-    },
-  );
+  });
 
   await Promise.all(promises);
   return {success: true};
 }
+

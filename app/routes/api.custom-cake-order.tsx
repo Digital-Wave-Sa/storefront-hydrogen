@@ -580,6 +580,8 @@ export async function action({request, context}: ActionFunctionArgs) {
           originalUnitPrice: priceNum.toFixed(2),
           requiresShipping: true,
           customAttributes: [
+            { key: 'Item Type', value: 'Custom Cake' },
+            { key: 'no_cod', value: 'true' },
             ...customAttributes,
             ...(finalImageAttr
               ? [
@@ -604,12 +606,6 @@ export async function action({request, context}: ActionFunctionArgs) {
       ],
       note: description,
       tags: ['custom-cake', 'cake-builder', 'disable-cod', 'no-cod', 'hide-cod'],
-      customAttributes: [
-        {key: '_disable_cod', value: 'true'},
-        {key: '_custom_cake', value: 'true'},
-        {key: 'order_type', value: 'custom-cake'},
-        {key: 'tag', value: 'custom-cake'},
-      ],
       taxExempt: true,
     };
 

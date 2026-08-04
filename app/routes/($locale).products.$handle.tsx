@@ -2354,28 +2354,12 @@ export default function Product() {
                             }}
                           >
                             {isEn
-                              ? 'Upload your company logo and customize your greeting card text for this package:'
-                              : 'أرفق شعار شركتك وخصص نص بطاقة الإهداء الخاصة بهذه الباقة:'}
+                              ? 'Upload your company logo to be printed on your package:'
+                              : 'أرفق شعار شركتك لطباعته على الباقة:'}
                           </span>
                         </div>
 
-                        {/* 1. Company Name Field */}
-                        <div className="flex flex-col gap-1.5 w-full text-start z-10">
-                          <label className="text-[13px] font-bold text-[#234745]">
-                            {isEn ? 'Company Name' : 'اسم الشركة'}
-                          </label>
-                          <input
-                            type="text"
-                            value={companyName}
-                            onChange={(e) => setCompanyName(e.target.value)}
-                            placeholder={
-                              isEn ? 'e.g. Acme Corp' : 'مثال: شركة الأمانة'
-                            }
-                            className="w-full h-[46px] px-4 border border-[#BBCFCD]/60 rounded-[10px] bg-white text-[#234745] text-[14px] font-medium focus:outline-none focus:border-[#234745]"
-                          />
-                        </div>
-
-                        {/* 2. Logo Upload Field */}
+                        {/* Logo Upload Field (For Classic: Logo Only) */}
                         <div className="flex flex-col gap-1.5 w-full text-start z-10">
                           <label className="text-[13px] font-bold text-[#234745]">
                             {isEn ? 'Upload Company Logo' : 'إرفاق شعار الشركة'}
@@ -2431,26 +2415,6 @@ export default function Product() {
                               </div>
                             )}
                           </label>
-                        </div>
-
-                        {/* 3. Card Greeting / Message Text */}
-                        <div className="flex flex-col gap-1.5 w-full text-start z-10">
-                          <label className="text-[13px] font-bold text-[#234745]">
-                            {isEn
-                              ? 'Ribbon & Card Greeting Text'
-                              : 'نص الشريطة وبطاقة الإهداء'}
-                          </label>
-                          <textarea
-                            rows={2}
-                            value={companyMessage}
-                            onChange={(e) => setCompanyMessage(e.target.value)}
-                            placeholder={
-                              isEn
-                                ? 'Write text to be printed on card or ribbon...'
-                                : 'اكتب النص المطلوب طباعته على الشريطة أو بطاقة الإهداء...'
-                            }
-                            className="w-full p-3 border border-[#BBCFCD]/60 rounded-[10px] bg-white text-[#234745] text-[14px] font-medium focus:outline-none focus:border-[#234745] resize-none"
-                          />
                         </div>
                       </div>
                     </div>

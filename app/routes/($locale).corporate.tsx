@@ -749,7 +749,7 @@ function CustomQuoteModal({
             >
               <span>
                 {isEn ? 'Email: ' : 'البريد الإلكتروني: '}
-                <a href="mailto:corporate@saadeddin.com" className="font-bold text-[#234745] hover:underline">corporate@saadeddin.com</a>
+                <a href="mailto:info@saadeddin.com" className="font-bold text-[#234745] hover:underline">info@saadeddin.com</a>
               </span>
               <span>•</span>
               <span>
@@ -1781,10 +1781,10 @@ export default function CorporatePage() {
                 {/* Contact 3: Email */}
                 <div className="flex flex-col gap-1">
                   <a
-                    href="mailto:corporate@saadeddin.com"
+                    href="mailto:info@saadeddin.com"
                     className="text-[#234745] font-bold text-[16px] hover:underline"
                   >
-                    corporate@saadeddin.com
+                    info@saadeddin.com
                   </a>
                   <span className="text-[#9FB7AE] font-medium text-[14px]">
                     {isEn ? 'Response within 24 hours' : 'رد خلال 24 ساعة'}

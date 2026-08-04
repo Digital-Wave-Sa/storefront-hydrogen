@@ -179,13 +179,17 @@ export async function loader({request, params, context}: LoaderFunctionArgs) {
     const all = fallbackRes?.allProducts?.nodes || [];
     const productNodes = all.filter((p: any) =>
       p.tags?.some((t: string) => {
-        const clean = t.toLowerCase().replace(/[-_]/g, '');
+        const lower = t.toLowerCase().trim();
+        const clean = lower.replace(/[-_]/g, '');
         return (
-          clean.includes('corporateclassic') ||
-          clean.includes('classicpackages') ||
-          clean === 'corporate-classic' ||
-          clean === 'classic' ||
-          clean === 'corporate'
+          lower === 'corporate-classic' ||
+          lower === 'corporate_classic' ||
+          lower === 'classic-packages' ||
+          lower === 'classic' ||
+          lower === 'corporate' ||
+          clean === 'corporateclassic' ||
+          clean === 'classicpackages' ||
+          clean.includes('corporateclassic')
         );
       }),
     );
@@ -235,12 +239,16 @@ export async function loader({request, params, context}: LoaderFunctionArgs) {
     const all = fallbackRes?.allProducts?.nodes || [];
     const productNodes = all.filter((p: any) =>
       p.tags?.some((t: string) => {
-        const clean = t.toLowerCase().replace(/[-_]/g, '');
+        const lower = t.toLowerCase().trim();
+        const clean = lower.replace(/[-_]/g, '');
         return (
-          clean.includes('corporatefeatured') ||
-          clean.includes('featuredpackages') ||
-          clean === 'corporate-featured' ||
-          clean === 'featured'
+          lower === 'corporate-featured' ||
+          lower === 'corporate_featured' ||
+          lower === 'featured-packages' ||
+          lower === 'featured' ||
+          clean === 'corporatefeatured' ||
+          clean === 'featuredpackages' ||
+          clean.includes('corporatefeatured')
         );
       }),
     );

@@ -528,7 +528,7 @@ function CustomQuoteModal({
         {/* Modal Header */}
         <div className="flex flex-col gap-2 mb-6 pt-1">
           <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-[#FEF8EB] text-[#906B51] font-bold text-[13px] w-max border border-[#E6E2D8]">
-            <span>
+            <span style={{fontFamily: isEn ? "'Gotham Light', 'Gotham', 'Inter', sans-serif" : "'EnglishDigits', 'GE Dinar One', sans-serif"}}>
               {isEn
                 ? 'Custom B2B Quotation (Min 200 Boxes)'
                 : 'طلب عرض سعر مخصص (الحد الأدنى 200 علبة)'}
@@ -536,13 +536,16 @@ function CustomQuoteModal({
           </div>
           <h3
             className="text-[24px] sm:text-[26px] font-bold text-[#234745] m-0 leading-tight"
-            style={{fontFamily: isEn ? "'EnglishDigits', 'Gotham Light', 'Gotham', 'Inter', 'Segoe UI', sans-serif" : "'EnglishDigits', 'GE Dinar One', 'Gotham Light', 'Gotham', 'Inter', 'Segoe UI', sans-serif"}}
+            style={{fontFamily: isEn ? "'Gotham Light', 'Gotham', 'Inter', sans-serif" : "'EnglishDigits', 'GE Dinar One', sans-serif"}}
           >
             {isEn
               ? 'Export & Custom Corporate Quote Request'
               : 'طلب عرض سعر للتصدير والهدايا المخصصة'}
           </h3>
-          <p className="text-[14px] text-[#8B9895] m-0 leading-relaxed">
+          <p
+            className="text-[14px] text-[#8B9895] m-0 leading-relaxed"
+            style={{fontFamily: isEn ? "'Gotham Light', 'Gotham', 'Inter', sans-serif" : "'EnglishDigits', 'GE Dinar One', sans-serif"}}
+          >
             {isEn
               ? 'Fill in your requirements and our export team will respond within 24-48 hours with a custom catalog & pricing.'
               : 'املأ بياناتك وسيقوم فريق التصدير والهدايا المؤسسية بالرد عليك خلال 24-48 ساعة بكتالوج مخصص وأفضل سعر.'}
@@ -554,10 +557,16 @@ function CustomQuoteModal({
             <div className="w-14 h-14 bg-[#234745] text-white rounded-full flex items-center justify-center text-2xl font-bold">
               ✓
             </div>
-            <h4 className="text-[22px] font-bold text-[#234745] m-0">
+            <h4
+              className="text-[22px] font-bold text-[#234745] m-0"
+              style={{fontFamily: isEn ? "'Gotham Light', 'Gotham', 'Inter', sans-serif" : "'EnglishDigits', 'GE Dinar One', sans-serif"}}
+            >
               {isEn ? 'Request Received Successfully!' : 'تم استلام طلبك بنجاح!'}
             </h4>
-            <p className="text-[14px] text-[#8B9895] m-0 leading-relaxed max-w-[480px]">
+            <p
+              className="text-[14px] text-[#8B9895] m-0 leading-relaxed max-w-[480px]"
+              style={{fontFamily: isEn ? "'Gotham Light', 'Gotham', 'Inter', sans-serif" : "'EnglishDigits', 'GE Dinar One', sans-serif"}}
+            >
               {isEn
                 ? 'Your inquiry has been sent to info@saadeddin.com. An account manager will contact you within 24-48 hours.'
                 : 'تم تحويل طلبك لـ info@saadeddin.com وسيتواصل معك مدير حسابك المختص خلال 24-48 ساعة.'}
@@ -569,6 +578,7 @@ function CustomQuoteModal({
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex-1 border border-[#234745] text-[#234745] font-bold py-3.5 px-6 rounded-full text-[14px] flex items-center justify-center gap-2 hover:bg-[#234745] hover:text-white transition-colors bg-[#FEF8EB]/50"
+                style={{fontFamily: isEn ? "'Gotham Light', 'Gotham', 'Inter', sans-serif" : "'EnglishDigits', 'GE Dinar One', sans-serif"}}
               >
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-1.147 4.195 4.19-1.103z"/>
@@ -581,6 +591,7 @@ function CustomQuoteModal({
                   onClose();
                 }}
                 className="px-8 py-3.5 border border-[#234745] text-[#234745] font-bold rounded-full text-[14px] hover:bg-[#234745] hover:text-white transition-colors"
+                style={{fontFamily: isEn ? "'Gotham Light', 'Gotham', 'Inter', sans-serif" : "'EnglishDigits', 'GE Dinar One', sans-serif"}}
               >
                 {isEn ? 'Close' : 'إغلاق'}
               </button>
@@ -591,7 +602,10 @@ function CustomQuoteModal({
             {/* Company Name & Manager Name */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-[13px] font-bold text-[#234745] mb-1">
+                <label
+                  className="block text-[13px] font-bold text-[#234745] mb-1"
+                  style={{fontFamily: isEn ? "'Gotham Light', 'Gotham', 'Inter', sans-serif" : "'EnglishDigits', 'GE Dinar One', sans-serif"}}
+                >
                   {isEn ? 'Company Name *' : 'اسم الشركة *'}
                 </label>
                 <input
@@ -599,10 +613,14 @@ function CustomQuoteModal({
                   required
                   placeholder={isEn ? 'e.g. Acme Corp' : 'مثال: شركة الحلول المتقدمة'}
                   className="w-full border border-[#E6E2D8] rounded-[12px] px-4 py-3 text-[14px] text-[#234745] focus:outline-none focus:border-[#234745] bg-white"
+                  style={{fontFamily: isEn ? "'Gotham Light', 'Gotham', 'Inter', sans-serif" : "'EnglishDigits', 'GE Dinar One', sans-serif"}}
                 />
               </div>
               <div>
-                <label className="block text-[13px] font-bold text-[#234745] mb-1">
+                <label
+                  className="block text-[13px] font-bold text-[#234745] mb-1"
+                  style={{fontFamily: isEn ? "'Gotham Light', 'Gotham', 'Inter', sans-serif" : "'EnglishDigits', 'GE Dinar One', sans-serif"}}
+                >
                   {isEn ? 'Contact Person *' : 'اسم المسؤول *'}
                 </label>
                 <input
@@ -610,6 +628,7 @@ function CustomQuoteModal({
                   required
                   placeholder={isEn ? 'Full Name' : 'الاسم الثلاثي'}
                   className="w-full border border-[#E6E2D8] rounded-[12px] px-4 py-3 text-[14px] text-[#234745] focus:outline-none focus:border-[#234745] bg-white"
+                  style={{fontFamily: isEn ? "'Gotham Light', 'Gotham', 'Inter', sans-serif" : "'EnglishDigits', 'GE Dinar One', sans-serif"}}
                 />
               </div>
             </div>
@@ -617,7 +636,10 @@ function CustomQuoteModal({
             {/* Email & Phone */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-[13px] font-bold text-[#234745] mb-1">
+                <label
+                  className="block text-[13px] font-bold text-[#234745] mb-1"
+                  style={{fontFamily: isEn ? "'Gotham Light', 'Gotham', 'Inter', sans-serif" : "'EnglishDigits', 'GE Dinar One', sans-serif"}}
+                >
                   {isEn ? 'Email Address *' : 'البريد الإلكتروني *'}
                 </label>
                 <input
@@ -625,10 +647,14 @@ function CustomQuoteModal({
                   required
                   placeholder="info@company.com"
                   className="w-full border border-[#E6E2D8] rounded-[12px] px-4 py-3 text-[14px] text-[#234745] focus:outline-none focus:border-[#234745] bg-white"
+                  style={{fontFamily: isEn ? "'Gotham Light', 'Gotham', 'Inter', sans-serif" : "'EnglishDigits', 'GE Dinar One', sans-serif"}}
                 />
               </div>
               <div>
-                <label className="block text-[13px] font-bold text-[#234745] mb-1">
+                <label
+                  className="block text-[13px] font-bold text-[#234745] mb-1"
+                  style={{fontFamily: isEn ? "'Gotham Light', 'Gotham', 'Inter', sans-serif" : "'EnglishDigits', 'GE Dinar One', sans-serif"}}
+                >
                   {isEn ? 'Phone Number *' : 'رقم الجوال *'}
                 </label>
                 <input
@@ -636,6 +662,7 @@ function CustomQuoteModal({
                   required
                   placeholder="05xxxxxxx"
                   className="w-full border border-[#E6E2D8] rounded-[12px] px-4 py-3 text-[14px] text-[#234745] focus:outline-none focus:border-[#234745] bg-white"
+                  style={{fontFamily: isEn ? "'Gotham Light', 'Gotham', 'Inter', sans-serif" : "'EnglishDigits', 'GE Dinar One', sans-serif"}}
                 />
               </div>
             </div>
@@ -643,7 +670,10 @@ function CustomQuoteModal({
             {/* Expected Quantity & Budget */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-[13px] font-bold text-[#234745] mb-1">
+                <label
+                  className="block text-[13px] font-bold text-[#234745] mb-1"
+                  style={{fontFamily: isEn ? "'Gotham Light', 'Gotham', 'Inter', sans-serif" : "'EnglishDigits', 'GE Dinar One', sans-serif"}}
+                >
                   {isEn ? 'Expected Quantity (Min 200) *' : 'الكمية المتوقعة (الحد الأدنى 200) *'}
                 </label>
                 <input
@@ -652,29 +682,38 @@ function CustomQuoteModal({
                   defaultValue="200"
                   required
                   className="w-full border border-[#E6E2D8] rounded-[12px] px-4 py-3 text-[14px] text-[#234745] focus:outline-none focus:border-[#234745] bg-white"
+                  style={{fontFamily: isEn ? "'Gotham Light', 'Gotham', 'Inter', sans-serif" : "'EnglishDigits', 'GE Dinar One', sans-serif"}}
                 />
               </div>
               <div>
-                <label className="block text-[13px] font-bold text-[#234745] mb-1">
+                <label
+                  className="block text-[13px] font-bold text-[#234745] mb-1"
+                  style={{fontFamily: isEn ? "'Gotham Light', 'Gotham', 'Inter', sans-serif" : "'EnglishDigits', 'GE Dinar One', sans-serif"}}
+                >
                   {isEn ? 'Budget per box (SAR)' : 'الميزانية المحددة للعلبة (ريال)'}
                 </label>
                 <input
                   type="text"
                   placeholder={isEn ? 'e.g. 150-250 SAR' : 'مثال: 150 - 250 ريال'}
-                  className="w-full border border-[#E6E2D8] rounded-[12px] px-4 py-3 text-[14px] text-[#234745] focus:outline-none focus:border-[#234745] bg-white font-en"
+                  className="w-full border border-[#E6E2D8] rounded-[12px] px-4 py-3 text-[14px] text-[#234745] focus:outline-none focus:border-[#234745] bg-white"
+                  style={{fontFamily: isEn ? "'Gotham Light', 'Gotham', 'Inter', sans-serif" : "'EnglishDigits', 'GE Dinar One', sans-serif"}}
                 />
               </div>
             </div>
 
             {/* Notes */}
             <div>
-              <label className="block text-[13px] font-bold text-[#234745] mb-1">
+              <label
+                className="block text-[13px] font-bold text-[#234745] mb-1"
+                style={{fontFamily: isEn ? "'Gotham Light', 'Gotham', 'Inter', sans-serif" : "'EnglishDigits', 'GE Dinar One', sans-serif"}}
+              >
                 {isEn ? 'Special Notes & Identity Requirements' : 'ملاحظات واشتراطات الهوية الخاّصة'}
               </label>
               <textarea
                 rows={3}
                 placeholder={isEn ? 'Mention colors, preferred box style, delivery date...' : 'اذكر الألوان المفضلة، نوع العلب، تاريخ المناسبة...'}
                 className="w-full border border-[#E6E2D8] rounded-[12px] p-3 text-[14px] text-[#234745] focus:outline-none focus:border-[#234745] bg-white resize-none"
+                style={{fontFamily: isEn ? "'Gotham Light', 'Gotham', 'Inter', sans-serif" : "'EnglishDigits', 'GE Dinar One', sans-serif"}}
               />
             </div>
 
@@ -684,6 +723,7 @@ function CustomQuoteModal({
                 type="submit"
                 disabled={loading}
                 className="w-full sm:flex-1 bg-[#234745] text-white font-bold py-3.5 rounded-full text-[15px] hover:bg-[#1a3533] transition-colors disabled:opacity-50 cursor-pointer"
+                style={{fontFamily: isEn ? "'Gotham Light', 'Gotham', 'Inter', sans-serif" : "'EnglishDigits', 'GE Dinar One', sans-serif"}}
               >
                 {loading ? (isEn ? 'Sending...' : 'جاري الإرسال...') : (isEn ? 'Submit Quote Request' : 'إرسال طلب عرض السعر')}
               </button>
@@ -693,6 +733,7 @@ function CustomQuoteModal({
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-full sm:w-auto px-6 border border-[#234745] text-[#234745] font-bold py-3.5 rounded-full text-[14px] flex items-center justify-center gap-2 hover:bg-[#234745] hover:text-white transition-colors cursor-pointer bg-[#FEF8EB]/50"
+                style={{fontFamily: isEn ? "'Gotham Light', 'Gotham', 'Inter', sans-serif" : "'EnglishDigits', 'GE Dinar One', sans-serif"}}
               >
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-1.147 4.195 4.19-1.103z"/>
@@ -702,7 +743,10 @@ function CustomQuoteModal({
             </div>
 
             {/* Footer Direct Contact Info */}
-            <div className="text-center pt-3 text-[12px] text-[#8B9895] border-t border-[#E6E2D8] mt-1 flex flex-wrap items-center justify-center gap-3">
+            <div
+              className="text-center pt-3 text-[12px] text-[#8B9895] border-t border-[#E6E2D8] mt-1 flex flex-wrap items-center justify-center gap-3"
+              style={{fontFamily: isEn ? "'Gotham Light', 'Gotham', 'Inter', sans-serif" : "'EnglishDigits', 'GE Dinar One', sans-serif"}}
+            >
               <span>
                 {isEn ? 'Email: ' : 'البريد الإلكتروني: '}
                 <a href="mailto:info@saadeddin.com" className="font-bold text-[#234745] hover:underline">info@saadeddin.com</a>

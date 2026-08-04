@@ -77,7 +77,8 @@ export function checkIsPickupOrder(order: any): boolean {
   }
 
   if (order.shippingAddress === null || order.shipping_address === null) {
-    return true;
+    // null address alone does NOT mean pickup — delivery orders can also have null address
+    // Only treat as pickup if there's explicit shipping title or attribute evidence
   }
 
   return false;
@@ -828,8 +829,9 @@ function OrderCard({order, isEn}: {order: OrderItemFragment; isEn: boolean}) {
     (order.fulfillmentStatus as any) === 'CANCELLED'
   );
 
-  let statusEn = 'Order Confirmed';
-  let statusAr = 'تأكيد الطلب';
+  // Default: UNFULFILLED / new order = "Order Received" (Step 1)
+  let statusEn = 'Order Received';
+  let statusAr = 'تم استلام الطلب';
   let statusColor = '#906B51'; // Gold/Brown
 
   if (isCancelled) {
@@ -844,7 +846,7 @@ function OrderCard({order, isEn}: {order: OrderItemFragment; isEn: boolean}) {
     statusColor = '#E64950'; // Red
   } else if (
     order.fulfillmentStatus === 'FULFILLED' ||
-    hasStatus('delivered', 'picked-up', 'picked_up', 'picked', 'تم-التسليم', 'تم-الاستلام', 'تم-استلام-الطلب')
+    hasStatus('delivered', 'picked-up', 'picked_up', 'picked', 'تم-التسليم', 'تم-الاستلام')
   ) {
     statusEn = isPickup ? 'Order Picked Up' : 'Delivered Successfully';
     statusAr = isPickup ? 'تم استلام الطلب' : 'تم التسليم بنجاح';
@@ -860,7 +862,6 @@ function OrderCard({order, isEn}: {order: OrderItemFragment; isEn: boolean}) {
       'in_transit',
       'on-the-way',
       'on_the_way',
-      'ready',
       'جاهز',
       'جاهز-للاستلام',
       'جاهز-للتسليم',
@@ -890,6 +891,12 @@ function OrderCard({order, isEn}: {order: OrderItemFragment; isEn: boolean}) {
     statusEn = 'Order is Being Prepared';
     statusAr = 'جاري تجهيز الطلب';
     statusColor = '#906B51'; // Gold/Brown
+  } else if (
+    hasStatus('confirmed', 'تأكيد')
+  ) {
+    statusEn = 'Order Confirmed';
+    statusAr = 'تم التأكيد';
+    statusColor = '#906B51';
   }
 
   return (

@@ -176,11 +176,12 @@ export async function loader({request, params, context}: LoaderFunctionArgs) {
       })
       .catch(() => null);
 
+    const target = fallbackRes?.targetProduct ? [fallbackRes.targetProduct] : [];
     const tagged = fallbackRes?.taggedCorporate?.nodes || [];
     const latest = fallbackRes?.latestProducts?.nodes || [];
     const all = fallbackRes?.allProducts?.nodes || [];
     const combined = Array.from(
-      new Map([...tagged, ...latest, ...all].map((p: any) => [p.id, p])).values()
+      new Map([...target, ...tagged, ...latest, ...all].map((p: any) => [p.id, p])).values()
     );
 
     const productNodes = combined.filter((p: any) =>
@@ -1819,6 +1820,9 @@ const CORPORATE_PRODUCTS_FALLBACK_QUERY = `#graphql
     $country: CountryCode
     $language: LanguageCode
   ) @inContext(country: $country, language: $language) {
+    targetProduct: product(id: "gid://shopify/Product/9360448848105") {
+      ...HandleProductItem
+    }
     taggedCorporate: products(first: 250, query: "tag:corporate* OR tag:classic* OR tag:featured* OR corporate") {
       nodes {
         ...HandleProductItem

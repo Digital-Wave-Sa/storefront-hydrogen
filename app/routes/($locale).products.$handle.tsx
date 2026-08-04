@@ -750,6 +750,14 @@ export default function Product() {
       product.handle,
     );
 
+  const minQuantity = isCorporateProduct ? 20 : 1;
+
+  useEffect(() => {
+    if (isCorporateProduct && quantity < 20) {
+      setQuantity(20);
+    }
+  }, [isCorporateProduct]);
+
   const isGiftable =
     product.tags?.some((t: string) => {
       const lowerTag = t.toLowerCase();
@@ -2772,7 +2780,7 @@ export default function Product() {
 
                     <button
                       type="button"
-                      onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                      onClick={() => setQuantity(Math.max(minQuantity, quantity - 1))}
                       className="w-[40px] h-[40px] flex items-center justify-center bg-white rounded-[8px] text-[#906B51] border border-[#BBCFCD]/50 hover:border-[#234745] transition-all"
                     >
                       <svg

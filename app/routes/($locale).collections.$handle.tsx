@@ -169,7 +169,7 @@ export async function loader({request, params, context}: LoaderFunctionArgs) {
     const fallbackRes: any = await storefront
       .query(CORPORATE_PRODUCTS_FALLBACK_QUERY, {
         variables: {
-          query: 'tag:corporate-classic OR tag:corporate OR tag:classic',
+          query: "tag:corporate-classic OR tag:'corporate-classic' OR tag:corporate_classic OR tag:classic OR tag:corporate",
           country: storefront.i18n.country,
           language: storefront.i18n.language,
         },
@@ -191,9 +191,9 @@ export async function loader({request, params, context}: LoaderFunctionArgs) {
       }),
     );
 
-    const uniqueProducts = Array.from(
+    const productNodes = Array.from(
       new Map(
-        (matchingProducts.length > 0 ? matchingProducts : all).map((p: any) => [
+        (matchingProducts.length > 0 ? matchingProducts : combined).map((p: any) => [
           p.id,
           p,
         ]),
@@ -209,7 +209,7 @@ export async function loader({request, params, context}: LoaderFunctionArgs) {
         : 'هدية أنيقة لمختلف المناسبات الرسمية مع تغليف فاخر وشعار شركتك.',
       image: null,
       products: {
-        nodes: uniqueProducts,
+        nodes: productNodes,
         filters: [],
         pageInfo: {
           hasPreviousPage: false,
@@ -229,7 +229,7 @@ export async function loader({request, params, context}: LoaderFunctionArgs) {
     const fallbackRes: any = await storefront
       .query(CORPORATE_PRODUCTS_FALLBACK_QUERY, {
         variables: {
-          query: 'tag:corporate-featured OR tag:corporate OR tag:featured',
+          query: "tag:corporate-featured OR tag:'corporate-featured' OR tag:corporate_featured OR tag:featured OR tag:corporate",
           country: storefront.i18n.country,
           language: storefront.i18n.language,
         },
@@ -251,9 +251,9 @@ export async function loader({request, params, context}: LoaderFunctionArgs) {
       }),
     );
 
-    const uniqueProducts = Array.from(
+    const productNodes = Array.from(
       new Map(
-        (matchingProducts.length > 0 ? matchingProducts : all).map((p: any) => [
+        (matchingProducts.length > 0 ? matchingProducts : combined).map((p: any) => [
           p.id,
           p,
         ]),
@@ -269,7 +269,7 @@ export async function loader({request, params, context}: LoaderFunctionArgs) {
         : 'اختيار راقٍ للعملاء وكبار الشركاء، بمحتوى مدروس وتغليف لافت.',
       image: null,
       products: {
-        nodes: uniqueProducts,
+        nodes: productNodes,
         filters: [],
         pageInfo: {
           hasPreviousPage: false,
@@ -1805,12 +1805,12 @@ const CORPORATE_PRODUCTS_FALLBACK_QUERY = `#graphql
     $country: CountryCode
     $language: LanguageCode
   ) @inContext(country: $country, language: $language) {
-    taggedProducts: products(first: 100, query: $query) {
+    taggedProducts: products(first: 250, query: $query) {
       nodes {
         ...HandleProductItem
       }
     }
-    allProducts: products(first: 100) {
+    allProducts: products(first: 250) {
       nodes {
         ...HandleProductItem
       }

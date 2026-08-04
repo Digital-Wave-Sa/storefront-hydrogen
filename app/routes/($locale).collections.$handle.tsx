@@ -29,6 +29,7 @@ import {Price} from '~/components/Price';
 import {AddToCartButton} from '~/components/AddToCartButton';
 import {StockNotificationModal} from '~/components/StockNotificationModal';
 import patternBg from '/images/second-bg-pattern.svg';
+import {adminApiQuery} from '~/lib/admin.server';
 
 export const meta: MetaFunction<typeof loader> = ({data}) => {
   if (!data?.collection) {
@@ -184,7 +185,7 @@ export async function loader({request, params, context}: LoaderFunctionArgs) {
       new Map([...target, ...tagged, ...latest, ...all].map((p: any) => [p.id, p])).values()
     );
 
-    const productNodes = combined.filter((p: any) =>
+    let productNodes = combined.filter((p: any) =>
       p.tags?.some((t: string) => {
         const lower = t.toLowerCase().trim();
         const clean = lower.replace(/[-_]/g, '');
@@ -200,6 +201,7 @@ export async function loader({request, params, context}: LoaderFunctionArgs) {
         );
       }),
     );
+
 
     const edges = productNodes.map((node: any) => ({
       cursor: node.id,

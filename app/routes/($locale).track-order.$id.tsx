@@ -301,10 +301,11 @@ export async function loader({params, context}: LoaderFunctionArgs) {
     shippingLineTitle.includes('pickup') ||
     shippingLineTitle.includes('pick up') ||
     shippingLineTitle.includes('in store') ||
-    shippingLineTitle.includes('استلام') ||
+    shippingLineTitle.includes('استلام من الفرع') ||
+    shippingLineTitle.includes('self pickup') ||
+    shippingLineTitle.includes('self-pickup') ||
     fulfillmentAttr.includes('pickup') ||
-    fulfillmentAttr.includes('استلام') ||
-    orderNode.shippingAddress === null;
+    fulfillmentAttr.includes('استلام');
 
   // Parse native Shopify fulfillments and fulfillmentOrders
   const fulfillments = orderNode.fulfillments || [];
@@ -312,18 +313,11 @@ export async function loader({params, context}: LoaderFunctionArgs) {
     (e: any) => e.node,
   );
 
-  const hasReadyForPickupFulfillment =
-    fulfillments.some(
-      (f: any) =>
-        f.displayStatus === 'READY_FOR_PICKUP' ||
-        f.status === 'READY_FOR_PICKUP',
-    ) ||
-    fulfillmentOrders.some((fo: any) =>
-      fo.supportedActions?.some(
-        (sa: any) =>
-          sa.action === 'PICK_UP' || sa.action === 'MARK_AS_PICKED_UP',
-      ),
-    );
+  const hasReadyForPickupFulfillment = fulfillments.some(
+    (f: any) =>
+      f.displayStatus === 'READY_FOR_PICKUP' ||
+      f.status === 'READY_FOR_PICKUP',
+  );
 
   const hasOutForDeliveryFulfillment = fulfillments.some(
     (f: any) =>
@@ -334,12 +328,11 @@ export async function loader({params, context}: LoaderFunctionArgs) {
       f.displayStatus === 'SUBMITTED',
   );
 
-  const hasPreparingFulfillment =
-    fulfillments.length > 0 ||
-    fulfillmentOrders.some(
-      (fo: any) =>
-        fo.status === 'IN_PROGRESS' || (fo.status === 'OPEN' && isPickup),
-    );
+  const hasPreparingFulfillment = fulfillmentOrders.some(
+    (fo: any) =>
+      fo.status === 'IN_PROGRESS' ||
+      fo.requestStatus === 'ACCEPTED',
+  );
 
   // Read custom order_status metafield as optional override
   const orderStatusMeta = (orderNode.order_status?.value || '')
@@ -890,43 +883,52 @@ export default function TrackOrderPage() {
                 />
 
                 {(() => {
-                  // Determine current step from: native Shopify fulfillments, metafield override, OR order tags
-                  const meta = orderData.orderStatusMeta;
+                  // Determine current step — driven primarily by Shopify's displayFulfillmentStatus,
+                  // then by ERP tags/metafield, never by inferred fulfillment existence alone.
                   let currentStep: number;
-                  const s = (orderData.status || '').toLowerCase();
-                  if (orderData.canceledAt || s.includes('ملغاة') || s.includes('cancelled')) {
+                  const rawStatus = orderData.rawFulfillmentStatus || 'UNFULFILLED';
+                  const meta = (orderData.orderStatusMeta || '').toLowerCase();
+                  const tags = orderData.tagIndicatesStep5 ? 5
+                    : orderData.tagIndicatesStep4 ? 4
+                    : orderData.tagIndicatesStep3 ? 3
+                    : 0;
+
+                  if (orderData.canceledAt) {
                     currentStep = 0;
                   } else if (
-                    orderData.rawFulfillmentStatus === 'FULFILLED' ||
-                    s.includes('تم التسليم بنجاح') ||
-                    s.includes('تم استلام الطلب من الفرع') ||
-                    s.includes('تم التوصيل') ||
-                    s.includes('order picked up') ||
-                    s.includes('delivered successfully')
+                    rawStatus === 'FULFILLED' ||
+                    meta.includes('delivered') ||
+                    meta.includes('picked_up') ||
+                    meta.includes('تم-التسليم') ||
+                    meta.includes('تم-الاستلام') ||
+                    tags === 5
                   ) {
                     currentStep = 5;
                   } else if (
-                    s.includes('الطلب جاهز للاستلام') ||
-                    s.includes('جاهز للاستلام') ||
-                    s.includes('الطلب في الطريق إليك') ||
-                    s.includes('في الطريق إليك') ||
-                    s.includes('ready for pickup') ||
-                    s.includes('out for delivery')
+                    rawStatus === 'PARTIALLY_FULFILLED' ||
+                    meta.includes('ready_for_pickup') ||
+                    meta.includes('out_for_delivery') ||
+                    meta.includes('in_transit') ||
+                    meta.includes('جاهز') ||
+                    meta.includes('الطريق') ||
+                    tags === 4
                   ) {
                     currentStep = 4;
                   } else if (
-                    s.includes('جاري تجهيز الطلب') ||
-                    s.includes('جاري التجهيز') ||
-                    s.includes('order is being prepared') ||
-                    s.includes('preparing')
+                    rawStatus === 'IN_PROGRESS' ||
+                    meta.includes('in_progress') ||
+                    meta.includes('processing') ||
+                    meta.includes('جاري') ||
+                    tags === 3
                   ) {
                     currentStep = 3;
                   } else if (
-                    s.includes('تأكيد الطلب') ||
-                    s.includes('order confirmed')
+                    meta.includes('confirmed') ||
+                    meta.includes('تأكيد')
                   ) {
                     currentStep = 2;
                   } else {
+                    // UNFULFILLED or any unknown status = Step 1 (Order Received)
                     currentStep = 1;
                   }
 

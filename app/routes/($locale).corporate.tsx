@@ -749,12 +749,12 @@ function CustomQuoteModal({
             >
               <span>
                 {isEn ? 'Email: ' : 'البريد الإلكتروني: '}
-                <a href="mailto:info@saadeddin.com" className="font-bold text-[#234745] hover:underline">info@saadeddin.com</a>
+                <a href="mailto:corporate@saadeddin.com" className="font-bold text-[#234745] hover:underline">corporate@saadeddin.com</a>
               </span>
               <span>•</span>
               <span>
                 {isEn ? 'Phone: ' : 'الهاتف: '}
-                <a href="tel:920017070" className="font-bold text-[#234745] hover:underline font-mono" dir="ltr">920017070</a>
+                <a href="https://wa.me/966920017070" target="_blank" rel="noopener noreferrer" className="font-bold text-[#234745] hover:underline font-en" dir="ltr">+966 9200 17070</a>
               </span>
             </div>
           </form>
@@ -1747,34 +1747,44 @@ export default function CorporatePage() {
               <div className="flex flex-col gap-6 pt-6 border-t border-[#E6E2D8]">
                 {/* Contact 1: WhatsApp */}
                 <div className="flex flex-col gap-1">
-                  <span className="text-[#234745] font-bold text-[16px]">
+                  <a
+                    href="https://wa.me/966920017070"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[#234745] font-bold text-[16px] hover:underline"
+                  >
                     {isEn ? 'Corporate WhatsApp' : 'WhatsApp للشركات'}
-                  </span>
+                  </a>
                   <span className="text-[#9FB7AE] font-medium text-[14px]">
                     {isEn
-                      ? 'Instant response within 30 mins'
-                      : 'رد فوري خلال 30 دقيقة'}
+                      ? 'Response within 24 hours'
+                      : 'رد خلال 24 ساعة'}
                   </span>
                 </div>
 
                 {/* Contact 2: Direct Line */}
                 <div className="flex flex-col gap-1">
-                  <span className="text-[#234745] font-bold text-[16px] flex items-center gap-2">
+                  <span className="text-[#234745] font-bold text-[16px] flex flex-wrap items-center gap-2">
                     <span>{isEn ? 'Direct Line' : 'خط الشركات المباشر'}</span>
-                    <span
-                      className="text-[#906B51] font-bold text-[16px] dir-ltr inline-block"
-                      style={{fontFamily: 'EnglishDigits'}}
+                    <a
+                      href="https://wa.me/966920017070"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[#906B51] hover:underline font-bold text-[16px] dir-ltr inline-block font-en"
                     >
-                      +966 11 XXX XXXX
-                    </span>
+                      +966 9200 17070
+                    </a>
                   </span>
                 </div>
 
                 {/* Contact 3: Email */}
                 <div className="flex flex-col gap-1">
-                  <span className="text-[#234745] font-bold text-[16px]">
+                  <a
+                    href="mailto:corporate@saadeddin.com"
+                    className="text-[#234745] font-bold text-[16px] hover:underline"
+                  >
                     corporate@saadeddin.com
-                  </span>
+                  </a>
                   <span className="text-[#9FB7AE] font-medium text-[14px]">
                     {isEn ? 'Response within 24 hours' : 'رد خلال 24 ساعة'}
                   </span>

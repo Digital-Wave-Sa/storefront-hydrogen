@@ -54,6 +54,7 @@ function mapRestOrderToNode(rawRest: any) {
           : '',
     })),
     fulfillmentOrders: {edges: []},
+    tags: rawRest.tags || '',
     order_status: {value: rawRest.tags || ''},
     lineItems: {
       edges: (rawRest.line_items || []).map((item: any) => ({
@@ -426,33 +427,46 @@ export async function loader({params, context}: LoaderFunctionArgs) {
     date: isEn
       ? `Ordered on ${new Date(orderNode.processedAt).toLocaleDateString('en-US', {year: 'numeric', month: 'long', day: 'numeric'})}, ${new Date(orderNode.processedAt).toLocaleTimeString('en-US', {hour: 'numeric', minute: '2-digit'})}`
       : `طلب في ${new Date(orderNode.processedAt).toLocaleDateString('ar-SA-u-nu-latn', {year: 'numeric', month: 'long', day: 'numeric'})}, ${new Date(orderNode.processedAt).toLocaleTimeString('ar-SA-u-nu-latn', {hour: 'numeric', minute: '2-digit'})}`,
-    status: isEn
-      ? orderNode.displayFulfillmentStatus === 'FULFILLED' || tagIndicatesStep5
-        ? isPickup
-          ? 'Picked Up'
-          : 'Delivered'
-        : orderNode.canceledAt
-          ? 'Cancelled'
-          : hasReadyForPickupFulfillment ||
-              hasOutForDeliveryFulfillment ||
-              tagIndicatesStep4
-            ? isPickup
-              ? 'Ready for Pickup'
-              : 'On the Way'
-            : 'Order Received'
-      : orderNode.displayFulfillmentStatus === 'FULFILLED' || tagIndicatesStep5
-        ? isPickup
-          ? 'تم الاستلام من الفرع'
-          : 'تم التسليم'
-        : orderNode.canceledAt
-          ? 'ملغاة'
-          : hasReadyForPickupFulfillment ||
-              hasOutForDeliveryFulfillment ||
-              tagIndicatesStep4
-            ? isPickup
-              ? 'جاهز للاستلام من الفرع'
-              : 'في الطريق إليك'
-            : 'تم استلام طلبك',
+    status: (() => {
+      const fulfillmentsList = (orderNode as any).fulfillments || [];
+      const shipmentStatusesTrack = fulfillmentsList
+        .map((f: any) => (f.shipment_status || f.shipmentStatus || f.displayStatus || f.status || '').toLowerCase())
+        .filter(Boolean);
+
+      const customAttrsTrack = (orderNode as any).customAttributes || [];
+      const attrValuesTrack = customAttrsTrack.map((a: any) => String(a.value || '').toLowerCase());
+
+      const allTokensTrack = [
+        ...(Array.isArray(orderNode.tags) ? orderNode.tags : typeof orderNode.tags === 'string' ? orderNode.tags.split(',') : []),
+        ...attrValuesTrack,
+        ...shipmentStatusesTrack,
+        String(orderNode.displayFulfillmentStatus || '').toLowerCase(),
+      ].map((s: string) => String(s).toLowerCase().replace(/[\s_]/g, '-').trim()).filter(Boolean);
+
+      const hasStatusTrack = (...keywords: string[]) => {
+        return keywords.some((kw) => {
+          const target = kw.toLowerCase().replace(/[\s_]/g, '-').trim();
+          return allTokensTrack.some(
+            (st) => st === target || st.includes(target) || target.includes(st),
+          );
+        });
+      };
+
+      if (orderNode.canceledAt) return isEn ? 'Cancelled' : 'ملغاة';
+      if (hasStatusTrack('failure', 'failed', 'expired', 'attempted_delivery', 'تعذر', 'انتهت')) {
+        return isEn ? (isPickup ? 'Pickup Period Expired' : 'Delivery Attempt Failed') : (isPickup ? 'انتهت مدة الاستلام' : 'تعذر التسليم');
+      }
+      if (orderNode.displayFulfillmentStatus === 'FULFILLED' || hasStatusTrack('delivered', 'picked-up', 'picked_up', 'picked', 'تم-التسليم', 'تم-الاستلام', 'تم-استلام-الطلب')) {
+        return isEn ? (isPickup ? 'Order Picked Up' : 'Delivered Successfully') : (isPickup ? 'تم استلام الطلب' : 'تم التسليم بنجاح');
+      }
+      if (hasReadyForPickupFulfillment || hasOutForDeliveryFulfillment || hasStatusTrack('ready-for-pickup', 'ready_for_pickup', 'ready-for-delivery', 'out-for-delivery', 'out_for_delivery', 'in-transit', 'in_transit', 'on-the-way', 'on_the_way', 'ready', 'جاهز', 'جاهز-للاستلام', 'جاهز-للتسليم', 'في-الطريق')) {
+        return isEn ? (isPickup ? 'Ready for Pickup' : 'Out for Delivery') : (isPickup ? 'الطلب جاهز للاستلام' : 'الطلب في الطريق إليك');
+      }
+      if (hasPreparingFulfillment || orderNode.displayFulfillmentStatus === 'IN_PROGRESS' || hasStatusTrack('in-progress', 'in_progress', 'processing', 'submitted', 'label-printed', 'preparing', 'being-prepared', 'جاري-تجهيز-الطلب', 'جاري-التجهيز', 'قيد-التجهيز', 'تجهيز')) {
+        return isEn ? 'Order is Being Prepared' : 'جاري تجهيز الطلب';
+      }
+      return isEn ? 'Order Confirmed' : 'تأكيد الطلب';
+    })(),
     invoiceUrl: orderNode.statusPageUrl,
     rawFulfillmentStatus: orderNode.displayFulfillmentStatus || 'UNFULFILLED',
     rawFinancialStatus: orderNode.displayFinancialStatus || 'PAID',
@@ -879,43 +893,40 @@ export default function TrackOrderPage() {
                   // Determine current step from: native Shopify fulfillments, metafield override, OR order tags
                   const meta = orderData.orderStatusMeta;
                   let currentStep: number;
-                  if (
-                    orderData.canceledAt ||
-                    orderData.rawFinancialStatus === 'REFUNDED'
-                  ) {
-                    currentStep = 0; // cancelled
+                  const s = (orderData.status || '').toLowerCase();
+                  if (orderData.canceledAt || s.includes('ملغاة') || s.includes('cancelled')) {
+                    currentStep = 0;
                   } else if (
                     orderData.rawFulfillmentStatus === 'FULFILLED' ||
-                    orderData.tagIndicatesStep5 ||
-                    meta === 'delivered' ||
-                    meta === 'picked_up'
+                    s.includes('تم استلام الطلب') ||
+                    s.includes('تم التسليم بنجاح') ||
+                    s.includes('order picked up') ||
+                    s.includes('delivered successfully')
                   ) {
-                    currentStep = 5; // Delivered / Picked Up
+                    currentStep = 5;
                   } else if (
-                    orderData.hasReadyForPickupFulfillment ||
-                    orderData.hasOutForDeliveryFulfillment ||
-                    orderData.tagIndicatesStep4 ||
-                    meta === 'ready' ||
-                    meta === 'ready_for_pickup' ||
-                    meta === 'out_for_delivery' ||
-                    meta === 'ready_for_delivery'
+                    s.includes('الطلب جاهز للاستلام') ||
+                    s.includes('جاهز للاستلام') ||
+                    s.includes('الطلب في الطريق إليك') ||
+                    s.includes('في الطريق إليك') ||
+                    s.includes('ready for pickup') ||
+                    s.includes('out for delivery')
                   ) {
-                    currentStep = 4; // Ready for Pickup / On the Way / Ready for Delivery
+                    currentStep = 4;
                   } else if (
-                    orderData.hasPreparingFulfillment ||
-                    orderData.tagIndicatesStep3 ||
-                    meta === 'preparing' ||
-                    meta === 'in_progress' ||
-                    orderData.rawFulfillmentStatus === 'PARTIALLY_FULFILLED'
+                    s.includes('جاري تجهيز الطلب') ||
+                    s.includes('جاري التجهيز') ||
+                    s.includes('order is being prepared') ||
+                    s.includes('preparing')
                   ) {
-                    currentStep = 3; // Preparing
+                    currentStep = 3;
                   } else if (
-                    meta === 'confirmed' ||
-                    orderData.rawFinancialStatus === 'PAID'
+                    s.includes('تأكيد الطلب') ||
+                    s.includes('order confirmed')
                   ) {
-                    currentStep = 2; // Confirmed
+                    currentStep = 2;
                   } else {
-                    currentStep = 1; // Received
+                    currentStep = 1;
                   }
 
                   const toEnglishDigits = (str: string) => {

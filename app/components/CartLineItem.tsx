@@ -173,8 +173,8 @@ export function CartLineItem({
           )}
           {(() => {
             const isPrepaidOnly = product?.tags?.some((t: string) => {
-              const lowerTag = t.toLowerCase();
-              return lowerTag === 'prepaid-only' || lowerTag === 'nocod';
+              const lowerTag = t.toLowerCase().trim();
+              return lowerTag === 'prepaid-only' || lowerTag === 'nocod' || lowerTag === 'preorder' || lowerTag === 'pre-order' || lowerTag === 'طلب مسبق';
             });
             if (isPrepaidOnly) {
               return (

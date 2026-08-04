@@ -571,6 +571,7 @@ export default function Product() {
     hasPurchased,
   } = useLoaderData<any>();
   const rootData = useRouteLoaderData('root') as any;
+  const {open} = useAside();
   const locale = rootData?.consent?.language?.toLowerCase() || 'ar';
   const isEn = locale === 'en';
   const customer = rootData?.customer;
@@ -2812,7 +2813,6 @@ export default function Product() {
                           window.scrollTo({top: 0, behavior: 'smooth'})
                         }
                         onAddToCartSuccess={() => {
-                          console.log('[PDP DESKTOP] onAddToCartSuccess opening cart drawer');
                           open('cart');
                         }}
                         lines={
@@ -3408,7 +3408,6 @@ export default function Product() {
                             window.scrollTo({top: 0, behavior: 'smooth'})
                           }
                           onAddToCartSuccess={() => {
-                            console.log('[PDP MOBILE] onAddToCartSuccess opening cart drawer');
                             open('cart');
                           }}
                           lines={

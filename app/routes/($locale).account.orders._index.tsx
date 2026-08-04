@@ -148,128 +148,132 @@ export async function loader({request, context}: LoaderFunctionArgs) {
       }
     }
 
-    if (!customer?.orders?.nodes?.length) {
-      let mappedOrders: any[] = [];
-      const savedPhone = await session.get('loginOtpPhone');
-      const savedEmail = await session.get('loginOtpEmail');
-      try {
-        const {getAdminToken, getAdminDomain} =
-          await import('~/lib/shopify-admin.server');
-        const adminToken = await getAdminToken(context.env);
-        const adminDomain = getAdminDomain(context.env);
+    let mappedOrders: any[] = [];
+    const savedPhone = await session.get('loginOtpPhone');
+    const savedEmail = (await session.get('loginOtpEmail')) || customer?.email;
+    try {
+      const {getAdminToken, getAdminDomain} =
+        await import('~/lib/shopify-admin.server');
+      const adminToken = await getAdminToken(context.env);
+      const adminDomain = getAdminDomain(context.env);
 
-        let adminCust: any = null;
-        if (savedPhone) {
-          const res = await fetch(
-            `https://${adminDomain}/admin/api/2024-01/customers/search.json?query=phone:"${encodeURIComponent(savedPhone)}"`,
-            {
-              headers: {
-                'X-Shopify-Access-Token': adminToken,
-                'Content-Type': 'application/json',
-              },
+      let adminCust: any = null;
+      if (savedPhone) {
+        const res = await fetch(
+          `https://${adminDomain}/admin/api/2024-01/customers/search.json?query=phone:"${encodeURIComponent(savedPhone)}"`,
+          {
+            headers: {
+              'X-Shopify-Access-Token': adminToken,
+              'Content-Type': 'application/json',
             },
-          );
-          if (res.ok) {
-            const data = (await res.json()) as any;
-            adminCust = (data.customers || []).find((c: any) => {
-              const cp = (c.phone || '').replace(/\D/g, '');
-              const sp = savedPhone.replace(/\D/g, '');
-              if (!cp || !sp) return false;
-              return cp === sp || cp.endsWith(sp.slice(-9));
-            });
-          }
+          },
+        );
+        if (res.ok) {
+          const data = (await res.json()) as any;
+          adminCust = (data.customers || []).find((c: any) => {
+            const cp = (c.phone || '').replace(/\D/g, '');
+            const sp = savedPhone.replace(/\D/g, '');
+            if (!cp || !sp) return false;
+            return cp === sp || cp.endsWith(sp.slice(-9));
+          });
         }
-        if (!adminCust && savedEmail) {
-          const res = await fetch(
-            `https://${adminDomain}/admin/api/2024-01/customers/search.json?query=email:"${encodeURIComponent(savedEmail)}"`,
-            {
-              headers: {
-                'X-Shopify-Access-Token': adminToken,
-                'Content-Type': 'application/json',
-              },
-            },
-          );
-          if (res.ok) {
-            const data = (await res.json()) as any;
-            adminCust = (data.customers || []).find(
-              (c: any) => c.email && c.email.toLowerCase() === savedEmail.toLowerCase()
-            );
-          }
-        }
-
-        if (adminCust?.id) {
-          const ordersRes = await fetch(
-            `https://${adminDomain}/admin/api/2024-01/customers/${adminCust.id}/orders.json?status=any`,
-            {
-              headers: {
-                'X-Shopify-Access-Token': adminToken,
-                'Content-Type': 'application/json',
-              },
-            },
-          );
-          if (ordersRes.ok) {
-            const {orders} = (await ordersRes.json()) as any;
-            if (orders) {
-              mappedOrders = orders.map((o: any) => ({
-                id: `gid://shopify/Order/${o.id}`,
-                orderNumber: o.order_number,
-                processedAt: o.processed_at,
-                canceledAt: o.canceled_at,
-                financialStatus: o.financial_status
-                  ? o.financial_status.toUpperCase()
-                  : 'PAID',
-                fulfillmentStatus: o.fulfillment_status
-                  ? o.fulfillment_status.toUpperCase()
-                  : 'UNFULFILLED',
-                totalPrice: {
-                  amount: String(o.total_price),
-                  currencyCode: o.currency || 'SAR',
-                },
-                currentTotalPrice: {
-                  amount: String(o.total_price),
-                  currencyCode: o.currency || 'SAR',
-                },
-                statusUrl: o.order_status_url,
-                customAttributes: (o.note_attributes || []).map(
-                  (attr: any) => ({
-                    key: attr.name || attr.key,
-                    value: attr.value,
-                  }),
-                ),
-                shippingTitle:
-                  o.shipping_lines?.[0]?.title ||
-                  o.shipping_lines?.[0]?.code ||
-                  '',
-                shippingAddress: o.shipping_address || null,
-                tags: o.tags || '',
-                fulfillments: o.fulfillments || [],
-                lineItems: {
-                  nodes: (o.line_items || []).map((li: any) => ({
-                    title: li.title,
-                    quantity: li.quantity,
-                    originalTotalPrice: {
-                      amount: String(li.price),
-                      currencyCode: o.currency || 'SAR',
-                    },
-                    discountedTotalPrice: {
-                      amount: String(li.price),
-                      currencyCode: o.currency || 'SAR',
-                    },
-                    variant: {
-                      id: li.variant_id
-                        ? `gid://shopify/ProductVariant/${li.variant_id}`
-                        : undefined,
-                      image: null,
-                    },
-                  })),
-                },
-              }));
-            }
-          }
-        }
-      } catch (e) {
-        console.error('[Orders Loader] Admin API fallback failed:', e);
       }
+      if (!adminCust && savedEmail) {
+        const res = await fetch(
+          `https://${adminDomain}/admin/api/2024-01/customers/search.json?query=email:"${encodeURIComponent(savedEmail)}"`,
+          {
+            headers: {
+              'X-Shopify-Access-Token': adminToken,
+              'Content-Type': 'application/json',
+            },
+          },
+        );
+        if (res.ok) {
+          const data = (await res.json()) as any;
+          adminCust = (data.customers || []).find(
+            (c: any) => c.email && c.email.toLowerCase() === savedEmail.toLowerCase()
+          );
+        }
+      }
+
+      if (adminCust?.id) {
+        const ordersRes = await fetch(
+          `https://${adminDomain}/admin/api/2024-01/customers/${adminCust.id}/orders.json?status=any`,
+          {
+            headers: {
+              'X-Shopify-Access-Token': adminToken,
+              'Content-Type': 'application/json',
+            },
+          },
+        );
+        if (ordersRes.ok) {
+          const {orders} = (await ordersRes.json()) as any;
+          if (orders && orders.length > 0) {
+            mappedOrders = orders.map((o: any) => ({
+              id: `gid://shopify/Order/${o.id}`,
+              orderNumber: o.order_number,
+              processedAt: o.processed_at,
+              canceledAt: o.canceled_at,
+              financialStatus: o.financial_status
+                ? o.financial_status.toUpperCase()
+                : 'PAID',
+              fulfillmentStatus: o.fulfillment_status
+                ? o.fulfillment_status.toUpperCase()
+                : 'UNFULFILLED',
+              totalPrice: {
+                amount: String(o.total_price),
+                currencyCode: o.currency || 'SAR',
+              },
+              currentTotalPrice: {
+                amount: String(o.total_price),
+                currencyCode: o.currency || 'SAR',
+              },
+              statusUrl: o.order_status_url,
+              customAttributes: (o.note_attributes || []).map(
+                (attr: any) => ({
+                  key: attr.name || attr.key,
+                  value: attr.value,
+                }),
+              ),
+              shippingTitle:
+                o.shipping_lines?.[0]?.title ||
+                o.shipping_lines?.[0]?.code ||
+                '',
+              shippingAddress: o.shipping_address || null,
+              tags: o.tags || '',
+              fulfillments: o.fulfillments || [],
+              lineItems: {
+                nodes: (o.line_items || []).map((li: any) => ({
+                  title: li.title,
+                  quantity: li.quantity || 1,
+                  variantId: li.variant_id,
+                  customAttributes: (li.properties || li.custom_attributes || li.customAttributes || []).map((p: any) => ({
+                    key: p.name || p.key,
+                    value: String(p.value || '')
+                  })),
+                  originalTotalPrice: {
+                    amount: String(li.price),
+                    currencyCode: o.currency || 'SAR',
+                  },
+                  discountedTotalPrice: {
+                    amount: String(li.price),
+                    currencyCode: o.currency || 'SAR',
+                  },
+                  variant: {
+                    id: li.variant_id
+                      ? `gid://shopify/ProductVariant/${li.variant_id}`
+                      : undefined,
+                    image: null,
+                  },
+                })),
+              },
+            }));
+          }
+        }
+      }
+    } catch (e) {
+      console.error('[Orders Loader] Admin API order fetch failed:', e);
+    }
 
       if (mappedOrders.length > 0) {
         // Enrich line items with translated product titles from Storefront API (@inContext)
@@ -354,7 +358,82 @@ export async function loader({request, context}: LoaderFunctionArgs) {
           },
         };
       }
+
+    if (customer?.orders?.nodes?.length) {
+      try {
+        const {getAdminToken, getAdminDomain} =
+          await import('~/lib/shopify-admin.server');
+        const adminToken = await getAdminToken(context.env);
+        const adminDomain = getAdminDomain(context.env);
+
+        const orderNumbers = customer.orders.nodes
+          .map((o: any) => o.orderNumber)
+          .filter(Boolean);
+
+        if (orderNumbers.length > 0) {
+          const nameQuery = orderNumbers.map((n: any) => `name:%23${n}`).join('+OR+');
+          const res = await fetch(
+            `https://${adminDomain}/admin/api/2024-01/orders.json?name=${nameQuery}&status=any`,
+            {
+              headers: {
+                'X-Shopify-Access-Token': adminToken,
+                'Content-Type': 'application/json',
+              },
+            },
+          );
+          if (res.ok) {
+            const {orders: adminOrders} = (await res.json()) as any;
+            if (adminOrders && adminOrders.length > 0) {
+              const adminMap = new Map(
+                adminOrders.map((o: any) => [String(o.order_number), o]),
+              );
+              customer.orders.nodes = customer.orders.nodes.map((node: any) => {
+                const adminO: any = adminMap.get(String(node.orderNumber));
+                if (!adminO) return node;
+                return {
+                  ...node,
+                  tags: adminO.tags || '',
+                  fulfillments: adminO.fulfillments || [],
+                  shippingTitle: adminO.shipping_lines?.[0]?.title || '',
+                  shippingAddress: adminO.shipping_address || node.shippingAddress,
+                  customAttributes: (adminO.note_attributes || []).map((a: any) => ({
+                    key: a.name || a.key,
+                    value: a.value,
+                  })),
+                  lineItems: {
+                    nodes: (node.lineItems?.nodes || []).map((li: any, idx: number) => {
+                      const adminLi = adminO.line_items?.[idx] || {};
+                      return {
+                        ...li,
+                        variantId: adminLi.variant_id || li.variant?.id,
+                        customAttributes: (
+                          adminLi.properties ||
+                          adminLi.custom_attributes ||
+                          li.customAttributes ||
+                          []
+                        ).map((p: any) => ({
+                          key: p.name || p.key,
+                          value: String(p.value || ''),
+                        })),
+                        variant: {
+                          ...li.variant,
+                          id: adminLi.variant_id
+                            ? `gid://shopify/ProductVariant/${adminLi.variant_id}`
+                            : li.variant?.id,
+                        },
+                      };
+                    }),
+                  },
+                };
+              });
+            }
+          }
+        }
+      } catch (err) {
+        console.error('[Orders Loader] Storefront fallback enrichment error:', err);
+      }
     }
+
     return customer?.orders;
   })();
 
@@ -695,105 +774,123 @@ function OrderCard({order, isEn}: {order: OrderItemFragment; isEn: boolean}) {
 
   const reorderLines = lineItems
     .map((item: any) => {
-      const rawId = (item.variant as any)?.id || item.variantId;
-      const merchandiseId =
-        rawId && String(rawId).startsWith('gid://')
-          ? String(rawId)
-          : rawId
-            ? `gid://shopify/ProductVariant/${rawId}`
-            : '';
+      const rawId = (item.variant as any)?.id || item.variantId || item.variant_id;
+      if (!rawId) return null;
+      const idStr = String(rawId);
+      if (idStr === 'null' || idStr === 'undefined' || !idStr.trim()) return null;
+      const merchandiseId = idStr.startsWith('gid://')
+        ? idStr
+        : `gid://shopify/ProductVariant/${idStr}`;
       return {
         merchandiseId,
         quantity: item.quantity || 1,
       };
     })
-    .filter(
-      (l: any) =>
-        l.merchandiseId &&
-        !l.merchandiseId.endsWith('undefined') &&
-        !l.merchandiseId.endsWith('null')
-    );
+    .filter((l: any) => l && l.merchandiseId);
 
   const isPickup = checkIsPickupOrder(order);
 
   const fulfillments = (order as any).fulfillments || [];
-  const hasFulfillment = fulfillments.some(
-    (f: any) =>
-      f.status === 'success' ||
-      [
-        'out_for_delivery',
-        'ready_for_pickup',
-        'in_transit',
-        'submitted',
-        'label_printed',
-      ].includes((f.shipment_status || f.displayStatus || '').toLowerCase()),
-  );
+  const shipmentStatuses = fulfillments
+    .map((f: any) => (f.shipment_status || f.shipmentStatus || f.displayStatus || f.status || '').toLowerCase())
+    .filter(Boolean);
 
   const rawTags = (order as any).tags
     ? typeof (order as any).tags === 'string'
-      ? (order as any).tags
-          .split(',')
-          .map((t: string) => t.trim().toLowerCase())
+      ? (order as any).tags.split(',').map((t: string) => t.trim().toLowerCase())
       : Array.isArray((order as any).tags)
-        ? (order as any).tags.map((t: string) => t.toLowerCase())
+        ? (order as any).tags.map((t: string) => String(t).toLowerCase())
         : []
     : [];
 
-  const tagSet = new Set(rawTags.map((t: string) => t.replace(/[\s_]/g, '-')));
+  const customAttrs = (order as any).customAttributes || (order as any).note_attributes || [];
+  const attrValues = customAttrs.map((a: any) => String(a.value || '').toLowerCase());
 
-  const isFulfilled =
-    order.fulfillmentStatus === 'FULFILLED' ||
-    tagSet.has('delivered') ||
-    tagSet.has('picked-up') ||
-    tagSet.has('تم-التسليم') ||
-    tagSet.has('تم-الاستلام');
+  const allStatusTokens = [
+    ...rawTags,
+    ...attrValues,
+    ...shipmentStatuses,
+    String(order.fulfillmentStatus || '').toLowerCase(),
+  ].map((s) => s.replace(/[\s_]/g, '-').trim()).filter(Boolean);
 
-  const isReady =
-    hasFulfillment ||
-    tagSet.has('ready-for-delivery') ||
-    tagSet.has('out-for-delivery') ||
-    tagSet.has('ready-for-pickup') ||
-    tagSet.has('on-the-way') ||
-    tagSet.has('in-transit') ||
-    tagSet.has('ready') ||
-    tagSet.has('جاهز') ||
-    tagSet.has('جاهز-للتسليم') ||
-    tagSet.has('جاهز-للاستلام') ||
-    tagSet.has('في-الطريق') ||
-    order.fulfillmentStatus === 'PARTIALLY_FULFILLED' ||
-    order.fulfillmentStatus === 'IN_PROGRESS';
-
-  let statusEn = 'Order Received';
-  let statusAr = 'تم استلام طلبك';
-  let statusColor = '#906B51'; // Brown/gold
-
-  if (
-    (order as any).canceledAt ||
-    order.financialStatus === 'REFUNDED' ||
-    (order.fulfillmentStatus as any) === 'CANCELLED'
-  ) {
-    statusEn = 'Cancelled';
-    statusAr = 'ملغاة';
-    statusColor = '#E64950'; // Red
-  } else if (isFulfilled) {
-    statusEn = isPickup ? 'Picked up' : 'Delivered';
-    statusAr = isPickup ? 'تم الاستلام من الفرع' : 'تم التسليم';
-    statusColor = '#234745'; // Dark green
-  } else if (isReady) {
-    statusEn = isPickup ? 'Ready for Pickup' : 'On its way to you';
-    statusAr = isPickup ? 'جاهز للاستلام من الفرع' : 'في الطريق إليك';
-    statusColor = '#906B51'; // Brown/gold
-  } else {
-    statusEn = 'Order Received';
-    statusAr = 'تم استلام طلبك';
-    statusColor = '#906B51'; // Brown/gold
-  }
+  const hasStatus = (...keywords: string[]) => {
+    return keywords.some((kw) => {
+      const target = kw.toLowerCase().replace(/[\s_]/g, '-').trim();
+      return allStatusTokens.some(
+        (st) => st === target || st.includes(target) || target.includes(st),
+      );
+    });
+  };
 
   const isCancelled = !!(
     (order as any).canceledAt ||
     order.financialStatus === 'REFUNDED' ||
     (order.fulfillmentStatus as any) === 'CANCELLED'
   );
+
+  let statusEn = 'Order Confirmed';
+  let statusAr = 'تأكيد الطلب';
+  let statusColor = '#906B51'; // Gold/Brown
+
+  if (isCancelled) {
+    statusEn = 'Cancelled';
+    statusAr = 'ملغاة';
+    statusColor = '#E64950'; // Red
+  } else if (
+    hasStatus('failure', 'failed', 'expired', 'attempted_delivery', 'تعذر', 'انتهت')
+  ) {
+    statusEn = isPickup ? 'Pickup Period Expired' : 'Delivery Attempt Failed';
+    statusAr = isPickup ? 'انتهت مدة الاستلام' : 'تعذر التسليم';
+    statusColor = '#E64950'; // Red
+  } else if (
+    order.fulfillmentStatus === 'FULFILLED' ||
+    hasStatus('delivered', 'picked-up', 'picked_up', 'picked', 'تم-التسليم', 'تم-الاستلام', 'تم-استلام-الطلب')
+  ) {
+    statusEn = isPickup ? 'Order Picked Up' : 'Delivered Successfully';
+    statusAr = isPickup ? 'تم استلام الطلب' : 'تم التسليم بنجاح';
+    statusColor = '#234745'; // Dark green
+  } else if (
+    hasStatus(
+      'ready-for-pickup',
+      'ready_for_pickup',
+      'ready-for-delivery',
+      'out-for-delivery',
+      'out_for_delivery',
+      'in-transit',
+      'in_transit',
+      'on-the-way',
+      'on_the_way',
+      'ready',
+      'جاهز',
+      'جاهز-للاستلام',
+      'جاهز-للتسليم',
+      'في-الطريق',
+    )
+  ) {
+    statusEn = isPickup ? 'Ready for Pickup' : 'Out for Delivery';
+    statusAr = isPickup ? 'الطلب جاهز للاستلام' : 'الطلب في الطريق إليك';
+    statusColor = '#004F59'; // Teal
+  } else if (
+    order.fulfillmentStatus === 'IN_PROGRESS' ||
+    order.fulfillmentStatus === 'PARTIALLY_FULFILLED' ||
+    hasStatus(
+      'in-progress',
+      'in_progress',
+      'processing',
+      'submitted',
+      'label-printed',
+      'preparing',
+      'being-prepared',
+      'جاري-تجهيز-الطلب',
+      'جاري-التجهيز',
+      'قيد-التجهيز',
+      'تجهيز',
+    )
+  ) {
+    statusEn = 'Order is Being Prepared';
+    statusAr = 'جاري تجهيز الطلب';
+    statusColor = '#906B51'; // Gold/Brown
+  }
 
   return (
     <div
@@ -905,37 +1002,110 @@ function OrderCard({order, isEn}: {order: OrderItemFragment; isEn: boolean}) {
               </Link>
             )}
 
-            {reorderLines.length === 0 ? (
-              <button
-                type="button"
-                disabled
-                className="text-center px-6 py-2 bg-gray-400 text-white rounded-full text-[13px] md:text-[14px] font-bold cursor-not-allowed opacity-50 whitespace-nowrap"
-              >
-                {isEn ? 'Unavailable' : 'غير متوفر'}
-              </button>
-            ) : (
-              <Form
-                action={isEn ? '/en/cart' : '/cart'}
-                method="post"
-                className="inline-block"
-              >
-                <input
-                  type="hidden"
-                  name="cartFormInput"
-                  value={JSON.stringify({
-                    action: 'LinesAdd',
-                    inputs: {lines: reorderLines},
-                  })}
-                />
-                <button
-                  type="submit"
-                  className="text-center px-6 py-2 bg-[#234745] text-white rounded-full text-[13px] md:text-[14px] font-bold hover:opacity-90 transition-all whitespace-nowrap active:scale-95"
-                  style={{color: '#FFFFFF'}}
+            {(() => {
+              const customItem = lineItems.find((item: any) =>
+                item.customAttributes?.some((attr: any) =>
+                  attr.key === '_cake_custom' ||
+                  attr.key === 'Shape' || attr.key === 'الشكل' ||
+                  attr.key === 'Flavor' || attr.key === 'النكهة'
+                ) ||
+                (order as any).customAttributes?.some((attr: any) =>
+                  attr.key === '_cake_custom' ||
+                  attr.key === 'Shape' || attr.key === 'الشكل' ||
+                  attr.key === 'Flavor' || attr.key === 'النكهة'
+                ) ||
+                item.title?.includes('كيكة مخصصة') ||
+                item.title?.includes('Custom Cake')
+              );
+
+              const isCustomCake = customItem || (order as any).customAttributes?.some((attr: any) =>
+                attr.key === '_cake_custom' ||
+                attr.key === 'Shape' || attr.key === 'الشكل' ||
+                attr.key === 'Flavor' || attr.key === 'النكهة'
+              );
+
+              if (isCustomCake) {
+                const targetItem = customItem || lineItems[0];
+                const attrs = [
+                  ...(targetItem?.customAttributes || []),
+                  ...((order as any).customAttributes || [])
+                ];
+                const getAttr = (...keys: string[]) => {
+                  const found = attrs.find((a: any) => keys.includes(a.key));
+                  return found ? found.value : '';
+                };
+
+                const params = new URLSearchParams({
+                  reorder: 'true',
+                  shape: getAttr('Shape', 'الشكل'),
+                  size: getAttr('Size', 'الحجم'),
+                  flavor: getAttr('Flavor', 'النكهة'),
+                  layers: getAttr('Layers', 'الطبقات'),
+                  color: getAttr('Color', 'اللون'),
+                  topping: getAttr('Topping', 'الإضافة'),
+                  message: getAttr('Cake Surface Message', 'نص على الكيكة', 'Message', 'الرسالة'),
+                  baseMessage: getAttr('Cake Base Message', 'نص على القاعدة'),
+                  specialInstructions: getAttr('Special Instructions', 'تعليمات خاصة للمخبز'),
+                  textFont: getAttr('Message Font', 'خط الرسالة'),
+                  textColor: getAttr('Message Color', 'لون الرسالة'),
+                  messagePlacement: getAttr('Text Placement', 'موقع الكتابة'),
+                });
+
+                const path = isEn ? '/en/custom-cake' : '/custom-cake';
+                const reorderUrl = `${path}?${params.toString()}`;
+
+                return (
+                  <Link
+                    to={reorderUrl}
+                    className="text-center px-6 py-2 bg-[#234745] text-white rounded-full text-[13px] md:text-[14px] font-bold hover:opacity-90 transition-all whitespace-nowrap active:scale-95 cursor-pointer inline-block"
+                    style={{color: '#FFFFFF'}}
+                  >
+                    {isEn ? 'Reorder Cake' : 'إعادة طلب الكيكة'}
+                  </Link>
+                );
+              }
+
+              if (reorderLines.length === 0) {
+                return (
+                  <button
+                    type="button"
+                    disabled
+                    className="text-center px-6 py-2 bg-gray-400 text-white rounded-full text-[13px] md:text-[14px] font-bold cursor-not-allowed opacity-50 whitespace-nowrap"
+                  >
+                    {isEn ? 'Unavailable' : 'غير متوفر'}
+                  </button>
+                );
+              }
+
+              return (
+                <Form
+                  action={isEn ? '/en/cart' : '/cart'}
+                  method="post"
+                  className="inline-block"
                 >
-                  {isEn ? 'Reorder' : 'إعادة الطلب'}
-                </button>
-              </Form>
-            )}
+                  <input
+                    type="hidden"
+                    name="cartFormInput"
+                    value={JSON.stringify({
+                      action: 'LinesAdd',
+                      inputs: {lines: reorderLines},
+                    })}
+                  />
+                  <input
+                    type="hidden"
+                    name="redirectTo"
+                    value={isEn ? '/en/cart' : '/cart'}
+                  />
+                  <button
+                    type="submit"
+                    className="text-center px-6 py-2 bg-[#234745] text-white rounded-full text-[13px] md:text-[14px] font-bold hover:opacity-90 transition-all whitespace-nowrap active:scale-95"
+                    style={{color: '#FFFFFF'}}
+                  >
+                    {isEn ? 'Reorder' : 'إعادة الطلب'}
+                  </button>
+                </Form>
+              );
+            })()}
           </div>
         </div>
       </div>
@@ -1060,40 +1230,114 @@ function OrderCard({order, isEn}: {order: OrderItemFragment; isEn: boolean}) {
             </Link>
           )}
 
-          {/* Primary Action: Reorder */}
-          {reorderLines.length === 0 ? (
-            <button
-              type="button"
-              disabled
-              className={`text-center py-2.5 bg-gray-400 text-white rounded-full text-[13px] font-bold cursor-not-allowed opacity-50 whitespace-nowrap ${
-                isCancelled ? 'w-full' : 'flex-[1.5]'
-              }`}
-            >
-              {isEn ? 'Unavailable' : 'غير متوفر'}
-            </button>
-          ) : (
-            <Form
-              action={isEn ? '/en/cart' : '/cart'}
-              method="post"
-              className={isCancelled ? 'w-full' : 'flex-[1.5]'}
-            >
-              <input
-                type="hidden"
-                name="cartFormInput"
-                value={JSON.stringify({
-                  action: 'LinesAdd',
-                  inputs: {lines: reorderLines},
-                })}
-              />
-              <button
-                type="submit"
-                className="w-full text-center py-2.5 bg-[#234745] text-white rounded-full text-[13px] font-bold hover:opacity-90 transition-all whitespace-nowrap active:scale-95"
-                style={{color: '#FFFFFF'}}
+          {(() => {
+            const customItem = lineItems.find((item: any) =>
+              item.customAttributes?.some((attr: any) =>
+                attr.key === '_cake_custom' ||
+                attr.key === 'Shape' || attr.key === 'الشكل' ||
+                attr.key === 'Flavor' || attr.key === 'النكهة'
+              ) ||
+              (order as any).customAttributes?.some((attr: any) =>
+                attr.key === '_cake_custom' ||
+                attr.key === 'Shape' || attr.key === 'الشكل' ||
+                attr.key === 'Flavor' || attr.key === 'النكهة'
+              ) ||
+              item.title?.includes('كيكة مخصصة') ||
+              item.title?.includes('Custom Cake')
+            );
+
+            const isCustomCake = customItem || (order as any).customAttributes?.some((attr: any) =>
+              attr.key === '_cake_custom' ||
+              attr.key === 'Shape' || attr.key === 'الشكل' ||
+              attr.key === 'Flavor' || attr.key === 'النكهة'
+            );
+
+            if (isCustomCake) {
+              const targetItem = customItem || lineItems[0];
+              const attrs = [
+                ...(targetItem?.customAttributes || []),
+                ...((order as any).customAttributes || [])
+              ];
+              const getAttr = (...keys: string[]) => {
+                const found = attrs.find((a: any) => keys.includes(a.key));
+                return found ? found.value : '';
+              };
+
+              const params = new URLSearchParams({
+                reorder: 'true',
+                shape: getAttr('Shape', 'الشكل'),
+                size: getAttr('Size', 'الحجم'),
+                flavor: getAttr('Flavor', 'النكهة'),
+                layers: getAttr('Layers', 'الطبقات'),
+                color: getAttr('Color', 'اللون'),
+                topping: getAttr('Topping', 'الإضافة'),
+                message: getAttr('Cake Surface Message', 'نص على الكيكة', 'Message', 'الرسالة'),
+                baseMessage: getAttr('Cake Base Message', 'نص على القاعدة'),
+                specialInstructions: getAttr('Special Instructions', 'تعليمات خاصة للمخبز'),
+                textFont: getAttr('Message Font', 'خط الرسالة'),
+                textColor: getAttr('Message Color', 'لون الرسالة'),
+                messagePlacement: getAttr('Text Placement', 'موقع الكتابة'),
+              });
+
+              const path = isEn ? '/en/custom-cake' : '/custom-cake';
+              const reorderUrl = `${path}?${params.toString()}`;
+
+              return (
+                <Link
+                  to={reorderUrl}
+                  className={`text-center py-2.5 bg-[#234745] text-white rounded-full text-[13px] font-bold hover:opacity-90 transition-all whitespace-nowrap active:scale-95 ${
+                    isCancelled ? 'w-full' : 'flex-[1.5]'
+                  }`}
+                  style={{color: '#FFFFFF'}}
+                >
+                  {isEn ? 'Reorder Cake' : 'إعادة طلب الكيكة'}
+                </Link>
+              );
+            }
+
+            if (reorderLines.length === 0) {
+              return (
+                <button
+                  type="button"
+                  disabled
+                  className={`text-center py-2.5 bg-gray-400 text-white rounded-full text-[13px] font-bold cursor-not-allowed opacity-50 whitespace-nowrap ${
+                    isCancelled ? 'w-full' : 'flex-[1.5]'
+                  }`}
+                >
+                  {isEn ? 'Unavailable' : 'غير متوفر'}
+                </button>
+              );
+            }
+
+            return (
+              <Form
+                action={isEn ? '/en/cart' : '/cart'}
+                method="post"
+                className={isCancelled ? 'w-full' : 'flex-[1.5]'}
               >
-                {isEn ? 'Reorder' : 'إعادة الطلب'}
-              </button>
-            </Form>
-          )}
+                <input
+                  type="hidden"
+                  name="cartFormInput"
+                  value={JSON.stringify({
+                    action: 'LinesAdd',
+                    inputs: {lines: reorderLines},
+                  })}
+                />
+                <input
+                  type="hidden"
+                  name="redirectTo"
+                  value={isEn ? '/en/cart' : '/cart'}
+                />
+                <button
+                  type="submit"
+                  className="w-full text-center py-2.5 bg-[#234745] text-white rounded-full text-[13px] font-bold hover:opacity-90 transition-all whitespace-nowrap active:scale-95"
+                  style={{color: '#FFFFFF'}}
+                >
+                  {isEn ? 'Reorder' : 'إعادة الطلب'}
+                </button>
+              </Form>
+            );
+          })()}
         </div>
       </div>
     </div>
@@ -1166,6 +1410,7 @@ const ORDER_ITEM_FRAGMENT = `#graphql
           value
         }
         variant {
+          id
           image {
             url
             altText

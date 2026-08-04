@@ -120,6 +120,16 @@ export default function CustomCakeBuilder({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isPrepModalOpen, setIsPrepModalOpen] = useState(false);
 
+  // Reset modal state when user returns via browser Back button (bfcache)
+  React.useEffect(() => {
+    const handlePageShow = (e: PageTransitionEvent) => {
+      setIsSubmitting(false);
+      setIsPrepModalOpen(false);
+    };
+    window.addEventListener('pageshow', handlePageShow);
+    return () => window.removeEventListener('pageshow', handlePageShow);
+  }, []);
+
   // Touch gestures state
   const touchStartRef = useRef<number | null>(null);
   const touchEndRef = useRef<number | null>(null);
@@ -272,7 +282,10 @@ export default function CustomCakeBuilder({
     flavor: mergedOptions.flavors[0],
     style: mergedOptions.styles[0],
     color: cakeOptions.colors[0],
+    messagePlacement: 'cake' as 'cake' | 'base' | 'both',
     message: '',
+    baseMessage: '',
+    specialInstructions: '',
     textColor: '#4a2511',
     textFont: 'Classic',
     uploadedImage: null as string | null,
@@ -285,6 +298,58 @@ export default function CustomCakeBuilder({
   React.useEffect(() => {
     if (cakeAttributes?.length > 0 && !hasLoadedRef.current) {
       hasLoadedRef.current = true;
+
+      // 1. Check if user is re-ordering from account dashboard orders
+      if (typeof window !== 'undefined') {
+        const searchParams = new URLSearchParams(window.location.search);
+        const isReorder = searchParams.get('reorder') === 'true';
+
+        if (isReorder) {
+          const shapeVal = searchParams.get('shape');
+          const sizeVal = searchParams.get('size');
+          const flavorVal = searchParams.get('flavor');
+          const layersVal = searchParams.get('layers');
+          const colorVal = searchParams.get('color');
+          const toppingVal = searchParams.get('topping');
+          const messageVal = searchParams.get('message') || '';
+          const baseMessageVal = searchParams.get('baseMessage') || '';
+          const specialInstructionsVal = searchParams.get('specialInstructions') || '';
+          const textFontVal = searchParams.get('textFont') || 'Classic';
+          const textColorVal = searchParams.get('textColor') || '#4a2511';
+          const rawPlacement = searchParams.get('messagePlacement') || '';
+
+          let messagePlacement: 'cake' | 'base' | 'both' = 'cake';
+          if (rawPlacement.toLowerCase().includes('both') || rawPlacement.includes('معا')) messagePlacement = 'both';
+          else if (rawPlacement.toLowerCase().includes('base') || rawPlacement.includes('القاعدة')) messagePlacement = 'base';
+
+          const shape = mergedOptions.shapes.find(s => s.name === shapeVal || s.id === shapeVal) || mergedOptions.shapes[0];
+          const size = cakeOptions.sizes.find(s => s.name === sizeVal || s.id === sizeVal) || selections.size;
+          const tier = cakeOptions.tiers.find(t => t.name === layersVal || String(t.count) === layersVal || t.id === layersVal) || selections.tier;
+          const flavor = mergedOptions.flavors.find(f => f.name === flavorVal || f.id === flavorVal) || mergedOptions.flavors[0];
+          const style = mergedOptions.styles.find(s => s.name === toppingVal || s.id === toppingVal) || mergedOptions.styles[0];
+          const color = cakeOptions.colors.find(c => c.name === colorVal || c.color === colorVal || c.id === colorVal) || selections.color;
+
+          setSelections({
+            shape,
+            size,
+            tier,
+            flavor,
+            style,
+            color,
+            messagePlacement,
+            message: messageVal,
+            baseMessage: baseMessageVal,
+            specialInstructions: specialInstructionsVal,
+            textColor: textColorVal,
+            textFont: textFontVal,
+            uploadedImage: null,
+            prepTime: DEFAULT_PREP_OPTION
+          });
+
+          setCurrentStep(4);
+          return;
+        }
+      }
 
       let savedData = null;
       try {
@@ -312,7 +377,10 @@ export default function CustomCakeBuilder({
           flavor,
           style,
           color,
+          messagePlacement: savedData.messagePlacement || 'cake',
           message: savedData.message || '',
+          baseMessage: savedData.baseMessage || '',
+          specialInstructions: savedData.specialInstructions || '',
           textColor: savedData.textColor || '#4a2511',
           textFont: savedData.textFont || 'Classic',
           uploadedImage: savedData.uploadedImage || null,
@@ -407,7 +475,10 @@ export default function CustomCakeBuilder({
         flavorId: selections.flavor?.id,
         styleId: selections.style?.id,
         colorId: selections.color?.id,
+        messagePlacement: selections.messagePlacement,
         message: selections.message,
+        baseMessage: selections.baseMessage,
+        specialInstructions: selections.specialInstructions,
         textColor: selections.textColor,
         textFont: selections.textFont,
         uploadedImage: selections.uploadedImage,
@@ -543,7 +614,10 @@ export default function CustomCakeBuilder({
           layers: selections.tier.name,
           color: selections.color.name,
           topping: selections.style.name,
+          messagePlacement: selections.messagePlacement,
           message: selections.message,
+          baseMessage: selections.baseMessage,
+          specialInstructions: selections.specialInstructions,
           messageFont: selections.textFont,
           messageColor: selections.textColor,
           uploadedImage: selections.uploadedImage,
@@ -832,23 +906,84 @@ export default function CustomCakeBuilder({
 
               {currentStep === 4 && (
                 <div className="animate-in fade-in duration-300 space-y-8">
+                  {/* 1. Text Customization Position & Options */}
                   <div className={isEn ? 'text-left' : 'text-right'}>
-                    <h2 className="text-2xl font-bold text-[#1a1a1a] mb-4">{isEn ? 'Add Your Special Message' : 'أضف رسالتك الخاصة'}</h2>
-                    <div className="border border-[#E5E7EB] p-4 rounded-2xl focus-within:border-[#294941] bg-white">
-                      <input
-                        type="text"
-                        className={`w-full p-4 rounded-xl border border-gray-200 bg-gray-50 text-xl text-[#1a1a1a] focus:outline-none focus:ring-1 focus:ring-[#294941] ${isEn ? 'text-left' : 'text-right'}`}
-                        placeholder={isEn ? 'Example: Happy Birthday' : 'مثال: سنة حلوة يا جميل'}
-                        value={selections.message}
-                        onChange={(e) => setSelections(prev => ({ ...prev, message: e.target.value }))}
-                        maxLength={25}
-                      />
+                    <h2 className="text-2xl font-bold text-[#1a1a1a] mb-2">
+                      {isEn ? 'Text Customization & Personalization' : 'الكتابة وتخصيص الكيكة'}
+                    </h2>
+                    <p className="text-sm text-gray-500 mb-4">
+                      {isEn
+                        ? 'Choose where you want your custom message to be written (on the cake surface, base board, or both).'
+                        : 'اختر موقع موضع الكتابة المخصص (على سطح الكيكة، على القاعدة، أو كلاهما).'}
+                    </p>
+
+                    {/* Text Placement Selector */}
+                    <div className="grid grid-cols-3 gap-3 mb-6">
+                      {[
+                        { id: 'cake', labelEn: 'On Cake Surface', labelAr: 'على الكيكة نفسها' },
+                        { id: 'base', labelEn: 'On Base Board', labelAr: 'على القاعدة' },
+                        { id: 'both', labelEn: 'Both Surface & Base', labelAr: 'الكيكة والقاعدة معا' }
+                      ].map(option => {
+                        const isSelected = selections.messagePlacement === option.id;
+                        return (
+                          <button
+                            key={option.id}
+                            type="button"
+                            onClick={() => setSelections(prev => ({ ...prev, messagePlacement: option.id as any }))}
+                            className={`p-3.5 rounded-xl border text-center font-bold text-sm transition-all flex flex-col items-center justify-center gap-1 ${
+                              isSelected
+                                ? 'border-[#294941] bg-[#F7EAE6] text-[#294941] shadow-sm'
+                                : 'border-[#E5E7EB] bg-white text-gray-700 hover:border-[#294941]/50'
+                            }`}
+                          >
+                            <span>{isEn ? option.labelEn : option.labelAr}</span>
+                          </button>
+                        );
+                      })}
                     </div>
+
+                    {/* Cake Surface Message Input */}
+                    {(selections.messagePlacement === 'cake' || selections.messagePlacement === 'both') && (
+                      <div className="mb-4">
+                        <label className="block text-sm font-bold text-[#1a1a1a] mb-2">
+                          {isEn ? 'Message on Cake Surface' : 'النص المكتوب على الكيكة'}
+                        </label>
+                        <div className="border border-[#E5E7EB] p-3 rounded-2xl focus-within:border-[#294941] bg-white">
+                          <input
+                            type="text"
+                            className={`w-full p-3 rounded-xl border border-gray-200 bg-gray-50 text-lg text-[#1a1a1a] focus:outline-none focus:ring-1 focus:ring-[#294941] ${isEn ? 'text-left' : 'text-right'}`}
+                            placeholder={isEn ? 'Example: Happy Birthday Sarah' : 'مثال: سنة حلوة يا سارة'}
+                            value={selections.message}
+                            onChange={(e) => setSelections(prev => ({ ...prev, message: e.target.value }))}
+                            maxLength={25}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Base Board Message Input */}
+                    {(selections.messagePlacement === 'base' || selections.messagePlacement === 'both') && (
+                      <div className="mb-4">
+                        <label className="block text-sm font-bold text-[#1a1a1a] mb-2">
+                          {isEn ? 'Message on Cake Base / Board' : 'النص المكتوب على قاعدة الكيكة'}
+                        </label>
+                        <div className="border border-[#E5E7EB] p-3 rounded-2xl focus-within:border-[#294941] bg-white">
+                          <input
+                            type="text"
+                            className={`w-full p-3 rounded-xl border border-gray-200 bg-gray-50 text-lg text-[#1a1a1a] focus:outline-none focus:ring-1 focus:ring-[#294941] ${isEn ? 'text-left' : 'text-right'}`}
+                            placeholder={isEn ? 'Example: With Love from Saad Al Deen' : 'مثال: مع خالص الحب والأمنيات'}
+                            value={selections.baseMessage}
+                            onChange={(e) => setSelections(prev => ({ ...prev, baseMessage: e.target.value }))}
+                            maxLength={30}
+                          />
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Text Color & Font */}
-                  {selections.message && (
-                    <div className="grid grid-cols-2 gap-4">
+                  {(selections.message || selections.baseMessage) && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className={isEn ? 'text-left' : 'text-right'}>
                         <h3 className="text-lg font-bold text-[#1a1a1a] mb-3">{isEn ? 'Message Color' : 'اختر لون الكتابة'}</h3>
                         <div className={`flex flex-wrap gap-3 bg-gray-50 p-4 rounded-xl border border-gray-100 ${isEn ? 'justify-start' : 'justify-start'}`}>
@@ -857,6 +992,7 @@ export default function CustomCakeBuilder({
                             return (
                               <button
                                 key={color}
+                                type="button"
                                 onClick={() => setSelections(prev => ({ ...prev, textColor: color }))}
                                 className={`relative w-12 h-12 rounded-full transition-all duration-200 flex items-center justify-center shadow-sm
                                   ${isSelected ? 'ring-2 ring-offset-2 ring-[#294941] scale-110' : 'border border-gray-300 hover:scale-105'}
@@ -888,6 +1024,36 @@ export default function CustomCakeBuilder({
                       </div>
                     </div>
                   )}
+
+                  {/* 2. Dedicated Special Instructions Field */}
+                  <div className={isEn ? 'text-left' : 'text-right'}>
+                    <div className="flex items-center justify-between mb-2">
+                      <h2 className="text-2xl font-bold text-[#1a1a1a]">
+                        {isEn ? 'Special Instructions for the Baker' : 'ملاحظات وتعليمات خاصة للمخبز'}
+                      </h2>
+                      <span className="text-xs text-gray-400 font-medium">
+                        {selections.specialInstructions.length}/300
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-500 mb-3">
+                      {isEn
+                        ? 'Enter any additional preparation notes or instructions for our bakers (e.g. reduced sugar, specific piping notes). This note will be attached to your order for the baker without appearing on the cake design.'
+                        : 'أضف أي ملاحظات خاصة بالتحضير أو الخَبز (مثل تقليل السكر، أو ملاحظات الزينة). يتم إرفاق هذه الملاحظات مع الطلب للمخبز دون رسمها على تصميم الكيكة.'}
+                    </p>
+                    <div className="border border-[#E5E7EB] p-3 rounded-2xl focus-within:border-[#294941] bg-white">
+                      <textarea
+                        rows={3}
+                        className={`w-full p-3 rounded-xl border border-gray-200 bg-gray-50 text-base text-[#1a1a1a] focus:outline-none focus:ring-1 focus:ring-[#294941] resize-none ${isEn ? 'text-left' : 'text-right'}`}
+                        placeholder={
+                          isEn
+                            ? 'Type any special requests or instructions here...'
+                            : 'اكتب هنا أي تعليمات أو طلبات خاصة للمخبز...'
+                        }
+                        value={selections.specialInstructions}
+                        onChange={(e) => setSelections(prev => ({ ...prev, specialInstructions: e.target.value.slice(0, 300) }))}
+                      />
+                    </div>
+                  </div>
 
                   {/* Image Upload */}
                   <div className={isEn ? 'text-left' : 'text-right'}>
@@ -1023,6 +1189,8 @@ export default function CustomCakeBuilder({
                   toppings={[{ id: selections.style.id, gid: (selections.style as any)?.gid, name: selections.style.name }]}
                   scale={selections.size.scale}
                   message={selections.message}
+                  baseMessage={selections.baseMessage}
+                  messagePlacement={selections.messagePlacement}
                   flavorName={selections.flavor.name}
                   isCutaway={currentStep === 2 && isCutaway}
                   textColor={selections.textColor}
@@ -1182,8 +1350,10 @@ export default function CustomCakeBuilder({
               <button
                 type="button"
                 className="px-6 py-3.5 rounded-full font-bold border border-gray-300 text-gray-700 hover:bg-gray-50 transition-all text-[16px]"
-                onClick={() => setIsPrepModalOpen(false)}
-                disabled={isSubmitting}
+                onClick={() => {
+                  setIsPrepModalOpen(false);
+                  setIsSubmitting(false);
+                }}
               >
                 {isEn ? 'Cancel' : 'إلغاء'}
               </button>

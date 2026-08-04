@@ -419,20 +419,98 @@ export default function AccountDashboard() {
 
                   const isPickup = checkIsPickupOrder(lastOrder);
 
-                  let statusEn = isPickup ? 'Ready for Pickup' : 'Processing';
-                  let statusAr = isPickup
-                    ? 'جاهز للاستلام من الفرع'
-                    : 'قيد المعالجة';
-                  if (lastOrder.fulfillmentStatus === 'FULFILLED') {
-                    statusEn = isPickup ? 'Picked up' : 'Delivered';
-                    statusAr = isPickup ? 'تم الاستلام من الفرع' : 'تم التوصيل';
-                  } else if (lastOrder.financialStatus === 'PAID') {
-                    statusEn = isPickup
-                      ? 'Ready for Pickup'
-                      : 'On its way to you';
-                    statusAr = isPickup
-                      ? 'جاهز للاستلام من الفرع'
-                      : 'في الطريق إليك';
+                  const fulfillments = (lastOrder as any).fulfillments || [];
+                  const shipmentStatuses = fulfillments
+                    .map((f: any) => (f.shipment_status || f.shipmentStatus || f.displayStatus || f.status || '').toLowerCase())
+                    .filter(Boolean);
+
+                  const rawTags = (lastOrder as any).tags
+                    ? typeof (lastOrder as any).tags === 'string'
+                      ? (lastOrder as any).tags.split(',').map((t: string) => t.trim().toLowerCase())
+                      : Array.isArray((lastOrder as any).tags)
+                        ? (lastOrder as any).tags.map((t: string) => String(t).toLowerCase())
+                        : []
+                    : [];
+
+                  const customAttrs = (lastOrder as any).customAttributes || (lastOrder as any).note_attributes || [];
+                  const attrValues = customAttrs.map((a: any) => String(a.value || '').toLowerCase());
+
+                  const allStatusTokens = [
+                    ...rawTags,
+                    ...attrValues,
+                    ...shipmentStatuses,
+                    String(lastOrder.fulfillmentStatus || '').toLowerCase(),
+                  ].map((s) => s.replace(/[\s_]/g, '-').trim()).filter(Boolean);
+
+                  const hasStatus = (...keywords: string[]) => {
+                    return keywords.some((kw) => {
+                      const target = kw.toLowerCase().replace(/[\s_]/g, '-').trim();
+                      return allStatusTokens.some(
+                        (st) => st === target || st.includes(target) || target.includes(st),
+                      );
+                    });
+                  };
+
+                  const isCancelled = !!(
+                    (lastOrder as any).canceledAt ||
+                    lastOrder.financialStatus === 'REFUNDED' ||
+                    (lastOrder.fulfillmentStatus as any) === 'CANCELLED'
+                  );
+
+                  let statusEn = 'Order Confirmed';
+                  let statusAr = 'تأكيد الطلب';
+
+                  if (isCancelled) {
+                    statusEn = 'Cancelled';
+                    statusAr = 'ملغاة';
+                  } else if (hasStatus('failure', 'failed', 'expired', 'attempted_delivery', 'تعذر', 'انتهت')) {
+                    statusEn = isPickup ? 'Pickup Period Expired' : 'Delivery Attempt Failed';
+                    statusAr = isPickup ? 'انتهت مدة الاستلام' : 'تعذر التسليم';
+                  } else if (
+                    lastOrder.fulfillmentStatus === 'FULFILLED' ||
+                    hasStatus('delivered', 'picked-up', 'picked_up', 'picked', 'تم-التسليم', 'تم-الاستلام', 'تم-استلام-الطلب')
+                  ) {
+                    statusEn = isPickup ? 'Order Picked Up' : 'Delivered Successfully';
+                    statusAr = isPickup ? 'تم استلام الطلب' : 'تم التسليم بنجاح';
+                  } else if (
+                    hasStatus(
+                      'ready-for-pickup',
+                      'ready_for_pickup',
+                      'ready-for-delivery',
+                      'out-for-delivery',
+                      'out_for_delivery',
+                      'in-transit',
+                      'in_transit',
+                      'on-the-way',
+                      'on_the_way',
+                      'ready',
+                      'جاهز',
+                      'جاهز-للاستلام',
+                      'جاهز-للتسليم',
+                      'في-الطريق',
+                    )
+                  ) {
+                    statusEn = isPickup ? 'Ready for Pickup' : 'Out for Delivery';
+                    statusAr = isPickup ? 'الطلب جاهز للاستلام' : 'الطلب في الطريق إليك';
+                  } else if (
+                    lastOrder.fulfillmentStatus === 'IN_PROGRESS' ||
+                    lastOrder.fulfillmentStatus === 'PARTIALLY_FULFILLED' ||
+                    hasStatus(
+                      'in-progress',
+                      'in_progress',
+                      'processing',
+                      'submitted',
+                      'label-printed',
+                      'preparing',
+                      'being-prepared',
+                      'جاري-تجهيز-الطلب',
+                      'جاري-التجهيز',
+                      'قيد-التجهيز',
+                      'تجهيز',
+                    )
+                  ) {
+                    statusEn = 'Order is Being Prepared';
+                    statusAr = 'جاري تجهيز الطلب';
                   }
 
                   return (
@@ -545,23 +623,75 @@ export default function AccountDashboard() {
                                     item.variant?.id ||
                                     item.variantId ||
                                     item.variant_id;
-                                  const merchandiseId =
-                                    rawId && String(rawId).startsWith('gid://')
-                                      ? String(rawId)
-                                      : rawId
-                                        ? `gid://shopify/ProductVariant/${rawId}`
-                                        : '';
+                                  if (!rawId) return null;
+                                  const idStr = String(rawId);
+                                  if (idStr === 'null' || idStr === 'undefined' || !idStr.trim()) return null;
+                                  const merchandiseId = idStr.startsWith('gid://')
+                                    ? idStr
+                                    : `gid://shopify/ProductVariant/${idStr}`;
                                   return {
                                     merchandiseId,
                                     quantity: item.quantity || 1,
                                   };
                                 })
-                                .filter(
-                                  (l: any) =>
-                                    l.merchandiseId &&
-                                    !l.merchandiseId.endsWith('undefined') &&
-                                    !l.merchandiseId.endsWith('null'),
+                                .filter((l: any) => l && l.merchandiseId);
+
+                              const customItem = (lastOrder.lineItems?.nodes || []).find((item: any) =>
+                                item.customAttributes?.some((attr: any) =>
+                                  attr.key === '_cake_custom' ||
+                                  attr.key === 'Shape' || attr.key === 'الشكل' ||
+                                  attr.key === 'Flavor' || attr.key === 'النكهة'
+                                ) ||
+                                item.title?.includes('كيكة مخصصة') ||
+                                item.title?.includes('Custom Cake')
+                              );
+
+                              const isCustomCake = customItem || lastOrder.customAttributes?.some((attr: any) =>
+                                attr.key === '_cake_custom' ||
+                                attr.key === 'Shape' || attr.key === 'الشكل' ||
+                                attr.key === 'Flavor' || attr.key === 'النكهة'
+                              );
+
+                              if (isCustomCake) {
+                                const targetItem = customItem || (lastOrder.lineItems?.nodes || [])[0];
+                                const attrs = [
+                                  ...(targetItem?.customAttributes || []),
+                                  ...(lastOrder.customAttributes || [])
+                                ];
+                                const getAttr = (...keys: string[]) => {
+                                  const found = attrs.find((a: any) => keys.includes(a.key));
+                                  return found ? found.value : '';
+                                };
+
+                                const params = new URLSearchParams({
+                                  reorder: 'true',
+                                  shape: getAttr('Shape', 'الشكل'),
+                                  size: getAttr('Size', 'الحجم'),
+                                  flavor: getAttr('Flavor', 'النكهة'),
+                                  layers: getAttr('Layers', 'الطبقات'),
+                                  color: getAttr('Color', 'اللون'),
+                                  topping: getAttr('Topping', 'الإضافة'),
+                                  message: getAttr('Cake Surface Message', 'نص على الكيكة', 'Message', 'الرسالة'),
+                                  baseMessage: getAttr('Cake Base Message', 'نص على القاعدة'),
+                                  specialInstructions: getAttr('Special Instructions', 'تعليمات خاصة للمخبز'),
+                                  textFont: getAttr('Message Font', 'خط الرسالة'),
+                                  textColor: getAttr('Message Color', 'لون الرسالة'),
+                                  messagePlacement: getAttr('Text Placement', 'موقع الكتابة'),
+                                });
+
+                                const path = isEn ? '/en/custom-cake' : '/custom-cake';
+                                const reorderUrl = `${path}?${params.toString()}`;
+
+                                return (
+                                  <Link
+                                    to={reorderUrl}
+                                    className="px-6 py-2 bg-[#234745] text-white rounded-[24px] text-[13px] font-bold hover:opacity-90 transition-all active:scale-95 cursor-pointer inline-block"
+                                    style={{color: '#FFFFFF'}}
+                                  >
+                                    {isEn ? 'Reorder Cake' : 'إعادة طلب الكيكة'}
+                                  </Link>
                                 );
+                              }
 
                               if (reorderLines.length === 0) {
                                 return (
@@ -588,6 +718,11 @@ export default function AccountDashboard() {
                                       action: 'LinesAdd',
                                       inputs: {lines: reorderLines},
                                     })}
+                                  />
+                                  <input
+                                    type="hidden"
+                                    name="redirectTo"
+                                    value={isEn ? '/en/cart' : '/cart'}
                                   />
                                   <button
                                     type="submit"

@@ -619,7 +619,7 @@ export type CustomerAddressesQuery = {
   customer?: StorefrontAPI.Maybe<
     Pick<
       StorefrontAPI.Customer,
-      'id' | 'email' | 'phone' | 'tags' | 'firstName' | 'lastName'
+      'id' | 'email' | 'phone' | 'firstName' | 'lastName'
     > & {
       addresses: {
         nodes: Array<
@@ -2044,7 +2044,7 @@ export type GetDashboardCustomerIdQueryVariables = StorefrontAPI.Exact<{
 }>;
 
 export type GetDashboardCustomerIdQuery = {
-  customer?: StorefrontAPI.Maybe<Pick<StorefrontAPI.Customer, 'id' | 'tags'>>;
+  customer?: StorefrontAPI.Maybe<Pick<StorefrontAPI.Customer, 'id'>>;
 };
 
 export type GetLoyaltyCustomerQueryVariables = StorefrontAPI.Exact<{
@@ -2220,12 +2220,24 @@ export type CustomerOrdersQuery = {
   >;
 };
 
+export type GetDeleteProfileCustomerIdQueryVariables = StorefrontAPI.Exact<{
+  customerAccessToken: StorefrontAPI.Scalars['String']['input'];
+}>;
+
+export type GetDeleteProfileCustomerIdQuery = {
+  customer?: StorefrontAPI.Maybe<Pick<StorefrontAPI.Customer, 'id'>>;
+};
+
 export type GetProfileCustomerIdQueryVariables = StorefrontAPI.Exact<{
   customerAccessToken: StorefrontAPI.Scalars['String']['input'];
 }>;
 
 export type GetProfileCustomerIdQuery = {
-  customer?: StorefrontAPI.Maybe<Pick<StorefrontAPI.Customer, 'id'>>;
+  customer?: StorefrontAPI.Maybe<
+    Pick<StorefrontAPI.Customer, 'id'> & {
+      birthdate?: StorefrontAPI.Maybe<Pick<StorefrontAPI.Metafield, 'value'>>;
+    }
+  >;
 };
 
 export type CustomerUpdateMutationVariables = StorefrontAPI.Exact<{
@@ -2252,19 +2264,10 @@ export type CustomerUpdateMutation = {
   }>;
 };
 
-export type GetPromotionsCustomerIdQueryVariables = StorefrontAPI.Exact<{
-  customerAccessToken: StorefrontAPI.Scalars['String']['input'];
-}>;
-
-export type GetPromotionsCustomerIdQuery = {
-  customer?: StorefrontAPI.Maybe<Pick<StorefrontAPI.Customer, 'id' | 'tags'>>;
-};
-
 export type CustomerFragment = Pick<
   StorefrontAPI.Customer,
   | 'id'
   | 'createdAt'
-  | 'tags'
   | 'acceptsMarketing'
   | 'email'
   | 'firstName'
@@ -2369,7 +2372,6 @@ export type CustomerQuery = {
       StorefrontAPI.Customer,
       | 'id'
       | 'createdAt'
-      | 'tags'
       | 'acceptsMarketing'
       | 'email'
       | 'firstName'
@@ -6005,7 +6007,7 @@ interface GeneratedQueryTypes {
     return: LocationsQuery;
     variables: LocationsQueryVariables;
   };
-  '#graphql\n  query CustomerAddresses($customerAccessToken: String!) {\n    customer(customerAccessToken: $customerAccessToken) {\n      id\n      email\n      phone\n      tags\n      firstName\n      lastName\n      addresses(first: 20) {\n        nodes {\n          id\n          address1\n          address2\n          city\n          country\n          firstName\n          lastName\n          phone\n        }\n      }\n    }\n  }\n': {
+  '#graphql\n  query CustomerAddresses($customerAccessToken: String!) {\n    customer(customerAccessToken: $customerAccessToken) {\n      id\n      email\n      phone\n      firstName\n      lastName\n      addresses(first: 20) {\n        nodes {\n          id\n          address1\n          address2\n          city\n          country\n          firstName\n          lastName\n          phone\n        }\n      }\n    }\n  }\n': {
     return: CustomerAddressesQuery;
     variables: CustomerAddressesQueryVariables;
   };
@@ -6033,7 +6035,11 @@ interface GeneratedQueryTypes {
     return: HomepageConfigQuery;
     variables: HomepageConfigQueryVariables;
   };
-  '#graphql\n      query getDashboardCustomerId($customerAccessToken: String!) {\n        customer(customerAccessToken: $customerAccessToken) {\n          id\n          tags\n        }\n      }\n    ': {
+  '#graphql\n          query getDashboardCustomerId($customerAccessToken: String!) {\n            customer(customerAccessToken: $customerAccessToken) {\n              id\n            }\n          }': {
+    return: GetDashboardCustomerIdQuery;
+    variables: GetDashboardCustomerIdQueryVariables;
+  };
+  '#graphql\n      query getDashboardCustomerId($customerAccessToken: String!) {\n        customer(customerAccessToken: $customerAccessToken) {\n          id\n        }\n      }\n    ': {
     return: GetDashboardCustomerIdQuery;
     variables: GetDashboardCustomerIdQueryVariables;
   };
@@ -6045,23 +6051,19 @@ interface GeneratedQueryTypes {
     return: GetLoyaltyCustomerIdQuery;
     variables: GetLoyaltyCustomerIdQueryVariables;
   };
-  '#graphql\n  #graphql\n  fragment Customer on Customer {\n    id\n    createdAt\n    tags\n    acceptsMarketing\n    addresses(first: 6) {\n      nodes {\n        ...Address\n      }\n    }\n    defaultAddress {\n      ...Address\n    }\n    email\n    firstName\n    lastName\n    numberOfOrders\n    phone\n    birthdate: metafield(namespace: "custom", key: "birthdate") {\n      value\n    }\n    orders(first: 50, sortKey: PROCESSED_AT, reverse: true) {\n      nodes {\n        id\n        orderNumber\n        processedAt\n        financialStatus\n        fulfillmentStatus\n        currentTotalPrice {\n          amount\n          currencyCode\n        }\n        lineItems(first: 20) {\n          nodes {\n            title\n            quantity\n            variant {\n              id\n              image {\n                url\n                altText\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n  fragment Address on MailingAddress {\n    id\n    formatted\n    firstName\n    lastName\n    company\n    address1\n    address2\n    country\n    province\n    city\n    zip\n    phone\n  }\n\n  query CustomerOrders(\n    $country: CountryCode\n    $customerAccessToken: String!\n    $endCursor: String\n    $first: Int\n    $language: LanguageCode\n    $last: Int\n    $startCursor: String\n  ) @inContext(country: $country, language: $language) {\n    customer(customerAccessToken: $customerAccessToken) {\n      ...CustomerOrders\n    }\n  }\n': {
+  '#graphql\n  #graphql\n  fragment Customer on Customer {\n    id\n    createdAt\n    acceptsMarketing\n    addresses(first: 6) {\n      nodes {\n        ...Address\n      }\n    }\n    defaultAddress {\n      ...Address\n    }\n    email\n    firstName\n    lastName\n    numberOfOrders\n    phone\n    birthdate: metafield(namespace: "custom", key: "birthdate") {\n      value\n    }\n    orders(first: 50, sortKey: PROCESSED_AT, reverse: true) {\n      nodes {\n        id\n        orderNumber\n        processedAt\n        financialStatus\n        fulfillmentStatus\n        currentTotalPrice {\n          amount\n          currencyCode\n        }\n        lineItems(first: 20) {\n          nodes {\n            title\n            quantity\n            variant {\n              id\n              image {\n                url\n                altText\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n  fragment Address on MailingAddress {\n    id\n    formatted\n    firstName\n    lastName\n    company\n    address1\n    address2\n    country\n    province\n    city\n    zip\n    phone\n  }\n\n  query CustomerOrders(\n    $country: CountryCode\n    $customerAccessToken: String!\n    $endCursor: String\n    $first: Int\n    $language: LanguageCode\n    $last: Int\n    $startCursor: String\n  ) @inContext(country: $country, language: $language) {\n    customer(customerAccessToken: $customerAccessToken) {\n      ...CustomerOrders\n    }\n  }\n': {
     return: CustomerOrdersQuery;
     variables: CustomerOrdersQueryVariables;
   };
-  '#graphql\n        query getProfileCustomerId($customerAccessToken: String!) {\n          customer(customerAccessToken: $customerAccessToken) {\n            id\n          }\n        }\n      ': {
+  '#graphql\n        query getDeleteProfileCustomerId($customerAccessToken: String!) {\n          customer(customerAccessToken: $customerAccessToken) {\n            id\n          }\n        }\n      ': {
+    return: GetDeleteProfileCustomerIdQuery;
+    variables: GetDeleteProfileCustomerIdQueryVariables;
+  };
+  '#graphql\n      query getProfileCustomerId($customerAccessToken: String!) {\n        customer(customerAccessToken: $customerAccessToken) {\n          id\n          birthdate: metafield(namespace: "custom", key: "birthdate") {\n            value\n          }\n        }\n      }\n    ': {
     return: GetProfileCustomerIdQuery;
     variables: GetProfileCustomerIdQueryVariables;
   };
-  '#graphql\n      query getProfileCustomerId($customerAccessToken: String!) {\n        customer(customerAccessToken: $customerAccessToken) {\n          id\n        }\n      }\n    ': {
-    return: GetProfileCustomerIdQuery;
-    variables: GetProfileCustomerIdQueryVariables;
-  };
-  '#graphql\n    query getPromotionsCustomerId($customerAccessToken: String!) {\n      customer(customerAccessToken: $customerAccessToken) {\n        id\n        tags\n      }\n    }\n  ': {
-    return: GetPromotionsCustomerIdQuery;
-    variables: GetPromotionsCustomerIdQueryVariables;
-  };
-  '#graphql\n  query Customer(\n    $customerAccessToken: String!\n    $country: CountryCode\n    $language: LanguageCode\n  ) @inContext(country: $country, language: $language) {\n    customer(customerAccessToken: $customerAccessToken) {\n      ...Customer\n    }\n  }\n  #graphql\n  fragment Customer on Customer {\n    id\n    createdAt\n    tags\n    acceptsMarketing\n    addresses(first: 6) {\n      nodes {\n        ...Address\n      }\n    }\n    defaultAddress {\n      ...Address\n    }\n    email\n    firstName\n    lastName\n    numberOfOrders\n    phone\n    birthdate: metafield(namespace: "custom", key: "birthdate") {\n      value\n    }\n    orders(first: 50, sortKey: PROCESSED_AT, reverse: true) {\n      nodes {\n        id\n        orderNumber\n        processedAt\n        financialStatus\n        fulfillmentStatus\n        currentTotalPrice {\n          amount\n          currencyCode\n        }\n        lineItems(first: 20) {\n          nodes {\n            title\n            quantity\n            variant {\n              id\n              image {\n                url\n                altText\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n  fragment Address on MailingAddress {\n    id\n    formatted\n    firstName\n    lastName\n    company\n    address1\n    address2\n    country\n    province\n    city\n    zip\n    phone\n  }\n\n': {
+  '#graphql\n  query Customer(\n    $customerAccessToken: String!\n    $country: CountryCode\n    $language: LanguageCode\n  ) @inContext(country: $country, language: $language) {\n    customer(customerAccessToken: $customerAccessToken) {\n      ...Customer\n    }\n  }\n  #graphql\n  fragment Customer on Customer {\n    id\n    createdAt\n    acceptsMarketing\n    addresses(first: 6) {\n      nodes {\n        ...Address\n      }\n    }\n    defaultAddress {\n      ...Address\n    }\n    email\n    firstName\n    lastName\n    numberOfOrders\n    phone\n    birthdate: metafield(namespace: "custom", key: "birthdate") {\n      value\n    }\n    orders(first: 50, sortKey: PROCESSED_AT, reverse: true) {\n      nodes {\n        id\n        orderNumber\n        processedAt\n        financialStatus\n        fulfillmentStatus\n        currentTotalPrice {\n          amount\n          currencyCode\n        }\n        lineItems(first: 20) {\n          nodes {\n            title\n            quantity\n            variant {\n              id\n              image {\n                url\n                altText\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n  fragment Address on MailingAddress {\n    id\n    formatted\n    firstName\n    lastName\n    company\n    address1\n    address2\n    country\n    province\n    city\n    zip\n    phone\n  }\n\n': {
     return: CustomerQuery;
     variables: CustomerQueryVariables;
   };

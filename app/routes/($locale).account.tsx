@@ -407,6 +407,10 @@ export async function loader({request, context}: LoaderFunctionArgs) {
                     title: li.title,
                     quantity: li.quantity || 1,
                     variantId: li.variant_id,
+                    customAttributes: (li.properties || li.custom_attributes || li.customAttributes || []).map((p: any) => ({
+                      key: p.name || p.key,
+                      value: String(p.value || '')
+                    })),
                     variant: {
                       id: li.variant_id
                         ? `gid://shopify/ProductVariant/${li.variant_id}`
@@ -994,6 +998,10 @@ export const CUSTOMER_FRAGMENT = `#graphql
           nodes {
             title
             quantity
+            customAttributes {
+              key
+              value
+            }
             variant {
               id
               image {

@@ -170,7 +170,7 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
   const prepaidOnlyItems = cart?.lines?.nodes?.filter((line: any) =>
     line.merchandise?.product?.tags?.some((tag: string) => {
       const t = tag.toLowerCase().trim();
-      return t === 'prepaid-only' || t === 'nocod';
+      return t === 'prepaid-only' || t === 'nocod' || t === 'preorder' || t === 'pre-order' || t === 'طلب مسبق';
     })
   ) || [];
   const hasPrepaidOnly = prepaidOnlyItems.length > 0;

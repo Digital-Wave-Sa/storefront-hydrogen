@@ -7,6 +7,8 @@ interface CakePreviewProps {
   color: string; // hex
   toppings?: { id: string; name?: string; image?: string }[];
   message?: string;
+  baseMessage?: string;
+  messagePlacement?: 'cake' | 'base' | 'both';
   textColor?: string;
   textFont?: string;
   flavorName?: string;
@@ -133,6 +135,8 @@ export function CakePreview({
   color,
   toppings,
   message,
+  baseMessage,
+  messagePlacement = 'cake',
   flavorName = 'vanilla',
   isCutaway = false,
   scale = 1.0,
@@ -410,12 +414,10 @@ export function CakePreview({
             // FALLBACK: Color the shape image directly
             oCtx.drawImage(loadedImages.shape, cakeX, cakeY, cakeW, cakeH);
 
-            // Apply selected color if not default classic white
             if (color && color.toLowerCase() !== '#fdf5e6') {
               const imgData = oCtx.getImageData(0, 0, width, height);
               const data = imgData.data;
 
-              // Parse hex color robustly
               let hex = color.replace('#', '');
               if (hex.length === 3) {
                 hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
@@ -438,11 +440,9 @@ export function CakePreview({
                 const relativeX = (x - cakeX) / cakeW;
                 const relativeY = (y - cakeY) / cakeH;
 
-                // Determine if pixel is cake frosting based on view and relative vertical position
                 let isCake = checkIsCakeFrosting(shape, view, relativeX, relativeY, r, g, b);
 
                 if (isCake) {
-                  // Apply color using multiply blend logic
                   data[i] = (r * targetR) / 255;
                   data[i + 1] = (g * targetG) / 255;
                   data[i + 2] = (b * targetB) / 255;
@@ -451,7 +451,6 @@ export function CakePreview({
               oCtx.putImageData(imgData, 0, 0);
             }
 
-            // Blended output to main canvas
             ctx.drawImage(offscreen, 0, 0);
           }
         } else {
@@ -459,22 +458,15 @@ export function CakePreview({
         }
       }
 
-      // 3. Draw premium topping layer
       if (loadedImages.topping) {
         ctx.drawImage(loadedImages.topping, cakeX, cakeY, cakeW, cakeH);
       }
 
-      // 4. Render dynamic sprinkles if selected and not witches-dont-age
       if (toppingId === 'sprinkles' || (!toppingImg && toppings?.[0]?.id === 'sprinkles')) {
         drawSprinkles(ctx, cakeX, cakeY, cakeW, cakeH);
       }
 
-      // 5. Custom printed photo is attached to order but not rendered on cake preview as per user request
-
-      // 6. Draw written frosting message text
-      if (message) {
-        drawMessage(ctx, width, height, cakeY + cakeH);
-      }
+      // Messages are saved to order attributes without rendering on the cake preview image
     }
 
     function drawSprinkles(ctx: CanvasRenderingContext2D, cx: number, cy: number, cw: number, ch: number) {
@@ -510,53 +502,51 @@ export function CakePreview({
       ctx.restore();
     }
 
-
-    function drawMessage(ctx: CanvasRenderingContext2D, w: number, h: number, cakeBottom: number) {
+    function drawMessages(ctx: CanvasRenderingContext2D, w: number, h: number, cakeBottom: number) {
       ctx.save();
-      ctx.fillStyle = textColor;
-      ctx.textAlign = 'center';
-      
+
       let fontFamily = "'Outfit', sans-serif";
       if (textFont === 'Handwriting') fontFamily = "'Cairo', cursive";
       else if (textFont === 'Modern') fontFamily = "'Outfit', sans-serif";
-      
-      ctx.font = `bold 28px ${fontFamily}`;
-      
-      ctx.shadowColor = 'rgba(0,0,0,0.15)';
-      ctx.shadowBlur = 4;
-      ctx.shadowOffsetX = 1;
-      ctx.shadowOffsetY = 3;
 
-      if (view === 'top') {
-        ctx.fillText(message!, w / 2, h / 2 + 10);
-      } else {
-        const bx = w / 2;
-        const by = h - 60;
-        
-        ctx.shadowColor = 'rgba(0,0,0,0.05)';
-        ctx.shadowBlur = 10;
-        ctx.fillStyle = '#ffffff';
-        ctx.strokeStyle = '#294941';
-        ctx.lineWidth = 1.5;
-        
-        const textWidth = ctx.measureText(message!).width;
-        const padX = 30;
-        const padY = 12;
-        
-        ctx.beginPath();
-        ctx.roundRect(bx - textWidth / 2 - padX, by - 24 - padY, textWidth + padX * 2, 40 + padY * 2, 12);
-        ctx.fill();
-        ctx.stroke();
-        
-        ctx.shadowColor = 'transparent';
+      // 1. Draw Cake Surface Message if applicable
+      const showCakeText = message && (messagePlacement === 'cake' || messagePlacement === 'both');
+      if (showCakeText) {
         ctx.fillStyle = textColor;
-        ctx.font = `900 24px ${fontFamily}`;
-        ctx.fillText(message!, bx, by + 4);
+        ctx.textAlign = 'center';
+        ctx.font = `bold 26px ${fontFamily}`;
+
+        ctx.shadowColor = 'rgba(0,0,0,0.2)';
+        ctx.shadowBlur = 4;
+        ctx.shadowOffsetX = 1;
+        ctx.shadowOffsetY = 2;
+
+        if (view === 'top') {
+          ctx.fillText(message!, w / 2, h / 2 - 10);
+        } else {
+          ctx.fillText(message!, w / 2, cakeBottom - 180);
+        }
       }
+
+      // 2. Draw Base / Board Message directly without white background badge box
+      const showBaseText = baseMessage && (messagePlacement === 'base' || messagePlacement === 'both');
+      const targetBaseText = showBaseText ? baseMessage : (!showCakeText && message && messagePlacement === 'base' ? message : null);
+
+      if (targetBaseText) {
+        ctx.fillStyle = textColor;
+        ctx.textAlign = 'center';
+        ctx.font = `900 22px ${fontFamily}`;
+        ctx.shadowColor = 'rgba(0,0,0,0.15)';
+        ctx.shadowBlur = 4;
+        ctx.shadowOffsetX = 1;
+        ctx.shadowOffsetY = 2;
+        ctx.fillText(targetBaseText, w / 2, h - 50);
+      }
+
       ctx.restore();
     }
 
-  }, [activeSources, view, color, message, textColor, textFont, uploadedImage, shape]);
+  }, [activeSources, view, color, message, baseMessage, messagePlacement, textColor, textFont, uploadedImage, shape]);
 
   return (
     <div dir="ltr" className="w-full h-full relative flex items-center justify-center">

@@ -323,7 +323,10 @@ export async function action({request, context}: ActionFunctionArgs) {
       layers,
       color,
       topping,
+      messagePlacement,
       message,
+      baseMessage,
+      specialInstructions,
       messageFont,
       messageColor,
       uploadedImage,
@@ -430,8 +433,8 @@ export async function action({request, context}: ActionFunctionArgs) {
     }
 
     const description = isEn
-      ? `${shape} • ${size} • ${flavor} • ${layers} layers • ${color} • ${topping}${prepTime ? ` • Prep: ${prepTime}` : ''}${message ? ` • "${message}" (${messageFont}, ${messageColor})` : ''}`
-      : `${shape} • ${size} • ${flavor} • ${layers} طبقات • ${color} • ${topping}${prepTime ? ` • تجهيز: ${prepTime}` : ''}${message ? ` • "${message}" (${messageFont}, ${messageColor})` : ''}`;
+      ? `${shape} • ${size} • ${flavor} • ${layers} layers • ${color} • ${topping}${prepTime ? ` • Prep: ${prepTime}` : ''}${message ? ` • Cake Text: "${message}"` : ''}${baseMessage ? ` • Base Text: "${baseMessage}"` : ''}${specialInstructions ? ` • Instructions: "${specialInstructions}"` : ''}`
+      : `${shape} • ${size} • ${flavor} • ${layers} طبقات • ${color} • ${topping}${prepTime ? ` • تجهيز: ${prepTime}` : ''}${message ? ` • نص الكيكة: "${message}"` : ''}${baseMessage ? ` • نص القاعدة: "${baseMessage}"` : ''}${specialInstructions ? ` • تعليمات خاصة: "${specialInstructions}"` : ''}`;
 
     const customAttributes = [
       {key: '_cake_custom', value: 'true'},
@@ -445,7 +448,24 @@ export async function action({request, context}: ActionFunctionArgs) {
         key: isEn ? 'Preparation Option' : 'خيار التحضير',
         value: prepTime || '-',
       },
-      ...(message ? [{key: isEn ? 'Message' : 'الرسالة', value: message}] : []),
+      ...(messagePlacement
+        ? [
+            {
+              key: isEn ? 'Text Placement' : 'موقع الكتابة',
+              value:
+                messagePlacement === 'both'
+                  ? isEn ? 'Cake Surface & Base Board' : 'الكيكة والقاعدة معا'
+                  : messagePlacement === 'base'
+                    ? isEn ? 'Base Board Only' : 'على القاعدة فقط'
+                    : isEn ? 'Cake Surface Only' : 'على الكيكة فقط',
+            },
+          ]
+        : []),
+      ...(message ? [{key: isEn ? 'Cake Surface Message' : 'نص على الكيكة', value: message}] : []),
+      ...(baseMessage ? [{key: isEn ? 'Cake Base Message' : 'نص على القاعدة', value: baseMessage}] : []),
+      ...(specialInstructions
+        ? [{key: isEn ? 'Special Instructions' : 'تعليمات خاصة للمخبز', value: specialInstructions}]
+        : []),
       ...(messageFont
         ? [{key: isEn ? 'Message Font' : 'خط الرسالة', value: messageFont}]
         : []),

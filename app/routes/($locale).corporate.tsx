@@ -528,7 +528,7 @@ function CustomQuoteModal({
             <span>
               {isEn
                 ? 'Custom B2B Quotation (Min 200 Boxes)'
-                : 'طلب عرض سعر مخصص (الحد الأدنى ٢٠٠ علبة)'}
+                : 'طلب عرض سعر مخصص (الحد الأدنى 200 علبة)'}
             </span>
           </div>
           <h3
@@ -542,7 +542,7 @@ function CustomQuoteModal({
           <p className="text-[14px] text-[#8B9895] m-0 leading-relaxed">
             {isEn
               ? 'Fill in your requirements and our export team will respond within 24-48 hours with a custom catalog & pricing.'
-              : 'املأ بياناتك وسيقوم فريق التصدير والهدايا المؤسسية بالرد عليك خلال ٢٤-٤٨ ساعة بكتالوج مخصص وأفضل سعر.'}
+              : 'املأ بياناتك وسيقوم فريق التصدير والهدايا المؤسسية بالرد عليك خلال 24-48 ساعة بكتالوج مخصص وأفضل سعر.'}
           </p>
         </div>
 
@@ -557,7 +557,7 @@ function CustomQuoteModal({
             <p className="text-[14px] text-[#8B9895] m-0 leading-relaxed max-w-[480px]">
               {isEn
                 ? 'Your inquiry has been sent to info@saadeddin.com. An account manager will contact you within 24-48 hours.'
-                : 'تم تحويل طلبك لـ info@saadeddin.com وسيتواصل معك مدير حسابك المختص خلال ٢٤-٤٨ ساعة.'}
+                : 'تم تحويل طلبك لـ info@saadeddin.com وسيتواصل معك مدير حسابك المختص خلال 24-48 ساعة.'}
             </p>
 
             <div className="flex flex-col sm:flex-row gap-3 w-full mt-4">
@@ -641,7 +641,7 @@ function CustomQuoteModal({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-[13px] font-bold text-[#234745] mb-1">
-                  {isEn ? 'Expected Quantity (Min 200) *' : 'الكمية المتوقعة (الحد الأدنى ٢٠٠) *'}
+                  {isEn ? 'Expected Quantity (Min 200) *' : 'الكمية المتوقعة (الحد الأدنى 200) *'}
                 </label>
                 <input
                   type="number"

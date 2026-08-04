@@ -167,6 +167,13 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
     line.merchandise?.product?.tags?.some((tag: string) => tag.toLowerCase().trim() === 'cash-only')
   );
 
+  const hasCustomCorporateItems = cart?.lines?.nodes?.some((line: any) =>
+    line.merchandise?.product?.tags?.some((tag: string) => {
+      const t = tag.toLowerCase().trim();
+      return t === 'corporate-custom' || t === 'custom-corporate' || t === 'مخصص';
+    })
+  );
+
   const prepaidOnlyItems = cart?.lines?.nodes?.filter((line: any) =>
     line.merchandise?.product?.tags?.some((tag: string) => {
       const t = tag.toLowerCase().trim();
@@ -519,6 +526,20 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
 
               {/* Buttons */}
               <div className="flex flex-col gap-3 mt-2">
+                {hasCustomCorporateItems && (
+                  <div className="bg-[#FEF8EB] border border-[#C5A96A]/60 rounded-2xl p-4 flex flex-col gap-2.5 my-1 text-start animate-fade-in">
+                    <div className="flex items-center gap-2.5 font-bold text-[#234745] text-[14px]">
+                      <span className="text-lg">🎁</span>
+                      <span>{isEn ? 'Our team will contact you within 24 hours to confirm your custom package request.' : 'سيتواصل معك فريقنا خلال ٢٤ ساعة لتأكيد طلبك'}</span>
+                    </div>
+                    <Link
+                      to={isEn ? '/en/pages/custom-request' : '/pages/custom-request'}
+                      className="text-[#906B51] font-bold text-[13px] hover:underline flex items-center gap-1"
+                    >
+                      <span>{isEn ? 'Edit Request Details →' : 'تعديل تفاصيل الطلب ←'}</span>
+                    </Link>
+                  </div>
+                )}
                 {isTimeSlotInvalid && (
                   <div className="bg-red-50 border border-red-200 p-3 rounded-lg flex items-start gap-2 mb-1">
                     <span className="text-base leading-none mt-0.5">⚠️</span>

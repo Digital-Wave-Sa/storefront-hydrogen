@@ -52,7 +52,6 @@ const PRODUCT_ITEM_FRAGMENT = `#graphql
         id
         title
         availableForSale
-        quantityAvailable
         selectedOptions {
           name
           value
@@ -113,7 +112,7 @@ export async function loader({context}: LoaderFunctionArgs) {
   }
 }
 
-function resolveTiers(product: any, isEn: boolean): Tier[] {
+function resolveTiers(product: any, isEn: boolean): any[] {
   const minPrice = parseFloat(
     product.priceRange?.minVariantPrice?.amount || '0',
   );
@@ -159,7 +158,15 @@ function resolveTiers(product: any, isEn: boolean): Tier[] {
   ];
 }
 
-function CorporateProductCard({product, isEn}: {product: any; isEn: boolean}) {
+function CorporateProductCard({
+  product,
+  isEn,
+  onOpenCustomModal,
+}: {
+  product: any;
+  isEn: boolean;
+  onOpenCustomModal: () => void;
+}) {
   const tiers = resolveTiers(product, isEn);
 
   // Tags & Badges
@@ -187,19 +194,26 @@ function CorporateProductCard({product, isEn}: {product: any; isEn: boolean}) {
     ? `/en/products/${product.handle}`
     : `/products/${product.handle}`;
 
+  const titleLower = (
+    product.title +
+    ' ' +
+    (product.handle || '')
+  ).toLowerCase();
+
+  const isCustom =
+    titleLower.includes('custom') ||
+    titleLower.includes('مخصص') ||
+    product.tags?.includes('corporate-custom') ||
+    product.tags?.includes('custom');
+
   const displayTitle = isEn
     ? product.title
     : (() => {
-        const titleLower = (
-          product.title +
-          ' ' +
-          (product.handle || '')
-        ).toLowerCase();
         if (titleLower.includes('classic') || titleLower.includes('كلاسيك'))
           return 'التشكيلة الكلاسيكية';
         if (titleLower.includes('premium') || titleLower.includes('فاخر'))
           return 'التشكيلة الفاخرة';
-        if (titleLower.includes('custom') || titleLower.includes('مخصص'))
+        if (isCustom)
           return 'التشكيلة المخصصة';
         return product.title;
       })();
@@ -211,15 +225,10 @@ function CorporateProductCard({product, isEn}: {product: any; isEn: boolean}) {
       ? product.description
       : null) ||
     (() => {
-      const titleLower = (
-        product.title +
-        ' ' +
-        (product.handle || '')
-      ).toLowerCase();
-      if (titleLower.includes('custom') || titleLower.includes('مخصص'))
+      if (isCustom)
         return isEn
-          ? 'Maamoul + Baklava + Mixed Sweets — Medium Box'
-          : 'معمول + بقلاوة + حلوى مشكلة — علبة وسط';
+          ? 'Full custom identity from scratch — packaging, colors, and content'
+          : 'تصميم مخصص بالكامل من الصفر — التغليف، الألوان، والمحتوى';
       if (titleLower.includes('premium') || titleLower.includes('فاخر'))
         return isEn
           ? 'Maamoul + Baklava + Mixed Sweets — Medium Box'
@@ -236,13 +245,27 @@ function CorporateProductCard({product, isEn}: {product: any; isEn: boolean}) {
     >
       {/* 1. Image Header */}
       <div className="relative w-full h-[220px] bg-[#F6F1EC] overflow-hidden">
-        <Link to={productUrl} className="block w-full h-full">
-          <img
-            src={product.featuredImage?.url || '/images/placeholder/sample.png'}
-            alt={product.featuredImage?.altText || displayTitle}
-            className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
-          />
-        </Link>
+        {isCustom ? (
+          <button
+            type="button"
+            onClick={onOpenCustomModal}
+            className="block w-full h-full text-start"
+          >
+            <img
+              src={product.featuredImage?.url || '/images/placeholder/sample.png'}
+              alt={product.featuredImage?.altText || displayTitle}
+              className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
+            />
+          </button>
+        ) : (
+          <Link to={productUrl} className="block w-full h-full">
+            <img
+              src={product.featuredImage?.url || '/images/placeholder/sample.png'}
+              alt={product.featuredImage?.altText || displayTitle}
+              className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
+            />
+          </Link>
+        )}
 
         {/* Badges Container */}
         <div className="absolute top-3.5 left-3.5 right-3.5 flex justify-between items-center pointer-events-none">
@@ -286,70 +309,322 @@ function CorporateProductCard({product, isEn}: {product: any; isEn: boolean}) {
       >
         {/* Title & Subtitle */}
         <div className="flex flex-col gap-1">
-          <Link to={productUrl}>
-            <h3
-              className="text-[#234745] font-bold text-[18px] hover:text-[#906B51] transition-colors m-0 leading-snug"
-              style={{
-                fontFamily: isEn ? 'inherit' : "'Bahij Janna', sans-serif",
-              }}
+          {isCustom ? (
+            <button
+              type="button"
+              onClick={onOpenCustomModal}
+              className="text-start group"
             >
-              {displayTitle}
-            </h3>
-          </Link>
+              <h3
+                className="text-[#234745] font-bold text-[18px] group-hover:text-[#906B51] transition-colors m-0 leading-snug"
+                style={{
+                  fontFamily: isEn ? 'inherit' : "'Bahij Janna', sans-serif",
+                }}
+              >
+                {displayTitle}
+              </h3>
+            </button>
+          ) : (
+            <Link to={productUrl}>
+              <h3
+                className="text-[#234745] font-bold text-[18px] hover:text-[#906B51] transition-colors m-0 leading-snug"
+                style={{
+                  fontFamily: isEn ? 'inherit' : "'Bahij Janna', sans-serif",
+                }}
+              >
+                {displayTitle}
+              </h3>
+            </Link>
+          )}
           <p className="text-[#8B9895] font-medium text-[13px] sm:text-[14px] m-0 line-clamp-2">
             {displayDesc}
           </p>
         </div>
 
-        {/* Wholesale Pricing Box (أسعار الجملة) */}
-        <div className="bg-[#FEF8EB] border border-[#E6E2D8] rounded-[16px] p-4 flex flex-col gap-3 mt-auto">
-          <h4 className="text-[#906B51] font-bold text-[14px] m-0 border-b border-[#E6E2D8]/60 pb-2">
-            {isEn ? 'Wholesale Prices' : 'أسعار الجملة'}
-          </h4>
+        {/* Wholesale Pricing Box (أسعار الجملة) or Custom Quote Banner */}
+        {isCustom ? (
+          <div className="bg-[#FEF8EB] border border-[#E6E2D8] rounded-[16px] p-4 flex flex-col gap-2 mt-auto">
+            <h4 className="text-[#906B51] font-bold text-[14px] m-0 border-b border-[#E6E2D8]/60 pb-2">
+              {isEn ? 'Bespoke Corporate Pricing' : 'تسعير مخصص بالكامل'}
+            </h4>
+            <p className="text-[#234745] font-medium text-[13px] m-0 leading-relaxed">
+              {isEn
+                ? 'Full custom design tailored to your brand identity. Minimum order 200 boxes.'
+                : 'تصميم خاص بالكامل من الصفر حسب هوية شركتك. الحد الأدنى للطلب ٢٠٠ علبة.'}
+            </p>
+          </div>
+        ) : (
+          <div className="bg-[#FEF8EB] border border-[#E6E2D8] rounded-[16px] p-4 flex flex-col gap-3 mt-auto">
+            <h4 className="text-[#906B51] font-bold text-[14px] m-0 border-b border-[#E6E2D8]/60 pb-2">
+              {isEn ? 'Wholesale Prices' : 'أسعار الجملة'}
+            </h4>
 
-          <div className="flex flex-col gap-2.5">
-            {tiers.map((tier, idx) => (
-              <div
-                key={idx}
-                className="flex justify-between items-center text-[14px]"
-              >
-                <span className="text-[#8B9895] font-medium">{tier.label}</span>
-                <div className="flex items-center gap-2">
-                  {tier.isBest && (
-                    <div className="bg-[#234745] px-2.5 py-0.5 rounded-full">
-                      <span className="text-[#FEF8EB] font-bold text-[11px]">
-                        {isEn ? 'Best' : 'الأفضل'}
+            <div className="flex flex-col gap-2.5">
+              {tiers.map((tier, idx) => (
+                <div
+                  key={idx}
+                  className="flex justify-between items-center text-[14px]"
+                >
+                  <span className="text-[#8B9895] font-medium">{tier.label}</span>
+                  <div className="flex items-center gap-2">
+                    {tier.isBest && (
+                      <div className="bg-[#234745] px-2.5 py-0.5 rounded-full">
+                        <span className="text-[#FEF8EB] font-bold text-[11px]">
+                          {isEn ? 'Best' : 'الأفضل'}
+                        </span>
+                      </div>
+                    )}
+                    <div className="flex items-center gap-1 font-bold text-[#234745] text-[16px]">
+                      <span
+                        style={{
+                          fontFamily:
+                            "'EnglishDigits', 'Bahij Janna', sans-serif",
+                        }}
+                      >
+                        {tier.price}
                       </span>
+                      <span className="text-[13px] font-normal">﷼</span>
                     </div>
-                  )}
-                  <div className="flex items-center gap-1 font-bold text-[#234745] text-[16px]">
-                    <span
-                      style={{
-                        fontFamily:
-                          "'EnglishDigits', 'Bahij Janna', sans-serif",
-                      }}
-                    >
-                      {tier.price}
-                    </span>
-                    <span className="text-[13px] font-normal">﷼</span>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
+        )}
+
+        {/* Action Button: اختر وخصص or طلب عرض سعر مخصص */}
+        {isCustom ? (
+          <button
+            type="button"
+            onClick={onOpenCustomModal}
+            className="w-full bg-[#234745] !text-white font-bold text-[16px] py-3 rounded-full hover:bg-[#1a3533] transition-colors text-center block mt-1 shadow-sm cursor-pointer"
+            style={{
+              fontFamily: isEn ? 'inherit' : "'Bahij Janna', sans-serif",
+              color: '#ffffff',
+            }}
+          >
+            {isEn ? 'Request Custom Quote' : 'طلب عرض سعر مخصص'}
+          </button>
+        ) : (
+          <Link
+            to={productUrl}
+            className="w-full bg-[#234745] !text-white font-bold text-[16px] py-3 rounded-full hover:bg-[#1a3533] transition-colors text-center block mt-1 shadow-sm"
+            style={{
+              fontFamily: isEn ? 'inherit' : "'Bahij Janna', sans-serif",
+              color: '#ffffff',
+            }}
+          >
+            {isEn ? 'Choose & Customize' : 'إختر وخصص'}
+          </Link>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function CustomQuoteModal({
+  isOpen,
+  onClose,
+  isEn,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  isEn: boolean;
+}) {
+  const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  if (!isOpen) return null;
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setLoading(true);
+    setTimeout(() => {
+      setLoading(false);
+      setSubmitted(true);
+    }, 600);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in" dir={isEn ? 'ltr' : 'rtl'}>
+      <div className="bg-white rounded-[24px] max-w-[640px] w-full p-6 sm:p-8 shadow-2xl relative max-h-[90vh] overflow-y-auto border border-[#E6E2D8] text-start">
+        {/* Close Button */}
+        <button
+          onClick={onClose}
+          className="absolute top-5 start-5 w-9 h-9 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 flex items-center justify-center font-bold text-[16px] transition-colors cursor-pointer"
+        >
+          ✕
+        </button>
+
+        <div className="flex flex-col gap-2 mb-6 pt-2">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-[#FEF8EB] text-[#906B51] font-bold text-[13px] w-max border border-[#E6E2D8]">
+            {isEn ? 'Custom B2B Quotation (Min 200 Boxes)' : 'طلب عرض سعر مخصص (الحد الأدنى ٢٠٠ علبة)'}
+          </div>
+          <h3 className="text-[24px] font-bold text-[#234745] m-0" style={{fontFamily: isEn ? 'inherit' : "'Bahij Janna', sans-serif"}}>
+            {isEn ? 'Export & Custom Corporate Quote Request' : 'طلب عرض سعر للتصدير والهدايا المخصصة'}
+          </h3>
+          <p className="text-[14px] text-[#8B9895] m-0">
+            {isEn
+              ? 'Fill in your requirements and our export team will respond within 24-48 hours with a custom catalog & pricing.'
+              : 'املأ بياناتك وسيقوم فريق التصدير والهدايا المؤسسية بالرد عليك خلال ٢٤-٤٨ ساعة بكتالوج مخصص وأفضل سعر.'}
+          </p>
         </div>
 
-        {/* Action Button: اختر وخصص */}
-        <Link
-          to={productUrl}
-          className="w-full bg-[#234745] !text-white font-bold text-[16px] py-3 rounded-full hover:bg-[#1a3533] transition-colors text-center block mt-1 shadow-sm"
-          style={{
-            fontFamily: isEn ? 'inherit' : "'Bahij Janna', sans-serif",
-            color: '#ffffff',
-          }}
-        >
-          {isEn ? 'Choose & Customize' : 'إختر وخصص'}
-        </Link>
+        {submitted ? (
+          <div className="bg-[#FEF8EB] border border-[#C5A96A]/50 rounded-[20px] p-8 text-center flex flex-col items-center gap-4 my-4">
+            <div className="w-16 h-16 bg-[#234745] text-white rounded-full flex items-center justify-center text-3xl font-bold">
+              ✓
+            </div>
+            <h4 className="text-[22px] font-bold text-[#234745] m-0">
+              {isEn ? 'Request Received Successfully!' : 'تم استلام طلبك بنجاح!'}
+            </h4>
+            <p className="text-[14px] text-[#8B9895] m-0 leading-relaxed">
+              {isEn
+                ? 'Your inquiry has been sent to info@saadeddin.com. An account manager will contact you within 24-48 hours.'
+                : 'تم تحويل طلبك لـ info@saadeddin.com وسيتواصل معك مدير حسابك المختص خلال ٢٤-٤٨ ساعة.'}
+            </p>
+
+            <div className="flex flex-col sm:flex-row gap-3 w-full mt-4">
+              <a
+                href="https://wa.me/966501234567"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 bg-[#25D366] text-white font-bold py-3.5 rounded-full text-[14px] flex items-center justify-center gap-2 hover:bg-[#20bd5a] transition-all shadow-sm"
+              >
+                <span>💬</span>
+                <span>{isEn ? 'WhatsApp: +966 50 123 4567' : 'واتساب للأعمال: +966 50 123 4567'}</span>
+              </a>
+              <button
+                onClick={() => {
+                  setSubmitted(false);
+                  onClose();
+                }}
+                className="px-6 py-3.5 border border-[#234745] text-[#234745] font-bold rounded-full text-[14px] hover:bg-gray-50 transition-colors"
+              >
+                {isEn ? 'Close' : 'إغلاق'}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4 text-start">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-[13px] font-bold text-[#234745] mb-1">
+                  {isEn ? 'Company Name *' : 'اسم الشركة *'}
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder={isEn ? 'e.g. Acme Corp' : 'مثال: شركة الحلول المتقدمة'}
+                  className="w-full border border-[#E6E2D8] rounded-[12px] px-4 py-2.5 text-[14px] focus:outline-none focus:border-[#234745]"
+                />
+              </div>
+              <div>
+                <label className="block text-[13px] font-bold text-[#234745] mb-1">
+                  {isEn ? 'Contact Person *' : 'اسم المسؤول *'}
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder={isEn ? 'Full Name' : 'الاسم الثلاثي'}
+                  className="w-full border border-[#E6E2D8] rounded-[12px] px-4 py-2.5 text-[14px] focus:outline-none focus:border-[#234745]"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-[13px] font-bold text-[#234745] mb-1">
+                  {isEn ? 'Email Address *' : 'البريد الإلكتروني *'}
+                </label>
+                <input
+                  type="email"
+                  required
+                  placeholder="info@company.com"
+                  className="w-full border border-[#E6E2D8] rounded-[12px] px-4 py-2.5 text-[14px] focus:outline-none focus:border-[#234745]"
+                />
+              </div>
+              <div>
+                <label className="block text-[13px] font-bold text-[#234745] mb-1">
+                  {isEn ? 'Phone Number *' : 'رقم الجوال *'}
+                </label>
+                <input
+                  type="tel"
+                  required
+                  placeholder="05xxxxxxx"
+                  className="w-full border border-[#E6E2D8] rounded-[12px] px-4 py-2.5 text-[14px] focus:outline-none focus:border-[#234745]"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-[13px] font-bold text-[#234745] mb-1">
+                  {isEn ? 'Expected Quantity (Min 200) *' : 'الكمية المتوقعة (الحد الأدنى ٢٠٠) *'}
+                </label>
+                <input
+                  type="number"
+                  min="200"
+                  defaultValue="200"
+                  required
+                  className="w-full border border-[#E6E2D8] rounded-[12px] px-4 py-2.5 text-[14px] focus:outline-none focus:border-[#234745]"
+                />
+              </div>
+              <div>
+                <label className="block text-[13px] font-bold text-[#234745] mb-1">
+                  {isEn ? 'Budget per box (SAR)' : 'الميزانية المحددة للعلبة (ريال)'}
+                </label>
+                <input
+                  type="text"
+                  placeholder={isEn ? 'e.g. 150-250 SAR' : 'مثال: ١٥٠ - ٢٥٠ ريال'}
+                  className="w-full border border-[#E6E2D8] rounded-[12px] px-4 py-2.5 text-[14px] focus:outline-none focus:border-[#234745]"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-[13px] font-bold text-[#234745] mb-1">
+                {isEn ? 'Special Notes & Identity Requirements' : 'ملاحظات واشتراطات الهوية الخاّصة'}
+              </label>
+              <textarea
+                rows={3}
+                placeholder={isEn ? 'Mention colors, preferred box style, delivery date...' : 'اذكر الألوان المفضلة، نوع العلب، تاريخ المناسبة...'}
+                className="w-full border border-[#E6E2D8] rounded-[12px] px-4 py-2.5 text-[14px] focus:outline-none focus:border-[#234745]"
+              />
+            </div>
+
+            <div className="pt-2 flex flex-col sm:flex-row items-center gap-3">
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full sm:flex-1 bg-[#234745] text-white font-bold py-3.5 rounded-full text-[15px] hover:bg-[#1a3533] transition-colors shadow-md disabled:opacity-50 cursor-pointer"
+              >
+                {loading ? (isEn ? 'Sending...' : 'جاري الإرسال...') : (isEn ? 'Submit Quote Request' : 'إرسال طلب عرض السعر')}
+              </button>
+              <a
+                href="https://wa.me/966501234567"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full sm:w-auto px-6 bg-[#25D366] text-white font-bold py-3.5 rounded-full text-[14px] flex items-center justify-center gap-2 hover:bg-[#20bd5a] transition-colors cursor-pointer"
+              >
+                <span>💬</span>
+                <span>{isEn ? 'WhatsApp' : 'واتساب للأعمال'}</span>
+              </a>
+            </div>
+
+            <div className="text-center pt-3 text-[12px] text-[#8B9895] border-t border-[#E6E2D8] mt-1 flex flex-wrap items-center justify-center gap-3">
+              <span>
+                {isEn ? 'Email: ' : 'البريد الإلكتروني: '}
+                <a href="mailto:info@saadeddin.com" className="font-bold text-[#234745] underline">info@saadeddin.com</a>
+              </span>
+              <span>•</span>
+              <span>
+                {isEn ? 'Phone: ' : 'الهاتف: '}
+                <a href="tel:920017070" className="font-bold text-[#234745] underline font-mono" dir="ltr">920017070</a>
+              </span>
+            </div>
+          </form>
+        )}
       </div>
     </div>
   );
@@ -365,6 +640,7 @@ export default function CorporatePage() {
   const [activeMode, setActiveMode] = useState<'self' | 'custom'>('self');
   const [formSubmitted, setFormSubmitted] = useState(false);
   const [selectedPackage, setSelectedPackage] = useState<string>('');
+  const [isCustomModalOpen, setIsCustomModalOpen] = useState(false);
 
   // Dynamic Packages Builder (Shopify Collections/Products or Default Config)
   const packageCollections = (collections || []).filter(
@@ -766,18 +1042,18 @@ export default function CorporatePage() {
         /* SECTION 4A: Product Selection (اختر تشكيلتك) */
         <section id="products" className="w-full bg-[#FEF8EB] py-20 px-4">
           <div className="max-w-[1280px] mx-auto flex flex-col gap-8">
-            {/* Header */}
+            {/* 1. SECTION FIRST: Product Grid Selection (اختر تشكيلتك) */}
             <div className="flex flex-col items-center text-center gap-3">
-              <h4 className="text-[#906B51] font-medium text-[18px] leading-[22px]">
+              <h4 className="text-[#906B51] font-bold text-[18px] leading-[22px]">
                 {isEn ? 'Collections' : 'التشكيلات'}
               </h4>
               <h2
-                className="text-[#234745] text-[36px] md:text-[50px] font-bold leading-[80px]"
+                className="text-[#234745] text-[36px] md:text-[50px] font-bold leading-tight"
                 style={{fontFamily: isEn ? 'inherit' : "'Bahij Janna'"}}
               >
                 {isEn ? 'Choose Your Selection' : 'اختر تشكيلتك'}
               </h2>
-              <p className="text-[#9FB7AE] text-[16px] md:text-[18px] font-medium leading-[22px]">
+              <p className="text-[#8B9895] text-[16px] md:text-[18px] font-medium leading-relaxed max-w-xl">
                 {isEn
                   ? '12 B2B collections fitting every corporate occasion and budget'
                   : '١٢ تشكيلة B2B تناسب كل مناسبة وميزانية مؤسسية'}
@@ -857,6 +1133,7 @@ export default function CorporatePage() {
                     key={product.id}
                     product={product}
                     isEn={isEn}
+                    onOpenCustomModal={() => setIsCustomModalOpen(true)}
                   />
                 ))}
               </div>
@@ -867,6 +1144,129 @@ export default function CorporatePage() {
                   : 'لا توجد منتجات مؤسسية متاحة حالياً.'}
               </div>
             )}
+
+            {/* 2. SECTION AFTER: باقات الهدايا المؤسسية (3 Tier Cards Banner) */}
+            <div className="flex flex-col items-center text-center gap-3 mt-16 pt-12 border-t border-[#E6E2D8]/80">
+              <h4 className="text-[#906B51] font-bold text-[18px] leading-[22px]">
+                {isEn ? 'Packages' : 'التشكيلات'}
+              </h4>
+              <h2
+                className="text-[#234745] text-[36px] md:text-[50px] font-bold leading-tight"
+                style={{fontFamily: isEn ? 'inherit' : "'Bahij Janna'"}}
+              >
+                {isEn ? 'Corporate Gift Packages' : 'باقات الهدايا المؤسسية'}
+              </h2>
+              <p className="text-[#8B9895] text-[16px] md:text-[18px] font-medium leading-relaxed max-w-xl">
+                {isEn
+                  ? 'A curated set of ready collections, fully customizable with your company identity.'
+                  : 'مجموعة منتقاة من التشكيلات الجاهزة، يمكن تخصيصها بالكامل بهوية شركتك.'}
+              </p>
+            </div>
+
+            {/* 3 Tier Cards Banner (Exact Figma SVGs & layout) */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 my-6">
+              {/* Card 1: Classic */}
+              <div className="bg-[#FEF8EB] border border-[#E6E2D8] rounded-[24px] overflow-hidden flex flex-col shadow-sm hover:shadow-md transition-all">
+                <div className="bg-[#BBCFCD]/60 p-8 flex flex-col items-center justify-center relative h-[200px]">
+                  <span className="absolute top-4 start-4 bg-white px-3.5 py-1 rounded-full text-[13px] font-bold text-[#234745] shadow-xs">
+                    {isEn ? 'Classic' : 'كلاسيك'}
+                  </span>
+                  <div className="flex items-center justify-center">
+                    <svg width="90" height="72" viewBox="0 0 100 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M31.3438 4.99991C32.0312 3.04678 31.0156 0.906159 29.0625 0.218659C27.1094 -0.468841 24.9688 0.546784 24.2812 2.49991L22.6094 7.21866L21.0625 2.56241C20.4062 0.593659 18.2812 -0.468841 16.3125 0.187409C14.3438 0.843659 13.2812 2.96866 13.9375 4.93741L15.2344 8.84366L10.9531 5.71866C9.28125 4.49991 6.9375 4.87491 5.71875 6.54678C4.5 8.21866 4.875 10.5624 6.54688 11.7812L10.9688 14.9999H7.5C3.35938 14.9999 0 18.3593 0 22.4999V72.4999C0 76.6405 3.35938 79.9999 7.5 79.9999H31.3438C30.5 78.5312 30 76.828 30 74.9999V39.9999C30 35.328 33.2031 31.4062 37.5312 30.3124C37.8125 25.4687 40.2031 21.2187 43.7969 18.4218C42.4531 16.3593 40.1406 14.9999 37.5 14.9999H34.0312L38.4531 11.7812C40.125 10.5624 40.5 8.21866 39.2812 6.54678C38.0625 4.87491 35.7188 4.49991 34.0469 5.71866L30.0781 8.60928L31.3438 4.99991ZM56.7969 28.9843L61.4219 34.9999H53.75C51.6719 34.9999 50 33.328 50 31.2499C50 29.203 51.6875 27.4999 53.7812 27.4999C54.9688 27.4999 56.0781 28.0468 56.7969 28.9843ZM42.5 31.2499C42.5 32.5624 42.7188 33.828 43.1406 34.9999H42.5C38.3594 34.9999 35 38.3593 35 42.4999V54.9999H65V39.9999H70V54.9999H100V42.4999C100 38.3593 96.6406 34.9999 92.5 34.9999H91.8594C92.2813 33.828 92.5 32.5624 92.5 31.2499C92.5 25.0155 87.4219 19.9999 81.2188 19.9999C77.7188 19.9999 74.4062 21.6249 72.2656 24.4062L67.5 30.5937L62.7344 24.4062C60.5938 21.6249 57.2656 19.9999 53.7812 19.9999C47.5781 19.9999 42.5 25.0155 42.5 31.2499ZM35 72.4999C35 76.6405 38.3594 79.9999 42.5 79.9999H65V59.9999H35V72.4999ZM70 79.9999H92.5C96.6406 79.9999 100 76.6405 100 72.4999V59.9999H70V79.9999ZM85 31.2499C85 33.328 83.3281 34.9999 81.25 34.9999H73.5781L78.2031 28.9843C78.9219 28.0624 80.0312 27.4999 81.2188 27.4999C83.3125 27.4999 85 29.203 85 31.2499Z" fill="#234745"/>
+                    </svg>
+                  </div>
+                </div>
+                <div className="p-6 flex flex-col flex-1 justify-between gap-4 text-start">
+                  <div>
+                    <h3 className="text-[#234745] font-bold text-[20px] mb-2" style={{fontFamily: isEn ? 'inherit' : "'Bahij Janna'"}}>
+                      {isEn ? 'Classic Collection' : 'التشكيلة الكلاسيكية'}
+                    </h3>
+                    <p className="text-[#8B9895] text-[14px] leading-relaxed m-0">
+                      {isEn
+                        ? 'An elegant gift for various corporate occasions with premium packaging and your company logo.'
+                        : 'هدية أنيقة لمختلف المناسبات الرسمية مع تغليف فاخر وشعار شركتك.'}
+                    </p>
+                  </div>
+                  <div className="flex items-center justify-between pt-4 border-t border-[#E6E2D8]/60 text-[14px]">
+                    <span className="text-[#234745] font-bold">
+                      {isEn ? 'Starts from 20 Boxes' : 'تبدأ من 20 علبة'}
+                    </span>
+                    <Link to={isEn ? '/en/collections/classic-packages' : '/collections/classic-packages'} className="text-[#906B51] font-bold hover:underline flex items-center gap-1">
+                      <span>{isEn ? 'View Details →' : 'عرض التفاصيل ←'}</span>
+                    </Link>
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 2: Featured */}
+              <div className="bg-[#FEF8EB] border border-[#234745] rounded-[24px] overflow-hidden flex flex-col shadow-md hover:shadow-lg transition-all">
+                <div className="bg-[#234745] p-8 flex flex-col items-center justify-center relative h-[200px]">
+                  <span className="absolute top-4 start-4 bg-white px-3.5 py-1 rounded-full text-[13px] font-bold text-[#234745] shadow-xs">
+                    {isEn ? 'Featured' : 'المميزة'}
+                  </span>
+                  <div className="flex items-center justify-center">
+                    <svg width="67" height="60" viewBox="0 0 67 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M10 60V53.3333H56.6667V60H10ZM10 48.3333L5.75001 21.5833C5.6389 21.5833 5.51334 21.5978 5.37334 21.6267C5.23334 21.6556 5.1089 21.6689 5.00001 21.6667C3.61112 21.6667 2.43112 21.18 1.46001 20.2067C0.488896 19.2333 0.0022298 18.0533 7.57576e-06 16.6667C-0.00221465 15.28 0.484452 14.1 1.46001 13.1267C2.43556 12.1533 3.61556 11.6667 5.00001 11.6667C6.38445 11.6667 7.56556 12.1533 8.54334 13.1267C9.52112 14.1 10.0067 15.28 10 16.6667C10 17.0556 9.95779 17.4167 9.87334 17.75C9.7889 18.0833 9.69223 18.3889 9.58334 18.6667L20 23.3333L30.4167 9.08334C29.8056 8.6389 29.3056 8.05556 28.9167 7.33334C28.5278 6.61112 28.3333 5.83334 28.3333 5.00001C28.3333 3.61112 28.82 2.43001 29.7933 1.45667C30.7667 0.483341 31.9467 -0.00221463 33.3333 7.59301e-06C34.72 0.00222982 35.9011 0.488896 36.8767 1.46001C37.8522 2.43112 38.3378 3.61112 38.3333 5.00001C38.3333 5.83334 38.1389 6.61112 37.75 7.33334C37.3611 8.05556 36.8611 8.6389 36.25 9.08334L46.6667 23.3333L57.0833 18.6667C56.9722 18.3889 56.8745 18.0833 56.79 17.75C56.7056 17.4167 56.6644 17.0556 56.6667 16.6667C56.6667 15.2778 57.1533 14.0967 58.1267 13.1233C59.1 12.15 60.28 11.6645 61.6667 11.6667C63.0533 11.6689 64.2345 12.1556 65.21 13.1267C66.1856 14.0978 66.6711 15.2778 66.6667 16.6667C66.6622 18.0556 66.1767 19.2367 65.21 20.21C64.2433 21.1833 63.0622 21.6689 61.6667 21.6667C61.5556 21.6667 61.4311 21.6533 61.2933 21.6267C61.1556 21.6 61.03 21.5856 60.9167 21.5833L56.6667 48.3333H10Z" fill="#C5A96A"/>
+                    </svg>
+                  </div>
+                </div>
+                <div className="p-6 flex flex-col flex-1 justify-between gap-4 text-start">
+                  <div>
+                    <h3 className="text-[#234745] font-bold text-[20px] mb-2" style={{fontFamily: isEn ? 'inherit' : "'Bahij Janna'"}}>
+                      {isEn ? 'Featured Collection' : 'التشكيلة المميزة'}
+                    </h3>
+                    <p className="text-[#8B9895] text-[14px] leading-relaxed m-0">
+                      {isEn
+                        ? 'A sophisticated choice for VIP clients and partners, with curated contents and striking packaging.'
+                        : 'اختيار راقٍ للعملاء وكبار الشركاء، بمحتوى مدروس وتغليف لافت.'}
+                    </p>
+                  </div>
+                  <div className="flex items-center justify-between pt-4 border-t border-[#E6E2D8]/60 text-[14px]">
+                    <span className="text-[#234745] font-bold">
+                      {isEn ? 'Starts from 50 Boxes' : 'تبدأ من 50 علبة'}
+                    </span>
+                    <Link to={isEn ? '/en/collections/featured-packages' : '/collections/featured-packages'} className="text-[#906B51] font-bold hover:underline flex items-center gap-1">
+                      <span>{isEn ? 'View Details →' : 'عرض التفاصيل ←'}</span>
+                    </Link>
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 3: Custom */}
+              <div className="bg-[#FEF8EB] border border-[#E6E2D8] rounded-[24px] overflow-hidden flex flex-col shadow-sm hover:shadow-md transition-all">
+                <div className="bg-[#BBCFCD]/60 p-8 flex flex-col items-center justify-center relative h-[200px]">
+                  <span className="absolute top-4 start-4 bg-white px-3.5 py-1 rounded-full text-[13px] font-bold text-[#234745] shadow-xs">
+                    {isEn ? 'Custom' : 'مخصصة'}
+                  </span>
+                  <div className="flex items-center justify-center">
+                    <svg width="72" height="72" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M73.3294 2.92969L76.9856 6.58594C80.8919 10.4922 80.8919 16.8203 76.9856 20.7266L68.1731 29.5391L50.3606 11.7422L59.1731 2.92969C63.0794 -0.976562 69.4075 -0.976562 73.3137 2.92969H73.3294ZM7.01686 55.1016L46.8294 15.2734L64.6419 33.0859L24.8137 72.8984C23.7669 73.9453 22.4544 74.7109 21.0325 75.1172L4.78249 79.7578C3.46999 80.1328 2.06374 79.7734 1.09499 78.8047C0.126237 77.8359 -0.233138 76.4297 0.141862 75.1172L4.78249 58.8672C5.18874 57.4297 5.95436 56.1328 7.00124 55.0859L7.01686 55.1016ZM38.97 16.0703L16.1575 38.8828L2.50124 25.2109C-0.420638 22.2891 -0.420638 17.5391 2.50124 14.6016L14.7044 2.41406C17.6262 -0.507812 22.3762 -0.507812 25.3137 2.41406L28.4075 5.50781C28.3606 5.55469 28.2981 5.60156 28.2512 5.64844L18.2512 15.6484C17.2825 16.6172 17.2825 18.2109 18.2512 19.1797C19.22 20.1484 20.8137 20.1484 21.7825 19.1797L31.7825 9.17969C31.8294 9.13281 31.8762 9.07031 31.9231 9.02344L38.97 16.0703ZM63.845 40.9453L70.8919 47.9922C70.845 48.0391 70.7825 48.0859 70.7356 48.1328L60.7356 58.1328C59.7669 59.1016 59.7669 60.6953 60.7356 61.6641C61.7044 62.6328 63.2981 62.6328 64.2669 61.6641L74.2669 51.6641C74.3137 51.6172 74.3606 51.5547 74.4075 51.5078L77.5012 54.6172C80.4231 57.5391 80.4231 62.2891 77.5012 65.2266L65.2981 77.4141C62.3762 80.3359 57.6262 80.3359 54.6887 77.4141L41.0325 63.7578L63.845 40.9453Z" fill="#234745"/>
+                    </svg>
+                  </div>
+                </div>
+                <div className="p-6 flex flex-col flex-1 justify-between gap-4 text-start">
+                  <div>
+                    <h3 className="text-[#234745] font-bold text-[20px] mb-2" style={{fontFamily: isEn ? 'inherit' : "'Bahij Janna'"}}>
+                      {isEn ? 'Custom Collection' : 'التشكيلة المخصصة'}
+                    </h3>
+                    <p className="text-[#8B9895] text-[14px] leading-relaxed m-0">
+                      {isEn
+                        ? 'Design your gift to reflect your identity — contents, packaging, and logo as requested.'
+                        : 'صمّم هديتك بما يعكس هويتك — محتوى وتغليف وشعار حسب طلبك.'}
+                    </p>
+                  </div>
+                  <div className="flex items-center justify-between pt-4 border-t border-[#E6E2D8]/60 text-[14px]">
+                    <span className="text-[#234745] font-bold">
+                      {isEn ? 'Custom +200 Boxes' : 'حسب الطلب +200 علبة'}
+                    </span>
+                    <button type="button" onClick={() => setIsCustomModalOpen(true)} className="text-[#906B51] font-bold hover:underline flex items-center gap-1 cursor-pointer">
+                      <span>{isEn ? 'View Details →' : 'عرض التفاصيل ←'}</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </section>
       ) : (
@@ -1550,6 +1950,13 @@ export default function CorporatePage() {
           </div>
         </div>
       </section>
+
+      {/* Interactive B2B Custom Quote Modal */}
+      <CustomQuoteModal
+        isOpen={isCustomModalOpen}
+        onClose={() => setIsCustomModalOpen(false)}
+        isEn={isEn}
+      />
     </div>
   );
 }

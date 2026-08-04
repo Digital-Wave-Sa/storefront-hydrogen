@@ -700,8 +700,8 @@ export default function ExportPage() {
               }}
             >
               {isEn
-                ? 'Join Our Network of Global Distributors'
-                : 'انضم إلى شبكة موزعينا حول العالم'}
+                ? 'Export Quotation Request'
+                : 'طلب عرض أسعار للتصدير'}
             </h2>
 
             <p
@@ -713,16 +713,22 @@ export default function ExportPage() {
                 : 'املأ بياناتك وسيقوم فريق التصدير لدينا بالرد عليك خلال 48 ساعة بكتالوج جملة مخصص، والأسعار، وخيارات الشحن المناسبة لسوقك'}
             </p>
 
-            <div className="space-y-3 pt-4 border-t mt-[20px] border-white/15 text-[14px] text-gray-200 font-mono w-full">
+            <div className="space-y-3 pt-4 border-t mt-[20px] border-white/15 text-[14px] text-gray-200 w-full" style={{fontFamily: "'GE Dinar One', sans-serif"}}>
               <div
                 className={`flex items-center gap-3 ${isEn ? 'justify-start' : 'justify-start'}`}
               >
-                <span dir="ltr">920017070</span>
+                <span>
+                  {isEn ? 'Phone: ' : 'الهاتف: '}
+                  <span dir="ltr" className="inline-block font-mono">920017070</span>
+                </span>
               </div>
               <div
                 className={`flex items-center gap-3 ${isEn ? 'justify-start' : 'justify-start'}`}
               >
-                <span>info@saadeddin.com</span>
+                <span>
+                  {isEn ? 'Email: ' : 'البريد الإلكتروني: '}
+                  <span className="font-mono">info@saadeddin.com</span>
+                </span>
               </div>
               <div
                 className={`flex items-center gap-3 ${isEn ? 'justify-start' : 'justify-start'}`}
@@ -733,7 +739,7 @@ export default function ExportPage() {
                   ) : (
                     <>
                       <span>واتساب للأعمال: </span>
-                      <span dir="ltr" className="inline-block">+966 50 123 4567</span>
+                      <span dir="ltr" className="inline-block font-mono">+966 50 123 4567</span>
                     </>
                   )}
                 </span>

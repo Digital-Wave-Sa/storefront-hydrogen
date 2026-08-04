@@ -132,24 +132,7 @@ export function AccountProfileHeader({
               </div>
             </div>
 
-            {/* 60 points text (Right in LTR, Left in RTL) */}
-            <div className="flex items-center md:text-end w-full md:w-auto border-t md:border-t-0 border-[#8fa8a2] md:border-transparent pt-2 md:pt-0">
-              <p className="text-[11px] md:text-[14px] text-[#335653] font-bold leading-snug">
-                {rootData?.env?.PUBLIC_SMILE_CHANNEL_KEY ? (
-                  isEn ? 'Earn points and get rewards on every purchase!' : 'اكسب نقاطاً واحصل على مكافآت مع كل عملية شراء!'
-                ) : (
-                  isEn ? (
-                    <>
-                      <span className="font-en">60</span> points to get a <span className="font-en">25</span> SAR coupon
-                    </>
-                  ) : (
-                    <>
-                      <span className="font-en">60</span> نقطة للحصول على كوبون <span className="font-en">25</span> ر.س
-                    </>
-                  )
-                )}
-              </p>
-            </div>
+
           </div>
 
         </div>

@@ -557,6 +557,8 @@ const collectionTranslations: Record<string, string> = {
   'mother-s-day': 'يوم الأم',
   graduation: 'تخرج',
   'corporate-gifts': 'هدايا مؤسسية',
+  'classic-packages': 'الباقة الكلاسيكية',
+  'featured-packages': 'الباقة المميزة',
   chocolate: 'الشوكولاته',
   cakes: 'الكيك',
   biscuits: 'البسكويت',

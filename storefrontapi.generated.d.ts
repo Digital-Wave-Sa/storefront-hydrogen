@@ -2086,12 +2086,14 @@ export type OrderItemFragment = Pick<
           'amount' | 'currencyCode'
         >;
         customAttributes: Array<Pick<StorefrontAPI.Attribute, 'key' | 'value'>>;
-        variant?: StorefrontAPI.Maybe<{
-          image?: StorefrontAPI.Maybe<
-            Pick<StorefrontAPI.Image, 'url' | 'altText' | 'height' | 'width'>
-          >;
-          product: Pick<StorefrontAPI.Product, 'tags' | 'title'>;
-        }>;
+        variant?: StorefrontAPI.Maybe<
+          Pick<StorefrontAPI.ProductVariant, 'id'> & {
+            image?: StorefrontAPI.Maybe<
+              Pick<StorefrontAPI.Image, 'url' | 'altText' | 'height' | 'width'>
+            >;
+            product: Pick<StorefrontAPI.Product, 'tags' | 'title'>;
+          }
+        >;
       }
     >;
   };
@@ -2129,15 +2131,17 @@ export type CustomerOrdersFragment = Pick<
               customAttributes: Array<
                 Pick<StorefrontAPI.Attribute, 'key' | 'value'>
               >;
-              variant?: StorefrontAPI.Maybe<{
-                image?: StorefrontAPI.Maybe<
-                  Pick<
-                    StorefrontAPI.Image,
-                    'url' | 'altText' | 'height' | 'width'
-                  >
-                >;
-                product: Pick<StorefrontAPI.Product, 'tags' | 'title'>;
-              }>;
+              variant?: StorefrontAPI.Maybe<
+                Pick<StorefrontAPI.ProductVariant, 'id'> & {
+                  image?: StorefrontAPI.Maybe<
+                    Pick<
+                      StorefrontAPI.Image,
+                      'url' | 'altText' | 'height' | 'width'
+                    >
+                  >;
+                  product: Pick<StorefrontAPI.Product, 'tags' | 'title'>;
+                }
+              >;
             }
           >;
         };
@@ -2197,15 +2201,17 @@ export type CustomerOrdersQuery = {
                   customAttributes: Array<
                     Pick<StorefrontAPI.Attribute, 'key' | 'value'>
                   >;
-                  variant?: StorefrontAPI.Maybe<{
-                    image?: StorefrontAPI.Maybe<
-                      Pick<
-                        StorefrontAPI.Image,
-                        'url' | 'altText' | 'height' | 'width'
-                      >
-                    >;
-                    product: Pick<StorefrontAPI.Product, 'tags' | 'title'>;
-                  }>;
+                  variant?: StorefrontAPI.Maybe<
+                    Pick<StorefrontAPI.ProductVariant, 'id'> & {
+                      image?: StorefrontAPI.Maybe<
+                        Pick<
+                          StorefrontAPI.Image,
+                          'url' | 'altText' | 'height' | 'width'
+                        >
+                      >;
+                      product: Pick<StorefrontAPI.Product, 'tags' | 'title'>;
+                    }
+                  >;
                 }
               >;
             };
@@ -2329,6 +2335,9 @@ export type CustomerFragment = Pick<
         lineItems: {
           nodes: Array<
             Pick<StorefrontAPI.OrderLineItem, 'title' | 'quantity'> & {
+              customAttributes: Array<
+                Pick<StorefrontAPI.Attribute, 'key' | 'value'>
+              >;
               variant?: StorefrontAPI.Maybe<
                 Pick<StorefrontAPI.ProductVariant, 'id'> & {
                   image?: StorefrontAPI.Maybe<
@@ -2433,6 +2442,9 @@ export type CustomerQuery = {
             lineItems: {
               nodes: Array<
                 Pick<StorefrontAPI.OrderLineItem, 'title' | 'quantity'> & {
+                  customAttributes: Array<
+                    Pick<StorefrontAPI.Attribute, 'key' | 'value'>
+                  >;
                   variant?: StorefrontAPI.Maybe<
                     Pick<StorefrontAPI.ProductVariant, 'id'> & {
                       image?: StorefrontAPI.Maybe<
@@ -3355,7 +3367,7 @@ export type CorporateProductItemFragment = Pick<
     nodes: Array<
       Pick<
         StorefrontAPI.ProductVariant,
-        'id' | 'title' | 'availableForSale' | 'quantityAvailable'
+        'id' | 'title' | 'availableForSale'
       > & {
         selectedOptions: Array<
           Pick<StorefrontAPI.SelectedOption, 'name' | 'value'>
@@ -3407,7 +3419,7 @@ export type CorporateProductsQuery = {
           nodes: Array<
             Pick<
               StorefrontAPI.ProductVariant,
-              'id' | 'title' | 'availableForSale' | 'quantityAvailable'
+              'id' | 'title' | 'availableForSale'
             > & {
               selectedOptions: Array<
                 Pick<StorefrontAPI.SelectedOption, 'name' | 'value'>
@@ -6051,7 +6063,7 @@ interface GeneratedQueryTypes {
     return: GetLoyaltyCustomerIdQuery;
     variables: GetLoyaltyCustomerIdQueryVariables;
   };
-  '#graphql\n  #graphql\n  fragment Customer on Customer {\n    id\n    createdAt\n    acceptsMarketing\n    addresses(first: 6) {\n      nodes {\n        ...Address\n      }\n    }\n    defaultAddress {\n      ...Address\n    }\n    email\n    firstName\n    lastName\n    numberOfOrders\n    phone\n    birthdate: metafield(namespace: "custom", key: "birthdate") {\n      value\n    }\n    orders(first: 50, sortKey: PROCESSED_AT, reverse: true) {\n      nodes {\n        id\n        orderNumber\n        processedAt\n        financialStatus\n        fulfillmentStatus\n        currentTotalPrice {\n          amount\n          currencyCode\n        }\n        lineItems(first: 20) {\n          nodes {\n            title\n            quantity\n            variant {\n              id\n              image {\n                url\n                altText\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n  fragment Address on MailingAddress {\n    id\n    formatted\n    firstName\n    lastName\n    company\n    address1\n    address2\n    country\n    province\n    city\n    zip\n    phone\n  }\n\n  query CustomerOrders(\n    $country: CountryCode\n    $customerAccessToken: String!\n    $endCursor: String\n    $first: Int\n    $language: LanguageCode\n    $last: Int\n    $startCursor: String\n  ) @inContext(country: $country, language: $language) {\n    customer(customerAccessToken: $customerAccessToken) {\n      ...CustomerOrders\n    }\n  }\n': {
+  '#graphql\n  #graphql\n  fragment Customer on Customer {\n    id\n    createdAt\n    acceptsMarketing\n    addresses(first: 6) {\n      nodes {\n        ...Address\n      }\n    }\n    defaultAddress {\n      ...Address\n    }\n    email\n    firstName\n    lastName\n    numberOfOrders\n    phone\n    birthdate: metafield(namespace: "custom", key: "birthdate") {\n      value\n    }\n    orders(first: 50, sortKey: PROCESSED_AT, reverse: true) {\n      nodes {\n        id\n        orderNumber\n        processedAt\n        financialStatus\n        fulfillmentStatus\n        currentTotalPrice {\n          amount\n          currencyCode\n        }\n        lineItems(first: 20) {\n          nodes {\n            title\n            quantity\n            customAttributes {\n              key\n              value\n            }\n            variant {\n              id\n              image {\n                url\n                altText\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n  fragment Address on MailingAddress {\n    id\n    formatted\n    firstName\n    lastName\n    company\n    address1\n    address2\n    country\n    province\n    city\n    zip\n    phone\n  }\n\n  query CustomerOrders(\n    $country: CountryCode\n    $customerAccessToken: String!\n    $endCursor: String\n    $first: Int\n    $language: LanguageCode\n    $last: Int\n    $startCursor: String\n  ) @inContext(country: $country, language: $language) {\n    customer(customerAccessToken: $customerAccessToken) {\n      ...CustomerOrders\n    }\n  }\n': {
     return: CustomerOrdersQuery;
     variables: CustomerOrdersQueryVariables;
   };
@@ -6063,7 +6075,7 @@ interface GeneratedQueryTypes {
     return: GetProfileCustomerIdQuery;
     variables: GetProfileCustomerIdQueryVariables;
   };
-  '#graphql\n  query Customer(\n    $customerAccessToken: String!\n    $country: CountryCode\n    $language: LanguageCode\n  ) @inContext(country: $country, language: $language) {\n    customer(customerAccessToken: $customerAccessToken) {\n      ...Customer\n    }\n  }\n  #graphql\n  fragment Customer on Customer {\n    id\n    createdAt\n    acceptsMarketing\n    addresses(first: 6) {\n      nodes {\n        ...Address\n      }\n    }\n    defaultAddress {\n      ...Address\n    }\n    email\n    firstName\n    lastName\n    numberOfOrders\n    phone\n    birthdate: metafield(namespace: "custom", key: "birthdate") {\n      value\n    }\n    orders(first: 50, sortKey: PROCESSED_AT, reverse: true) {\n      nodes {\n        id\n        orderNumber\n        processedAt\n        financialStatus\n        fulfillmentStatus\n        currentTotalPrice {\n          amount\n          currencyCode\n        }\n        lineItems(first: 20) {\n          nodes {\n            title\n            quantity\n            variant {\n              id\n              image {\n                url\n                altText\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n  fragment Address on MailingAddress {\n    id\n    formatted\n    firstName\n    lastName\n    company\n    address1\n    address2\n    country\n    province\n    city\n    zip\n    phone\n  }\n\n': {
+  '#graphql\n  query Customer(\n    $customerAccessToken: String!\n    $country: CountryCode\n    $language: LanguageCode\n  ) @inContext(country: $country, language: $language) {\n    customer(customerAccessToken: $customerAccessToken) {\n      ...Customer\n    }\n  }\n  #graphql\n  fragment Customer on Customer {\n    id\n    createdAt\n    acceptsMarketing\n    addresses(first: 6) {\n      nodes {\n        ...Address\n      }\n    }\n    defaultAddress {\n      ...Address\n    }\n    email\n    firstName\n    lastName\n    numberOfOrders\n    phone\n    birthdate: metafield(namespace: "custom", key: "birthdate") {\n      value\n    }\n    orders(first: 50, sortKey: PROCESSED_AT, reverse: true) {\n      nodes {\n        id\n        orderNumber\n        processedAt\n        financialStatus\n        fulfillmentStatus\n        currentTotalPrice {\n          amount\n          currencyCode\n        }\n        lineItems(first: 20) {\n          nodes {\n            title\n            quantity\n            customAttributes {\n              key\n              value\n            }\n            variant {\n              id\n              image {\n                url\n                altText\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n  fragment Address on MailingAddress {\n    id\n    formatted\n    firstName\n    lastName\n    company\n    address1\n    address2\n    country\n    province\n    city\n    zip\n    phone\n  }\n\n': {
     return: CustomerQuery;
     variables: CustomerQueryVariables;
   };

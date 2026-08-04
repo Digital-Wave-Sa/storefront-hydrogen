@@ -898,8 +898,9 @@ export default function TrackOrderPage() {
                     currentStep = 0;
                   } else if (
                     orderData.rawFulfillmentStatus === 'FULFILLED' ||
-                    s.includes('تم استلام الطلب') ||
                     s.includes('تم التسليم بنجاح') ||
+                    s.includes('تم استلام الطلب من الفرع') ||
+                    s.includes('تم التوصيل') ||
                     s.includes('order picked up') ||
                     s.includes('delivered successfully')
                   ) {

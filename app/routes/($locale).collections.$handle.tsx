@@ -532,18 +532,24 @@ export default function Collection() {
                     .concat(searchParams.getAll('tag'));
                   const filteredNodes = nodes.filter((n: any) => {
                     if (q && !n.title.toLowerCase().includes(q)) return false;
-                    // Exclude corporate tagged products unless browsing corporate collection
-                    if (
-                      collection.handle !== 'corporate' &&
-                      collection.handle !== 'b2b'
-                    ) {
+                    // Exclude corporate tagged products unless browsing corporate collections
+                    const isCorporateCollection =
+                      collection.handle.includes('corporate') ||
+                      collection.handle.includes('b2b') ||
+                      collection.handle.includes('package') ||
+                      collection.handle === 'classic-packages' ||
+                      collection.handle === 'featured-packages' ||
+                      collection.handle === 'custom-packages';
+
+                    if (!isCorporateCollection) {
                       const pTags = (n.tags || []).map((t: string) =>
                         t.toLowerCase(),
                       );
                       if (
                         pTags.includes('corporate') ||
                         pTags.includes('b2b') ||
-                        pTags.includes('package')
+                        pTags.includes('package') ||
+                        pTags.some((t: string) => t.includes('corporate'))
                       )
                         return false;
                     }

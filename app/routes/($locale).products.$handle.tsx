@@ -2447,8 +2447,8 @@ export default function Product() {
                             <div className="flex flex-col gap-1.5 w-full text-start z-10">
                               <label className="text-[13px] font-bold text-[#234745]">
                                 {isEn
-                                  ? 'Ribbon & Card Greeting Text'
-                                  : 'نص الشريطة وبطاقة الإهداء'}
+                                  ? 'Card Greeting Text'
+                                  : 'بطاقة الإهداء'}
                               </label>
                               <textarea
                                 rows={2}
@@ -2456,8 +2456,8 @@ export default function Product() {
                                 onChange={(e) => setCompanyMessage(e.target.value)}
                                 placeholder={
                                   isEn
-                                    ? 'Write text to be printed on card or ribbon...'
-                                    : 'اكتب النص المطلوب طباعته على الشريطة أو بطاقة الإهداء...'
+                                    ? 'Write text to be printed on card...'
+                                    : 'اكتب النص المطلوب طباعته على بطاقة الإهداء...'
                                 }
                                 className="w-full p-3 border border-[#BBCFCD]/60 rounded-[10px] bg-white text-[#234745] text-[14px] font-medium focus:outline-none focus:border-[#234745] resize-none"
                               />

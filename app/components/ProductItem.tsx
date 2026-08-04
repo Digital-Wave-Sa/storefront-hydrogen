@@ -35,7 +35,11 @@ export function ProductItem({
   isExport?: boolean;
 }) {
   const location = useLocation();
-  const isCorporatePage = location.pathname.includes('/corporate');
+  const isCorporatePage = 
+    location.pathname.includes('/corporate') ||
+    location.pathname.includes('/classic-packages') ||
+    location.pathname.includes('/featured-packages') ||
+    location.pathname.includes('/custom-packages');
   if (isCorporateProduct(product) && !isCorporatePage) {
     return null;
   }

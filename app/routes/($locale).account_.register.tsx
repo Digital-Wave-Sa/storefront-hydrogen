@@ -705,14 +705,16 @@ export default function Register() {
     loaderData?.otpBlockRemaining || 0,
   );
 
+  const [submittedPhone, setSubmittedPhone] = useState('');
   const [hasEditSinceError, setHasEditSinceError] = useState(false);
 
   useEffect(() => {
     if (actionData?.step === 'otp') {
       setStep('otp');
       setResendCooldown(60);
+      setSubmittedPhone(formData.phone);
     }
-  }, [actionData]);
+  }, [actionData, formData.phone]);
 
   useEffect(() => {
     if (actionData?.error || fetcher.data?.error) {
@@ -1409,7 +1411,7 @@ export default function Register() {
                       </label>
                     </div>
 
-                    {verifyCooldown > 0 && (
+                    {verifyCooldown > 0 && formData.phone === submittedPhone && (
                       <div
                         className="w-full bg-[#FFF1F1] border border-[#FCA5A5] rounded-full py-3 px-4 flex items-center justify-center gap-2 text-[#D93838] text-[14px] font-bold my-1 text-center"
                         dir={isEn ? 'ltr' : 'rtl'}
@@ -1444,7 +1446,8 @@ export default function Register() {
                         (formData.accountType === 'individual' && (!formData.firstName || !formData.lastName)) ||
                         (formData.accountType === 'company' && !formData.companyName) ||
                         !formData.termsAccepted ||
-                        blockCooldown > 0
+                        blockCooldown > 0 ||
+                        (verifyCooldown > 0 && formData.phone === submittedPhone)
                       }
                       className="w-full bg-[#234745] text-[#FEF8EB] font-bold text-[16px] rounded-[25px] h-[48px] flex items-center justify-center hover:bg-[#1a3533] transition-colors disabled:opacity-70"
                       style={{

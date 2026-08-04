@@ -603,7 +603,7 @@ export async function action({request, context}: ActionFunctionArgs) {
         },
       ],
       note: description,
-      tags: ['custom-cake', 'cake-builder'],
+      tags: ['custom-cake', 'cake-builder', 'disable-cod', 'no-cod', 'hide-cod'],
       taxExempt: true,
     };
 

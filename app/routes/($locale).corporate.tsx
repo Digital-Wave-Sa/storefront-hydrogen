@@ -509,23 +509,22 @@ function CustomQuoteModal({
 
   return (
     <div
-      className="fixed inset-0 z-[999999] flex items-center justify-center p-4 bg-slate-900/65 backdrop-blur-md animate-fade-in"
+      className="fixed inset-0 z-[999999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in"
       dir={isEn ? 'ltr' : 'rtl'}
     >
-      <div className="bg-gradient-to-b from-[#FFFDF9] via-[#FFFBF4] to-[#FEF8EB] rounded-[32px] max-w-[660px] w-full p-6 sm:p-9 shadow-[0_25px_70px_rgba(27,61,46,0.3)] relative max-h-[92vh] overflow-y-auto border border-[#E3D9C6] text-start">
-        {/* Premium Close Button */}
+      <div className="bg-[#FFFDF9] rounded-[24px] max-w-[640px] w-full p-6 sm:p-8 relative max-h-[92vh] overflow-y-auto border border-[#E6E2D8] text-start">
+        {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-6 start-6 w-10 h-10 rounded-full bg-white/90 border border-[#E3D9C6] hover:bg-[#234745] hover:text-white text-[#234745] flex items-center justify-center font-bold text-[18px] transition-all shadow-sm active:scale-95 cursor-pointer z-20"
+          className="absolute top-5 start-5 w-9 h-9 rounded-full bg-[#FEF8EB] border border-[#E6E2D8] hover:bg-[#234745] hover:text-white text-[#234745] flex items-center justify-center font-bold text-[16px] transition-colors cursor-pointer z-20"
           aria-label={isEn ? 'Close' : 'إغلاق'}
         >
           ✕
         </button>
 
         {/* Modal Header */}
-        <div className="flex flex-col gap-2.5 mb-7 pt-1">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-gradient-to-r from-[#234745] to-[#183432] text-[#E6C687] font-bold text-[12px] w-max border border-[#C5A96A]/40 shadow-sm">
-            <span>🏛️</span>
+        <div className="flex flex-col gap-2 mb-6 pt-1">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-[#FEF8EB] text-[#906B51] font-bold text-[13px] w-max border border-[#E6E2D8]">
             <span>
               {isEn
                 ? 'Custom B2B Quotation (Min 200 Boxes)'
@@ -533,31 +532,31 @@ function CustomQuoteModal({
             </span>
           </div>
           <h3
-            className="text-[26px] sm:text-[28px] font-black text-[#1B3D2E] m-0 leading-tight"
+            className="text-[24px] sm:text-[26px] font-bold text-[#234745] m-0 leading-tight"
             style={{fontFamily: isEn ? 'inherit' : "'Bahij Janna', sans-serif"}}
           >
             {isEn
               ? 'Export & Custom Corporate Quote Request'
               : 'طلب عرض سعر للتصدير والهدايا المخصصة'}
           </h3>
-          <p className="text-[14px] text-[#6B7C77] m-0 leading-relaxed font-medium">
+          <p className="text-[14px] text-[#8B9895] m-0 leading-relaxed">
             {isEn
-              ? 'Fill in your requirements and our corporate export team will respond within 24-48 hours with a customized catalog & competitive pricing.'
+              ? 'Fill in your requirements and our export team will respond within 24-48 hours with a custom catalog & pricing.'
               : 'املأ بياناتك وسيقوم فريق التصدير والهدايا المؤسسية بالرد عليك خلال ٢٤-٤٨ ساعة بكتالوج مخصص وأفضل سعر.'}
           </p>
         </div>
 
         {submitted ? (
-          <div className="bg-white/90 border border-[#D9CBB0] rounded-[24px] p-8 text-center flex flex-col items-center gap-5 my-2 shadow-sm animate-scale-up">
-            <div className="w-16 h-16 bg-gradient-to-br from-[#234745] to-[#16302e] text-[#E6C687] rounded-full flex items-center justify-center text-3xl font-black shadow-lg border border-[#C5A96A]/50">
+          <div className="bg-[#FEF8EB] border border-[#E6E2D8] rounded-[20px] p-8 text-center flex flex-col items-center gap-4 my-2">
+            <div className="w-14 h-14 bg-[#234745] text-white rounded-full flex items-center justify-center text-2xl font-bold">
               ✓
             </div>
-            <h4 className="text-[24px] font-black text-[#1B3D2E] m-0">
+            <h4 className="text-[22px] font-bold text-[#234745] m-0">
               {isEn ? 'Request Received Successfully!' : 'تم استلام طلبك بنجاح!'}
             </h4>
-            <p className="text-[14px] text-[#556963] m-0 leading-relaxed max-w-[480px]">
+            <p className="text-[14px] text-[#8B9895] m-0 leading-relaxed max-w-[480px]">
               {isEn
-                ? 'Your inquiry has been submitted to our corporate desk (info@saadeddin.com). A dedicated account manager will contact you shortly.'
+                ? 'Your inquiry has been sent to info@saadeddin.com. An account manager will contact you within 24-48 hours.'
                 : 'تم تحويل طلبك لـ info@saadeddin.com وسيتواصل معك مدير حسابك المختص خلال ٢٤-٤٨ ساعة.'}
             </p>
 
@@ -566,19 +565,19 @@ function CustomQuoteModal({
                 href="https://wa.me/966501234567"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex-1 bg-[#25D366] text-white font-bold py-3.5 px-6 rounded-full text-[14px] flex items-center justify-center gap-2.5 hover:bg-[#20bd5a] transition-all shadow-md active:scale-95"
+                className="flex-1 bg-[#25D366] text-white font-bold py-3.5 px-6 rounded-full text-[14px] flex items-center justify-center gap-2 hover:bg-[#20bd5a] transition-colors"
               >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-1.147 4.195 4.19-1.103z"/>
                 </svg>
-                <span>{isEn ? 'Contact WhatsApp Business' : 'تواصل عبر واتساب للأعمال'}</span>
+                <span>{isEn ? 'WhatsApp Business' : 'واتساب للأعمال'}</span>
               </a>
               <button
                 onClick={() => {
                   setSubmitted(false);
                   onClose();
                 }}
-                className="px-8 py-3.5 border border-[#234745] text-[#234745] font-bold rounded-full text-[14px] hover:bg-[#234745] hover:text-white transition-all shadow-sm"
+                className="px-8 py-3.5 border border-[#234745] text-[#234745] font-bold rounded-full text-[14px] hover:bg-[#234745] hover:text-white transition-colors"
               >
                 {isEn ? 'Close' : 'إغلاق'}
               </button>
@@ -589,129 +588,110 @@ function CustomQuoteModal({
             {/* Company Name & Manager Name */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-[13px] font-bold text-[#1B3D2E] mb-1.5">
+                <label className="block text-[13px] font-bold text-[#234745] mb-1">
                   {isEn ? 'Company Name *' : 'اسم الشركة *'}
                 </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    required
-                    placeholder={isEn ? 'e.g. Acme Corp' : 'مثال: شركة الحلول المتقدمة'}
-                    className="w-full bg-white border border-[#D9CBB0] rounded-[14px] px-4 py-3 text-[14px] font-medium text-[#1B3D2E] focus:outline-none focus:border-[#234745] focus:ring-4 focus:ring-[#234745]/10 transition-all shadow-sm placeholder:text-[#A0B0AB]"
-                  />
-                </div>
+                <input
+                  type="text"
+                  required
+                  placeholder={isEn ? 'e.g. Acme Corp' : 'مثال: شركة الحلول المتقدمة'}
+                  className="w-full border border-[#E6E2D8] rounded-[12px] px-4 py-3 text-[14px] text-[#234745] focus:outline-none focus:border-[#234745] bg-white"
+                />
               </div>
               <div>
-                <label className="block text-[13px] font-bold text-[#1B3D2E] mb-1.5">
+                <label className="block text-[13px] font-bold text-[#234745] mb-1">
                   {isEn ? 'Contact Person *' : 'اسم المسؤول *'}
                 </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    required
-                    placeholder={isEn ? 'Full Name' : 'الاسم الثلاثي'}
-                    className="w-full bg-white border border-[#D9CBB0] rounded-[14px] px-4 py-3 text-[14px] font-medium text-[#1B3D2E] focus:outline-none focus:border-[#234745] focus:ring-4 focus:ring-[#234745]/10 transition-all shadow-sm placeholder:text-[#A0B0AB]"
-                  />
-                </div>
+                <input
+                  type="text"
+                  required
+                  placeholder={isEn ? 'Full Name' : 'الاسم الثلاثي'}
+                  className="w-full border border-[#E6E2D8] rounded-[12px] px-4 py-3 text-[14px] text-[#234745] focus:outline-none focus:border-[#234745] bg-white"
+                />
               </div>
             </div>
 
             {/* Email & Phone */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-[13px] font-bold text-[#1B3D2E] mb-1.5">
+                <label className="block text-[13px] font-bold text-[#234745] mb-1">
                   {isEn ? 'Email Address *' : 'البريد الإلكتروني *'}
                 </label>
-                <div className="relative">
-                  <input
-                    type="email"
-                    required
-                    placeholder="info@company.com"
-                    className="w-full bg-white border border-[#D9CBB0] rounded-[14px] px-4 py-3 text-[14px] font-medium text-[#1B3D2E] focus:outline-none focus:border-[#234745] focus:ring-4 focus:ring-[#234745]/10 transition-all shadow-sm placeholder:text-[#A0B0AB]"
-                  />
-                </div>
+                <input
+                  type="email"
+                  required
+                  placeholder="info@company.com"
+                  className="w-full border border-[#E6E2D8] rounded-[12px] px-4 py-3 text-[14px] text-[#234745] focus:outline-none focus:border-[#234745] bg-white"
+                />
               </div>
               <div>
-                <label className="block text-[13px] font-bold text-[#1B3D2E] mb-1.5">
+                <label className="block text-[13px] font-bold text-[#234745] mb-1">
                   {isEn ? 'Phone Number *' : 'رقم الجوال *'}
                 </label>
-                <div className="relative">
-                  <input
-                    type="tel"
-                    required
-                    placeholder="05xxxxxxx"
-                    className="w-full bg-white border border-[#D9CBB0] rounded-[14px] px-4 py-3 text-[14px] font-medium text-[#1B3D2E] focus:outline-none focus:border-[#234745] focus:ring-4 focus:ring-[#234745]/10 transition-all shadow-sm placeholder:text-[#A0B0AB]"
-                  />
-                </div>
+                <input
+                  type="tel"
+                  required
+                  placeholder="05xxxxxxx"
+                  className="w-full border border-[#E6E2D8] rounded-[12px] px-4 py-3 text-[14px] text-[#234745] focus:outline-none focus:border-[#234745] bg-white"
+                />
               </div>
             </div>
 
             {/* Expected Quantity & Budget */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-[13px] font-bold text-[#1B3D2E] mb-1.5">
+                <label className="block text-[13px] font-bold text-[#234745] mb-1">
                   {isEn ? 'Expected Quantity (Min 200) *' : 'الكمية المتوقعة (الحد الأدنى ٢٠٠) *'}
                 </label>
-                <div className="relative">
-                  <input
-                    type="number"
-                    min="200"
-                    defaultValue="200"
-                    required
-                    className="w-full bg-white border border-[#D9CBB0] rounded-[14px] px-4 py-3 text-[14px] font-medium text-[#1B3D2E] focus:outline-none focus:border-[#234745] focus:ring-4 focus:ring-[#234745]/10 transition-all shadow-sm placeholder:text-[#A0B0AB]"
-                  />
-                </div>
+                <input
+                  type="number"
+                  min="200"
+                  defaultValue="200"
+                  required
+                  className="w-full border border-[#E6E2D8] rounded-[12px] px-4 py-3 text-[14px] text-[#234745] focus:outline-none focus:border-[#234745] bg-white"
+                />
               </div>
               <div>
-                <label className="block text-[13px] font-bold text-[#1B3D2E] mb-1.5">
+                <label className="block text-[13px] font-bold text-[#234745] mb-1">
                   {isEn ? 'Budget per box (SAR)' : 'الميزانية المحددة للعلبة (ريال)'}
                 </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    placeholder={isEn ? 'e.g. 150 - 250 SAR' : 'مثال: ١٥٠ - ٢٥٠ ريال'}
-                    className="w-full bg-white border border-[#D9CBB0] rounded-[14px] px-4 py-3 text-[14px] font-medium text-[#1B3D2E] focus:outline-none focus:border-[#234745] focus:ring-4 focus:ring-[#234745]/10 transition-all shadow-sm placeholder:text-[#A0B0AB]"
-                  />
-                </div>
+                <input
+                  type="text"
+                  placeholder={isEn ? 'e.g. 150-250 SAR' : 'مثال: ١٥٠ - ٢٥٠ ريال'}
+                  className="w-full border border-[#E6E2D8] rounded-[12px] px-4 py-3 text-[14px] text-[#234745] focus:outline-none focus:border-[#234745] bg-white"
+                />
               </div>
             </div>
 
             {/* Notes */}
             <div>
-              <label className="block text-[13px] font-bold text-[#1B3D2E] mb-1.5">
-                {isEn ? 'Special Notes & Branding Requirements' : 'ملاحظات واشتراطات الهوية الخاّصة'}
+              <label className="block text-[13px] font-bold text-[#234745] mb-1">
+                {isEn ? 'Special Notes & Identity Requirements' : 'ملاحظات واشتراطات الهوية الخاّصة'}
               </label>
               <textarea
                 rows={3}
                 placeholder={isEn ? 'Mention colors, preferred box style, delivery date...' : 'اذكر الألوان المفضلة، نوع العلب، تاريخ المناسبة...'}
-                className="w-full bg-white border border-[#D9CBB0] rounded-[14px] p-3.5 text-[14px] font-medium text-[#1B3D2E] focus:outline-none focus:border-[#234745] focus:ring-4 focus:ring-[#234745]/10 transition-all shadow-sm placeholder:text-[#A0B0AB] resize-none"
+                className="w-full border border-[#E6E2D8] rounded-[12px] p-3 text-[14px] text-[#234745] focus:outline-none focus:border-[#234745] bg-white resize-none"
               />
             </div>
 
             {/* Actions */}
-            <div className="pt-3 flex flex-col sm:flex-row items-center gap-3">
+            <div className="pt-2 flex flex-col sm:flex-row items-center gap-3">
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full sm:flex-1 bg-gradient-to-r from-[#234745] via-[#28504e] to-[#183432] text-white font-black py-4 rounded-full text-[15px] hover:shadow-[0_10px_30px_rgba(35,71,69,0.35)] hover:scale-[1.01] active:scale-[0.99] transition-all disabled:opacity-50 cursor-pointer border border-[#C5A96A]/30 flex items-center justify-center gap-2"
+                className="w-full sm:flex-1 bg-[#234745] text-white font-bold py-3.5 rounded-full text-[15px] hover:bg-[#1a3533] transition-colors disabled:opacity-50 cursor-pointer"
               >
-                {loading ? (
-                  <span>{isEn ? 'Sending...' : 'جاري الإرسال...'}</span>
-                ) : (
-                  <>
-                    <span>✉️</span>
-                    <span>{isEn ? 'Submit Quote Request' : 'إرسال طلب عرض السعر'}</span>
-                  </>
-                )}
+                {loading ? (isEn ? 'Sending...' : 'جاري الإرسال...') : (isEn ? 'Submit Quote Request' : 'إرسال طلب عرض السعر')}
               </button>
 
               <a
                 href="https://wa.me/966501234567"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-full sm:w-auto px-7 bg-[#25D366] text-white font-bold py-4 rounded-full text-[14px] flex items-center justify-center gap-2 hover:bg-[#20bd5a] hover:shadow-[0_10px_25px_rgba(37,211,102,0.35)] hover:scale-[1.01] active:scale-[0.99] transition-all cursor-pointer shadow-sm"
+                className="w-full sm:w-auto px-6 bg-[#25D366] text-white font-bold py-3.5 rounded-full text-[14px] flex items-center justify-center gap-2 hover:bg-[#20bd5a] transition-colors cursor-pointer"
               >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-1.147 4.195 4.19-1.103z"/>
                 </svg>
                 <span>{isEn ? 'WhatsApp Business' : 'واتساب للأعمال'}</span>
@@ -719,15 +699,15 @@ function CustomQuoteModal({
             </div>
 
             {/* Footer Direct Contact Info */}
-            <div className="text-center pt-4 text-[12px] text-[#6B7C77] border-t border-[#E3D9C6] mt-2 flex flex-wrap items-center justify-center gap-3 font-medium">
+            <div className="text-center pt-3 text-[12px] text-[#8B9895] border-t border-[#E6E2D8] mt-1 flex flex-wrap items-center justify-center gap-3">
               <span>
                 {isEn ? 'Email: ' : 'البريد الإلكتروني: '}
-                <a href="mailto:info@saadeddin.com" className="font-bold text-[#1B3D2E] hover:underline">info@saadeddin.com</a>
+                <a href="mailto:info@saadeddin.com" className="font-bold text-[#234745] hover:underline">info@saadeddin.com</a>
               </span>
-              <span className="text-[#D9CBB0]">•</span>
+              <span>•</span>
               <span>
-                {isEn ? 'Phone: ' : 'الهاتف الموحد: '}
-                <a href="tel:920017070" className="font-bold text-[#1B3D2E] hover:underline font-mono" dir="ltr">920017070</a>
+                {isEn ? 'Phone: ' : 'الهاتف: '}
+                <a href="tel:920017070" className="font-bold text-[#234745] hover:underline font-mono" dir="ltr">920017070</a>
               </span>
             </div>
           </form>

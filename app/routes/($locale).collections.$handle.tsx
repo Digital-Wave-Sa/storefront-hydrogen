@@ -147,7 +147,6 @@ export async function loader({request, params, context}: LoaderFunctionArgs) {
       description: isEn
         ? 'Collections crafted with ultimate care, telling the story of the craft since 1919'
         : 'تشكيلات صنعت بعناية فائقة، تحكي قصة الحرفة منذ 1919',
-      image: null,
       products: {
         nodes: productNodes,
         filters: [],
@@ -161,9 +160,13 @@ export async function loader({request, params, context}: LoaderFunctionArgs) {
     };
   }
 
+  const isClassicHandle = handle === 'classic-packages' || handle === 'classic';
+  const isFeaturedHandle =
+    handle === 'featured-packages' || handle === 'featured-corporate';
+
   if (
-    !targetCollection &&
-    (handle === 'classic-packages' || handle === 'classic')
+    isClassicHandle &&
+    (!targetCollection || !targetCollection.products?.nodes?.length)
   ) {
     const isEn = storefront.i18n.language === 'EN';
     const fallbackRes: any = await storefront
@@ -179,29 +182,35 @@ export async function loader({request, params, context}: LoaderFunctionArgs) {
     const all = fallbackRes?.allProducts?.nodes || [];
     const matchingProducts = all.filter((p: any) =>
       p.tags?.some((t: string) => {
-        const clean = t.toLowerCase().replace(/[-_]/g, '');
+        const clean = t.toLowerCase().replace(/[-_\s]/g, '');
         return (
-          clean === 'corporateclassic' ||
-          clean === 'classicpackages' ||
-          clean === 'corporateclassicpackage'
+          clean.includes('corporateclassic') ||
+          clean.includes('classicpackage') ||
+          clean.includes('corporate') ||
+          clean.includes('classic') ||
+          clean.includes('b2b')
         );
       }),
     );
 
-    const productNodes = matchingProducts;
+    const productNodes = matchingProducts.length > 0 ? matchingProducts : all;
     const edges = productNodes.map((node: any) => ({
       cursor: node.id,
       node,
     }));
 
     targetCollection = {
-      id: 'gid://shopify/Collection/classic-packages',
+      id: targetCollection?.id || 'gid://shopify/Collection/classic-packages',
       handle: 'classic-packages',
-      title: isEn ? 'Classic Corporate Packages' : 'الباقة الكلاسيكية',
-      description: isEn
-        ? 'An elegant gift for various corporate occasions with premium packaging and your company logo.'
-        : 'هدية أنيقة لمختلف المناسبات الرسمية مع تغليف فاخر وشعار شركتك.',
-      image: null,
+      title:
+        targetCollection?.title ||
+        (isEn ? 'Classic Corporate Packages' : 'الباقة الكلاسيكية'),
+      description:
+        targetCollection?.description ||
+        (isEn
+          ? 'An elegant gift for various corporate occasions with premium packaging and your company logo.'
+          : 'هدية أنيقة لمختلف المناسبات الرسمية مع تغليف فاخر وشعار شركتك.'),
+      image: targetCollection?.image || null,
       products: {
         nodes: productNodes,
         edges,
@@ -217,8 +226,8 @@ export async function loader({request, params, context}: LoaderFunctionArgs) {
   }
 
   if (
-    !targetCollection &&
-    (handle === 'featured-packages' || handle === 'featured-corporate')
+    isFeaturedHandle &&
+    (!targetCollection || !targetCollection.products?.nodes?.length)
   ) {
     const isEn = storefront.i18n.language === 'EN';
     const fallbackRes: any = await storefront
@@ -234,29 +243,35 @@ export async function loader({request, params, context}: LoaderFunctionArgs) {
     const all = fallbackRes?.allProducts?.nodes || [];
     const matchingProducts = all.filter((p: any) =>
       p.tags?.some((t: string) => {
-        const clean = t.toLowerCase().replace(/[-_]/g, '');
+        const clean = t.toLowerCase().replace(/[-_\s]/g, '');
         return (
-          clean === 'corporatefeatured' ||
-          clean === 'featuredpackages' ||
-          clean === 'corporatefeaturedpackage'
+          clean.includes('corporatefeatured') ||
+          clean.includes('featuredpackage') ||
+          clean.includes('corporate') ||
+          clean.includes('featured') ||
+          clean.includes('b2b')
         );
       }),
     );
 
-    const productNodes = matchingProducts;
+    const productNodes = matchingProducts.length > 0 ? matchingProducts : all;
     const edges = productNodes.map((node: any) => ({
       cursor: node.id,
       node,
     }));
 
     targetCollection = {
-      id: 'gid://shopify/Collection/featured-packages',
+      id: targetCollection?.id || 'gid://shopify/Collection/featured-packages',
       handle: 'featured-packages',
-      title: isEn ? 'Featured Corporate Packages' : 'الباقة المميزة',
-      description: isEn
-        ? 'A sophisticated choice for VIP clients and partners, with curated contents and striking packaging.'
-        : 'اختيار راقٍ للعملاء وكبار الشركاء، بمحتوى مدروس وتغليف لافت.',
-      image: null,
+      title:
+        targetCollection?.title ||
+        (isEn ? 'Featured Corporate Packages' : 'الباقة المميزة'),
+      description:
+        targetCollection?.description ||
+        (isEn
+          ? 'A sophisticated choice for VIP clients and partners, with curated contents and striking packaging.'
+          : 'اختيار راقٍ للعملاء وكبار الشركاء، بمحتوى مدروس وتغليف لافت.'),
+      image: targetCollection?.image || null,
       products: {
         nodes: productNodes,
         edges,

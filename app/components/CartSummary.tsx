@@ -147,8 +147,7 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
                         : 30)))));
 
   const deliveryFee = (isFreeDelivery || isPickup) ? 0 : rawDeliveryFee;
-  const subtotalAmount = parseFloat(cart?.cost?.subtotalAmount?.amount || cart?.cost?.totalAmount?.amount || '0');
-  const calculatedTotal = Math.max(0, subtotalAmount + deliveryFee - loyaltyDiscountDisplay);
+  const calculatedTotal = Math.max(0, subtotalBeforeDiscounts - otherDiscountDisplay - loyaltyDiscountDisplay + deliveryFee);
 
   const isBranchHidden = currentBranch && (
     currentBranch.hide_from_storefront?.value === 'true' ||

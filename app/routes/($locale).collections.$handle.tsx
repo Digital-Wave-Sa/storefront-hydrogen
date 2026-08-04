@@ -169,7 +169,6 @@ export async function loader({request, params, context}: LoaderFunctionArgs) {
     const fallbackRes: any = await storefront
       .query(CORPORATE_PRODUCTS_FALLBACK_QUERY, {
         variables: {
-          query: "tag:'corporate-classic' OR tag:'corporate_classic' OR tag:'classic' OR tag:'corporate'",
           country: storefront.i18n.country,
           language: storefront.i18n.language,
         },
@@ -177,28 +176,24 @@ export async function loader({request, params, context}: LoaderFunctionArgs) {
       })
       .catch(() => null);
 
-    const tagged = fallbackRes?.taggedProducts?.nodes || [];
     const all = fallbackRes?.allProducts?.nodes || [];
-    const combined = [...tagged, ...all];
-    const matchingProducts = combined.filter((p: any) =>
+    const productNodes = all.filter((p: any) =>
       p.tags?.some((t: string) => {
         const clean = t.toLowerCase().replace(/[-_]/g, '');
         return (
           clean.includes('corporateclassic') ||
-          clean.includes('classic') ||
-          clean.includes('corporate')
+          clean.includes('classicpackages') ||
+          clean === 'corporate-classic' ||
+          clean === 'classic' ||
+          clean === 'corporate'
         );
       }),
     );
 
-    const uniqueProducts = Array.from(
-      new Map(
-        (matchingProducts.length > 0 ? matchingProducts : all).map((p: any) => [
-          p.id,
-          p,
-        ]),
-      ).values(),
-    );
+    const edges = productNodes.map((node: any) => ({
+      cursor: node.id,
+      node,
+    }));
 
     targetCollection = {
       id: 'gid://shopify/Collection/classic-packages',
@@ -209,13 +204,14 @@ export async function loader({request, params, context}: LoaderFunctionArgs) {
         : 'هدية أنيقة لمختلف المناسبات الرسمية مع تغليف فاخر وشعار شركتك.',
       image: null,
       products: {
-        nodes: uniqueProducts,
+        nodes: productNodes,
+        edges,
         filters: [],
         pageInfo: {
           hasPreviousPage: false,
           hasNextPage: false,
-          startCursor: null,
-          endCursor: null,
+          startCursor: edges[0]?.cursor || null,
+          endCursor: edges[edges.length - 1]?.cursor || null,
         },
       },
     };
@@ -229,7 +225,6 @@ export async function loader({request, params, context}: LoaderFunctionArgs) {
     const fallbackRes: any = await storefront
       .query(CORPORATE_PRODUCTS_FALLBACK_QUERY, {
         variables: {
-          query: "tag:'corporate-featured' OR tag:'corporate_featured' OR tag:'featured' OR tag:'corporate'",
           country: storefront.i18n.country,
           language: storefront.i18n.language,
         },
@@ -237,28 +232,23 @@ export async function loader({request, params, context}: LoaderFunctionArgs) {
       })
       .catch(() => null);
 
-    const tagged = fallbackRes?.taggedProducts?.nodes || [];
     const all = fallbackRes?.allProducts?.nodes || [];
-    const combined = [...tagged, ...all];
-    const matchingProducts = combined.filter((p: any) =>
+    const productNodes = all.filter((p: any) =>
       p.tags?.some((t: string) => {
         const clean = t.toLowerCase().replace(/[-_]/g, '');
         return (
           clean.includes('corporatefeatured') ||
-          clean.includes('featured') ||
-          clean.includes('corporate')
+          clean.includes('featuredpackages') ||
+          clean === 'corporate-featured' ||
+          clean === 'featured'
         );
       }),
     );
 
-    const uniqueProducts = Array.from(
-      new Map(
-        (matchingProducts.length > 0 ? matchingProducts : all).map((p: any) => [
-          p.id,
-          p,
-        ]),
-      ).values(),
-    );
+    const edges = productNodes.map((node: any) => ({
+      cursor: node.id,
+      node,
+    }));
 
     targetCollection = {
       id: 'gid://shopify/Collection/featured-packages',
@@ -269,13 +259,14 @@ export async function loader({request, params, context}: LoaderFunctionArgs) {
         : 'اختيار راقٍ للعملاء وكبار الشركاء، بمحتوى مدروس وتغليف لافت.',
       image: null,
       products: {
-        nodes: uniqueProducts,
+        nodes: productNodes,
+        edges,
         filters: [],
         pageInfo: {
           hasPreviousPage: false,
           hasNextPage: false,
-          startCursor: null,
-          endCursor: null,
+          startCursor: edges[0]?.cursor || null,
+          endCursor: edges[edges.length - 1]?.cursor || null,
         },
       },
     };
@@ -527,10 +518,14 @@ export default function Collection() {
 
               <Pagination connection={collection.products}>
                 {({nodes, isLoading, PreviousLink, NextLink}) => {
+                  const effectiveNodes =
+                    nodes && nodes.length > 0
+                      ? nodes
+                      : collection.products.nodes || [];
                   const activeTagFilters = searchParams
                     .getAll('filter.p.tag')
                     .concat(searchParams.getAll('tag'));
-                  const filteredNodes = nodes.filter((n: any) => {
+                  const filteredNodes = effectiveNodes.filter((n: any) => {
                     if (q && !n.title.toLowerCase().includes(q)) return false;
                     // Exclude corporate tagged products unless browsing corporate collections
                     const isCorporateCollection =
@@ -1801,16 +1796,10 @@ const FEATURED_PRODUCTS_FALLBACK_QUERY = `#graphql
 const CORPORATE_PRODUCTS_FALLBACK_QUERY = `#graphql
   ${PRODUCT_ITEM_FRAGMENT}
   query CorporateProductsFallback(
-    $query: String!
     $country: CountryCode
     $language: LanguageCode
   ) @inContext(country: $country, language: $language) {
-    taggedProducts: products(first: 100, query: $query) {
-      nodes {
-        ...HandleProductItem
-      }
-    }
-    allProducts: products(first: 100) {
+    allProducts: products(first: 250) {
       nodes {
         ...HandleProductItem
       }

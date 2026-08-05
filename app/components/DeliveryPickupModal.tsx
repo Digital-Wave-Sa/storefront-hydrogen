@@ -476,6 +476,7 @@ export function DeliveryPickupModal({
     const [isAnimating, setIsAnimating] = useState(false);
     const [adminMetafields, setAdminMetafields] = useState<any[]>([]);
     const location = useLocation();
+    const rootData = useRouteLoaderData('root') as any;
 
     // Memoize the combined promise to prevent Await from re-suspending on every state change (like typing in search or switching tabs)
     const combinedPromise = useMemo(() => Promise.all([locationsPromise, customerPromise]), [locationsPromise, customerPromise]);
@@ -1043,7 +1044,6 @@ function ModalContent({
                                                 </>
                                             )}
                                             {(() => {
-                                                const rootData = useRouteLoaderData('root') as any;
                                                 const branchReviews = (rootData?.reviews?.nodes || []).map((node: any) => {
                                                     const f: any = {};
                                                     node.fields?.forEach((field: any) => f[field.key] = field.value);

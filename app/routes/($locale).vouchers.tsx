@@ -160,11 +160,17 @@ async function getPriceRules(env: any) {
 
     if (res && res.ok) {
       const resData = (await res.json()) as any;
-      const rules = (resData.price_rules || []).filter((rule: any) => {
-        return !rule.title?.startsWith('Loyalty Redemption:');
+      const priceRules = (resData.price_rules || []).filter((rule: any) => {
+        const titleUpper = (rule.title || '').toUpperCase();
+        const isLoyalty =
+          titleUpper.startsWith('LOYALTY REDEMPTION:') ||
+          titleUpper.startsWith('LOYAL-') ||
+          titleUpper.startsWith('LOYALTY-') ||
+          titleUpper.startsWith('LOYAL_');
+        return !isLoyalty;
       });
-      vouchersCache = {timestamp: now, rules};
-      return rules;
+      vouchersCache = {timestamp: now, rules: priceRules};
+      return priceRules;
     }
   } catch (e) {}
   return vouchersCache?.rules || [];
@@ -366,7 +372,20 @@ export async function loader({context}: LoaderFunctionArgs) {
     };
   });
 
-  const shopifyVouchers = await Promise.all(voucherPromises);
+  const rawVouchers = await Promise.all(voucherPromises);
+  const shopifyVouchers = rawVouchers.filter((v) => {
+    if (!v) return false;
+    const codeUpper = (v.code || '').toUpperCase();
+    const titleUpper = (v.title || '').toUpperCase();
+    const isLoyalty =
+      codeUpper.startsWith('LOYAL-') ||
+      codeUpper.startsWith('LOYALTY-') ||
+      codeUpper.startsWith('LOYAL_') ||
+      titleUpper.startsWith('LOYAL-') ||
+      titleUpper.startsWith('LOYALTY-') ||
+      titleUpper.startsWith('LOYALTY REDEMPTION:');
+    return !isLoyalty;
+  });
 
   return {lang, shopifyVouchers};
 }

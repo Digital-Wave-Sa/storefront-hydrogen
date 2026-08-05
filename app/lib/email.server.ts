@@ -167,7 +167,36 @@ export async function sendFormEmailNotification(
     </div>
   `;
 
-  // 1. Dispatch via Resend API if API Key is set
+  // 1. Dispatch via Office 365 SMTP if configured
+  const smtpHost = env?.SMTP_HOST || 'smtp.office365.com';
+  const smtpPort = parseInt(env?.SMTP_PORT || '587', 10);
+  const smtpUser = env?.SMTP_USER || 'crm@saadeddin.com';
+  const smtpPass = env?.SMTP_PASS || 'npzqzfwgtqphvjdq';
+
+  if (smtpHost && smtpUser && smtpPass) {
+    try {
+      const nodemailer = (await import('nodemailer')).default || (await import('nodemailer'));
+      const transporter = nodemailer.createTransport({
+        host: smtpHost,
+        port: smtpPort,
+        secure: false, // port 587 STARTTLS
+        auth: { user: smtpUser, pass: smtpPass },
+        tls: { ciphers: 'SSLv3', rejectUnauthorized: false },
+      });
+
+      await transporter.sendMail({
+        from: `"Saadeddin Pastry" <${smtpUser}>`,
+        to: recipientEmail,
+        subject: emailSubject,
+        html: emailHtml,
+      });
+      console.log(`[FormEmail] Successfully sent email to ${recipientEmail} via Office 365 SMTP`);
+    } catch (err) {
+      console.error('Failed to send email via SMTP:', err);
+    }
+  }
+
+  // 2. Dispatch via Resend API if API Key is set
   if (resendApiKey) {
     try {
       await fetch('https://api.resend.com/emails', {

@@ -123,7 +123,7 @@ export default function BranchesPage() {
     ? "'Inter', sans-serif"
     : "'EnglishDigits', 'Bahij Janna', sans-serif";
 
-  const branchCount = locations.length > 0 ? locations.length : 117;
+  const branchCount = locations.length > 0 ? locations.length : 118;
   const googleMapsKey =
     rootData?.env?.PUBLIC_GOOGLE_MAPS_KEY ||
     (typeof window !== 'undefined'

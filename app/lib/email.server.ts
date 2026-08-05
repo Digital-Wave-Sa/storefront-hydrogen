@@ -208,10 +208,13 @@ export async function sendFormEmailNotification(
 
   // 3. Backup entry creation in Shopify Admin Metaobjects
   try {
+    const {getAdminToken, getAdminDomain} = await import('~/lib/shopify-admin.server');
     const adminToken = await getAdminToken(env);
-    const adminDomain = env.PUBLIC_STORE_DOMAIN;
+    const adminDomain = getAdminDomain(env);
     if (adminDomain && adminToken) {
-      await fetch(`https://${adminDomain}/admin/api/2024-01/graphql.json`, {
+      const messageContent = `${payload.companyName ? `Company: ${payload.companyName}\n` : ''}${payload.destinationCountry ? `Country: ${payload.destinationCountry}\n` : ''}${payload.quantity ? `Quantity: ${payload.quantity}\n` : ''}${payload.budget ? `Budget: ${payload.budget}\n` : ''}${payload.message || ''}`;
+      
+      const createRes = await fetch(`https://${adminDomain}/admin/api/2024-01/graphql.json`, {
         method: 'POST',
         headers: {
           'X-Shopify-Access-Token': adminToken,
@@ -230,19 +233,49 @@ export async function sendFormEmailNotification(
             metaobject: {
               type: 'contact_submission',
               fields: [
-                {key: 'full_name', value: payload.fullName},
-                {key: 'mobile', value: payload.phone},
-                {key: 'email', value: payload.email},
-                {key: 'subject', value: payload.subject || payload.formTitle},
-                {
-                  key: 'message',
-                  value: `${payload.companyName ? `Company: ${payload.companyName}\n` : ''}${payload.destinationCountry ? `Country: ${payload.destinationCountry}\n` : ''}${payload.quantity ? `Quantity: ${payload.quantity}\n` : ''}${payload.budget ? `Budget: ${payload.budget}\n` : ''}${payload.message || ''}`,
-                },
+                {key: 'full_name', value: payload.fullName || 'Customer Lead'},
+                {key: 'mobile_phone', value: payload.phone || ''},
+                {key: 'email_address', value: payload.email || ''},
+                {key: 'subject_form', value: payload.subject || payload.formTitle},
+                {key: 'message_details', value: messageContent},
               ],
             },
           },
         }),
       });
+
+      const resData = await createRes.json();
+      if (resData?.data?.metaobjectCreate?.userErrors?.length) {
+        // Fallback for custom or single-field metaobject definition
+        await fetch(`https://${adminDomain}/admin/api/2024-01/graphql.json`, {
+          method: 'POST',
+          headers: {
+            'X-Shopify-Access-Token': adminToken,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            query: `
+              mutation metaobjectCreate($metaobject: MetaobjectCreateInput!) {
+                metaobjectCreate(metaobject: $metaobject) {
+                  metaobject { id handle }
+                  userErrors { field message }
+                }
+              }
+            `,
+            variables: {
+              metaobject: {
+                type: 'contact_submission',
+                fields: [
+                  {
+                    key: 'full_name',
+                    value: `Lead: ${payload.fullName} | Phone: ${payload.phone} | Email: ${payload.email} | Subject: ${payload.subject || payload.formTitle} | Details: ${messageContent}`,
+                  },
+                ],
+              },
+            },
+          }),
+        });
+      }
     }
   } catch (err) {
     console.error('Failed to store submission metaobject in Shopify Admin:', err);

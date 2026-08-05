@@ -923,7 +923,8 @@ export default function CorporatePage() {
 
   const handleFormSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    corporateFetcher.submit(e.currentTarget);
+    const formData = new FormData(e.currentTarget);
+    corporateFetcher.submit(formData, { method: 'post' });
     setFormSubmitted(true);
   };
 

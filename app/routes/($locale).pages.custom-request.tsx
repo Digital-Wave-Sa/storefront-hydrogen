@@ -75,7 +75,8 @@ export default function CustomRequestPage() {
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
-    requestFetcher.submit(e.currentTarget);
+    const formData = new FormData(e.currentTarget);
+    requestFetcher.submit(formData, { method: 'post' });
     setTimeout(() => {
       setLoading(false);
       setSubmitted(true);

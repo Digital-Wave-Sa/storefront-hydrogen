@@ -260,7 +260,8 @@ export default function ExportPage() {
 
   const handleFormSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    exportFetcher.submit(e.currentTarget);
+    const formData = new FormData(e.currentTarget);
+    exportFetcher.submit(formData, { method: 'post' });
     setFormSubmitted(true);
   };
 

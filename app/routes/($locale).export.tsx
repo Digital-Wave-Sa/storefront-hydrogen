@@ -200,6 +200,11 @@ export default function ExportPage() {
     setMounted(true);
   }, []);
 
+  const handleFormSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setFormSubmitted(true);
+  };
+
   const scrollToSection = (e: React.MouseEvent, targetId: string) => {
     e.preventDefault();
     const elem = document.getElementById(targetId);

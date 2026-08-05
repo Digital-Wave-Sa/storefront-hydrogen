@@ -751,6 +751,7 @@ export default function Login() {
     if (actionData?.step === 'otp') {
       setStep('otp');
       setResendCooldown(60);
+      setVerifyCooldown(60);
       setSubmittedPhone(phone);
     }
     if (actionData?.error) {
@@ -763,6 +764,7 @@ export default function Login() {
     }
     if (actionData?.verifyCooldownRemaining) {
       setVerifyCooldown(actionData.verifyCooldownRemaining);
+      setResendCooldown(actionData.verifyCooldownRemaining);
       setSubmittedPhone(phone);
     }
   }, [actionData, phone]);
@@ -823,6 +825,7 @@ export default function Login() {
 
   const handleResend = () => {
     setResendCooldown(60);
+    setVerifyCooldown(60);
     if (resendFormRef.current) {
       resendFormRef.current.requestSubmit();
     }
@@ -830,6 +833,7 @@ export default function Login() {
 
   const showError = Boolean(actionData?.error && !hasEditSinceError);
   const errorToDisplay = actionData?.error || '';
+  const activeCooldown = Math.max(resendCooldown, verifyCooldown);
 
   return (
     <div
@@ -1141,7 +1145,7 @@ export default function Login() {
                     </div>
                   </div>
 
-                  {verifyCooldown > 0 && phone === submittedPhone && (
+                  {activeCooldown > 0 && phone === submittedPhone && (
                     <div
                       className="w-full bg-[#FFF1F1] border border-[#FCA5A5] rounded-full py-3 px-4 flex items-center justify-center gap-2 text-[#D93838] text-[14px] font-bold my-1 text-center"
                       dir={isEn ? 'ltr' : 'rtl'}
@@ -1155,8 +1159,8 @@ export default function Login() {
                       </span>
                       <span>
                         {isEn
-                          ? `Please wait ${verifyCooldown} seconds before requesting a new code.`
-                          : `يرجى الانتظار ${verifyCooldown} ثانية قبل طلب رمز تحقق جديد.`}
+                          ? `Please wait ${activeCooldown} seconds before requesting a new code.`
+                          : `يرجى الانتظار ${activeCooldown} ثانية قبل طلب رمز تحقق جديد.`}
                       </span>
                     </div>
                   )}
@@ -1199,7 +1203,7 @@ export default function Login() {
                       isLoading ||
                       phone.length < 9 ||
                       blockCooldown > 0 ||
-                      (verifyCooldown > 0 && phone === submittedPhone)
+                      (activeCooldown > 0 && phone === submittedPhone)
                     }
                     className="w-full bg-[#234745] text-[#FEF8EB] font-bold text-[16px] rounded-[25px] h-[48px] flex items-center justify-center hover:bg-[#1a3533] transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
                     style={{

@@ -446,17 +446,6 @@ export default function BranchesPage() {
               {isEn ? 'Most Branches' : 'معظم الفروع'}
             </div>
           </div>
-          <div>
-            <div
-              className="text-[24px] lg:text-3xl font-bold mb-1"
-              style={{fontFamily: 'EnglishDigits, "Bahij Janna", sans-serif'}}
-            >
-              {isEn ? '10 Min' : '10 دقيقة'}
-            </div>
-            <div className="text-white/60 text-xs lg:text-sm">
-              {isEn ? 'Prep Time' : 'وقت التجهيز'}
-            </div>
-          </div>
         </div>
       </PageHeader>
 

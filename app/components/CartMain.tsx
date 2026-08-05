@@ -363,7 +363,9 @@ export function CartMain({ layout, cart: originalCart }: CartMainProps) {
       {deletedLine && (
         <div className="absolute bottom-28 left-1/2 -translate-x-1/2 bg-[#234745] text-white px-5 py-3 rounded-xl shadow-2xl flex items-center justify-between gap-6 z-50 animate-fade-in w-[90%] max-w-[350px]">
           <div className="flex flex-col">
-            <span className="text-[13px] font-bold">Item removed</span>
+            <span className="text-[13px] font-bold">
+              {isEn ? 'Item removed' : 'تمت إزالة المنتج'}
+            </span>
             <span className="text-[11px] text-gray-300 truncate max-w-[200px]">{deletedLine.merchandise.product.title}</span>
           </div>
           <CartForm
@@ -383,8 +385,9 @@ export function CartMain({ layout, cart: originalCart }: CartMainProps) {
               type="submit"
               onClick={() => setTimeout(() => setDeletedLine(null), 200)}
               className="text-[#d4a06a] font-black text-[13px] hover:text-white transition-colors bg-white/10 px-4 py-2 rounded-lg"
+              style={{ fontFamily: !isEn ? "'GE Dinar One', sans-serif" : undefined }}
             >
-              UNDO
+              {isEn ? 'UNDO' : 'تراجع'}
             </button>
           </CartForm>
         </div>

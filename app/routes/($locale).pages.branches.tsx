@@ -105,7 +105,7 @@ const deliveryZones = [
 export default function BranchesPage() {
   const {locale} = useOutletContext<{locale: string}>();
   const rootData = useRouteLoaderData<any>('root');
-  const locations = rawLocations;
+  const locations = rootData?.locations?.locations?.nodes || [];
 
   const isEn = locale === 'en';
   const fontClass = isEn ? 'font-en' : 'font-ar';

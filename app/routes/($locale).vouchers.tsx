@@ -193,9 +193,10 @@ export async function loader({context}: LoaderFunctionArgs) {
           `https://${adminDomain}/admin/api/2024-01/orders.json?status=any&fields=id,discount_codes&query=${encodeURIComponent(queryStr)}`,
           {
             headers: {'X-Shopify-Access-Token': adminToken},
+            signal: AbortSignal.timeout(2500),
           },
-        );
-        if (ordersRes.ok) {
+        ).catch(() => null);
+        if (ordersRes && ordersRes.ok) {
           const data = (await ordersRes.json()) as any;
           for (const order of data.orders || []) {
             if (Array.isArray(order.discount_codes)) {
@@ -246,9 +247,11 @@ export async function loader({context}: LoaderFunctionArgs) {
             'X-Shopify-Access-Token': adminToken,
             'Content-Type': 'application/json',
           },
+          signal: AbortSignal.timeout(3000),
         },
-      );
-      if (res.ok) {
+      ).catch(() => null);
+
+      if (res && res.ok) {
         const resData = (await res.json()) as any;
         const priceRules = (resData.price_rules || []).filter((rule: any) => {
           return !rule.title?.startsWith('Loyalty Redemption:');
@@ -256,20 +259,25 @@ export async function loader({context}: LoaderFunctionArgs) {
 
         const voucherPromises = priceRules.map(async (rule: any) => {
           let code = rule.title;
-          try {
-            const dcRes = await fetch(
-              `https://${adminDomain}/admin/api/2024-01/price_rules/${rule.id}/discount_codes.json`,
-              {
-                headers: {'X-Shopify-Access-Token': adminToken},
-              },
-            );
-            if (dcRes.ok) {
-              const dcData = (await dcRes.json()) as any;
-              if (dcData.discount_codes?.[0]?.code) {
-                code = dcData.discount_codes[0].code;
+          const isSimpleCode = !rule.title?.includes(' ') && !rule.title?.includes(':');
+
+          if (!isSimpleCode) {
+            try {
+              const dcRes = await fetch(
+                `https://${adminDomain}/admin/api/2024-01/price_rules/${rule.id}/discount_codes.json`,
+                {
+                  headers: {'X-Shopify-Access-Token': adminToken},
+                  signal: AbortSignal.timeout(1500),
+                },
+              ).catch(() => null);
+              if (dcRes && dcRes.ok) {
+                const dcData = (await dcRes.json()) as any;
+                if (dcData.discount_codes?.[0]?.code) {
+                  code = dcData.discount_codes[0].code;
+                }
               }
-            }
-          } catch (e) {}
+            } catch (e) {}
+          }
 
           const codeLower = code.trim().toLowerCase();
           const isUsedByOrders =

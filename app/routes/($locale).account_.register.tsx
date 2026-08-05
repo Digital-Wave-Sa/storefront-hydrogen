@@ -1431,42 +1431,31 @@ export default function Register() {
                       </label>
                     </div>
 
-                    {(() => {
-                      const currentPhoneCooldown =
-                        formData.phone === submittedPhone || !submittedPhone
-                          ? Math.max(resendCooldown, verifyCooldown)
-                          : 0;
+                    {submittedPhone && formData.phone === submittedPhone && Math.max(resendCooldown, verifyCooldown) > 0 && (
+                      <div
+                        className="w-full bg-[#FFF1F1] border border-[#FCA5A5] rounded-full py-3 px-4 flex items-center justify-center gap-2 text-[#D93838] text-[14px] font-bold my-1 text-center"
+                        dir={isEn ? 'ltr' : 'rtl'}
+                        style={{
+                          fontFamily:
+                            "'EnglishDigits', 'GE Dinar One', sans-serif",
+                        }}
+                      >
+                        <span className="w-5 h-5 rounded-full border-2 border-[#D93838] flex items-center justify-center text-[12px] font-extrabold shrink-0">
+                          !
+                        </span>
+                        <span>
+                          {isEn
+                            ? `Please wait ${Math.max(resendCooldown, verifyCooldown)} seconds before requesting a new code.`
+                            : `يرجى الانتظار ${Math.max(resendCooldown, verifyCooldown)} ثانية قبل طلب رمز تحقق جديد.`}
+                        </span>
+                      </div>
+                    )}
 
-                      return (
-                        <>
-                          {currentPhoneCooldown > 0 && (
-                            <div
-                              className="w-full bg-[#FFF1F1] border border-[#FCA5A5] rounded-full py-3 px-4 flex items-center justify-center gap-2 text-[#D93838] text-[14px] font-bold my-1 text-center"
-                              dir={isEn ? 'ltr' : 'rtl'}
-                              style={{
-                                fontFamily:
-                                  "'EnglishDigits', 'GE Dinar One', sans-serif",
-                              }}
-                            >
-                              <span className="w-5 h-5 rounded-full border-2 border-[#D93838] flex items-center justify-center text-[12px] font-extrabold shrink-0">
-                                !
-                              </span>
-                              <span>
-                                {isEn
-                                  ? `Please wait ${currentPhoneCooldown} seconds before requesting a new code.`
-                                  : `يرجى الانتظار ${currentPhoneCooldown} ثانية قبل طلب رمز تحقق جديد.`}
-                              </span>
-                            </div>
-                          )}
-
-                          {showError && errorToDisplay && currentPhoneCooldown <= 0 && (
-                            <p className="text-red-500 text-sm text-center mt-1">
-                              {errorToDisplay}
-                            </p>
-                          )}
-                        </>
-                      );
-                    })()}
+                    {showError && errorToDisplay && !(submittedPhone && formData.phone === submittedPhone && Math.max(resendCooldown, verifyCooldown) > 0) && (
+                      <p className="text-red-500 text-sm text-center mt-1">
+                        {errorToDisplay}
+                      </p>
+                    )}
 
                     {/* Submit Button */}
                     <button
@@ -1478,7 +1467,7 @@ export default function Register() {
                         (formData.accountType === 'company' && !formData.companyName) ||
                         !formData.termsAccepted ||
                         blockCooldown > 0 ||
-                        ((formData.phone === submittedPhone || !submittedPhone) &&
+                        (submittedPhone !== '' && formData.phone === submittedPhone &&
                           Math.max(resendCooldown, verifyCooldown) > 0)
                       }
                       className="w-full bg-[#234745] text-[#FEF8EB] font-bold text-[16px] rounded-[25px] h-[48px] flex items-center justify-center hover:bg-[#1a3533] transition-colors disabled:opacity-70"

@@ -17,9 +17,9 @@ export async function loader({params, context}: Route.LoaderArgs) {
     const adminDomain = getAdminDomain(context.env);
 
     // Search by order number (id param may be "1072" or "#1072")
-    const orderNum = String(id).replace('#', '');
+    const cleanTargetNum = String(id).replace(/^#/, '').trim();
     const res = await fetch(
-      `https://${adminDomain}/admin/api/2024-01/orders.json?name=%23${orderNum}&status=any`,
+      `https://${adminDomain}/admin/api/2024-01/orders.json?name=%23${cleanTargetNum}&status=any`,
       {
         headers: {
           'X-Shopify-Access-Token': adminToken,
@@ -30,7 +30,13 @@ export async function loader({params, context}: Route.LoaderArgs) {
 
     if (res.ok) {
       const {orders} = (await res.json()) as any;
-      const o = orders?.[0];
+
+      // Enforce EXACT order number match (so e.g. 1075 does NOT loosely match 10750)
+      const o = (orders || []).find((ord: any) => {
+        const ordNumStr = String(ord.order_number || '').trim();
+        const ordNameClean = String(ord.name || '').replace(/^#/, '').trim();
+        return ordNumStr === cleanTargetNum || ordNameClean === cleanTargetNum;
+      });
 
       if (o) {
         // Build items from real line items
@@ -94,24 +100,58 @@ export async function loader({params, context}: Route.LoaderArgs) {
           console.warn('[Feedback Loader] Could not enrich variant data:', e);
         }
 
-        // Detect branch from shipping line or note_attributes
+        // Fetch shop locations to map the order's exact purchase location ID
+        let allLocations: any[] = [];
+        try {
+          const locRes = (await context.storefront.query(`#graphql
+            query GetFeedbackLocations {
+              locations(first: 100) {
+                nodes {
+                  id
+                  name
+                  name_in_arabic: metafield(namespace: "custom", key: "name_in_arabic") { value }
+                }
+              }
+            }
+          `, { cache: context.storefront.CacheLong() })) as any;
+          allLocations = locRes?.locations?.nodes || [];
+        } catch (locErr) {
+          console.warn('[Feedback Loader] Could not fetch shop locations:', locErr);
+        }
+
+        // Detect branch & location ID from order's location_id or note_attributes
         const shippingTitle = o.shipping_lines?.[0]?.title || '';
         const noteAttrs: Record<string, string> = {};
         for (const a of o.note_attributes || []) {
           noteAttrs[(a.name || a.key || '').toLowerCase()] = String(a.value || '');
         }
+
+        const rawLocId =
+          noteAttrs['location_id'] ||
+          noteAttrs['locationid'] ||
+          noteAttrs['branch_id'] ||
+          noteAttrs['branch id'] ||
+          noteAttrs['custom.branch_id'] ||
+          o.location_id?.toString() ||
+          '';
+
+        let matchedLoc: any = null;
+        if (rawLocId) {
+          const cleanLocId = String(rawLocId).replace(/\D/g, '');
+          matchedLoc = allLocations.find((l: any) => {
+            const locNum = String(l.id).replace(/\D/g, '');
+            return locNum === cleanLocId || l.id === rawLocId;
+          });
+        }
+
         const branchName =
-          noteAttrs['branch'] ||
-          noteAttrs['فرع'] ||
-          noteAttrs['branch_name'] ||
+          (isEn
+            ? matchedLoc?.name || noteAttrs['branch'] || noteAttrs['branch_name']
+            : matchedLoc?.name_in_arabic?.value || noteAttrs['فرع'] || noteAttrs['branch'] || noteAttrs['branch_name']) ||
           shippingTitle ||
           (isEn ? 'Saadeddin Branch' : 'فرع سعد الدين');
 
-        const locationId =
-          noteAttrs['location_id'] ||
-          noteAttrs['locationid'] ||
-          o.location_id?.toString() ||
-          '';
+        const locationId = matchedLoc?.id || rawLocId || '';
 
         const customerName =
           o.billing_address?.name ||

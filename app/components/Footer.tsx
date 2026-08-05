@@ -167,14 +167,26 @@ function SocialIcons() {
 function AppButtons() {
   return (
     <>
-      <a href="#" className="hover:opacity-90 transition-opacity shrink-0">
+      <a
+        href="https://apps.apple.com/in/app/saadeddin/id1448345729"
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="Download on the App Store"
+        className="hover:opacity-90 transition-opacity shrink-0"
+      >
         <img
           src="/images/icons/App_Store_Badge.svg"
           alt="Download on the App Store"
           className="h-[38px] w-auto block"
         />
       </a>
-      <a href="#" className="hover:opacity-90 transition-opacity shrink-0">
+      <a
+        href="https://play.google.com/store/apps/details?id=com.hope.saadeddin&hl=en&gl=US"
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="Get it on Google Play"
+        className="hover:opacity-90 transition-opacity shrink-0"
+      >
         <img
           src="/images/icons/Google_Play_Store_badge.svg"
           alt="Get it on Google Play"

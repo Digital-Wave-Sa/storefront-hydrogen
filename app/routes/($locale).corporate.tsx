@@ -489,7 +489,7 @@ function B2BCompanyModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in" dir={isEn ? 'ltr' : 'rtl'}>
-      <div className="bg-white rounded-[24px] max-w-[540px] w-full p-6 sm:p-8 shadow-2xl relative border border-[#E6E2D8] text-center">
+      <div className="bg-white rounded-[24px] max-w-[540px] w-full p-6 sm:p-8 shadow-2xl relative border border-[#E6E2D8] text-center" style={{fontFamily: isEn ? "'Gotham Light', 'Gotham', 'Inter', sans-serif" : "'GE Dinar One', 'Bahij Janna', sans-serif"}}>
         {/* Close Button */}
         <button
           onClick={onClose}
@@ -547,6 +547,36 @@ function CustomQuoteModal({
 }) {
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [guidelinesFile, setGuidelinesFile] = useState<File | null>(null);
+  const [logoError, setLogoError] = useState<string | null>(null);
+  const [guidelinesError, setGuidelinesError] = useState<string | null>(null);
+
+  const MAX_FILE_SIZE = 3 * 1024 * 1024; // 3 MB
+
+  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    if (file && file.size > MAX_FILE_SIZE) {
+      setLogoError(isEn ? 'File size exceeds 3MB limit' : 'حجم الملف يتجاوز الحد الأقصى (3 ميجابايت)');
+      setLogoFile(null);
+      e.target.value = '';
+    } else {
+      setLogoError(null);
+      setLogoFile(file);
+    }
+  };
+
+  const handleGuidelinesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    if (file && file.size > MAX_FILE_SIZE) {
+      setGuidelinesError(isEn ? 'File size exceeds 3MB limit' : 'حجم الملف يتجاوز الحد الأقصى (3 ميجابايت)');
+      setGuidelinesFile(null);
+      e.target.value = '';
+    } else {
+      setGuidelinesError(null);
+      setGuidelinesFile(file);
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -561,12 +591,12 @@ function CustomQuoteModal({
 
   return (
     <div
-      className="fixed inset-0 z-[999999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in font-en"
+      className="fixed inset-0 z-[999999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in"
       dir={isEn ? 'ltr' : 'rtl'}
     >
       <div
         className="bg-[#FFFDF9] rounded-[24px] max-w-[640px] w-full p-6 sm:p-8 relative max-h-[92vh] overflow-y-auto border border-[#E6E2D8] text-start"
-        style={{fontFamily: isEn ? "'EnglishDigits', 'Gotham Light', 'Gotham', 'Inter', 'Segoe UI', sans-serif" : "'EnglishDigits', 'GE Dinar One', 'Gotham Light', 'Gotham', 'Inter', 'Segoe UI', sans-serif"}}
+        style={{fontFamily: isEn ? "'Gotham Light', 'Gotham', 'Inter', sans-serif" : "'Bahij Janna', 'GE Dinar One', sans-serif"}}
       >
         {/* Close Button */}
         <button
@@ -580,24 +610,18 @@ function CustomQuoteModal({
         {/* Modal Header */}
         <div className="flex flex-col gap-2 mb-6 pt-1">
           <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-[#FEF8EB] text-[#906B51] font-bold text-[13px] w-max border border-[#E6E2D8]">
-            <span style={{fontFamily: isEn ? "'Gotham Light', 'Gotham', 'Inter', sans-serif" : "'EnglishDigits', 'GE Dinar One', sans-serif"}}>
+            <span>
               {isEn
                 ? 'Custom B2B Quotation (Min 200 Boxes)'
                 : 'طلب عرض سعر مخصص (الحد الأدنى 200 علبة)'}
             </span>
           </div>
-          <h3
-            className="text-[24px] sm:text-[26px] font-bold text-[#234745] m-0 leading-tight"
-            style={{fontFamily: isEn ? "'Gotham Light', 'Gotham', 'Inter', sans-serif" : "'EnglishDigits', 'GE Dinar One', sans-serif"}}
-          >
+          <h3 className="text-[24px] sm:text-[26px] font-bold text-[#234745] m-0 leading-tight">
             {isEn
               ? 'Export & Custom Corporate Quote Request'
               : 'طلب عرض سعر للتصدير والهدايا المخصصة'}
           </h3>
-          <p
-            className="text-[14px] text-[#8B9895] m-0 leading-relaxed"
-            style={{fontFamily: isEn ? "'Gotham Light', 'Gotham', 'Inter', sans-serif" : "'EnglishDigits', 'GE Dinar One', sans-serif"}}
-          >
+          <p className="text-[14px] text-[#8B9895] m-0 leading-relaxed">
             {isEn
               ? 'Fill in your requirements and our export team will respond within 24-48 hours with a custom catalog & pricing.'
               : 'املأ بياناتك وسيقوم فريق التصدير والهدايا المؤسسية بالرد عليك خلال 24-48 ساعة بكتالوج مخصص وأفضل سعر.'}
@@ -609,16 +633,10 @@ function CustomQuoteModal({
             <div className="w-14 h-14 bg-[#234745] text-white rounded-full flex items-center justify-center text-2xl font-bold">
               ✓
             </div>
-            <h4
-              className="text-[22px] font-bold text-[#234745] m-0"
-              style={{fontFamily: isEn ? "'Gotham Light', 'Gotham', 'Inter', sans-serif" : "'EnglishDigits', 'GE Dinar One', sans-serif"}}
-            >
+            <h4 className="text-[22px] font-bold text-[#234745] m-0">
               {isEn ? 'Request Received Successfully!' : 'تم استلام طلبك بنجاح!'}
             </h4>
-            <p
-              className="text-[14px] text-[#8B9895] m-0 leading-relaxed max-w-[480px]"
-              style={{fontFamily: isEn ? "'Gotham Light', 'Gotham', 'Inter', sans-serif" : "'EnglishDigits', 'GE Dinar One', sans-serif"}}
-            >
+            <p className="text-[14px] text-[#8B9895] m-0 leading-relaxed max-w-[480px]">
               {isEn
                 ? 'Your inquiry has been sent to info@saadeddin.com. An account manager will contact you within 24-48 hours.'
                 : 'تم تحويل طلبك لـ info@saadeddin.com وسيتواصل معك مدير حسابك المختص خلال 24-48 ساعة.'}
@@ -626,16 +644,15 @@ function CustomQuoteModal({
 
             <div className="flex flex-col sm:flex-row gap-3 w-full mt-4">
               <a
-                href="https://wa.me/966501234567"
+                href="https://wa.me/966920017070"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex-1 border border-[#234745] text-[#234745] font-bold py-3.5 px-6 rounded-full text-[14px] flex items-center justify-center gap-2 hover:bg-[#234745] hover:text-white transition-colors bg-[#FEF8EB]/50"
-                style={{fontFamily: isEn ? "'Gotham Light', 'Gotham', 'Inter', sans-serif" : "'EnglishDigits', 'GE Dinar One', sans-serif"}}
+                className="group flex-1 border border-[#234745] text-[#234745] font-bold py-3.5 px-6 rounded-full text-[14px] flex items-center justify-center gap-2 hover:bg-[#234745] hover:text-white transition-all bg-[#FEF8EB]/50"
               >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-1.147 4.195 4.19-1.103z"/>
+                <svg width="20" height="20" className="bi bi-whatsapp shrink-0 fill-[#25D366] group-hover:fill-white transition-colors" viewBox="0 0 16 16">
+                  <path d="M13.601 2.326A7.85 7.85 0 0 0 7.994 0C3.627 0 .068 3.558.064 7.926c0 1.399.366 2.76 1.057 3.965L0 16l4.204-1.102a7.9 7.9 0 0 0 3.79.965h.004c4.368 0 7.926-3.558 7.93-7.93A7.9 7.9 0 0 0 13.6 2.326zM7.994 14.521a6.6 6.6 0 0 1-3.356-.92l-.24-.144-2.494.654.666-2.433-.156-.251a6.56 6.56 0 0 1-1.007-3.505c0-3.626 2.957-6.584 6.591-6.584a6.56 6.56 0 0 1 4.66 1.931 6.56 6.56 0 0 1 1.928 4.66c-.004 3.639-2.961 6.592-6.592 6.592m3.615-4.934c-.197-.099-1.17-.578-1.353-.646-.182-.065-.315-.099-.445.099-.133.197-.513.646-.627.775-.114.133-.232.148-.43.05-.197-.1-.836-.308-1.592-.985-.59-.525-.985-1.175-1.103-1.372-.114-.198-.011-.304.088-.403.087-.088.197-.232.296-.346.1-.114.133-.198.198-.33.065-.134.034-.248-.015-.347-.05-.099-.445-1.076-.612-1.47-.16-.389-.323-.335-.445-.34-.114-.007-.247-.007-.38-.007a.73.73 0 0 0-.529.247c-.182.198-.691.677-.691 1.654s.71 1.916.81 2.049c.098.133 1.394 2.132 3.383 2.992.47.205.84.326 1.129.418.475.152.904.129 1.246.08.38-.058 1.171-.48 1.338-.943.164-.464.164-.86.114-.943-.049-.084-.182-.133-.38-.232"/>
                 </svg>
-                <span>{isEn ? 'WhatsApp Business' : 'واتساب للأعمال'}</span>
+                <span className="text-[#234745] group-hover:text-white transition-colors">{isEn ? 'WhatsApp Business' : 'واتساب للأعمال'}</span>
               </a>
               <button
                 onClick={() => {
@@ -643,7 +660,6 @@ function CustomQuoteModal({
                   onClose();
                 }}
                 className="px-8 py-3.5 border border-[#234745] text-[#234745] font-bold rounded-full text-[14px] hover:bg-[#234745] hover:text-white transition-colors"
-                style={{fontFamily: isEn ? "'Gotham Light', 'Gotham', 'Inter', sans-serif" : "'EnglishDigits', 'GE Dinar One', sans-serif"}}
               >
                 {isEn ? 'Close' : 'إغلاق'}
               </button>
@@ -654,10 +670,7 @@ function CustomQuoteModal({
             {/* Company Name & Manager Name */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label
-                  className="block text-[13px] font-bold text-[#234745] mb-1"
-                  style={{fontFamily: isEn ? "'Gotham Light', 'Gotham', 'Inter', sans-serif" : "'EnglishDigits', 'GE Dinar One', sans-serif"}}
-                >
+                <label className="block text-[13px] font-bold text-[#234745] mb-1">
                   {isEn ? 'Company Name *' : 'اسم الشركة *'}
                 </label>
                 <input
@@ -665,14 +678,10 @@ function CustomQuoteModal({
                   required
                   placeholder={isEn ? 'e.g. Acme Corp' : 'مثال: شركة الحلول المتقدمة'}
                   className="w-full border border-[#E6E2D8] rounded-[12px] px-4 py-3 text-[14px] text-[#234745] focus:outline-none focus:border-[#234745] bg-white"
-                  style={{fontFamily: isEn ? "'Gotham Light', 'Gotham', 'Inter', sans-serif" : "'EnglishDigits', 'GE Dinar One', sans-serif"}}
                 />
               </div>
               <div>
-                <label
-                  className="block text-[13px] font-bold text-[#234745] mb-1"
-                  style={{fontFamily: isEn ? "'Gotham Light', 'Gotham', 'Inter', sans-serif" : "'EnglishDigits', 'GE Dinar One', sans-serif"}}
-                >
+                <label className="block text-[13px] font-bold text-[#234745] mb-1">
                   {isEn ? 'Contact Person *' : 'اسم المسؤول *'}
                 </label>
                 <input
@@ -680,7 +689,6 @@ function CustomQuoteModal({
                   required
                   placeholder={isEn ? 'Full Name' : 'الاسم الثلاثي'}
                   className="w-full border border-[#E6E2D8] rounded-[12px] px-4 py-3 text-[14px] text-[#234745] focus:outline-none focus:border-[#234745] bg-white"
-                  style={{fontFamily: isEn ? "'Gotham Light', 'Gotham', 'Inter', sans-serif" : "'EnglishDigits', 'GE Dinar One', sans-serif"}}
                 />
               </div>
             </div>
@@ -688,10 +696,7 @@ function CustomQuoteModal({
             {/* Email & Phone */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label
-                  className="block text-[13px] font-bold text-[#234745] mb-1"
-                  style={{fontFamily: isEn ? "'Gotham Light', 'Gotham', 'Inter', sans-serif" : "'EnglishDigits', 'GE Dinar One', sans-serif"}}
-                >
+                <label className="block text-[13px] font-bold text-[#234745] mb-1">
                   {isEn ? 'Email Address *' : 'البريد الإلكتروني *'}
                 </label>
                 <input
@@ -699,14 +704,10 @@ function CustomQuoteModal({
                   required
                   placeholder="info@company.com"
                   className="w-full border border-[#E6E2D8] rounded-[12px] px-4 py-3 text-[14px] text-[#234745] focus:outline-none focus:border-[#234745] bg-white"
-                  style={{fontFamily: isEn ? "'Gotham Light', 'Gotham', 'Inter', sans-serif" : "'EnglishDigits', 'GE Dinar One', sans-serif"}}
                 />
               </div>
               <div>
-                <label
-                  className="block text-[13px] font-bold text-[#234745] mb-1"
-                  style={{fontFamily: isEn ? "'Gotham Light', 'Gotham', 'Inter', sans-serif" : "'EnglishDigits', 'GE Dinar One', sans-serif"}}
-                >
+                <label className="block text-[13px] font-bold text-[#234745] mb-1">
                   {isEn ? 'Phone Number *' : 'رقم الجوال *'}
                 </label>
                 <input
@@ -714,7 +715,6 @@ function CustomQuoteModal({
                   required
                   placeholder="05xxxxxxx"
                   className="w-full border border-[#E6E2D8] rounded-[12px] px-4 py-3 text-[14px] text-[#234745] focus:outline-none focus:border-[#234745] bg-white"
-                  style={{fontFamily: isEn ? "'Gotham Light', 'Gotham', 'Inter', sans-serif" : "'EnglishDigits', 'GE Dinar One', sans-serif"}}
                 />
               </div>
             </div>
@@ -722,10 +722,7 @@ function CustomQuoteModal({
             {/* Expected Quantity & Budget */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label
-                  className="block text-[13px] font-bold text-[#234745] mb-1"
-                  style={{fontFamily: isEn ? "'Gotham Light', 'Gotham', 'Inter', sans-serif" : "'EnglishDigits', 'GE Dinar One', sans-serif"}}
-                >
+                <label className="block text-[13px] font-bold text-[#234745] mb-1">
                   {isEn ? 'Expected Quantity (Min 200) *' : 'الكمية المتوقعة (الحد الأدنى 200) *'}
                 </label>
                 <input
@@ -734,39 +731,97 @@ function CustomQuoteModal({
                   defaultValue="200"
                   required
                   className="w-full border border-[#E6E2D8] rounded-[12px] px-4 py-3 text-[14px] text-[#234745] focus:outline-none focus:border-[#234745] bg-white"
-                  style={{fontFamily: isEn ? "'Gotham Light', 'Gotham', 'Inter', sans-serif" : "'EnglishDigits', 'GE Dinar One', sans-serif"}}
                 />
               </div>
               <div>
-                <label
-                  className="block text-[13px] font-bold text-[#234745] mb-1"
-                  style={{fontFamily: isEn ? "'Gotham Light', 'Gotham', 'Inter', sans-serif" : "'EnglishDigits', 'GE Dinar One', sans-serif"}}
-                >
+                <label className="block text-[13px] font-bold text-[#234745] mb-1">
                   {isEn ? 'Budget per box (SAR)' : 'الميزانية المحددة للعلبة (ريال)'}
                 </label>
                 <input
                   type="text"
                   placeholder={isEn ? 'e.g. 150-250 SAR' : 'مثال: 150 - 250 ريال'}
                   className="w-full border border-[#E6E2D8] rounded-[12px] px-4 py-3 text-[14px] text-[#234745] focus:outline-none focus:border-[#234745] bg-white"
-                  style={{fontFamily: isEn ? "'Gotham Light', 'Gotham', 'Inter', sans-serif" : "'EnglishDigits', 'GE Dinar One', sans-serif"}}
                 />
               </div>
             </div>
 
             {/* Notes */}
             <div>
-              <label
-                className="block text-[13px] font-bold text-[#234745] mb-1"
-                style={{fontFamily: isEn ? "'Gotham Light', 'Gotham', 'Inter', sans-serif" : "'EnglishDigits', 'GE Dinar One', sans-serif"}}
-              >
+              <label className="block text-[13px] font-bold text-[#234745] mb-1">
                 {isEn ? 'Special Notes & Identity Requirements' : 'ملاحظات واشتراطات الهوية الخاّصة'}
               </label>
               <textarea
                 rows={3}
                 placeholder={isEn ? 'Mention colors, preferred box style, delivery date...' : 'اذكر الألوان المفضلة، نوع العلب، تاريخ المناسبة...'}
                 className="w-full border border-[#E6E2D8] rounded-[12px] p-3 text-[14px] text-[#234745] focus:outline-none focus:border-[#234745] bg-white resize-none"
-                style={{fontFamily: isEn ? "'Gotham Light', 'Gotham', 'Inter', sans-serif" : "'EnglishDigits', 'GE Dinar One', sans-serif"}}
               />
+            </div>
+
+            {/* Attachment Section: Logo & Color Guidelines */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Attach Company Logo */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-[13px] font-bold text-[#234745]">
+                    {isEn ? 'Attach Company Logo' : 'إرفاق شعار الشركة'}
+                  </label>
+                  <span className="text-[11px] text-[#8B9895]">
+                    {isEn ? '(Max 3MB)' : '(الحد الأقصى 3 ميجابايت)'}
+                  </span>
+                </div>
+                <label className={`border border-dashed ${logoError ? 'border-red-500 bg-red-50' : 'border-[#C5A96A] bg-[#FEF8EB]/60 hover:bg-[#FEF8EB]'} rounded-[12px] p-3 flex items-center justify-center gap-2 cursor-pointer transition-colors text-center min-h-[46px]`}>
+                  <input
+                    type="file"
+                    name="logoFile"
+                    accept="image/*,.pdf,.svg,.eps,.zip"
+                    onChange={handleLogoChange}
+                    className="hidden"
+                  />
+                  <span className="text-[16px]">📎</span>
+                  <span className={`text-[13px] font-medium truncate ${logoError ? 'text-red-600' : 'text-[#234745]'}`}>
+                    {logoFile
+                      ? logoFile.name
+                      : (isEn ? 'Upload Logo (PNG, SVG, PDF)' : 'رفع الشعار (PNG, SVG, PDF)')}
+                  </span>
+                </label>
+                {logoError && (
+                  <span className="text-[11px] text-red-600 font-bold block mt-1">
+                    {logoError}
+                  </span>
+                )}
+              </div>
+
+              {/* Attach Color & Brand Guidelines */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-[13px] font-bold text-[#234745]">
+                    {isEn ? 'Attach Color Guidelines' : 'إرفاق دليل ألوان الهوية'}
+                  </label>
+                  <span className="text-[11px] text-[#8B9895]">
+                    {isEn ? '(Max 3MB)' : '(الحد الأقصى 3 ميجابايت)'}
+                  </span>
+                </div>
+                <label className={`border border-dashed ${guidelinesError ? 'border-red-500 bg-red-50' : 'border-[#C5A96A] bg-[#FEF8EB]/60 hover:bg-[#FEF8EB]'} rounded-[12px] p-3 flex items-center justify-center gap-2 cursor-pointer transition-colors text-center min-h-[46px]`}>
+                  <input
+                    type="file"
+                    name="colorGuidelinesFile"
+                    accept="image/*,.pdf,.zip"
+                    onChange={handleGuidelinesChange}
+                    className="hidden"
+                  />
+                  <span className="text-[16px]">🎨</span>
+                  <span className={`text-[13px] font-medium truncate ${guidelinesError ? 'text-red-600' : 'text-[#234745]'}`}>
+                    {guidelinesFile
+                      ? guidelinesFile.name
+                      : (isEn ? 'Upload Guidelines (PDF, Image)' : 'رفع دليل الألوان (PDF, صورة)')}
+                  </span>
+                </label>
+                {guidelinesError && (
+                  <span className="text-[11px] text-red-600 font-bold block mt-1">
+                    {guidelinesError}
+                  </span>
+                )}
+              </div>
             </div>
 
             {/* Actions */}
@@ -775,30 +830,25 @@ function CustomQuoteModal({
                 type="submit"
                 disabled={loading}
                 className="w-full sm:flex-1 bg-[#234745] text-white font-bold py-3.5 rounded-full text-[15px] hover:bg-[#1a3533] transition-colors disabled:opacity-50 cursor-pointer"
-                style={{fontFamily: isEn ? "'Gotham Light', 'Gotham', 'Inter', sans-serif" : "'EnglishDigits', 'GE Dinar One', sans-serif"}}
               >
                 {loading ? (isEn ? 'Sending...' : 'جاري الإرسال...') : (isEn ? 'Submit Quote Request' : 'إرسال طلب عرض السعر')}
               </button>
 
               <a
-                href="https://wa.me/966501234567"
+                href="https://wa.me/966920017070"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-full sm:w-auto px-6 border border-[#234745] text-[#234745] font-bold py-3.5 rounded-full text-[14px] flex items-center justify-center gap-2 hover:bg-[#234745] hover:text-white transition-colors cursor-pointer bg-[#FEF8EB]/50"
-                style={{fontFamily: isEn ? "'Gotham Light', 'Gotham', 'Inter', sans-serif" : "'EnglishDigits', 'GE Dinar One', sans-serif"}}
+                className="group w-full sm:w-auto px-6 border border-[#234745] text-[#234745] font-bold py-3.5 rounded-full text-[14px] flex items-center justify-center gap-2 hover:bg-[#234745] hover:text-white transition-all cursor-pointer bg-[#FEF8EB]/50"
               >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-1.147 4.195 4.19-1.103z"/>
+                <svg width="20" height="20" className="bi bi-whatsapp shrink-0 fill-[#25D366] group-hover:fill-white transition-colors" viewBox="0 0 16 16">
+                  <path d="M13.601 2.326A7.85 7.85 0 0 0 7.994 0C3.627 0 .068 3.558.064 7.926c0 1.399.366 2.76 1.057 3.965L0 16l4.204-1.102a7.9 7.9 0 0 0 3.79.965h.004c4.368 0 7.926-3.558 7.93-7.93A7.9 7.9 0 0 0 13.6 2.326zM7.994 14.521a6.6 6.6 0 0 1-3.356-.92l-.24-.144-2.494.654.666-2.433-.156-.251a6.56 6.56 0 0 1-1.007-3.505c0-3.626 2.957-6.584 6.591-6.584a6.56 6.56 0 0 1 4.66 1.931 6.56 6.56 0 0 1 1.928 4.66c-.004 3.639-2.961 6.592-6.592 6.592m3.615-4.934c-.197-.099-1.17-.578-1.353-.646-.182-.065-.315-.099-.445.099-.133.197-.513.646-.627.775-.114.133-.232.148-.43.05-.197-.1-.836-.308-1.592-.985-.59-.525-.985-1.175-1.103-1.372-.114-.198-.011-.304.088-.403.087-.088.197-.232.296-.346.1-.114.133-.198.198-.33.065-.134.034-.248-.015-.347-.05-.099-.445-1.076-.612-1.47-.16-.389-.323-.335-.445-.34-.114-.007-.247-.007-.38-.007a.73.73 0 0 0-.529.247c-.182.198-.691.677-.691 1.654s.71 1.916.81 2.049c.098.133 1.394 2.132 3.383 2.992.47.205.84.326 1.129.418.475.152.904.129 1.246.08.38-.058 1.171-.48 1.338-.943.164-.464.164-.86.114-.943-.049-.084-.182-.133-.38-.232"/>
                 </svg>
-                <span>{isEn ? 'WhatsApp Business' : 'واتساب للأعمال'}</span>
+                <span className="text-[#234745] group-hover:text-white transition-colors">{isEn ? 'WhatsApp Business' : 'واتساب للأعمال'}</span>
               </a>
             </div>
 
             {/* Footer Direct Contact Info */}
-            <div
-              className="text-center pt-3 text-[12px] text-[#8B9895] border-t border-[#E6E2D8] mt-1 flex flex-wrap items-center justify-center gap-3"
-              style={{fontFamily: isEn ? "'Gotham Light', 'Gotham', 'Inter', sans-serif" : "'EnglishDigits', 'GE Dinar One', sans-serif"}}
-            >
+            <div className="text-center pt-3 text-[12px] text-[#8B9895] border-t border-[#E6E2D8] mt-1 flex flex-wrap items-center justify-center gap-3">
               <span>
                 {isEn ? 'Email: ' : 'البريد الإلكتروني: '}
                 <a href="mailto:info@saadeddin.com" className="font-bold text-[#234745] hover:underline">info@saadeddin.com</a>

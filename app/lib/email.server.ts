@@ -167,54 +167,87 @@ export async function sendFormEmailNotification(
     </div>
   `;
 
-  // 1. Dispatch via Office 365 SMTP if supported in runtime environment
-  const smtpHost = env?.SMTP_HOST || 'smtp.office365.com';
-  const smtpPort = parseInt(env?.SMTP_PORT || '587', 10);
-  const smtpUser = env?.SMTP_USER || 'crm@saadeddin.com';
-  const smtpPass = env?.SMTP_PASS || 'npzqzfwgtqphvjdq';
+  // 1. Dispatch via Microsoft Graph API (Office 365) — works in Oxygen/Workers
+  const graphTenantId = env?.GRAPH_TENANT_ID;
+  const graphClientId = env?.GRAPH_CLIENT_ID;
+  const graphClientSecret = env?.GRAPH_CLIENT_SECRET;
+  const graphSenderEmail = env?.GRAPH_SENDER_EMAIL || env?.SMTP_USER || 'crm@saadeddin.com';
 
-  if (smtpHost && smtpUser && smtpPass) {
+  if (graphTenantId && graphClientId && graphClientSecret) {
     try {
-      const nodemailerModule = await import('nodemailer').catch(() => null);
-      const nodemailer = nodemailerModule?.default || nodemailerModule;
-      if (nodemailer && typeof nodemailer.createTransport === 'function') {
-        const transporter = nodemailer.createTransport({
-          host: smtpHost,
-          port: smtpPort,
-          secure: false, // port 587 STARTTLS
-          auth: { user: smtpUser, pass: smtpPass },
-          tls: { ciphers: 'SSLv3', rejectUnauthorized: false },
-        });
+      // Step 1: Get OAuth2 access token
+      const tokenRes = await fetch(
+        `https://login.microsoftonline.com/${graphTenantId}/oauth2/v2.0/token`,
+        {
+          method: 'POST',
+          headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+          body: new URLSearchParams({
+            grant_type: 'client_credentials',
+            client_id: graphClientId,
+            client_secret: graphClientSecret,
+            scope: 'https://graph.microsoft.com/.default',
+          }),
+        },
+      );
+      const tokenData = await tokenRes.json() as any;
+      const accessToken = tokenData?.access_token;
 
-        const info = await transporter.sendMail({
-          from: `"Saadeddin Pastry" <${smtpUser}>`,
-          to: recipientEmail,
-          subject: emailSubject,
-          html: emailHtml,
-        });
-        console.log(`[FormEmail] Successfully sent email to ${recipientEmail} via Office 365 SMTP. MessageID: ${info.messageId}`);
+      if (accessToken) {
+        // Step 2: Send email via Microsoft Graph API
+        const mailRes = await fetch(
+          `https://graph.microsoft.com/v1.0/users/${graphSenderEmail}/sendMail`,
+          {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              message: {
+                subject: emailSubject,
+                body: {contentType: 'HTML', content: emailHtml},
+                toRecipients: [{emailAddress: {address: recipientEmail}}],
+              },
+            }),
+          },
+        );
+
+        if (mailRes.status === 202) {
+          console.log(`[FormEmail] Email sent to ${recipientEmail} via Microsoft Graph API`);
+        } else {
+          const errBody = await mailRes.text();
+          console.error(`[FormEmail] Graph API send failed (${mailRes.status}):`, errBody);
+        }
+      } else {
+        console.error('[FormEmail] Graph API token error:', tokenData);
       }
     } catch (err) {
-      console.error('Failed to send email via SMTP:', err);
+      console.error('[FormEmail] Failed to send via Microsoft Graph API:', err);
     }
   }
 
   // 2. Dispatch via Resend API if API Key is set
   if (resendApiKey) {
     try {
-      await fetch('https://api.resend.com/emails', {
+      const resendRes = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${resendApiKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          from: env?.FORM_EMAIL_FROM || 'Saadeddin Storefront <noreply@saadeddin.com>',
+          from: env?.FORM_EMAIL_FROM || 'Saadeddin Storefront <onboarding@resend.dev>',
           to: [recipientEmail],
           subject: emailSubject,
           html: emailHtml,
         }),
       });
+      const resendData = await resendRes.json() as any;
+      if (resendRes.ok) {
+        console.log(`[FormEmail] Email sent via Resend to ${recipientEmail}. ID: ${resendData?.id}`);
+      } else {
+        console.error('[FormEmail] Resend API error:', JSON.stringify(resendData));
+      }
     } catch (err) {
       console.error('Failed to send email via Resend API:', err);
     }

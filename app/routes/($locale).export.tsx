@@ -678,7 +678,7 @@ export default function ExportPage() {
       {/* ─── 5. B2B DISTRIBUTOR REQUEST FORM SECTION ──────────────────────── */}
       <section
         id="export-form"
-        className="w-full bg-[#234745] py-16 text-white"
+        className="w-full bg-[#234745] py-16 text-white mb-12 sm:mb-16"
       >
         <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
           {/* Info Column */}

@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { X, ChevronDown, ChevronUp, Headphones } from 'lucide-react';
 
-export const FaqModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => {
+export const FaqModal = ({ isOpen, onClose, isEn = false }: { isOpen: boolean; onClose: () => void; isEn?: boolean }) => {
   const [openIndex, setOpenIndex] = useState<number | null>(0);
 
   if (!isOpen) return null;
 
-  const faqs = [
+  const faqsAr = [
     {
       q: 'هل يمكنني طلب كيك في نفس اليوم؟',
       a: 'الكيك المخصص يحتاج ٤٨ ساعة كحد أدنى للتجهيز. إذا كنت تريد كيك في نفس اليوم، يمكنك تصفح تشكيلتنا الجاهزة من صفحة المنتجات.'
@@ -33,8 +33,37 @@ export const FaqModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
     }
   ];
 
+  const faqsEn = [
+    {
+      q: 'Can I order a custom cake for the same day?',
+      a: 'Custom cakes require at least 48 hours for preparation. For same-day cakes, please browse our ready-made collection on the products page.'
+    },
+    {
+      q: 'What is the recommended storage duration for the cake?',
+      a: 'It is recommended to keep the cake refrigerated and consume it within 3 to 4 days for optimal taste and quality.'
+    },
+    {
+      q: 'Do your products contain artificial preservatives?',
+      a: 'No, all our products are freshly baked and contain zero artificial preservatives.'
+    },
+    {
+      q: 'Can I modify my order after confirmation?',
+      a: 'You can modify your order within the first 2 hours of confirmation by contacting customer support.'
+    },
+    {
+      q: 'Can you implement custom cake designs?',
+      a: 'Yes! You can upload your design image in the "Special Message" step or contact us directly.'
+    },
+    {
+      q: 'Can the message on the cake be written in English?',
+      a: 'Absolutely! We can write your message in any language as long as it fits the character limit.'
+    }
+  ];
+
+  const faqs = isEn ? faqsEn : faqsAr;
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" dir="rtl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" dir={isEn ? 'ltr' : 'rtl'}>
       {/* Click outside to close */}
       <div className="absolute inset-0" onClick={onClose} />
       
@@ -45,10 +74,13 @@ export const FaqModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
           <button 
             onClick={onClose}
             className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+            aria-label={isEn ? 'Close modal' : 'إغلاق النافذة'}
           >
             <X className="w-5 h-5" />
           </button>
-          <h2 className="text-xl font-bold text-[#255441]">الأسئلة الشائعة</h2>
+          <h2 className="text-xl font-bold text-[#255441]">
+            {isEn ? 'Frequently Asked Questions' : 'الأسئلة الشائعة'}
+          </h2>
           <div className="w-9" /> {/* Spacer for centering */}
         </div>
 
@@ -59,7 +91,7 @@ export const FaqModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
             return (
               <div key={idx} className="border-b border-gray-100 pb-4 last:border-0 last:pb-0">
                 <button 
-                  className="w-full flex items-center justify-between text-right gap-4 focus:outline-none"
+                  className={`w-full flex items-center justify-between gap-4 focus:outline-none ${isEn ? 'text-left' : 'text-right'}`}
                   onClick={() => setOpenIndex(isOpen ? null : idx)}
                 >
                   <span className={`font-bold text-sm ${isOpen ? 'text-[#255441]' : 'text-gray-700'}`}>
@@ -71,7 +103,7 @@ export const FaqModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
                 </button>
                 
                 {isOpen && (
-                  <div className="mt-3 text-sm text-[#8BA19C] leading-relaxed pl-10 pr-2 animate-in slide-in-from-top-1">
+                  <div className={`mt-3 text-sm text-[#8BA19C] leading-relaxed animate-in slide-in-from-top-1 ${isEn ? 'pr-10 pl-2' : 'pl-10 pr-2'}`}>
                     {faq.a}
                   </div>
                 )}
@@ -88,14 +120,24 @@ export const FaqModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
                 <Headphones className="w-8 h-8 text-white/80" />
                 <div className="absolute -top-1 -right-1 w-3 h-3 bg-[#C4A462] rounded-full border-2 border-[#255441]" />
               </div>
-              <div className="text-right">
-                <h3 className="font-bold text-lg mb-1">تحتاج مساعدة في التصميم؟</h3>
-                <p className="text-xs text-white/80">فريقنا جاهز لمساعدتك في تصميم كيك يناسب مناسبتك</p>
+              <div className={isEn ? 'text-left' : 'text-right'}>
+                <h3 className="font-bold text-lg mb-1">
+                  {isEn ? 'Need Help with Design?' : 'تحتاج مساعدة في التصميم؟'}
+                </h3>
+                <p className="text-xs text-white/80">
+                  {isEn
+                    ? 'Our team is ready to help you create a custom cake for your occasion'
+                    : 'فريقنا جاهز لمساعدتك في تصميم كيك يناسب مناسبتك'}
+                </p>
               </div>
             </div>
-            <button className="shrink-0 bg-white text-[#255441] px-6 py-2.5 rounded-full font-bold text-sm hover:bg-[#F9F7EC] transition-colors whitespace-nowrap">
-              تواصل معنا
-            </button>
+            <a 
+              href="tel:920017070"
+              className="shrink-0 bg-white text-[#255441] px-5 py-2.5 rounded-full font-bold text-sm hover:bg-[#F9F7EC] transition-all whitespace-nowrap flex items-center gap-2 shadow-md hover:scale-105 active:scale-95 cursor-pointer"
+            >
+              <span>{isEn ? 'Contact Us' : 'تواصل معنا'}</span>
+              <span className="font-mono text-xs bg-[#255441]/10 px-2 py-0.5 rounded-md text-[#255441]" dir="ltr">920017070</span>
+            </a>
           </div>
         </div>
 

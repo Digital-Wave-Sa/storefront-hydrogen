@@ -133,7 +133,7 @@ export async function loader({request, context}: LoaderFunctionArgs) {
     // Fetch locations
     const locationsQuery = `
       query {
-        locations(first: 100) {
+        locations(first: 250) {
           nodes {
             id
             name

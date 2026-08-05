@@ -182,7 +182,7 @@ export async function loader({params, context, request}: Route.LoaderArgs) {
         try {
           const locRes = (await context.storefront.query(`#graphql
             query GetFeedbackLocations {
-              locations(first: 100) {
+              locations(first: 250) {
                 nodes {
                   id
                   name

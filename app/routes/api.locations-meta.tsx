@@ -19,7 +19,7 @@ export async function loader({context}: Route.LoaderArgs) {
     const adminToken = await getAdminToken(env);
     // Use the GraphQL Admin API
     const query = `{
-      locations(first: 100) {
+      locations(first: 250) {
         nodes {
           id
           name

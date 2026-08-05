@@ -6159,6 +6159,74 @@ export type CustomerAddressesForLocationIdQuery = {
   }>;
 };
 
+export type GetProductsForWishlistQueryVariables = StorefrontAPI.Exact<{
+  ids:
+    | Array<StorefrontAPI.Scalars['ID']['input']>
+    | StorefrontAPI.Scalars['ID']['input'];
+  country?: StorefrontAPI.InputMaybe<StorefrontAPI.CountryCode>;
+  language?: StorefrontAPI.InputMaybe<StorefrontAPI.LanguageCode>;
+}>;
+
+export type GetProductsForWishlistQuery = {
+  nodes: Array<
+    StorefrontAPI.Maybe<
+      Pick<
+        StorefrontAPI.Product,
+        'id' | 'title' | 'handle' | 'availableForSale'
+      > & {
+        featuredImage?: StorefrontAPI.Maybe<
+          Pick<
+            StorefrontAPI.Image,
+            'id' | 'altText' | 'url' | 'width' | 'height'
+          >
+        >;
+        priceRange: {
+          minVariantPrice: Pick<
+            StorefrontAPI.MoneyV2,
+            'amount' | 'currencyCode'
+          >;
+          maxVariantPrice: Pick<
+            StorefrontAPI.MoneyV2,
+            'amount' | 'currencyCode'
+          >;
+        };
+        compareAtPriceRange: {
+          minVariantPrice: Pick<
+            StorefrontAPI.MoneyV2,
+            'amount' | 'currencyCode'
+          >;
+        };
+        visibility_start?: StorefrontAPI.Maybe<
+          Pick<StorefrontAPI.Metafield, 'value'>
+        >;
+        visibility_end?: StorefrontAPI.Maybe<
+          Pick<StorefrontAPI.Metafield, 'value'>
+        >;
+        variants: {
+          nodes: Array<
+            Pick<
+              StorefrontAPI.ProductVariant,
+              'id' | 'title' | 'availableForSale' | 'quantityAvailable'
+            > & {
+              selectedOptions: Array<
+                Pick<StorefrontAPI.SelectedOption, 'name' | 'value'>
+              >;
+              price: Pick<StorefrontAPI.MoneyV2, 'amount' | 'currencyCode'>;
+              storeAvailability: {
+                nodes: Array<
+                  Pick<StorefrontAPI.StoreAvailability, 'available'> & {
+                    location: Pick<StorefrontAPI.Location, 'id' | 'name'>;
+                  }
+                >;
+              };
+            }
+          >;
+        };
+      }
+    >
+  >;
+};
+
 interface GeneratedQueryTypes {
   '#graphql\n  fragment Shop on Shop {\n    id\n    name\n    description\n    primaryDomain {\n      url\n    }\n    brand {\n      logo {\n        image {\n          url\n        }\n      }\n    }\n  }\n  query Header(\n    $country: CountryCode\n    $headerMenuHandle: String!\n    $language: LanguageCode\n  ) @inContext(language: $language, country: $country) {\n    shop {\n      ...Shop\n    }\n    menu(handle: $headerMenuHandle) {\n      ...Menu\n    }\n  }\n  #graphql\n  fragment MenuItem on MenuItem {\n    id\n    resourceId\n    tags\n    title\n    type\n    url\n  }\n  fragment ChildMenuItem on MenuItem {\n    ...MenuItem\n  }\n  fragment ParentMenuItem on MenuItem {\n    ...MenuItem\n    items {\n      ...ChildMenuItem\n    }\n  }\n  fragment Menu on Menu {\n    id\n    items {\n      ...ParentMenuItem\n    }\n  }\n\n': {
     return: HeaderQuery;
@@ -6415,6 +6483,10 @@ interface GeneratedQueryTypes {
   '#graphql\n                          query CustomerAddressesForLocationId($customerAccessToken: String!) {\n                            customer(customerAccessToken: $customerAccessToken) {\n                              addresses(first: 250) {\n                                nodes {\n                                  id\n                                  firstName\n                                  lastName\n                                  address1\n                                  address2\n                                  city\n                                  country\n                                  phone\n                                }\n                              }\n                            }\n                          }\n                        ': {
     return: CustomerAddressesForLocationIdQuery;
     variables: CustomerAddressesForLocationIdQueryVariables;
+  };
+  '#graphql\n      query getProductsForWishlist($ids: [ID!]!, $country: CountryCode, $language: LanguageCode) @inContext(country: $country, language: $language) {\n        nodes(ids: $ids) {\n          ... on Product {\n            id\n            title\n            handle\n            availableForSale\n            featuredImage {\n              id\n              altText\n              url\n              width\n              height\n            }\n            priceRange {\n              minVariantPrice {\n                amount\n                currencyCode\n              }\n              maxVariantPrice {\n                amount\n                currencyCode\n              }\n            }\n            compareAtPriceRange {\n              minVariantPrice {\n                amount\n                currencyCode\n              }\n            }\n            visibility_start: metafield(namespace: "custom", key: "visibility_start") {\n              value\n            }\n            visibility_end: metafield(namespace: "custom", key: "visibility_end") {\n              value\n            }\n            variants(first: 10) {\n              nodes {\n                id\n                title\n                availableForSale\n                quantityAvailable\n                selectedOptions {\n                  name\n                  value\n                }\n                price {\n                  amount\n                  currencyCode\n                }\n                storeAvailability(first: 250) {\n                  nodes {\n                    available\n                    location {\n                      id\n                      name\n                    }\n                  }\n                }\n              }\n            }\n          }\n        }\n      }\n    ': {
+    return: GetProductsForWishlistQuery;
+    variables: GetProductsForWishlistQueryVariables;
   };
 }
 

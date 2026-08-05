@@ -71,7 +71,7 @@ export async function loader({context}: LoaderFunctionArgs) {
           title
         }
       }
-      locations(first: 50) {
+      locations(first: 250) {
         nodes {
           id
           name

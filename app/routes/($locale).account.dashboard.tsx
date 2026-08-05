@@ -72,7 +72,7 @@ export async function loader({context}: LoaderFunctionArgs) {
   const adminToken = await getAdminToken(env);
 
   const query = `{
-    locations(first: 100) {
+    locations(first: 250) {
       nodes {
         id
         name
@@ -241,7 +241,7 @@ export async function action({request, context}: ActionFunctionArgs) {
     const excludeBranches = formData.getAll('excludeBranches') as string[];
 
     const query = `{
-      locations(first: 100) {
+      locations(first: 250) {
         nodes {
           id
         }

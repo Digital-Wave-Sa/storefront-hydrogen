@@ -742,7 +742,7 @@ export function ErrorBoundary() {
 
 const LOCATIONS_QUERY = `#graphql
   query Locations {
-    locations(first: 100) {
+    locations(first: 250) {
       nodes {
         id
         name

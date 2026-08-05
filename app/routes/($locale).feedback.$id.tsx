@@ -203,7 +203,7 @@ export default function FeedbackPage() {
   const [previews, setPreviews] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  if (notFound || !order) {
+  if (notFound || !order || !order.items || order.items.length === 0) {
     return (
       <PageLayout {...({} as any)}>
         <div className="min-h-[70vh] flex items-center justify-center px-4 py-20 bg-[#fdfaf6]">

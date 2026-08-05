@@ -71,13 +71,7 @@ export async function loader({params, context, request}: Route.LoaderArgs) {
           console.warn('[Feedback Loader] Could not check existing reviews:', revErr);
         }
 
-        // --- CUSTOMER AUTHORIZATION & OWNERSHIP CHECK ---
-        const requestUrl = new URL(request.url);
-        const urlVerify = requestUrl.searchParams.get('verify') || requestUrl.searchParams.get('token') || requestUrl.searchParams.get('auth');
-        const urlPhone = requestUrl.searchParams.get('phone');
-        const urlEmail = requestUrl.searchParams.get('email');
-        const userProvidedVerify = requestUrl.searchParams.get('userVerify');
-
+        // --- CUSTOMER AUTHORIZATION & LOGGED-IN CHECK ---
         const orderEmail = (o.email || o.customer?.email || o.billing_address?.email || '').toLowerCase().trim();
         const orderPhoneRaw = (o.phone || o.customer?.phone || o.billing_address?.phone || o.shipping_address?.phone || '').replace(/\D/g, '');
 
@@ -85,30 +79,16 @@ export async function loader({params, context, request}: Route.LoaderArgs) {
         const sessionPhone = ((await context.session.get('loginOtpPhone')) || '').replace(/\D/g, '');
         const customerAccessToken = await context.session.get('customerAccessToken');
 
+        const isLoggedIn = Boolean(sessionEmail || sessionPhone || customerAccessToken);
         let isAuthorized = false;
 
-        // Logged-in matching customer
-        if (sessionEmail && orderEmail && sessionEmail === orderEmail) {
-          isAuthorized = true;
-        } else if (sessionPhone && orderPhoneRaw && (sessionPhone.endsWith(orderPhoneRaw.slice(-6)) || orderPhoneRaw.endsWith(sessionPhone.slice(-6)))) {
-          isAuthorized = true;
-        } else if (customerAccessToken) {
-          isAuthorized = true;
-        }
-
-        // Notification URL token or provided verification
-        if (!isAuthorized) {
-          if (urlVerify && (urlVerify === cleanTargetNum || urlVerify.toLowerCase() === orderEmail || (orderPhoneRaw && orderPhoneRaw.includes(urlVerify.replace(/\D/g, ''))))) {
+        if (isLoggedIn) {
+          if (sessionEmail && orderEmail && sessionEmail === orderEmail) {
             isAuthorized = true;
-          } else if (urlEmail && urlEmail.toLowerCase().trim() === orderEmail) {
+          } else if (sessionPhone && orderPhoneRaw && (sessionPhone.endsWith(orderPhoneRaw.slice(-6)) || orderPhoneRaw.endsWith(sessionPhone.slice(-6)))) {
             isAuthorized = true;
-          } else if (urlPhone && orderPhoneRaw && orderPhoneRaw.includes(urlPhone.replace(/\D/g, ''))) {
+          } else if (isLoggedIn) {
             isAuthorized = true;
-          } else if (userProvidedVerify) {
-            const cleanUserVal = userProvidedVerify.toLowerCase().trim().replace(/\D/g, '');
-            if ((orderEmail && userProvidedVerify.toLowerCase().trim() === orderEmail) || (cleanUserVal && orderPhoneRaw && orderPhoneRaw.includes(cleanUserVal))) {
-              isAuthorized = true;
-            }
           }
         }
 
@@ -368,43 +348,43 @@ export default function FeedbackPage() {
     );
   }
 
-  // Handle Order Customer Ownership Verification State
+  // Handle Not Logged In / Requires Login State
   if (!isAuthorized) {
+    const loginUrl = isEn
+      ? `/en/account/login?redirectTo=/en/feedback/${orderId}`
+      : `/account/login?redirectTo=/feedback/${orderId}`;
+
     return (
       <PageLayout {...({} as any)}>
         <div className="min-h-[70vh] flex items-center justify-center px-4 py-20 bg-[#fdfaf6]">
           <div className="max-w-md w-full bg-white rounded-[40px] p-10 text-center shadow-2xl shadow-[#234745]/10 border border-gray-100 flex flex-col items-center">
-            <div className="w-20 h-20 bg-blue-50 border border-blue-100 rounded-full flex items-center justify-center mx-auto mb-6 text-blue-600">
-              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-              </svg>
+            <div className="w-20 h-20 bg-[#234745]/10 border border-[#234745]/20 rounded-full flex items-center justify-center mx-auto mb-6 text-[#234745]">
+              <span className="text-4xl">🔑</span>
             </div>
             <h1 className="text-2xl font-black text-[#234745] mb-3">
-              {isEn ? 'Order Ownership Verification' : 'التحقق من ملكية الطلب'}
+              {isEn ? 'Please Log In to Review' : 'يرجى تسجيل الدخول للتقييم'}
             </h1>
-            <p className="text-gray-500 font-bold mb-6 leading-relaxed text-sm max-w-sm">
+            <p className="text-gray-500 font-bold mb-8 leading-relaxed text-sm max-w-sm">
               {isEn
-                ? `To protect customer privacy, please enter the phone number or email associated with order ${order.name} to continue.`
-                : `لحماية خصوصيتك، يرجى إدخال رقم الجوال أو البريد الإلكتروني المرتبط بالطلب ${order.name} للمتابعة.`}
+                ? `Please log in to your account to submit your review for order ${order.name}.`
+                : `يرجى تسجيل الدخول إلى حسابك لمشاركة تقييمك وملاحظاتك حول الطلب ${order.name}.`}
             </p>
 
-            <Form method="get" className="w-full space-y-4">
-              <input
-                type="text"
-                name="userVerify"
-                required
-                placeholder={isEn ? 'Enter phone or email...' : 'أدخل رقم الجوال أو البريد الإلكتروني...'}
-                className="w-full bg-[#FCFAF7] border border-[#EADFC9] rounded-2xl p-4 text-center text-sm font-bold text-[#234745] focus:bg-white focus:border-[#234745] outline-none"
-              />
-              <button
-                type="submit"
-                className="w-full bg-[#234745] text-white font-black py-4 rounded-2xl hover:bg-[#1a3533] transition-all shadow-xl text-base !text-white"
+            <div className="w-full space-y-3">
+              <Link
+                to={loginUrl}
+                className="inline-flex items-center justify-center w-full bg-[#234745] text-white font-black px-8 py-4 rounded-2xl hover:bg-[#1a3533] transition-all shadow-xl text-base !text-white"
                 style={{ color: '#ffffff' }}
               >
-                {isEn ? 'Verify & Continue' : 'التحقق والمتابعة'}
-              </button>
-            </Form>
+                {isEn ? 'Log In Now' : 'تسجيل الدخول الآن'}
+              </Link>
+              <Link
+                to={isEn ? '/en' : '/'}
+                className="inline-block text-xs font-bold text-gray-400 hover:text-[#234745] transition-colors py-2"
+              >
+                {i18n.common.backToHome || (isEn ? 'Back to Home' : 'العودة للرئيسية')}
+              </Link>
+            </div>
           </div>
         </div>
       </PageLayout>

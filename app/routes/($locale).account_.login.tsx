@@ -822,6 +822,7 @@ export default function Login() {
   };
 
   const handleResend = () => {
+    setResendCooldown(60);
     if (resendFormRef.current) {
       resendFormRef.current.requestSubmit();
     }
@@ -1076,6 +1077,7 @@ export default function Login() {
               {step === 'input' ? (
                 <Form
                   method="POST"
+                  onSubmit={() => setResendCooldown(60)}
                   className="w-full flex flex-col gap-6 w-full"
                 >
                   <input type="hidden" name="intent" value="send-otp" />
@@ -1258,7 +1260,10 @@ export default function Login() {
                         </span>
                         <button
                           type="button"
-                          onClick={() => setStep('input')}
+                          onClick={() => {
+                            setStep('input');
+                            setOtpValue(['', '', '', '']);
+                          }}
                           className="text-[#234745] font-bold underline hover:text-[#1a3533] ml-1 cursor-pointer"
                         >
                           {isEn ? 'Edit' : 'تعديل'}
@@ -1326,7 +1331,7 @@ export default function Login() {
                         blockCooldown > 0 ||
                         verifyCooldown > 0
                       }
-                      className="w-full bg-[#234745] text-[#FEF8EB] font-bold text-[16px] rounded-[25px] h-[48px] flex items-center justify-center hover:bg-[#1a3533] transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
+                      className="w-full bg-[#234745] text-[#FEF8EB] font-bold text-[16px] rounded-[25px] h-[48px] flex items-center justify-center hover:bg-[#1a3533] transition-colors disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer"
                       style={{
                         fontFamily:
                           "'EnglishDigits', 'GE Dinar One', sans-serif",
@@ -1350,7 +1355,7 @@ export default function Login() {
                     </button>
 
                     {/* Resend OTP */}
-                    <div className="flex flex-col items-center gap-1">
+                    <div className="flex flex-col items-center gap-1.5 mt-2">
                       {resendCooldown > 0 ? (
                         <p
                           className="text-[#9FB7AE] text-sm font-medium"
@@ -1370,7 +1375,7 @@ export default function Login() {
                           disabled={
                             isLoading || blockCooldown > 0 || verifyCooldown > 0
                           }
-                          className="text-[#234745] font-bold text-sm hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="text-[#234745] font-bold text-sm hover:underline disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                           style={{
                             fontFamily:
                               "'EnglishDigits', 'GE Dinar One', sans-serif",

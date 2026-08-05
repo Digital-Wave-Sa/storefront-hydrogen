@@ -633,7 +633,7 @@ export default function ExportPage() {
               </h3>
               <p
                 className="text-[#9FB7AE] text-[14px] font-normal leading-relaxed"
-                style={{fontFamily: "'GE Dinar One', sans-serif"}}
+                style={{fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif"}}
               >
                 {isEn
                   ? 'Fully certified with ISO 22000, HACCP, and SFDA global food safety standards.'

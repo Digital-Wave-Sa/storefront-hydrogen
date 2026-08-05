@@ -227,50 +227,90 @@ export async function loader({request, context}: LoaderFunctionArgs) {
         }
 
         // Fetch used vouchers / discount codes from customer's orders
-        if (customer?.id) {
+        if (customer?.phone || customer?.email || customer?.id) {
           try {
             const {getAdminToken} = await import('~/lib/shopify-admin.server');
             const adminDomain = context.env.PUBLIC_STORE_DOMAIN;
             const adminToken = await getAdminToken(context.env);
-            const numId = customer.id.split('/').pop();
-            if (numId) {
-              const ordersRes = await fetch(
-                `https://${adminDomain}/admin/api/2024-01/customers/${numId}/orders.json?status=any&fields=id,name,order_number,created_at,processed_at,total_discounts,discount_codes`,
-                {
-                  headers: {
-                    'X-Shopify-Access-Token': adminToken,
-                    'Content-Type': 'application/json',
-                  },
+            const numId = customer.id?.split('/').pop();
+            const rawPhone = (customer.phone || formattedPhone || '').replace(/\D/g, '');
+            const phoneSearch = rawPhone.slice(-9);
+
+            let fetchUrl = '';
+            if (numId && !numId.includes('123456789')) {
+              fetchUrl = `https://${adminDomain}/admin/api/2024-01/customers/${numId}/orders.json?status=any&limit=50`;
+            } else if (phoneSearch) {
+              fetchUrl = `https://${adminDomain}/admin/api/2024-01/orders.json?status=any&limit=50`;
+            }
+
+            if (fetchUrl) {
+              const ordersRes = await fetch(fetchUrl, {
+                headers: {
+                  'X-Shopify-Access-Token': adminToken,
+                  'Content-Type': 'application/json',
                 },
-              );
+              });
               if (ordersRes.ok) {
                 const ordersData = (await ordersRes.json()) as any;
-                if (ordersData?.orders?.length) {
-                  ordersData.orders.forEach((o: any) => {
-                    const codes = o.discount_codes || [];
-                    codes.forEach((dc: any, idx: number) => {
-                      const code = dc.code || '';
-                      if (!code) return;
-                      const amount = parseFloat(dc.amount || o.total_discounts || '0');
-                      const isLoyalty =
-                        code.startsWith('LOYAL') || code.includes('LOYALTY');
+                const fetchedOrders = ordersData?.orders || [];
+                fetchedOrders.forEach((o: any) => {
+                  // If searching all orders by phone, verify order phone matches
+                  if (phoneSearch && !numId) {
+                    const orderPhone = (o.phone || o.customer?.phone || o.shipping_address?.phone || '').replace(/\D/g, '');
+                    if (orderPhone && !orderPhone.endsWith(phoneSearch)) {
+                      return;
+                    }
+                  }
+
+                  const codes = o.discount_codes || [];
+                  const applications = o.discount_applications || [];
+
+                  // Process discount codes (e.g. CHOCOLATES40, LOYAL-...)
+                  codes.forEach((dc: any, idx: number) => {
+                    const code = dc.code || '';
+                    if (!code) return;
+                    const amount = parseFloat(dc.amount || o.total_discounts || '0');
+                    const isLoyalty =
+                      code.startsWith('LOYAL') || code.includes('LOYALTY');
+                    history.push({
+                      id: `order-dc-${o.id}-${idx}-${code}`,
+                      amount: amount > 0 ? -amount : 0,
+                      date: o.created_at || o.processed_at || new Date().toISOString(),
+                      labelEn: isLoyalty
+                        ? `Loyalty Redemption Code (${code})`
+                        : `Used Discount Voucher (${code})`,
+                      labelAr: isLoyalty
+                        ? `استخدام كود نقاط الولاء (${code})`
+                        : `استخدام كود الخصم (${code})`,
+                    });
+                  });
+
+                  // Process discount applications if discount_codes array was empty but total_discounts > 0
+                  if (codes.length === 0 && applications.length > 0) {
+                    applications.forEach((da: any, idx: number) => {
+                      const title = da.code || da.title || '';
+                      if (!title) return;
+                      const amount = parseFloat(da.value || o.total_discounts || '0');
+                      const isLoyalty = title.startsWith('LOYAL') || title.toUpperCase().includes('LOYAL');
                       history.push({
-                        id: `order-dc-${o.id}-${idx}`,
+                        id: `order-da-${o.id}-${idx}-${title}`,
                         amount: amount > 0 ? -amount : 0,
                         date: o.created_at || o.processed_at || new Date().toISOString(),
                         labelEn: isLoyalty
-                          ? `Loyalty Redemption Code (${code})`
-                          : `Used Discount Voucher (${code})`,
+                          ? `Loyalty Points Discount (${title})`
+                          : `Applied Discount (${title})`,
                         labelAr: isLoyalty
-                          ? `استخدام كود نقاط الولاء (${code})`
-                          : `استخدام كود الخصم (${code})`,
+                          ? `خصم نقاط الولاء (${title})`
+                          : `خصم مستخدم (${title})`,
                       });
                     });
-                  });
-                }
+                  }
+                });
               }
             }
-          } catch (e) {}
+          } catch (e) {
+            console.error('Failed to fetch order discount codes for wallet history:', e);
+          }
         }
 
         history = history.sort(

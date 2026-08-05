@@ -479,13 +479,39 @@ export default function WalletPage() {
                 </div>
               </div>
 
-              {/* RECENT ACTIVITY (HISTORY) SECTION - Only shown if user has transactions or used vouchers */}
-              {history && history.length > 0 && (
-                <div className="mt-12 bg-white border border-gray-200 rounded-[24px] p-8 shadow-sm">
-                  <h2 className="text-xl font-bold text-[#234745] mb-6 border-b border-gray-100 pb-4">
-                    {isEn ? 'Recent Activity' : 'النشاط الأخير'}
-                  </h2>
+              {/* RECENT ACTIVITY (HISTORY) SECTION */}
+              <div className="mt-12 bg-white border border-gray-200 rounded-[24px] p-8 shadow-sm">
+                <h2 className="text-xl font-bold text-[#234745] mb-6 border-b border-gray-100 pb-4">
+                  {isEn ? 'Recent Activity & Used Vouchers' : 'النشاط الأخير والقسائم المستعملة'}
+                </h2>
 
+                {!history || history.length === 0 ? (
+                  <div className="text-center py-10 text-gray-400">
+                    <svg
+                      className="w-14 h-14 mx-auto mb-3 opacity-30 text-[#234745]"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={1.8}
+                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                      />
+                    </svg>
+                    <p className="font-bold text-gray-600 text-base mb-1">
+                      {isEn
+                        ? 'No used vouchers recorded yet.'
+                        : 'لا يوجد سجل قسائم أو أكواد خصم مستعملة بعد.'}
+                    </p>
+                    <p className="text-xs text-gray-400">
+                      {isEn
+                        ? 'All promotional vouchers, discount codes, and loyalty redemptions used on your orders will appear here.'
+                        : 'ستظهر هنا جميع أكواد الخصم وقسائم الهدايا ونقاط الولاء التي يتم استخدامها في طلباتك.'}
+                    </p>
+                  </div>
+                ) : (
                   <div className="space-y-4">
                     {history.map((tx: any) => {
                       const isAddition = tx.amount > 0;
@@ -529,8 +555,8 @@ export default function WalletPage() {
                       );
                     })}
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           );
         }}

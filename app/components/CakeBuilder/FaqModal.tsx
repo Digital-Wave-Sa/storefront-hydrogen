@@ -135,7 +135,8 @@ export const FaqModal = ({ isOpen, onClose, isEn = false }: { isOpen: boolean; o
               href="https://wa.me/966920017070"
               target="_blank"
               rel="noopener noreferrer"
-              className="shrink-0 bg-white text-[#255441] px-6 py-2.5 rounded-full font-bold text-sm hover:bg-[#F9F7EC] transition-colors whitespace-nowrap"
+              className="shrink-0 bg-white !text-[#255441] px-6 py-2.5 rounded-full font-bold text-sm hover:bg-[#F9F7EC] transition-colors whitespace-nowrap"
+              style={{ color: '#255441' }}
             >
               {isEn ? 'Contact Us' : 'تواصل معنا'}
             </a>

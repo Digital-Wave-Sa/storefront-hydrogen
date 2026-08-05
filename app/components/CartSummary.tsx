@@ -161,7 +161,7 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
   const hasPreOrderItems = cart?.lines?.nodes?.some((line: any) =>
     line.merchandise?.product?.tags?.some((tag: string) =>
       ['preorder', 'pre-order', 'طلب مسبق'].includes(tag.toLowerCase().trim())
-    )
+    ) || line.attributes?.some((a: any) => a.key === '_is_preorder' && a.value === 'true')
   );
 
   const hasCashOnly = cart?.lines?.nodes?.some((line: any) =>
@@ -209,7 +209,10 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
     return !isDiscountValidForLocation(matched, branchId, rootData?.selectedCity);
   });
 
-  const canCheckout = isMinOrderMet && isBranchSelected && !isBranchHidden && !isOutOfRange && !hasOutOfStockItems && !isTimeSlotInvalid && !!selectedDate && !!timeSlot && !invalidActiveDiscount;
+  const isDateTimeRequired = !hasPreOrderItems;
+  const isDateTimeValid = !isDateTimeRequired || (!isTimeSlotInvalid && !!selectedDate && !!timeSlot);
+
+  const canCheckout = isMinOrderMet && isBranchSelected && !isBranchHidden && !isOutOfRange && !hasOutOfStockItems && isDateTimeValid && !invalidActiveDiscount;
 
   const branchHoursStr = (() => {
     if (!currentBranch) return '';
@@ -450,8 +453,29 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
                 </div>
               </div>
 
-              {/* Date & Time Slot Picker required for all orders (Delivery and Pickup) */}
-              <CartCalendarPicker isEn={isEn} cart={cart} currentBranch={currentBranch} />
+              {/* Date & Time Slot Picker required for normal orders, hidden for pre-orders */}
+              {!hasPreOrderItems ? (
+                <CartCalendarPicker isEn={isEn} cart={cart} currentBranch={currentBranch} />
+              ) : (
+                <div className="w-full rounded-2xl p-4 bg-[#f0f7f5] border border-[#9fb7ae]/30 text-[#234745] flex items-center gap-3 shadow-sm my-2">
+                  <div className="w-8 h-8 rounded-full bg-[#234745]/10 flex items-center justify-center shrink-0">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="10" />
+                      <polyline points="12 6 12 16 14" />
+                    </svg>
+                  </div>
+                  <div className="text-[13px] leading-relaxed">
+                    <span className="font-bold block text-[14px] mb-0.5">
+                      {isEn ? 'Pre-Order Fulfillment Notice' : 'ملاحظة طلب مسبق'}
+                    </span>
+                    <span>
+                      {isEn
+                        ? 'This cart contains pre-order items. Delivery date and time will be scheduled based on item availability.'
+                        : 'يحتوي هذا الطلب على منتجات طلب مسبق. سيتم جدولة موعد التوصيل بناءً على توفر المنتج.'}
+                    </span>
+                  </div>
+                </div>
+              )}
 
 
               {/* Order Notes */}

@@ -1,4 +1,5 @@
 import { getAdminToken } from '~/lib/shopify-admin.server';
+import nodemailer from 'nodemailer';
 
 export interface FormSubmissionPayload {
   formType: 'contact' | 'export' | 'corporate' | 'custom_request';
@@ -175,7 +176,6 @@ export async function sendFormEmailNotification(
 
   if (smtpHost && smtpUser && smtpPass) {
     try {
-      const nodemailer = (await import('nodemailer')).default || (await import('nodemailer'));
       const transporter = nodemailer.createTransport({
         host: smtpHost,
         port: smtpPort,
@@ -184,13 +184,13 @@ export async function sendFormEmailNotification(
         tls: { ciphers: 'SSLv3', rejectUnauthorized: false },
       });
 
-      await transporter.sendMail({
+      const info = await transporter.sendMail({
         from: `"Saadeddin Pastry" <${smtpUser}>`,
         to: recipientEmail,
         subject: emailSubject,
         html: emailHtml,
       });
-      console.log(`[FormEmail] Successfully sent email to ${recipientEmail} via Office 365 SMTP`);
+      console.log(`[FormEmail] Successfully sent email to ${recipientEmail} via Office 365 SMTP. MessageID: ${info.messageId}`);
     } catch (err) {
       console.error('Failed to send email via SMTP:', err);
     }

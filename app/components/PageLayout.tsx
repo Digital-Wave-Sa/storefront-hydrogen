@@ -1,5 +1,5 @@
 import {Await, Link, useRouteLoaderData, useLocation} from 'react-router';
-import {Suspense, useId} from 'react';
+import {Suspense, useId, useEffect} from 'react';
 import type {
   CartApiQueryFragment,
   FooterQuery,
@@ -48,6 +48,37 @@ export function PageLayout({
     : (rootData?.consent?.language?.toLowerCase() || 'ar');
 
   const isCustomCakePage = location.pathname.includes('/custom-cake');
+
+  // Purge stale cart cookie after completing checkout
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const isCheckoutInProgress = sessionStorage.getItem('checkout_in_progress') === 'true';
+    const referer = document.referrer || '';
+    const isFromShopifyCheckout =
+      referer.includes('myshopify.com') ||
+      referer.includes('checkouts') ||
+      window.location.search.includes('thank_you') ||
+      window.location.search.includes('order_id') ||
+      window.location.search.includes('completed');
+
+    if (isCheckoutInProgress || isFromShopifyCheckout) {
+      sessionStorage.removeItem('checkout_in_progress');
+      document.cookie = 'cart=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT;';
+      const domainParts = window.location.hostname.split('.');
+      if (domainParts.length >= 2) {
+        const rootDomain = '.' + domainParts.slice(-2).join('.');
+        document.cookie = `cart=; path=/; domain=${rootDomain}; expires=Thu, 01 Jan 1970 00:00:00 GMT;`;
+      }
+      
+      const hasReloaded = sessionStorage.getItem('post_checkout_cart_cleared');
+      if (!hasReloaded) {
+        sessionStorage.setItem('post_checkout_cart_cleared', 'true');
+        window.location.reload();
+      }
+    } else {
+      sessionStorage.removeItem('post_checkout_cart_cleared');
+    }
+  }, []);
 
   return (
     <Aside.Provider>

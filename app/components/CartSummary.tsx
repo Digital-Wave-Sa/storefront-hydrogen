@@ -1008,6 +1008,7 @@ function CartCheckoutActions({
   const fireBeginCheckout = () => {
     try {
       if (typeof window === 'undefined') return;
+      sessionStorage.setItem('checkout_in_progress', 'true');
       const consent = localStorage.getItem('saadeddin_cookie_consent');
       if (consent !== 'accepted') return;
       const w = window as any;

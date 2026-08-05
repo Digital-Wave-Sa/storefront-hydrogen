@@ -1,5 +1,4 @@
 import { getAdminToken } from '~/lib/shopify-admin.server';
-import nodemailer from 'nodemailer';
 
 export interface FormSubmissionPayload {
   formType: 'contact' | 'export' | 'corporate' | 'custom_request';
@@ -168,7 +167,7 @@ export async function sendFormEmailNotification(
     </div>
   `;
 
-  // 1. Dispatch via Office 365 SMTP if configured
+  // 1. Dispatch via Office 365 SMTP if supported in runtime environment
   const smtpHost = env?.SMTP_HOST || 'smtp.office365.com';
   const smtpPort = parseInt(env?.SMTP_PORT || '587', 10);
   const smtpUser = env?.SMTP_USER || 'crm@saadeddin.com';
@@ -176,21 +175,25 @@ export async function sendFormEmailNotification(
 
   if (smtpHost && smtpUser && smtpPass) {
     try {
-      const transporter = nodemailer.createTransport({
-        host: smtpHost,
-        port: smtpPort,
-        secure: false, // port 587 STARTTLS
-        auth: { user: smtpUser, pass: smtpPass },
-        tls: { ciphers: 'SSLv3', rejectUnauthorized: false },
-      });
+      const nodemailerModule = await import('nodemailer').catch(() => null);
+      const nodemailer = nodemailerModule?.default || nodemailerModule;
+      if (nodemailer && typeof nodemailer.createTransport === 'function') {
+        const transporter = nodemailer.createTransport({
+          host: smtpHost,
+          port: smtpPort,
+          secure: false, // port 587 STARTTLS
+          auth: { user: smtpUser, pass: smtpPass },
+          tls: { ciphers: 'SSLv3', rejectUnauthorized: false },
+        });
 
-      const info = await transporter.sendMail({
-        from: `"Saadeddin Pastry" <${smtpUser}>`,
-        to: recipientEmail,
-        subject: emailSubject,
-        html: emailHtml,
-      });
-      console.log(`[FormEmail] Successfully sent email to ${recipientEmail} via Office 365 SMTP. MessageID: ${info.messageId}`);
+        const info = await transporter.sendMail({
+          from: `"Saadeddin Pastry" <${smtpUser}>`,
+          to: recipientEmail,
+          subject: emailSubject,
+          html: emailHtml,
+        });
+        console.log(`[FormEmail] Successfully sent email to ${recipientEmail} via Office 365 SMTP. MessageID: ${info.messageId}`);
+      }
     } catch (err) {
       console.error('Failed to send email via SMTP:', err);
     }

@@ -281,7 +281,7 @@ export function ProductItem({
       >
         <div className="w-full aspect-[4/3] relative flex items-center justify-center bg-gray-50 overflow-hidden">
           {(() => {
-            const imageToDisplay = product.featuredImage || product.images?.nodes?.[0] || product.variants?.nodes?.[0]?.image;
+            const imageToDisplay = product.featuredImage || product.image || product.images?.nodes?.[0] || product.variants?.nodes?.[0]?.image;
             if (!imageToDisplay) {
               return (
                 <img

@@ -105,7 +105,27 @@ const deliveryZones = [
 export default function BranchesPage() {
   const {locale} = useOutletContext<{locale: string}>();
   const rootData = useRouteLoaderData<any>('root');
-  const locations = rootData?.locations?.locations?.nodes || [];
+  const sfLocations = rootData?.locations?.locations?.nodes || [];
+
+  const [adminLocations, setAdminLocations] = useState<any[]>([]);
+
+  useEffect(() => {
+    fetch('/api/locations-meta')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.locations && Array.isArray(data.locations) && data.locations.length > 0) {
+          setAdminLocations(data.locations);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const locations = useMemo(() => {
+    if (adminLocations.length > sfLocations.length) {
+      return adminLocations;
+    }
+    return sfLocations;
+  }, [adminLocations, sfLocations]);
 
   const isEn = locale === 'en';
   const fontClass = isEn ? 'font-en' : 'font-ar';

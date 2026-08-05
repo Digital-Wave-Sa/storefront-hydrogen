@@ -105,14 +105,7 @@ const deliveryZones = [
 export default function BranchesPage() {
   const {locale} = useOutletContext<{locale: string}>();
   const rootData = useRouteLoaderData<any>('root');
-  const rawLocations = rootData?.locations?.locations?.nodes || [];
-  const locations = rawLocations.filter((loc: any) => {
-    const isHidden =
-      loc.hide_from_storefront?.value === 'true' ||
-      loc.hide_from_storefront === true ||
-      loc.hide_from_storefront === 'true';
-    return !isHidden;
-  });
+  const locations = rawLocations;
 
   const isEn = locale === 'en';
   const fontClass = isEn ? 'font-en' : 'font-ar';

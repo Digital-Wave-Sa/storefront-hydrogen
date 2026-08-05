@@ -409,6 +409,7 @@ export default function FeedbackPage() {
         </div>
       </PageLayout>
     );
+  }
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length > 0) {

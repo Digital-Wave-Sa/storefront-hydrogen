@@ -726,6 +726,7 @@ function ModalContent({
     selectedAddressName,
 }: any) {
     const isEn = locale === 'en';
+    const rootData = useRouteLoaderData('root') as any;
     const [zoom, setZoom] = useState(14);
 
     const branches = rawBranchesProp.map((b: any) => ({

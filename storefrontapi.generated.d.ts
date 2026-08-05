@@ -3836,6 +3836,36 @@ export type ExportCollectionFilterQuery = {
   }>;
 };
 
+export type CheckOrderReviewsQueryVariables = StorefrontAPI.Exact<{
+  [key: string]: never;
+}>;
+
+export type CheckOrderReviewsQuery = {
+  metaobjects: {
+    nodes: Array<
+      Pick<StorefrontAPI.Metaobject, 'id'> & {
+        fields: Array<Pick<StorefrontAPI.MetaobjectField, 'key' | 'value'>>;
+      }
+    >;
+  };
+};
+
+export type GetFeedbackLocationsQueryVariables = StorefrontAPI.Exact<{
+  [key: string]: never;
+}>;
+
+export type GetFeedbackLocationsQuery = {
+  locations: {
+    nodes: Array<
+      Pick<StorefrontAPI.Location, 'id' | 'name'> & {
+        name_in_arabic?: StorefrontAPI.Maybe<
+          Pick<StorefrontAPI.Metafield, 'value'>
+        >;
+      }
+    >;
+  };
+};
+
 export type GiftingProductItemFragment = Pick<
   StorefrontAPI.Product,
   'id' | 'handle' | 'title' | 'availableForSale' | 'tags'
@@ -6271,6 +6301,14 @@ interface GeneratedQueryTypes {
   '#graphql\n  query ExportCollectionFilter(\n    $handle: String!\n    $filters: [ProductFilter!]\n    $country: CountryCode\n    $language: LanguageCode\n  ) @inContext(country: $country, language: $language) {\n    collection(handle: $handle) {\n      products(first: 100, filters: $filters) {\n        nodes {\n          id\n          title\n          handle\n          priceRange {\n            minVariantPrice {\n              amount\n              currencyCode\n            }\n          }\n          featuredImage {\n            id\n            url\n            altText\n            width\n            height\n          }\n          variants(first: 1) {\n            nodes {\n              id\n              availableForSale\n              price {\n                amount\n                currencyCode\n              }\n              compareAtPrice {\n                amount\n                currencyCode\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n': {
     return: ExportCollectionFilterQuery;
     variables: ExportCollectionFilterQueryVariables;
+  };
+  '#graphql\n              query CheckOrderReviews {\n                metaobjects(type: "storefront_review", first: 250) {\n                  nodes {\n                    id\n                    fields { key value }\n                  }\n                }\n              }\n            ': {
+    return: CheckOrderReviewsQuery;
+    variables: CheckOrderReviewsQueryVariables;
+  };
+  '#graphql\n            query GetFeedbackLocations {\n              locations(first: 100) {\n                nodes {\n                  id\n                  name\n                  name_in_arabic: metafield(namespace: "custom", key: "name_in_arabic") { value }\n                }\n              }\n            }\n          ': {
+    return: GetFeedbackLocationsQuery;
+    variables: GetFeedbackLocationsQueryVariables;
   };
   '#graphql\n    #graphql\n  fragment OccasionsProductItem on Product {\n    id\n    handle\n    title\n    featuredImage {\n      id\n      altText\n      url\n      width\n      height\n    }\n    priceRange {\n      minVariantPrice {\n        amount\n        currencyCode\n      }\n      maxVariantPrice {\n        amount\n        currencyCode\n      }\n    }\n    compareAtPriceRange {\n      minVariantPrice {\n        amount\n        currencyCode\n      }\n    }\n    availableForSale\n    variants(first: 10) {\n      nodes {\n        id\n        title\n        availableForSale\n        quantityAvailable\n        selectedOptions {\n          name\n          value\n        }\n        price {\n          amount\n          currencyCode\n        }\n        storeAvailability(first: 250) {\n          nodes {\n            available\n            location {\n              id\n              name\n            }\n          }\n        }\n      }\n    }\n    tags\n  }\n\n    query GiftingProducts($country: CountryCode, $language: LanguageCode) @inContext(country: $country, language: $language) {\n      collections(first: 100) {\n        nodes {\n          id\n          title\n          handle\n          image {\n            url\n            altText\n          }\n        }\n      }\n      products(first: 200, query: "tag:gifting OR tag:gift") {\n        nodes {\n          ...GiftingProductItem\n        }\n      }\n    }\n  ': {
     return: GiftingProductsQuery;

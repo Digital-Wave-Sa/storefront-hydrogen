@@ -104,10 +104,20 @@ export async function loader({request, context}: LoaderFunctionArgs) {
     const shopDomain = env.PUBLIC_STORE_DOMAIN;
     const adminToken = await getAdminToken(env);
 
-    // Fetch reviews
+    // Fetch reviews (both storefront_review and order_review metaobjects)
     const reviewsQuery = `
       query {
-        metaobjects(type: "storefront_review", first: 250) {
+        storefrontReviews: metaobjects(type: "storefront_review", first: 250) {
+          nodes {
+            id
+            updatedAt
+            fields {
+              key
+              value
+            }
+          }
+        }
+        orderReviews: metaobjects(type: "order_review", first: 250) {
           nodes {
             id
             updatedAt
@@ -177,12 +187,20 @@ export async function loader({request, context}: LoaderFunctionArgs) {
         adminApiQuery(shopDomain, adminToken, ordersQuery, {}) as Promise<any>,
       ]);
 
-      if (revRes?.data?.metaobjects?.nodes) {
-        reviewsData = revRes.data.metaobjects.nodes.map((node: any) => {
+      const sfNodes = revRes?.data?.storefrontReviews?.nodes || [];
+      const ordNodes = revRes?.data?.orderReviews?.nodes || [];
+      const combinedNodes = [...sfNodes, ...ordNodes];
+
+      if (combinedNodes.length > 0) {
+        reviewsData = combinedNodes.map((node: any) => {
           const fields: any = {};
           node.fields.forEach((f: any) => {
             fields[f.key] = f.value;
           });
+          // Normalization: branch_rating -> rating if rating missing
+          if (!fields.rating && fields.branch_rating) {
+            fields.rating = fields.branch_rating;
+          }
           return {
             id: node.id,
             date: new Date(node.updatedAt).toISOString(),

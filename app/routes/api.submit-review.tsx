@@ -2,6 +2,89 @@ import {data, type ActionFunctionArgs} from 'react-router';
 import {adminApiQuery} from '../lib/admin.server';
 import {getAdminToken} from '~/lib/shopify-admin.server';
 
+/**
+ * Helper to create a metaobject entry with automatic definition creation if missing.
+ */
+async function createMetaobjectWithAutoDef(
+  shopDomain: string,
+  token: string,
+  type: string,
+  handle: string,
+  fields: {key: string; value: string}[],
+  defName?: string,
+) {
+  const createMutation = `
+    mutation CreateMetaobject($metaobject: MetaobjectCreateInput!) {
+      metaobjectCreate(metaobject: $metaobject) {
+        metaobject {
+          id
+          handle
+        }
+        userErrors {
+          field
+          message
+        }
+      }
+    }
+  `;
+
+  const res = (await adminApiQuery(shopDomain, token, createMutation, {
+    metaobject: {type, handle, fields},
+  })) as any;
+
+  const errors = res?.data?.metaobjectCreate?.userErrors || [];
+  const needsDef = errors.some(
+    (e: any) =>
+      e.message?.toLowerCase().includes('definition') ||
+      e.message?.toLowerCase().includes('type'),
+  );
+
+  if (needsDef) {
+    const defMutation = `
+      mutation CreateMetaobjectDefinition($definition: MetaobjectDefinitionCreateInput!) {
+        metaobjectDefinitionCreate(definition: $definition) {
+          createdDefinition {
+            id
+            type
+          }
+          userErrors {
+            field
+            message
+          }
+        }
+      }
+    `;
+
+    const fieldDefinitions = fields.map((f) => ({
+      name: f.key
+        .replace(/_/g, ' ')
+        .replace(/\b\w/g, (l) => l.toUpperCase()),
+      key: f.key,
+      type:
+        f.key === 'comment' ||
+        f.key === 'review_comment' ||
+        f.key === 'items_rated'
+          ? 'multi_line_text_field'
+          : 'single_line_text_field',
+    }));
+
+    await adminApiQuery(shopDomain, token, defMutation, {
+      definition: {
+        name: defName || type.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase()),
+        type,
+        fieldDefinitions,
+      },
+    });
+
+    // Retry metaobject creation
+    return await adminApiQuery(shopDomain, token, createMutation, {
+      metaobject: {type, handle, fields},
+    });
+  }
+
+  return res;
+}
+
 export async function action({request, context}: ActionFunctionArgs) {
   const env = context.env as any;
 
@@ -13,70 +96,46 @@ export async function action({request, context}: ActionFunctionArgs) {
     : `${rawShop.split('.')[0]}.myshopify.com`;
 
   const formData = await request.formData();
-  const productHandle = formData.get('productHandle') || 'general-feedback';
-  const customerName = formData.get('customerName') || 'Verified Customer';
+  const customerName = String(formData.get('customerName') || 'Verified Customer');
   const orderId = formData.get('orderId');
-  const rating = formData.get('rating');
-  const branchRating = formData.get('branchRating');
+  const branchRating = formData.get('branchRating') || formData.get('branch_rating');
   const branchName = formData.get('branchName');
-  const title = formData.get('title');
   const comment = formData.get('comment');
-  const language = formData.get('language') || 'en';
+  const language = String(formData.get('language') || 'en');
+  const finalLocationId = formData.get('locationId') || formData.get('location_id');
 
-  if (!rating) {
+  // Check if productRatings JSON is provided from order feedback
+  const productRatingsRaw = formData.get('productRatings');
+  let productRatings: Array<{handle: string; rating: number; title?: string}> = [];
+
+  if (productRatingsRaw) {
+    try {
+      productRatings = JSON.parse(String(productRatingsRaw));
+    } catch (e) {}
+  }
+
+  // Fallback if submitted as single product review form
+  const productHandle = formData.get('productHandle');
+  const singleRating = formData.get('rating');
+
+  if (!productRatingsRaw && productHandle && singleRating) {
+    productRatings.push({
+      handle: String(productHandle),
+      rating: parseInt(String(singleRating), 10) || 0,
+    });
+  }
+
+  if (productRatings.length === 0 && !branchRating) {
     return data({error: 'Missing rating'}, {status: 400});
   }
 
-  const mutation = `
-        mutation CreateReview($handle: String!, $fields: [MetaobjectFieldInput!]!) {
-            metaobjectCreate(metaobject: {
-                type: "storefront_review",
-                handle: $handle,
-                fields: $fields
-            }) {
-                metaobject {
-                    id
-                }
-                userErrors {
-                    field
-                    message
-                }
-            }
-        }
-    `;
-
-  // Unique handle for the review
-  const reviewHandle = `review-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-
-  const fields = [
-    {key: 'product_handle', value: String(productHandle)},
-    {key: 'customer_name', value: String(customerName)},
-    {key: 'rating', value: String(parseInt(String(rating)) || 0)}, // Shopify Admin API accepts strings for Integers if they are numeric
-    {key: 'review_title', value: String(title || '')},
-    {key: 'review_comment', value: String(comment || '')},
-    {key: 'language', value: String(language)},
-    {key: 'status', value: 'Pending'},
-  ];
-
-  if (orderId) {
-    const cleanOrdId = String(orderId).replace(/^#/, '').trim();
-    fields.push({key: 'order_id', value: cleanOrdId});
-  }
-
-  const finalLocationId =
-    formData.get('locationId') || formData.get('location_id');
-  if (finalLocationId) {
-    fields.push({key: 'location_id', value: String(finalLocationId)});
-  }
-  if (branchName)
-    fields.push({key: 'location_name', value: String(branchName)});
-
   try {
     const token = await getAdminToken(env);
+    const timestamp = Date.now();
+    const cleanOrdId = orderId ? String(orderId).replace(/^#/, '').trim() : '';
 
-    // Mark order as reviewed in Shopify Admin
-    if (orderId) {
-      const cleanOrdId = String(orderId).replace(/^#/, '').trim();
+    // 1. MARK ORDER AS REVIEWED IN SHOPIFY ADMIN (ONCE)
+    if (cleanOrdId) {
       try {
         const orderSearchRes = await fetch(
           `https://${shopDomain}/admin/api/2024-01/orders.json?name=%23${cleanOrdId}&status=any`,
@@ -124,43 +183,85 @@ export async function action({request, context}: ActionFunctionArgs) {
         console.warn('[REVIEWS] Failed to tag order as reviewed:', tagErr);
       }
     }
-    const result = (await adminApiQuery(shopDomain, token, mutation, {
-      handle: reviewHandle,
-      fields: fields,
-    })) as any;
 
-    if (result.errors) {
-      console.error('[REVIEWS] GraphQL Error:', result.errors[0].message);
-      return data({error: result.errors[0].message}, {status: 400});
+    // 2. CREATE SEPARATE METAOBJECT FOR ORDER REVIEW (if this is an order feedback)
+    if (cleanOrdId) {
+      const orderReviewHandle = `order-review-${cleanOrdId}-${timestamp}`;
+      const orderReviewFields = [
+        {key: 'order_id', value: cleanOrdId},
+        {key: 'customer_name', value: customerName},
+        {key: 'branch_rating', value: String(parseInt(String(branchRating || 5), 10) || 5)},
+        {key: 'branch_name', value: String(branchName || '')},
+        {key: 'location_id', value: String(finalLocationId || '')},
+        {key: 'comment', value: String(comment || '')},
+        {key: 'language', value: language},
+        {key: 'status', value: 'Approved'},
+        {key: 'items_rated', value: JSON.stringify(productRatings)},
+      ];
+
+      await createMetaobjectWithAutoDef(
+        shopDomain,
+        token,
+        'order_review',
+        orderReviewHandle,
+        orderReviewFields,
+        'Order Review',
+      );
     }
 
-    if (result.data?.metaobjectCreate?.userErrors?.length) {
-      const errorMsg = result.data.metaobjectCreate.userErrors[0].message;
-      console.error('[REVIEWS] User Error:', errorMsg);
-      return data({error: errorMsg}, {status: 400});
+    // 3. CREATE INDIVIDUAL STOREFRONT_REVIEW METAOBJECTS FOR EVERY REVIEWED PRODUCT IN THE ORDER
+    // This guarantees that all reviewed products in the order affect the product rating!
+    for (const item of productRatings) {
+      if (!item.handle || item.handle === 'general-feedback' || item.rating <= 0) continue;
+
+      const randomSuffix = Math.floor(Math.random() * 1000);
+      const productReviewHandle = cleanOrdId
+        ? `review-${cleanOrdId}-${item.handle}-${timestamp}-${randomSuffix}`
+        : `review-${item.handle}-${timestamp}-${randomSuffix}`;
+
+      const productReviewFields = [
+        {key: 'product_handle', value: item.handle},
+        {key: 'customer_name', value: customerName},
+        {key: 'rating', value: String(item.rating)},
+        {key: 'review_title', value: String(formData.get('title') || 'Order Feedback')},
+        {key: 'review_comment', value: String(comment || '')},
+        {key: 'language', value: language},
+        {key: 'status', value: 'Approved'}, // Approved so it immediately reflects on product ratings
+      ];
+
+      if (cleanOrdId) productReviewFields.push({key: 'order_id', value: cleanOrdId});
+      if (finalLocationId) productReviewFields.push({key: 'location_id', value: String(finalLocationId)});
+      if (branchName) productReviewFields.push({key: 'location_name', value: String(branchName)});
+
+      await createMetaobjectWithAutoDef(
+        shopDomain,
+        token,
+        'storefront_review',
+        productReviewHandle,
+        productReviewFields,
+        'Storefront Review',
+      );
     }
 
-    // --- UPDATE LOCATION RATING ---
-    const locId = formData.get('locationId');
-    if (locId) {
-      let formattedLocId = String(locId);
+    // 4. UPDATE LOCATION / BRANCH RATING
+    if (finalLocationId) {
+      let formattedLocId = String(finalLocationId);
       if (!formattedLocId.includes('gid://')) {
         formattedLocId = `gid://shopify/Location/${formattedLocId}`;
       }
 
-      // Use branchRating if explicitly provided, otherwise fallback to product rating
-      const submittedRating = parseFloat(String(branchRating || rating)) || 0;
+      const submittedRating = parseFloat(String(branchRating || singleRating || 0)) || 0;
 
       if (submittedRating > 0) {
         try {
           const fetchLocationQuery = `
-                        query GetLocationRating($id: ID!) {
-                          location(id: $id) {
-                            rating: metafield(namespace: "custom", key: "rating") { value }
-                            ratingCount: metafield(namespace: "custom", key: "rating_count") { value }
-                          }
-                        }
-                    `;
+            query GetLocationRating($id: ID!) {
+              location(id: $id) {
+                rating: metafield(namespace: "custom", key: "rating") { value }
+                ratingCount: metafield(namespace: "custom", key: "rating_count") { value }
+              }
+            }
+          `;
           const locResult = (await adminApiQuery(
             shopDomain,
             token,
@@ -182,12 +283,12 @@ export async function action({request, context}: ActionFunctionArgs) {
               (currentRating * currentCount + submittedRating) / newCount;
 
             const updateLocationMutation = `
-                            mutation UpdateLocationRating($metafields: [MetafieldsSetInput!]!) {
-                              metafieldsSet(metafields: $metafields) {
-                                userErrors { field message }
-                              }
-                            }
-                        `;
+              mutation UpdateLocationRating($metafields: [MetafieldsSetInput!]!) {
+                metafieldsSet(metafields: $metafields) {
+                  userErrors { field message }
+                }
+              }
+            `;
 
             await adminApiQuery(shopDomain, token, updateLocationMutation, {
               metafields: [
@@ -210,7 +311,6 @@ export async function action({request, context}: ActionFunctionArgs) {
           }
         } catch (locErr) {
           console.error('[REVIEWS] Failed to update location rating:', locErr);
-          // Do not block review submission success if branch rating fails
         }
       }
     }

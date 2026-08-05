@@ -48,7 +48,13 @@ export async function loader({params, context, request}: Route.LoaderArgs) {
           try {
             const reviewsRes = (await context.storefront.query(`#graphql
               query CheckOrderReviews {
-                metaobjects(type: "storefront_review", first: 250) {
+                orderReviews: metaobjects(type: "order_review", first: 250) {
+                  nodes {
+                    id
+                    fields { key value }
+                  }
+                }
+                storefrontReviews: metaobjects(type: "storefront_review", first: 250) {
                   nodes {
                     id
                     fields { key value }
@@ -57,8 +63,11 @@ export async function loader({params, context, request}: Route.LoaderArgs) {
               }
             `, { cache: context.storefront.CacheNone() })) as any;
 
-            const nodes = reviewsRes?.metaobjects?.nodes || [];
-            const matchedNode = nodes.find((node: any) => {
+            const orderNodes = reviewsRes?.orderReviews?.nodes || [];
+            const sfNodes = reviewsRes?.storefrontReviews?.nodes || [];
+            const allNodes = [...orderNodes, ...sfNodes];
+
+            const matchedNode = allNodes.find((node: any) => {
               const orderIdVal = node.fields?.find((f: any) => f.key === 'order_id')?.value;
               if (!orderIdVal) return false;
               const cleanVal = String(orderIdVal).replace(/^#/, '').trim();
@@ -67,7 +76,7 @@ export async function loader({params, context, request}: Route.LoaderArgs) {
 
             if (matchedNode) {
               alreadyReviewed = true;
-              const rVal = matchedNode.fields?.find((f: any) => f.key === 'rating')?.value;
+              const rVal = matchedNode.fields?.find((f: any) => f.key === 'branch_rating' || f.key === 'rating')?.value;
               if (rVal) existingRating = parseInt(rVal, 10);
             }
           } catch (revErr) {
@@ -696,51 +705,41 @@ export async function action({request, context, params}: Route.ActionArgs) {
   const customerName = formData.get('customerName') || 'Verified Customer';
 
   // Find all rated products — keys are product_{itemId}_rating and product_{itemId}_handle
-  const productRatings: Record<string, {rating: number; handle: string}> = {};
+  const productRatingsList: Array<{handle: string; rating: number}> = [];
   for (const [key, value] of formData.entries()) {
     if (key.startsWith('product_') && key.endsWith('_rating')) {
       const productId = key.replace('product_', '').replace('_rating', '');
       const handle = String(formData.get(`product_${productId}_handle`) || 'general-feedback');
-      productRatings[productId] = {
-        rating: parseInt(String(value)) || 0,
-        handle,
-      };
+      const rating = parseInt(String(value), 10) || 0;
+      if (handle && handle !== 'general-feedback') {
+        productRatingsList.push({handle, rating});
+      }
     }
   }
 
-  // If no products rated, still submit a general review with the branch rating
-  const entries = Object.entries(productRatings);
-  const reviewEntries = entries.length > 0 ? entries : [['general', {rating: 0, handle: 'general-feedback'}]];
+  const apiSubmitData = new FormData();
+  apiSubmitData.append('customerName', String(customerName));
+  apiSubmitData.append('orderId', String(orderId));
+  apiSubmitData.append('branchRating', String(branchRating || '5'));
+  apiSubmitData.append('branchName', String(branchName || ''));
+  apiSubmitData.append('locationId', String(locationId));
+  apiSubmitData.append('comment', String(comment || ''));
+  apiSubmitData.append('language', language);
+  apiSubmitData.append('productRatings', JSON.stringify(productRatingsList));
 
-  const promises = reviewEntries.map(async ([productId, {rating, handle}]) => {
-      const apiSubmitData = new FormData();
-      apiSubmitData.append('productHandle', handle);
-      apiSubmitData.append('customerName', String(customerName));
-      apiSubmitData.append('orderId', String(orderId));
-      apiSubmitData.append('rating', String(rating));
-      apiSubmitData.append('branchRating', String(branchRating));
-      apiSubmitData.append('branchName', String(branchName));
-      apiSubmitData.append('locationId', String(locationId));
-      apiSubmitData.append('title', 'Order Feedback');
-      apiSubmitData.append('comment', String(comment));
-      apiSubmitData.append('language', language);
+  const {action: submitAction} = await import('./api.submit-review');
 
-      const {action: submitAction} = await import('./api.submit-review');
+  const mockRequest = new Request(
+    'http://localhost:3000/api/submit-review',
+    {method: 'POST', body: apiSubmitData},
+  );
 
-      const mockRequest = new Request(
-        'http://localhost:3000/api/submit-review',
-        {method: 'POST', body: apiSubmitData},
-      );
-
-      try {
-        return await submitAction({request: mockRequest, context, params: {}} as any);
-      } catch (err) {
-        console.error('Failed to submit review for product:', productId, err);
-        return null;
-      }
-  });
-
-  await Promise.all(promises);
-  return {success: true};
+  try {
+    return await submitAction({request: mockRequest, context, params: {}} as any);
+  } catch (err) {
+    console.error('Failed to submit order review:', err);
+    return {error: 'Failed to submit review'};
+  }
 }
+
 

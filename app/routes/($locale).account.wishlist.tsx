@@ -181,13 +181,23 @@ function WishlistCard({
         )}
 
         <div className="mt-auto">
-          <AddToCartButton
-            lines={[{merchandiseId: item.id, quantity: 1}]}
-            className="w-full h-[40px] md:h-[44px] px-2 md:px-4 flex items-center justify-center rounded-full font-bold text-[12px] md:text-[15px] bg-[#234745] text-white hover:bg-[#163529] shadow-sm transition-all duration-300 active:scale-95"
-            style={{fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif"}}
-          >
-            {isEn ? 'Add to Cart' : 'أضف إلي السلة'}
-          </AddToCartButton>
+          {item.variantId || item.id?.includes('ProductVariant') ? (
+            <AddToCartButton
+              lines={[{merchandiseId: item.variantId || item.id, quantity: 1}]}
+              className="w-full h-[40px] md:h-[44px] px-2 md:px-4 flex items-center justify-center rounded-full font-bold text-[12px] md:text-[15px] bg-[#234745] text-white hover:bg-[#163529] shadow-sm transition-all duration-300 active:scale-95"
+              style={{fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif"}}
+            >
+              {isEn ? 'Add to Cart' : 'أضف إلى السلة'}
+            </AddToCartButton>
+          ) : (
+            <Link
+              to={productUrl}
+              className="w-full h-[40px] md:h-[44px] px-2 md:px-4 flex items-center justify-center rounded-full font-bold text-[12px] md:text-[15px] bg-[#234745] text-white hover:bg-[#163529] shadow-sm transition-all duration-300 active:scale-95"
+              style={{fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif"}}
+            >
+              {isEn ? 'View Product' : 'أضف إلى السلة'}
+            </Link>
+          )}
         </div>
       </div>
     </div>

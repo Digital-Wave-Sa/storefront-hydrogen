@@ -4235,6 +4235,7 @@ function ProductGallery({images, product}: {images: any[]; product: any}) {
               e.preventDefault();
               toggleWishlist({
                 id: product.id,
+                variantId: selectedVariant?.id || product.variants?.nodes?.[0]?.id,
                 title: product.title,
                 handle: product.handle,
                 image: images[0],

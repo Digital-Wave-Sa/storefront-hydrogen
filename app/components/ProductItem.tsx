@@ -313,6 +313,7 @@ export function ProductItem({
                 e.stopPropagation();
                 toggleWishlist({
                   id: product.id,
+                  variantId: variant?.id || product.variants?.nodes?.[0]?.id,
                   title: product.title,
                   handle: product.handle,
                   image: product.featuredImage || product.images?.nodes?.[0],

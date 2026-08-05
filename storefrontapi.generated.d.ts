@@ -495,7 +495,14 @@ export type GetReviewsQueryVariables = StorefrontAPI.Exact<{
 }>;
 
 export type GetReviewsQuery = {
-  metaobjects: {
+  sfReviews: {
+    nodes: Array<
+      Pick<StorefrontAPI.Metaobject, 'id'> & {
+        fields: Array<Pick<StorefrontAPI.MetaobjectField, 'key' | 'value'>>;
+      }
+    >;
+  };
+  ordReviews: {
     nodes: Array<
       Pick<StorefrontAPI.Metaobject, 'id'> & {
         fields: Array<Pick<StorefrontAPI.MetaobjectField, 'key' | 'value'>>;
@@ -3841,7 +3848,14 @@ export type CheckOrderReviewsQueryVariables = StorefrontAPI.Exact<{
 }>;
 
 export type CheckOrderReviewsQuery = {
-  metaobjects: {
+  orderReviews: {
+    nodes: Array<
+      Pick<StorefrontAPI.Metaobject, 'id'> & {
+        fields: Array<Pick<StorefrontAPI.MetaobjectField, 'key' | 'value'>>;
+      }
+    >;
+  };
+  storefrontReviews: {
     nodes: Array<
       Pick<StorefrontAPI.Metaobject, 'id'> & {
         fields: Array<Pick<StorefrontAPI.MetaobjectField, 'key' | 'value'>>;
@@ -6158,7 +6172,7 @@ interface GeneratedQueryTypes {
     return: GetCustomerGidQuery;
     variables: GetCustomerGidQueryVariables;
   };
-  '#graphql\n      query GetReviews {\n        metaobjects(type: "storefront_review", first: 250) {\n          nodes {\n            id\n            fields {\n              key\n              value\n            }\n          }\n        }\n      }\n    ': {
+  '#graphql\n      query GetReviews {\n        sfReviews: metaobjects(type: "storefront_review", first: 250) {\n          nodes {\n            id\n            fields { key value }\n          }\n        }\n        ordReviews: metaobjects(type: "order_review", first: 250) {\n          nodes {\n            id\n            fields { key value }\n          }\n        }\n      }\n    ': {
     return: GetReviewsQuery;
     variables: GetReviewsQueryVariables;
   };
@@ -6302,7 +6316,7 @@ interface GeneratedQueryTypes {
     return: ExportCollectionFilterQuery;
     variables: ExportCollectionFilterQueryVariables;
   };
-  '#graphql\n              query CheckOrderReviews {\n                metaobjects(type: "storefront_review", first: 250) {\n                  nodes {\n                    id\n                    fields { key value }\n                  }\n                }\n              }\n            ': {
+  '#graphql\n              query CheckOrderReviews {\n                orderReviews: metaobjects(type: "order_review", first: 250) {\n                  nodes {\n                    id\n                    fields { key value }\n                  }\n                }\n                storefrontReviews: metaobjects(type: "storefront_review", first: 250) {\n                  nodes {\n                    id\n                    fields { key value }\n                  }\n                }\n              }\n            ': {
     return: CheckOrderReviewsQuery;
     variables: CheckOrderReviewsQueryVariables;
   };

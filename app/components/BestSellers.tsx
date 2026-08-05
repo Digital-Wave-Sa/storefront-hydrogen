@@ -244,6 +244,7 @@ export function BestSellers({
                                                             e.preventDefault();
                                                             toggleWishlist({
                                                                 id: product.id,
+                                                                variantId: product.variants?.nodes?.[0]?.id,
                                                                 title: product.title,
                                                                 handle: product.handle,
                                                                 image: product.images?.nodes?.[0],

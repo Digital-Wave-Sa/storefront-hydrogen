@@ -711,14 +711,14 @@ export default function ExportPage() {
 
             <p
               className={`text-white font-normal text-[14px] sm:text-[14px] leading-relaxed mb-8 ${isEn ? 'text-left' : 'text-right'}`}
-              style={{fontFamily: "'GE Dinar One', sans-serif"}}
+              style={{fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif"}}
             >
               {isEn
                 ? 'Become an authorized distributor and enjoy exclusive deals, personalized pricing, and dedicated logistics support.'
                 : 'املأ بياناتك وسيقوم فريق التصدير لدينا بالرد عليك خلال 48 ساعة بكتالوج جملة مخصص، والأسعار، وخيارات الشحن المناسبة لسوقك'}
             </p>
 
-            <div className="space-y-3 pt-4 border-t mt-[20px] border-white/15 text-[14px] text-gray-200 w-full" style={{fontFamily: "'GE Dinar One', sans-serif"}}>
+            <div className="space-y-3 pt-4 border-t mt-[20px] border-white/15 text-[14px] text-gray-200 w-full" style={{fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif"}}>
               <div
                 className={`flex items-center gap-3 ${isEn ? 'justify-start' : 'justify-start'}`}
               >
@@ -869,7 +869,7 @@ export default function ExportPage() {
                   {isEn ? 'Submit Export Request' : 'إرسال الطلب'}
                 </button>
 
-                <p className="text-[12px] text-[#9FB7AE] text-center pt-1">
+                <p className="text-[12px] text-[#9FB7AE] text-center pt-1" style={{fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif"}}>
                   {isEn
                     ? 'We will respond within 24 business hours'
                     : 'سنتواصل معك في أسرع وقت خلال 24 ساعة'}

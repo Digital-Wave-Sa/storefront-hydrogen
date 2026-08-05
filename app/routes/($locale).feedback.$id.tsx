@@ -5,7 +5,7 @@ import type {Route} from './+types/feedback.$id';
 import {PageLayout} from '~/components/PageLayout';
 import {useI18n} from '~/lib/i18n';
 
-export async function loader({params, context}: Route.LoaderArgs) {
+export async function loader({params, context, request}: Route.LoaderArgs) {
   const {id} = params;
   const locale = params.locale || 'ar';
   const isEn = locale === 'en';
@@ -39,6 +39,82 @@ export async function loader({params, context}: Route.LoaderArgs) {
       });
 
       if (o) {
+        // --- CHECK IF ALREADY REVIEWED ---
+        let alreadyReviewed = false;
+        let existingRating: number | null = null;
+        try {
+          const reviewsRes = (await context.storefront.query(`#graphql
+            query CheckOrderReviews {
+              metaobjects(type: "storefront_review", first: 250) {
+                nodes {
+                  id
+                  fields { key value }
+                }
+              }
+            }
+          `, { cache: context.storefront.CacheNone() })) as any;
+
+          const nodes = reviewsRes?.metaobjects?.nodes || [];
+          const matchedNode = nodes.find((node: any) => {
+            const orderIdVal = node.fields?.find((f: any) => f.key === 'order_id')?.value;
+            if (!orderIdVal) return false;
+            const cleanVal = String(orderIdVal).replace(/^#/, '').trim();
+            return cleanVal === cleanTargetNum;
+          });
+
+          if (matchedNode) {
+            alreadyReviewed = true;
+            const rVal = matchedNode.fields?.find((f: any) => f.key === 'rating')?.value;
+            if (rVal) existingRating = parseInt(rVal, 10);
+          }
+        } catch (revErr) {
+          console.warn('[Feedback Loader] Could not check existing reviews:', revErr);
+        }
+
+        // --- CUSTOMER AUTHORIZATION & OWNERSHIP CHECK ---
+        const requestUrl = new URL(request.url);
+        const urlVerify = requestUrl.searchParams.get('verify') || requestUrl.searchParams.get('token') || requestUrl.searchParams.get('auth');
+        const urlPhone = requestUrl.searchParams.get('phone');
+        const urlEmail = requestUrl.searchParams.get('email');
+        const userProvidedVerify = requestUrl.searchParams.get('userVerify');
+
+        const orderEmail = (o.email || o.customer?.email || o.billing_address?.email || '').toLowerCase().trim();
+        const orderPhoneRaw = (o.phone || o.customer?.phone || o.billing_address?.phone || o.shipping_address?.phone || '').replace(/\D/g, '');
+
+        const sessionEmail = ((await context.session.get('loginCustomerEmail')) || '').toLowerCase().trim();
+        const sessionPhone = ((await context.session.get('loginOtpPhone')) || '').replace(/\D/g, '');
+        const customerAccessToken = await context.session.get('customerAccessToken');
+
+        let isAuthorized = false;
+
+        // Logged-in matching customer
+        if (sessionEmail && orderEmail && sessionEmail === orderEmail) {
+          isAuthorized = true;
+        } else if (sessionPhone && orderPhoneRaw && (sessionPhone.endsWith(orderPhoneRaw.slice(-6)) || orderPhoneRaw.endsWith(sessionPhone.slice(-6)))) {
+          isAuthorized = true;
+        } else if (customerAccessToken) {
+          isAuthorized = true;
+        }
+
+        // Notification URL token or provided verification
+        if (!isAuthorized) {
+          if (urlVerify && (urlVerify === cleanTargetNum || urlVerify.toLowerCase() === orderEmail || (orderPhoneRaw && orderPhoneRaw.includes(urlVerify.replace(/\D/g, ''))))) {
+            isAuthorized = true;
+          } else if (urlEmail && urlEmail.toLowerCase().trim() === orderEmail) {
+            isAuthorized = true;
+          } else if (urlPhone && orderPhoneRaw && orderPhoneRaw.includes(urlPhone.replace(/\D/g, ''))) {
+            isAuthorized = true;
+          } else if (userProvidedVerify) {
+            const cleanUserVal = userProvidedVerify.toLowerCase().trim().replace(/\D/g, '');
+            if ((orderEmail && userProvidedVerify.toLowerCase().trim() === orderEmail) || (cleanUserVal && orderPhoneRaw && orderPhoneRaw.includes(cleanUserVal))) {
+              isAuthorized = true;
+            }
+          }
+        }
+
+        const maskedEmail = orderEmail ? `${orderEmail.slice(0, 3)}***@${orderEmail.split('@')[1] || ''}` : '';
+        const maskedPhone = orderPhoneRaw ? `***${orderPhoneRaw.slice(-4)}` : '';
+
         // Build items from real line items
         const items = (o.line_items || []).map((li: any) => ({
           id: String(li.id),
@@ -161,6 +237,11 @@ export async function loader({params, context}: Route.LoaderArgs) {
 
         return {
           notFound: false,
+          alreadyReviewed,
+          existingRating,
+          isAuthorized,
+          maskedEmail,
+          maskedPhone,
           orderId: id,
           locale,
           order: {
@@ -180,6 +261,11 @@ export async function loader({params, context}: Route.LoaderArgs) {
   // If order not found in Shopify
   return {
     notFound: true,
+    alreadyReviewed: false,
+    existingRating: null,
+    isAuthorized: false,
+    maskedEmail: '',
+    maskedPhone: '',
     orderId: id,
     locale,
     order: null,
@@ -188,7 +274,7 @@ export async function loader({params, context}: Route.LoaderArgs) {
 
 
 export default function FeedbackPage() {
-  const {notFound, orderId, locale, order} = useLoaderData<typeof loader>();
+  const {notFound, alreadyReviewed, existingRating, isAuthorized, maskedEmail, maskedPhone, orderId, locale, order} = useLoaderData<typeof loader>();
   const i18n = useI18n(locale);
   const isEn = locale === 'en';
   const fetcher = useFetcher();
@@ -225,6 +311,93 @@ export default function FeedbackPage() {
             >
               {i18n.common.backToHome}
             </Link>
+          </div>
+        </div>
+      </PageLayout>
+    );
+  }
+
+  // Handle Order Already Reviewed State (One-Time Limit)
+  if (alreadyReviewed) {
+    return (
+      <PageLayout {...({} as any)}>
+        <div className="min-h-[70vh] flex items-center justify-center px-4 py-20 bg-[#fdfaf6]">
+          <div className="max-w-md w-full bg-white rounded-[40px] p-10 text-center shadow-2xl shadow-[#234745]/10 border border-gray-100 flex flex-col items-center">
+            <div className="w-24 h-24 bg-amber-50 border border-amber-200 rounded-full flex items-center justify-center mx-auto mb-6">
+              <span className="text-4xl">⭐️</span>
+            </div>
+            <h1 className="text-2xl font-black text-[#234745] mb-3">
+              {isEn ? 'Already Reviewed' : 'تم تقييم هذا الطلب مسبقاً'}
+            </h1>
+            <p className="text-gray-500 font-bold mb-8 leading-relaxed text-sm max-w-sm">
+              {isEn
+                ? `Thank you! You have already submitted a review for order ${order.name}. We appreciate your feedback!`
+                : `شكراً لك! لقد قمت بتقديم تقييمك للطلب ${order.name} مسبقاً. نحن نثمن مشاركتك!`}
+            </p>
+            {existingRating && (
+              <div className="mb-8 px-6 py-3 bg-[#FCFAF7] border border-[#EADFC9]/60 rounded-2xl flex items-center gap-2">
+                <span className="text-xs font-black text-gray-500">
+                  {isEn ? 'Your Rating:' : 'تقييمك المكتوب:'}
+                </span>
+                <div className="flex gap-1 text-amber-400">
+                  {Array.from({length: existingRating}).map((_, i) => (
+                    <span key={i}>★</span>
+                  ))}
+                </div>
+              </div>
+            )}
+            <div className="w-full">
+              <Link
+                to={isEn ? '/en' : '/'}
+                className="inline-flex items-center justify-center w-full bg-[#234745] text-white font-black px-8 py-4 rounded-2xl hover:bg-[#1a3533] transition-all shadow-xl text-base !text-white"
+                style={{ color: '#ffffff' }}
+              >
+                {i18n.common.backToHome || (isEn ? 'Back to Home' : 'العودة للرئيسية')}
+              </Link>
+            </div>
+          </div>
+        </div>
+      </PageLayout>
+    );
+  }
+
+  // Handle Order Customer Ownership Verification State
+  if (!isAuthorized) {
+    return (
+      <PageLayout {...({} as any)}>
+        <div className="min-h-[70vh] flex items-center justify-center px-4 py-20 bg-[#fdfaf6]">
+          <div className="max-w-md w-full bg-white rounded-[40px] p-10 text-center shadow-2xl shadow-[#234745]/10 border border-gray-100 flex flex-col items-center">
+            <div className="w-20 h-20 bg-blue-50 border border-blue-100 rounded-full flex items-center justify-center mx-auto mb-6 text-blue-600">
+              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+              </svg>
+            </div>
+            <h1 className="text-2xl font-black text-[#234745] mb-3">
+              {isEn ? 'Order Ownership Verification' : 'التحقق من ملكية الطلب'}
+            </h1>
+            <p className="text-gray-500 font-bold mb-6 leading-relaxed text-sm max-w-sm">
+              {isEn
+                ? `To protect customer privacy, please enter the phone number or email associated with order ${order.name} to continue.`
+                : `لحماية خصوصيتك، يرجى إدخال رقم الجوال أو البريد الإلكتروني المرتبط بالطلب ${order.name} للمتابعة.`}
+            </p>
+
+            <Form method="get" className="w-full space-y-4">
+              <input
+                type="text"
+                name="userVerify"
+                required
+                placeholder={isEn ? 'Enter phone or email...' : 'أدخل رقم الجوال أو البريد الإلكتروني...'}
+                className="w-full bg-[#FCFAF7] border border-[#EADFC9] rounded-2xl p-4 text-center text-sm font-bold text-[#234745] focus:bg-white focus:border-[#234745] outline-none"
+              />
+              <button
+                type="submit"
+                className="w-full bg-[#234745] text-white font-black py-4 rounded-2xl hover:bg-[#1a3533] transition-all shadow-xl text-base !text-white"
+                style={{ color: '#ffffff' }}
+              >
+                {isEn ? 'Verify & Continue' : 'التحقق والمتابعة'}
+              </button>
+            </Form>
           </div>
         </div>
       </PageLayout>

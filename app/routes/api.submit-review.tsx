@@ -58,6 +58,11 @@ export async function action({request, context}: ActionFunctionArgs) {
     {key: 'status', value: 'Pending'},
   ];
 
+  if (orderId) {
+    const cleanOrdId = String(orderId).replace(/^#/, '').trim();
+    fields.push({key: 'order_id', value: cleanOrdId});
+  }
+
   const finalLocationId =
     formData.get('locationId') || formData.get('location_id');
   if (finalLocationId) {
@@ -68,6 +73,40 @@ export async function action({request, context}: ActionFunctionArgs) {
 
   try {
     const token = await getAdminToken(env);
+
+    // Block duplicate reviews for the same order ID
+    if (orderId) {
+      const cleanOrdId = String(orderId).replace(/^#/, '').trim();
+      try {
+        const existingQuery = `
+          query CheckDuplicateReview {
+            metaobjects(type: "storefront_review", first: 250) {
+              nodes {
+                id
+                fields { key value }
+              }
+            }
+          }
+        `;
+        const existingRes = (await adminApiQuery(shopDomain, token, existingQuery, {})) as any;
+        const nodes = existingRes?.data?.metaobjects?.nodes || [];
+        const isAlreadyReviewed = nodes.some((node: any) => {
+          const orderIdField = node.fields?.find((f: any) => f.key === 'order_id')?.value;
+          if (!orderIdField) return false;
+          const cleanField = String(orderIdField).replace(/^#/, '').trim();
+          return cleanField === cleanOrdId;
+        });
+
+        if (isAlreadyReviewed) {
+          return data(
+            {error: language === 'ar' ? 'تم تقييم هذا الطلب مسبقاً.' : 'This order has already been reviewed.'},
+            {status: 400},
+          );
+        }
+      } catch (dupErr) {
+        console.warn('[REVIEWS] Duplicate review check warning:', dupErr);
+      }
+    }
     const result = (await adminApiQuery(shopDomain, token, mutation, {
       handle: reviewHandle,
       fields: fields,

@@ -222,14 +222,13 @@ export async function action({request, context}: ActionFunctionArgs) {
       const productReviewFields = [
         {key: 'product_handle', value: item.handle},
         {key: 'customer_name', value: customerName},
-        {key: 'rating', value: String(item.rating)},
+        {key: 'rating', value: String(Math.round(Number(item.rating) || 5))},
         {key: 'review_title', value: String(formData.get('title') || 'Order Feedback')},
         {key: 'review_comment', value: String(comment || '')},
         {key: 'language', value: language},
-        {key: 'status', value: 'Approved'}, // Approved so it immediately reflects on product ratings
+        {key: 'status', value: 'Approved'},
       ];
 
-      if (cleanOrdId) productReviewFields.push({key: 'order_id', value: cleanOrdId});
       if (finalLocationId) productReviewFields.push({key: 'location_id', value: String(finalLocationId)});
       if (branchName) productReviewFields.push({key: 'location_name', value: String(branchName)});
 

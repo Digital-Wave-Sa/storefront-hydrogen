@@ -367,14 +367,6 @@ export async function loader({context}: LoaderFunctionArgs) {
   });
 
   const shopifyVouchers = await Promise.all(voucherPromises);
-      }
-    }
-  } catch (err) {
-    console.error(
-      '[Vouchers Loader] Error fetching native Shopify price rules:',
-      err,
-    );
-  }
 
   return {lang, shopifyVouchers};
 }

@@ -1,9 +1,56 @@
 import { useState } from 'react';
-import { type MetaFunction, useRouteLoaderData, Link } from 'react-router';
+import { type MetaFunction, useRouteLoaderData, Link, useFetcher, data, type LoaderFunctionArgs } from 'react-router';
 
 export const meta: MetaFunction = () => {
   return [{ title: 'طلب باقة مخصصة | سعد الدين للهدايا المؤسسية' }];
 };
+
+export async function action({request, context}: LoaderFunctionArgs) {
+  const isEn =
+    String(context?.storefront?.i18n?.language || '').toUpperCase() === 'EN';
+
+  try {
+    const formData = await request.formData();
+    const companyName = String(formData.get('companyName') || '').trim();
+    const contactName = String(formData.get('contactName') || '').trim();
+    const email = String(formData.get('email') || '').trim();
+    const phone = String(formData.get('phone') || '').trim();
+    const quantity = String(formData.get('quantity') || '').trim();
+    const budgetPerBox = String(formData.get('budgetPerBox') || '').trim();
+    const specialRequirements = String(formData.get('specialRequirements') || '').trim();
+
+    if (!contactName || !email || !phone) {
+      return data({
+        success: false,
+        error: isEn ? 'Please fill required fields' : 'يرجى ملء جميع الحقول المطلوبة',
+      });
+    }
+
+    const {sendFormEmailNotification} = await import('~/lib/email.server');
+    await sendFormEmailNotification(
+      {
+        formType: 'custom_request',
+        formTitle: 'Custom Package Request (طلب الباقة المخصصة للهدايا المؤسسية)',
+        fullName: contactName,
+        email,
+        phone,
+        companyName,
+        quantity,
+        budget: budgetPerBox,
+        subject: `Custom Package Request - ${companyName || contactName}`,
+        message: specialRequirements,
+      },
+      context.env,
+    );
+
+    return data({success: true});
+  } catch (err) {
+    return data({
+      success: false,
+      error: isEn ? 'Submission failed, please try again' : 'حدث خطأ، يرجى المحاولة لاحقاً',
+    });
+  }
+}
 
 export default function CustomRequestPage() {
   const rootData = useRouteLoaderData('root') as any;
@@ -23,13 +70,16 @@ export default function CustomRequestPage() {
     brandAssetsUploaded: false,
   });
 
+  const requestFetcher = useFetcher();
+
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
+    requestFetcher.submit(e.currentTarget);
     setTimeout(() => {
       setLoading(false);
       setSubmitted(true);
-    }, 600);
+    }, 400);
   };
 
   return (
@@ -118,6 +168,7 @@ export default function CustomRequestPage() {
                   </label>
                   <input
                     type="text"
+                    name="companyName"
                     required
                     value={formData.companyName}
                     onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
@@ -131,6 +182,7 @@ export default function CustomRequestPage() {
                   </label>
                   <input
                     type="text"
+                    name="contactName"
                     required
                     value={formData.contactName}
                     onChange={(e) => setFormData({ ...formData, contactName: e.target.value })}
@@ -147,6 +199,7 @@ export default function CustomRequestPage() {
                   </label>
                   <input
                     type="email"
+                    name="email"
                     required
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
@@ -160,6 +213,7 @@ export default function CustomRequestPage() {
                   </label>
                   <input
                     type="tel"
+                    name="phone"
                     required
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
@@ -182,6 +236,7 @@ export default function CustomRequestPage() {
                   </label>
                   <input
                     type="number"
+                    name="quantity"
                     min="200"
                     required
                     value={formData.quantity}
@@ -195,6 +250,7 @@ export default function CustomRequestPage() {
                   </label>
                   <input
                     type="text"
+                    name="budgetPerBox"
                     value={formData.budgetPerBox}
                     onChange={(e) => setFormData({ ...formData, budgetPerBox: e.target.value })}
                     placeholder={isEn ? 'e.g. 150-300 SAR' : 'مثال: ١٥٠ - ٣٠٠ ريال'}
@@ -235,6 +291,7 @@ export default function CustomRequestPage() {
                 </label>
                 <textarea
                   rows={4}
+                  name="specialRequirements"
                   value={formData.specialRequirements}
                   onChange={(e) => setFormData({ ...formData, specialRequirements: e.target.value })}
                   placeholder={isEn ? 'Specify preferred box material, ribbon colors, custom gift card text...' : 'حدد المواد المفضلة، ألوان الشريط، رسالة كرت الإهداء، موعد المناسبة...'}

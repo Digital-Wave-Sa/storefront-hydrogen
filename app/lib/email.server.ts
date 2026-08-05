@@ -1,162 +1,252 @@
-// import nodemailer from 'nodemailer';
+import { getAdminToken } from '~/lib/shopify-admin.server';
 
-/**
- * Premium Email Service for Saadeddin
- * Uses Office 365 SMTP to send transactional emails
- */
-export async function sendEmail({ 
-  to, 
-  subject, 
-  html, 
-  text, 
-  env 
-}: { 
-  to: string, 
-  subject: string, 
-  html: string, 
-  text: string,
-  env: any 
+export interface FormSubmissionPayload {
+  formType: 'contact' | 'export' | 'corporate' | 'custom_request';
+  formTitle: string;
+  fullName: string;
+  email: string;
+  phone: string;
+  companyName?: string;
+  destinationCountry?: string;
+  budget?: string;
+  quantity?: string;
+  subject?: string;
+  message?: string;
+  customDetails?: Record<string, any>;
+}
+
+export async function sendEmail({
+  to,
+  subject,
+  html,
+  env,
+}: {
+  to: string;
+  subject: string;
+  html: string;
+  env: any;
 }) {
-  // 1. Try Live HTTP Providers first (Resend / SendGrid) if API Keys are configured
-  if (env.RESEND_API_KEY || env.SENDGRID_API_KEY) {
-    if (env.RESEND_API_KEY) {
-      try {
-        console.log('[EMAIL] Attempting HTTP send via Resend API');
-        const response = await fetch('https://api.resend.com/emails', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${env.RESEND_API_KEY}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            from: `"${env.SMTP_FROM_NAME || 'Saadeddin'}" <${env.SMTP_USER || 'crm@saadeddin.com'}>`,
-            to,
-            subject,
-            text,
-            html,
-          }),
-        });
-        if (response.ok) {
-          const resData = await response.json() as any;
-          return { success: true, messageId: resData.id };
-        }
-        const errorText = await response.text();
-        console.error('[RESEND API ERROR]', errorText);
-      } catch (e: any) {
-        console.error('[RESEND EXCEPTION]', e);
-      }
-    }
+  const resendApiKey = env?.RESEND_API_KEY;
+  const fromEmail = env?.FORM_EMAIL_FROM || 'Saadeddin Pastry <noreply@saadeddin.com>';
 
-    if (env.SENDGRID_API_KEY) {
-      try {
-        console.log('[EMAIL] Attempting HTTP send via SendGrid API');
-        const response = await fetch('https://api.sendgrid.com/v3/mail/send', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${env.SENDGRID_API_KEY}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            personalizations: [{ to: [{ email: to }] }],
-            from: { email: env.SMTP_USER || 'crm@saadeddin.com', name: env.SMTP_FROM_NAME || 'Saadeddin' },
-            subject,
-            content: [
-              { type: 'text/plain', value: text },
-              { type: 'text/html', value: html }
-            ]
-          }),
-        });
-        if (response.status === 202) {
-          return { success: true, messageId: response.headers.get('X-Message-Id') || 'sendgrid-success' };
-        }
-        const errorText = await response.text();
-        console.error('[SENDGRID API ERROR]', errorText);
-      } catch (e: any) {
-        console.error('[SENDGRID EXCEPTION]', e);
-      }
+  if (resendApiKey) {
+    try {
+      const res = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${resendApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          from: fromEmail,
+          to: [to],
+          subject,
+          html,
+        }),
+      });
+      return res.ok;
+    } catch (e) {
+      console.error('Failed to send email via Resend:', e);
     }
   }
-
-  // 2. Fallback to Local SMTP via nodemailer (ideal for local development)
-  try {
-    console.log('[EMAIL] Attempting local SMTP send via Nodemailer');
-    const nodemailer = await import('nodemailer');
-    const transporter = nodemailer.default.createTransport({
-      host: env.SMTP_HOST,
-      port: Number(env.SMTP_PORT),
-      secure: false, 
-      auth: {
-        user: env.SMTP_USER,
-        pass: env.SMTP_PASS,
-      },
-      tls: {
-        ciphers: 'SSLv3',
-        rejectUnauthorized: false,
-      },
-    });
-
-    const mailOptions = {
-      from: `"${env.SMTP_FROM_NAME}" <${env.SMTP_USER}>`,
-      to,
-      subject,
-      text,
-      html,
-    };
-
-    const info = await transporter.sendMail(mailOptions);
-    return { success: true, messageId: info.messageId };
-  } catch (error: any) {
-    console.error('[LOCAL SMTP ERROR / NOT SUPPORTED IN RUNTIME]', error);
-    
-    // Log to console as ultimate fallback so emails aren't completely lost in testing
-    console.log('--- [EMAIL DRAFT FALLBACK] ---');
-    console.log(`To: ${to}`);
-    console.log(`Subject: ${subject}`);
-    console.log(`Body: ${text}`);
-    
-    return { success: true, messageId: 'draft-console-fallback' };
-  }
+  return false;
 }
 
-/**
- * Branded Template for Back-in-Stock Notifications
- */
-export function getBackInStockTemplate(productTitle: string, variantTitle: string, branchName: string, storeDomain: string) {
-  const isEn = true; // Hardcoded to English for now or pass as param
-  
-  return {
-    subject: `Back in Stock: ${productTitle} is now available!`,
-    text: `Good news! Your requested item "${productTitle}${variantTitle !== 'Default Title' ? ` (${variantTitle})` : ''}" is back in stock at Saadeddin ${branchName}. Visit our shop to order now!`,
-    html: `
-      <div dir="ltr" style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 0; border: 1px solid #f0f0f0; border-radius: 16px; overflow: hidden; background-color: #ffffff; color: #1a1a1a;">
-        <div style="background-color: #234745; padding: 40px 20px; text-align: center;">
-          <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 900; letter-spacing: 1px;">SAADEDDIN</h1>
-          <p style="color: #ffffff; opacity: 0.8; margin-top: 5px; font-size: 12px; font-weight: bold; text-transform: uppercase; letter-spacing: 2px;">Premium Quality Since 1979</p>
-        </div>
-        
-        <div style="padding: 40px 30px; text-align: center;">
-          <div style="font-size: 48px; margin-bottom: 20px;">✨</div>
-          <h2 style="color: #234745; margin: 0 0 10px 0; font-size: 28px; font-weight: 900;">It's Back!</h2>
-          <p style="color: #666666; font-size: 16px; margin-bottom: 30px; line-height: 1.6;">Good news! Your requested item is now back in stock and ready for delivery from your preferred branch.</p>
-          
-          <div style="background-color: #fdfaf6; border: 2px dashed #e8dfd3; border-radius: 20px; padding: 30px; margin-bottom: 30px;">
-            <h3 style="margin: 0; color: #234745; font-size: 20px; font-weight: 800;">${productTitle}</h3>
-            ${variantTitle && variantTitle !== 'Default Title' ? `<p style="margin: 5px 0 0 0; color: #8c7e6a; font-weight: bold;">${variantTitle}</p>` : ''}
-            <div style="height: 1px; background-color: #e8dfd3; margin: 15px 0;"></div>
-            <p style="margin: 0; color: #234745; font-size: 13px; font-weight: 700;"> BRANCH: <span style="color: #c0392b;">${branchName}</span></p>
-          </div>
-          
-          <a href="https://${storeDomain}" style="background-color: #234745; color: #ffffff; padding: 18px 40px; text-decoration: none; border-radius: 14px; font-weight: 900; display: inline-block; font-size: 16px; box-shadow: 0 10px 20px rgba(27, 61, 46, 0.2); transition: transform 0.2s ease;">
-            ORDER NOW
-          </a>
-        </div>
-        
-        <div style="background-color: #f9f9f9; padding: 30px; text-align: center; border-top: 1px solid #f0f0f0;">
-          <p style="color: #999999; font-size: 12px; margin: 0;">You received this because you asked to be notified when this item is available.</p>
-          <div style="margin-top: 20px; font-weight: bold; color: #234745; font-size: 14px;">Saadeddin Pastry</div>
-        </div>
+export function getBackInStockTemplate({
+  productTitle,
+  variantTitle,
+  productUrl,
+  language = 'AR',
+}: {
+  productTitle: string;
+  variantTitle?: string;
+  productUrl: string;
+  language?: 'AR' | 'EN';
+}) {
+  const isEn = language === 'EN';
+  const title = isEn ? `${productTitle} is back in stock!` : `منتج ${productTitle} متوفر الآن!`;
+  const body = isEn
+    ? `Great news! ${productTitle} ${variantTitle ? `(${variantTitle})` : ''} is now back in stock at Saadeddin Pastry. Click below to order now!`
+    : `بشرى سارة! منتج ${productTitle} ${variantTitle ? `(${variantTitle})` : ''} متوفر الآن لدى حلويات سعد الدين. اضغط أدناه للطلب الآن!`;
+  const buttonText = isEn ? 'Shop Now' : 'تسوق الآن';
+
+  return `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e0e0e0; border-radius: 12px; background-color: #FEF8EB; color: #234745;">
+      <h2 style="color: #234745; margin-top: 0;">${title}</h2>
+      <p style="font-size: 16px; line-height: 1.6;">${body}</p>
+      <div style="text-align: center; margin-top: 24px;">
+        <a href="${productUrl}" style="background-color: #234745; color: #ffffff; padding: 12px 28px; text-decoration: none; border-radius: 999px; font-weight: bold; display: inline-block;">${buttonText}</a>
       </div>
-    `
-  };
+    </div>
+  `;
 }
 
+export async function sendFormEmailNotification(
+  payload: FormSubmissionPayload,
+  env: any,
+) {
+  const recipientEmail = env?.FORM_EMAIL_RECIPIENT || 'info@saadeddin.com';
+  const resendApiKey = env?.RESEND_API_KEY;
+  const webhookUrl = env?.FORM_WEBHOOK_URL;
+
+  const emailSubject = `[Saadeddin Website] New ${payload.formTitle} submission from ${payload.fullName}`;
+
+  const emailHtml = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 12px; overflow: hidden; background-color: #FEF8EB;">
+      <div style="background-color: #234745; padding: 24px; text-align: center; color: #ffffff;">
+        <h2 style="margin: 0; font-size: 22px;">Saadeddin Pastry — Form Submission</h2>
+        <p style="margin: 6px 0 0 0; font-size: 14px; opacity: 0.8;">${payload.formTitle}</p>
+      </div>
+      <div style="padding: 24px; color: #234745; line-height: 1.6;">
+        <table style="width: 100%; border-collapse: collapse; font-size: 15px;">
+          <tr>
+            <td style="padding: 10px 0; border-bottom: 1px solid #e5e5e5; font-weight: bold; width: 150px;">Name:</td>
+            <td style="padding: 10px 0; border-bottom: 1px solid #e5e5e5;">${payload.fullName}</td>
+          </tr>
+          <tr>
+            <td style="padding: 10px 0; border-bottom: 1px solid #e5e5e5; font-weight: bold;">Email:</td>
+            <td style="padding: 10px 0; border-bottom: 1px solid #e5e5e5;"><a href="mailto:${payload.email}" style="color: #234745; font-weight: bold;">${payload.email}</a></td>
+          </tr>
+          <tr>
+            <td style="padding: 10px 0; border-bottom: 1px solid #e5e5e5; font-weight: bold;">Phone / Mobile:</td>
+            <td style="padding: 10px 0; border-bottom: 1px solid #e5e5e5;"><a href="tel:${payload.phone}" style="color: #234745; font-weight: bold;">${payload.phone}</a></td>
+          </tr>
+          ${
+            payload.companyName
+              ? `<tr>
+            <td style="padding: 10px 0; border-bottom: 1px solid #e5e5e5; font-weight: bold;">Company:</td>
+            <td style="padding: 10px 0; border-bottom: 1px solid #e5e5e5;">${payload.companyName}</td>
+          </tr>`
+              : ''
+          }
+          ${
+            payload.destinationCountry
+              ? `<tr>
+            <td style="padding: 10px 0; border-bottom: 1px solid #e5e5e5; font-weight: bold;">Country / Region:</td>
+            <td style="padding: 10px 0; border-bottom: 1px solid #e5e5e5;">${payload.destinationCountry}</td>
+          </tr>`
+              : ''
+          }
+          ${
+            payload.quantity
+              ? `<tr>
+            <td style="padding: 10px 0; border-bottom: 1px solid #e5e5e5; font-weight: bold;">Quantity:</td>
+            <td style="padding: 10px 0; border-bottom: 1px solid #e5e5e5;">${payload.quantity}</td>
+          </tr>`
+              : ''
+          }
+          ${
+            payload.budget
+              ? `<tr>
+            <td style="padding: 10px 0; border-bottom: 1px solid #e5e5e5; font-weight: bold;">Budget per item:</td>
+            <td style="padding: 10px 0; border-bottom: 1px solid #e5e5e5;">${payload.budget}</td>
+          </tr>`
+              : ''
+          }
+          ${
+            payload.subject
+              ? `<tr>
+            <td style="padding: 10px 0; border-bottom: 1px solid #e5e5e5; font-weight: bold;">Subject:</td>
+            <td style="padding: 10px 0; border-bottom: 1px solid #e5e5e5;">${payload.subject}</td>
+          </tr>`
+              : ''
+          }
+        </table>
+        ${
+          payload.message
+            ? `<div style="margin-top: 20px; padding: 16px; background-color: #ffffff; border-radius: 8px; border: 1px solid #e5e5e5;">
+            <p style="margin: 0 0 8px 0; font-weight: bold; color: #234745;">Message / Notes:</p>
+            <p style="margin: 0; white-space: pre-wrap; font-size: 14px; color: #555555;">${payload.message}</p>
+          </div>`
+            : ''
+        }
+      </div>
+      <div style="background-color: #f4ece0; padding: 16px; text-align: center; font-size: 12px; color: #777777;">
+        Submitted via Saadeddin Storefront &bull; ${new Date().toUTCString()}
+      </div>
+    </div>
+  `;
+
+  // 1. Dispatch via Resend API if API Key is set
+  if (resendApiKey) {
+    try {
+      await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${resendApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          from: env?.FORM_EMAIL_FROM || 'Saadeddin Storefront <noreply@saadeddin.com>',
+          to: [recipientEmail],
+          subject: emailSubject,
+          html: emailHtml,
+        }),
+      });
+    } catch (err) {
+      console.error('Failed to send email via Resend API:', err);
+    }
+  }
+
+  // 2. Dispatch to custom Webhook endpoint if set
+  if (webhookUrl) {
+    try {
+      await fetch(webhookUrl, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          subject: emailSubject,
+          recipient: recipientEmail,
+          payload,
+          timestamp: new Date().toISOString(),
+        }),
+      });
+    } catch (err) {
+      console.error('Failed to send webhook notification:', err);
+    }
+  }
+
+  // 3. Backup entry creation in Shopify Admin Metaobjects
+  try {
+    const adminToken = await getAdminToken(env);
+    const adminDomain = env.PUBLIC_STORE_DOMAIN;
+    if (adminDomain && adminToken) {
+      await fetch(`https://${adminDomain}/admin/api/2024-01/graphql.json`, {
+        method: 'POST',
+        headers: {
+          'X-Shopify-Access-Token': adminToken,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          query: `
+            mutation metaobjectCreate($metaobject: MetaobjectCreateInput!) {
+              metaobjectCreate(metaobject: $metaobject) {
+                metaobject { id handle }
+                userErrors { field message }
+              }
+            }
+          `,
+          variables: {
+            metaobject: {
+              type: 'contact_submission',
+              fields: [
+                {key: 'full_name', value: payload.fullName},
+                {key: 'mobile', value: payload.phone},
+                {key: 'email', value: payload.email},
+                {key: 'subject', value: payload.subject || payload.formTitle},
+                {
+                  key: 'message',
+                  value: `${payload.companyName ? `Company: ${payload.companyName}\n` : ''}${payload.destinationCountry ? `Country: ${payload.destinationCountry}\n` : ''}${payload.quantity ? `Quantity: ${payload.quantity}\n` : ''}${payload.budget ? `Budget: ${payload.budget}\n` : ''}${payload.message || ''}`,
+                },
+              ],
+            },
+          },
+        }),
+      });
+    }
+  } catch (err) {
+    console.error('Failed to store submission metaobject in Shopify Admin:', err);
+  }
+
+  return {success: true};
+}

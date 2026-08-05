@@ -49,6 +49,24 @@ export async function action({request, context}: ActionFunctionArgs) {
       };
     }
 
+    try {
+      const {sendFormEmailNotification} = await import('~/lib/email.server');
+      await sendFormEmailNotification(
+        {
+          formType: 'contact',
+          formTitle: 'Contact Us Form',
+          fullName,
+          email,
+          phone: mobile,
+          subject,
+          message: `${orderNumber ? `Order Number: ${orderNumber}\n` : ''}${message}`,
+        },
+        context.env,
+      );
+    } catch (e) {
+      console.error('Failed to send contact form email notification:', e);
+    }
+
     const createMutation = `
       mutation metaobjectCreate($metaobject: MetaobjectCreateInput!) {
         metaobjectCreate(metaobject: $metaobject) {

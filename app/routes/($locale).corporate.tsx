@@ -6,6 +6,7 @@ import {
   useLoaderData,
   useRouteLoaderData,
   Link,
+  useFetcher,
 } from 'react-router';
 import {ProductItem} from '~/components/ProductItem';
 import {PageHeader} from '~/components/layout/PageHeader';
@@ -13,6 +14,57 @@ import {PageHeader} from '~/components/layout/PageHeader';
 export const meta: MetaFunction = () => {
   return [{title: `Saadeddin | Corporate Gifting`}];
 };
+
+export async function action({request, context}: LoaderFunctionArgs) {
+  const isEn =
+    String(context?.storefront?.i18n?.language || '').toUpperCase() === 'EN';
+
+  try {
+    const formData = await request.formData();
+    const companyName = String(formData.get('companyName') || '').trim();
+    const taxId = String(formData.get('taxId') || '').trim();
+    const managerName = String(formData.get('managerName') || '').trim();
+    const phone = String(formData.get('phone') || '').trim();
+    const email = String(formData.get('email') || '').trim();
+    const occasionType = String(formData.get('occasionType') || '').trim();
+    const targetQuantity = String(formData.get('targetQuantity') || '').trim();
+    const budgetPerBox = String(formData.get('budgetPerBox') || '').trim();
+    const deliveryDate = String(formData.get('deliveryDate') || '').trim();
+    const customization = String(formData.get('customization') || '').trim();
+    const selectedPackage = String(formData.get('selectedPackage') || '').trim();
+
+    if (!managerName || !email || !phone) {
+      return data({
+        success: false,
+        error: isEn ? 'Please fill required fields' : 'يرجى ملء جميع الحقول المطلوبة',
+      });
+    }
+
+    const {sendFormEmailNotification} = await import('~/lib/email.server');
+    await sendFormEmailNotification(
+      {
+        formType: 'corporate',
+        formTitle: 'Corporate Custom Quote Request (طلب عرض سعر للهدايا المؤسسية)',
+        fullName: managerName,
+        email,
+        phone,
+        companyName: `${companyName}${taxId ? ` (Tax ID: ${taxId})` : ''}`,
+        quantity: targetQuantity,
+        budget: budgetPerBox,
+        subject: `Corporate Gifting - ${occasionType || 'Custom Request'} ${selectedPackage ? `(${selectedPackage})` : ''}`,
+        message: `Delivery Date: ${deliveryDate || 'N/A'}\nPackage: ${selectedPackage || 'Custom'}\nCustomization Details: ${customization || 'N/A'}`,
+      },
+      context.env,
+    );
+
+    return data({success: true});
+  } catch (err) {
+    return data({
+      success: false,
+      error: isEn ? 'Submission failed, please try again' : 'حدث خطأ، يرجى المحاولة لاحقاً',
+    });
+  }
+}
 
 const PRODUCT_ITEM_FRAGMENT = `#graphql
   fragment CorporateProductItem on Product {
@@ -867,8 +919,11 @@ export default function CorporatePage() {
     }, 100);
   };
 
-  const handleFormSubmit = (e: React.FormEvent) => {
+  const corporateFetcher = useFetcher();
+
+  const handleFormSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    corporateFetcher.submit(e.currentTarget);
     setFormSubmitted(true);
   };
 
@@ -1485,6 +1540,9 @@ export default function CorporatePage() {
                   onSubmit={handleFormSubmit}
                   className="flex flex-col gap-5 text-start"
                 >
+                  {selectedPackage && (
+                    <input type="hidden" name="selectedPackage" value={selectedPackage} />
+                  )}
                   {/* Row 1: Company Name & Tax ID */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="flex flex-col gap-1.5">
@@ -1494,6 +1552,7 @@ export default function CorporatePage() {
                       </label>
                       <input
                         type="text"
+                        name="companyName"
                         required
                         placeholder={isEn ? 'Company Name' : 'شركة الامانه'}
                         className="w-full h-[48px] px-4 rounded-[12px] border border-[#E6E2D8] bg-white text-[#234745] placeholder-[#B0BDBA] focus:outline-none focus:border-[#234745] text-[15px]"
@@ -1507,6 +1566,7 @@ export default function CorporatePage() {
                       </label>
                       <input
                         type="text"
+                        name="taxId"
                         required
                         placeholder={isEn ? 'Tax ID' : 'الرقم الضريبي'}
                         className="w-full h-[48px] px-4 rounded-[12px] border border-[#E6E2D8] bg-white text-[#234745] placeholder-[#B0BDBA] focus:outline-none focus:border-[#234745] text-[15px]"
@@ -1523,6 +1583,7 @@ export default function CorporatePage() {
                       </label>
                       <input
                         type="text"
+                        name="managerName"
                         required
                         placeholder={isEn ? 'Manager Name' : 'نور الدالي'}
                         className="w-full h-[48px] px-4 rounded-[12px] border border-[#E6E2D8] bg-white text-[#234745] placeholder-[#B0BDBA] focus:outline-none focus:border-[#234745] text-[15px]"
@@ -1536,6 +1597,7 @@ export default function CorporatePage() {
                       </label>
                       <input
                         type="tel"
+                        name="phone"
                         required
                         placeholder={isEn ? 'Phone Number' : 'رقم الجوال'}
                         className="w-full h-[48px] px-4 rounded-[12px] border border-[#E6E2D8] bg-white text-[#234745] placeholder-[#B0BDBA] focus:outline-none focus:border-[#234745] text-[15px]"
@@ -1552,6 +1614,7 @@ export default function CorporatePage() {
                     </label>
                     <input
                       type="email"
+                      name="email"
                       required
                       placeholder="name@gmail.com"
                       className="w-full h-[48px] px-4 rounded-[12px] border border-[#E6E2D8] bg-white text-[#234745] placeholder-[#B0BDBA] focus:outline-none focus:border-[#234745] text-[15px]"
@@ -1566,6 +1629,7 @@ export default function CorporatePage() {
                       <span className="text-red-500">*</span>
                     </label>
                     <select
+                      name="occasionType"
                       required
                       className="w-full h-[48px] px-4 rounded-[12px] border border-[#E6E2D8] bg-white text-[#234745] focus:outline-none focus:border-[#234745] text-[15px] appearance-none cursor-pointer"
                     >
@@ -1598,6 +1662,7 @@ export default function CorporatePage() {
                         <span className="text-red-500">*</span>
                       </label>
                       <select
+                        name="targetQuantity"
                         required
                         className="w-full h-[48px] px-4 rounded-[12px] border border-[#E6E2D8] bg-white text-[#234745] focus:outline-none focus:border-[#234745] text-[15px] appearance-none cursor-pointer"
                       >
@@ -1613,6 +1678,7 @@ export default function CorporatePage() {
                         <span className="text-red-500">*</span>
                       </label>
                       <select
+                        name="budgetPerBox"
                         required
                         className="w-full h-[48px] px-4 rounded-[12px] border border-[#E6E2D8] bg-white text-[#234745] focus:outline-none focus:border-[#234745] text-[15px] appearance-none cursor-pointer"
                       >
@@ -1634,6 +1700,7 @@ export default function CorporatePage() {
                     </label>
                     <input
                       type="date"
+                      name="deliveryDate"
                       className="w-full h-[48px] px-4 rounded-[12px] border border-[#E6E2D8] bg-white text-[#234745] placeholder-[#B0BDBA] focus:outline-none focus:border-[#234745] text-[15px]"
                     />
                   </div>
@@ -1645,6 +1712,7 @@ export default function CorporatePage() {
                     </label>
                     <textarea
                       rows={3}
+                      name="customization"
                       placeholder={
                         isEn
                           ? 'Example: Company logo, custom message, specialized box packaging'

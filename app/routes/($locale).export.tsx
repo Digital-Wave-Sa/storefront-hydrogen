@@ -5,6 +5,7 @@ import {
   Link,
   useRouteLoaderData,
   useSearchParams,
+  useFetcher,
 } from 'react-router';
 import {getPaginationVariables, Pagination} from '@shopify/hydrogen';
 import {useState, useEffect} from 'react';
@@ -17,11 +18,49 @@ import {
 import {ProductItem} from '~/components/ProductItem';
 import exportHeroImg from '/images/export-hero.jpg';
 
-export const meta = ({matches}: {matches: any}) => {
-  return [
-    {title: getShopTitle('Export & Wholesale | Saadeddin Pastry', matches)},
-  ];
-};
+export async function action({request, context}: LoaderFunctionArgs) {
+  const isEn =
+    String(context?.storefront?.i18n?.language || '').toUpperCase() === 'EN';
+
+  try {
+    const formData = await request.formData();
+    const fullName = String(formData.get('fullName') || '').trim();
+    const companyName = String(formData.get('companyName') || '').trim();
+    const destinationCountry = String(formData.get('destinationCountry') || '').trim();
+    const email = String(formData.get('email') || '').trim();
+    const phone = String(formData.get('phone') || '').trim();
+    const message = String(formData.get('message') || '').trim();
+
+    if (!fullName || !email) {
+      return data({
+        success: false,
+        error: isEn ? 'Please fill required fields' : 'يرجى ملء جميع الحقول المطلوبة',
+      });
+    }
+
+    const {sendFormEmailNotification} = await import('~/lib/email.server');
+    await sendFormEmailNotification(
+      {
+        formType: 'export',
+        formTitle: 'Export & B2B Quotation Request (طلب عرض أسعار للتصدير)',
+        fullName,
+        email,
+        phone,
+        companyName,
+        destinationCountry,
+        message,
+      },
+      context.env,
+    );
+
+    return data({success: true});
+  } catch (err) {
+    return data({
+      success: false,
+      error: isEn ? 'Submission failed, please try again' : 'حدث خطأ، يرجى المحاولة لاحقاً',
+    });
+  }
+}
 
 export async function loader({context, request}: LoaderFunctionArgs) {
   const {storefront} = context;
@@ -217,8 +256,11 @@ export default function ExportPage() {
     setMounted(true);
   }, []);
 
-  const handleFormSubmit = (e: React.FormEvent) => {
+  const exportFetcher = useFetcher();
+
+  const handleFormSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    exportFetcher.submit(e.currentTarget);
     setFormSubmitted(true);
   };
 
@@ -817,6 +859,7 @@ export default function ExportPage() {
                     </label>
                     <input
                       type="text"
+                      name="fullName"
                       required
                       placeholder={isEn ? 'John Doe' : 'أدخل الاسم الكامل'}
                       className={`w-full h-[46px] px-4 rounded-[12px] border border-gray-200 text-[14px] focus:outline-none focus:border-[#234745] ${isEn ? 'text-left' : 'text-right'}`}
@@ -831,6 +874,7 @@ export default function ExportPage() {
                     </label>
                     <input
                       type="text"
+                      name="companyName"
                       required
                       placeholder={
                         isEn ? 'Company Ltd' : 'شركة التوزيع / المورد'
@@ -849,6 +893,7 @@ export default function ExportPage() {
                     </label>
                     <input
                       type="text"
+                      name="destinationCountry"
                       required
                       placeholder={
                         isEn
@@ -867,6 +912,7 @@ export default function ExportPage() {
                     </label>
                     <input
                       type="email"
+                      name="email"
                       required
                       placeholder="name@company.com"
                       className={`w-full h-[46px] px-4 rounded-[12px] border border-gray-200 text-[14px] focus:outline-none focus:border-[#234745] ${isEn ? 'text-left' : 'text-right'}`}
@@ -879,11 +925,30 @@ export default function ExportPage() {
                     className={`block text-[14px] font-bold text-gray-700 mb-1 ${isEn ? 'text-left' : 'text-right'}`}
                   >
                     {isEn
+                      ? 'Phone / WhatsApp'
+                      : 'رقم الجوال / واتساب'}
+                  </label>
+                  <input
+                    type="tel"
+                    name="phone"
+                    required
+                    placeholder="+966 50 123 4567"
+                    className={`w-full h-[46px] px-4 rounded-[12px] border border-gray-200 text-[14px] focus:outline-none focus:border-[#234745] ${isEn ? 'text-left' : 'text-right'}`}
+                    dir="ltr"
+                  />
+                </div>
+
+                <div>
+                  <label
+                    className={`block text-[14px] font-bold text-gray-700 mb-1 ${isEn ? 'text-left' : 'text-right'}`}
+                  >
+                    {isEn
                       ? 'Requested Products & Estimated Quantity'
                       : 'المنتجات والكميات المطلوبة'}
                   </label>
                   <textarea
                     rows={3}
+                    name="message"
                     required
                     placeholder={
                       isEn

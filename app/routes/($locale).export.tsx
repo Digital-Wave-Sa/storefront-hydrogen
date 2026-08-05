@@ -209,6 +209,11 @@ export default function ExportPage() {
     <div
       className="bg-[#FEF8EB] min-h-screen max-w-full overflow-x-clip"
       dir={isEn ? 'ltr' : 'rtl'}
+      style={{
+        fontFamily: isEn
+          ? 'inherit'
+          : "'EnglishDigits', 'GE Dinar One', 'Bahij Janna', sans-serif",
+      }}
     >
       {/* ─── 1. HERO BANNER SECTION ────────────────────────────────────────── */}
       <section className="relative w-full min-h-[560px] sm:min-h-[640px] lg:min-h-[720px] flex items-center overflow-hidden">
@@ -232,8 +237,8 @@ export default function ExportPage() {
             {/* Top Heritage Badge */}
             <div className="inline-flex items-center gap-2 px-6 py-1.5 rounded-full bg-[#C5A96A] text-[#1A3533] font-bold text-[13px] sm:text-[14px] mb-6 shadow-md">
               <span className="text-[#1A3533]/60">—</span>
-              <span>
-                {isEn ? 'Saudi Heritage Since 1960' : 'تراث سعودي من ١٩٦٠'}
+              <span style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
+                {isEn ? 'Saudi Heritage Since 1919' : 'تراث سعودي من 1919'}
               </span>
               <span className="text-[#1A3533]/60">—</span>
             </div>

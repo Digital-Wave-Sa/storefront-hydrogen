@@ -418,6 +418,22 @@ export async function action({request, context}: ActionFunctionArgs) {
       console.warn('[STOCK_NOTIFICATION METAOBJECT WARN]', metaErr);
     }
 
+    try {
+      const {sendFormEmailNotification} = await import('~/lib/email.server');
+      await sendFormEmailNotification(
+        {
+          formType: 'contact',
+          formTitle: 'Back in Stock Request (طلب التنبيه بتوفر المنتج)',
+          fullName: customerName || email.split('@')[0],
+          email,
+          phone: '',
+          subject: `Back in Stock Alert Request - ${productTitle || 'Product'}`,
+          message: `Customer requested back in stock notification for: ${productTitle || 'Product'} (Variant ID: ${variantId}, Location: ${locationName || 'N/A'})`,
+        },
+        env,
+      );
+    } catch (_) {}
+
     console.log(
       `[STOCK_NOTIFICATION SUCCESS] Registered: email=${email}, variant=${variantId}, location=${locationName || 'N/A'}`,
     );

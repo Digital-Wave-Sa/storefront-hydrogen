@@ -300,6 +300,9 @@ export default function AccountDashboard() {
                   className="w-full"
                   method="POST"
                   action={isEn ? '/en/account/logout' : '/account/logout'}
+                  onSubmit={() => {
+                    localStorage.removeItem('wishlist');
+                  }}
                 >
                   <button
                     type="submit"

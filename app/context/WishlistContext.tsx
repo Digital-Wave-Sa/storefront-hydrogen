@@ -33,11 +33,23 @@ export function WishlistProvider({
 }) {
   const [wishlist, setWishlist] = useState<WishlistItem[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
-  const isModifiedRef = React.useRef(false);
+  const prevCustomerIdRef = React.useRef<string | undefined>(customerId);
 
   // 1. Initial Load: Merge LocalStorage and Cloud
   useEffect(() => {
     let isMounted = true;
+
+    // Handle logout transition (customerId changed from logged-in ID to undefined)
+    if (prevCustomerIdRef.current && !customerId) {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('wishlist');
+      }
+      prevCustomerIdRef.current = undefined;
+      setWishlist([]);
+      setIsLoaded(true);
+      return;
+    }
+    prevCustomerIdRef.current = customerId;
 
     const initWishlist = async () => {
       const localSaved = typeof window !== 'undefined' ? localStorage.getItem('wishlist') : null;

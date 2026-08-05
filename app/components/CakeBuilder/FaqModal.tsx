@@ -132,11 +132,12 @@ export const FaqModal = ({ isOpen, onClose, isEn = false }: { isOpen: boolean; o
               </div>
             </div>
             <a 
-              href="tel:920017070"
-              className="shrink-0 bg-white text-[#255441] px-5 py-2.5 rounded-full font-bold text-sm hover:bg-[#F9F7EC] transition-all whitespace-nowrap flex items-center gap-2 shadow-md hover:scale-105 active:scale-95 cursor-pointer"
+              href="https://wa.me/966920017070"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="shrink-0 bg-white text-[#255441] px-6 py-2.5 rounded-full font-bold text-sm hover:bg-[#F9F7EC] transition-colors whitespace-nowrap"
             >
-              <span>{isEn ? 'Contact Us' : 'تواصل معنا'}</span>
-              <span className="font-mono text-xs bg-[#255441]/10 px-2 py-0.5 rounded-md text-[#255441]" dir="ltr">920017070</span>
+              {isEn ? 'Contact Us' : 'تواصل معنا'}
             </a>
           </div>
         </div>

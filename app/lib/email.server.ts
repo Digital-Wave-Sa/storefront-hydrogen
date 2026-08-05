@@ -85,7 +85,7 @@ export async function sendFormEmailNotification(
   payload: FormSubmissionPayload,
   env: any,
 ) {
-  const recipientEmail = env?.FORM_EMAIL_RECIPIENT || 'info@saadeddin.com';
+  const recipientEmail = env?.FORM_EMAIL_RECIPIENT || 'motasem.udeh@gmail.com';
   const resendApiKey = env?.RESEND_API_KEY;
   const webhookUrl = env?.FORM_WEBHOOK_URL;
 

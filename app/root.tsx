@@ -215,19 +215,26 @@ async function loadCriticalData({context}: Route.LoaderArgs) {
     }).catch(() => null),
     storefront.query(`#graphql
       query GetReviews {
-        metaobjects(type: "storefront_review", first: 250) {
+        sfReviews: metaobjects(type: "storefront_review", first: 250) {
           nodes {
             id
-            fields {
-              key
-              value
-            }
+            fields { key value }
+          }
+        }
+        ordReviews: metaobjects(type: "order_review", first: 250) {
+          nodes {
+            id
+            fields { key value }
           }
         }
       }
     `, {
       cache: storefront.CacheNone(),
-    }).then(res => ({ nodes: res.metaobjects?.nodes || [] }))
+    }).then(res => {
+      const sf = res.sfReviews?.nodes || [];
+      const ord = res.ordReviews?.nodes || [];
+      return { nodes: [...sf, ...ord] };
+    })
       .catch((e: Error) => {
         console.error('[ROOT] Storefront Review Fetch Failed:', e.message);
         return { nodes: [] };

@@ -267,9 +267,10 @@ export default function AboutPage() {
           </div>
 
           {/* Desktop view: Grid with SVG path connectors */}
+          {/* Timeline - Desktop (Serpentine Flow starting Step 1 on LEFT) */}
           <div
-            className="relative w-full max-w-[1300px] mx-auto py-16 hidden md:block"
-            dir={isEn ? 'ltr' : 'rtl'}
+            className="relative w-full max-w-[1350px] mx-auto py-16 px-6 hidden md:block"
+            dir="ltr"
           >
             <div
               className="absolute inset-0 flex items-center justify-center opacity-[0.03] pointer-events-none text-[120px] md:text-[180px] font-bold text-[#1F413F]"
@@ -282,8 +283,8 @@ export default function AboutPage() {
             </div>
 
             <svg
-              className="absolute inset-0 w-full h-full pointer-events-none"
-              viewBox="0 0 1300 600"
+              className="absolute inset-0 w-full h-full pointer-events-none overflow-visible"
+              viewBox="0 0 1350 600"
               fill="none"
             >
               <defs>
@@ -302,7 +303,7 @@ export default function AboutPage() {
 
               {/* 1 -> 2 (Starts right of 1, ends top-left of 2, curves UP) */}
               <path
-                d="M 320 150 Q 430 80 540 120"
+                d="M 280 140 Q 450 70 610 130"
                 stroke="#1F413F"
                 strokeWidth="2"
                 strokeDasharray="6,6"
@@ -311,16 +312,16 @@ export default function AboutPage() {
 
               {/* 2 -> 3 (Starts bottom-right of 2, ends top-left of 3, curves DOWN) */}
               <path
-                d="M 750 160 Q 860 200 950 130"
+                d="M 740 140 Q 900 200 1070 130"
                 stroke="#1F413F"
                 strokeWidth="2"
                 strokeDasharray="6,6"
                 markerEnd="url(#arrow)"
               />
 
-              {/* 3 -> 4 (Starts right of 3, ends right of 4, curves OUTWARD) */}
+              {/* 3 -> 4 (Starts right of 3, curves OUTWARD well away from text, ends right of 4) */}
               <path
-                d="M 1200 150 Q 1295 300 1200 450"
+                d="M 1170 150 Q 1330 300 1170 450"
                 stroke="#1F413F"
                 strokeWidth="2"
                 strokeDasharray="6,6"
@@ -329,7 +330,7 @@ export default function AboutPage() {
 
               {/* 4 -> 5 (Starts bottom-left of 4, ends bottom-right of 5, curves DOWN) */}
               <path
-                d="M 960 480 Q 850 540 740 480"
+                d="M 1070 470 Q 900 540 740 470"
                 stroke="#1F413F"
                 strokeWidth="2"
                 strokeDasharray="6,6"
@@ -338,7 +339,7 @@ export default function AboutPage() {
 
               {/* 5 -> 6 (Starts top-left of 5, ends right of 6, curves UP) */}
               <path
-                d="M 540 420 Q 430 360 320 450"
+                d="M 610 470 Q 450 400 280 470"
                 stroke="#1F413F"
                 strokeWidth="2"
                 strokeDasharray="6,6"
@@ -346,8 +347,8 @@ export default function AboutPage() {
               />
             </svg>
 
-            <div className="grid grid-cols-3 gap-y-16 md:gap-y-32 md:gap-x-16 relative z-10">
-              {/* Timeline Item 1 */}
+            <div className="grid grid-cols-3 gap-y-16 md:gap-y-32 md:gap-x-12 relative z-10">
+              {/* Timeline Item 1 (Top Left) */}
               <TimelineItem
                 number="1"
                 year={isEn ? '1919' : '١٩١٩'}
@@ -359,7 +360,7 @@ export default function AboutPage() {
                 }
                 isEn={isEn}
               />
-              {/* Timeline Item 2 */}
+              {/* Timeline Item 2 (Top Middle) */}
               <TimelineItem
                 number="2"
                 year={isEn ? '1950' : '١٩٥٠'}
@@ -371,7 +372,7 @@ export default function AboutPage() {
                 }
                 isEn={isEn}
               />
-              {/* Timeline Item 3 */}
+              {/* Timeline Item 3 (Top Right) */}
               <TimelineItem
                 number="3"
                 year={isEn ? '1970' : '١٩٧٠'}
@@ -383,7 +384,7 @@ export default function AboutPage() {
                 }
                 isEn={isEn}
               />
-              {/* Timeline Item 6 */}
+              {/* Timeline Item 6 (Bottom Left) */}
               <TimelineItem
                 number="6"
                 year={isEn ? '2026' : '٢٠٢٦'}
@@ -395,7 +396,7 @@ export default function AboutPage() {
                 }
                 isEn={isEn}
               />
-              {/* Timeline Item 5 */}
+              {/* Timeline Item 5 (Bottom Middle) */}
               <TimelineItem
                 number="5"
                 year={isEn ? '2015' : '٢٠١٥'}
@@ -407,7 +408,7 @@ export default function AboutPage() {
                 }
                 isEn={isEn}
               />
-              {/* Timeline Item 4 */}
+              {/* Timeline Item 4 (Bottom Right) */}
               <TimelineItem
                 number="4"
                 year={isEn ? '2000' : '٢٠٠٠'}

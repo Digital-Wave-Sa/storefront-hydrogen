@@ -173,9 +173,23 @@ export default function FAQPage() {
               placeholder={
                 isEn ? 'Search in FAQs...' : 'إبحث في الأسئلة الشائعة...'
               }
-              className={`w-full h-[44px] bg-white text-gray-800 text-sm outline-none ${isEn ? 'pl-12 pr-28 text-left' : 'pr-12 pl-28 text-right'}`}
+              className={`w-full h-[44px] bg-white text-gray-800 text-sm outline-none ${isEn ? 'pl-12 pr-32 text-left' : 'pr-12 pl-32 text-right'}`}
               dir={isEn ? 'ltr' : 'rtl'}
             />
+
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className={`absolute ${isEn ? 'right-28' : 'left-28'} text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100 transition-colors`}
+                title={isEn ? 'Clear search' : 'مسح البحث'}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            )}
 
             {/* Search Button */}
             <button
@@ -193,15 +207,21 @@ export default function FAQPage() {
           dir={isEn ? 'ltr' : 'rtl'}
         >
           <button
-            onClick={() => setActiveCategory(null)}
-            className={`h-[40px] px-6 rounded-full font-bold text-sm transition-all ${!activeCategory ? 'bg-[#BBCFCD] text-[#234745]' : 'border border-[#234745]/20 text-[#234745]/70 hover:bg-white'}`}
+            onClick={() => {
+              setActiveCategory(null);
+              setSearchQuery('');
+            }}
+            className={`h-[40px] px-6 rounded-full font-bold text-sm transition-all ${!activeCategory && !searchQuery ? 'bg-[#BBCFCD] text-[#234745]' : 'border border-[#234745]/20 text-[#234745]/70 hover:bg-white'}`}
           >
             {isEn ? 'All' : 'الكل'}
           </button>
           {faqCategories.map((cat) => (
             <button
               key={cat.title}
-              onClick={() => setActiveCategory(cat.title)}
+              onClick={() => {
+                setActiveCategory(cat.title);
+                setSearchQuery('');
+              }}
               className={`h-[40px] px-6 rounded-full font-bold text-sm transition-all ${activeCategory === cat.title ? 'bg-[#BBCFCD] text-[#234745]' : 'border border-[#234745]/20 text-[#234745]/70 hover:bg-white'}`}
             >
               {cat.title}
@@ -233,9 +253,10 @@ export default function FAQPage() {
             >
               <li
                 className="flex items-center gap-2 justify-start cursor-pointer hover:text-[#A07A58]"
-                onClick={() =>
-                  setSearchQuery(isEn ? 'track my order' : 'اتتبع طلبي')
-                }
+                onClick={() => {
+                  setActiveCategory(null);
+                  setSearchQuery(isEn ? 'track my order' : 'اتتبع طلبي');
+                }}
               >
                 <span className="w-1.5 h-1.5 bg-[#234745] rounded-full shrink-0"></span>
                 <span>
@@ -244,9 +265,10 @@ export default function FAQPage() {
               </li>
               <li
                 className="flex items-center gap-2 justify-start cursor-pointer hover:text-[#A07A58]"
-                onClick={() =>
-                  setSearchQuery(isEn ? 'delivery areas' : 'مناطق التوصيل')
-                }
+                onClick={() => {
+                  setActiveCategory(null);
+                  setSearchQuery(isEn ? 'delivery areas' : 'مناطق التوصيل');
+                }}
               >
                 <span className="w-1.5 h-1.5 bg-[#234745] rounded-full shrink-0"></span>
                 <span>
@@ -257,9 +279,10 @@ export default function FAQPage() {
               </li>
               <li
                 className="flex items-center gap-2 justify-start cursor-pointer hover:text-[#A07A58]"
-                onClick={() =>
-                  setSearchQuery(isEn ? 'return policy' : 'سياسة الاسترجاع')
-                }
+                onClick={() => {
+                  setActiveCategory(null);
+                  setSearchQuery(isEn ? 'return policy' : 'سياسة الاسترجاع');
+                }}
               >
                 <span className="w-1.5 h-1.5 bg-[#234745] rounded-full shrink-0"></span>
                 <span>
@@ -270,9 +293,10 @@ export default function FAQPage() {
               </li>
               <li
                 className="flex items-center gap-2 justify-start cursor-pointer hover:text-[#A07A58]"
-                onClick={() =>
-                  setSearchQuery(isEn ? 'discount code' : 'كود الخصم')
-                }
+                onClick={() => {
+                  setActiveCategory(null);
+                  setSearchQuery(isEn ? 'discount code' : 'كود الخصم');
+                }}
               >
                 <span className="w-1.5 h-1.5 bg-[#234745] rounded-full shrink-0"></span>
                 <span>
@@ -282,6 +306,28 @@ export default function FAQPage() {
                 </span>
               </li>
             </ul>
+          </div>
+        )}
+
+        {/* Active Search Filter Banner with Reset Button */}
+        {searchQuery && (
+          <div className="flex items-center justify-between bg-white border border-[#234745]/20 rounded-2xl p-4 mb-8 max-w-[800px] mx-auto shadow-sm">
+            <div className="flex items-center gap-2 text-[#234745] font-bold text-sm">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <circle cx="11" cy="11" r="8" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+              </svg>
+              <span>{isEn ? `Results for "${searchQuery}"` : `نتائج البحث عن "${searchQuery}"`}</span>
+            </div>
+            <button
+              onClick={() => {
+                setSearchQuery('');
+                setActiveCategory(null);
+              }}
+              className="px-4 py-2 bg-[#234745] hover:bg-[#1a3533] text-white rounded-full text-xs font-bold transition-all flex items-center gap-1.5"
+            >
+              <span>{isEn ? 'Show All Questions ↺' : 'عرض كافة الأسئلة ↺'}</span>
+            </button>
           </div>
         )}
 

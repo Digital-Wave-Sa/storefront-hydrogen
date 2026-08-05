@@ -256,22 +256,25 @@ export default function FeedbackPage() {
     return (
       <PageLayout {...({} as any)}>
         <div className="min-h-[70vh] flex items-center justify-center px-4 py-20 bg-[#fdfaf6]">
-          <div className="max-w-md w-full bg-white rounded-[40px] p-10 text-center shadow-2xl shadow-[#234745]/10 border border-gray-100">
-            <div className="w-24 h-24 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-8">
+          <div className="max-w-md w-full bg-white rounded-[40px] p-10 text-center shadow-2xl shadow-[#234745]/10 border border-gray-100 flex flex-col items-center">
+            <div className="w-24 h-24 bg-green-50 border border-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
               <span className="text-5xl">💚</span>
             </div>
             <h1 className="text-3xl font-black text-[#234745] mb-4">
-              {i18n.common.feedbackSuccess}
+              {i18n.common.feedbackSuccess || (isEn ? 'Thank You!' : 'شكراً لك!')}
             </h1>
-            <p className="text-gray-500 font-bold mb-10 leading-relaxed">
-              {i18n.common.feedbackSuccessMessage}
+            <p className="text-gray-500 font-bold mb-8 leading-relaxed text-sm max-w-sm">
+              {i18n.common.feedbackSuccessMessage || (isEn ? 'Your feedback has been received successfully. We appreciate your time!' : 'تم استلام ملاحظاتك بنجاح. نقدر وقتك!')}
             </p>
-            <Link
-              to={isEn ? '/en' : '/'}
-              className="inline-block bg-[#234745] text-white font-black px-10 py-4 rounded-2xl hover:bg-[#d4a06a] transition-all shadow-lg hover:shadow-[#d4a06a]/20"
-            >
-              {i18n.common.backToHome}
-            </Link>
+            <div className="mt-4 w-full">
+              <Link
+                to={isEn ? '/en' : '/'}
+                className="inline-flex items-center justify-center w-full bg-[#234745] text-white hover:text-white font-black px-8 py-4 rounded-2xl hover:bg-[#1a3533] transition-all shadow-xl text-base !text-white"
+                style={{ color: '#ffffff' }}
+              >
+                {i18n.common.backToHome || (isEn ? 'Back to Home' : 'العودة للرئيسية')}
+              </Link>
+            </div>
           </div>
         </div>
       </PageLayout>

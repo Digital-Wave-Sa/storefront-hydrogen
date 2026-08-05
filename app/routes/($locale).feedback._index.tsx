@@ -77,17 +77,20 @@ export default function GeneralFeedbackPage() {
           <h1 className="text-3xl font-black text-[#234745] mb-4">
             {isEn ? 'Thank You!' : 'شكراً لك!'}
           </h1>
-          <p className="text-gray-500 font-medium mb-10 leading-relaxed">
+          <p className="text-gray-500 font-medium mb-8 leading-relaxed">
             {isEn
               ? 'Your feedback is extremely valuable to us. We use it to improve our sweets and services every day.'
               : 'ملاحظاتك قيمة جداً بالنسبة لنا. نحن نستخدمها لتحسين حلوياتنا وخدماتنا كل يوم.'}
           </p>
-          <button
-            onClick={() => (window.location.href = isEn ? '/en' : '/')}
-            className="w-full bg-[#234745] text-white py-5 rounded-[20px] font-black text-lg hover:bg-[#d4a06a] transition-all shadow-xl active:scale-95"
-          >
-            {isEn ? 'Back to Home' : 'العودة للرئيسية'}
-          </button>
+          <div className="mt-4 w-full">
+            <button
+              onClick={() => (window.location.href = isEn ? '/en' : '/')}
+              className="w-full bg-[#234745] text-white hover:text-white font-black py-4 rounded-2xl text-base hover:bg-[#1a3533] transition-all shadow-xl active:scale-95 !text-white"
+              style={{ color: '#ffffff' }}
+            >
+              {isEn ? 'Back to Home' : 'العودة للرئيسية'}
+            </button>
+          </div>
         </div>
       </div>
     );

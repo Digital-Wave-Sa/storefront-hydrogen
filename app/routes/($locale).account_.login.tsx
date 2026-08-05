@@ -275,6 +275,7 @@ export async function action({request, context}: ActionFunctionArgs) {
             lang === 'en'
               ? `Please wait ${waitSecs} seconds before requesting another code.`
               : `يرجى الانتظار ${waitSecs} ثانية قبل طلب رمز تحقق جديد.`,
+          verifyCooldownRemaining: waitSecs,
         });
       }
 
@@ -824,8 +825,6 @@ export default function Login() {
   };
 
   const handleResend = () => {
-    setResendCooldown(60);
-    setVerifyCooldown(60);
     if (resendFormRef.current) {
       resendFormRef.current.requestSubmit();
     }
@@ -833,7 +832,6 @@ export default function Login() {
 
   const showError = Boolean(actionData?.error && !hasEditSinceError);
   const errorToDisplay = actionData?.error || '';
-  const activeCooldown = Math.max(resendCooldown, verifyCooldown);
 
   return (
     <div
@@ -1081,7 +1079,6 @@ export default function Login() {
               {step === 'input' ? (
                 <Form
                   method="POST"
-                  onSubmit={() => setResendCooldown(60)}
                   className="w-full flex flex-col gap-6 w-full"
                 >
                   <input type="hidden" name="intent" value="send-otp" />
@@ -1145,56 +1142,67 @@ export default function Login() {
                     </div>
                   </div>
 
-                  {activeCooldown > 0 && phone === submittedPhone && (
-                    <div
-                      className="w-full bg-[#FFF1F1] border border-[#FCA5A5] rounded-full py-3 px-4 flex items-center justify-center gap-2 text-[#D93838] text-[14px] font-bold my-1 text-center"
-                      dir={isEn ? 'ltr' : 'rtl'}
-                      style={{
-                        fontFamily:
-                          "'EnglishDigits', 'GE Dinar One', sans-serif",
-                      }}
-                    >
-                      <span className="w-5 h-5 rounded-full border-2 border-[#D93838] flex items-center justify-center text-[12px] font-extrabold shrink-0">
-                        !
-                      </span>
-                      <span>
-                        {isEn
-                          ? `Please wait ${activeCooldown} seconds before requesting a new code.`
-                          : `يرجى الانتظار ${activeCooldown} ثانية قبل طلب رمز تحقق جديد.`}
-                      </span>
-                    </div>
-                  )}
+                  {(() => {
+                    const currentPhoneCooldown =
+                      phone === submittedPhone || !submittedPhone
+                        ? Math.max(resendCooldown, verifyCooldown)
+                        : 0;
 
-                  {actionData?.error && (
-                    <div
-                      className="w-full border border-[#F38C8C] bg-[#FFF5F5] rounded-[12px] py-3 px-4 flex items-center gap-3 text-[#E55C5C] text-sm font-semibold justify-center"
-                      dir={isEn ? 'ltr' : 'rtl'}
-                    >
-                      <svg
-                        width="20"
-                        height="20"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        className="shrink-0"
-                      >
-                        <circle cx="12" cy="12" r="10" />
-                        <line x1="12" y1="8" x2="12" y2="12" />
-                        <line x1="12" y1="16" x2="12.01" y2="16" />
-                      </svg>
-                      <span
-                        style={{
-                          fontFamily:
-                            "'EnglishDigits', 'GE Dinar One', sans-serif",
-                        }}
-                      >
-                        {actionData.error}
-                      </span>
-                    </div>
-                  )}
+                    return (
+                      <>
+                        {currentPhoneCooldown > 0 && (
+                          <div
+                            className="w-full bg-[#FFF1F1] border border-[#FCA5A5] rounded-full py-3 px-4 flex items-center justify-center gap-2 text-[#D93838] text-[14px] font-bold my-1 text-center"
+                            dir={isEn ? 'ltr' : 'rtl'}
+                            style={{
+                              fontFamily:
+                                "'EnglishDigits', 'GE Dinar One', sans-serif",
+                            }}
+                          >
+                            <span className="w-5 h-5 rounded-full border-2 border-[#D93838] flex items-center justify-center text-[12px] font-extrabold shrink-0">
+                              !
+                            </span>
+                            <span>
+                              {isEn
+                                ? `Please wait ${currentPhoneCooldown} seconds before requesting a new code.`
+                                : `يرجى الانتظار ${currentPhoneCooldown} ثانية قبل طلب رمز تحقق جديد.`}
+                            </span>
+                          </div>
+                        )}
+
+                        {actionData?.error && currentPhoneCooldown <= 0 && (
+                          <div
+                            className="w-full border border-[#F38C8C] bg-[#FFF5F5] rounded-[12px] py-3 px-4 flex items-center gap-3 text-[#E55C5C] text-sm font-semibold justify-center"
+                            dir={isEn ? 'ltr' : 'rtl'}
+                          >
+                            <svg
+                              width="20"
+                              height="20"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              className="shrink-0"
+                            >
+                              <circle cx="12" cy="12" r="10" />
+                              <line x1="12" y1="8" x2="12" y2="12" />
+                              <line x1="12" y1="16" x2="12.01" y2="16" />
+                            </svg>
+                            <span
+                              style={{
+                                fontFamily:
+                                  "'EnglishDigits', 'GE Dinar One', sans-serif",
+                              }}
+                            >
+                              {actionData.error}
+                            </span>
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
 
                   {/* Submit Button */}
                   <button
@@ -1203,7 +1211,8 @@ export default function Login() {
                       isLoading ||
                       phone.length < 9 ||
                       blockCooldown > 0 ||
-                      (activeCooldown > 0 && phone === submittedPhone)
+                      ((phone === submittedPhone || !submittedPhone) &&
+                        Math.max(resendCooldown, verifyCooldown) > 0)
                     }
                     className="w-full bg-[#234745] text-[#FEF8EB] font-bold text-[16px] rounded-[25px] h-[48px] flex items-center justify-center hover:bg-[#1a3533] transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
                     style={{
@@ -1264,10 +1273,7 @@ export default function Login() {
                         </span>
                         <button
                           type="button"
-                          onClick={() => {
-                            setStep('input');
-                            setOtpValue(['', '', '', '']);
-                          }}
+                          onClick={() => setStep('input')}
                           className="text-[#234745] font-bold underline hover:text-[#1a3533] ml-1 cursor-pointer"
                         >
                           {isEn ? 'Edit' : 'تعديل'}
@@ -1335,7 +1341,7 @@ export default function Login() {
                         blockCooldown > 0 ||
                         verifyCooldown > 0
                       }
-                      className="w-full bg-[#234745] text-[#FEF8EB] font-bold text-[16px] rounded-[25px] h-[48px] flex items-center justify-center hover:bg-[#1a3533] transition-colors disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer"
+                      className="w-full bg-[#234745] text-[#FEF8EB] font-bold text-[16px] rounded-[25px] h-[48px] flex items-center justify-center hover:bg-[#1a3533] transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
                       style={{
                         fontFamily:
                           "'EnglishDigits', 'GE Dinar One', sans-serif",
@@ -1359,7 +1365,7 @@ export default function Login() {
                     </button>
 
                     {/* Resend OTP */}
-                    <div className="flex flex-col items-center gap-1.5 mt-2">
+                    <div className="flex flex-col items-center gap-1">
                       {resendCooldown > 0 ? (
                         <p
                           className="text-[#9FB7AE] text-sm font-medium"
@@ -1379,7 +1385,7 @@ export default function Login() {
                           disabled={
                             isLoading || blockCooldown > 0 || verifyCooldown > 0
                           }
-                          className="text-[#234745] font-bold text-sm hover:underline disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                          className="text-[#234745] font-bold text-sm hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
                           style={{
                             fontFamily:
                               "'EnglishDigits', 'GE Dinar One', sans-serif",

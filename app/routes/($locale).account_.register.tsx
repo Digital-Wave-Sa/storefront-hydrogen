@@ -711,6 +711,7 @@ export default function Register() {
 
   const [submittedPhone, setSubmittedPhone] = useState('');
   const [hasEditSinceError, setHasEditSinceError] = useState(false);
+  const [actionDataDismissed, setActionDataDismissed] = useState(false);
 
   useEffect(() => {
     if (actionData?.step === 'otp') {
@@ -718,6 +719,7 @@ export default function Register() {
       setResendCooldown(60);
       setVerifyCooldown(60);
       setSubmittedPhone(formData.phone);
+      setActionDataDismissed(false);
     }
     if (actionData?.verifyCooldownRemaining || fetcher.data?.verifyCooldownRemaining) {
       const wait = actionData?.verifyCooldownRemaining || fetcher.data?.verifyCooldownRemaining;
@@ -1451,7 +1453,7 @@ export default function Register() {
                       </div>
                     )}
 
-                    {showError && errorToDisplay && !(submittedPhone && formData.phone === submittedPhone && Math.max(resendCooldown, verifyCooldown) > 0) && (
+                    {showError && errorToDisplay && !actionData?.verifyCooldownRemaining && !actionDataDismissed && !(submittedPhone && formData.phone === submittedPhone && Math.max(resendCooldown, verifyCooldown) > 0) && (
                       <p className="text-red-500 text-sm text-center mt-1">
                         {errorToDisplay}
                       </p>
@@ -1620,7 +1622,13 @@ export default function Register() {
                       </span>
                       <button
                         type="button"
-                        onClick={() => setStep('input')}
+                        onClick={() => {
+                          setStep('input');
+                          setSubmittedPhone('');
+                          setVerifyCooldown(0);
+                          setResendCooldown(0);
+                          setActionDataDismissed(true);
+                        }}
                         className="text-[#234745] font-bold underline hover:text-[#1a3533] ml-1"
                       >
                         {isEn ? 'Edit' : 'تعديل'}

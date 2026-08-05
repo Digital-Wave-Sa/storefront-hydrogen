@@ -742,12 +742,14 @@ export default function Login() {
   const [submittedPhone, setSubmittedPhone] = useState('');
   const resendFormRef = useRef<HTMLFormElement>(null);
   const [hasEditSinceError, setHasEditSinceError] = useState(false);
+  const [actionDataDismissed, setActionDataDismissed] = useState(false);
 
   const lastProcessedActionRef = useRef<any>(null);
 
   useEffect(() => {
     if (!actionData || actionData === lastProcessedActionRef.current) return;
     lastProcessedActionRef.current = actionData;
+    setActionDataDismissed(false);
 
     if (actionData?.step === 'otp') {
       setStep('otp');
@@ -1162,7 +1164,7 @@ export default function Login() {
                     </div>
                   )}
 
-                  {actionData?.error && !(submittedPhone && phone === submittedPhone && Math.max(resendCooldown, verifyCooldown) > 0) && (
+                  {actionData?.error && !actionData?.verifyCooldownRemaining && !actionDataDismissed && (
                     <div
                       className="w-full border border-[#F38C8C] bg-[#FFF5F5] rounded-[12px] py-3 px-4 flex items-center gap-3 text-[#E55C5C] text-sm font-semibold justify-center"
                       dir={isEn ? 'ltr' : 'rtl'}
@@ -1267,6 +1269,7 @@ export default function Login() {
                             setSubmittedPhone('');
                             setVerifyCooldown(0);
                             setResendCooldown(0);
+                            setActionDataDismissed(true);
                           }}
                           className="text-[#234745] font-bold underline hover:text-[#1a3533] ml-1 cursor-pointer"
                         >
@@ -1398,6 +1401,7 @@ export default function Login() {
                           setSubmittedPhone('');
                           setVerifyCooldown(0);
                           setResendCooldown(0);
+                          setActionDataDismissed(true);
                         }}
                         disabled={blockCooldown > 0 || verifyCooldown > 0}
                         style={{

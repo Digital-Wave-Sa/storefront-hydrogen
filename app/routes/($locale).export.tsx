@@ -200,9 +200,18 @@ export default function ExportPage() {
     setMounted(true);
   }, []);
 
-  const handleFormSubmit = (e: React.FormEvent) => {
+  const scrollToSection = (e: React.MouseEvent, targetId: string) => {
     e.preventDefault();
-    setFormSubmitted(true);
+    const elem = document.getElementById(targetId);
+    if (elem) {
+      const headerOffset = 90;
+      const elementPosition = elem.getBoundingClientRect().top;
+      const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: 'smooth',
+      });
+    }
   };
 
   return (
@@ -280,7 +289,8 @@ export default function ExportPage() {
             <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto">
               <a
                 href="#export-catalog"
-                className="w-full sm:w-auto px-8 py-3.5 bg-[#C5A96A] hover:bg-[#B39556] !text-[#234745] font-bold text-[18px] rounded-full transition-all shadow-lg text-center"
+                onClick={(e) => scrollToSection(e, 'export-catalog')}
+                className="w-full sm:w-auto px-8 py-3.5 bg-[#C5A96A] hover:bg-[#B39556] !text-[#234745] font-bold text-[18px] rounded-full transition-all shadow-lg text-center cursor-pointer"
                 style={{
                   fontFamily: "'GE Dinar One', sans-serif",
                   fontWeight: 700,
@@ -290,7 +300,8 @@ export default function ExportPage() {
               </a>
               <a
                 href="#export-form"
-                className="w-full sm:w-auto px-8 py-3.5 bg-[#B8D0CC] hover:bg-[#A3C0BB] !text-[#1A3533] font-bold text-[18px] rounded-full transition-all shadow-lg text-center"
+                onClick={(e) => scrollToSection(e, 'export-form')}
+                className="w-full sm:w-auto px-8 py-3.5 bg-[#B8D0CC] hover:bg-[#A3C0BB] !text-[#1A3533] font-bold text-[18px] rounded-full transition-all shadow-lg text-center cursor-pointer"
                 style={{
                   fontFamily: "'GE Dinar One', sans-serif",
                   fontWeight: 700,

@@ -1293,7 +1293,7 @@ export default function Login() {
                             onChange={(e) => handleOTPChange(i, e.target.value)}
                             onKeyDown={(e) => handleKeyDown(i, e)}
                             autoFocus={i === 0}
-                            disabled={blockCooldown > 0 || verifyCooldown > 0}
+                            disabled={blockCooldown > 0}
                           />
                         ))}
                       </div>
@@ -1335,8 +1335,7 @@ export default function Login() {
                       disabled={
                         isLoading ||
                         otpValue.some((v) => !v) ||
-                        blockCooldown > 0 ||
-                        verifyCooldown > 0
+                        blockCooldown > 0
                       }
                       className="w-full bg-[#234745] text-[#FEF8EB] font-bold text-[16px] rounded-[25px] h-[48px] flex items-center justify-center hover:bg-[#1a3533] transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
                       style={{
@@ -1352,13 +1351,9 @@ export default function Login() {
                           ? isEn
                             ? 'Locked'
                             : 'مغلق'
-                          : verifyCooldown > 0
-                            ? isEn
-                              ? `Wait ${verifyCooldown}s`
-                              : `تأكيد الدخول (انتظر ${verifyCooldown} ثانية)`
-                            : isEn
-                              ? 'Verify & Login'
-                              : 'تأكيد الدخول'}
+                          : isEn
+                            ? 'Verify & Login'
+                            : 'تأكيد الدخول'}
                     </button>
 
                     {/* Resend OTP */}

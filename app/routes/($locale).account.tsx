@@ -226,6 +226,58 @@ export async function loader({request, context}: LoaderFunctionArgs) {
             );
         }
 
+        // Fetch used vouchers / discount codes from customer's orders
+        if (customer?.id) {
+          try {
+            const {getAdminToken} = await import('~/lib/shopify-admin.server');
+            const adminDomain = context.env.PUBLIC_STORE_DOMAIN;
+            const adminToken = await getAdminToken(context.env);
+            const numId = customer.id.split('/').pop();
+            if (numId) {
+              const ordersRes = await fetch(
+                `https://${adminDomain}/admin/api/2024-01/customers/${numId}/orders.json?status=any&fields=id,name,order_number,created_at,processed_at,total_discounts,discount_codes`,
+                {
+                  headers: {
+                    'X-Shopify-Access-Token': adminToken,
+                    'Content-Type': 'application/json',
+                  },
+                },
+              );
+              if (ordersRes.ok) {
+                const ordersData = (await ordersRes.json()) as any;
+                if (ordersData?.orders?.length) {
+                  ordersData.orders.forEach((o: any) => {
+                    const codes = o.discount_codes || [];
+                    codes.forEach((dc: any, idx: number) => {
+                      const code = dc.code || '';
+                      if (!code) return;
+                      const amount = parseFloat(dc.amount || o.total_discounts || '0');
+                      const isLoyalty =
+                        code.startsWith('LOYAL') || code.includes('LOYALTY');
+                      history.push({
+                        id: `order-dc-${o.id}-${idx}`,
+                        amount: amount > 0 ? -amount : 0,
+                        date: o.created_at || o.processed_at || new Date().toISOString(),
+                        labelEn: isLoyalty
+                          ? `Loyalty Redemption Code (${code})`
+                          : `Used Discount Voucher (${code})`,
+                        labelAr: isLoyalty
+                          ? `استخدام كود نقاط الولاء (${code})`
+                          : `استخدام كود الخصم (${code})`,
+                      });
+                    });
+                  });
+                }
+              }
+            }
+          } catch (e) {}
+        }
+
+        history = history.sort(
+          (a: any, b: any) =>
+            new Date(b.date).getTime() - new Date(a.date).getTime(),
+        );
+
         // Fetch Loyalty Points explicitly from CRM endpoint
         loyaltyPoints = await getLoyaltyPoints({
           customerId: customer.id,

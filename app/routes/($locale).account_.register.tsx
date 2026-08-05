@@ -238,6 +238,7 @@ export async function action({request, context}: ActionFunctionArgs) {
           lang === 'en'
             ? `Please wait ${waitSecs} seconds before requesting another code.`
             : `يرجى الانتظار ${waitSecs} ثانية قبل طلب رمز تحقق جديد.`,
+        verifyCooldownRemaining: waitSecs,
       });
     }
 
@@ -704,6 +705,9 @@ export default function Register() {
   const [blockCooldown, setBlockCooldown] = useState(
     loaderData?.otpBlockRemaining || 0,
   );
+  const [verifyCooldown, setVerifyCooldown] = useState(
+    loaderData?.otpVerifyCooldownRemaining || 0,
+  );
 
   const [submittedPhone, setSubmittedPhone] = useState('');
   const [hasEditSinceError, setHasEditSinceError] = useState(false);
@@ -712,9 +716,25 @@ export default function Register() {
     if (actionData?.step === 'otp') {
       setStep('otp');
       setResendCooldown(60);
+      setVerifyCooldown(60);
       setSubmittedPhone(formData.phone);
     }
-  }, [actionData, formData.phone]);
+    if (actionData?.verifyCooldownRemaining || fetcher.data?.verifyCooldownRemaining) {
+      const wait = actionData?.verifyCooldownRemaining || fetcher.data?.verifyCooldownRemaining;
+      setVerifyCooldown(wait);
+      setResendCooldown(wait);
+      setSubmittedPhone(formData.phone);
+    }
+  }, [actionData, fetcher.data, formData.phone]);
+
+  useEffect(() => {
+    if (verifyCooldown <= 0) return;
+    const timer = setTimeout(
+      () => setVerifyCooldown((c: number) => c - 1),
+      1000,
+    );
+    return () => clearTimeout(timer);
+  }, [verifyCooldown]);
 
   useEffect(() => {
     if (actionData?.error || fetcher.data?.error) {
@@ -1411,31 +1431,42 @@ export default function Register() {
                       </label>
                     </div>
 
-                    {verifyCooldown > 0 && formData.phone === submittedPhone && (
-                      <div
-                        className="w-full bg-[#FFF1F1] border border-[#FCA5A5] rounded-full py-3 px-4 flex items-center justify-center gap-2 text-[#D93838] text-[14px] font-bold my-1 text-center"
-                        dir={isEn ? 'ltr' : 'rtl'}
-                        style={{
-                          fontFamily:
-                            "'EnglishDigits', 'GE Dinar One', sans-serif",
-                        }}
-                      >
-                        <span className="w-5 h-5 rounded-full border-2 border-[#D93838] flex items-center justify-center text-[12px] font-extrabold shrink-0">
-                          !
-                        </span>
-                        <span>
-                          {isEn
-                            ? `Please wait ${verifyCooldown} seconds before requesting a new code.`
-                            : `يرجى الانتظار ${verifyCooldown} ثانية قبل طلب رمز تحقق جديد.`}
-                        </span>
-                      </div>
-                    )}
+                    {(() => {
+                      const currentPhoneCooldown =
+                        formData.phone === submittedPhone || !submittedPhone
+                          ? Math.max(resendCooldown, verifyCooldown)
+                          : 0;
 
-                    {showError && errorToDisplay && (
-                      <p className="text-red-500 text-sm text-center mt-1">
-                        {errorToDisplay}
-                      </p>
-                    )}
+                      return (
+                        <>
+                          {currentPhoneCooldown > 0 && (
+                            <div
+                              className="w-full bg-[#FFF1F1] border border-[#FCA5A5] rounded-full py-3 px-4 flex items-center justify-center gap-2 text-[#D93838] text-[14px] font-bold my-1 text-center"
+                              dir={isEn ? 'ltr' : 'rtl'}
+                              style={{
+                                fontFamily:
+                                  "'EnglishDigits', 'GE Dinar One', sans-serif",
+                              }}
+                            >
+                              <span className="w-5 h-5 rounded-full border-2 border-[#D93838] flex items-center justify-center text-[12px] font-extrabold shrink-0">
+                                !
+                              </span>
+                              <span>
+                                {isEn
+                                  ? `Please wait ${currentPhoneCooldown} seconds before requesting a new code.`
+                                  : `يرجى الانتظار ${currentPhoneCooldown} ثانية قبل طلب رمز تحقق جديد.`}
+                              </span>
+                            </div>
+                          )}
+
+                          {showError && errorToDisplay && currentPhoneCooldown <= 0 && (
+                            <p className="text-red-500 text-sm text-center mt-1">
+                              {errorToDisplay}
+                            </p>
+                          )}
+                        </>
+                      );
+                    })()}
 
                     {/* Submit Button */}
                     <button
@@ -1447,7 +1478,8 @@ export default function Register() {
                         (formData.accountType === 'company' && !formData.companyName) ||
                         !formData.termsAccepted ||
                         blockCooldown > 0 ||
-                        (verifyCooldown > 0 && formData.phone === submittedPhone)
+                        ((formData.phone === submittedPhone || !submittedPhone) &&
+                          Math.max(resendCooldown, verifyCooldown) > 0)
                       }
                       className="w-full bg-[#234745] text-[#FEF8EB] font-bold text-[16px] rounded-[25px] h-[48px] flex items-center justify-center hover:bg-[#1a3533] transition-colors disabled:opacity-70"
                       style={{

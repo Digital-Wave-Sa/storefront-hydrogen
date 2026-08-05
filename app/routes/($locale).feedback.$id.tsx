@@ -85,13 +85,21 @@ export async function loader({params, context, request}: Route.LoaderArgs) {
 
         const isLoggedIn = Boolean(sessionEmail || sessionPhone || customerAccessToken);
         let isAuthorized = false;
+        let accountMismatch = false;
 
         if (isLoggedIn) {
-          if (sessionEmail && orderEmail && sessionEmail === orderEmail) {
+          const emailMatch = Boolean(sessionEmail && orderEmail && sessionEmail === orderEmail);
+          const phoneMatch = Boolean(
+            sessionPhone &&
+            orderPhoneRaw &&
+            (sessionPhone.endsWith(orderPhoneRaw.slice(-6)) || orderPhoneRaw.endsWith(sessionPhone.slice(-6)))
+          );
+
+          if (emailMatch || phoneMatch) {
             isAuthorized = true;
-          } else if (sessionPhone && orderPhoneRaw && (sessionPhone.endsWith(orderPhoneRaw.slice(-6)) || orderPhoneRaw.endsWith(sessionPhone.slice(-6)))) {
-            isAuthorized = true;
-          } else if (isLoggedIn) {
+          } else if (orderEmail || orderPhoneRaw) {
+            accountMismatch = true;
+          } else {
             isAuthorized = true;
           }
         }
@@ -224,6 +232,7 @@ export async function loader({params, context, request}: Route.LoaderArgs) {
           alreadyReviewed,
           existingRating,
           isAuthorized,
+          accountMismatch,
           maskedEmail,
           maskedPhone,
           orderId: id,
@@ -248,6 +257,7 @@ export async function loader({params, context, request}: Route.LoaderArgs) {
     alreadyReviewed: false,
     existingRating: null,
     isAuthorized: false,
+    accountMismatch: false,
     maskedEmail: '',
     maskedPhone: '',
     orderId: id,
@@ -258,7 +268,7 @@ export async function loader({params, context, request}: Route.LoaderArgs) {
 
 
 export default function FeedbackPage() {
-  const {notFound, alreadyReviewed, existingRating, isAuthorized, maskedEmail, maskedPhone, orderId, locale, order} = useLoaderData<typeof loader>();
+  const {notFound, alreadyReviewed, existingRating, isAuthorized, accountMismatch, maskedEmail, maskedPhone, orderId, locale, order} = useLoaderData<typeof loader>();
   const i18n = useI18n(locale);
   const isEn = locale === 'en';
   const fetcher = useFetcher();
@@ -308,8 +318,8 @@ export default function FeedbackPage() {
     );
   }
 
-  // 2. Authentication & Authorization Check (MUST TAKE PRECEDENCE BEFORE SHOWING ANY ORDER STATUS)
-  if (!isAuthorized) {
+  // 2a. Authentication & Authorization Check (NOT LOGGED IN)
+  if (!isAuthorized && !accountMismatch) {
     const loginUrl = isEn
       ? `/en/account/login?redirectTo=/en/feedback/${orderId}`
       : `/account/login?redirectTo=/feedback/${orderId}`;
@@ -337,6 +347,49 @@ export default function FeedbackPage() {
                 style={{ color: '#ffffff' }}
               >
                 {isEn ? 'Log In Now' : 'تسجيل الدخول الآن'}
+              </Link>
+              <Link
+                to={isEn ? '/en' : '/'}
+                className="inline-block text-xs font-bold text-gray-400 hover:text-[#234745] transition-colors py-2"
+              >
+                {i18n.common.backToHome || (isEn ? 'Back to Home' : 'العودة للرئيسية')}
+              </Link>
+            </div>
+          </div>
+        </div>
+      </PageLayout>
+    );
+  }
+
+  // 2b. Account Mismatch State (Logged in, but account does NOT match the order owner)
+  if (accountMismatch) {
+    const loginUrl = isEn
+      ? `/en/account/login?redirectTo=/en/feedback/${orderId}`
+      : `/account/login?redirectTo=/feedback/${orderId}`;
+
+    return (
+      <PageLayout {...({} as any)}>
+        <div className="min-h-[70vh] flex items-center justify-center px-4 py-20 bg-[#fdfaf6]">
+          <div className="max-w-md w-full bg-white rounded-[40px] p-10 text-center shadow-2xl shadow-[#234745]/10 border border-gray-100 flex flex-col items-center">
+            <div className="w-20 h-20 bg-amber-50 border border-amber-200 rounded-full flex items-center justify-center mx-auto mb-6 text-amber-600">
+              <span className="text-4xl">🚫</span>
+            </div>
+            <h1 className="text-2xl font-black text-[#234745] mb-3">
+              {isEn ? 'Access Denied' : 'الطلب ينتمي لحساب آخر'}
+            </h1>
+            <p className="text-gray-500 font-bold mb-8 leading-relaxed text-sm max-w-sm">
+              {isEn
+                ? `Order ${order.name} is associated with a different customer account. Please log into the matching account to review.`
+                : `عذراً، الطلب ${order.name} مرتبط بحساب عميل آخر. يرجى تسجيل الدخول بالحساب المناسب لتقييم الطلب.`}
+            </p>
+
+            <div className="w-full space-y-3">
+              <Link
+                to={loginUrl}
+                className="inline-flex items-center justify-center w-full bg-[#234745] text-white font-black px-8 py-4 rounded-2xl hover:bg-[#1a3533] transition-all shadow-xl text-base !text-white"
+                style={{ color: '#ffffff' }}
+              >
+                {isEn ? 'Switch Account' : 'تبديل الحساب'}
               </Link>
               <Link
                 to={isEn ? '/en' : '/'}

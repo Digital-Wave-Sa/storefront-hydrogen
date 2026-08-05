@@ -289,6 +289,13 @@ export default function FeedbackPage() {
   const [previews, setPreviews] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  useEffect(() => {
+    if (fetcher.data?.success) {
+      setSubmitted(true);
+      window.scrollTo({top: 0, behavior: 'smooth'});
+    }
+  }, [fetcher.data]);
+
   if (notFound || !order || !order.items || order.items.length === 0) {
     return (
       <PageLayout {...({} as any)}>
@@ -402,15 +409,6 @@ export default function FeedbackPage() {
         </div>
       </PageLayout>
     );
-  }
-
-  useEffect(() => {
-    if (fetcher.data?.success) {
-      setSubmitted(true);
-      window.scrollTo({top: 0, behavior: 'smooth'});
-    }
-  }, [fetcher.data]);
-
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length > 0) {

@@ -76,6 +76,7 @@ export async function loader({context, request}: LoaderFunctionArgs) {
   if (sortKey !== 'RELEVANCE' && sortKey !== 'PRICE') {
     sortKey = 'RELEVANCE';
   }
+  const reverse = searchParams.get('reverse') === 'true';
   const userQuery = searchParams.get('q');
   const exportQuery = userQuery && userQuery !== '*' ? userQuery : '*';
 
@@ -86,6 +87,7 @@ export async function loader({context, request}: LoaderFunctionArgs) {
         query: exportQuery,
         filters: filters.length > 0 ? filters : undefined,
         sortKey: sortKey as any,
+        reverse,
         country: 'US', // International Market context
         language: storefront.i18n.language,
       },
@@ -161,6 +163,21 @@ export async function loader({context, request}: LoaderFunctionArgs) {
       } catch (e) {
         console.error('Failed to fetch export collection filter', e);
       }
+    }
+
+    if (products?.nodes?.length && sortKey === 'PRICE') {
+      products = {
+        ...products,
+        nodes: [...products.nodes].sort((a: any, b: any) => {
+          const priceA = parseFloat(
+            a.priceRange?.minVariantPrice?.amount || '0',
+          );
+          const priceB = parseFloat(
+            b.priceRange?.minVariantPrice?.amount || '0',
+          );
+          return reverse ? priceB - priceA : priceA - priceB;
+        }),
+      };
     }
 
     if (!products) {
@@ -935,6 +952,7 @@ const EXPORT_CATALOG_QUERY = `#graphql
     $query: String!
     $filters: [ProductFilter!]
     $sortKey: SearchSortKeys
+    $reverse: Boolean
   ) @inContext(country: $country, language: $language) {
     exportCollection: collection(handle: "export-products") {
       id
@@ -1006,7 +1024,8 @@ const EXPORT_CATALOG_QUERY = `#graphql
       after: $endCursor,
       types: [PRODUCT],
       productFilters: $filters,
-      sortKey: $sortKey
+      sortKey: $sortKey,
+      reverse: $reverse
     ) {
       productFilters {
         id

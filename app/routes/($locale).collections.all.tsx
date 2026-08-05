@@ -96,6 +96,7 @@ export async function loader({context, request}: LoaderFunctionArgs) {
         query: q,
         filters: filters.length > 0 ? filters : undefined,
         sortKey: sortKey as any,
+        reverse,
         country: storefront.i18n.country,
         language: storefront.i18n.language,
       },
@@ -157,6 +158,21 @@ export async function loader({context, request}: LoaderFunctionArgs) {
       } catch (e) {
         console.error('Failed to fetch collections', e);
       }
+    }
+
+    if (products?.nodes?.length && sortKey === 'PRICE') {
+      products = {
+        ...products,
+        nodes: [...products.nodes].sort((a: any, b: any) => {
+          const priceA = parseFloat(
+            a.priceRange?.minVariantPrice?.amount || '0',
+          );
+          const priceB = parseFloat(
+            b.priceRange?.minVariantPrice?.amount || '0',
+          );
+          return reverse ? priceB - priceA : priceA - priceB;
+        }),
+      };
     }
 
     if (!response.search) {
@@ -2086,6 +2102,7 @@ const CATALOG_QUERY = `#graphql
     $query: String!
     $filters: [ProductFilter!]
     $sortKey: SearchSortKeys
+    $reverse: Boolean
   ) @inContext(country: $country, language: $language) {
     search(
       query: $query, 
@@ -2095,7 +2112,8 @@ const CATALOG_QUERY = `#graphql
       after: $endCursor,
       types: [PRODUCT],
       productFilters: $filters,
-      sortKey: $sortKey
+      sortKey: $sortKey,
+      reverse: $reverse
     ) {
       productFilters {
         id

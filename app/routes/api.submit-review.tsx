@@ -74,37 +74,54 @@ export async function action({request, context}: ActionFunctionArgs) {
   try {
     const token = await getAdminToken(env);
 
-    // Block duplicate reviews for the same order ID
+    // Mark order as reviewed in Shopify Admin
     if (orderId) {
       const cleanOrdId = String(orderId).replace(/^#/, '').trim();
       try {
-        const existingQuery = `
-          query CheckDuplicateReview {
-            metaobjects(type: "storefront_review", first: 250) {
-              nodes {
-                id
-                fields { key value }
-              }
+        const orderSearchRes = await fetch(
+          `https://${shopDomain}/admin/api/2024-01/orders.json?name=%23${cleanOrdId}&status=any`,
+          {
+            headers: {
+              'X-Shopify-Access-Token': token,
+              'Content-Type': 'application/json',
+            },
+          },
+        );
+        if (orderSearchRes.ok) {
+          const {orders} = await orderSearchRes.json();
+          const targetOrd = (orders || []).find(
+            (ord: any) =>
+              String(ord.order_number || '').trim() === cleanOrdId ||
+              String(ord.name || '').replace(/^#/, '').trim() === cleanOrdId,
+          );
+
+          if (targetOrd?.id) {
+            const existingTags = targetOrd.tags
+              ? targetOrd.tags.split(',').map((t: string) => t.trim())
+              : [];
+            if (!existingTags.includes('reviewed')) {
+              existingTags.push('reviewed');
+              await fetch(
+                `https://${shopDomain}/admin/api/2024-01/orders/${targetOrd.id}.json`,
+                {
+                  method: 'PUT',
+                  headers: {
+                    'X-Shopify-Access-Token': token,
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    order: {
+                      id: targetOrd.id,
+                      tags: existingTags.join(', '),
+                    },
+                  }),
+                },
+              );
             }
           }
-        `;
-        const existingRes = (await adminApiQuery(shopDomain, token, existingQuery, {})) as any;
-        const nodes = existingRes?.data?.metaobjects?.nodes || [];
-        const isAlreadyReviewed = nodes.some((node: any) => {
-          const orderIdField = node.fields?.find((f: any) => f.key === 'order_id')?.value;
-          if (!orderIdField) return false;
-          const cleanField = String(orderIdField).replace(/^#/, '').trim();
-          return cleanField === cleanOrdId;
-        });
-
-        if (isAlreadyReviewed) {
-          return data(
-            {error: language === 'ar' ? 'تم تقييم هذا الطلب مسبقاً.' : 'This order has already been reviewed.'},
-            {status: 400},
-          );
         }
-      } catch (dupErr) {
-        console.warn('[REVIEWS] Duplicate review check warning:', dupErr);
+      } catch (tagErr) {
+        console.warn('[REVIEWS] Failed to tag order as reviewed:', tagErr);
       }
     }
     const result = (await adminApiQuery(shopDomain, token, mutation, {

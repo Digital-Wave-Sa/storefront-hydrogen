@@ -39,36 +39,40 @@ export async function loader({params, context, request}: Route.LoaderArgs) {
       });
 
       if (o) {
-        // --- CHECK IF ALREADY REVIEWED ---
-        let alreadyReviewed = false;
+        // --- CHECK IF ALREADY REVIEWED (VIA SHOPIFY ORDER TAGS & METAOBJECTS) ---
+        const orderTags = (o.tags || '').split(',').map((t: string) => t.trim().toLowerCase());
+        let alreadyReviewed = orderTags.includes('reviewed');
         let existingRating: number | null = null;
-        try {
-          const reviewsRes = (await context.storefront.query(`#graphql
-            query CheckOrderReviews {
-              metaobjects(type: "storefront_review", first: 250) {
-                nodes {
-                  id
-                  fields { key value }
+
+        if (!alreadyReviewed) {
+          try {
+            const reviewsRes = (await context.storefront.query(`#graphql
+              query CheckOrderReviews {
+                metaobjects(type: "storefront_review", first: 250) {
+                  nodes {
+                    id
+                    fields { key value }
+                  }
                 }
               }
+            `, { cache: context.storefront.CacheNone() })) as any;
+
+            const nodes = reviewsRes?.metaobjects?.nodes || [];
+            const matchedNode = nodes.find((node: any) => {
+              const orderIdVal = node.fields?.find((f: any) => f.key === 'order_id')?.value;
+              if (!orderIdVal) return false;
+              const cleanVal = String(orderIdVal).replace(/^#/, '').trim();
+              return cleanVal === cleanTargetNum;
+            });
+
+            if (matchedNode) {
+              alreadyReviewed = true;
+              const rVal = matchedNode.fields?.find((f: any) => f.key === 'rating')?.value;
+              if (rVal) existingRating = parseInt(rVal, 10);
             }
-          `, { cache: context.storefront.CacheNone() })) as any;
-
-          const nodes = reviewsRes?.metaobjects?.nodes || [];
-          const matchedNode = nodes.find((node: any) => {
-            const orderIdVal = node.fields?.find((f: any) => f.key === 'order_id')?.value;
-            if (!orderIdVal) return false;
-            const cleanVal = String(orderIdVal).replace(/^#/, '').trim();
-            return cleanVal === cleanTargetNum;
-          });
-
-          if (matchedNode) {
-            alreadyReviewed = true;
-            const rVal = matchedNode.fields?.find((f: any) => f.key === 'rating')?.value;
-            if (rVal) existingRating = parseInt(rVal, 10);
+          } catch (revErr) {
+            console.warn('[Feedback Loader] Could not check existing reviews:', revErr);
           }
-        } catch (revErr) {
-          console.warn('[Feedback Loader] Could not check existing reviews:', revErr);
         }
 
         // --- CUSTOMER AUTHORIZATION & LOGGED-IN CHECK ---

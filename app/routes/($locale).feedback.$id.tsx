@@ -120,6 +120,7 @@ export async function loader({params, context}: Route.LoaderArgs) {
           (isEn ? 'Valued Customer' : 'عزيزنا العميل');
 
         return {
+          notFound: false,
           orderId: id,
           locale,
           order: {
@@ -136,23 +137,18 @@ export async function loader({params, context}: Route.LoaderArgs) {
     console.error('[Feedback Loader] Failed to fetch order:', e);
   }
 
-  // Fallback if order not found
+  // If order not found in Shopify
   return {
+    notFound: true,
     orderId: id,
     locale,
-    order: {
-      name: `#${id}`,
-      customerName: isEn ? 'Valued Customer' : 'عزيزنا العميل',
-      items: [],
-      branchName: isEn ? 'Saadeddin Branch' : 'فرع سعد الدين',
-      locationId: '',
-    },
+    order: null,
   };
 }
 
 
 export default function FeedbackPage() {
-  const {orderId, locale, order} = useLoaderData<typeof loader>();
+  const {notFound, orderId, locale, order} = useLoaderData<typeof loader>();
   const i18n = useI18n(locale);
   const isEn = locale === 'en';
   const fetcher = useFetcher();
@@ -166,6 +162,34 @@ export default function FeedbackPage() {
   const [images, setImages] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  if (notFound || !order) {
+    return (
+      <PageLayout {...({} as any)}>
+        <div className="min-h-[70vh] flex items-center justify-center px-4 py-20 bg-[#fdfaf6]">
+          <div className="max-w-md w-full bg-white rounded-[40px] p-10 text-center shadow-2xl shadow-[#234745]/10 border border-gray-100">
+            <div className="w-24 h-24 bg-amber-50 border border-amber-100 rounded-full flex items-center justify-center mx-auto mb-6">
+              <span className="text-4xl">📦</span>
+            </div>
+            <h1 className="text-2xl font-black text-[#234745] mb-3">
+              {isEn ? 'Order Not Found' : 'الطلب غير موجود'}
+            </h1>
+            <p className="text-gray-500 font-bold mb-8 leading-relaxed text-sm">
+              {isEn
+                ? `We could not find order #${orderId}. Please check your order number or link.`
+                : `عذراً، لم نتمكن من العثور على الطلب رقم #${orderId}. يرجى التحقق من رقم الطلب أو الرابط.`}
+            </p>
+            <Link
+              to={isEn ? '/en' : '/'}
+              className="inline-block bg-[#234745] text-white font-black px-8 py-3.5 rounded-2xl hover:bg-[#d4a06a] transition-all shadow-lg text-sm"
+            >
+              {i18n.common.backToHome}
+            </Link>
+          </div>
+        </div>
+      </PageLayout>
+    );
+  }
 
   useEffect(() => {
     if (fetcher.data?.success) {

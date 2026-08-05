@@ -133,11 +133,45 @@ export async function action({request, context}: ActionFunctionArgs) {
   return data({error: 'Invalid intent'}, {status: 400});
 }
 
-export async function loader({context}: LoaderFunctionArgs) {
-  const {storefront, env, customerAccount} = context;
-  const lang = storefront?.i18n?.language === 'EN' ? 'en' : 'ar';
+// In-memory cache for active price rules (60s TTL)
+let vouchersCache: {timestamp: number; rules: any[]} | null = null;
 
-  let usedCodesSet = new Set<string>();
+async function getPriceRules(env: any) {
+  const now = Date.now();
+  if (vouchersCache && now - vouchersCache.timestamp < 60000) {
+    return vouchersCache.rules;
+  }
+  try {
+    const {getAdminToken, getAdminDomain} = await import('~/lib/shopify-admin.server');
+    const adminToken = await getAdminToken(env);
+    const adminDomain = getAdminDomain(env);
+    if (!adminToken || !adminDomain) return [];
+
+    const res = await fetch(
+      `https://${adminDomain}/admin/api/2024-01/price_rules.json?status=active`,
+      {
+        headers: {
+          'X-Shopify-Access-Token': adminToken,
+          'Content-Type': 'application/json',
+        },
+        signal: AbortSignal.timeout(2000),
+      },
+    ).catch(() => null);
+
+    if (res && res.ok) {
+      const resData = (await res.json()) as any;
+      const rules = (resData.price_rules || []).filter((rule: any) => {
+        return !rule.title?.startsWith('Loyalty Redemption:');
+      });
+      vouchersCache = {timestamp: now, rules};
+      return rules;
+    }
+  } catch (e) {}
+  return vouchersCache?.rules || [];
+}
+
+async function getCustomerUsedCodes(context: any) {
+  const usedCodesSet = new Set<string>();
   try {
     let searchPhone = await context.session.get('loginOtpPhone');
     let searchEmail: string | undefined;
@@ -149,7 +183,7 @@ export async function loader({context}: LoaderFunctionArgs) {
         : sessionToken?.accessToken;
 
     if (tokenStr && tokenStr !== 'dev-bypass-token') {
-      const custRes = await storefront.query(
+      const custRes = await context.storefront.query(
         `#graphql
         query getVouchersCustomer($customerAccessToken: String!) {
           customer(customerAccessToken: $customerAccessToken) {
@@ -161,9 +195,9 @@ export async function loader({context}: LoaderFunctionArgs) {
       `,
         {
           variables: {customerAccessToken: tokenStr},
-          cache: storefront.CacheNone(),
+          cache: context.storefront.CacheShort(),
         },
-      );
+      ).catch(() => null);
 
       if (custRes?.customer) {
         if (custRes.customer.phone) searchPhone = custRes.customer.phone;
@@ -172,10 +206,9 @@ export async function loader({context}: LoaderFunctionArgs) {
     }
 
     if (searchPhone || searchEmail) {
-      const {getAdminToken, getAdminDomain} =
-        await import('~/lib/shopify-admin.server');
-      const adminToken = await getAdminToken(env);
-      const adminDomain = getAdminDomain(env);
+      const {getAdminToken, getAdminDomain} = await import('~/lib/shopify-admin.server');
+      const adminToken = await getAdminToken(context.env);
+      const adminDomain = getAdminDomain(context.env);
 
       if (adminToken && adminDomain) {
         const queryTerms: string[] = [];
@@ -193,9 +226,10 @@ export async function loader({context}: LoaderFunctionArgs) {
           `https://${adminDomain}/admin/api/2024-01/orders.json?status=any&fields=id,discount_codes&query=${encodeURIComponent(queryStr)}`,
           {
             headers: {'X-Shopify-Access-Token': adminToken},
-            signal: AbortSignal.timeout(2500),
+            signal: AbortSignal.timeout(1500),
           },
         ).catch(() => null);
+
         if (ordersRes && ordersRes.ok) {
           const data = (await ordersRes.json()) as any;
           for (const order of data.orders || []) {
@@ -210,159 +244,129 @@ export async function loader({context}: LoaderFunctionArgs) {
         }
       }
     }
-  } catch (e) {
-    console.error(
-      '[Vouchers Loader] Error checking customer order discounts:',
-      e,
-    );
-  }
+  } catch (e) {}
+  return usedCodesSet;
+}
 
-  let shopifyVouchers: Array<{
-    id: string;
-    title: string;
-    code: string;
-    status: 'active' | 'used' | 'expired';
-    badgeText: string;
-    valueType: string;
-    value: number;
-    discountDisplayAr: string;
-    discountDisplayEn: string;
-    subtitleAr: string;
-    subtitleEn: string;
-    expiryTextAr: string;
-    expiryTextEn: string;
-  }> = [];
+export async function loader({context}: LoaderFunctionArgs) {
+  const {storefront, env} = context;
+  const lang = storefront?.i18n?.language === 'EN' ? 'en' : 'ar';
 
-  try {
-    const {getAdminToken, getAdminDomain} =
-      await import('~/lib/shopify-admin.server');
-    const adminToken = await getAdminToken(env);
-    const adminDomain = getAdminDomain(env);
+  const [usedCodesSet, priceRules] = await Promise.all([
+    getCustomerUsedCodes(context),
+    getPriceRules(env),
+  ]);
 
-    if (adminToken && adminDomain) {
-      const res = await fetch(
-        `https://${adminDomain}/admin/api/2024-01/price_rules.json?status=active`,
-        {
-          headers: {
-            'X-Shopify-Access-Token': adminToken,
-            'Content-Type': 'application/json',
+  const {getAdminToken, getAdminDomain} = await import('~/lib/shopify-admin.server');
+  const adminToken = await getAdminToken(env);
+  const adminDomain = getAdminDomain(env);
+
+  const voucherPromises = priceRules.map(async (rule: any) => {
+    let code = rule.title;
+    const isSimpleCode = !rule.title?.includes(' ') && !rule.title?.includes(':');
+
+    if (!isSimpleCode && adminToken && adminDomain) {
+      try {
+        const dcRes = await fetch(
+          `https://${adminDomain}/admin/api/2024-01/price_rules/${rule.id}/discount_codes.json`,
+          {
+            headers: {'X-Shopify-Access-Token': adminToken},
+            signal: AbortSignal.timeout(1000),
           },
-          signal: AbortSignal.timeout(3000),
-        },
-      ).catch(() => null);
-
-      if (res && res.ok) {
-        const resData = (await res.json()) as any;
-        const priceRules = (resData.price_rules || []).filter((rule: any) => {
-          return !rule.title?.startsWith('Loyalty Redemption:');
-        });
-
-        const voucherPromises = priceRules.map(async (rule: any) => {
-          let code = rule.title;
-          const isSimpleCode = !rule.title?.includes(' ') && !rule.title?.includes(':');
-
-          if (!isSimpleCode) {
-            try {
-              const dcRes = await fetch(
-                `https://${adminDomain}/admin/api/2024-01/price_rules/${rule.id}/discount_codes.json`,
-                {
-                  headers: {'X-Shopify-Access-Token': adminToken},
-                  signal: AbortSignal.timeout(1500),
-                },
-              ).catch(() => null);
-              if (dcRes && dcRes.ok) {
-                const dcData = (await dcRes.json()) as any;
-                if (dcData.discount_codes?.[0]?.code) {
-                  code = dcData.discount_codes[0].code;
-                }
-              }
-            } catch (e) {}
+        ).catch(() => null);
+        if (dcRes && dcRes.ok) {
+          const dcData = (await dcRes.json()) as any;
+          if (dcData.discount_codes?.[0]?.code) {
+            code = dcData.discount_codes[0].code;
           }
+        }
+      } catch (e) {}
+    }
 
-          const codeLower = code.trim().toLowerCase();
-          const isUsedByOrders =
-            usedCodesSet.has(codeLower) ||
-            usedCodesSet.has(rule.title.trim().toLowerCase());
-          const isUsageLimitReached =
-            rule.usage_limit && rule.times_used >= rule.usage_limit;
-          const isUsed = isUsedByOrders || isUsageLimitReached;
-          const isExpired = rule.ends_at
-            ? new Date(rule.ends_at) < new Date()
-            : false;
+    const codeLower = code.trim().toLowerCase();
+    const isUsedByOrders =
+      usedCodesSet.has(codeLower) ||
+      usedCodesSet.has(rule.title.trim().toLowerCase());
+    const isUsageLimitReached =
+      rule.usage_limit && rule.times_used >= rule.usage_limit;
+    const isUsed = isUsedByOrders || isUsageLimitReached;
+    const isExpired = rule.ends_at
+      ? new Date(rule.ends_at) < new Date()
+      : false;
 
-          let status: 'active' | 'used' | 'expired' = 'active';
-          if (isUsed) {
-            status = 'used';
-          } else if (isExpired) {
-            status = 'expired';
-          }
+    let status: 'active' | 'used' | 'expired' = 'active';
+    if (isUsed) {
+      status = 'used';
+    } else if (isExpired) {
+      status = 'expired';
+    }
 
-          const isPercentage = rule.value_type === 'percentage';
-          const valNum = Math.abs(parseFloat(rule.value || '0'));
-          const isFreeShipping =
-            rule.target_type === 'shipping_line' ||
-            codeLower === 'freeshipping';
+    const isPercentage = rule.value_type === 'percentage';
+    const valNum = Math.abs(parseFloat(rule.value || '0'));
+    const isFreeShipping =
+      rule.target_type === 'shipping_line' ||
+      codeLower === 'freeshipping';
 
-          let discountDisplayAr = isFreeShipping
-            ? 'توصيل مجاني'
-            : isPercentage
-              ? `خصم %${valNum}`
-              : `${valNum} خصم`;
+    let discountDisplayAr = isFreeShipping
+      ? 'توصيل مجاني'
+      : isPercentage
+        ? `خصم %${valNum}`
+        : `${valNum} خصم`;
 
-          let discountDisplayEn = isFreeShipping
-            ? 'Free Delivery'
-            : isPercentage
-              ? `${valNum}% OFF`
-              : `${valNum} SAR OFF`;
+    let discountDisplayEn = isFreeShipping
+      ? 'Free Delivery'
+      : isPercentage
+        ? `${valNum}% OFF`
+        : `${valNum} SAR OFF`;
 
-          let badgeText = isFreeShipping
-            ? 'مجاني'
-            : isPercentage
-              ? `${valNum}%`
-              : `${valNum} رس`;
+    let badgeText = isFreeShipping
+      ? 'مجاني'
+      : isPercentage
+        ? `${valNum}%`
+        : `${valNum} رس`;
 
-          const minSpend =
-            rule.prerequisite_subtotal_range?.greater_than_or_equal_to;
-          let subtitleAr = isFreeShipping
-            ? 'توصيل مجاني على طلبك القادم'
-            : minSpend
-              ? `عند الشراء بأكثر من ${parseFloat(minSpend)} ر.س`
-              : 'على جميع المنتجات';
+    const minSpend =
+      rule.prerequisite_subtotal_range?.greater_than_or_equal_to;
+    let subtitleAr = isFreeShipping
+      ? 'توصيل مجاني على طلبك القادم'
+      : minSpend
+        ? `عند الشراء بأكثر من ${parseFloat(minSpend)} ر.س`
+        : 'على جميع المنتجات';
 
-          let subtitleEn = isFreeShipping
-            ? 'Free shipping on your next order'
-            : minSpend
-              ? `On purchases over ${parseFloat(minSpend)} SAR`
-              : 'On all items';
+    let subtitleEn = isFreeShipping
+      ? 'Free shipping on your next order'
+      : minSpend
+        ? `On purchases over ${parseFloat(minSpend)} SAR`
+        : 'On all items';
 
-          let expiryDateStrAr = rule.ends_at
-            ? new Date(rule.ends_at).toLocaleDateString('ar-SA')
-            : '31 ديسمبر 2026';
-          let expiryDateStrEn = rule.ends_at
-            ? new Date(rule.ends_at).toLocaleDateString('en-US')
-            : 'Dec 31, 2026';
+    let expiryDateStrAr = rule.ends_at
+      ? new Date(rule.ends_at).toLocaleDateString('ar-SA')
+      : '31 ديسمبر 2026';
+    let expiryDateStrEn = rule.ends_at
+      ? new Date(rule.ends_at).toLocaleDateString('en-US')
+      : 'Dec 31, 2026';
 
-          let expiryTextAr = `تنتهي ${expiryDateStrAr}${minSpend ? ` . الحد الأدنى ${parseFloat(minSpend)} رس` : ''}`;
-          let expiryTextEn = `Expires ${expiryDateStrEn}${minSpend ? ` . Min spend ${parseFloat(minSpend)} SAR` : ''}`;
+    let expiryTextAr = `تنتهي ${expiryDateStrAr}${minSpend ? ` . الحد الأدنى ${parseFloat(minSpend)} رس` : ''}`;
+    let expiryTextEn = `Expires ${expiryDateStrEn}${minSpend ? ` . Min spend ${parseFloat(minSpend)} SAR` : ''}`;
 
-          return {
-            id: String(rule.id),
-            title: rule.title,
-            code,
-            status,
-            badgeText,
-            valueType: rule.value_type,
-            value: valNum,
-            discountDisplayAr,
-            discountDisplayEn,
-            subtitleAr,
-            subtitleEn,
-            expiryTextAr,
-            expiryTextEn,
-          };
-        });
+    return {
+      id: String(rule.id),
+      title: rule.title,
+      code,
+      status,
+      badgeText,
+      valueType: rule.value_type,
+      value: valNum,
+      discountDisplayAr,
+      discountDisplayEn,
+      subtitleAr,
+      subtitleEn,
+      expiryTextAr,
+      expiryTextEn,
+    };
+  });
 
-        shopifyVouchers = await Promise.all(voucherPromises);
+  const shopifyVouchers = await Promise.all(voucherPromises);
       }
     }
   } catch (err) {

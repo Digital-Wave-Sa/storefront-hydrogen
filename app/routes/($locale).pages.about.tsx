@@ -560,7 +560,7 @@ export default function AboutPage() {
       </div>
 
       {/* Stats Section */}
-      <div className="bg-[#234745] py-12">
+      <div className="bg-[#234745] py-12 mb-16 md:mb-24">
         <div className="max-w-[1400px] mx-auto px-4 md:px-[80px]">
           <div
             className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center text-white"

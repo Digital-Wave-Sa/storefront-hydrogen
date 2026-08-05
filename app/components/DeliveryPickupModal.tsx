@@ -1027,42 +1027,21 @@ function ModalContent({
                                                          from = branch.fridayHoursFrom;
                                                          to = branch.fridayHoursTo;
                                                      } else if (day === 'Sat' && branch.saturdayHoursFrom && branch.saturdayHoursTo) {
-{
-    const day = new Intl.DateTimeFormat('en-US', {
-        timeZone: 'Asia/Riyadh',
-        weekday: 'short'
-    }).format(new Date());
+                                                         from = branch.saturdayHoursFrom;
+                                                         to = branch.saturdayHoursTo;
+                                                     }
 
-    let from = branch.hoursFrom;
-    let to = branch.hoursTo;
-    if (day === 'Sun' && branch.sundayHoursFrom && branch.sundayHoursTo) {
-        from = branch.sundayHoursFrom;
-        to = branch.sundayHoursTo;
-    } else if (day === 'Mon' && branch.mondayHoursFrom && branch.mondayHoursTo) {
-        from = branch.mondayHoursFrom;
-        to = branch.mondayHoursTo;
-    } else if (day === 'Tue' && branch.tuesdayHoursFrom && branch.tuesdayHoursTo) {
-        from = branch.tuesdayHoursFrom;
-        to = branch.tuesdayHoursTo;
-    } else if (day === 'Wed' && branch.wednesdayHoursFrom && branch.wednesdayHoursTo) {
-        from = branch.wednesdayHoursFrom;
-        to = branch.wednesdayHoursTo;
-    } else if (day === 'Thu' && branch.thursdayHoursFrom && branch.thursdayHoursTo) {
-        from = branch.thursdayHoursFrom;
-        to = branch.thursdayHoursTo;
-    } else if (day === 'Fri' && branch.fridayHoursFrom && branch.fridayHoursTo) {
-        from = branch.fridayHoursFrom;
-        to = branch.fridayHoursTo;
-    } else if (day === 'Sat' && branch.saturdayHoursFrom && branch.saturdayHoursTo) {
-        from = branch.saturdayHoursFrom;
-        to = branch.saturdayHoursTo;
-    }
-
-    const s1 = from && to ? `${formatTime12h(from, isEn)} - ${formatTime12h(to, isEn)}` : '';
-    const s2 = branch.hoursFromShift2 && branch.hoursToShift2 ? `${formatTime12h(branch.hoursFromShift2, isEn)} - ${formatTime12h(branch.hoursToShift2, isEn)}` : '';
-    return s1 && s2 ? `${s1} & ${s2}` : s1 || (isEn ? `Until ${formatTime12h(branch.openUntil, isEn)}` : `حتى ${formatTime12h(branch.openUntil, isEn)}`);
-})()}
+                                                     const s1 = from && to ? `${formatTime12h(from, isEn)} - ${formatTime12h(to, isEn)}` : '';
+                                                     const s2 = branch.hoursFromShift2 && branch.hoursToShift2 ? `${formatTime12h(branch.hoursFromShift2, isEn)} - ${formatTime12h(branch.hoursToShift2, isEn)}` : '';
+                                                     return s1 && s2 ? `${s1} & ${s2}` : s1 || (isEn ? `Until ${formatTime12h(branch.openUntil, isEn)}` : `حتى ${formatTime12h(branch.openUntil, isEn)}`);
+                                                 })()}
                                              </span>
+                                            {branch.distance && (
+                                                <>
+                                                    <span className="mx-1">•</span>
+                                                    <span className="font-bold text-[#234745]">{branch.distance}</span>
+                                                </>
+                                            )}
                                             {(() => {
                                                 const rootData = useRouteLoaderData('root') as any;
                                                 const branchReviews = (rootData?.reviews?.nodes || []).map((node: any) => {
@@ -1094,18 +1073,6 @@ function ModalContent({
                                                     </>
                                                 );
                                             })()}
-                                            {branch.distance && (
-                                                <>
-                                                    <span className="mx-1">•</span>
-                                                    <span className="font-bold text-[#234745]">{branch.distance}</span>
-                                                </>
-                                            )}
-                                                    <span className="flex items-center gap-1 font-bold text-[#F3C22F]">
-                                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>
-                                                        {branch.rating.toFixed(1)} {branch.ratingCount > 0 && <span className="text-gray-400 font-normal text-[10px]">({branch.ratingCount})</span>}
-                                                    </span>
-                                                </>
-                                            )}
                                         </div>
                                     </div>
                                     {/* Pickup-specific info badges */}

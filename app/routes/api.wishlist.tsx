@@ -96,47 +96,7 @@ export async function loader({request, context}: LoaderFunctionArgs) {
       let result = (await adminApiQuery(shopDomain, adminToken, query, {
         id: formattedGid,
       })) as any;
-      let wishlistData = result?.data?.customer?.metafield?.value;
-
-      // Fallback: If active session customer has empty wishlist, search by email/phone for original profile wishlist
-      if ((!wishlistData || wishlistData === '[]') && result?.data?.customer) {
-        const email = result.data.customer.email;
-        const phone = result.data.customer.phone;
-        let searchQuery = '';
-        if (email && !email.endsWith('@saadeddin.placeholder')) {
-          searchQuery = `email:"${encodeURIComponent(email)}"`;
-        } else if (phone) {
-          const raw = phone.replace(/\D/g, '').slice(-9);
-          searchQuery = `${raw}`;
-        }
-
-        if (searchQuery) {
-          const searchGql = `
-            query findOriginalWishlist($query: String!) {
-              customers(first: 5, query: $query) {
-                nodes {
-                  id
-                  email
-                  metafield(namespace: "custom", key: "wishlist") { value }
-                }
-              }
-            }
-          `;
-          const searchRes = (await adminApiQuery(
-            shopDomain,
-            adminToken,
-            searchGql,
-            {query: searchQuery},
-          )) as any;
-          const candidates = searchRes?.data?.customers?.nodes || [];
-          for (const cand of candidates) {
-            if (cand.metafield?.value && cand.metafield.value !== '[]') {
-              wishlistData = cand.metafield.value;
-              break;
-            }
-          }
-        }
-      }
+      const wishlistData = result?.data?.customer?.metafield?.value;
 
       if (wishlistData) {
         try {

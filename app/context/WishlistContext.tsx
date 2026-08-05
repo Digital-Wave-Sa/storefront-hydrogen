@@ -70,17 +70,7 @@ export function WishlistProvider({
             const data = await response.json() as any;
             if (data.wishlist && Array.isArray(data.wishlist)) {
               const cloudWishlist: WishlistItem[] = data.wishlist;
-              const mergedMap = new Map<string, WishlistItem>();
-              
-              // Cloud items take priority when logged in; add any local items not in cloud
-              cloudWishlist.forEach(item => mergedMap.set(item.id, item));
-              currentWishlist.forEach(item => {
-                if (!mergedMap.has(item.id)) {
-                  mergedMap.set(item.id, item);
-                }
-              });
-              
-              currentWishlist = Array.from(mergedMap.values());
+              currentWishlist = cloudWishlist;
             }
           }
         } catch (e) {

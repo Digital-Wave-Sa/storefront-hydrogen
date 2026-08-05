@@ -67,7 +67,7 @@ export function ProductItem({
       });
       return availableVariant || variantsNodes[0];
     }
-    if ((product as any).price || (product as any).id?.includes('ProductVariant')) {
+    if ((product as any).price || (product as any).priceRange || (product as any).variantId || (product as any).id?.includes('ProductVariant')) {
       return product;
     }
     return undefined;

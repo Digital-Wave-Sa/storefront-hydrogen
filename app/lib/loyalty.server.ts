@@ -136,11 +136,11 @@ export async function getLoyaltyPoints(params: LoyaltyParams): Promise<number> {
 }
 
 /**
- * POST /api/storefront/loyalty
- * Specification:
- * Headers: Content-Type: application/json
- * Body: { "shop": shop, "customerId": customerId, "points": points }
- * Returns: { "success": true, "discountCode": "LOYAL-K3M9XQ-200", "newBalance": 1300 }
+ * Creates a Shopify discount code directly via Admin REST API and then
+ * notifies SDLP to deduct the loyalty points.
+ *
+ * This bypasses the broken `discountCodeBasicCreate` GraphQL mutation in SDLP
+ * which references a non-existent `discountNode` field.
  */
 export async function redeemLoyaltyPoints({
   customerId,
@@ -160,42 +160,123 @@ export async function redeemLoyaltyPoints({
 
   const searchPhone = phone || (context?.session ? await context.session.get('loginOtpPhone') : null);
 
+  // --- Step 1: Create the discount code directly via Shopify Admin REST API ---
+  let generatedCode: string;
+  try {
+    const { getAdminToken, getAdminDomain } = await import('~/lib/shopify-admin.server');
+    const adminToken = await getAdminToken(env);
+    const adminDomain = getAdminDomain(env);
+
+    if (!adminToken || !adminDomain) {
+      throw new Error('Missing Shopify admin credentials');
+    }
+
+    // Generate a unique code: LOYAL-{6 random alphanumeric}-{points}
+    const rand = Math.random().toString(36).substring(2, 8).toUpperCase();
+    const code = `LOYAL-${rand}-${points}`;
+
+    // The discount value: 1 point = 0.01 SAR
+    const discountAmount = (points * 0.01).toFixed(2);
+
+    // Create a price rule (fixed amount, once per order, no minimum)
+    const priceRuleRes = await fetch(
+      `https://${adminDomain}/admin/api/2024-01/price_rules.json`,
+      {
+        method: 'POST',
+        headers: {
+          'X-Shopify-Access-Token': adminToken,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          price_rule: {
+            title: `Loyalty Points Redemption - ${points} pts`,
+            target_type: 'line_item',
+            target_selection: 'all',
+            allocation_method: 'across',
+            value_type: 'fixed_amount',
+            value: `-${discountAmount}`,
+            customer_selection: 'all',
+            starts_at: new Date().toISOString(),
+            usage_limit: 1,
+            once_per_customer: true,
+          },
+        }),
+      },
+    );
+
+    const priceRuleJson = (await priceRuleRes.json()) as any;
+    console.log('[Loyalty] Price rule response:', priceRuleJson);
+
+    if (!priceRuleJson?.price_rule?.id) {
+      throw new Error(priceRuleJson?.errors ? JSON.stringify(priceRuleJson.errors) : 'Failed to create price rule');
+    }
+
+    const priceRuleId = priceRuleJson.price_rule.id;
+
+    // Create the discount code under the price rule
+    const codeRes = await fetch(
+      `https://${adminDomain}/admin/api/2024-01/price_rules/${priceRuleId}/discount_codes.json`,
+      {
+        method: 'POST',
+        headers: {
+          'X-Shopify-Access-Token': adminToken,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ discount_code: { code } }),
+      },
+    );
+
+    const codeJson = (await codeRes.json()) as any;
+    console.log('[Loyalty] Discount code response:', codeJson);
+
+    if (!codeJson?.discount_code?.code) {
+      throw new Error(codeJson?.errors ? JSON.stringify(codeJson.errors) : 'Failed to create discount code');
+    }
+
+    generatedCode = codeJson.discount_code.code;
+    console.log('[Loyalty] Created discount code:', generatedCode, 'for', discountAmount, 'SAR');
+  } catch (err: any) {
+    console.error('[Loyalty] Failed to create Shopify discount:', err);
+    return { success: false, error: err?.message || 'Failed to create discount code' };
+  }
+
+  // --- Step 2: Notify SDLP to deduct the points ---
   try {
     const url = `${sdlpAppUrl}/api/storefront/loyalty`;
-    const payload = {
+    const payload: any = {
       shop,
       customerId: resolvedCustomerId,
-      phone: searchPhone || undefined,
       points: Number(points),
+      discountCode: generatedCode, // Pass the already-created code so SDLP doesn't need to create it
     };
-    console.log('[SDLP Loyalty] POST Request:', url, payload);
+    if (searchPhone) payload.phone = searchPhone;
+
+    console.log('[SDLP Loyalty] POST deduct request:', url, payload);
 
     const res = await fetch(url, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
       body: JSON.stringify(payload),
     });
 
-    const data = (await res.json()) as any;
-    console.log('[SDLP Loyalty] POST Response:', data);
+    const resData = (await res.json()) as any;
+    console.log('[SDLP Loyalty] POST deduct response:', resData);
 
-    if (res.ok && data?.success) {
-      return {
-        success: true,
-        discountCode: data.discountCode,
-        newBalance: data.newBalance,
-      };
-    } else {
-      return {
-        success: false,
-        error: data?.error || 'Failed to redeem loyalty points',
-      };
+    // Return success regardless of SDLP response — the discount is already created in Shopify.
+    // If SDLP fails to deduct, log it but don't block the user.
+    if (!res.ok || !resData?.success) {
+      console.warn('[SDLP Loyalty] Points deduction may have failed:', resData?.error);
     }
+
+    return {
+      success: true,
+      discountCode: generatedCode,
+      newBalance: resData?.newBalance,
+    };
   } catch (err: any) {
-    console.error('[SDLP Loyalty] POST Exception:', err);
-    return { success: false, error: err?.message || 'Network request failed' };
+    // Even if SDLP call fails, the Shopify discount is already created — return success.
+    console.error('[SDLP Loyalty] Deduct POST failed (discount already created):', err);
+    return { success: true, discountCode: generatedCode };
   }
 }
+

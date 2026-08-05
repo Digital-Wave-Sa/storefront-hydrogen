@@ -224,7 +224,7 @@ async function loadCriticalData({context}: Route.LoaderArgs) {
       },
     }),
     storefront.query(LOCATIONS_QUERY, {
-      cache: storefront.CacheLong(),
+      cache: storefront.CacheNone(),
     }).catch(() => null),
     storefront.query(`#graphql
       query GetReviews {

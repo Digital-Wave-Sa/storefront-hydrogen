@@ -21,14 +21,16 @@ export async function sendEmail({
   html,
   env,
 }: {
-  to: string;
+  to: string | string[];
   subject: string;
   html: string;
   env: any;
 }) {
   const resendApiKey = env?.RESEND_API_KEY;
   const fromEmail = env?.FORM_EMAIL_FROM || 'Saadeddin Pastry <noreply@saadeddin.com>';
+  const recipients = Array.isArray(to) ? to : [to];
 
+  // 1. Try Resend API if key is present
   if (resendApiKey) {
     try {
       const res = await fetch('https://api.resend.com/emails', {
@@ -39,16 +41,83 @@ export async function sendEmail({
         },
         body: JSON.stringify({
           from: fromEmail,
-          to: [to],
+          to: recipients,
           subject,
           html,
         }),
       });
-      return res.ok;
+      if (res.ok) return true;
     } catch (e) {
       console.error('Failed to send email via Resend:', e);
     }
   }
+
+  // 2. Try Saadeddin Middleware API (api.saadeddin.top)
+  const middlewareUrl = env?.SAADEDDIN_API_URL || 'https://api.saadeddin.top';
+  try {
+    const res = await fetch(`${middlewareUrl}/api/send-email`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        to: recipients,
+        subject,
+        html,
+      }),
+    });
+    if (res.ok) return true;
+  } catch (e) {
+    console.warn('[SEND_EMAIL MW WARN]', e);
+  }
+
+  // 3. Try Microsoft Graph API
+  const graphTenantId = env?.GRAPH_TENANT_ID;
+  const graphClientId = env?.GRAPH_CLIENT_ID;
+  const graphClientSecret = env?.GRAPH_CLIENT_SECRET;
+  const graphSenderEmail = env?.GRAPH_SENDER_EMAIL || env?.SMTP_USER || 'crm@saadeddin.com';
+
+  if (graphTenantId && graphClientId && graphClientSecret) {
+    try {
+      const tokenRes = await fetch(
+        `https://login.microsoftonline.com/${graphTenantId}/oauth2/v2.0/token`,
+        {
+          method: 'POST',
+          headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+          body: new URLSearchParams({
+            grant_type: 'client_credentials',
+            client_id: graphClientId,
+            client_secret: graphClientSecret,
+            scope: 'https://graph.microsoft.com/.default',
+          }),
+        },
+      );
+      const tokenData = (await tokenRes.json()) as any;
+      if (tokenData?.access_token) {
+        const mailRes = await fetch(
+          `https://graph.microsoft.com/v1.0/users/${graphSenderEmail}/sendMail`,
+          {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${tokenData.access_token}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              message: {
+                subject,
+                body: {contentType: 'HTML', content: html},
+                toRecipients: recipients.map((addr) => ({
+                  emailAddress: {address: addr},
+                })),
+              },
+            }),
+          },
+        );
+        if (mailRes.status === 202 || mailRes.ok) return true;
+      }
+    } catch (e) {
+      console.error('Failed to send email via Microsoft Graph:', e);
+    }
+  }
+
   return false;
 }
 
@@ -90,7 +159,6 @@ export async function sendFormEmailNotification(
   env: any,
 ) {
   const recipientEmail = env?.FORM_EMAIL_RECIPIENT || 'motasem.udeh@gmail.com';
-  const resendApiKey = env?.RESEND_API_KEY;
   const webhookUrl = env?.FORM_WEBHOOK_URL;
 
   const emailSubject = `[Saadeddin Website] New ${payload.formTitle} submission from ${payload.fullName}`;
@@ -171,90 +239,42 @@ export async function sendFormEmailNotification(
     </div>
   `;
 
-  // 1. Dispatch via Microsoft Graph API (Office 365) — works in Oxygen/Workers
-  const graphTenantId = env?.GRAPH_TENANT_ID;
-  const graphClientId = env?.GRAPH_CLIENT_ID;
-  const graphClientSecret = env?.GRAPH_CLIENT_SECRET;
-  const graphSenderEmail = env?.GRAPH_SENDER_EMAIL || env?.SMTP_USER || 'crm@saadeddin.com';
+  // 1. Send admin notification email to recipientEmail
+  await sendEmail({
+    to: recipientEmail,
+    subject: emailSubject,
+    html: emailHtml,
+    env,
+  });
 
-  if (graphTenantId && graphClientId && graphClientSecret) {
-    try {
-      // Step 1: Get OAuth2 access token
-      const tokenRes = await fetch(
-        `https://login.microsoftonline.com/${graphTenantId}/oauth2/v2.0/token`,
-        {
-          method: 'POST',
-          headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-          body: new URLSearchParams({
-            grant_type: 'client_credentials',
-            client_id: graphClientId,
-            client_secret: graphClientSecret,
-            scope: 'https://graph.microsoft.com/.default',
-          }),
-        },
-      );
-      const tokenData = await tokenRes.json() as any;
-      const accessToken = tokenData?.access_token;
+  // 2. Send customer confirmation receipt email directly to payload.email (if valid)
+  if (payload.email && payload.email.includes('@') && payload.email !== recipientEmail) {
+    const confirmationSubject = `[Saadeddin Pastry] Confirmation: We received your ${payload.formTitle}`;
+    const confirmationHtml = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 12px; overflow: hidden; background-color: #FEF8EB;">
+        <div style="background-color: #234745; padding: 24px; text-align: center; color: #ffffff;">
+          <h2 style="margin: 0; font-size: 22px;">Saadeddin Pastry — حلويات سعد الدين</h2>
+          <p style="margin: 6px 0 0 0; font-size: 14px; opacity: 0.9;">Thank you for reaching out | شكراً لتواصلك معنا</p>
+        </div>
+        <div style="padding: 24px; color: #234745; line-height: 1.6;">
+          <p style="font-size: 16px; font-weight: bold; margin-top: 0;">Dear ${payload.fullName},</p>
+          <p style="font-size: 15px;">We have received your submission for <strong>${payload.formTitle}</strong>. Our team is reviewing your request and will get back to you shortly.</p>
+          <hr style="border: none; border-top: 1px solid #e5e5e5; margin: 20px 0;" />
+          <p style="font-size: 15px; font-weight: bold;">عزيزي/عزيزتي ${payload.fullName}،</p>
+          <p style="font-size: 15px;">تم استلام طلبك (<strong>${payload.formTitle}</strong>) بنجاح. سيقوم فريقنا بمراجعة التفاصيل والتواصل معك في أقرب وقت.</p>
+        </div>
+        <div style="background-color: #f4ece0; padding: 16px; text-align: center; font-size: 12px; color: #777777;">
+          Saadeddin Pastry &bull; حلويات سعد الدين
+        </div>
+      </div>
+    `;
 
-      if (accessToken) {
-        // Step 2: Send email via Microsoft Graph API
-        const mailRes = await fetch(
-          `https://graph.microsoft.com/v1.0/users/${graphSenderEmail}/sendMail`,
-          {
-            method: 'POST',
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              message: {
-                subject: emailSubject,
-                body: {contentType: 'HTML', content: emailHtml},
-                toRecipients: [{emailAddress: {address: recipientEmail}}],
-              },
-            }),
-          },
-        );
-
-        if (mailRes.status === 202) {
-          console.log(`[FormEmail] Email sent to ${recipientEmail} via Microsoft Graph API`);
-        } else {
-          const errBody = await mailRes.text();
-          console.error(`[FormEmail] Graph API send failed (${mailRes.status}):`, errBody);
-        }
-      } else {
-        console.error('[FormEmail] Graph API token error:', tokenData);
-      }
-    } catch (err) {
-      console.error('[FormEmail] Failed to send via Microsoft Graph API:', err);
-    }
-  }
-
-  // 2. Dispatch via Resend API if API Key is set
-  if (resendApiKey) {
-    try {
-      const resendRes = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${resendApiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          from: env?.FORM_EMAIL_FROM || 'Saadeddin Storefront <onboarding@resend.dev>',
-          to: [recipientEmail],
-          subject: emailSubject,
-          html: emailHtml,
-        }),
-      });
-      const resendData = await resendRes.json() as any;
-      if (resendRes.ok) {
-        console.log(`[FormEmail] Email sent via Resend to ${recipientEmail}. ID: ${resendData?.id}`);
-      } else {
-        console.error('[FormEmail] Resend API error:', JSON.stringify(resendData));
-      }
-    } catch (err) {
-      console.error('Failed to send email via Resend API:', err);
-    }
+    await sendEmail({
+      to: payload.email,
+      subject: confirmationSubject,
+      html: confirmationHtml,
+      env,
+    });
   }
 
   // 2. Dispatch to custom Webhook endpoint if set

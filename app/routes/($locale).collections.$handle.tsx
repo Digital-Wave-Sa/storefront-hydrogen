@@ -612,7 +612,7 @@ export default function Collection() {
             </div>
 
             {/* Desktop Sidebar (Right side in RTL) */}
-            <div className="hidden lg:block w-[320px] shrink-0 lg:order-1 border border-gray-200 rounded-3xl bg-white sticky top-24 self-start h-fit overflow-hidden">
+            <div className="hidden lg:block w-72 shrink-0 lg:order-1">
               <FilterSidebar
                 filters={collection.products.filters}
                 collections={globalCollections}

@@ -660,7 +660,7 @@ function InteractiveStarRating({
   const iconSize = size === 'lg' ? 36 : 24;
 
   return (
-    <div className="flex items-center gap-1.5" dir="ltr">
+    <div className="flex items-center gap-1.5" dir={isEn ? 'ltr' : 'rtl'}>
       {[1, 2, 3, 4, 5].map((star) => (
         <button
           key={star}

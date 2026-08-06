@@ -27,49 +27,58 @@ export async function sendEmail({
   env: any;
 }) {
   const resendApiKey = env?.RESEND_API_KEY;
-  const fromEmail = env?.FORM_EMAIL_FROM || 'Saadeddin Pastry <noreply@saadeddin.com>';
+  const fromEmail = env?.FORM_EMAIL_FROM || 'onboarding@resend.dev';
   const recipients = Array.isArray(to) ? to : [to];
 
-  // 1. Try Resend API if key is present
+  // Primary Dispatch via Resend API
   if (resendApiKey) {
     try {
-      const res = await fetch('https://api.resend.com/emails', {
+      let res = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${resendApiKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          from: fromEmail,
+          from: fromEmail.includes('<') ? fromEmail : `Saadeddin Pastry <${fromEmail}>`,
           to: recipients,
           subject,
           html,
         }),
       });
-      if (res.ok) return true;
+
+      let resData = (await res.json()) as any;
+
+      // If domain is unverified (403), retry using onboarding@resend.dev
+      if (!res.ok && res.status === 403 && !fromEmail.includes('onboarding@resend.dev')) {
+        res = await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${resendApiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            from: 'Saadeddin Pastry <onboarding@resend.dev>',
+            to: recipients,
+            subject,
+            html,
+          }),
+        });
+        resData = (await res.json()) as any;
+      }
+
+      if (res.ok) {
+        console.log(`[Resend OK] Email sent to ${recipients.join(', ')}. ID: ${resData?.id}`);
+        return true;
+      } else {
+        console.warn(`[Resend Error ${res.status}]`, JSON.stringify(resData));
+      }
     } catch (e) {
       console.error('Failed to send email via Resend:', e);
     }
   }
 
-  // 2. Try Saadeddin Middleware API (api.saadeddin.top)
-  const middlewareUrl = env?.SAADEDDIN_API_URL || 'https://api.saadeddin.top';
-  try {
-    const res = await fetch(`${middlewareUrl}/api/send-email`, {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({
-        to: recipients,
-        subject,
-        html,
-      }),
-    });
-    if (res.ok) return true;
-  } catch (e) {
-    console.warn('[SEND_EMAIL MW WARN]', e);
-  }
-
-  // 3. Try Microsoft Graph API
+  // Backup Dispatch via Microsoft Graph API
   const graphTenantId = env?.GRAPH_TENANT_ID;
   const graphClientId = env?.GRAPH_CLIENT_ID;
   const graphClientSecret = env?.GRAPH_CLIENT_SECRET;

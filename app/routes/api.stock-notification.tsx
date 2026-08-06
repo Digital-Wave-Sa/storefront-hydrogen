@@ -325,6 +325,7 @@ export async function action({request, context}: ActionFunctionArgs) {
             fields: [
               {key: 'email', value: email},
               {key: 'variant_id', value: String(variantId)},
+              {key: 'product_id', value: String(productId || numericProductId || '')},
               {key: 'location_id', value: String(numericLocationId)},
               {key: 'location_name', value: locationName || 'Global'},
               {key: 'product_title', value: productTitle || 'Product'},
@@ -341,6 +342,11 @@ export async function action({request, context}: ActionFunctionArgs) {
               {
                 name: 'Variant ID',
                 key: 'variant_id',
+                type: 'single_line_text_field',
+              },
+              {
+                name: 'Product ID',
+                key: 'product_id',
                 type: 'single_line_text_field',
               },
               {

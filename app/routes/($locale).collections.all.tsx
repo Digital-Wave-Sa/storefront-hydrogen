@@ -100,7 +100,7 @@ export async function loader({context, request}: LoaderFunctionArgs) {
         country: storefront.i18n.country,
         language: storefront.i18n.language,
       },
-      cache: storefront.CacheNone(),
+      cache: storefront.CacheShort(),
     });
 
     // Filter by selected collections manually if 'category' params exist
@@ -117,7 +117,7 @@ export async function loader({context, request}: LoaderFunctionArgs) {
               country: storefront.i18n.country,
               language: storefront.i18n.language,
             },
-            cache: storefront.CacheNone(),
+            cache: storefront.CacheShort(),
           }),
         );
 

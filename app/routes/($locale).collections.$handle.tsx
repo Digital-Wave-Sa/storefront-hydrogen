@@ -100,7 +100,7 @@ export async function loader({request, params, context}: LoaderFunctionArgs) {
       country: storefront.i18n.country,
       language: storefront.i18n.language,
     } as any,
-    cache: storefront.CacheNone(),
+    cache: storefront.CacheShort(),
   });
 
   let targetCollection = collection;

@@ -11,7 +11,7 @@ export const meta: MetaFunction = () => {
     {
       name: 'description',
       content:
-        'Learn more about Saadeddin, our story, values, and history since 1919. | تعرف على المزيد حول حلويات سعد الدين، قصتنا، قيمنا، وتاريخنا منذ عام ١٩١٩.',
+        'Learn more about Saadeddin, our story, values, and history since 1919. | تعرف على المزيد حول حلويات سعد الدين، قصتنا، قيمنا، وتاريخنا منذ عام 1919.',
     },
     {property: 'og:title', content: 'Our Story | Saadeddin'},
     {
@@ -31,7 +31,7 @@ export default function AboutPage() {
   const milestones = [
     {
       number: '1',
-      year: isEn ? '1919' : '١٩١٩',
+      year: '1919',
       title: isEn ? 'Foundation' : 'التأسيس',
       desc: isEn
         ? 'Opening the first shop in Riyadh with authentic family recipes.'
@@ -39,15 +39,15 @@ export default function AboutPage() {
     },
     {
       number: '2',
-      year: isEn ? '1950' : '١٩٥٠',
+      year: '1950',
       title: isEn ? 'First Expansion' : 'التوسع الأول',
       desc: isEn
         ? 'Opening 3 new branches in Riyadh and first expansion outside the city.'
-        : 'افتتاح ٣ فروع جديدة في الرياض وأول انتشار خارج المدينة',
+        : 'افتتاح 3 فروع جديدة في الرياض وأول انتشار خارج المدينة',
     },
     {
       number: '3',
-      year: isEn ? '1970' : '١٩٧٠',
+      year: '1970',
       title: isEn ? 'Kingdom Expansion' : 'الانتشار في المملكة',
       desc: isEn
         ? 'Opening branches in Jeddah and Dammam - the beginning of a national chain.'
@@ -55,27 +55,27 @@ export default function AboutPage() {
     },
     {
       number: '4',
-      year: isEn ? '2000' : '٢٠٠٠',
+      year: '2000',
       title: isEn ? 'Major Leap' : 'الطفرة الكبرى',
       desc: isEn
         ? 'Exceeding 50 branches across the Kingdom and launching new assortments.'
-        : 'تجاوز ٥٠ فرعاً في أنحاء المملكة وإطلاق تشكيلات جديدة',
+        : 'تجاوز 50 فرعاً في أنحاء المملكة وإطلاق تشكيلات جديدة',
     },
     {
       number: '5',
-      year: isEn ? '2015' : '٢٠١٥',
+      year: '2015',
       title: isEn ? 'Digital & Delivery' : 'الرقمي والتوصيل',
       desc: isEn
         ? 'Launching the online delivery platform and exceeding 100 branches.'
-        : 'إطلاق منصة التوصيل الإلكتروني وتجاوز ١٠٠ فرع',
+        : 'إطلاق منصة التوصيل الإلكتروني وتجاوز 100 فرع',
     },
     {
       number: '6',
-      year: isEn ? '2026' : '٢٠٢٦',
+      year: '2026',
       title: isEn ? 'Today' : 'اليوم',
       desc: isEn
         ? '117 branches in 35 cities and millions of customers trust us daily.'
-        : '١١٧ فرع في ٣٥ مدينة وملايين العملاء يثقون بنا يومياً',
+        : '117 فرع في 35 مدينة وملايين العملاء يثقون بنا يومياً',
     },
   ];
   const values = [
@@ -105,7 +105,7 @@ export default function AboutPage() {
       title: isEn ? 'Sustainability' : 'الاستدامة',
       desc: isEn
         ? 'We work to reduce environmental impact and develop sustainable packaging by 2030.'
-        : 'نعمل على تقليل الأثر البيئي وتطوير تغليف مستدام بحلول ٢٠٣٠',
+        : 'نعمل على تقليل الأثر البيئي وتطوير تغليف مستدام بحلول 2030',
     },
     {
       id: 5,
@@ -159,7 +159,7 @@ export default function AboutPage() {
               lineHeight: '100%',
             }}
           >
-            {isEn ? 'Since 1919' : 'منذ عام ١٩١٩'}
+            {isEn ? 'Since 1919' : 'منذ عام 1919'}
           </p>
           <h1
             className="font-bold text-[26px] md:text-[50px]"
@@ -194,7 +194,7 @@ export default function AboutPage() {
         <div className="max-w-[1400px] mx-auto px-4 md:px-[80px] py-16 md:py-24">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-20 items-center">
             {/* Text Content */}
-            <div className="space-y-4 text-right order-2 md:order-1">
+            <div className={`space-y-4 text-start order-2 ${isEn ? 'md:order-1' : 'md:order-2'}`}>
               <p
                 className="text-[#906B51] text-[14px] font-normal !mb-2"
                 style={{
@@ -224,7 +224,7 @@ export default function AboutPage() {
                 <p className="!mb-2 !font-normal">
                   {isEn
                     ? 'In 1919, Saadeddin opened its doors for the first time in the heart of Riyadh. He had nothing in his hands but inherited family recipes and a sincere desire to make those around him happy with the finest sweets.'
-                    : 'في عام ١٩١٩، فتح سعد الدين أبوابه لأول مرة في قلب الرياض. لم يكن في يده سوى وصفات عائلية موروثة ورغبة صادقة في إسعاد من حوله بأجود الحلويات.'}
+                    : 'في عام 1919، فتح سعد الدين أبوابه لأول مرة في قلب الرياض. لم يكن في يده سوى وصفات عائلية موروثة ورغبة صادقة في إسعاد من حوله بأجود الحلويات.'}
                 </p>
                 <p className="!mb-2 !text-[16px] !font-normal">
                   {isEn
@@ -235,7 +235,7 @@ export default function AboutPage() {
             </div>
 
             {/* Image */}
-            <div className="relative overflow-hidden order-1 md:order-2 shadow-xl">
+            <div className={`relative overflow-hidden order-1 ${isEn ? 'md:order-2' : 'md:order-1'} shadow-xl`}>
               <img
                 src="/assets/images/about/our%20story.webp"
                 alt="Our Story"
@@ -347,75 +347,71 @@ export default function AboutPage() {
             </svg>
 
             <div className="grid grid-cols-3 gap-y-16 md:gap-y-32 md:gap-x-16 relative z-10">
-              {/* Timeline Item 1 */}
+              {/* Row 1: Left = 1, Middle = 2, Right = 3 */}
               <TimelineItem
-                number="1"
-                year={isEn ? '1919' : '١٩١٩'}
-                title={isEn ? 'Foundation' : 'التأسيس'}
+                number={isEn ? "1" : "3"}
+                year={isEn ? '1919' : '1970'}
+                title={isEn ? 'Foundation' : 'الانتشار في المملكة'}
                 desc={
                   isEn
                     ? 'Opening the first shop in Riyadh with authentic family recipes.'
-                    : 'افتتاح أول محل في الرياض بوصفات عائلية أصيلة ورغبة في الإبداع'
-                }
-                isEn={isEn}
-              />
-              {/* Timeline Item 2 */}
-              <TimelineItem
-                number="2"
-                year={isEn ? '1950' : '١٩٥٠'}
-                title={isEn ? 'First Expansion' : 'التوسع الأول'}
-                desc={
-                  isEn
-                    ? 'Opening 3 new branches in Riyadh and first expansion outside the city.'
-                    : 'افتتاح ٣ فروع جديدة في الرياض وأول انتشار خارج المدينة'
-                }
-                isEn={isEn}
-              />
-              {/* Timeline Item 3 */}
-              <TimelineItem
-                number="3"
-                year={isEn ? '1970' : '١٩٧٠'}
-                title={isEn ? 'Kingdom Expansion' : 'الانتشار في المملكة'}
-                desc={
-                  isEn
-                    ? 'Opening branches in Jeddah and Dammam - the beginning of a national chain.'
                     : 'افتتاح فروع في جدة والدمام — بداية التحول لسلسلة وطنية'
                 }
                 isEn={isEn}
               />
-              {/* Timeline Item 6 */}
               <TimelineItem
-                number="6"
-                year={isEn ? '2026' : '٢٠٢٦'}
-                title={isEn ? 'Today' : 'اليوم'}
+                number="2"
+                year="1950"
+                title={isEn ? 'First Expansion' : 'التوسع الأول'}
                 desc={
                   isEn
-                    ? '117 branches in 35 cities and millions of customers trust us daily.'
-                    : '١١٧ فرع في ٣٥ مدينة وملايين العملاء يثقون بنا يومياً'
+                    ? 'Opening 3 new branches in Riyadh and first expansion outside the city.'
+                    : 'افتتاح 3 فروع جديدة في الرياض وأول انتشار خارج المدينة'
                 }
                 isEn={isEn}
               />
-              {/* Timeline Item 5 */}
+              <TimelineItem
+                number={isEn ? "3" : "1"}
+                year={isEn ? '1970' : '1919'}
+                title={isEn ? 'Kingdom Expansion' : 'التأسيس'}
+                desc={
+                  isEn
+                    ? 'Opening branches in Jeddah and Dammam - the beginning of a national chain.'
+                    : 'افتتاح أول محل في الرياض بوصفات عائلية أصيلة ورغبة في الإبداع'
+                }
+                isEn={isEn}
+              />
+              {/* Row 2: Left = 6, Middle = 5, Right = 4 */}
+              <TimelineItem
+                number={isEn ? "6" : "4"}
+                year={isEn ? '2026' : '2000'}
+                title={isEn ? 'Today' : 'الطفرة الكبرى'}
+                desc={
+                  isEn
+                    ? '117 branches in 35 cities and millions of customers trust us daily.'
+                    : 'تجاوز 50 فرعاً في أنحاء المملكة وإطلاق تشكيلات جديدة'
+                }
+                isEn={isEn}
+              />
               <TimelineItem
                 number="5"
-                year={isEn ? '2015' : '٢٠١٥'}
+                year="2015"
                 title={isEn ? 'Digital & Delivery' : 'الرقمي والتوصيل'}
                 desc={
                   isEn
                     ? 'Launching the online delivery platform and exceeding 100 branches.'
-                    : 'إطلاق منصة التوصيل الإلكتروني وتجاوز ١٠٠ فرع'
+                    : 'إطلاق منصة التوصيل الإلكتروني وتجاوز 100 فرع'
                 }
                 isEn={isEn}
               />
-              {/* Timeline Item 4 */}
               <TimelineItem
-                number="4"
-                year={isEn ? '2000' : '٢٠٠٠'}
-                title={isEn ? 'Major Leap' : 'الطفرة الكبرى'}
+                number={isEn ? "4" : "6"}
+                year={isEn ? '2000' : '2026'}
+                title={isEn ? 'Major Leap' : 'اليوم'}
                 desc={
                   isEn
                     ? 'Exceeding 50 branches across the Kingdom and launching new assortments.'
-                    : 'تجاوز ٥٠ فرعاً في أنحاء المملكة وإطلاق تشكيلات جديدة'
+                    : '117 فرع في 35 مدينة وملايين العملاء يثقون بنا يومياً'
                 }
                 isEn={isEn}
               />
@@ -564,7 +560,7 @@ export default function AboutPage() {
         <div className="max-w-[1400px] mx-auto px-4 md:px-[80px]">
           <div
             className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center text-white"
-            dir="rtl"
+            dir={isEn ? 'ltr' : 'rtl'}
           >
             {/* Stat 1 */}
             <div className="flex flex-col gap-3 items-center justify-center space-y-2">
@@ -574,7 +570,7 @@ export default function AboutPage() {
                   fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif",
                 }}
               >
-                +100
+                100+
               </p>
               <p
                 className="!text-[12px] text-[#9FB7AE]"
@@ -614,7 +610,7 @@ export default function AboutPage() {
                   fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif",
                 }}
               >
-                5+ مليون
+                {isEn ? '5+ Million' : '5+ مليون'}
               </p>
               <p
                 className="!text-[12px] text-[#9FB7AE]"
@@ -622,7 +618,7 @@ export default function AboutPage() {
                   fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
                 }}
               >
-                {isEn ? 'Happy Customer' : 'عميل سعيد'}
+                {isEn ? 'Happy Customers' : 'عميل سعيد'}
               </p>
             </div>
 
@@ -642,7 +638,7 @@ export default function AboutPage() {
                   fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
                 }}
               >
-                {isEn ? 'Premium Product' : 'منتج فاخر'}
+                {isEn ? 'Premium Products' : 'منتج فاخر'}
               </p>
             </div>
           </div>

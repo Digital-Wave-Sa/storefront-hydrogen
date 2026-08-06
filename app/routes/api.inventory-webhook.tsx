@@ -82,9 +82,20 @@ export async function action({request, context}: ActionFunctionArgs) {
     const productTitle = variant.product.title;
     const variantTitle = variant.title;
 
+    // Helper to extract clean numeric ID from GID or raw string
+    const extractId = (val: any) => {
+      if (!val) return '';
+      const str = String(val).trim();
+      if (str.includes('/')) {
+        return str.split('/').pop() || '';
+      }
+      return str;
+    };
+
+    const cleanVariantId = extractId(variantId);
+    const cleanProductId = extractId(variant.product?.id);
+
     // 2. Query Metaobjects for subscriptions
-    // We search for type "stock_notification" matching this variant
-    // For simplicity in this demo environment, we fetch all and filter locally
     const getSubscriptionsQuery = `
       query GetStockSubscriptions {
         metaobjects(type: "stock_notification", first: 100) {
@@ -111,18 +122,35 @@ export async function action({request, context}: ActionFunctionArgs) {
     const subData = (await subRes.json()) as any;
     const allSubs = subData.data?.metaobjects?.nodes || [];
 
-    // Filter relevant subs (matching variant and location)
-    // location_id from webhook is usually the legacy ID (number)
+    // Filter relevant subs: MUST strictly match exact variant_id or product_id of the restocked item
     const relevantSubs = allSubs.filter((node: any) => {
       const fields = node.fields.reduce(
         (acc: any, f: any) => ({...acc, [f.key]: f.value}),
         {},
       );
-      const matchesVariant = fields.variant_id === variantId;
+
+      if (!fields.email || !fields.email.includes('@')) return false;
+
+      const subVariantId = extractId(fields.variant_id);
+      const subProductId = extractId(fields.product_id);
+      const subLocationId = extractId(fields.location_id);
+      const webhookLocationId = extractId(location_id);
+
+      // Strict item match: must match restocked variant_id or product_id
+      const matchesVariant = subVariantId && subVariantId === cleanVariantId;
+      const matchesProduct = subProductId && subProductId === cleanProductId;
+
+      if (!matchesVariant && !matchesProduct) {
+        return false;
+      }
+
+      // Location match: exact location ID or global
       const matchesLocation =
-        fields.location_id === location_id.toString() ||
-        fields.location_id === 'global';
-      return matchesVariant && matchesLocation;
+        !subLocationId ||
+        subLocationId === 'global' ||
+        subLocationId === webhookLocationId;
+
+      return matchesLocation;
     });
 
     console.log(

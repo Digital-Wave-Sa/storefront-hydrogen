@@ -912,6 +912,7 @@ export function FilterSidebar({
   isDesktop = false,
   isEn,
   hideSearchInput = false,
+  hideCategories = false,
 }: {
   filters: any[];
   collections: any[];
@@ -919,6 +920,7 @@ export function FilterSidebar({
   isDesktop?: boolean;
   isEn?: boolean;
   hideSearchInput?: boolean;
+  hideCategories?: boolean;
 }) {
   const submit = useSubmit();
   const location = useLocation();
@@ -1046,11 +1048,65 @@ export function FilterSidebar({
     'national-day',
     'corporate-gifts',
   ];
-  const occasionCollections = collections
+
+  const DEFAULT_OCCASIONS = [
+    {
+      id: 'occ-eid',
+      handle: 'eid',
+      title: isEn ? 'Eid Al-Fitr & Al-Adha' : 'عيد الفطر والاضحى',
+    },
+    {
+      id: 'occ-ramadan',
+      handle: 'ramadan',
+      title: isEn ? 'Ramadan' : 'رمضان',
+    },
+    {
+      id: 'occ-birthdays',
+      handle: 'birthdays',
+      title: isEn ? 'Birthdays' : 'أعياد الميلاد',
+    },
+    {
+      id: 'occ-wedding',
+      handle: 'wedding',
+      title: isEn ? 'Wedding & Engagement' : 'زفاف وخطوبة',
+    },
+    {
+      id: 'occ-graduation',
+      handle: 'graduation',
+      title: isEn ? 'Graduation' : 'تخرج',
+    },
+    {
+      id: 'occ-mothers-day',
+      handle: 'mothers-day',
+      title: isEn ? "Mother's Day" : 'يوم الأم',
+    },
+    {
+      id: 'occ-national-day',
+      handle: 'national-day',
+      title: isEn ? 'National Day' : 'اليوم الوطني',
+    },
+    {
+      id: 'occ-new-baby',
+      handle: 'new-baby',
+      title: isEn ? 'New Baby' : 'مواليد',
+    },
+    {
+      id: 'occ-corporate-gifts',
+      handle: 'corporate-gifts',
+      title: isEn ? 'Corporate Gifts' : 'هدايا مؤسسية',
+    },
+  ];
+
+  const dynamicOccasionCollections = (collections || [])
     .filter((c: any) => occasionHandles.includes(c.handle))
     .sort(
       (a: any, b: any) => order.indexOf(a.handle) - order.indexOf(b.handle),
-    ); // Price state
+    );
+
+  const occasionCollections =
+    dynamicOccasionCollections.length > 0
+      ? dynamicOccasionCollections
+      : DEFAULT_OCCASIONS; // Price state
   const [minPrice, setMinPrice] = useState('');
   const [maxPrice, setMaxPrice] = useState('');
 
@@ -1363,92 +1419,96 @@ export function FilterSidebar({
         )}
 
         {/* Categories - Dynamic from Collections with Fallbacks */}
-        <div className="w-[270px] flex flex-col gap-4">
-          <button
-            type="button"
-            onClick={() => toggleSection('categories')}
-            className="flex items-center justify-between w-full outline-none group"
-          >
-            <h3
-              className={`text-[16px] font-bold ${isEn ? 'font-en' : "font-['GE_Dinar_One']"} text-[#171717]`}
-            >
-              {isEn ? 'Categories' : 'الأقسام'}
-            </h3>
-            <svg
-              className={`w-4 h-4 text-[#234745] transition-transform duration-300 ${openSections['categories'] ? 'rotate-180' : ''}`}
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth="1.5"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M19 9l-7 7-7-7"
-              />
-            </svg>
-          </button>
-          <div
-            className={`flex flex-col gap-3 transition-all duration-300 ${openSections['categories'] ? 'max-h-[220px] overflow-y-auto custom-scrollbar opacity-100 pr-1 pl-1' : 'max-h-0 overflow-hidden opacity-0'}`}
-          >
-            {categoryCollections.map((collection: any) => {
-              const isActive = currentParams
-                .getAll('category')
-                .includes(collection.handle);
-              return (
-                <button
-                  type="button"
-                  key={collection.id}
-                  onClick={() => toggleParamLink('category', collection.handle)}
-                  className="flex items-center justify-between w-full outline-none group text-start"
+        {!hideCategories && (
+          <>
+            <div className="w-[270px] flex flex-col gap-4">
+              <button
+                type="button"
+                onClick={() => toggleSection('categories')}
+                className="flex items-center justify-between w-full outline-none group"
+              >
+                <h3
+                  className={`text-[16px] font-bold ${isEn ? 'font-en' : "font-['GE_Dinar_One']"} text-[#171717]`}
                 >
-                  <div className="flex items-center gap-2">
-                    <div
-                      className={`w-4 h-4 rounded flex items-center justify-center transition-colors ${isActive ? 'bg-[#234745]' : 'border-[1.14px] border-[#BBCFCD] bg-white group-hover:border-[#234745]'}`}
+                  {isEn ? 'Categories' : 'الأقسام'}
+                </h3>
+                <svg
+                  className={`w-4 h-4 text-[#234745] transition-transform duration-300 ${openSections['categories'] ? 'rotate-180' : ''}`}
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M19 9l-7 7-7-7"
+                  />
+                </svg>
+              </button>
+              <div
+                className={`flex flex-col gap-3 transition-all duration-300 ${openSections['categories'] ? 'max-h-[220px] overflow-y-auto custom-scrollbar opacity-100 pr-1 pl-1' : 'max-h-0 overflow-hidden opacity-0'}`}
+              >
+                {categoryCollections.map((collection: any) => {
+                  const isActive = currentParams
+                    .getAll('category')
+                    .includes(collection.handle);
+                  return (
+                    <button
+                      type="button"
+                      key={collection.id}
+                      onClick={() => toggleParamLink('category', collection.handle)}
+                      className="flex items-center justify-between w-full outline-none group text-start"
                     >
-                      {isActive && (
-                        <svg
-                          width="12"
-                          height="12"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="white"
-                          strokeWidth="3"
+                      <div className="flex items-center gap-2">
+                        <div
+                          className={`w-4 h-4 rounded flex items-center justify-center transition-colors ${isActive ? 'bg-[#234745]' : 'border-[1.14px] border-[#BBCFCD] bg-white group-hover:border-[#234745]'}`}
                         >
-                          <polyline points="20 6 9 17 4 12"></polyline>
-                        </svg>
-                      )}
-                    </div>
-                    <span
-                      className={`text-[16px] font-medium ${isEn ? 'font-en' : "font-['GE_Dinar_One']"} transition-colors ${isActive ? 'text-[#234745]' : 'text-[#7D7D7D] group-hover:text-[#234745]'}`}
-                    >
-                      {!isEn && localCategoryTranslation[collection.handle]
-                        ? localCategoryTranslation[collection.handle]
-                        : collection.title}
-                    </span>
-                  </div>
-                  <span
-                    className={`text-[16px] font-medium ${isEn ? 'font-en text-[#7D7D7D]' : "font-['GE_Dinar_One'] text-[#7D7D7D]"}`}
-                  >
-                    {collection.products?.nodes !== undefined ? (
-                      <>
-                        (
-                        <span className="font-en">
-                          {collection.products.nodes.length}
+                          {isActive && (
+                            <svg
+                              width="12"
+                              height="12"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="white"
+                              strokeWidth="3"
+                            >
+                              <polyline points="20 6 9 17 4 12"></polyline>
+                            </svg>
+                          )}
+                        </div>
+                        <span
+                          className={`text-[16px] font-medium ${isEn ? 'font-en' : "font-['GE_Dinar_One']"} transition-colors ${isActive ? 'text-[#234745]' : 'text-[#7D7D7D] group-hover:text-[#234745]'}`}
+                        >
+                          {!isEn && localCategoryTranslation[collection.handle]
+                            ? localCategoryTranslation[collection.handle]
+                            : collection.title}
                         </span>
-                        )
-                      </>
-                    ) : (
-                      ''
-                    )}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
+                      </div>
+                      <span
+                        className={`text-[16px] font-medium ${isEn ? 'font-en text-[#7D7D7D]' : "font-['GE_Dinar_One'] text-[#7D7D7D]"}`}
+                      >
+                        {collection.products?.nodes !== undefined ? (
+                          <>
+                            (
+                            <span className="font-en">
+                              {collection.products.nodes.length}
+                            </span>
+                            )
+                          </>
+                        ) : (
+                          ''
+                        )}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
 
-        <div className="w-[302px] border-t border-[#BBCFCD]/50 my-0" />
+            <div className="w-[302px] border-t border-[#BBCFCD]/50 my-0" />
+          </>
+        )}
 
         {/* Price */}
         <div className="w-[270px] flex flex-col gap-4">

@@ -619,7 +619,6 @@ export default function Collection() {
                 onClose={() => {}}
                 isDesktop={true}
                 isEn={isEn}
-                hideSearchInput={true}
                 hideCategories={true}
               />
             </div>
@@ -646,7 +645,6 @@ export default function Collection() {
                 collections={globalCollections}
                 onClose={() => setIsFilterOpen(false)}
                 isEn={isEn}
-                hideSearchInput={true}
                 hideCategories={true}
               />
             </div>

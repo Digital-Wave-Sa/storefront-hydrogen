@@ -294,6 +294,51 @@ export default function CustomCakeBuilder({
 
   const hasLoadedRef = useRef(false);
 
+  // Helper to find matching option by name, id, gid, or partial string match
+  const findMatchingOption = <T extends { id?: string; name?: string; color?: string; count?: number }>(
+    options: T[],
+    val: string | null | undefined,
+    fallback: T
+  ): T => {
+    if (!val) return fallback;
+    const cleanVal = val.trim().toLowerCase();
+    const cleanValNormalized = cleanVal.replace(/[-_\s]+/g, '_');
+
+    return options.find(opt => {
+      const optId = (opt.id || '').toLowerCase();
+      const optIdNormalized = optId.replace(/[-_\s]+/g, '_');
+      const optName = (opt.name || '').toLowerCase();
+      const optColor = (opt.color || '').toLowerCase();
+      const optGid = ((opt as any).gid || '').toLowerCase();
+
+      if (optId === cleanVal || optIdNormalized === cleanValNormalized) return true;
+      if (optGid && optGid === cleanVal) return true;
+      if (optName === cleanVal) return true;
+      if (optColor && optColor === cleanVal) return true;
+      if (opt.count && String(opt.count) === cleanVal) return true;
+
+      if (optName && cleanVal) {
+        if (optName.includes(cleanVal) || cleanVal.includes(optName)) return true;
+
+        const parentheticalMatch = optName.match(/\(([^)]+)\)/);
+        if (parentheticalMatch) {
+          const enPart = parentheticalMatch[1].toLowerCase().trim();
+          const enPartNormalized = enPart.replace(/[-_\s]+/g, '_');
+          if (enPart === cleanVal || enPartNormalized === cleanValNormalized || cleanVal.includes(enPart) || enPart.includes(cleanVal)) {
+            return true;
+          }
+        }
+
+        const arPart = optName.split('(')[0].toLowerCase().trim();
+        if (arPart && (arPart === cleanVal || cleanVal.includes(arPart) || arPart.includes(cleanVal))) {
+          return true;
+        }
+      }
+
+      return false;
+    }) || fallback;
+  };
+
   // Sync dynamic selections when options load exactly once
   React.useEffect(() => {
     if (cakeAttributes?.length > 0 && !hasLoadedRef.current) {
@@ -322,12 +367,12 @@ export default function CustomCakeBuilder({
           if (rawPlacement.toLowerCase().includes('both') || rawPlacement.includes('معا')) messagePlacement = 'both';
           else if (rawPlacement.toLowerCase().includes('base') || rawPlacement.includes('القاعدة')) messagePlacement = 'base';
 
-          const shape = mergedOptions.shapes.find(s => s.name === shapeVal || s.id === shapeVal) || mergedOptions.shapes[0];
-          const size = cakeOptions.sizes.find(s => s.name === sizeVal || s.id === sizeVal) || selections.size;
-          const tier = cakeOptions.tiers.find(t => t.name === layersVal || String(t.count) === layersVal || t.id === layersVal) || selections.tier;
-          const flavor = mergedOptions.flavors.find(f => f.name === flavorVal || f.id === flavorVal) || mergedOptions.flavors[0];
-          const style = mergedOptions.styles.find(s => s.name === toppingVal || s.id === toppingVal) || mergedOptions.styles[0];
-          const color = cakeOptions.colors.find(c => c.name === colorVal || c.color === colorVal || c.id === colorVal) || selections.color;
+          const shape = findMatchingOption(mergedOptions.shapes, shapeVal, mergedOptions.shapes[0]);
+          const size = findMatchingOption(cakeOptions.sizes, sizeVal, selections.size);
+          const tier = findMatchingOption(cakeOptions.tiers, layersVal, selections.tier);
+          const flavor = findMatchingOption(mergedOptions.flavors, flavorVal, mergedOptions.flavors[0]);
+          const style = findMatchingOption(mergedOptions.styles, toppingVal, mergedOptions.styles[0]);
+          const color = findMatchingOption(cakeOptions.colors, colorVal, selections.color);
 
           setSelections({
             shape,
@@ -351,54 +396,14 @@ export default function CustomCakeBuilder({
         }
       }
 
-      let savedData = null;
-      try {
-        const saved = localStorage.getItem('custom_cake_selections');
-        if (saved) {
-          savedData = JSON.parse(saved);
-        }
-      } catch (e) {
-        console.error('Failed to load selections from localStorage:', e);
-      }
-
-      if (savedData) {
-        const shape = mergedOptions.shapes.find(s => s.id === savedData.shapeId) || mergedOptions.shapes[0];
-        const size = cakeOptions.sizes.find(s => s.id === savedData.sizeId) || selections.size;
-        const tier = cakeOptions.tiers.find(t => t.id === savedData.tierId) || selections.tier;
-        const flavor = mergedOptions.flavors.find(f => f.id === savedData.flavorId) || mergedOptions.flavors[0];
-        const style = mergedOptions.styles.find(s => s.id === savedData.styleId) || mergedOptions.styles[0];
-        const color = cakeOptions.colors.find(c => c.id === savedData.colorId) || selections.color;
-        const prepTime = prepTimeOptions.find(p => p.id === savedData.prepTimeId) || prepTimeOptions[0];
-
-        setSelections({
-          shape,
-          size,
-          tier,
-          flavor,
-          style,
-          color,
-          messagePlacement: savedData.messagePlacement || 'cake',
-          message: savedData.message || '',
-          baseMessage: savedData.baseMessage || '',
-          specialInstructions: savedData.specialInstructions || '',
-          textColor: savedData.textColor || '#4a2511',
-          textFont: savedData.textFont || 'Classic',
-          uploadedImage: savedData.uploadedImage || null,
-          prepTime
-        });
-
-        // Set to the last step so they can proceed with checkout immediately after login
-        setCurrentStep(4);
-      } else {
-        const defaultPrep = prepTimeOptions[0];
-        setSelections(prev => ({
-          ...prev,
-          shape: mergedOptions.shapes.find(s => s.id === prev.shape?.id) || mergedOptions.shapes[0],
-          flavor: mergedOptions.flavors.find(f => f.id === prev.flavor?.id) || mergedOptions.flavors[0],
-          style: mergedOptions.styles.find(s => s.id === prev.style?.id) || mergedOptions.styles[0],
-          prepTime: defaultPrep
-        }));
-      }
+      const defaultPrep = prepTimeOptions[0];
+      setSelections(prev => ({
+        ...prev,
+        shape: mergedOptions.shapes.find(s => s.id === prev.shape?.id) || mergedOptions.shapes[0],
+        flavor: mergedOptions.flavors.find(f => f.id === prev.flavor?.id) || mergedOptions.flavors[0],
+        style: mergedOptions.styles.find(s => s.id === prev.style?.id) || mergedOptions.styles[0],
+        prepTime: defaultPrep
+      }));
     }
   }, [mergedOptions, cakeAttributes, prepTimeOptions]);
 
@@ -419,6 +424,9 @@ export default function CustomCakeBuilder({
 
     return mergedOptions.styles.filter(style => {
       if (style.id === 'basic') return true;
+
+      // Always include currently selected style (e.g. from reorder)
+      if (selections.style && (style.id === selections.style.id || style.name === selections.style.name)) return true;
 
       const styleGid = ((style as any)?.gid || style.id || '').toLowerCase();
 
@@ -453,44 +461,21 @@ export default function CustomCakeBuilder({
         return false;
       });
     });
-  }, [mergedOptions.styles, selections.shape, toppingDesigns, cakeAttributes]);
+  }, [mergedOptions.styles, selections.shape, selections.style, toppingDesigns, cakeAttributes]);
 
   // Keep selected style synced if shape changes and previous style becomes unavailable
   React.useEffect(() => {
     if (availableStyles.length > 0) {
-      const isAvailable = availableStyles.some(s => s.id === selections.style?.id);
-      if (!isAvailable) {
+      const isAvailable = availableStyles.some(s => 
+        s.id === selections.style?.id || 
+        s.name === selections.style?.name ||
+        (s.id && selections.style?.id && (s.id.includes(selections.style.id) || selections.style.id.includes(s.id)))
+      );
+      if (!isAvailable && selections.style?.id !== 'basic') {
         setSelections(prev => ({ ...prev, style: availableStyles[0] }));
       }
     }
-  }, [availableStyles, selections.style?.id]);
-
-  // Auto-save selections to localStorage on change
-  React.useEffect(() => {
-    if (hasLoadedRef.current) {
-      const dataToSave = {
-        shapeId: selections.shape?.id,
-        sizeId: selections.size?.id,
-        tierId: selections.tier?.id,
-        flavorId: selections.flavor?.id,
-        styleId: selections.style?.id,
-        colorId: selections.color?.id,
-        messagePlacement: selections.messagePlacement,
-        message: selections.message,
-        baseMessage: selections.baseMessage,
-        specialInstructions: selections.specialInstructions,
-        textColor: selections.textColor,
-        textFont: selections.textFont,
-        uploadedImage: selections.uploadedImage,
-        prepTimeId: selections.prepTime?.id
-      };
-      try {
-        localStorage.setItem('custom_cake_selections', JSON.stringify(dataToSave));
-      } catch (e) {
-        console.error('Failed to save selections to localStorage:', e);
-      }
-    }
-  }, [selections]);
+  }, [availableStyles, selections.style]);
 
   const [view, setView] = useState<'front' | 'top' | 'sliced'>('front');
 
@@ -633,9 +618,6 @@ export default function CustomCakeBuilder({
         return;
       }
       if (data.checkoutUrl) {
-        try {
-          localStorage.removeItem('custom_cake_selections');
-        } catch (e) { }
         window.location.href = data.checkoutUrl;
       } else {
         alert(data.error || 'حدث خطأ أثناء إتمام الطلب');

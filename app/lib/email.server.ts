@@ -64,21 +64,25 @@ export function getBackInStockTemplate({
   language?: 'AR' | 'EN';
 }) {
   const isEn = language === 'EN';
-  const title = isEn ? `${productTitle} is back in stock!` : `منتج ${productTitle} متوفر الآن!`;
+  const subject = isEn
+    ? `${productTitle} is back in stock!`
+    : `منتج ${productTitle} متوفر الآن لدى سعد الدين!`;
   const body = isEn
     ? `Great news! ${productTitle} ${variantTitle ? `(${variantTitle})` : ''} is now back in stock at Saadeddin Pastry. Click below to order now!`
     : `بشرى سارة! منتج ${productTitle} ${variantTitle ? `(${variantTitle})` : ''} متوفر الآن لدى حلويات سعد الدين. اضغط أدناه للطلب الآن!`;
   const buttonText = isEn ? 'Shop Now' : 'تسوق الآن';
 
-  return `
+  const html = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e0e0e0; border-radius: 12px; background-color: #FEF8EB; color: #234745;">
-      <h2 style="color: #234745; margin-top: 0;">${title}</h2>
+      <h2 style="color: #234745; margin-top: 0;">${subject}</h2>
       <p style="font-size: 16px; line-height: 1.6;">${body}</p>
       <div style="text-align: center; margin-top: 24px;">
         <a href="${productUrl}" style="background-color: #234745; color: #ffffff; padding: 12px 28px; text-decoration: none; border-radius: 999px; font-weight: bold; display: inline-block;">${buttonText}</a>
       </div>
     </div>
   `;
+
+  return {subject, text: body, html};
 }
 
 export async function sendFormEmailNotification(

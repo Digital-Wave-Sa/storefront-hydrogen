@@ -44,6 +44,7 @@ export async function action({request, context}: ActionFunctionArgs) {
             id
             title
             product {
+              id
               title
               handle
             }
@@ -81,6 +82,8 @@ export async function action({request, context}: ActionFunctionArgs) {
     const variantId = variant.id;
     const productTitle = variant.product.title;
     const variantTitle = variant.title;
+    const productHandle = variant.product.handle || '';
+    const productUrl = `https://${PUBLIC_STORE_DOMAIN || 'saadeddin.com'}/products/${productHandle}`;
 
     // Helper to extract clean numeric ID from GID or raw string
     const extractId = (val: any) => {
@@ -137,8 +140,8 @@ export async function action({request, context}: ActionFunctionArgs) {
       const webhookLocationId = extractId(location_id);
 
       // Strict item match: must match restocked variant_id or product_id
-      const matchesVariant = subVariantId && subVariantId === cleanVariantId;
-      const matchesProduct = subProductId && subProductId === cleanProductId;
+      const matchesVariant = subVariantId && cleanVariantId && subVariantId === cleanVariantId;
+      const matchesProduct = subProductId && cleanProductId && subProductId === cleanProductId;
 
       if (!matchesVariant && !matchesProduct) {
         return false;
@@ -166,22 +169,21 @@ export async function action({request, context}: ActionFunctionArgs) {
       const emailRecipient = fields.email;
 
       // Send Email
-      const emailTemplate = getBackInStockTemplate(
+      const emailTemplate = getBackInStockTemplate({
         productTitle,
         variantTitle,
-        branchName,
-        PUBLIC_STORE_DOMAIN,
-      );
+        productUrl,
+        language: 'AR',
+      });
 
       const emailResult = await sendEmail({
         to: emailRecipient,
         subject: emailTemplate.subject,
-        text: emailTemplate.text,
         html: emailTemplate.html,
         env,
       });
 
-      if (emailResult.success) {
+      if (emailResult) {
         // 4. Delete subscription metaobject to prevent duplicate alerts
         const deleteMutation = `
           mutation MetaobjectDelete($id: ID!) {

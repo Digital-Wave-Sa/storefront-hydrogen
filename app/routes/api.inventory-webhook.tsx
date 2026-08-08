@@ -148,16 +148,12 @@ export async function action({request, context}: ActionFunctionArgs) {
       }
 
       // Strict location match:
-      // - "global" subscriptions match any location (legacy/fallback)
-      // - All other subscriptions MUST exactly match the webhook's location_id
-      // - Empty or missing location_id in subscription = REJECT (no location = unknown location)
-      if (!subLocationId || subLocationId === '') {
-        console.log(`[INVENTORY WEBHOOK] Skipping sub for ${fields.email} — no location saved in subscription`);
+      // Subscribed location MUST strictly match the webhook's location_id
+      if (!subLocationId || subLocationId === '' || subLocationId === 'global') {
+        console.log(
+          `[INVENTORY WEBHOOK] Skipping sub for ${fields.email} — subscription has no specific location ID (${subLocationId})`,
+        );
         return false;
-      }
-
-      if (subLocationId === 'global') {
-        return true; // legacy global subscriptions match all locations
       }
 
       const matchesLocation = subLocationId === webhookLocationId;

@@ -149,7 +149,7 @@ export async function action({request, context}: ActionFunctionArgs) {
     const numericLocationId =
       locationId && String(locationId).includes('/')
         ? String(locationId).split('/').pop()
-        : locationId || 'global';
+        : (locationId && String(locationId).trim()) || '80198500503';
 
     // Helper for STOQ & Admin API myshopify domain
     const getMyshopifyDomain = (envObj: any) => {

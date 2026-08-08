@@ -669,6 +669,26 @@ export async function action({request, context}: Route.ActionArgs) {
           // --- END MIDDLEWARE VOUCHER VALIDATION ---
         }
 
+        const currentCart = await cart.get();
+        const isEnglish = params.locale === 'en';
+
+        const isEmployeeDiscountActive = currentCart?.discountCodes?.some(
+          (dc) => dc.applicable && (dc.code.toUpperCase().includes('EMPLOYEE') || dc.code.toUpperCase().startsWith('EMP'))
+        ) || currentCart?.discountAllocations?.some(
+          (da: any) => da.discountApplication?.title?.toLowerCase()?.includes('employee') || da.discountApplication?.code?.toLowerCase()?.includes('employee')
+        );
+
+        if (isEmployeeDiscountActive && formDiscountCode) {
+          return data(
+            {
+              error: isEnglish
+                ? 'Employee discount (25%) cannot be combined with other promotional codes.'
+                : 'خصم الموظفين (25%) لا يمكن دمجه مع كود خصم آخر.',
+            },
+            {status: 400},
+          );
+        }
+
         // User inputted discount code
         const discountCodes = (
           formDiscountCode ? [formDiscountCode] : []

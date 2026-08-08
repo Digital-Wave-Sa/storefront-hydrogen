@@ -1428,9 +1428,33 @@ function CartDiscounts({
   // If we have allocations but no manual codes, it must be an automatic discount!
   const hasAutomaticDiscount = hasAllocations && codes.length === 0;
 
+  const isEmployeeDiscountActive =
+    codes.some(c => c.toUpperCase().includes('EMPLOYEE') || c.toUpperCase().startsWith('EMP') || c.toUpperCase() === 'EMPLOYEE25') ||
+    cart?.discountAllocations?.some((da: any) =>
+      da.discountApplication?.title?.toLowerCase()?.includes('employee') ||
+      da.discountApplication?.code?.toLowerCase()?.includes('employee')
+    );
+
   return (
     <div aria-label="Discounts" className="w-full relative space-y-2">
-      <dl hidden={!codes.length}>
+      {/* Employee Discount Active Badge */}
+      {isEmployeeDiscountActive && (
+        <div className="flex items-center justify-between bg-amber-50 border border-amber-300 rounded-xl px-4 py-3 mb-2 text-amber-900 shadow-sm">
+          <div className="flex items-center gap-2.5">
+            <span className="text-lg">👔</span>
+            <div>
+              <span className="font-bold text-[14px] leading-none block">
+                {isEn ? 'Employee Discount (25% Off)' : 'خصم الموظفين (25%)'}
+              </span>
+              <span className="text-[11px] font-semibold text-amber-800 block mt-0.5">
+                {isEn ? 'Applied to your cart • Cannot combine with other codes' : 'مُطبق على سلتك • لا يمكن دمجه مع أكواد أخرى'}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <dl hidden={!codes.length || isEmployeeDiscountActive}>
         <div>
           <dt id={discountsHeadingId} className="sr-only">Discounts</dt>
           <UpdateDiscountForm>
@@ -1476,7 +1500,7 @@ function CartDiscounts({
       </dl>
 
       {/* Render Automatic Discounts */}
-      {hasAutomaticDiscount && (
+      {hasAutomaticDiscount && !isEmployeeDiscountActive && (
         <dl>
           <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-xl px-4 py-3 mb-2">
             <div className="flex items-center gap-2 text-green-700">
@@ -1494,40 +1518,51 @@ function CartDiscounts({
         </dl>
       )}
 
-      <div hidden={codes.length > 0}>
-        <UpdateDiscountForm discountCodes={codes}>
-          {(fetcher: any) => {
-            const isLoading = fetcher.state !== 'idle';
-            return (
-              <div className="flex flex-col gap-2 w-full">
-                <div className="flex w-full items-center justify-between border border-gray-300 rounded-xl overflow-hidden focus-within:border-[#234745] transition-colors p-1.5 h-[56px] relative bg-white">
-                  <input
-                    type="text"
-                    name="discountCode"
-                    placeholder={isEn ? "Discount code" : "كود الخصم"}
-                    className="flex-1 bg-transparent px-4 py-2 text-[14px] text-[#234745] focus:outline-none placeholder-[#9FB7AE] font-bold w-full h-full"
-                    style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
-                  />
-                  <button
-                    type="submit"
-                    disabled={isLoading}
-                    className="bg-[#234745] text-white px-6 h-full text-[14px] font-bold hover:bg-[#1A3533] transition-colors rounded-[8px] flex-shrink-0"
-                    style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
-                  >
-                    {isLoading ? '...' : (isEn ? 'Apply' : 'تطبيق')}
-                  </button>
-                </div>
-                {fetcher.data?.error && (
-                  <div className="text-red-500 text-xs font-bold px-3 py-2 bg-red-50 border border-red-200 rounded-lg flex items-center gap-1.5 mt-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-red-500 flex-shrink-0" />
-                    <span>{fetcher.data.error}</span>
+      {isEmployeeDiscountActive ? (
+        <div className="text-amber-800 text-xs font-bold px-4 py-3 bg-amber-50/80 border border-amber-200 rounded-xl flex items-center gap-2 mt-2">
+          <span className="w-2 h-2 rounded-full bg-amber-500 flex-shrink-0" />
+          <span>
+            {isEn
+              ? 'Employee discount (25%) is active. Other promo codes cannot be combined.'
+              : 'خصم الموظفين (25%) مفعّل. لا يمكن دمج أكواد خصم أخرى.'}
+          </span>
+        </div>
+      ) : (
+        <div hidden={codes.length > 0}>
+          <UpdateDiscountForm discountCodes={codes}>
+            {(fetcher: any) => {
+              const isLoading = fetcher.state !== 'idle';
+              return (
+                <div className="flex flex-col gap-2 w-full">
+                  <div className="flex w-full items-center justify-between border border-gray-300 rounded-xl overflow-hidden focus-within:border-[#234745] transition-colors p-1.5 h-[56px] relative bg-white">
+                    <input
+                      type="text"
+                      name="discountCode"
+                      placeholder={isEn ? "Discount code" : "كود الخصم"}
+                      className="flex-1 bg-transparent px-4 py-2 text-[14px] text-[#234745] focus:outline-none placeholder-[#9FB7AE] font-bold w-full h-full"
+                      style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
+                    />
+                    <button
+                      type="submit"
+                      disabled={isLoading}
+                      className="bg-[#234745] text-white px-6 h-full text-[14px] font-bold hover:bg-[#1A3533] transition-colors rounded-[8px] flex-shrink-0"
+                      style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
+                    >
+                      {isLoading ? '...' : (isEn ? 'Apply' : 'تطبيق')}
+                    </button>
                   </div>
-                )}
-              </div>
-            );
-          }}
-        </UpdateDiscountForm>
-      </div>
+                  {fetcher.data?.error && (
+                    <div className="text-red-500 text-xs font-bold px-3 py-2 bg-red-50 border border-red-200 rounded-lg flex items-center gap-1.5 mt-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-red-500 flex-shrink-0" />
+                      <span>{fetcher.data.error}</span>
+                    </div>
+                  )}
+                </div>
+              );
+            }}
+          </UpdateDiscountForm>
+        </div>
+      )}
     </div>
   );
 }

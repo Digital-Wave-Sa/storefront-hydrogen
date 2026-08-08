@@ -672,11 +672,22 @@ export async function action({request, context}: Route.ActionArgs) {
         const currentCart = await cart.get();
         const isEnglish = params.locale === 'en';
 
-        const isEmployeeDiscountActive = currentCart?.discountCodes?.some(
-          (dc) => dc.applicable && (dc.code.toUpperCase().includes('EMPLOYEE') || dc.code.toUpperCase().startsWith('EMP'))
-        ) || currentCart?.discountAllocations?.some(
-          (da: any) => da.discountApplication?.title?.toLowerCase()?.includes('employee') || da.discountApplication?.code?.toLowerCase()?.includes('employee')
-        );
+        const isEmployeeDiscountActive =
+          currentCart?.discountCodes?.some(
+            (dc) => dc.applicable && (dc.code.toUpperCase().includes('EMPLOYEE') || dc.code.toUpperCase().startsWith('EMP'))
+          ) ||
+          currentCart?.discountAllocations?.some((da: any) => {
+            const title = String(da.discountApplication?.title || '').toUpperCase();
+            const code = String(da.discountApplication?.code || '').toUpperCase();
+            return title.includes('EMPLOYEE') || title.includes('EMP25') || title.includes('موظف') || code.includes('EMPLOYEE') || code.includes('EMP25');
+          }) ||
+          currentCart?.lines?.nodes?.some((line: any) =>
+            line?.discountAllocations?.some((da: any) => {
+              const title = String(da.discountApplication?.title || '').toUpperCase();
+              const code = String(da.discountApplication?.code || '').toUpperCase();
+              return title.includes('EMPLOYEE') || title.includes('EMP25') || title.includes('موظف') || code.includes('EMPLOYEE') || code.includes('EMP25');
+            })
+          );
 
         if (isEmployeeDiscountActive && formDiscountCode) {
           return data(

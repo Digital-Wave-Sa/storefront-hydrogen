@@ -1,6 +1,7 @@
 import {data, type ActionFunctionArgs} from 'react-router';
 import {adminApiQuery} from '../lib/admin.server';
 import {getAdminToken} from '~/lib/shopify-admin.server';
+import {SaadeddinApi} from '~/lib/saadeddin-api.server';
 
 /**
  * Helper to create a metaobject entry with automatic definition creation if missing.
@@ -312,6 +313,42 @@ export async function action({request, context}: ActionFunctionArgs) {
           console.error('[REVIEWS] Failed to update location rating:', locErr);
         }
       }
+    }
+
+    // 4. FORWARD NEGATIVE REVIEWS (1-2 STARS) TO MIDDLEWARE / CRM
+    try {
+      const bRatingNum = parseInt(String(branchRating || 0), 10);
+      const isBranchNegative = bRatingNum > 0 && bRatingNum <= 2;
+      const api = new SaadeddinApi(context.env);
+
+      if (isBranchNegative) {
+        await api.sendNegativeReview({
+          orderNumber: String(cleanOrdId || orderName || 'N/A'),
+          rating: bRatingNum,
+          comment: String(comment || ''),
+          customerEmail: String(customerEmail || ''),
+          customerPhone: String(customerPhone || ''),
+          branchName: String(branchName || ''),
+        });
+      }
+
+      for (const item of productRatings) {
+        const pRatingNum = Math.round(Number(item.rating) || 0);
+        if (pRatingNum > 0 && pRatingNum <= 2) {
+          await api.sendNegativeReview({
+            orderNumber: String(cleanOrdId || orderName || 'N/A'),
+            rating: pRatingNum,
+            comment: String(comment || ''),
+            productTitle: String(item.title || item.handle || ''),
+            productHandle: String(item.handle || ''),
+            customerEmail: String(customerEmail || ''),
+            customerPhone: String(customerPhone || ''),
+            branchName: String(branchName || ''),
+          });
+        }
+      }
+    } catch (crmErr) {
+      console.warn('[REVIEWS] Negative review sync notice:', crmErr);
     }
 
     return data({success: true});

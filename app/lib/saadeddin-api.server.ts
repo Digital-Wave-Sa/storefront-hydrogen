@@ -195,4 +195,37 @@ export class SaadeddinApi {
   async getGiftCardByPhone(phone: string) {
     return this.api(`/gift-cards/by-phone/${phone}`);
   }
+
+  // ─── REVIEWS & CRM ───────────────────────────────────────────────────────────
+
+  async sendNegativeReview(payload: {
+    orderNumber: string;
+    rating: number;
+    comment: string;
+    productTitle?: string;
+    productHandle?: string;
+    customerEmail?: string;
+    customerPhone?: string;
+    branchName?: string;
+  }) {
+    try {
+      return await this.api('/reviews/negative', {
+        method: 'POST',
+        body: JSON.stringify({
+          order_number: payload.orderNumber,
+          rating: payload.rating,
+          comment: payload.comment,
+          product_name: payload.productTitle,
+          product_handle: payload.productHandle,
+          customer_email: payload.customerEmail,
+          customer_phone: payload.customerPhone,
+          branch_name: payload.branchName,
+          submitted_at: new Date().toISOString(),
+        }),
+      });
+    } catch (err: any) {
+      console.warn('[REVIEWS] Middleware negative review sync notice:', err?.message || err);
+      return null;
+    }
+  }
 }

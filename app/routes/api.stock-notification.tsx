@@ -313,115 +313,70 @@ export async function action({request, context}: ActionFunctionArgs) {
       console.warn('[STOQ_SIGNUP WARN]', stoqErr);
     }
 
-    // 3. Try saving to Shopify Metaobjects
+    // 3. Save subscription into Shopify Shop Metafields (namespace: stock_alerts)
     try {
       const {getAdminToken} = await import('~/lib/shopify-admin.server');
       const adminToken = await getAdminToken(env || {}).catch(() => null);
 
       if (adminToken) {
-        const entryVariables = {
-          metaobject: {
-            type: 'stock_notification',
-            fields: [
-              {key: 'email', value: email},
-              {key: 'variant_id', value: String(variantId)},
-              {key: 'product_id', value: String(productId || numericProductId || '')},
-              {key: 'location_id', value: String(numericLocationId)},
-              {key: 'location_name', value: locationName || 'Global'},
-              {key: 'product_title', value: productTitle || 'Product'},
-            ],
-          },
-        };
-
-        const defVariables = {
-          definition: {
-            name: 'Stock Notification',
-            type: 'stock_notification',
-            fieldDefinitions: [
-              {name: 'Email', key: 'email', type: 'single_line_text_field'},
-              {
-                name: 'Variant ID',
-                key: 'variant_id',
-                type: 'single_line_text_field',
-              },
-              {
-                name: 'Product ID',
-                key: 'product_id',
-                type: 'single_line_text_field',
-              },
-              {
-                name: 'Location ID',
-                key: 'location_id',
-                type: 'single_line_text_field',
-              },
-              {
-                name: 'Location Name',
-                key: 'location_name',
-                type: 'single_line_text_field',
-              },
-              {
-                name: 'Product Title',
-                key: 'product_title',
-                type: 'single_line_text_field',
-              },
-            ],
-          },
-        };
-
-        let res = (await executeAdminQuery(
-          createMutation,
-          entryVariables,
+        // Fetch Shop ID
+        const shopQuery = `query { shop { id } }`;
+        const shopRes = await executeAdminQuery(
+          shopQuery,
+          {},
           adminToken,
           shopDomain,
-        )) as any;
-        let userErrors = res?.data?.metaobjectCreate?.userErrors;
-        const errors = res?.errors;
+        );
+        const shopId = shopRes?.data?.shop?.id;
 
-        const isMissingDefinition =
-          (errors &&
-            errors.some(
-              (e: any) =>
-                e.message &&
-                (e.message.includes('not found') ||
-                  e.message.includes('type') ||
-                  e.message.includes('invalid') ||
-                  e.message.includes('type "stock_notification"')),
-            )) ||
-          (userErrors &&
-            userErrors.some(
-              (e: any) =>
-                e.message &&
-                (e.message.includes('not found') ||
-                  e.message.includes('type') ||
-                  e.message.includes('invalid') ||
-                  e.message.includes('type "stock_notification"')),
-            ));
+        if (shopId) {
+          const subKey = `sub_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+          const subData = {
+            email,
+            variant_id: String(variantId),
+            product_id: String(productId || numericProductId || ''),
+            location_id: String(numericLocationId),
+            location_name: locationName || 'Global',
+            product_title: productTitle || 'Product',
+            created_at: new Date().toISOString(),
+          };
 
-        if (isMissingDefinition) {
-          const defRes = (await executeAdminQuery(
-            defMutation,
-            defVariables,
+          const setMetafieldMutation = `
+            mutation MetafieldsSet($metafields: [MetafieldsSetInput!]!) {
+              metafieldsSet(metafields: $metafields) {
+                metafields {
+                  id
+                  key
+                }
+                userErrors {
+                  field
+                  message
+                }
+              }
+            }
+          `;
+
+          await executeAdminQuery(
+            setMetafieldMutation,
+            {
+              metafields: [
+                {
+                  ownerId: shopId,
+                  namespace: 'stock_alerts',
+                  key: subKey,
+                  type: 'json',
+                  value: JSON.stringify(subData),
+                },
+              ],
+            },
             adminToken,
             shopDomain,
-          )) as any;
-          const defErrors =
-            defRes?.data?.metaobjectDefinitionCreate?.userErrors;
-          if (
-            !defErrors ||
-            defErrors.length === 0 ||
-            defErrors.some((e: any) => e.message?.includes('already exists'))
-          ) {
-            res = await executeAdminQuery(
-              createMutation,
-              entryVariables,
-              adminToken,
-              shopDomain,
-            );
-          }
+          );
+          console.log(`[STOCK_NOTIFICATION METAFIELD SUCCESS] Saved sub ${subKey} for ${email}`);
         }
       }
     } catch (metaErr) {
-      console.warn('[STOCK_NOTIFICATION METAOBJECT WARN]', metaErr);
+      console.warn('[STOCK_NOTIFICATION METAFIELD WARN]', metaErr);
     }
 
     try {

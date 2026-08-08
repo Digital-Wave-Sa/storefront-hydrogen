@@ -11,11 +11,36 @@ export async function action({request, context}: ActionFunctionArgs) {
   }
 
   const {env} = context;
-  const {SHOPIFY_ADMIN_API_ACCESS_TOKEN, PUBLIC_STORE_DOMAIN} = env as any;
+  const {getAdminToken} = await import('~/lib/shopify-admin.server');
+  const adminToken =
+    (env as any)?.SHOPIFY_ADMIN_API_ACCESS_TOKEN ||
+    (await getAdminToken(env || {}).catch(() => null));
+
+  const getMyshopifyDomain = (envObj: any) => {
+    if (envObj?.SHOPIFY_ADMIN_DOMAIN) {
+      return envObj.SHOPIFY_ADMIN_DOMAIN.replace(/^https?:\/\//, '').replace(/\/$/, '');
+    }
+    if (envObj?.SHOPIFY_SHOP && String(envObj.SHOPIFY_SHOP).includes('myshopify.com')) {
+      return envObj.SHOPIFY_SHOP;
+    }
+    return 'saadeldeenshop-x21xumcd.myshopify.com';
+  };
+
+  const shopDomain = getMyshopifyDomain(env);
 
   try {
     const payload = (await request.json()) as any;
     const {inventory_item_id, location_id, available} = payload;
+
+    // Helper to extract clean numeric ID from GID or raw string
+    const extractId = (val: any) => {
+      if (!val) return '';
+      const str = String(val).trim();
+      if (str.includes('/')) {
+        return str.split('/').pop() || '';
+      }
+      return str;
+    };
 
     console.log(
       `[INVENTORY WEBHOOK] Processing: Item ${inventory_item_id}, Location ${location_id}, Available: ${available}`,
@@ -29,16 +54,18 @@ export async function action({request, context}: ActionFunctionArgs) {
       });
     }
 
-    if (!SHOPIFY_ADMIN_API_ACCESS_TOKEN) {
-      return data({error: 'Config missing: Admin Token'}, {status: 500});
+    if (!adminToken || !shopDomain) {
+      return data({error: 'Config missing: Admin Token or Shop Domain'}, {status: 500});
     }
 
-    const adminApiUrl = `https://${PUBLIC_STORE_DOMAIN}/admin/api/2024-04/graphql.json`;
+    const adminApiUrl = `https://${shopDomain}/admin/api/2024-04/graphql.json`;
+
+    const cleanLocId = extractId(location_id);
+    const cleanItemId = extractId(inventory_item_id);
 
     // 1. Fetch Variant ID from Inventory Item ID and Location Name
-    // Note: location_id from webhook is a GID or legacy ID. We match by legacy ID.
     const findVariantQuery = `
-      query GetVariantByInventoryItem($itemId: ID!) {
+      query GetVariantByInventoryItem($itemId: ID!, $locId: ID!) {
         inventoryItem(id: $itemId) {
           variant {
             id
@@ -50,7 +77,7 @@ export async function action({request, context}: ActionFunctionArgs) {
             }
           }
         }
-        location(id: "gid://shopify/Location/${location_id}") {
+        location(id: $locId) {
           name
         }
       }
@@ -60,15 +87,19 @@ export async function action({request, context}: ActionFunctionArgs) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-Shopify-Access-Token': SHOPIFY_ADMIN_API_ACCESS_TOKEN,
+        'X-Shopify-Access-Token': adminToken,
       },
       body: JSON.stringify({
         query: findVariantQuery,
-        variables: {itemId: `gid://shopify/InventoryItem/${inventory_item_id}`},
+        variables: {
+          itemId: `gid://shopify/InventoryItem/${cleanItemId}`,
+          locId: `gid://shopify/Location/${cleanLocId}`,
+        },
       }),
     });
 
     const variantData = (await findVariantRes.json()) as any;
+    console.log(`[INVENTORY WEBHOOK DIAG] adminApiUrl: ${adminApiUrl}, status: ${findVariantRes.status}, data:`, JSON.stringify(variantData));
     const variant = variantData.data?.inventoryItem?.variant;
     const branchName = variantData.data?.location?.name || 'Your Branch';
 
@@ -83,28 +114,19 @@ export async function action({request, context}: ActionFunctionArgs) {
     const productTitle = variant.product.title;
     const variantTitle = variant.title;
     const productHandle = variant.product.handle || '';
-    const productUrl = `https://${PUBLIC_STORE_DOMAIN || 'saadeddin.com'}/products/${productHandle}`;
-
-    // Helper to extract clean numeric ID from GID or raw string
-    const extractId = (val: any) => {
-      if (!val) return '';
-      const str = String(val).trim();
-      if (str.includes('/')) {
-        return str.split('/').pop() || '';
-      }
-      return str;
-    };
+    const productUrl = `https://${(env as any)?.PUBLIC_STORE_DOMAIN || 'saadeddin.com'}/products/${productHandle}`;
 
     const cleanVariantId = extractId(variantId);
     const cleanProductId = extractId(variant.product?.id);
 
-    // 2. Query Metaobjects for subscriptions
-    const getSubscriptionsQuery = `
-      query GetStockSubscriptions {
-        metaobjects(type: "stock_notification", first: 100) {
-          nodes {
-            id
-            fields {
+    // 2. Fetch Shop ID and query Shop Metafields for subscriptions (namespace: stock_alerts)
+    const getShopQuery = `
+      query GetShopAndSubscriptions {
+        shop {
+          id
+          metafields(namespace: "stock_alerts", first: 250) {
+            nodes {
+              id
               key
               value
             }
@@ -117,21 +139,27 @@ export async function action({request, context}: ActionFunctionArgs) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-Shopify-Access-Token': SHOPIFY_ADMIN_API_ACCESS_TOKEN,
+        'X-Shopify-Access-Token': adminToken,
       },
-      body: JSON.stringify({query: getSubscriptionsQuery}),
+      body: JSON.stringify({query: getShopQuery}),
     });
 
     const subData = (await subRes.json()) as any;
-    const allSubs = subData.data?.metaobjects?.nodes || [];
+    const allMetafields = subData.data?.shop?.metafields?.nodes || [];
+
+    const parsedSubs = allMetafields
+      .map((m: any) => {
+        try {
+          const parsed = JSON.parse(m.value);
+          return {metafieldId: m.id, key: m.key, ...parsed};
+        } catch (_) {
+          return null;
+        }
+      })
+      .filter(Boolean);
 
     // Filter relevant subs: MUST strictly match exact variant_id or product_id AND location_id
-    const relevantSubs = allSubs.filter((node: any) => {
-      const fields = node.fields.reduce(
-        (acc: any, f: any) => ({...acc, [f.key]: f.value}),
-        {},
-      );
-
+    const relevantSubs = parsedSubs.filter((fields: any) => {
       if (!fields.email || !fields.email.includes('@')) return false;
 
       const subVariantId = extractId(fields.variant_id);
@@ -140,8 +168,10 @@ export async function action({request, context}: ActionFunctionArgs) {
       const webhookLocationId = extractId(location_id);
 
       // Strict item match: must match restocked variant_id or product_id
-      const matchesVariant = subVariantId && cleanVariantId && subVariantId === cleanVariantId;
-      const matchesProduct = subProductId && cleanProductId && subProductId === cleanProductId;
+      const matchesVariant =
+        subVariantId && cleanVariantId && subVariantId === cleanVariantId;
+      const matchesProduct =
+        subProductId && cleanProductId && subProductId === cleanProductId;
 
       if (!matchesVariant && !matchesProduct) {
         return false;
@@ -173,11 +203,7 @@ export async function action({request, context}: ActionFunctionArgs) {
 
     // 3. Process each subscription
     for (const sub of relevantSubs) {
-      const fields = sub.fields.reduce(
-        (acc: any, f: any) => ({...acc, [f.key]: f.value}),
-        {},
-      );
-      const emailRecipient = fields.email;
+      const emailRecipient = sub.email;
 
       // Send Email
       const emailTemplate = getBackInStockTemplate({
@@ -195,33 +221,24 @@ export async function action({request, context}: ActionFunctionArgs) {
       });
 
       if (emailResult) {
-        // 4. Delete subscription metaobject to prevent duplicate alerts
-        const deleteMutation = `
-          mutation MetaobjectDelete($id: ID!) {
-            metaobjectDelete(id: $id) {
-              deletedId
-              userErrors {
-                message
-              }
-            }
-          }
-        `;
-
-        await fetch(adminApiUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Shopify-Access-Token': SHOPIFY_ADMIN_API_ACCESS_TOKEN,
-          },
-          body: JSON.stringify({
-            query: deleteMutation,
-            variables: {id: sub.id},
-          }),
-        });
-
-        console.log(
-          `[INVENTORY WEBHOOK] Alerted and Deleted: ${emailRecipient}`,
-        );
+        // 4. Delete subscription metafield to prevent duplicate alerts
+        const numericMetafieldId = extractId(sub.metafieldId);
+        try {
+          await fetch(
+            `https://${shopDomain}/admin/api/2024-04/metafields/${numericMetafieldId}.json`,
+            {
+              method: 'DELETE',
+              headers: {
+                'X-Shopify-Access-Token': adminToken,
+              },
+            },
+          );
+          console.log(
+            `[INVENTORY WEBHOOK] Alerted and Deleted Metafield: ${numericMetafieldId} (${emailRecipient})`,
+          );
+        } catch (delErr) {
+          console.warn('[INVENTORY WEBHOOK DELETE WARN]', delErr);
+        }
       }
     }
 

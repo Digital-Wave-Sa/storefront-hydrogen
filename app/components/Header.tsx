@@ -760,7 +760,7 @@ const STATIC_NAV_AR = [
   { title: 'الرئيسية', url: '/' },
   { title: 'المنتجات', url: '/collections/all', hasMega: true },
   { title: 'المناسبات', url: '/occasions' },
-  { title: 'التموين', url: 'https://catering.saadeddin.sa', isExternal: true },
+  { title: 'خدمة الضيافة', url: 'https://catering.saadeddin.sa', isExternal: true },
   { title: 'الكيك المخصص', url: '/custom-cake' },
   { title: 'القسائم', url: '/vouchers' },
   { title: 'العروض', url: '/promotions' },

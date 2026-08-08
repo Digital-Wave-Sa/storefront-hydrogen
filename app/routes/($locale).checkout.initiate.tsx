@@ -1,5 +1,6 @@
 import {redirect, type ActionFunctionArgs} from 'react-router';
 import {SaadeddinApi} from '~/lib/saadeddin-api.server';
+import {extractMinTime} from '~/lib/time-utils';
 
 export async function action({request, context}: ActionFunctionArgs) {
   const {storefront, session, env} = context;
@@ -269,9 +270,13 @@ export async function action({request, context}: ActionFunctionArgs) {
     axStoreId: customAxStoreVal || '',
     noteAttributes: finalAttributes.map((a: any) => ({
       name: a.key,
-      value: a.value,
+      value: a.key === 'Time Slot' ? extractMinTime(a.value) : a.value,
     })),
-    attributes: finalAttributes.map((a: any) => ({key: a.key, value: a.value})),
+    attributes: finalAttributes.map((a: any) => ({
+      key: a.key,
+      value: a.key === 'Time Slot' ? extractMinTime(a.value) : a.value,
+    })),
+    timeSlotMin: extractMinTime(timeSlotVal),
     idempotencyKey: `order-${Date.now()}`,
   };
 

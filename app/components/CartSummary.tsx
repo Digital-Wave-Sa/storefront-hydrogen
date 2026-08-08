@@ -197,7 +197,7 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
 
   const selectedDate = attributes.find((a: any) => a.key === 'delivery_date')?.value || '';
   const dynamicTimeSlots = selectedDate ? generateDynamicSlots(currentBranch, isEn, fulfillmentType, selectedDate) : [];
-  const isTimeSlotInvalid = !!timeSlot && !dynamicTimeSlots.includes(timeSlot);
+  const isTimeSlotInvalid = !!timeSlot && !dynamicTimeSlots.some((slot: string) => slot === timeSlot || slot.startsWith(timeSlot) || timeSlot.startsWith(slot.split(' - ')[0]));
 
   // Validate active discount codes against location restrictions
   const locationDiscountsList = parseLocationDiscountsJSON(rootData?.locationDiscounts);
@@ -762,11 +762,19 @@ function parseHourString(hourStr: string): number {
 }
 
 function formatHour(h: number, isEn: boolean): string {
-  const normalizedHour = h % 24;
-  const period = normalizedHour >= 12 ? (isEn ? 'PM' : 'م') : (isEn ? 'AM' : 'ص');
-  let displayHour = normalizedHour % 12;
-  if (displayHour === 0) displayHour = 12;
-  return `${displayHour}:00 ${period}`;
+  const startNormalized = h % 24;
+  const endNormalized = (h + 1) % 24;
+
+  const startPeriod = startNormalized >= 12 ? (isEn ? 'PM' : 'م') : (isEn ? 'AM' : 'ص');
+  const endPeriod = endNormalized >= 12 ? (isEn ? 'PM' : 'م') : (isEn ? 'AM' : 'ص');
+
+  let startDisplay = startNormalized % 12;
+  if (startDisplay === 0) startDisplay = 12;
+
+  let endDisplay = endNormalized % 12;
+  if (endDisplay === 0) endDisplay = 12;
+
+  return `${startDisplay}:00 ${startPeriod} - ${endDisplay}:00 ${endPeriod}`;
 }
 
 function generateDynamicSlots(branch: any, isEn: boolean, fulfillmentType: string = 'delivery', targetDateStr?: string): string[] {

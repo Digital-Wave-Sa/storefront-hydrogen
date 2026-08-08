@@ -1,6 +1,7 @@
 import type {ActionFunctionArgs} from 'react-router';
 import {syncOrderToCRM} from '~/lib/crm-orders.server';
 import {getAdminToken} from '~/lib/shopify-admin.server';
+import {extractMinTime} from '~/lib/time-utils';
 
 /**
  * Shopify Order Webhook → CRM/ERP Sync
@@ -79,7 +80,8 @@ export async function action({request, context}: ActionFunctionArgs) {
       (a: any) => a.name === 'Time Slot',
     );
     if (timeSlotAttr?.value) {
-      addressString += ` [Schedule: ${timeSlotAttr.value}]`;
+      const minTime = extractMinTime(timeSlotAttr.value);
+      addressString += ` [Schedule: ${minTime}]`;
     }
 
     // Extract due date from cart attributes or use order date

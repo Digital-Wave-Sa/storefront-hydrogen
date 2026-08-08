@@ -1430,18 +1430,7 @@ function CartDiscounts({
 
   const isEmployeeDiscountActive =
     codes.some(c => c.toUpperCase().includes('EMPLOYEE') || c.toUpperCase().startsWith('EMP') || c.toUpperCase() === 'EMPLOYEE25') ||
-    cart?.discountAllocations?.some((da: any) => {
-      const title = String(da.discountApplication?.title || '').toUpperCase();
-      const code = String(da.discountApplication?.code || '').toUpperCase();
-      return title.includes('EMPLOYEE') || title.includes('EMP25') || title.includes('موظف') || code.includes('EMPLOYEE') || code.includes('EMP25');
-    }) ||
-    cart?.lines?.nodes?.some((line: any) =>
-      line?.discountAllocations?.some((da: any) => {
-        const title = String(da.discountApplication?.title || '').toUpperCase();
-        const code = String(da.discountApplication?.code || '').toUpperCase();
-        return title.includes('EMPLOYEE') || title.includes('EMP25') || title.includes('موظف') || code.includes('EMPLOYEE') || code.includes('EMP25');
-      })
-    );
+    hasAutomaticDiscount;
 
   return (
     <div aria-label="Discounts" className="w-full relative space-y-2">

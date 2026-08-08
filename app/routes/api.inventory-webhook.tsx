@@ -125,7 +125,7 @@ export async function action({request, context}: ActionFunctionArgs) {
     const subData = (await subRes.json()) as any;
     const allSubs = subData.data?.metaobjects?.nodes || [];
 
-    // Filter relevant subs: MUST strictly match exact variant_id or product_id of the restocked item
+    // Filter relevant subs: MUST strictly match exact variant_id or product_id AND location_id
     const relevantSubs = allSubs.filter((node: any) => {
       const fields = node.fields.reduce(
         (acc: any, f: any) => ({...acc, [f.key]: f.value}),
@@ -147,11 +147,26 @@ export async function action({request, context}: ActionFunctionArgs) {
         return false;
       }
 
-      // Location match: exact location ID or global
-      const matchesLocation =
-        !subLocationId ||
-        subLocationId === 'global' ||
-        subLocationId === webhookLocationId;
+      // Strict location match:
+      // - "global" subscriptions match any location (legacy/fallback)
+      // - All other subscriptions MUST exactly match the webhook's location_id
+      // - Empty or missing location_id in subscription = REJECT (no location = unknown location)
+      if (!subLocationId || subLocationId === '') {
+        console.log(`[INVENTORY WEBHOOK] Skipping sub for ${fields.email} — no location saved in subscription`);
+        return false;
+      }
+
+      if (subLocationId === 'global') {
+        return true; // legacy global subscriptions match all locations
+      }
+
+      const matchesLocation = subLocationId === webhookLocationId;
+
+      if (!matchesLocation) {
+        console.log(
+          `[INVENTORY WEBHOOK] Skipping sub for ${fields.email} — subscribed location (${subLocationId}) ≠ restocked location (${webhookLocationId})`,
+        );
+      }
 
       return matchesLocation;
     });

@@ -760,7 +760,7 @@ const STATIC_NAV_AR = [
   { title: 'الرئيسية', url: '/' },
   { title: 'المنتجات', url: '/collections/all', hasMega: true },
   { title: 'المناسبات', url: '/occasions' },
-  { title: 'الهدايا', url: '/gifting' },
+  { title: 'التموين', url: 'https://catering.saadeddin.sa', isExternal: true },
   { title: 'الكيك المخصص', url: '/custom-cake' },
   { title: 'القسائم', url: '/vouchers' },
   { title: 'العروض', url: '/promotions' },
@@ -770,7 +770,7 @@ const STATIC_NAV_EN = [
   { title: 'Home', url: '/en' },
   { title: 'Products', url: '/en/collections/all', hasMega: true },
   { title: 'Occasions', url: '/en/occasions' },
-  { title: 'Gifts', url: '/en/gifting' },
+  { title: 'Catering', url: 'https://catering.saadeddin.sa', isExternal: true },
   { title: 'Custom Cake', url: '/en/custom-cake' },
   { title: 'Vouchers', url: '/en/vouchers' },
   { title: 'Offers', url: '/en/promotions' },
@@ -790,34 +790,47 @@ function CategoryNav({
 
   return (
     <nav className="flex items-center gap-1 xl:gap-2 h-full">
-      {NAV_ITEMS.map((item) => {
+      {NAV_ITEMS.map((item: any) => {
         const isOffers = item.url.includes('offers') || item.url.includes('promotions');
+        const isExternal = item.isExternal || item.url.startsWith('http');
         return (
           <div
             key={item.url}
             className="h-full flex items-center"
             onMouseEnter={() => item.hasMega ? setActiveMega('products') : setActiveMega(null)}
           >
-            <NavLink
-              to={item.url}
-              prefetch="intent"
-              end={item.url === '/' || item.url === '/en'}
-              onClick={() => setActiveMega(null)}
-              className={({ isActive }) => {
-                const active = isActive || (item.hasMega && activeMega);
-                return `
-                  font-['GE_Dinar_One'] font-normal !px-2 xl:px-3 !py-2 text-[13px] xl:text-[14px] transition-all whitespace-nowrap rounded-full
-                  ${isOffers
-                    ? 'bg-[#E64950] !text-white hover:bg-[#E64950] px-4 xl:px-5 shadow-sm'
-                    : active
-                      ? '!text-[#234745]'
-                      : '!text-[#9FB7AE]'}
-                `;
-              }}
-              style={isOffers ? { color: 'white' } : {}}
-            >
-              {item.title}
-            </NavLink>
+            {isExternal ? (
+              <a
+                href={item.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => setActiveMega(null)}
+                className="font-['GE_Dinar_One'] font-normal !px-2 xl:px-3 !py-2 text-[13px] xl:text-[14px] transition-all whitespace-nowrap rounded-full !text-[#9FB7AE] hover:!text-[#234745]"
+              >
+                {item.title}
+              </a>
+            ) : (
+              <NavLink
+                to={item.url}
+                prefetch="intent"
+                end={item.url === '/' || item.url === '/en'}
+                onClick={() => setActiveMega(null)}
+                className={({ isActive }) => {
+                  const active = isActive || (item.hasMega && activeMega);
+                  return `
+                    font-['GE_Dinar_One'] font-normal !px-2 xl:px-3 !py-2 text-[13px] xl:text-[14px] transition-all whitespace-nowrap rounded-full
+                    ${isOffers
+                      ? 'bg-[#E64950] !text-white hover:bg-[#E64950] px-4 xl:px-5 shadow-sm'
+                      : active
+                        ? '!text-[#234745]'
+                        : '!text-[#9FB7AE]'}
+                  `;
+                }}
+                style={isOffers ? { color: 'white' } : {}}
+              >
+                {item.title}
+              </NavLink>
+            )}
           </div>
         );
       })}
@@ -964,8 +977,30 @@ export function HeaderMenu({
         </div>
 
         <div className="space-y-2">
-          {NAV_ITEMS.map((item) => {
+          {NAV_ITEMS.map((item: any) => {
             const isOffers = item.url.includes('promotions') || item.url.includes('offers');
+            const isExternal = item.isExternal || item.url.startsWith('http');
+
+            if (isExternal) {
+              return (
+                <a
+                  key={item.url}
+                  href={item.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={onClose}
+                  className="flex items-center justify-between px-6 py-4 rounded-2xl text-[16px] font-bold transition-all bg-white text-[#234745] shadow-sm hover:bg-gray-50"
+                >
+                  <span className="text-[#234745]">{item.title}</span>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                    <polyline points="15 3 21 3 21 9"></polyline>
+                    <line x1="10" y1="14" x2="21" y2="3"></line>
+                  </svg>
+                </a>
+              );
+            }
+
             return (
               <NavLink
                 key={item.url}

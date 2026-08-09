@@ -164,20 +164,9 @@ export async function loader(args: Route.LoaderArgs) {
     }
   }
 
-    const requestUrl = new URL(args.request.url);
-    const referer = args.request.headers.get('referer') || '';
-    const isPostCheckout =
-      requestUrl.searchParams.has('thank_you') ||
-      requestUrl.searchParams.has('order_id') ||
-      requestUrl.searchParams.has('checkout_completed') ||
-      requestUrl.searchParams.has('completed');
-
     const headers = new Headers();
     if (session.isPending) {
       headers.append('Set-Cookie', await session.commit());
-    }
-    if (isPostCheckout) {
-      headers.append('Set-Cookie', 'cart=; Path=/; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT');
     }
 
     return data({

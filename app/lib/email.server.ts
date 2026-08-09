@@ -26,63 +26,51 @@ export async function sendEmail({
   html: string;
   env: any;
 }) {
-  const resendApiKey = env?.RESEND_API_KEY;
-  const fromEmail = env?.FORM_EMAIL_FROM || 'onboarding@resend.dev';
   const recipients = Array.isArray(to) ? to : [to];
+  const smtpUser = env?.SMTP_USER || 'crm@saadeddin.com';
+  const smtpPass = env?.SMTP_PASS;
+  const smtpHost = env?.SMTP_HOST || 'smtp.office365.com';
+  const smtpPort = parseInt(env?.SMTP_PORT || '587', 10);
 
-  // Primary Dispatch via Resend API
-  if (resendApiKey) {
+  // 1. Primary Dispatch via Official Saadeddin Office 365 SMTP (crm@saadeddin.com)
+  if (smtpUser && smtpPass) {
     try {
-      let res = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${resendApiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          from: fromEmail.includes('<') ? fromEmail : `Saadeddin Pastry <${fromEmail}>`,
+      const nodemailer = await import('nodemailer').then((m) => m.default || m).catch(() => null);
+      if (nodemailer) {
+        const transporter = nodemailer.createTransport({
+          host: smtpHost,
+          port: smtpPort,
+          secure: false, // TLS
+          auth: {
+            user: smtpUser,
+            pass: smtpPass,
+          },
+          tls: {
+            ciphers: 'SSLv3',
+            rejectUnauthorized: false,
+          },
+        });
+
+        const info = await transporter.sendMail({
+          from: `"Saadeddin Pastry" <${smtpUser}>`,
           to: recipients,
           subject,
           html,
-        }),
-      });
-
-      let resData = (await res.json()) as any;
-
-      // If domain is unverified (403), retry using onboarding@resend.dev
-      if (!res.ok && res.status === 403 && !fromEmail.includes('onboarding@resend.dev')) {
-        res = await fetch('https://api.resend.com/emails', {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${resendApiKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            from: 'Saadeddin Pastry <onboarding@resend.dev>',
-            to: recipients,
-            subject,
-            html,
-          }),
         });
-        resData = (await res.json()) as any;
-      }
 
-      if (res.ok) {
-        console.log(`[Resend OK] Email sent to ${recipients.join(', ')}. ID: ${resData?.id}`);
+        console.log(`[Official SMTP OK] Email sent to ${recipients.join(', ')} via ${smtpUser}. MessageId: ${info?.messageId}`);
         return true;
-      } else {
-        console.warn(`[Resend Error ${res.status}]`, JSON.stringify(resData));
       }
-    } catch (e) {
-      console.error('Failed to send email via Resend:', e);
+    } catch (e: any) {
+      console.warn('[Official SMTP Dispatch Warn]', e?.message || e);
     }
   }
 
-  // Backup Dispatch via Microsoft Graph API
+  // 2. Microsoft Graph API Dispatch (for crm@saadeddin.com in edge runtimes)
   const graphTenantId = env?.GRAPH_TENANT_ID;
   const graphClientId = env?.GRAPH_CLIENT_ID;
   const graphClientSecret = env?.GRAPH_CLIENT_SECRET;
-  const graphSenderEmail = env?.GRAPH_SENDER_EMAIL || env?.SMTP_USER || 'crm@saadeddin.com';
+  const graphSenderEmail = env?.GRAPH_SENDER_EMAIL || smtpUser;
 
   if (graphTenantId && graphClientId && graphClientSecret) {
     try {
@@ -120,10 +108,44 @@ export async function sendEmail({
             }),
           },
         );
-        if (mailRes.status === 202 || mailRes.ok) return true;
+        if (mailRes.status === 202 || mailRes.ok) {
+          console.log(`[Microsoft Graph OK] Email sent to ${recipients.join(', ')} via ${graphSenderEmail}`);
+          return true;
+        }
       }
     } catch (e) {
       console.error('Failed to send email via Microsoft Graph:', e);
+    }
+  }
+
+  // 3. Backup Dispatch via Resend API
+  const resendApiKey = env?.RESEND_API_KEY;
+  if (resendApiKey) {
+    try {
+      const fromEmail = env?.FORM_EMAIL_FROM || 'onboarding@resend.dev';
+      let res = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${resendApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          from: fromEmail.includes('<') ? fromEmail : `Saadeddin Pastry <${fromEmail}>`,
+          to: recipients,
+          subject,
+          html,
+        }),
+      });
+
+      let resData = (await res.json()) as any;
+      if (res.ok) {
+        console.log(`[Resend Fallback OK] Email sent to ${recipients.join(', ')}. ID: ${resData?.id}`);
+        return true;
+      } else {
+        console.warn(`[Resend Fallback Error ${res.status}]`, JSON.stringify(resData));
+      }
+    } catch (e) {
+      console.error('Failed to send email via Resend fallback:', e);
     }
   }
 

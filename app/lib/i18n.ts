@@ -6,25 +6,41 @@ export interface I18nLocale extends I18nBase {
 
 export function getLocaleFromRequest(request: Request): I18nLocale {
   const url = new URL(request.url);
-  const firstPathPart = url.pathname.split('/')[1]?.toUpperCase() ?? '';
+  let firstPathPart = url.pathname.split('/')[1]?.toUpperCase() ?? '';
+
+  // If request URL has no locale prefix (e.g. /cart, /api/products), check Referer header
+  if (!['EN', 'AR'].includes(firstPathPart)) {
+    const referer = request.headers.get('Referer') || request.headers.get('referer');
+    if (referer) {
+      try {
+        const refUrl = new URL(referer, url.origin);
+        const refPathPart = refUrl.pathname.split('/')[1]?.toUpperCase() ?? '';
+        if (['EN', 'AR'].includes(refPathPart)) {
+          firstPathPart = refPathPart;
+        }
+      } catch (e) {
+        // ignore invalid referer URL
+      }
+    }
+  }
 
   type I18nFromUrl = [I18nLocale['language'], I18nLocale['country']];
 
   let pathPrefix = '';
   let [language, country]: I18nFromUrl = ['AR', 'SA'];
-  
+
   const validLanguages = ['EN', 'AR'];
 
   if (/^[A-Z]{2}-[A-Z]{2}$/i.test(firstPathPart)) {
     const [langPart, countryPart] = firstPathPart.split('-');
     if (validLanguages.includes(langPart)) {
-      pathPrefix = '/' + firstPathPart;
+      pathPrefix = '/' + langPart.toLowerCase();
       language = langPart as I18nLocale['language'];
       country = countryPart as I18nLocale['country'];
     }
   } else if (/^[A-Z]{2}$/i.test(firstPathPart)) {
     if (validLanguages.includes(firstPathPart)) {
-      pathPrefix = '/' + firstPathPart;
+      pathPrefix = firstPathPart === 'EN' ? '/en' : '';
       language = firstPathPart as I18nLocale['language'];
       country = 'SA'; // Default country
     }

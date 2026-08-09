@@ -18,7 +18,9 @@ export const headers: HeadersFunction = ({actionHeaders, loaderHeaders}) => {
 
 export async function action({request, context}: Route.ActionArgs) {
   const {cart} = context;
-  const isEn = context.storefront.i18n.language === 'EN';
+  const url = new URL(request.url);
+  const referer = request.headers.get('Referer') || '';
+  const isEn = url.pathname.startsWith('/en') || referer.includes('/en/') || context.storefront.i18n.language === 'EN';
 
   try {
     const formData = await request.formData();
@@ -942,12 +944,61 @@ export async function action({request, context}: Route.ActionArgs) {
 }
 
 export async function loader({context}: Route.LoaderArgs) {
-  const {cart} = context;
+  const {cart, session} = context;
   try {
-    return await cart.get();
+    let cartData = await cart.get();
+    const backupLinesStr = await session.get('backupCartLines');
+
+    // If cart is empty or missing, but we have backup lines from an incomplete checkout attempt:
+    if ((!cartData || !cartData.lines?.nodes?.length) && backupLinesStr) {
+      try {
+        const backupLines = JSON.parse(backupLinesStr);
+        if (Array.isArray(backupLines) && backupLines.length > 0) {
+          console.log('[CART RESTORE] Restoring cart from incomplete checkout backup lines:', backupLines);
+          const restoreResult = await cart.create({ lines: backupLines });
+          if (restoreResult?.cart?.id) {
+            const headers = cart.setCartId(restoreResult.cart.id);
+            headers.append('Set-Cookie', await session.commit());
+            cartData = await cart.get();
+          }
+        }
+      } catch (restoreErr) {
+        console.error('[CART RESTORE ERROR]', restoreErr);
+      }
+    }
+
+    // Auto-sync logged-in customer email & phone to buyerIdentity so Shopify evaluates segment automatic discounts (EMPLOYEE25) on Cart page
+    if (cartData && cartData.id) {
+      const loginEmail = await session.get('loginCustomerEmail');
+      const loginPhone = await session.get('loginOtpPhone');
+
+      const cartEmail = cartData.buyerIdentity?.email || cartData.buyerIdentity?.customer?.email;
+      const cartPhone = cartData.buyerIdentity?.phone || cartData.buyerIdentity?.customer?.phone;
+
+      if ((loginEmail && loginEmail !== cartEmail && !loginEmail.endsWith('@saadeddin.placeholder')) || (loginPhone && !cartPhone)) {
+        try {
+          const buyerIdentity: any = {};
+          if (loginEmail && !loginEmail.endsWith('@saadeddin.placeholder')) buyerIdentity.email = loginEmail;
+          if (loginPhone) buyerIdentity.phone = loginPhone.startsWith('+') ? loginPhone : `+${loginPhone}`;
+
+          await cart.updateBuyerIdentity(buyerIdentity);
+          cartData = await cart.get();
+        } catch (buyerErr) {
+          console.error('[CART LOADER BUYER IDENTITY ERROR]', buyerErr);
+        }
+      }
+    }
+
+    const cartId = cartData?.id;
+    const headers = cartId ? cart.setCartId(cartId) : new Headers();
+    if (session.isPending) {
+      headers.append('Set-Cookie', await session.commit());
+    }
+
+    return data(cartData, { headers });
   } catch (err) {
     console.error('Failed to get cart in cart loader:', err);
-    return null;
+    return data(null);
   }
 }
 

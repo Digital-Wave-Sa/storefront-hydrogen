@@ -4,6 +4,7 @@ import {
   Outlet,
   useRouteError,
   isRouteErrorResponse,
+  type MetaFunction,
   type ShouldRevalidateFunction,
   Links,
   Meta,
@@ -28,6 +29,9 @@ import {ServerError} from './components/ServerError';
 import {CookieConsentBanner} from './components/CookieConsentBanner';
 import {ProductSkeleton} from './components/ProductSkeleton';
 
+export const meta: MetaFunction = () => {
+  return [{title: 'حلويات سعد الدين | Saadeddin Pastry'}];
+};
 
 export type RootLoader = typeof loader;
 
@@ -189,6 +193,8 @@ export async function loader(args: Route.LoaderArgs) {
       selectedLocationName: selectedLocName,
       selectedAddressName: selectedAddrName,
       fulfillmentType: fType,
+      deliveryDate: await session.get('delivery_date'),
+      timeSlot: await session.get('Time Slot'),
       manualLocationSelection: manualLocationSelection,
       locale: new URL(args.request.url).pathname.split('/')[1]?.toLowerCase() === 'en' ? 'en' : 'ar',
     }, {
@@ -520,8 +526,7 @@ export function Layout({children}: {children?: React.ReactNode}) {
   return (
     <html lang={locale} dir={isEn ? 'ltr' : 'rtl'} suppressHydrationWarning>
       <head suppressHydrationWarning>
-        <meta charSet="utf-8" />
-        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <title>حلويات سعد الدين | Saadeddin Pastry</title>
         <Meta />
         <link rel="canonical" href={canonicalUrl} />
         <link rel="alternate" hrefLang="ar" href={arUrl} />

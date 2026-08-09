@@ -38,6 +38,9 @@ export type CartLineFragment = Pick<
       StorefrontAPI.Product,
       'handle' | 'title' | 'id' | 'vendor' | 'tags'
     > & {
+      collections: {
+        nodes: Array<Pick<StorefrontAPI.Collection, 'id' | 'title' | 'handle'>>;
+      };
       availability_date?: StorefrontAPI.Maybe<
         Pick<StorefrontAPI.Metafield, 'value'>
       >;
@@ -140,6 +143,11 @@ export type CartLineComponentFragment = Pick<
           StorefrontAPI.Product,
           'handle' | 'title' | 'id' | 'vendor' | 'tags'
         > & {
+          collections: {
+            nodes: Array<
+              Pick<StorefrontAPI.Collection, 'id' | 'title' | 'handle'>
+            >;
+          };
           availability_date?: StorefrontAPI.Maybe<
             Pick<StorefrontAPI.Metafield, 'value'>
           >;
@@ -220,6 +228,11 @@ export type CartApiQueryFragment = Pick<
               StorefrontAPI.Product,
               'handle' | 'title' | 'id' | 'vendor' | 'tags'
             > & {
+              collections: {
+                nodes: Array<
+                  Pick<StorefrontAPI.Collection, 'id' | 'title' | 'handle'>
+                >;
+              };
               availability_date?: StorefrontAPI.Maybe<
                 Pick<StorefrontAPI.Metafield, 'value'>
               >;
@@ -330,6 +343,11 @@ export type CartApiQueryFragment = Pick<
                   StorefrontAPI.Product,
                   'handle' | 'title' | 'id' | 'vendor' | 'tags'
                 > & {
+                  collections: {
+                    nodes: Array<
+                      Pick<StorefrontAPI.Collection, 'id' | 'title' | 'handle'>
+                    >;
+                  };
                   availability_date?: StorefrontAPI.Maybe<
                     Pick<StorefrontAPI.Metafield, 'value'>
                   >;
@@ -2740,6 +2758,8 @@ export type GetCartCustomerDetailsQuery = {
 
 export type CheckoutCartQueryVariables = StorefrontAPI.Exact<{
   cartId: StorefrontAPI.Scalars['ID']['input'];
+  language?: StorefrontAPI.InputMaybe<StorefrontAPI.LanguageCode>;
+  country?: StorefrontAPI.InputMaybe<StorefrontAPI.CountryCode>;
 }>;
 
 export type CheckoutCartQuery = {
@@ -6166,6 +6186,14 @@ export type CustomerAddressesForLocationIdQuery = {
   }>;
 };
 
+export type GetCustomerEnrollmentQueryVariables = StorefrontAPI.Exact<{
+  customerAccessToken: StorefrontAPI.Scalars['String']['input'];
+}>;
+
+export type GetCustomerEnrollmentQuery = {
+  customer?: StorefrontAPI.Maybe<Pick<StorefrontAPI.Customer, 'createdAt'>>;
+};
+
 export type GetProductsForWishlistQueryVariables = StorefrontAPI.Exact<{
   ids:
     | Array<StorefrontAPI.Scalars['ID']['input']>
@@ -6347,7 +6375,11 @@ interface GeneratedQueryTypes {
     return: GetCartCustomerDetailsQuery;
     variables: GetCartCustomerDetailsQueryVariables;
   };
-  '#graphql\n    query checkoutCart($cartId: ID!) {\n      cart(id: $cartId) {\n        id\n        checkoutUrl\n        note\n        cost {\n          subtotalAmount { amount currencyCode }\n          totalAmount { amount currencyCode }\n        }\n        lines(first: 100) {\n          nodes {\n            id\n            quantity\n            merchandise {\n              ... on ProductVariant {\n                id\n                title\n                sku\n                price { amount }\n                product { title id }\n              }\n            }\n          }\n        }\n        attributes {\n          key\n          value\n        }\n      }\n    }\n  ': {
+  '#graphql\n      query checkoutCart($cartId: ID!, $language: LanguageCode, $country: CountryCode)\n        @inContext(language: $language, country: $country) {\n        cart(id: $cartId) {\n          id\n          checkoutUrl\n          note\n          cost {\n            subtotalAmount { amount currencyCode }\n            totalAmount { amount currencyCode }\n          }\n          lines(first: 100) {\n            nodes {\n              id\n              quantity\n              merchandise {\n                ... on ProductVariant {\n                  id\n                  title\n                  sku\n                  price { amount }\n                  product { title id }\n                }\n              }\n            }\n          }\n          attributes {\n            key\n            value\n          }\n        }\n      }\n    ': {
+    return: CheckoutCartQuery;
+    variables: CheckoutCartQueryVariables;
+  };
+  '#graphql\n            query checkoutCart($cartId: ID!, $language: LanguageCode, $country: CountryCode)\n              @inContext(language: $language, country: $country) {\n              cart(id: $cartId) {\n                id\n                checkoutUrl\n                note\n                cost {\n                  subtotalAmount { amount currencyCode }\n                  totalAmount { amount currencyCode }\n                }\n                lines(first: 100) {\n                  nodes {\n                    id\n                    quantity\n                    merchandise {\n                      ... on ProductVariant {\n                        id\n                        title\n                        sku\n                        price { amount }\n                        product { title id }\n                      }\n                    }\n                  }\n                }\n                attributes {\n                  key\n                  value\n                }\n              }\n            }\n          ': {
     return: CheckoutCartQuery;
     variables: CheckoutCartQueryVariables;
   };
@@ -6490,6 +6522,10 @@ interface GeneratedQueryTypes {
   '#graphql\n                          query CustomerAddressesForLocationId($customerAccessToken: String!) {\n                            customer(customerAccessToken: $customerAccessToken) {\n                              addresses(first: 250) {\n                                nodes {\n                                  id\n                                  firstName\n                                  lastName\n                                  address1\n                                  address2\n                                  city\n                                  country\n                                  phone\n                                }\n                              }\n                            }\n                          }\n                        ': {
     return: CustomerAddressesForLocationIdQuery;
     variables: CustomerAddressesForLocationIdQueryVariables;
+  };
+  '#graphql\n            query getCustomerEnrollment($customerAccessToken: String!) {\n              customer(customerAccessToken: $customerAccessToken) { createdAt }\n            }\n            ': {
+    return: GetCustomerEnrollmentQuery;
+    variables: GetCustomerEnrollmentQueryVariables;
   };
   '#graphql\n      query getProductsForWishlist($ids: [ID!]!, $country: CountryCode, $language: LanguageCode) @inContext(country: $country, language: $language) {\n        nodes(ids: $ids) {\n          ... on Product {\n            id\n            title\n            handle\n            availableForSale\n            featuredImage {\n              id\n              altText\n              url\n              width\n              height\n            }\n            priceRange {\n              minVariantPrice {\n                amount\n                currencyCode\n              }\n              maxVariantPrice {\n                amount\n                currencyCode\n              }\n            }\n            compareAtPriceRange {\n              minVariantPrice {\n                amount\n                currencyCode\n              }\n            }\n            visibility_start: metafield(namespace: "custom", key: "visibility_start") {\n              value\n            }\n            visibility_end: metafield(namespace: "custom", key: "visibility_end") {\n              value\n            }\n            variants(first: 10) {\n              nodes {\n                id\n                title\n                availableForSale\n                quantityAvailable\n                selectedOptions {\n                  name\n                  value\n                }\n                price {\n                  amount\n                  currencyCode\n                }\n                storeAvailability(first: 250) {\n                  nodes {\n                    available\n                    location {\n                      id\n                      name\n                    }\n                  }\n                }\n              }\n            }\n          }\n        }\n      }\n    ': {
     return: GetProductsForWishlistQuery;

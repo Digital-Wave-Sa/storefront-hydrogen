@@ -94,7 +94,7 @@ export function CartLineItem({
         <div className={`flex-1 min-w-0 ${isEn ? 'text-left' : 'text-right'}`}>
           <div className="flex items-center gap-2 mb-1">
             <span className="text-[12px] font-bold text-[#906B51]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
-              {product?.vendor || (isEn ? 'Saadeddin' : 'الكيك المخصص')}
+              {product?.collections?.nodes?.[0]?.title || (isEn ? 'Saadeddin' : 'سعد الدين')}
             </span>
             {(() => {
               const isPreorder = product?.tags?.some((t: string) => t.toLowerCase() === 'pre-order') || line.attributes?.some((a: any) => a.key === '_is_preorder' && a.value === 'true');
@@ -299,7 +299,7 @@ export function CartLineItem({
           {/* Details */}
           <div className={`flex-1 min-w-0 ${isEn ? 'text-left' : 'text-right'}`}>
             <span className="text-[12px] font-bold text-[#906B51] block mb-1" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
-              {product?.vendor || (isEn ? 'Saadeddin' : 'الكيك المخصص')}
+              {product?.collections?.nodes?.[0]?.title || (isEn ? 'Saadeddin' : 'سعد الدين')}
             </span>
             <h4 className="font-bold text-[16px] text-[#171717] mb-1.5 leading-snug line-clamp-2" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
               {product?.title || title}

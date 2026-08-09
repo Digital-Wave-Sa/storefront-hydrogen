@@ -71,8 +71,6 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
   const attrFulfillmentType = attributes.find((a: any) => a.key.toLowerCase().trim() === 'fulfillment type')?.value;
   const fulfillmentType = attrFulfillmentType || rootData?.fulfillmentType;
 
-  const timeSlot = attributes.find((a: any) => a.key.toLowerCase().trim() === 'time slot')?.value;
-
   // Dynamic Settings from Metafields
   const locations = rootData?.locations?.locations?.nodes || rootData?.locations?.nodes || [];
   // Match by numerical ID or full GID, then fallback to English or Arabic name matching
@@ -102,6 +100,11 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
   });
 
   const isPickup = fulfillmentType?.toLowerCase() === 'pickup';
+
+  const selectedDate = attributes.find((a: any) => a.key === 'delivery_date')?.value || '';
+  const timeSlot = attributes.find((a: any) => a.key.toLowerCase().trim() === 'time slot')?.value || '';
+  const dynamicTimeSlots = selectedDate ? generateDynamicSlots(currentBranch, isEn, fulfillmentType, selectedDate) : [];
+  const isTimeSlotInvalid = !!timeSlot && dynamicTimeSlots.length > 0 && !dynamicTimeSlots.some((slot: string) => slot === timeSlot || slot.startsWith(timeSlot) || timeSlot.startsWith(slot.split(' - ')[0]));
   const minOrderMeta = currentBranch?.min_order_value || currentBranch?.metafields?.find((m: any) => m?.key === 'minimum_order_value');
   const minOrderAttr = attributes.find((a: any) => a.key.toLowerCase().trim() === 'minimum order value')?.value;
   const minOrderAttrVal = minOrderAttr ? parseFloat(minOrderAttr) : null;
@@ -195,10 +198,6 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
   const outOfStockItemNamesEn = outOfStockItems.map((line: any) => line.merchandise?.product?.title || line.merchandise?.title).join(', ');
   const outOfStockItemNamesAr = outOfStockItems.map((line: any) => line.merchandise?.product?.title || line.merchandise?.title).join('، ');
 
-  const selectedDate = attributes.find((a: any) => a.key === 'delivery_date')?.value || '';
-  const dynamicTimeSlots = selectedDate ? generateDynamicSlots(currentBranch, isEn, fulfillmentType, selectedDate) : [];
-  const isTimeSlotInvalid = !!timeSlot && !dynamicTimeSlots.some((slot: string) => slot === timeSlot || slot.startsWith(timeSlot) || timeSlot.startsWith(slot.split(' - ')[0]));
-
   // Validate active discount codes against location restrictions
   const locationDiscountsList = parseLocationDiscountsJSON(rootData?.locationDiscounts);
   const activeDiscountCodes = cart?.discountCodes?.filter((d: any) => d.applicable)?.map((d: any) => d.code) || [];
@@ -210,7 +209,7 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
   });
 
   const isDateTimeRequired = !hasPreOrderItems;
-  const isDateTimeValid = !isDateTimeRequired || (!isTimeSlotInvalid && !!selectedDate && !!timeSlot);
+  const isDateTimeValid = !isDateTimeRequired || (!isTimeSlotInvalid && !!selectedDate && !!timeSlot && selectedDate.trim() !== '' && timeSlot.trim() !== '');
 
   const canCheckout = isMinOrderMet && isBranchSelected && !isBranchHidden && !isOutOfRange && !hasOutOfStockItems && isDateTimeValid && !invalidActiveDiscount;
 
@@ -1436,33 +1435,21 @@ function CartDiscounts({
     <div aria-label="Discounts" className="w-full relative space-y-2">
       {/* Employee Discount Active Badge & Anti-Stacking Lock */}
       {isEmployeeDiscountActive ? (
-        <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200 rounded-2xl px-5 py-4 text-emerald-900 shadow-sm transition-all">
+        <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-xl px-4 py-3 text-green-800 shadow-sm">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-100/80 border border-emerald-200 flex items-center justify-center text-emerald-700 flex-shrink-0">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
-                <line x1="7" y1="7" x2="7.01" y2="7"></line>
-              </svg>
-            </div>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-green-700 shrink-0">
+              <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
+              <line x1="7" y1="7" x2="7.01" y2="7"></line>
+            </svg>
             <div>
-              <div className="flex items-center gap-2">
-                <span className="font-bold text-[15px] leading-tight block text-emerald-950">
-                  {isEn ? 'Employee Discount (25% Off)' : 'خصم الموظفين (25%)'}
-                </span>
-                <span className="bg-emerald-200/80 text-emerald-900 px-2 py-0.5 rounded-md text-[11px] font-bold font-mono tracking-wider">
-                  {codes[0] || 'EMPLOYEE25'}
-                </span>
-              </div>
-              <span className="text-[12px] font-medium text-emerald-800/90 block mt-1">
-                {isEn
-                  ? 'Applied to your cart • Cannot combine with other promo codes'
-                  : 'مُطبق على سلتك • لا يمكن دمجه مع أكواد خصم أخرى'}
+              <span className="font-bold text-[14px] leading-tight block text-green-900">
+                {isEn ? 'Employee Discount (25%)' : 'خصم الموظفين (25%)'}
+              </span>
+              <span className="text-[11px] font-medium text-green-700 block mt-0.5">
+                {codes[0] || 'EMPLOYEE25'} • {isEn ? 'Applied to your cart' : 'تم التطبيق على سلتك'}
               </span>
             </div>
           </div>
-          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300/50">
-            {isEn ? 'Active' : 'مفعّل'}
-          </span>
         </div>
       ) : (
         <>

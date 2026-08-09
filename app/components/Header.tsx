@@ -760,8 +760,8 @@ const STATIC_NAV_AR = [
   { title: 'الرئيسية', url: '/' },
   { title: 'المنتجات', url: '/collections/all', hasMega: true },
   { title: 'المناسبات', url: '/occasions' },
-  { title: 'خدمة الضيافة', url: 'https://catering.saadeddin.sa', isExternal: true },
   { title: 'الكيك المخصص', url: '/custom-cake' },
+  { title: 'خدمة الضيافة', url: 'https://catering.saadeddin.sa', isExternal: true },
   { title: 'القسائم', url: '/vouchers' },
   { title: 'العروض', url: '/promotions' },
 ];
@@ -770,8 +770,8 @@ const STATIC_NAV_EN = [
   { title: 'Home', url: '/en' },
   { title: 'Products', url: '/en/collections/all', hasMega: true },
   { title: 'Occasions', url: '/en/occasions' },
-  { title: 'Catering', url: 'https://catering.saadeddin.sa', isExternal: true },
   { title: 'Custom Cake', url: '/en/custom-cake' },
+  { title: 'Catering', url: 'https://catering.saadeddin.sa', isExternal: true },
   { title: 'Vouchers', url: '/en/vouchers' },
   { title: 'Offers', url: '/en/promotions' },
 ];

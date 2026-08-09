@@ -1445,9 +1445,14 @@ function CartDiscounts({
               </svg>
             </div>
             <div>
-              <span className="font-bold text-[15px] leading-tight block text-emerald-950">
-                {isEn ? 'Employee Discount (25% Off)' : 'خصم الموظفين (25%)'}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-[15px] leading-tight block text-emerald-950">
+                  {isEn ? 'Employee Discount (25% Off)' : 'خصم الموظفين (25%)'}
+                </span>
+                <span className="bg-emerald-200/80 text-emerald-900 px-2 py-0.5 rounded-md text-[11px] font-bold font-mono tracking-wider">
+                  {codes[0] || 'EMPLOYEE25'}
+                </span>
+              </div>
               <span className="text-[12px] font-medium text-emerald-800/90 block mt-1">
                 {isEn
                   ? 'Applied to your cart • Cannot combine with other promo codes'

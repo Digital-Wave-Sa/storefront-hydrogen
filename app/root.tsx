@@ -167,8 +167,6 @@ export async function loader(args: Route.LoaderArgs) {
     const requestUrl = new URL(args.request.url);
     const referer = args.request.headers.get('referer') || '';
     const isPostCheckout =
-      referer.includes('myshopify.com') ||
-      referer.includes('checkouts') ||
       requestUrl.searchParams.has('thank_you') ||
       requestUrl.searchParams.has('order_id') ||
       requestUrl.searchParams.has('checkout_completed') ||

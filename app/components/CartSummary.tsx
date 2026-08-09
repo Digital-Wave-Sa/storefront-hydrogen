@@ -1434,131 +1434,132 @@ function CartDiscounts({
 
   return (
     <div aria-label="Discounts" className="w-full relative space-y-2">
-      {/* Employee Discount Active Badge */}
-      {isEmployeeDiscountActive && (
-        <div className="flex items-center justify-between bg-amber-50 border border-amber-300 rounded-xl px-4 py-3 mb-2 text-amber-900 shadow-sm">
-          <div className="flex items-center gap-2.5">
-            <span className="text-lg">👔</span>
+      {/* Employee Discount Active Badge & Anti-Stacking Lock */}
+      {isEmployeeDiscountActive ? (
+        <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200 rounded-2xl px-5 py-4 text-emerald-900 shadow-sm transition-all">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-emerald-100/80 border border-emerald-200 flex items-center justify-center text-emerald-700 flex-shrink-0">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
+                <line x1="7" y1="7" x2="7.01" y2="7"></line>
+              </svg>
+            </div>
             <div>
-              <span className="font-bold text-[14px] leading-none block">
+              <span className="font-bold text-[15px] leading-tight block text-emerald-950">
                 {isEn ? 'Employee Discount (25% Off)' : 'خصم الموظفين (25%)'}
               </span>
-              <span className="text-[11px] font-semibold text-amber-800 block mt-0.5">
-                {isEn ? 'Applied to your cart • Cannot combine with other codes' : 'مُطبق على سلتك • لا يمكن دمجه مع أكواد أخرى'}
+              <span className="text-[12px] font-medium text-emerald-800/90 block mt-1">
+                {isEn
+                  ? 'Applied to your cart • Cannot combine with other promo codes'
+                  : 'مُطبق على سلتك • لا يمكن دمجه مع أكواد خصم أخرى'}
               </span>
             </div>
           </div>
-        </div>
-      )}
-
-      <dl hidden={!codes.length || isEmployeeDiscountActive}>
-        <div>
-          <dt id={discountsHeadingId} className="sr-only">Discounts</dt>
-          <UpdateDiscountForm>
-            {(fetcher: any) => {
-              const isRemoving = fetcher.state !== 'idle';
-              const isInvalid = !!invalidActiveDiscount;
-              return (
-                <div className="flex flex-col gap-2">
-                  <div className={`flex items-center justify-between border rounded-xl px-4 py-3 transition-opacity ${
-                    isInvalid ? 'bg-red-50 border-red-300 text-red-800' : 'bg-green-50 border-green-200 text-green-700'
-                  } ${isRemoving ? 'opacity-50' : 'opacity-100'}`}>
-                    <div className="flex items-center gap-2">
-                      {isInvalid ? (
-                        <span className="text-base">⚠️</span>
-                      ) : (
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>
-                      )}
-                      <div>
-                        <span className="font-bold text-[14px] leading-none block">
-                          {codes?.join(', ')}
-                        </span>
-                        <span className="text-[11px] font-medium opacity-80 block mt-0.5">
-                          {isInvalid
-                            ? (isEn ? `Not valid for ${branchName || 'selected branch'}` : `غير متاح لـ ${branchName || 'الفرع المختار'}`)
-                            : (isEn ? 'Voucher applied' : 'تم تطبيق الكود')}
-                        </span>
-                      </div>
-                    </div>
-                    <button
-                      type="submit"
-                      aria-label="Remove discount"
-                      disabled={isRemoving}
-                      className={`${isInvalid ? 'text-red-600 hover:text-red-800' : 'text-green-600 hover:text-red-500'} transition-colors p-1`}
-                    >
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                    </button>
-                  </div>
-                </div>
-              );
-            }}
-          </UpdateDiscountForm>
-        </div>
-      </dl>
-
-      {/* Render Automatic Discounts */}
-      {hasAutomaticDiscount && !isEmployeeDiscountActive && (
-        <dl>
-          <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-xl px-4 py-3 mb-2">
-            <div className="flex items-center gap-2 text-green-700">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>
-              <div>
-                <span className="font-bold text-[14px] leading-none block">
-                  {isEn ? 'Automatic Promotion' : 'خصم تلقائي'}
-                </span>
-                <span className="text-[11px] font-medium opacity-80 block mt-0.5">
-                  {isEn ? 'Applied to your cart' : 'تم التطبيق على سلتك'}
-                </span>
-              </div>
-            </div>
-          </div>
-        </dl>
-      )}
-
-      {isEmployeeDiscountActive ? (
-        <div className="text-amber-800 text-xs font-bold px-4 py-3 bg-amber-50/80 border border-amber-200 rounded-xl flex items-center gap-2 mt-2">
-          <span className="w-2 h-2 rounded-full bg-amber-500 flex-shrink-0" />
-          <span>
-            {isEn
-              ? 'Employee discount (25%) is active. Other promo codes cannot be combined.'
-              : 'خصم الموظفين (25%) مفعّل. لا يمكن دمج أكواد خصم أخرى.'}
+          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300/50">
+            {isEn ? 'Active' : 'مفعّل'}
           </span>
         </div>
       ) : (
-        <div hidden={codes.length > 0}>
-          <UpdateDiscountForm discountCodes={codes}>
-            {(fetcher: any) => {
-              const isLoading = fetcher.state !== 'idle';
-              return (
-                <div className="flex flex-col gap-2 w-full">
-                  <div className="flex w-full items-center justify-between border border-gray-300 rounded-xl overflow-hidden focus-within:border-[#234745] transition-colors p-1.5 h-[56px] relative bg-white">
-                    <input
-                      type="text"
-                      name="discountCode"
-                      placeholder={isEn ? "Discount code" : "كود الخصم"}
-                      className="flex-1 bg-transparent px-4 py-2 text-[14px] text-[#234745] focus:outline-none placeholder-[#9FB7AE] font-bold w-full h-full"
-                      style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
-                    />
-                    <button
-                      type="submit"
-                      disabled={isLoading}
-                      className="bg-[#234745] text-white px-6 h-full text-[14px] font-bold hover:bg-[#1A3533] transition-colors rounded-[8px] flex-shrink-0"
-                      style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
-                    >
-                      {isLoading ? '...' : (isEn ? 'Apply' : 'تطبيق')}
-                    </button>
-                  </div>
-                  {fetcher.data?.error && (
-                    <div className="text-red-500 text-xs font-bold px-3 py-2 bg-red-50 border border-red-200 rounded-lg flex items-center gap-1.5 mt-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-red-500 flex-shrink-0" />
-                      <span>{fetcher.data.error}</span>
+        <>
+          <dl hidden={!codes.length}>
+            <div>
+              <dt id={discountsHeadingId} className="sr-only">Discounts</dt>
+              <UpdateDiscountForm>
+                {(fetcher: any) => {
+                  const isRemoving = fetcher.state !== 'idle';
+                  const isInvalid = !!invalidActiveDiscount;
+                  return (
+                    <div className="flex flex-col gap-2">
+                      <div className={`flex items-center justify-between border rounded-xl px-4 py-3 transition-opacity ${
+                        isInvalid ? 'bg-red-50 border-red-300 text-red-800' : 'bg-green-50 border-green-200 text-green-700'
+                      } ${isRemoving ? 'opacity-50' : 'opacity-100'}`}>
+                        <div className="flex items-center gap-2">
+                          {isInvalid ? (
+                            <span className="text-base">⚠️</span>
+                          ) : (
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>
+                          )}
+                          <div>
+                            <span className="font-bold text-[14px] leading-none block">
+                              {codes?.join(', ')}
+                            </span>
+                            <span className="text-[11px] font-medium opacity-80 block mt-0.5">
+                              {isInvalid
+                                ? (isEn ? `Not valid for ${branchName || 'selected branch'}` : `غير متاح لـ ${branchName || 'الفرع المختار'}`)
+                                : (isEn ? 'Voucher applied' : 'تم تطبيق الكود')}
+                            </span>
+                          </div>
+                        </div>
+                        <button
+                          type="submit"
+                          aria-label="Remove discount"
+                          disabled={isRemoving}
+                          className={`${isInvalid ? 'text-red-600 hover:text-red-800' : 'text-green-600 hover:text-red-500'} transition-colors p-1`}
+                        >
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                        </button>
+                      </div>
                     </div>
-                  )}
+                  );
+                }}
+              </UpdateDiscountForm>
+            </div>
+          </dl>
+
+          {/* Render Automatic Discounts */}
+          {hasAutomaticDiscount && (
+            <dl>
+              <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-xl px-4 py-3 mb-2">
+                <div className="flex items-center gap-2 text-green-700">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>
+                  <div>
+                    <span className="font-bold text-[14px] leading-none block">
+                      {isEn ? 'Automatic Promotion' : 'خصم تلقائي'}
+                    </span>
+                    <span className="text-[11px] font-medium opacity-80 block mt-0.5">
+                      {isEn ? 'Applied to your cart' : 'تم التطبيق على سلتك'}
+                    </span>
+                  </div>
                 </div>
-              );
-            }}
-          </UpdateDiscountForm>
-        </div>
+              </div>
+            </dl>
+          )}
+
+          <div hidden={codes.length > 0}>
+            <UpdateDiscountForm discountCodes={codes}>
+              {(fetcher: any) => {
+                const isLoading = fetcher.state !== 'idle';
+                return (
+                  <div className="flex flex-col gap-2 w-full">
+                    <div className="flex w-full items-center justify-between border border-gray-300 rounded-xl overflow-hidden focus-within:border-[#234745] transition-colors p-1.5 h-[56px] relative bg-white">
+                      <input
+                        type="text"
+                        name="discountCode"
+                        placeholder={isEn ? "Discount code" : "كود الخصم"}
+                        className="flex-1 bg-transparent px-4 py-2 text-[14px] text-[#234745] focus:outline-none placeholder-[#9FB7AE] font-bold w-full h-full"
+                        style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
+                      />
+                      <button
+                        type="submit"
+                        disabled={isLoading}
+                        className="bg-[#234745] text-white px-6 h-full text-[14px] font-bold hover:bg-[#1A3533] transition-colors rounded-[8px] flex-shrink-0"
+                        style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
+                      >
+                        {isLoading ? '...' : (isEn ? 'Apply' : 'تطبيق')}
+                      </button>
+                    </div>
+                    {fetcher.data?.error && (
+                      <div className="text-red-500 text-xs font-bold px-3 py-2 bg-red-50 border border-red-200 rounded-lg flex items-center gap-1.5 mt-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-red-500 flex-shrink-0" />
+                        <span>{fetcher.data.error}</span>
+                      </div>
+                    )}
+                  </div>
+                );
+              }}
+            </UpdateDiscountForm>
+          </div>
+        </>
       )}
     </div>
   );

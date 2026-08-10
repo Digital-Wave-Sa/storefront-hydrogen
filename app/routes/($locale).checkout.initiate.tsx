@@ -17,12 +17,18 @@ async function processCheckoutInitiate({request, context}: ActionFunctionArgs) {
   // 1. Ensure user is logged in via Custom API or Shopify Customer Access Token
   const customToken = await session.get('saadeddinToken');
   const customerAccessToken = await session.get('customerAccessToken');
+  const loginOtpPhone = await session.get('loginOtpPhone');
+  const loginCustomerEmail = await session.get('loginCustomerEmail');
   console.log('\n====================================================');
   console.log('[CHECKOUT DIAGNOSTIC ENTRY]', request.method, request.url);
   console.log('[CHECKOUT DIAGNOSTIC] customToken:', customToken);
   console.log('[CHECKOUT DIAGNOSTIC] customerAccessToken:', customerAccessToken);
+  console.log('[CHECKOUT DIAGNOSTIC] loginOtpPhone:', loginOtpPhone);
+  console.log('[CHECKOUT DIAGNOSTIC] loginCustomerEmail:', loginCustomerEmail);
 
-  if (!customToken && !customerAccessToken) {
+  const isLoggedIn = !!(customToken || customerAccessToken || loginOtpPhone || loginCustomerEmail);
+
+  if (!isLoggedIn) {
     console.log(
       '[CHECKOUT DIAGNOSTIC REDIRECT] Redirecting to login: no customToken and no customerAccessToken',
     );
@@ -429,15 +435,17 @@ async function processCheckoutInitiate({request, context}: ActionFunctionArgs) {
         console.error('[CHECKOUT INITIATE] Promo check error:', promoErr);
       }
 
-      const hasFreeShippingCode = cart?.discountCodes?.some((d: any) => d.code?.toLowerCase() === 'freeshipping') || false;
+      const knownPromoCodes = ['freeshipping', 'branch free delivery promo'];
+      const hasFreeShippingCode = cart?.discountCodes?.some((d: any) =>
+        knownPromoCodes.includes(String(d.code || '').toLowerCase().trim())
+      ) || false;
+
       if (isPromoFreeDelivery || hasFreeShippingCode) {
         urlObj.searchParams.set('discount', 'freeshipping');
         try {
-          const existingCodes = cart?.discountCodes?.map((d: any) => d.code) || [];
-          if (!existingCodes.some((c: string) => c.toLowerCase() === 'freeshipping')) {
-            const newCodes = Array.from(new Set([...existingCodes, 'freeshipping']));
-            await context.cart.updateDiscountCodes(newCodes);
-          }
+          const existingCodes = cart?.discountCodes?.map((d: any) => d.code)?.filter((c: string) => c !== 'Branch Free Delivery Promo') || [];
+          const newCodes = Array.from(new Set([...existingCodes, 'freeshipping']));
+          await context.cart.updateDiscountCodes(newCodes);
         } catch (discErr) {
           console.error('[CHECKOUT INITIATE] Failed to update cart discount codes:', discErr);
         }

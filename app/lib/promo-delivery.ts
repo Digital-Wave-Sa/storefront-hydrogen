@@ -8,11 +8,15 @@ export function checkBranchFreeDeliveryInterval(branch: any, selectedTimeSlot?: 
     let fromVal = branch.promoFreeDeliveryFrom || branch.promo_free_delivery_from?.value;
     let toVal = branch.promoFreeDeliveryTo || branch.promo_free_delivery_to?.value;
 
-    if (!fromVal && Array.isArray(branch.metafields)) {
-        fromVal = branch.metafields.find((m: any) => m?.key === 'promo_free_delivery_from')?.value;
+    const mfList = Array.isArray(branch.metafields)
+        ? branch.metafields
+        : (Array.isArray(branch?.metafields?.nodes) ? branch.metafields.nodes : []);
+
+    if (!fromVal && mfList.length > 0) {
+        fromVal = mfList.find((m: any) => m?.key === 'promo_free_delivery_from')?.value;
     }
-    if (!toVal && Array.isArray(branch.metafields)) {
-        toVal = branch.metafields.find((m: any) => m?.key === 'promo_free_delivery_to')?.value;
+    if (!toVal && mfList.length > 0) {
+        toVal = mfList.find((m: any) => m?.key === 'promo_free_delivery_to')?.value;
     }
 
     if (!fromVal || !toVal) return { isPromoFreeDelivery: false, promoStart12h: '', promoEnd12h: '' };
@@ -46,7 +50,8 @@ export function checkBranchFreeDeliveryInterval(branch: any, selectedTimeSlot?: 
 
         let isPromoFreeDelivery = false;
 
-        // 1. Check selected time slot (e.g. "2:00 PM - 4:00 PM" or "14:00 - 16:00" or "02:00 م - 04:00 م")
+        // Check selected time slot (e.g. "2:00 PM - 4:00 PM" or "14:00 - 16:00" or "02:00 م - 04:00 م")
+        // MUST only apply when customer explicitly selects an eligible time slot
         if (selectedTimeSlot && String(selectedTimeSlot).trim()) {
             const slotStr = String(selectedTimeSlot).trim();
             const parts = slotStr.split(/\s*[-–toإلى]\s*/);
@@ -59,20 +64,6 @@ export function checkBranchFreeDeliveryInterval(branch: any, selectedTimeSlot?: 
                         isPromoFreeDelivery = true;
                     }
                 }
-            }
-        }
-
-        // 2. Fallback to current KSA time if slot not selected yet
-        if (!isPromoFreeDelivery) {
-            const riyadhHourStr = new Intl.DateTimeFormat('en-US', {
-                timeZone: 'Asia/Riyadh',
-                hour: 'numeric',
-                minute: 'numeric',
-                hour12: false
-            }).format(new Date());
-            const currentMins = parseMinutesFromStr(riyadhHourStr);
-            if (currentMins >= promoStartMins && currentMins <= promoEndMins) {
-                isPromoFreeDelivery = true;
             }
         }
 

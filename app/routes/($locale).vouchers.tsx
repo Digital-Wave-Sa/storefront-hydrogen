@@ -1400,60 +1400,6 @@ export default function VouchersPage() {
                   : 'يمكن استخدام قسيمة واحدة لكل طلب. لا تجمع القسائم مع العروض الأخري'}
               </p>
             </form>
-
-            <div className="pt-2">
-              <h4
-                className="text-[15px] font-bold text-[#7D7D7D] text-right mb-3"
-                style={{fontFamily: "'GE Dinar One', 'GE SS Two', sans-serif"}}
-              >
-                {isEn ? 'Check Balance' : 'التحقق من الرصيد'}
-              </h4>
-              <form onSubmit={handleCheckBalance} className="space-y-3">
-                <div dir="ltr" className="relative flex items-center">
-                  <button
-                    type="submit"
-                    disabled={
-                      balanceFetcher.state !== 'idle' ||
-                      !balanceCheckInput.trim()
-                    }
-                    className="absolute left-1.5 h-[42px] px-6 bg-white hover:bg-gray-50 text-[#234745] font-bold text-[14px] rounded-[12px] border border-[#234745] transition-all z-10 disabled:opacity-50"
-                    style={{
-                      fontFamily: "'GE Dinar One', 'GE SS Two', sans-serif",
-                    }}
-                  >
-                    {balanceFetcher.state !== 'idle'
-                      ? isEn
-                        ? 'Checking...'
-                        : 'جاري التحقق...'
-                      : isEn
-                        ? 'Check'
-                        : 'تحقق'}
-                  </button>
-                  <input
-                    type="text"
-                    value={balanceCheckInput}
-                    onChange={(e) => setBalanceCheckInput(e.target.value)}
-                    placeholder={isEn ? 'Voucher Number' : 'رقم القسيمة'}
-                    className="w-full h-[54px] pl-[95px] pr-5 rounded-[14px] border border-[#B8D0CC] text-[14px] text-right focus:outline-none focus:border-[#234745] transition-all placeholder:text-[#A0B2B0]"
-                    style={{
-                      fontFamily: "'GE Dinar One', 'GE SS Two', sans-serif",
-                    }}
-                  />
-                </div>
-
-                {balanceFetcher.data?.result && (
-                  <p className="mt-3 text-[12px] text-emerald-800 bg-emerald-50 p-3 rounded-xl border border-emerald-200 font-bold">
-                    {balanceFetcher.data.result}
-                  </p>
-                )}
-
-                {balanceFetcher.data?.error && (
-                  <p className="mt-3 text-[12px] text-red-600 bg-red-50 p-3 rounded-xl border border-red-200 font-bold">
-                    {balanceFetcher.data.error}
-                  </p>
-                )}
-              </form>
-            </div>
           </div>
         </div>
       </section>

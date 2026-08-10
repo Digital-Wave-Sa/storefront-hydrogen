@@ -351,7 +351,8 @@ export async function action({request, context, params}: Route.ActionArgs) {
                   const cartLines = currentCart?.lines?.nodes || [];
                   const cartAttributes = currentCart?.attributes || [];
 
-                  // 0) Block Discount if cart contains a BOGO (Free) item
+                  // 0) Block Discount if cart contains a BOGO (Free) item (except for Free Shipping codes)
+                  const isFreeShippingCode = ['FREESHIPPING', 'FREE_SHIPPING', 'BRANCH FREE DELIVERY PROMO'].includes(submittedCode);
                   const hasBogoItem = cartLines.some((line: any) =>
                     line.attributes?.some(
                       (attr: any) =>
@@ -359,7 +360,7 @@ export async function action({request, context, params}: Route.ActionArgs) {
                     ),
                   );
 
-                  if (hasBogoItem) {
+                  if (hasBogoItem && !isFreeShippingCode) {
                     return data(
                       {
                         error: isEn
@@ -682,9 +683,9 @@ export async function action({request, context, params}: Route.ActionArgs) {
         const isEmployeeDiscountActive =
           currentCart?.discountCodes?.some(
             (dc) => dc.applicable && (dc.code.toUpperCase().includes('EMPLOYEE') || dc.code.toUpperCase().startsWith('EMP'))
-          ) || hasAutomaticDiscount;
+          ) || false;
 
-        if (isEmployeeDiscountActive && formDiscountCode) {
+        if (isEmployeeDiscountActive && formDiscountCode && !['FREESHIPPING', 'FREE_SHIPPING'].includes(String(formDiscountCode).toUpperCase().trim())) {
           return data(
             {
               error: isEnglish
@@ -695,13 +696,25 @@ export async function action({request, context, params}: Route.ActionArgs) {
           );
         }
 
-        // User inputted discount code
-        const discountCodes = (
-          formDiscountCode ? [formDiscountCode] : []
-        ) as string[];
+        let inputCodes: string[] = [];
+        if (Array.isArray(inputs.discountCodes)) {
+          inputCodes = inputs.discountCodes;
+        } else if (typeof inputs.discountCodes === 'string' && inputs.discountCodes.trim()) {
+          try {
+            const parsed = JSON.parse(inputs.discountCodes);
+            if (Array.isArray(parsed)) inputCodes = parsed;
+            else inputCodes = [inputs.discountCodes];
+          } catch (e) {
+            inputCodes = [inputs.discountCodes];
+          }
+        }
 
-        // Combine discount codes already applied on cart
-        discountCodes.push(...inputs.discountCodes);
+        const discountCodes = Array.from(
+          new Set([
+            ...(formDiscountCode ? [String(formDiscountCode).trim()] : []),
+            ...inputCodes.map((c) => String(c).trim()),
+          ]),
+        ).filter(Boolean);
 
         result = await cart.updateDiscountCodes(discountCodes);
         break;
@@ -763,6 +776,73 @@ export async function action({request, context, params}: Route.ActionArgs) {
           }),
         );
         result = await cart.updateAttributes(finalAttributes);
+
+        // Check if selected time slot qualifies for promo free delivery and update cart.discountCodes on Shopify server
+        try {
+          const selectedSlot = timeSlotAttr?.value || (await context.session.get('Time Slot'));
+          const selectedBranchId =
+            mergedMap.get('Branch ID') ||
+            mergedMap.get('custom.branch_id') ||
+            (await context.session.get('selectedLocationId'));
+          const selectedBranchName =
+            mergedMap.get('Branch') ||
+            (await context.session.get('selectedLocationName'));
+
+          if (selectedSlot && (selectedBranchId || selectedBranchName)) {
+            const { getAdminToken, getAdminDomain } = await import('~/lib/shopify-admin.server');
+            const shopDomain = getAdminDomain(context.env);
+            const adminToken = await getAdminToken(context.env);
+            if (shopDomain && adminToken) {
+              const locRes = await fetch(`https://${shopDomain}/admin/api/2024-10/graphql.json`, {
+                method: 'POST',
+                headers: {
+                  'X-Shopify-Access-Token': adminToken,
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  query: `{
+                    locations(first: 250) {
+                      nodes {
+                        id
+                        name
+                        metafields(first: 50) {
+                          nodes { key namespace value }
+                        }
+                      }
+                    }
+                  }`
+                }),
+              });
+              const locData = (await locRes.json()) as any;
+              const adminLocs = locData?.data?.locations?.nodes || [];
+              const matchedLoc = adminLocs.find((l: any) => {
+                const locNumId = String(l.id || '').split('/').pop();
+                const targetNumId = String(selectedBranchId || '').split('/').pop();
+                if (targetNumId && locNumId === targetNumId) return true;
+                if (selectedBranchName && l.name?.toLowerCase().trim() === String(selectedBranchName).toLowerCase().trim()) return true;
+                const arabicName = l.metafields?.nodes?.find((m: any) => m.key === 'name_in_arabic')?.value;
+                if (selectedBranchName && arabicName && String(arabicName).trim() === String(selectedBranchName).trim()) return true;
+                return false;
+              });
+
+              if (matchedLoc) {
+                const { checkBranchFreeDeliveryInterval } = await import('~/lib/promo-delivery');
+                const promoResult = checkBranchFreeDeliveryInterval(matchedLoc, selectedSlot);
+                const isPromoFree = promoResult.isPromoFreeDelivery;
+
+                const currentCodes = currentCart?.discountCodes?.map((dc: any) => dc.code) || [];
+                if (isPromoFree && !currentCodes.includes('freeshipping')) {
+                  await cart.updateDiscountCodes(Array.from(new Set([...currentCodes, 'freeshipping'])));
+                } else if (!isPromoFree && currentCodes.includes('freeshipping')) {
+                  await cart.updateDiscountCodes(currentCodes.filter((c: string) => c !== 'freeshipping'));
+                }
+              }
+            }
+          }
+        } catch (promoErr) {
+          console.error('[CART] Failed auto-applying promo free shipping code:', promoErr);
+        }
+
         break;
       }
       case 'FulfillmentUpdate': {
@@ -872,18 +952,30 @@ export async function action({request, context, params}: Route.ActionArgs) {
         throw new Error(`${action} cart action is not defined`);
     }
 
-    const cartId = result?.cart?.id;
-    const headers = cartId ? cart.setCartId(result?.cart?.id) : new Headers();
+    // Extract actual cart object from GraphQL mutation response (handles cartLinesRemove, cartLinesUpdate, cartLinesAdd, etc.)
+    let actualCart = result?.cart;
+    if (!actualCart && result && typeof result === 'object') {
+      actualCart =
+        result.cartLinesRemove?.cart ||
+        result.cartLinesUpdate?.cart ||
+        result.cartLinesAdd?.cart ||
+        result.cartDiscountCodesUpdate?.cart ||
+        result.cartAttributesUpdate?.cart ||
+        result.cartBuyerIdentityUpdate?.cart ||
+        result.cartNoteUpdate?.cart ||
+        result.cartSelectedDeliveryOptionsUpdate?.cart;
+    }
+
+    const cartId = actualCart?.id || result?.cart?.id;
+    const headers = cartId ? cart.setCartId(cartId) : new Headers();
 
     if (context.session.isPending) {
       headers.append('Set-Cookie', await context.session.commit());
     }
 
-    const {
-      cart: cartResult,
-      errors,
-      warnings,
-    } = (result as any) || {cart: null, errors: [], warnings: []};
+    const cartResult = actualCart || result?.cart || null;
+    const errors = result?.errors || result?.userErrors || [];
+    const warnings = result?.warnings || [];
 
     const redirectTo = formData.get('redirectTo') ?? null;
     if (typeof redirectTo === 'string') {
@@ -944,58 +1036,16 @@ export async function action({request, context, params}: Route.ActionArgs) {
 }
 
 export async function loader({context}: Route.LoaderArgs) {
-  const {cart, session} = context;
+  const {cart} = context;
   try {
-    let cartData = await cart.get();
-    const backupLinesStr = await session.get('backupCartLines');
-
-    // If cart is empty or missing, but we have backup lines from an incomplete checkout attempt:
-    if (backupLinesStr) {
-      session.unset('backupCartLines');
-      if (!cartData || !cartData.lines?.nodes?.length) {
-        try {
-          const backupLines = JSON.parse(backupLinesStr);
-          if (Array.isArray(backupLines) && backupLines.length > 0) {
-            console.log('[CART RESTORE] Restoring cart from incomplete checkout backup lines:', backupLines);
-            const restoreResult = await cart.create({ lines: backupLines });
-            if (restoreResult?.cart?.id) {
-              cartData = restoreResult.cart;
-            }
-          }
-        } catch (restoreErr) {
-          console.error('[CART RESTORE ERROR]', restoreErr);
-        }
-      }
+    let cartData: any = null;
+    try {
+      cartData = await cart.get();
+    } catch (e) {
+      console.warn('[CART LOADER] cart.get() warning:', e);
     }
 
-    // Auto-sync logged-in customer email & phone to buyerIdentity so Shopify evaluates segment automatic discounts (EMPLOYEE25) on Cart page
-    if (cartData && cartData.id) {
-      const loginEmail = await session.get('loginCustomerEmail');
-      const loginPhone = await session.get('loginOtpPhone');
-
-      const cartEmail = cartData.buyerIdentity?.email || cartData.buyerIdentity?.customer?.email;
-      const cartPhone = cartData.buyerIdentity?.phone || cartData.buyerIdentity?.customer?.phone;
-
-      if ((loginEmail && loginEmail !== cartEmail && !loginEmail.endsWith('@saadeddin.placeholder')) || (loginPhone && !cartPhone)) {
-        try {
-          const buyerIdentity: any = {};
-          if (loginEmail && !loginEmail.endsWith('@saadeddin.placeholder')) buyerIdentity.email = loginEmail;
-          if (loginPhone) buyerIdentity.phone = loginPhone.startsWith('+') ? loginPhone : `+${loginPhone}`;
-
-          await cart.updateBuyerIdentity(buyerIdentity);
-          cartData = await cart.get();
-        } catch (buyerErr) {
-          console.error('[CART LOADER BUYER IDENTITY ERROR]', buyerErr);
-        }
-      }
-    }
-
-    const cartId = cartData?.id;
-    const headers = cartId ? cart.setCartId(cartId) : new Headers();
-    if (session.isPending) {
-      headers.append('Set-Cookie', await session.commit());
-    }
-
+    const headers = cartData?.id ? cart.setCartId(cartData.id) : new Headers();
     return data(cartData, { headers });
   } catch (err) {
     console.error('Failed to get cart in cart loader:', err);

@@ -26,8 +26,24 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
   const cartRoute = isEn ? '/en/cart' : '/cart';
   const rootData = useRouteLoaderData('root') as any;
 
-  const subtotal = Number(cart?.cost?.subtotalAmount?.amount ?? 0);
+  const rawSubtotal = Number(cart?.cost?.subtotalAmount?.amount ?? 0);
   const currencyCode = cart?.cost?.subtotalAmount?.currencyCode || 'SAR';
+
+  // Calculate value of lines tagged with _is_free that haven't been discounted by Shopify yet
+  const freeItemsValue = cart?.lines?.nodes?.reduce((acc: number, line: any) => {
+    const isFree = line.attributes?.some((a: any) => a.key === '_is_free' && a.value === 'true');
+    if (isFree) {
+      const lineCost = parseFloat(line.cost?.totalAmount?.amount || '0');
+      const lineDiscount = line?.discountAllocations?.reduce((lAcc: number, alloc: any) => {
+        return lAcc + parseFloat(alloc?.discountedAmount?.amount || '0');
+      }, 0) || 0;
+      const netLineCost = Math.max(0, lineCost - lineDiscount);
+      return acc + netLineCost;
+    }
+    return acc;
+  }, 0) || 0;
+
+  const subtotal = Math.max(0, rawSubtotal - freeItemsValue);
 
   // Calculate total discount from all discount allocations
   const cartDiscountAmount = cart?.discountAllocations?.reduce((acc: number, allocation: any) => {
@@ -137,22 +153,34 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
   
   const cartHasFreeShippingCode = cart?.discountCodes?.some((d: any) => d.applicable && (d.code.toLowerCase() === 'freeshipping' || d.code.toLowerCase() === 'free_shipping')) || false;
   
-  // Ignore fallback threshold strings 300 and 430 unless explicitly set on metafield
-  const rawThreshold = thresholdAttr ? parseFloat(thresholdAttr) : (thresholdMeta?.value ? parseFloat(thresholdMeta.value) : 0);
-  const hasExplicitThreshold = rawThreshold > 0 && rawThreshold !== 300 && rawThreshold !== 430 && (!!thresholdMeta?.value || (!!thresholdAttr && thresholdAttr !== '300' && thresholdAttr !== '430'));
-  const threshold = hasExplicitThreshold ? rawThreshold : 0;
+  // Extract free delivery threshold dynamically from selected branch settings
+  let rawThreshold = 0;
+  if (thresholdAttr && !isNaN(parseFloat(thresholdAttr))) {
+    rawThreshold = parseFloat(thresholdAttr);
+  } else if (thresholdMeta?.value && !isNaN(parseFloat(thresholdMeta.value))) {
+    rawThreshold = parseFloat(thresholdMeta.value);
+  } else if (typeof currentBranch?.free_delivery_threshold === 'number') {
+    rawThreshold = currentBranch.free_delivery_threshold;
+  } else if (typeof currentBranch?.free_delivery_threshold?.value === 'string' && !isNaN(parseFloat(currentBranch.free_delivery_threshold.value))) {
+    rawThreshold = parseFloat(currentBranch.free_delivery_threshold.value);
+  } else if (typeof currentBranch?.freeDeliveryThreshold === 'number') {
+    rawThreshold = currentBranch.freeDeliveryThreshold;
+  }
+
+  const threshold = rawThreshold > 0 ? rawThreshold : 0;
+  const isThresholdMet = threshold > 0 && subtotal >= threshold;
   
   // Check promotional free delivery interval for current selected branch and chosen time slot
   const branchPromo = checkBranchFreeDeliveryInterval(currentBranch, timeSlot);
   const isBranchPromoFreeDelivery = branchPromo.isPromoFreeDelivery;
 
   const rawCheckoutUrl = cart?.checkoutUrl;
-  const effectiveCheckoutUrl = (rawCheckoutUrl && isBranchPromoFreeDelivery && !cartHasFreeShippingCode)
+  const effectiveCheckoutUrl = (rawCheckoutUrl && (isBranchPromoFreeDelivery || isThresholdMet) && !cartHasFreeShippingCode)
     ? (rawCheckoutUrl.includes('?') ? `${rawCheckoutUrl}&discount=freeshipping` : `${rawCheckoutUrl}?discount=freeshipping`)
     : rawCheckoutUrl;
 
-  // Free delivery applies ONLY if freeshipping code is active, branch promo interval is active, or if explicit branch threshold exists and subtotal >= threshold
-  const isFreeDelivery = cartHasFreeShippingCode || isBranchPromoFreeDelivery || (hasExplicitThreshold && threshold > 0 && subtotal >= threshold);
+  // Free delivery applies if freeshipping code is active, branch promo interval is active, or subtotal >= threshold
+  const isFreeDelivery = cartHasFreeShippingCode || isBranchPromoFreeDelivery || isThresholdMet;
   
   const feeAttribute = attributes.find((a: any) => a.key.toLowerCase().trim() === 'delivery fee')?.value;
   const feeAttrVal = feeAttribute ? parseFloat(feeAttribute) : null;
@@ -169,7 +197,7 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
                     ? currentBranch.baseDeliveryFee
                     : (typeof currentBranch?.deliveryFee === 'number' && currentBranch.deliveryFee > 0
                         ? currentBranch.deliveryFee
-                        : 30)))));
+                        : 0)))));
 
   const deliveryFee = (isFreeDelivery || isPickup) ? 0 : rawDeliveryFee;
   const calculatedTotal = Math.max(0, subtotalBeforeDiscounts - otherDiscountDisplay - loyaltyDiscountDisplay + deliveryFee);
@@ -376,6 +404,7 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
                 invalidActiveDiscount={invalidActiveDiscount}
                 branchName={branch}
                 isBranchPromoFreeDelivery={isBranchPromoFreeDelivery}
+                isThresholdMet={isThresholdMet}
               />
 
               {/* Loyalty Redemption */}
@@ -958,6 +987,10 @@ function CartTimeSlot({ isEn, cart, currentBranch, hasError }: { isEn: boolean, 
   // Dynamically calculate time slots based on the fulfilling branch's active hours
   const dynamicTimeSlots = generateDynamicSlots(currentBranch, isEn, fulfillmentType);
 
+  // Check if branch has an active promo free delivery interval
+  const generalPromoInfo = checkBranchFreeDeliveryInterval(currentBranch);
+  const hasPromoHours = !!(generalPromoInfo.promoStart12h && generalPromoInfo.promoEnd12h);
+
   return (
     <div className="flex flex-col gap-2">
       <label className="text-[13px] font-bold text-[#234745] px-1">
@@ -976,15 +1009,35 @@ function CartTimeSlot({ isEn, cart, currentBranch, hasError }: { isEn: boolean, 
             className="w-full bg-[#fcfaf8] border border-[#f0ece8] rounded-xl px-4 py-3 text-[14px] text-[#234745] font-medium appearance-none focus:outline-none focus:border-[#d4a06a] focus:ring-1 focus:ring-[#d4a06a] transition-all cursor-pointer"
           >
             <option value="">{isEn ? 'Select preferred delivery time' : 'اختر وقت التوصيل المفضل'}</option>
-            {dynamicTimeSlots.map((slot: string, idx: number) => (
-              <option key={idx} value={slot}>{slot}</option>
-            ))}
+            {dynamicTimeSlots.map((slot: string, idx: number) => {
+              const slotPromo = checkBranchFreeDeliveryInterval(currentBranch, slot);
+              const isFreeSlot = slotPromo.isPromoFreeDelivery;
+              const displayLabel = isFreeSlot
+                ? `⚡ ${slot} (${isEn ? 'Free Delivery' : 'توصيل مجاني'})`
+                : slot;
+              return (
+                <option key={idx} value={slot}>
+                  {displayLabel}
+                </option>
+              );
+            })}
           </select>
           <div className="absolute top-1/2 -translate-y-1/2 rtl:left-4 ltr:right-4 pointer-events-none text-[#d4a06a]">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
           </div>
         </div>
       </CartForm>
+
+      {hasPromoHours && (
+        <p className="text-[11px] font-bold text-emerald-700 bg-emerald-50/70 border border-emerald-200/70 px-3 py-1.5 rounded-lg text-start flex items-center gap-1.5">
+          <span>⚡</span>
+          <span>
+            {isEn
+              ? `Choose delivery between ${generalPromoInfo.promoStart12h} - ${generalPromoInfo.promoEnd12h} for FREE delivery!`
+              : `اختر التوصيل بين ${generalPromoInfo.promoStart12h} - ${generalPromoInfo.promoEnd12h} للحصول على توصيل مجاني!`}
+          </span>
+        </p>
+      )}
     </div>
   );
 }
@@ -1039,6 +1092,7 @@ function CartCheckoutActions({
     try {
       if (typeof window === 'undefined') return;
       sessionStorage.setItem('checkout_in_progress', 'true');
+      sessionStorage.setItem('saadeddin_checkout_initiated', 'true');
       const consent = localStorage.getItem('saadeddin_cookie_consent');
       if (consent !== 'accepted') return;
       const w = window as any;
@@ -1428,7 +1482,8 @@ function CartDiscounts({
   isEn,
   invalidActiveDiscount,
   branchName,
-  isBranchPromoFreeDelivery,
+  isBranchPromoFreeDelivery = false,
+  isThresholdMet = false,
 }: {
   discountCodes?: CartApiQueryFragment['discountCodes'];
   cart?: any;
@@ -1438,8 +1493,10 @@ function CartDiscounts({
   invalidActiveDiscount?: string;
   branchName?: string;
   isBranchPromoFreeDelivery?: boolean;
+  isThresholdMet?: boolean;
 }) {
   const [showInput, setShowInput] = useState(false);
+
   const codes: string[] =
     discountCodes
       ?.filter((discount) => discount.applicable)
@@ -1448,13 +1505,10 @@ function CartDiscounts({
   const hasLineAllocations = cart?.lines?.nodes?.some((line: any) => line?.discountAllocations?.length > 0);
   const hasCartAllocations = cart?.discountAllocations?.length > 0;
   const hasAllocations = hasLineAllocations || hasCartAllocations;
-
-  // If we have allocations but no manual codes, it must be an automatic discount!
   const hasAutomaticDiscount = hasAllocations && codes.length === 0;
 
   const isEmployeeDiscountActive =
-    codes.some(c => c.toUpperCase().includes('EMPLOYEE') || c.toUpperCase().startsWith('EMP') || c.toUpperCase() === 'EMPLOYEE25') ||
-    hasAutomaticDiscount;
+    codes.some(c => c.toUpperCase().includes('EMPLOYEE') || c.toUpperCase().startsWith('EMP') || c.toUpperCase() === 'EMPLOYEE25');
 
   return (
     <div aria-label="Discounts" className="w-full relative space-y-2">
@@ -1465,7 +1519,7 @@ function CartDiscounts({
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>
             <div>
               <span className="font-bold text-[14px] leading-tight block text-emerald-900">
-                ⚡ {isEn ? 'Promo Free Delivery (freeshipping)' : 'توصيل مجاني للفترة المحددة (freeshipping)'}
+                ⚡ {isEn ? 'Promo Free Delivery' : 'توصيل مجاني للفترة المحددة'}
               </span>
               <span className="text-[11px] font-medium text-emerald-700 block mt-0.5">
                 {isEn ? 'Free shipping discount active for selected time slot' : 'خصم الشحن المجاني مفعّل للفترة المحددة'}
@@ -1568,6 +1622,7 @@ function CartDiscounts({
                       <input
                         type="text"
                         name="discountCode"
+                        defaultValue=""
                         placeholder={isEn ? "Discount code" : "كود الخصم"}
                         className="flex-1 bg-transparent px-4 py-2 text-[14px] text-[#234745] focus:outline-none placeholder-[#9FB7AE] font-bold w-full h-full"
                         style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}

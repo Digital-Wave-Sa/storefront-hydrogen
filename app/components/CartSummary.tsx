@@ -5,7 +5,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { useFetcher, useRouteLoaderData, Link, useLocation, Form } from 'react-router';
 import { useAside } from '~/components/Aside';
 import { Price, SaudiRiyalSymbol } from './Price';
-import { DeliveryPickupModal } from './DeliveryPickupModal';
+import { DeliveryPickupModal, checkBranchFreeDeliveryInterval } from './DeliveryPickupModal';
 
 import { isDiscountValidForLocation, parseLocationDiscountsJSON } from '~/lib/discounts';
 
@@ -129,8 +129,12 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
   const hasExplicitThreshold = rawThreshold > 0 && rawThreshold !== 300 && rawThreshold !== 430 && (!!thresholdMeta?.value || (!!thresholdAttr && thresholdAttr !== '300' && thresholdAttr !== '430'));
   const threshold = hasExplicitThreshold ? rawThreshold : 0;
   
-  // Free delivery applies ONLY if freeshipping code is active or if explicit branch threshold exists and subtotal >= threshold
-  const isFreeDelivery = cartHasFreeShippingCode || (hasExplicitThreshold && threshold > 0 && subtotal >= threshold);
+  // Check promotional free delivery interval for current selected branch
+  const branchPromo = checkBranchFreeDeliveryInterval(currentBranch);
+  const isBranchPromoFreeDelivery = branchPromo.isPromoFreeDelivery;
+
+  // Free delivery applies ONLY if freeshipping code is active, branch promo interval is active, or if explicit branch threshold exists and subtotal >= threshold
+  const isFreeDelivery = cartHasFreeShippingCode || isBranchPromoFreeDelivery || (hasExplicitThreshold && threshold > 0 && subtotal >= threshold);
   
   const feeAttribute = attributes.find((a: any) => a.key.toLowerCase().trim() === 'delivery fee')?.value;
   const feeAttrVal = feeAttribute ? parseFloat(feeAttribute) : null;

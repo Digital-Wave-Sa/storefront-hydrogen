@@ -759,6 +759,14 @@ const LOCATIONS_QUERY = `#graphql
           key
           value
         }
+        promo_free_delivery_from: metafield(namespace: "custom", key: "promo_free_delivery_from") {
+          key
+          value
+        }
+        promo_free_delivery_to: metafield(namespace: "custom", key: "promo_free_delivery_to") {
+          key
+          value
+        }
         delivery_hours_from: metafield(namespace: "custom", key: "delivery_hours_from") {
           key
           value

@@ -6,6 +6,7 @@ import { useAside } from '~/components/Aside';
 import { CartLineItem, type CartLine } from '~/components/CartLineItem';
 import { CartSummary } from './CartSummary';
 import { Price, SaudiRiyalSymbol } from './Price';
+import { checkBranchFreeDeliveryInterval } from './DeliveryPickupModal';
 import patternBg from '/images/second-bg-pattern.svg';
 
 export type CartLayout = 'page' | 'aside';
@@ -173,6 +174,25 @@ export function CartMain({ layout, cart: originalCart }: CartMainProps) {
           <div className={cartHasItems ? "lg:grid lg:grid-cols-[1fr_380px] gap-8 lg:gap-12 items-start" : "flex items-center justify-center min-h-[45vh] max-w-2xl mx-auto p-8 md:p-12 w-full"}>
             {/* Left Column (Items) */}
             <div className="flex flex-col gap-4">
+              {/* Dynamic Branch Promo Free Delivery Banner */}
+              {cartHasItems && !isPickup && isBranchPromoFreeDelivery && (
+                <div className="bg-[#FEF8EB] border border-[#EBDCC5] text-[#234745] p-4 rounded-[20px] mb-1 flex items-center gap-3 shadow-xs">
+                  <div className="w-9 h-9 rounded-full bg-[#234745] text-amber-300 flex items-center justify-center font-bold text-lg shrink-0">
+                    ⚡
+                  </div>
+                  <div>
+                    <p className="text-[14px] font-extrabold text-[#234745]">
+                      {isEn ? 'Promo Free Delivery Active!' : 'عرض التوصيل المجاني مفعّل الان!'}
+                    </p>
+                    <p className="text-[12px] text-[#8C6418] font-medium mt-0.5">
+                      {isEn
+                        ? `Free delivery unlocked for ${currentBranch?.name || 'your branch'} (${branchPromo.promoStart12h} – ${branchPromo.promoEnd12h})`
+                        : `توصيل مجاني مفعّل لـ ${currentBranch?.name || 'فرعك'} (من ${branchPromo.promoStart12h} إلى ${branchPromo.promoEnd12h})`}
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {/* Free Delivery Progress (Restored) */}
               {cartHasItems && !isPickup && hasExplicitThreshold && threshold > 0 && (
                 <div className="bg-white rounded-[24px] p-6 border border-[#BBCFCD]/80 mb-2">

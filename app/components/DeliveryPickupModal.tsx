@@ -59,6 +59,8 @@ export interface Branch {
     branch_id?: string;
     ax_store_id?: string;
     badge?: string;
+    promoFreeDeliveryFrom?: string;
+    promoFreeDeliveryTo?: string;
 }
 
 interface DeliveryPickupModalProps {
@@ -440,7 +442,7 @@ export function parseLocationToBranch(node: any, isEn: boolean = false): Branch 
             }
             return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
         })(),
-        badge: '',
+        badge: getMeta('badge', ''),
         google_maps: getMeta('google_maps', googleMapMeta),
         rating: getMeta('rating', 0),
         ratingCount: getMeta('rating_count', 0),
@@ -448,6 +450,61 @@ export function parseLocationToBranch(node: any, isEn: boolean = false): Branch 
         branch_id: getMeta('branch_id', ''),
         ax_store_id: getMeta('ax_store_id', ''),
     };
+}
+
+export function checkBranchFreeDeliveryInterval(branch: any): {
+    isPromoFreeDelivery: boolean;
+    promoStart12h: string;
+    promoEnd12h: string;
+} {
+    if (!branch) return { isPromoFreeDelivery: false, promoStart12h: '', promoEnd12h: '' };
+
+    let fromVal = branch.promoFreeDeliveryFrom || branch.promo_free_delivery_from?.value;
+    let toVal = branch.promoFreeDeliveryTo || branch.promo_free_delivery_to?.value;
+
+    if (!fromVal && Array.isArray(branch.metafields)) {
+        fromVal = branch.metafields.find((m: any) => m?.key === 'promo_free_delivery_from')?.value;
+    }
+    if (!toVal && Array.isArray(branch.metafields)) {
+        toVal = branch.metafields.find((m: any) => m?.key === 'promo_free_delivery_to')?.value;
+    }
+
+    if (!fromVal || !toVal) return { isPromoFreeDelivery: false, promoStart12h: '', promoEnd12h: '' };
+
+    try {
+        const now = new Date();
+        const riyadhTimeStr = new Intl.DateTimeFormat('en-US', {
+            timeZone: 'Asia/Riyadh',
+            hour: 'numeric',
+            minute: 'numeric',
+            hour12: false,
+        }).format(now);
+
+        const [curH, curM] = riyadhTimeStr.split(':').map(Number);
+        const currentMinutes = curH * 60 + (curM || 0);
+
+        const parseMinutes = (str: string) => {
+            const cleaned = String(str).trim();
+            const parts = cleaned.split(':').map(Number);
+            if (parts.length >= 2) return parts[0] * 60 + (parts[1] || 0);
+            return -1;
+        };
+
+        const startMinutes = parseMinutes(fromVal);
+        const endMinutes = parseMinutes(toVal);
+
+        if (startMinutes < 0 || endMinutes < 0) return { isPromoFreeDelivery: false, promoStart12h: '', promoEnd12h: '' };
+
+        const isPromoFreeDelivery = currentMinutes >= startMinutes && currentMinutes <= endMinutes;
+
+        return {
+            isPromoFreeDelivery,
+            promoStart12h: formatTime12h(fromVal),
+            promoEnd12h: formatTime12h(toVal),
+        };
+    } catch (e) {
+        return { isPromoFreeDelivery: false, promoStart12h: '', promoEnd12h: '' };
+    }
 }
 
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────

@@ -133,6 +133,27 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
   const branchPromo = checkBranchFreeDeliveryInterval(currentBranch, timeSlot);
   const isBranchPromoFreeDelivery = branchPromo.isPromoFreeDelivery;
 
+  // Auto-apply free shipping discount code when promo delivery time slot is active
+  const promoDiscountFetcher = useFetcher();
+  useEffect(() => {
+    if (isBranchPromoFreeDelivery && !cartHasFreeShippingCode) {
+      const existingCodes = cart?.discountCodes?.map((d: any) => d.code) || [];
+      if (!existingCodes.some((c: string) => c.toLowerCase() === 'freeshipping')) {
+        const newCodes = Array.from(new Set([...existingCodes, 'freeshipping']));
+        const cartRoute = location.pathname.startsWith('/en') ? '/en/cart' : '/cart';
+        promoDiscountFetcher.submit(
+          {
+            cartFormInput: JSON.stringify({
+              action: 'DiscountCodesUpdate',
+              inputs: { discountCodes: newCodes },
+            }),
+          },
+          { method: 'POST', action: cartRoute },
+        );
+      }
+    }
+  }, [isBranchPromoFreeDelivery, cartHasFreeShippingCode, cart?.discountCodes, location.pathname]);
+
   // Free delivery applies ONLY if freeshipping code is active, branch promo interval is active, or if explicit branch threshold exists and subtotal >= threshold
   const isFreeDelivery = cartHasFreeShippingCode || isBranchPromoFreeDelivery || (hasExplicitThreshold && threshold > 0 && subtotal >= threshold);
   

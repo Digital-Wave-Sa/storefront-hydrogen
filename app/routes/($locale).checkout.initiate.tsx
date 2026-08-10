@@ -420,7 +420,7 @@ async function processCheckoutInitiate({request, context}: ActionFunctionArgs) {
             return (targetNumId && locNumId === targetNumId) || (branchName && l.name?.toLowerCase().trim() === branchName.toLowerCase().trim());
           });
           if (matchedLoc) {
-            const {checkBranchFreeDeliveryInterval} = await import('~/components/DeliveryPickupModal');
+            const {checkBranchFreeDeliveryInterval} = await import('~/lib/promo-delivery');
             const promoResult = checkBranchFreeDeliveryInterval(matchedLoc, timeSlotVal);
             isPromoFreeDelivery = promoResult.isPromoFreeDelivery;
           }

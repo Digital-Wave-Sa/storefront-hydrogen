@@ -16,7 +16,7 @@ export const headers: HeadersFunction = ({actionHeaders, loaderHeaders}) => {
   };
 };
 
-export async function action({request, context}: Route.ActionArgs) {
+export async function action({request, context, params}: Route.ActionArgs) {
   const {cart} = context;
   const url = new URL(request.url);
   const referer = request.headers.get('Referer') || '';
@@ -672,7 +672,7 @@ export async function action({request, context}: Route.ActionArgs) {
         }
 
         const currentCart = await cart.get();
-        const isEnglish = params.locale === 'en';
+        const isEnglish = params?.locale === 'en' || isEn;
 
         const hasLineAllocations = currentCart?.lines?.nodes?.some((line: any) => line?.discountAllocations?.length > 0);
         const hasCartAllocations = (currentCart?.discountAllocations?.length || 0) > 0;

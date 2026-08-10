@@ -129,8 +129,8 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
   const hasExplicitThreshold = rawThreshold > 0 && rawThreshold !== 300 && rawThreshold !== 430 && (!!thresholdMeta?.value || (!!thresholdAttr && thresholdAttr !== '300' && thresholdAttr !== '430'));
   const threshold = hasExplicitThreshold ? rawThreshold : 0;
   
-  // Check promotional free delivery interval for current selected branch
-  const branchPromo = checkBranchFreeDeliveryInterval(currentBranch);
+  // Check promotional free delivery interval for current selected branch and chosen time slot
+  const branchPromo = checkBranchFreeDeliveryInterval(currentBranch, timeSlot);
   const isBranchPromoFreeDelivery = branchPromo.isPromoFreeDelivery;
 
   // Free delivery applies ONLY if freeshipping code is active, branch promo interval is active, or if explicit branch threshold exists and subtotal >= threshold

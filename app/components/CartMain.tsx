@@ -102,7 +102,8 @@ export function CartMain({ layout, cart: originalCart }: CartMainProps) {
     (branchName && loc.name === branchName)
   );
 
-  const branchPromo = checkBranchFreeDeliveryInterval(currentBranch);
+  const timeSlot = cart?.attributes?.find(a => a.key.toLowerCase().trim() === 'time slot')?.value || '';
+  const branchPromo = checkBranchFreeDeliveryInterval(currentBranch, timeSlot);
   const isBranchPromoFreeDelivery = branchPromo.isPromoFreeDelivery;
 
   const thresholdMeta = currentBranch?.free_delivery_threshold || currentBranch?.metafields?.find((m: any) => m?.key === 'free_delivery_threshold');

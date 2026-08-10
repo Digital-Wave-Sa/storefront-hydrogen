@@ -452,7 +452,7 @@ export function parseLocationToBranch(node: any, isEn: boolean = false): Branch 
     };
 }
 
-export function checkBranchFreeDeliveryInterval(branch: any): {
+export function checkBranchFreeDeliveryInterval(branch: any, selectedTimeSlot?: string): {
     isPromoFreeDelivery: boolean;
     promoStart12h: string;
     promoEnd12h: string;
@@ -472,30 +472,62 @@ export function checkBranchFreeDeliveryInterval(branch: any): {
     if (!fromVal || !toVal) return { isPromoFreeDelivery: false, promoStart12h: '', promoEnd12h: '' };
 
     try {
-        const now = new Date();
-        const riyadhTimeStr = new Intl.DateTimeFormat('en-US', {
-            timeZone: 'Asia/Riyadh',
-            hour: 'numeric',
-            minute: 'numeric',
-            hour12: false,
-        }).format(now);
-
-        const [curH, curM] = riyadhTimeStr.split(':').map(Number);
-        const currentMinutes = curH * 60 + (curM || 0);
-
-        const parseMinutes = (str: string) => {
+        const parseMinutesFromStr = (str: string) => {
             const cleaned = String(str).trim();
-            const parts = cleaned.split(':').map(Number);
-            if (parts.length >= 2) return parts[0] * 60 + (parts[1] || 0);
-            return -1;
+            const match = cleaned.match(/(\d{1,2}):(\d{2})\s*(am|pm|ص|م)?/i);
+            if (!match) return -1;
+            let hr = parseInt(match[1], 10);
+            const min = parseInt(match[2], 10);
+            const period = match[3]?.toLowerCase();
+            if (period) {
+                const isPm = period === 'pm' || period === 'م';
+                const isAm = period === 'am' || period === 'ص';
+                if (isPm && hr !== 12) hr += 12;
+                if (isAm && hr === 12) hr = 0;
+            }
+            return hr * 60 + min;
         };
 
-        const startMinutes = parseMinutes(fromVal);
-        const endMinutes = parseMinutes(toVal);
+        const promoStartMins = parseMinutesFromStr(fromVal);
+        const promoEndMins = parseMinutesFromStr(toVal);
 
-        if (startMinutes < 0 || endMinutes < 0) return { isPromoFreeDelivery: false, promoStart12h: '', promoEnd12h: '' };
+        if (promoStartMins < 0 || promoEndMins < 0) return { isPromoFreeDelivery: false, promoStart12h: '', promoEnd12h: '' };
 
-        const isPromoFreeDelivery = currentMinutes >= startMinutes && currentMinutes <= endMinutes;
+        let isPromoFreeDelivery = false;
+
+        // 1. Check selected time slot (e.g. "2:00 PM - 4:00 PM" or "14:00 - 16:00" or "02:00 م - 04:00 م")
+        if (selectedTimeSlot && String(selectedTimeSlot).trim()) {
+            const slotStr = String(selectedTimeSlot).trim();
+            const parts = slotStr.split(/\s*[-–toإلى]\s*/);
+            if (parts.length >= 1) {
+                const slotStartMins = parseMinutesFromStr(parts[0]);
+                const slotEndMins = parts[1] ? parseMinutesFromStr(parts[1]) : slotStartMins;
+
+                if (slotStartMins >= 0) {
+                    if (slotStartMins >= promoStartMins && (slotEndMins <= promoEndMins || slotStartMins < promoEndMins)) {
+                        isPromoFreeDelivery = true;
+                    }
+                }
+            }
+        }
+
+        // 2. Fallback to current KSA time if slot not selected yet
+        if (!isPromoFreeDelivery) {
+            const now = new Date();
+            const riyadhTimeStr = new Intl.DateTimeFormat('en-US', {
+                timeZone: 'Asia/Riyadh',
+                hour: 'numeric',
+                minute: 'numeric',
+                hour12: false,
+            }).format(now);
+
+            const [curH, curM] = riyadhTimeStr.split(':').map(Number);
+            const currentMinutes = curH * 60 + (curM || 0);
+
+            if (currentMinutes >= promoStartMins && currentMinutes <= promoEndMins) {
+                isPromoFreeDelivery = true;
+            }
+        }
 
         return {
             isPromoFreeDelivery,

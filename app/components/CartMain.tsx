@@ -91,10 +91,23 @@ export function CartMain({ layout, cart: originalCart }: CartMainProps) {
   }, [deletedLine]);
   // -------------------------------
 
+  const [adminLocations, setAdminLocations] = useState<any[]>([]);
+  useEffect(() => {
+    fetch('/api/locations-meta')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.locations) {
+          setAdminLocations(data.locations);
+        }
+      })
+      .catch((err) => console.error('[CartMain] Failed to fetch locations-meta:', err));
+  }, []);
+
   // Dynamic Delivery Threshold Logic
   const branchName = cart?.attributes?.find(a => a.key === 'Branch')?.value;
   const branchId = cart?.attributes?.find(a => a.key === 'Branch ID')?.value;
-  const locations = rootData?.locations?.locations?.nodes || rootData?.locations?.nodes || [];
+  const rawLocations = rootData?.locations?.locations?.nodes || rootData?.locations?.nodes || [];
+  const locations = adminLocations.length > 0 ? adminLocations : rawLocations;
 
   // Try matching by ID first (more reliable), then fallback to name
   const currentBranch = locations.find((loc: any) =>

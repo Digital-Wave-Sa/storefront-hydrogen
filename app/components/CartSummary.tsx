@@ -71,8 +71,21 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
   const attrFulfillmentType = attributes.find((a: any) => a.key.toLowerCase().trim() === 'fulfillment type')?.value;
   const fulfillmentType = attrFulfillmentType || rootData?.fulfillmentType;
 
+  const [adminLocations, setAdminLocations] = useState<any[]>([]);
+  useEffect(() => {
+    fetch('/api/locations-meta')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.locations) {
+          setAdminLocations(data.locations);
+        }
+      })
+      .catch((err) => console.error('[CartSummary] Failed to fetch locations-meta:', err));
+  }, []);
+
   // Dynamic Settings from Metafields
-  const locations = rootData?.locations?.locations?.nodes || rootData?.locations?.nodes || [];
+  const rawLocations = rootData?.locations?.locations?.nodes || rootData?.locations?.nodes || [];
+  const locations = adminLocations.length > 0 ? adminLocations : rawLocations;
   // Match by numerical ID or full GID, then fallback to English or Arabic name matching
   const currentBranch = locations.find((loc: any) => {
     if (!loc) return false;

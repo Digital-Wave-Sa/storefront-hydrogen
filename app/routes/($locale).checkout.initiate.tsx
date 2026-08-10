@@ -384,6 +384,56 @@ async function processCheckoutInitiate({request, context}: ActionFunctionArgs) {
           }
         });
       }
+
+      // Check if current branch & selected delivery time slot qualify for promo free delivery
+      let isPromoFreeDelivery = false;
+      try {
+        const {getAdminToken, getAdminDomain} = await import('~/lib/shopify-admin.server');
+        const shopDomain = getAdminDomain(env);
+        const adminToken = await getAdminToken(env);
+        if (shopDomain && adminToken) {
+          const locRes = await fetch(`https://${shopDomain}/admin/api/2024-10/graphql.json`, {
+            method: 'POST',
+            headers: {
+              'X-Shopify-Access-Token': adminToken,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              query: `{
+                locations(first: 250) {
+                  nodes {
+                    id
+                    name
+                    metafields(first: 50) {
+                      nodes { key namespace value }
+                    }
+                  }
+                }
+              }`
+            }),
+          });
+          const locData = (await locRes.json()) as any;
+          const adminLocs = locData?.data?.locations?.nodes || [];
+          const matchedLoc = adminLocs.find((l: any) => {
+            const locNumId = String(l.id || '').split('/').pop();
+            const targetNumId = String(branchId || '').split('/').pop();
+            return (targetNumId && locNumId === targetNumId) || (branchName && l.name?.toLowerCase().trim() === branchName.toLowerCase().trim());
+          });
+          if (matchedLoc) {
+            const {checkBranchFreeDeliveryInterval} = await import('~/components/DeliveryPickupModal');
+            const promoResult = checkBranchFreeDeliveryInterval(matchedLoc, timeSlotVal);
+            isPromoFreeDelivery = promoResult.isPromoFreeDelivery;
+          }
+        }
+      } catch (promoErr) {
+        console.error('[CHECKOUT INITIATE] Promo check error:', promoErr);
+      }
+
+      const hasFreeShippingCode = cart?.discountCodes?.some((d: any) => d.code?.toLowerCase() === 'freeshipping') || false;
+      if (isPromoFreeDelivery || hasFreeShippingCode) {
+        urlObj.searchParams.set('discount', 'freeshipping');
+      }
+
       // Build the order note: customer's written note + internal metadata block
       // The metadata block is only passed via the URL — it is NOT stored in the Shopify cart note
       const urlNote = customerNote

@@ -102,6 +102,9 @@ export function CartMain({ layout, cart: originalCart }: CartMainProps) {
     (branchName && loc.name === branchName)
   );
 
+  const branchPromo = checkBranchFreeDeliveryInterval(currentBranch);
+  const isBranchPromoFreeDelivery = branchPromo.isPromoFreeDelivery;
+
   const thresholdMeta = currentBranch?.free_delivery_threshold || currentBranch?.metafields?.find((m: any) => m?.key === 'free_delivery_threshold');
   const thresholdAttr = cart?.attributes?.find(a => a.key.toLowerCase().trim() === 'free delivery threshold')?.value;
   const hasExplicitThreshold = !!(thresholdAttr || thresholdMeta?.value);

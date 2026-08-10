@@ -387,22 +387,25 @@ export async function action({request, context}: ActionFunctionArgs) {
 
       let pmEmail: string | null = null;
       let rmEmail: string | null = null;
+      let resolvedProductTitle = productTitle || 'Product';
 
-      const targetProdId = productId || numericProductId;
-      if (adminToken && targetProdId) {
-        const fullProdId = String(targetProdId).includes('/')
-          ? String(targetProdId)
-          : `gid://shopify/Product/${targetProdId}`;
+      if (adminToken && variantId) {
+        const fullVariantId = String(variantId).includes('/')
+          ? String(variantId)
+          : `gid://shopify/ProductVariant/${variantId}`;
 
         const managerQuery = `
-          query GetProductManagers($id: ID!) {
-            product(id: $id) {
+          query GetProductManagersFromVariant($variantId: ID!) {
+            productVariant(id: $variantId) {
               title
-              productManager: metafield(namespace: "custom", key: "product_manager") {
-                value
-              }
-              regionalManager: metafield(namespace: "custom", key: "regional_manager") {
-                value
+              product {
+                title
+                productManager: metafield(namespace: "custom", key: "product_manager") {
+                  value
+                }
+                regionalManager: metafield(namespace: "custom", key: "regional_manager") {
+                  value
+                }
               }
             }
           }
@@ -410,13 +413,16 @@ export async function action({request, context}: ActionFunctionArgs) {
 
         const managerRes = await executeAdminQuery(
           managerQuery,
-          {id: fullProdId},
+          {variantId: fullVariantId},
           adminToken,
           shopDomain,
         );
 
-        const productObj = managerRes?.data?.product;
+        const variantObj = managerRes?.data?.productVariant;
+        const productObj = variantObj?.product;
+
         if (productObj) {
+          if (productObj.title) resolvedProductTitle = productObj.title;
           pmEmail = productObj.productManager?.value || null;
           rmEmail = productObj.regionalManager?.value || null;
         }
@@ -424,11 +430,13 @@ export async function action({request, context}: ActionFunctionArgs) {
 
       // Collect manager emails
       const managerRecipients: string[] = [];
-      if (pmEmail && pmEmail.includes('@')) managerRecipients.push(pmEmail.trim());
-      if (rmEmail && rmEmail.includes('@')) managerRecipients.push(rmEmail.trim());
+      if (pmEmail && String(pmEmail).includes('@')) managerRecipients.push(String(pmEmail).trim());
+      if (rmEmail && String(rmEmail).includes('@')) managerRecipients.push(String(rmEmail).trim());
+
+      console.log(`[STOCK_NOTIFICATION MANAGERS RESOLVED] Product: "${resolvedProductTitle}", Managers: ${managerRecipients.length > 0 ? managerRecipients.join(', ') : 'None'}`);
 
       if (managerRecipients.length > 0) {
-        const emailSubject = `[Saadeddin Alert] Back in Stock Request: ${productTitle || 'Product'}`;
+        const emailSubject = `[Saadeddin Alert] Back in Stock Request: ${resolvedProductTitle}`;
         const emailHtml = `
           <div style="font-family: 'Cairo', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e0e0e0; border-radius: 12px; background-color: #FEF8EB; color: #234745; text-align: right; direction: rtl;">
             <div style="text-align: center; margin-bottom: 16px; background-color: #234745; padding: 12px; border-radius: 8px;">
@@ -438,12 +446,12 @@ export async function action({request, context}: ActionFunctionArgs) {
             <p>عزيزي مدير المنتج / مدير المنطقة،</p>
             <p>قام أحد العملاء بطلب إشعار فور توفر المنتج التالي في المخزون:</p>
             <div style="background: #ffffff; padding: 16px; border-radius: 8px; border: 1px solid #ebdcc5; margin: 16px 0;">
-              <p style="margin: 6px 0;"><strong>اسم المنتج:</strong> ${productTitle || 'Product'}</p>
+              <p style="margin: 6px 0;"><strong>اسم المنتج:</strong> ${resolvedProductTitle}</p>
               <p style="margin: 6px 0;"><strong>رمز المعرّف (Variant ID):</strong> ${variantId}</p>
               <p style="margin: 6px 0;"><strong>الفرع / الموقع:</strong> ${locationName || 'Global'}</p>
               <p style="margin: 6px 0;"><strong>بريد العميل المطلوب إشعاره:</strong> ${email}</p>
             </div>
-            <p style="font-size: 12px; color: #888888; text-align: center; border-top: 1px solid #ebdcc5; pt-12px;">
+            <p style="font-size: 12px; color: #888888; text-align: center; border-top: 1px solid #ebdcc5; padding-top: 12px;">
               تم إرسال هذا التنبيه آلياً بناءً على الحقول المخصصة لمدير المنتج ومدير المنطقة 
               (<code>custom.product_manager</code>, <code>custom.regional_manager</code>).
             </p>
@@ -467,8 +475,8 @@ export async function action({request, context}: ActionFunctionArgs) {
           fullName: customerName || email.split('@')[0],
           email,
           phone: '',
-          subject: `Back in Stock Alert Request - ${productTitle || 'Product'}`,
-          message: `Customer requested back in stock notification for: ${productTitle || 'Product'} (Variant ID: ${variantId}, Location: ${locationName || 'N/A'})`,
+          subject: `Back in Stock Alert Request - ${resolvedProductTitle}`,
+          message: `Customer requested back in stock notification for: ${resolvedProductTitle} (Variant ID: ${variantId}, Location: ${locationName || 'N/A'})`,
         },
         env,
       );

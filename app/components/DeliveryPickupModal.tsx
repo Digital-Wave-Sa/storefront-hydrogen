@@ -488,10 +488,15 @@ export function checkBranchFreeDeliveryInterval(branch: any, selectedTimeSlot?: 
             return hr * 60 + min;
         };
 
-        const promoStartMins = parseMinutesFromStr(fromVal);
-        const promoEndMins = parseMinutesFromStr(toVal);
+        let promoStartMins = parseMinutesFromStr(fromVal);
+        let promoEndMins = parseMinutesFromStr(toVal);
 
         if (promoStartMins < 0 || promoEndMins < 0) return { isPromoFreeDelivery: false, promoStart12h: '', promoEnd12h: '' };
+
+        // Smart auto-fix: If end time is entered as "4:00" (4h) while start is "12:00" (12h) or end < start, auto-convert "4:00" to 16:00 (4 PM)
+        if (promoStartMins >= 12 * 60 && promoEndMins < promoStartMins && promoEndMins < 12 * 60) {
+            promoEndMins += 12 * 60;
+        }
 
         let isPromoFreeDelivery = false;
 

@@ -432,6 +432,15 @@ async function processCheckoutInitiate({request, context}: ActionFunctionArgs) {
       const hasFreeShippingCode = cart?.discountCodes?.some((d: any) => d.code?.toLowerCase() === 'freeshipping') || false;
       if (isPromoFreeDelivery || hasFreeShippingCode) {
         urlObj.searchParams.set('discount', 'freeshipping');
+        try {
+          const existingCodes = cart?.discountCodes?.map((d: any) => d.code) || [];
+          if (!existingCodes.some((c: string) => c.toLowerCase() === 'freeshipping')) {
+            const newCodes = Array.from(new Set([...existingCodes, 'freeshipping']));
+            await context.cart.updateDiscountCodes(newCodes);
+          }
+        } catch (discErr) {
+          console.error('[CHECKOUT INITIATE] Failed to update cart discount codes:', discErr);
+        }
       }
 
       // Build the order note: customer's written note + internal metadata block

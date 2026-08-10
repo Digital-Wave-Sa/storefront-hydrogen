@@ -950,20 +950,21 @@ export async function loader({context}: Route.LoaderArgs) {
     const backupLinesStr = await session.get('backupCartLines');
 
     // If cart is empty or missing, but we have backup lines from an incomplete checkout attempt:
-    if ((!cartData || !cartData.lines?.nodes?.length) && backupLinesStr) {
-      try {
-        const backupLines = JSON.parse(backupLinesStr);
-        if (Array.isArray(backupLines) && backupLines.length > 0) {
-          console.log('[CART RESTORE] Restoring cart from incomplete checkout backup lines:', backupLines);
-          const restoreResult = await cart.create({ lines: backupLines });
-          if (restoreResult?.cart?.id) {
-            const headers = cart.setCartId(restoreResult.cart.id);
-            headers.append('Set-Cookie', await session.commit());
-            cartData = await cart.get();
+    if (backupLinesStr) {
+      session.unset('backupCartLines');
+      if (!cartData || !cartData.lines?.nodes?.length) {
+        try {
+          const backupLines = JSON.parse(backupLinesStr);
+          if (Array.isArray(backupLines) && backupLines.length > 0) {
+            console.log('[CART RESTORE] Restoring cart from incomplete checkout backup lines:', backupLines);
+            const restoreResult = await cart.create({ lines: backupLines });
+            if (restoreResult?.cart?.id) {
+              cartData = restoreResult.cart;
+            }
           }
+        } catch (restoreErr) {
+          console.error('[CART RESTORE ERROR]', restoreErr);
         }
-      } catch (restoreErr) {
-        console.error('[CART RESTORE ERROR]', restoreErr);
       }
     }
 

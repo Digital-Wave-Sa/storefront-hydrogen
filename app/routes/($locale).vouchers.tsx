@@ -1209,7 +1209,7 @@ export default function VouchersPage() {
                         >
                           {toEnglishDigits(v.badgeText)}
                         </div>
-                        <div className="text-right flex flex-col gap-2">
+                        <div className={`flex flex-col gap-2 ${isEn ? 'text-left' : 'text-right'}`}>
                           <h4
                             style={{
                               color: isActiveState ? '#234745' : '#7D7D7D',
@@ -1218,7 +1218,7 @@ export default function VouchersPage() {
                               fontWeight: 700,
                               fontSize: '20px',
                               lineHeight: '100%',
-                              textAlign: 'right',
+                              textAlign: isEn ? 'left' : 'right',
                             }}
                           >
                             {toEnglishDigits(
@@ -1233,7 +1233,7 @@ export default function VouchersPage() {
                               fontWeight: 500,
                               fontSize: '16px',
                               lineHeight: '100%',
-                              textAlign: 'right',
+                              textAlign: isEn ? 'left' : 'right',
                             }}
                           >
                             {v.code}
@@ -1246,7 +1246,7 @@ export default function VouchersPage() {
                               fontWeight: 500,
                               fontSize: '16px',
                               lineHeight: '100%',
-                              textAlign: 'right',
+                              textAlign: isEn ? 'left' : 'right',
                             }}
                           >
                             {toEnglishDigits(
@@ -1326,7 +1326,7 @@ export default function VouchersPage() {
           </div>
 
           {/* LEFT COLUMN: Use Voucher Card / استخدام القسيمة */}
-          <div className="lg:col-span-5 bg-white rounded-[24px] p-7 sm:p-8 border border-gray-200 shadow-sm text-right">
+          <div className={`lg:col-span-5 bg-white rounded-[24px] p-7 sm:p-8 border border-gray-200 shadow-sm ${isEn ? 'text-left' : 'text-right'}`}>
             <h3
               className="text-[26px] sm:text-[28px] font-bold text-[#234745] mb-1"
               style={{
@@ -1354,7 +1354,9 @@ export default function VouchersPage() {
                   disabled={
                     cartFetcher.state !== 'idle' || !voucherCodeInput.trim()
                   }
-                  className="absolute left-1.5 h-[42px] px-6 bg-[#234745] hover:bg-[#1A3533] text-white font-bold text-[14px] rounded-[12px] transition-all z-10 shadow-sm disabled:opacity-50"
+                  className={`absolute h-[42px] px-6 bg-[#234745] hover:bg-[#1A3533] text-white font-bold text-[14px] rounded-[12px] transition-all z-10 shadow-sm disabled:opacity-50 ${
+                    isEn ? 'right-1.5' : 'left-1.5'
+                  }`}
                   style={{
                     fontFamily: "'GE Dinar One', 'GE SS Two', sans-serif",
                   }}
@@ -1372,7 +1374,9 @@ export default function VouchersPage() {
                   value={voucherCodeInput}
                   onChange={(e) => setVoucherCodeInput(e.target.value)}
                   placeholder={isEn ? 'Enter Voucher Code' : 'أدخل رمز القسيمة'}
-                  className="w-full h-[54px] pl-[105px] pr-5 rounded-[14px] border border-[#B8D0CC] text-[14px] text-right focus:outline-none focus:border-[#234745] transition-all placeholder:text-[#A0B2B0]"
+                  className={`w-full h-[54px] rounded-[14px] border border-[#B8D0CC] text-[14px] focus:outline-none focus:border-[#234745] transition-all placeholder:text-[#A0B2B0] ${
+                    isEn ? 'text-left pr-[105px] pl-5' : 'text-right pl-[105px] pr-5'
+                  }`}
                   style={{
                     fontFamily: "'GE Dinar One', 'GE SS Two', sans-serif",
                   }}
@@ -1380,19 +1384,45 @@ export default function VouchersPage() {
               </div>
 
               {appliedVoucherSuccess && (
-                <p className="text-[12px] text-emerald-700 bg-emerald-50 p-3 rounded-xl border border-emerald-200 font-medium">
-                  {appliedVoucherSuccess}
-                </p>
+                <div
+                  className={`flex items-center gap-3 p-3.5 rounded-[14px] bg-[#f0f7f5] border border-[#234745]/25 text-[#234745] shadow-sm transition-all duration-300 ${
+                    isEn ? 'text-left' : 'text-right'
+                  }`}
+                  style={{
+                    fontFamily:
+                      "'EnglishDigits', 'Bahij Janna', 'GE Dinar One', sans-serif",
+                  }}
+                >
+                  <div className="w-7 h-7 rounded-full bg-[#234745] text-white flex items-center justify-center flex-shrink-0 text-[13px] font-bold shadow-sm">
+                    ✓
+                  </div>
+                  <div className="flex-1 text-[13.5px] leading-snug font-semibold">
+                    {toEnglishDigits(appliedVoucherSuccess)}
+                  </div>
+                </div>
               )}
 
               {appliedVoucherError && (
-                <p className="text-[12px] text-red-600 bg-red-50 p-3 rounded-xl border border-red-200 font-medium">
-                  {appliedVoucherError}
-                </p>
+                <div
+                  className={`flex items-center gap-3 p-3.5 rounded-[14px] bg-[#fff5f5] border border-[#e53e3e]/25 text-[#c53030] shadow-sm transition-all duration-300 ${
+                    isEn ? 'text-left' : 'text-right'
+                  }`}
+                  style={{
+                    fontFamily:
+                      "'EnglishDigits', 'Bahij Janna', 'GE Dinar One', sans-serif",
+                  }}
+                >
+                  <div className="w-7 h-7 rounded-full bg-[#e53e3e] text-white flex items-center justify-center flex-shrink-0 text-[13px] font-bold shadow-sm">
+                    ✕
+                  </div>
+                  <div className="flex-1 text-[13.5px] leading-snug font-semibold">
+                    {toEnglishDigits(appliedVoucherError)}
+                  </div>
+                </div>
               )}
 
               <p
-                className="text-[13px] text-[#A0B2B0] leading-relaxed text-right pt-0.5"
+                className={`text-[13px] text-[#A0B2B0] leading-relaxed pt-0.5 ${isEn ? 'text-left' : 'text-right'}`}
                 style={{fontFamily: "'GE Dinar One', 'GE SS Two', sans-serif"}}
               >
                 {isEn

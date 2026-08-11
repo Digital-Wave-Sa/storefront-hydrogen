@@ -30,7 +30,10 @@ import {CookieConsentBanner} from './components/CookieConsentBanner';
 import {ProductSkeleton} from './components/ProductSkeleton';
 
 export const meta: MetaFunction = () => {
-  return [{title: 'حلويات سعد الدين | Saadeddin Pastry'}];
+  return [
+    {title: 'حلويات سعد الدين | Saadeddin Pastry'},
+    {name: 'viewport', content: 'width=device-width, initial-scale=1.0, maximum-scale=5.0'},
+  ];
 };
 
 export type RootLoader = typeof loader;
@@ -526,6 +529,7 @@ export function Layout({children}: {children?: React.ReactNode}) {
   return (
     <html lang={locale} dir={isEn ? 'ltr' : 'rtl'} suppressHydrationWarning>
       <head suppressHydrationWarning>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
         <title>حلويات سعد الدين | Saadeddin Pastry</title>
         <Meta />
         <link rel="canonical" href={canonicalUrl} />

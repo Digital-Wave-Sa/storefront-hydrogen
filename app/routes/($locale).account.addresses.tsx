@@ -11,6 +11,7 @@ import {
 import {
   Form,
   useActionData,
+  useFetcher,
   useNavigation,
   useOutletContext,
 } from 'react-router';
@@ -118,14 +119,60 @@ export async function action({request, context}: ActionFunctionArgs) {
         return data({error: null, createdAddress, defaultAddress});
       }
 
+const formatAddressGid = (rawId: string) => {
+  if (!rawId) return '';
+  let str = String(rawId);
+  try {
+    str = decodeURIComponent(str);
+  } catch {}
+  if (str.startsWith('Z2lkOi')) {
+    try {
+      str = typeof window !== 'undefined' ? atob(str) : Buffer.from(str, 'base64').toString('utf8');
+    } catch {}
+  }
+  const match = str.match(/(\d+)/);
+  const num = match ? match[1] : str.replace(/\D/g, '');
+  return `gid://shopify/MailingAddress/${num}`;
+};
+
       case 'PUT': {
+        const intent = String(form.get('intent') || '');
+        const targetGid = formatAddressGid(addressId);
+
+        if (intent === 'setDefault') {
+          const {customerDefaultAddressUpdate} = await storefront.mutate(
+            UPDATE_DEFAULT_ADDRESS_MUTATION,
+            {
+              variables: {
+                customerAccessToken: accessToken,
+                addressId: targetGid as any,
+              },
+            },
+          );
+
+          if (customerDefaultAddressUpdate?.customerUserErrors?.length) {
+            throw new Error(
+              customerDefaultAddressUpdate.customerUserErrors[0].message,
+            );
+          }
+
+          const newDefaultId =
+            customerDefaultAddressUpdate?.customer?.defaultAddress?.id ||
+            targetGid;
+
+          return data({
+            error: null,
+            defaultAddress: newDefaultId,
+          });
+        }
+
         const {customerAddressUpdate} = await storefront.mutate(
           UPDATE_ADDRESS_MUTATION,
           {
             variables: {
               address,
               customerAccessToken: accessToken,
-              id: decodeURIComponent(addressId) as any,
+              id: targetGid as any,
             },
           },
         );
@@ -135,12 +182,20 @@ export async function action({request, context}: ActionFunctionArgs) {
         }
 
         if (defaultAddress) {
-          await storefront.mutate(UPDATE_DEFAULT_ADDRESS_MUTATION, {
-            variables: {
-              customerAccessToken: accessToken,
-              addressId: decodeURIComponent(addressId) as any,
+          const {customerDefaultAddressUpdate} = await storefront.mutate(
+            UPDATE_DEFAULT_ADDRESS_MUTATION,
+            {
+              variables: {
+                customerAccessToken: accessToken,
+                addressId: targetGid as any,
+              },
             },
-          });
+          );
+          if (customerDefaultAddressUpdate?.customerUserErrors?.length) {
+            throw new Error(
+              customerDefaultAddressUpdate.customerUserErrors[0].message,
+            );
+          }
         }
         return data({
           error: null,
@@ -150,12 +205,13 @@ export async function action({request, context}: ActionFunctionArgs) {
       }
 
       case 'DELETE': {
+        const targetGid = formatAddressGid(addressId);
         const {customerAddressDelete} = await storefront.mutate(
           DELETE_ADDRESS_MUTATION,
           {
             variables: {
               customerAccessToken: accessToken,
-              id: decodeURIComponent(addressId) as any,
+              id: targetGid as any,
             },
           },
         );
@@ -177,9 +233,71 @@ export async function action({request, context}: ActionFunctionArgs) {
   }
 }
 
+const cleanAddressId = (rawId?: string | null): string => {
+  if (!rawId) return '';
+  let str = String(rawId);
+  try {
+    str = decodeURIComponent(str);
+  } catch {}
+  if (str.startsWith('Z2lkOi')) {
+    try {
+      str = typeof window !== 'undefined' ? atob(str) : Buffer.from(str, 'base64').toString('utf8');
+    } catch {}
+  }
+  const match = str.match(/(\d+)/);
+  return match ? match[1] : str.replace(/\D/g, '');
+};
+
+const isSameAddressId = (id1?: string | null, id2?: string | null) => {
+  const c1 = cleanAddressId(id1);
+  const c2 = cleanAddressId(id2);
+  return Boolean(c1 && c2 && c1 === c2);
+};
+
 export default function Addresses() {
   const {customer} = useOutletContext<{customer: CustomerFragment}>();
   const {defaultAddress, addresses} = customer;
+  const actionData = useActionData<ActionResponse>();
+  const fetcher = useFetcher();
+
+  const [localDefaultId, setLocalDefaultId] = useState<string | null>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('saadeddin_default_address_id');
+    }
+    return null;
+  });
+
+  const handleSetDefault = (id: string) => {
+    setLocalDefaultId(id);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('saadeddin_default_address_id', id);
+    }
+  };
+
+  useEffect(() => {
+    if (actionData?.defaultAddress) {
+      setLocalDefaultId(actionData.defaultAddress);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('saadeddin_default_address_id', actionData.defaultAddress);
+      }
+    }
+  }, [actionData]);
+
+  useEffect(() => {
+    if ((fetcher.data as any)?.defaultAddress) {
+      const defId = (fetcher.data as any).defaultAddress;
+      setLocalDefaultId(defId);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('saadeddin_default_address_id', defId);
+      }
+    }
+  }, [fetcher.data]);
+
+  const pendingDefaultId = fetcher.formData?.get('addressId')
+    ? String(fetcher.formData.get('addressId'))
+    : null;
+  const activeDefaultId = pendingDefaultId || localDefaultId || defaultAddress?.id;
+
   const [activeModal, setActiveModal] = useState<{
     type: 'create' | 'edit';
     address?: AddressFragment;
@@ -207,7 +325,7 @@ export default function Addresses() {
         {/* Cards container */}
         <div className="flex flex-col gap-3 mt-2">
           {addresses.nodes.map((address) => {
-            const isDefault = defaultAddress?.id === address.id;
+            const isDefault = isSameAddressId(activeDefaultId, address.id);
             const label = address.firstName || (isEn ? 'Address' : 'عنوان');
             const addressText = [address.address1, address.city]
               .filter(Boolean)
@@ -260,50 +378,26 @@ export default function Addresses() {
                       {isEn ? 'Edit' : 'تعديل'}
                     </button>
                     {!isDefault && (
-                      <Form method="PUT" style={{display: 'contents'}}>
+                      <fetcher.Form method="PUT" style={{display: 'contents'}}>
+                        <input
+                          type="hidden"
+                          name="intent"
+                          value="setDefault"
+                        />
                         <input
                           type="hidden"
                           name="addressId"
                           value={address.id}
                         />
                         <input type="hidden" name="defaultAddress" value="on" />
-                        <input
-                          type="hidden"
-                          name="address1"
-                          value={address.address1 ?? ''}
-                        />
-                        <input
-                          type="hidden"
-                          name="address2"
-                          value={address.address2 ?? ''}
-                        />
-                        <input
-                          type="hidden"
-                          name="city"
-                          value={address.city ?? ''}
-                        />
-                        <input
-                          type="hidden"
-                          name="firstName"
-                          value={address.firstName ?? ''}
-                        />
-                        <input
-                          type="hidden"
-                          name="lastName"
-                          value={address.lastName ?? ''}
-                        />
-                        <input
-                          type="hidden"
-                          name="phone"
-                          value={address.phone ?? ''}
-                        />
                         <button
                           type="submit"
+                          onClick={() => handleSetDefault(address.id)}
                           className="text-[#234745] hover:text-[#234745]/80 underline transition-colors whitespace-nowrap"
                         >
                           {isEn ? 'Set as Default' : 'تعيين كافتراضي'}
                         </button>
-                      </Form>
+                      </fetcher.Form>
                     )}
                     <button
                       type="button"

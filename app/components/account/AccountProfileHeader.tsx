@@ -116,7 +116,7 @@ export function AccountProfileHeader({
             <div className="bg-[#A6BFB9] rounded-[16px] p-4 md:p-5 flex items-center justify-between shadow-md transition-all h-full">
               <div className="text-start">
                 <p className="text-[11px] md:text-[12px] text-[#234745] font-bold mb-1 opacity-90">
-                  {isEn ? 'Loyalty Points' : 'نقاط الولاء'}
+                  {isEn ? 'All Earned Points' : 'مجموع النقاط المكتسبة'}
                 </p>
                 <div className="text-[22px] md:text-[26px] font-extrabold text-[#1B3836] leading-none flex items-center gap-1.5 font-en">
                   <span>{loyaltyPoints.toLocaleString('en-US')}</span>

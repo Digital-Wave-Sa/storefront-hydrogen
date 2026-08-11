@@ -811,7 +811,9 @@ function CollectionHero({
             dir={isEn ? 'ltr' : 'rtl'}
           >
             <button
-              onClick={() => window.history.back()}
+              onClick={() => {
+                if (typeof window !== 'undefined') window.history.back();
+              }}
               className={`flex items-center gap-[8px] bg-[#9FB7AE] hover:bg-[#8BA19C] text-[#234745] px-4 md:px-6 py-2.5 rounded-[25px] text-[12px] md:text-[16px] font-bold transition-all shrink-0 ${isEn ? 'font-en' : ''}`}
               style={
                 isEn

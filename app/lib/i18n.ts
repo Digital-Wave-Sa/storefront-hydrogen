@@ -6,23 +6,9 @@ export interface I18nLocale extends I18nBase {
 
 export function getLocaleFromRequest(request: Request): I18nLocale {
   const url = new URL(request.url);
-  let firstPathPart = url.pathname.split('/')[1]?.toUpperCase() ?? '';
-
-  // If request URL has no locale prefix (e.g. /cart, /api/products), check Referer header
-  if (!['EN', 'AR'].includes(firstPathPart)) {
-    const referer = request.headers.get('Referer') || request.headers.get('referer');
-    if (referer) {
-      try {
-        const refUrl = new URL(referer, url.origin);
-        const refPathPart = refUrl.pathname.split('/')[1]?.toUpperCase() ?? '';
-        if (['EN', 'AR'].includes(refPathPart)) {
-          firstPathPart = refPathPart;
-        }
-      } catch (e) {
-        // ignore invalid referer URL
-      }
-    }
-  }
+  // Locale is derived ONLY from the request URL path — never from Referer headers.
+  // This prevents language context bleed when navigating between locales.
+  const firstPathPart = url.pathname.split('/')[1]?.toUpperCase() ?? '';
 
   type I18nFromUrl = [I18nLocale['language'], I18nLocale['country']];
 

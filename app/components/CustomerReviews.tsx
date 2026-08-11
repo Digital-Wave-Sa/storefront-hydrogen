@@ -2,7 +2,7 @@ import { useOutletContext } from 'react-router';
 import { useState, useRef, useEffect } from 'react';
 
 export function CustomerReviews({ config }: { config?: any }) {
-    const { locale } = useOutletContext<{ locale: string }>();
+    const { locale = 'ar' } = useOutletContext<{ locale?: string }>() ?? {};
     const isEn = locale === 'en';
 
     // Parse Metaobject config

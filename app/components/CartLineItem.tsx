@@ -27,15 +27,16 @@ export function CartLineItem({
   cart?: any;
 }) {
   const { id, merchandise } = line;
-  const { product, title, image, selectedOptions } = merchandise || {};
-  const lineItemUrl = product?.handle ? useVariantUrl(product.handle, selectedOptions) : '#';
+  const { product, title, image, selectedOptions = [] } = merchandise || {};
+  const rawLineItemUrl = useVariantUrl(product?.handle || '', selectedOptions || []);
+  const lineItemUrl = product?.handle ? rawLineItemUrl : '#';
   const { close } = useAside();
   const location = useLocation();
   const cartRoute = location.pathname.startsWith('/en') ? '/en/cart' : '/cart';
   const lineItemChildren = childrenMap[id];
   const childrenLabelId = `cart-line-children-${id}`;
   const rootData = useRouteLoaderData('root') as any;
-  const isEn = rootData?.consent?.language?.toLowerCase() === 'en' || location.pathname.startsWith('/en');
+  const isEn = location.pathname.startsWith('/en');
   const isFreeItem = line.attributes?.some((attr: any) => attr.key === '_is_free' && attr.value === 'true') || false;
 
   // Filter out default title option
@@ -522,6 +523,8 @@ export function CartLineItem({
 
 function CartLineQuantity({ line }: { line: CartLine }) {
   if (!line || typeof line?.quantity === 'undefined') return null;
+  const location = useLocation();
+  const isEn = location.pathname.startsWith('/en');
   const { id: lineId, quantity, isOptimistic } = line;
   const prevQuantity = Number(Math.max(0, quantity - 1).toFixed(0));
   const nextQuantity = Number((quantity + 1).toFixed(0));
@@ -529,7 +532,7 @@ function CartLineQuantity({ line }: { line: CartLine }) {
   return (
     <div className="flex items-center gap-2">
       {quantity <= 1 ? (
-        <CartLineRemoveButton lineIds={[lineId]} disabled={!!isOptimistic} isBox isEn={line.cost?.totalAmount?.currencyCode === 'USD'} />
+        <CartLineRemoveButton lineIds={[lineId]} disabled={!!isOptimistic} isBox isEn={isEn} />
       ) : (
         <CartLineUpdateButton lines={[{ id: lineId, quantity: prevQuantity }]}>
           <button

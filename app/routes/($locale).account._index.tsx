@@ -760,7 +760,7 @@ export default function AccountDashboard() {
                             : undefined
                         }
                       >
-                        {isEn ? 'Loyalty Points' : 'نقاط الولاء'}
+                        {isEn ? 'All Earned Points' : 'مجموع النقاط المكتسبة'}
                       </h2>
                       <p className="text-[36px] md:text-[46px] font-bold text-[#234745] leading-none mb-1 font-en">
                         {points}

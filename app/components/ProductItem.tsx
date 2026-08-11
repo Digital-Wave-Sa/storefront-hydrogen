@@ -40,9 +40,6 @@ export function ProductItem({
     location.pathname.includes('/classic-packages') ||
     location.pathname.includes('/featured-packages') ||
     location.pathname.includes('/custom-packages');
-  if (isCorporateProduct(product) && !isCorporatePage) {
-    return null;
-  }
 
   const [isNotifyModalOpen, setIsNotifyModalOpen] = useState(false);
   const { selectedLocationId, selectedLocationName } = useOutletContext<{ selectedLocationId?: string, selectedLocationName?: string }>() || {};
@@ -74,7 +71,27 @@ export function ProductItem({
   }, [product, variantsNodes, selectedLocationId, selectedLocationName, isExport]);
 
   const productHandle = product.handle || (product as any).product?.handle || (product as any).variants?.nodes?.[0]?.product?.handle || '';
-  const variantUrl = productHandle ? useVariantUrl(productHandle, variant?.selectedOptions || []) : '#';
+  const rawVariantUrl = useVariantUrl(productHandle || '', variant?.selectedOptions || []);
+  const variantUrl = productHandle ? rawVariantUrl : '#';
+
+  const rootData = useRouteLoaderData('root') as any;
+  const isEn = location.pathname.startsWith('/en') || rootData?.locale === 'en';
+  const locale = isEn ? 'en' : 'ar';
+  const t = useI18n(locale);
+  const customer = rootData?.customer;
+  const [customerEmail, setCustomerEmail] = useState<string | undefined>(undefined);
+
+  useEffect(() => {
+    let mounted = true;
+    if (customer && typeof customer.then === 'function') {
+      customer.then((res: any) => {
+        if (mounted && res?.customer?.email) setCustomerEmail(res.customer.email);
+      }).catch(() => { });
+    }
+    return () => {
+      mounted = false;
+    };
+  }, [customer]);
 
   const storeAvailabilityNodes = variant?.storeAvailability?.nodes || [];
   const variantAvailable = variant?.availableForSale ?? product.availableForSale ?? true;
@@ -87,20 +104,9 @@ export function ProductItem({
   );
   const isAvailable = !isOutOfStock && !!variant;
 
-  const rootData = useRouteLoaderData('root') as any;
-  const isEn = location.pathname.startsWith('/en') || rootData?.locale === 'en';
-  const locale = isEn ? 'en' : 'ar';
-  const t = useI18n(locale);
-  const customer = rootData?.customer;
-  const [customerEmail, setCustomerEmail] = useState<string | undefined>(undefined);
-
-  useEffect(() => {
-    if (customer && typeof customer.then === 'function') {
-      customer.then((res: any) => {
-        if (res?.customer?.email) setCustomerEmail(res.customer.email);
-      }).catch(() => { });
-    }
-  }, [customer]);
+  if (isCorporateProduct(product) && !isCorporatePage) {
+    return null;
+  }
 
   // --- Visibility scheduling ---
   const visibility = getVisibilityStatus(

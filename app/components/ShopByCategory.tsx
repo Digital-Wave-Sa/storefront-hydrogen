@@ -2,7 +2,7 @@ import { NavLink, useOutletContext } from 'react-router';
 import { useI18n } from '~/lib/i18n';
 
 export function ShopByCategory() {
-    const { locale } = useOutletContext<{ locale: string }>();
+    const { locale = 'ar' } = useOutletContext<{ locale?: string }>() ?? {};
     const t = useI18n(locale);
     const isEn = locale === 'en';
 

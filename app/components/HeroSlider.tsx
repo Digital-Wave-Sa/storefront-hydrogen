@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { NavLink } from 'react-router';
+import { NavLink, useLocation } from 'react-router';
 import { fixMojibake } from '~/lib/mojibake';
 
 const DEFAULT_SLIDES = [
@@ -49,7 +49,8 @@ const DEFAULT_SLIDES = [
 
 export function HeroSlider({ config }: { config?: any }) {
   const scrollRef = useRef<HTMLDivElement>(null);
-  const [isEn, setIsEn] = useState(false);
+  const location = useLocation();
+  const isEn = location.pathname.startsWith('/en');
 
   // Dynamic slides from Shopify Metaobject with fallback to DEFAULT_SLIDES
   const dynamicSlides = React.useMemo(() => {
@@ -109,9 +110,6 @@ export function HeroSlider({ config }: { config?: any }) {
   const [currentIndex, setCurrentIndex] = useState(Math.floor(slides.length / 2));
 
   useEffect(() => {
-    // Detect locale from URL or window
-    setIsEn(window.location.pathname.includes('/en'));
-
     // Center the initial slide on load
     const timer = setTimeout(() => {
       scrollToSlide(Math.floor(slides.length / 2));
@@ -121,9 +119,11 @@ export function HeroSlider({ config }: { config?: any }) {
 
   const handleScroll = useCallback(() => {
     if (!scrollRef.current) return;
+    const firstChild = scrollRef.current.children[0] as HTMLElement | undefined;
+    if (!firstChild) return;
     const scrollLeft = Math.abs(scrollRef.current.scrollLeft);
-    const containerWidth = scrollRef.current.clientWidth;
-    const slideWidth = scrollRef.current.children[0].clientWidth;
+    const slideWidth = firstChild.clientWidth;
+    if (!slideWidth) return;
 
     // We want the slide closest to the center of the container
     const newIndex = Math.round(scrollLeft / slideWidth);

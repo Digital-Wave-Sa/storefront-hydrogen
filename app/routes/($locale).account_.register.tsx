@@ -19,7 +19,7 @@ import {
 import {LogoSplash} from '~/components/LogoSplash';
 import {SaadeddinApi} from '~/lib/saadeddin-api.server';
 import {derivePassword} from '~/lib/auth.server';
-import {validatePhoneNumber} from '~/lib/phone-validation';
+import {validatePhoneNumber, sanitizePhoneInput} from '~/lib/phone-validation';
 
 export const meta: MetaFunction<typeof loader> = () => {
   return [{title: 'Create Account | Saadeddin'}];
@@ -1321,6 +1321,7 @@ export default function Register() {
                         <input
                           name="phone"
                           type="tel"
+                          maxLength={formData.phone.startsWith('0') ? 10 : 9}
                           placeholder={
                             formData.countryCode === '+966'
                               ? '05XXXXXXXX'
@@ -1337,7 +1338,7 @@ export default function Register() {
                           onChange={(e) => {
                             setFormData({
                               ...formData,
-                              phone: e.target.value.replace(/\D/g, ''),
+                              phone: sanitizePhoneInput(e.target.value),
                             });
                             setClientPhoneError(null);
                           }}

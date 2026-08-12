@@ -6,6 +6,14 @@ export interface PhoneValidationResult {
   errorAr?: string;
 }
 
+export function sanitizePhoneInput(rawInput: string): string {
+  const digits = rawInput.replace(/\D/g, '');
+  if (digits.startsWith('0')) {
+    return digits.slice(0, 10);
+  }
+  return digits.slice(0, 9);
+}
+
 export function validatePhoneNumber(
   rawPhone: string,
   countryCode: string = '+966',

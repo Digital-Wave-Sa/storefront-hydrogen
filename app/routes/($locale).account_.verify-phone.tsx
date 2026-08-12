@@ -8,7 +8,7 @@ import {
 import {Form, useNavigation, useActionData, useLoaderData} from 'react-router';
 import {Button} from '~/components/layout/Button';
 import {SaadeddinApi} from '~/lib/saadeddin-api.server';
-import {validatePhoneNumber} from '~/lib/phone-validation';
+import {validatePhoneNumber, sanitizePhoneInput} from '~/lib/phone-validation';
 
 export async function loader({request, context}: LoaderFunctionArgs) {
   const {session, storefront} = context;
@@ -255,11 +255,11 @@ export default function VerifyPhone() {
               <input
                 type="tel"
                 name="phone"
-                placeholder="5XXXXXXXX"
-                value={phone.replace('+966', '')}
-                onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
+                placeholder={phone.startsWith('0') ? '05XXXXXXXX' : '5XXXXXXXX'}
+                value={phone}
+                onChange={(e) => setPhone(sanitizePhoneInput(e.target.value))}
                 className="phone-input"
-                maxLength={9}
+                maxLength={phone.startsWith('0') ? 10 : 9}
                 required
                 autoFocus
                 disabled={isSubmitting}

@@ -18,14 +18,12 @@ export async function loader({request, params, context}: LoaderFunctionArgs) {
     });
   }
 
-  // Always search with EN language context since Shopify indexes products in the store's primary language
-  // This ensures Arabic text searches still find products that have Arabic titles as their primary content
   const {predictiveSearch} = await storefront.query(PREDICTIVE_SEARCH_QUERY, {
     variables: {
       query: q,
       limit,
-      language: 'EN',
-      country: 'SA',
+      language: storefront.i18n.language,
+      country: storefront.i18n.country,
     },
   });
 

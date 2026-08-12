@@ -8,6 +8,7 @@ import {
 import {Form, useNavigation, useActionData, useLoaderData} from 'react-router';
 import {Button} from '~/components/layout/Button';
 import {SaadeddinApi} from '~/lib/saadeddin-api.server';
+import {validatePhoneNumber} from '~/lib/phone-validation';
 
 export async function loader({request, context}: LoaderFunctionArgs) {
   const {session, storefront} = context;
@@ -72,17 +73,18 @@ export async function action({request, context}: ActionFunctionArgs) {
   if (intent === 'send-otp') {
     const rawPhone = String(form.get('phone') || '');
     const countryCode = String(form.get('countryCode') || '+966');
-    let cleanPhone = rawPhone.replace(/\D/g, '');
-    const countryDigits = countryCode.replace(/\D/g, '');
 
-    // Normalize phone format dynamically for any country code (E.164)
-    if (cleanPhone.startsWith('00' + countryDigits))
-      cleanPhone = cleanPhone.substring(2 + countryDigits.length);
-    else if (cleanPhone.startsWith(countryDigits))
-      cleanPhone = cleanPhone.substring(countryDigits.length);
-    else if (cleanPhone.startsWith('0')) cleanPhone = cleanPhone.substring(1);
+    const phoneValidation = validatePhoneNumber(rawPhone, countryCode);
+    if (!phoneValidation.isValid) {
+      return data(
+        {
+          error: isEn ? phoneValidation.errorEn : phoneValidation.errorAr,
+        },
+        {status: 400},
+      );
+    }
 
-    const formattedPhone = `${countryCode}${cleanPhone}`;
+    const formattedPhone = phoneValidation.fullPhone;
 
     try {
       await api.requestOtp(formattedPhone, 'login');

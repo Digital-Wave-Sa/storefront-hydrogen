@@ -47,20 +47,20 @@ export function PageLayout({
 
   const isCustomCakePage = location.pathname.includes('/custom-cake');
 
-  // Purge stale cart cookie after completing checkout
+  // Purge stale cart cookie ONLY after successfully completing an order
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const isCheckoutInProgress = sessionStorage.getItem('checkout_in_progress') === 'true';
-    const referer = document.referrer || '';
-    const isFromShopifyCheckout =
-      referer.includes('myshopify.com') ||
-      referer.includes('checkouts') ||
-      window.location.search.includes('thank_you') ||
-      window.location.search.includes('order_id') ||
-      window.location.search.includes('completed');
+    const search = window.location.search.toLowerCase();
+    const isOrderCompleted =
+      search.includes('thank_you') ||
+      search.includes('thank-you') ||
+      search.includes('order_id') ||
+      search.includes('completed') ||
+      search.includes('order_number');
 
-    if (isCheckoutInProgress || isFromShopifyCheckout) {
+    if (isOrderCompleted) {
       sessionStorage.removeItem('checkout_in_progress');
+      sessionStorage.removeItem('saadeddin_checkout_initiated');
       document.cookie = 'cart=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT;';
       const domainParts = window.location.hostname.split('.');
       if (domainParts.length >= 2) {

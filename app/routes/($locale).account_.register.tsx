@@ -574,17 +574,18 @@ export async function action({request, context}: ActionFunctionArgs) {
       }
 
       // 5. Save tokens and user session data in session and redirect to /account
-      if (token) {
-        session.set('customerAccessToken', token);
-      } else {
-        console.warn(
-          '[Register] Failed to create customerAccessToken, falling back to bypass token',
+      if (!token) {
+        console.error(
+          '[Register] All token creation attempts failed. Aborting registration.',
         );
-        session.set('customerAccessToken', {
-          accessToken: 'dev-bypass-token',
-          expiresAt: new Date(Date.now() + 86400 * 1000).toISOString(),
+        return data({
+          error:
+            lang === 'en'
+              ? 'Registration failed. Please try again or contact support.'
+              : 'فشل التسجيل. يرجى المحاولة مرة أخرى أو التواصل مع الدعم.',
         });
       }
+      session.set('customerAccessToken', token);
       session.set('saadeddinToken', saadeddinToken);
       session.set('preferredLanguage', selectedLanguage);
       session.set('loginOtpPhone', savedPhone);

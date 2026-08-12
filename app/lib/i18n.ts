@@ -6,16 +6,33 @@ export interface I18nLocale extends I18nBase {
 
 export function getLocaleFromRequest(request: Request): I18nLocale {
   const url = new URL(request.url);
-  // Locale is derived ONLY from the request URL path — never from Referer headers.
-  // This prevents language context bleed when navigating between locales.
-  const firstPathPart = url.pathname.split('/')[1]?.toUpperCase() ?? '';
+
+  // Clean pathname by stripping .data extension if present (e.g. /en.data -> /en)
+  const cleanPathname = url.pathname.replace(/\.data$/i, '');
+  let firstPathPart = cleanPathname.split('/')[1]?.toUpperCase() ?? '';
+
+  const validLanguages = ['EN', 'AR'];
+
+  // If firstPathPart is not a recognized language code (e.g. _DATA, CART, API, or empty root),
+  // inspect the Referer header to see if the request originated from an English route (/en/...)
+  if (!validLanguages.includes(firstPathPart) && !/^[A-Z]{2}-[A-Z]{2}$/i.test(firstPathPart)) {
+    const referer = request.headers.get('Referer');
+    if (referer) {
+      try {
+        const refererUrl = new URL(referer);
+        const refPath = refererUrl.pathname.replace(/\.data$/i, '');
+        const refFirstPart = refPath.split('/')[1]?.toUpperCase() ?? '';
+        if (validLanguages.includes(refFirstPart) || /^[A-Z]{2}-[A-Z]{2}$/i.test(refFirstPart)) {
+          firstPathPart = refFirstPart;
+        }
+      } catch (e) {}
+    }
+  }
 
   type I18nFromUrl = [I18nLocale['language'], I18nLocale['country']];
 
   let pathPrefix = '';
   let [language, country]: I18nFromUrl = ['AR', 'SA'];
-
-  const validLanguages = ['EN', 'AR'];
 
   if (/^[A-Z]{2}-[A-Z]{2}$/i.test(firstPathPart)) {
     const [langPart, countryPart] = firstPathPart.split('-');

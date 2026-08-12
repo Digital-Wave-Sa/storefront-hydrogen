@@ -1,5 +1,5 @@
 import { useOptimisticCart, Analytics, CartForm } from '@shopify/hydrogen';
-import { Link, useRouteLoaderData, useLocation, useFetcher } from 'react-router';
+import { Link, useRouteLoaderData, useLocation, useFetcher, useFetchers } from 'react-router';
 import { useEffect, useState, useRef } from 'react';
 import type { CartApiQueryFragment } from 'storefrontapi.generated';
 import { useAside } from '~/components/Aside';
@@ -39,11 +39,53 @@ function getLineItemChildrenMap(lines: CartLine[]): LineItemChildrenMap {
 }
 
 export function CartMain({ layout, cart: originalCart }: CartMainProps) {
-  const cart = useOptimisticCart(originalCart);
   const location = useLocation();
   const isEn = location.pathname.split('/')[1]?.toLowerCase() === 'en';
   const cartRoute = isEn ? '/en/cart' : '/cart';
   const rootData = useRouteLoaderData('root') as any;
+
+  // ── Locale-aware cart reload ──────────────────────────────────────────────
+  // Root's deferred cart may have been fetched in a different language context.
+  // This fetcher explicitly reloads the cart from the locale-correct route so
+  // product names always appear in the right language.
+  const cartReloadFetcher = useFetcher<any>();
+  const allFetchers = useFetchers();
+
+  // Count active cart mutations across all fetchers (POST only — exclude GET loads)
+  const activeMutationCount = allFetchers.filter(
+    (f) =>
+      f.state !== 'idle' &&
+      f.formMethod !== 'GET' &&
+      (f.formAction === '/cart' || f.formAction === '/en/cart'),
+  ).length;
+  const prevMutationCountRef = useRef(0);
+
+  // On mount (cart drawer opens) load fresh cart data with correct locale
+  useEffect(() => {
+    if (layout === 'aside' && cartReloadFetcher.state === 'idle') {
+      cartReloadFetcher.load(cartRoute);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cartRoute]);
+
+  // After any mutation completes, reload cart with correct locale
+  useEffect(() => {
+    if (
+      prevMutationCountRef.current > 0 &&
+      activeMutationCount === 0 &&
+      cartReloadFetcher.state === 'idle'
+    ) {
+      cartReloadFetcher.load(cartRoute);
+    }
+    prevMutationCountRef.current = activeMutationCount;
+  }, [activeMutationCount, cartRoute]);
+
+  // Use freshly fetched locale-correct cart; fall back to root's cart
+  const effectiveCart =
+    cartReloadFetcher.data !== undefined ? cartReloadFetcher.data : originalCart;
+
+  const cart = useOptimisticCart(effectiveCart);
+  // ─────────────────────────────────────────────────────────────────────────
 
   const cartLines = cart?.lines?.nodes || [];
   const linesCount = cartLines.length;

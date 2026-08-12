@@ -52,6 +52,11 @@ export const shouldRevalidate: ShouldRevalidateFunction = ({
   // revalidate when manually revalidating via useRevalidator
   if (currentUrl.toString() === nextUrl.toString()) return true;
 
+  // revalidate when the locale changes (e.g. / → /en or /en → /)
+  // so the cart and other root data are re-fetched in the correct language
+  const currentLocale = currentUrl.pathname.replace(/\.data$/i, '').split('/')[1]?.toLowerCase() === 'en' ? 'en' : 'ar';
+  const nextLocale = nextUrl.pathname.replace(/\.data$/i, '').split('/')[1]?.toLowerCase() === 'en' ? 'en' : 'ar';
+  if (currentLocale !== nextLocale) return true;
 
   // Defaulting to no revalidation for root loader data to improve performance.
   // When using this feature, you risk your UI getting out of sync with your server.
@@ -122,8 +127,9 @@ export async function loader(args: Route.LoaderArgs) {
                        selectedLocId === 'gid://shopify/Location/114186715445';
   const hasManualSelection = manualLocationSelection === 'true';
 
+  const urlLocale = args.context.storefront.i18n.language.toLowerCase();
+
   if (!hasManualSelection && (isDefaultLoc || !selectedLocId || selectedLocId === undefined || selectedLocId === null)) {
-    const urlLocale = new URL(args.request.url).pathname.split('/')[1]?.toLowerCase();
     selectedLocId = '';
     selectedLocName = urlLocale === 'en' ? 'Select Your Branch' : 'اختر الفرع';
     fType = 'delivery';
@@ -144,14 +150,12 @@ export async function loader(args: Route.LoaderArgs) {
       if (isHidden) {
         console.log(`[ROOT LOADER] Resetting hidden location: id=${selectedLocId}, name=${selectedLocName}`);
         if (!isSA) {
-          const urlLocale = new URL(args.request.url).pathname.split('/')[1]?.toLowerCase();
           selectedLocId = '';
           selectedLocName = urlLocale === 'en' ? 'Select Your Branch' : 'اختر الفرع';
           fType = 'delivery';
         } else {
           const isTesting = env.PUBLIC_STORE_DOMAIN?.includes('belivagloire');
           selectedLocId = isTesting ? 'gid://shopify/Location/114186715445' : 'gid://shopify/Location/80198500503';
-          const urlLocale = new URL(args.request.url).pathname.split('/')[1]?.toLowerCase();
           selectedLocName = urlLocale === 'en' ? 'Olaya Branch' : 'فرع العليا';
           fType = 'delivery';
         }
@@ -199,7 +203,7 @@ export async function loader(args: Route.LoaderArgs) {
       deliveryDate: await session.get('delivery_date'),
       timeSlot: await session.get('Time Slot'),
       manualLocationSelection: manualLocationSelection,
-      locale: new URL(args.request.url).pathname.split('/')[1]?.toLowerCase() === 'en' ? 'en' : 'ar',
+      locale: urlLocale,
     }, {
       headers
     });

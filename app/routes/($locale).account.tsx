@@ -248,7 +248,6 @@ export async function loader({request, context}: LoaderFunctionArgs) {
     ? `/${pathname.split('/')[1]}`
     : '';
   const customerAccessToken = await session.get('customerAccessToken');
-  console.log('AT TOP, TOKEN IS:', JSON.stringify(customerAccessToken));
   const isLoggedIn = Boolean(
     customerAccessToken?.accessToken ||
     (typeof customerAccessToken === 'string' ? customerAccessToken : null),
@@ -290,7 +289,6 @@ export async function loader({request, context}: LoaderFunctionArgs) {
   }
 
   try {
-    console.log('TOKEN IS:', JSON.stringify(customerAccessToken));
     const {customer} = await storefront.query(CUSTOMER_QUERY, {
       variables: {
         customerAccessToken:

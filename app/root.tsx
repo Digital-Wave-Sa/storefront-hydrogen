@@ -221,6 +221,8 @@ async function loadCriticalData({context}: Route.LoaderArgs) {
       cache: storefront.CacheLong(),
       variables: {
         headerMenuHandle: 'main-menu',
+        country: storefront.i18n.country,
+        language: storefront.i18n.language,
       },
     }),
     storefront.query(LOCATIONS_QUERY, {
@@ -304,6 +306,8 @@ function loadDeferredData(
       cache: storefront.CacheLong(),
       variables: {
         footerMenuHandle: 'footer', // Adjust to your footer menu handle
+        country: storefront.i18n.country,
+        language: storefront.i18n.language,
       },
     })
     .catch((error: Error) => {

@@ -1,5 +1,6 @@
 import { getLoyaltyTierInfo } from '~/lib/loyalty-tiers';
-import lpPatternBg from '/images/loyality-points/LP-bg-badge.svg';
+
+const lpPatternBg = '/images/loyality-points/LP-bg-badge.svg';
 
 export function LoyaltyCard({
   loyaltyPoints = 0,

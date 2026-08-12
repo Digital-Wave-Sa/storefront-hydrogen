@@ -19,6 +19,7 @@ import {
 import {LogoSplash} from '~/components/LogoSplash';
 import {SaadeddinApi} from '~/lib/saadeddin-api.server';
 import {derivePassword} from '~/lib/auth.server';
+import {validatePhoneNumber} from '~/lib/phone-validation';
 
 export const meta: MetaFunction<typeof loader> = () => {
   return [{title: 'Create Account | Saadeddin'}];
@@ -220,14 +221,18 @@ export async function action({request, context}: ActionFunctionArgs) {
     const phone = String(form.get('phone') || '');
     const countryCode = String(form.get('countryCode') || '+966');
     const email = String(form.get('email') || '').trim();
-    let cleanPhone = phone.replace(/\D/g, '');
-    const countryDigits = countryCode.replace(/\D/g, '');
-    if (cleanPhone.startsWith('00' + countryDigits))
-      cleanPhone = cleanPhone.substring(2 + countryDigits.length);
-    else if (cleanPhone.startsWith(countryDigits))
-      cleanPhone = cleanPhone.substring(countryDigits.length);
-    if (cleanPhone.startsWith('0')) cleanPhone = cleanPhone.substring(1);
-    const fullPhone = `${countryCode}${cleanPhone}`;
+
+    const phoneValidation = validatePhoneNumber(phone, countryCode);
+    if (!phoneValidation.isValid) {
+      return data({
+        error:
+          lang === 'en'
+            ? phoneValidation.errorEn
+            : phoneValidation.errorAr,
+      });
+    }
+
+    const fullPhone = phoneValidation.fullPhone;
 
     // Cooldown Throttle Check (60 seconds)
     const cooldown = session.get('otpCooldown');
@@ -713,6 +718,7 @@ export default function Register() {
   const [submittedPhone, setSubmittedPhone] = useState('');
   const [hasEditSinceError, setHasEditSinceError] = useState(false);
   const [actionDataDismissed, setActionDataDismissed] = useState(false);
+  const [clientPhoneError, setClientPhoneError] = useState<string | null>(null);
 
   useEffect(() => {
     if (actionData?.step === 'otp') {
@@ -990,6 +996,20 @@ export default function Register() {
                   <Form
                     method="POST"
                     className="w-full flex flex-col gap-4 w-full"
+                    onSubmit={(e) => {
+                      const val = validatePhoneNumber(
+                        formData.phone,
+                        formData.countryCode,
+                      );
+                      if (!val.isValid) {
+                        e.preventDefault();
+                        setClientPhoneError(
+                          isEn ? val.errorEn! : val.errorAr!,
+                        );
+                        return;
+                      }
+                      setClientPhoneError(null);
+                    }}
                   >
                     <input type="hidden" name="intent" value="send-otp" />
 
@@ -1272,12 +1292,13 @@ export default function Register() {
                         <select
                           name="countryCode"
                           value={formData.countryCode}
-                          onChange={(e) =>
+                          onChange={(e) => {
                             setFormData({
                               ...formData,
                               countryCode: e.target.value,
-                            })
-                          }
+                            });
+                            setClientPhoneError(null);
+                          }}
                           className="bg-transparent border-none text-[#171717] font-bold text-[14px] focus:ring-0 outline-none pl-4 pr-6 py-3 appearance-none cursor-pointer"
                           style={{
                             backgroundImage:
@@ -1300,23 +1321,54 @@ export default function Register() {
                         <input
                           name="phone"
                           type="tel"
-                          placeholder="5XXXXXXXXX"
+                          placeholder={
+                            formData.countryCode === '+966'
+                              ? '05XXXXXXXX'
+                              : formData.countryCode === '+962'
+                                ? '07XXXXXXXX'
+                                : '5XXXXXXXX'
+                          }
                           className="flex-1 bg-transparent border-none outline-none text-[#171717] font-medium text-[14px] focus:ring-0 placeholder:text-[#BBCFCD] px-2 py-3"
                           style={{
                             fontFamily:
                               "'EnglishDigits', 'GE Dinar One', sans-serif",
                           }}
                           value={formData.phone}
-                          onChange={(e) =>
+                          onChange={(e) => {
                             setFormData({
                               ...formData,
                               phone: e.target.value.replace(/\D/g, ''),
-                            })
-                          }
+                            });
+                            setClientPhoneError(null);
+                          }}
                           required
                         />
                       </div>
                     </div>
+
+                    {clientPhoneError && (
+                      <div
+                        className="w-full border border-[#F38C8C] bg-[#FFF5F5] rounded-[12px] py-2 px-3 flex items-center gap-2 text-[#E55C5C] text-xs font-semibold justify-center"
+                        dir={isEn ? 'ltr' : 'rtl'}
+                      >
+                        <svg
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          className="shrink-0"
+                        >
+                          <circle cx="12" cy="12" r="10" />
+                          <line x1="12" y1="8" x2="12" y2="12" />
+                          <line x1="12" y1="16" x2="12.01" y2="16" />
+                        </svg>
+                        <span>{clientPhoneError}</span>
+                      </div>
+                    )}
 
                     {/* Email Input */}
                     <div className="flex flex-col gap-2 w-full">

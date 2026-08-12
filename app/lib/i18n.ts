@@ -9,47 +9,48 @@ export function getLocaleFromRequest(request: Request): I18nLocale {
 
   // Clean pathname by stripping .data extension if present (e.g. /en.data -> /en)
   const cleanPathname = url.pathname.replace(/\.data$/i, '');
-  let firstPathPart = cleanPathname.split('/')[1]?.toUpperCase() ?? '';
+  const pathSegments = cleanPathname.split('/').filter(Boolean);
+  const firstPathSegment = pathSegments[0]?.toLowerCase() || '';
 
-  const validLanguages = ['EN', 'AR'];
+  // Check if current URL path explicitly specifies English prefix (/en or /en/...)
+  let isEnglish = firstPathSegment === 'en';
 
-  // If firstPathPart is not a recognized language code (e.g. _DATA, CART, API, or empty root),
-  // inspect the Referer header to see if the request originated from an English route (/en/...)
-  if (!validLanguages.includes(firstPathPart) && !/^[A-Z]{2}-[A-Z]{2}$/i.test(firstPathPart)) {
+  // For API / Data resource requests (e.g. /api/..., /cart.data, /_data),
+  // if the path itself does NOT have /en, check if the Referer header originated from an English route.
+  // CRITICAL: We ONLY inspect Referer for API / Data sub-requests, NEVER for standard page navigation!
+  const isResourceOrApiRoute =
+    cleanPathname.startsWith('/api/') ||
+    url.pathname.endsWith('.data') ||
+    url.searchParams.has('_data');
+
+  if (!isEnglish && isResourceOrApiRoute) {
     const referer = request.headers.get('Referer');
     if (referer) {
       try {
         const refererUrl = new URL(referer);
-        const refPath = refererUrl.pathname.replace(/\.data$/i, '');
-        const refFirstPart = refPath.split('/')[1]?.toUpperCase() ?? '';
-        if (validLanguages.includes(refFirstPart) || /^[A-Z]{2}-[A-Z]{2}$/i.test(refFirstPart)) {
-          firstPathPart = refFirstPart;
+        const refCleanPath = refererUrl.pathname.replace(/\.data$/i, '');
+        const refFirstSegment =
+          refCleanPath.split('/').filter(Boolean)[0]?.toLowerCase() || '';
+        if (refFirstSegment === 'en') {
+          isEnglish = true;
         }
       } catch (e) {}
     }
   }
 
-  type I18nFromUrl = [I18nLocale['language'], I18nLocale['country']];
-
-  let pathPrefix = '';
-  let [language, country]: I18nFromUrl = ['AR', 'SA'];
-
-  if (/^[A-Z]{2}-[A-Z]{2}$/i.test(firstPathPart)) {
-    const [langPart, countryPart] = firstPathPart.split('-');
-    if (validLanguages.includes(langPart)) {
-      pathPrefix = '/' + langPart.toLowerCase();
-      language = langPart as I18nLocale['language'];
-      country = countryPart as I18nLocale['country'];
-    }
-  } else if (/^[A-Z]{2}$/i.test(firstPathPart)) {
-    if (validLanguages.includes(firstPathPart)) {
-      pathPrefix = firstPathPart === 'EN' ? '/en' : '';
-      language = firstPathPart as I18nLocale['language'];
-      country = 'SA'; // Default country
-    }
+  if (isEnglish) {
+    return {
+      language: 'EN',
+      country: 'SA',
+      pathPrefix: '/en',
+    };
   }
 
-  return {language: language.toUpperCase() as I18nLocale['language'], country: country.toUpperCase() as I18nLocale['country'], pathPrefix};
+  return {
+    language: 'AR',
+    country: 'SA',
+    pathPrefix: '',
+  };
 }
 
 export type Locale = 'en' | 'ar';

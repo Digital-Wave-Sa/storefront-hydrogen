@@ -2,6 +2,7 @@ import {useState, useEffect, useRef} from 'react';
 import {data, type LoaderFunctionArgs, type MetaFunction} from 'react-router';
 import {Form, useNavigation, useActionData} from 'react-router';
 import {Button} from '~/components/layout/Button';
+import {sanitizePhoneInput} from '~/lib/phone-validation';
 
 export const meta: MetaFunction<typeof loader> = () => {
   return [{title: 'Login | Saadeddin'}];
@@ -84,13 +85,13 @@ export default function OTPLogin() {
               <span className="country-code">+966</span>
               <input
                 type="tel"
-                placeholder="5XXXXXXXX"
+                placeholder={phoneNumber.startsWith('0') ? '05XXXXXXXX' : '5XXXXXXXX'}
                 value={phoneNumber}
                 onChange={(e) =>
-                  setPhoneNumber(e.target.value.replace(/\D/g, ''))
+                  setPhoneNumber(sanitizePhoneInput(e.target.value))
                 }
                 className="phone-input"
-                maxLength={9}
+                maxLength={phoneNumber.startsWith('0') ? 10 : 9}
                 required
                 autoFocus
               />

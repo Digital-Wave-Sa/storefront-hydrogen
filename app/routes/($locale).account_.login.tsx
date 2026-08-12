@@ -18,7 +18,7 @@ import {
 import {LogoSplash} from '~/components/LogoSplash';
 import {SaadeddinApi} from '~/lib/saadeddin-api.server';
 import {derivePassword} from '~/lib/auth.server';
-import {validatePhoneNumber} from '~/lib/phone-validation';
+import {validatePhoneNumber, sanitizePhoneInput} from '~/lib/phone-validation';
 
 export const meta: MetaFunction<typeof loader> = () => {
   return [{title: 'Login | Saadeddin'}];
@@ -1134,6 +1134,7 @@ export default function Login() {
                       <input
                         name="phone"
                         type="tel"
+                        maxLength={phone.startsWith('0') ? 10 : 9}
                         placeholder={
                           countryCode === '+966'
                             ? '05XXXXXXXX'
@@ -1148,7 +1149,7 @@ export default function Login() {
                         }}
                         value={phone}
                         onChange={(e) => {
-                          setPhone(e.target.value.replace(/\D/g, ''));
+                          setPhone(sanitizePhoneInput(e.target.value));
                           setClientPhoneError(null);
                         }}
                         required

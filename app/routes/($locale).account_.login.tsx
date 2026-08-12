@@ -1325,19 +1325,52 @@ export default function Login() {
                             className={`w-14 h-14 text-center border rounded-[12px] text-2xl font-bold outline-none transition-colors ${
                               showError
                                 ? 'border-[#F38C8C] text-[#E55C5C] bg-[#FFF5F5] focus:border-[#E55C5C] disabled:bg-[#FFF5F5] disabled:text-[#E55C5C] disabled:border-[#F38C8C]'
-                                : 'border-[#BBCFCD] text-[#234745] focus:border-[#234745] disabled:bg-gray-50'
+                                : 'border-[#BBCFCD] text-[#234745] focus:border-[#234745] disabled:bg-gray-100 disabled:text-gray-400'
                             }`}
                             value={otpValue[i]}
                             onChange={(e) => handleOTPChange(i, e.target.value)}
                             onKeyDown={(e) => handleKeyDown(i, e)}
                             autoFocus={i === 0}
-                            disabled={blockCooldown > 0}
+                            disabled={blockCooldown > 0 || resendCooldown === 0}
                           />
                         ))}
                       </div>
                     </div>
 
-                    {showError && blockCooldown <= 0 && (
+                    {resendCooldown === 0 && blockCooldown <= 0 && (
+                      <div
+                        className="w-full border border-[#F38C8C] bg-[#FFF5F5] rounded-[12px] py-3 px-4 flex items-center gap-3 text-[#E55C5C] text-sm font-semibold justify-center"
+                        dir={isEn ? 'ltr' : 'rtl'}
+                      >
+                        <svg
+                          width="20"
+                          height="20"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          className="shrink-0"
+                        >
+                          <circle cx="12" cy="12" r="10" />
+                          <line x1="12" y1="8" x2="12" y2="12" />
+                          <line x1="12" y1="16" x2="12.01" y2="16" />
+                        </svg>
+                        <span
+                          style={{
+                            fontFamily:
+                              "'EnglishDigits', 'GE Dinar One', sans-serif",
+                          }}
+                        >
+                          {isEn
+                            ? "Verification code expired (1 min). Please click 'Resend' to receive a new code."
+                            : "انتهت صلاحية رمز التحقق (دقيقة واحدة). يرجى الضغط على 'إعادة الإرسال' للحصول على رمز جديد."}
+                        </span>
+                      </div>
+                    )}
+
+                    {showError && blockCooldown <= 0 && resendCooldown > 0 && (
                       <div
                         className="w-full border border-[#F38C8C] bg-[#FFF5F5] rounded-[12px] py-3 px-4 flex items-center gap-3 text-[#E55C5C] text-sm font-semibold justify-center"
                         dir={isEn ? 'ltr' : 'rtl'}
@@ -1373,7 +1406,8 @@ export default function Login() {
                       disabled={
                         isLoading ||
                         otpValue.some((v) => !v) ||
-                        blockCooldown > 0
+                        blockCooldown > 0 ||
+                        resendCooldown === 0
                       }
                       className="w-full bg-[#234745] text-[#FEF8EB] font-bold text-[16px] rounded-[25px] h-[48px] flex items-center justify-center hover:bg-[#1a3533] transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
                       style={{

@@ -38,6 +38,9 @@ export type CartLineFragment = Pick<
       StorefrontAPI.Product,
       'handle' | 'title' | 'id' | 'vendor' | 'tags'
     > & {
+      collections: {
+        nodes: Array<Pick<StorefrontAPI.Collection, 'id' | 'title' | 'handle'>>;
+      };
       availability_date?: StorefrontAPI.Maybe<
         Pick<StorefrontAPI.Metafield, 'value'>
       >;
@@ -140,6 +143,11 @@ export type CartLineComponentFragment = Pick<
           StorefrontAPI.Product,
           'handle' | 'title' | 'id' | 'vendor' | 'tags'
         > & {
+          collections: {
+            nodes: Array<
+              Pick<StorefrontAPI.Collection, 'id' | 'title' | 'handle'>
+            >;
+          };
           availability_date?: StorefrontAPI.Maybe<
             Pick<StorefrontAPI.Metafield, 'value'>
           >;
@@ -220,6 +228,11 @@ export type CartApiQueryFragment = Pick<
               StorefrontAPI.Product,
               'handle' | 'title' | 'id' | 'vendor' | 'tags'
             > & {
+              collections: {
+                nodes: Array<
+                  Pick<StorefrontAPI.Collection, 'id' | 'title' | 'handle'>
+                >;
+              };
               availability_date?: StorefrontAPI.Maybe<
                 Pick<StorefrontAPI.Metafield, 'value'>
               >;
@@ -330,6 +343,11 @@ export type CartApiQueryFragment = Pick<
                   StorefrontAPI.Product,
                   'handle' | 'title' | 'id' | 'vendor' | 'tags'
                 > & {
+                  collections: {
+                    nodes: Array<
+                      Pick<StorefrontAPI.Collection, 'id' | 'title' | 'handle'>
+                    >;
+                  };
                   availability_date?: StorefrontAPI.Maybe<
                     Pick<StorefrontAPI.Metafield, 'value'>
                   >;
@@ -551,6 +569,12 @@ export type LocationsQuery = {
           Pick<StorefrontAPI.Metafield, 'key' | 'value'>
         >;
         free_delivery_threshold?: StorefrontAPI.Maybe<
+          Pick<StorefrontAPI.Metafield, 'key' | 'value'>
+        >;
+        promo_free_delivery_from?: StorefrontAPI.Maybe<
+          Pick<StorefrontAPI.Metafield, 'key' | 'value'>
+        >;
+        promo_free_delivery_to?: StorefrontAPI.Maybe<
           Pick<StorefrontAPI.Metafield, 'key' | 'value'>
         >;
         delivery_hours_from?: StorefrontAPI.Maybe<
@@ -2740,6 +2764,8 @@ export type GetCartCustomerDetailsQuery = {
 
 export type CheckoutCartQueryVariables = StorefrontAPI.Exact<{
   cartId: StorefrontAPI.Scalars['ID']['input'];
+  language?: StorefrontAPI.InputMaybe<StorefrontAPI.LanguageCode>;
+  country?: StorefrontAPI.InputMaybe<StorefrontAPI.CountryCode>;
 }>;
 
 export type CheckoutCartQuery = {
@@ -6166,6 +6192,14 @@ export type CustomerAddressesForLocationIdQuery = {
   }>;
 };
 
+export type GetCustomerEnrollmentQueryVariables = StorefrontAPI.Exact<{
+  customerAccessToken: StorefrontAPI.Scalars['String']['input'];
+}>;
+
+export type GetCustomerEnrollmentQuery = {
+  customer?: StorefrontAPI.Maybe<Pick<StorefrontAPI.Customer, 'createdAt'>>;
+};
+
 export type GetProductsForWishlistQueryVariables = StorefrontAPI.Exact<{
   ids:
     | Array<StorefrontAPI.Scalars['ID']['input']>
@@ -6234,6 +6268,14 @@ export type GetProductsForWishlistQuery = {
   >;
 };
 
+export type GetCustomerEnrollmentDateQueryVariables = StorefrontAPI.Exact<{
+  customerAccessToken: StorefrontAPI.Scalars['String']['input'];
+}>;
+
+export type GetCustomerEnrollmentDateQuery = {
+  customer?: StorefrontAPI.Maybe<Pick<StorefrontAPI.Customer, 'createdAt'>>;
+};
+
 interface GeneratedQueryTypes {
   '#graphql\n  fragment Shop on Shop {\n    id\n    name\n    description\n    primaryDomain {\n      url\n    }\n    brand {\n      logo {\n        image {\n          url\n        }\n      }\n    }\n  }\n  query Header(\n    $country: CountryCode\n    $headerMenuHandle: String!\n    $language: LanguageCode\n  ) @inContext(language: $language, country: $country) {\n    shop {\n      ...Shop\n    }\n    menu(handle: $headerMenuHandle) {\n      ...Menu\n    }\n  }\n  #graphql\n  fragment MenuItem on MenuItem {\n    id\n    resourceId\n    tags\n    title\n    type\n    url\n  }\n  fragment ChildMenuItem on MenuItem {\n    ...MenuItem\n  }\n  fragment ParentMenuItem on MenuItem {\n    ...MenuItem\n    items {\n      ...ChildMenuItem\n    }\n  }\n  fragment Menu on Menu {\n    id\n    items {\n      ...ParentMenuItem\n    }\n  }\n\n': {
     return: HeaderQuery;
@@ -6255,7 +6297,7 @@ interface GeneratedQueryTypes {
     return: GetShopLocationDiscountsQuery;
     variables: GetShopLocationDiscountsQueryVariables;
   };
-  '#graphql\n  query Locations {\n    locations(first: 250) {\n      nodes {\n        id\n        name\n        address {\n          address1\n          address2\n          city\n          country\n          latitude\n          longitude\n          phone\n        }\n        city: metafield(namespace: "custom", key: "city") {\n          key\n          value\n        }\n        delivery_fee: metafield(namespace: "custom", key: "delivery_fee") {\n          key\n          value\n        }\n        free_delivery_threshold: metafield(namespace: "custom", key: "free_delivery_threshold") {\n          key\n          value\n        }\n        delivery_hours_from: metafield(namespace: "custom", key: "delivery_hours_from") {\n          key\n          value\n        }\n        delivery_hours_to: metafield(namespace: "custom", key: "delivery_hours_to") {\n          key\n          value\n        }\n        delivery_hours_from_shift2: metafield(namespace: "custom", key: "delivery_hours_from_shift2") {\n          key\n          value\n        }\n        delivery_hours_to_shift2: metafield(namespace: "custom", key: "delivery_hours_to_shift2") {\n          key\n          value\n        }\n        working_hours_from: metafield(namespace: "custom", key: "working_hours_from") {\n          key\n          value\n        }\n        working_hours_to: metafield(namespace: "custom", key: "working_hours_to") {\n          key\n          value\n        }\n        working_hours_from_shift2: metafield(namespace: "custom", key: "working_hours_from_shift2") {\n          key\n          value\n        }\n        working_hours_to_shift2: metafield(namespace: "custom", key: "working_hours_to_shift2") {\n          key\n          value\n        }\n        sunday_working_hours_from: metafield(namespace: "custom", key: "sunday_working_hours_from") {\n          key\n          value\n        }\n        sunday_working_hours_to: metafield(namespace: "custom", key: "sunday_working_hours_to") {\n          key\n          value\n        }\n        monday_working_hours_from: metafield(namespace: "custom", key: "monday_working_hours_from") {\n          key\n          value\n        }\n        monday_working_hours_to: metafield(namespace: "custom", key: "monday_working_hours_to") {\n          key\n          value\n        }\n        tuesday_working_hours_from: metafield(namespace: "custom", key: "tuesday_working_hours_from") {\n          key\n          value\n        }\n        tuesday_working_hours_to: metafield(namespace: "custom", key: "tuesday_working_hours_to") {\n          key\n          value\n        }\n        wednesday_working_hours_from: metafield(namespace: "custom", key: "wednesday_working_hours_from") {\n          key\n          value\n        }\n        wednesday_working_hours_to: metafield(namespace: "custom", key: "wednesday_working_hours_to") {\n          key\n          value\n        }\n        thursday_working_hours_from: metafield(namespace: "custom", key: "thursday_working_hours_from") {\n          key\n          value\n        }\n        thursday_working_hours_to: metafield(namespace: "custom", key: "thursday_working_hours_to") {\n          key\n          value\n        }\n        friday_working_hours_from: metafield(namespace: "custom", key: "friday_working_hours_from") {\n          key\n          value\n        }\n        friday_working_hours_to: metafield(namespace: "custom", key: "friday_working_hours_to") {\n          key\n          value\n        }\n        saturday_working_hours_from: metafield(namespace: "custom", key: "saturday_working_hours_from") {\n          key\n          value\n        }\n        saturday_working_hours_to: metafield(namespace: "custom", key: "saturday_working_hours_to") {\n          key\n          value\n        }\n        rating: metafield(namespace: "custom", key: "rating") {\n          key\n          value\n        }\n        rating_count: metafield(namespace: "custom", key: "rating_count") {\n          key\n          value\n        }\n        hide_from_storefront: metafield(namespace: "custom", key: "hide_from_storefront") {\n          key\n          value\n        }\n      }\n    }\n  }\n': {
+  '#graphql\n  query Locations {\n    locations(first: 250) {\n      nodes {\n        id\n        name\n        address {\n          address1\n          address2\n          city\n          country\n          latitude\n          longitude\n          phone\n        }\n        city: metafield(namespace: "custom", key: "city") {\n          key\n          value\n        }\n        delivery_fee: metafield(namespace: "custom", key: "delivery_fee") {\n          key\n          value\n        }\n        free_delivery_threshold: metafield(namespace: "custom", key: "free_delivery_threshold") {\n          key\n          value\n        }\n        promo_free_delivery_from: metafield(namespace: "custom", key: "promo_free_delivery_from") {\n          key\n          value\n        }\n        promo_free_delivery_to: metafield(namespace: "custom", key: "promo_free_delivery_to") {\n          key\n          value\n        }\n        delivery_hours_from: metafield(namespace: "custom", key: "delivery_hours_from") {\n          key\n          value\n        }\n        delivery_hours_to: metafield(namespace: "custom", key: "delivery_hours_to") {\n          key\n          value\n        }\n        delivery_hours_from_shift2: metafield(namespace: "custom", key: "delivery_hours_from_shift2") {\n          key\n          value\n        }\n        delivery_hours_to_shift2: metafield(namespace: "custom", key: "delivery_hours_to_shift2") {\n          key\n          value\n        }\n        working_hours_from: metafield(namespace: "custom", key: "working_hours_from") {\n          key\n          value\n        }\n        working_hours_to: metafield(namespace: "custom", key: "working_hours_to") {\n          key\n          value\n        }\n        working_hours_from_shift2: metafield(namespace: "custom", key: "working_hours_from_shift2") {\n          key\n          value\n        }\n        working_hours_to_shift2: metafield(namespace: "custom", key: "working_hours_to_shift2") {\n          key\n          value\n        }\n        sunday_working_hours_from: metafield(namespace: "custom", key: "sunday_working_hours_from") {\n          key\n          value\n        }\n        sunday_working_hours_to: metafield(namespace: "custom", key: "sunday_working_hours_to") {\n          key\n          value\n        }\n        monday_working_hours_from: metafield(namespace: "custom", key: "monday_working_hours_from") {\n          key\n          value\n        }\n        monday_working_hours_to: metafield(namespace: "custom", key: "monday_working_hours_to") {\n          key\n          value\n        }\n        tuesday_working_hours_from: metafield(namespace: "custom", key: "tuesday_working_hours_from") {\n          key\n          value\n        }\n        tuesday_working_hours_to: metafield(namespace: "custom", key: "tuesday_working_hours_to") {\n          key\n          value\n        }\n        wednesday_working_hours_from: metafield(namespace: "custom", key: "wednesday_working_hours_from") {\n          key\n          value\n        }\n        wednesday_working_hours_to: metafield(namespace: "custom", key: "wednesday_working_hours_to") {\n          key\n          value\n        }\n        thursday_working_hours_from: metafield(namespace: "custom", key: "thursday_working_hours_from") {\n          key\n          value\n        }\n        thursday_working_hours_to: metafield(namespace: "custom", key: "thursday_working_hours_to") {\n          key\n          value\n        }\n        friday_working_hours_from: metafield(namespace: "custom", key: "friday_working_hours_from") {\n          key\n          value\n        }\n        friday_working_hours_to: metafield(namespace: "custom", key: "friday_working_hours_to") {\n          key\n          value\n        }\n        saturday_working_hours_from: metafield(namespace: "custom", key: "saturday_working_hours_from") {\n          key\n          value\n        }\n        saturday_working_hours_to: metafield(namespace: "custom", key: "saturday_working_hours_to") {\n          key\n          value\n        }\n        rating: metafield(namespace: "custom", key: "rating") {\n          key\n          value\n        }\n        rating_count: metafield(namespace: "custom", key: "rating_count") {\n          key\n          value\n        }\n        hide_from_storefront: metafield(namespace: "custom", key: "hide_from_storefront") {\n          key\n          value\n        }\n      }\n    }\n  }\n': {
     return: LocationsQuery;
     variables: LocationsQueryVariables;
   };
@@ -6347,7 +6389,11 @@ interface GeneratedQueryTypes {
     return: GetCartCustomerDetailsQuery;
     variables: GetCartCustomerDetailsQueryVariables;
   };
-  '#graphql\n    query checkoutCart($cartId: ID!) {\n      cart(id: $cartId) {\n        id\n        checkoutUrl\n        note\n        cost {\n          subtotalAmount { amount currencyCode }\n          totalAmount { amount currencyCode }\n        }\n        lines(first: 100) {\n          nodes {\n            id\n            quantity\n            merchandise {\n              ... on ProductVariant {\n                id\n                title\n                sku\n                price { amount }\n                product { title id }\n              }\n            }\n          }\n        }\n        attributes {\n          key\n          value\n        }\n      }\n    }\n  ': {
+  '#graphql\n      query checkoutCart($cartId: ID!, $language: LanguageCode, $country: CountryCode)\n        @inContext(language: $language, country: $country) {\n        cart(id: $cartId) {\n          id\n          checkoutUrl\n          note\n          cost {\n            subtotalAmount { amount currencyCode }\n            totalAmount { amount currencyCode }\n          }\n          lines(first: 100) {\n            nodes {\n              id\n              quantity\n              merchandise {\n                ... on ProductVariant {\n                  id\n                  title\n                  sku\n                  price { amount }\n                  product { title id }\n                }\n              }\n            }\n          }\n          attributes {\n            key\n            value\n          }\n        }\n      }\n    ': {
+    return: CheckoutCartQuery;
+    variables: CheckoutCartQueryVariables;
+  };
+  '#graphql\n            query checkoutCart($cartId: ID!, $language: LanguageCode, $country: CountryCode)\n              @inContext(language: $language, country: $country) {\n              cart(id: $cartId) {\n                id\n                checkoutUrl\n                note\n                cost {\n                  subtotalAmount { amount currencyCode }\n                  totalAmount { amount currencyCode }\n                }\n                lines(first: 100) {\n                  nodes {\n                    id\n                    quantity\n                    merchandise {\n                      ... on ProductVariant {\n                        id\n                        title\n                        sku\n                        price { amount }\n                        product { title id }\n                      }\n                    }\n                  }\n                }\n                attributes {\n                  key\n                  value\n                }\n              }\n            }\n          ': {
     return: CheckoutCartQuery;
     variables: CheckoutCartQueryVariables;
   };
@@ -6491,9 +6537,17 @@ interface GeneratedQueryTypes {
     return: CustomerAddressesForLocationIdQuery;
     variables: CustomerAddressesForLocationIdQueryVariables;
   };
+  '#graphql\n            query getCustomerEnrollment($customerAccessToken: String!) {\n              customer(customerAccessToken: $customerAccessToken) { createdAt }\n            }\n            ': {
+    return: GetCustomerEnrollmentQuery;
+    variables: GetCustomerEnrollmentQueryVariables;
+  };
   '#graphql\n      query getProductsForWishlist($ids: [ID!]!, $country: CountryCode, $language: LanguageCode) @inContext(country: $country, language: $language) {\n        nodes(ids: $ids) {\n          ... on Product {\n            id\n            title\n            handle\n            availableForSale\n            featuredImage {\n              id\n              altText\n              url\n              width\n              height\n            }\n            priceRange {\n              minVariantPrice {\n                amount\n                currencyCode\n              }\n              maxVariantPrice {\n                amount\n                currencyCode\n              }\n            }\n            compareAtPriceRange {\n              minVariantPrice {\n                amount\n                currencyCode\n              }\n            }\n            visibility_start: metafield(namespace: "custom", key: "visibility_start") {\n              value\n            }\n            visibility_end: metafield(namespace: "custom", key: "visibility_end") {\n              value\n            }\n            variants(first: 10) {\n              nodes {\n                id\n                title\n                availableForSale\n                quantityAvailable\n                selectedOptions {\n                  name\n                  value\n                }\n                price {\n                  amount\n                  currencyCode\n                }\n                storeAvailability(first: 250) {\n                  nodes {\n                    available\n                    location {\n                      id\n                      name\n                    }\n                  }\n                }\n              }\n            }\n          }\n        }\n      }\n    ': {
     return: GetProductsForWishlistQuery;
     variables: GetProductsForWishlistQueryVariables;
+  };
+  '#graphql\n            query getCustomerEnrollmentDate($customerAccessToken: String!) {\n              customer(customerAccessToken: $customerAccessToken) { createdAt }\n            }\n            ': {
+    return: GetCustomerEnrollmentDateQuery;
+    variables: GetCustomerEnrollmentDateQueryVariables;
   };
 }
 

@@ -379,8 +379,95 @@ export async function action({request, context}: ActionFunctionArgs) {
       console.warn('[STOCK_NOTIFICATION METAFIELD WARN]', metaErr);
     }
 
+    // 4. Send email notification to Product Manager & Regional Manager from Product Metafields (custom.product_manager, custom.regional_manager)
     try {
-      const {sendFormEmailNotification} = await import('~/lib/email.server');
+      const {getAdminToken} = await import('~/lib/shopify-admin.server');
+      const {sendEmail, sendFormEmailNotification} = await import('~/lib/email.server');
+      const adminToken = await getAdminToken(env || {}).catch(() => null);
+
+      let pmEmail: string | null = null;
+      let rmEmail: string | null = null;
+      let resolvedProductTitle = productTitle || 'Product';
+
+      if (adminToken && variantId) {
+        const fullVariantId = String(variantId).includes('/')
+          ? String(variantId)
+          : `gid://shopify/ProductVariant/${variantId}`;
+
+        const managerQuery = `
+          query GetProductManagersFromVariant($variantId: ID!) {
+            productVariant(id: $variantId) {
+              title
+              product {
+                title
+                productManager: metafield(namespace: "custom", key: "product_manager") {
+                  value
+                }
+                regionalManager: metafield(namespace: "custom", key: "regional_manager") {
+                  value
+                }
+              }
+            }
+          }
+        `;
+
+        const managerRes = await executeAdminQuery(
+          managerQuery,
+          {variantId: fullVariantId},
+          adminToken,
+          shopDomain,
+        );
+
+        const variantObj = managerRes?.data?.productVariant;
+        const productObj = variantObj?.product;
+
+        if (productObj) {
+          if (productObj.title) resolvedProductTitle = productObj.title;
+          pmEmail = productObj.productManager?.value || null;
+          rmEmail = productObj.regionalManager?.value || null;
+        }
+      }
+
+      // Collect manager emails
+      const managerRecipients: string[] = [];
+      if (pmEmail && String(pmEmail).includes('@')) managerRecipients.push(String(pmEmail).trim());
+      if (rmEmail && String(rmEmail).includes('@')) managerRecipients.push(String(rmEmail).trim());
+
+      console.log(`[STOCK_NOTIFICATION MANAGERS RESOLVED] Product: "${resolvedProductTitle}", Managers: ${managerRecipients.length > 0 ? managerRecipients.join(', ') : 'None'}`);
+
+      if (managerRecipients.length > 0) {
+        const emailSubject = `[Saadeddin Alert] Back in Stock Request: ${resolvedProductTitle}`;
+        const emailHtml = `
+          <div style="font-family: 'Cairo', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e0e0e0; border-radius: 12px; background-color: #FEF8EB; color: #234745; text-align: right; direction: rtl;">
+            <div style="text-align: center; margin-bottom: 16px; background-color: #234745; padding: 12px; border-radius: 8px;">
+              <img src="https://cdn.shopify.com/s/files/1/0821/1752/5737/files/logo.png" alt="Saadeddin Pastry" style="height: 40px; object-fit: contain;" />
+            </div>
+            <h3 style="color: #234745; margin-top: 0;">📦 تنبيه طلب إشعار بتوفر المنتج (Back in Stock Alert)</h3>
+            <p>عزيزي مدير المنتج / مدير المنطقة،</p>
+            <p>قام أحد العملاء بطلب إشعار فور توفر المنتج التالي في المخزون:</p>
+            <div style="background: #ffffff; padding: 16px; border-radius: 8px; border: 1px solid #ebdcc5; margin: 16px 0;">
+              <p style="margin: 6px 0;"><strong>اسم المنتج:</strong> ${resolvedProductTitle}</p>
+              <p style="margin: 6px 0;"><strong>رمز المعرّف (Variant ID):</strong> ${variantId}</p>
+              <p style="margin: 6px 0;"><strong>الفرع / الموقع:</strong> ${locationName || 'Global'}</p>
+              <p style="margin: 6px 0;"><strong>بريد العميل المطلوب إشعاره:</strong> ${email}</p>
+            </div>
+            <p style="font-size: 12px; color: #888888; text-align: center; border-top: 1px solid #ebdcc5; padding-top: 12px;">
+              تم إرسال هذا التنبيه آلياً بناءً على الحقول المخصصة لمدير المنتج ومدير المنطقة 
+              (<code>custom.product_manager</code>, <code>custom.regional_manager</code>).
+            </p>
+          </div>
+        `;
+
+        await sendEmail({
+          to: managerRecipients,
+          subject: emailSubject,
+          html: emailHtml,
+          env,
+        });
+        console.log(`[STOCK_NOTIFICATION MANAGER EMAILS OK] Sent alert to managers: ${managerRecipients.join(', ')}`);
+      }
+
+      // Also send general admin notification
       await sendFormEmailNotification(
         {
           formType: 'contact',
@@ -388,12 +475,14 @@ export async function action({request, context}: ActionFunctionArgs) {
           fullName: customerName || email.split('@')[0],
           email,
           phone: '',
-          subject: `Back in Stock Alert Request - ${productTitle || 'Product'}`,
-          message: `Customer requested back in stock notification for: ${productTitle || 'Product'} (Variant ID: ${variantId}, Location: ${locationName || 'N/A'})`,
+          subject: `Back in Stock Alert Request - ${resolvedProductTitle}`,
+          message: `Customer requested back in stock notification for: ${resolvedProductTitle} (Variant ID: ${variantId}, Location: ${locationName || 'N/A'})`,
         },
         env,
       );
-    } catch (_) {}
+    } catch (mgrErr) {
+      console.warn('[STOCK_NOTIFICATION MANAGER EMAILS WARN]', mgrErr);
+    }
 
     console.log(
       `[STOCK_NOTIFICATION SUCCESS] Registered: email=${email}, variant=${variantId}, location=${locationName || 'N/A'}`,

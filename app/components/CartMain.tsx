@@ -1,11 +1,12 @@
 import { useOptimisticCart, Analytics, CartForm } from '@shopify/hydrogen';
-import { Link, useRouteLoaderData, useLocation } from 'react-router';
+import { Link, useRouteLoaderData, useLocation, useFetcher, useFetchers } from 'react-router';
 import { useEffect, useState, useRef } from 'react';
 import type { CartApiQueryFragment } from 'storefrontapi.generated';
 import { useAside } from '~/components/Aside';
 import { CartLineItem, type CartLine } from '~/components/CartLineItem';
 import { CartSummary } from './CartSummary';
 import { Price, SaudiRiyalSymbol } from './Price';
+import { checkBranchFreeDeliveryInterval } from './DeliveryPickupModal';
 import patternBg from '/images/second-bg-pattern.svg';
 
 export type CartLayout = 'page' | 'aside';
@@ -38,16 +39,106 @@ function getLineItemChildrenMap(lines: CartLine[]): LineItemChildrenMap {
 }
 
 export function CartMain({ layout, cart: originalCart }: CartMainProps) {
-  const cart = useOptimisticCart(originalCart);
   const location = useLocation();
   const isEn = location.pathname.split('/')[1]?.toLowerCase() === 'en';
   const cartRoute = isEn ? '/en/cart' : '/cart';
   const rootData = useRouteLoaderData('root') as any;
 
+  // ── Locale-aware cart reload ──────────────────────────────────────────────
+  // Root's deferred cart may have been fetched in a different language context.
+  // This fetcher explicitly reloads the cart from the locale-correct route so
+  // product names always appear in the right language.
+  const cartReloadFetcher = useFetcher<any>();
+  const allFetchers = useFetchers();
+
+  // Count active cart mutations across all fetchers (POST only — exclude GET loads)
+  const activeMutationCount = allFetchers.filter(
+    (f) =>
+      f.state !== 'idle' &&
+      f.formMethod !== 'GET' &&
+      (f.formAction === '/cart' || f.formAction === '/en/cart'),
+  ).length;
+  const prevMutationCountRef = useRef(0);
+
+  // On mount (cart drawer opens) load fresh cart data with correct locale
+  useEffect(() => {
+    if (layout === 'aside' && cartReloadFetcher.state === 'idle') {
+      cartReloadFetcher.load(cartRoute);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cartRoute]);
+
+  // After any mutation completes, reload cart with correct locale
+  useEffect(() => {
+    if (
+      prevMutationCountRef.current > 0 &&
+      activeMutationCount === 0 &&
+      cartReloadFetcher.state === 'idle'
+    ) {
+      cartReloadFetcher.load(cartRoute);
+    }
+    prevMutationCountRef.current = activeMutationCount;
+  }, [activeMutationCount, cartRoute]);
+
+  // Use freshly fetched locale-correct cart; fall back to root's cart
+  const effectiveCart =
+    cartReloadFetcher.data !== undefined ? cartReloadFetcher.data : originalCart;
+
+  const cart = useOptimisticCart(effectiveCart);
+  // ─────────────────────────────────────────────────────────────────────────
+
   const cartLines = cart?.lines?.nodes || [];
   const linesCount = cartLines.length;
   const cartHasItems = (cart?.totalQuantity ? cart.totalQuantity > 0 : false) || linesCount > 0;
   const childrenMap = getLineItemChildrenMap(cartLines);
+
+  const restoreFetcher = useFetcher();
+
+  // Save cart lines to localStorage when checkout is active
+  useEffect(() => {
+    if (cartLines.length > 0 && typeof window !== 'undefined') {
+      const backupData = cartLines.map((line: any) => ({
+        merchandiseId: line.merchandise?.id,
+        quantity: line.quantity,
+      })).filter((l: any) => l.merchandiseId);
+      if (backupData.length > 0) {
+        localStorage.setItem('saadeddin_cart_backup_lines', JSON.stringify(backupData));
+      }
+    }
+  }, [cartLines]);
+
+  // Only auto-restore cart from localStorage if returning from an initiated checkout
+  useEffect(() => {
+    if (!cartHasItems && typeof window !== 'undefined') {
+      const checkoutInitiated = sessionStorage.getItem('saadeddin_checkout_initiated');
+      if (checkoutInitiated === 'true') {
+        sessionStorage.removeItem('saadeddin_checkout_initiated');
+        const savedBackup = localStorage.getItem('saadeddin_cart_backup_lines');
+        if (savedBackup) {
+          try {
+            const parsedLines = JSON.parse(savedBackup);
+            if (Array.isArray(parsedLines) && parsedLines.length > 0 && restoreFetcher.state === 'idle') {
+              console.log('[CART RESTORE LOCALSTORAGE] Restoring cart items post-checkout:', parsedLines);
+              localStorage.removeItem('saadeddin_cart_backup_lines');
+              restoreFetcher.submit(
+                {
+                  cartFormInput: JSON.stringify({
+                    action: 'LinesAdd',
+                    inputs: { lines: parsedLines },
+                  }),
+                },
+                { method: 'POST', action: cartRoute },
+              );
+            }
+          } catch (e) {
+            console.error('[CART RESTORE LOCALSTORAGE ERROR]', e);
+          }
+        }
+      } else {
+        localStorage.removeItem('saadeddin_cart_backup_lines');
+      }
+    }
+  }, [cartHasItems, cartRoute]);
 
   // --- UNDO REMOVED ITEM LOGIC ---
   const prevLinesRef = useRef<CartLine[]>([]);
@@ -90,16 +181,33 @@ export function CartMain({ layout, cart: originalCart }: CartMainProps) {
   }, [deletedLine]);
   // -------------------------------
 
+  const [adminLocations, setAdminLocations] = useState<any[]>([]);
+  useEffect(() => {
+    fetch('/api/locations-meta')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.locations) {
+          setAdminLocations(data.locations);
+        }
+      })
+      .catch((err) => console.error('[CartMain] Failed to fetch locations-meta:', err));
+  }, []);
+
   // Dynamic Delivery Threshold Logic
   const branchName = cart?.attributes?.find(a => a.key === 'Branch')?.value;
   const branchId = cart?.attributes?.find(a => a.key === 'Branch ID')?.value;
-  const locations = rootData?.locations?.locations?.nodes || rootData?.locations?.nodes || [];
+  const rawLocations = rootData?.locations?.locations?.nodes || rootData?.locations?.nodes || [];
+  const locations = adminLocations.length > 0 ? adminLocations : rawLocations;
 
   // Try matching by ID first (more reliable), then fallback to name
   const currentBranch = locations.find((loc: any) =>
     (branchId && loc.id === branchId) ||
     (branchName && loc.name === branchName)
   );
+
+  const timeSlot = cart?.attributes?.find(a => a.key.toLowerCase().trim() === 'time slot')?.value || '';
+  const branchPromo = checkBranchFreeDeliveryInterval(currentBranch, timeSlot);
+  const isBranchPromoFreeDelivery = branchPromo.isPromoFreeDelivery;
 
   const thresholdMeta = currentBranch?.free_delivery_threshold || currentBranch?.metafields?.find((m: any) => m?.key === 'free_delivery_threshold');
   const thresholdAttr = cart?.attributes?.find(a => a.key.toLowerCase().trim() === 'free delivery threshold')?.value;
@@ -173,6 +281,25 @@ export function CartMain({ layout, cart: originalCart }: CartMainProps) {
           <div className={cartHasItems ? "lg:grid lg:grid-cols-[1fr_380px] gap-8 lg:gap-12 items-start" : "flex items-center justify-center min-h-[45vh] max-w-2xl mx-auto p-8 md:p-12 w-full"}>
             {/* Left Column (Items) */}
             <div className="flex flex-col gap-4">
+              {/* Dynamic Branch Promo Free Delivery Banner */}
+              {cartHasItems && !isPickup && isBranchPromoFreeDelivery && (
+                <div className="bg-[#FEF8EB] border border-[#EBDCC5] text-[#234745] p-4 rounded-[20px] mb-1 flex items-center gap-3 shadow-xs">
+                  <div className="w-9 h-9 rounded-full bg-[#234745] text-amber-300 flex items-center justify-center font-bold text-lg shrink-0">
+                    ⚡
+                  </div>
+                  <div>
+                    <p className="text-[14px] font-extrabold text-[#234745]">
+                      {isEn ? 'Promo Free Delivery Active!' : 'عرض التوصيل المجاني مفعّل الان!'}
+                    </p>
+                    <p className="text-[12px] text-[#8C6418] font-medium mt-0.5">
+                      {isEn
+                        ? `Free delivery unlocked for ${currentBranch?.name || 'your branch'} (${branchPromo.promoStart12h} – ${branchPromo.promoEnd12h})`
+                        : `توصيل مجاني مفعّل لـ ${currentBranch?.name || 'فرعك'} (من ${branchPromo.promoStart12h} إلى ${branchPromo.promoEnd12h})`}
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {/* Free Delivery Progress (Restored) */}
               {cartHasItems && !isPickup && hasExplicitThreshold && threshold > 0 && (
                 <div className="bg-white rounded-[24px] p-6 border border-[#BBCFCD]/80 mb-2">

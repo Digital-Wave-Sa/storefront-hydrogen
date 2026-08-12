@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { fixMojibake } from '~/lib/mojibake';
 
 export function RamadanBanner({ config }: { config?: any }) {
-    const { locale } = useOutletContext<{ locale: string }>();
+    const { locale = 'ar' } = useOutletContext<{ locale?: string }>() ?? {};
     const isEn = locale === 'en';
 
     // Parse ramadan_banner Metaobject node

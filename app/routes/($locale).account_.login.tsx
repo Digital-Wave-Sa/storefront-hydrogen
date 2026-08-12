@@ -32,7 +32,7 @@ export async function loader({request, context}: LoaderFunctionArgs) {
     const url = new URL(request.url);
     const redirectTo = url.searchParams.get('redirectTo') || '';
 
-    if (customerAccessToken && saadeddinToken) {
+    if (customerAccessToken || saadeddinToken) {
       return redirect(
         redirectTo && redirectTo.startsWith('/') ? redirectTo : '/account',
       );
@@ -661,23 +661,17 @@ export async function action({request, context}: ActionFunctionArgs) {
       const url = new URL(request.url);
       const rawRedirect =
         url.searchParams.get('redirectTo') || form.get('redirectTo') || '';
-      let cleanRedirect =
-        typeof rawRedirect === 'string' && rawRedirect.startsWith('/')
-          ? rawRedirect
-          : '/account';
 
-      if (cleanRedirect.startsWith('/en/')) {
-        cleanRedirect = cleanRedirect.substring(3);
-      } else if (cleanRedirect === '/en') {
-        cleanRedirect = '/account';
+      let targetRedirect = userLang === 'en' ? '/en/account' : '/account';
+      if (typeof rawRedirect === 'string' && rawRedirect.startsWith('/')) {
+        targetRedirect = rawRedirect;
       }
 
-      const targetRedirect =
-        userLang === 'en' ? `/en${cleanRedirect}` : cleanRedirect;
+      const cartId = await context.cart.getCartId();
+      const headers = cartId ? context.cart.setCartId(cartId) : new Headers();
+      headers.append('Set-Cookie', await session.commit());
 
-      return redirect(targetRedirect, {
-        headers: {'Set-Cookie': await session.commit()},
-      });
+      return redirect(targetRedirect, { headers });
     }
 
     return data({error: 'Invalid request'});

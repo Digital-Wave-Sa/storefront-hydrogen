@@ -2,7 +2,7 @@ import { Link, useOutletContext } from 'react-router';
 import { fixMojibake } from '~/lib/mojibake';
 
 export function OffersAndDiscounts({ config }: { config?: any }) {
-    const { locale } = useOutletContext<{ locale: string }>();
+    const { locale = 'ar' } = useOutletContext<{ locale?: string }>() ?? {};
     const isEn = locale === 'en';
 
     // Parse offers_section Metaobject node

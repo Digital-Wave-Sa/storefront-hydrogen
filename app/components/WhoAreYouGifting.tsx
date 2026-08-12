@@ -38,7 +38,7 @@ const englishNameMap: Record<string, string> = {
 };
 
 export function WhoAreYouGifting({ collections }: { collections?: any[] }) {
-    const { locale } = useOutletContext<{ locale: string }>();
+    const { locale = 'ar' } = useOutletContext<{ locale?: string }>() ?? {};
     const isEn = locale === 'en';
 
     const containerRef = useRef<HTMLDivElement>(null);

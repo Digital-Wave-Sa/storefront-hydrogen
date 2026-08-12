@@ -27,15 +27,16 @@ export function CartLineItem({
   cart?: any;
 }) {
   const { id, merchandise } = line;
-  const { product, title, image, selectedOptions } = merchandise || {};
-  const lineItemUrl = product?.handle ? useVariantUrl(product.handle, selectedOptions) : '#';
+  const { product, title, image, selectedOptions = [] } = merchandise || {};
+  const rawLineItemUrl = useVariantUrl(product?.handle || '', selectedOptions || []);
+  const lineItemUrl = product?.handle ? rawLineItemUrl : '#';
   const { close } = useAside();
   const location = useLocation();
   const cartRoute = location.pathname.startsWith('/en') ? '/en/cart' : '/cart';
   const lineItemChildren = childrenMap[id];
   const childrenLabelId = `cart-line-children-${id}`;
   const rootData = useRouteLoaderData('root') as any;
-  const isEn = rootData?.consent?.language?.toLowerCase() === 'en' || location.pathname.startsWith('/en');
+  const isEn = location.pathname.startsWith('/en');
   const isFreeItem = line.attributes?.some((attr: any) => attr.key === '_is_free' && attr.value === 'true') || false;
 
   // Filter out default title option
@@ -94,7 +95,7 @@ export function CartLineItem({
         <div className={`flex-1 min-w-0 ${isEn ? 'text-left' : 'text-right'}`}>
           <div className="flex items-center gap-2 mb-1">
             <span className="text-[12px] font-bold text-[#906B51]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
-              {product?.vendor || (isEn ? 'Saadeddin' : 'الكيك المخصص')}
+              {product?.collections?.nodes?.[0]?.title || (isEn ? 'Saadeddin' : 'سعد الدين')}
             </span>
             {(() => {
               const isPreorder = product?.tags?.some((t: string) => t.toLowerCase() === 'pre-order') || line.attributes?.some((a: any) => a.key === '_is_preorder' && a.value === 'true');
@@ -299,7 +300,7 @@ export function CartLineItem({
           {/* Details */}
           <div className={`flex-1 min-w-0 ${isEn ? 'text-left' : 'text-right'}`}>
             <span className="text-[12px] font-bold text-[#906B51] block mb-1" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
-              {product?.vendor || (isEn ? 'Saadeddin' : 'الكيك المخصص')}
+              {product?.collections?.nodes?.[0]?.title || (isEn ? 'Saadeddin' : 'سعد الدين')}
             </span>
             <h4 className="font-bold text-[16px] text-[#171717] mb-1.5 leading-snug line-clamp-2" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
               {product?.title || title}
@@ -522,6 +523,8 @@ export function CartLineItem({
 
 function CartLineQuantity({ line }: { line: CartLine }) {
   if (!line || typeof line?.quantity === 'undefined') return null;
+  const location = useLocation();
+  const isEn = location.pathname.startsWith('/en');
   const { id: lineId, quantity, isOptimistic } = line;
   const prevQuantity = Number(Math.max(0, quantity - 1).toFixed(0));
   const nextQuantity = Number((quantity + 1).toFixed(0));
@@ -529,7 +532,7 @@ function CartLineQuantity({ line }: { line: CartLine }) {
   return (
     <div className="flex items-center gap-2">
       {quantity <= 1 ? (
-        <CartLineRemoveButton lineIds={[lineId]} disabled={!!isOptimistic} isBox isEn={line.cost?.totalAmount?.currencyCode === 'USD'} />
+        <CartLineRemoveButton lineIds={[lineId]} disabled={!!isOptimistic} isBox isEn={isEn} />
       ) : (
         <CartLineUpdateButton lines={[{ id: lineId, quantity: prevQuantity }]}>
           <button

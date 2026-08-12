@@ -1,5 +1,5 @@
 import { Await, Link, useOutletContext } from 'react-router';
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useEffect, useId, useState } from 'react';
 import { Image, Money } from '@shopify/hydrogen';
 import { Price } from './Price';
 import { Button } from './layout/Button';
@@ -21,15 +21,17 @@ export function BestSellers({
     const [isNotifyModalOpen, setIsNotifyModalOpen] = useState(false);
     const [selectedProduct, setSelectedProduct] = useState<{ title: string, variantId: string } | null>(null);
 
-    const { locale, selectedLocationName, selectedLocationId, customer } = useOutletContext<{ locale: string, selectedLocationName?: string, selectedLocationId?: string, customer?: Promise<any> }>();
+    const { locale = 'ar', selectedLocationName, selectedLocationId, customer } = useOutletContext<{ locale?: string, selectedLocationName?: string, selectedLocationId?: string, customer?: Promise<any> }>() ?? {};
     const [customerEmail, setCustomerEmail] = useState<string | undefined>(undefined);
 
     useEffect(() => {
+        let mounted = true;
         if (customer && typeof customer.then === 'function') {
             customer.then((res: any) => {
-                if (res?.customer?.email) setCustomerEmail(res.customer.email);
+                if (mounted && res?.customer?.email) setCustomerEmail(res.customer.email);
             }).catch(() => { });
         }
+        return () => { mounted = false; };
     }, [customer]);
 
     const [activeTab, setActiveTab] = useState(0);
@@ -435,7 +437,7 @@ function BestSellersAddToCart({
         );
     }
 
-    const groupId = Date.now().toString();
+    const groupId = useId();
     const lines = [{
         merchandiseId: variantId,
         quantity: 1,

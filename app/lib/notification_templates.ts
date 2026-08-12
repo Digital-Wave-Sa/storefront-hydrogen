@@ -118,7 +118,7 @@ function getEmailTemplate(stage: OrderStage, lang: Language, data: OrderData) {
           
           <!-- Header -->
           <div style="background: #234745; padding: 40px 20px; text-align: center;">
-            <img src="https://saadaldeen.com/cdn/shop/files/Logo_White.png" alt="Saadeddin" style="height: 50px; margin-bottom: 10px;">
+            <img src="https://cdn.shopify.com/s/files/1/0821/1752/5737/files/logo.png" alt="Saadeddin Pastry" style="height: 55px; margin-bottom: 10px; object-fit: contain;">
             <div style="color: #fff; opacity: 0.6; font-size: 10px; letter-spacing: 3px; font-weight: bold; text-transform: uppercase;">Premium Quality Since 1979</div>
           </div>
 

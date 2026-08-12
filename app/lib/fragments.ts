@@ -52,6 +52,13 @@ export const CART_QUERY_FRAGMENT = `#graphql
           id
           vendor
           tags
+          collections(first: 1) {
+            nodes {
+              id
+              title
+              handle
+            }
+          }
           availability_date: metafield(namespace: "custom", key: "visibility_start") {
             value
           }

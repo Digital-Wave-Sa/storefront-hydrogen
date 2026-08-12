@@ -1,5 +1,5 @@
 import { Await, Link, useOutletContext } from 'react-router';
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useEffect, useId, useState } from 'react';
 import { Image, Money } from '@shopify/hydrogen';
 import { Price } from './Price';
 import { useI18n } from '~/lib/i18n';
@@ -16,7 +16,7 @@ export function NewArrivals({
 }: {
     products: Promise<any>;
 }) {
-    const { locale, selectedLocationName, selectedLocationId, customer } = useOutletContext<{ locale: string, selectedLocationName?: string, selectedLocationId?: string, customer?: Promise<any> }>();
+    const { locale = 'ar', selectedLocationName, selectedLocationId, customer } = useOutletContext<{ locale?: string, selectedLocationName?: string, selectedLocationId?: string, customer?: Promise<any> }>() ?? {};
     const t = useI18n(locale);
     const isEn = locale === 'en';
 
@@ -25,11 +25,13 @@ export function NewArrivals({
     const [customerEmail, setCustomerEmail] = useState<string | undefined>(undefined);
 
     useEffect(() => {
+        let mounted = true;
         if (customer && typeof customer.then === 'function') {
             customer.then((res: any) => {
-                if (res?.customer?.email) setCustomerEmail(res.customer.email);
+                if (mounted && res?.customer?.email) setCustomerEmail(res.customer.email);
             }).catch(() => { });
         }
+        return () => { mounted = false; };
     }, [customer]);
 
     const getProductUrl = (handle: string) => isEn ? `/en/products/${handle}` : `/products/${handle}`;
@@ -315,7 +317,7 @@ function NewArrivalsAddToCart({
         );
     }
 
-    const groupId = Date.now().toString();
+    const groupId = useId();
     const lines = [{
         merchandiseId: variantId,
         quantity: 1,

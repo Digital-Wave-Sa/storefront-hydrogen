@@ -28,7 +28,8 @@ type Viewport = 'desktop' | 'mobile';
 // ─── MAIN HEADER ────────────────────────────────────────────────────────────
 export function Header({ header, isLoggedIn, cart, locations, customer, locale, googleMapsKey, selectedLocationId, selectedLocationName, selectedAddressName, fulfillmentType, megaMenuData }: HeaderProps) {
   const { shop, menu } = header;
-  const isEn = locale === 'en';
+  const location = useLocation();
+  const isEn = location.pathname.startsWith('/en');
   const fetcher = useFetcher();
   const locationFetcher = useFetcher();
 
@@ -580,7 +581,8 @@ function MiddleBar({
   setActiveMega: (v: string | null) => void
 }) {
   const { open } = useAside();
-  const isEn = locale === 'en';
+  const location = useLocation();
+  const isEn = location.pathname.startsWith('/en');
   const rootData = useRouteLoaderData('root') as any;
   const [points, setPoints] = useState<number | null>(null);
 
@@ -760,8 +762,8 @@ const STATIC_NAV_AR = [
   { title: 'الرئيسية', url: '/' },
   { title: 'المنتجات', url: '/collections/all', hasMega: true },
   { title: 'المناسبات', url: '/occasions' },
-  { title: 'خدمة الضيافة', url: 'https://catering.saadeddin.sa', isExternal: true },
   { title: 'الكيك المخصص', url: '/custom-cake' },
+  { title: 'خدمة الضيافة', url: 'https://catering.saadeddin.sa', isExternal: true },
   { title: 'القسائم', url: '/vouchers' },
   { title: 'العروض', url: '/promotions' },
 ];
@@ -770,8 +772,8 @@ const STATIC_NAV_EN = [
   { title: 'Home', url: '/en' },
   { title: 'Products', url: '/en/collections/all', hasMega: true },
   { title: 'Occasions', url: '/en/occasions' },
-  { title: 'Catering', url: 'https://catering.saadeddin.sa', isExternal: true },
   { title: 'Custom Cake', url: '/en/custom-cake' },
+  { title: 'Catering', url: 'https://catering.saadeddin.sa', isExternal: true },
   { title: 'Vouchers', url: '/en/vouchers' },
   { title: 'Offers', url: '/en/promotions' },
 ];
@@ -785,7 +787,8 @@ function CategoryNav({
   activeMega: string | null,
   setActiveMega: (v: string | null) => void
 }) {
-  const isEn = locale === 'en';
+  const location = useLocation();
+  const isEn = location.pathname.startsWith('/en');
   const NAV_ITEMS = isEn ? STATIC_NAV_EN : STATIC_NAV_AR;
 
   return (
@@ -839,7 +842,8 @@ function CategoryNav({
 }
 
 function ProductMegaMenu({ locale, megaMenuData, onClose }: { locale?: string; megaMenuData?: any; onClose?: () => void }) {
-  const isEn = locale === 'en';
+  const location = useLocation();
+  const isEn = location.pathname.startsWith('/en');
 
   const rawNodes = megaMenuData?.nodes || megaMenuData?.collections?.nodes || [];
   const collections = rawNodes.filter((col: any) => col && col.id && col.title);
@@ -954,7 +958,7 @@ export function HeaderMenu({
   onClose?: () => void;
 }) {
   const location = useLocation();
-  const isEn = String(locale || '').toLowerCase() === 'en' || location.pathname.startsWith('/en');
+  const isEn = location.pathname.startsWith('/en');
   const NAV_ITEMS = isEn ? STATIC_NAV_EN : STATIC_NAV_AR;
 
   return (

@@ -42,10 +42,8 @@ export function PageLayout({
 }: PageLayoutProps) {
   const rootData = useRouteLoaderData('root') as any;
   const location = useLocation();
-  const urlLocale = location.pathname.split('/')[1]?.toLowerCase();
-  const locale = (urlLocale === 'en' || urlLocale === 'ar') 
-    ? urlLocale 
-    : (rootData?.consent?.language?.toLowerCase() || 'ar');
+  const isEn = location.pathname.startsWith('/en');
+  const locale = isEn ? 'en' : 'ar';
 
   const isCustomCakePage = location.pathname.includes('/custom-cake');
 

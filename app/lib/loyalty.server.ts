@@ -97,7 +97,7 @@ export async function getCustomerGid({ customerId, phone, email, env, context }:
  * Specification: GET ${sdlpAppUrl}/api/storefront/loyalty?shop=${shop}&customerId=${customerId}
  * NO fallback points if 0 or error.
  */
-export async function getLoyaltyPoints(params: LoyaltyParams): Promise<number> {
+export async function getLoyaltyFullInfo(params: LoyaltyParams): Promise<{balance: number; enrollmentDate: string | null}> {
   const env = params.env;
   const sdlpAppUrl = env?.PUBLIC_SDLP_APP_URL || env?.SDLP_APP_URL || 'https://sdlp.saadeddin.top';
   const shop = env?.PUBLIC_SHOPIFY_STORE_DOMAIN || env?.PUBLIC_STORE_DOMAIN || 'saadeldeenshop-x21xumcd.myshopify.com';
@@ -107,7 +107,7 @@ export async function getLoyaltyPoints(params: LoyaltyParams): Promise<number> {
 
   if (!customerId && !searchPhone) {
     console.warn('[Loyalty] Neither customerId nor searchPhone available for SDLP query.');
-    return 0;
+    return {balance: 0, enrollmentDate: null};
   }
 
   try {
@@ -119,20 +119,40 @@ export async function getLoyaltyPoints(params: LoyaltyParams): Promise<number> {
     }
     console.log('[SDLP Loyalty] GET Request:', url);
 
-    const res = await fetch(url, { headers: { Accept: 'application/json' } });
-    if (res.ok) {
-      const data = (await res.json()) as any;
-      console.log('[SDLP Loyalty] GET Response:', data);
-      const balance = data?.balance ?? data?.data?.balance ?? 0;
-      return typeof balance === 'number' ? balance : (parseInt(balance, 10) || 0);
-    } else {
-      console.error('[SDLP Loyalty] GET Error status:', res.status, await res.text());
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3000);
+
+    try {
+      const res = await fetch(url, {
+        headers: { Accept: 'application/json' },
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+
+      if (res.ok) {
+        const data = (await res.json()) as any;
+        console.log('[SDLP Loyalty] GET Response:', data);
+        const balanceVal = data?.balance ?? data?.data?.balance ?? 0;
+        const balance = typeof balanceVal === 'number' ? balanceVal : (parseInt(balanceVal, 10) || 0);
+        const enrollmentDate = data?.enrollmentDate || data?.createdAt || data?.customer?.createdtime || data?.data?.enrollmentDate || null;
+        return {balance, enrollmentDate};
+      } else {
+        console.error('[SDLP Loyalty] GET Error status:', res.status, await res.text());
+      }
+    } catch (fetchErr: any) {
+      clearTimeout(timeoutId);
+      console.warn('[SDLP Loyalty] GET Fetch aborted/failed (timing out gracefully):', fetchErr?.message || fetchErr);
     }
   } catch (err) {
     console.error('[SDLP Loyalty] GET Exception:', err);
   }
 
-  return 0;
+  return {balance: 0, enrollmentDate: null};
+}
+
+export async function getLoyaltyPoints(params: LoyaltyParams): Promise<number> {
+  const info = await getLoyaltyFullInfo(params);
+  return info.balance;
 }
 
 /**

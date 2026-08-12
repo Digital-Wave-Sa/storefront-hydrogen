@@ -76,24 +76,37 @@ export async function loader({context, request}: LoaderFunctionArgs) {
     sortKey = 'RELEVANCE';
   }
   const reverse = searchParams.get('reverse') === 'true';
-
   const activeTags = searchParams
     .getAll('filter.p.tag')
     .concat(searchParams.getAll('tag'));
   let q = searchParams.get('q') || '';
   if (q === '*') q = '';
 
+  const selectedCategories = searchParams.getAll('category');
+
+  // Build unified search query
+  const queryParts: string[] = [];
+  if (q && q !== '*') {
+    queryParts.push(`(${q})`);
+  }
   if (activeTags.length > 0) {
     const tagQueries = activeTags.map((t) => `tag:"${t}"`).join(' OR ');
-    q = q ? `(${q}) AND (${tagQueries})` : tagQueries;
+    queryParts.push(`(${tagQueries})`);
   }
-  if (!q) q = '*';
+  if (selectedCategories.length > 0) {
+    const catQueries = selectedCategories
+      .map((c) => `tag:"${c}"`)
+      .join(' OR ');
+    queryParts.push(`(${catQueries})`);
+  }
+  const searchQueryString =
+    queryParts.length > 0 ? queryParts.join(' AND ') : '*';
 
   try {
     const response = await storefront.query(CATALOG_QUERY, {
       variables: {
         ...paginationVariables,
-        query: q,
+        query: searchQueryString,
         filters: filters.length > 0 ? filters : undefined,
         sortKey: sortKey as any,
         reverse,
@@ -103,11 +116,13 @@ export async function loader({context, request}: LoaderFunctionArgs) {
       cache: storefront.CacheShort(),
     });
 
-    // Filter by selected collections manually if 'category' params exist
-    const selectedCategories = url.searchParams.getAll('category');
     let products = response.search;
 
-    if (selectedCategories.length > 0) {
+    // Fallback if category search query returned no results: fetch directly from collection handles
+    if (
+      selectedCategories.length > 0 &&
+      (!products || products.nodes.length === 0)
+    ) {
       try {
         const collectionPromises = selectedCategories.map((handle) =>
           storefront.query(COLLECTION_FILTER_QUERY, {
@@ -122,7 +137,7 @@ export async function loader({context, request}: LoaderFunctionArgs) {
         );
 
         const results = await Promise.all(collectionPromises);
-        const mergedNodes: any[] = [];
+        let mergedNodes: any[] = [];
         const seenIds = new Set();
 
         results.forEach((res: any) => {
@@ -136,43 +151,62 @@ export async function loader({context, request}: LoaderFunctionArgs) {
           }
         });
 
-        // If search query exists, filter merged nodes by title
-        let finalNodes = mergedNodes;
         if (q && q !== '*') {
           const searchLower = q.toLowerCase();
-          finalNodes = mergedNodes.filter((n) =>
+          mergedNodes = mergedNodes.filter((n) =>
             n.title.toLowerCase().includes(searchLower),
           );
         }
 
+        // Sort full merged list by price if requested BEFORE paginating
+        if (mergedNodes.length > 0 && sortKey === 'PRICE') {
+          mergedNodes.sort((a: any, b: any) => {
+            const priceA = parseFloat(
+              a.priceRange?.minVariantPrice?.amount || '0',
+            );
+            const priceB = parseFloat(
+              b.priceRange?.minVariantPrice?.amount || '0',
+            );
+            return reverse ? priceB - priceA : priceA - priceB;
+          });
+        }
+
+        // Sliced pagination for in-memory merged nodes
+        const pageBy = 12;
+        const cursorParam = searchParams.get('cursor');
+        let offset = 0;
+        if (cursorParam) {
+          try {
+            const parsed = JSON.parse(atob(cursorParam));
+            if (typeof parsed.offset === 'number') offset = parsed.offset;
+          } catch (e) {}
+        }
+
+        const paginatedNodes = mergedNodes.slice(offset, offset + pageBy);
+        const hasNextPage = offset + pageBy < mergedNodes.length;
+        const hasPreviousPage = offset > 0;
+        const nextOffset = offset + pageBy;
+        const nextCursor = hasNextPage
+          ? btoa(JSON.stringify({offset: nextOffset}))
+          : null;
+        const prevOffset = Math.max(0, offset - pageBy);
+        const prevCursor = hasPreviousPage
+          ? btoa(JSON.stringify({offset: prevOffset}))
+          : null;
+
         products = {
           ...products,
-          nodes: finalNodes,
+          nodes: paginatedNodes,
           pageInfo: {
-            hasNextPage: false,
-            hasPreviousPage: false,
-            startCursor: null,
-            endCursor: null,
+            hasNextPage,
+            hasPreviousPage,
+            startCursor: prevCursor,
+            endCursor: nextCursor,
           },
         };
       } catch (e) {
         console.error('Failed to fetch collections', e);
       }
-    }
-
-    if (products?.nodes?.length && sortKey === 'PRICE') {
-      products = {
-        ...products,
-        nodes: [...products.nodes].sort((a: any, b: any) => {
-          const priceA = parseFloat(
-            a.priceRange?.minVariantPrice?.amount || '0',
-          );
-          const priceB = parseFloat(
-            b.priceRange?.minVariantPrice?.amount || '0',
-          );
-          return reverse ? priceB - priceA : priceA - priceB;
-        }),
-      };
     }
 
     if (!response.search) {
@@ -617,7 +651,9 @@ function CollectionAllHero({
             dir={isEn ? 'ltr' : 'rtl'}
           >
             <button
-              onClick={() => window.history.back()}
+              onClick={() => {
+                if (typeof window !== 'undefined') window.history.back();
+              }}
               className={`flex items-center gap-[8px] bg-[#9FB7AE] hover:bg-[#8BA19C] text-[#234745] px-4 md:px-6 py-2.5 rounded-[25px] text-[12px] md:text-[16px] font-bold transition-all shrink-0 ${isEn ? 'font-en' : ''}`}
               style={
                 isEn

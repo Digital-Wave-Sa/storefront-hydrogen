@@ -4,6 +4,7 @@ import {
   Outlet,
   useRouteError,
   isRouteErrorResponse,
+  type MetaFunction,
   type ShouldRevalidateFunction,
   Links,
   Meta,
@@ -28,6 +29,12 @@ import {ServerError} from './components/ServerError';
 import {CookieConsentBanner} from './components/CookieConsentBanner';
 import {ProductSkeleton} from './components/ProductSkeleton';
 
+export const meta: MetaFunction = () => {
+  return [
+    {title: 'حلويات سعد الدين | Saadeddin Pastry'},
+    {name: 'viewport', content: 'width=device-width, initial-scale=1.0, maximum-scale=5.0'},
+  ];
+};
 
 export type RootLoader = typeof loader;
 
@@ -45,6 +52,11 @@ export const shouldRevalidate: ShouldRevalidateFunction = ({
   // revalidate when manually revalidating via useRevalidator
   if (currentUrl.toString() === nextUrl.toString()) return true;
 
+  // revalidate when the locale changes (e.g. / → /en or /en → /)
+  // so the cart and other root data are re-fetched in the correct language
+  const currentLocale = currentUrl.pathname.replace(/\.data$/i, '').split('/')[1]?.toLowerCase() === 'en' ? 'en' : 'ar';
+  const nextLocale = nextUrl.pathname.replace(/\.data$/i, '').split('/')[1]?.toLowerCase() === 'en' ? 'en' : 'ar';
+  if (currentLocale !== nextLocale) return true;
 
   // Defaulting to no revalidation for root loader data to improve performance.
   // When using this feature, you risk your UI getting out of sync with your server.
@@ -115,8 +127,9 @@ export async function loader(args: Route.LoaderArgs) {
                        selectedLocId === 'gid://shopify/Location/114186715445';
   const hasManualSelection = manualLocationSelection === 'true';
 
+  const urlLocale = args.context.storefront.i18n.language.toLowerCase();
+
   if (!hasManualSelection && (isDefaultLoc || !selectedLocId || selectedLocId === undefined || selectedLocId === null)) {
-    const urlLocale = new URL(args.request.url).pathname.split('/')[1]?.toLowerCase();
     selectedLocId = '';
     selectedLocName = urlLocale === 'en' ? 'Select Your Branch' : 'اختر الفرع';
     fType = 'delivery';
@@ -137,14 +150,12 @@ export async function loader(args: Route.LoaderArgs) {
       if (isHidden) {
         console.log(`[ROOT LOADER] Resetting hidden location: id=${selectedLocId}, name=${selectedLocName}`);
         if (!isSA) {
-          const urlLocale = new URL(args.request.url).pathname.split('/')[1]?.toLowerCase();
           selectedLocId = '';
           selectedLocName = urlLocale === 'en' ? 'Select Your Branch' : 'اختر الفرع';
           fType = 'delivery';
         } else {
           const isTesting = env.PUBLIC_STORE_DOMAIN?.includes('belivagloire');
           selectedLocId = isTesting ? 'gid://shopify/Location/114186715445' : 'gid://shopify/Location/80198500503';
-          const urlLocale = new URL(args.request.url).pathname.split('/')[1]?.toLowerCase();
           selectedLocName = urlLocale === 'en' ? 'Olaya Branch' : 'فرع العليا';
           fType = 'delivery';
         }
@@ -189,8 +200,10 @@ export async function loader(args: Route.LoaderArgs) {
       selectedLocationName: selectedLocName,
       selectedAddressName: selectedAddrName,
       fulfillmentType: fType,
+      deliveryDate: await session.get('delivery_date'),
+      timeSlot: await session.get('Time Slot'),
       manualLocationSelection: manualLocationSelection,
-      locale: new URL(args.request.url).pathname.split('/')[1]?.toLowerCase() === 'en' ? 'en' : 'ar',
+      locale: urlLocale,
     }, {
       headers
     });
@@ -520,8 +533,8 @@ export function Layout({children}: {children?: React.ReactNode}) {
   return (
     <html lang={locale} dir={isEn ? 'ltr' : 'rtl'} suppressHydrationWarning>
       <head suppressHydrationWarning>
-        <meta charSet="utf-8" />
-        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
+        <title>حلويات سعد الدين | Saadeddin Pastry</title>
         <Meta />
         <link rel="canonical" href={canonicalUrl} />
         <link rel="alternate" hrefLang="ar" href={arUrl} />
@@ -751,6 +764,14 @@ const LOCATIONS_QUERY = `#graphql
           value
         }
         free_delivery_threshold: metafield(namespace: "custom", key: "free_delivery_threshold") {
+          key
+          value
+        }
+        promo_free_delivery_from: metafield(namespace: "custom", key: "promo_free_delivery_from") {
+          key
+          value
+        }
+        promo_free_delivery_to: metafield(namespace: "custom", key: "promo_free_delivery_to") {
           key
           value
         }

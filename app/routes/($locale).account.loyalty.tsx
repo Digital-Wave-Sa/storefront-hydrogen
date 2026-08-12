@@ -2,6 +2,8 @@ import {useState} from 'react';
 import {useLoaderData, useFetcher, Link} from 'react-router';
 import type {LoaderFunctionArgs, ActionFunctionArgs} from 'react-router';
 import {getLoyaltyPoints, redeemLoyaltyPoints} from '~/lib/loyalty.server';
+import {LOYALTY_TIERS, getLoyaltyTierInfo} from '~/lib/loyalty-tiers';
+import {LoyaltyCard} from '~/components/account/LoyaltyCard';
 
 export async function loader({request, context}: LoaderFunctionArgs) {
   const isEn = new URL(request.url).pathname.startsWith('/en');
@@ -160,18 +162,45 @@ export default function LoyaltyPage() {
           : 'اكسب النقاط مع كل عملية شراء واستبدلها بخصومات.'}
       </p>
 
-      {/* Balance Display */}
-      <div className="bg-emerald-50 p-4 rounded-lg mb-6 border border-emerald-200">
-        <span className="text-xs text-emerald-800 font-medium uppercase tracking-wide">
-          {isEn ? 'Your Balance:' : 'رصيد نقاطك:'}
-        </span>
-        <div className="text-4xl font-extrabold text-emerald-900 mt-1 font-en">
-          {currentBalance}{' '}
-          <span className="text-lg font-normal">
-            {isEn ? 'points' : 'نقطة'}
-          </span>
-        </div>
-      </div>
+      {/* Luxury Loyalty Card Badge */}
+      <LoyaltyCard loyaltyPoints={currentBalance} isEn={isEn} />
+
+      {/* 3 Loyalty Tiers Overview */}
+      {(() => {
+        const tierInfo = getLoyaltyTierInfo(currentBalance);
+        return (
+          <div className="mb-6">
+            <h3 className="text-sm font-bold text-[#234745] mb-3">
+              {isEn ? 'Loyalty Tiers' : 'فئات برنامج الولاء'}
+            </h3>
+            <div className="grid grid-cols-3 gap-2">
+              {LOYALTY_TIERS.map((t) => {
+                const isActive = tierInfo.tier.code === t.code;
+                return (
+                  <div
+                    key={t.code}
+                    className={`p-3 rounded-xl border text-center transition-all ${t.badgeBg} ${t.badgeBorderColor} ${
+                      isActive ? 'ring-2 ring-[#234745] shadow-sm' : 'opacity-70'
+                    }`}
+                  >
+                    <div className="flex justify-center mb-1">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill={t.iconColor} className="w-5 h-5 drop-shadow-xs">
+                        <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
+                      </svg>
+                    </div>
+                    <div className={`text-xs font-bold ${t.badgeTextColor}`}>
+                      {isEn ? t.name : t.nameAr}
+                    </div>
+                    <div className="text-[10px] text-gray-500 font-en mt-0.5">
+                      {t.maxPoints ? `${t.minPoints.toLocaleString('en-US')}–${t.maxPoints.toLocaleString('en-US')} pts` : `${t.minPoints.toLocaleString('en-US')}+ pts`}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Errors */}
       {(actionData?.error || initialLoyalty?.error) && (

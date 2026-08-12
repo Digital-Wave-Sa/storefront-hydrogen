@@ -23,7 +23,7 @@ const occasionsAr = [
 ];
 
 export function ShopByOccasion({ collections }: { collections?: any[] }) {
-    const { locale } = useOutletContext<{ locale: string }>();
+    const { locale = 'ar' } = useOutletContext<{ locale?: string }>() ?? {};
     const isEn = locale === 'en';
 
     // Merge Shopify data with static metadata

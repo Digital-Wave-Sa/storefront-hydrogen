@@ -1,142 +1,239 @@
-import {redirect, type ActionFunctionArgs} from 'react-router';
+import {redirect, type ActionFunctionArgs, type LoaderFunctionArgs} from 'react-router';
 import {SaadeddinApi} from '~/lib/saadeddin-api.server';
 import {extractMinTime} from '~/lib/time-utils';
 
+export async function loader({request, context}: LoaderFunctionArgs) {
+  return processCheckoutInitiate({request, context});
+}
+
 export async function action({request, context}: ActionFunctionArgs) {
+  return processCheckoutInitiate({request, context});
+}
+
+async function processCheckoutInitiate({request, context}: ActionFunctionArgs) {
   const {storefront, session, env} = context;
   const lang = storefront.i18n.language === 'EN' ? 'en' : 'ar';
-
-  if (request.method !== 'POST') {
-    return redirect(lang === 'en' ? '/en/cart' : '/cart');
-  }
 
   // 1. Ensure user is logged in via Custom API or Shopify Customer Access Token
   const customToken = await session.get('saadeddinToken');
   const customerAccessToken = await session.get('customerAccessToken');
-  console.log(
-    '[CHECKOUT DIAGNOSTIC] customToken:',
-    customToken,
-    'customerAccessToken:',
-    !!customerAccessToken,
-  );
+  const loginOtpPhone = await session.get('loginOtpPhone');
+  const loginCustomerEmail = await session.get('loginCustomerEmail');
+  console.log('\n====================================================');
+  console.log('[CHECKOUT DIAGNOSTIC ENTRY]', request.method, request.url);
+  console.log('[CHECKOUT DIAGNOSTIC] customToken:', customToken);
+  console.log('[CHECKOUT DIAGNOSTIC] customerAccessToken:', customerAccessToken);
+  console.log('[CHECKOUT DIAGNOSTIC] loginOtpPhone:', loginOtpPhone);
+  console.log('[CHECKOUT DIAGNOSTIC] loginCustomerEmail:', loginCustomerEmail);
 
-  if (!customToken && !customerAccessToken) {
+  const isLoggedIn = !!(customToken || customerAccessToken || loginOtpPhone || loginCustomerEmail);
+
+  if (!isLoggedIn) {
     console.log(
-      '[CHECKOUT DIAGNOSTIC] Redirecting to login: no customToken and no customerAccessToken',
+      '[CHECKOUT DIAGNOSTIC REDIRECT] Redirecting to login: no customToken and no customerAccessToken',
     );
-    const redirectToUrl = lang === 'en' ? '/en/cart' : '/cart';
-    return redirect(
-      (lang === 'en' ? `/en/account/login` : `/account/login`) +
-        `?redirectTo=${encodeURIComponent(redirectToUrl)}`,
-    );
+    const checkoutInitiateUrl = lang === 'en' ? '/en/checkout/initiate' : '/checkout/initiate';
+    const loginUrl = (lang === 'en' ? `/en/account/login` : `/account/login`) +
+      `?redirectTo=${encodeURIComponent(checkoutInitiateUrl)}`;
+
+    const existingCartId = await context.cart.getCartId();
+    if (existingCartId) {
+      try {
+        const currentCart = await context.cart.get();
+        if (currentCart?.lines?.nodes?.length) {
+          const backupLines = currentCart.lines.nodes.map((line: any) => ({
+            merchandiseId: line.merchandise.id,
+            quantity: line.quantity,
+          }));
+          session.set('backupCartLines', JSON.stringify(backupLines));
+          console.log('[CHECKOUT BACKUP] Saved backupCartLines before login redirect:', backupLines);
+        }
+      } catch (e) {
+        console.error('[CHECKOUT BACKUP ERROR]', e);
+      }
+    }
+
+    const headers = existingCartId ? context.cart.setCartId(existingCartId) : new Headers();
+    headers.append('Set-Cookie', await session.commit());
+
+    return redirect(loginUrl, { headers });
   }
 
   // 2. Fetch current Cart from Hydrogen
-  const cartId = await context.cart.getCartId();
+  let cartId = await context.cart.getCartId();
   console.log('[CHECKOUT DIAGNOSTIC] cartId:', cartId);
-  if (!cartId) {
-    console.log('[CHECKOUT DIAGNOSTIC] Redirecting to cart: no cartId');
-    return redirect(lang === 'en' ? '/en/cart' : '/cart');
-  }
 
-  // Associate customer email, phone, and customerAccessToken with Cart Buyer Identity so Shopify Checkout pre-fills customer info
-  const loginEmail = await session.get('loginCustomerEmail');
-  const loginPhone = await session.get('loginOtpPhone');
-
-  const buyerIdentity: any = {};
-
-  if (customerAccessToken) {
-    const token =
-      typeof customerAccessToken === 'string'
-        ? customerAccessToken
-        : customerAccessToken.accessToken;
-    if (token && !token.startsWith('session-')) {
-      buyerIdentity.customerAccessToken = token;
-    }
-  }
-
-  if (loginEmail && !loginEmail.endsWith('@saadeddin.placeholder')) {
-    buyerIdentity.email = loginEmail;
-  }
-
-  if (loginPhone) {
-    const formattedPhone = loginPhone.startsWith('+')
-      ? loginPhone
-      : `+${loginPhone}`;
-    buyerIdentity.phone = formattedPhone;
-  }
-
-  if (Object.keys(buyerIdentity).length > 0) {
-    try {
-      await context.cart.updateBuyerIdentity(buyerIdentity);
-      console.log(
-        '[CHECKOUT DIAGNOSTIC] Successfully updated cart buyer identity:',
-        buyerIdentity,
-      );
-    } catch (err: any) {
-      console.error(
-        '[CHECKOUT DIAGNOSTIC] Failed to update cart buyer identity:',
-        err?.message || err,
-      );
-      // Fallback: retry without token if customerAccessToken was invalid
-      if (buyerIdentity.customerAccessToken) {
-        delete buyerIdentity.customerAccessToken;
-        try {
-          await context.cart.updateBuyerIdentity(buyerIdentity);
-        } catch (_) {}
-      }
-    }
-  }
-
-  const {cart} = await storefront.query(
-    `#graphql
-    query checkoutCart($cartId: ID!) {
-      cart(id: $cartId) {
-        id
-        checkoutUrl
-        note
-        cost {
-          subtotalAmount { amount currencyCode }
-          totalAmount { amount currencyCode }
-        }
-        lines(first: 100) {
-          nodes {
-            id
-            quantity
-            merchandise {
-              ... on ProductVariant {
-                id
-                title
-                sku
-                price { amount }
-                product { title id }
+  let cartResult: any = null;
+  if (cartId) {
+    const res = await storefront.query(
+      `#graphql
+      query checkoutCart($cartId: ID!, $language: LanguageCode, $country: CountryCode)
+        @inContext(language: $language, country: $country) {
+        cart(id: $cartId) {
+          id
+          checkoutUrl
+          note
+          cost {
+            subtotalAmount { amount currencyCode }
+            totalAmount { amount currencyCode }
+          }
+          lines(first: 100) {
+            nodes {
+              id
+              quantity
+              merchandise {
+                ... on ProductVariant {
+                  id
+                  title
+                  sku
+                  price { amount }
+                  product { title id }
+                }
               }
             }
           }
-        }
-        attributes {
-          key
-          value
+          attributes {
+            key
+            value
+          }
         }
       }
-    }
-  `,
-    {
-      variables: {cartId},
-      cache: storefront.CacheNone(),
-    },
-  );
+    `,
+      {
+        variables: {
+          cartId,
+          language: storefront.i18n.language,
+          country: storefront.i18n.country,
+        },
+        cache: storefront.CacheNone(),
+      },
+    );
+    cartResult = res?.cart;
+  }
 
-  console.log(
-    '[CHECKOUT DIAGNOSTIC] cart query result:',
-    JSON.stringify(cart, null, 2),
-  );
+  // Fallback Auto-Restoration: If cart is empty or missing, but backup lines exist in session (from pre-login step)
+  const backupLinesStr = await session.get('backupCartLines');
+  if ((!cartResult || !cartResult.lines?.nodes?.length) && backupLinesStr) {
+    try {
+      const backupLines = JSON.parse(backupLinesStr);
+      if (Array.isArray(backupLines) && backupLines.length > 0) {
+        console.log('[CHECKOUT RESTORE] Restoring cart from backup lines before checkout:', backupLines);
+        const restoreRes = await context.cart.create({ lines: backupLines });
+        if (restoreRes?.cart?.id) {
+          cartId = restoreRes.cart.id;
+          const reQuery = await storefront.query(
+            `#graphql
+            query checkoutCart($cartId: ID!, $language: LanguageCode, $country: CountryCode)
+              @inContext(language: $language, country: $country) {
+              cart(id: $cartId) {
+                id
+                checkoutUrl
+                note
+                cost {
+                  subtotalAmount { amount currencyCode }
+                  totalAmount { amount currencyCode }
+                }
+                lines(first: 100) {
+                  nodes {
+                    id
+                    quantity
+                    merchandise {
+                      ... on ProductVariant {
+                        id
+                        title
+                        sku
+                        price { amount }
+                        product { title id }
+                      }
+                    }
+                  }
+                }
+                attributes {
+                  key
+                  value
+                }
+              }
+            }
+          `,
+            {
+              variables: {
+                cartId,
+                language: storefront.i18n.language,
+                country: storefront.i18n.country,
+              },
+              cache: storefront.CacheNone(),
+            },
+          );
+          cartResult = reQuery?.cart;
+        }
+      }
+    } catch (restoreErr) {
+      console.error('[CHECKOUT RESTORE ERROR]', restoreErr);
+    }
+  }
+
+  const cart = cartResult;
 
   if (!cart || !cart.lines?.nodes?.length) {
     console.log(
       '[CHECKOUT DIAGNOSTIC] Redirecting to cart: cart is null or empty',
     );
     return redirect(lang === 'en' ? '/en/cart' : '/cart');
+  }
+
+  // Associate customerAccessToken, email & phone with Cart Buyer Identity so Shopify Checkout recognizes logged-in customer
+  const loginEmail = await session.get('loginCustomerEmail');
+  const loginPhone = await session.get('loginOtpPhone');
+  const tokenString = typeof customerAccessToken === 'string'
+    ? customerAccessToken
+    : (customerAccessToken as any)?.accessToken;
+
+  const buyerIdentity: any = {};
+
+  if (tokenString && typeof tokenString === 'string' && !tokenString.startsWith('session-')) {
+    buyerIdentity.customerAccessToken = tokenString;
+  }
+
+  if (loginEmail && typeof loginEmail === 'string' && !loginEmail.endsWith('@saadeddin.placeholder')) {
+    buyerIdentity.email = loginEmail;
+  }
+
+  if (loginPhone) {
+    const formattedPhone = String(loginPhone).startsWith('+')
+      ? String(loginPhone)
+      : `+${loginPhone}`;
+    buyerIdentity.phone = formattedPhone;
+  }
+
+  if (Object.keys(buyerIdentity).length > 0) {
+    try {
+      const updateResult: any = await context.cart.updateBuyerIdentity(buyerIdentity);
+      console.log(
+        '[CHECKOUT DIAGNOSTIC] cartBuyerIdentityUpdate result:',
+        JSON.stringify(updateResult, null, 2),
+      );
+
+      const userErrors = (updateResult as any)?.cartBuyerIdentityUpdate?.userErrors || (updateResult as any)?.userErrors || [];
+      const hasInvalidCustomerToken = userErrors.some(
+        (err: any) =>
+          err.message?.toLowerCase().includes('customer') ||
+          err.field?.includes('customerAccessToken'),
+      );
+
+      if (hasInvalidCustomerToken && buyerIdentity.customerAccessToken) {
+        console.warn(
+          '[CHECKOUT DIAGNOSTIC] customerAccessToken rejected by Shopify as invalid. Unsetting session token and retrying with email/phone only...',
+        );
+        delete buyerIdentity.customerAccessToken;
+        session.unset('customerAccessToken');
+        await context.cart.updateBuyerIdentity(buyerIdentity);
+      }
+    } catch (err: any) {
+      console.error(
+        '[CHECKOUT DIAGNOSTIC] Failed to update cart buyer identity:',
+        err?.message || err,
+      );
+    }
   }
 
   // 3. Build payload for Saadeddin API and restore location properties
@@ -282,14 +379,78 @@ export async function action({request, context}: ActionFunctionArgs) {
 
   try {
     let checkoutUrl = cart.checkoutUrl;
-    if (checkoutUrl && finalAttributes.length > 0) {
+    if (checkoutUrl) {
       const urlObj = new URL(checkoutUrl);
-      finalAttributes.forEach((attr: any) => {
-        if (attr.key && attr.value) {
-          urlObj.searchParams.set(`attributes[${attr.key}]`, attr.value);
-          urlObj.searchParams.set(`note_attributes[${attr.key}]`, attr.value);
+      urlObj.searchParams.set('locale', lang);
+      if (finalAttributes.length > 0) {
+        finalAttributes.forEach((attr: any) => {
+          if (attr.key && attr.value) {
+            urlObj.searchParams.set(`attributes[${attr.key}]`, attr.value);
+            urlObj.searchParams.set(`note_attributes[${attr.key}]`, attr.value);
+          }
+        });
+      }
+
+      // Check if current branch & selected delivery time slot qualify for promo free delivery
+      let isPromoFreeDelivery = false;
+      try {
+        const {getAdminToken, getAdminDomain} = await import('~/lib/shopify-admin.server');
+        const shopDomain = getAdminDomain(env);
+        const adminToken = await getAdminToken(env);
+        if (shopDomain && adminToken) {
+          const locRes = await fetch(`https://${shopDomain}/admin/api/2024-10/graphql.json`, {
+            method: 'POST',
+            headers: {
+              'X-Shopify-Access-Token': adminToken,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              query: `{
+                locations(first: 250) {
+                  nodes {
+                    id
+                    name
+                    metafields(first: 50) {
+                      nodes { key namespace value }
+                    }
+                  }
+                }
+              }`
+            }),
+          });
+          const locData = (await locRes.json()) as any;
+          const adminLocs = locData?.data?.locations?.nodes || [];
+          const matchedLoc = adminLocs.find((l: any) => {
+            const locNumId = String(l.id || '').split('/').pop();
+            const targetNumId = String(branchId || '').split('/').pop();
+            return (targetNumId && locNumId === targetNumId) || (branchName && l.name?.toLowerCase().trim() === branchName.toLowerCase().trim());
+          });
+          if (matchedLoc) {
+            const {checkBranchFreeDeliveryInterval} = await import('~/lib/promo-delivery');
+            const promoResult = checkBranchFreeDeliveryInterval(matchedLoc, timeSlotVal);
+            isPromoFreeDelivery = promoResult.isPromoFreeDelivery;
+          }
         }
-      });
+      } catch (promoErr) {
+        console.error('[CHECKOUT INITIATE] Promo check error:', promoErr);
+      }
+
+      const knownPromoCodes = ['freeshipping', 'branch free delivery promo'];
+      const hasFreeShippingCode = cart?.discountCodes?.some((d: any) =>
+        knownPromoCodes.includes(String(d.code || '').toLowerCase().trim())
+      ) || false;
+
+      if (isPromoFreeDelivery || hasFreeShippingCode) {
+        urlObj.searchParams.set('discount', 'freeshipping');
+        try {
+          const existingCodes = cart?.discountCodes?.map((d: any) => d.code)?.filter((c: string) => c !== 'Branch Free Delivery Promo') || [];
+          const newCodes = Array.from(new Set([...existingCodes, 'freeshipping']));
+          await context.cart.updateDiscountCodes(newCodes);
+        } catch (discErr) {
+          console.error('[CHECKOUT INITIATE] Failed to update cart discount codes:', discErr);
+        }
+      }
+
       // Build the order note: customer's written note + internal metadata block
       // The metadata block is only passed via the URL — it is NOT stored in the Shopify cart note
       const urlNote = customerNote
@@ -300,11 +461,27 @@ export async function action({request, context}: ActionFunctionArgs) {
     }
 
     if (checkoutUrl) {
-      return redirect(checkoutUrl);
+      console.log('[CHECKOUT DIAGNOSTIC SUCCESS] Redirecting to Shopify Checkout URL:', checkoutUrl);
+      console.log('====================================================\n');
+      // Store backup of cart lines in session in case Shopify locks/clears cart on checkout
+      const backupLines = cart.lines.nodes.map((line: any) => ({
+        merchandiseId: line.merchandise.id,
+        quantity: line.quantity,
+      }));
+      session.set('backupCartLines', JSON.stringify(backupLines));
+
+      const existingCartId = cart.id || (await context.cart.getCartId());
+      const headers = existingCartId ? context.cart.setCartId(existingCartId) : new Headers();
+      headers.append('Set-Cookie', await session.commit());
+
+      return redirect(checkoutUrl, { headers });
     }
+    console.log('[CHECKOUT DIAGNOSTIC FAIL] No checkoutUrl available, redirecting back to cart');
+    console.log('====================================================\n');
     return redirect(lang === 'en' ? '/en/cart' : '/cart');
   } catch (error: any) {
-    console.error('Checkout redirect error:', error);
+    console.error('[CHECKOUT DIAGNOSTIC CATCH ERROR]', error);
+    console.log('====================================================\n');
     return redirect(lang === 'en' ? `/en/cart` : `/cart`);
   }
 }

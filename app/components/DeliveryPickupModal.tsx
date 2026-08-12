@@ -59,6 +59,8 @@ export interface Branch {
     branch_id?: string;
     ax_store_id?: string;
     badge?: string;
+    promoFreeDeliveryFrom?: string;
+    promoFreeDeliveryTo?: string;
 }
 
 interface DeliveryPickupModalProps {
@@ -440,7 +442,7 @@ export function parseLocationToBranch(node: any, isEn: boolean = false): Branch 
             }
             return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
         })(),
-        badge: '',
+        badge: getMeta('badge', ''),
         google_maps: getMeta('google_maps', googleMapMeta),
         rating: getMeta('rating', 0),
         ratingCount: getMeta('rating_count', 0),
@@ -449,6 +451,8 @@ export function parseLocationToBranch(node: any, isEn: boolean = false): Branch 
         ax_store_id: getMeta('ax_store_id', ''),
     };
 }
+
+export { checkBranchFreeDeliveryInterval } from '~/lib/promo-delivery';
 
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────
 

@@ -2,7 +2,7 @@ import { Link, useOutletContext } from 'react-router';
 import { useI18n } from '~/lib/i18n';
 
 export function DesignYourCake() {
-    const { locale } = useOutletContext<{ locale: string }>();
+    const { locale = 'ar' } = useOutletContext<{ locale?: string }>() ?? {};
     const isEn = locale === 'en';
 
     return (
@@ -48,7 +48,7 @@ export function DesignYourCake() {
                             />
                             <div className="w-[85px] h-[1px] bg-[#906B51]"></div>
                         </div>
-                        <p className="text-[#906B51] tracking-tight whitespace-nowrap" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", fontWeight: 500, fontSize: '16px', lineHeight: '100%', letterSpacing: '0%', textAlign: 'right', verticalAlign: 'middle', marginBottom: '20px' }}>
+                        <p className="text-[#906B51] tracking-tight text-center px-4" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", fontWeight: 500, fontSize: '16px', lineHeight: '140%', letterSpacing: '0%', textAlign: 'center', marginBottom: '20px' }}>
                             {isEn ? 'Create an unforgettable moment – step by step' : 'أصنع لحظة لا تُنسى – خطوة بخطوة'}
                         </p>
                         <h2 className="text-[#234745] mb-2 text-[36px] lg:text-[50px] font-bold leading-none text-center" style={!isEn ? { fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" } : undefined}>

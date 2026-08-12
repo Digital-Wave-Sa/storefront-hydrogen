@@ -247,14 +247,15 @@ export async function action({request, context}: ActionFunctionArgs) {
       });
     }
 
-    // Proactively check if the email already exists in Shopify before sending the OTP
-    if (email) {
-      try {
-        const {getAdminToken} = await import('~/lib/shopify-admin.server');
-        const adminToken = await getAdminToken(env);
-        if (adminToken) {
+    // Proactively check if the email OR phone already exists in Shopify before sending the OTP
+    try {
+      const {getAdminToken} = await import('~/lib/shopify-admin.server');
+      const adminToken = await getAdminToken(env);
+      if (adminToken) {
+        // 1. Check Email uniqueness
+        if (email) {
           console.log(
-            '[Register] Proactively checking if email exists in Shopify before sending OTP:',
+            '[Register] Pre-checking email existence in Shopify:',
             email,
           );
           const emailCheckRes = await fetch(
@@ -271,18 +272,51 @@ export async function action({request, context}: ActionFunctionArgs) {
               return data({
                 error:
                   lang === 'en'
-                    ? 'This email address is already registered. Please use a different one.'
-                    : 'البريد الإلكتروني هذا مسجل بالفعل. يرجى استخدام بريد إلكتروني آخر.',
+                    ? 'This email address is already registered. Please use a different one or log in.'
+                    : 'البريد الإلكتروني هذا مسجل بالفعل. يرجى استخدام بريد إلكتروني آخر أو تسجيل الدخول.',
               });
             }
           }
         }
-      } catch (checkErr) {
-        console.error(
-          '[Register] Pre-check Shopify email existence before OTP error:',
-          checkErr,
+
+        // 2. Check Phone uniqueness
+        const rawDigits = fullPhone.replace(/\D/g, '');
+        const last9Digits = rawDigits.slice(-9);
+        console.log(
+          '[Register] Pre-checking phone existence in Shopify:',
+          fullPhone,
         );
+        const phoneSearchQuery = `phone:${fullPhone} OR phone:${rawDigits} OR phone:${last9Digits}`;
+        const phoneCheckRes = await fetch(
+          `https://${env.PUBLIC_STORE_DOMAIN}/admin/api/2024-01/customers/search.json?query=${encodeURIComponent(phoneSearchQuery)}&fields=id,phone`,
+          {headers: {'X-Shopify-Access-Token': adminToken}},
+        );
+        if (phoneCheckRes.ok) {
+          const phoneData = (await phoneCheckRes.json()) as any;
+          const existingCustomer = (phoneData.customers || []).find((c: any) => {
+            const cp = (c.phone || '').replace(/\D/g, '');
+            return cp && (cp === rawDigits || cp.endsWith(last9Digits));
+          });
+
+          if (existingCustomer) {
+            console.warn(
+              '[Register] Phone already exists in Shopify before sending OTP:',
+              fullPhone,
+            );
+            return data({
+              error:
+                lang === 'en'
+                  ? 'This mobile number is already registered. Please log in or use a different number.'
+                  : 'رقم الجوال هذا مسجل بالفعل. يرجى تسجيل الدخول أو استخدام رقم آخر.',
+            });
+          }
+        }
       }
+    } catch (checkErr) {
+      console.error(
+        '[Register] Pre-check Shopify existence before OTP error:',
+        checkErr,
+      );
     }
 
     try {
@@ -341,12 +375,12 @@ export async function action({request, context}: ActionFunctionArgs) {
         ? 'en'
         : 'ar';
 
-    // Validate email uniqueness in Shopify Admin API before calling register
-    if (email) {
-      try {
-        const {getAdminToken} = await import('~/lib/shopify-admin.server');
-        const adminToken = await getAdminToken(env);
-        if (adminToken) {
+    // Validate email and phone uniqueness in Shopify Admin API before calling register
+    try {
+      const {getAdminToken} = await import('~/lib/shopify-admin.server');
+      const adminToken = await getAdminToken(env);
+      if (adminToken) {
+        if (email) {
           console.log(
             '[Register] Checking if email already exists in Shopify:',
             email,
@@ -371,12 +405,39 @@ export async function action({request, context}: ActionFunctionArgs) {
             }
           }
         }
-      } catch (checkErr) {
-        console.error(
-          '[Register] Pre-check Shopify email existence error:',
-          checkErr,
+
+        const rawDigits = savedPhone.replace(/\D/g, '');
+        const last9Digits = rawDigits.slice(-9);
+        const phoneSearchQuery = `phone:${savedPhone} OR phone:${rawDigits} OR phone:${last9Digits}`;
+        const phoneCheckRes = await fetch(
+          `https://${env.PUBLIC_STORE_DOMAIN}/admin/api/2024-01/customers/search.json?query=${encodeURIComponent(phoneSearchQuery)}&fields=id,phone`,
+          {headers: {'X-Shopify-Access-Token': adminToken}},
         );
+        if (phoneCheckRes.ok) {
+          const phoneData = (await phoneCheckRes.json()) as any;
+          const existingCustomer = (phoneData.customers || []).find((c: any) => {
+            const cp = (c.phone || '').replace(/\D/g, '');
+            return cp && (cp === rawDigits || cp.endsWith(last9Digits));
+          });
+          if (existingCustomer) {
+            console.warn(
+              '[Register] Phone already exists in Shopify before user creation:',
+              savedPhone,
+            );
+            return data({
+              error:
+                lang === 'en'
+                  ? 'This mobile number is already registered. Please log in or use a different number.'
+                  : 'رقم الجوال هذا مسجل بالفعل. يرجى تسجيل الدخول أو استخدام رقم آخر.',
+            });
+          }
+        }
       }
+    } catch (checkErr) {
+      console.error(
+        '[Register] Pre-check Shopify email/phone existence error:',
+        checkErr,
+      );
     }
 
     let firstName = '';

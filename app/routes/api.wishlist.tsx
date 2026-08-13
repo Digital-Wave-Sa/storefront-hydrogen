@@ -8,32 +8,33 @@ import {getAdminToken, getAdminDomain} from '../lib/shopify-admin.server';
 
 export async function action({request, context}: ActionFunctionArgs) {
   const env = context.env as any;
-  const shopDomain = getAdminDomain(env);
-
-  const {customerId, wishlist} = (await request.json()) as any;
-  if (!customerId) {
-    return data({wishlist, note: 'Guest wishlist, not synced to Shopify'});
-  }
-
-  const targetId = String(customerId);
-  const formattedGid = targetId.startsWith('gid://')
-    ? targetId
-    : `gid://shopify/Customer/${targetId}`;
-
-  const mutation = `
-    mutation customerUpdateWishlist($input: CustomerInput!) {
-      customerUpdate(input: $input) {
-        customer { id }
-        userErrors { field message }
-      }
-    }
-  `;
 
   try {
-    const adminToken = await getAdminToken(env);
-    if (!adminToken) {
-      console.error('[WISHLIST SYNC ERROR] Could not retrieve Admin API token');
-      return data({error: 'Sync failed: No admin token'}, {status: 401});
+    const body = await request.json().catch(() => ({}));
+    const {customerId, wishlist} = body || {};
+    if (!customerId) {
+      return data({wishlist: wishlist || [], note: 'Guest wishlist saved locally'});
+    }
+
+    const shopDomain = getAdminDomain(env);
+    const targetId = String(customerId);
+    const formattedGid = targetId.startsWith('gid://')
+      ? targetId
+      : `gid://shopify/Customer/${targetId}`;
+
+    const mutation = `
+      mutation customerUpdateWishlist($input: CustomerInput!) {
+        customerUpdate(input: $input) {
+          customer { id }
+          userErrors { field message }
+        }
+      }
+    `;
+
+    const adminToken = await getAdminToken(env).catch(() => null);
+    if (!adminToken || !shopDomain) {
+      console.warn('[WISHLIST SYNC] Admin token unavailable, saving wishlist locally.');
+      return data({wishlist: wishlist || [], note: 'Wishlist saved locally'});
     }
 
     const result = (await adminApiQuery(shopDomain, adminToken, mutation, {
@@ -44,25 +45,23 @@ export async function action({request, context}: ActionFunctionArgs) {
             namespace: 'custom',
             key: 'wishlist',
             type: 'json',
-            value: JSON.stringify(wishlist),
+            value: JSON.stringify(wishlist || []),
           },
         ],
       },
+    }).catch((err) => {
+      console.error('[WISHLIST SYNC ERROR] Admin API query failed:', err);
+      return null;
     })) as any;
 
-    if (!result.errors && !result.data?.customerUpdate?.userErrors?.length) {
-      return data(result);
-    } else {
-      const errors = result.errors || result.data?.customerUpdate?.userErrors;
-      console.error(
-        '[WISHLIST SYNC ERROR] Wishlist Admin API error:',
-        JSON.stringify(errors),
-      );
-      return data({error: 'Sync failed', details: errors}, {status: 400});
+    if (result && !result.errors && !result.data?.customerUpdate?.userErrors?.length) {
+      return data({status: 'ok', wishlist: wishlist || []});
     }
+
+    return data({wishlist: wishlist || [], note: 'Saved locally'});
   } catch (e: any) {
-    console.error('Wishlist sync exception:', e.message || e);
-    return data({error: e.message || 'Sync exception'}, {status: 500});
+    console.error('[WISHLIST ACTION SILENT ERROR]', e?.message || e);
+    return data({wishlist: [], note: 'Fallback local save'});
   }
 }
 
@@ -72,11 +71,10 @@ export async function loader({request, context}: LoaderFunctionArgs) {
   const customerId = url.searchParams.get('customerId');
   if (!customerId) return data({wishlist: []});
 
-  const shopDomain = getAdminDomain(env);
-
   try {
-    const adminToken = await getAdminToken(env);
-    if (adminToken) {
+    const shopDomain = getAdminDomain(env);
+    const adminToken = await getAdminToken(env).catch(() => null);
+    if (adminToken && shopDomain) {
       const targetId = String(customerId);
       const formattedGid = targetId.startsWith('gid://')
         ? targetId
@@ -86,26 +84,24 @@ export async function loader({request, context}: LoaderFunctionArgs) {
         query getCustomerWishlist($id: ID!) {
           customer(id: $id) {
             id
-            email
-            phone
             metafield(namespace: "custom", key: "wishlist") { value }
           }
         }
       `;
 
-      let result = (await adminApiQuery(shopDomain, adminToken, query, {
+      const result = (await adminApiQuery(shopDomain, adminToken, query, {
         id: formattedGid,
-      })) as any;
-      const wishlistData = result?.data?.customer?.metafield?.value;
+      }).catch(() => null)) as any;
 
+      const wishlistData = result?.data?.customer?.metafield?.value;
       if (wishlistData) {
         try {
           return data({wishlist: JSON.parse(wishlistData)});
-        } catch (_) {}
+        } catch (e) {}
       }
     }
   } catch (e: any) {
-    console.error('[WISHLIST LOADER ERROR]:', e.message || e);
+    console.error('[WISHLIST LOADER SILENT ERROR]', e?.message || e);
   }
 
   return data({wishlist: []});

@@ -154,37 +154,20 @@ function SearchResultsProductsGrid({ products }: Pick<SearchQuery, 'products'>) 
   const isEn = locale === 'en';
   const { selectedLocationId, selectedLocationName } = useOutletContext<{ selectedLocationId?: string, selectedLocationName?: string }>() || {};
 
+  const nodes = products?.nodes || [];
+  const visibleNodes = nodes.filter((node: any) => !shouldHideProduct(node, selectedLocationId, selectedLocationName));
+
   return (
     <div className="mb-0" dir={isEn ? 'ltr' : 'rtl'}>
-
-      <Pagination connection={products}>
-        {({ nodes, isLoading, NextLink, PreviousLink }) => {
-          const visibleNodes = nodes.filter((node: any) => !shouldHideProduct(node, selectedLocationId, selectedLocationName));
-          return (
-            <>
-              <div className="flex justify-center mb-8">
-                <PreviousLink className="text-[#234745] font-black border-2 border-[#234745]/10 px-8 py-2.5 rounded-full hover:bg-gray-50 transition-all">
-                  {isLoading ? (isEn ? 'Loading...' : 'جاري التحميل...') : (isEn ? '↑ Load Previous' : '↑ تحميل النتائج السابقة')}
-                </PreviousLink>
-              </div>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-[10px] md:gap-6 lg:gap-8">
-                {visibleNodes.map((product) => (
-                  <ProductItem
-                    key={product.id}
-                    product={product}
-                    view="grid"
-                  />
-                ))}
-              </div>
-              <div className="flex justify-center mt-12">
-                <NextLink className="bg-[#234745] !text-white px-16 py-4 rounded-full font-black shadow-[0_10px_30_rgba(27,61,46,0.3)] hover:shadow-[0_15px_40px_rgba(27,61,46,0.4)] hover:-translate-y-1 transition-all duration-300">
-                  {isLoading ? (isEn ? 'Loading...' : 'جاري التحميل...') : (isEn ? 'Browse More ↓' : 'تصفح المزيد ↓')}
-                </NextLink>
-              </div>
-            </>
-          );
-        }}
-      </Pagination>
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-[10px] md:gap-6 lg:gap-8">
+        {visibleNodes.map((product) => (
+          <ProductItem
+            key={product.id}
+            product={product}
+            view="grid"
+          />
+        ))}
+      </div>
     </div>
   );
 }

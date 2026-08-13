@@ -10,7 +10,6 @@ import {
 import {useState, useEffect} from 'react';
 import {createPortal} from 'react-dom';
 import {
-  getPaginationVariables,
   sendShopifyAnalytics,
   AnalyticsEventName,
   AnalyticsPageType,
@@ -26,7 +25,6 @@ import {
 } from '~/routes/($locale).collections.all';
 
 export const meta: MetaFunction<typeof loader> = ({data}) => {
-  // Simple check for English search results in title
   const isEn = data?.searchTerm?.includes('/en/');
   const siteName = isEn ? 'Saadeddin' : 'سعد الدين';
   const searchLabel = isEn ? 'Search' : 'بحث';
@@ -44,8 +42,10 @@ export const meta: MetaFunction<typeof loader> = ({data}) => {
 export async function loader({request, context}: LoaderFunctionArgs) {
   const url = new URL(request.url);
   const searchParams = new URLSearchParams(url.search);
-  const variables = getPaginationVariables(request, {pageBy: 8});
   const searchTerm = String(searchParams.get('q') || '');
+
+  const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10));
+  const itemsPerPage = 12;
 
   const filters: any[] = [];
   searchParams.forEach((value, key) => {
@@ -107,9 +107,6 @@ export async function loader({request, context}: LoaderFunctionArgs) {
   }
   const reverse = searchParams.get('reverse') === 'true';
 
-  // For price sorting, request a larger pool (first: 250) so in-memory sorting covers the entire catalog/search set
-  const queryVariables = sortKey === 'PRICE' ? {first: 250} : variables;
-
   const {storefront} = context;
   const searchPayload = await storefront.query(SEARCH_QUERY as any, {
     variables: {
@@ -117,7 +114,7 @@ export async function loader({request, context}: LoaderFunctionArgs) {
       productFilters: filters.length > 0 ? filters : undefined,
       sortKey: sortKey as any,
       reverse,
-      ...queryVariables,
+      first: 250,
       country: storefront.i18n.country,
       language: storefront.i18n.language,
     },
@@ -166,7 +163,6 @@ export async function loader({request, context}: LoaderFunctionArgs) {
         }
       });
 
-      // Filter searchPayload products by checking if their id is in validIds
       if (searchPayload?.products?.nodes) {
         searchPayload.products.nodes = searchPayload.products.nodes.filter(
           (p: any) => validIds.has(p.id),
@@ -186,15 +182,25 @@ export async function loader({request, context}: LoaderFunctionArgs) {
     });
   }
 
+  const allProductNodes = searchPayload?.products?.nodes || [];
+  const totalProductsCount = allProductNodes.length;
+  const totalPages = Math.ceil(totalProductsCount / itemsPerPage) || 1;
+  const currentPage = Math.min(page, totalPages);
+  const offset = (currentPage - 1) * itemsPerPage;
+
+  const paginatedProducts = allProductNodes.slice(offset, offset + itemsPerPage);
+  if (searchPayload?.products) {
+    searchPayload.products.nodes = paginatedProducts;
+  }
+
   const totalResults =
-    (searchPayload?.products?.nodes?.length || 0) +
+    totalProductsCount +
     (searchPayload?.pages?.nodes?.length || 0) +
     (searchPayload?.articles?.nodes?.length || 0);
 
   // Extract custom tags from the current search payload products
   const extractedTagsSet = new Set<string>();
-  const productNodes = searchPayload?.products?.nodes || [];
-  productNodes.forEach((p: any) =>
+  allProductNodes.forEach((p: any) =>
     p?.tags?.forEach((t: string) => extractedTagsSet.add(t)),
   );
   const extractedTags = Array.from(extractedTagsSet);
@@ -210,6 +216,12 @@ export async function loader({request, context}: LoaderFunctionArgs) {
     searchResults,
     extractedTags,
     globalCollections,
+    pagination: {
+      currentPage,
+      totalPages,
+      totalProductsCount,
+      itemsPerPage,
+    },
     analytics: {
       searchTerm,
       totalResults,
@@ -217,8 +229,116 @@ export async function loader({request, context}: LoaderFunctionArgs) {
   });
 }
 
+function SearchPagination({
+  currentPage,
+  totalPages,
+  searchParams,
+  isEn,
+}: {
+  currentPage: number;
+  totalPages: number;
+  searchParams: URLSearchParams;
+  isEn: boolean;
+}) {
+  if (totalPages <= 1) return null;
+
+  const createPageUrl = (pageNumber: number) => {
+    const params = new URLSearchParams(searchParams);
+    params.set('page', pageNumber.toString());
+    params.delete('cursor');
+    params.delete('direction');
+    return `?${params.toString()}`;
+  };
+
+  const getPageNumbers = () => {
+    const pages: (number | string)[] = [];
+    const delta = 2;
+
+    for (let i = 1; i <= totalPages; i++) {
+      if (
+        i === 1 ||
+        i === totalPages ||
+        (i >= currentPage - delta && i <= currentPage + delta)
+      ) {
+        pages.push(i);
+      } else if (pages[pages.length - 1] !== '...') {
+        pages.push('...');
+      }
+    }
+    return pages;
+  };
+
+  const pageNumbers = getPageNumbers();
+
+  return (
+    <div
+      className="flex items-center justify-center gap-1.5 sm:gap-2 mt-12 mb-6"
+      dir={isEn ? 'ltr' : 'rtl'}
+      style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
+    >
+      {/* Previous Button */}
+      {currentPage > 1 ? (
+        <Link
+          to={createPageUrl(currentPage - 1)}
+          className="w-10 h-10 rounded-full border border-[#234745]/20 flex items-center justify-center text-[#234745] hover:bg-[#234745] hover:text-white transition-all font-bold text-base"
+          aria-label={isEn ? 'Previous Page' : 'الصفحة السابقة'}
+        >
+          {isEn ? '‹' : '›'}
+        </Link>
+      ) : (
+        <span className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center text-gray-300 cursor-not-allowed font-bold text-base">
+          {isEn ? '‹' : '›'}
+        </span>
+      )}
+
+      {/* Page Numbers */}
+      {pageNumbers.map((p, idx) => {
+        if (typeof p === 'string') {
+          return (
+            <span
+              key={`ellipsis-${idx}`}
+              className="w-8 h-10 flex items-center justify-center text-gray-400 font-bold"
+            >
+              ...
+            </span>
+          );
+        }
+        const isCurrent = p === currentPage;
+        return (
+          <Link
+            key={`page-${p}`}
+            to={createPageUrl(p)}
+            className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-[15px] transition-all ${
+              isCurrent
+                ? 'bg-[#234745] text-white shadow-md'
+                : 'bg-white border border-[#234745]/20 text-[#234745] hover:bg-[#234745]/10'
+            }`}
+          >
+            {p}
+          </Link>
+        );
+      })}
+
+      {/* Next Button */}
+      {currentPage < totalPages ? (
+        <Link
+          to={createPageUrl(currentPage + 1)}
+          className="w-10 h-10 rounded-full border border-[#234745]/20 flex items-center justify-center text-[#234745] hover:bg-[#234745] hover:text-white transition-all font-bold text-base"
+          aria-label={isEn ? 'Next Page' : 'الصفحة التالية'}
+        >
+          {isEn ? '›' : '‹'}
+        </Link>
+      ) : (
+        <span className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center text-gray-300 cursor-not-allowed font-bold text-base">
+          {isEn ? '›' : '‹'}
+        </span>
+      )}
+    </div>
+  );
+}
+
 export default function SearchPage() {
-  const {searchTerm, searchResults, extractedTags, globalCollections} =
+  const {searchTerm, searchResults, extractedTags, globalCollections, pagination} =
     useLoaderData<any>();
 
   const {locale} = useOutletContext<{locale: string}>();
@@ -301,35 +421,44 @@ export default function SearchPage() {
                 fill="#234745"
               />
             </svg>
-            <span>{isEn ? 'Back' : 'رجوع'}</span>
+            <span>{isEn ? 'Back' : 'الرجوع'}</span>
           </button>
-          <div className="flex-1 w-full min-w-0">
-            <SearchForm searchTerm={searchTerm} />
-          </div>
+
+          <h1
+            className={`text-white text-[20px] md:text-[28px] font-bold truncate tracking-tight text-center ${isEn ? 'font-en' : ''}`}
+            dir={isEn ? 'ltr' : 'rtl'}
+          >
+            {searchTerm ? (
+              <span>
+                {isEn ? 'Search for' : 'نتائج البحث عن'}: "{searchTerm}"
+              </span>
+            ) : (
+              <span>{isEn ? 'All Products' : 'جميع المنتجات'}</span>
+            )}
+          </h1>
         </div>
       </section>
 
-      <div className="bg-[#FEF8EB] min-h-screen">
-        <div className="px-4 md:px-8 lg:px-12 py-10 max-w-[1440px] mx-auto text-right">
+      {/* Main Container */}
+      <div className="max-w-[1440px] mx-auto px-4 md:px-8 lg:px-12 py-8 md:py-12">
+        <div className="flex flex-col gap-6">
+          <div className="w-full">
+            <SearchForm searchTerm={searchTerm} />
+          </div>
+
           <div className="flex flex-col lg:flex-row gap-8 items-start">
-            <div className="flex-1 min-w-0 w-full lg:order-2">
-              {/* Mobile Layout Controls (< lg) */}
+            <div className="flex-1 w-full min-w-0">
+              {/* Mobile Filter Controls Bar */}
               <div
-                className="lg:hidden flex flex-col gap-4 mb-2"
+                className="flex flex-col gap-3 lg:hidden mb-4 w-full"
                 dir={isEn ? 'ltr' : 'rtl'}
               >
-                {/* Row 1: Filter button on right (RTL start), Sort on left (RTL end) */}
-                <div className="flex items-center justify-between w-full gap-2">
-                  {/* Filter Button */}
+                <div className="flex items-center justify-between gap-2.5 w-full">
+                  {/* Filter Toggle Button */}
                   <button
-                    type="button"
                     onClick={() => setIsFilterOpen(true)}
-                    className="flex items-center gap-2 px-2 py-2 bg-white border border-[#BBCFCD]/50 text-[#234745] rounded-[6px] font-medium hover:bg-gray-50 transition-all md:text-[14px] shrink-0"
-                    style={{
-                      fontFamily: !isEn
-                        ? "'GE Dinar One', sans-serif"
-                        : undefined,
-                    }}
+                    className="flex items-center justify-center gap-2 bg-transparent border border-[#BBCFCD]/60 rounded-[6px] px-3 py-2 text-[14px] font-bold text-[#234745] hover:bg-gray-50 transition-all shrink-0 cursor-pointer"
+                    dir={isEn ? 'ltr' : 'rtl'}
                   >
                     <svg
                       width="16"
@@ -337,20 +466,17 @@ export default function SearchPage() {
                       viewBox="0 0 24 24"
                       fill="none"
                       stroke="currentColor"
-                      strokeWidth="2.2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className="text-[#234745] shrink-0"
+                      strokeWidth="2.5"
                     >
-                      <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                      <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
                     </svg>
-                    <span>{isEn ? 'Filter' : 'تصفية'}</span>
+                    <span>{isEn ? 'Filters' : 'تصفية النتائج'}</span>
                   </button>
 
-                  {/* Sort by Dropdown */}
-                  <div className="flex items-center gap-1">
+                  {/* Sort Dropdown */}
+                  <div className="flex items-center gap-1.5 shrink-0">
                     <span
-                      className="text-[#BBCFCD] text-[12px] md:text-[16px] font-normal md:font-medium whitespace-nowrap"
+                      className="text-[#BBCFCD] text-[13px] font-bold shrink-0"
                       style={{
                         fontFamily: !isEn
                           ? "'GE Dinar One', sans-serif"
@@ -377,6 +503,7 @@ export default function SearchPage() {
                           params.set('reverse', rev);
                           params.delete('cursor');
                           params.delete('direction');
+                          params.delete('page');
                           setSearchParams(params, {preventScrollReset: true});
                         }}
                         value={`${searchParams.get('sortKey') || 'RELEVANCE'}|${searchParams.get('reverse') || 'false'}`}
@@ -412,7 +539,7 @@ export default function SearchPage() {
                   </div>
                 </div>
 
-                {/* Row 2: Active Filter Chips */}
+                {/* Active Filter Chips */}
                 <div className="flex flex-wrap items-center gap-2.5 justify-start w-full">
                   <ActiveFilterChips
                     isEn={isEn}
@@ -421,12 +548,11 @@ export default function SearchPage() {
                 </div>
               </div>
 
-              {/* Desktop Layout Controls (hidden on mobile, visible on lg) */}
+              {/* Desktop Layout Controls */}
               <div
                 className={`hidden lg:flex ${isEn ? 'flex-row' : 'flex-row-reverse'} items-center justify-between gap-4 mb-4 w-full`}
                 dir={isEn ? 'ltr' : 'rtl'}
               >
-                {/* Sort Dropdown (Left side in RTL) */}
                 <div className="flex items-center gap-2.5 shrink-0">
                   <span
                     className="text-[#BBCFCD] text-[15px] font-bold"
@@ -456,6 +582,7 @@ export default function SearchPage() {
                         params.set('reverse', rev);
                         params.delete('cursor');
                         params.delete('direction');
+                        params.delete('page');
                         setSearchParams(params, {preventScrollReset: true});
                       }}
                       value={`${searchParams.get('sortKey') || 'RELEVANCE'}|${searchParams.get('reverse') || 'false'}`}
@@ -471,7 +598,7 @@ export default function SearchPage() {
                       </option>
                     </select>
                     <svg
-                      className={`absolute ${isEn ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#234745] pointer-events-none`}
+                      className={`absolute ${isEn ? 'right-2' : 'left-2'} top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#234745] pointer-events-none`}
                       fill="none"
                       stroke="currentColor"
                       strokeWidth="2.5"
@@ -486,7 +613,6 @@ export default function SearchPage() {
                   </div>
                 </div>
 
-                {/* Active Filter Chips (Right side in RTL) */}
                 <div className="flex-1 flex flex-wrap items-center gap-2.5 justify-start">
                   <ActiveFilterChips
                     isEn={isEn}
@@ -498,7 +624,17 @@ export default function SearchPage() {
               {!searchResults.totalResults ? (
                 <NoSearchResults searchTerm={searchTerm} />
               ) : (
-                <SearchResults results={searchResults.results as any} />
+                <>
+                  <SearchResults results={searchResults.results as any} />
+                  {pagination && (
+                    <SearchPagination
+                      currentPage={pagination.currentPage}
+                      totalPages={pagination.totalPages}
+                      searchParams={searchParams}
+                      isEn={isEn}
+                    />
+                  )}
+                </>
               )}
             </div>
 
@@ -578,35 +714,11 @@ const SEARCH_QUERY = `#graphql
         currencyCode
       }
     }
-    visibility_start: metafield(namespace: "custom", key: "visibility_start") {
-      value
-    }
-    visibility_end: metafield(namespace: "custom", key: "visibility_end") {
-      value
-    }
-    rating: metafield(namespace: "reviews", key: "rating") {
-      value
-    }
-    ratingCount: metafield(namespace: "reviews", key: "rating_count") {
-      value
-    }
-    bogo_free_item: metafield(namespace: "custom", key: "bogo_free_item") {
-      value
-      reference {
-        ... on ProductVariant {
-          id
-        }
-      }
-    }
-    variants(first: 10) {
+    variants(first: 1) {
       nodes {
         id
-        image {
-          url
-          altText
-          width
-          height
-        }
+        title
+        availableForSale
         price {
           amount
           currencyCode
@@ -623,33 +735,11 @@ const SEARCH_QUERY = `#graphql
           handle
           title
         }
-        storeAvailability(first: 250) {
-          nodes {
-            available
-            location {
-              id
-              name
-            }
-          }
-        }
       }
     }
   }
-  fragment SearchPage on Page {
-     __typename
-     handle
-    id
-    title
-    trackingParameters
-  }
-  fragment SearchArticle on Article {
-    __typename
-    handle
-    id
-    title
-    trackingParameters
-  }
-  query search(
+
+  query Search(
     $country: CountryCode
     $endCursor: String
     $first: Int
@@ -662,17 +752,19 @@ const SEARCH_QUERY = `#graphql
     $reverse: Boolean
   ) @inContext(country: $country, language: $language) {
     products: search(
-      query: $query,
-      unavailableProducts: HIDE,
-      types: [PRODUCT],
-      first: $first,
-      sortKey: $sortKey,
-      reverse: $reverse,
-      last: $last,
-      before: $startCursor,
-      after: $endCursor,
+      after: $endCursor
+      before: $startCursor
+      first: $first
+      last: $last
+      query: $query
       productFilters: $productFilters
+      sortKey: $sortKey
+      reverse: $reverse
+      types: [PRODUCT]
     ) {
+      nodes {
+        ...SearchProduct
+      }
       productFilters {
         id
         label
@@ -684,11 +776,6 @@ const SEARCH_QUERY = `#graphql
           input
         }
       }
-      nodes {
-        ...on Product {
-          ...SearchProduct
-        }
-      }
       pageInfo {
         hasNextPage
         hasPreviousPage
@@ -696,34 +783,12 @@ const SEARCH_QUERY = `#graphql
         endCursor
       }
     }
-    pages: search(
-      query: $query,
-      types: [PAGE],
-      first: 10
-    ) {
-      nodes {
-        ...on Page {
-          ...SearchPage
-        }
-      }
-    }
-    articles: search(
-      query: $query,
-      types: [ARTICLE],
-      first: 10
-    ) {
-      nodes {
-        ...on Article {
-          ...SearchArticle
-        }
-      }
-    }
-    collections(first: 50) {
+    collections: collections(first: 100) {
       nodes {
         id
-        handle
         title
+        handle
       }
     }
   }
-` as const;
+`;

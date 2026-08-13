@@ -2,6 +2,7 @@ import { X, Heart } from 'lucide-react';
 import { useRouteLoaderData, Await } from 'react-router';
 import { Suspense, useState } from 'react';
 import { AddToCartButton } from '~/components/AddToCartButton';
+import { useWishlist } from '~/context/WishlistContext';
 
 interface ProductUpsellModalProps {
   isOpen: boolean;
@@ -22,6 +23,7 @@ export function ProductUpsellModal({
 }: ProductUpsellModalProps) {
   const rootData = useRouteLoaderData('root') as any;
   const [addedProductIds, setAddedProductIds] = useState<Record<string, boolean>>({});
+  const { toggleWishlist, isInWishlist } = useWishlist();
 
   if (!isOpen || !upsellProducts || upsellProducts.length === 0) return null;
 
@@ -108,6 +110,7 @@ export function ProductUpsellModal({
                 ? parseFloat(variant.compareAtPrice.amount)
                 : null;
               const isAdded = addedProductIds[prod.id];
+              const isWishlisted = isInWishlist(prod.id);
 
               return (
                 <div
@@ -115,14 +118,35 @@ export function ProductUpsellModal({
                   className="bg-white rounded-[22px] p-3.5 border border-[#EAE3D2] shadow-sm hover:shadow-md transition-all flex flex-col justify-between group relative"
                 >
                   <div>
-                    {/* Image Area with Heart Icon */}
+                    {/* Image Area with Functional Wishlist Heart Icon */}
                     <div className="relative w-full aspect-[4/3] rounded-[16px] overflow-hidden bg-gray-50 mb-3">
                       <button
                         type="button"
-                        className="absolute top-2.5 left-2.5 rtl:left-2.5 rtl:right-auto ltr:right-2.5 ltr:left-auto w-8 h-8 rounded-full bg-white/95 backdrop-blur-sm shadow-sm flex items-center justify-center text-gray-500 hover:text-red-500 hover:bg-white transition-all z-10 cursor-pointer"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          toggleWishlist({
+                            id: prod.id,
+                            variantId: variant.id,
+                            title: prod.title,
+                            handle: prod.handle || '',
+                            image: { url: imgUrl },
+                            priceRange: prod.priceRange || {
+                              minVariantPrice: {
+                                amount: String(price),
+                                currencyCode: variant.price?.currencyCode || 'SAR',
+                              },
+                            },
+                          });
+                        }}
+                        className={`absolute top-2.5 left-2.5 rtl:left-2.5 rtl:right-auto ltr:right-2.5 ltr:left-auto w-8 h-8 rounded-full shadow-sm flex items-center justify-center transition-all z-10 cursor-pointer ${
+                          isWishlisted
+                            ? 'bg-white text-red-500 hover:text-red-600'
+                            : 'bg-white/95 text-gray-500 hover:text-red-500 hover:bg-white'
+                        }`}
                         aria-label={isEn ? 'Add to Wishlist' : 'إضافة للمفضلة'}
                       >
-                        <Heart className="w-4 h-4 stroke-[2]" />
+                        <Heart className={`w-4 h-4 stroke-[2] ${isWishlisted ? 'fill-current text-red-500' : ''}`} />
                       </button>
                       <img
                         src={imgUrl}

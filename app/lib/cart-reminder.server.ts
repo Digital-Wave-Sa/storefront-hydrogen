@@ -1,5 +1,3 @@
-import fs from 'fs';
-import path from 'path';
 import { sendEmail } from './email.server';
 
 export interface PendingCartReminder {
@@ -21,26 +19,15 @@ export interface PendingCartReminder {
   language: 'en' | 'ar';
 }
 
-const STORAGE_PATH = path.resolve(process.cwd(), 'scratch_cart_reminders.json');
+// Global in-memory storage for reminders across Worker/SSR requests
+const globalReminderStore = new Map<string, PendingCartReminder>();
 
 function readReminders(): PendingCartReminder[] {
-  try {
-    if (fs.existsSync(STORAGE_PATH)) {
-      const data = fs.readFileSync(STORAGE_PATH, 'utf8');
-      return JSON.parse(data);
-    }
-  } catch (e) {
-    console.error('[CART REMINDER] Error reading reminders file:', e);
-  }
-  return [];
+  return Array.from(globalReminderStore.values());
 }
 
-function writeReminders(reminders: PendingCartReminder[]) {
-  try {
-    fs.writeFileSync(STORAGE_PATH, JSON.stringify(reminders, null, 2), 'utf8');
-  } catch (e) {
-    console.error('[CART REMINDER] Error writing reminders file:', e);
-  }
+function writeReminder(reminder: PendingCartReminder) {
+  globalReminderStore.set(reminder.id, reminder);
 }
 
 /**
@@ -60,7 +47,6 @@ export function scheduleCartReminder({
   email: string;
   phone?: string;
   items: Array<{ title: string; quantity: number; price: string | number; image?: string }>;
-  email?: string;
   subtotal: string | number;
   checkoutUrl: string;
   language?: 'en' | 'ar';
@@ -71,15 +57,15 @@ export function scheduleCartReminder({
     return null;
   }
 
-  const reminders = readReminders();
   const now = Date.now();
   const remindAt = now + delayMinutes * 60 * 1000;
+  const reminders = readReminders();
 
-  // Check if reminder already exists for this email/cart
-  const existingIdx = reminders.findIndex((r) => r.email === email && r.status === 'PENDING');
+  // Check if reminder already exists for this email
+  const existing = reminders.find((r) => r.email === email && r.status === 'PENDING');
 
   const reminderData: PendingCartReminder = {
-    id: existingIdx >= 0 ? reminders[existingIdx].id : `rem_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+    id: existing ? existing.id : `rem_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
     cartId,
     email,
     phone,
@@ -92,13 +78,7 @@ export function scheduleCartReminder({
     language,
   };
 
-  if (existingIdx >= 0) {
-    reminders[existingIdx] = reminderData;
-  } else {
-    reminders.push(reminderData);
-  }
-
-  writeReminders(reminders);
+  writeReminder(reminderData);
   console.log(
     `[CART REMINDER] Scheduled ${delayMinutes}-min email reminder for ${email} at ${new Date(remindAt).toLocaleTimeString()}`,
   );
@@ -109,17 +89,12 @@ export function scheduleCartReminder({
  * Cancels pending cart reminder if order completed or cart emptied
  */
 export function cancelCartReminder(emailOrCartId: string) {
-  const reminders = readReminders();
-  let updated = false;
-  for (const r of reminders) {
+  for (const r of globalReminderStore.values()) {
     if ((r.email === emailOrCartId || r.cartId === emailOrCartId) && r.status === 'PENDING') {
       r.status = 'CANCELLED';
-      updated = true;
+      globalReminderStore.set(r.id, r);
+      console.log(`[CART REMINDER] Cancelled pending reminder for ${emailOrCartId}`);
     }
-  }
-  if (updated) {
-    writeReminders(reminders);
-    console.log(`[CART REMINDER] Cancelled pending reminder for ${emailOrCartId}`);
   }
 }
 
@@ -135,19 +110,16 @@ export async function processDueReminders(env: any): Promise<{ processed: number
   for (const r of reminders) {
     if (r.status === 'PENDING' && now >= r.remindAt) {
       processed++;
-      console.log(`[CART REMINDER] Processing due 10-min reminder for ${r.email}...`);
+      console.log(`[CART REMINDER] Processing due reminder for ${r.email}...`);
 
       const success = await sendCartReminderEmail(r, env);
       if (success) {
         r.status = 'SENT';
+        globalReminderStore.set(r.id, r);
         sent++;
-        console.log(`[CART REMINDER SUCCESS] Sent 10-min reminder email to ${r.email}`);
+        console.log(`[CART REMINDER SUCCESS] Sent reminder email to ${r.email}`);
       }
     }
-  }
-
-  if (processed > 0) {
-    writeReminders(reminders);
   }
 
   return { processed, sent };
@@ -210,8 +182,8 @@ async function sendCartReminderEmail(reminder: PendingCartReminder, env: any): P
           <div class="subtitle">
             ${
               isEn
-                ? "We noticed you left some delicious items in your cart. Complete your order now before items sell out!"
-                : "لاحظنا أنك تركت بعض المنتجات الشهية في سلتك. أكمل طلبك الآن قبل نفاد الكمية!"
+                ? 'We noticed you left some delicious items in your cart. Complete your order now before items sell out!'
+                : 'لاحظنا أنك تركت بعض المنتجات الشهية في سلتك. أكمل طلبك الآن قبل نفاد الكمية!'
             }
           </div>
 

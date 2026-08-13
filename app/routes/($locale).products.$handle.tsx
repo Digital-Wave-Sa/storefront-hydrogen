@@ -2833,7 +2833,11 @@ export default function Product() {
                           window.scrollTo({top: 0, behavior: 'smooth'})
                         }
                         onAddToCartSuccess={() => {
-                          open('cart');
+                          if (upsellProducts && upsellProducts.length > 0) {
+                            setIsUpsellModalOpen(true);
+                          } else {
+                            open('cart');
+                          }
                         }}
                         lines={
                           selectedVariant
@@ -3428,7 +3432,11 @@ export default function Product() {
                             window.scrollTo({top: 0, behavior: 'smooth'})
                           }
                           onAddToCartSuccess={() => {
-                            open('cart');
+                            if (upsellProducts && upsellProducts.length > 0) {
+                              setIsUpsellModalOpen(true);
+                            } else {
+                              open('cart');
+                            }
                           }}
                           lines={
                             selectedVariant

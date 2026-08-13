@@ -96,6 +96,10 @@ export function ProductUpsellModal({
                         selectedVariant: variant,
                       },
                     ]}
+                    onAddToCartSuccess={() => {
+                      onOpenCart();
+                      onClose();
+                    }}
                     className="w-full py-2 bg-[#234745] hover:bg-[#1B3836] text-white text-[13px] font-bold rounded-full flex items-center justify-center gap-1.5 transition-all shadow-sm active:scale-95 cursor-pointer"
                   >
                     <Plus className="w-4 h-4" />

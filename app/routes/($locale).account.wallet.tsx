@@ -258,81 +258,39 @@ export async function action({request, context}: ActionFunctionArgs) {
         currency: 'SAR',
       });
     } else {
-      // First, check details to see how much balance the card has
-      const detailsRes = await fetch(
-        `${baseGiftCardUrl}/gift-cards/${voucherCode}`,
-      );
-      if (!detailsRes.ok) {
-        return json(
-          {
-            intent: 'redeem_voucher',
-            error: isEn ? 'Invalid voucher code.' : 'رمز القسيمة غير صحيح.',
-          },
-          {status: 400},
-        );
-      }
-      const detailsData = (await detailsRes.json()) as any;
-      balanceBeforeActivation = detailsData?.data?.currentBalance || 0;
-
-      // Call POST /gift-cards/:code/activate to bind it
-      const res = await fetch(
-        `${baseGiftCardUrl}/gift-cards/${voucherCode}/activate`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            phone: formattedPhone,
-          }),
+      // Call POST https://sdgc.saadeddin.top/api/storefront/gift-card
+      const res = await fetch('https://sdgc.saadeddin.top/api/storefront/gift-card', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
-      );
+        body: JSON.stringify({
+          code: voucherCode,
+          customerId: customer.id,
+        }),
+      });
 
       const data = (await res.json()) as any;
 
       if (!res.ok || !data.success) {
-        const reason = data.error || 'unknown';
-        let friendlyError = isEn
-          ? 'Failed to activate voucher.'
-          : 'فشل في تفعيل القسيمة.';
-
-        if (
-          reason.includes('Already activated') ||
-          reason.includes('already_used')
-        ) {
-          friendlyError = isEn
-            ? 'This voucher has already been activated.'
-            : 'تم تفعيل هذه القسيمة بالفعل مسبقاً.';
-        } else if (
-          reason.includes('not found') ||
-          reason.includes('invalid_code')
-        ) {
-          friendlyError = isEn
-            ? 'Invalid voucher code.'
-            : 'رمز القسيمة غير صحيح.';
-        }
-
         return json(
-          {intent: 'redeem_voucher', error: friendlyError},
+          {
+            intent: 'redeem_voucher',
+            error:
+              data.error ||
+              (isEn
+                ? 'Invalid gift card code. Please check and try again.'
+                : 'رمز بطاقة الهدايا غير صحيح. يرجى التحقق والمحاولة مرة أخرى.'),
+          },
           {status: 400},
         );
-      }
-
-      // Retrieve new aggregated balance for the user
-      let newBalance = balanceBeforeActivation;
-      const balanceRes = await fetch(
-        `${baseGiftCardUrl}/gift-cards/by-phone/${encodeURIComponent(formattedPhone)}`,
-      );
-      if (balanceRes.ok) {
-        const balanceData = (await balanceRes.json()) as any;
-        newBalance = balanceData?.data?.totalBalance || 0;
       }
 
       return json({
         intent: 'redeem_voucher',
         success: true,
-        creditedAmount: balanceBeforeActivation,
-        newBalance,
+        message: data.message,
+        newBalance: data.newBalance,
         currency: 'SAR',
       });
     }
@@ -351,9 +309,14 @@ export async function action({request, context}: ActionFunctionArgs) {
 }
 
 import {useOutletContext} from 'react-router';
+import {GiftCardActivation} from '~/components/GiftCardActivation';
+import {StoreCreditBalance} from '~/components/StoreCreditBalance';
 
 export default function WalletPage() {
-  const {walletPromise} = useOutletContext<{walletPromise: Promise<any>}>();
+  const {customer, walletPromise} = useOutletContext<{
+    customer?: any;
+    walletPromise: Promise<any>;
+  }>();
   const actionData = useActionData<{
     intent?: string;
     success?: boolean;
@@ -405,7 +368,7 @@ export default function WalletPage() {
 
           return (
             <div
-              className="wallet-page animate-fade-in"
+              className="wallet-page animate-fade-in space-y-8"
               dir={isEn ? 'ltr' : 'rtl'}
             >
               <div className="mb-8">
@@ -419,7 +382,14 @@ export default function WalletPage() {
                 </p>
               </div>
 
-              <div className="mb-10">
+              {/* Top Row: Store Credit Balance & Loyalty Points */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <StoreCreditBalance
+                  customerId={customer?.id}
+                  isEn={isEn}
+                  initialBalance={currentBalance}
+                />
+
                 {/* Loyalty Points Card */}
                 <div className="bg-[#fcfaf7] border-2 border-[#f0e6d8] rounded-[24px] p-8 relative overflow-hidden flex flex-col justify-between">
                   <div>
@@ -478,6 +448,12 @@ export default function WalletPage() {
                   )}
                 </div>
               </div>
+
+              {/* Gift Card Activation Section */}
+              <GiftCardActivation
+                customerId={customer?.id}
+                isEn={isEn}
+              />
 
               {/* RECENT ACTIVITY (HISTORY) SECTION */}
               <div className="mt-12 bg-white border border-gray-200 rounded-[24px] p-8 shadow-sm">

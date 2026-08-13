@@ -741,7 +741,7 @@ export function ActiveFilterChips({
 
   if (!params) return null;
 
-  const chips: {key: string; label: React.ReactNode}[] = [];
+  const chips: {id: string; key: string; value: string; label: React.ReactNode}[] = [];
   params.forEach((value, key) => {
     if (
       key === 'q' ||
@@ -839,7 +839,7 @@ export function ActiveFilterChips({
       label = foundTrans ? (isEn ? foundTrans.en : foundTrans.ar) : value;
     }
 
-    chips.push({key, label});
+    chips.push({id: `${key}|${value}`, key, value, label});
   });
 
   // Also include categories
@@ -891,21 +891,35 @@ export function ActiveFilterChips({
       }
     }
 
-    chips.push({key: `category|${value}`, label: labelText});
+    chips.push({
+      id: `category|${value}`,
+      key: 'category',
+      value,
+      label: labelText,
+    });
   });
 
-  const removeFilter = (itemKey: string) => {
+  const removeFilter = (targetKey: string, targetValue?: string) => {
     const newParams = new URLSearchParams(window.location.search);
-    if (itemKey.startsWith('category|')) {
-      const val = itemKey.split('|')[1];
+    if (targetKey === 'category' && targetValue) {
       const categories = newParams.getAll('category');
       newParams.delete('category');
       categories
-        .filter((c) => c !== val)
+        .filter((c) => c !== targetValue)
         .forEach((c) => newParams.append('category', c));
+    } else if (targetValue !== undefined) {
+      const existingValues = newParams.getAll(targetKey);
+      newParams.delete(targetKey);
+      existingValues
+        .filter((val) => val !== targetValue)
+        .forEach((val) => newParams.append(targetKey, val));
     } else {
-      newParams.delete(itemKey);
+      newParams.delete(targetKey);
     }
+    newParams.delete('cursor');
+    newParams.delete('direction');
+    newParams.delete('page');
+
     submit(newParams, {replace: true, preventScrollReset: true});
   };
 
@@ -913,8 +927,8 @@ export function ActiveFilterChips({
     <>
       {chips.map((chip) => (
         <button
-          key={chip.key}
-          onClick={() => removeFilter(chip.key)}
+          key={chip.id}
+          onClick={() => removeFilter(chip.key, chip.value)}
           className="bg-white border border-[#BBCFCD]/50 px-[15px] py-[6px] rounded-full flex items-center gap-2.5 text-[14px] font-medium text-[#234745] hover:border-[#234745] hover:bg-gray-50 transition-all group"
           style={{fontFamily: !isEn ? "'GE Dinar One', sans-serif" : undefined}}
         >

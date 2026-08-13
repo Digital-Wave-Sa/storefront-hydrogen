@@ -7,7 +7,7 @@ import {
   useLocation,
   useSearchParams,
 } from 'react-router';
-import {useState, useEffect} from 'react';
+import {useState, useEffect, useRef} from 'react';
 import {createPortal} from 'react-dom';
 import {
   sendShopifyAnalytics,
@@ -43,9 +43,6 @@ export async function loader({request, context}: LoaderFunctionArgs) {
   const url = new URL(request.url);
   const searchParams = new URLSearchParams(url.search);
   const searchTerm = String(searchParams.get('q') || '');
-
-  const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10));
-  const itemsPerPage = 12;
 
   const filters: any[] = [];
   searchParams.forEach((value, key) => {
@@ -184,15 +181,6 @@ export async function loader({request, context}: LoaderFunctionArgs) {
 
   const allProductNodes = searchPayload?.products?.nodes || [];
   const totalProductsCount = allProductNodes.length;
-  const totalPages = Math.ceil(totalProductsCount / itemsPerPage) || 1;
-  const currentPage = Math.min(page, totalPages);
-  const offset = (currentPage - 1) * itemsPerPage;
-
-  const paginatedProducts = allProductNodes.slice(offset, offset + itemsPerPage);
-  if (searchPayload?.products) {
-    searchPayload.products.nodes = paginatedProducts;
-  }
-
   const totalResults =
     totalProductsCount +
     (searchPayload?.pages?.nodes?.length || 0) +
@@ -216,12 +204,8 @@ export async function loader({request, context}: LoaderFunctionArgs) {
     searchResults,
     extractedTags,
     globalCollections,
-    pagination: {
-      currentPage,
-      totalPages,
-      totalProductsCount,
-      itemsPerPage,
-    },
+    totalProductsCount,
+    allProductNodes,
     analytics: {
       searchTerm,
       totalResults,
@@ -229,117 +213,15 @@ export async function loader({request, context}: LoaderFunctionArgs) {
   });
 }
 
-function SearchPagination({
-  currentPage,
-  totalPages,
-  searchParams,
-  isEn,
-}: {
-  currentPage: number;
-  totalPages: number;
-  searchParams: URLSearchParams;
-  isEn: boolean;
-}) {
-  if (totalPages <= 1) return null;
-
-  const createPageUrl = (pageNumber: number) => {
-    const params = new URLSearchParams(searchParams);
-    params.set('page', pageNumber.toString());
-    params.delete('cursor');
-    params.delete('direction');
-    return `?${params.toString()}`;
-  };
-
-  const getPageNumbers = () => {
-    const pages: (number | string)[] = [];
-    const delta = 2;
-
-    for (let i = 1; i <= totalPages; i++) {
-      if (
-        i === 1 ||
-        i === totalPages ||
-        (i >= currentPage - delta && i <= currentPage + delta)
-      ) {
-        pages.push(i);
-      } else if (pages[pages.length - 1] !== '...') {
-        pages.push('...');
-      }
-    }
-    return pages;
-  };
-
-  const pageNumbers = getPageNumbers();
-
-  return (
-    <div
-      className="flex items-center justify-center gap-1.5 sm:gap-2 mt-12 mb-6"
-      dir={isEn ? 'ltr' : 'rtl'}
-      style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
-    >
-      {/* Previous Button */}
-      {currentPage > 1 ? (
-        <Link
-          to={createPageUrl(currentPage - 1)}
-          className="w-10 h-10 rounded-full border border-[#234745]/20 flex items-center justify-center text-[#234745] hover:bg-[#234745] hover:text-white transition-all font-bold text-base"
-          aria-label={isEn ? 'Previous Page' : 'الصفحة السابقة'}
-        >
-          {isEn ? '‹' : '›'}
-        </Link>
-      ) : (
-        <span className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center text-gray-300 cursor-not-allowed font-bold text-base">
-          {isEn ? '‹' : '›'}
-        </span>
-      )}
-
-      {/* Page Numbers */}
-      {pageNumbers.map((p, idx) => {
-        if (typeof p === 'string') {
-          return (
-            <span
-              key={`ellipsis-${idx}`}
-              className="w-8 h-10 flex items-center justify-center text-gray-400 font-bold"
-            >
-              ...
-            </span>
-          );
-        }
-        const isCurrent = p === currentPage;
-        return (
-          <Link
-            key={`page-${p}`}
-            to={createPageUrl(p)}
-            className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-[15px] transition-all ${
-              isCurrent
-                ? 'bg-[#234745] text-white shadow-md'
-                : 'bg-white border border-[#234745]/20 text-[#234745] hover:bg-[#234745]/10'
-            }`}
-          >
-            {p}
-          </Link>
-        );
-      })}
-
-      {/* Next Button */}
-      {currentPage < totalPages ? (
-        <Link
-          to={createPageUrl(currentPage + 1)}
-          className="w-10 h-10 rounded-full border border-[#234745]/20 flex items-center justify-center text-[#234745] hover:bg-[#234745] hover:text-white transition-all font-bold text-base"
-          aria-label={isEn ? 'Next Page' : 'الصفحة التالية'}
-        >
-          {isEn ? '›' : '‹'}
-        </Link>
-      ) : (
-        <span className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center text-gray-300 cursor-not-allowed font-bold text-base">
-          {isEn ? '›' : '‹'}
-        </span>
-      )}
-    </div>
-  );
-}
-
 export default function SearchPage() {
-  const {searchTerm, searchResults, extractedTags, globalCollections, pagination} =
-    useLoaderData<any>();
+  const {
+    searchTerm,
+    searchResults,
+    extractedTags,
+    globalCollections,
+    totalProductsCount,
+    allProductNodes,
+  } = useLoaderData<any>();
 
   const {locale} = useOutletContext<{locale: string}>();
   const isEn = locale === 'en';
@@ -349,18 +231,47 @@ export default function SearchPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const [sortKey, setSortKey] = useState('RELEVANCE');
-  const [reverse, setReverse] = useState('false');
+  const [visibleCount, setVisibleCount] = useState(12);
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
+  // Reset visible count when search query, filter, or sort changes
   useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    setSortKey(params.get('sortKey') || 'RELEVANCE');
-    setReverse(params.get('reverse') || 'false');
-  }, [location.search]);
+    setVisibleCount(12);
+  }, [location.search, searchTerm]);
+
+  // Infinite Scroll Observer: Load next 12 items as user scrolls down
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const target = entries[0];
+        if (target.isIntersecting) {
+          setVisibleCount((prev) => {
+            if (prev < totalProductsCount) {
+              return Math.min(prev + 12, totalProductsCount);
+            }
+            return prev;
+          });
+        }
+      },
+      {rootMargin: '250px'},
+    );
+
+    const currentRef = loadMoreRef.current;
+    if (currentRef) {
+      observer.observe(currentRef);
+    }
+
+    return () => {
+      if (currentRef) {
+        observer.unobserve(currentRef);
+      }
+      observer.disconnect();
+    };
+  }, [totalProductsCount, visibleCount]);
 
   useEffect(() => {
     if (searchTerm) {
@@ -371,8 +282,22 @@ export default function SearchPage() {
     }
   }, [searchTerm, searchResults, publish]);
 
-  const totalProducts = searchResults?.results?.products?.nodes?.length || 0;
   const filterOptions = searchResults?.results?.products?.productFilters || [];
+
+  // Slice visible products according to infinite scroll progress
+  const displayedPayload = searchResults?.results
+    ? {
+        ...searchResults.results,
+        products: searchResults.results.products
+          ? {
+              ...searchResults.results.products,
+              nodes: (allProductNodes || []).slice(0, visibleCount),
+            }
+          : undefined,
+      }
+    : null;
+
+  const hasMoreToLoad = visibleCount < totalProductsCount;
 
   return (
     <div
@@ -625,14 +550,19 @@ export default function SearchPage() {
                 <NoSearchResults searchTerm={searchTerm} />
               ) : (
                 <>
-                  <SearchResults results={searchResults.results as any} />
-                  {pagination && (
-                    <SearchPagination
-                      currentPage={pagination.currentPage}
-                      totalPages={pagination.totalPages}
-                      searchParams={searchParams}
-                      isEn={isEn}
-                    />
+                  <SearchResults results={displayedPayload as any} />
+
+                  {/* Infinite Scroll Sentinel */}
+                  {hasMoreToLoad && (
+                    <div
+                      ref={loadMoreRef}
+                      className="py-10 flex flex-col items-center justify-center gap-2"
+                    >
+                      <div className="w-8 h-8 border-3 border-[#234745]/20 border-t-[#234745] rounded-full animate-spin" />
+                      <span className="text-[#234745] font-bold text-sm">
+                        {isEn ? 'Loading more products...' : 'جاري تحميل المزيد من المنتجات...'}
+                      </span>
+                    </div>
                   )}
                 </>
               )}

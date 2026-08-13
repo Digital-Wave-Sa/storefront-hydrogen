@@ -4241,13 +4241,26 @@ function ProductGallery({images, product}: {images: any[]; product: any}) {
           <button
             onClick={(e) => {
               e.preventDefault();
+              const firstImg = images[0];
+              const imgObj =
+                typeof firstImg === 'string'
+                  ? {url: firstImg}
+                  : firstImg?.url
+                  ? {url: firstImg.url, altText: firstImg.altText}
+                  : {url: String(firstImg || '')};
+              const pr = product.priceRange || {
+                minVariantPrice: {
+                  amount: selectedVariant?.price?.amount || '0',
+                  currencyCode: selectedVariant?.price?.currencyCode || 'SAR',
+                },
+              };
               toggleWishlist({
                 id: product.id,
                 variantId: selectedVariant?.id || product.variants?.nodes?.[0]?.id,
                 title: product.title,
                 handle: product.handle,
-                image: images[0],
-                priceRange: product.priceRange,
+                image: imgObj,
+                priceRange: pr,
               });
             }}
             className={`w-11 h-11 rounded-full flex items-center justify-center shadow-[0_4px_15px_rgba(0,0,0,0.08)] transition-all hover:scale-110 active:scale-95 border ${isWishlisted ? 'bg-white text-red-500 border-white' : 'bg-white text-gray-400 hover:text-red-500 border-gray-50'}`}

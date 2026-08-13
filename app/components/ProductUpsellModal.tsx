@@ -62,7 +62,10 @@ export function ProductUpsellModal({
             </h3>
             <div className="text-[#707070] text-[13px] sm:text-[14px] font-medium">
               <span>{isEn ? 'Cart subtotal: ' : 'مجموع السلة : '}</span>
-              <span className="font-bold text-[#1E3A37] dir-ltr inline-block">
+              <span
+                className="font-bold text-[#1E3A37] inline-block"
+                style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
+              >
                 {propCartSubtotal ? (
                   `${propCartSubtotal} ${isEn ? 'SAR' : '﷼'}`
                 ) : (
@@ -133,8 +136,11 @@ export function ProductUpsellModal({
                       {title}
                     </h5>
 
-                    {/* Price Section */}
-                    <div className="flex items-center gap-2 mb-4 text-right rtl:text-right ltr:text-left">
+                    {/* Price Section with English Digits */}
+                    <div
+                      className="flex items-center gap-2 mb-4 text-right rtl:text-right ltr:text-left"
+                      style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
+                    >
                       {compareAtPrice && compareAtPrice > price && (
                         <span className="line-through text-gray-400 text-[13px] font-normal">
                           {compareAtPrice}

@@ -4241,6 +4241,10 @@ function ProductGallery({images, product}: {images: any[]; product: any}) {
           <button
             onClick={(e) => {
               e.preventDefault();
+              const firstVariant =
+                product.selectedVariant ||
+                product.variants?.nodes?.[0] ||
+                product.variants?.[0];
               const firstImg = images[0];
               const imgObj =
                 typeof firstImg === 'string'
@@ -4250,13 +4254,13 @@ function ProductGallery({images, product}: {images: any[]; product: any}) {
                   : {url: String(firstImg || '')};
               const pr = product.priceRange || {
                 minVariantPrice: {
-                  amount: selectedVariant?.price?.amount || '0',
-                  currencyCode: selectedVariant?.price?.currencyCode || 'SAR',
+                  amount: firstVariant?.price?.amount || '0',
+                  currencyCode: firstVariant?.price?.currencyCode || 'SAR',
                 },
               };
               toggleWishlist({
                 id: product.id,
-                variantId: selectedVariant?.id || product.variants?.nodes?.[0]?.id,
+                variantId: firstVariant?.id,
                 title: product.title,
                 handle: product.handle,
                 image: imgObj,

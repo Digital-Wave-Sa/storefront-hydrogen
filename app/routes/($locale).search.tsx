@@ -308,7 +308,7 @@ export default function SearchPage() {
 
       {/* Top Header Hero */}
       <section
-        className="relative h-[144px] w-full bg-[#234745] overflow-hidden flex items-center"
+        className="relative py-6 md:py-8 w-full bg-[#234745] overflow-hidden flex flex-col justify-center"
         dir={isEn ? 'ltr' : 'rtl'}
       >
         <div
@@ -320,56 +320,60 @@ export default function SearchPage() {
           }}
         />
         <div
-          className="max-w-[1440px] w-full mx-auto px-4 md:px-8 lg:px-12 relative z-10 flex items-center justify-between gap-3 md:gap-4"
+          className="max-w-[1440px] w-full mx-auto px-4 md:px-8 lg:px-12 relative z-10 flex flex-col gap-4"
           dir={isEn ? 'ltr' : 'rtl'}
         >
-          <button
-            onClick={() => window.history.back()}
-            className={`flex items-center gap-[8px] bg-[#9FB7AE] hover:bg-[#8BA19C] text-[#234745] px-4 md:px-6 py-2.5 rounded-[25px] text-[12px] md:text-[16px] font-bold transition-all shrink-0 ${isEn ? 'font-en' : ''}`}
-            style={
-              isEn
-                ? {}
-                : {fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif"}
-            }
-            dir={isEn ? 'ltr' : 'rtl'}
-          >
-            <svg
-              width="15"
-              height="13"
-              viewBox="0 0 15 13"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-              className={`${isEn ? 'rotate-180' : ''}`}
+          <div className="flex items-center justify-between gap-3 md:gap-4">
+            <button
+              onClick={() => window.history.back()}
+              className={`flex items-center gap-[8px] bg-[#9FB7AE] hover:bg-[#8BA19C] text-[#234745] px-4 md:px-6 py-2.5 rounded-[25px] text-[12px] md:text-[16px] font-bold transition-all shrink-0 ${isEn ? 'font-en' : ''}`}
+              style={
+                isEn
+                  ? {}
+                  : {fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif"}
+              }
+              dir={isEn ? 'ltr' : 'rtl'}
             >
-              <path
-                d="M0 6H12.25L7 0.75L7.66 0L14.16 6.5L7.66 13L7 12.25L12.25 7H0V6Z"
-                fill="#234745"
-              />
-            </svg>
-            <span>{isEn ? 'Back' : 'الرجوع'}</span>
-          </button>
+              <svg
+                width="15"
+                height="13"
+                viewBox="0 0 15 13"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                className={`${isEn ? 'rotate-180' : ''}`}
+              >
+                <path
+                  d="M0 6H12.25L7 0.75L7.66 0L14.16 6.5L7.66 13L7 12.25L12.25 7H0V6Z"
+                  fill="#234745"
+                />
+              </svg>
+              <span>{isEn ? 'Back' : 'الرجوع'}</span>
+            </button>
 
-          <h1
-            className={`text-white text-[20px] md:text-[28px] font-bold truncate tracking-tight text-center ${isEn ? 'font-en' : ''}`}
-            dir={isEn ? 'ltr' : 'rtl'}
-          >
-            {searchTerm ? (
-              <span>
-                {isEn ? 'Search for' : 'نتائج البحث عن'}: "{searchTerm}"
-              </span>
-            ) : (
-              <span>{isEn ? 'All Products' : 'جميع المنتجات'}</span>
-            )}
-          </h1>
+            <h1
+              className={`text-white text-[20px] md:text-[28px] font-bold truncate tracking-tight text-center ${isEn ? 'font-en' : ''}`}
+              dir={isEn ? 'ltr' : 'rtl'}
+            >
+              {searchTerm ? (
+                <span>
+                  {isEn ? 'Search for' : 'نتائج البحث عن'}: "{searchTerm}"
+                </span>
+              ) : (
+                <span>{isEn ? 'All Products' : 'جميع المنتجات'}</span>
+              )}
+            </h1>
+          </div>
+
+          {/* Search Bar Input inside Green Hero Banner */}
+          <div className="w-full max-w-2xl mx-auto">
+            <SearchForm searchTerm={searchTerm} />
+          </div>
         </div>
       </section>
 
       {/* Main Container */}
       <div className="max-w-[1440px] mx-auto px-4 md:px-8 lg:px-12 py-8 md:py-12">
         <div className="flex flex-col gap-6">
-          <div className="w-full">
-            <SearchForm searchTerm={searchTerm} />
-          </div>
 
           <div className="flex flex-col lg:flex-row gap-8 items-start">
             <div className="flex-1 w-full min-w-0">

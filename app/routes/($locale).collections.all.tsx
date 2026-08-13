@@ -370,7 +370,18 @@ export default function CollectionAll() {
       <div className="bg-[#FEF8EB] min-h-screen">
         <div className="px-4 md:px-8 lg:px-12 py-10 max-w-[1440px] mx-auto text-right">
           <div className="flex flex-col lg:flex-row gap-8 items-start">
-            <div className="flex-1 min-w-0 w-full lg:order-2">
+            {/* Desktop Filter Sidebar (Right side in RTL, Left side in LTR) */}
+            <div className="hidden lg:block w-72 shrink-0">
+              <FilterSidebar
+                filters={products.productFilters}
+                collections={collections || []}
+                onClose={() => {}}
+                isDesktop={true}
+                isEn={isEn}
+              />
+            </div>
+
+            <div className="flex-1 min-w-0 w-full">
               {/* Mobile Layout Controls (< lg) */}
               <div
                 className="lg:hidden flex flex-col gap-4 mb-2"
@@ -592,16 +603,6 @@ export default function CollectionAll() {
                   );
                 }}
               </Pagination>
-            </div>
-
-            <div className="hidden lg:block w-72 shrink-0">
-              <FilterSidebar
-                filters={products.productFilters}
-                collections={collections || []}
-                onClose={() => {}}
-                isDesktop={true}
-                isEn={isEn}
-              />
             </div>
           </div>
         </div>

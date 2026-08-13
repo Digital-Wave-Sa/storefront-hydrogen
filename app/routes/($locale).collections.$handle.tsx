@@ -370,8 +370,19 @@ export default function Collection() {
         <div className="px-4 md:px-8 lg:px-12 py-10 max-w-[1440px] mx-auto text-right">
           {/* Two Column PLP Layout */}
           <div className="flex flex-col lg:flex-row gap-8 items-start">
-            {/* Main Content (Left side in RTL) */}
-            <div className="flex-1 min-w-0 w-full lg:order-2">
+            {/* Desktop Filter Sidebar (Right side in RTL, Left side in LTR) */}
+            <div className="hidden lg:block w-72 shrink-0">
+              <FilterSidebar
+                filters={collection.products.filters}
+                collections={globalCollections}
+                onClose={() => {}}
+                isDesktop={true}
+                isEn={isEn}
+              />
+            </div>
+
+            {/* Main Content */}
+            <div className="flex-1 min-w-0 w-full">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
                 {/* Active Filters / Mobile Filter Button */}
                 <div className="flex items-center flex-wrap gap-2 flex-1">
@@ -609,18 +620,6 @@ export default function Collection() {
                   );
                 }}
               </Pagination>
-            </div>
-
-            {/* Desktop Sidebar (Right side in RTL) */}
-            <div className="hidden lg:block w-72 shrink-0 lg:order-1">
-              <FilterSidebar
-                filters={collection.products.filters}
-                collections={globalCollections}
-                onClose={() => {}}
-                isDesktop={true}
-                isEn={isEn}
-                hideCategories={true}
-              />
             </div>
           </div>
         </div>

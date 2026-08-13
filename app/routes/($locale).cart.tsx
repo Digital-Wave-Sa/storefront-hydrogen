@@ -977,6 +977,39 @@ export async function action({request, context, params}: Route.ActionArgs) {
     const errors = result?.errors || result?.userErrors || [];
     const warnings = result?.warnings || [];
 
+    // Auto-schedule 10-minute email reminder for active carts if email is known in session
+    try {
+      const userEmail =
+        (await context.session.get('loginCustomerEmail')) ||
+        (await context.session.get('otpEmail'));
+      if (userEmail && cartResult?.lines?.nodes?.length > 0) {
+        const {scheduleCartReminder} = await import(
+          '~/lib/cart-reminder.server'
+        );
+        const items = cartResult.lines.nodes.map((l: any) => ({
+          title:
+            l.merchandise?.product?.title ||
+            l.merchandise?.title ||
+            'Saadeddin Item',
+          quantity: l.quantity,
+          price: l.merchandise?.price?.amount || '0',
+        }));
+        const lang = context.storefront.i18n.language === 'EN' ? 'en' : 'ar';
+        const cartUrl = `${context.env.PUBLIC_STORE_DOMAIN || 'https://saadeddin.com'}${lang === 'en' ? '/en' : ''}/cart`;
+        scheduleCartReminder({
+          cartId: cartResult.id,
+          email: userEmail,
+          items,
+          subtotal: cartResult.cost?.subtotalAmount?.amount || '0',
+          checkoutUrl: cartResult.checkoutUrl || cartUrl,
+          language: lang,
+          delayMinutes: 10,
+        });
+      }
+    } catch (e) {
+      console.error('[CART] Failed auto-scheduling cart reminder:', e);
+    }
+
     const redirectTo = formData.get('redirectTo') ?? null;
     if (typeof redirectTo === 'string') {
       status = 303;

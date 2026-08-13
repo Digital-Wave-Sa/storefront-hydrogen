@@ -176,6 +176,28 @@ export class SaadeddinApi {
     });
   }
 
+  async syncCartToCrm(payload: {
+    phone: string;
+    customerName?: string;
+    cartId: string;
+    items: Array<{
+      id: string;
+      title: string;
+      quantity: number;
+      price: number;
+      image?: string;
+    }>;
+    subtotal: number;
+    currency: string;
+    cartUrl: string;
+    status: 'ACTIVE' | 'CLEARED' | 'COMPLETED';
+  }) {
+    return this.api('/cart/sync', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
   // ─── GIFT CARDS ──────────────────────────────────────────────────────────────
 
   async activateGiftCard(code: string, phone: string) {

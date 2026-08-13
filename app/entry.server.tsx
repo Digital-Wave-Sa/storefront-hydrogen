@@ -51,6 +51,9 @@ export default async function handleRequest(
     ],
     connectSrc: [
       "'self'", 
+      'https://sdgc.saadeddin.top',
+      'https://api.saadeddin.top',
+      'https://*.saadeddin.top',
       'https://maps.googleapis.com', 
       '*.google.com', 
       'https://*.google.com', 

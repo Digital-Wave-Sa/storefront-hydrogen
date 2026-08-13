@@ -118,6 +118,17 @@ export async function loader({context, request}: LoaderFunctionArgs) {
 
     let products = response.search;
 
+    // Strictly filter products by activeTags if specified
+    if (products?.nodes?.length && activeTags.length > 0) {
+      const lowerActiveTags = activeTags.map((t) => t.toLowerCase().trim());
+      products.nodes = products.nodes.filter((p: any) => {
+        const pTags = (p.tags || []).map((t: string) => String(t).toLowerCase().trim());
+        return lowerActiveTags.some((at) =>
+          pTags.some((pt) => pt === at || pt.includes(at) || at.includes(pt)),
+        );
+      });
+    }
+
     // Fallback if category search query returned no results: fetch directly from collection handles
     if (
       selectedCategories.length > 0 &&

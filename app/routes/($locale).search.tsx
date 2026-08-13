@@ -87,12 +87,21 @@ export async function loader({request, context}: LoaderFunctionArgs) {
     }
   });
 
+  const activeTags = searchParams
+    .getAll('filter.p.tag')
+    .concat(searchParams.getAll('tag'));
+
   let finalQuery = (searchTerm && searchTerm.trim() !== '*') ? searchTerm.trim() : '*';
 
-  const activeCustomTag = searchParams.get('tag');
-  if (activeCustomTag) {
-    finalQuery += ` tag:${activeCustomTag}`;
+  if (activeTags.length > 0) {
+    const tagQuery = activeTags.map((t) => `tag:"${t}"`).join(' OR ');
+    if (finalQuery === '*') {
+      finalQuery = `(${tagQuery})`;
+    } else {
+      finalQuery += ` AND (${tagQuery})`;
+    }
   }
+
   const activeCollection = searchParams.get('collection');
   if (activeCollection) {
     finalQuery += ` ${activeCollection}`;
@@ -168,6 +177,17 @@ export async function loader({request, context}: LoaderFunctionArgs) {
     } catch (e) {
       console.error('Failed to fetch collections for search intersection', e);
     }
+  }
+
+  // Strictly filter products by activeTags if specified
+  if (searchPayload?.products?.nodes?.length && activeTags.length > 0) {
+    const lowerActiveTags = activeTags.map((t) => t.toLowerCase().trim());
+    searchPayload.products.nodes = searchPayload.products.nodes.filter((p: any) => {
+      const pTags = (p.tags || []).map((t: string) => String(t).toLowerCase().trim());
+      return lowerActiveTags.some((at) =>
+        pTags.some((pt) => pt === at || pt.includes(at) || at.includes(pt)),
+      );
+    });
   }
 
   // Ensure exact price sorting for search results (Price Low-to-High / High-to-Low)

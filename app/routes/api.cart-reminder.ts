@@ -6,12 +6,35 @@ import {
   cancelCartReminder,
 } from '~/lib/cart-reminder.server';
 
-export async function loader({ request, context }: LoaderFunctionArgs) {
-  const url = new URL(request.url);
-  const action = url.searchParams.get('action');
+export async function loader(args: LoaderFunctionArgs) {
+  return handleCartReminderRequest(args);
+}
 
-  if (action === 'process-due' || action === 'check') {
-    const result = await processDueReminders(context.env);
+export async function action(args: ActionFunctionArgs) {
+  return handleCartReminderRequest(args);
+}
+
+async function handleCartReminderRequest({ request, context }: LoaderFunctionArgs | ActionFunctionArgs) {
+  const { storefront, session, env } = context;
+  const url = new URL(request.url);
+  const body = request.method === 'POST' ? await request.formData().catch(() => new FormData()) : new FormData();
+
+  const actionType = String(body.get('action') || url.searchParams.get('action') || 'list');
+  const emailInput = String(body.get('email') || url.searchParams.get('email') || '').trim();
+  const delayMinutesInput = parseInt(
+    String(body.get('delayMinutes') || url.searchParams.get('delayMinutes') || '10'),
+    10,
+  );
+
+  if (actionType === 'list') {
+    return data({
+      status: 'ok',
+      pendingReminders: getPendingReminders(),
+    });
+  }
+
+  if (actionType === 'process-due' || actionType === 'check') {
+    const result = await processDueReminders(env);
     return data({
       status: 'ok',
       message: `Processed ${result.processed} due reminders, sent ${result.sent} emails.`,
@@ -20,59 +43,30 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
     });
   }
 
-  return data({
-    status: 'ok',
-    pendingReminders: getPendingReminders(),
-  });
-}
-
-export async function action({ request, context }: ActionFunctionArgs) {
-  const { storefront, session, env } = context;
-  const url = new URL(request.url);
-  const body = await request.formData().catch(() => new FormData());
-
-  const actionType = body.get('action') || url.searchParams.get('action') || 'schedule';
-  const emailInput = String(body.get('email') || url.searchParams.get('email') || '').trim();
-  const delayMinutesInput = parseInt(
-    String(body.get('delayMinutes') || url.searchParams.get('delayMinutes') || '10'),
-    10,
-  );
-
-  // 1. Resolve user email from input, session, or customer profile
+  // Resolve user email
   let targetEmail = emailInput;
   if (!targetEmail) {
     targetEmail = (await session.get('loginCustomerEmail')) || (await session.get('otpEmail')) || '';
   }
-
-  // 2. Fetch active cart
-  const cart = await context.cart.get().catch(() => null);
-  const lang = storefront.i18n.language === 'EN' ? 'en' : 'ar';
-  const cartUrl = `${env.PUBLIC_STORE_DOMAIN || 'https://saadeddin.com'}${lang === 'en' ? '/en' : ''}/cart`;
 
   if (actionType === 'cancel') {
     if (targetEmail) cancelCartReminder(targetEmail);
     return data({ status: 'ok', message: `Cancelled cart reminder for ${targetEmail}` });
   }
 
-  if (actionType === 'process-due') {
-    const result = await processDueReminders(env);
-    return data({
-      status: 'ok',
-      message: `Processed ${result.processed} due reminders, sent ${result.sent} emails.`,
-      result,
-    });
-  }
-
-  // 3. Schedule or test reminder
   if (!targetEmail || !targetEmail.includes('@')) {
     return data(
       {
-        error: 'A valid email address is required to schedule an abandoned cart reminder.',
-        hint: 'Please provide your email address in the request parameter: ?email=your_email@example.com',
+        error: 'A valid email address is required to schedule or test an abandoned cart reminder.',
+        hint: 'Please append your email address in the URL: ?action=test-now&email=your_email@example.com',
       },
       { status: 400 },
     );
   }
+
+  const cart = await context.cart.get().catch(() => null);
+  const lang = storefront.i18n.language === 'EN' ? 'en' : 'ar';
+  const cartUrl = `${env.PUBLIC_STORE_DOMAIN || 'https://saadeddin.com'}${lang === 'en' ? '/en' : ''}/cart`;
 
   const items =
     cart?.lines?.nodes?.map((line: any) => ({
@@ -100,14 +94,13 @@ export async function action({ request, context }: ActionFunctionArgs) {
     delayMinutes: delayMinutesInput,
   });
 
-  // If action is test-now (send immediately for testing)
   if (actionType === 'test-now') {
     console.log(`[CART REMINDER TEST] Triggering immediate email test to ${targetEmail}...`);
-    reminder!.remindAt = Date.now() - 1000; // set due immediately
+    reminder!.remindAt = Date.now() - 1000;
     const result = await processDueReminders(env);
     return data({
       status: 'ok',
-      message: `Immediate test email sent to ${targetEmail}! Please check your email inbox.`,
+      message: `Immediate test email sent to ${targetEmail}! Check your inbox.`,
       reminder,
       result,
     });
@@ -115,7 +108,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
   return data({
     status: 'ok',
-    message: `Abandoned cart reminder scheduled for ${targetEmail}! Email will be sent in ${delayMinutesInput} minutes.`,
+    message: `Abandoned cart reminder scheduled for ${targetEmail}! Email will send in ${delayMinutesInput} minutes.`,
     reminder,
   });
 }

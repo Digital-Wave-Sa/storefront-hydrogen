@@ -90,7 +90,7 @@ export async function loader({request, context}: LoaderFunctionArgs) {
     }
   });
 
-  let finalQuery = searchTerm || '';
+  let finalQuery = (searchTerm && searchTerm.trim() !== '*') ? searchTerm.trim() : '*';
 
   const activeCustomTag = searchParams.get('tag');
   if (activeCustomTag) {
@@ -98,9 +98,6 @@ export async function loader({request, context}: LoaderFunctionArgs) {
   }
   const activeCollection = searchParams.get('collection');
   if (activeCollection) {
-    // There's no native collection filter in standard Shopify search API.
-    // Instead of forcing a strict `product_type` match which often yields 0 results,
-    // we inject the collection name as a search keyword to let Shopify's algorithm refine the results dynamically.
     finalQuery += ` ${activeCollection}`;
   }
 
@@ -110,6 +107,9 @@ export async function loader({request, context}: LoaderFunctionArgs) {
   }
   const reverse = searchParams.get('reverse') === 'true';
 
+  // For price sorting, request a larger pool (first: 250) so in-memory sorting covers the entire catalog/search set
+  const queryVariables = sortKey === 'PRICE' ? {first: 250} : variables;
+
   const {storefront} = context;
   const searchPayload = await storefront.query(SEARCH_QUERY as any, {
     variables: {
@@ -117,7 +117,7 @@ export async function loader({request, context}: LoaderFunctionArgs) {
       productFilters: filters.length > 0 ? filters : undefined,
       sortKey: sortKey as any,
       reverse,
-      ...variables,
+      ...queryVariables,
       country: storefront.i18n.country,
       language: storefront.i18n.language,
     },
@@ -375,6 +375,8 @@ export default function SearchPage() {
                           const params = new URLSearchParams(searchParams);
                           params.set('sortKey', key);
                           params.set('reverse', rev);
+                          params.delete('cursor');
+                          params.delete('direction');
                           setSearchParams(params, {preventScrollReset: true});
                         }}
                         value={`${searchParams.get('sortKey') || 'RELEVANCE'}|${searchParams.get('reverse') || 'false'}`}
@@ -452,6 +454,8 @@ export default function SearchPage() {
                         const params = new URLSearchParams(searchParams);
                         params.set('sortKey', key);
                         params.set('reverse', rev);
+                        params.delete('cursor');
+                        params.delete('direction');
                         setSearchParams(params, {preventScrollReset: true});
                       }}
                       value={`${searchParams.get('sortKey') || 'RELEVANCE'}|${searchParams.get('reverse') || 'false'}`}

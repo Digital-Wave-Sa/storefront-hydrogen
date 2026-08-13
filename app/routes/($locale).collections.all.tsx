@@ -422,6 +422,8 @@ export default function CollectionAll() {
                           const params = new URLSearchParams(searchParams);
                           params.set('sortKey', key);
                           params.set('reverse', rev);
+                          params.delete('cursor');
+                          params.delete('direction');
                           setSearchParams(params, {preventScrollReset: true});
                         }}
                         value={`${searchParams.get('sortKey') || 'RELEVANCE'}|${searchParams.get('reverse') || 'false'}`}
@@ -496,6 +498,8 @@ export default function CollectionAll() {
                         const params = new URLSearchParams(searchParams);
                         params.set('sortKey', key);
                         params.set('reverse', rev);
+                        params.delete('cursor');
+                        params.delete('direction');
                         setSearchParams(params, {preventScrollReset: true});
                       }}
                       value={`${searchParams.get('sortKey') || 'RELEVANCE'}|${searchParams.get('reverse') || 'false'}`}

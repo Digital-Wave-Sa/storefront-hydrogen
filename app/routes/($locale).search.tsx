@@ -177,6 +177,15 @@ export async function loader({request, context}: LoaderFunctionArgs) {
     }
   }
 
+  // Ensure exact price sorting for search results (Price Low-to-High / High-to-Low)
+  if (searchPayload?.products?.nodes?.length && sortKey === 'PRICE') {
+    searchPayload.products.nodes.sort((a: any, b: any) => {
+      const priceA = parseFloat(a.priceRange?.minVariantPrice?.amount || '0');
+      const priceB = parseFloat(b.priceRange?.minVariantPrice?.amount || '0');
+      return reverse ? priceB - priceA : priceA - priceB;
+    });
+  }
+
   const totalResults =
     (searchPayload?.products?.nodes?.length || 0) +
     (searchPayload?.pages?.nodes?.length || 0) +

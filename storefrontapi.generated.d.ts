@@ -2737,6 +2737,16 @@ export type BlogsQuery = {
   };
 };
 
+export type GetCustomerBasicQueryVariables = StorefrontAPI.Exact<{
+  customerAccessToken: StorefrontAPI.Scalars['String']['input'];
+}>;
+
+export type GetCustomerBasicQuery = {
+  customer?: StorefrontAPI.Maybe<
+    Pick<StorefrontAPI.Customer, 'firstName' | 'lastName' | 'email'>
+  >;
+};
+
 export type GetLocationDiscountsForCartQueryVariables = StorefrontAPI.Exact<{
   [key: string]: never;
 }>;
@@ -5948,27 +5958,12 @@ export type SearchProductFragment = {__typename: 'Product'} & Pick<
     compareAtPriceRange: {
       minVariantPrice: Pick<StorefrontAPI.MoneyV2, 'amount' | 'currencyCode'>;
     };
-    visibility_start?: StorefrontAPI.Maybe<
-      Pick<StorefrontAPI.Metafield, 'value'>
-    >;
-    visibility_end?: StorefrontAPI.Maybe<
-      Pick<StorefrontAPI.Metafield, 'value'>
-    >;
-    rating?: StorefrontAPI.Maybe<Pick<StorefrontAPI.Metafield, 'value'>>;
-    ratingCount?: StorefrontAPI.Maybe<Pick<StorefrontAPI.Metafield, 'value'>>;
-    bogo_free_item?: StorefrontAPI.Maybe<
-      Pick<StorefrontAPI.Metafield, 'value'> & {
-        reference?: StorefrontAPI.Maybe<
-          Pick<StorefrontAPI.ProductVariant, 'id'>
-        >;
-      }
-    >;
     variants: {
       nodes: Array<
-        Pick<StorefrontAPI.ProductVariant, 'id'> & {
-          image?: StorefrontAPI.Maybe<
-            Pick<StorefrontAPI.Image, 'url' | 'altText' | 'width' | 'height'>
-          >;
+        Pick<
+          StorefrontAPI.ProductVariant,
+          'id' | 'title' | 'availableForSale'
+        > & {
           price: Pick<StorefrontAPI.MoneyV2, 'amount' | 'currencyCode'>;
           compareAtPrice?: StorefrontAPI.Maybe<
             Pick<StorefrontAPI.MoneyV2, 'amount' | 'currencyCode'>
@@ -5977,27 +5972,10 @@ export type SearchProductFragment = {__typename: 'Product'} & Pick<
             Pick<StorefrontAPI.SelectedOption, 'name' | 'value'>
           >;
           product: Pick<StorefrontAPI.Product, 'handle' | 'title'>;
-          storeAvailability: {
-            nodes: Array<
-              Pick<StorefrontAPI.StoreAvailability, 'available'> & {
-                location: Pick<StorefrontAPI.Location, 'id' | 'name'>;
-              }
-            >;
-          };
         }
       >;
     };
   };
-
-export type SearchPageFragment = {__typename: 'Page'} & Pick<
-  StorefrontAPI.Page,
-  'handle' | 'id' | 'title' | 'trackingParameters'
->;
-
-export type SearchArticleFragment = {__typename: 'Article'} & Pick<
-  StorefrontAPI.Article,
-  'handle' | 'id' | 'title' | 'trackingParameters'
->;
 
 export type SearchQueryVariables = StorefrontAPI.Exact<{
   country?: StorefrontAPI.InputMaybe<StorefrontAPI.CountryCode>;
@@ -6020,13 +5998,6 @@ export type SearchQueryVariables = StorefrontAPI.Exact<{
 
 export type SearchQuery = {
   products: {
-    productFilters: Array<
-      Pick<StorefrontAPI.Filter, 'id' | 'label' | 'type'> & {
-        values: Array<
-          Pick<StorefrontAPI.FilterValue, 'id' | 'label' | 'count' | 'input'>
-        >;
-      }
-    >;
     nodes: Array<
       {__typename: 'Product'} & Pick<
         StorefrontAPI.Product,
@@ -6062,32 +6033,12 @@ export type SearchQuery = {
               'amount' | 'currencyCode'
             >;
           };
-          visibility_start?: StorefrontAPI.Maybe<
-            Pick<StorefrontAPI.Metafield, 'value'>
-          >;
-          visibility_end?: StorefrontAPI.Maybe<
-            Pick<StorefrontAPI.Metafield, 'value'>
-          >;
-          rating?: StorefrontAPI.Maybe<Pick<StorefrontAPI.Metafield, 'value'>>;
-          ratingCount?: StorefrontAPI.Maybe<
-            Pick<StorefrontAPI.Metafield, 'value'>
-          >;
-          bogo_free_item?: StorefrontAPI.Maybe<
-            Pick<StorefrontAPI.Metafield, 'value'> & {
-              reference?: StorefrontAPI.Maybe<
-                Pick<StorefrontAPI.ProductVariant, 'id'>
-              >;
-            }
-          >;
           variants: {
             nodes: Array<
-              Pick<StorefrontAPI.ProductVariant, 'id'> & {
-                image?: StorefrontAPI.Maybe<
-                  Pick<
-                    StorefrontAPI.Image,
-                    'url' | 'altText' | 'width' | 'height'
-                  >
-                >;
+              Pick<
+                StorefrontAPI.ProductVariant,
+                'id' | 'title' | 'availableForSale'
+              > & {
                 price: Pick<StorefrontAPI.MoneyV2, 'amount' | 'currencyCode'>;
                 compareAtPrice?: StorefrontAPI.Maybe<
                   Pick<StorefrontAPI.MoneyV2, 'amount' | 'currencyCode'>
@@ -6096,41 +6047,25 @@ export type SearchQuery = {
                   Pick<StorefrontAPI.SelectedOption, 'name' | 'value'>
                 >;
                 product: Pick<StorefrontAPI.Product, 'handle' | 'title'>;
-                storeAvailability: {
-                  nodes: Array<
-                    Pick<StorefrontAPI.StoreAvailability, 'available'> & {
-                      location: Pick<StorefrontAPI.Location, 'id' | 'name'>;
-                    }
-                  >;
-                };
               }
             >;
           };
         }
+    >;
+    productFilters: Array<
+      Pick<StorefrontAPI.Filter, 'id' | 'label' | 'type'> & {
+        values: Array<
+          Pick<StorefrontAPI.FilterValue, 'id' | 'label' | 'count' | 'input'>
+        >;
+      }
     >;
     pageInfo: Pick<
       StorefrontAPI.PageInfo,
       'hasNextPage' | 'hasPreviousPage' | 'startCursor' | 'endCursor'
     >;
   };
-  pages: {
-    nodes: Array<
-      {__typename: 'Page'} & Pick<
-        StorefrontAPI.Page,
-        'handle' | 'id' | 'title' | 'trackingParameters'
-      >
-    >;
-  };
-  articles: {
-    nodes: Array<
-      {__typename: 'Article'} & Pick<
-        StorefrontAPI.Article,
-        'handle' | 'id' | 'title' | 'trackingParameters'
-      >
-    >;
-  };
   collections: {
-    nodes: Array<Pick<StorefrontAPI.Collection, 'id' | 'handle' | 'title'>>;
+    nodes: Array<Pick<StorefrontAPI.Collection, 'id' | 'title' | 'handle'>>;
   };
 };
 
@@ -6381,6 +6316,10 @@ interface GeneratedQueryTypes {
     return: BlogsQuery;
     variables: BlogsQueryVariables;
   };
+  '#graphql\n        query GetCustomerBasic($customerAccessToken: String!) {\n          customer(customerAccessToken: $customerAccessToken) {\n            firstName\n            lastName\n            email\n          }\n        }': {
+    return: GetCustomerBasicQuery;
+    variables: GetCustomerBasicQueryVariables;
+  };
   '#graphql\n                query GetLocationDiscountsForCart {\n                  shop {\n                    locationDiscounts: metafield(namespace: "custom", key: "location_discounts") { value }\n                    locationDiscountsAlt: metafield(namespace: "location", key: "discounts") { value }\n                  }\n                }\n              ': {
     return: GetLocationDiscountsForCartQuery;
     variables: GetLocationDiscountsForCartQueryVariables;
@@ -6521,7 +6460,7 @@ interface GeneratedQueryTypes {
     return: CollectionIdsQuery;
     variables: CollectionIdsQueryVariables;
   };
-  '#graphql\n    fragment SearchProduct on Product {\n    __typename\n    handle\n    id\n    publishedAt\n    title\n    availableForSale\n    trackingParameters\n    vendor\n    tags\n    productType\n    featuredImage {\n      id\n      altText\n      url\n      width\n      height\n    }\n    priceRange {\n      minVariantPrice {\n        amount\n        currencyCode\n      }\n      maxVariantPrice {\n        amount\n        currencyCode\n      }\n    }\n    compareAtPriceRange {\n      minVariantPrice {\n        amount\n        currencyCode\n      }\n    }\n    visibility_start: metafield(namespace: "custom", key: "visibility_start") {\n      value\n    }\n    visibility_end: metafield(namespace: "custom", key: "visibility_end") {\n      value\n    }\n    rating: metafield(namespace: "reviews", key: "rating") {\n      value\n    }\n    ratingCount: metafield(namespace: "reviews", key: "rating_count") {\n      value\n    }\n    bogo_free_item: metafield(namespace: "custom", key: "bogo_free_item") {\n      value\n      reference {\n        ... on ProductVariant {\n          id\n        }\n      }\n    }\n    variants(first: 10) {\n      nodes {\n        id\n        image {\n          url\n          altText\n          width\n          height\n        }\n        price {\n          amount\n          currencyCode\n        }\n        compareAtPrice {\n          amount\n          currencyCode\n        }\n        selectedOptions {\n          name\n          value\n        }\n        product {\n          handle\n          title\n        }\n        storeAvailability(first: 250) {\n          nodes {\n            available\n            location {\n              id\n              name\n            }\n          }\n        }\n      }\n    }\n  }\n  fragment SearchPage on Page {\n     __typename\n     handle\n    id\n    title\n    trackingParameters\n  }\n  fragment SearchArticle on Article {\n    __typename\n    handle\n    id\n    title\n    trackingParameters\n  }\n  query search(\n    $country: CountryCode\n    $endCursor: String\n    $first: Int\n    $language: LanguageCode\n    $last: Int\n    $query: String!\n    $startCursor: String\n    $productFilters: [ProductFilter!]\n    $sortKey: SearchSortKeys\n    $reverse: Boolean\n  ) @inContext(country: $country, language: $language) {\n    products: search(\n      query: $query,\n      unavailableProducts: HIDE,\n      types: [PRODUCT],\n      first: $first,\n      sortKey: $sortKey,\n      reverse: $reverse,\n      last: $last,\n      before: $startCursor,\n      after: $endCursor,\n      productFilters: $productFilters\n    ) {\n      productFilters {\n        id\n        label\n        type\n        values {\n          id\n          label\n          count\n          input\n        }\n      }\n      nodes {\n        ...on Product {\n          ...SearchProduct\n        }\n      }\n      pageInfo {\n        hasNextPage\n        hasPreviousPage\n        startCursor\n        endCursor\n      }\n    }\n    pages: search(\n      query: $query,\n      types: [PAGE],\n      first: 10\n    ) {\n      nodes {\n        ...on Page {\n          ...SearchPage\n        }\n      }\n    }\n    articles: search(\n      query: $query,\n      types: [ARTICLE],\n      first: 10\n    ) {\n      nodes {\n        ...on Article {\n          ...SearchArticle\n        }\n      }\n    }\n    collections(first: 50) {\n      nodes {\n        id\n        handle\n        title\n      }\n    }\n  }\n': {
+  '#graphql\n    fragment SearchProduct on Product {\n    __typename\n    handle\n    id\n    publishedAt\n    title\n    availableForSale\n    trackingParameters\n    vendor\n    tags\n    productType\n    featuredImage {\n      id\n      altText\n      url\n      width\n      height\n    }\n    priceRange {\n      minVariantPrice {\n        amount\n        currencyCode\n      }\n      maxVariantPrice {\n        amount\n        currencyCode\n      }\n    }\n    compareAtPriceRange {\n      minVariantPrice {\n        amount\n        currencyCode\n      }\n    }\n    variants(first: 1) {\n      nodes {\n        id\n        title\n        availableForSale\n        price {\n          amount\n          currencyCode\n        }\n        compareAtPrice {\n          amount\n          currencyCode\n        }\n        selectedOptions {\n          name\n          value\n        }\n        product {\n          handle\n          title\n        }\n      }\n    }\n  }\n\n  query Search(\n    $country: CountryCode\n    $endCursor: String\n    $first: Int\n    $language: LanguageCode\n    $last: Int\n    $query: String!\n    $startCursor: String\n    $productFilters: [ProductFilter!]\n    $sortKey: SearchSortKeys\n    $reverse: Boolean\n  ) @inContext(country: $country, language: $language) {\n    products: search(\n      after: $endCursor\n      before: $startCursor\n      first: $first\n      last: $last\n      query: $query\n      productFilters: $productFilters\n      sortKey: $sortKey\n      reverse: $reverse\n      types: [PRODUCT]\n    ) {\n      nodes {\n        ...SearchProduct\n      }\n      productFilters {\n        id\n        label\n        type\n        values {\n          id\n          label\n          count\n          input\n        }\n      }\n      pageInfo {\n        hasNextPage\n        hasPreviousPage\n        startCursor\n        endCursor\n      }\n    }\n    collections: collections(first: 100) {\n      nodes {\n        id\n        title\n        handle\n      }\n    }\n  }\n': {
     return: SearchQuery;
     variables: SearchQueryVariables;
   };

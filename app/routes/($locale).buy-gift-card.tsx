@@ -9,13 +9,46 @@
  */
 
 import { useState, useEffect } from 'react';
-import { useLocation, useNavigate } from 'react-router';
-import type { MetaFunction } from 'react-router';
+import { useLocation, useNavigate, useLoaderData } from 'react-router';
+import type { MetaFunction, LoaderFunctionArgs } from 'react-router';
 import { SaudiRiyalSymbol } from '~/components/Price';
 
 export const meta: MetaFunction = () => [
   { title: 'أهدِ قسيمة | حلويات سعد الدين' },
 ];
+
+// ─── Loader: pre-fill customer info from session ──────────────────────────
+export async function loader({ request, context }: LoaderFunctionArgs) {
+  const { session, storefront } = context;
+  let customerName = '';
+  let customerEmail = '';
+  let isLoggedIn = false;
+
+  try {
+    const token = await session.get('customerAccessToken');
+    const tokenStr = typeof token === 'string' ? token : token?.accessToken;
+    if (tokenStr && tokenStr !== 'dev-bypass-token') {
+      const { customer } = await storefront.query(
+        `#graphql
+        query GetCustomerBasic($customerAccessToken: String!) {
+          customer(customerAccessToken: $customerAccessToken) {
+            firstName
+            lastName
+            email
+          }
+        }`,
+        { variables: { customerAccessToken: tokenStr } },
+      );
+      if (customer) {
+        customerName = [customer.firstName, customer.lastName].filter(Boolean).join(' ');
+        customerEmail = customer.email || '';
+        isLoggedIn = true;
+      }
+    }
+  } catch {}
+
+  return { customerName, customerEmail, isLoggedIn };
+}
 
 const GIFT_CARD_VARIANTS: Record<number, string> = {
   50: 'gid://shopify/ProductVariant/51652828496105',
@@ -38,6 +71,8 @@ export default function BuyGiftCard() {
   const { pathname, search } = useLocation();
   const isEn = pathname.startsWith('/en');
   const navigate = useNavigate();
+  const loaderData = useLoaderData<typeof loader>();
+  const { customerName = '', customerEmail = '' } = loaderData || {};
 
   const searchParams = new URLSearchParams(search);
   const initialMode = searchParams.get('mode') === 'self' ? 'self' : 'gift';
@@ -45,8 +80,8 @@ export default function BuyGiftCard() {
   // Gift Mode: 'gift' = Gift to someone, 'self' = Buy for myself
   const [giftMode, setGiftMode] = useState<'gift' | 'self'>(initialMode);
 
-  // Wizard Step: 1 = Amount & Design, 2 = Message, 3 = Confirmation & Cart
-  const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
+  // Wizard Step: 1=Amount+Design, 2=Message+Recipient, 3=Review, 4=Success
+  const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4>(1);
 
   // Amount State
   const [selectedAmount, setSelectedAmount] = useState<number>(100);
@@ -55,12 +90,10 @@ export default function BuyGiftCard() {
 
   // Design State
   const [occasion, setOccasion] = useState('عيد ميلاد');
-  const [themeColor, setThemeColor] = useState<'green' | 'gold' | 'cream'>(
-    'green',
-  );
+  const [themeColor, setThemeColor] = useState<'green' | 'gold' | 'cream'>('green');
 
-  // Recipient / Sender Message Form State
-  const [senderName, setSenderName] = useState('أحمد');
+  // Recipient / Sender Message Form State — pre-fill from session
+  const [senderName, setSenderName] = useState(customerName || 'أحمد');
   const [recipientName, setRecipientName] = useState('سارة');
   const [recipientEmail, setRecipientEmail] = useState('');
   const [recipientPhone, setRecipientPhone] = useState('');
@@ -69,7 +102,16 @@ export default function BuyGiftCard() {
   const [scheduledDate, setScheduledDate] = useState('');
   const [agreeTerms, setAgreeTerms] = useState(true);
 
+  // Validation errors
+  const [amountError, setAmountError] = useState('');
+  const [emailError, setEmailError] = useState('');
+
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Sync sender name when customerName loads
+  useEffect(() => {
+    if (customerName) setSenderName(customerName);
+  }, [customerName]);
 
   const finalAmount =
     isCustomAmount && customAmountInput
@@ -85,13 +127,49 @@ export default function BuyGiftCard() {
     'بمناسبة العيد السعيد',
   ];
 
+  // ── Validation helpers ────────────────────────────────────────────────────
+  const validateStep1 = (): boolean => {
+    if (isCustomAmount) {
+      const amt = parseFloat(customAmountInput);
+      if (!customAmountInput || isNaN(amt) || amt < 10) {
+        setAmountError(isEn ? 'Minimum amount is 10 SAR.' : 'الحد الأدنى للمبلغ هو 10 ر.س');
+        return false;
+      }
+      if (amt > 5000) {
+        setAmountError(isEn ? 'Maximum amount is 5,000 SAR.' : 'الحد الأقصى للمبلغ هو 5,000 ر.س');
+        return false;
+      }
+    }
+    setAmountError('');
+    return true;
+  };
+
+  const validateStep2 = (): boolean => {
+    if (giftMode === 'gift') {
+      if (!recipientEmail.trim() && !recipientPhone.trim()) {
+        setEmailError(isEn
+          ? 'Please enter recipient email or phone number.'
+          : 'يرجى إدخال البريد الإلكتروني أو رقم هاتف المستلم.');
+        return false;
+      }
+      if (recipientEmail.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipientEmail)) {
+        setEmailError(isEn ? 'Please enter a valid email address.' : 'يرجى إدخال بريد إلكتروني صحيح.');
+        return false;
+      }
+    }
+    setEmailError('');
+    return true;
+  };
+
   const handleCheckoutSubmit = async () => {
     if (!agreeTerms) return;
     setIsSubmitting(true);
 
     try {
       const merchandiseId = getVariantForAmount(finalAmount);
+      // For self mode, use buyer's email as recipient; recipient name = sender name
       const targetRecipientName = giftMode === 'self' ? (senderName || 'نفسي') : recipientName;
+      const targetRecipientEmail = giftMode === 'self' ? (customerEmail || recipientEmail || 'N/A') : (recipientEmail || 'N/A');
 
       const formData = new FormData();
       const lineItem = {
@@ -106,7 +184,7 @@ export default function BuyGiftCard() {
                 { key: 'Gift Mode', value: giftMode === 'self' ? 'For Myself' : 'Gift to Someone' },
                 { key: 'Voucher Amount', value: `${finalAmount} SAR` },
                 { key: 'Recipient Name', value: targetRecipientName },
-                { key: 'Recipient Email', value: recipientEmail || 'N/A' },
+                { key: 'Recipient Email', value: targetRecipientEmail },
                 { key: 'Recipient Phone', value: recipientPhone || 'N/A' },
                 { key: 'Sender Name', value: senderName || 'N/A' },
                 { key: 'Personal Message', value: personalMessage || 'N/A' },
@@ -126,8 +204,9 @@ export default function BuyGiftCard() {
         body: formData,
       });
 
-      if (res.ok) {
-        window.location.href = cartEndpoint;
+      if (res.ok || res.redirected) {
+        // Show success step instead of navigating away
+        setCurrentStep(4);
       } else {
         navigate(cartEndpoint);
       }
@@ -261,7 +340,9 @@ export default function BuyGiftCard() {
 
               {currentStep === 1 && (
                 <button
-                  onClick={() => setCurrentStep(2)}
+                  onClick={() => {
+                    if (validateStep1()) setCurrentStep(2);
+                  }}
                   className="gift-next-preview-btn"
                 >
                   {isEn ? 'Next: Add Message →' : 'التالي : أضف رسالتك'}
@@ -347,13 +428,18 @@ export default function BuyGiftCard() {
                     <div className="custom-amount-box mt-3">
                       <input
                         type="number"
-                        placeholder={isEn ? "Enter amount in SAR" : "أدخل المبلغ بالريال"}
+                        placeholder={isEn ? "Enter amount (10–5,000 SAR)" : "أدخل المبلغ (10–5000 ر.س)"}
                         value={customAmountInput}
-                        onChange={(e) => setCustomAmountInput(e.target.value)}
+                        onChange={(e) => { setCustomAmountInput(e.target.value); setAmountError(''); }}
                         className="custom-amount-input font-en"
                         dir="ltr"
+                        min="10"
+                        max="5000"
                       />
                     </div>
+                  )}
+                  {amountError && (
+                    <p className="text-red-500 text-[13px] mt-2 font-medium">{amountError}</p>
                   )}
                 </div>
 
@@ -400,6 +486,17 @@ export default function BuyGiftCard() {
                       {themeColor === 'green' && <span className="check">✓</span>}
                     </div>
                   </div>
+                </div>
+
+                {/* Step 1 → Step 2 Next button (form column) */}
+                <div className="step-actions-row mt-6">
+                  <button
+                    type="button"
+                    onClick={() => { if (validateStep1()) setCurrentStep(2); }}
+                    className="btn-next-step"
+                  >
+                    {isEn ? 'Next: Add Message →' : 'التالي: أضف رسالتك ←'}
+                  </button>
                 </div>
               </div>
             )}
@@ -534,10 +631,15 @@ export default function BuyGiftCard() {
                     </div>
                   )}
 
+                  {/* Email/phone validation error */}
+                  {emailError && (
+                    <p className="text-red-500 text-[13px] mt-1 font-medium">{emailError}</p>
+                  )}
+
                   <div className="step-actions-row">
                     <button
                       type="button"
-                      onClick={() => setCurrentStep(3)}
+                      onClick={() => { if (validateStep2()) setCurrentStep(3); }}
                       className="btn-next-step"
                     >
                       {isEn ? 'Next: Review & Cart →' : 'التالي، مراجعة السلة ←'}
@@ -622,6 +724,87 @@ export default function BuyGiftCard() {
                     className="btn-back-step"
                   >
                     {isEn ? '← Back to edit message' : '→ رجوع وتعديل الرسالة'}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* ── STEP 4: Success Confirmation ── */}
+            {currentStep === 4 && (
+              <div className="gift-step-card text-center">
+                <div className="flex flex-col items-center gap-6 py-8">
+                  {/* Success Icon */}
+                  <div className="w-20 h-20 rounded-full bg-[#234745] flex items-center justify-center shadow-lg">
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  </div>
+
+                  <div>
+                    <h2 className="text-[26px] font-bold text-[#234745] mb-2">
+                      {isEn ? 'Voucher Added to Cart! 🎉' : 'تمت إضافة القسيمة للسلة! 🎉'}
+                    </h2>
+                    <p className="text-[#718096] text-[15px] leading-relaxed max-w-[380px] mx-auto">
+                      {giftMode === 'gift'
+                        ? (isEn
+                            ? `After payment, the gift voucher will be sent to ${recipientEmail || recipientPhone || 'the recipient'} automatically.`
+                            : `بعد إتمام الدفع، سيتم إرسال قسيمة الهدية إلى ${recipientEmail || recipientPhone || 'المستلم'} تلقائياً.`)
+                        : (isEn
+                            ? 'After payment, the credit will be added to your account automatically.'
+                            : 'بعد إتمام الدفع، سيُضاف الرصيد إلى حسابك تلقائياً.')}
+                    </p>
+                  </div>
+
+                  {/* Order summary */}
+                  <div className="w-full max-w-[340px] bg-[#f8f9fa] rounded-[16px] p-5 text-[14px]">
+                    <div className="flex justify-between mb-2">
+                      <span className="text-[#718096]">{isEn ? 'Amount' : 'المبلغ'}</span>
+                      <span className="font-bold font-en">{finalAmount.toFixed(2)} {isEn ? 'SAR' : 'ر.س'}</span>
+                    </div>
+                    <div className="flex justify-between mb-2">
+                      <span className="text-[#718096]">{isEn ? 'VAT (15%)' : 'ضريبة (15%)'}</span>
+                      <span className="font-bold font-en">{vatAmount.toFixed(2)} {isEn ? 'SAR' : 'ر.س'}</span>
+                    </div>
+                    <div className="border-t border-[#e2e8f0] pt-2 flex justify-between">
+                      <span className="font-bold text-[#234745]">{isEn ? 'Total' : 'الإجمالي'}</span>
+                      <span className="font-bold text-[#234745] font-en">{totalAmount.toFixed(2)} {isEn ? 'SAR' : 'ر.س'}</span>
+                    </div>
+                  </div>
+
+                  {/* Action buttons */}
+                  <div className="flex flex-col sm:flex-row gap-3 w-full max-w-[380px]">
+                    <a
+                      href="/checkout"
+                      className="flex-1 h-[52px] bg-[#234745] hover:bg-[#1A3533] text-white font-bold text-[15px] rounded-full flex items-center justify-center transition-all shadow-md"
+                    >
+                      {isEn ? '✓ Proceed to Checkout' : 'إكمال الدفع ✓'}
+                    </a>
+                    <a
+                      href={isEn ? '/en/cart' : '/cart'}
+                      className="flex-1 h-[52px] border-2 border-[#234745] text-[#234745] hover:bg-[#234745] hover:text-white font-bold text-[15px] rounded-full flex items-center justify-center transition-all"
+                    >
+                      {isEn ? 'View Cart' : 'عرض السلة'}
+                    </a>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCurrentStep(1);
+                      setSenderName(customerName || 'أحمد');
+                      setRecipientName('سارة');
+                      setRecipientEmail('');
+                      setRecipientPhone('');
+                      setPersonalMessage('كل عام وانت بخير');
+                      setIsScheduled(false);
+                      setScheduledDate('');
+                      setSelectedAmount(100);
+                      setIsCustomAmount(false);
+                      setCustomAmountInput('');
+                    }}
+                    className="text-[#718096] text-[13px] underline hover:text-[#234745] transition-colors"
+                  >
+                    {isEn ? 'Send another voucher' : 'إرسال قسيمة أخرى'}
                   </button>
                 </div>
               </div>

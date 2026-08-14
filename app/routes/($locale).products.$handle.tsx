@@ -237,7 +237,7 @@ export async function loader(args: LoaderFunctionArgs) {
       const currentPath = url.pathname;
 
       if (decodeURIComponent(currentPath) !== decodeURIComponent(targetPath)) {
-        throw redirect(targetPath + url.search, {status: 302});
+        throw redirect(encodeURI(targetPath) + url.search, {status: 302});
       }
     }
 

@@ -234,6 +234,19 @@ export default function BuyGiftCard() {
       const targetRecipientName = giftMode === 'self' ? (senderName || 'نفسي') : recipientName;
       const targetRecipientEmail = giftMode === 'self' ? (customerEmail || recipientEmail || 'N/A') : (recipientEmail || 'N/A');
 
+      const selectedVariantObj = {
+        id: merchandiseId,
+        title: `${finalAmount} SAR`,
+        price: {
+          amount: String(finalAmount),
+          currencyCode: 'SAR',
+        },
+        product: {
+          title: isEn ? 'Saadeddin Gift Card' : 'بطاقة هدية سعد الدين',
+          handle: 'saadeddin-gift-card',
+        },
+      };
+
       const formData = new FormData();
       const lineItem = {
         action: CartForm.ACTIONS.LinesAdd,
@@ -242,6 +255,7 @@ export default function BuyGiftCard() {
             {
               merchandiseId,
               quantity: 1,
+              selectedVariant: selectedVariantObj,
               attributes: [
                 { key: '_gift_voucher', value: 'true' },
                 { key: 'Gift Mode', value: giftMode === 'self' ? 'For Myself' : 'Gift to Someone' },

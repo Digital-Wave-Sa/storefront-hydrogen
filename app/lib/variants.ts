@@ -42,5 +42,5 @@ export function getVariantUrl({
 
   const searchString = searchParams.toString();
 
-  return path + (searchString ? '?' + searchParams.toString() : '');
+  return encodeURI(path) + (searchString ? '?' + searchParams.toString() : '');
 }

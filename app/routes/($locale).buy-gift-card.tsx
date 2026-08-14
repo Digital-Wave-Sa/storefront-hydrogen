@@ -161,9 +161,15 @@ export default function BuyGiftCard() {
   // Listen to cart submission response
   useEffect(() => {
     if (cartFetcher.state === 'idle' && cartFetcher.data) {
-      if (cartFetcher.data.error || cartFetcher.data.errors) {
+      const hasErrors =
+        Boolean(cartFetcher.data.error) ||
+        (Array.isArray(cartFetcher.data.errors) && cartFetcher.data.errors.length > 0) ||
+        (Array.isArray(cartFetcher.data.userErrors) && cartFetcher.data.userErrors.length > 0);
+
+      if (hasErrors) {
         setCartError(
           cartFetcher.data.error ||
+            cartFetcher.data.errors?.[0]?.message ||
             (isEn
               ? 'Failed to add gift card to cart. Please try again.'
               : 'فشل في إضافة القسيمة إلى السلة. يرجى المحاولة مرة أخرى.'),

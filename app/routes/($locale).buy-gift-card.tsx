@@ -9,20 +9,23 @@
  */
 
 import { useState, useEffect } from 'react';
-import { useLocation, useNavigate, useLoaderData } from 'react-router';
+import { useLocation, useNavigate, useLoaderData, useFetcher } from 'react-router';
 import type { MetaFunction, LoaderFunctionArgs } from 'react-router';
+import { CartForm } from '@shopify/hydrogen';
 import { SaudiRiyalSymbol } from '~/components/Price';
+import { useAside } from '~/components/Aside';
 
 export const meta: MetaFunction = () => [
   { title: 'أهدِ قسيمة | حلويات سعد الدين' },
 ];
 
-// ─── Loader: pre-fill customer info from session ──────────────────────────
+// ─── Loader: pre-fill customer info from session & verify Gift Card product ──
 export async function loader({ request, context }: LoaderFunctionArgs) {
   const { session, storefront } = context;
   let customerName = '';
   let customerEmail = '';
   let isLoggedIn = false;
+  let giftProduct: any = null;
 
   try {
     const token = await session.get('customerAccessToken');
@@ -47,7 +50,35 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
     }
   } catch {}
 
-  return { customerName, customerEmail, isLoggedIn };
+  try {
+    const { product } = await storefront.query(
+      `#graphql
+      query GetGiftCardProduct {
+        product(id: "gid://shopify/Product/9370203521257") {
+          id
+          title
+          handle
+          availableForSale
+          variants(first: 20) {
+            nodes {
+              id
+              title
+              price {
+                amount
+                currencyCode
+              }
+              availableForSale
+            }
+          }
+        }
+      }`,
+    );
+    giftProduct = product;
+  } catch (e) {
+    console.error('Failed to query gift card product:', e);
+  }
+
+  return { customerName, customerEmail, isLoggedIn, giftProduct };
 }
 
 const GIFT_CARD_VARIANTS: Record<number, string> = {
@@ -58,7 +89,18 @@ const GIFT_CARD_VARIANTS: Record<number, string> = {
   1000: 'gid://shopify/ProductVariant/51652828627177',
 };
 
-function getVariantForAmount(amount: number): string {
+function getVariantForAmount(amount: number, liveVariants?: any[]): string {
+  if (liveVariants && liveVariants.length > 0) {
+    const exact = liveVariants.find((v) => parseFloat(v.price?.amount || '0') === amount);
+    if (exact) return exact.id;
+    // Find closest variant
+    const sorted = [...liveVariants].sort(
+      (a, b) => parseFloat(a.price?.amount || '0') - parseFloat(b.price?.amount || '0'),
+    );
+    const closest = sorted.find((v) => parseFloat(v.price?.amount || '0') >= amount) || sorted[sorted.length - 1];
+    if (closest) return closest.id;
+  }
+
   if (GIFT_CARD_VARIANTS[amount]) return GIFT_CARD_VARIANTS[amount];
   if (amount <= 50) return GIFT_CARD_VARIANTS[50];
   if (amount <= 100) return GIFT_CARD_VARIANTS[100];
@@ -71,8 +113,10 @@ export default function BuyGiftCard() {
   const { pathname, search } = useLocation();
   const isEn = pathname.startsWith('/en');
   const navigate = useNavigate();
+  const cartFetcher = useFetcher<any>();
+  const { open } = useAside();
   const loaderData = useLoaderData<typeof loader>();
-  const { customerName = '', customerEmail = '' } = loaderData || {};
+  const { customerName = '', customerEmail = '', giftProduct } = loaderData || {};
 
   const searchParams = new URLSearchParams(search);
   const initialMode = searchParams.get('mode') === 'self' ? 'self' : 'gift';
@@ -105,13 +149,32 @@ export default function BuyGiftCard() {
   // Validation errors
   const [amountError, setAmountError] = useState('');
   const [emailError, setEmailError] = useState('');
+  const [cartError, setCartError] = useState('');
 
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const isSubmitting = cartFetcher.state !== 'idle';
 
   // Sync sender name when customerName loads
   useEffect(() => {
     if (customerName) setSenderName(customerName);
   }, [customerName]);
+
+  // Listen to cart submission response
+  useEffect(() => {
+    if (cartFetcher.state === 'idle' && cartFetcher.data) {
+      if (cartFetcher.data.error || cartFetcher.data.errors) {
+        setCartError(
+          cartFetcher.data.error ||
+            (isEn
+              ? 'Failed to add gift card to cart. Please try again.'
+              : 'فشل في إضافة القسيمة إلى السلة. يرجى المحاولة مرة أخرى.'),
+        );
+      } else {
+        setCartError('');
+        setCurrentStep(4);
+        open('cart');
+      }
+    }
+  }, [cartFetcher.state, cartFetcher.data, isEn, open]);
 
   const finalAmount =
     isCustomAmount && customAmountInput
@@ -161,19 +224,19 @@ export default function BuyGiftCard() {
     return true;
   };
 
-  const handleCheckoutSubmit = async () => {
+  const handleCheckoutSubmit = () => {
     if (!agreeTerms) return;
-    setIsSubmitting(true);
+    setCartError('');
 
     try {
-      const merchandiseId = getVariantForAmount(finalAmount);
-      // For self mode, use buyer's email as recipient; recipient name = sender name
+      const liveVariants = giftProduct?.variants?.nodes;
+      const merchandiseId = getVariantForAmount(finalAmount, liveVariants);
       const targetRecipientName = giftMode === 'self' ? (senderName || 'نفسي') : recipientName;
       const targetRecipientEmail = giftMode === 'self' ? (customerEmail || recipientEmail || 'N/A') : (recipientEmail || 'N/A');
 
       const formData = new FormData();
       const lineItem = {
-        action: 'LinesAdd',
+        action: CartForm.ACTIONS.LinesAdd,
         inputs: {
           lines: [
             {
@@ -199,21 +262,12 @@ export default function BuyGiftCard() {
       formData.append('cartFormInput', JSON.stringify(lineItem));
 
       const cartEndpoint = isEn ? '/en/cart' : '/cart';
-      const res = await fetch(cartEndpoint, {
+      cartFetcher.submit(formData, {
         method: 'POST',
-        body: formData,
+        action: cartEndpoint,
       });
-
-      if (res.ok || res.redirected) {
-        // Show success step instead of navigating away
-        setCurrentStep(4);
-      } else {
-        navigate(cartEndpoint);
-      }
-    } catch {
-      navigate(isEn ? '/en/cart' : '/cart');
-    } finally {
-      setIsSubmitting(false);
+    } catch (err) {
+      console.error('Error submitting gift card to cart:', err);
     }
   };
 
@@ -705,6 +759,12 @@ export default function BuyGiftCard() {
                     {isEn ? 'I agree to the gift voucher terms and conditions' : 'أوافق على الشروط والأحكام الخاصة بالقسائم'}
                   </label>
                 </div>
+
+                {cartError && (
+                  <div className="p-3 bg-red-50 border border-red-200 text-red-600 rounded-xl text-sm mt-3 font-medium text-center">
+                    {cartError}
+                  </div>
+                )}
 
                 <div className="step-actions-row flex-col gap-3 mt-6">
                   <button

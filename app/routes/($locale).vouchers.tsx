@@ -1492,22 +1492,34 @@ export default function VouchersPage() {
                   </svg>
                 </div>
                 <h3
-                  className="text-[22px] sm:text-[26px] font-bold text-[#255441] !mb-[16px]"
+                  className="text-[#255441] !mb-[16px] text-center"
                   style={{
-                    fontFamily: isEn ? "'Bahij Janna', sans-serif" : undefined,
+                    fontFamily: isEn ? "'Bahij Janna', sans-serif" : "'EnglishDigits', 'Bahij Janna', sans-serif",
+                    fontWeight: 700,
+                    fontSize: '26px',
+                    lineHeight: '100%',
+                    letterSpacing: '0%',
+                    textAlign: 'center',
+                    verticalAlign: 'middle',
                   }}
                 >
                   {isEn ? 'Gift a Voucher' : 'أهدِ قسيمة'}
                 </h3>
                 <p
-                  className="text-[#9FB7AE] text-[14px] font-medium leading-relaxed max-w-[420px] !mb-[16px]"
+                  className="text-[#9FB7AE] max-w-[420px] !mb-[16px] text-center"
                   style={{
-                    fontFamily: isEn ? "'Gotham Light', sans-serif" : undefined,
+                    fontFamily: isEn ? "'Gotham Light', sans-serif" : "'GE Dinar One', sans-serif",
+                    fontWeight: 500,
+                    fontSize: '14px',
+                    lineHeight: '140%',
+                    letterSpacing: '0%',
+                    textAlign: 'center',
+                    verticalAlign: 'middle',
                   }}
                 >
                   {isEn
                     ? 'Send a digital gift voucher to your loved ones via email with a personalized message and choice of designs.'
-                    : 'أرسل قسيمة هدية لأي شخص عبر البريد الإلكتروني مع رسالة شخصية وتصميم اختياري'}
+                    : 'أرسل قسيمة هدية أنيقة لشخص عزيز عبر البريد الالكتروني مع رسالة شخصية وتصميم تختاره'}
                 </p>
               </div>
               <Link
@@ -1552,22 +1564,34 @@ export default function VouchersPage() {
                   </svg>
                 </div>
                 <h3
-                  className="text-[22px] sm:text-[26px] font-bold text-[#255441] !mb-[16px]"
+                  className="text-[#255441] !mb-[16px] text-center"
                   style={{
-                    fontFamily: isEn ? "'Bahij Janna', sans-serif" : undefined,
+                    fontFamily: isEn ? "'Bahij Janna', sans-serif" : "'EnglishDigits', 'Bahij Janna', sans-serif",
+                    fontWeight: 700,
+                    fontSize: '26px',
+                    lineHeight: '100%',
+                    letterSpacing: '0%',
+                    textAlign: 'center',
+                    verticalAlign: 'middle',
                   }}
                 >
                   {isEn ? 'Buy for Yourself' : 'إشترِ لنفسك'}
                 </h3>
                 <p
-                  className="text-[#9FB7AE] text-[14px] font-medium leading-relaxed max-w-[420px] !mb-[16px]"
+                  className="text-[#9FB7AE] max-w-[420px] !mb-[16px] text-center"
                   style={{
-                    fontFamily: isEn ? "'Gotham Light', sans-serif" : undefined,
+                    fontFamily: isEn ? "'Gotham Light', sans-serif" : "'GE Dinar One', sans-serif",
+                    fontWeight: 500,
+                    fontSize: '14px',
+                    lineHeight: '140%',
+                    letterSpacing: '0%',
+                    textAlign: 'center',
+                    verticalAlign: 'middle',
                   }}
                 >
                   {isEn
                     ? 'Add credit to your account and use it whenever you want at checkout without needing gifting details.'
-                    : 'أضف رصيداً الي حسابك واستخدمه عند الدفع في أي وقت تريده دون الحاجة لتفاصيل الإهداء'}
+                    : 'أضف رصيداً الي حسابك واستخدمه عند الدفع في اي وقت تريده دون الحاجة لتفاصيل الاهداء'}
                 </p>
               </div>
               <Link

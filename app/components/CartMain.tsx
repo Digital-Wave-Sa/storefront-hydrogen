@@ -92,53 +92,13 @@ export function CartMain({ layout, cart: originalCart }: CartMainProps) {
   const cartHasItems = (cart?.totalQuantity ? cart.totalQuantity > 0 : false) || linesCount > 0;
   const childrenMap = getLineItemChildrenMap(cartLines);
 
-  const restoreFetcher = useFetcher();
-
-  // Save cart lines to localStorage when checkout is active
+  // Clean up any legacy localStorage backup items if present
   useEffect(() => {
-    if (cartLines.length > 0 && typeof window !== 'undefined') {
-      const backupData = cartLines.map((line: any) => ({
-        merchandiseId: line.merchandise?.id,
-        quantity: line.quantity,
-      })).filter((l: any) => l.merchandiseId);
-      if (backupData.length > 0) {
-        localStorage.setItem('saadeddin_cart_backup_lines', JSON.stringify(backupData));
-      }
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('saadeddin_cart_backup_lines');
+      sessionStorage.removeItem('saadeddin_checkout_initiated');
     }
-  }, [cartLines]);
-
-  // Only auto-restore cart from localStorage if returning from an initiated checkout
-  useEffect(() => {
-    if (!cartHasItems && typeof window !== 'undefined') {
-      const checkoutInitiated = sessionStorage.getItem('saadeddin_checkout_initiated');
-      if (checkoutInitiated === 'true') {
-        sessionStorage.removeItem('saadeddin_checkout_initiated');
-        const savedBackup = localStorage.getItem('saadeddin_cart_backup_lines');
-        if (savedBackup) {
-          try {
-            const parsedLines = JSON.parse(savedBackup);
-            if (Array.isArray(parsedLines) && parsedLines.length > 0 && restoreFetcher.state === 'idle') {
-              console.log('[CART RESTORE LOCALSTORAGE] Restoring cart items post-checkout:', parsedLines);
-              localStorage.removeItem('saadeddin_cart_backup_lines');
-              restoreFetcher.submit(
-                {
-                  cartFormInput: JSON.stringify({
-                    action: 'LinesAdd',
-                    inputs: { lines: parsedLines },
-                  }),
-                },
-                { method: 'POST', action: cartRoute },
-              );
-            }
-          } catch (e) {
-            console.error('[CART RESTORE LOCALSTORAGE ERROR]', e);
-          }
-        }
-      } else {
-        localStorage.removeItem('saadeddin_cart_backup_lines');
-      }
-    }
-  }, [cartHasItems, cartRoute]);
+  }, []);
 
   // --- UNDO REMOVED ITEM LOGIC ---
   const prevLinesRef = useRef<CartLine[]>([]);

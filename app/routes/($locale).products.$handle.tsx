@@ -548,15 +548,14 @@ function redirectToFirstVariant({
     throw new Response('Variant not found', {status: 404});
   }
 
-  throw redirect(
-    getVariantUrl({
-      pathname: url.pathname,
-      handle: product.handle,
-      selectedOptions: firstVariant.selectedOptions,
-      searchParams: new URLSearchParams(url.search),
-    }),
-    {status: 302},
-  );
+  const destination = getVariantUrl({
+    pathname: url.pathname,
+    handle: product.handle,
+    selectedOptions: firstVariant.selectedOptions,
+    searchParams: new URLSearchParams(url.search),
+  });
+
+  throw redirect(encodeURI(destination), {status: 302});
 }
 
 export default function Product() {
@@ -1647,32 +1646,9 @@ export default function Product() {
               </div>
             </div>
 
-            {/* Info Cards Row or Digital Gift Card Badges */}
+            {/* Direct link to custom builder wizard for Gift Cards */}
             {isGiftCard ? (
-              <div className="mb-[24px] flex flex-col gap-3 w-full">
-                {/* 3 Digital Badges */}
-                <div className="flex flex-wrap sm:flex-nowrap items-center gap-[12px] w-full">
-                  <div className="flex-1 min-w-[100px] h-[64px] rounded-[12px] border border-[#BBCFCD]/60 flex flex-col items-center justify-center bg-[#FCFAF8] shadow-xs">
-                    <span className="text-[#234745] text-[16px] font-bold">⚡</span>
-                    <span className="text-[#234745] text-[12px] font-bold mt-0.5" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
-                      {isEn ? 'Instant Delivery' : 'توصيل فوري'}
-                    </span>
-                  </div>
-                  <div className="flex-1 min-w-[100px] h-[64px] rounded-[12px] border border-[#BBCFCD]/60 flex flex-col items-center justify-center bg-[#FCFAF8] shadow-xs">
-                    <span className="text-[#234745] text-[16px] font-bold">📅</span>
-                    <span className="text-[#234745] text-[12px] font-bold mt-0.5" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
-                      {isEn ? 'Valid 12 Months' : 'صلاحية سنة'}
-                    </span>
-                  </div>
-                  <div className="flex-1 min-w-[100px] h-[64px] rounded-[12px] border border-[#BBCFCD]/60 flex flex-col items-center justify-center bg-[#FCFAF8] shadow-xs">
-                    <span className="text-[#234745] text-[16px] font-bold">🎁</span>
-                    <span className="text-[#234745] text-[12px] font-bold mt-0.5" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
-                      {isEn ? '100% Digital' : 'رقمية 100%'}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Direct link to custom builder wizard */}
+              <div className="mb-[24px] w-full">
                 <div className="w-full bg-[#f0f7f5] border border-[#234745]/20 rounded-[16px] p-4 flex items-center justify-between gap-3 shadow-xs">
                   <div className="flex items-center gap-3">
                     <span className="text-2xl">✨</span>

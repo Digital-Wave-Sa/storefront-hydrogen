@@ -624,7 +624,16 @@ export default function Product() {
   const isGiftCard =
     Boolean(product.isGiftCard) ||
     product.handle.includes('gift-card') ||
-    product.productType?.toLowerCase().includes('gift card');
+    product.handle.includes('voucher') ||
+    product.handle.includes('بطاقة-هدية') ||
+    product.title?.toLowerCase().includes('gift card') ||
+    product.title?.toLowerCase().includes('بطاقة هدية') ||
+    product.title?.toLowerCase().includes('قسيمة') ||
+    product.productType?.toLowerCase().includes('gift card') ||
+    product.tags?.some((t: string) =>
+      ['digital', 'gift-card', 'giftcard', 'voucher'].includes(t.toLowerCase().trim()),
+    ) ||
+    selectedVariant?.requiresShipping === false;
 
   const rawMetaComponents =
     (product as any).bundle_components?.references?.nodes || [];
@@ -1638,108 +1647,158 @@ export default function Product() {
               </div>
             </div>
 
-            {/* Info Cards Row */}
-            <div className="flex flex-wrap sm:flex-nowrap items-center gap-[12px] mb-[24px] w-full">
-              {/* Servings Card */}
-              <div className="flex-1 min-w-[100px] h-[64px] rounded-[12px] border border-[#D2D2D2] flex flex-col items-center justify-center relative">
-                <span
-                  className="text-[#234745] text-[16px] font-bold absolute top-[8px]"
-                  style={{
-                    fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
-                  }}
-                >
-                  {(product as any).servings?.value || '4-6'}
-                </span>
-                <span
-                  className="text-[#9FB7AE] text-[12px] font-bold absolute top-[36px] w-full text-center px-1 truncate"
-                  style={{
-                    fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
-                  }}
-                >
-                  {isEn ? 'Serves' : 'يكفي أشخاص'}
-                </span>
-              </div>
-
-              {/* Prep Time Card */}
-              <div className="flex-1 min-w-[100px] h-[64px] rounded-[12px] border border-[#D2D2D2] flex flex-col items-center justify-center relative">
-                <div className="absolute top-[8px] flex items-center gap-1">
-                  <span
-                    className="text-[#234745] text-[16px] font-bold"
-                    style={{
-                      fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
-                    }}
-                  >
-                    {new Intl.NumberFormat('en-US').format(
-                      parseInt((product as any).prep_time?.value || '20'),
-                    )}
-                  </span>
-                  <span
-                    className="text-[#234745] text-[16px] font-bold"
-                    style={{
-                      fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
-                    }}
-                  >
-                    {isEn ? 'min' : 'دقيقة'}
-                  </span>
+            {/* Info Cards Row or Digital Gift Card Badges */}
+            {isGiftCard ? (
+              <div className="mb-[24px] flex flex-col gap-3 w-full">
+                {/* 3 Digital Badges */}
+                <div className="flex flex-wrap sm:flex-nowrap items-center gap-[12px] w-full">
+                  <div className="flex-1 min-w-[100px] h-[64px] rounded-[12px] border border-[#BBCFCD]/60 flex flex-col items-center justify-center bg-[#FCFAF8] shadow-xs">
+                    <span className="text-[#234745] text-[16px] font-bold">⚡</span>
+                    <span className="text-[#234745] text-[12px] font-bold mt-0.5" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
+                      {isEn ? 'Instant Delivery' : 'توصيل فوري'}
+                    </span>
+                  </div>
+                  <div className="flex-1 min-w-[100px] h-[64px] rounded-[12px] border border-[#BBCFCD]/60 flex flex-col items-center justify-center bg-[#FCFAF8] shadow-xs">
+                    <span className="text-[#234745] text-[16px] font-bold">📅</span>
+                    <span className="text-[#234745] text-[12px] font-bold mt-0.5" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
+                      {isEn ? 'Valid 12 Months' : 'صلاحية سنة'}
+                    </span>
+                  </div>
+                  <div className="flex-1 min-w-[100px] h-[64px] rounded-[12px] border border-[#BBCFCD]/60 flex flex-col items-center justify-center bg-[#FCFAF8] shadow-xs">
+                    <span className="text-[#234745] text-[16px] font-bold">🎁</span>
+                    <span className="text-[#234745] text-[12px] font-bold mt-0.5" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
+                      {isEn ? '100% Digital' : 'رقمية 100%'}
+                    </span>
+                  </div>
                 </div>
-                <span
-                  className="text-[#9FB7AE] text-[12px] font-bold absolute top-[36px] w-full text-center px-1 truncate"
-                  style={{
-                    fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
-                  }}
-                >
-                  {isEn ? 'Prep Time' : 'وقت التجهيز'}
-                </span>
-              </div>
 
-              {/* Calories Card */}
-              <div className="flex-1 min-w-[100px] h-[64px] rounded-[12px] border border-[#D2D2D2] flex flex-col items-center justify-center relative">
-                <span
-                  className="text-[#234745] text-[16px] font-bold absolute top-[8px]"
-                  style={{
-                    fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
-                  }}
-                >
-                  {new Intl.NumberFormat('en-US').format(
-                    parseInt((product as any).calories?.value || '240'),
-                  )}
-                </span>
-                <span
-                  className="text-[#9FB7AE] text-[12px] font-bold absolute top-[36px] w-full text-center px-1 truncate"
-                  style={{
-                    fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
-                  }}
-                >
-                  {isEn ? 'Calories' : 'سعر حراري'}
-                </span>
-              </div>
-            </div>
-
-            {/* Estimated Delivery Date */}
-            {estimatedDeliveryDate && (
-              <div className="flex items-center gap-[16px] mb-[24px] p-[16px] bg-[#F4F9F7] rounded-[16px] w-full">
-                <div className="w-[40px] h-[40px] bg-white rounded-full flex items-center justify-center shrink-0">
-                  <span className="text-[20px]">🚚</span>
-                </div>
-                <div className="flex flex-col">
-                  <span
-                    className="text-[#9FB7AE] text-[12px] font-bold mb-[2px]"
-                    style={{
-                      fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
-                    }}
+                {/* Direct link to custom builder wizard */}
+                <div className="w-full bg-[#f0f7f5] border border-[#234745]/20 rounded-[16px] p-4 flex items-center justify-between gap-3 shadow-xs">
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl">✨</span>
+                    <div>
+                      <p className="text-[14px] font-bold text-[#234745] leading-tight">
+                        {isEn ? 'Want to personalize your voucher?' : 'هل تود إهداء وتخصيص القسيمة؟'}
+                      </p>
+                      <p className="text-[12px] text-[#64748b] mt-0.5">
+                        {isEn ? 'Choose design, write a personal message and send directly to recipient' : 'اختر التصميم واكتب رسالتك الخاصة وأرسلها مباشرة للمستلم'}
+                      </p>
+                    </div>
+                  </div>
+                  <Link
+                    to={isEn ? '/en/buy-gift-card' : '/buy-gift-card'}
+                    className="px-4 py-2 bg-[#234745] hover:bg-[#1A3533] text-white text-[13px] font-bold rounded-full transition-all shrink-0 shadow-sm"
                   >
-                    {isEn ? 'Estimated Delivery' : 'وقت التوصيل المتوقع'}
-                  </span>
-                  <span
-                    className="text-[#234745] text-[14px] font-bold leading-tight"
-                    style={{
-                      fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
-                    }}
-                  >
-                    {estimatedDeliveryDate}
-                  </span>
+                    {isEn ? 'Open Builder →' : 'صمم هديتك ←'}
+                  </Link>
                 </div>
               </div>
+            ) : (
+              <>
+                {/* Info Cards Row */}
+                <div className="flex flex-wrap sm:flex-nowrap items-center gap-[12px] mb-[24px] w-full">
+                  {/* Servings Card */}
+                  <div className="flex-1 min-w-[100px] h-[64px] rounded-[12px] border border-[#D2D2D2] flex flex-col items-center justify-center relative">
+                    <span
+                      className="text-[#234745] text-[16px] font-bold absolute top-[8px]"
+                      style={{
+                        fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
+                      }}
+                    >
+                      {(product as any).servings?.value || '4-6'}
+                    </span>
+                    <span
+                      className="text-[#9FB7AE] text-[12px] font-bold absolute top-[36px] w-full text-center px-1 truncate"
+                      style={{
+                        fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
+                      }}
+                    >
+                      {isEn ? 'Serves' : 'يكفي أشخاص'}
+                    </span>
+                  </div>
+
+                  {/* Prep Time Card */}
+                  <div className="flex-1 min-w-[100px] h-[64px] rounded-[12px] border border-[#D2D2D2] flex flex-col items-center justify-center relative">
+                    <div className="absolute top-[8px] flex items-center gap-1">
+                      <span
+                        className="text-[#234745] text-[16px] font-bold"
+                        style={{
+                          fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
+                        }}
+                      >
+                        {new Intl.NumberFormat('en-US').format(
+                          parseInt((product as any).prep_time?.value || '20'),
+                        )}
+                      </span>
+                      <span
+                        className="text-[#234745] text-[16px] font-bold"
+                        style={{
+                          fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
+                        }}
+                      >
+                        {isEn ? 'min' : 'دقيقة'}
+                      </span>
+                    </div>
+                    <span
+                      className="text-[#9FB7AE] text-[12px] font-bold absolute top-[36px] w-full text-center px-1 truncate"
+                      style={{
+                        fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
+                      }}
+                    >
+                      {isEn ? 'Prep Time' : 'وقت التجهيز'}
+                    </span>
+                  </div>
+
+                  {/* Calories Card */}
+                  <div className="flex-1 min-w-[100px] h-[64px] rounded-[12px] border border-[#D2D2D2] flex flex-col items-center justify-center relative">
+                    <span
+                      className="text-[#234745] text-[16px] font-bold absolute top-[8px]"
+                      style={{
+                        fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
+                      }}
+                    >
+                      {new Intl.NumberFormat('en-US').format(
+                        parseInt((product as any).calories?.value || '240'),
+                      )}
+                    </span>
+                    <span
+                      className="text-[#9FB7AE] text-[12px] font-bold absolute top-[36px] w-full text-center px-1 truncate"
+                      style={{
+                        fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
+                      }}
+                    >
+                      {isEn ? 'Calories' : 'سعر حراري'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Estimated Delivery Date */}
+                {estimatedDeliveryDate && (
+                  <div className="flex items-center gap-[16px] mb-[24px] p-[16px] bg-[#F4F9F7] rounded-[16px] w-full">
+                    <div className="w-[40px] h-[40px] bg-white rounded-full flex items-center justify-center shrink-0">
+                      <span className="text-[20px]">🚚</span>
+                    </div>
+                    <div className="flex flex-col">
+                      <span
+                        className="text-[#9FB7AE] text-[12px] font-bold mb-[2px]"
+                        style={{
+                          fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
+                        }}
+                      >
+                        {isEn ? 'Estimated Delivery' : 'وقت التوصيل المتوقع'}
+                      </span>
+                      <span
+                        className="text-[#234745] text-[14px] font-bold leading-tight"
+                        style={{
+                          fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
+                        }}
+                      >
+                        {estimatedDeliveryDate}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
 
             {/* Premium Price Box */}
@@ -3787,102 +3846,182 @@ export default function Product() {
                 <div
                   className={`bg-[#FEF8EB] rounded-[20px] p-[16px] border border-[#BBCFCD]/50 flex flex-col gap-0 text-start`}
                 >
-                  {/* Item 1: Free Delivery */}
-                  <div className="pb-[12px] flex flex-col justify-center gap-[4px]">
-                    <h4
-                      className="font-bold text-[14px] text-[#234745] leading-[17px] !mt-[0]"
-                      style={{
-                        fontFamily:
-                          "'EnglishDigits', 'GE Dinar One', sans-serif",
-                      }}
-                    >
-                      {isEn ? 'Free Delivery' : 'توصيل مجاني'}
-                    </h4>
-                    <p
-                      className="text-[12px] text-[#7D7D7D] font-normal leading-[15px]"
-                      style={{
-                        fontFamily:
-                          "'EnglishDigits', 'GE Dinar One', sans-serif",
-                      }}
-                    >
-                      {isEn
-                        ? `On orders above ${threshold} SAR`
-                        : `للطلبات فوق ${new Intl.NumberFormat('en-US').format(threshold)} ر.س`}
-                    </p>
-                  </div>
-                  <div className="h-[1px] w-full bg-[#BBCFCD]/50"></div>
+                  {isGiftCard ? (
+                    <>
+                      {/* Item 1: Instant Digital Delivery */}
+                      <div className="pb-[12px] flex flex-col justify-center gap-[4px]">
+                        <h4
+                          className="font-bold text-[14px] text-[#234745] leading-[17px] !mt-[0]"
+                          style={{
+                            fontFamily:
+                              "'EnglishDigits', 'GE Dinar One', sans-serif",
+                          }}
+                        >
+                          {isEn ? 'Instant Digital Voucher' : 'قسيمة إلكترونية فورية'}
+                        </h4>
+                        <p
+                          className="text-[12px] text-[#7D7D7D] font-normal leading-[15px]"
+                          style={{
+                            fontFamily:
+                              "'EnglishDigits', 'GE Dinar One', sans-serif",
+                          }}
+                        >
+                          {isEn
+                            ? 'Delivered via Email & SMS instantly'
+                            : 'تصل للمستلم فوراً عبر البريد ورسائل SMS'}
+                        </p>
+                      </div>
+                      <div className="h-[1px] w-full bg-[#BBCFCD]/50"></div>
 
-                  {/* Item 2: Branch Pickup */}
-                  <div className="py-[12px] flex flex-col justify-center gap-[4px]">
-                    <h4
-                      className="font-bold text-[14px] text-[#234745] leading-[17px]"
-                      style={{
-                        fontFamily:
-                          "'EnglishDigits', 'GE Dinar One', sans-serif",
-                      }}
-                    >
-                      {isEn ? 'Branch Pickup' : 'استلام من الفرع'}
-                    </h4>
-                    <p
-                      className="text-[12px] text-[#7D7D7D] font-normal leading-[15px]"
-                      style={{
-                        fontFamily:
-                          "'EnglishDigits', 'GE Dinar One', sans-serif",
-                      }}
-                    >
-                      {isEn ? 'Ready in 15 minutes' : 'جاهز خلال 15 دقيقة'}
-                    </p>
-                  </div>
-                  <div className="h-[1px] w-full bg-[#BBCFCD]/50"></div>
+                      {/* Item 2: Store Credit Balance */}
+                      <div className="py-[12px] flex flex-col justify-center gap-[4px]">
+                        <h4
+                          className="font-bold text-[14px] text-[#234745] leading-[17px]"
+                          style={{
+                            fontFamily:
+                              "'EnglishDigits', 'GE Dinar One', sans-serif",
+                          }}
+                        >
+                          {isEn ? 'Direct Wallet Balance' : 'شحن مباشر للمحفظة'}
+                        </h4>
+                        <p
+                          className="text-[12px] text-[#7D7D7D] font-normal leading-[15px]"
+                          style={{
+                            fontFamily:
+                              "'EnglishDigits', 'GE Dinar One', sans-serif",
+                          }}
+                        >
+                          {isEn
+                            ? 'Easily redeemable in account wallet'
+                            : 'يمكن تفعيلها وشحن الرصيد مباشرة في المحفظة'}
+                        </p>
+                      </div>
+                      <div className="h-[1px] w-full bg-[#BBCFCD]/50"></div>
 
-                  {/* Item 3: Guaranteed Return */}
-                  <div className="py-[12px] flex flex-col justify-center gap-[4px]">
-                    <h4
-                      className="font-bold text-[14px] text-[#234745] leading-[17px]"
-                      style={{
-                        fontFamily:
-                          "'EnglishDigits', 'GE Dinar One', sans-serif",
-                      }}
-                    >
-                      {isEn ? 'Guaranteed Return' : 'استرجاع مضمون'}
-                    </h4>
-                    <p
-                      className="text-[12px] text-[#7D7D7D] font-normal leading-[15px]"
-                      style={{
-                        fontFamily:
-                          "'EnglishDigits', 'GE Dinar One', sans-serif",
-                      }}
-                    >
-                      {isEn
-                        ? 'Within 24 hours of receipt'
-                        : 'خلال 24 ساعة من الاستلام'}
-                    </p>
-                  </div>
-                  <div className="h-[1px] w-full bg-[#BBCFCD]/50"></div>
+                      {/* Item 3: 100% Secure Payment */}
+                      <div className="pt-[12px] flex flex-col justify-center gap-[4px]">
+                        <h4
+                          className="font-bold text-[14px] text-[#234745] leading-[17px]"
+                          style={{
+                            fontFamily:
+                              "'EnglishDigits', 'GE Dinar One', sans-serif",
+                          }}
+                        >
+                          {isEn ? '100% Secure Payment' : 'دفع آمن 100%'}
+                        </h4>
+                        <p
+                          className="text-[12px] text-[#7D7D7D] font-normal leading-[15px]"
+                          style={{
+                            fontFamily:
+                              "'EnglishDigits', 'GE Dinar One', sans-serif",
+                          }}
+                        >
+                          {isEn
+                            ? 'Multiple electronic payment options'
+                            : 'طرق دفع إلكترونية متعددة ومشفرة'}
+                        </p>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      {/* Item 1: Free Delivery */}
+                      <div className="pb-[12px] flex flex-col justify-center gap-[4px]">
+                        <h4
+                          className="font-bold text-[14px] text-[#234745] leading-[17px] !mt-[0]"
+                          style={{
+                            fontFamily:
+                              "'EnglishDigits', 'GE Dinar One', sans-serif",
+                          }}
+                        >
+                          {isEn ? 'Free Delivery' : 'توصيل مجاني'}
+                        </h4>
+                        <p
+                          className="text-[12px] text-[#7D7D7D] font-normal leading-[15px]"
+                          style={{
+                            fontFamily:
+                              "'EnglishDigits', 'GE Dinar One', sans-serif",
+                          }}
+                        >
+                          {isEn
+                            ? `On orders above ${threshold} SAR`
+                            : `للطلبات فوق ${new Intl.NumberFormat('en-US').format(threshold)} ر.س`}
+                        </p>
+                      </div>
+                      <div className="h-[1px] w-full bg-[#BBCFCD]/50"></div>
 
-                  {/* Item 4: Secure Payment */}
-                  <div className="pt-[12px] flex flex-col justify-center gap-[4px]">
-                    <h4
-                      className="font-bold text-[14px] text-[#234745] leading-[17px]"
-                      style={{
-                        fontFamily:
-                          "'EnglishDigits', 'GE Dinar One', sans-serif",
-                      }}
-                    >
-                      {isEn ? '100% Secure Payment' : 'دفع آمن 100%'}
-                    </h4>
-                    <p
-                      className="text-[12px] text-[#7D7D7D] font-normal leading-[15px]"
-                      style={{
-                        fontFamily:
-                          "'EnglishDigits', 'GE Dinar One', sans-serif",
-                      }}
-                    >
-                      {isEn
-                        ? 'Encrypted and protected'
-                        : 'مدفوعات مشفرة ومحمية'}
-                    </p>
-                  </div>
+                      {/* Item 2: Branch Pickup */}
+                      <div className="py-[12px] flex flex-col justify-center gap-[4px]">
+                        <h4
+                          className="font-bold text-[14px] text-[#234745] leading-[17px]"
+                          style={{
+                            fontFamily:
+                              "'EnglishDigits', 'GE Dinar One', sans-serif",
+                          }}
+                        >
+                          {isEn ? 'Branch Pickup' : 'استلام من الفرع'}
+                        </h4>
+                        <p
+                          className="text-[12px] text-[#7D7D7D] font-normal leading-[15px]"
+                          style={{
+                            fontFamily:
+                              "'EnglishDigits', 'GE Dinar One', sans-serif",
+                          }}
+                        >
+                          {isEn ? 'Ready in 15 minutes' : 'جاهز خلال 15 دقيقة'}
+                        </p>
+                      </div>
+                      <div className="h-[1px] w-full bg-[#BBCFCD]/50"></div>
+
+                      {/* Item 3: Guaranteed Return */}
+                      <div className="py-[12px] flex flex-col justify-center gap-[4px]">
+                        <h4
+                          className="font-bold text-[14px] text-[#234745] leading-[17px]"
+                          style={{
+                            fontFamily:
+                              "'EnglishDigits', 'GE Dinar One', sans-serif",
+                          }}
+                        >
+                          {isEn ? 'Guaranteed Return' : 'استرجاع مضمون'}
+                        </h4>
+                        <p
+                          className="text-[12px] text-[#7D7D7D] font-normal leading-[15px]"
+                          style={{
+                            fontFamily:
+                              "'EnglishDigits', 'GE Dinar One', sans-serif",
+                          }}
+                        >
+                          {isEn
+                            ? 'Within 24 hours of receipt'
+                            : 'خلال 24 ساعة من الاستلام'}
+                        </p>
+                      </div>
+                      <div className="h-[1px] w-full bg-[#BBCFCD]/50"></div>
+
+                      {/* Item 4: Secure Payment */}
+                      <div className="pt-[12px] flex flex-col justify-center gap-[4px]">
+                        <h4
+                          className="font-bold text-[14px] text-[#234745] leading-[17px]"
+                          style={{
+                            fontFamily:
+                              "'EnglishDigits', 'GE Dinar One', sans-serif",
+                          }}
+                        >
+                          {isEn ? '100% Secure Payment' : 'دفع آمن 100%'}
+                        </h4>
+                        <p
+                          className="text-[12px] text-[#7D7D7D] font-normal leading-[15px]"
+                          style={{
+                            fontFamily:
+                              "'EnglishDigits', 'GE Dinar One', sans-serif",
+                          }}
+                        >
+                          {isEn
+                            ? 'Multiple electronic payment options'
+                            : 'خيارات دفع إلكترونية متعددة'}
+                        </p>
+                      </div>
+                    </>
+                  )}
                 </div>
               );
             })()}

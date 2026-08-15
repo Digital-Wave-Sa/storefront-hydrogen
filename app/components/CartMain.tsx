@@ -216,6 +216,28 @@ export function CartMain({ layout, cart: originalCart }: CartMainProps) {
   const fulfillmentType = cart?.attributes?.find(a => a.key.toLowerCase().trim() === 'fulfillment type')?.value;
   const isPickup = (fulfillmentType?.toLowerCase() === 'pickup') || (rootData?.fulfillmentType?.toLowerCase() === 'pickup');
 
+  const isDigitalOnlyCart =
+    (cart?.lines?.nodes?.length || 0) > 0 &&
+    cart?.lines?.nodes?.every((line: any) => {
+      const isVoucher = line.attributes?.some(
+        (a: any) =>
+          (a.key === '_gift_voucher' && a.value === 'true') ||
+          a.key.toLowerCase().includes('voucher') ||
+          a.key.toLowerCase().includes('gift mode'),
+      );
+      const isDigitalTag = line.merchandise?.product?.tags?.some((t: string) =>
+        ['digital', 'gift-card', 'giftcard', 'voucher'].includes(t.toLowerCase().trim()),
+      );
+      const productTitle = (line.merchandise?.product?.title || line.merchandise?.title || '').toLowerCase();
+      const isGiftProduct =
+        productTitle.includes('gift card') ||
+        productTitle.includes('بطاقة هدية') ||
+        productTitle.includes('قسيمة');
+      const requiresShipping = line.merchandise?.requiresShipping;
+
+      return isVoucher || isDigitalTag || isGiftProduct || requiresShipping === false;
+    });
+
   const subtotal = cart?.cost?.subtotalAmount?.amount ? parseFloat(cart.cost.subtotalAmount.amount) : 0;
   const progress = threshold > 0 ? Math.min((subtotal / threshold) * 100, 100) : 0;
   const remaining = Math.max(threshold - subtotal, 0);
@@ -282,7 +304,7 @@ export function CartMain({ layout, cart: originalCart }: CartMainProps) {
             {/* Left Column (Items) */}
             <div className="flex flex-col gap-4">
               {/* Dynamic Branch Promo Free Delivery Banner */}
-              {cartHasItems && !isPickup && isBranchPromoFreeDelivery && (
+              {cartHasItems && !isPickup && !isDigitalOnlyCart && isBranchPromoFreeDelivery && (
                 <div className="bg-[#FEF8EB] border border-[#EBDCC5] text-[#234745] p-4 rounded-[20px] mb-1 flex items-center gap-3 shadow-xs">
                   <div className="w-9 h-9 rounded-full bg-[#234745] text-amber-300 flex items-center justify-center font-bold text-lg shrink-0">
                     ⚡
@@ -301,7 +323,7 @@ export function CartMain({ layout, cart: originalCart }: CartMainProps) {
               )}
 
               {/* Free Delivery Progress (Restored) */}
-              {cartHasItems && !isPickup && hasExplicitThreshold && threshold > 0 && (
+              {cartHasItems && !isPickup && !isDigitalOnlyCart && hasExplicitThreshold && threshold > 0 && (
                 <div className="bg-white rounded-[24px] p-6 border border-[#BBCFCD]/80 mb-2">
                   <div className="flex justify-between items-center mb-3">
                     <p className="text-[14px] font-bold text-[#234745]">

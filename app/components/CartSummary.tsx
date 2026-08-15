@@ -199,7 +199,29 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
                         ? currentBranch.deliveryFee
                         : 0)))));
 
-  const deliveryFee = (isFreeDelivery || isPickup) ? 0 : rawDeliveryFee;
+  const isDigitalOnlyCart =
+    (cart?.lines?.nodes?.length || 0) > 0 &&
+    cart?.lines?.nodes?.every((line: any) => {
+      const isVoucher = line.attributes?.some(
+        (a: any) =>
+          (a.key === '_gift_voucher' && a.value === 'true') ||
+          a.key.toLowerCase().includes('voucher') ||
+          a.key.toLowerCase().includes('gift mode'),
+      );
+      const isDigitalTag = line.merchandise?.product?.tags?.some((t: string) =>
+        ['digital', 'gift-card', 'giftcard', 'voucher'].includes(t.toLowerCase().trim()),
+      );
+      const productTitle = (line.merchandise?.product?.title || line.merchandise?.title || '').toLowerCase();
+      const isGiftProduct =
+        productTitle.includes('gift card') ||
+        productTitle.includes('بطاقة هدية') ||
+        productTitle.includes('قسيمة');
+      const requiresShipping = line.merchandise?.requiresShipping;
+
+      return isVoucher || isDigitalTag || isGiftProduct || requiresShipping === false;
+    });
+
+  const deliveryFee = (isFreeDelivery || isPickup || isDigitalOnlyCart) ? 0 : rawDeliveryFee;
   const calculatedTotal = Math.max(0, subtotalBeforeDiscounts - otherDiscountDisplay - loyaltyDiscountDisplay + deliveryFee);
 
   const isBranchHidden = currentBranch && (
@@ -209,9 +231,9 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
   );
 
   const isTimeSlotSelected = !!timeSlot && timeSlot.trim() !== '';
-  const isBranchSelected = !!branch && branch.trim() !== '' && !isBranchHidden;
+  const isBranchSelected = isDigitalOnlyCart || (!!branch && branch.trim() !== '' && !isBranchHidden);
 
-  const hasPreOrderItems = cart?.lines?.nodes?.some((line: any) =>
+  const hasPreOrderItems = !isDigitalOnlyCart && cart?.lines?.nodes?.some((line: any) =>
     line.merchandise?.product?.tags?.some((tag: string) =>
       ['preorder', 'pre-order', 'طلب مسبق'].includes(tag.toLowerCase().trim())
     ) || line.attributes?.some((a: any) => a.key === '_is_preorder' && a.value === 'true')
@@ -238,7 +260,7 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
   const prepaidItemNamesEn = prepaidOnlyItems.map((line: any) => line.merchandise?.product?.title || line.merchandise?.title).join(', ');
   const prepaidItemNamesAr = prepaidOnlyItems.map((line: any) => line.merchandise?.product?.title || line.merchandise?.title).join('، ');
 
-  const isOutOfRange = !!attributes.find((a: any) => a.key === 'error')?.value;
+  const isOutOfRange = !isDigitalOnlyCart && !!attributes.find((a: any) => a.key === 'error')?.value;
 
   const outOfStockItems = cart?.lines?.nodes?.filter((line: any) => {
     return line.merchandise?.availableForSale === false;
@@ -258,10 +280,14 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
     return !isDiscountValidForLocation(matched, branchId, rootData?.selectedCity);
   });
 
-  const isDateTimeRequired = !hasPreOrderItems;
+  const isDateTimeRequired = !hasPreOrderItems && !isDigitalOnlyCart;
   const isDateTimeValid = !isDateTimeRequired || (!isTimeSlotInvalid && !!selectedDate && !!timeSlot && selectedDate.trim() !== '' && timeSlot.trim() !== '');
 
-  const canCheckout = isMinOrderMet && isBranchSelected && !isBranchHidden && !isOutOfRange && !hasOutOfStockItems && isDateTimeValid && !invalidActiveDiscount;
+  const canCheckout = hasOutOfStockItems
+    ? false
+    : isDigitalOnlyCart
+      ? !invalidActiveDiscount
+      : isMinOrderMet && isBranchSelected && !isBranchHidden && !isOutOfRange && isDateTimeValid && !invalidActiveDiscount;
 
   const branchHoursStr = (() => {
     if (!currentBranch) return '';
@@ -439,93 +465,114 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
                 <LoyaltyRedemptionUI isEn={isEn} cart={cart} />
               )}
 
-              {/* ALWAYS-VISIBLE LOCATION & BRANCH CARD */}
-              <div
-                onClick={() => {
-                  setIsLocationModalOpen(true);
-                  if (typeof window !== 'undefined') {
-                    window.dispatchEvent(new CustomEvent('openDeliveryModal'));
-                  }
-                }}
-                className={`w-full rounded-2xl p-4 transition-all cursor-pointer border shadow-sm ${
-                  isBranchSelected
-                    ? 'bg-[#FCFAF8] border-[#E8E2D9] hover:border-[#234745] hover:shadow-md'
-                    : 'bg-[#FFF8F8] border-[#F5C2C2] hover:border-[#DF4646]'
-                }`}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-full bg-[#234745]/10 text-[#234745] flex items-center justify-center flex-shrink-0">
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                        <circle cx="12" cy="10" r="3"></circle>
-                      </svg>
-                    </div>
-                    <span className="font-bold text-[14px] text-[#234745]">
-                      {isEn ? 'Selected Store Location' : 'فرع الاستلام أو التوصيل'}
+              {/* IF DIGITAL ONLY CART: SHOW DIGITAL DELIVERY NOTICE */}
+              {isDigitalOnlyCart ? (
+                <div className="w-full rounded-2xl p-4 bg-[#f0f7f5] border border-[#234745]/20 text-[#234745] flex items-center gap-3 shadow-xs">
+                  <div className="w-9 h-9 rounded-full bg-[#234745] text-white flex items-center justify-center font-bold text-base shrink-0">
+                    ✉️
+                  </div>
+                  <div className="text-[13px] leading-relaxed">
+                    <span className="font-bold block text-[14px] text-[#234745] mb-0.5">
+                      {isEn ? 'Digital Delivery (Email / SMS)' : 'توصيل إلكتروني فوري (عبر البريد الإلكتروني / SMS)'}
+                    </span>
+                    <span className="text-[#64748b] text-[12px]">
+                      {isEn
+                        ? 'Digital gift card voucher code will be delivered electronically upon payment.'
+                        : 'سيتم إرسال رمز القسيمة الرقمية إلكترونياً فور إتمام الدفع دون الحاجة لاختيار فرع أو موعد.'}
                     </span>
                   </div>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
+                </div>
+              ) : (
+                <>
+                  {/* ALWAYS-VISIBLE LOCATION & BRANCH CARD */}
+                  <div
+                    onClick={() => {
                       setIsLocationModalOpen(true);
                       if (typeof window !== 'undefined') {
                         window.dispatchEvent(new CustomEvent('openDeliveryModal'));
                       }
                     }}
-                    className="px-3.5 py-1 rounded-full text-[13px] font-bold bg-[#234745] text-white hover:bg-[#1a3533] transition-colors cursor-pointer border-none"
-                    style={{ fontFamily: "'GE Dinar One', sans-serif" }}
+                    className={`w-full rounded-2xl p-4 transition-all cursor-pointer border shadow-sm ${
+                      isBranchSelected
+                        ? 'bg-[#FCFAF8] border-[#E8E2D9] hover:border-[#234745] hover:shadow-md'
+                        : 'bg-[#FFF8F8] border-[#F5C2C2] hover:border-[#DF4646]'
+                    }`}
                   >
-                    {isEn ? 'Change' : 'تغيير'}
-                  </button>
-                </div>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-full bg-[#234745]/10 text-[#234745] flex items-center justify-center flex-shrink-0">
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                            <circle cx="12" cy="10" r="3"></circle>
+                          </svg>
+                        </div>
+                        <span className="font-bold text-[14px] text-[#234745]">
+                          {isEn ? 'Selected Store Location' : 'فرع الاستلام أو التوصيل'}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setIsLocationModalOpen(true);
+                          if (typeof window !== 'undefined') {
+                            window.dispatchEvent(new CustomEvent('openDeliveryModal'));
+                          }
+                        }}
+                        className="px-3.5 py-1 rounded-full text-[13px] font-bold bg-[#234745] text-white hover:bg-[#1a3533] transition-colors cursor-pointer border-none"
+                        style={{ fontFamily: "'GE Dinar One', sans-serif" }}
+                      >
+                        {isEn ? 'Change' : 'تغيير'}
+                      </button>
+                    </div>
 
-                <div className="flex flex-col gap-1 pr-10 rtl:pr-10 ltr:pl-10">
-                  <div className="flex items-center gap-2 text-[13px] font-medium text-[#7D7D7D]">
-                    <span className="px-2.5 py-0.5 rounded-md bg-[#234745]/10 text-[#234745] text-[11px] font-bold">
-                      {isPickup ? (isEn ? 'Pickup' : 'استلام من الفرع') : (isEn ? 'Delivery' : 'توصيل للمنزل')}
-                    </span>
-                    {rootData?.selectedAddressName && !isPickup && (
-                      <span className="truncate max-w-[200px] text-[#4A4A4A]">({rootData.selectedAddressName})</span>
-                    )}
+                    <div className="flex flex-col gap-1 pr-10 rtl:pr-10 ltr:pl-10">
+                      <div className="flex items-center gap-2 text-[13px] font-medium text-[#7D7D7D]">
+                        <span className="px-2.5 py-0.5 rounded-md bg-[#234745]/10 text-[#234745] text-[11px] font-bold">
+                          {isPickup ? (isEn ? 'Pickup' : 'استلام من الفرع') : (isEn ? 'Delivery' : 'توصيل للمنزل')}
+                        </span>
+                        {rootData?.selectedAddressName && !isPickup && (
+                          <span className="truncate max-w-[200px] text-[#4A4A4A]">({rootData.selectedAddressName})</span>
+                        )}
+                      </div>
+
+                      {isBranchSelected ? (
+                        <div className="text-[15px] font-bold text-[#234745] leading-snug">
+                          {branch}
+                        </div>
+                      ) : (
+                        <div className="text-[14px] font-bold text-[#DF4646] flex items-center gap-1.5 mt-0.5">
+                          <span>⚠️</span>
+                          <span>{isEn ? 'Please select a branch location' : 'يرجى اختيار الفرع المحدد لمتابعة الطلب'}</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
 
-                  {isBranchSelected ? (
-                    <div className="text-[15px] font-bold text-[#234745] leading-snug">
-                      {branch}
-                    </div>
+                  {/* Date & Time Slot Picker required for normal orders, hidden for pre-orders */}
+                  {!hasPreOrderItems ? (
+                    <CartCalendarPicker isEn={isEn} cart={cart} currentBranch={currentBranch} />
                   ) : (
-                    <div className="text-[14px] font-bold text-[#DF4646] flex items-center gap-1.5 mt-0.5">
-                      <span>⚠️</span>
-                      <span>{isEn ? 'Please select a branch location' : 'يرجى اختيار الفرع المحدد لمتابعة الطلب'}</span>
+                    <div className="w-full rounded-2xl p-4 bg-[#f0f7f5] border border-[#9fb7ae]/30 text-[#234745] flex items-center gap-3 shadow-sm my-2">
+                      <div className="w-8 h-8 rounded-full bg-[#234745]/10 flex items-center justify-center shrink-0">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <circle cx="12" cy="12" r="10" />
+                          <polyline points="12 6 12 16 14" />
+                        </svg>
+                      </div>
+                      <div className="text-[13px] leading-relaxed">
+                        <span className="font-bold block text-[14px] mb-0.5">
+                          {isEn ? 'Pre-Order Fulfillment Notice' : 'ملاحظة طلب مسبق'}
+                        </span>
+                        <span>
+                          {isEn
+                            ? 'This cart contains pre-order items. Delivery date and time will be scheduled based on item availability.'
+                            : 'يحتوي هذا الطلب على منتجات طلب مسبق. سيتم جدولة موعد التوصيل بناءً على توفر المنتج.'}
+                        </span>
+                      </div>
                     </div>
                   )}
-                </div>
-              </div>
-
-              {/* Date & Time Slot Picker required for normal orders, hidden for pre-orders */}
-              {!hasPreOrderItems ? (
-                <CartCalendarPicker isEn={isEn} cart={cart} currentBranch={currentBranch} />
-              ) : (
-                <div className="w-full rounded-2xl p-4 bg-[#f0f7f5] border border-[#9fb7ae]/30 text-[#234745] flex items-center gap-3 shadow-sm my-2">
-                  <div className="w-8 h-8 rounded-full bg-[#234745]/10 flex items-center justify-center shrink-0">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <circle cx="12" cy="12" r="10" />
-                      <polyline points="12 6 12 16 14" />
-                    </svg>
-                  </div>
-                  <div className="text-[13px] leading-relaxed">
-                    <span className="font-bold block text-[14px] mb-0.5">
-                      {isEn ? 'Pre-Order Fulfillment Notice' : 'ملاحظة طلب مسبق'}
-                    </span>
-                    <span>
-                      {isEn
-                        ? 'This cart contains pre-order items. Delivery date and time will be scheduled based on item availability.'
-                        : 'يحتوي هذا الطلب على منتجات طلب مسبق. سيتم جدولة موعد التوصيل بناءً على توفر المنتج.'}
-                    </span>
-                  </div>
-                </div>
+                </>
               )}
 
 
@@ -671,18 +718,20 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
                   isPickup={isPickup}
                   cart={cart}
                   branchErrorText={
-                    isBranchHidden
-                      ? (isEn ? 'Selected branch is currently unavailable. Please select another branch.' : 'الفرع المختار غير متوفر حالياً. يرجى اختيار فرع آخر.')
-                      : !isBranchSelected
-                        ? (isEn ? 'Please select a branch' : 'يرجى اختيار الفرع')
-                        : null
+                    isDigitalOnlyCart
+                      ? null
+                      : isBranchHidden
+                        ? (isEn ? 'Selected branch is currently unavailable. Please select another branch.' : 'الفرع المختار غير متوفر حالياً. يرجى اختيار فرع آخر.')
+                        : !isBranchSelected
+                          ? (isEn ? 'Please select a branch' : 'يرجى اختيار الفرع')
+                          : null
                   }
                   validationError={
                     invalidActiveDiscount ? (
                       isEn
                         ? `Discount code "${invalidActiveDiscount}" is not valid for ${branch || 'the selected branch'}`
                         : `كود الخصم "${invalidActiveDiscount}" غير صالح لـ ${branch || 'الفرع المختار'}`
-                    ) : !isMinOrderMet ? (
+                    ) : isDigitalOnlyCart ? null : !isMinOrderMet ? (
                       isEn ? (
                         <span className="flex items-center justify-center gap-1">Minimum order is <SaudiRiyalSymbol className="h-3 w-auto" /> {minOrderValue}</span>
                       ) : (

@@ -154,7 +154,53 @@ export async function action({request, context, params}: Route.ActionArgs) {
             : {}),
           ...(line.sellingPlanId ? {sellingPlanId: line.sellingPlanId} : {}),
         }));
-        result = await withRetry(() => cart.addLines(cleanLines));
+
+        try {
+          result = await withRetry(() => cart.addLines(cleanLines));
+
+          const hasNotExistError =
+            (result?.userErrors || []).some((e: any) =>
+              String(e?.message || '').toLowerCase().includes('does not exist') ||
+              String(e?.code || '').toLowerCase().includes('does_not_exist'),
+            ) ||
+            (result?.errors || []).some((e: any) =>
+              String(e?.message || '').toLowerCase().includes('does not exist') ||
+              String(e?.code || '').toLowerCase().includes('does_not_exist'),
+            );
+
+          if (hasNotExistError) {
+            console.warn(
+              '[CART POST] Cart does not exist in Shopify. Resetting session and recreating cart...',
+            );
+            context.session.unset('cartId');
+            cart.setCartId('');
+            result = await withRetry(() =>
+              typeof (cart as any).create === 'function'
+                ? (cart as any).create({lines: cleanLines})
+                : cart.addLines(cleanLines),
+            );
+          }
+        } catch (addErr: any) {
+          const errStr = String(addErr?.message || addErr).toLowerCase();
+          if (
+            errStr.includes('does not exist') ||
+            errStr.includes('not found')
+          ) {
+            console.warn(
+              '[CART POST] Caught cart does not exist error. Resetting session and recreating cart...',
+            );
+            context.session.unset('cartId');
+            cart.setCartId('');
+            result = await withRetry(() =>
+              typeof (cart as any).create === 'function'
+                ? (cart as any).create({lines: cleanLines})
+                : cart.addLines(cleanLines),
+            );
+          } else {
+            throw addErr;
+          }
+        }
+
         console.log('[CART POST] addLines result:', JSON.stringify(result, null, 2));
         break;
       }
@@ -702,7 +748,7 @@ export async function action({request, context, params}: Route.ActionArgs) {
         } else if (typeof inputs.discountCodes === 'string' && inputs.discountCodes.trim()) {
           try {
             const parsed = JSON.parse(inputs.discountCodes);
-            if (Array.isArray(parsed)) inputCodes = parsed;
+            if (Array.isArray(parsed)) inputCodes = parsed.map((c: any) => String(c));
             else inputCodes = [inputs.discountCodes];
           } catch (e) {
             inputCodes = [inputs.discountCodes];
@@ -779,62 +825,76 @@ export async function action({request, context, params}: Route.ActionArgs) {
 
         // Check if selected time slot qualifies for promo free delivery and update cart.discountCodes on Shopify server
         try {
-          const selectedSlot = timeSlotAttr?.value || (await context.session.get('Time Slot'));
-          const selectedBranchId =
-            mergedMap.get('Branch ID') ||
-            mergedMap.get('custom.branch_id') ||
-            (await context.session.get('selectedLocationId'));
-          const selectedBranchName =
-            mergedMap.get('Branch') ||
-            (await context.session.get('selectedLocationName'));
+          const fulfillmentTypeVal =
+            mergedMap.get('Fulfillment Type') ||
+            mergedMap.get('fulfillment type') ||
+            (await context.session.get('fulfillmentType'));
+          const isPickup = String(fulfillmentTypeVal || '').toLowerCase() === 'pickup';
 
-          if (selectedSlot && (selectedBranchId || selectedBranchName)) {
-            const { getAdminToken, getAdminDomain } = await import('~/lib/shopify-admin.server');
-            const shopDomain = getAdminDomain(context.env);
-            const adminToken = await getAdminToken(context.env);
-            if (shopDomain && adminToken) {
-              const locRes = await fetch(`https://${shopDomain}/admin/api/2024-10/graphql.json`, {
-                method: 'POST',
-                headers: {
-                  'X-Shopify-Access-Token': adminToken,
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                  query: `{
-                    locations(first: 250) {
-                      nodes {
-                        id
-                        name
-                        metafields(first: 50) {
-                          nodes { key namespace value }
+          const currentCodes = currentCart?.discountCodes?.map((dc: any) => dc.code) || [];
+
+          if (isPickup) {
+            // Pickup is always free and never needs freeshipping promo code
+            if (currentCodes.includes('freeshipping')) {
+              await cart.updateDiscountCodes(currentCodes.filter((c: string) => c !== 'freeshipping'));
+            }
+          } else {
+            const selectedSlot = timeSlotAttr?.value || (await context.session.get('Time Slot'));
+            const selectedBranchId =
+              mergedMap.get('Branch ID') ||
+              mergedMap.get('custom.branch_id') ||
+              (await context.session.get('selectedLocationId'));
+            const selectedBranchName =
+              mergedMap.get('Branch') ||
+              (await context.session.get('selectedLocationName'));
+
+            if (selectedSlot && (selectedBranchId || selectedBranchName)) {
+              const { getAdminToken, getAdminDomain } = await import('~/lib/shopify-admin.server');
+              const shopDomain = getAdminDomain(context.env);
+              const adminToken = await getAdminToken(context.env);
+              if (shopDomain && adminToken) {
+                const locRes = await fetch(`https://${shopDomain}/admin/api/2024-10/graphql.json`, {
+                  method: 'POST',
+                  headers: {
+                    'X-Shopify-Access-Token': adminToken,
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    query: `{
+                      locations(first: 250) {
+                        nodes {
+                          id
+                          name
+                          metafields(first: 50) {
+                            nodes { key namespace value }
+                          }
                         }
                       }
-                    }
-                  }`
-                }),
-              });
-              const locData = (await locRes.json()) as any;
-              const adminLocs = locData?.data?.locations?.nodes || [];
-              const matchedLoc = adminLocs.find((l: any) => {
-                const locNumId = String(l.id || '').split('/').pop();
-                const targetNumId = String(selectedBranchId || '').split('/').pop();
-                if (targetNumId && locNumId === targetNumId) return true;
-                if (selectedBranchName && l.name?.toLowerCase().trim() === String(selectedBranchName).toLowerCase().trim()) return true;
-                const arabicName = l.metafields?.nodes?.find((m: any) => m.key === 'name_in_arabic')?.value;
-                if (selectedBranchName && arabicName && String(arabicName).trim() === String(selectedBranchName).trim()) return true;
-                return false;
-              });
+                    }`
+                  }),
+                });
+                const locData = (await locRes.json()) as any;
+                const adminLocs = locData?.data?.locations?.nodes || [];
+                const matchedLoc = adminLocs.find((l: any) => {
+                  const locNumId = String(l.id || '').split('/').pop();
+                  const targetNumId = String(selectedBranchId || '').split('/').pop();
+                  if (targetNumId && locNumId === targetNumId) return true;
+                  if (selectedBranchName && l.name?.toLowerCase().trim() === String(selectedBranchName).toLowerCase().trim()) return true;
+                  const arabicName = l.metafields?.nodes?.find((m: any) => m.key === 'name_in_arabic')?.value;
+                  if (selectedBranchName && arabicName && String(arabicName).trim() === String(selectedBranchName).trim()) return true;
+                  return false;
+                });
 
-              if (matchedLoc) {
-                const { checkBranchFreeDeliveryInterval } = await import('~/lib/promo-delivery');
-                const promoResult = checkBranchFreeDeliveryInterval(matchedLoc, selectedSlot);
-                const isPromoFree = promoResult.isPromoFreeDelivery;
+                if (matchedLoc) {
+                  const { checkBranchFreeDeliveryInterval } = await import('~/lib/promo-delivery');
+                  const promoResult = checkBranchFreeDeliveryInterval(matchedLoc, selectedSlot);
+                  const isPromoFree = promoResult.isPromoFreeDelivery;
 
-                const currentCodes = currentCart?.discountCodes?.map((dc: any) => dc.code) || [];
-                if (isPromoFree && !currentCodes.includes('freeshipping')) {
-                  await cart.updateDiscountCodes(Array.from(new Set([...currentCodes, 'freeshipping'])));
-                } else if (!isPromoFree && currentCodes.includes('freeshipping')) {
-                  await cart.updateDiscountCodes(currentCodes.filter((c: string) => c !== 'freeshipping'));
+                  if (isPromoFree && !currentCodes.includes('freeshipping')) {
+                    await cart.updateDiscountCodes(Array.from(new Set([...currentCodes, 'freeshipping'])));
+                  } else if (!isPromoFree && currentCodes.includes('freeshipping')) {
+                    await cart.updateDiscountCodes(currentCodes.filter((c: string) => c !== 'freeshipping'));
+                  }
                 }
               }
             }
@@ -876,16 +936,24 @@ export async function action({request, context, params}: Route.ActionArgs) {
             context.session.set('selectedAxStoreId', axStoreIdAttr);
           if (customBranchIdAttr)
             context.session.set('selectedCustomBranchId', customBranchIdAttr);
+
+          const currentCart = await cart.get();
           if (fTypeAttr) {
+            const isNowPickup = fTypeAttr.toLowerCase() === 'pickup';
             context.session.set(
               'fulfillmentType',
-              fTypeAttr.toLowerCase() === 'pickup' ? 'pickup' : 'delivery',
+              isNowPickup ? 'pickup' : 'delivery',
             );
+            if (isNowPickup) {
+              const currentCodes = currentCart?.discountCodes?.map((dc: any) => dc.code) || [];
+              if (currentCodes.includes('freeshipping')) {
+                await cart.updateDiscountCodes(currentCodes.filter((c: string) => c !== 'freeshipping'));
+              }
+            }
           }
           context.session.set('manualLocationSelection', 'true');
 
           const updatesList = updates as any[];
-          const currentCart = await cart.get();
           const existing = currentCart?.attributes || [];
           const mergedMap = new Map();
           existing.forEach((a: any) => {
@@ -1028,23 +1096,32 @@ export async function action({request, context, params}: Route.ActionArgs) {
     );
   } catch (err: any) {
     console.error('[CART ACTION EXCEPTION]', err);
+    const errStr = String(err?.message || err).toLowerCase();
+    const isCartNotExist =
+      errStr.includes('does not exist') || errStr.includes('not found');
     const isThrottled =
-      String(err).toLowerCase().includes('throttled') || err?.status === 429;
+      errStr.includes('throttled') || err?.status === 429;
+
+    // Auto-recovery: clear stale/expired cart ID so next request starts clean
+    if (isCartNotExist || isThrottled) {
+      context.session.unset('cartId');
+      cart.setCartId('');
+    }
+
     const errMsg = isThrottled
       ? isEn
         ? 'The shop is currently busy. Resetting session, please try again.'
         : 'المتجر مشغول حالياً. تم إعادة تعيين الجلسة، يرجى المحاولة مرة أخرى.'
-      : isEn
-        ? 'An error occurred while updating the cart. Please try again.'
-        : 'حدث خطأ أثناء تحديث السلة. يرجى المحاولة مرة أخرى.';
-
-    // Auto-recovery: clear the throttled cart ID from the session so the next attempt starts fresh
-    if (isThrottled) {
-      context.session.set('cartId', '');
-    }
+      : isCartNotExist
+        ? isEn
+          ? 'Your cart session expired. We have refreshed it, please try adding again.'
+          : 'انتهت جلسة السلة السابقة. تم تحديث الجلسة، يرجى المحاولة مرة أخرى.'
+        : isEn
+          ? 'An error occurred while updating the cart. Please try again.'
+          : 'حدث خطأ أثناء تحديث السلة. يرجى المحاولة مرة أخرى.';
 
     const headers = new Headers();
-    if (context.session.isPending || isThrottled) {
+    if (context.session.isPending || isThrottled || isCartNotExist) {
       try {
         headers.append('Set-Cookie', await context.session.commit());
       } catch (e) {

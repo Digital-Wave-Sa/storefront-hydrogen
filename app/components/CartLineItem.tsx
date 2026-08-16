@@ -38,6 +38,9 @@ export function CartLineItem({
   const rootData = useRouteLoaderData('root') as any;
   const isEn = location.pathname.startsWith('/en');
   const isFreeItem = line.attributes?.some((attr: any) => attr.key === '_is_free' && attr.value === 'true') || false;
+  const isGiftCard =
+    line.attributes?.some((attr: any) => attr.key === '_gift_voucher' && attr.value === 'true') ||
+    product?.handle === 'saadeddin-gift-card';
 
   // Filter out default title option
   const validOptions = selectedOptions?.filter((opt: any) => opt.value !== 'Default Title') || [];
@@ -128,7 +131,7 @@ export function CartLineItem({
           })()}
 
           {/* Options / Tags & Custom Attributes */}
-          {(validOptions.length > 0 || (line.attributes?.filter((a: any) => a.value && !a.key.startsWith('_')).length || 0) > 0) && (
+          {!isGiftCard && (validOptions.length > 0 || (line.attributes?.filter((a: any) => a.value && !a.key.startsWith('_')).length || 0) > 0) && (
             <div className="flex flex-wrap items-center gap-2 justify-start mt-2">
               {validOptions.map((o: any) => (
                 <span key={o.name} className="px-3 py-1 border border-[#E9EBD8] text-[#8C9368] rounded-full text-[12px] font-bold">
@@ -307,7 +310,7 @@ export function CartLineItem({
             </h4>
 
             {/* Options */}
-            {(validOptions.length > 0 || (line.attributes?.filter((a: any) => a.value && !a.key.startsWith('_')).length || 0) > 0) && (
+            {!isGiftCard && (validOptions.length > 0 || (line.attributes?.filter((a: any) => a.value && !a.key.startsWith('_')).length || 0) > 0) && (
               <div className={`flex flex-wrap gap-1.5 mb-3 ${isEn ? 'justify-start' : 'justify-start'}`}>
                 {validOptions.map((o: any) => (
                   <span key={o.name} className="px-2.5 py-0.5 bg-white border border-[#BBCFCD]/40 text-[#8B8B8B] rounded-full text-[11px] font-bold">

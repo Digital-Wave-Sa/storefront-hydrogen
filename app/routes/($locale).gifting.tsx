@@ -674,8 +674,8 @@ export default function GiftingPage() {
         /* INNER PAGE: Gifting Category View with Back Button, Filter Pills & Products */
         <>
           {/* Category Filter Pills Tabs Bar */}
-          <div className="max-w-[1200px] mx-auto px-4 lg:px-8 pt-8 pb-4 flex justify-center">
-            <div className="flex items-center justify-center gap-2.5 overflow-x-auto hide-scrollbars py-2 px-1 w-full max-w-full">
+          <div className="max-w-[1200px] mx-auto px-4 lg:px-8 pt-8 pb-4">
+            <div className="flex items-center justify-start md:justify-center gap-2.5 overflow-x-auto hide-scrollbars py-2 px-1 w-full max-w-full">
               <button
                 type="button"
                 onClick={() => {

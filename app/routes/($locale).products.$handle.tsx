@@ -1383,11 +1383,11 @@ export default function Product() {
       <div className="w-full">
         {/* Dark Green Patterned Section */}
         <section
-          className="relative h-[144px] w-full bg-[#234745] overflow-hidden flex items-center"
+          className="relative h-[56px] md:h-[144px] w-full bg-[#234745] overflow-hidden flex items-center"
           dir={isEn ? 'ltr' : 'rtl'}
         >
           <div
-            className="absolute inset-0 bg-[length:1400px_800px] md:bg-[length:1900px_2000px]"
+            className="absolute inset-0 bg-[length:800px_200px] md:bg-[length:1900px_2000px]"
             style={{
               backgroundImage: `url(${patternBg})`,
               backgroundPosition: 'center',
@@ -1400,7 +1400,7 @@ export default function Product() {
           >
             <button
               onClick={() => window.history.back()}
-              className={`flex items-center gap-[8px] bg-[#9FB7AE] hover:bg-[#8BA19C] text-[#234745] px-4 md:px-6 py-2.5 rounded-[25px] text-[12px] md:text-[16px] font-bold transition-all shrink-0 ${isEn ? 'font-en' : ''}`}
+              className={`flex items-center gap-[8px] bg-[#9FB7AE] hover:bg-[#8BA19C] text-[#234745] px-3.5 md:px-6 py-1.5 md:py-2.5 rounded-[25px] text-[12px] md:text-[16px] font-bold transition-all shrink-0 ${isEn ? 'font-en' : ''}`}
               style={
                 isEn
                   ? {}
@@ -1671,82 +1671,101 @@ export default function Product() {
               </div>
             ) : (
               <>
-                {/* Info Cards Row */}
-                <div className="flex flex-wrap sm:flex-nowrap items-center gap-[12px] mb-[24px] w-full">
-                  {/* Servings Card */}
-                  <div className="flex-1 min-w-[100px] h-[64px] rounded-[12px] border border-[#D2D2D2] flex flex-col items-center justify-center relative">
-                    <span
-                      className="text-[#234745] text-[16px] font-bold absolute top-[8px]"
-                      style={{
-                        fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
-                      }}
-                    >
-                      {(product as any).servings?.value || '4-6'}
-                    </span>
-                    <span
-                      className="text-[#9FB7AE] text-[12px] font-bold absolute top-[36px] w-full text-center px-1 truncate"
-                      style={{
-                        fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
-                      }}
-                    >
-                      {isEn ? 'Serves' : 'يكفي أشخاص'}
-                    </span>
-                  </div>
+                {/* Info Cards Row - Only show cards when their metafield values are filled */}
+                {(() => {
+                  const servingsVal = (product as any).servings?.value?.trim();
+                  const prepTimeRaw = (product as any).prep_time?.value?.trim();
+                  const prepTimeVal = prepTimeRaw && !isNaN(parseInt(prepTimeRaw)) ? parseInt(prepTimeRaw) : (prepTimeRaw || null);
+                  const caloriesRaw = (product as any).calories?.value?.trim();
+                  const caloriesVal = caloriesRaw && !isNaN(parseInt(caloriesRaw)) ? parseInt(caloriesRaw) : (caloriesRaw || null);
 
-                  {/* Prep Time Card */}
-                  <div className="flex-1 min-w-[100px] h-[64px] rounded-[12px] border border-[#D2D2D2] flex flex-col items-center justify-center relative">
-                    <div className="absolute top-[8px] flex items-center gap-1">
-                      <span
-                        className="text-[#234745] text-[16px] font-bold"
-                        style={{
-                          fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
-                        }}
-                      >
-                        {new Intl.NumberFormat('en-US').format(
-                          parseInt((product as any).prep_time?.value || '20'),
-                        )}
-                      </span>
-                      <span
-                        className="text-[#234745] text-[16px] font-bold"
-                        style={{
-                          fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
-                        }}
-                      >
-                        {isEn ? 'min' : 'دقيقة'}
-                      </span>
-                    </div>
-                    <span
-                      className="text-[#9FB7AE] text-[12px] font-bold absolute top-[36px] w-full text-center px-1 truncate"
-                      style={{
-                        fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
-                      }}
-                    >
-                      {isEn ? 'Prep Time' : 'وقت التجهيز'}
-                    </span>
-                  </div>
+                  const hasAnyCard = Boolean(servingsVal || prepTimeVal || caloriesVal);
+                  if (!hasAnyCard) return null;
 
-                  {/* Calories Card */}
-                  <div className="flex-1 min-w-[100px] h-[64px] rounded-[12px] border border-[#D2D2D2] flex flex-col items-center justify-center relative">
-                    <span
-                      className="text-[#234745] text-[16px] font-bold absolute top-[8px]"
-                      style={{
-                        fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
-                      }}
-                    >
-                      {new Intl.NumberFormat('en-US').format(
-                        parseInt((product as any).calories?.value || '240'),
+                  return (
+                    <div className="flex flex-wrap sm:flex-nowrap items-center gap-[12px] mb-[24px] w-full">
+                      {/* Servings Card */}
+                      {servingsVal && (
+                        <div className="flex-1 min-w-[100px] h-[64px] rounded-[12px] border border-[#D2D2D2] flex flex-col items-center justify-center relative">
+                          <span
+                            className="text-[#234745] text-[16px] font-bold absolute top-[8px]"
+                            style={{
+                              fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
+                            }}
+                          >
+                            {servingsVal}
+                          </span>
+                          <span
+                            className="text-[#9FB7AE] text-[12px] font-bold absolute top-[36px] w-full text-center px-1 truncate"
+                            style={{
+                              fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
+                            }}
+                          >
+                            {isEn ? 'Serves' : 'يكفي أشخاص'}
+                          </span>
+                        </div>
                       )}
-                    </span>
-                    <span
-                      className="text-[#9FB7AE] text-[12px] font-bold absolute top-[36px] w-full text-center px-1 truncate"
-                      style={{
-                        fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
-                      }}
-                    >
-                      {isEn ? 'Calories' : 'سعر حراري'}
-                    </span>
-                  </div>
-                </div>
+
+                      {/* Prep Time Card */}
+                      {prepTimeVal && (
+                        <div className="flex-1 min-w-[100px] h-[64px] rounded-[12px] border border-[#D2D2D2] flex flex-col items-center justify-center relative">
+                          <div className="absolute top-[8px] flex items-center gap-1">
+                            <span
+                              className="text-[#234745] text-[16px] font-bold"
+                              style={{
+                                fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
+                              }}
+                            >
+                              {typeof prepTimeVal === 'number'
+                                ? new Intl.NumberFormat('en-US').format(prepTimeVal)
+                                : prepTimeVal}
+                            </span>
+                            <span
+                              className="text-[#234745] text-[16px] font-bold"
+                              style={{
+                                fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
+                              }}
+                            >
+                              {isEn ? 'min' : 'دقيقة'}
+                            </span>
+                          </div>
+                          <span
+                            className="text-[#9FB7AE] text-[12px] font-bold absolute top-[36px] w-full text-center px-1 truncate"
+                            style={{
+                              fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
+                            }}
+                          >
+                            {isEn ? 'Prep Time' : 'وقت التجهيز'}
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Calories Card */}
+                      {caloriesVal && (
+                        <div className="flex-1 min-w-[100px] h-[64px] rounded-[12px] border border-[#D2D2D2] flex flex-col items-center justify-center relative">
+                          <span
+                            className="text-[#234745] text-[16px] font-bold absolute top-[8px]"
+                            style={{
+                              fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
+                            }}
+                          >
+                            {typeof caloriesVal === 'number'
+                              ? new Intl.NumberFormat('en-US').format(caloriesVal)
+                              : caloriesVal}
+                          </span>
+                          <span
+                            className="text-[#9FB7AE] text-[12px] font-bold absolute top-[36px] w-full text-center px-1 truncate"
+                            style={{
+                              fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
+                            }}
+                          >
+                            {isEn ? 'Calories / 100g' : 'سعر حراري / ١٠٠جم'}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
 
                 {/* Estimated Delivery Date */}
                 {estimatedDeliveryDate && (

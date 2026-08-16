@@ -873,7 +873,7 @@ function OrderCard({order, isEn}: {order: OrderItemFragment; isEn: boolean}) {
 
   return (
     <div
-      className="bg-white border border-[#BBCFCD] rounded-2xl transition-all hover:border-[#234745] w-full overflow-hidden"
+      className="bg-white border border-[#9FB7AE] rounded-[24px] md:rounded-2xl transition-all hover:border-[#234745] w-full overflow-hidden shadow-xs"
       dir={isEn ? 'ltr' : 'rtl'}
     >
       {/* 1. DESKTOP VIEW LAYOUT (Original Wide Row Design) */}
@@ -1089,26 +1089,37 @@ function OrderCard({order, isEn}: {order: OrderItemFragment; isEn: boolean}) {
         </div>
       </div>
 
-      {/* 2. MOBILE VIEW LAYOUT (Original Stacked Mockup Design) */}
-      <div className="flex md:hidden flex-col gap-4 p-5 w-full text-start">
-        {/* Top Status Row */}
-        <div className="flex items-center gap-2 text-start">
+      {/* 2. MOBILE VIEW LAYOUT (< md) matching target design */}
+      <div className="flex md:hidden flex-col p-5 w-full text-start" dir="ltr">
+        {/* Top Status Row - Positioned at Top Left */}
+        <div className="flex items-center gap-2 mb-3.5 justify-start">
           <div
-            className="w-2.5 h-2.5 rounded-full"
+            className="w-2.5 h-2.5 rounded-full shrink-0"
             style={{backgroundColor: statusColor}}
           />
-          <span className="text-[14px] font-bold" style={{color: statusColor}}>
+          <span
+            className="text-[14px] font-bold"
+            style={{
+              color: statusColor,
+              ...(!isEn
+                ? {
+                    fontFamily:
+                      "'EnglishDigits', 'Bahij Janna', sans-serif",
+                  }
+                : {}),
+            }}
+          >
             {isEn ? statusEn : statusAr}
           </span>
         </div>
 
-        {/* Middle Row: Details (RTL Right) & Image (RTL Left) */}
-        <div className="flex flex-row items-center justify-between gap-4 w-full text-start">
-          {/* Details column */}
-          <div className="flex flex-col gap-1 flex-grow min-w-0">
+        {/* Middle Row: Details on LEFT, Image on RIGHT */}
+        <div className="flex items-center justify-between gap-4">
+          {/* Details column (Left Side) */}
+          <div className="flex flex-col gap-1.5 flex-1 min-w-0 items-start text-start" dir={isEn ? 'ltr' : 'rtl'}>
             {/* Order ID */}
             <h3
-              className="text-[15px] font-bold text-[#234745] leading-tight mb-0.5 truncate"
+              className="text-[17px] font-bold text-[#171717] leading-tight flex items-center gap-1"
               style={
                 !isEn
                   ? {fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif"}
@@ -1120,95 +1131,54 @@ function OrderCard({order, isEn}: {order: OrderItemFragment; isEn: boolean}) {
                 : `آخر طلب — #${order.orderNumber}`}
             </h3>
 
-            {/* Subtitle: product count & original total */}
-            <span
-              className="text-[12px] font-medium text-[#9FB7AE] truncate"
-              style={
-                !isEn
-                  ? {fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif"}
-                  : undefined
-              }
-            >
-              {productCount} {isEn ? 'Products' : 'منتجات'}
-              {originalTotal > totalAmount && (
-                <>
-                  {' '}
-                  •{' '}
-                  <span className="line-through">
-                    {originalTotal.toLocaleString('en-US', {
-                      minimumFractionDigits: 2,
-                    })}
-                  </span>
-                </>
-              )}{' '}
-              {isEn ? 'SAR' : 'ر.س'}
-            </span>
-
-            {/* Paid Total */}
-            <div className="flex items-center gap-1 mt-1 text-[#234745]">
-              <span className="text-[18px] font-black leading-none font-en">
+            {/* Subtitle: product count & total */}
+            <div className="text-[13px] text-[#9FB7AE] font-medium leading-tight flex items-center gap-1.5 flex-wrap">
+              <span>
+                {productCount} {isEn ? 'Products' : 'منتجات'}
+              </span>
+              <span>•</span>
+              <span className="font-en notranslate">
                 {totalAmount.toLocaleString('en-US', {
                   minimumFractionDigits: 2,
                 })}
               </span>
-              <CurrencyIcon className="h-4.5 w-auto" />
+              <CurrencyIcon className="h-3.5 w-auto fill-current" />
+            </div>
+
+            {/* Paid Total */}
+            <div className="flex items-center justify-start gap-2 mt-1">
+              <span className="text-[#234745]">
+                <CurrencyIcon className="h-5 w-auto" />
+              </span>
+              <span className="text-[22px] font-extrabold text-[#234745] leading-none font-en notranslate">
+                {totalAmount.toLocaleString('en-US', {
+                  minimumFractionDigits: 2,
+                })}
+              </span>
             </div>
           </div>
 
-          {/* Product Image on Left (in RTL) */}
-          <div className="relative flex-shrink-0">
-            {imageUrl ? (
-              <img
-                src={imageUrl}
-                alt="Order thumbnail"
-                className="w-[85px] h-[85px] rounded-xl object-cover border border-gray-100"
-              />
-            ) : (
-              <div className="w-[85px] h-[85px] bg-gray-50 rounded-xl border border-gray-100 flex items-center justify-center">
-                <svg
-                  className="w-6 h-6 text-gray-300"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="1.5"
-                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                  />
-                </svg>
-              </div>
-            )}
-            {/* Quantity Badge on Top-Left */}
-            <div className="absolute -top-2 -left-2 w-6 h-6 bg-[#234745] text-white rounded-full flex items-center justify-center text-[11px] font-bold border-2 border-white font-en shadow-sm">
+          {/* Product Image on RIGHT */}
+          <div className="relative flex-shrink-0 w-[82px] h-[82px] rounded-[16px] bg-[#F8FAF9] border border-gray-100 flex items-center justify-center">
+            <img
+              src={imageUrl || 'https://cdn.shopify.com/s/files/1/0533/2089/files/placeholder-images-image_large.png'}
+              alt={firstItem?.title || 'Order thumbnail'}
+              className="w-full h-full rounded-[16px] object-cover"
+              onError={(e) => {
+                (e.currentTarget as HTMLImageElement).src =
+                  'https://cdn.shopify.com/s/files/1/0533/2089/files/placeholder-images-image_large.png';
+              }}
+            />
+            {/* Quantity Badge on Top-Left of Image */}
+            <div className="absolute -top-2 -left-2 w-6 h-6 bg-[#234745] text-white rounded-full flex items-center justify-center text-[12px] font-bold border-2 border-white font-en shadow-xs z-10">
               {productCount.toLocaleString('en-US')}
             </div>
           </div>
         </div>
 
-        {/* Bottom Row: Actions */}
-        <div className="flex items-center gap-3 w-full mt-2">
-          {/* Secondary Action: Track or Invoice */}
-          {!isCancelled && (
-            <Link
-              to={
-                isEn
-                  ? `/en/track-order/${order.orderNumber}`
-                  : `/track-order/${order.orderNumber}`
-              }
-              className="flex-1 text-center py-2.5 border border-[#234745] text-[#234745] rounded-full text-[13px] font-bold hover:bg-gray-50 transition-all whitespace-nowrap"
-            >
-              {order.fulfillmentStatus === 'FULFILLED'
-                ? isEn
-                  ? 'Invoice'
-                  : 'الفاتورة'
-                : isEn
-                  ? 'Track'
-                  : 'تتبع'}
-            </Link>
-          )}
-
+        {/* Bottom Action Buttons Row: Left is Reorder (Primary), Right is Track (Secondary) */}
+        <div className="flex items-center gap-3 w-full mt-5 pt-1">
+          {/* Primary Action (Left) */}
           {(() => {
             const customItem = lineItems.find((item: any) =>
               item.customAttributes?.some((attr: any) =>
@@ -1264,10 +1234,8 @@ function OrderCard({order, isEn}: {order: OrderItemFragment; isEn: boolean}) {
               return (
                 <Link
                   to={reorderUrl}
-                  className={`text-center py-2.5 bg-[#234745] text-white rounded-full text-[13px] font-bold hover:opacity-90 transition-all whitespace-nowrap active:scale-95 ${
-                    isCancelled ? 'w-full' : 'flex-[1.5]'
-                  }`}
-                  style={{color: '#FFFFFF'}}
+                  className="flex-1 h-[48px] bg-[#234745] hover:bg-[#1A3533] text-white rounded-full text-[15px] font-bold flex items-center justify-center transition-all shadow-xs active:scale-98 cursor-pointer"
+                  style={{color: '#FFFFFF', ...(!isEn ? { fontFamily: "'GE Dinar One', sans-serif" } : {})}}
                 >
                   {isEn ? 'Reorder Cake' : 'إعادة طلب الكيكة'}
                 </Link>
@@ -1279,9 +1247,7 @@ function OrderCard({order, isEn}: {order: OrderItemFragment; isEn: boolean}) {
                 <button
                   type="button"
                   disabled
-                  className={`text-center py-2.5 bg-gray-400 text-white rounded-full text-[13px] font-bold cursor-not-allowed opacity-50 whitespace-nowrap ${
-                    isCancelled ? 'w-full' : 'flex-[1.5]'
-                  }`}
+                  className="flex-1 h-[48px] bg-gray-300 text-gray-500 rounded-full text-[15px] font-bold flex items-center justify-center cursor-not-allowed opacity-60"
                 >
                   {isEn ? 'Unavailable' : 'غير متوفر'}
                 </button>
@@ -1292,7 +1258,7 @@ function OrderCard({order, isEn}: {order: OrderItemFragment; isEn: boolean}) {
               <Form
                 action={isEn ? '/en/cart' : '/cart'}
                 method="post"
-                className={isCancelled ? 'w-full' : 'flex-[1.5]'}
+                className="flex-1"
               >
                 <input
                   type="hidden"
@@ -1309,14 +1275,35 @@ function OrderCard({order, isEn}: {order: OrderItemFragment; isEn: boolean}) {
                 />
                 <button
                   type="submit"
-                  className="w-full text-center py-2.5 bg-[#234745] text-white rounded-full text-[13px] font-bold hover:opacity-90 transition-all whitespace-nowrap active:scale-95"
-                  style={{color: '#FFFFFF'}}
+                  className="w-full h-[48px] bg-[#234745] hover:bg-[#1A3533] text-white rounded-full text-[15px] font-bold flex items-center justify-center transition-all shadow-xs active:scale-98 cursor-pointer border-none"
+                  style={{color: '#FFFFFF', ...(!isEn ? { fontFamily: "'GE Dinar One', sans-serif" } : {})}}
                 >
                   {isEn ? 'Reorder' : 'إعادة الطلب'}
                 </button>
               </Form>
             );
           })()}
+
+          {/* Secondary Action (Right) */}
+          {!isCancelled && (
+            <Link
+              to={
+                isEn
+                  ? `/en/track-order/${order.orderNumber}`
+                  : `/track-order/${order.orderNumber}`
+              }
+              className="flex-1 h-[48px] border-2 border-[#234745] bg-white hover:bg-gray-50 text-[#234745] rounded-full text-[15px] font-bold flex items-center justify-center transition-all shadow-xs active:scale-98"
+              style={!isEn ? { fontFamily: "'GE Dinar One', sans-serif" } : undefined}
+            >
+              {order.fulfillmentStatus === 'FULFILLED'
+                ? isEn
+                  ? 'Invoice'
+                  : 'الفاتورة'
+                : isEn
+                  ? 'Track'
+                  : 'تتبع'}
+            </Link>
+          )}
         </div>
       </div>
     </div>

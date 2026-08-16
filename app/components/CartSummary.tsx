@@ -167,20 +167,48 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
     rawThreshold = currentBranch.freeDeliveryThreshold;
   }
 
+  const isDigitalOnlyCart =
+    (cart?.lines?.nodes?.length || 0) > 0 &&
+    cart?.lines?.nodes?.every((line: any) => {
+      const isVoucher = line.attributes?.some(
+        (a: any) =>
+          (a.key === '_gift_voucher' && a.value === 'true') ||
+          a.key.toLowerCase().includes('voucher') ||
+          a.key.toLowerCase().includes('gift mode') ||
+          a.key.toLowerCase().includes('card color') ||
+          a.key.toLowerCase().includes('_card_'),
+      );
+      const isDigitalTag = line.merchandise?.product?.tags?.some((t: string) =>
+        ['digital', 'gift-card', 'giftcard', 'voucher'].includes(t.toLowerCase().trim()),
+      );
+      const productTitle = (line.merchandise?.product?.title || line.merchandise?.title || '').toLowerCase();
+      const productHandle = (line.merchandise?.product?.handle || '').toLowerCase();
+      const isGiftProduct =
+        productTitle.includes('gift card') ||
+        productTitle.includes('بطاقة هدية') ||
+        productTitle.includes('قسيمة') ||
+        productTitle.includes('voucher') ||
+        productHandle.includes('gift-card') ||
+        productHandle.includes('voucher');
+      const requiresShipping = line.merchandise?.requiresShipping;
+
+      return isVoucher || isDigitalTag || isGiftProduct || requiresShipping === false;
+    });
+
   const threshold = rawThreshold > 0 ? rawThreshold : 0;
   const isThresholdMet = threshold > 0 && subtotal >= threshold;
   
-  // Check promotional free delivery interval for current selected branch and chosen time slot
+  // Check promotional free delivery interval for current selected branch and chosen time slot (only for home delivery)
   const branchPromo = checkBranchFreeDeliveryInterval(currentBranch, timeSlot);
-  const isBranchPromoFreeDelivery = branchPromo.isPromoFreeDelivery;
+  const isBranchPromoFreeDelivery = !isPickup && !isDigitalOnlyCart && branchPromo.isPromoFreeDelivery;
 
   const rawCheckoutUrl = cart?.checkoutUrl;
-  const effectiveCheckoutUrl = (rawCheckoutUrl && (isBranchPromoFreeDelivery || isThresholdMet) && !cartHasFreeShippingCode)
+  const effectiveCheckoutUrl = (rawCheckoutUrl && !isPickup && (isBranchPromoFreeDelivery || isThresholdMet) && !cartHasFreeShippingCode)
     ? (rawCheckoutUrl.includes('?') ? `${rawCheckoutUrl}&discount=freeshipping` : `${rawCheckoutUrl}?discount=freeshipping`)
     : rawCheckoutUrl;
 
   // Free delivery applies if freeshipping code is active, branch promo interval is active, or subtotal >= threshold
-  const isFreeDelivery = cartHasFreeShippingCode || isBranchPromoFreeDelivery || isThresholdMet;
+  const isFreeDelivery = isPickup || isDigitalOnlyCart || cartHasFreeShippingCode || isBranchPromoFreeDelivery || isThresholdMet;
   
   const feeAttribute = attributes.find((a: any) => a.key.toLowerCase().trim() === 'delivery fee')?.value;
   const feeAttrVal = feeAttribute ? parseFloat(feeAttribute) : null;
@@ -198,28 +226,6 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
                     : (typeof currentBranch?.deliveryFee === 'number' && currentBranch.deliveryFee > 0
                         ? currentBranch.deliveryFee
                         : 0)))));
-
-  const isDigitalOnlyCart =
-    (cart?.lines?.nodes?.length || 0) > 0 &&
-    cart?.lines?.nodes?.every((line: any) => {
-      const isVoucher = line.attributes?.some(
-        (a: any) =>
-          (a.key === '_gift_voucher' && a.value === 'true') ||
-          a.key.toLowerCase().includes('voucher') ||
-          a.key.toLowerCase().includes('gift mode'),
-      );
-      const isDigitalTag = line.merchandise?.product?.tags?.some((t: string) =>
-        ['digital', 'gift-card', 'giftcard', 'voucher'].includes(t.toLowerCase().trim()),
-      );
-      const productTitle = (line.merchandise?.product?.title || line.merchandise?.title || '').toLowerCase();
-      const isGiftProduct =
-        productTitle.includes('gift card') ||
-        productTitle.includes('بطاقة هدية') ||
-        productTitle.includes('قسيمة');
-      const requiresShipping = line.merchandise?.requiresShipping;
-
-      return isVoucher || isDigitalTag || isGiftProduct || requiresShipping === false;
-    });
 
   const deliveryFee = (isFreeDelivery || isPickup || isDigitalOnlyCart) ? 0 : rawDeliveryFee;
   const calculatedTotal = Math.max(0, subtotalBeforeDiscounts - otherDiscountDisplay - loyaltyDiscountDisplay + deliveryFee);
@@ -431,6 +437,7 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
                 branchName={branch}
                 isBranchPromoFreeDelivery={isBranchPromoFreeDelivery}
                 isThresholdMet={isThresholdMet}
+                isPickup={isPickup}
               />
 
               {/* Loyalty Redemption */}
@@ -551,7 +558,13 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
 
                   {/* Date & Time Slot Picker required for normal orders, hidden for pre-orders */}
                   {!hasPreOrderItems ? (
-                    <CartCalendarPicker isEn={isEn} cart={cart} currentBranch={currentBranch} />
+                    <CartCalendarPicker
+                      isEn={isEn}
+                      cart={cart}
+                      currentBranch={currentBranch}
+                      isPickup={isPickup}
+                      fulfillmentType={fulfillmentType}
+                    />
                   ) : (
                     <div className="w-full rounded-2xl p-4 bg-[#f0f7f5] border border-[#9fb7ae]/30 text-[#234745] flex items-center gap-3 shadow-sm my-2">
                       <div className="w-8 h-8 rounded-full bg-[#234745]/10 flex items-center justify-center shrink-0">
@@ -613,7 +626,7 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
                   </div>
                 )}
 
-                {!isPickup && (
+                {!isPickup && !isDigitalOnlyCart && (
                   <div className="flex justify-between items-center text-[15px]">
                     <dt className="text-[#9FB7AE] font-medium" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>{isEn ? 'Delivery Fees' : 'رسوم التوصيل'}</dt>
                     <dd className="text-[#234745] font-bold font-en flex items-center gap-1">
@@ -799,7 +812,7 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
             </dd>
           </div>
 
-          {!isPickup && (
+          {!isPickup && !isDigitalOnlyCart && (
             <div className="flex justify-between items-center text-[14px]">
               <dt className="text-gray-400 font-medium">{isEn ? 'Delivery' : 'التوصيل'}</dt>
               <dd className="text-[#234745] font-bold font-en">
@@ -1533,6 +1546,7 @@ function CartDiscounts({
   branchName,
   isBranchPromoFreeDelivery = false,
   isThresholdMet = false,
+  isPickup = false,
 }: {
   discountCodes?: CartApiQueryFragment['discountCodes'];
   cart?: any;
@@ -1543,12 +1557,13 @@ function CartDiscounts({
   branchName?: string;
   isBranchPromoFreeDelivery?: boolean;
   isThresholdMet?: boolean;
+  isPickup?: boolean;
 }) {
   const [showInput, setShowInput] = useState(false);
 
   const codes: string[] =
     discountCodes
-      ?.filter((discount) => discount.applicable)
+      ?.filter((discount) => discount.applicable && (!isPickup || discount.code?.toLowerCase() !== 'freeshipping'))
       ?.map(({ code }) => code) || [];
 
   const hasLineAllocations = cart?.lines?.nodes?.some((line: any) => line?.discountAllocations?.length > 0);
@@ -1839,17 +1854,22 @@ function CartCalendarPicker({
   isEn,
   cart,
   currentBranch,
+  isPickup: propIsPickup,
+  fulfillmentType: propFulfillmentType,
 }: {
   isEn: boolean;
   cart: any;
   currentBranch: any;
+  isPickup?: boolean;
+  fulfillmentType?: string;
 }) {
   const fetcher = useFetcher();
   const cartRoute = isEn ? '/en/cart' : '/cart';
   const selectedDate = cart?.attributes?.find((a: any) => a.key === 'delivery_date')?.value || '';
   const selectedTimeSlot = cart?.attributes?.find((a: any) => a.key === 'Time Slot')?.value || '';
-  const fulfillmentType = cart?.attributes?.find((a: any) => a.key === 'Fulfillment Type')?.value || 'delivery';
-  const isPickup = fulfillmentType?.toLowerCase() === 'pickup';
+  const attrFulfillmentType = cart?.attributes?.find((a: any) => a.key?.toLowerCase()?.trim() === 'fulfillment type')?.value;
+  const fulfillmentType = propFulfillmentType || attrFulfillmentType || (typeof window !== 'undefined' && localStorage.getItem('saadeddin_fulfillment_type')) || 'delivery';
+  const isPickup = typeof propIsPickup === 'boolean' ? propIsPickup : (fulfillmentType?.toLowerCase() === 'pickup');
 
   // Optimistic UI states — never overwrite while a fetch is in-flight
   const [localSelectedDate, setLocalSelectedDate] = useState(selectedDate);
@@ -2017,7 +2037,7 @@ function CartCalendarPicker({
 
   // Month names
   const monthNameEn = displayedMonth.toLocaleString('en-US', { month: 'long', year: 'numeric' });
-  const monthNameAr = displayedMonth.toLocaleString('ar-EG', { month: 'long', year: 'numeric' });
+  const monthNameAr = `${displayedMonth.toLocaleString('ar-SA', { month: 'long' })} ${displayedMonth.getFullYear()}`;
   const monthLabel = isEn ? monthNameEn : monthNameAr;
 
   const weekdaysEn = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];

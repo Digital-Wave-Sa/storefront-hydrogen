@@ -183,16 +183,22 @@ export function CartMain({ layout, cart: originalCart }: CartMainProps) {
         (a: any) =>
           (a.key === '_gift_voucher' && a.value === 'true') ||
           a.key.toLowerCase().includes('voucher') ||
-          a.key.toLowerCase().includes('gift mode'),
+          a.key.toLowerCase().includes('gift mode') ||
+          a.key.toLowerCase().includes('card color') ||
+          a.key.toLowerCase().includes('_card_'),
       );
       const isDigitalTag = line.merchandise?.product?.tags?.some((t: string) =>
         ['digital', 'gift-card', 'giftcard', 'voucher'].includes(t.toLowerCase().trim()),
       );
       const productTitle = (line.merchandise?.product?.title || line.merchandise?.title || '').toLowerCase();
+      const productHandle = (line.merchandise?.product?.handle || '').toLowerCase();
       const isGiftProduct =
         productTitle.includes('gift card') ||
         productTitle.includes('بطاقة هدية') ||
-        productTitle.includes('قسيمة');
+        productTitle.includes('قسيمة') ||
+        productTitle.includes('voucher') ||
+        productHandle.includes('gift-card') ||
+        productHandle.includes('voucher');
       const requiresShipping = line.merchandise?.requiresShipping;
 
       return isVoucher || isDigitalTag || isGiftProduct || requiresShipping === false;

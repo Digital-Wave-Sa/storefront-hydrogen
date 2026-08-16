@@ -516,24 +516,114 @@ export default function AccountDashboard() {
                     statusAr = 'جاري تجهيز الطلب';
                   }
 
+                  const reorderLines = (
+                    lastOrder.lineItems?.nodes || []
+                  )
+                    .map((item: any) => {
+                      const rawId =
+                        item.variant?.id ||
+                        item.variantId ||
+                        item.variant_id;
+                      if (!rawId) return null;
+                      const idStr = String(rawId);
+                      if (idStr === 'null' || idStr === 'undefined' || !idStr.trim()) return null;
+                      const merchandiseId = idStr.startsWith('gid://')
+                        ? idStr
+                        : `gid://shopify/ProductVariant/${idStr}`;
+                      return {
+                        merchandiseId,
+                        quantity: item.quantity || 1,
+                      };
+                    })
+                    .filter((l: any) => l && l.merchandiseId);
+
+                  const customItem = (lastOrder.lineItems?.nodes || []).find((item: any) =>
+                    item.customAttributes?.some((attr: any) =>
+                      attr.key === '_cake_custom' ||
+                      attr.key === 'Shape' || attr.key === 'الشكل' ||
+                      attr.key === 'Flavor' || attr.key === 'النكهة'
+                    ) ||
+                    item.title?.includes('كيكة مخصصة') ||
+                    item.title?.includes('Custom Cake')
+                  );
+
+                  const isCustomCake = customItem || lastOrder.customAttributes?.some((attr: any) =>
+                    attr.key === '_cake_custom' ||
+                    attr.key === 'Shape' || attr.key === 'الشكل' ||
+                    attr.key === 'Flavor' || attr.key === 'النكهة'
+                  );
+
+                  const getCustomCakeReorderUrl = () => {
+                    const targetItem = customItem || (lastOrder.lineItems?.nodes || [])[0];
+                    const attrs = [
+                      ...(targetItem?.customAttributes || []),
+                      ...(lastOrder.customAttributes || [])
+                    ];
+                    const getAttr = (...keys: string[]) => {
+                      const found = attrs.find((a: any) => keys.includes(a.key));
+                      return found ? found.value : '';
+                    };
+
+                    const params = new URLSearchParams({
+                      reorder: 'true',
+                      shape: getAttr('Shape', 'الشكل'),
+                      size: getAttr('Size', 'الحجم'),
+                      flavor: getAttr('Flavor', 'النكهة'),
+                      layers: getAttr('Layers', 'الطبقات'),
+                      color: getAttr('Color', 'اللون'),
+                      topping: getAttr('Topping', 'الإضافة'),
+                      message: getAttr('Cake Surface Message', 'نص على الكيكة', 'Message', 'الرسالة'),
+                      baseMessage: getAttr('Cake Base Message', 'نص على القاعدة'),
+                      specialInstructions: getAttr('Special Instructions', 'تعليمات خاصة للمخبز'),
+                      textFont: getAttr('Message Font', 'خط الرسالة'),
+                      textColor: getAttr('Message Color', 'لون الرسالة'),
+                      messagePlacement: getAttr('Text Placement', 'موقع الكتابة'),
+                    });
+
+                    const path = isEn ? '/en/custom-cake' : '/custom-cake';
+                    return `${path}?${params.toString()}`;
+                  };
+
                   return (
-                    <div className="bg-white border border-[#9FB7AE] rounded-[12px] p-6">
-                      <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-                        {/* Order Details (First in RTL -> Right side) */}
-                        <div className="flex items-center gap-4 text-start">
-                          <div className="relative flex-shrink-0">
-                            <img
-                              src={imageUrl}
-                              alt="Product"
-                              className="w-16 h-16 md:w-20 md:h-20 rounded-[12px] object-cover border border-gray-100"
-                            />
-                            <div className="absolute -top-2 -start-2 w-6 h-6 bg-[#234745] text-white rounded-full flex items-center justify-center text-[11px] font-bold border-2 border-white font-en">
-                              {productCount.toLocaleString('en-US')}
-                            </div>
-                          </div>
-                          <div className="flex flex-col gap-1">
+                    <>
+                      {/* 1. Mobile-Only Card View (< md) matching target design */}
+                      <div className="block md:hidden bg-white border border-[#9FB7AE] rounded-[24px] p-5 shadow-xs" dir="ltr">
+                        {/* Top Status Header - Positioned at Top Left */}
+                        <div className="flex items-center gap-2 mb-3.5 justify-start">
+                          <div
+                            className="w-2.5 h-2.5 rounded-full shrink-0"
+                            style={{
+                              backgroundColor:
+                                lastOrder.fulfillmentStatus === 'FULFILLED'
+                                  ? '#234745'
+                                  : '#8C5D3B',
+                            }}
+                          />
+                          <span
+                            className="text-[14px] font-bold"
+                            style={{
+                              color:
+                                lastOrder.fulfillmentStatus === 'FULFILLED'
+                                  ? '#234745'
+                                  : '#8C5D3B',
+                              ...(!isEn
+                                ? {
+                                    fontFamily:
+                                      "'EnglishDigits', 'Bahij Janna', sans-serif",
+                                  }
+                                : {}),
+                            }}
+                          >
+                            {isEn ? statusEn : statusAr}
+                          </span>
+                        </div>
+
+                        {/* Main Middle Row: Text Details on LEFT, Image on RIGHT */}
+                        <div className="flex items-center justify-between gap-4">
+                          {/* Text Details (Left Side) */}
+                          <div className="flex flex-col gap-1.5 flex-1 min-w-0 items-start text-start" dir={isEn ? 'ltr' : 'rtl'}>
                             <h3
-                              className="text-[16px] md:text-[18px] font-bold text-[#234745] leading-none flex items-center gap-1"
+                              className="text-[17px] font-bold text-[#171717] leading-tight flex items-center gap-1"
                               style={
                                 !isEn
                                   ? {
@@ -548,167 +638,236 @@ export default function AccountDashboard() {
                               ) : (
                                 <>
                                   آخر طلب —{' '}
-                                  <span className="font-en pt-1">
+                                  <span className="font-en">
                                     #{lastOrder.orderNumber}
                                   </span>
                                 </>
                               )}
                             </h3>
-                            <p className="text-[12px] text-[#A6BFB9] font-medium leading-tight">
-                              {isEn ? (
-                                `${productCount} Products`
-                              ) : (
-                                <>
-                                  <span className="font-en">
-                                    {productCount.toLocaleString('en-US')}
-                                  </span>{' '}
-                                  منتجات
-                                </>
-                              )}{' '}
-                              •{' '}
-                              <span className="font-en">
-                                {parseFloat(totalAmount).toLocaleString(
-                                  'en-US',
-                                )}
-                              </span>{' '}
-                              <SaudiRiyalSymbol className="h-3.5 w-auto inline-block ms-1" />
-                            </p>
-                            <div className="flex items-center justify-start gap-1.5 mt-1">
+                            <div className="text-[13px] text-[#9FB7AE] font-medium leading-tight flex items-center gap-1.5 flex-wrap">
+                              <span>
+                                {isEn
+                                  ? `${productCount} Products`
+                                  : `${productCount.toLocaleString('en-US')} منتجات`}
+                              </span>
+                              <span>•</span>
+                              <span className="font-en notranslate">
+                                {parseFloat(totalAmount).toLocaleString('en-US')}
+                              </span>
+                              <SaudiRiyalSymbol className="h-3.5 w-auto fill-current" />
+                            </div>
+                            <div className="flex items-center justify-start gap-2 mt-1">
                               <span className="text-[#234745]">
-                                <SaudiRiyalSymbol className="h-4.5 w-auto" />
+                                <SaudiRiyalSymbol className="h-5 w-auto" />
                               </span>
-                              <span className="text-[16px] font-bold text-[#234745] leading-none font-en">
-                                {parseFloat(totalAmount).toLocaleString(
-                                  'en-US',
-                                )}
+                              <span className="text-[22px] font-extrabold text-[#234745] leading-none font-en notranslate">
+                                {parseFloat(totalAmount).toLocaleString('en-US')}
                               </span>
+                            </div>
+                          </div>
+
+                          {/* Product Image Thumbnail (Right Side) */}
+                          <div className="relative flex-shrink-0 w-[82px] h-[82px] rounded-[16px] bg-[#F8FAF9] border border-gray-100 flex items-center justify-center">
+                            <img
+                              src={imageUrl}
+                              alt={firstItem?.title || 'Product'}
+                              className="w-full h-full rounded-[16px] object-cover"
+                              onError={(e) => {
+                                (e.currentTarget as HTMLImageElement).src =
+                                  'https://cdn.shopify.com/s/files/1/0533/2089/files/placeholder-images-image_large.png';
+                              }}
+                            />
+                            <div className="absolute -top-2 -left-2 w-6 h-6 bg-[#234745] text-white rounded-full flex items-center justify-center text-[12px] font-bold border-2 border-white font-en shadow-xs z-10">
+                              {productCount.toLocaleString('en-US')}
                             </div>
                           </div>
                         </div>
 
-                        {/* Status & Actions (Second in RTL -> Left side) */}
-                        <div className="flex flex-col items-end gap-3 w-full md:w-auto">
-                          <div className="flex items-center gap-2">
-                            <span
-                              className="text-[13px] font-bold text-[#234745]"
-                              style={
-                                !isEn
-                                  ? {
-                                      fontFamily:
-                                        "'EnglishDigits', 'Bahij Janna', sans-serif",
-                                    }
-                                  : undefined
-                              }
-                            >
-                              {isEn ? statusEn : statusAr}
-                            </span>
-                            <div className="w-1.5 h-1.5 rounded-full bg-[#234745]" />
-                          </div>
-                          <div className="flex items-center gap-2">
+                        {/* Bottom Action Buttons Row: Left is Reorder (Primary), Right is Track (Secondary) */}
+                        <div className="flex items-center gap-3 w-full mt-5 pt-1">
+                          {isCustomCake ? (
                             <Link
-                              to={trackUrl}
-                              className="px-6 py-2 border border-[#234745] text-[#234745] rounded-[24px] text-[13px] font-bold hover:bg-gray-50 transition-all"
+                              to={getCustomCakeReorderUrl()}
+                              className="flex-1 h-[48px] bg-[#234745] hover:bg-[#1A3533] text-white rounded-full text-[15px] font-bold flex items-center justify-center transition-all shadow-xs active:scale-98 cursor-pointer"
+                              style={{color: '#FFFFFF', ...(!isEn ? { fontFamily: "'GE Dinar One', sans-serif" } : {})}}
                             >
-                              {lastOrder.fulfillmentStatus === 'FULFILLED'
-                                ? isEn
-                                  ? 'Invoice'
-                                  : 'الفاتورة'
-                                : isEn
-                                  ? 'Track'
-                                  : 'تتبع'}
+                              {isEn ? 'Reorder Cake' : 'إعادة طلب الكيكة'}
                             </Link>
-                            {(() => {
-                              const reorderLines = (
-                                lastOrder.lineItems?.nodes || []
-                              )
-                                .map((item: any) => {
-                                  const rawId =
-                                    item.variant?.id ||
-                                    item.variantId ||
-                                    item.variant_id;
-                                  if (!rawId) return null;
-                                  const idStr = String(rawId);
-                                  if (idStr === 'null' || idStr === 'undefined' || !idStr.trim()) return null;
-                                  const merchandiseId = idStr.startsWith('gid://')
-                                    ? idStr
-                                    : `gid://shopify/ProductVariant/${idStr}`;
-                                  return {
-                                    merchandiseId,
-                                    quantity: item.quantity || 1,
-                                  };
-                                })
-                                .filter((l: any) => l && l.merchandiseId);
+                          ) : reorderLines.length === 0 ? (
+                            <button
+                              type="button"
+                              disabled
+                              className="flex-1 h-[48px] bg-gray-300 text-gray-500 rounded-full text-[15px] font-bold flex items-center justify-center cursor-not-allowed opacity-60"
+                            >
+                              {isEn ? 'Unavailable' : 'غير متوفر'}
+                            </button>
+                          ) : (
+                            <Form
+                              action={isEn ? '/en/cart' : '/cart'}
+                              method="post"
+                              className="flex-1"
+                            >
+                              <input
+                                type="hidden"
+                                name="cartFormInput"
+                                value={JSON.stringify({
+                                  action: 'LinesAdd',
+                                  inputs: {lines: reorderLines},
+                                })}
+                              />
+                              <input
+                                type="hidden"
+                                name="redirectTo"
+                                value={isEn ? '/en/cart' : '/cart'}
+                              />
+                              <button
+                                type="submit"
+                                className="w-full h-[48px] bg-[#234745] hover:bg-[#1A3533] text-white rounded-full text-[15px] font-bold flex items-center justify-center transition-all shadow-xs active:scale-98 cursor-pointer border-none"
+                                style={{color: '#FFFFFF', ...(!isEn ? { fontFamily: "'GE Dinar One', sans-serif" } : {})}}
+                              >
+                                {isEn ? 'Reorder' : 'إعادة الطلب'}
+                              </button>
+                            </Form>
+                          )}
 
-                              const customItem = (lastOrder.lineItems?.nodes || []).find((item: any) =>
-                                item.customAttributes?.some((attr: any) =>
-                                  attr.key === '_cake_custom' ||
-                                  attr.key === 'Shape' || attr.key === 'الشكل' ||
-                                  attr.key === 'Flavor' || attr.key === 'النكهة'
-                                ) ||
-                                item.title?.includes('كيكة مخصصة') ||
-                                item.title?.includes('Custom Cake')
-                              );
+                          <Link
+                            to={trackUrl}
+                            className="flex-1 h-[48px] border-2 border-[#234745] bg-white hover:bg-gray-50 text-[#234745] rounded-full text-[15px] font-bold flex items-center justify-center transition-all shadow-xs active:scale-98"
+                            style={!isEn ? { fontFamily: "'GE Dinar One', sans-serif" } : undefined}
+                          >
+                            {lastOrder.fulfillmentStatus === 'FULFILLED'
+                              ? isEn
+                                ? 'Invoice'
+                                : 'الفاتورة'
+                              : isEn
+                                ? 'Track'
+                                : 'تتبع'}
+                          </Link>
+                        </div>
+                      </div>
 
-                              const isCustomCake = customItem || lastOrder.customAttributes?.some((attr: any) =>
-                                attr.key === '_cake_custom' ||
-                                attr.key === 'Shape' || attr.key === 'الشكل' ||
-                                attr.key === 'Flavor' || attr.key === 'النكهة'
-                              );
+                      {/* 2. Desktop-Only Card View (md+) with original layout */}
+                      <div className="hidden md:block bg-white border border-[#9FB7AE] rounded-[12px] p-6" dir={isEn ? 'ltr' : 'rtl'}>
+                        <div className="flex items-center justify-between gap-6">
+                          {/* Order Details (Right side in RTL) */}
+                          <div className="flex items-center gap-4 text-start">
+                            <div className="relative flex-shrink-0">
+                              <img
+                                src={imageUrl}
+                                alt={firstItem?.title || 'Product'}
+                                className="w-16 h-16 md:w-20 md:h-20 rounded-[12px] object-cover border border-gray-100"
+                                onError={(e) => {
+                                  (e.currentTarget as HTMLImageElement).src =
+                                    'https://cdn.shopify.com/s/files/1/0533/2089/files/placeholder-images-image_large.png';
+                                }}
+                              />
+                              <div className="absolute -top-2 -start-2 w-6 h-6 bg-[#234745] text-white rounded-full flex items-center justify-center text-[11px] font-bold border-2 border-white font-en">
+                                {productCount.toLocaleString('en-US')}
+                              </div>
+                            </div>
+                            <div className="flex flex-col gap-1">
+                              <h3
+                                className="text-[16px] md:text-[18px] font-bold text-[#234745] leading-none flex items-center gap-1"
+                                style={
+                                  !isEn
+                                    ? {
+                                        fontFamily:
+                                          "'EnglishDigits', 'Bahij Janna', sans-serif",
+                                      }
+                                    : undefined
+                                }
+                              >
+                                {isEn ? (
+                                  `Last Order — #${lastOrder.orderNumber}`
+                                ) : (
+                                  <>
+                                    آخر طلب —{' '}
+                                    <span className="font-en pt-1">
+                                      #{lastOrder.orderNumber}
+                                    </span>
+                                  </>
+                                )}
+                              </h3>
+                              <p className="text-[12px] text-[#A6BFB9] font-medium leading-tight">
+                                {isEn ? (
+                                  `${productCount} Products`
+                                ) : (
+                                  <>
+                                    <span className="font-en">
+                                      {productCount.toLocaleString('en-US')}
+                                    </span>{' '}
+                                    منتجات
+                                  </>
+                                )}{' '}
+                                •{' '}
+                                <span className="font-en">
+                                  {parseFloat(totalAmount).toLocaleString(
+                                    'en-US',
+                                  )}
+                                </span>{' '}
+                                <SaudiRiyalSymbol className="h-3.5 w-auto inline-block ms-1" />
+                              </p>
+                              <div className="flex items-center justify-start gap-1.5 mt-1">
+                                <span className="text-[#234745]">
+                                  <SaudiRiyalSymbol className="h-4.5 w-auto" />
+                                </span>
+                                <span className="text-[16px] font-bold text-[#234745] leading-none font-en">
+                                  {parseFloat(totalAmount).toLocaleString(
+                                    'en-US',
+                                  )}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
 
-                              if (isCustomCake) {
-                                const targetItem = customItem || (lastOrder.lineItems?.nodes || [])[0];
-                                const attrs = [
-                                  ...(targetItem?.customAttributes || []),
-                                  ...(lastOrder.customAttributes || [])
-                                ];
-                                const getAttr = (...keys: string[]) => {
-                                  const found = attrs.find((a: any) => keys.includes(a.key));
-                                  return found ? found.value : '';
-                                };
-
-                                const params = new URLSearchParams({
-                                  reorder: 'true',
-                                  shape: getAttr('Shape', 'الشكل'),
-                                  size: getAttr('Size', 'الحجم'),
-                                  flavor: getAttr('Flavor', 'النكهة'),
-                                  layers: getAttr('Layers', 'الطبقات'),
-                                  color: getAttr('Color', 'اللون'),
-                                  topping: getAttr('Topping', 'الإضافة'),
-                                  message: getAttr('Cake Surface Message', 'نص على الكيكة', 'Message', 'الرسالة'),
-                                  baseMessage: getAttr('Cake Base Message', 'نص على القاعدة'),
-                                  specialInstructions: getAttr('Special Instructions', 'تعليمات خاصة للمخبز'),
-                                  textFont: getAttr('Message Font', 'خط الرسالة'),
-                                  textColor: getAttr('Message Color', 'لون الرسالة'),
-                                  messagePlacement: getAttr('Text Placement', 'موقع الكتابة'),
-                                });
-
-                                const path = isEn ? '/en/custom-cake' : '/custom-cake';
-                                const reorderUrl = `${path}?${params.toString()}`;
-
-                                return (
-                                  <Link
-                                    to={reorderUrl}
-                                    className="px-6 py-2 bg-[#234745] text-white rounded-[24px] text-[13px] font-bold hover:opacity-90 transition-all active:scale-95 cursor-pointer inline-block"
-                                    style={{color: '#FFFFFF'}}
-                                  >
-                                    {isEn ? 'Reorder Cake' : 'إعادة طلب الكيكة'}
-                                  </Link>
-                                );
-                              }
-
-                              if (reorderLines.length === 0) {
-                                return (
-                                  <button
-                                    type="button"
-                                    disabled
-                                    className="px-6 py-2 bg-gray-400 text-white rounded-[24px] text-[13px] font-bold cursor-not-allowed opacity-50"
-                                  >
-                                    {isEn ? 'Unavailable' : 'غير متوفر'}
-                                  </button>
-                                );
-                              }
-
-                              return (
+                          {/* Status & Actions (Left side in RTL) */}
+                          <div className="flex flex-col items-end gap-3">
+                            <div className="flex items-center gap-2">
+                              <span
+                                className="text-[13px] font-bold text-[#234745]"
+                                style={
+                                  !isEn
+                                    ? {
+                                        fontFamily:
+                                          "'EnglishDigits', 'Bahij Janna', sans-serif",
+                                      }
+                                    : undefined
+                                }
+                              >
+                                {isEn ? statusEn : statusAr}
+                              </span>
+                              <div className="w-1.5 h-1.5 rounded-full bg-[#234745]" />
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Link
+                                to={trackUrl}
+                                className="px-6 py-2 border border-[#234745] text-[#234745] rounded-[24px] text-[13px] font-bold hover:bg-gray-50 transition-all"
+                              >
+                                {lastOrder.fulfillmentStatus === 'FULFILLED'
+                                  ? isEn
+                                    ? 'Invoice'
+                                    : 'الفاتورة'
+                                  : isEn
+                                    ? 'Track'
+                                    : 'تتبع'}
+                              </Link>
+                              {isCustomCake ? (
+                                <Link
+                                  to={getCustomCakeReorderUrl()}
+                                  className="px-6 py-2 bg-[#234745] text-white rounded-[24px] text-[13px] font-bold hover:opacity-90 transition-all active:scale-95 cursor-pointer inline-block"
+                                  style={{color: '#FFFFFF'}}
+                                >
+                                  {isEn ? 'Reorder Cake' : 'إعادة طلب الكيكة'}
+                                </Link>
+                              ) : reorderLines.length === 0 ? (
+                                <button
+                                  type="button"
+                                  disabled
+                                  className="px-6 py-2 bg-gray-400 text-white rounded-[24px] text-[13px] font-bold cursor-not-allowed opacity-50"
+                                >
+                                  {isEn ? 'Unavailable' : 'غير متوفر'}
+                                </button>
+                              ) : (
                                 <Form
                                   action={isEn ? '/en/cart' : '/cart'}
                                   method="post"
@@ -735,12 +894,12 @@ export default function AccountDashboard() {
                                     {isEn ? 'Reorder' : 'إعادة الطلب'}
                                   </button>
                                 </Form>
-                              );
-                            })()}
+                              )}
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
+                    </>
                   );
                 })()}
 

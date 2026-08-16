@@ -253,6 +253,20 @@ export default function BuyGiftCard() {
         },
       };
 
+      const targetCardColor =
+        themeColor === 'green'
+          ? (isEn ? 'Green (#234745)' : 'أخضر (#234745)')
+          : themeColor === 'gold'
+            ? (isEn ? 'Gold (#C5A96A)' : 'ذهبي (#C5A96A)')
+            : (isEn ? 'Cream (#FEF8EB)' : 'كريمي (#FEF8EB)');
+
+      const targetColorHex =
+        themeColor === 'green'
+          ? '#234745'
+          : themeColor === 'gold'
+            ? '#C5A96A'
+            : '#FEF8EB';
+
       const formData = new FormData();
       const lineItem = {
         action: CartForm.ACTIONS.LinesAdd,
@@ -266,6 +280,9 @@ export default function BuyGiftCard() {
                 { key: '_gift_voucher', value: 'true' },
                 { key: 'Gift Mode', value: giftMode === 'self' ? 'For Myself' : 'Gift to Someone' },
                 { key: 'Voucher Amount', value: `${finalAmount} SAR` },
+                { key: 'Card Color', value: targetCardColor },
+                { key: '_card_color', value: targetColorHex },
+                { key: '_card_theme', value: themeColor },
                 { key: 'Recipient Name', value: targetRecipientName },
                 { key: 'Recipient Email', value: targetRecipientEmail },
                 { key: 'Recipient Phone', value: recipientPhone || 'N/A' },
@@ -303,32 +320,6 @@ export default function BuyGiftCard() {
             ? 'Design your digital gift voucher in simple steps'
             : 'صمم قسيمة هدية إلكترونية في خطوات بسيطة'}
         </p>
-
-        {/* Gift Mode Toggle */}
-        <div className="flex items-center justify-center gap-3 mt-4">
-          <button
-            type="button"
-            onClick={() => setGiftMode('gift')}
-            className={`px-5 py-2.5 rounded-full text-[13px] font-bold transition-all border ${
-              giftMode === 'gift'
-                ? 'bg-[#234745] text-white border-[#234745] shadow-md'
-                : 'bg-white text-[#234745] border-gray-200 hover:border-[#234745]'
-            }`}
-          >
-            🎁 {isEn ? 'Gift to Someone Else' : 'إهداء لشخص آخر'}
-          </button>
-          <button
-            type="button"
-            onClick={() => setGiftMode('self')}
-            className={`px-5 py-2.5 rounded-full text-[13px] font-bold transition-all border ${
-              giftMode === 'self'
-                ? 'bg-[#234745] text-white border-[#234745] shadow-md'
-                : 'bg-white text-[#234745] border-gray-200 hover:border-[#234745]'
-            }`}
-          >
-            👤 {isEn ? 'Buy for Myself' : 'شراء لنفسي'}
-          </button>
-        </div>
       </div>
 
       {/* ─── 4-STEP PROGRESS BAR ───────────────────────────────────────────── */}

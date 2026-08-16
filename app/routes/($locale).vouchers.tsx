@@ -11,6 +11,7 @@ import {
 } from 'react-router';
 import {CartForm} from '@shopify/hydrogen';
 import {useAside} from '~/components/Aside';
+import {GiftVoucherWizard} from '~/components/GiftVoucherWizard';
 
 function toEnglishDigits(str: string | number | undefined | null): string {
   if (str === null || str === undefined) return '';
@@ -136,9 +137,62 @@ export async function action({request, context}: ActionFunctionArgs) {
 // In-memory cache for active price rules (60s TTL)
 let vouchersCache: {timestamp: number; rules: any[]} | null = null;
 
+async function getTaggedCodesFromGraphQL(adminDomain: string, adminToken: string): Promise<Set<string>> {
+  try {
+    const res = await fetch(`https://${adminDomain}/admin/api/2024-04/graphql.json`, {
+      method: 'POST',
+      headers: {
+        'X-Shopify-Access-Token': adminToken,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        query: `
+          query {
+            codeDiscountNodes(first: 50, query: "voucher") {
+              nodes {
+                id
+                codeDiscount {
+                  __typename
+                  ... on DiscountCodeBasic {
+                    title
+                    codes(first: 5) { nodes { code } }
+                  }
+                  ... on DiscountCodeFreeShipping {
+                    title
+                    codes(first: 5) { nodes { code } }
+                  }
+                  ... on DiscountCodeBxgy {
+                    title
+                    codes(first: 5) { nodes { code } }
+                  }
+                }
+              }
+            }
+          }
+        `,
+      }),
+      signal: AbortSignal.timeout(3000),
+    }).catch(() => null);
+
+    if (res && res.ok) {
+      const data = (await res.json()) as any;
+      const nodes = data.data?.codeDiscountNodes?.nodes || [];
+      const set = new Set<string>();
+      for (const n of nodes) {
+        if (n.codeDiscount?.title) set.add(n.codeDiscount.title.trim().toLowerCase());
+        for (const c of n.codeDiscount?.codes?.nodes || []) {
+          if (c.code) set.add(c.code.trim().toLowerCase());
+        }
+      }
+      return set;
+    }
+  } catch (e) {}
+  return new Set<string>();
+}
+
 async function getPriceRules(env: any) {
   const now = Date.now();
-  if (vouchersCache && now - vouchersCache.timestamp < 60000) {
+  if (vouchersCache && now - vouchersCache.timestamp < 5000) {
     return vouchersCache.rules;
   }
   try {
@@ -148,13 +202,13 @@ async function getPriceRules(env: any) {
     if (!adminToken || !adminDomain) return [];
 
     const res = await fetch(
-      `https://${adminDomain}/admin/api/2024-01/price_rules.json?status=active`,
+      `https://${adminDomain}/admin/api/2024-01/price_rules.json?limit=50`,
       {
         headers: {
           'X-Shopify-Access-Token': adminToken,
           'Content-Type': 'application/json',
         },
-        signal: AbortSignal.timeout(2000),
+        signal: AbortSignal.timeout(3000),
       },
     ).catch(() => null);
 
@@ -162,12 +216,10 @@ async function getPriceRules(env: any) {
       const resData = (await res.json()) as any;
       const priceRules = (resData.price_rules || []).filter((rule: any) => {
         const titleUpper = (rule.title || '').toUpperCase();
-        const isLoyalty =
+        const isLoyaltyPoints =
           titleUpper.startsWith('LOYALTY REDEMPTION:') ||
-          titleUpper.startsWith('LOYAL-') ||
-          titleUpper.startsWith('LOYALTY-') ||
-          titleUpper.startsWith('LOYAL_');
-        return !isLoyalty;
+          titleUpper.startsWith('LOYALTY POINTS REDEMPTION');
+        return !isLoyaltyPoints;
       });
       vouchersCache = {timestamp: now, rules: priceRules};
       return priceRules;
@@ -176,8 +228,33 @@ async function getPriceRules(env: any) {
   return vouchersCache?.rules || [];
 }
 
-async function getCustomerUsedCodes(context: any) {
+function formatEnglishDate(dateStr: string | Date | undefined, lang: string): string {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return String(dateStr);
+  const day = d.getDate();
+  const year = d.getFullYear();
+  const monthsEn = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const monthsAr = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
+  const month = lang === 'en' ? monthsEn[d.getMonth()] : monthsAr[d.getMonth()];
+  return `${day} ${month} ${year}`;
+}
+
+export interface VoucherHistoryItem {
+  id: string;
+  code: string;
+  description: string;
+  value: string;
+  date: string;
+  status: 'used' | 'received' | 'expired' | 'active';
+  statusLabel: string;
+  statusColor: string;
+}
+
+async function getCustomerUsedCodesAndHistory(context: any, lang: string) {
   const usedCodesSet = new Set<string>();
+  const voucherHistory: VoucherHistoryItem[] = [];
+
   try {
     let searchPhone = await context.session.get('loginOtpPhone');
     let searchEmail: string | undefined;
@@ -229,20 +306,70 @@ async function getCustomerUsedCodes(context: any) {
 
         const queryStr = queryTerms.join(' OR ');
         const ordersRes = await fetch(
-          `https://${adminDomain}/admin/api/2024-01/orders.json?status=any&fields=id,discount_codes&query=${encodeURIComponent(queryStr)}`,
+          `https://${adminDomain}/admin/api/2024-01/orders.json?status=any&fields=id,name,order_number,created_at,processed_at,total_discounts,discount_codes,line_items,financial_status&query=${encodeURIComponent(queryStr)}`,
           {
             headers: {'X-Shopify-Access-Token': adminToken},
-            signal: AbortSignal.timeout(1500),
+            signal: AbortSignal.timeout(2000),
           },
         ).catch(() => null);
 
         if (ordersRes && ordersRes.ok) {
           const data = (await ordersRes.json()) as any;
           for (const order of data.orders || []) {
-            if (Array.isArray(order.discount_codes)) {
+            const orderDateStr = formatEnglishDate(order.processed_at || order.created_at, lang);
+
+            // 1. Record used discount codes to track usage status in tabs
+            if (Array.isArray(order.discount_codes) && order.discount_codes.length > 0) {
               for (const d of order.discount_codes) {
                 if (d?.code) {
                   usedCodesSet.add(d.code.trim().toLowerCase());
+                }
+              }
+            }
+
+            // 2. Purchased/Generated Gift Vouchers in Order line items
+            if (Array.isArray(order.line_items)) {
+              for (const line of order.line_items) {
+                const title = line.title || '';
+                const properties = Array.isArray(line.properties) ? line.properties : [];
+                const isGiftVoucherProp = properties.some((p: any) => p.name === '_gift_voucher' && (p.value === 'true' || p.value === true));
+                const isGiftTitle =
+                  title.toLowerCase().includes('gift card') ||
+                  title.includes('بطاقة هدية') ||
+                  title.includes('قسيمة');
+
+                if (isGiftVoucherProp || isGiftTitle) {
+                  const giftModeProp = properties.find((p: any) => p.name === 'Gift Mode')?.value;
+                  const recipientNameProp = properties.find((p: any) => p.name === 'Recipient Name')?.value;
+                  const occasionProp = properties.find((p: any) => p.name === 'Occasion')?.value;
+                  const amountProp = properties.find((p: any) => p.name === 'Voucher Amount')?.value;
+                  const codeProp = properties.find((p: any) => p.name === 'Voucher Code' || p.name === 'Code')?.value;
+
+                  let desc = '';
+                  if (giftModeProp === 'For Myself') {
+                    desc = lang === 'en' ? 'Digital Gift Voucher (For Myself)' : 'قسيمة رقمية (شراء شخصي)';
+                  } else if (recipientNameProp && recipientNameProp !== 'N/A' && recipientNameProp !== 'نفسي') {
+                    desc = lang === 'en' ? `Gift Voucher to: ${recipientNameProp}` : `قسيمة هدية إلى: ${recipientNameProp}`;
+                  } else if (occasionProp) {
+                    desc = lang === 'en' ? `Gift Voucher (${occasionProp})` : `قسيمة هدية (${occasionProp})`;
+                  } else {
+                    desc = lang === 'en' ? `Gift Voucher (${title})` : `قسيمة هدية (${title})`;
+                  }
+
+                  const numVal = amountProp ? parseFloat(amountProp.replace(/[^\d.]/g, '')) : parseFloat(line.price || '0');
+                  const valDisplay = numVal > 0 ? `${numVal.toFixed(2)}` : `${parseFloat(line.price || '0').toFixed(2)}`;
+                  const codeDisplay = codeProp || `GIFT-${String(order.order_number || order.name || order.id).replace(/\D/g, '').slice(-4) || 'CARD'}`;
+
+                  voucherHistory.push({
+                    id: `order-gift-${order.id}-${line.id}`,
+                    code: codeDisplay,
+                    description: desc,
+                    value: valDisplay,
+                    date: orderDateStr,
+                    status: 'received',
+                    statusLabel: lang === 'en' ? 'Active' : 'فعالة',
+                    statusColor: '#234745',
+                  });
                 }
               }
             }
@@ -250,22 +377,32 @@ async function getCustomerUsedCodes(context: any) {
         }
       }
     }
-  } catch (e) {}
-  return usedCodesSet;
+  } catch (e) {
+    console.error('Error fetching customer voucher history:', e);
+  }
+
+  return { usedCodesSet, voucherHistory };
 }
 
 export async function loader({context}: LoaderFunctionArgs) {
   const {storefront, env} = context;
   const lang = storefront?.i18n?.language === 'EN' ? 'en' : 'ar';
 
-  const [usedCodesSet, priceRules] = await Promise.all([
-    getCustomerUsedCodes(context),
-    getPriceRules(env),
-  ]);
-
   const {getAdminToken, getAdminDomain} = await import('~/lib/shopify-admin.server');
   const adminToken = await getAdminToken(env);
   const adminDomain = getAdminDomain(env);
+
+  const [
+    {usedCodesSet, voucherHistory: customerVoucherHistory},
+    priceRules,
+    taggedCodesSet,
+  ] = await Promise.all([
+    getCustomerUsedCodesAndHistory(context, lang),
+    getPriceRules(env),
+    adminToken && adminDomain
+      ? getTaggedCodesFromGraphQL(adminDomain, adminToken)
+      : Promise.resolve(new Set<string>()),
+  ]);
 
   const voucherPromises = priceRules.map(async (rule: any) => {
     let code = rule.title;
@@ -346,14 +483,38 @@ export async function loader({context}: LoaderFunctionArgs) {
         : 'On all items';
 
     let expiryDateStrAr = rule.ends_at
-      ? new Date(rule.ends_at).toLocaleDateString('ar-SA')
-      : '31 ديسمبر 2026';
+      ? formatEnglishDate(rule.ends_at, 'ar')
+      : '';
     let expiryDateStrEn = rule.ends_at
-      ? new Date(rule.ends_at).toLocaleDateString('en-US')
-      : 'Dec 31, 2026';
+      ? formatEnglishDate(rule.ends_at, 'en')
+      : '';
 
-    let expiryTextAr = `تنتهي ${expiryDateStrAr}${minSpend ? ` . الحد الأدنى ${parseFloat(minSpend)} رس` : ''}`;
-    let expiryTextEn = `Expires ${expiryDateStrEn}${minSpend ? ` . Min spend ${parseFloat(minSpend)} SAR` : ''}`;
+    let expiryTextAr = '';
+    let expiryTextEn = '';
+
+    if (rule.ends_at) {
+      if (isExpired) {
+        expiryTextAr = `انتهت في ${expiryDateStrAr}${minSpend ? ` . الحد الأدنى ${parseFloat(minSpend)} رس` : ''}`;
+        expiryTextEn = `Expired ${expiryDateStrEn}${minSpend ? ` . Min spend ${parseFloat(minSpend)} SAR` : ''}`;
+      } else {
+        expiryTextAr = `تنتهي في ${expiryDateStrAr}${minSpend ? ` . الحد الأدنى ${parseFloat(minSpend)} رس` : ''}`;
+        expiryTextEn = `Expires ${expiryDateStrEn}${minSpend ? ` . Min spend ${parseFloat(minSpend)} SAR` : ''}`;
+      }
+    } else {
+      expiryTextAr = `سارية المفعول${minSpend ? ` . الحد الأدنى ${parseFloat(minSpend)} رس` : ''}`;
+      expiryTextEn = `Ongoing${minSpend ? ` . Min spend ${parseFloat(minSpend)} SAR` : ''}`;
+    }
+
+    const titleLower = (rule.title || '').trim().toLowerCase();
+    const codeLowerStr = (code || '').trim().toLowerCase();
+    const hasTag =
+      taggedCodesSet.has(codeLowerStr) ||
+      taggedCodesSet.has(titleLower) ||
+      titleLower.includes('voucher') ||
+      titleLower.includes('قسيمة') ||
+      titleLower.includes('[featured]') ||
+      codeLowerStr.includes('voucher') ||
+      codeLowerStr.includes('قسيمة');
 
     return {
       id: String(rule.id),
@@ -361,6 +522,7 @@ export async function loader({context}: LoaderFunctionArgs) {
       code,
       status,
       badgeText,
+      hasTag,
       valueType: rule.value_type,
       value: valNum,
       discountDisplayAr,
@@ -387,7 +549,74 @@ export async function loader({context}: LoaderFunctionArgs) {
     return !isLoyalty;
   });
 
-  return {lang, shopifyVouchers};
+  // Only client generated gift cards are passed to the history log table
+  const combinedHistory = [...customerVoucherHistory];
+
+  let customerName = '';
+  let customerEmail = '';
+  let isLoggedIn = false;
+  let giftProduct: any = null;
+
+  try {
+    const token = await context.session.get('customerAccessToken');
+    const tokenStr = typeof token === 'string' ? token : token?.accessToken;
+    if (tokenStr && tokenStr !== 'dev-bypass-token') {
+      const {customer} = await storefront.query(
+        `#graphql
+        query GetCustomerBasic($customerAccessToken: String!) {
+          customer(customerAccessToken: $customerAccessToken) {
+            firstName
+            lastName
+            email
+          }
+        }`,
+        {variables: {customerAccessToken: tokenStr}},
+      );
+      if (customer) {
+        customerName = [customer.firstName, customer.lastName].filter(Boolean).join(' ');
+        customerEmail = customer.email || '';
+        isLoggedIn = true;
+      }
+    }
+  } catch {}
+
+  try {
+    const {product} = await storefront.query(
+      `#graphql
+      query GetGiftCardProduct {
+        product(id: "gid://shopify/Product/9370203521257") {
+          id
+          title
+          handle
+          availableForSale
+          variants(first: 20) {
+            nodes {
+              id
+              title
+              price {
+                amount
+                currencyCode
+              }
+              availableForSale
+            }
+          }
+        }
+      }`,
+    );
+    giftProduct = product;
+  } catch (e) {
+    console.error('Failed to query gift card product in vouchers loader:', e);
+  }
+
+  return {
+    lang,
+    shopifyVouchers,
+    voucherHistory: combinedHistory,
+    customerName,
+    customerEmail,
+    isLoggedIn,
+    giftProduct,
+  };
 }
 
 function SaadeddinLogo({
@@ -450,11 +679,21 @@ export default function VouchersPage() {
   // URL-based locale detection — reliable on both server and client, no hydration mismatch
   const {pathname} = useLocation();
   const isEn = pathname.startsWith('/en/') || pathname === '/en';
-  const {shopifyVouchers = []} = useLoaderData<typeof loader>() || {};
+  const loaderData = useLoaderData<typeof loader>();
+  const {
+    shopifyVouchers = [],
+    voucherHistory = [],
+    customerName = '',
+    customerEmail = '',
+    isLoggedIn = false,
+    giftProduct,
+  } = loaderData || {};
 
   const cartFetcher = useFetcher<any>();
   const balanceFetcher = useFetcher<any>();
   const {open} = useAside();
+
+  const [activeWizardMode, setActiveWizardMode] = useState<'gift' | 'self' | null>(null);
 
   const [activeTab, setActiveTab] = useState<'active' | 'used' | 'expired'>(
     'active',
@@ -611,225 +850,193 @@ export default function VouchersPage() {
           />
 
           {/*
-            Single right-side column spanning full hero height.
-            Uses justify-content: space-between so:
-              - Badge stays at the top
-              - Title + subtitle + buttons stay in the middle
-              - Bottom strip stays at the bottom
-            All positioned using physical right/left — NOT affected by dir=rtl
+            Centered container that aligns with page width (max-w-[1400px] mx-auto px-4 md:px-8)
           */}
-          <div
-            className="absolute z-20"
-            style={
-              isEn
-                ? {
-                    top: '32px',
-                    bottom: '24px',
-                    left: 'clamp(24px, 5vw, 80px)',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    justifyContent: 'center',
-                    alignItems: 'flex-start',
-                    gap: '20px',
-                    maxWidth: '620px',
-                  }
-                : {
-                    top: '32px',
-                    bottom: '24px',
-                    right: 'clamp(24px, 5vw, 80px)',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    justifyContent: 'center',
-                    alignItems: 'flex-start',
-                    gap: '20px',
-                    maxWidth: '620px',
-                  }
-            }
-          >
-            {/* ── BADGE (top) ── matches reference image: gold pill with teal text and dashes */}
+          <div className="absolute inset-0 z-20 max-w-[1400px] mx-auto px-4 md:px-8 pointer-events-none flex items-center">
             <div
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '10px',
-                background: '#C5A96A',
-                borderRadius: '999px',
-                paddingTop: '8px',
-                paddingBottom: '8px',
-                paddingLeft: '20px',
-                paddingRight: '20px',
-                color: '#234745',
-                fontWeight: 700,
-                fontSize: '14px',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-                whiteSpace: 'nowrap',
-              }}
+              className={`w-full flex flex-col justify-center gap-5 max-w-[620px] pointer-events-auto py-8 ${
+                isEn ? 'mr-auto text-left items-start' : 'ml-auto text-right items-start'
+              }`}
             >
-              <span style={{color: '#234745', opacity: 0.7}}>—</span>
-              <span>{isEn ? 'Gift Vouchers' : 'قسائم الهدايا'}</span>
-              <span style={{color: '#234745', opacity: 0.7}}>—</span>
-            </div>
-
-            {/* ── MAIN CONTENT (middle): title + subtitle + buttons ── */}
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '14px',
-                alignItems: isEn ? 'flex-start' : 'flex-start',
-                textAlign: isEn ? 'left' : 'right',
-              }}
-            >
-              {/* Title — Bahij Janna Bold 90px */}
-              <h1
-                className="text-white font-bold"
+              {/* ── BADGE (top) ── matches reference image: gold pill with teal text and dashes */}
+              <div
                 style={{
-                  fontFamily: "'Bahij Janna', 'Bahij', serif",
-                  fontSize: 'clamp(38px, 6vw, 90px)',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  background: '#C5A96A',
+                  borderRadius: '999px',
+                  paddingTop: '8px',
+                  paddingBottom: '8px',
+                  paddingLeft: '20px',
+                  paddingRight: '20px',
+                  color: '#234745',
                   fontWeight: 700,
-                  lineHeight: '100%',
-                  margin: '0 0 20px 0',
-                  textShadow: '0 2px 20px rgba(0,0,0,0.5)',
-                }}
-              >
-                {isEn ? (
-                  <>
-                    Gifts & Promotional <br />
-                    Vouchers
-                  </>
-                ) : (
-                  <>
-                    الهدايا والعروض <br />
-                    الترويجية
-                  </>
-                )}
-              </h1>
-
-              {/* Subtitle — GE Dinar One Regular 400 14px */}
-              <p
-                className="text-white"
-                style={{
-                  fontFamily: "'GE Dinar One', 'GE SS Two', sans-serif",
                   fontSize: '14px',
-                  fontWeight: 400,
-                  lineHeight: '140%',
-                  margin: 0,
-                  opacity: 0.92,
-                  textShadow: '0 1px 8px rgba(0,0,0,0.5)',
-                  maxWidth: '480px',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                  whiteSpace: 'nowrap',
                 }}
               >
-                {isEn
-                  ? 'Give the gift of choice. Buy, gift, and redeem Saadeddin luxury vouchers — the perfect gift for every occasion.'
-                  : 'امنح هدية الاختيار. اشترِ، أدر، واستبدل قسائم هدايا "سعد الدين" الراقية — الهدية المثالية لكل مناسبة'}
-              </p>
+                <span style={{color: '#234745', opacity: 0.7}}>—</span>
+                <span>{isEn ? 'Gift Vouchers' : 'قسائم الهدايا'}</span>
+                <span style={{color: '#234745', opacity: 0.7}}>—</span>
+              </div>
 
-              {/* Buttons — 277×48px, radius 24px, #C5A96A + #BBCFCD */}
+              {/* ── MAIN CONTENT (middle): title + subtitle + buttons ── */}
               <div
                 style={{
                   display: 'flex',
-                  flexDirection: 'row',
-                  gap: '8px',
-                  justifyContent: isEn ? 'flex-start' : 'flex-end',
+                  flexDirection: 'column',
+                  gap: '14px',
+                  alignItems: 'flex-start',
+                  textAlign: isEn ? 'left' : 'right',
                 }}
               >
-                <Link
-                  to={isEn ? '/en/collections/all' : '/collections/all'}
+                {/* Title — Bahij Janna Bold 90px */}
+                <h1
+                  className="text-white font-bold"
                   style={{
-                    width: '277px',
-                    height: '48px',
-                    borderRadius: '24px',
-                    background: '#C5A96A',
-                    color: '#1A3533',
+                    fontFamily: "'Bahij Janna', 'Bahij', serif",
+                    fontSize: 'clamp(38px, 6vw, 90px)',
                     fontWeight: 700,
-                    fontSize: '15px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    textDecoration: 'none',
-                    flexShrink: 0,
-                    boxShadow: '0 2px 12px rgba(0,0,0,0.2)',
+                    lineHeight: '100%',
+                    margin: '0 0 10px 0',
+                    textShadow: '0 2px 20px rgba(0,0,0,0.5)',
                   }}
                 >
-                  {isEn ? 'Shop Now' : 'تسوق الان'}
-                </Link>
-                <a
-                  href="#redeem-section"
-                  style={{
-                    width: '277px',
-                    height: '48px',
-                    borderRadius: '24px',
-                    background: '#BBCFCD',
-                    color: '#1A3533',
-                    fontWeight: 700,
-                    fontSize: '15px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    textDecoration: 'none',
-                    flexShrink: 0,
-                    boxShadow: '0 2px 12px rgba(0,0,0,0.15)',
-                  }}
-                >
-                  {isEn ? 'Redeem Voucher' : 'استبدال قسيمة'}
-                </a>
-              </div>
-            </div>
+                  {isEn ? (
+                    <>
+                      Gifts & Promotional <br />
+                      Vouchers
+                    </>
+                  ) : (
+                    <>
+                      الهدايا والعروض <br />
+                      الترويجية
+                    </>
+                  )}
+                </h1>
 
-            {/* ── BOTTOM STRIP (bottom) — GE Dinar One Medium 500 14px ── */}
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '14px',
-                flexWrap: 'wrap',
-                justifyContent: isEn ? 'flex-start' : 'flex-end',
-              }}
-            >
-              {[
-                isEn
-                  ? 'Halal & HACCP Certified for Food Safety.'
-                  : 'شهادات حلال والهاسب لسلامة الغذاء.',
-                isEn ? 'Refrigerated Shipping' : 'شحن مبرد',
-                isEn ? 'Over 30 Countries' : 'أكثر من 30 دولة',
-              ].map((item, idx, arr) => (
-                <>
-                  <span
-                    key={item}
-                    className="text-white"
+                {/* Subtitle — GE Dinar One Regular 400 14px */}
+                <p
+                  className="text-white"
+                  style={{
+                    fontFamily: "'GE Dinar One', 'GE SS Two', sans-serif",
+                    fontSize: '14px',
+                    fontWeight: 400,
+                    lineHeight: '140%',
+                    margin: 0,
+                    opacity: 0.92,
+                    textShadow: '0 1px 8px rgba(0,0,0,0.5)',
+                    maxWidth: '480px',
+                  }}
+                >
+                  {isEn
+                    ? 'Give the gift of choice. Buy, gift, and redeem Saadeddin luxury vouchers — the perfect gift for every occasion.'
+                    : 'امنح هدية الاختيار. اشترِ، أدر، واستبدل قسائم هدايا "سعد الدين" الراقية — الهدية المثالية لكل مناسبة'}
+                </p>
+
+                {/* Buttons — radius 24px, #C5A96A + #BBCFCD */}
+                <div
+                  className="flex flex-wrap gap-2 pt-2"
+                  style={{
+                    justifyContent: 'flex-start',
+                  }}
+                >
+                  <Link
+                    to={isEn ? '/en/collections/all' : '/collections/all'}
                     style={{
-                      fontFamily: "'GE Dinar One', 'GE SS Two', sans-serif",
-                      fontSize: '14px',
-                      fontWeight: 500,
-                      opacity: 0.9,
+                      width: '240px',
+                      maxWidth: '100%',
+                      height: '48px',
+                      borderRadius: '24px',
+                      background: '#C5A96A',
+                      color: '#1A3533',
+                      fontWeight: 700,
+                      fontSize: '15px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      textDecoration: 'none',
+                      flexShrink: 0,
+                      boxShadow: '0 2px 12px rgba(0,0,0,0.2)',
                     }}
                   >
-                    {item}
-                  </span>
-                  {idx < arr.length - 1 && (
+                    {isEn ? 'Shop Now' : 'تسوق الان'}
+                  </Link>
+                  <a
+                    href="#redeem-section"
+                    style={{
+                      width: '240px',
+                      maxWidth: '100%',
+                      height: '48px',
+                      borderRadius: '24px',
+                      background: '#BBCFCD',
+                      color: '#1A3533',
+                      fontWeight: 700,
+                      fontSize: '15px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      textDecoration: 'none',
+                      flexShrink: 0,
+                      boxShadow: '0 2px 12px rgba(0,0,0,0.15)',
+                    }}
+                  >
+                    {isEn ? 'Redeem Voucher' : 'استبدال قسيمة'}
+                  </a>
+                </div>
+              </div>
+
+              {/* ── BOTTOM STRIP (bottom) — GE Dinar One Medium 500 14px ── */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                  flexWrap: 'wrap',
+                  justifyContent: 'flex-start',
+                }}
+              >
+                {[
+                  isEn
+                    ? 'Halal & HACCP Certified for Food Safety.'
+                    : 'شهادات حلال والهاسب لسلامة الغذاء.',
+                  isEn ? 'Refrigerated Shipping' : 'شحن مبرد',
+                  isEn ? 'Over 30 Countries' : 'أكثر من 30 دولة',
+                ].map((item, idx, arr) => (
+                  <div key={item} className="flex items-center gap-3">
                     <span
-                      key={`sep-${idx}`}
-                      style={{color: 'rgba(255,255,255,0.35)'}}
+                      className="text-white"
+                      style={{
+                        fontFamily: "'GE Dinar One', 'GE SS Two', sans-serif",
+                        fontSize: '13.5px',
+                        fontWeight: 500,
+                        opacity: 0.9,
+                      }}
                     >
-                      |
+                      {item}
                     </span>
-                  )}
-                </>
-              ))}
+                    {idx < arr.length - 1 && (
+                      <span style={{color: 'rgba(255,255,255,0.35)'}}>|</span>
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>
       </section>
 
       {/* ─── 2. AVAILABLE VOUCHERS SECTION ─── */}
-      <section className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-12">
+      <section className="max-w-[1400px] mx-auto px-4 md:px-8 pt-16 pb-12">
         {/* Section Header */}
         <div className="text-center mb-12">
           <h2
             className="text-[#171717] font-bold leading-none mb-3"
             style={{
               fontFamily: "'Bahij Janna', 'Bahij', serif",
-              fontSize: 'clamp(32px, 4vw, 50px)',
+              fontSize: 'clamp(32px, 4vw, 46px)',
               fontWeight: 700,
               lineHeight: '100%',
             }}
@@ -840,7 +1047,7 @@ export default function VouchersPage() {
             className="text-[#7D7D7D]"
             style={{
               fontFamily: "'GE Dinar One', 'GE SS Two', sans-serif",
-              fontSize: '16px',
+              fontSize: '15px',
               fontWeight: 500,
               lineHeight: '100%',
             }}
@@ -851,48 +1058,28 @@ export default function VouchersPage() {
           </p>
         </div>
 
-        {/* Voucher Cards — 3 column grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {(shopifyVouchers.length > 0
-            ? shopifyVouchers
-            : [
-                {
-                  id: '1',
-                  title: 'Free Delivery',
-                  code: 'FreeShip',
-                  discountDisplayAr: 'توصيل مجاني',
-                  discountDisplayEn: 'Free Delivery',
-                  subtitleAr: 'توصيل مجاني على طلبك القادم',
-                  subtitleEn: 'Free shipping on your next order',
-                  expiryTextAr: 'تنتهي 31 ديسمبر 2026 . الحد الادنى 150 رس',
-                  expiryTextEn: 'Expires Dec 31, 2026 . Min spend 150 SAR',
-                },
-                {
-                  id: '2',
-                  title: '50 SAR Discount',
-                  code: 'SWEET',
-                  discountDisplayAr: '50 خصم',
-                  discountDisplayEn: '50 SAR OFF',
-                  subtitleAr: 'عند الشراء بأكثر من ٣٠٠ رس',
-                  subtitleEn: 'On purchases over 300 SAR',
-                  expiryTextAr: 'تنتهي 31 ديسمبر 2026 . الحد الادنى 150 رس',
-                  expiryTextEn: 'Expires Dec 31, 2026 . Min spend 150 SAR',
-                },
-                {
-                  id: '3',
-                  title: '15% Discount',
-                  code: 'SWEET',
-                  discountDisplayAr: '15% خصم',
-                  discountDisplayEn: '15% OFF',
-                  subtitleAr: 'على جميع الحلويات الشرقية',
-                  subtitleEn: 'On all Oriental Sweets',
-                  expiryTextAr: 'تنتهي 31 ديسمبر 2026 . الحد الادنى 150 رس',
-                  expiryTextEn: 'Expires Dec 31, 2026 . Min spend 150 SAR',
-                },
-              ]
-          )
-            .slice(0, 3)
-            .map((v, index) => {
+        {/* Voucher Cards — Horizontal slider on mobile, 3-column grid on desktop */}
+        <div
+          className="flex md:grid md:grid-cols-3 gap-5 md:gap-6 lg:gap-8 overflow-x-auto md:overflow-x-visible snap-x snap-mandatory -mx-4 px-4 md:mx-0 md:px-0 pb-4 md:pb-0"
+          style={{
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none',
+            WebkitOverflowScrolling: 'touch',
+          }}
+        >
+          {(() => {
+            const list = shopifyVouchers.filter((v) => v.status === 'active' && v.hasTag);
+
+            if (list.length === 0) {
+              return (
+                <div className="col-span-3 w-full py-12 text-center text-[#7D7D7D] font-medium text-[15px]">
+                  {isEn
+                    ? 'No vouchers available at the moment.'
+                    : 'لا توجد قسائم متاحة حالياً.'}
+                </div>
+              );
+            }
+            return list.map((v, index) => {
               const themeIndex = index % 3;
               const themes = [
                 {
@@ -925,159 +1112,190 @@ export default function VouchersPage() {
               return (
                 <div
                   key={v.id || v.code || index}
-                  className="relative flex flex-col rounded-[20px] overflow-visible shadow-lg hover:-translate-y-1 transition-all duration-300"
+                  className="relative flex flex-col rounded-[24px] overflow-visible shadow-lg hover:-translate-y-1 transition-all duration-300 w-[88vw] sm:w-[380px] md:w-full shrink-0 snap-center justify-between"
                   style={{background: theme.bg}}
                 >
                   {/* Top section */}
-                  <div
-                    className="flex flex-col px-8 !pt-10 pb-8"
-                    style={{textAlign: isEn ? 'left' : 'right'}}
-                  >
-                    {/* Brand Logo SVG */}
+                  <div className="flex flex-col items-center text-center px-8 sm:px-10 pt-9 pb-6">
+                    {/* Brand Logo / Text */}
                     <div
-                      className="flex justify-start mb-2 mt-10"
-                      style={{color: theme.textPrimary}}
+                      className="mb-4 text-center font-bold tracking-[0.35em]"
+                      style={{
+                        color: theme.textPrimary,
+                        fontSize: '14px',
+                        fontFamily: 'sans-serif',
+                      }}
                     >
-                      <SaadeddinLogo className="h-3.5 sm:h-4 w-auto" />
+                      S A A D E D D I N
                     </div>
+
                     {/* Discount value */}
                     <div
-                      className="font-bold leading-none mb-4 flex items-baseline gap-2"
+                      className="font-bold leading-none mb-3 text-center"
                       style={{
                         fontFamily:
                           "'EnglishDigits', 'Bahij Janna', 'Bahij', serif",
                         color: theme.textPrimary,
+                        fontSize: 'clamp(34px, 3.5vw, 46px)',
+                        fontWeight: 700,
                       }}
                     >
-                      <span style={{fontSize: '42px', fontWeight: 700}}>
-                        {toEnglishDigits(
-                          isEn ? v.discountDisplayEn : v.discountDisplayAr,
-                        )}
-                      </span>
+                      {toEnglishDigits(
+                        isEn ? v.discountDisplayEn : v.discountDisplayAr,
+                      )}
                     </div>
+
                     {/* Description */}
                     <div
+                      className="text-center"
                       style={{
                         fontFamily:
                           "'EnglishDigits', 'GE Dinar One', 'GE SS Two', sans-serif",
-                        fontSize: '16px',
+                        fontSize: '15px',
                         color: theme.textSub,
                         fontWeight: 400,
+                        lineHeight: '140%',
                       }}
                     >
                       {toEnglishDigits(isEn ? v.subtitleEn : v.subtitleAr)}
                     </div>
                   </div>
 
-                  {/* Dashed divider with ticket notches */}
-                  <div
-                    className="relative flex items-center"
-                    style={{margin: '0'}}
-                  >
+                  <div>
+                    {/* Dashed divider with ticket notches */}
                     <div
-                      className="absolute -left-3 w-6 h-6 rounded-full z-10"
-                      style={{background: '#FAF8F5'}}
-                    />
-                    <div
-                      className="absolute -right-3 w-6 h-6 rounded-full z-10"
-                      style={{background: '#FAF8F5'}}
-                    />
-                    <div
-                      className="w-full"
-                      style={{
-                        borderTop: `2px dashed ${theme.dividerColor}`,
-                        marginLeft: '12px',
-                        marginRight: '12px',
-                      }}
-                    />
-                  </div>
-
-                  {/* Bottom section */}
-                  <div
-                    dir="ltr"
-                    className="flex items-center justify-between px-8 pt-6 pb-4 gap-4"
-                  >
-                    <button
-                      type="button"
-                      onClick={() => handleCopyCode(v.code)}
-                      className="flex-shrink-0 font-bold transition-opacity hover:opacity-80 active:scale-95"
-                      style={{
-                        background: theme.btnBg,
-                        color: theme.btnText,
-                        borderRadius: '999px',
-                        padding: '13px 32px',
-                        fontSize: '16px',
-                        fontWeight: 700,
-                        border: 'none',
-                        cursor: 'pointer',
-                        fontFamily: "'GE Dinar One', sans-serif",
-                      }}
+                      className="relative flex items-center"
+                      style={{margin: '0'}}
                     >
-                      {isEn ? 'Get Code' : 'إحصل عليه'}
-                    </button>
-                    <div style={{textAlign: 'right'}}>
                       <div
+                        className="absolute -left-3.5 w-7 h-7 rounded-full z-10"
+                        style={{background: '#FAF8F5'}}
+                      />
+                      <div
+                        className="absolute -right-3.5 w-7 h-7 rounded-full z-10"
+                        style={{background: '#FAF8F5'}}
+                      />
+                      <div
+                        className="w-full"
                         style={{
-                          fontSize: '12px',
-                          color: theme.textSub,
-                          marginBottom: '4px',
+                          borderTop: `2px dashed ${theme.dividerColor}`,
+                          marginLeft: '14px',
+                          marginRight: '14px',
+                        }}
+                      />
+                    </div>
+
+                    {/* Bottom section */}
+                    <div
+                      dir={isEn ? 'ltr' : 'rtl'}
+                      className="flex items-center justify-between px-8 sm:px-10 pt-6 pb-4 gap-3"
+                    >
+                      <button
+                        type="button"
+                        onClick={() => handleCopyCode(v.code)}
+                        className="flex-shrink-0 font-bold transition-all hover:opacity-90 active:scale-95 cursor-pointer shadow-sm border-none"
+                        style={{
+                          background: theme.btnBg,
+                          color: theme.btnText,
+                          borderRadius: '999px',
+                          padding: '12px 28px',
+                          fontSize: '15px',
+                          fontWeight: 700,
                           fontFamily: "'GE Dinar One', sans-serif",
                         }}
                       >
-                        {isEn ? 'Code' : 'الرمز'}
-                      </div>
-                      <div
-                        style={{
-                          fontSize: '20px',
-                          fontWeight: 700,
-                          color: theme.textPrimary,
-                          fontFamily: 'monospace',
-                          letterSpacing: '0.02em',
-                        }}
-                      >
-                        {v.code}
+                        {isEn ? 'Get Code' : 'إحصل عليه'}
+                      </button>
+
+                      <div style={{textAlign: isEn ? 'right' : 'right'}}>
+                        <div
+                          style={{
+                            fontSize: '12px',
+                            color: theme.textSub,
+                            marginBottom: '2px',
+                            fontFamily: "'GE Dinar One', sans-serif",
+                          }}
+                        >
+                          {isEn ? 'Code' : 'الرمز'}
+                        </div>
+                        <div
+                          style={{
+                            fontSize: '19px',
+                            fontWeight: 700,
+                            color: theme.textPrimary,
+                            fontFamily: 'monospace',
+                            letterSpacing: '0.03em',
+                          }}
+                        >
+                          {v.code}
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  {/* Footer */}
-                  <div
-                    className="px-8 pb-6"
-                    style={{
-                      fontFamily:
-                        "'EnglishDigits', 'GE Dinar One', 'GE SS Two', sans-serif",
-                      fontSize: '13px',
-                      color: theme.textSub,
-                      textAlign: isEn ? 'left' : 'right',
-                    }}
-                  >
-                    {toEnglishDigits(isEn ? v.expiryTextEn : v.expiryTextAr)}
+                    {/* Footer */}
+                    <div
+                      className="px-8 sm:px-10 pb-6 text-center"
+                      style={{
+                        fontFamily:
+                          "'EnglishDigits', 'GE Dinar One', 'GE SS Two', sans-serif",
+                        fontSize: '12.5px',
+                        color: theme.textSub,
+                        textAlign: 'center',
+                      }}
+                    >
+                      {toEnglishDigits(isEn ? v.expiryTextEn : v.expiryTextAr)}
+                    </div>
                   </div>
                 </div>
               );
-            })}
+            });
+          })()}
         </div>
       </section>
 
       {/* ─── 3. MY VOUCHERS & REDEMPTION SECTION ─── */}
       <section
         id="redeem-section"
-        className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-12"
+        className="max-w-[1400px] mx-auto px-4 md:px-8 py-12 overflow-hidden"
       >
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           {/* RIGHT COLUMN (RTL First): My Vouchers / قسائمي */}
-          <div className="lg:col-span-7 flex flex-col space-y-6">
-            {/* Header + Tabs */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              {/* Left Side: Filter Tabs Pills */}
-              <div className="flex items-center gap-3">
+          <div className="lg:col-span-7 flex flex-col space-y-6 w-full min-w-0">
+            {/* Header + Tabs (Title on Right in RTL, Tabs on Left in RTL) */}
+            <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+              {/* Title & Subtitle: Right on Desktop in RTL, Centered on Mobile */}
+              <div className="text-center md:text-right">
+                <h3
+                  className="text-[28px] md:text-[36px] font-bold text-[#234745] leading-tight"
+                  style={{
+                    fontFamily: isEn
+                      ? "'Bahij Janna', sans-serif"
+                      : "'Bahij Janna', 'Bahij', serif",
+                  }}
+                >
+                  {isEn ? 'My Vouchers' : 'قسائمي'}
+                </h3>
+                <p
+                  className="text-[#A0B2B0] text-[13.5px] md:text-[14px] mt-0.5"
+                  style={{
+                    fontFamily: "'GE Dinar One', 'GE SS Two', sans-serif",
+                  }}
+                >
+                  {isEn
+                    ? 'Your personal voucher wallet'
+                    : 'محفظة القسائم الخاصة بك'}
+                </p>
+              </div>
+
+              {/* Filter Tabs Pills: Left on Desktop in RTL, Centered on Mobile */}
+              <div className="flex items-center justify-center md:justify-end gap-2.5 flex-wrap">
                 <button
                   type="button"
                   onClick={() => setActiveTab('active')}
-                  className={`px-6 py-2.5 text-[14px] font-bold rounded-full transition-all ${
+                  className={`px-5 md:px-6 py-2 md:py-2.5 text-[13.5px] md:text-[14px] font-bold rounded-full transition-all border cursor-pointer ${
                     activeTab === 'active'
-                      ? 'bg-[#234745] text-white shadow-sm'
-                      : 'bg-white text-[#7D7D7D] shadow-sm hover:text-[#234745]'
+                      ? 'bg-[#234745] text-white border-[#234745] shadow-sm'
+                      : 'bg-white text-[#7D7D7D] border-gray-100 shadow-sm hover:text-[#234745]'
                   }`}
                   style={{
                     fontFamily:
@@ -1091,10 +1309,10 @@ export default function VouchersPage() {
                 <button
                   type="button"
                   onClick={() => setActiveTab('used')}
-                  className={`px-6 py-2.5 text-[14px] font-bold rounded-full transition-all ${
+                  className={`px-5 md:px-6 py-2 md:py-2.5 text-[13.5px] md:text-[14px] font-bold rounded-full transition-all border cursor-pointer ${
                     activeTab === 'used'
-                      ? 'bg-[#234745] text-white shadow-sm'
-                      : 'bg-white text-[#7D7D7D] shadow-sm hover:text-[#234745]'
+                      ? 'bg-[#234745] text-white border-[#234745] shadow-sm'
+                      : 'bg-white text-[#7D7D7D] border-gray-100 shadow-sm hover:text-[#234745]'
                   }`}
                   style={{
                     fontFamily:
@@ -1108,10 +1326,10 @@ export default function VouchersPage() {
                 <button
                   type="button"
                   onClick={() => setActiveTab('expired')}
-                  className={`px-6 py-2.5 text-[14px] font-bold rounded-full transition-all ${
+                  className={`px-5 md:px-6 py-2 md:py-2.5 text-[13.5px] md:text-[14px] font-bold rounded-full transition-all border cursor-pointer ${
                     activeTab === 'expired'
-                      ? 'bg-[#234745] text-white shadow-sm'
-                      : 'bg-white text-[#7D7D7D] shadow-sm hover:text-[#234745]'
+                      ? 'bg-[#234745] text-white border-[#234745] shadow-sm'
+                      : 'bg-white text-[#7D7D7D] border-gray-100 shadow-sm hover:text-[#234745]'
                   }`}
                   style={{
                     fontFamily:
@@ -1123,34 +1341,10 @@ export default function VouchersPage() {
                     : `منتهية (${toEnglishDigits(expiredVouchers.length)})`}
                 </button>
               </div>
-
-              {/* Right Side: Title & Subtitle */}
-              <div className="text-right">
-                <h3
-                  className="text-[32px] sm:text-[36px] font-bold text-[#234745] leading-tight"
-                  style={{
-                    fontFamily: isEn
-                      ? "'Bahij Janna', sans-serif"
-                      : "'Bahij Janna', 'Bahij', serif",
-                  }}
-                >
-                  {isEn ? 'My Vouchers' : 'قسائمي'}
-                </h3>
-                <p
-                  className="text-[#A0B2B0] text-[14px] mt-0.5"
-                  style={{
-                    fontFamily: "'GE Dinar One', 'GE SS Two', sans-serif",
-                  }}
-                >
-                  {isEn
-                    ? 'Your personal voucher wallet'
-                    : 'محفظة القسائم الخاصة بك'}
-                </p>
-              </div>
             </div>
 
             {/* Voucher Cards List */}
-            <div className="space-y-4 pt-2">
+            <div className="space-y-4 pt-2 w-full">
               {currentTabList.length === 0 ? (
                 <div className="bg-white rounded-[24px] p-10 text-center border border-gray-200 shadow-sm flex flex-col items-center gap-3">
                   <div className="w-14 h-14 rounded-full bg-[#FAF8F5] flex items-center justify-center text-[26px]">
@@ -1183,138 +1377,181 @@ export default function VouchersPage() {
                       : '#97A7AD';
 
                   return (
-                    <div
-                      key={v.id || i}
-                      className={`relative bg-white transition-all flex items-center justify-between ${
-                        !isActiveState ? 'shadow-sm border border-gray-100' : ''
-                      }`}
-                      style={{
-                        borderRight: '4px solid #234745',
-                        borderRadius: '12px',
-                        padding: '24px',
-                        gap: '24px',
-                        minHeight: '136px',
-                      }}
-                    >
-                      {/* Right Main Info + Badge */}
-                      <div className="flex items-center gap-5">
-                        {/* Badge */}
-                        <div
-                          className="w-[88px] h-[88px] rounded-[20px] text-white font-bold text-[20px] flex items-center justify-center flex-shrink-0 shadow-sm"
-                          style={{
-                            background: badgeBg,
-                            fontFamily:
-                              "'EnglishDigits', 'GE Dinar One', sans-serif",
-                          }}
-                        >
-                          {toEnglishDigits(v.badgeText)}
+                    <div key={v.id || i} className="w-full">
+                      {/* ─── 1. DESKTOP CARD LAYOUT (hidden md:flex) ─── */}
+                      <div
+                        className={`hidden md:flex relative bg-white transition-all items-center justify-between shadow-sm border border-gray-100 rounded-[12px] p-6 min-h-[136px] gap-6 ${
+                          isActiveState ? 'border-r-4 border-r-[#234745]' : ''
+                        }`}
+                        dir={isEn ? 'ltr' : 'rtl'}
+                      >
+                        {/* Right Side in RTL: Badge + Details */}
+                        <div className="flex items-center gap-5">
+                          {/* Badge */}
+                          <div
+                            className="w-[88px] h-[88px] rounded-[20px] text-white font-bold text-[20px] flex items-center justify-center flex-shrink-0 shadow-sm"
+                            style={{
+                              background: badgeBg,
+                              fontFamily:
+                                "'EnglishDigits', 'GE Dinar One', sans-serif",
+                            }}
+                          >
+                            {toEnglishDigits(v.badgeText)}
+                          </div>
+                          <div className={`flex flex-col gap-2 ${isEn ? 'text-left' : 'text-right'}`}>
+                            <h4
+                              className="font-bold text-[20px] leading-tight"
+                              style={{
+                                color: isActiveState ? '#234745' : '#7D7D7D',
+                                fontFamily:
+                                  "'EnglishDigits', 'Bahij Janna', 'Bahij', serif",
+                              }}
+                            >
+                              {toEnglishDigits(
+                                isEn ? v.discountDisplayEn : v.discountDisplayAr,
+                              )}
+                            </h4>
+                            <p
+                              className="text-[#7D7D7D] font-medium text-[16px] m-0"
+                              style={{
+                                fontFamily:
+                                  "'EnglishDigits', 'GE Dinar One', 'GE SS Two', sans-serif",
+                              }}
+                            >
+                              {v.code}
+                            </p>
+                            <span
+                              className="text-[#7D7D7D] font-medium text-[16px]"
+                              style={{
+                                fontFamily:
+                                  "'EnglishDigits', 'GE Dinar One', 'GE SS Two', sans-serif",
+                              }}
+                            >
+                              {toEnglishDigits(
+                                isEn ? v.expiryTextEn : v.expiryTextAr,
+                              )}
+                            </span>
+                          </div>
                         </div>
-                        <div className={`flex flex-col gap-2 ${isEn ? 'text-left' : 'text-right'}`}>
-                          <h4
-                            style={{
-                              color: isActiveState ? '#234745' : '#7D7D7D',
-                              fontFamily:
-                                "'EnglishDigits', 'Bahij Janna', 'Bahij', serif",
-                              fontWeight: 700,
-                              fontSize: '20px',
-                              lineHeight: '100%',
-                              textAlign: isEn ? 'left' : 'right',
-                            }}
-                          >
-                            {toEnglishDigits(
-                              isEn ? v.discountDisplayEn : v.discountDisplayAr,
-                            )}
-                          </h4>
-                          <p
-                            style={{
-                              color: '#7D7D7D',
-                              fontFamily:
-                                "'EnglishDigits', 'GE Dinar One', 'GE SS Two', sans-serif",
-                              fontWeight: 500,
-                              fontSize: '16px',
-                              lineHeight: '100%',
-                              textAlign: isEn ? 'left' : 'right',
-                            }}
-                          >
-                            {v.code}
-                          </p>
+
+                        {/* Left Side in RTL: Status + Action Button */}
+                        <div className="flex flex-col items-center justify-between self-stretch gap-3">
                           <span
+                            className="text-[#7D7D7D] text-[16px] font-medium text-center"
                             style={{
-                              color: '#7D7D7D',
                               fontFamily:
-                                "'EnglishDigits', 'GE Dinar One', 'GE SS Two', sans-serif",
-                              fontWeight: 500,
-                              fontSize: '16px',
-                              lineHeight: '100%',
-                              textAlign: isEn ? 'left' : 'right',
+                                "'GE Dinar One', 'GE SS Two', sans-serif",
                             }}
                           >
-                            {toEnglishDigits(
-                              isEn ? v.expiryTextEn : v.expiryTextAr,
-                            )}
+                            {isActiveState
+                              ? isEn
+                                ? 'Active'
+                                : 'فعالة'
+                              : isUsedState
+                                ? isEn
+                                  ? 'Used'
+                                  : 'مستخدمة'
+                                : isEn
+                                  ? 'Expired'
+                                  : 'منتهية'}
                           </span>
+                          {isActiveState && (
+                            <button
+                              type="button"
+                              disabled={cartFetcher.state !== 'idle'}
+                              onClick={() => applyCodeToCart(v.code)}
+                              className="hover:opacity-90 transition-all shadow-sm active:scale-95 border-none cursor-pointer disabled:opacity-50 text-white font-bold text-[16px] rounded-[24px] px-5 py-3 h-[48px] w-[148px] flex items-center justify-center"
+                              style={{
+                                background: '#234745',
+                                fontFamily:
+                                  "'GE Dinar One', 'GE SS Two', sans-serif",
+                              }}
+                            >
+                              {cartFetcher.state !== 'idle' &&
+                              lastAppliedCode === v.code
+                                ? isEn
+                                  ? 'Applying...'
+                                  : 'جاري التطبيق...'
+                                : isEn
+                                  ? 'Use Now'
+                                  : 'إستخدم الان'}
+                            </button>
+                          )}
                         </div>
                       </div>
 
-                      {/* Left Action & Status */}
-                      <div className="flex flex-col items-center justify-between self-stretch gap-3">
-                        <span
-                          style={{
-                            color: '#7D7D7D',
-                            fontFamily:
-                              "'GE Dinar One', 'GE SS Two', sans-serif",
-                            fontWeight: 500,
-                            fontSize: '16px',
-                            lineHeight: '100%',
-                            textAlign: 'center',
-                          }}
-                        >
-                          {isActiveState
-                            ? isEn
-                              ? 'Active'
-                              : 'فعالة'
-                            : isUsedState
-                              ? isEn
-                                ? 'Used'
-                                : 'مستخدمة'
-                              : isEn
-                                ? 'Expired'
-                                : 'منتهية'}
-                        </span>
+                      {/* ─── 2. MOBILE CARD LAYOUT (flex md:hidden) ─── */}
+                      <div
+                        className="flex md:hidden relative bg-white rounded-[20px] p-5 border border-[#BBCFCD]/60 shadow-sm transition-all flex-col justify-between w-full overflow-hidden"
+                        dir={isEn ? 'ltr' : 'rtl'}
+                      >
+                        {/* Top Info + Badge Row */}
+                        <div className="flex items-start justify-between gap-4 w-full">
+                          {/* Badge (Renders on the Right in RTL) */}
+                          <div
+                            className="w-[84px] h-[74px] rounded-[16px] text-white font-bold text-[18px] flex items-center justify-center flex-shrink-0 shadow-sm"
+                            style={{
+                              background: badgeBg,
+                              fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
+                            }}
+                          >
+                            {toEnglishDigits(v.badgeText)}
+                          </div>
+
+                          {/* Text Info (Renders on the Left in RTL) */}
+                          <div className={`flex flex-col gap-1.5 ${isEn ? 'text-left' : 'text-right'} flex-1 min-w-0`}>
+                            <h4
+                              className="text-[16.5px] font-bold text-[#234745] leading-snug line-clamp-2"
+                              style={{
+                                fontFamily: "'EnglishDigits', 'Bahij Janna', 'Bahij', serif",
+                              }}
+                            >
+                              {toEnglishDigits(isEn ? v.discountDisplayEn : v.discountDisplayAr)}
+                            </h4>
+                            <p className="text-[#7D7D7D] font-en uppercase text-[12px] font-medium m-0 tracking-wider">
+                              {v.subtitleEn || v.code || 'SWEETS'}
+                            </p>
+                            <span
+                              className="text-[#A0B2B0] text-[12.5px] font-medium"
+                              style={{
+                                fontFamily: "'EnglishDigits', 'GE Dinar One', 'GE SS Two', sans-serif",
+                              }}
+                            >
+                              {toEnglishDigits(isEn ? v.expiryTextEn : v.expiryTextAr)}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Status Label (Centered) */}
+                        <div className="text-center my-3">
+                          <span
+                            className="text-[#7D7D7D] text-[14px] font-medium"
+                            style={{
+                              fontFamily: "'GE Dinar One', 'GE SS Two', sans-serif",
+                            }}
+                          >
+                            {isActiveState
+                              ? (isEn ? 'Active' : 'فعالة')
+                              : isUsedState
+                                ? (isEn ? 'Used' : 'مستخدمة')
+                                : (isEn ? 'Expired' : 'منتهية')}
+                          </span>
+                        </div>
+
+                        {/* Action Button (Full-width, only if active) */}
                         {isActiveState && (
                           <button
                             type="button"
                             disabled={cartFetcher.state !== 'idle'}
                             onClick={() => applyCodeToCart(v.code)}
-                            className="hover:opacity-90 transition-all shadow-sm active:scale-95 border-none cursor-pointer disabled:opacity-50"
+                            className="w-full h-[46px] rounded-full bg-[#234745] hover:bg-[#1A3533] text-white font-bold text-[15px] flex items-center justify-center transition-all shadow-sm active:scale-98 disabled:opacity-50 cursor-pointer border-none"
                             style={{
-                              color: '#FFFFFF',
-                              fontFamily:
-                                "'GE Dinar One', 'GE SS Two', sans-serif",
-                              fontWeight: 700,
-                              fontSize: '16px',
-                              lineHeight: '100%',
-                              textAlign: 'center',
-                              width: '148px',
-                              height: '48px',
-                              gap: '8px',
-                              borderRadius: '24px',
-                              padding: '12px 20px',
-                              background: '#234745',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              textDecoration: 'none',
+                              fontFamily: "'GE Dinar One', 'GE SS Two', sans-serif",
                             }}
                           >
-                            {cartFetcher.state !== 'idle' &&
-                            lastAppliedCode === v.code
-                              ? isEn
-                                ? 'Applying...'
-                                : 'جاري التطبيق...'
-                              : isEn
-                                ? 'Use Now'
-                                : 'إستخدم الان'}
+                            {cartFetcher.state !== 'idle' && lastAppliedCode === v.code
+                              ? (isEn ? 'Applying...' : 'جاري التطبيق...')
+                              : (isEn ? 'Use Now' : 'إستخدم الان')}
                           </button>
                         )}
                       </div>
@@ -1434,178 +1671,232 @@ export default function VouchersPage() {
         </div>
       </section>
 
-      {/* ─── 4. WHAT WOULD YOU LIKE TO DO SECTION ────────────────────────── */}
-      <section className="w-full bg-white py-16">
-        <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-10">
-            <h2
-              className="text-[28px] sm:text-[34px] font-bold text-[#234745] mb-2"
-              style={{
-                fontFamily: isEn ? "'Bahij Janna', sans-serif" : undefined,
-              }}
-            >
-              {isEn ? 'What would you like to do?' : 'ماذا تريد أن تفعل؟'}
-            </h2>
-            <p
-              className="text-[#666666] text-[14px] sm:text-[15px]"
-              style={{
-                fontFamily: isEn ? "'Gotham Light', sans-serif" : undefined,
-              }}
-            >
-              {isEn ? 'Choose the option you want' : 'اختر الخيار الذي تريده'}
-            </p>
-          </div>
-
-          {/* 2 Options Cards Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {/* Option Card 1: Gift a Voucher */}
-            <div className="bg-[#FEF8EB] rounded-2xl p-8 sm:p-10 border border-[#C8A464]/30 text-center flex flex-col items-center justify-between hover:shadow-md transition-all">
-              <div className="flex flex-col items-center">
-                <div className="w-[48px] h-[48px] rounded-full bg-[#255441] text-[#C8A464] flex items-center justify-center mb-5 shadow-inner">
-                  <svg
-                    width="17"
-                    height="18"
-                    viewBox="0 0 17 18"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path
-                      d="M7 17C7.82843 17 8.5 16.3284 8.5 15.5C8.5 14.6716 7.82843 14 7 14C6.17157 14 5.5 14.6716 5.5 15.5C5.5 16.3284 6.17157 17 7 17Z"
-                      stroke="#BBCFCD"
-                    />
-                    <path
-                      d="M14 17C14.8284 17 15.5 16.3284 15.5 15.5C15.5 14.6716 14.8284 14 14 14C13.1716 14 12.5 14.6716 12.5 15.5C12.5 16.3284 13.1716 17 14 17Z"
-                      stroke="#BBCFCD"
-                    />
-                    <path
-                      d="M0.5 0.5H2.5L6.004 11.5H14"
-                      stroke="#BBCFCD"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                    />
-                    <path
-                      d="M5.22869 9.00049L3.30469 3.00049H15.8117C15.891 3.00039 15.9691 3.01914 16.0397 3.05519C16.1103 3.09124 16.1713 3.14356 16.2177 3.20783C16.2641 3.2721 16.2946 3.34649 16.3066 3.42484C16.3185 3.5032 16.3117 3.58328 16.2867 3.65849L14.6197 8.65849C14.5865 8.75801 14.5229 8.84459 14.4379 8.90596C14.3528 8.96734 14.2506 9.00041 14.1457 9.00049H5.22869Z"
-                      stroke="#BBCFCD"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                    />
-                  </svg>
-                </div>
-                <h3
-                  className="text-[#255441] !mb-[16px] text-center"
+      {/* ─── 4. WHAT WOULD YOU LIKE TO DO SECTION / INLINE WIZARD ────────── */}
+      <section id="voucher-wizard-section" className="w-full bg-white py-16 scroll-mt-24">
+        <div className="max-w-[1400px] mx-auto px-4 md:px-8">
+          {activeWizardMode ? (
+            /* Inline 4-Step Wizard Container */
+            <div className="w-full">
+              <GiftVoucherWizard
+                initialMode={activeWizardMode}
+                customerName={customerName}
+                customerEmail={customerEmail}
+                isLoggedIn={isLoggedIn}
+                giftProduct={giftProduct}
+                voucherHistory={voucherHistory}
+                isEn={isEn}
+                onBackToOptions={() => setActiveWizardMode(null)}
+              />
+            </div>
+          ) : (
+            /* 2 Options Cards View */
+            <>
+              <div className="text-center mb-12 flex flex-col items-center justify-center">
+                <h2
+                  className="text-[#171717] mb-2 text-center"
                   style={{
-                    fontFamily: isEn ? "'Bahij Janna', sans-serif" : "'EnglishDigits', 'Bahij Janna', sans-serif",
+                    fontFamily: isEn
+                      ? "'Bahij Janna', sans-serif"
+                      : "'EnglishDigits', 'Bahij Janna', sans-serif",
                     fontWeight: 700,
-                    fontSize: '26px',
+                    fontSize: '50px',
+                    lineHeight: '100%',
+                    letterSpacing: '0%',
+                    textAlign: 'center',
+                    verticalAlign: 'middle',
+                    color: '#171717',
+                  }}
+                >
+                  {isEn ? 'What would you like to do?' : 'ماذا تريد ان تفعل؟'}
+                </h2>
+                <p
+                  className="text-[#7D7D7D] text-center mt-2"
+                  style={{
+                    fontFamily: isEn
+                      ? "'Gotham Light', sans-serif"
+                      : "'GE Dinar One', sans-serif",
+                    fontWeight: 500,
+                    fontSize: '16px',
                     lineHeight: '100%',
                     letterSpacing: '0%',
                     textAlign: 'center',
                     verticalAlign: 'middle',
                   }}
                 >
-                  {isEn ? 'Gift a Voucher' : 'أهدِ قسيمة'}
-                </h3>
-                <p
-                  className="text-[#9FB7AE] max-w-[420px] !mb-[16px] text-center"
-                  style={{
-                    fontFamily: isEn ? "'Gotham Light', sans-serif" : "'GE Dinar One', sans-serif",
-                    fontWeight: 500,
-                    fontSize: '14px',
-                    lineHeight: '140%',
-                    letterSpacing: '0%',
-                    textAlign: 'center',
-                    verticalAlign: 'middle',
-                  }}
-                >
-                  {isEn
-                    ? 'Send a digital gift voucher to your loved ones via email with a personalized message and choice of designs.'
-                    : 'أرسل قسيمة هدية أنيقة لشخص عزيز عبر البريد الالكتروني مع رسالة شخصية وتصميم تختاره'}
+                  {isEn ? 'Choose the path you want' : 'اختر المسار الذي تريده'}
                 </p>
               </div>
-              <Link
-                to={isEn ? '/en/buy-gift-card' : '/buy-gift-card'}
-                className="w-full sm:w-auto h-[48px] px-10 bg-[#255441] !w-[248px] hover:bg-[#1A3533] !text-white font-bold text-[14px] rounded-full flex items-center justify-center transition-all active:scale-98"
-              >
-                {isEn ? 'Start Now' : 'إبدأ الان'}
-              </Link>
-            </div>
 
-            {/* Option Card 2: Buy for Yourself */}
-            <div className="bg-[#FEF8EB] rounded-2xl p-8 sm:p-10 border border-[#C8A464]/30 text-center flex flex-col items-center justify-between hover:shadow-md transition-all">
-              <div className="flex flex-col items-center">
-                <div className="w-[48px] h-[48px] rounded-full bg-[#C5A96A] text-[#C8A464] flex items-center justify-center mb-5 shadow-inner">
-                  <svg
-                    width="17"
-                    height="18"
-                    viewBox="0 0 17 18"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
+              {/* 2 Options Cards Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full mx-auto">
+                {/* Option Card 1: Gift a Voucher */}
+                <div className="bg-[#FEF8EB] rounded-2xl p-8 sm:p-10 border border-[#C8A464]/30 text-center flex flex-col items-center justify-between hover:shadow-md transition-all">
+                  <div className="flex flex-col items-center">
+                    <div className="w-[48px] h-[48px] rounded-full bg-[#255441] text-[#C8A464] flex items-center justify-center mb-5 shadow-inner">
+                      <svg
+                        width="17"
+                        height="18"
+                        viewBox="0 0 17 18"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="M7 17C7.82843 17 8.5 16.3284 8.5 15.5C8.5 14.6716 7.82843 14 7 14C6.17157 14 5.5 14.6716 5.5 15.5C5.5 16.3284 6.17157 17 7 17Z"
+                          stroke="#BBCFCD"
+                        />
+                        <path
+                          d="M14 17C14.8284 17 15.5 16.3284 15.5 15.5C15.5 14.6716 14.8284 14 14 14C13.1716 14 12.5 14.6716 12.5 15.5C12.5 16.3284 13.1716 17 14 17Z"
+                          stroke="#BBCFCD"
+                        />
+                        <path
+                          d="M0.5 0.5H2.5L6.004 11.5H14"
+                          stroke="#BBCFCD"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        />
+                        <path
+                          d="M5.22869 9.00049L3.30469 3.00049H15.8117C15.891 3.00039 15.9691 3.01914 16.0397 3.05519C16.1103 3.09124 16.1713 3.14356 16.2177 3.20783C16.2641 3.2721 16.2946 3.34649 16.3066 3.42484C16.3185 3.5032 16.3117 3.58328 16.2867 3.65849L14.6197 8.65849C14.5865 8.75801 14.5229 8.84459 14.4379 8.90596C14.3528 8.96734 14.2506 9.00041 14.1457 9.00049H5.22869Z"
+                          stroke="#BBCFCD"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        />
+                      </svg>
+                    </div>
+                    <h3
+                      className="text-[#255441] !mb-[16px] text-center"
+                      style={{
+                        fontFamily: isEn
+                          ? "'Bahij Janna', sans-serif"
+                          : "'EnglishDigits', 'Bahij Janna', sans-serif",
+                        fontWeight: 700,
+                        fontSize: '26px',
+                        lineHeight: '100%',
+                        letterSpacing: '0%',
+                        textAlign: 'center',
+                        verticalAlign: 'middle',
+                      }}
+                    >
+                      {isEn ? 'Gift a Voucher' : 'أهدِ قسيمة'}
+                    </h3>
+                    <p
+                      className="text-[#9FB7AE] max-w-[420px] !mb-[16px] text-center"
+                      style={{
+                        fontFamily: isEn
+                          ? "'Gotham Light', sans-serif"
+                          : "'GE Dinar One', sans-serif",
+                        fontWeight: 500,
+                        fontSize: '14px',
+                        lineHeight: '140%',
+                        letterSpacing: '0%',
+                        textAlign: 'center',
+                        verticalAlign: 'middle',
+                      }}
+                    >
+                      {isEn
+                        ? 'Send a digital gift voucher to your loved ones via email with a personalized message and choice of designs.'
+                        : 'أرسل قسيمة هدية أنيقة لشخص عزيز عبر البريد الالكتروني مع رسالة شخصية وتصميم تختاره'}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveWizardMode('gift');
+                      const el = document.getElementById(
+                        'voucher-wizard-section',
+                      );
+                      if (el) el.scrollIntoView({behavior: 'smooth'});
+                    }}
+                    className="w-full sm:w-auto h-[48px] px-10 bg-[#255441] !w-[248px] hover:bg-[#1A3533] !text-white font-bold text-[14px] rounded-full flex items-center justify-center transition-all active:scale-98 cursor-pointer shadow-sm"
                   >
-                    <path
-                      d="M7 17C7.82843 17 8.5 16.3284 8.5 15.5C8.5 14.6716 7.82843 14 7 14C6.17157 14 5.5 14.6716 5.5 15.5C5.5 16.3284 6.17157 17 7 17Z"
-                      stroke="#BBCFCD"
-                    />
-                    <path
-                      d="M14 17C14.8284 17 15.5 16.3284 15.5 15.5C15.5 14.6716 14.8284 14 14 14C13.1716 14 12.5 14.6716 12.5 15.5C12.5 16.3284 13.1716 17 14 17Z"
-                      stroke="#BBCFCD"
-                    />
-                    <path
-                      d="M0.5 0.5H2.5L6.004 11.5H14"
-                      stroke="#BBCFCD"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                    />
-                    <path
-                      d="M5.22869 9.00049L3.30469 3.00049H15.8117C15.891 3.00039 15.9691 3.01914 16.0397 3.05519C16.1103 3.09124 16.1713 3.14356 16.2177 3.20783C16.2641 3.2721 16.2946 3.34649 16.3066 3.42484C16.3185 3.5032 16.3117 3.58328 16.2867 3.65849L14.6197 8.65849C14.5865 8.75801 14.5229 8.84459 14.4379 8.90596C14.3528 8.96734 14.2506 9.00041 14.1457 9.00049H5.22869Z"
-                      stroke="#BBCFCD"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                    />
-                  </svg>
+                    {isEn ? 'Start Now' : 'إبدأ الان'}
+                  </button>
                 </div>
-                <h3
-                  className="text-[#255441] !mb-[16px] text-center"
-                  style={{
-                    fontFamily: isEn ? "'Bahij Janna', sans-serif" : "'EnglishDigits', 'Bahij Janna', sans-serif",
-                    fontWeight: 700,
-                    fontSize: '26px',
-                    lineHeight: '100%',
-                    letterSpacing: '0%',
-                    textAlign: 'center',
-                    verticalAlign: 'middle',
-                  }}
-                >
-                  {isEn ? 'Buy for Yourself' : 'إشترِ لنفسك'}
-                </h3>
-                <p
-                  className="text-[#9FB7AE] max-w-[420px] !mb-[16px] text-center"
-                  style={{
-                    fontFamily: isEn ? "'Gotham Light', sans-serif" : "'GE Dinar One', sans-serif",
-                    fontWeight: 500,
-                    fontSize: '14px',
-                    lineHeight: '140%',
-                    letterSpacing: '0%',
-                    textAlign: 'center',
-                    verticalAlign: 'middle',
-                  }}
-                >
-                  {isEn
-                    ? 'Add credit to your account and use it whenever you want at checkout without needing gifting details.'
-                    : 'أضف رصيداً الي حسابك واستخدمه عند الدفع في اي وقت تريده دون الحاجة لتفاصيل الاهداء'}
-                </p>
+
+                {/* Option Card 2: Buy for Yourself */}
+                <div className="bg-[#FEF8EB] rounded-2xl p-8 sm:p-10 border border-[#C8A464]/30 text-center flex flex-col items-center justify-between hover:shadow-md transition-all">
+                  <div className="flex flex-col items-center">
+                    <div className="w-[48px] h-[48px] rounded-full bg-[#C5A96A] text-[#C8A464] flex items-center justify-center mb-5 shadow-inner">
+                      <svg
+                        width="17"
+                        height="18"
+                        viewBox="0 0 17 18"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="M7 17C7.82843 17 8.5 16.3284 8.5 15.5C8.5 14.6716 7.82843 14 7 14C6.17157 14 5.5 14.6716 5.5 15.5C5.5 16.3284 6.17157 17 7 17Z"
+                          stroke="#BBCFCD"
+                        />
+                        <path
+                          d="M14 17C14.8284 17 15.5 16.3284 15.5 15.5C15.5 14.6716 14.8284 14 14 14C13.1716 14 12.5 14.6716 12.5 15.5C12.5 16.3284 13.1716 17 14 17Z"
+                          stroke="#BBCFCD"
+                        />
+                        <path
+                          d="M0.5 0.5H2.5L6.004 11.5H14"
+                          stroke="#BBCFCD"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        />
+                        <path
+                          d="M5.22869 9.00049L3.30469 3.00049H15.8117C15.891 3.00039 15.9691 3.01914 16.0397 3.05519C16.1103 3.09124 16.1713 3.14356 16.2177 3.20783C16.2641 3.2721 16.2946 3.34649 16.3066 3.42484C16.3185 3.5032 16.3117 3.58328 16.2867 3.65849L14.6197 8.65849C14.5865 8.75801 14.5229 8.84459 14.4379 8.90596C14.3528 8.96734 14.2506 9.00041 14.1457 9.00049H5.22869Z"
+                          stroke="#BBCFCD"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        />
+                      </svg>
+                    </div>
+                    <h3
+                      className="text-[#255441] !mb-[16px] text-center"
+                      style={{
+                        fontFamily: isEn
+                          ? "'Bahij Janna', sans-serif"
+                          : "'EnglishDigits', 'Bahij Janna', sans-serif",
+                        fontWeight: 700,
+                        fontSize: '26px',
+                        lineHeight: '100%',
+                        letterSpacing: '0%',
+                        textAlign: 'center',
+                        verticalAlign: 'middle',
+                      }}
+                    >
+                      {isEn ? 'Buy for Yourself' : 'إشترِ لنفسك'}
+                    </h3>
+                    <p
+                      className="text-[#9FB7AE] max-w-[420px] !mb-[16px] text-center"
+                      style={{
+                        fontFamily: isEn
+                          ? "'Gotham Light', sans-serif"
+                          : "'GE Dinar One', sans-serif",
+                        fontWeight: 500,
+                        fontSize: '14px',
+                        lineHeight: '140%',
+                        letterSpacing: '0%',
+                        textAlign: 'center',
+                        verticalAlign: 'middle',
+                      }}
+                    >
+                      {isEn
+                        ? 'Add credit to your account and use it whenever you want at checkout without needing gifting details.'
+                        : 'أضف رصيداً الي حسابك واستخدمه عند الدفع في اي وقت تريده دون الحاجة لتفاصيل الاهداء'}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveWizardMode('self');
+                      const el = document.getElementById(
+                        'voucher-wizard-section',
+                      );
+                      if (el) el.scrollIntoView({behavior: 'smooth'});
+                    }}
+                    className="w-full sm:w-auto h-[48px] px-10 bg-transparent !w-[248px] hover:bg-[#1A3533] !text-[#255441] hover:!text-white border !border-[#255441] font-bold text-[14px] rounded-full flex items-center justify-center transition-all active:scale-98 cursor-pointer shadow-sm"
+                  >
+                    {isEn ? 'Start Now' : 'إبدأ الان'}
+                  </button>
+                </div>
               </div>
-              <Link
-                to={
-                  isEn
-                    ? '/en/buy-gift-card?mode=self'
-                    : '/buy-gift-card?mode=self'
-                }
-                className="w-full sm:w-auto h-[48px] px-10 bg-transparent !w-[248px] hover:bg-[#1A3533] !text-[#255441] hover:!text-white border !border-[#255441] font-bold text-[14px] rounded-full flex items-center justify-center transition-all active:scale-98"
-              >
-                {isEn ? 'Start Now' : 'إبدأ الان'}
-              </Link>
-            </div>
-          </div>
+            </>
+          )}
         </div>
       </section>
     </div>

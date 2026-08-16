@@ -2747,6 +2747,28 @@ export type GetCustomerBasicQuery = {
   >;
 };
 
+export type GetGiftCardProductQueryVariables = StorefrontAPI.Exact<{
+  [key: string]: never;
+}>;
+
+export type GetGiftCardProductQuery = {
+  product?: StorefrontAPI.Maybe<
+    Pick<
+      StorefrontAPI.Product,
+      'id' | 'title' | 'handle' | 'availableForSale'
+    > & {
+      variants: {
+        nodes: Array<
+          Pick<
+            StorefrontAPI.ProductVariant,
+            'id' | 'title' | 'availableForSale'
+          > & {price: Pick<StorefrontAPI.MoneyV2, 'amount' | 'currencyCode'>}
+        >;
+      };
+    }
+  >;
+};
+
 export type GetLocationDiscountsForCartQueryVariables = StorefrontAPI.Exact<{
   [key: string]: never;
 }>;
@@ -6319,6 +6341,10 @@ interface GeneratedQueryTypes {
   '#graphql\n        query GetCustomerBasic($customerAccessToken: String!) {\n          customer(customerAccessToken: $customerAccessToken) {\n            firstName\n            lastName\n            email\n          }\n        }': {
     return: GetCustomerBasicQuery;
     variables: GetCustomerBasicQueryVariables;
+  };
+  '#graphql\n      query GetGiftCardProduct {\n        product(id: "gid://shopify/Product/9370203521257") {\n          id\n          title\n          handle\n          availableForSale\n          variants(first: 20) {\n            nodes {\n              id\n              title\n              price {\n                amount\n                currencyCode\n              }\n              availableForSale\n            }\n          }\n        }\n      }': {
+    return: GetGiftCardProductQuery;
+    variables: GetGiftCardProductQueryVariables;
   };
   '#graphql\n                query GetLocationDiscountsForCart {\n                  shop {\n                    locationDiscounts: metafield(namespace: "custom", key: "location_discounts") { value }\n                    locationDiscountsAlt: metafield(namespace: "location", key: "discounts") { value }\n                  }\n                }\n              ': {
     return: GetLocationDiscountsForCartQuery;

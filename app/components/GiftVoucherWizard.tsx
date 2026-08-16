@@ -98,8 +98,6 @@ export function GiftVoucherWizard({
   const [recipientName, setRecipientName] = useState('');
   const [recipientEmail, setRecipientEmail] = useState('');
   const [personalMessage, setPersonalMessage] = useState('');
-  const [isScheduled, setIsScheduled] = useState(false);
-  const [scheduledDate, setScheduledDate] = useState('');
   const [agreeTerms, setAgreeTerms] = useState(true);
 
   // Validation errors
@@ -245,7 +243,6 @@ export function GiftVoucherWizard({
                 { key: 'Sender Name', value: senderName || 'N/A' },
                 { key: 'Personal Message', value: personalMessage || 'N/A' },
                 { key: 'Occasion', value: occasion },
-                ...(isScheduled && scheduledDate ? [{ key: 'Scheduled Date', value: scheduledDate }] : []),
               ],
             },
           ],
@@ -695,9 +692,7 @@ export function GiftVoucherWizard({
                   </div>
                   <div className="mini-row">
                     <span>{isEn ? 'Delivery' : 'الإرسال'}</span>
-                    <strong>
-                      {isScheduled ? (isEn ? `Scheduled (${scheduledDate})` : `محدد (${scheduledDate})`) : (isEn ? 'Instant' : 'فوري')}
-                    </strong>
+                    <strong>{isEn ? 'Instant' : 'فوري'}</strong>
                   </div>
                   <div className="mini-row">
                     <span>{isEn ? 'Amount' : 'المبلغ'}</span>
@@ -937,38 +932,6 @@ export function GiftVoucherWizard({
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-start gap-2.5 mt-2" dir={isEn ? 'ltr' : 'rtl'}>
-                      <input
-                        type="checkbox"
-                        id="scheduleCheck"
-                        checked={isScheduled}
-                        onChange={(e) => setIsScheduled(e.target.checked)}
-                        className="w-5 h-5 rounded border border-[#BBCFCD] accent-[#234745] cursor-pointer"
-                      />
-                      <label htmlFor="scheduleCheck" className="text-[14.5px] font-bold text-[#7D7D7D] cursor-pointer" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
-                        {isEn ? 'Schedule delivery date' : 'إرسال في موعد محدد'}
-                      </label>
-                    </div>
-
-                    {isScheduled && (
-                      <div className="relative mt-2" dir={isEn ? 'ltr' : 'rtl'}>
-                        <input
-                          type="date"
-                          value={scheduledDate}
-                          min={new Date().toISOString().split('T')[0]}
-                          onChange={(e) => setScheduledDate(e.target.value)}
-                          placeholder={isEn ? 'Select Date' : 'إختر التاريخ'}
-                          className={`gift-input w-full cursor-pointer font-en notranslate ${isEn ? 'pl-10' : 'pr-10'}`}
-                        />
-                        <span className={`absolute ${isEn ? 'left-3' : 'right-3'} top-1/2 -translate-y-1/2 text-[#171717] pointer-events-none`}>
-                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M19 4H5C3.89543 4 3 4.89543 3 6V20C3 21.1046 3.89543 22 5 22H19C20.1046 22 21 21.1046 21 20V6C21 4.89543 20.1046 4 19 4Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                            <path d="M16 2V6M8 2V6M3 10H21" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                          </svg>
-                        </span>
-                      </div>
-                    )}
-
                     {emailError && (
                       <p className="text-red-500 text-[13px] mt-1 font-medium">{emailError}</p>
                     )}
@@ -1067,7 +1030,7 @@ export function GiftVoucherWizard({
                       <div className="info">
                         <span className="item-title">{isEn ? 'Send Date' : 'تاريخ الإرسال'}</span>
                         <span className="item-sub font-en notranslate">
-                          {isScheduled && scheduledDate ? scheduledDate : (isEn ? 'Immediately upon payment' : 'فوراً بعد إتمام الدفع')}
+                          {isEn ? 'Immediately upon payment' : 'فوراً بعد إتمام الدفع'}
                         </span>
                       </div>
                     </div>
@@ -1190,8 +1153,6 @@ export function GiftVoucherWizard({
                         setCurrentStep(1);
                         setRecipientEmail('');
                         setPersonalMessage(isEn ? 'Happy Birthday' : 'كل عام وانت بخير');
-                        setIsScheduled(false);
-                        setScheduledDate('');
                         setSelectedAmount(100);
                       }}
                       className="text-[#718096] text-[13px] underline hover:text-[#234745] transition-colors cursor-pointer"

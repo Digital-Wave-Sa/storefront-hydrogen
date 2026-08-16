@@ -671,31 +671,6 @@ export default function BuyGiftCard() {
                     </div>
                   </div>
 
-                  {giftMode === 'gift' && (
-                    <div className="checkbox-field">
-                      <input
-                        type="checkbox"
-                        id="scheduleCheck"
-                        checked={isScheduled}
-                        onChange={(e) => setIsScheduled(e.target.checked)}
-                      />
-                      <label htmlFor="scheduleCheck">
-                        {isEn ? 'Schedule delivery date' : 'إرسال في موعد محدد'}
-                      </label>
-                    </div>
-                  )}
-
-                  {giftMode === 'gift' && isScheduled && (
-                    <div className="gift-field">
-                      <input
-                        type="date"
-                        value={scheduledDate}
-                        onChange={(e) => setScheduledDate(e.target.value)}
-                        className="gift-input font-en"
-                      />
-                    </div>
-                  )}
-
                   {/* Email/phone validation error */}
                   {emailError && (
                     <p className="text-red-500 text-[13px] mt-1 font-medium">{emailError}</p>

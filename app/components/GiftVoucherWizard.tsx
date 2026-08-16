@@ -74,7 +74,23 @@ export function GiftVoucherWizard({
   const [selectedAmount, setSelectedAmount] = useState<number>(200);
 
   // Design State
-  const [occasion, setOccasion] = useState('عيد ميلاد');
+  const occasionList = isEn
+    ? [
+        { id: 'Birthday', label: 'Birthday' },
+        { id: 'Wedding', label: 'Wedding' },
+        { id: 'Eid', label: 'Eid' },
+        { id: 'Graduation', label: 'Graduation' },
+        { id: 'Thank You', label: 'Thank You' },
+      ]
+    : [
+        { id: 'عيد ميلاد', label: 'عيد ميلاد' },
+        { id: 'زفاف', label: 'زفاف' },
+        { id: 'العيد', label: 'العيد' },
+        { id: 'تخرج', label: 'تخرج' },
+        { id: 'شكراً', label: 'شكراً' },
+      ];
+
+  const [occasion, setOccasion] = useState(isEn ? 'Birthday' : 'عيد ميلاد');
   const [themeColor, setThemeColor] = useState<'green' | 'gold' | 'cream'>('green');
 
   // Recipient / Sender Message Form State
@@ -126,12 +142,19 @@ export function GiftVoucherWizard({
   const vatAmount = finalAmount * 0.15;
   const totalAmount = finalAmount + vatAmount;
 
-  const quickMessages = [
-    'كل عام وانت بخير',
-    'مبروك',
-    'شكراً من القلب',
-    'بمناسبة العيد السعيد',
-  ];
+  const quickMessages = isEn
+    ? [
+        'Happy Birthday',
+        'Congratulations',
+        'With Sincere Thanks',
+        'Eid Mubarak',
+      ]
+    : [
+        'كل عام وانت بخير',
+        'مبروك',
+        'شكراً من القلب',
+        'بمناسبة العيد السعيد',
+      ];
 
   // ── Validation helpers ────────────────────────────────────────────────────
   const validateStep1 = (): boolean => {
@@ -245,7 +268,7 @@ export function GiftVoucherWizard({
     <div className="gift-wizard-embedded w-full max-w-[1400px] mx-auto">
       {/* ─── CONDITIONAL LAYOUT: "إشترِ لنفسك" (2-STEP CARD) vs "أهدِ قسيمة" (4-STEP LIVE PREVIEW) ─── */}
       {giftMode === 'self' ? (
-        <div className="w-full bg-[#FEF8EB] rounded-[32px] p-6 sm:p-12 border border-[#BBCFCD]/40 shadow-xs" dir="rtl">
+        <div className="w-full bg-[#FEF8EB] rounded-[32px] p-6 sm:p-12 border border-[#BBCFCD]/40 shadow-xs" dir={isEn ? 'ltr' : 'rtl'}>
           {onBackToOptions && (
             <div className="flex items-center justify-start mb-6">
               <button
@@ -276,7 +299,7 @@ export function GiftVoucherWizard({
           </div>
 
           {/* 2-Step Progress Bar (Matches Screenshot) */}
-          <div className="flex items-center justify-center gap-4 mb-10 max-w-[360px] mx-auto" dir="rtl">
+          <div className="flex items-center justify-center gap-4 mb-10 max-w-[360px] mx-auto" dir={isEn ? 'ltr' : 'rtl'}>
             {/* Step 1: إختر القيمة */}
             <div className="flex items-center gap-2.5">
               <div
@@ -315,8 +338,8 @@ export function GiftVoucherWizard({
             <div className="space-y-6">
               {/* Title */}
               <div>
-                <h3 className="text-[16px] font-bold text-[#171717] mb-3 text-right" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
-                  {isEn ? '1- Choose Voucher Amount ?' : '1- أختر قيمة القسيمة ؟'}
+                <h3 className={`text-[16px] font-bold text-[#171717] mb-3 ${isEn ? 'text-left' : 'text-right'}`} style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
+                  {isEn ? '1. Choose Voucher Amount' : '1- أختر قيمة القسيمة ؟'}
                 </h3>
 
                 {/* 5 Preset Amounts in a Single Row */}
@@ -335,13 +358,13 @@ export function GiftVoucherWizard({
                         }`}
                       >
                         {isSelected && (
-                          <span className="absolute top-1.5 right-2 w-4 h-4 rounded-full bg-[#234745] text-white flex items-center justify-center text-[10px]">
+                          <span className={`absolute top-1.5 ${isEn ? 'left-2' : 'right-2'} w-4 h-4 rounded-full bg-[#234745] text-white flex items-center justify-center text-[10px]`}>
                             <svg width="8" height="7" viewBox="0 0 10 8" fill="none" xmlns="http://www.w3.org/2000/svg">
                               <path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                             </svg>
                           </span>
                         )}
-                        <span className="flex items-center gap-1.5 flex-row-reverse">
+                        <span className={`flex items-center gap-1.5 ${isEn ? 'flex-row' : 'flex-row-reverse'}`}>
                           <SaudiRiyalSymbol className="h-3.5 w-auto fill-current" />
                           <span className="font-en notranslate">{amt}</span>
                         </span>
@@ -356,7 +379,7 @@ export function GiftVoucherWizard({
                 <span className="text-[#7D7D7D] font-bold text-[15px]" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
                   {isEn ? 'Will be added to your balance' : 'سيتم اضافة الي رصيدك'}
                 </span>
-                <span className="text-[#171717] font-bold text-[17px] sm:text-[19px] font-en notranslate flex items-center gap-1.5 flex-row-reverse">
+                <span className={`text-[#171717] font-bold text-[17px] sm:text-[19px] font-en notranslate flex items-center gap-1.5 ${isEn ? 'flex-row' : 'flex-row-reverse'}`}>
                   <SaudiRiyalSymbol className="h-4.5 w-auto fill-current" />
                   <span>{finalAmount.toFixed(2)}</span>
                 </span>
@@ -377,11 +400,11 @@ export function GiftVoucherWizard({
           {/* Step 2 Content for "إشترِ لنفسك" (Confirmation & Checkout) */}
           {currentStep === 2 && (
             <div className="space-y-6">
-              <h3 className="text-[18px] font-bold text-[#234745] mb-4 text-right" style={{ fontFamily: "'Bahij Janna', sans-serif" }}>
-                {isEn ? '2- Confirm & Add to Cart' : '2- تأكيد القسيمة وإضافتها للسلة'}
+              <h3 className={`text-[18px] font-bold text-[#234745] mb-4 ${isEn ? 'text-left' : 'text-right'}`} style={{ fontFamily: "'Bahij Janna', sans-serif" }}>
+                {isEn ? '2. Confirm & Add to Cart' : '2- تأكيد القسيمة وإضافتها للسلة'}
               </h3>
 
-              <div className="rounded-[16px] border border-[#234745]/30 bg-[#f0f7f5] p-4 text-right">
+              <div className={`rounded-[16px] border border-[#234745]/30 bg-[#f0f7f5] p-4 ${isEn ? 'text-left' : 'text-right'}`}>
                 <p className="text-[13.5px] text-[#234745] font-medium m-0">
                   {isEn
                     ? 'Your personal digital voucher will be added directly to your Cart and credited to your balance upon checkout.'
@@ -389,10 +412,10 @@ export function GiftVoucherWizard({
                 </p>
               </div>
 
-              <div className="rounded-[16px] border border-[#BBCFCD] bg-white p-4 sm:p-5 space-y-3 text-right">
+              <div className={`rounded-[16px] border border-[#BBCFCD] bg-white p-4 sm:p-5 space-y-3 ${isEn ? 'text-left' : 'text-right'}`}>
                 <div className="flex items-center justify-between text-[14.5px]">
                   <span className="text-[#7D7D7D] font-medium">{isEn ? 'Voucher Value' : 'قيمة القسيمة'}</span>
-                  <span className="font-bold text-[#171717] flex items-center gap-1.5 flex-row-reverse">
+                  <span className={`font-bold text-[#171717] flex items-center gap-1.5 ${isEn ? 'flex-row' : 'flex-row-reverse'}`}>
                     <SaudiRiyalSymbol className="h-3.5 w-auto fill-current" />
                     <span className="font-en notranslate">{finalAmount.toFixed(2)}</span>
                   </span>
@@ -407,7 +430,7 @@ export function GiftVoucherWizard({
                 </div>
               </div>
 
-              <div className="flex items-center gap-2.5 justify-start text-right">
+              <div className={`flex items-center gap-2.5 justify-start ${isEn ? 'text-left' : 'text-right'}`}>
                 <input
                   type="checkbox"
                   id="agreeTermsSelf"
@@ -428,7 +451,7 @@ export function GiftVoucherWizard({
                 </div>
               )}
 
-              <div className="flex items-center justify-between gap-4 pt-4 border-t border-[#BBCFCD]/30" dir="rtl">
+              <div className="flex items-center justify-between gap-4 pt-4 border-t border-[#BBCFCD]/30" dir={isEn ? 'ltr' : 'rtl'}>
                 <button
                   type="button"
                   onClick={() => setCurrentStep(1)}
@@ -505,7 +528,7 @@ export function GiftVoucherWizard({
         <>
           {/* Top Bar with Back Button */}
           {onBackToOptions && (
-            <div className="flex items-center justify-start mb-6" dir="rtl">
+            <div className="flex items-center justify-start mb-6" dir={isEn ? 'ltr' : 'rtl'}>
               <button
                 type="button"
                 onClick={onBackToOptions}
@@ -518,7 +541,7 @@ export function GiftVoucherWizard({
           )}
 
           {/* Section Header */}
-          <div className="text-center mb-6 sm:mb-8" dir="rtl">
+          <div className="text-center mb-6 sm:mb-8" dir={isEn ? 'ltr' : 'rtl'}>
             <h2
               className="text-[#171717] font-bold text-[32px] sm:text-[44px] leading-tight mb-1 text-center"
               style={{ fontFamily: "'Bahij Janna', sans-serif" }}
@@ -535,8 +558,8 @@ export function GiftVoucherWizard({
             </p>
           </div>
 
-          {/* 4-Step Progress Bar in RTL order */}
-          <div className="gift-step-bar-wrapper mb-8 max-w-[760px] mx-auto px-4" dir="rtl">
+          {/* 4-Step Progress Bar in RTL / LTR order */}
+          <div className="gift-step-bar-wrapper mb-8 max-w-[760px] mx-auto px-4" dir={isEn ? 'ltr' : 'rtl'}>
             <div className="gift-step-bar">
               {/* Step 1 */}
               <div className="gift-step-item">
@@ -587,15 +610,15 @@ export function GiftVoucherWizard({
           </div>
 
           {/* 2-Column Wizard Layout */}
-          <div className="flex flex-col lg:flex-row items-start gap-8 justify-between w-full" dir="ltr">
+          <div className="flex flex-col lg:flex-row items-start gap-8 justify-between w-full" dir={isEn ? 'ltr' : 'rtl'}>
             {/* Left Column: Live Voucher Card Preview */}
-            <div className="w-full lg:w-1/2 flex-1 min-w-0" dir="rtl">
+            <div className="w-full lg:w-1/2 flex-1 min-w-0" dir={isEn ? 'ltr' : 'rtl'}>
               <div className="gift-preview-box">
                 <span className="preview-tag-title">
                   {isEn ? 'Live Preview' : 'معاينة مباشرة'}
                 </span>
 
-                <div className={`voucher-card-preview ${themeColor}`} dir="rtl">
+                <div className={`voucher-card-preview ${themeColor}`} dir={isEn ? 'ltr' : 'rtl'}>
                   <div className="voucher-card-notch-left" />
                   <div className="voucher-card-notch-right" />
 
@@ -610,12 +633,12 @@ export function GiftVoucherWizard({
                     >
                       S A A D E D D I N
                     </span>
-                    <span className="voucher-subtext mt-4 text-[13px] block font-medium text-right">
+                    <span className={`voucher-subtext mt-4 text-[13px] block font-medium ${isEn ? 'text-left' : 'text-right'}`}>
                       {isEn ? 'Gift Voucher Value' : 'قسيمة هدية بقيمة'}
                     </span>
                   </div>
 
-                  <div className="voucher-card-amount text-right my-1 flex items-center justify-start gap-2">
+                  <div className={`voucher-card-amount my-1 flex items-center justify-start gap-2 ${isEn ? 'text-left' : 'text-right'}`}>
                     <span
                       className="text-[42px] sm:text-[46px] font-extrabold leading-none font-en notranslate"
                       style={{ fontFamily: 'Arial, sans-serif' }}
@@ -625,20 +648,20 @@ export function GiftVoucherWizard({
                     <SaudiRiyalSymbol className="h-6 sm:h-7 w-auto fill-current inline-block" />
                   </div>
 
-                  <div className="text-right my-1">
+                  <div className={`my-1 ${isEn ? 'text-left' : 'text-right'}`}>
                     {recipientName.trim() ? (
-                      <div className="voucher-card-recipient font-semibold text-[13.5px] text-right">
+                      <div className={`voucher-card-recipient font-semibold text-[13.5px] ${isEn ? 'text-left' : 'text-right'}`}>
                         <span>{isEn ? 'To: ' : 'إلى : '}</span>
                         <span>{recipientName.trim()}</span>
                       </div>
                     ) : (
-                      <span className="text-[13px] opacity-60 text-right block">--</span>
+                      <span className={`text-[13px] opacity-60 block ${isEn ? 'text-left' : 'text-right'}`}>--</span>
                     )}
                   </div>
 
                   <div className="voucher-card-dashed-line" />
 
-                  <div className="voucher-card-bottom flex items-center justify-between pt-1 pb-1 text-right" dir="rtl">
+                  <div className={`voucher-card-bottom flex items-center justify-between pt-1 pb-1 ${isEn ? 'text-left' : 'text-right'}`} dir={isEn ? 'ltr' : 'rtl'}>
                     {occasion ? (
                       <span className="voucher-occasion-text text-[12.5px] font-bold opacity-85">
                         {occasion}
@@ -661,14 +684,14 @@ export function GiftVoucherWizard({
               </div>
 
               {currentStep === 3 && (
-                <div className="gift-summary-mini-card">
+                <div className="gift-summary-mini-card" dir={isEn ? 'ltr' : 'rtl'}>
                   <div className="mini-row">
                     <span>{isEn ? 'Recipient' : 'إلى'}</span>
-                    <strong>{recipientName || 'سارة'}</strong>
+                    <strong>{recipientName || (isEn ? 'Sara' : 'سارة')}</strong>
                   </div>
                   <div className="mini-row">
                     <span>{isEn ? 'Sender' : 'من'}</span>
-                    <strong>{senderName || 'أحمد'}</strong>
+                    <strong>{senderName || (isEn ? 'Ahmed' : 'أحمد')}</strong>
                   </div>
                   <div className="mini-row">
                     <span>{isEn ? 'Delivery' : 'الإرسال'}</span>
@@ -678,14 +701,14 @@ export function GiftVoucherWizard({
                   </div>
                   <div className="mini-row">
                     <span>{isEn ? 'Amount' : 'المبلغ'}</span>
-                    <span className="font-en notranslate flex items-center gap-1">
+                    <span className={`font-en notranslate flex items-center gap-1 ${isEn ? 'flex-row' : 'flex-row-reverse'}`}>
                       <span>{finalAmount.toFixed(2)}</span>
                       <SaudiRiyalSymbol className="h-3 w-auto fill-current" />
                     </span>
                   </div>
                   <div className="mini-row">
                     <span>{isEn ? 'VAT (15%)' : 'ضريبة القيمة المضافة (15%)'}</span>
-                    <span className="font-en notranslate flex items-center gap-1">
+                    <span className={`font-en notranslate flex items-center gap-1 ${isEn ? 'flex-row' : 'flex-row-reverse'}`}>
                       <span>{vatAmount.toFixed(2)}</span>
                       <SaudiRiyalSymbol className="h-3 w-auto fill-current" />
                     </span>
@@ -693,7 +716,7 @@ export function GiftVoucherWizard({
                   <div className="mini-divider" />
                   <div className="mini-row total">
                     <span>{isEn ? 'Total' : 'الإجمالي'}</span>
-                    <strong className="font-en notranslate flex items-center gap-1 text-[#234745]">
+                    <strong className={`font-en notranslate flex items-center gap-1 text-[#234745] ${isEn ? 'flex-row' : 'flex-row-reverse'}`}>
                       <span>{totalAmount.toFixed(2)}</span>
                       <SaudiRiyalSymbol className="h-3.5 w-auto fill-current" />
                     </strong>
@@ -703,13 +726,13 @@ export function GiftVoucherWizard({
             </div>
 
             {/* Right Column: Wizard Form Steps */}
-            <div className="w-full lg:w-1/2 flex-1 min-w-0" dir="rtl">
+            <div className="w-full lg:w-1/2 flex-1 min-w-0" dir={isEn ? 'ltr' : 'rtl'}>
               {/* Step 1 */}
               {currentStep === 1 && (
                 <div className="gift-step-card">
                   <div className="gift-step-block">
-                    <h3 className="gift-block-title">
-                      {isEn ? '1- Choose Voucher Amount ?' : '1- أختر قيمة القسيمة ؟'}
+                    <h3 className={`gift-block-title ${isEn ? 'text-left' : 'text-right'}`}>
+                      {isEn ? '1. Choose Voucher Amount' : '1- أختر قيمة القسيمة ؟'}
                     </h3>
 
                     <div className="amounts-grid">
@@ -726,13 +749,13 @@ export function GiftVoucherWizard({
                             className={`amount-pill ${isSelected ? 'selected' : ''}`}
                           >
                             {isSelected && (
-                              <span className="check-badge">
+                              <span className={`check-badge ${isEn ? 'left-2' : 'right-2'}`}>
                                 <svg width="10" height="8" viewBox="0 0 10 8" fill="none" xmlns="http://www.w3.org/2000/svg">
                                   <path d="M1 4L3.5 6.5L9 1" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
                                 </svg>
                               </span>
                             )}
-                            <span className="flex items-center gap-1.5 justify-center font-bold flex-row-reverse">
+                            <span className={`flex items-center gap-1.5 justify-center font-bold ${isEn ? 'flex-row' : 'flex-row-reverse'}`}>
                               <SaudiRiyalSymbol className="h-3.5 w-auto fill-current" />
                               <span className="font-en notranslate text-[15px]" style={{ fontFamily: 'Arial, sans-serif' }}>
                                 {amt}
@@ -749,19 +772,19 @@ export function GiftVoucherWizard({
                   </div>
 
                   <div className="gift-step-block mt-8">
-                    <h3 className="gift-block-title">
-                      {isEn ? '2- Choose Design & Occasion ?' : '2- أختر التصميم والمناسبة ؟'}
+                    <h3 className={`gift-block-title ${isEn ? 'text-left' : 'text-right'}`}>
+                      {isEn ? '2. Choose Design & Occasion' : '2- أختر التصميم والمناسبة ؟'}
                     </h3>
 
                     <div className="occasions-row">
-                      {['عيد ميلاد', 'زفاف', 'العيد', 'تخرج', 'شكراً'].map((occ) => (
+                      {occasionList.map((occ) => (
                         <button
-                          key={occ}
+                          key={occ.id}
                           type="button"
-                          onClick={() => setOccasion(occ)}
-                          className={`occasion-chip ${occasion === occ ? 'active' : ''}`}
+                          onClick={() => setOccasion(occ.id)}
+                          className={`occasion-chip ${occasion === occ.id ? 'active' : ''}`}
                         >
-                          {occ}
+                          {occ.label}
                         </button>
                       ))}
                     </div>
@@ -772,7 +795,7 @@ export function GiftVoucherWizard({
                         className={`theme-card green ${themeColor === 'green' ? 'active' : ''}`}
                       >
                         {themeColor === 'green' && (
-                          <span className="theme-check-badge">
+                          <span className={`theme-check-badge ${isEn ? 'left-2' : 'right-2'}`}>
                             <svg width="10" height="8" viewBox="0 0 10 8" fill="none" xmlns="http://www.w3.org/2000/svg">
                               <path d="M1 4L3.5 6.5L9 1" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
                             </svg>
@@ -785,7 +808,7 @@ export function GiftVoucherWizard({
                         className={`theme-card gold ${themeColor === 'gold' ? 'active' : ''}`}
                       >
                         {themeColor === 'gold' && (
-                          <span className="theme-check-badge">
+                          <span className={`theme-check-badge ${isEn ? 'left-2' : 'right-2'}`}>
                             <svg width="10" height="8" viewBox="0 0 10 8" fill="none" xmlns="http://www.w3.org/2000/svg">
                               <path d="M1 4L3.5 6.5L9 1" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
                             </svg>
@@ -798,7 +821,7 @@ export function GiftVoucherWizard({
                         className={`theme-card cream ${themeColor === 'cream' ? 'active' : ''}`}
                       >
                         {themeColor === 'cream' && (
-                          <span className="theme-check-badge">
+                          <span className={`theme-check-badge ${isEn ? 'left-2' : 'right-2'}`}>
                             <svg width="10" height="8" viewBox="0 0 10 8" fill="none" xmlns="http://www.w3.org/2000/svg">
                               <path d="M1 4L3.5 6.5L9 1" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
                             </svg>
@@ -828,7 +851,7 @@ export function GiftVoucherWizard({
               {/* Step 2 */}
               {currentStep === 2 && (
                 <div className="gift-step-card">
-                  <div className="flex items-center justify-start gap-3 pb-3.5 mb-6 border-b border-[#BBCFCD]/60" dir="rtl">
+                  <div className="flex items-center justify-start gap-3 pb-3.5 mb-6 border-b border-[#BBCFCD]/60" dir={isEn ? 'ltr' : 'rtl'}>
                     <div className="w-[34px] h-[34px] rounded-full bg-[#234745] text-white flex items-center justify-center font-bold text-[15px] font-en notranslate flex-shrink-0">
                       3
                     </div>
@@ -848,7 +871,7 @@ export function GiftVoucherWizard({
                       </label>
                       <input
                         type="text"
-                        placeholder="أحمد"
+                        placeholder={isEn ? 'Ahmed' : 'أحمد'}
                         value={senderName}
                         onChange={(e) => setSenderName(e.target.value)}
                         className="gift-input"
@@ -862,7 +885,7 @@ export function GiftVoucherWizard({
                       </label>
                       <input
                         type="text"
-                        placeholder="سارة"
+                        placeholder={isEn ? 'Sara' : 'سارة'}
                         value={recipientName}
                         onChange={(e) => setRecipientName(e.target.value)}
                         className="gift-input"
@@ -879,7 +902,7 @@ export function GiftVoucherWizard({
                         placeholder="sara@example.com"
                         value={recipientEmail}
                         onChange={(e) => setRecipientEmail(e.target.value)}
-                        className="gift-input font-en notranslate text-right"
+                        className={`gift-input font-en notranslate ${isEn ? 'text-left' : 'text-right'}`}
                       />
                     </div>
 
@@ -896,17 +919,12 @@ export function GiftVoucherWizard({
                         rows={3}
                         className="gift-textarea"
                       />
-                      <div className="text-left text-[#7D7D7D] text-[12px] font-en notranslate mt-0.5">
+                      <div className={`text-[#7D7D7D] text-[12px] font-en notranslate mt-0.5 ${isEn ? 'text-right' : 'text-left'}`}>
                         {personalMessage.length}/150 {isEn ? 'chars' : 'حرف'}
                       </div>
 
-                      <div className="flex flex-wrap items-center gap-2 mt-2" dir="rtl">
-                        {[
-                          'كل عام وانت بخير',
-                          'مبروك',
-                          'شكراً من القلب',
-                          'مناسبة العيد السعيد',
-                        ].map((msg) => (
+                      <div className="flex flex-wrap items-center gap-2 mt-2" dir={isEn ? 'ltr' : 'rtl'}>
+                        {quickMessages.map((msg) => (
                           <button
                             key={msg}
                             type="button"
@@ -919,7 +937,7 @@ export function GiftVoucherWizard({
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-start gap-2.5 mt-2" dir="rtl">
+                    <div className="flex items-center justify-start gap-2.5 mt-2" dir={isEn ? 'ltr' : 'rtl'}>
                       <input
                         type="checkbox"
                         id="scheduleCheck"
@@ -933,16 +951,16 @@ export function GiftVoucherWizard({
                     </div>
 
                     {isScheduled && (
-                      <div className="relative mt-2" dir="rtl">
+                      <div className="relative mt-2" dir={isEn ? 'ltr' : 'rtl'}>
                         <input
                           type="date"
                           value={scheduledDate}
                           min={new Date().toISOString().split('T')[0]}
                           onChange={(e) => setScheduledDate(e.target.value)}
-                          placeholder="إختر التاريخ"
-                          className="gift-input w-full cursor-pointer pr-10 font-en notranslate"
+                          placeholder={isEn ? 'Select Date' : 'إختر التاريخ'}
+                          className={`gift-input w-full cursor-pointer font-en notranslate ${isEn ? 'pl-10' : 'pr-10'}`}
                         />
-                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#171717] pointer-events-none">
+                        <span className={`absolute ${isEn ? 'left-3' : 'right-3'} top-1/2 -translate-y-1/2 text-[#171717] pointer-events-none`}>
                           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path d="M19 4H5C3.89543 4 3 4.89543 3 6V20C3 21.1046 3.89543 22 5 22H19C20.1046 22 21 21.1046 21 20V6C21 4.89543 20.1046 4 19 4Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                             <path d="M16 2V6M8 2V6M3 10H21" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -955,7 +973,7 @@ export function GiftVoucherWizard({
                       <p className="text-red-500 text-[13px] mt-1 font-medium">{emailError}</p>
                     )}
 
-                    <div className="flex items-center justify-between gap-4 mt-8 pt-4 border-t border-[#BBCFCD]/30" dir="rtl">
+                    <div className="flex items-center justify-between gap-4 mt-8 pt-4 border-t border-[#BBCFCD]/30" dir={isEn ? 'ltr' : 'rtl'}>
                       <button
                         type="button"
                         onClick={() => setCurrentStep(1)}
@@ -1001,7 +1019,7 @@ export function GiftVoucherWizard({
               {/* Step 3 */}
               {currentStep === 3 && (
                 <div className="gift-step-card">
-                  <div className="flex items-center justify-start gap-3 pb-3.5 mb-6 border-b border-[#BBCFCD]/60" dir="rtl">
+                  <div className="flex items-center justify-start gap-3 pb-3.5 mb-6 border-b border-[#BBCFCD]/60" dir={isEn ? 'ltr' : 'rtl'}>
                     <div className="w-[34px] h-[34px] rounded-full bg-[#234745] text-white flex items-center justify-center font-bold text-[15px] font-en notranslate flex-shrink-0">
                       4
                     </div>
@@ -1090,7 +1108,7 @@ export function GiftVoucherWizard({
                     </div>
                   )}
 
-                  <div className="flex items-center justify-between gap-4 mt-8 pt-4 border-t border-[#BBCFCD]/30" dir="rtl">
+                  <div className="flex items-center justify-between gap-4 mt-8 pt-4 border-t border-[#BBCFCD]/30" dir={isEn ? 'ltr' : 'rtl'}>
                     <button
                       type="button"
                       onClick={() => setCurrentStep(2)}
@@ -1171,7 +1189,7 @@ export function GiftVoucherWizard({
                       onClick={() => {
                         setCurrentStep(1);
                         setRecipientEmail('');
-                        setPersonalMessage('كل عام وانت بخير');
+                        setPersonalMessage(isEn ? 'Happy Birthday' : 'كل عام وانت بخير');
                         setIsScheduled(false);
                         setScheduledDate('');
                         setSelectedAmount(100);
@@ -1189,8 +1207,8 @@ export function GiftVoucherWizard({
       )}
 
       {/* ─── VOUCHERS LOG TABLE (سجل القسائم) matching attached screenshot ─── */}
-      <div className="mt-16 pt-8 border-t border-[#BBCFCD]/30" dir="rtl">
-        <div className="text-right mb-6">
+      <div className="mt-16 pt-8 border-t border-[#BBCFCD]/30" dir={isEn ? 'ltr' : 'rtl'}>
+        <div className={`mb-6 ${isEn ? 'text-left' : 'text-right'}`}>
           <h3
             className="text-[28px] font-bold text-[#171717] mb-1"
             style={{ fontFamily: "'Bahij Janna', sans-serif" }}
@@ -1207,11 +1225,11 @@ export function GiftVoucherWizard({
 
         {voucherHistory && voucherHistory.length > 0 ? (
           <div className="overflow-x-auto rounded-2xl border border-gray-200 shadow-sm bg-white">
-            <table className="w-full text-right border-collapse" dir={isEn ? 'ltr' : 'rtl'}>
+            <table className="w-full border-collapse" dir={isEn ? 'ltr' : 'rtl'}>
               <thead>
                 <tr className="bg-[#234745] text-white text-[14px]">
-                  <th className="py-3.5 px-6 font-bold text-center sm:text-right">{isEn ? 'Code' : 'الرمز'}</th>
-                  <th className="py-3.5 px-6 font-bold">{isEn ? 'Description' : 'الوصف'}</th>
+                  <th className={`py-3.5 px-6 font-bold ${isEn ? 'text-left' : 'text-right'}`}>{isEn ? 'Code' : 'الرمز'}</th>
+                  <th className={`py-3.5 px-6 font-bold ${isEn ? 'text-left' : 'text-right'}`}>{isEn ? 'Description' : 'الوصف'}</th>
                   <th className="py-3.5 px-6 font-bold text-center">{isEn ? 'Value' : 'القيمة'}</th>
                   <th className="py-3.5 px-6 font-bold text-center">{isEn ? 'Date' : 'التاريخ'}</th>
                   <th className="py-3.5 px-6 font-bold text-center">{isEn ? 'Status' : 'الحالة'}</th>
@@ -1220,10 +1238,10 @@ export function GiftVoucherWizard({
               <tbody className="divide-y divide-gray-100 text-[13.5px]">
                 {voucherHistory.map((rec) => (
                   <tr key={rec.id} className="hover:bg-gray-50/70 transition-colors">
-                    <td className="py-4 px-6 font-en font-bold text-[#171717] text-center sm:text-right notranslate">{rec.code}</td>
-                    <td className="py-4 px-6 text-[#171717] font-medium">{rec.description}</td>
+                    <td className={`py-4 px-6 font-en font-bold text-[#171717] notranslate ${isEn ? 'text-left' : 'text-right'}`}>{rec.code}</td>
+                    <td className={`py-4 px-6 text-[#171717] font-medium ${isEn ? 'text-left' : 'text-right'}`}>{rec.description}</td>
                     <td className="py-4 px-6 font-en font-bold text-[#171717] text-center notranslate">
-                      <span className="inline-flex items-center justify-center gap-1.5 flex-row-reverse">
+                      <span className={`inline-flex items-center justify-center gap-1.5 ${isEn ? 'flex-row' : 'flex-row-reverse'}`}>
                         <SaudiRiyalSymbol className="h-3.5 w-auto fill-current" />
                         <span>{rec.value}</span>
                       </span>
@@ -1357,7 +1375,7 @@ function GiftWizardStyles() {
         position: relative;
         border-radius: 20px;
         padding: 24px 22px 18px 22px;
-        text-align: right;
+        text-align: inherit;
         min-height: 250px;
         display: flex;
         flex-direction: column;

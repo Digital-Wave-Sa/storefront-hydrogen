@@ -831,7 +831,7 @@ export default function VouchersPage() {
 
       {/* ─── 1. HERO BANNER SECTION (Full-Width Edge-to-Edge) ─── */}
       <section className="w-full relative mb-8">
-        <div className="relative w-full h-[360px] sm:h-[480px] lg:h-[610px] overflow-hidden shadow-md">
+        <div className="relative w-full min-h-[580px] sm:min-h-[520px] sm:h-[560px] lg:h-[620px] overflow-hidden shadow-md flex items-center">
           {/* Background Image — full cover */}
           <img
             src="/images/vouchers/voucher-hero.png"
@@ -852,9 +852,9 @@ export default function VouchersPage() {
           {/*
             Centered container that aligns with page width (max-w-[1400px] mx-auto px-4 md:px-8)
           */}
-          <div className="absolute inset-0 z-20 max-w-[1400px] mx-auto px-4 md:px-8 pointer-events-none flex items-center">
+          <div className="relative z-20 max-w-[1400px] w-full mx-auto px-4 md:px-8 pointer-events-none flex items-center py-10 sm:py-12">
             <div
-              className={`w-full flex flex-col justify-center gap-5 max-w-[620px] pointer-events-auto py-8 ${
+              className={`w-full flex flex-col justify-center gap-4 sm:gap-5 max-w-[620px] pointer-events-auto ${
                 isEn ? 'mr-auto text-left items-start' : 'ml-auto text-right items-start'
               }`}
             >
@@ -863,16 +863,16 @@ export default function VouchersPage() {
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
-                  gap: '10px',
+                  gap: '8px',
                   background: '#C5A96A',
                   borderRadius: '999px',
-                  paddingTop: '8px',
-                  paddingBottom: '8px',
-                  paddingLeft: '20px',
-                  paddingRight: '20px',
+                  paddingTop: '6px',
+                  paddingBottom: '6px',
+                  paddingLeft: '18px',
+                  paddingRight: '18px',
                   color: '#234745',
                   fontWeight: 700,
-                  fontSize: '14px',
+                  fontSize: '13px',
                   boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
                   whiteSpace: 'nowrap',
                 }}

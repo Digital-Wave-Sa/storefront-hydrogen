@@ -776,7 +776,7 @@ export function GiftVoucherWizard({
                       {isEn ? '2. Choose Design & Occasion' : '2- أختر التصميم والمناسبة ؟'}
                     </h3>
 
-                    <div className="occasions-row">
+                    <div className="occasions-row hide-scrollbars">
                       {occasionList.map((occ) => (
                         <button
                           key={occ.id}
@@ -1610,21 +1610,28 @@ function GiftWizardStyles() {
         box-shadow: 0 0 0 3px rgba(35,71,69,0.1);
       }
 
-      /* ── 2. OCCASIONS ROW (5 on single row) ── */
+      /* ── 2. OCCASIONS ROW (Horizontally slideable / scrollable) ── */
       .occasions-row {
-        display: grid;
-        grid-template-columns: repeat(5, minmax(0, 1fr));
-        gap: 5px;
-        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        overflow-x: auto;
+        padding: 4px 2px 8px 2px;
+        margin-bottom: 16px;
         width: 100%;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+        -webkit-overflow-scrolling: touch;
+      }
+      .occasions-row::-webkit-scrollbar {
+        display: none;
       }
       .occasion-chip {
-        min-width: 0;
-        width: 100%;
+        flex-shrink: 0;
         border: 1.5px solid #BBCFCD;
-        border-radius: 12px;
-        padding: 8px 2px;
-        font-size: clamp(11.5px, 2.7vw, 13.5px);
+        border-radius: 14px;
+        padding: 8px 18px;
+        font-size: 14px;
         font-weight: 700;
         color: #171717;
         background: #FFFFFF;
@@ -1632,9 +1639,7 @@ function GiftWizardStyles() {
         transition: all 0.2s;
         text-align: center;
         white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        display: flex;
+        display: inline-flex;
         align-items: center;
         justify-content: center;
         box-shadow: 0 1px 4px rgba(0,0,0,0.02);

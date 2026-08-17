@@ -486,23 +486,23 @@ export function GiftVoucherWizard({
 
           {/* Step 4 (Success Screen for Buy for Yourself) */}
           {currentStep === 4 && (
-            <div className="w-full text-center py-10 flex flex-col items-center justify-center" style={{ textAlign: 'center' }}>
-              <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl">
+            <div className="w-full text-center py-12 px-6 sm:px-12 flex flex-col items-center justify-center" style={{ textAlign: 'center' }}>
+              <div className="w-16 h-16 sm:w-20 sm:h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6 text-3xl sm:text-4xl shadow-xs">
                 ✓
               </div>
-              <h3 className="text-2xl sm:text-3xl font-bold text-[#234745] mb-2 text-center" style={{ fontFamily: "'Bahij Janna', sans-serif", textAlign: 'center' }}>
+              <h3 className="text-2xl sm:text-[32px] font-bold text-[#234745] mb-4 text-center leading-snug" style={{ fontFamily: "'Bahij Janna', sans-serif", textAlign: 'center' }}>
                 {isEn ? 'Voucher Added to Cart!' : 'تمت إضافة القسيمة إلى السلة بنجاح!'}
               </h3>
-              <p className="text-[#64748b] text-[15px] max-w-[480px] mx-auto mb-8 text-center leading-relaxed" style={{ textAlign: 'center' }}>
+              <p className="text-[#64748b] text-[15.5px] sm:text-[16.5px] max-w-[500px] mx-auto mb-10 text-center leading-relaxed" style={{ textAlign: 'center' }}>
                 {isEn
                   ? 'Your personal digital voucher has been placed in your cart. You can complete checkout whenever you are ready.'
                   : 'تم وضع قسيمتك الرقمية في سلتك. يمكنك إتمام الطلب والدفع متى أردت.'}
               </p>
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-4 text-center mx-auto w-full">
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-5 sm:gap-8 text-center mx-auto w-full pt-2">
                 <button
                   type="button"
                   onClick={() => open('cart')}
-                  className="w-full sm:w-auto h-[48px] px-8 bg-[#234745] hover:bg-[#1A3533] text-white font-bold text-[15px] rounded-full transition-all shadow-md cursor-pointer border-none flex items-center justify-center"
+                  className="w-full sm:w-auto h-[52px] px-10 bg-[#234745] hover:bg-[#1A3533] text-white font-bold text-[15.5px] rounded-full transition-all shadow-md hover:shadow-lg cursor-pointer border-none flex items-center justify-center hover:scale-[1.02] active:scale-[0.98]"
                 >
                   {isEn ? 'View Cart & Checkout' : 'عرض السلة وإتمام الدفع'}
                 </button>
@@ -512,7 +512,7 @@ export function GiftVoucherWizard({
                     setCurrentStep(1);
                     setSelectedAmount(200);
                   }}
-                  className="text-[#718096] text-[14px] underline hover:text-[#234745] transition-colors cursor-pointer font-medium"
+                  className="text-[#718096] hover:text-[#234745] text-[15px] underline transition-colors cursor-pointer font-medium px-3 py-2"
                 >
                   {isEn ? 'Buy another voucher' : 'شراء قسيمة أخرى'}
                 </button>
@@ -610,24 +610,24 @@ export function GiftVoucherWizard({
 
           {/* Conditional Layout: Single Centered Card on Step 4 (Success), 2-Column on Steps 1-3 */}
           {currentStep === 4 ? (
-            <div className="w-full max-w-[680px] mx-auto bg-[#FEF8EB] rounded-[32px] p-8 sm:p-12 border border-[#BBCFCD]/40 shadow-xs text-center flex flex-col items-center justify-center" dir={isEn ? 'ltr' : 'rtl'} style={{ textAlign: 'center' }}>
-              <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl">
+            <div className="w-full max-w-[720px] mx-auto bg-[#FEF8EB] rounded-[32px] p-8 sm:p-14 border border-[#BBCFCD]/40 shadow-xs text-center flex flex-col items-center justify-center my-4" dir={isEn ? 'ltr' : 'rtl'} style={{ textAlign: 'center' }}>
+              <div className="w-16 h-16 sm:w-20 sm:h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6 text-3xl sm:text-4xl shadow-xs">
                 ✓
               </div>
-              <h3 className="text-2xl sm:text-3xl font-bold text-[#234745] mb-2 text-center" style={{ fontFamily: "'Bahij Janna', sans-serif", textAlign: 'center' }}>
+              <h3 className="text-2xl sm:text-[32px] font-bold text-[#234745] mb-4 text-center leading-snug" style={{ fontFamily: "'Bahij Janna', sans-serif", textAlign: 'center' }}>
                 {isEn ? 'Voucher Added to Cart!' : 'تمت إضافة القسيمة إلى السلة بنجاح!'}
               </h3>
-              <p className="text-[#64748b] text-[15px] max-w-[480px] mx-auto mb-8 text-center leading-relaxed" style={{ textAlign: 'center' }}>
+              <p className="text-[#64748b] text-[15.5px] sm:text-[16.5px] max-w-[500px] mx-auto mb-10 text-center leading-relaxed" style={{ textAlign: 'center' }}>
                 {isEn
                   ? 'Your customized gift voucher has been placed in your cart. You can complete checkout whenever you are ready.'
                   : 'تم وضع قسيمة الهدية المخصصة في سلتك. يمكنك إتمام الطلب والدفع متى أردت.'}
               </p>
 
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-4 text-center mx-auto w-full">
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-5 sm:gap-8 text-center mx-auto w-full pt-2">
                 <button
                   type="button"
                   onClick={() => open('cart')}
-                  className="w-full sm:w-auto h-[48px] px-8 bg-[#234745] hover:bg-[#1A3533] text-white font-bold text-[15px] rounded-full transition-all shadow-md cursor-pointer border-none flex items-center justify-center"
+                  className="w-full sm:w-auto h-[52px] px-10 bg-[#234745] hover:bg-[#1A3533] text-white font-bold text-[15.5px] rounded-full transition-all shadow-md hover:shadow-lg cursor-pointer border-none flex items-center justify-center hover:scale-[1.02] active:scale-[0.98]"
                 >
                   {isEn ? 'View Cart & Checkout' : 'عرض السلة وإتمام الدفع'}
                 </button>
@@ -639,7 +639,7 @@ export function GiftVoucherWizard({
                     setPersonalMessage(isEn ? 'Happy Birthday' : 'كل عام وانت بخير');
                     setSelectedAmount(100);
                   }}
-                  className="text-[#718096] text-[14px] underline hover:text-[#234745] transition-colors cursor-pointer font-medium"
+                  className="text-[#718096] hover:text-[#234745] text-[15px] underline transition-colors cursor-pointer font-medium px-3 py-2"
                 >
                   {isEn ? 'Send another voucher' : 'إرسال قسيمة أخرى'}
                 </button>

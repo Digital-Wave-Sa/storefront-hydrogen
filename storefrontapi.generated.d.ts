@@ -2177,7 +2177,14 @@ export type OrderItemFragment = Pick<
             image?: StorefrontAPI.Maybe<
               Pick<StorefrontAPI.Image, 'url' | 'altText' | 'height' | 'width'>
             >;
-            product: Pick<StorefrontAPI.Product, 'tags' | 'title'>;
+            product: Pick<StorefrontAPI.Product, 'tags' | 'title'> & {
+              featuredImage?: StorefrontAPI.Maybe<
+                Pick<
+                  StorefrontAPI.Image,
+                  'url' | 'altText' | 'height' | 'width'
+                >
+              >;
+            };
           }
         >;
       }
@@ -2225,7 +2232,14 @@ export type CustomerOrdersFragment = Pick<
                       'url' | 'altText' | 'height' | 'width'
                     >
                   >;
-                  product: Pick<StorefrontAPI.Product, 'tags' | 'title'>;
+                  product: Pick<StorefrontAPI.Product, 'tags' | 'title'> & {
+                    featuredImage?: StorefrontAPI.Maybe<
+                      Pick<
+                        StorefrontAPI.Image,
+                        'url' | 'altText' | 'height' | 'width'
+                      >
+                    >;
+                  };
                 }
               >;
             }
@@ -2295,7 +2309,14 @@ export type CustomerOrdersQuery = {
                           'url' | 'altText' | 'height' | 'width'
                         >
                       >;
-                      product: Pick<StorefrontAPI.Product, 'tags' | 'title'>;
+                      product: Pick<StorefrontAPI.Product, 'tags' | 'title'> & {
+                        featuredImage?: StorefrontAPI.Maybe<
+                          Pick<
+                            StorefrontAPI.Image,
+                            'url' | 'altText' | 'height' | 'width'
+                          >
+                        >;
+                      };
                     }
                   >;
                 }

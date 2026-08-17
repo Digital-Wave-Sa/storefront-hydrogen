@@ -293,12 +293,24 @@ export async function loader({request, context}: LoaderFunctionArgs) {
             const lang = storefront.i18n.language;
             const country = storefront.i18n.country;
             const variantQuery = `
-                query GetVariantTitles($ids: [ID!]!) @inContext(language: ${lang}, country: ${country}) {
+                query GetVariantDetails($ids: [ID!]!) @inContext(language: ${lang}, country: ${country}) {
                   nodes(ids: $ids) {
                     ... on ProductVariant {
                       id
+                      image {
+                        url
+                        altText
+                        width
+                        height
+                      }
                       product {
                         title
+                        featuredImage {
+                          url
+                          altText
+                          width
+                          height
+                        }
                       }
                     }
                   }
@@ -309,36 +321,49 @@ export async function loader({request, context}: LoaderFunctionArgs) {
               cache: storefront.CacheShort(),
             })) as any;
 
-            // Build a map from variant GID → translated product title
+            // Build maps from variant GID → translated product title and image
             const titleMap: Record<string, string> = {};
+            const imageMap: Record<string, any> = {};
             for (const node of variantResult?.nodes || []) {
-              if (node?.id && node?.product?.title) {
-                titleMap[node.id] = node.product.title;
+              if (node?.id) {
+                if (node.product?.title) {
+                  titleMap[node.id] = node.product.title;
+                }
+                const img = node.image?.url ? node.image : node.product?.featuredImage;
+                if (img?.url) {
+                  imageMap[node.id] = img;
+                }
               }
             }
 
-            // Overwrite line item titles with translated versions
+            // Overwrite line item titles and images with translated/fetched versions
             mappedOrders = mappedOrders.map((order: any) => ({
               ...order,
               lineItems: {
                 ...order.lineItems,
-                nodes: order.lineItems.nodes.map((li: any) => ({
-                  ...li,
-                  title:
-                    li.variant?.id && titleMap[li.variant.id]
-                      ? titleMap[li.variant.id]
-                      : li.title,
-                  variant: {
-                    ...li.variant,
-                    product: {
-                      title:
-                        li.variant?.id && titleMap[li.variant.id]
-                          ? titleMap[li.variant.id]
-                          : li.title,
-                      tags: [],
+                nodes: order.lineItems.nodes.map((li: any) => {
+                  const variantId = li.variant?.id;
+                  const enrichedImg = variantId && imageMap[variantId] ? imageMap[variantId] : null;
+                  return {
+                    ...li,
+                    title:
+                      variantId && titleMap[variantId]
+                        ? titleMap[variantId]
+                        : li.title,
+                    variant: {
+                      ...li.variant,
+                      image: enrichedImg,
+                      product: {
+                        title:
+                          variantId && titleMap[variantId]
+                            ? titleMap[variantId]
+                            : li.title,
+                        tags: [],
+                        featuredImage: enrichedImg,
+                      },
                     },
-                  },
-                })),
+                  };
+                }),
               },
             }));
           }
@@ -700,7 +725,16 @@ function OrderCard({order, isEn}: {order: OrderItemFragment; isEn: boolean}) {
     0,
   );
   const firstItem = lineItems[0];
-  const imageUrl = firstItem?.variant?.image?.url;
+  const imageUrl =
+    lineItems
+      .map(
+        (item: any) =>
+          item.variant?.image?.url ||
+          item.variant?.product?.featuredImage?.url ||
+          item.image?.url ||
+          (item.variant?.product as any)?.image?.url,
+      )
+      .find(Boolean) || '';
   const totalAmount = parseFloat(order.currentTotalPrice?.amount || '0.00');
 
   // Calculate original total using discountedTotalPrice
@@ -1386,6 +1420,12 @@ const ORDER_ITEM_FRAGMENT = `#graphql
           product {
             tags
             title
+            featuredImage {
+              url
+              altText
+              height
+              width
+            }
           }
         }
       }

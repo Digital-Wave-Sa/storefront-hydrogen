@@ -108,7 +108,7 @@ export function PageLayout({
           />
         )
       )}
-      <main className="max-w-full overflow-x-clip">{children}</main>
+      <main className="max-w-full">{children}</main>
       {!isCustomCakePage && (
         <Footer
           footer={footer}

@@ -94,7 +94,9 @@ export function links() {
     {rel: 'stylesheet', href: tailwindCss},
     {rel: 'stylesheet', href: resetStyles},
     {rel: 'stylesheet', href: appStyles},
-    {rel: 'icon', type: 'image/svg+xml', href: '/logo.svg'},
+    {rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg'},
+    {rel: 'alternate icon', type: 'image/x-icon', href: '/favicon.ico'},
+    {rel: 'apple-touch-icon', href: '/favicon.svg'},
   ];
 }
 

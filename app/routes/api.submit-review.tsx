@@ -1,6 +1,6 @@
 import {data, type ActionFunctionArgs} from 'react-router';
 import {adminApiQuery} from '../lib/admin.server';
-import {getAdminToken} from '~/lib/shopify-admin.server';
+import {getAdminToken, getAdminDomain} from '~/lib/shopify-admin.server';
 import {SaadeddinApi} from '~/lib/saadeddin-api.server';
 
 /**
@@ -88,13 +88,7 @@ async function createMetaobjectWithAutoDef(
 
 export async function action({request, context}: ActionFunctionArgs) {
   const env = context.env as any;
-
-  // Standardized shop domain detection for Admin API
-  const rawShop =
-    env.SHOPIFY_SHOP || env.PUBLIC_STORE_DOMAIN || 'the-beauty-secrets-ksa';
-  const shopDomain = rawShop.includes('myshopify.com')
-    ? rawShop
-    : `${rawShop.split('.')[0]}.myshopify.com`;
+  const shopDomain = getAdminDomain(env);
 
   const formData = await request.formData();
   const customerName = String(formData.get('customerName') || 'Verified Customer');

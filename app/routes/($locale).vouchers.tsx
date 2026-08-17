@@ -546,7 +546,7 @@ export async function loader({context}: LoaderFunctionArgs) {
 
   const rawVouchers = await Promise.all(voucherPromises);
   const shopifyVouchers = rawVouchers.filter((v) => {
-    if (!v || !v.hasTag) return false;
+    if (!v) return false;
     const codeUpper = (v.code || '').toUpperCase();
     const titleUpper = (v.title || '').toUpperCase();
     const isLoyalty =
@@ -719,9 +719,11 @@ export default function VouchersPage() {
   );
   const [lastAppliedCode, setLastAppliedCode] = useState<string>('');
 
-  const activeVouchers = shopifyVouchers.filter((v) => v.status === 'active');
-  const usedVouchers = shopifyVouchers.filter((v) => v.status === 'used');
-  const expiredVouchers = shopifyVouchers.filter((v) => v.status === 'expired');
+  // "My Vouchers / قسائمي" section: only displays vouchers with the "discountcodepage" tag
+  const myVouchers = shopifyVouchers.filter((v) => v.hasTag);
+  const activeVouchers = myVouchers.filter((v) => v.status === 'active');
+  const usedVouchers = myVouchers.filter((v) => v.status === 'used');
+  const expiredVouchers = myVouchers.filter((v) => v.status === 'expired');
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -1078,7 +1080,7 @@ export default function VouchersPage() {
           }}
         >
           {(() => {
-            const list = shopifyVouchers.filter((v) => v.status === 'active' && v.hasTag);
+            const list = shopifyVouchers.filter((v) => v.status === 'active');
 
             if (list.length === 0) {
               return (

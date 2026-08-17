@@ -549,11 +549,9 @@ export function GiftVoucherWizard({
               className="text-[#7D7D7D] text-[14.5px] font-medium text-center"
               style={{ fontFamily: "'GE Dinar One', sans-serif" }}
             >
-              {isEn ? (
-                <>Design your gift voucher in <span className="font-en notranslate font-bold" style={{ fontFamily: 'Arial, sans-serif' }}>4</span> simple steps</>
-              ) : (
-                <>صمم قسيمة هدية في <span className="font-en notranslate font-bold" style={{ fontFamily: 'Arial, sans-serif' }}>4</span> خطوات بسيطة</>
-              )}
+              {isEn
+                ? 'Design your digital gift voucher in simple steps'
+                : 'صمم قسيمة هدية إلكترونية في خطوات بسيطة'}
             </p>
           </div>
 

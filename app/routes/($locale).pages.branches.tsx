@@ -23,84 +23,114 @@ const getBranchCity = (loc: any) => {
   return '';
 };
 
-// ─── MOCK DATA ─────────────────────────────────────────────────────────────
-const cities = [
-  {id: 'all', nameAr: 'الكل', nameEn: 'All'},
-  {id: 'riyadh', nameAr: 'الرياض (٣٢)', nameEn: 'Riyadh (32)'},
-  {id: 'jeddah', nameAr: 'جدة (١٢)', nameEn: 'Jeddah (12)'},
-  {id: 'dammam', nameAr: 'الدمام (١١)', nameEn: 'Dammam (11)'},
-  {id: 'makkah', nameAr: 'مكة (١٠)', nameEn: 'Makkah (10)'},
-  {id: 'madinah', nameAr: 'المدينة (٧)', nameEn: 'Madinah (7)'},
-];
+export const CITY_LOCALIZED_MAP: Record<string, { ar: string; en: string }> = {
+  riyadh: { ar: 'الرياض', en: 'Riyadh' },
+  'الرياض': { ar: 'الرياض', en: 'Riyadh' },
+  jeddah: { ar: 'جدة', en: 'Jeddah' },
+  'جدة': { ar: 'جدة', en: 'Jeddah' },
+  dammam: { ar: 'الدمام', en: 'Dammam' },
+  'الدمام': { ar: 'الدمام', en: 'Dammam' },
+  khobar: { ar: 'الخبر', en: 'Al Khobar' },
+  'al khobar': { ar: 'الخبر', en: 'Al Khobar' },
+  'الخبر': { ar: 'الخبر', en: 'Al Khobar' },
+  makkah: { ar: 'مكة المكرمة', en: 'Makkah' },
+  mecca: { ar: 'مكة المكرمة', en: 'Makkah' },
+  'مكة': { ar: 'مكة المكرمة', en: 'Makkah' },
+  'مكة المكرمة': { ar: 'مكة المكرمة', en: 'Makkah' },
+  madinah: { ar: 'المدينة المنورة', en: 'Madinah' },
+  medina: { ar: 'المدينة المنورة', en: 'Madinah' },
+  'المدينة': { ar: 'المدينة المنورة', en: 'Madinah' },
+  'المدينة المنورة': { ar: 'المدينة المنورة', en: 'Madinah' },
+  ahsa: { ar: 'الأحساء', en: 'Al Ahsa' },
+  'al ahsa': { ar: 'الأحساء', en: 'Al Ahsa' },
+  'al hasa': { ar: 'الأحساء', en: 'Al Ahsa' },
+  'الاحساء': { ar: 'الأحساء', en: 'Al Ahsa' },
+  'الأحساء': { ar: 'الأحساء', en: 'Al Ahsa' },
+  'الاحساء الجفر': { ar: 'الأحساء - الجفر', en: 'Al Ahsa - Al Jafr' },
+  jubail: { ar: 'الجبيل', en: 'Al Jubail' },
+  'al jubail': { ar: 'الجبيل', en: 'Al Jubail' },
+  'الجبيل': { ar: 'الجبيل', en: 'Al Jubail' },
+  taif: { ar: 'الطائف', en: 'Taif' },
+  'الطائف': { ar: 'الطائف', en: 'Taif' },
+  kharj: { ar: 'الخرج', en: 'Al Kharj' },
+  'al kharj': { ar: 'الخرج', en: 'Al Kharj' },
+  'الخرج': { ar: 'الخرج', en: 'Al Kharj' },
+  qassim: { ar: 'القصيم', en: 'Al Qassim' },
+  'al qassim': { ar: 'القصيم', en: 'Al Qassim' },
+  'القصيم': { ar: 'القصيم', en: 'Al Qassim' },
+  baha: { ar: 'الباحة', en: 'Al Baha' },
+  'al baha': { ar: 'الباحة', en: 'Al Baha' },
+  'الباحة': { ar: 'الباحة', en: 'Al Baha' },
+  qatif: { ar: 'القطيف', en: 'Al Qatif' },
+  'al qatif': { ar: 'القطيف', en: 'Al Qatif' },
+  'القطيف': { ar: 'القطيف', en: 'Al Qatif' },
+  najran: { ar: 'نجران', en: 'Najran' },
+  'نجران': { ar: 'نجران', en: 'Najran' },
+  jazan: { ar: 'جازان', en: 'Jazan' },
+  jizan: { ar: 'جازان', en: 'Jazan' },
+  'جازان': { ar: 'جازان', en: 'Jazan' },
+  'جيزان': { ar: 'جازان', en: 'Jazan' },
+  'khamis mushait': { ar: 'خميس مشيط', en: 'Khamis Mushait' },
+  'خميس مشيط': { ar: 'خميس مشيط', en: 'Khamis Mushait' },
+  nairyah: { ar: 'النعيرية', en: 'Nairyah' },
+  'النعيرية': { ar: 'النعيرية', en: 'Nairyah' },
+  'ras tanura': { ar: 'رأس تنورة', en: 'Ras Tanura' },
+  'راس تنورة': { ar: 'رأس تنورة', en: 'Ras Tanura' },
+  'رأس تنورة': { ar: 'رأس تنورة', en: 'Ras Tanura' },
+  sakaka: { ar: 'سكاكا', en: 'Sakaka' },
+  'سكاكا': { ar: 'سكاكا', en: 'Sakaka' },
+  yanbu: { ar: 'ينبع', en: 'Yanbu' },
+  'ينبع': { ar: 'ينبع', en: 'Yanbu' },
+  abha: { ar: 'أبها', en: 'Abha' },
+  'ابها': { ar: 'أبها', en: 'Abha' },
+  'أبها': { ar: 'أبها', en: 'Abha' },
+  'abu arish': { ar: 'أبو عريش', en: 'Abu Arish' },
+  'ابوعريش': { ar: 'أبو عريش', en: 'Abu Arish' },
+  'أبو عريش': { ar: 'أبو عريش', en: 'Abu Arish' },
+  buqayq: { ar: 'بقيق', en: 'Buqayq' },
+  'ابقيق': { ar: 'بقيق', en: 'Buqayq' },
+  'بقيق': { ar: 'بقيق', en: 'Buqayq' },
+  buraydah: { ar: 'بريدة', en: 'Buraydah' },
+  'بريدة': { ar: 'بريدة', en: 'Buraydah' },
+  dawadmi: { ar: 'الدوادمي', en: 'Al Dawadmi' },
+  'الدوادمي': { ar: 'الدوادمي', en: 'Al Dawadmi' },
+  'al nabaniyah': { ar: 'النبهانية', en: 'Al Nabaniyah' },
+  'النبهانية': { ar: 'النبهانية', en: 'Al Nabaniyah' },
+  'hafar al batin': { ar: 'حفر الباطن', en: 'Hafar Al Batin' },
+  'حفر الباطن': { ar: 'حفر الباطن', en: 'Hafar Al Batin' },
+  hail: { ar: 'حائل', en: 'Hail' },
+  'حائل': { ar: 'حائل', en: 'Hail' },
+  majmaah: { ar: 'المجمعة', en: 'Al Majmaah' },
+  'al majmaah': { ar: 'المجمعة', en: 'Al Majmaah' },
+  'المجمعة': { ar: 'المجمعة', en: 'Al Majmaah' },
+  qurayyat: { ar: 'القريات', en: 'Al Qurayyat' },
+  'al qurayyat': { ar: 'القريات', en: 'Al Qurayyat' },
+  'القريات': { ar: 'القريات', en: 'Al Qurayyat' },
+  arar: { ar: 'عرعر', en: 'Arar' },
+  'عرعر': { ar: 'عرعر', en: 'Arar' },
+  tabuk: { ar: 'تبوك', en: 'Tabuk' },
+  'تبوك': { ar: 'تبوك', en: 'Tabuk' },
+  bahrain: { ar: 'البحرين', en: 'Bahrain' },
+  'البحرين': { ar: 'البحرين', en: 'Bahrain' },
+  qatar: { ar: 'قطر', en: 'Qatar' },
+  'قطر': { ar: 'قطر', en: 'Qatar' },
+  other: { ar: 'أخرى', en: 'Other' },
+  'أخرى': { ar: 'أخرى', en: 'Other' },
+};
 
-// Real branches will be loaded from root
+export function formatCityName(rawName: string, isEn: boolean): string {
+  if (!rawName) return isEn ? 'Other' : 'أخرى';
+  const trimmed = rawName.trim();
+  const lower = trimmed.toLowerCase();
 
-const deliveryZones = [
-  {
-    nameAr: 'الرياض',
-    nameEn: 'Riyadh',
-    branchesAr: '٣٢ فرع',
-    branchesEn: '32 Branches',
-    coverageAr: 'كل الأحياء',
-    coverageEn: 'All neighborhoods',
-  },
-  {
-    nameAr: 'جدة',
-    nameEn: 'Jeddah',
-    branchesAr: '٢٨ فرع',
-    branchesEn: '28 Branches',
-    coverageAr: 'كل الأحياء',
-    coverageEn: 'All neighborhoods',
-  },
-  {
-    nameAr: 'الدمام',
-    nameEn: 'Dammam',
-    branchesAr: '١٤ فرع',
-    branchesEn: '14 Branches',
-    coverageAr: 'معظم الأحياء',
-    coverageEn: 'Most neighborhoods',
-  },
-  {
-    nameAr: 'الخبر',
-    nameEn: 'Al Khobar',
-    branchesAr: '١١ فرع',
-    branchesEn: '11 Branches',
-    coverageAr: 'معظم الأحياء',
-    coverageEn: 'Most neighborhoods',
-  },
-  {
-    nameAr: 'مكة المكرمة',
-    nameEn: 'Makkah',
-    branchesAr: '٩ فروع',
-    branchesEn: '9 Branches',
-    coverageAr: 'متاح',
-    coverageEn: 'Available',
-  },
-  {
-    nameAr: 'المدينة المنورة',
-    nameEn: 'Madinah',
-    branchesAr: '٧ فروع',
-    branchesEn: '7 Branches',
-    coverageAr: 'متاح',
-    coverageEn: 'Available',
-  },
-  {
-    nameAr: 'أبها',
-    nameEn: 'Abha',
-    branchesAr: '٤ فروع',
-    branchesEn: '4 Branches',
-    coverageAr: 'استلام فقط',
-    coverageEn: 'Pickup only',
-  },
-  {
-    nameAr: 'تبوك',
-    nameEn: 'Tabuk',
-    branchesAr: '٣ فروع',
-    branchesEn: '3 Branches',
-    coverageAr: 'استلام فقط',
-    coverageEn: 'Pickup only',
-  },
-];
+  if (CITY_LOCALIZED_MAP[trimmed]) {
+    return isEn ? CITY_LOCALIZED_MAP[trimmed].en : CITY_LOCALIZED_MAP[trimmed].ar;
+  }
+  if (CITY_LOCALIZED_MAP[lower]) {
+    return isEn ? CITY_LOCALIZED_MAP[lower].en : CITY_LOCALIZED_MAP[lower].ar;
+  }
+  return trimmed;
+}
 
 export default function BranchesPage() {
   const {locale} = useOutletContext<{locale: string}>();
@@ -157,7 +187,7 @@ export default function BranchesPage() {
     const groups: Record<string, any[]> = {};
 
     locations.forEach((loc: any) => {
-      const cityName = getBranchCity(loc) || (isEn ? 'Other' : 'أخرى');
+      const cityName = getBranchCity(loc) || 'other';
       if (!groups[cityName]) {
         groups[cityName] = [];
       }
@@ -171,15 +201,15 @@ export default function BranchesPage() {
     const citiesList = [
       {
         id: 'all',
-        nameAr: 'الكل',
-        nameEn: 'All',
+        nameAr: `الكل (${locations.length})`,
+        nameEn: `All (${locations.length})`,
         cityName: 'all',
         count: locations.length,
       },
       ...sortedCityNames.map((cityName) => ({
         id: cityName,
-        nameAr: `${cityName} (${groups[cityName].length})`,
-        nameEn: `${cityName} (${groups[cityName].length})`,
+        nameAr: `${formatCityName(cityName, false)} (${groups[cityName].length})`,
+        nameEn: `${formatCityName(cityName, true)} (${groups[cityName].length})`,
         cityName,
         count: groups[cityName].length,
       })),
@@ -195,18 +225,21 @@ export default function BranchesPage() {
   // Dynamic Locations filtered by selected city and search query
   const filteredLocations = useMemo(() => {
     return locations.filter((loc: any) => {
-      const cityName = getBranchCity(loc) || (isEn ? 'Other' : 'أخرى');
+      const rawCity = getBranchCity(loc) || 'other';
 
-      if (selectedCity !== 'all' && cityName !== selectedCity) {
+      if (selectedCity !== 'all' && rawCity !== selectedCity) {
         return false;
       }
 
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase().trim();
         const nameMatch = loc.name?.toLowerCase().includes(q);
+        const nameAr = (loc.name_in_arabic?.value || loc.name_in_arabic || loc.metafields?.find((m: any) => m?.key === 'name_in_arabic')?.value || '')?.toLowerCase();
+        const nameArMatch = nameAr.includes(q);
         const addressMatch = loc.address?.address1?.toLowerCase().includes(q);
-        const cityMatch = cityName.toLowerCase().includes(q);
-        return nameMatch || addressMatch || cityMatch;
+        const cityArMatch = formatCityName(rawCity, false).toLowerCase().includes(q);
+        const cityEnMatch = formatCityName(rawCity, true).toLowerCase().includes(q);
+        return nameMatch || nameArMatch || addressMatch || cityArMatch || cityEnMatch;
       }
 
       return true;
@@ -222,6 +255,7 @@ export default function BranchesPage() {
     return cityNames.map((cityName) => {
       const branchList = cityGroups[cityName] || [];
       const count = branchList.length;
+      const displayCityName = formatCityName(cityName, isEn);
 
       let branchesText = '';
       if (isEn) {
@@ -239,6 +273,7 @@ export default function BranchesPage() {
 
       return {
         cityName,
+        displayCityName,
         count,
         branchesText,
         coverage: hasDelivery
@@ -338,9 +373,13 @@ export default function BranchesPage() {
 
             bounds.extend(position);
 
+            const branchTitle = !isEn && (loc.name_in_arabic?.value || loc.name_in_arabic || loc.metafields?.find((m: any) => m?.key === 'name_in_arabic')?.value)
+              ? (loc.name_in_arabic?.value || loc.name_in_arabic || loc.metafields?.find((m: any) => m?.key === 'name_in_arabic')?.value)
+              : loc.name;
+
             const infoWindow = new (window as any).google.maps.InfoWindow({
               content: `<div style="padding: 8px; font-family: ${isEn ? 'Inter' : 'Cairo'}, sans-serif; text-align: ${isEn ? 'left' : 'right'};" dir="${isEn ? 'ltr' : 'rtl'}">
-                                <h3 style="font-weight: bold; margin: 0 0 4px 0; color: #234745;">${loc.name}</h3>
+                                <h3 style="font-weight: bold; margin: 0 0 4px 0; color: #234745;">${branchTitle}</h3>
                                 <p style="font-size: 12px; margin: 0; color: #666;">${loc.address?.address1 || ''}</p>
                             </div>`,
             });
@@ -606,9 +645,9 @@ export default function BranchesPage() {
                     >
                       {branch.address?.address1}{' '}
                       {cityName
-                        ? `, ${cityName}`
+                        ? `, ${formatCityName(cityName, isEn)}`
                         : branch.address?.city
-                          ? `, ${branch.address.city}`
+                          ? `, ${formatCityName(branch.address.city, isEn)}`
                           : ''}
                     </p>
                     <div
@@ -786,7 +825,7 @@ export default function BranchesPage() {
                   fontFamily: isEn ? fontFam2 : "'Bahij Janna', sans-serif",
                 }}
               >
-                {zone.cityName}
+                {zone.displayCityName}
               </h3>
               <p
                 className="text-[#9FB7AE] text-[16px] md:text-[18px] font-medium mb-4"

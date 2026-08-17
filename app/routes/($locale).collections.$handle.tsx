@@ -552,6 +552,8 @@ export default function Collection() {
                     .getAll('filter.p.tag')
                     .concat(searchParams.getAll('tag'));
                   const filteredNodes = effectiveNodes.filter((n: any) => {
+                    // Hide non-physical/digital products (gift cards etc.)
+                    if (n.isGiftCard || n.productType === 'Gift Card') return false;
                     if (q && !n.title.toLowerCase().includes(q)) return false;
                     // Exclude corporate tagged products unless browsing corporate collections
                     const isCorporateCollection =
@@ -942,6 +944,7 @@ const PRODUCT_ITEM_FRAGMENT = `#graphql
     title
     productType
     availableForSale
+    isGiftCard
     tags
     variants(first: 10) {
       nodes {

@@ -469,7 +469,10 @@ export async function loader(args: LoaderFunctionArgs) {
               }
               return node;
             })
-            .filter((p: any) => p && p.handle);
+            .filter((p: any) => p && p.handle)
+            .filter(
+              (p: any) => !p.isGiftCard && p.productType !== 'Gift Card',
+            );
         } else {
           try {
             const recommendationsResult = await storefront.query(
@@ -483,7 +486,9 @@ export async function loader(args: LoaderFunctionArgs) {
               recommendationsResult.productRecommendations.length > 0
             ) {
               recommended.products.nodes =
-                recommendationsResult.productRecommendations;
+                recommendationsResult.productRecommendations.filter(
+                  (p: any) => !p.isGiftCard && p.productType !== 'Gift Card',
+                );
             }
           } catch (e) {
             console.error('Failed to fetch productRecommendations:', e);
@@ -508,6 +513,9 @@ export async function loader(args: LoaderFunctionArgs) {
                 collectionResult as any
               ).collection.products.nodes
                 .filter((p: any) => p.id !== product.id)
+                .filter(
+                  (p: any) => !p.isGiftCard && p.productType !== 'Gift Card',
+                )
                 .slice(0, 4);
             }
           } catch (e) {
@@ -517,6 +525,11 @@ export async function loader(args: LoaderFunctionArgs) {
 
         if (recommended.products.nodes.length === 0) {
           recommended = await storefront.query(NEWEST_PRODUCTS_QUERY);
+          if (recommended?.products?.nodes) {
+            recommended.products.nodes = recommended.products.nodes.filter(
+              (p: any) => !p.isGiftCard && p.productType !== 'Gift Card',
+            );
+          }
         }
         return recommended;
       })(),
@@ -5230,6 +5243,8 @@ const RECOMMENDED_PRODUCT_FRAGMENT = `#graphql
     title
     handle
     availableForSale
+    productType
+    isGiftCard
     compareAtPriceRange {
       minVariantPrice {
         amount

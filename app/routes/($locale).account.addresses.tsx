@@ -30,7 +30,24 @@ export const meta: MetaFunction = () => {
   return [{title: 'Addresses | Saadeddin'}];
 };
 
-// Loader removed to ensure instant client-side navigation using parent's OutletContext
+const formatAddressGid = (rawId: string) => {
+  if (!rawId) return '';
+  let str = String(rawId);
+  try {
+    str = decodeURIComponent(str);
+  } catch {}
+  if (str.startsWith('Z2lkOi')) {
+    try {
+      str = typeof atob === 'function' ? atob(str) : Buffer.from(str, 'base64').toString('utf8');
+    } catch {}
+  }
+  if (str.startsWith('gid://shopify/MailingAddress/')) {
+    return str;
+  }
+  const match = str.match(/(\d+)/);
+  const num = match ? match[1] : str.replace(/\D/g, '');
+  return num ? `gid://shopify/MailingAddress/${num}?model_name=CustomerAddress` : str;
+};
 
 export async function action({request, context}: ActionFunctionArgs) {
   const {storefront, session} = context;
@@ -94,6 +111,10 @@ export async function action({request, context}: ActionFunctionArgs) {
       address.address2 = `COORDS:${latlng.lat},${latlng.lng}`;
     }
 
+    if (!address.country) {
+      address.country = 'Saudi Arabia';
+    }
+
     switch (request.method) {
       case 'POST': {
         const {customerAddressCreate} = await storefront.mutate(
@@ -118,22 +139,6 @@ export async function action({request, context}: ActionFunctionArgs) {
         }
         return data({error: null, createdAddress, defaultAddress});
       }
-
-const formatAddressGid = (rawId: string) => {
-  if (!rawId) return '';
-  let str = String(rawId);
-  try {
-    str = decodeURIComponent(str);
-  } catch {}
-  if (str.startsWith('Z2lkOi')) {
-    try {
-      str = typeof window !== 'undefined' ? atob(str) : Buffer.from(str, 'base64').toString('utf8');
-    } catch {}
-  }
-  const match = str.match(/(\d+)/);
-  const num = match ? match[1] : str.replace(/\D/g, '');
-  return `gid://shopify/MailingAddress/${num}`;
-};
 
       case 'PUT': {
         const intent = String(form.get('intent') || '');
@@ -540,13 +545,25 @@ function AddressModal({
   isDefault?: boolean;
   onClose: () => void;
 }) {
-  const navigation = useNavigation();
+  const fetcher = useFetcher<ActionResponse>();
   const {googleMapsKey, locale} = useOutletContext<{
     googleMapsKey: string;
     locale: string;
   }>();
   const isEn = locale === 'en';
-  const isLoading = navigation.state !== 'idle';
+  const isLoading = fetcher.state !== 'idle';
+  const errorMessage =
+    fetcher.data?.error?.form ||
+    (address?.id && fetcher.data?.error?.[address.id]) ||
+    fetcher.data?.error?.new;
+
+  useEffect(() => {
+    if (fetcher.data && !fetcher.data.error) {
+      if (fetcher.data.createdAddress || fetcher.data.updatedAddress) {
+        onClose();
+      }
+    }
+  }, [fetcher.data, onClose]);
 
   const [city, setCity] = useState(address?.city ?? '');
   const [isMapPickerOpen, setIsMapPickerOpen] = useState(false);
@@ -654,12 +671,11 @@ function AddressModal({
         onClick={(e) => e.stopPropagation()}
       >
         <h3 className="account-heading" style={{fontSize: '22px'}}>
-          {type === 'create' ? 'إضافة عنوان جديد' : 'تعديل العنوان'}
+          {type === 'create' ? (isEn ? 'Add New Address' : 'إضافة عنوان جديد') : (isEn ? 'Edit Address' : 'تعديل العنوان')}
         </h3>
 
-        <Form
+        <fetcher.Form
           method={type === 'create' ? 'POST' : 'PUT'}
-          onSubmit={() => setTimeout(onClose, 1000)}
         >
           <input type="hidden" name="addressId" value={address?.id ?? 'new'} />
           <input type="hidden" name="lat" value={coords?.lat ?? ''} />
@@ -825,6 +841,12 @@ function AddressModal({
             </label>
           </div>
 
+          {errorMessage && (
+            <div className="mt-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-xl text-sm font-semibold">
+              {errorMessage}
+            </div>
+          )}
+
           <div style={{marginTop: '40px', display: 'flex', gap: '16px'}}>
             <Button
               type="submit"
@@ -833,7 +855,13 @@ function AddressModal({
               size="lg"
               disabled={isLoading || (!isValidated && type === 'create')}
             >
-              {isLoading ? 'جاري الحفظ...' : 'حفظ العنوان'}
+              {isLoading
+                ? isEn
+                  ? 'Saving...'
+                  : 'جاري الحفظ...'
+                : isEn
+                  ? 'Save Address'
+                  : 'حفظ العنوان'}
             </Button>
             <Button
               type="button"
@@ -842,10 +870,10 @@ function AddressModal({
               size="lg"
               onClick={onClose}
             >
-              إلغاء
+              {isEn ? 'Cancel' : 'إلغاء'}
             </Button>
           </div>
-        </Form>
+        </fetcher.Form>
       </div>
     </div>
   );

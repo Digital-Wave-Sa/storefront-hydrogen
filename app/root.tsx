@@ -621,12 +621,18 @@ export default function App() {
         (data.customer as any).then((res: any) => {
           if (res?.customer?.id) setCustomerId(res.customer.id);
           else if (res?.id) setCustomerId(res.id);
-        }).catch(() => {});
+          else setCustomerId(undefined);
+        }).catch(() => {
+          setCustomerId(undefined);
+        });
       } else {
         const custObj = data.customer as any;
         if (custObj?.customer?.id) setCustomerId(custObj.customer.id);
         else if (custObj?.id) setCustomerId(custObj.id);
+        else setCustomerId(undefined);
       }
+    } else {
+      setCustomerId(undefined);
     }
   }, [data?.customer]);
   

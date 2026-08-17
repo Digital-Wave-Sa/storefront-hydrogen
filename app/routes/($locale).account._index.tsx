@@ -301,7 +301,13 @@ export default function AccountDashboard() {
                   method="POST"
                   action={isEn ? '/en/account/logout' : '/account/logout'}
                   onSubmit={() => {
-                    localStorage.removeItem('wishlist');
+                    if (typeof window !== 'undefined') {
+                      try {
+                        Object.keys(localStorage).forEach((k) => {
+                          if (k.startsWith('wishlist')) localStorage.removeItem(k);
+                        });
+                      } catch (e) {}
+                    }
                   }}
                 >
                   <button

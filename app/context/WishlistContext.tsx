@@ -25,6 +25,13 @@ interface WishlistContextType {
 
 const WishlistContext = createContext<WishlistContextType | undefined>(undefined);
 
+function getStorageKey(customerId?: string) {
+  if (customerId) {
+    return `wishlist_${customerId}`;
+  }
+  return 'wishlist_guest';
+}
+
 export function WishlistProvider({ 
   children,
   customerId 
@@ -34,26 +41,21 @@ export function WishlistProvider({
 }) {
   const [wishlist, setWishlist] = useState<WishlistItem[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
-  const prevCustomerIdRef = React.useRef<string | undefined>(customerId);
 
-  // 1. Initial Load: Merge LocalStorage and Cloud
+  // Sync / Load wishlist whenever customerId changes or on initial mount
   useEffect(() => {
     let isMounted = true;
 
-    // Handle logout transition (customerId changed from logged-in ID to undefined)
-    if (prevCustomerIdRef.current && !customerId) {
-      if (typeof window !== 'undefined') {
+    // Clean up legacy unscoped 'wishlist' key to prevent cross-account pollution
+    if (typeof window !== 'undefined') {
+      try {
         localStorage.removeItem('wishlist');
-      }
-      prevCustomerIdRef.current = undefined;
-      setWishlist([]);
-      setIsLoaded(true);
-      return;
+      } catch (e) {}
     }
-    prevCustomerIdRef.current = customerId;
 
     const initWishlist = async () => {
-      const localSaved = typeof window !== 'undefined' ? localStorage.getItem('wishlist') : null;
+      const storageKey = getStorageKey(customerId);
+      const localSaved = typeof window !== 'undefined' ? localStorage.getItem(storageKey) : null;
       let currentWishlist: WishlistItem[] = [];
       
       if (localSaved) {
@@ -62,26 +64,28 @@ export function WishlistProvider({
         } catch (e) {}
       }
 
+      // If logged in, fetch authoritative cloud wishlist for this customer
       if (customerId) {
         try {
           const formattedId = customerId.startsWith('gid://') ? customerId : `gid://shopify/Customer/${customerId}`;
           const response = await fetch(`/api/wishlist?customerId=${encodeURIComponent(formattedId)}`);
           if (response.ok) {
-            const data = await response.json() as any;
+            const data = (await response.json()) as any;
             if (data.wishlist && Array.isArray(data.wishlist)) {
-              const cloudWishlist: WishlistItem[] = data.wishlist;
-              currentWishlist = cloudWishlist;
+              currentWishlist = data.wishlist;
             }
           }
         } catch (e) {
-          console.error('Failed to sync with cloud on load', e);
+          console.error('Failed to sync wishlist with cloud on load', e);
         }
       }
 
       if (isMounted) {
         setWishlist(currentWishlist);
         if (typeof window !== 'undefined') {
-          localStorage.setItem('wishlist', JSON.stringify(currentWishlist));
+          try {
+            localStorage.setItem(storageKey, JSON.stringify(currentWishlist));
+          } catch (e) {}
         }
         setIsLoaded(true);
       }
@@ -94,12 +98,15 @@ export function WishlistProvider({
     };
   }, [customerId]);
 
-  // 2. Save to LocalStorage immediately on change
+  // Save to scoped LocalStorage on wishlist changes
   useEffect(() => {
     if (isLoaded && typeof window !== 'undefined') {
-      localStorage.setItem('wishlist', JSON.stringify(wishlist));
+      try {
+        const storageKey = getStorageKey(customerId);
+        localStorage.setItem(storageKey, JSON.stringify(wishlist));
+      } catch (e) {}
     }
-  }, [wishlist, isLoaded]);
+  }, [wishlist, isLoaded, customerId]);
 
   const syncToCloud = async (newWishlist: WishlistItem[]) => {
     if (!customerId) return;
@@ -123,7 +130,10 @@ export function WishlistProvider({
         : [...prev, item];
       
       if (typeof window !== 'undefined') {
-        localStorage.setItem('wishlist', JSON.stringify(updated));
+        try {
+          const storageKey = getStorageKey(customerId);
+          localStorage.setItem(storageKey, JSON.stringify(updated));
+        } catch (e) {}
       }
       syncToCloud(updated);
       return updated;

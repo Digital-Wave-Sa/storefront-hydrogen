@@ -148,22 +148,35 @@ async function getTaggedCodesFromGraphQL(adminDomain: string, adminToken: string
       body: JSON.stringify({
         query: `
           query {
-            codeDiscountNodes(first: 50, query: "voucher") {
+            codeDiscountNodes(first: 100, query: "discountcodepage") {
               nodes {
                 id
+                metafields(first: 10) {
+                  nodes {
+                    key
+                    value
+                  }
+                }
                 codeDiscount {
                   __typename
                   ... on DiscountCodeBasic {
                     title
-                    codes(first: 5) { nodes { code } }
+                    summary
+                    codes(first: 10) { nodes { code } }
                   }
                   ... on DiscountCodeFreeShipping {
                     title
-                    codes(first: 5) { nodes { code } }
+                    summary
+                    codes(first: 10) { nodes { code } }
                   }
                   ... on DiscountCodeBxgy {
                     title
-                    codes(first: 5) { nodes { code } }
+                    summary
+                    codes(first: 10) { nodes { code } }
+                  }
+                  ... on DiscountCodeApp {
+                    title
+                    codes(first: 10) { nodes { code } }
                   }
                 }
               }
@@ -192,7 +205,7 @@ async function getTaggedCodesFromGraphQL(adminDomain: string, adminToken: string
 
 async function getPriceRules(env: any) {
   const now = Date.now();
-  if (vouchersCache && now - vouchersCache.timestamp < 5000) {
+  if (vouchersCache && now - vouchersCache.timestamp < 60000) {
     return vouchersCache.rules;
   }
   try {
@@ -510,11 +523,8 @@ export async function loader({context}: LoaderFunctionArgs) {
     const hasTag =
       taggedCodesSet.has(codeLowerStr) ||
       taggedCodesSet.has(titleLower) ||
-      titleLower.includes('voucher') ||
-      titleLower.includes('قسيمة') ||
-      titleLower.includes('[featured]') ||
-      codeLowerStr.includes('voucher') ||
-      codeLowerStr.includes('قسيمة');
+      titleLower.includes('discountcodepage') ||
+      codeLowerStr.includes('discountcodepage');
 
     return {
       id: String(rule.id),
@@ -536,7 +546,7 @@ export async function loader({context}: LoaderFunctionArgs) {
 
   const rawVouchers = await Promise.all(voucherPromises);
   const shopifyVouchers = rawVouchers.filter((v) => {
-    if (!v) return false;
+    if (!v || !v.hasTag) return false;
     const codeUpper = (v.code || '').toUpperCase();
     const titleUpper = (v.title || '').toUpperCase();
     const isLoyalty =

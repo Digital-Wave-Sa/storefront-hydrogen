@@ -49,6 +49,21 @@ const formatAddressGid = (rawId: string) => {
   return num ? `gid://shopify/MailingAddress/${num}?model_name=CustomerAddress` : str;
 };
 
+const getNumericId = (rawId?: string | null): string => {
+  if (!rawId) return '';
+  let str = String(rawId);
+  try {
+    str = decodeURIComponent(str);
+  } catch {}
+  if (str.startsWith('Z2lkOi')) {
+    try {
+      str = typeof atob === 'function' ? atob(str) : Buffer.from(str, 'base64').toString('utf8');
+    } catch {}
+  }
+  const match = str.match(/(\d+)/);
+  return match ? match[1] : str.replace(/\D/g, '');
+};
+
 const formatAddressPhone = (rawPhone?: string | null): string | undefined => {
   if (!rawPhone) return undefined;
   const str = String(rawPhone).trim();
@@ -82,8 +97,244 @@ const formatAddressPhone = (rawPhone?: string | null): string | undefined => {
   return `+${digits}`;
 };
 
+function formatAdminAddressToFragment(adminAddr: any): AddressFragment {
+  return {
+    id: `gid://shopify/MailingAddress/${adminAddr.id}`,
+    firstName: adminAddr.first_name || '',
+    lastName: adminAddr.last_name || '',
+    address1: adminAddr.address1 || '',
+    address2: adminAddr.address2 || '',
+    city: adminAddr.city || '',
+    country: adminAddr.country || adminAddr.country_name || 'Saudi Arabia',
+    phone: adminAddr.phone || '',
+    company: adminAddr.company || null,
+    province: adminAddr.province || null,
+    zip: adminAddr.zip || null,
+  };
+}
+
+async function resolveCustomerNumericId(session: any, env: any, tokenStr?: string): Promise<string | null> {
+  let customerId = await session.get('loginCustomerId');
+  if (!customerId && tokenStr && tokenStr.startsWith('session-')) {
+    customerId = tokenStr.replace('session-', '');
+  }
+  if (customerId && /^\d+$/.test(String(customerId))) {
+    return String(customerId);
+  }
+
+  const savedPhone = await session.get('loginOtpPhone');
+  if (savedPhone) {
+    try {
+      const {getAdminToken, getAdminDomain} = await import('~/lib/shopify-admin.server');
+      const adminToken = await getAdminToken(env);
+      const adminDomain = getAdminDomain(env);
+      const rawDigits = savedPhone.replace(/\D/g, '');
+      const last9 = rawDigits.slice(-9);
+
+      const res = await fetch(
+        `https://${adminDomain}/admin/api/2024-01/customers/search.json?query=${encodeURIComponent(last9)}&fields=id,phone`,
+        {headers: {'X-Shopify-Access-Token': adminToken}},
+      );
+      if (res.ok) {
+        const data = (await res.json()) as any;
+        const matched = (data.customers || []).find((c: any) => {
+          const cp = (c.phone || '').replace(/\D/g, '');
+          return cp === rawDigits || cp.endsWith(last9);
+        });
+        if (matched?.id) {
+          return String(matched.id);
+        }
+      }
+    } catch (_) {}
+  }
+  return null;
+}
+
+async function adminCreateAddress({
+  customerId,
+  address,
+  env,
+}: {
+  customerId: string;
+  address: any;
+  env: any;
+}) {
+  const {getAdminToken, getAdminDomain} = await import('~/lib/shopify-admin.server');
+  const adminToken = await getAdminToken(env);
+  const adminDomain = getAdminDomain(env);
+
+  const payload: any = {
+    address1: address.address1 || '',
+    address2: address.address2 || '',
+    city: address.city || '',
+    first_name: address.firstName || '',
+    last_name: address.lastName || '',
+    country: address.country || 'Saudi Arabia',
+  };
+  if (address.phone) payload.phone = address.phone;
+
+  const res = await fetch(
+    `https://${adminDomain}/admin/api/2024-01/customers/${customerId}/addresses.json`,
+    {
+      method: 'POST',
+      headers: {
+        'X-Shopify-Access-Token': adminToken,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({address: payload}),
+    },
+  );
+  const json = (await res.json()) as any;
+  if (!res.ok) {
+    if (payload.phone) {
+      delete payload.phone;
+      const retryRes = await fetch(
+        `https://${adminDomain}/admin/api/2024-01/customers/${customerId}/addresses.json`,
+        {
+          method: 'POST',
+          headers: {
+            'X-Shopify-Access-Token': adminToken,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({address: payload}),
+        },
+      );
+      const retryJson = (await retryRes.json()) as any;
+      if (retryRes.ok && retryJson.customer_address) {
+        return retryJson.customer_address;
+      }
+    }
+    throw new Error(json?.errors ? JSON.stringify(json.errors) : 'Failed to create address');
+  }
+  return json.customer_address;
+}
+
+async function adminUpdateAddress({
+  customerId,
+  addressId,
+  address,
+  env,
+}: {
+  customerId: string;
+  addressId: string;
+  address: any;
+  env: any;
+}) {
+  const {getAdminToken, getAdminDomain} = await import('~/lib/shopify-admin.server');
+  const adminToken = await getAdminToken(env);
+  const adminDomain = getAdminDomain(env);
+  const numAddrId = getNumericId(addressId);
+
+  const payload: any = {
+    id: numAddrId,
+    address1: address.address1 || '',
+    address2: address.address2 || '',
+    city: address.city || '',
+    first_name: address.firstName || '',
+    last_name: address.lastName || '',
+    country: address.country || 'Saudi Arabia',
+  };
+  if (address.phone) payload.phone = address.phone;
+
+  const res = await fetch(
+    `https://${adminDomain}/admin/api/2024-01/customers/${customerId}/addresses/${numAddrId}.json`,
+    {
+      method: 'PUT',
+      headers: {
+        'X-Shopify-Access-Token': adminToken,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({address: payload}),
+    },
+  );
+  const json = (await res.json()) as any;
+  if (!res.ok) {
+    if (payload.phone) {
+      delete payload.phone;
+      const retryRes = await fetch(
+        `https://${adminDomain}/admin/api/2024-01/customers/${customerId}/addresses/${numAddrId}.json`,
+        {
+          method: 'PUT',
+          headers: {
+            'X-Shopify-Access-Token': adminToken,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({address: payload}),
+        },
+      );
+      const retryJson = (await retryRes.json()) as any;
+      if (retryRes.ok && retryJson.customer_address) {
+        return retryJson.customer_address;
+      }
+    }
+    throw new Error(json?.errors ? JSON.stringify(json.errors) : 'Failed to update address');
+  }
+  return json.customer_address;
+}
+
+async function adminDeleteAddress({
+  customerId,
+  addressId,
+  env,
+}: {
+  customerId: string;
+  addressId: string;
+  env: any;
+}) {
+  const {getAdminToken, getAdminDomain} = await import('~/lib/shopify-admin.server');
+  const adminToken = await getAdminToken(env);
+  const adminDomain = getAdminDomain(env);
+  const numAddrId = getNumericId(addressId);
+
+  const res = await fetch(
+    `https://${adminDomain}/admin/api/2024-01/customers/${customerId}/addresses/${numAddrId}.json`,
+    {
+      method: 'DELETE',
+      headers: {
+        'X-Shopify-Access-Token': adminToken,
+      },
+    },
+  );
+  if (!res.ok && res.status !== 404) {
+    const json = (await res.json()) as any;
+    throw new Error(json?.errors ? JSON.stringify(json.errors) : 'Failed to delete address');
+  }
+  return true;
+}
+
+async function adminSetDefaultAddress({
+  customerId,
+  addressId,
+  env,
+}: {
+  customerId: string;
+  addressId: string;
+  env: any;
+}) {
+  const {getAdminToken, getAdminDomain} = await import('~/lib/shopify-admin.server');
+  const adminToken = await getAdminToken(env);
+  const adminDomain = getAdminDomain(env);
+  const numAddrId = getNumericId(addressId);
+
+  const res = await fetch(
+    `https://${adminDomain}/admin/api/2024-01/customers/${customerId}/addresses/${numAddrId}/default.json`,
+    {
+      method: 'PUT',
+      headers: {
+        'X-Shopify-Access-Token': adminToken,
+      },
+    },
+  );
+  if (!res.ok) {
+    const json = (await res.json()) as any;
+    throw new Error(json?.errors ? JSON.stringify(json.errors) : 'Failed to set default address');
+  }
+  return true;
+}
+
 export async function action({request, context}: ActionFunctionArgs) {
   const {storefront, session} = context;
+  const env = context.env;
 
   try {
     const form = await request.formData();
@@ -95,7 +346,11 @@ export async function action({request, context}: ActionFunctionArgs) {
     if (!customerAccessToken) {
       return data({error: {[addressId]: 'Unauthorized'}}, {status: 401});
     }
-    const {accessToken} = customerAccessToken;
+    const tokenStr = typeof customerAccessToken === 'string'
+      ? customerAccessToken
+      : customerAccessToken?.accessToken || '';
+
+    const isSessionToken = !tokenStr || tokenStr.startsWith('session-') || tokenStr.startsWith('dev-');
 
     const defaultAddress = String(form.get('defaultAddress')) === 'on';
     const address: MailingAddressInput = {};
@@ -127,7 +382,6 @@ export async function action({request, context}: ActionFunctionArgs) {
       }
     }
 
-    // Pack lat/lng into address2 if present
     if (latlng.lat && latlng.lng) {
       address.address2 = `COORDS:${latlng.lat},${latlng.lng}`;
     }
@@ -136,153 +390,161 @@ export async function action({request, context}: ActionFunctionArgs) {
       address.country = 'Saudi Arabia';
     }
 
+    const customerNumericId = await resolveCustomerNumericId(session, env, tokenStr);
+
     switch (request.method) {
       case 'POST': {
-        let createResult: any;
-        const res = await storefront.mutate(CREATE_ADDRESS_MUTATION, {
-          variables: {customerAccessToken: accessToken, address},
-        });
-        createResult = res?.customerAddressCreate;
-
-        if (createResult?.customerUserErrors?.length) {
-          const hasPhoneError = createResult.customerUserErrors.some(
-            (e: any) =>
-              e.field?.includes('phone') ||
-              e.message?.toLowerCase().includes('phone'),
-          );
-          if (hasPhoneError && address.phone) {
-            const fallbackAddress = {...address};
-            delete fallbackAddress.phone;
-            const retryRes = await storefront.mutate(CREATE_ADDRESS_MUTATION, {
-              variables: {customerAccessToken: accessToken, address: fallbackAddress},
+        if (!isSessionToken) {
+          try {
+            const res = await storefront.mutate(CREATE_ADDRESS_MUTATION, {
+              variables: {customerAccessToken: tokenStr, address},
             });
-            if (retryRes?.customerAddressCreate?.customerAddress) {
-              createResult = retryRes.customerAddressCreate;
-            } else if (retryRes?.customerAddressCreate?.customerUserErrors?.length) {
-              throw new Error(retryRes.customerAddressCreate.customerUserErrors[0].message);
+            if (!res?.customerAddressCreate?.customerUserErrors?.length && res?.customerAddressCreate?.customerAddress) {
+              const createdAddress = res.customerAddressCreate.customerAddress;
+              if (defaultAddress && createdAddress?.id) {
+                await storefront.mutate(UPDATE_DEFAULT_ADDRESS_MUTATION, {
+                  variables: {
+                    customerAccessToken: tokenStr,
+                    addressId: decodeURIComponent(createdAddress.id) as any,
+                  },
+                });
+              }
+              return data({error: null, createdAddress, defaultAddress});
             }
-          } else {
-            throw new Error(createResult.customerUserErrors[0].message);
-          }
+          } catch (_) {}
         }
 
-        const createdAddress = createResult?.customerAddress;
-        if (defaultAddress && createdAddress?.id) {
-          await storefront.mutate(UPDATE_DEFAULT_ADDRESS_MUTATION, {
-            variables: {
-              customerAccessToken: accessToken,
-              addressId: decodeURIComponent(createdAddress.id) as any,
-            },
+        if (customerNumericId) {
+          const adminAddr = await adminCreateAddress({
+            customerId: customerNumericId,
+            address,
+            env,
           });
+          const createdAddress = formatAdminAddressToFragment(adminAddr);
+          if (defaultAddress && adminAddr.id) {
+            await adminSetDefaultAddress({
+              customerId: customerNumericId,
+              addressId: String(adminAddr.id),
+              env,
+            });
+          }
+          return data({error: null, createdAddress, defaultAddress});
         }
-        return data({error: null, createdAddress, defaultAddress});
+
+        throw new Error('Customer profile could not be identified');
       }
 
       case 'PUT': {
         const intent = String(form.get('intent') || '');
         const targetGid = formatAddressGid(addressId);
+        const numericAddrId = getNumericId(addressId);
 
         if (intent === 'setDefault') {
-          const {customerDefaultAddressUpdate} = await storefront.mutate(
-            UPDATE_DEFAULT_ADDRESS_MUTATION,
-            {
-              variables: {
-                customerAccessToken: accessToken,
-                addressId: targetGid as any,
-              },
-            },
-          );
-
-          if (customerDefaultAddressUpdate?.customerUserErrors?.length) {
-            throw new Error(
-              customerDefaultAddressUpdate.customerUserErrors[0].message,
-            );
+          if (!isSessionToken) {
+            try {
+              const res = await storefront.mutate(UPDATE_DEFAULT_ADDRESS_MUTATION, {
+                variables: {
+                  customerAccessToken: tokenStr,
+                  addressId: targetGid as any,
+                },
+              });
+              if (!res?.customerDefaultAddressUpdate?.customerUserErrors?.length) {
+                return data({error: null, defaultAddress: addressId});
+              }
+            } catch (_) {}
           }
 
-          const newDefaultId =
-            customerDefaultAddressUpdate?.customer?.defaultAddress?.id ||
-            targetGid;
+          if (customerNumericId && numericAddrId) {
+            await adminSetDefaultAddress({
+              customerId: customerNumericId,
+              addressId: numericAddrId,
+              env,
+            });
+            return data({error: null, defaultAddress: addressId});
+          }
 
-          return data({
-            error: null,
-            defaultAddress: newDefaultId,
-          });
+          return data({error: null, defaultAddress: addressId});
         }
 
-        let updateResult: any;
-        const res = await storefront.mutate(UPDATE_ADDRESS_MUTATION, {
-          variables: {
-            address,
-            customerAccessToken: accessToken,
-            id: targetGid as any,
-          },
-        });
-        updateResult = res?.customerAddressUpdate;
-
-        if (updateResult?.customerUserErrors?.length) {
-          const hasPhoneError = updateResult.customerUserErrors.some(
-            (e: any) =>
-              e.field?.includes('phone') ||
-              e.message?.toLowerCase().includes('phone'),
-          );
-          if (hasPhoneError && address.phone) {
-            const fallbackAddress = {...address};
-            delete fallbackAddress.phone;
-            const retryRes = await storefront.mutate(UPDATE_ADDRESS_MUTATION, {
+        if (!isSessionToken) {
+          try {
+            const res = await storefront.mutate(UPDATE_ADDRESS_MUTATION, {
               variables: {
-                address: fallbackAddress,
-                customerAccessToken: accessToken,
+                address,
+                customerAccessToken: tokenStr,
                 id: targetGid as any,
               },
             });
-            if (retryRes?.customerAddressUpdate?.customerAddress) {
-              updateResult = retryRes.customerAddressUpdate;
-            } else if (retryRes?.customerAddressUpdate?.customerUserErrors?.length) {
-              throw new Error(retryRes.customerAddressUpdate.customerUserErrors[0].message);
+            if (!res?.customerAddressUpdate?.customerUserErrors?.length && res?.customerAddressUpdate?.customerAddress) {
+              if (defaultAddress) {
+                await storefront.mutate(UPDATE_DEFAULT_ADDRESS_MUTATION, {
+                  variables: {
+                    customerAccessToken: tokenStr,
+                    addressId: targetGid as any,
+                  },
+                });
+              }
+              return data({
+                error: null,
+                updatedAddress: res.customerAddressUpdate.customerAddress,
+                defaultAddress,
+              });
             }
-          } else {
-            throw new Error(updateResult.customerUserErrors[0].message);
-          }
+          } catch (_) {}
         }
 
-        if (defaultAddress) {
-          const {customerDefaultAddressUpdate} = await storefront.mutate(
-            UPDATE_DEFAULT_ADDRESS_MUTATION,
-            {
-              variables: {
-                customerAccessToken: accessToken,
-                addressId: targetGid as any,
-              },
-            },
-          );
-          if (customerDefaultAddressUpdate?.customerUserErrors?.length) {
-            throw new Error(
-              customerDefaultAddressUpdate.customerUserErrors[0].message,
-            );
+        if (customerNumericId && numericAddrId) {
+          const adminAddr = await adminUpdateAddress({
+            customerId: customerNumericId,
+            addressId: numericAddrId,
+            address,
+            env,
+          });
+          const updatedAddress = formatAdminAddressToFragment(adminAddr);
+          if (defaultAddress) {
+            await adminSetDefaultAddress({
+              customerId: customerNumericId,
+              addressId: numericAddrId,
+              env,
+            });
           }
+          return data({
+            error: null,
+            updatedAddress,
+            defaultAddress,
+          });
         }
-        return data({
-          error: null,
-          updatedAddress: updateResult?.customerAddress,
-          defaultAddress,
-        });
+
+        throw new Error('Customer profile could not be identified');
       }
 
       case 'DELETE': {
         const targetGid = formatAddressGid(addressId);
-        const {customerAddressDelete} = await storefront.mutate(
-          DELETE_ADDRESS_MUTATION,
-          {
-            variables: {
-              customerAccessToken: accessToken,
-              id: targetGid as any,
-            },
-          },
-        );
+        const numericAddrId = getNumericId(addressId);
 
-        if (customerAddressDelete?.customerUserErrors?.length) {
-          throw new Error(customerAddressDelete.customerUserErrors[0].message);
+        if (!isSessionToken) {
+          try {
+            const res = await storefront.mutate(DELETE_ADDRESS_MUTATION, {
+              variables: {
+                customerAccessToken: tokenStr,
+                id: targetGid as any,
+              },
+            });
+            if (!res?.customerAddressDelete?.customerUserErrors?.length) {
+              return data({error: null, deletedAddress: addressId});
+            }
+          } catch (_) {}
         }
+
+        if (customerNumericId && numericAddrId) {
+          await adminDeleteAddress({
+            customerId: customerNumericId,
+            addressId: numericAddrId,
+            env,
+          });
+          return data({error: null, deletedAddress: addressId});
+        }
+
         return data({error: null, deletedAddress: addressId});
       }
 
@@ -396,6 +658,10 @@ export default function Addresses() {
     if (isDef && addr.id) {
       handleSetDefault(addr.id);
     }
+  };
+
+  const handleAddressDelete = (id: string) => {
+    setLocalAddresses((prev) => prev.filter((a) => !isSameAddressId(a.id, id)));
   };
 
   return (
@@ -557,6 +823,7 @@ export default function Addresses() {
           onClose={() => setAddressToDelete(null)}
           addressId={addressToDelete}
           locale={locale}
+          onDeleted={handleAddressDelete}
         />
       )}
     </div>
@@ -567,55 +834,89 @@ function DeleteConfirmationModal({
   onClose,
   addressId,
   locale,
+  onDeleted,
 }: {
   onClose: () => void;
   addressId: string;
   locale: string;
+  onDeleted?: (id: string) => void;
 }) {
+  const fetcher = useFetcher<ActionResponse>();
   const isEn = locale === 'en';
+  const isDeleting = fetcher.state !== 'idle';
+
+  useEffect(() => {
+    if (fetcher.data && !fetcher.data.error) {
+      onDeleted?.(addressId);
+      onClose();
+    }
+  }, [fetcher.data, addressId, onDeleted, onClose]);
+
   return (
     <div
-      className="address-modal-overlay"
+      className="fixed inset-0 z-[1001] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
       onClick={onClose}
-      style={{zIndex: 1001}}
     >
       <div
-        className="address-modal-container !max-w-[400px] !p-8 text-center"
+        className="bg-white w-full max-w-[420px] rounded-3xl p-6 sm:p-8 text-center shadow-2xl border border-gray-100 relative animate-in fade-in zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="w-20 h-20 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6 text-3xl">
-          🗑️
+        <div className="w-16 h-16 rounded-2xl bg-red-50 text-red-500 flex items-center justify-center mx-auto mb-5 border border-red-100">
+          <svg
+            width="28"
+            height="28"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M3 6h18" />
+            <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+            <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+            <line x1="10" y1="11" x2="10" y2="17" />
+            <line x1="14" y1="11" x2="14" y2="17" />
+          </svg>
         </div>
-        <h3 className="text-xl font-black text-gray-900 mb-2">
+
+        <h3 className="text-xl sm:text-2xl font-black text-gray-900 mb-2">
           {isEn ? 'Delete Address?' : 'حذف العنوان؟'}
         </h3>
-        <p className="text-gray-500 text-sm font-bold mb-8 leading-relaxed">
+        <p className="text-gray-500 text-[14px] font-medium mb-8 leading-relaxed">
           {isEn
             ? 'Are you sure you want to remove this address? This action cannot be undone.'
             : 'هل أنت متأكد من رغبتك في حذف هذا العنوان؟ لا يمكن التراجع عن هذا الإجراء.'}
         </p>
+
         <div className="flex gap-3">
-          <Form method="DELETE" className="flex-1" onSubmit={onClose}>
+          <fetcher.Form method="DELETE" className="flex-1">
             <input type="hidden" name="addressId" value={addressId} />
-            <Button
+            <button
               type="submit"
-              variant="primary"
-              fullWidth
-              size="lg"
-              className="!bg-red-500 hover:!bg-red-600 !border-red-500"
+              disabled={isDeleting}
+              className="w-full h-12 rounded-2xl bg-red-500 hover:bg-red-600 active:scale-[0.98] text-white font-bold text-[15px] shadow-lg shadow-red-500/20 transition-all flex items-center justify-center disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              {isEn ? 'Delete' : 'حذف'}
-            </Button>
-          </Form>
-          <Button
+              {isDeleting ? (
+                <span className="flex items-center gap-2">
+                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  {isEn ? 'Deleting...' : 'جاري الحذف...'}
+                </span>
+              ) : isEn ? (
+                'Delete'
+              ) : (
+                'حذف'
+              )}
+            </button>
+          </fetcher.Form>
+          <button
             type="button"
-            variant="secondary"
-            className="flex-1"
-            size="lg"
             onClick={onClose}
+            disabled={isDeleting}
+            className="flex-1 h-12 rounded-2xl bg-gray-100 hover:bg-gray-200 active:scale-[0.98] text-gray-700 font-bold text-[15px] transition-all flex items-center justify-center"
           >
             {isEn ? 'Cancel' : 'إلغاء'}
-          </Button>
+          </button>
         </div>
       </div>
     </div>

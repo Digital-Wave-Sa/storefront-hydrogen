@@ -59,21 +59,26 @@ export async function loader({request, params, context}: LoaderFunctionArgs) {
   }
 
   if (predictiveSearch.products?.length > 0) {
-    results.push({
-      type: 'products',
-      items: predictiveSearch.products.map((item: any) => {
-        const variant = item.variants.nodes[0];
-        return {
-          __typename: 'Product',
-          handle: item.handle,
-          id: item.id,
-          title: item.title,
-          image: variant?.image,
-          price: variant?.price,
-          url: `${isEn ? '/en' : ''}/products/${item.handle}`,
-        };
-      }),
-    });
+    const physicalProducts = predictiveSearch.products.filter(
+      (item: any) => !item.isGiftCard && item.productType !== 'Gift Card',
+    );
+    if (physicalProducts.length > 0) {
+      results.push({
+        type: 'products',
+        items: physicalProducts.map((item: any) => {
+          const variant = item.variants.nodes[0];
+          return {
+            __typename: 'Product',
+            handle: item.handle,
+            id: item.id,
+            title: item.title,
+            image: variant?.image,
+            price: variant?.price,
+            url: `${isEn ? '/en' : ''}/products/${item.handle}`,
+          };
+        }),
+      });
+    }
   }
 
   if (predictiveSearch.collections?.length > 0) {
@@ -120,6 +125,8 @@ const PREDICTIVE_SEARCH_QUERY = `#graphql
         id
         title
         handle
+        isGiftCard
+        productType
         variants(first: 1) {
           nodes {
             id

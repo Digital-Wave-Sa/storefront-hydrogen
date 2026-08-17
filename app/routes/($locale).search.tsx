@@ -190,6 +190,13 @@ export async function loader({request, context}: LoaderFunctionArgs) {
     });
   }
 
+  // Filter out non-physical/digital products (gift cards etc.)
+  if (searchPayload?.products?.nodes) {
+    searchPayload.products.nodes = searchPayload.products.nodes.filter(
+      (p: any) => !p.isGiftCard && p.productType !== 'Gift Card',
+    );
+  }
+
   // Ensure exact price sorting for search results (Price Low-to-High / High-to-Low)
   if (searchPayload?.products?.nodes?.length && sortKey === 'PRICE') {
     searchPayload.products.nodes.sort((a: any, b: any) => {
@@ -632,6 +639,7 @@ const SEARCH_QUERY = `#graphql
     vendor
     tags
     productType
+    isGiftCard
     featuredImage {
       id
       altText

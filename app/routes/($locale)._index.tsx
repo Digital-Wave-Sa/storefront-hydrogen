@@ -89,6 +89,13 @@ async function loadCriticalData({context}: Route.LoaderArgs) {
   };
 }
 
+/** Filter non-physical products (gift cards, digital products) from any product nodes array. */
+function filterPhysicalProducts(nodes: any[]): any[] {
+  return nodes.filter(
+    (p: any) => !p.isGiftCard && p.productType !== 'Gift Card',
+  );
+}
+
 function loadDeferredData({context}: Route.LoaderArgs) {
   const recommendedProducts = context.storefront
     .query(RECOMMENDED_PRODUCTS_QUERY, {
@@ -96,6 +103,21 @@ function loadDeferredData({context}: Route.LoaderArgs) {
         country: context.storefront.i18n.country,
         language: context.storefront.i18n.language,
       },
+    })
+    .then((result: any) => {
+      if (!result) return result;
+      // Strip non-physical products from every product list
+      const collectionKeys = [
+        'bestSellers', 'kunafa', 'sweets', 'arabic', 'cake',
+        'chocolateCake', 'cakes', 'chocolate', 'gifts', 'gifting',
+      ];
+      if (result.fallbackProducts?.nodes)
+        result.fallbackProducts.nodes = filterPhysicalProducts(result.fallbackProducts.nodes);
+      for (const key of collectionKeys) {
+        if (result[key]?.products?.nodes)
+          result[key].products.nodes = filterPhysicalProducts(result[key].products.nodes);
+      }
+      return result;
     })
     .catch((error: Error) => {
       console.error(error);
@@ -108,6 +130,14 @@ function loadDeferredData({context}: Route.LoaderArgs) {
         country: context.storefront.i18n.country,
         language: context.storefront.i18n.language,
       },
+    })
+    .then((result: any) => {
+      if (!result) return result;
+      if (result.taggedProducts?.nodes)
+        result.taggedProducts.nodes = filterPhysicalProducts(result.taggedProducts.nodes);
+      if (result.allProducts?.nodes)
+        result.allProducts.nodes = filterPhysicalProducts(result.allProducts.nodes);
+      return result;
     })
     .catch((error: Error) => {
       console.error(error);
@@ -193,6 +223,7 @@ const RECOMMENDED_PRODUCTS_QUERY = `#graphql
     handle
     availableForSale
     productType
+    isGiftCard
     tags
     compareAtPriceRange {
       minVariantPrice {
@@ -374,6 +405,7 @@ const NEW_ARRIVALS_QUERY = `#graphql
     handle
     availableForSale
     productType
+    isGiftCard
     tags
     compareAtPriceRange {
       minVariantPrice {

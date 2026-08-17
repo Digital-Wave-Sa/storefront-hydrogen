@@ -134,18 +134,22 @@ export async function action({request, context}: ActionFunctionArgs) {
   return data({error: 'Invalid intent'}, {status: 400});
 }
 
-// In-memory cache for active price rules (60s TTL)
-let vouchersCache: {timestamp: number; rules: any[]} | null = null;
+// In-memory cache for discounts (60s TTL)
+let vouchersCache: {timestamp: number; list: any[]} | null = null;
 
-async function getTaggedCodesFromGraphQL(adminDomain: string, adminToken: string): Promise<{
-  voucherCodesSet: Set<string>;
-  discountPageCodesSet: Set<string>;
-}> {
-  const voucherCodesSet = new Set<string>();
-  const discountPageCodesSet = new Set<string>();
+async function getDiscountsFromGraphQL(
+  adminDomain: string,
+  adminToken: string,
+  usedCodesSet: Set<string>,
+  lang: string,
+) {
+  const now = Date.now();
+  if (vouchersCache && now - vouchersCache.timestamp < 60000) {
+    return vouchersCache.list;
+  }
 
   try {
-    const res = await fetch(`https://${adminDomain}/admin/api/2024-04/graphql.json`, {
+    const res = await fetch(`https://${adminDomain}/admin/api/2024-07/graphql.json`, {
       method: 'POST',
       headers: {
         'X-Shopify-Access-Token': adminToken,
@@ -154,50 +158,162 @@ async function getTaggedCodesFromGraphQL(adminDomain: string, adminToken: string
       body: JSON.stringify({
         query: `
           query {
-            voucherNodes: codeDiscountNodes(first: 100, query: "voucher OR vouchers") {
+            voucherDiscounts: discountNodes(first: 50, query: "voucher OR vouchers") {
               nodes {
                 id
-                codeDiscount {
+                discount {
                   __typename
                   ... on DiscountCodeBasic {
                     title
+                    summary
+                    status
+                    startsAt
+                    endsAt
+                    usageLimit
+                    asyncUsageCount
+                    customerGets {
+                      value {
+                        __typename
+                        ... on DiscountPercentage { percentage }
+                        ... on DiscountAmount { amount { amount currencyCode } }
+                      }
+                    }
                     codes(first: 10) { nodes { code } }
                   }
                   ... on DiscountCodeFreeShipping {
                     title
+                    summary
+                    status
+                    startsAt
+                    endsAt
                     codes(first: 10) { nodes { code } }
                   }
                   ... on DiscountCodeBxgy {
                     title
+                    summary
+                    status
+                    startsAt
+                    endsAt
                     codes(first: 10) { nodes { code } }
                   }
                   ... on DiscountCodeApp {
                     title
+                    status
                     codes(first: 10) { nodes { code } }
+                  }
+                  ... on DiscountAutomaticBasic {
+                    title
+                    summary
+                    status
+                    startsAt
+                    endsAt
+                    customerGets {
+                      value {
+                        __typename
+                        ... on DiscountPercentage { percentage }
+                        ... on DiscountAmount { amount { amount currencyCode } }
+                      }
+                    }
+                  }
+                  ... on DiscountAutomaticFreeShipping {
+                    title
+                    summary
+                    status
+                    startsAt
+                    endsAt
+                  }
+                  ... on DiscountAutomaticBxgy {
+                    title
+                    summary
+                    status
+                    startsAt
+                    endsAt
+                  }
+                  ... on DiscountAutomaticApp {
+                    title
+                    status
+                    startsAt
+                    endsAt
                   }
                 }
               }
             }
-            discountPageNodes: codeDiscountNodes(first: 100, query: "discountcodepage") {
+            pageDiscounts: discountNodes(first: 50, query: "discountcodepage") {
               nodes {
                 id
-                codeDiscount {
+                discount {
                   __typename
                   ... on DiscountCodeBasic {
                     title
+                    summary
+                    status
+                    startsAt
+                    endsAt
+                    usageLimit
+                    asyncUsageCount
+                    customerGets {
+                      value {
+                        __typename
+                        ... on DiscountPercentage { percentage }
+                        ... on DiscountAmount { amount { amount currencyCode } }
+                      }
+                    }
                     codes(first: 10) { nodes { code } }
                   }
                   ... on DiscountCodeFreeShipping {
                     title
+                    summary
+                    status
+                    startsAt
+                    endsAt
                     codes(first: 10) { nodes { code } }
                   }
                   ... on DiscountCodeBxgy {
                     title
+                    summary
+                    status
+                    startsAt
+                    endsAt
                     codes(first: 10) { nodes { code } }
                   }
                   ... on DiscountCodeApp {
                     title
+                    status
                     codes(first: 10) { nodes { code } }
+                  }
+                  ... on DiscountAutomaticBasic {
+                    title
+                    summary
+                    status
+                    startsAt
+                    endsAt
+                    customerGets {
+                      value {
+                        __typename
+                        ... on DiscountPercentage { percentage }
+                        ... on DiscountAmount { amount { amount currencyCode } }
+                      }
+                    }
+                  }
+                  ... on DiscountAutomaticFreeShipping {
+                    title
+                    summary
+                    status
+                    startsAt
+                    endsAt
+                  }
+                  ... on DiscountAutomaticBxgy {
+                    title
+                    summary
+                    status
+                    startsAt
+                    endsAt
+                  }
+                  ... on DiscountAutomaticApp {
+                    title
+                    status
+                    startsAt
+                    endsAt
                   }
                 }
               }
@@ -210,60 +326,132 @@ async function getTaggedCodesFromGraphQL(adminDomain: string, adminToken: string
 
     if (res && res.ok) {
       const data = (await res.json()) as any;
-      for (const n of data.data?.voucherNodes?.nodes || []) {
-        if (n.codeDiscount?.title) voucherCodesSet.add(n.codeDiscount.title.trim().toLowerCase());
-        for (const c of n.codeDiscount?.codes?.nodes || []) {
-          if (c.code) voucherCodesSet.add(c.code.trim().toLowerCase());
+      const parseNode = (n: any, tagType: 'voucher' | 'discountcodepage') => {
+        const d = n.discount;
+        if (!d) return null;
+        const title = d.title || '';
+        const codesList = d.codes?.nodes?.map((c: any) => c.code) || [];
+        const code = codesList[0] || title;
+        const codeLower = code.trim().toLowerCase();
+
+        const isUsedByOrders =
+          usedCodesSet.has(codeLower) || usedCodesSet.has(title.trim().toLowerCase());
+        const isUsageLimitReached = d.usageLimit && d.asyncUsageCount >= d.usageLimit;
+        const isUsed = isUsedByOrders || isUsageLimitReached;
+        const isExpired = d.endsAt
+          ? new Date(d.endsAt) < new Date()
+          : d.status === 'EXPIRED';
+
+        let status: 'active' | 'used' | 'expired' = 'active';
+        if (isUsed) status = 'used';
+        else if (isExpired) status = 'expired';
+
+        let valNum = 0;
+        let isPercentage = false;
+        if (d.customerGets?.value) {
+          if (d.customerGets.value.__typename === 'DiscountPercentage') {
+            isPercentage = true;
+            valNum = Math.round(d.customerGets.value.percentage * 100);
+          } else if (d.customerGets.value.__typename === 'DiscountAmount') {
+            valNum = parseFloat(d.customerGets.value.amount?.amount || '0');
+          }
+        }
+        const isFreeShipping =
+          d.__typename?.includes('FreeShipping') || codeLower === 'freeshipping';
+
+        let discountDisplayAr = isFreeShipping
+          ? 'توصيل مجاني'
+          : isPercentage
+            ? `خصم %${valNum}`
+            : `${valNum} خصم`;
+
+        let discountDisplayEn = isFreeShipping
+          ? 'Free Delivery'
+          : isPercentage
+            ? `${valNum}% OFF`
+            : `${valNum} SAR OFF`;
+
+        let badgeText = isFreeShipping
+          ? 'مجاني'
+          : isPercentage
+            ? `${valNum}%`
+            : `${valNum} رس`;
+
+        let subtitleAr = isFreeShipping
+          ? 'توصيل مجاني على طلبك القادم'
+          : d.summary || 'على جميع المنتجات';
+        let subtitleEn = isFreeShipping
+          ? 'Free shipping on your next order'
+          : d.summary || 'On all items';
+
+        let expiryDateStrAr = d.endsAt ? formatEnglishDate(d.endsAt, 'ar') : '';
+        let expiryDateStrEn = d.endsAt ? formatEnglishDate(d.endsAt, 'en') : '';
+
+        let expiryTextAr = '';
+        let expiryTextEn = '';
+        if (d.endsAt) {
+          if (isExpired) {
+            expiryTextAr = `انتهت في ${expiryDateStrAr}`;
+            expiryTextEn = `Expired ${expiryDateStrEn}`;
+          } else {
+            expiryTextAr = `تنتهي في ${expiryDateStrAr}`;
+            expiryTextEn = `Expires ${expiryDateStrEn}`;
+          }
+        } else {
+          expiryTextAr = 'سارية المفعول';
+          expiryTextEn = 'Ongoing';
+        }
+
+        return {
+          id: n.id,
+          title,
+          code,
+          status,
+          badgeText,
+          hasVoucherTag: tagType === 'voucher',
+          hasDiscountCodePageTag: tagType === 'discountcodepage',
+          valueType: isPercentage ? 'percentage' : 'fixed_amount',
+          value: valNum,
+          discountDisplayAr,
+          discountDisplayEn,
+          subtitleAr,
+          subtitleEn,
+          expiryTextAr,
+          expiryTextEn,
+        };
+      };
+
+      const vouchersList: any[] = [];
+      const seenIds = new Set<string>();
+
+      for (const n of data.data?.voucherDiscounts?.nodes || []) {
+        const parsed = parseNode(n, 'voucher');
+        if (parsed && !seenIds.has(parsed.id)) {
+          seenIds.add(parsed.id);
+          vouchersList.push(parsed);
         }
       }
-      for (const n of data.data?.discountPageNodes?.nodes || []) {
-        if (n.codeDiscount?.title) discountPageCodesSet.add(n.codeDiscount.title.trim().toLowerCase());
-        for (const c of n.codeDiscount?.codes?.nodes || []) {
-          if (c.code) discountPageCodesSet.add(c.code.trim().toLowerCase());
+
+      for (const n of data.data?.pageDiscounts?.nodes || []) {
+        const parsed = parseNode(n, 'discountcodepage');
+        if (parsed) {
+          const existing = vouchersList.find((v) => v.id === parsed.id);
+          if (existing) {
+            existing.hasDiscountCodePageTag = true;
+          } else if (!seenIds.has(parsed.id)) {
+            seenIds.add(parsed.id);
+            vouchersList.push(parsed);
+          }
         }
       }
+
+      vouchersCache = {timestamp: now, list: vouchersList};
+      return vouchersList;
     }
-  } catch (e) {}
-
-  return { voucherCodesSet, discountPageCodesSet };
-}
-
-async function getPriceRules(env: any) {
-  const now = Date.now();
-  if (vouchersCache && now - vouchersCache.timestamp < 60000) {
-    return vouchersCache.rules;
+  } catch (e) {
+    console.error('getDiscountsFromGraphQL error:', e);
   }
-  try {
-    const {getAdminToken, getAdminDomain} = await import('~/lib/shopify-admin.server');
-    const adminToken = await getAdminToken(env);
-    const adminDomain = getAdminDomain(env);
-    if (!adminToken || !adminDomain) return [];
-
-    const res = await fetch(
-      `https://${adminDomain}/admin/api/2024-01/price_rules.json?limit=50`,
-      {
-        headers: {
-          'X-Shopify-Access-Token': adminToken,
-          'Content-Type': 'application/json',
-        },
-        signal: AbortSignal.timeout(3000),
-      },
-    ).catch(() => null);
-
-    if (res && res.ok) {
-      const resData = (await res.json()) as any;
-      const priceRules = (resData.price_rules || []).filter((rule: any) => {
-        const titleUpper = (rule.title || '').toUpperCase();
-        const isLoyaltyPoints =
-          titleUpper.startsWith('LOYALTY REDEMPTION:') ||
-          titleUpper.startsWith('LOYALTY POINTS REDEMPTION');
-        return !isLoyaltyPoints;
-      });
-      vouchersCache = {timestamp: now, rules: priceRules};
-      return priceRules;
-    }
-  } catch (e) {}
-  return vouchersCache?.rules || [];
+  return vouchersCache?.list || [];
 }
 
 function formatEnglishDate(dateStr: string | Date | undefined, lang: string): string {
@@ -432,158 +620,15 @@ export async function loader({context}: LoaderFunctionArgs) {
 
   const [
     {usedCodesSet, voucherHistory: customerVoucherHistory},
-    priceRules,
-    {voucherCodesSet, discountPageCodesSet},
   ] = await Promise.all([
     getCustomerUsedCodesAndHistory(context, lang),
-    getPriceRules(env),
-    adminToken && adminDomain
-      ? getTaggedCodesFromGraphQL(adminDomain, adminToken)
-      : Promise.resolve({
-          voucherCodesSet: new Set<string>(),
-          discountPageCodesSet: new Set<string>(),
-        }),
   ]);
 
-  const voucherPromises = priceRules.map(async (rule: any) => {
-    let code = rule.title;
-    const isSimpleCode = !rule.title?.includes(' ') && !rule.title?.includes(':');
+  const discountsList = adminToken && adminDomain
+    ? await getDiscountsFromGraphQL(adminDomain, adminToken, usedCodesSet, lang)
+    : [];
 
-    if (!isSimpleCode && adminToken && adminDomain) {
-      try {
-        const dcRes = await fetch(
-          `https://${adminDomain}/admin/api/2024-01/price_rules/${rule.id}/discount_codes.json`,
-          {
-            headers: {'X-Shopify-Access-Token': adminToken},
-            signal: AbortSignal.timeout(1000),
-          },
-        ).catch(() => null);
-        if (dcRes && dcRes.ok) {
-          const dcData = (await dcRes.json()) as any;
-          if (dcData.discount_codes?.[0]?.code) {
-            code = dcData.discount_codes[0].code;
-          }
-        }
-      } catch (e) {}
-    }
-
-    const codeLower = code.trim().toLowerCase();
-    const isUsedByOrders =
-      usedCodesSet.has(codeLower) ||
-      usedCodesSet.has(rule.title.trim().toLowerCase());
-    const isUsageLimitReached =
-      rule.usage_limit && rule.times_used >= rule.usage_limit;
-    const isUsed = isUsedByOrders || isUsageLimitReached;
-    const isExpired = rule.ends_at
-      ? new Date(rule.ends_at) < new Date()
-      : false;
-
-    let status: 'active' | 'used' | 'expired' = 'active';
-    if (isUsed) {
-      status = 'used';
-    } else if (isExpired) {
-      status = 'expired';
-    }
-
-    const isPercentage = rule.value_type === 'percentage';
-    const valNum = Math.abs(parseFloat(rule.value || '0'));
-    const isFreeShipping =
-      rule.target_type === 'shipping_line' ||
-      codeLower === 'freeshipping';
-
-    let discountDisplayAr = isFreeShipping
-      ? 'توصيل مجاني'
-      : isPercentage
-        ? `خصم %${valNum}`
-        : `${valNum} خصم`;
-
-    let discountDisplayEn = isFreeShipping
-      ? 'Free Delivery'
-      : isPercentage
-        ? `${valNum}% OFF`
-        : `${valNum} SAR OFF`;
-
-    let badgeText = isFreeShipping
-      ? 'مجاني'
-      : isPercentage
-        ? `${valNum}%`
-        : `${valNum} رس`;
-
-    const minSpend =
-      rule.prerequisite_subtotal_range?.greater_than_or_equal_to;
-    let subtitleAr = isFreeShipping
-      ? 'توصيل مجاني على طلبك القادم'
-      : minSpend
-        ? `عند الشراء بأكثر من ${parseFloat(minSpend)} ر.س`
-        : 'على جميع المنتجات';
-
-    let subtitleEn = isFreeShipping
-      ? 'Free shipping on your next order'
-      : minSpend
-        ? `On purchases over ${parseFloat(minSpend)} SAR`
-        : 'On all items';
-
-    let expiryDateStrAr = rule.ends_at
-      ? formatEnglishDate(rule.ends_at, 'ar')
-      : '';
-    let expiryDateStrEn = rule.ends_at
-      ? formatEnglishDate(rule.ends_at, 'en')
-      : '';
-
-    let expiryTextAr = '';
-    let expiryTextEn = '';
-
-    if (rule.ends_at) {
-      if (isExpired) {
-        expiryTextAr = `انتهت في ${expiryDateStrAr}${minSpend ? ` . الحد الأدنى ${parseFloat(minSpend)} رس` : ''}`;
-        expiryTextEn = `Expired ${expiryDateStrEn}${minSpend ? ` . Min spend ${parseFloat(minSpend)} SAR` : ''}`;
-      } else {
-        expiryTextAr = `تنتهي في ${expiryDateStrAr}${minSpend ? ` . الحد الأدنى ${parseFloat(minSpend)} رس` : ''}`;
-        expiryTextEn = `Expires ${expiryDateStrEn}${minSpend ? ` . Min spend ${parseFloat(minSpend)} SAR` : ''}`;
-      }
-    } else {
-      expiryTextAr = `سارية المفعول${minSpend ? ` . الحد الأدنى ${parseFloat(minSpend)} رس` : ''}`;
-      expiryTextEn = `Ongoing${minSpend ? ` . Min spend ${parseFloat(minSpend)} SAR` : ''}`;
-    }
-
-    const titleLower = (rule.title || '').trim().toLowerCase();
-    const codeLowerStr = (code || '').trim().toLowerCase();
-
-    const hasVoucherTag =
-      voucherCodesSet.has(codeLowerStr) ||
-      voucherCodesSet.has(titleLower) ||
-      titleLower.includes('voucher') ||
-      titleLower.includes('قسيمة') ||
-      codeLowerStr.includes('voucher') ||
-      codeLowerStr.includes('قسيمة');
-
-    const hasDiscountCodePageTag =
-      discountPageCodesSet.has(codeLowerStr) ||
-      discountPageCodesSet.has(titleLower) ||
-      titleLower.includes('discountcodepage') ||
-      codeLowerStr.includes('discountcodepage');
-
-    return {
-      id: String(rule.id),
-      title: rule.title,
-      code,
-      status,
-      badgeText,
-      hasVoucherTag,
-      hasDiscountCodePageTag,
-      valueType: rule.value_type,
-      value: valNum,
-      discountDisplayAr,
-      discountDisplayEn,
-      subtitleAr,
-      subtitleEn,
-      expiryTextAr,
-      expiryTextEn,
-    };
-  });
-
-  const rawVouchers = await Promise.all(voucherPromises);
-  const shopifyVouchers = rawVouchers.filter((v) => {
+  const shopifyVouchers = discountsList.filter((v: any) => {
     if (!v) return false;
     const codeUpper = (v.code || '').toUpperCase();
     const titleUpper = (v.title || '').toUpperCase();

@@ -1261,12 +1261,12 @@ export default function VouchersPage() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           {/* RIGHT COLUMN (RTL First): My Vouchers / قسائمي */}
           <div className="lg:col-span-7 flex flex-col space-y-6 w-full min-w-0">
-            {/* Header + Tabs (Title on Right in RTL, Tabs on Left in RTL) */}
-            <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-              {/* Title & Subtitle: Right on Desktop in RTL, Centered on Mobile */}
-              <div className="text-center md:text-right">
+            {/* Header + Tabs (Title on Left in English, Right in Arabic) */}
+            <div className={`flex flex-col md:flex-row ${isEn ? 'items-start md:items-center text-left' : 'items-center text-center md:text-right'} justify-between gap-4 w-full`} dir={isEn ? 'ltr' : 'rtl'}>
+              {/* Title & Subtitle: Left on English, Right on Arabic */}
+              <div className={isEn ? 'text-left' : 'text-center md:text-right'}>
                 <h3
-                  className="text-[28px] md:text-[36px] font-bold text-[#234745] leading-tight"
+                  className={`text-[28px] md:text-[36px] font-bold text-[#234745] leading-tight ${isEn ? 'text-left' : 'text-center md:text-right'}`}
                   style={{
                     fontFamily: isEn
                       ? "'Bahij Janna', sans-serif"
@@ -1276,7 +1276,7 @@ export default function VouchersPage() {
                   {isEn ? 'My Vouchers' : 'قسائمي'}
                 </h3>
                 <p
-                  className="text-[#A0B2B0] text-[13.5px] md:text-[14px] mt-0.5"
+                  className={`text-[#A0B2B0] text-[13.5px] md:text-[14px] mt-0.5 ${isEn ? 'text-left' : 'text-center md:text-right'}`}
                   style={{
                     fontFamily: "'GE Dinar One', 'GE SS Two', sans-serif",
                   }}
@@ -1287,8 +1287,8 @@ export default function VouchersPage() {
                 </p>
               </div>
 
-              {/* Filter Tabs Pills: Left on Desktop in RTL, Centered on Mobile */}
-              <div className="flex items-center justify-center md:justify-end gap-2.5 flex-wrap">
+              {/* Filter Tabs Pills */}
+              <div className={`flex items-center gap-2.5 flex-wrap ${isEn ? 'justify-start md:justify-end' : 'justify-center md:justify-end'}`}>
                 <button
                   type="button"
                   onClick={() => setActiveTab('active')}
@@ -1381,7 +1381,11 @@ export default function VouchersPage() {
                       {/* ─── 1. DESKTOP CARD LAYOUT (hidden md:flex) ─── */}
                       <div
                         className={`hidden md:flex relative bg-white transition-all items-center justify-between shadow-sm border border-gray-100 rounded-[12px] p-6 min-h-[136px] gap-6 ${
-                          isActiveState ? 'border-r-4 border-r-[#234745]' : ''
+                          isActiveState
+                            ? isEn
+                              ? 'border-l-4 border-l-[#234745]'
+                              : 'border-r-4 border-r-[#234745]'
+                            : ''
                         }`}
                         dir={isEn ? 'ltr' : 'rtl'}
                       >

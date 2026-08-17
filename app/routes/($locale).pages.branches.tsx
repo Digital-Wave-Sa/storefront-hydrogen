@@ -182,6 +182,44 @@ export default function BranchesPage() {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const mapInstanceRef = useRef<any>(null);
 
+  // Horizontal Tab Sliding & Dragging support
+  const tabsRef = useRef<HTMLDivElement>(null);
+  const isDraggingRef = useRef(false);
+  const startXRef = useRef(0);
+  const scrollLeftRef = useRef(0);
+  const [hasDragged, setHasDragged] = useState(false);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (!tabsRef.current) return;
+    isDraggingRef.current = true;
+    setHasDragged(false);
+    startXRef.current = e.pageX - tabsRef.current.offsetLeft;
+    scrollLeftRef.current = tabsRef.current.scrollLeft;
+  };
+
+  const handleMouseLeaveOrUp = () => {
+    isDraggingRef.current = false;
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDraggingRef.current || !tabsRef.current) return;
+    const x = e.pageX - tabsRef.current.offsetLeft;
+    const walk = (x - startXRef.current) * 1.5;
+    if (Math.abs(walk) > 5) {
+      setHasDragged(true);
+    }
+    tabsRef.current.scrollLeft = scrollLeftRef.current - walk;
+  };
+
+  const scrollTabs = (direction: 'left' | 'right') => {
+    if (!tabsRef.current) return;
+    const scrollAmount = 260;
+    tabsRef.current.scrollBy({
+      left: direction === 'left' ? -scrollAmount : scrollAmount,
+      behavior: 'smooth',
+    });
+  };
+
   // Dynamic City Groups from locations custom.city metafield
   const {cityGroups, citiesList, totalCitiesCount} = useMemo(() => {
     const groups: Record<string, any[]> = {};
@@ -547,21 +585,64 @@ export default function BranchesPage() {
             </button>
           </div>
 
-          {/* Filter Pills (Dynamic from custom.city metafields) */}
-          <div
-            className="flex-1 overflow-x-auto scrollbar-hide flex items-center justify-end gap-2 lg:gap-3 w-full"
-            dir={isEn ? 'ltr' : 'rtl'}
-          >
-            {citiesList.map((city) => (
-              <button
-                key={city.id}
-                onClick={() => setSelectedCity(city.cityName)}
-                className={`whitespace-nowrap px-5 py-2 rounded-full text-[13px] font-bold transition-colors border ${selectedCity === city.cityName ? 'bg-[#BBCFCD] border-[#BBCFCD] text-[#234745]' : 'bg-white border-gray-300 text-gray-500 hover:border-gray-400'}`}
-                style={{fontFamily: fontFam}}
-              >
-                {isEn ? city.nameEn : city.nameAr}
-              </button>
-            ))}
+          {/* Filter Pills with Full Touch/Drag and Arrow Sliding Support */}
+          <div className="flex-1 min-w-0 relative flex items-center gap-2 w-full">
+            {/* Scroll Left Button */}
+            <button
+              type="button"
+              onClick={() => scrollTabs(isEn ? 'left' : 'right')}
+              className="hidden sm:flex items-center justify-center w-8 h-8 rounded-full bg-white border border-gray-300 shadow-xs text-gray-600 hover:text-[#234745] hover:border-[#234745] transition-all shrink-0 cursor-pointer z-10"
+              aria-label="Scroll previous"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className={isEn ? "" : "rotate-180"}>
+                <polyline points="15 18 9 12 15 6" />
+              </svg>
+            </button>
+
+            <div
+              ref={tabsRef}
+              onMouseDown={handleMouseDown}
+              onMouseLeave={handleMouseLeaveOrUp}
+              onMouseUp={handleMouseLeaveOrUp}
+              onMouseMove={handleMouseMove}
+              className="flex-1 overflow-x-auto scrollbar-hide flex items-center justify-start gap-2 lg:gap-3 py-1 cursor-grab active:cursor-grabbing select-none w-full"
+              style={{
+                WebkitOverflowScrolling: 'touch',
+                scrollbarWidth: 'none',
+                msOverflowStyle: 'none',
+              }}
+              dir={isEn ? 'ltr' : 'rtl'}
+            >
+              {citiesList.map((city) => (
+                <button
+                  key={city.id}
+                  onClick={() => {
+                    if (hasDragged) return;
+                    setSelectedCity(city.cityName);
+                  }}
+                  className={`whitespace-nowrap px-5 py-2 rounded-full text-[13px] font-bold transition-colors border shrink-0 cursor-pointer ${
+                    selectedCity === city.cityName
+                      ? 'bg-[#BBCFCD] border-[#BBCFCD] text-[#234745]'
+                      : 'bg-white border-gray-300 text-gray-500 hover:border-gray-400'
+                  }`}
+                  style={{fontFamily: fontFam}}
+                >
+                  {isEn ? city.nameEn : city.nameAr}
+                </button>
+              ))}
+            </div>
+
+            {/* Scroll Right Button */}
+            <button
+              type="button"
+              onClick={() => scrollTabs(isEn ? 'right' : 'left')}
+              className="hidden sm:flex items-center justify-center w-8 h-8 rounded-full bg-white border border-gray-300 shadow-xs text-gray-600 hover:text-[#234745] hover:border-[#234745] transition-all shrink-0 cursor-pointer z-10"
+              aria-label="Scroll next"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className={isEn ? "" : "rotate-180"}>
+                <polyline points="9 18 15 12 9 6" />
+              </svg>
+            </button>
           </div>
         </div>
       </div>

@@ -849,6 +849,8 @@ function AddressModal({
             <MapPickerDialog
               googleMapsKey={googleMapsKey}
               isEn={isEn}
+              initialCoords={coords}
+              initialAddress={addressLine1}
               onClose={() => setIsMapPickerOpen(false)}
               onConfirm={handleLocationConfirm}
             />
@@ -1012,11 +1014,15 @@ const CREATE_ADDRESS_MUTATION = `#graphql
 function MapPickerDialog({
   googleMapsKey,
   isEn,
+  initialCoords,
+  initialAddress,
   onClose,
   onConfirm,
 }: {
   googleMapsKey: string;
   isEn: boolean;
+  initialCoords?: {lat: number; lng: number} | null;
+  initialAddress?: string;
   onClose: () => void;
   onConfirm: (res: {
     address: string;
@@ -1027,9 +1033,10 @@ function MapPickerDialog({
 }) {
   const mapRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
-  const [address, setAddress] = useState('');
+  const defaultLoc = initialCoords || {lat: 24.7136, lng: 46.6753}; // Default or current
+  const [address, setAddress] = useState(initialAddress || '');
   const [city, setCity] = useState('');
-  const [coords, setCoords] = useState<{lat: number; lng: number} | null>(null);
+  const [coords, setCoords] = useState<{lat: number; lng: number}>(defaultLoc);
   const [isResolving, setIsResolving] = useState(false);
   const [isSdkLoaded, setIsSdkLoaded] = useState(false);
 
@@ -1051,10 +1058,9 @@ function MapPickerDialog({
   useEffect(() => {
     if (!isSdkLoaded || !mapRef.current) return;
 
-    const defaultLoc = {lat: 24.7136, lng: 46.6753}; // Riyadh
     const map = new (window as any).google.maps.Map(mapRef.current, {
       center: defaultLoc,
-      zoom: 15,
+      zoom: initialCoords ? 16 : 15,
       disableDefaultUI: true,
       zoomControl: false,
     });
@@ -1067,15 +1073,20 @@ function MapPickerDialog({
 
     const resolveAddress = (lat: number, lng: number) => {
       setIsResolving(true);
+      setCoords({lat, lng});
       geocoder.geocode({location: {lat, lng}}, (results: any, status: any) => {
         if (status === 'OK' && results?.[0]) {
           const res = results[0];
           setAddress(res.formatted_address);
           const cityComp = res.address_components.find((c: any) =>
-            c.types.includes('locality'),
+            c.types.includes('locality') ||
+            c.types.includes('administrative_area_level_2') ||
+            c.types.includes('administrative_area_level_1') ||
+            c.types.includes('sublocality'),
           );
           if (cityComp) setCity(cityComp.long_name);
-          setCoords({lat, lng});
+        } else {
+          setAddress((prev) => prev || `${lat.toFixed(6)}, ${lng.toFixed(6)}`);
         }
         setIsResolving(false);
       });
@@ -1226,7 +1237,15 @@ function MapPickerDialog({
           <button
             type="button"
             disabled={!coords || isResolving}
-            onClick={() => coords && onConfirm({address, city, ...coords})}
+            onClick={() =>
+              coords &&
+              onConfirm({
+                address:
+                  address || `${coords.lat.toFixed(6)}, ${coords.lng.toFixed(6)}`,
+                city: city || 'Jeddah',
+                ...coords,
+              })
+            }
             className={`w-full py-4 rounded-2xl font-bold text-[15px] shadow-lg transition-all ${!coords || isResolving ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-[#234745] text-white hover:bg-[#153125] active:scale-[0.98] shadow-[#234745]/20'}`}
           >
             {isEn ? 'Confirm Location' : 'تأكيد الموقع'}

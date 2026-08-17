@@ -49,6 +49,39 @@ const formatAddressGid = (rawId: string) => {
   return num ? `gid://shopify/MailingAddress/${num}?model_name=CustomerAddress` : str;
 };
 
+const formatAddressPhone = (rawPhone?: string | null): string | undefined => {
+  if (!rawPhone) return undefined;
+  const str = String(rawPhone).trim();
+  const digits = str.replace(/\D/g, '');
+  if (!digits) return undefined;
+
+  if (digits.startsWith('00')) {
+    return `+${digits.replace(/^00/, '')}`;
+  }
+  const countryPrefixes = ['966', '962', '971', '965', '973', '968', '974', '20', '961', '963', '964'];
+  for (const prefix of countryPrefixes) {
+    if (digits.startsWith(prefix)) {
+      return `+${digits}`;
+    }
+  }
+  if (str.includes('+')) {
+    return `+${digits}`;
+  }
+  if (digits.startsWith('05') && digits.length === 10) {
+    return `+966${digits.substring(1)}`;
+  }
+  if (digits.startsWith('5') && digits.length === 9) {
+    return `+966${digits}`;
+  }
+  if (digits.startsWith('07') && digits.length === 10) {
+    return `+962${digits.substring(1)}`;
+  }
+  if (digits.startsWith('7') && digits.length === 9) {
+    return `+962${digits}`;
+  }
+  return `+${digits}`;
+};
+
 export async function action({request, context}: ActionFunctionArgs) {
   const {storefront, session} = context;
 
@@ -83,19 +116,7 @@ export async function action({request, context}: ActionFunctionArgs) {
       const value = form.get(key);
       if (typeof value === 'string') {
         if (key === 'phone') {
-          let cleanPhone = value.replace(/\D/g, '');
-          if (value.startsWith('+')) {
-            address.phone = value.replace(/\s/g, '');
-          } else if (cleanPhone.startsWith('00966')) {
-            address.phone = `+${cleanPhone.substring(2)}`;
-          } else if (cleanPhone.startsWith('966')) {
-            address.phone = `+${cleanPhone}`;
-          } else {
-            const finalPhone = cleanPhone.startsWith('0')
-              ? cleanPhone.substring(1)
-              : cleanPhone;
-            address.phone = finalPhone ? `+966${finalPhone}` : undefined;
-          }
+          address.phone = formatAddressPhone(value);
         } else if (key === 'lat') {
           latlng.lat = value;
         } else if (key === 'lng') {
@@ -117,18 +138,35 @@ export async function action({request, context}: ActionFunctionArgs) {
 
     switch (request.method) {
       case 'POST': {
-        const {customerAddressCreate} = await storefront.mutate(
-          CREATE_ADDRESS_MUTATION,
-          {
-            variables: {customerAccessToken: accessToken, address},
-          },
-        );
+        let createResult: any;
+        const res = await storefront.mutate(CREATE_ADDRESS_MUTATION, {
+          variables: {customerAccessToken: accessToken, address},
+        });
+        createResult = res?.customerAddressCreate;
 
-        if (customerAddressCreate?.customerUserErrors?.length) {
-          throw new Error(customerAddressCreate.customerUserErrors[0].message);
+        if (createResult?.customerUserErrors?.length) {
+          const hasPhoneError = createResult.customerUserErrors.some(
+            (e: any) =>
+              e.field?.includes('phone') ||
+              e.message?.toLowerCase().includes('phone'),
+          );
+          if (hasPhoneError && address.phone) {
+            const fallbackAddress = {...address};
+            delete fallbackAddress.phone;
+            const retryRes = await storefront.mutate(CREATE_ADDRESS_MUTATION, {
+              variables: {customerAccessToken: accessToken, address: fallbackAddress},
+            });
+            if (retryRes?.customerAddressCreate?.customerAddress) {
+              createResult = retryRes.customerAddressCreate;
+            } else if (retryRes?.customerAddressCreate?.customerUserErrors?.length) {
+              throw new Error(retryRes.customerAddressCreate.customerUserErrors[0].message);
+            }
+          } else {
+            throw new Error(createResult.customerUserErrors[0].message);
+          }
         }
 
-        const createdAddress = customerAddressCreate?.customerAddress;
+        const createdAddress = createResult?.customerAddress;
         if (defaultAddress && createdAddress?.id) {
           await storefront.mutate(UPDATE_DEFAULT_ADDRESS_MUTATION, {
             variables: {
@@ -171,19 +209,40 @@ export async function action({request, context}: ActionFunctionArgs) {
           });
         }
 
-        const {customerAddressUpdate} = await storefront.mutate(
-          UPDATE_ADDRESS_MUTATION,
-          {
-            variables: {
-              address,
-              customerAccessToken: accessToken,
-              id: targetGid as any,
-            },
+        let updateResult: any;
+        const res = await storefront.mutate(UPDATE_ADDRESS_MUTATION, {
+          variables: {
+            address,
+            customerAccessToken: accessToken,
+            id: targetGid as any,
           },
-        );
+        });
+        updateResult = res?.customerAddressUpdate;
 
-        if (customerAddressUpdate?.customerUserErrors?.length) {
-          throw new Error(customerAddressUpdate.customerUserErrors[0].message);
+        if (updateResult?.customerUserErrors?.length) {
+          const hasPhoneError = updateResult.customerUserErrors.some(
+            (e: any) =>
+              e.field?.includes('phone') ||
+              e.message?.toLowerCase().includes('phone'),
+          );
+          if (hasPhoneError && address.phone) {
+            const fallbackAddress = {...address};
+            delete fallbackAddress.phone;
+            const retryRes = await storefront.mutate(UPDATE_ADDRESS_MUTATION, {
+              variables: {
+                address: fallbackAddress,
+                customerAccessToken: accessToken,
+                id: targetGid as any,
+              },
+            });
+            if (retryRes?.customerAddressUpdate?.customerAddress) {
+              updateResult = retryRes.customerAddressUpdate;
+            } else if (retryRes?.customerAddressUpdate?.customerUserErrors?.length) {
+              throw new Error(retryRes.customerAddressUpdate.customerUserErrors[0].message);
+            }
+          } else {
+            throw new Error(updateResult.customerUserErrors[0].message);
+          }
         }
 
         if (defaultAddress) {
@@ -204,7 +263,7 @@ export async function action({request, context}: ActionFunctionArgs) {
         }
         return data({
           error: null,
-          updatedAddress: customerAddressUpdate?.customerAddress,
+          updatedAddress: updateResult?.customerAddress,
           defaultAddress,
         });
       }
@@ -311,6 +370,34 @@ export default function Addresses() {
   const isEn = locale === 'en';
   const [addressToDelete, setAddressToDelete] = useState<string | null>(null);
 
+  const [localAddresses, setLocalAddresses] = useState<AddressFragment[]>(
+    addresses?.nodes || [],
+  );
+
+  useEffect(() => {
+    if (addresses?.nodes) {
+      setLocalAddresses(addresses.nodes);
+    }
+  }, [addresses?.nodes]);
+
+  const handleAddressSuccess = (
+    addr: AddressFragment,
+    isDef?: boolean,
+  ) => {
+    setLocalAddresses((prev) => {
+      const idx = prev.findIndex((a) => isSameAddressId(a.id, addr.id));
+      if (idx >= 0) {
+        const next = [...prev];
+        next[idx] = {...next[idx], ...addr};
+        return next;
+      }
+      return [addr, ...prev];
+    });
+    if (isDef && addr.id) {
+      handleSetDefault(addr.id);
+    }
+  };
+
   return (
     <div className="account-addresses-section" dir={isEn ? 'ltr' : 'rtl'}>
       {/* Outer bordered container */}
@@ -329,7 +416,7 @@ export default function Addresses() {
 
         {/* Cards container */}
         <div className="flex flex-col gap-3 mt-2">
-          {addresses.nodes.map((address) => {
+          {localAddresses.map((address) => {
             const isDefault = isSameAddressId(activeDefaultId, address.id);
             const label = address.firstName || (isEn ? 'Address' : 'عنوان');
             const addressText = [address.address1, address.city]
@@ -460,6 +547,7 @@ export default function Addresses() {
           type={activeModal.type}
           address={activeModal.address}
           isDefault={defaultAddress?.id === activeModal.address?.id}
+          onSuccess={handleAddressSuccess}
           onClose={() => setActiveModal(null)}
         />
       )}
@@ -538,11 +626,13 @@ function AddressModal({
   type,
   address,
   isDefault,
+  onSuccess,
   onClose,
 }: {
   type: 'create' | 'edit';
   address?: AddressFragment;
   isDefault?: boolean;
+  onSuccess?: (addr: AddressFragment, isDefault?: boolean) => void;
   onClose: () => void;
 }) {
   const fetcher = useFetcher<ActionResponse>();
@@ -559,11 +649,13 @@ function AddressModal({
 
   useEffect(() => {
     if (fetcher.data && !fetcher.data.error) {
-      if (fetcher.data.createdAddress || fetcher.data.updatedAddress) {
+      if (fetcher.data.updatedAddress || fetcher.data.createdAddress) {
+        const addr = (fetcher.data.updatedAddress || fetcher.data.createdAddress)!;
+        onSuccess?.(addr, fetcher.data.defaultAddress);
         onClose();
       }
     }
-  }, [fetcher.data, onClose]);
+  }, [fetcher.data, onClose, onSuccess]);
 
   const [city, setCity] = useState(address?.city ?? '');
   const [isMapPickerOpen, setIsMapPickerOpen] = useState(false);
@@ -813,6 +905,7 @@ function AddressModal({
               name="phone"
               defaultValue={address?.phone ?? ''}
               className="account-input"
+              dir="ltr"
               placeholder="+966XXXXXXXXX"
               required
             />

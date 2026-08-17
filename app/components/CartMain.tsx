@@ -267,8 +267,8 @@ export function CartMain({ layout, cart: originalCart }: CartMainProps) {
 
         <div className="max-w-[1400px] mx-auto w-full px-4 md:px-8 pb-20">
           <div className={cartHasItems ? "lg:grid lg:grid-cols-[1fr_380px] gap-8 lg:gap-12 items-start" : "flex items-center justify-center min-h-[45vh] max-w-2xl mx-auto p-8 md:p-12 w-full"}>
-            {/* Left Column (Items) */}
-            <div className="flex flex-col gap-4">
+            {/* Left Column (Items) - Sticky on desktop */}
+            <div className="lg:sticky lg:top-[140px] flex flex-col gap-4 self-start">
               {/* Dynamic Branch Promo Free Delivery Banner */}
               {cartHasItems && !isPickup && !isDigitalOnlyCart && isBranchPromoFreeDelivery && (
                 <div className="bg-[#FEF8EB] border border-[#EBDCC5] text-[#234745] p-4 rounded-[20px] mb-1 flex items-center gap-3 shadow-xs">
@@ -376,7 +376,7 @@ export function CartMain({ layout, cart: originalCart }: CartMainProps) {
 
             {/* Right Column (Summary) */}
             {cartHasItems && (
-              <div className="lg:sticky lg:top-8 flex flex-col gap-6">
+              <div className="lg:sticky lg:top-[140px] flex flex-col gap-6 self-start">
                 <CartSummary cart={cart} layout={layout} />
               </div>
             )}

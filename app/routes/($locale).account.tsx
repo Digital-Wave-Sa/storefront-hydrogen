@@ -1020,9 +1020,15 @@ function Logout({isEn}: {isEn: boolean}) {
     <Form
       className="account-logout"
       method="POST"
-      action="/account/logout"
+      action={isEn ? '/en/account/logout' : '/account/logout'}
       onSubmit={() => {
-        localStorage.removeItem('wishlist');
+        if (typeof window !== 'undefined') {
+          try {
+            Object.keys(localStorage).forEach((k) => {
+              if (k.startsWith('wishlist')) localStorage.removeItem(k);
+            });
+          } catch (e) {}
+        }
         document.cookie =
           'cart=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT;';
       }}

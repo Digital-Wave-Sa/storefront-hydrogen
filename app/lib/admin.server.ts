@@ -15,6 +15,7 @@ export async function adminApiQuery(
         'X-Shopify-Access-Token': token,
       },
       body: JSON.stringify({ query, variables }),
+      signal: AbortSignal.timeout(3000),
     });
 
     if (!response.ok) {

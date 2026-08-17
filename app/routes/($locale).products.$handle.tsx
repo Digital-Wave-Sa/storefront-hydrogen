@@ -15,7 +15,7 @@ import {ReviewForm} from '~/components/ReviewForm';
 import {useWishlist} from '~/context/WishlistContext';
 import {fixMojibake} from '~/lib/mojibake';
 import {adminApiQuery} from '~/lib/admin.server';
-import {getAdminToken} from '~/lib/shopify-admin.server';
+import {getAdminToken, getAdminDomain} from '~/lib/shopify-admin.server';
 import {createPortal} from 'react-dom';
 import type {MetaFunction} from 'react-router';
 import {data, redirect, type LoaderFunctionArgs} from 'react-router';
@@ -278,13 +278,7 @@ export async function loader(args: LoaderFunctionArgs) {
         let dynamicCount = 0;
         try {
           const adminToken = await getAdminToken(args.context.env);
-          const rawShop =
-            args.context.env.SHOPIFY_SHOP ||
-            args.context.env.PUBLIC_STORE_DOMAIN ||
-            'the-beauty-secrets-ksa';
-          const shopDomain = rawShop.includes('myshopify.com')
-            ? rawShop
-            : `${rawShop.split('.')[0]}.myshopify.com`;
+          const shopDomain = getAdminDomain(args.context.env);
 
           const reviewsQuery = `#graphql
             query GetProductReviews {
@@ -357,50 +351,50 @@ export async function loader(args: LoaderFunctionArgs) {
             const savedPhone = await context.session.get('loginOtpPhone');
             if (savedPhone) {
               try {
-                const {getAdminToken} =
+                const {getAdminToken, getAdminDomain} =
                   await import('~/lib/shopify-admin.server');
                 const token = await getAdminToken(context.env);
-                const rawShop =
-                  context.env.SHOPIFY_SHOP ||
-                  context.env.PUBLIC_STORE_DOMAIN ||
-                  'the-beauty-secrets-ksa';
-                const shopDomain = rawShop.includes('myshopify.com')
-                  ? rawShop
-                  : `${rawShop.split('.')[0]}.myshopify.com`;
-                const queryStr = savedPhone.includes('590910042')
-                  ? encodeURIComponent('email:"motasem.udeh@gmail.com"')
-                  : encodeURIComponent(`phone:"${savedPhone}"`);
-                const res = await fetch(
-                  `https://${shopDomain}/admin/api/2023-04/customers/search.json?query=${queryStr}`,
-                  {
-                    headers: {
-                      'X-Shopify-Access-Token': token,
-                      'Content-Type': 'application/json',
-                    },
-                  },
-                );
-                const {customers} = (await res.json()) as any;
-                if (customers && customers.length > 0) {
-                  const adminCust = customers[0];
-                  const ordersRes = await fetch(
-                    `https://${shopDomain}/admin/api/2023-04/customers/${adminCust.id}/orders.json?status=any`,
+                const shopDomain = getAdminDomain(context.env);
+                if (token && shopDomain) {
+                  const queryStr = encodeURIComponent(`phone:"${savedPhone}"`);
+                  const res = await fetch(
+                    `https://${shopDomain}/admin/api/2024-04/customers/search.json?query=${queryStr}`,
                     {
                       headers: {
                         'X-Shopify-Access-Token': token,
                         'Content-Type': 'application/json',
                       },
+                      signal: AbortSignal.timeout(3000),
                     },
-                  );
-                  const {orders} = (await ordersRes.json()) as any;
-                  if (orders) {
-                    hasPurchased = orders.some((o: any) =>
-                      o.line_items?.some(
-                        (li: any) =>
-                          li.product_id &&
-                          `gid://shopify/Product/${li.product_id}` ===
-                            product.id,
-                      ),
-                    );
+                  ).catch(() => null);
+                  if (res && res.ok) {
+                    const {customers} = (await res.json()) as any;
+                    if (customers && customers.length > 0) {
+                      const adminCust = customers[0];
+                      const ordersRes = await fetch(
+                        `https://${shopDomain}/admin/api/2024-04/customers/${adminCust.id}/orders.json?status=any`,
+                        {
+                          headers: {
+                            'X-Shopify-Access-Token': token,
+                            'Content-Type': 'application/json',
+                          },
+                          signal: AbortSignal.timeout(3000),
+                        },
+                      ).catch(() => null);
+                      if (ordersRes && ordersRes.ok) {
+                        const {orders} = (await ordersRes.json()) as any;
+                        if (orders) {
+                          hasPurchased = orders.some((o: any) =>
+                            o.line_items?.some(
+                              (li: any) =>
+                                li.product_id &&
+                                `gid://shopify/Product/${li.product_id}` ===
+                                  product.id,
+                            ),
+                          );
+                        }
+                      }
+                    }
                   }
                 }
               } catch (e) {

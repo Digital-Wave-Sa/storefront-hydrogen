@@ -486,23 +486,23 @@ export function GiftVoucherWizard({
 
           {/* Step 4 (Success Screen for Buy for Yourself) */}
           {currentStep === 4 && (
-            <div className="text-center py-10">
+            <div className="w-full text-center py-10 flex flex-col items-center justify-center" style={{ textAlign: 'center' }}>
               <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl">
                 ✓
               </div>
-              <h3 className="text-2xl font-bold text-[#234745] mb-2" style={{ fontFamily: "'Bahij Janna', sans-serif" }}>
+              <h3 className="text-2xl sm:text-3xl font-bold text-[#234745] mb-2 text-center" style={{ fontFamily: "'Bahij Janna', sans-serif", textAlign: 'center' }}>
                 {isEn ? 'Voucher Added to Cart!' : 'تمت إضافة القسيمة إلى السلة بنجاح!'}
               </h3>
-              <p className="text-[#64748b] text-[14px] max-w-[400px] mx-auto mb-6">
+              <p className="text-[#64748b] text-[15px] max-w-[480px] mx-auto mb-8 text-center leading-relaxed" style={{ textAlign: 'center' }}>
                 {isEn
                   ? 'Your personal digital voucher has been placed in your cart. You can complete checkout whenever you are ready.'
                   : 'تم وضع قسيمتك الرقمية في سلتك. يمكنك إتمام الطلب والدفع متى أردت.'}
               </p>
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-4 text-center mx-auto w-full">
                 <button
                   type="button"
                   onClick={() => open('cart')}
-                  className="w-full sm:w-auto px-8 py-3 bg-[#234745] hover:bg-[#1A3533] text-white font-bold text-[14px] rounded-full transition-all shadow-md cursor-pointer border-none"
+                  className="w-full sm:w-auto h-[48px] px-8 bg-[#234745] hover:bg-[#1A3533] text-white font-bold text-[15px] rounded-full transition-all shadow-md cursor-pointer border-none flex items-center justify-center"
                 >
                   {isEn ? 'View Cart & Checkout' : 'عرض السلة وإتمام الدفع'}
                 </button>
@@ -512,7 +512,7 @@ export function GiftVoucherWizard({
                     setCurrentStep(1);
                     setSelectedAmount(200);
                   }}
-                  className="text-[#718096] text-[13px] underline hover:text-[#234745] transition-colors cursor-pointer"
+                  className="text-[#718096] text-[14px] underline hover:text-[#234745] transition-colors cursor-pointer font-medium"
                 >
                   {isEn ? 'Buy another voucher' : 'شراء قسيمة أخرى'}
                 </button>
@@ -549,9 +549,11 @@ export function GiftVoucherWizard({
               className="text-[#7D7D7D] text-[14.5px] font-medium text-center"
               style={{ fontFamily: "'GE Dinar One', sans-serif" }}
             >
-              {isEn
-                ? 'Design your gift voucher in 4 simple steps'
-                : 'صمم قسيمة هدية في 4 خطوات بسيطة'}
+              {isEn ? (
+                <>Design your gift voucher in <span className="font-en notranslate font-bold" style={{ fontFamily: 'Arial, sans-serif' }}>4</span> simple steps</>
+              ) : (
+                <>صمم قسيمة هدية في <span className="font-en notranslate font-bold" style={{ fontFamily: 'Arial, sans-serif' }}>4</span> خطوات بسيطة</>
+              )}
             </p>
           </div>
 
@@ -606,18 +608,55 @@ export function GiftVoucherWizard({
             </div>
           </div>
 
-          {/* 2-Column Wizard Layout */}
-          <div className="flex flex-col lg:flex-row items-start gap-8 justify-between w-full" dir={isEn ? 'ltr' : 'rtl'}>
-            {/* Left Column: Live Voucher Card Preview */}
-            <div className="w-full lg:w-1/2 flex-1 min-w-0" dir={isEn ? 'ltr' : 'rtl'}>
-              <div className="gift-preview-box">
-                <span className="preview-tag-title">
-                  {isEn ? 'Live Preview' : 'معاينة مباشرة'}
-                </span>
+          {/* Conditional Layout: Single Centered Card on Step 4 (Success), 2-Column on Steps 1-3 */}
+          {currentStep === 4 ? (
+            <div className="w-full max-w-[680px] mx-auto bg-[#FEF8EB] rounded-[32px] p-8 sm:p-12 border border-[#BBCFCD]/40 shadow-xs text-center flex flex-col items-center justify-center" dir={isEn ? 'ltr' : 'rtl'} style={{ textAlign: 'center' }}>
+              <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl">
+                ✓
+              </div>
+              <h3 className="text-2xl sm:text-3xl font-bold text-[#234745] mb-2 text-center" style={{ fontFamily: "'Bahij Janna', sans-serif", textAlign: 'center' }}>
+                {isEn ? 'Voucher Added to Cart!' : 'تمت إضافة القسيمة إلى السلة بنجاح!'}
+              </h3>
+              <p className="text-[#64748b] text-[15px] max-w-[480px] mx-auto mb-8 text-center leading-relaxed" style={{ textAlign: 'center' }}>
+                {isEn
+                  ? 'Your customized gift voucher has been placed in your cart. You can complete checkout whenever you are ready.'
+                  : 'تم وضع قسيمة الهدية المخصصة في سلتك. يمكنك إتمام الطلب والدفع متى أردت.'}
+              </p>
 
-                <div className={`voucher-card-preview ${themeColor}`} dir={isEn ? 'ltr' : 'rtl'}>
-                  <div className="voucher-card-notch-left" />
-                  <div className="voucher-card-notch-right" />
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-4 text-center mx-auto w-full">
+                <button
+                  type="button"
+                  onClick={() => open('cart')}
+                  className="w-full sm:w-auto h-[48px] px-8 bg-[#234745] hover:bg-[#1A3533] text-white font-bold text-[15px] rounded-full transition-all shadow-md cursor-pointer border-none flex items-center justify-center"
+                >
+                  {isEn ? 'View Cart & Checkout' : 'عرض السلة وإتمام الدفع'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCurrentStep(1);
+                    setRecipientEmail('');
+                    setPersonalMessage(isEn ? 'Happy Birthday' : 'كل عام وانت بخير');
+                    setSelectedAmount(100);
+                  }}
+                  className="text-[#718096] text-[14px] underline hover:text-[#234745] transition-colors cursor-pointer font-medium"
+                >
+                  {isEn ? 'Send another voucher' : 'إرسال قسيمة أخرى'}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col lg:flex-row items-start gap-8 justify-between w-full" dir={isEn ? 'ltr' : 'rtl'}>
+              {/* Left Column: Live Voucher Card Preview */}
+              <div className="w-full lg:w-1/2 flex-1 min-w-0" dir={isEn ? 'ltr' : 'rtl'}>
+                <div className="gift-preview-box">
+                  <span className="preview-tag-title">
+                    {isEn ? 'Live Preview' : 'معاينة مباشرة'}
+                  </span>
+
+                  <div className={`voucher-card-preview ${themeColor}`} dir={isEn ? 'ltr' : 'rtl'}>
+                    <div className="voucher-card-notch-left" />
+                    <div className="voucher-card-notch-right" />
 
                   <div className="voucher-card-top text-center">
                     <span
@@ -1123,47 +1162,9 @@ export function GiftVoucherWizard({
                   </div>
                 </div>
               )}
-
-              {/* Step 4 */}
-              {currentStep === 4 && (
-                <div className="gift-step-card text-center py-10">
-                  <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl">
-                    ✓
-                  </div>
-                  <h3 className="text-2xl font-bold text-[#234745] mb-2" style={{ fontFamily: "'Bahij Janna', sans-serif" }}>
-                    {isEn ? 'Voucher Added to Cart!' : 'تمت إضافة القسيمة إلى السلة بنجاح!'}
-                  </h3>
-                  <p className="text-[#64748b] text-[14px] max-w-[400px] mx-auto mb-6">
-                    {isEn
-                      ? 'Your customized gift voucher has been placed in your cart. You can complete checkout whenever you are ready.'
-                      : 'تم وضع قسيمة الهدية المخصصة في سلتك. يمكنك إتمام الطلب والدفع متى أردت.'}
-                  </p>
-
-                  <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-                    <button
-                      type="button"
-                      onClick={() => open('cart')}
-                      className="w-full sm:w-auto px-8 py-3 bg-[#234745] hover:bg-[#1A3533] text-white font-bold text-[14px] rounded-full transition-all shadow-md cursor-pointer"
-                    >
-                      {isEn ? 'View Cart & Checkout' : 'عرض السلة وإتمام الدفع'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setCurrentStep(1);
-                        setRecipientEmail('');
-                        setPersonalMessage(isEn ? 'Happy Birthday' : 'كل عام وانت بخير');
-                        setSelectedAmount(100);
-                      }}
-                      className="text-[#718096] text-[13px] underline hover:text-[#234745] transition-colors cursor-pointer"
-                    >
-                      {isEn ? 'Send another voucher' : 'إرسال قسيمة أخرى'}
-                    </button>
-                  </div>
-                </div>
-              )}
             </div>
           </div>
+        )}
         </>
       )}
 

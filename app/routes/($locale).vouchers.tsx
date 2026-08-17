@@ -137,7 +137,13 @@ export async function action({request, context}: ActionFunctionArgs) {
 // In-memory cache for active price rules (60s TTL)
 let vouchersCache: {timestamp: number; rules: any[]} | null = null;
 
-async function getTaggedCodesFromGraphQL(adminDomain: string, adminToken: string): Promise<Set<string>> {
+async function getTaggedCodesFromGraphQL(adminDomain: string, adminToken: string): Promise<{
+  voucherCodesSet: Set<string>;
+  discountPageCodesSet: Set<string>;
+}> {
+  const voucherCodesSet = new Set<string>();
+  const discountPageCodesSet = new Set<string>();
+
   try {
     const res = await fetch(`https://${adminDomain}/admin/api/2024-04/graphql.json`, {
       method: 'POST',
@@ -148,30 +154,45 @@ async function getTaggedCodesFromGraphQL(adminDomain: string, adminToken: string
       body: JSON.stringify({
         query: `
           query {
-            codeDiscountNodes(first: 100, query: "discountcodepage") {
+            voucherNodes: codeDiscountNodes(first: 100, query: "voucher") {
               nodes {
                 id
-                metafields(first: 10) {
-                  nodes {
-                    key
-                    value
-                  }
-                }
                 codeDiscount {
                   __typename
                   ... on DiscountCodeBasic {
                     title
-                    summary
                     codes(first: 10) { nodes { code } }
                   }
                   ... on DiscountCodeFreeShipping {
                     title
-                    summary
                     codes(first: 10) { nodes { code } }
                   }
                   ... on DiscountCodeBxgy {
                     title
-                    summary
+                    codes(first: 10) { nodes { code } }
+                  }
+                  ... on DiscountCodeApp {
+                    title
+                    codes(first: 10) { nodes { code } }
+                  }
+                }
+              }
+            }
+            discountPageNodes: codeDiscountNodes(first: 100, query: "discountcodepage") {
+              nodes {
+                id
+                codeDiscount {
+                  __typename
+                  ... on DiscountCodeBasic {
+                    title
+                    codes(first: 10) { nodes { code } }
+                  }
+                  ... on DiscountCodeFreeShipping {
+                    title
+                    codes(first: 10) { nodes { code } }
+                  }
+                  ... on DiscountCodeBxgy {
+                    title
                     codes(first: 10) { nodes { code } }
                   }
                   ... on DiscountCodeApp {
@@ -189,18 +210,22 @@ async function getTaggedCodesFromGraphQL(adminDomain: string, adminToken: string
 
     if (res && res.ok) {
       const data = (await res.json()) as any;
-      const nodes = data.data?.codeDiscountNodes?.nodes || [];
-      const set = new Set<string>();
-      for (const n of nodes) {
-        if (n.codeDiscount?.title) set.add(n.codeDiscount.title.trim().toLowerCase());
+      for (const n of data.data?.voucherNodes?.nodes || []) {
+        if (n.codeDiscount?.title) voucherCodesSet.add(n.codeDiscount.title.trim().toLowerCase());
         for (const c of n.codeDiscount?.codes?.nodes || []) {
-          if (c.code) set.add(c.code.trim().toLowerCase());
+          if (c.code) voucherCodesSet.add(c.code.trim().toLowerCase());
         }
       }
-      return set;
+      for (const n of data.data?.discountPageNodes?.nodes || []) {
+        if (n.codeDiscount?.title) discountPageCodesSet.add(n.codeDiscount.title.trim().toLowerCase());
+        for (const c of n.codeDiscount?.codes?.nodes || []) {
+          if (c.code) discountPageCodesSet.add(c.code.trim().toLowerCase());
+        }
+      }
     }
   } catch (e) {}
-  return new Set<string>();
+
+  return { voucherCodesSet, discountPageCodesSet };
 }
 
 async function getPriceRules(env: any) {
@@ -408,13 +433,16 @@ export async function loader({context}: LoaderFunctionArgs) {
   const [
     {usedCodesSet, voucherHistory: customerVoucherHistory},
     priceRules,
-    taggedCodesSet,
+    {voucherCodesSet, discountPageCodesSet},
   ] = await Promise.all([
     getCustomerUsedCodesAndHistory(context, lang),
     getPriceRules(env),
     adminToken && adminDomain
       ? getTaggedCodesFromGraphQL(adminDomain, adminToken)
-      : Promise.resolve(new Set<string>()),
+      : Promise.resolve({
+          voucherCodesSet: new Set<string>(),
+          discountPageCodesSet: new Set<string>(),
+        }),
   ]);
 
   const voucherPromises = priceRules.map(async (rule: any) => {
@@ -520,9 +548,18 @@ export async function loader({context}: LoaderFunctionArgs) {
 
     const titleLower = (rule.title || '').trim().toLowerCase();
     const codeLowerStr = (code || '').trim().toLowerCase();
-    const hasTag =
-      taggedCodesSet.has(codeLowerStr) ||
-      taggedCodesSet.has(titleLower) ||
+
+    const hasVoucherTag =
+      voucherCodesSet.has(codeLowerStr) ||
+      voucherCodesSet.has(titleLower) ||
+      titleLower.includes('voucher') ||
+      titleLower.includes('قسيمة') ||
+      codeLowerStr.includes('voucher') ||
+      codeLowerStr.includes('قسيمة');
+
+    const hasDiscountCodePageTag =
+      discountPageCodesSet.has(codeLowerStr) ||
+      discountPageCodesSet.has(titleLower) ||
       titleLower.includes('discountcodepage') ||
       codeLowerStr.includes('discountcodepage');
 
@@ -532,7 +569,8 @@ export async function loader({context}: LoaderFunctionArgs) {
       code,
       status,
       badgeText,
-      hasTag,
+      hasVoucherTag,
+      hasDiscountCodePageTag,
       valueType: rule.value_type,
       value: valNum,
       discountDisplayAr,
@@ -1080,7 +1118,7 @@ export default function VouchersPage() {
           }}
         >
           {(() => {
-            const list = shopifyVouchers.filter((v) => v.status === 'active');
+            const list = shopifyVouchers.filter((v) => v.status === 'active' && v.hasVoucherTag);
 
             if (list.length === 0) {
               return (

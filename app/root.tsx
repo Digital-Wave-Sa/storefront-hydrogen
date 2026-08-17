@@ -539,6 +539,8 @@ export function Layout({children}: {children?: React.ReactNode}) {
   return (
     <html lang={locale} dir={isEn ? 'ltr' : 'rtl'} suppressHydrationWarning>
       <head suppressHydrationWarning>
+        <meta charSet="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
         <Meta />
         <link rel="canonical" href={canonicalUrl} />
         <link rel="alternate" hrefLang="ar" href={arUrl} />

@@ -726,11 +726,11 @@ export default function Product() {
       (product as any).upsell_products?.references?.nodes || [];
     if (directUpsells.length > 0) return directUpsells;
 
-    const addons = (product as any).addons?.references?.nodes || [];
-    if (addons.length > 0) return addons;
+    const productUpsells =
+      (product as any).product_upsells?.references?.nodes || [];
+    if (productUpsells.length > 0) return productUpsells;
 
-    const related = (product as any).related_products?.references?.nodes || [];
-    return related;
+    return [];
   }, [product]);
   const [isBuyingNow, setIsBuyingNow] = useState(false);
   const [activeTab, setActiveTab] = useState('details');

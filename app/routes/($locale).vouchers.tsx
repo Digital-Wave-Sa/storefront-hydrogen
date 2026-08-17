@@ -154,7 +154,7 @@ async function getTaggedCodesFromGraphQL(adminDomain: string, adminToken: string
       body: JSON.stringify({
         query: `
           query {
-            voucherNodes: codeDiscountNodes(first: 100, query: "voucher") {
+            voucherNodes: codeDiscountNodes(first: 100, query: "voucher OR vouchers") {
               nodes {
                 id
                 codeDiscount {
@@ -758,7 +758,7 @@ export default function VouchersPage() {
   const [lastAppliedCode, setLastAppliedCode] = useState<string>('');
 
   // "My Vouchers / قسائمي" section: only displays vouchers with the "discountcodepage" tag
-  const myVouchers = shopifyVouchers.filter((v) => v.hasTag);
+  const myVouchers = shopifyVouchers.filter((v) => v.hasDiscountCodePageTag);
   const activeVouchers = myVouchers.filter((v) => v.status === 'active');
   const usedVouchers = myVouchers.filter((v) => v.status === 'used');
   const expiredVouchers = myVouchers.filter((v) => v.status === 'expired');

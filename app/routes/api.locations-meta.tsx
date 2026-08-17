@@ -1,22 +1,41 @@
-import type {Route} from './+types/api.locations-meta';
+import {data, type LoaderFunctionArgs} from 'react-router';
 import {getAdminToken, getAdminDomain} from '~/lib/shopify-admin.server';
+
+// 5-minute in-memory cache for location metafields
+let locationsMetaCache: {timestamp: number; locations: any[]} | null = null;
 
 /**
  * Server-side API route that fetches Location metafields via the Shopify Admin GraphQL API.
  * The Storefront API does NOT support metafields on Location objects,
  * so we proxy through the Admin API using the private access token.
  */
-export async function loader({context}: Route.LoaderArgs) {
+export async function loader({context}: LoaderFunctionArgs) {
   const {env} = context;
+
+  const now = Date.now();
+  if (locationsMetaCache && now - locationsMetaCache.timestamp < 300000) {
+    return data(
+      {locations: locationsMetaCache.locations},
+      {
+        headers: {
+          'Cache-Control': 'public, max-age=300, stale-while-revalidate=60',
+        },
+      },
+    );
+  }
 
   const shopDomain = getAdminDomain(env);
 
   if (!shopDomain) {
-    return Response.json({locations: []}, {status: 200});
+    return data({locations: []}, {status: 200});
   }
 
   try {
     const adminToken = await getAdminToken(env);
+    if (!adminToken) {
+      return data({locations: locationsMetaCache?.locations || []}, {status: 200});
+    }
+
     // Use the GraphQL Admin API
     const query = `{
       locations(first: 250) {
@@ -44,7 +63,7 @@ export async function loader({context}: Route.LoaderArgs) {
     }`;
 
     const res = await fetch(
-      `https://${shopDomain}/admin/api/2024-10/graphql.json`,
+      `https://${shopDomain}/admin/api/2024-04/graphql.json`,
       {
         method: 'POST',
         headers: {
@@ -52,8 +71,9 @@ export async function loader({context}: Route.LoaderArgs) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({query}),
+        signal: AbortSignal.timeout(4000),
       },
-    );
+    ).catch(() => null);
 
     if (!res.ok) {
       console.error(
@@ -224,17 +244,18 @@ export async function loader({context}: Route.LoaderArgs) {
       };
     });
 
-    return Response.json(
+    locationsMetaCache = {timestamp: now, locations: enriched};
+
+    return data(
       {locations: enriched},
       {
         status: 200,
         headers: {
-          'Cache-Control':
-            'no-store, no-cache, must-revalidate, proxy-revalidate',
+          'Cache-Control': 'public, max-age=300, stale-while-revalidate=60',
         },
       },
     );
   } catch (error) {
-    return Response.json({locations: []}, {status: 200});
+    return data({locations: locationsMetaCache?.locations || []}, {status: 200});
   }
 }

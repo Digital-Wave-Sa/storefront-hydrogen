@@ -686,32 +686,54 @@ export type CustomerAddressesQuery = {
   >;
 };
 
-export type MegaMenuCollectionsQueryVariables = StorefrontAPI.Exact<{
-  ids:
-    | Array<StorefrontAPI.Scalars['ID']['input']>
-    | StorefrontAPI.Scalars['ID']['input'];
+export type MegaMenuQueryVariables = StorefrontAPI.Exact<{
+  handle: StorefrontAPI.Scalars['String']['input'];
   country?: StorefrontAPI.InputMaybe<StorefrontAPI.CountryCode>;
   language?: StorefrontAPI.InputMaybe<StorefrontAPI.LanguageCode>;
 }>;
 
-export type MegaMenuCollectionsQuery = {
-  nodes: Array<
-    StorefrontAPI.Maybe<
-      Pick<StorefrontAPI.Collection, 'id' | 'title' | 'handle'> & {
-        image?: StorefrontAPI.Maybe<
-          Pick<StorefrontAPI.Image, 'url' | 'altText'>
-        >;
-        products: {
-          nodes: Array<
-            Pick<StorefrontAPI.Product, 'id' | 'title' | 'handle'> & {
-              featuredImage?: StorefrontAPI.Maybe<
+export type MegaMenuQuery = {
+  menu?: StorefrontAPI.Maybe<
+    Pick<StorefrontAPI.Menu, 'id' | 'title' | 'handle'> & {
+      items: Array<
+        Pick<
+          StorefrontAPI.MenuItem,
+          'id' | 'title' | 'url' | 'type' | 'resourceId'
+        > & {
+          resource?: StorefrontAPI.Maybe<
+            Pick<StorefrontAPI.Collection, 'id' | 'title' | 'handle'> & {
+              image?: StorefrontAPI.Maybe<
                 Pick<StorefrontAPI.Image, 'url' | 'altText'>
+              >;
+              products: {
+                nodes: Array<
+                  Pick<StorefrontAPI.Product, 'id' | 'title' | 'handle'> & {
+                    featuredImage?: StorefrontAPI.Maybe<
+                      Pick<StorefrontAPI.Image, 'url' | 'altText'>
+                    >;
+                  }
+                >;
+              };
+            }
+          >;
+          items: Array<
+            Pick<
+              StorefrontAPI.MenuItem,
+              'id' | 'title' | 'url' | 'type' | 'resourceId'
+            > & {
+              resource?: StorefrontAPI.Maybe<
+                | Pick<StorefrontAPI.Collection, 'id' | 'title' | 'handle'>
+                | (Pick<StorefrontAPI.Product, 'id' | 'title' | 'handle'> & {
+                    featuredImage?: StorefrontAPI.Maybe<
+                      Pick<StorefrontAPI.Image, 'url' | 'altText'>
+                    >;
+                  })
               >;
             }
           >;
-        };
-      }
-    >
+        }
+      >;
+    }
   >;
 };
 
@@ -2013,6 +2035,19 @@ export type HomepageConfigQueryVariables = StorefrontAPI.Exact<{
 }>;
 
 export type HomepageConfigQuery = {
+  corporateGifting: {
+    nodes: Array<
+      Pick<StorefrontAPI.Metaobject, 'id'> & {
+        fields: Array<
+          Pick<StorefrontAPI.MetaobjectField, 'key' | 'value'> & {
+            reference?: StorefrontAPI.Maybe<{
+              image?: StorefrontAPI.Maybe<Pick<StorefrontAPI.Image, 'url'>>;
+            }>;
+          }
+        >;
+      }
+    >;
+  };
   heroSlides: {
     nodes: Array<
       Pick<StorefrontAPI.Metaobject, 'id'> & {
@@ -6388,9 +6423,9 @@ interface GeneratedQueryTypes {
     return: CustomerAddressesQuery;
     variables: CustomerAddressesQueryVariables;
   };
-  '#graphql\n  query MegaMenuCollections($ids: [ID!]!, $country: CountryCode, $language: LanguageCode)\n    @inContext(country: $country, language: $language) {\n    nodes(ids: $ids) {\n      ... on Collection {\n        id\n        title\n        handle\n        image {\n          url\n          altText\n        }\n        products(first: 6) {\n          nodes {\n            id\n            title\n            handle\n            featuredImage {\n              url\n              altText\n            }\n          }\n        }\n      }\n    }\n  }\n': {
-    return: MegaMenuCollectionsQuery;
-    variables: MegaMenuCollectionsQueryVariables;
+  '#graphql\n  query MegaMenu($handle: String!, $country: CountryCode, $language: LanguageCode)\n    @inContext(country: $country, language: $language) {\n    menu(handle: $handle) {\n      id\n      title\n      handle\n      items {\n        id\n        title\n        url\n        type\n        resourceId\n        resource {\n          ... on Collection {\n            id\n            title\n            handle\n            image {\n              url\n              altText\n            }\n            products(first: 6) {\n              nodes {\n                id\n                title\n                handle\n                featuredImage {\n                  url\n                  altText\n                }\n              }\n            }\n          }\n        }\n        items {\n          id\n          title\n          url\n          type\n          resourceId\n          resource {\n            ... on Product {\n              id\n              title\n              handle\n              featuredImage {\n                url\n                altText\n              }\n            }\n            ... on Collection {\n              id\n              title\n              handle\n            }\n          }\n        }\n      }\n    }\n  }\n': {
+    return: MegaMenuQuery;
+    variables: MegaMenuQueryVariables;
   };
   '#graphql\n  fragment FeaturedCollection on Collection {\n    id\n    title\n    image {\n      id\n      url\n      altText\n      width\n      height\n    }\n    handle\n  }\n  query FeaturedCollection($country: CountryCode, $language: LanguageCode)\n    @inContext(country: $country, language: $language) {\n    collections(first: 1, sortKey: UPDATED_AT, reverse: true) {\n      nodes {\n        ...FeaturedCollection\n      }\n    }\n  }\n': {
     return: FeaturedCollectionQuery;
@@ -6408,7 +6443,7 @@ interface GeneratedQueryTypes {
     return: OccasionsQuery;
     variables: OccasionsQueryVariables;
   };
-  '#graphql\n  query HomepageConfig($country: CountryCode, $language: LanguageCode)\n    @inContext(country: $country, language: $language) {\n    heroSlides: metaobjects(type: "hero_slide", first: 20) {\n      nodes {\n        id\n        fields {\n          key\n          value\n          reference {\n            ... on MediaImage {\n              image { url }\n            }\n          }\n        }\n      }\n    }\n    ramadanBanner: metaobjects(type: "ramadan_banner", first: 1) {\n      nodes {\n        id\n        fields {\n          key\n          value\n          reference {\n            ... on MediaImage {\n              image { url }\n            }\n          }\n        }\n      }\n    }\n    offersSection: metaobjects(type: "offers_section", first: 1) {\n      nodes {\n        id\n        fields {\n          key\n          value\n        }\n      }\n    }\n    offerCards: metaobjects(type: "offer_card", first: 10) {\n      nodes {\n        id\n        fields {\n          key\n          value\n          reference {\n            ... on MediaImage {\n              image { url }\n            }\n          }\n        }\n      }\n    }\n  }\n': {
+  '#graphql\n  query HomepageConfig($country: CountryCode, $language: LanguageCode)\n    @inContext(country: $country, language: $language) {\n    corporateGifting: metaobjects(type: "corporate_gifting", first: 1) {\n      nodes {\n        id\n        fields {\n          key\n          value\n          reference {\n            ... on MediaImage {\n              image { url }\n            }\n          }\n        }\n      }\n    }\n    heroSlides: metaobjects(type: "hero_slide", first: 20) {\n      nodes {\n        id\n        fields {\n          key\n          value\n          reference {\n            ... on MediaImage {\n              image { url }\n            }\n          }\n        }\n      }\n    }\n    ramadanBanner: metaobjects(type: "ramadan_banner", first: 1) {\n      nodes {\n        id\n        fields {\n          key\n          value\n          reference {\n            ... on MediaImage {\n              image { url }\n            }\n          }\n        }\n      }\n    }\n    offersSection: metaobjects(type: "offers_section", first: 1) {\n      nodes {\n        id\n        fields {\n          key\n          value\n        }\n      }\n    }\n    offerCards: metaobjects(type: "offer_card", first: 10) {\n      nodes {\n        id\n        fields {\n          key\n          value\n          reference {\n            ... on MediaImage {\n              image { url }\n            }\n          }\n        }\n      }\n    }\n  }\n': {
     return: HomepageConfigQuery;
     variables: HomepageConfigQueryVariables;
   };

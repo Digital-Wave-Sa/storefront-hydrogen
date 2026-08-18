@@ -256,21 +256,16 @@ async function loadCriticalData({context}: Route.LoaderArgs) {
         console.error('[ROOT] Storefront Review Fetch Failed:', e.message);
         return { nodes: [] };
       }),
-    storefront.query(MEGAMENU_COLLECTIONS_QUERY, {
+    storefront.query(MEGAMENU_QUERY, {
       cache: storefront.CacheLong(),
       variables: {
-        ids: [
-          'gid://shopify/Collection/473419940073',
-          'gid://shopify/Collection/473419907305',
-          'gid://shopify/Collection/473421021417',
-          'gid://shopify/Collection/473423872233',
-        ],
+        handle: 'mega-menu',
         country: storefront.i18n.country,
         language: storefront.i18n.language,
       },
     }).catch((error) => {
       console.error('Failed to fetch megamenu data:', error);
-      return { nodes: [] };
+      return null;
     }),
     storefront.query(`#graphql
       query GetShopLocationDiscounts {
@@ -916,26 +911,61 @@ const CUSTOMER_ADDRESSES_QUERY = `#graphql
   }
 `;
 
-const MEGAMENU_COLLECTIONS_QUERY = `#graphql
-  query MegaMenuCollections($ids: [ID!]!, $country: CountryCode, $language: LanguageCode)
+const MEGAMENU_QUERY = `#graphql
+  query MegaMenu($handle: String!, $country: CountryCode, $language: LanguageCode)
     @inContext(country: $country, language: $language) {
-    nodes(ids: $ids) {
-      ... on Collection {
+    menu(handle: $handle) {
+      id
+      title
+      handle
+      items {
         id
         title
-        handle
-        image {
-          url
-          altText
-        }
-        products(first: 6) {
-          nodes {
+        url
+        type
+        resourceId
+        resource {
+          ... on Collection {
             id
             title
             handle
-            featuredImage {
+            image {
               url
               altText
+            }
+            products(first: 6) {
+              nodes {
+                id
+                title
+                handle
+                featuredImage {
+                  url
+                  altText
+                }
+              }
+            }
+          }
+        }
+        items {
+          id
+          title
+          url
+          type
+          resourceId
+          resource {
+            ... on Product {
+              id
+              title
+              handle
+              featuredImage {
+                url
+                altText
+              }
+            }
+            ... on Collection {
+              id
+              title
+              handle
             }
           }
         }

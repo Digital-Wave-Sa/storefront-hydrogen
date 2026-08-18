@@ -845,61 +845,117 @@ function ProductMegaMenu({ locale, megaMenuData, onClose }: { locale?: string; m
   const location = useLocation();
   const isEn = location.pathname.startsWith('/en');
 
+  // 1. Support Shopify Navigation Menu items (megaMenuData.menu.items)
+  const menuItems = megaMenuData?.menu?.items || [];
+
+  // 2. Fallback to raw collection nodes if menu is not present
   const rawNodes = megaMenuData?.nodes || megaMenuData?.collections?.nodes || [];
   const collections = rawNodes.filter((col: any) => col && col.id && col.title);
 
-  const categories = collections.length > 0 ? collections.map((col: any) => {
-    const colUrl = isEn ? `/en/collections/${col.handle}` : `/collections/${col.handle}`;
-    const firstProductImg = col.products?.nodes?.find((p: any) => p.featuredImage?.url)?.featuredImage?.url;
-    const catImage = col.image?.url || firstProductImg || 'https://cdn.shopify.com/s/files/1/0533/2089/files/placeholder-images-image_large.png';
+  let categories: any[] = [];
 
-    return {
-      title: col.title,
-      image: catImage,
-      items: col.products?.nodes?.map((p: any) => ({
-        title: p.title,
-        url: isEn ? `/en/products/${p.handle}` : `/products/${p.handle}`
-      })) || [],
-      url: colUrl
-    };
-  }) : [
-    {
-      title: isEn ? 'Oriental Sweets' : 'حلويات شرقية',
-      image: 'https://cdn.shopify.com/s/files/1/0943/4280/7861/files/category-baklava.jpg?v=1730000000',
-      items: (isEn ? ['Baklava', 'Maamoul', 'Kunafa', 'Basbousa'] : ['بقلاوة', 'معمول', 'كنافة', 'بسبوسة']).map(name => ({
-        title: name,
-        url: `${isEn ? '/en' : ''}/collections/oriental-sweets/${name.toLowerCase().replace(/ /g, '-')}`
-      })),
-      url: isEn ? '/en/collections/oriental-sweets' : '/collections/oriental-sweets'
-    },
-    {
-      title: isEn ? 'Premium Chocolates' : 'شوكولاتة فاخرة',
-      image: 'https://cdn.shopify.com/s/files/1/0943/4280/7861/files/category-choco.jpg?v=1730000001',
-      items: (isEn ? ['Truffles', 'Pralines', 'Gift Boxes', 'Wrapped Choco'] : ['ترافلز', 'برالين', 'صناديق هدايا', 'شوكولاتة مغلفة']).map(name => ({
-        title: name,
-        url: `${isEn ? '/en' : ''}/collections/chocolates/${name.toLowerCase().replace(/ /g, '-')}`
-      })),
-      url: isEn ? '/en/collections/chocolates' : '/collections/chocolates'
-    },
-    {
-      title: isEn ? 'Cakes & Pastries' : 'كيك وحلويات غربية',
-      image: 'https://cdn.shopify.com/s/files/1/0943/4280/7861/files/category-cakes.jpg?v=1730000002',
-      items: (isEn ? ['Occasion Cakes', 'Mini Cakes', 'Macarons', 'Éclairs'] : ['كيك المناسبات', 'ميني كيك', 'ماكرون', 'اكلير']).map(name => ({
-        title: name,
-        url: `${isEn ? '/en' : ''}/collections/cakes/${name.toLowerCase().replace(/ /g, '-')}`
-      })),
-      url: isEn ? '/en/collections/cakes' : '/collections/cakes'
-    },
-    {
-      title: isEn ? 'Ice Cream' : 'آيس كريم',
-      image: 'https://cdn.shopify.com/s/files/1/0943/4280/7861/files/category-icecream.jpg?v=1730000003',
-      items: (isEn ? ['Gelato', 'Sorbet', 'Party Tubs', 'Stick Ice Cream'] : ['جيلاتو', 'سوربيه', 'عبوات الحفلات', 'آيس كريم ستيك']).map(name => ({
-        title: name,
-        url: `${isEn ? '/en' : ''}/collections/ice-cream/${name.toLowerCase().replace(/ /g, '-')}`
-      })),
-      url: isEn ? '/en/collections/ice-cream' : '/collections/ice-cream'
-    }
-  ];
+  if (menuItems.length > 0) {
+    categories = menuItems.map((item: any) => {
+      const col = item.resource;
+      const title = col?.title || item.title;
+      const handle = col?.handle || (item.url ? item.url.split('/').pop()?.split('?')[0] : '');
+      const colUrl = handle
+        ? (isEn ? `/en/collections/${handle}` : `/collections/${handle}`)
+        : (item.url || '#');
+
+      const firstProductImg = col?.products?.nodes?.find((p: any) => p.featuredImage?.url)?.featuredImage?.url;
+      const catImage = col?.image?.url || firstProductImg || 'https://cdn.shopify.com/s/files/1/0533/2089/files/placeholder-images-image_large.png';
+
+      let subItems: any[] = [];
+      if (item.items && item.items.length > 0) {
+        subItems = item.items.map((sub: any) => {
+          let url = sub.url || '';
+          try {
+            if (url.startsWith('http://') || url.startsWith('https://')) {
+              const parsed = new URL(url);
+              url = parsed.pathname;
+            }
+          } catch (e) {}
+          if (isEn && !url.startsWith('/en')) {
+            url = `/en${url}`;
+          } else if (!isEn && url.startsWith('/en/')) {
+            url = url.replace('/en', '');
+          }
+          return {
+            title: sub.resource?.title || sub.title,
+            url: url || '#',
+          };
+        });
+      } else if (col?.products?.nodes && col.products.nodes.length > 0) {
+        subItems = col.products.nodes.map((p: any) => ({
+          title: p.title,
+          url: isEn ? `/en/products/${p.handle}` : `/products/${p.handle}`,
+        }));
+      }
+
+      return {
+        title,
+        image: catImage,
+        items: subItems,
+        url: colUrl,
+      };
+    });
+  } else if (collections.length > 0) {
+    categories = collections.map((col: any) => {
+      const colUrl = isEn ? `/en/collections/${col.handle}` : `/collections/${col.handle}`;
+      const firstProductImg = col.products?.nodes?.find((p: any) => p.featuredImage?.url)?.featuredImage?.url;
+      const catImage = col.image?.url || firstProductImg || 'https://cdn.shopify.com/s/files/1/0533/2089/files/placeholder-images-image_large.png';
+
+      return {
+        title: col.title,
+        image: catImage,
+        items: col.products?.nodes?.map((p: any) => ({
+          title: p.title,
+          url: isEn ? `/en/products/${p.handle}` : `/products/${p.handle}`
+        })) || [],
+        url: colUrl
+      };
+    });
+  } else {
+    categories = [
+      {
+        title: isEn ? 'Oriental Sweets' : 'حلويات شرقية',
+        image: 'https://cdn.shopify.com/s/files/1/0943/4280/7861/files/category-baklava.jpg?v=1730000000',
+        items: (isEn ? ['Baklava', 'Maamoul', 'Kunafa', 'Basbousa'] : ['بقلاوة', 'معمول', 'كنافة', 'بسبوسة']).map(name => ({
+          title: name,
+          url: `${isEn ? '/en' : ''}/collections/oriental-sweets/${name.toLowerCase().replace(/ /g, '-')}`
+        })),
+        url: isEn ? '/en/collections/oriental-sweets' : '/collections/oriental-sweets'
+      },
+      {
+        title: isEn ? 'Premium Chocolates' : 'شوكولاتة فاخرة',
+        image: 'https://cdn.shopify.com/s/files/1/0943/4280/7861/files/category-choco.jpg?v=1730000001',
+        items: (isEn ? ['Truffles', 'Pralines', 'Gift Boxes', 'Wrapped Choco'] : ['ترافلز', 'برالين', 'صناديق هدايا', 'شوكولاتة مغلفة']).map(name => ({
+          title: name,
+          url: `${isEn ? '/en' : ''}/collections/chocolates/${name.toLowerCase().replace(/ /g, '-')}`
+        })),
+        url: isEn ? '/en/collections/chocolates' : '/collections/chocolates'
+      },
+      {
+        title: isEn ? 'Cakes & Pastries' : 'كيك وحلويات غربية',
+        image: 'https://cdn.shopify.com/s/files/1/0943/4280/7861/files/category-cakes.jpg?v=1730000002',
+        items: (isEn ? ['Occasion Cakes', 'Mini Cakes', 'Macarons', 'Éclairs'] : ['كيك المناسبات', 'ميني كيك', 'ماكرون', 'اكلير']).map(name => ({
+          title: name,
+          url: `${isEn ? '/en' : ''}/collections/cakes/${name.toLowerCase().replace(/ /g, '-')}`
+        })),
+        url: isEn ? '/en/collections/cakes' : '/collections/cakes'
+      },
+      {
+        title: isEn ? 'Ice Cream' : 'آيس كريم',
+        image: 'https://cdn.shopify.com/s/files/1/0943/4280/7861/files/category-icecream.jpg?v=1730000003',
+        items: (isEn ? ['Gelato', 'Sorbet', 'Party Tubs', 'Stick Ice Cream'] : ['جيلاتو', 'سوربيه', 'عبوات الحفلات', 'آيس كريم ستيك']).map(name => ({
+          title: name,
+          url: `${isEn ? '/en' : ''}/collections/ice-cream/${name.toLowerCase().replace(/ /g, '-')}`
+        })),
+        url: isEn ? '/en/collections/ice-cream' : '/collections/ice-cream'
+      }
+    ];
+  }
 
   return (
     <div className="bg-white/95 backdrop-blur-xl border-y border-[#234745]/10 shadow-2xl w-full">

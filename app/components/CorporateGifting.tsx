@@ -1,27 +1,52 @@
 import { Link, useOutletContext } from 'react-router';
 
-export function CorporateGifting() {
+export function CorporateGifting({ config }: { config?: any }) {
     const { locale = 'ar' } = useOutletContext<{ locale?: string }>() ?? {};
     const isEn = locale === 'en';
 
-    const content = {
-        en: {
-            title: 'Gifts that Suit Your Company',
-            description: "Leave a mark on every institutional occasion — luxury collections customized with your company name, with Saadeddin's elegance and craftsmanship since 1919. • Bulk orders • Corporate packaging • Delivery to all branches.",
-            button: 'Discover More',
-            card1: 'Client & Partner Gifts',
-            card2: 'Employee Occasions'
-        },
-        ar: {
-            title: 'هدايا تليق بشركتك',
-            description: 'اترك أثراً في كل مناسبة مؤسسية — تشكيلات فاخرة مخصصة لاسم شركتك، بأناقة سعد الدين وحرفتها منذ ١٩١٩. • طلبات بالجملة • تغليف مؤسسي • توصيل لجميع الفروع.',
-            button: 'إكتشف المزيد',
-            card1: 'هدايا العملاء والشركاء',
-            card2: 'مناسبات الموظفين'
+    const metaNode = config?.corporateGifting?.nodes?.[0];
+    const getField = (key: string) => {
+        const f = metaNode?.fields?.find((field: any) => field.key === key);
+        if (f?.reference?.image?.url) {
+            return f.reference.image.url;
         }
+        if (f?.value && !f.value.startsWith('gid://')) {
+            return f.value;
+        }
+        return '';
     };
 
-    const activeContent = isEn ? content.en : content.ar;
+    const title = (isEn ? getField('title_en') : getField('title')) || (isEn ? 'Gifts that Suit Your Company' : 'هدايا تليق بشركتك');
+    const description = (isEn ? getField('description_en') : getField('description')) || (isEn
+        ? "Leave a mark on every institutional occasion — luxury collections customized with your company name, with Saadeddin's elegance and craftsmanship since 1919. • Bulk orders • Corporate packaging • Delivery to all branches."
+        : 'اترك أثراً في كل مناسبة مؤسسية — تشكيلات فاخرة مخصصة لاسم شركتك، بأناقة سعد الدين وحرفتها منذ ١٩١٩. • طلبات بالجملة • تغليف مؤسسي • توصيل لجميع الفروع.');
+    const button = (isEn ? getField('button_text_en') : getField('button_text')) || (isEn ? 'Discover More' : 'إكتشف المزيد');
+    const rawLink = (isEn ? getField('button_link_en') : '') || getField('button_link') || (isEn ? '/en/corporate' : '/corporate');
+    let buttonLink = rawLink;
+    if (buttonLink.startsWith('/') && isEn && !buttonLink.startsWith('/en')) {
+        buttonLink = `/en${buttonLink}`;
+    } else if (buttonLink.startsWith('/en/') && !isEn) {
+        buttonLink = buttonLink.replace('/en', '');
+    }
+
+    const card1Title = (isEn ? getField('card1_title_en') : getField('card1_title')) || (isEn ? 'Employee Occasions' : 'مناسبات الموظفين');
+    const card1Image = getField('card1_image') || '/images/gift-corporate-1.webp';
+
+    const card2Title = (isEn ? getField('card2_title_en') : getField('card2_title')) || (isEn ? 'Client & Partner Gifts' : 'هدايا العملاء والشركاء');
+    const card2Image = getField('card2_image') || '/images/gift-corporate-2.webp';
+
+    const activeContent = {
+        title,
+        description,
+        button,
+        buttonLink,
+        card1: card1Title,
+        card1Image,
+        card2: card2Title,
+        card2Image,
+    };
+
+    const isExternal = activeContent.buttonLink.startsWith('http');
 
     return (
         <section
@@ -48,13 +73,25 @@ export function CorporateGifting() {
                             {activeContent.description}
                         </p>
 
-                        <Link
-                            to={isEn ? "/en/corporate" : "/corporate"}
-                            className="bg-[#BBCFCD] hover:bg-[#a5b9b8] !text-[#234745] px-12 py-4 rounded-full font-bold transition-all shadow-sm flex items-center justify-center w-fit"
-                            style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
-                        >
-                            {activeContent.button}
-                        </Link>
+                        {isExternal ? (
+                            <a
+                                href={activeContent.buttonLink}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="bg-[#BBCFCD] hover:bg-[#a5b9b8] !text-[#234745] px-12 py-4 rounded-full font-bold transition-all shadow-sm flex items-center justify-center w-fit"
+                                style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
+                            >
+                                {activeContent.button}
+                            </a>
+                        ) : (
+                            <Link
+                                to={activeContent.buttonLink}
+                                className="bg-[#BBCFCD] hover:bg-[#a5b9b8] !text-[#234745] px-12 py-4 rounded-full font-bold transition-all shadow-sm flex items-center justify-center w-fit"
+                                style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
+                            >
+                                {activeContent.button}
+                            </Link>
+                        )}
                     </div>
 
                     {/* Cards */}
@@ -65,29 +102,8 @@ export function CorporateGifting() {
                             className="hidden md:flex group relative flex-1 h-[300px] md:h-[264px] rounded-[20px] overflow-hidden bg-[#234745]"
                         >
                             <img
-                                src="/images/gift-corporate-1.webp"
-                                alt=""
-                                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                            />
-                            <div className="absolute inset-0 bg-gradient-to-t from-[rgba(0,0,0,0.65)] via-[rgba(0,0,0,0.3)] to-transparent opacity-90"></div>
-
-                            <div className="absolute bottom-[16px] left-0 right-0 text-center px-4">
-                                <h3
-                                    className="text-[26px] font-bold text-white leading-[42px]"
-                                    style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" }}
-                                >
-                                    {activeContent.card2}
-                                </h3>
-                            </div>
-                        </div>
-
-                        {/* Card 2: Clients & Partners (Second in RTL = Left side) */}
-                        <div
-                            className="group relative flex-1 h-[300px] md:h-[264px] rounded-[20px] overflow-hidden bg-[#234745]"
-                        >
-                            <img
-                                src="/images/gift-corporate-2.webp"
-                                alt=""
+                                src={activeContent.card1Image}
+                                alt={activeContent.card1}
                                 className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                             />
                             <div className="absolute inset-0 bg-gradient-to-t from-[rgba(0,0,0,0.65)] via-[rgba(0,0,0,0.3)] to-transparent opacity-90"></div>
@@ -98,6 +114,27 @@ export function CorporateGifting() {
                                     style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" }}
                                 >
                                     {activeContent.card1}
+                                </h3>
+                            </div>
+                        </div>
+
+                        {/* Card 2: Clients & Partners (Second in RTL = Left side) */}
+                        <div
+                            className="group relative flex-1 h-[300px] md:h-[264px] rounded-[20px] overflow-hidden bg-[#234745]"
+                        >
+                            <img
+                                src={activeContent.card2Image}
+                                alt={activeContent.card2}
+                                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-[rgba(0,0,0,0.65)] via-[rgba(0,0,0,0.3)] to-transparent opacity-90"></div>
+
+                            <div className="absolute bottom-[16px] left-0 right-0 text-center px-4">
+                                <h3
+                                    className="text-[26px] font-bold text-white leading-[42px]"
+                                    style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" }}
+                                >
+                                    {activeContent.card2}
                                 </h3>
                             </div>
                         </div>

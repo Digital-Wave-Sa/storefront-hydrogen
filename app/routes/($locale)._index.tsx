@@ -183,7 +183,7 @@ export default function Homepage() {
       <ShopByOccasion collections={data.occasions} />
       <WhoAreYouGifting collections={data.occasions} />
       <BestSellers products={data.recommendedProducts} />
-      <CorporateGifting />
+      <CorporateGifting config={data.homepageConfig} />
       <NewArrivals products={data.newArrivals} />
       <DesignYourCake />
       <RamadanBanner config={data.homepageConfig} />
@@ -526,6 +526,20 @@ const OCCASIONS_QUERY = `#graphql
 export const HOMEPAGE_CONFIG_QUERY = `#graphql
   query HomepageConfig($country: CountryCode, $language: LanguageCode)
     @inContext(country: $country, language: $language) {
+    corporateGifting: metaobjects(type: "corporate_gifting", first: 1) {
+      nodes {
+        id
+        fields {
+          key
+          value
+          reference {
+            ... on MediaImage {
+              image { url }
+            }
+          }
+        }
+      }
+    }
     heroSlides: metaobjects(type: "hero_slide", first: 20) {
       nodes {
         id

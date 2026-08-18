@@ -11,23 +11,62 @@ export function AccountProfileHeader({
   loyaltyPoints = 0,
   balance = 0,
   wishlistCount = 0,
+  loyaltyInfo,
 }: {
   customer: CustomerFragment;
   isEn: boolean;
   loyaltyPoints?: number;
   balance?: number;
   wishlistCount?: number;
+  loyaltyInfo?: any;
 }) {
   const displayName = `${customer?.firstName || ''} ${customer?.lastName || ''}`.trim() || customer?.email?.split('@')[0] || (isEn ? 'Valued Customer' : 'عميلنا العزيز');
   const initials = (customer?.firstName?.[0] || customer?.email?.[0] || 'C').toUpperCase();
-  const joinDateObj = customer?.createdAt ? new Date(customer.createdAt) : new Date();
-  const formattedJoinDate = joinDateObj.toLocaleDateString('en-US', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  });
+
+  // Resolve Real Loyalty Membership Enrollment Date
+  const rawEnrollment =
+    loyaltyInfo?.activity?.card_created_date ||
+    loyaltyInfo?.enrollmentDate ||
+    customer?.createdAt;
+
+  let formattedJoinDate = '';
+  if (rawEnrollment) {
+    if (/^\d{1,2}\/\d{1,2}\/\d{4}/.test(rawEnrollment)) {
+      const parts = rawEnrollment.split(/[\/\s]/);
+      const day = parseInt(parts[0], 10);
+      const month = parseInt(parts[1], 10) - 1;
+      const year = parseInt(parts[2], 10);
+      const parsedDate = new Date(year, month, day);
+      formattedJoinDate = isNaN(parsedDate.getTime())
+        ? rawEnrollment
+        : parsedDate.toLocaleDateString(isEn ? 'en-US' : 'ar-SA', {
+            day: 'numeric',
+            month: 'short',
+            year: 'numeric',
+          });
+    } else {
+      const dObj = new Date(rawEnrollment);
+      formattedJoinDate = isNaN(dObj.getTime())
+        ? rawEnrollment
+        : dObj.toLocaleDateString(isEn ? 'en-US' : 'ar-SA', {
+            day: 'numeric',
+            month: 'short',
+            year: 'numeric',
+          });
+    }
+  } else {
+    formattedJoinDate = new Date().toLocaleDateString(isEn ? 'en-US' : 'ar-SA', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    });
+  }
+
   const rootData = useRouteLoaderData('root') as any;
-  const tierInfo = getLoyaltyTierInfo(loyaltyPoints);
+  const tierInfo = getLoyaltyTierInfo(
+    loyaltyPoints,
+    loyaltyInfo?.tierName || loyaltyInfo?.tier?.name,
+  );
 
   return (
     <div className="relative mb-8 w-full">

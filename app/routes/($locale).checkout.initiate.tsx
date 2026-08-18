@@ -205,6 +205,82 @@ async function processCheckoutInitiate({request, context}: ActionFunctionArgs) {
     buyerIdentity.phone = formattedPhone;
   }
 
+  // Attach delivery address preferences so Shopify Checkout pre-selects the address chosen in the storefront
+  const selectedAddressName = await session.get('selectedAddressName');
+  const sessionFulfillment = await session.get('fulfillmentType');
+
+  if (sessionFulfillment === 'delivery' && selectedAddressName) {
+    let deliveryAddress: any = null;
+
+    try {
+      if (tokenString && !tokenString.startsWith('session-')) {
+        const {customer} = await context.storefront.query(
+          `#graphql
+          query GetCustomerAddressesForCheckout($customerAccessToken: String!) {
+            customer(customerAccessToken: $customerAccessToken) {
+              addresses(first: 50) {
+                nodes {
+                  id
+                  firstName
+                  lastName
+                  address1
+                  address2
+                  city
+                  province
+                  zip
+                  country
+                  phone
+                }
+              }
+            }
+          }`,
+          {
+            variables: {customerAccessToken: tokenString},
+            cache: context.storefront.CacheNone(),
+          },
+        );
+
+        if (customer?.addresses?.nodes) {
+          const match = customer.addresses.nodes.find(
+            (a: any) =>
+              `${a.firstName || ''} ${a.lastName || ''}`.trim() === selectedAddressName ||
+              a.address1 === selectedAddressName ||
+              (a.address1 && selectedAddressName.includes(a.address1)) ||
+              (selectedAddressName && a.address1 && selectedAddressName.includes(a.address1)),
+          );
+          if (match) {
+            deliveryAddress = {
+              address1: match.address1 || selectedAddressName,
+              address2: match.address2 || '',
+              city: match.city || 'Riyadh',
+              province: match.province || '',
+              zip: match.zip || '',
+              country: match.country || 'SA',
+              firstName: match.firstName || '',
+              lastName: match.lastName || '',
+              phone: match.phone || buyerIdentity.phone || '',
+            };
+          }
+        }
+      }
+    } catch (e) {}
+
+    if (!deliveryAddress) {
+      deliveryAddress = {
+        address1: selectedAddressName,
+        city: 'Riyadh',
+        country: 'SA',
+        phone: buyerIdentity.phone || '',
+      };
+    }
+
+    buyerIdentity.deliveryAddressPreferences = [
+      {
+        deliveryAddress,
+      },
+    ];
+  }
+
   if (Object.keys(buyerIdentity).length > 0) {
     try {
       const updateResult: any = await context.cart.updateBuyerIdentity(buyerIdentity);
@@ -222,10 +298,9 @@ async function processCheckoutInitiate({request, context}: ActionFunctionArgs) {
 
       if (hasInvalidCustomerToken && buyerIdentity.customerAccessToken) {
         console.warn(
-          '[CHECKOUT DIAGNOSTIC] customerAccessToken rejected by Shopify as invalid. Unsetting session token and retrying with email/phone only...',
+          '[CHECKOUT DIAGNOSTIC] customerAccessToken rejected by Shopify for cart buyer identity. Retrying cart update with email/phone only while preserving customer session...',
         );
         delete buyerIdentity.customerAccessToken;
-        session.unset('customerAccessToken');
         await context.cart.updateBuyerIdentity(buyerIdentity);
       }
     } catch (err: any) {
@@ -254,9 +329,41 @@ async function processCheckoutInitiate({request, context}: ActionFunctionArgs) {
     return existing || sessionVal || '';
   };
 
+  let customBranchVal =
+    sessionCustomBranchId ||
+    getAttr('custom.branch_id', '') ||
+    getAttr('branch_id', '') ||
+    (sessionBranchId && !sessionBranchId.includes('gid://') ? sessionBranchId : '');
+
+  const rawLocId = sessionBranchId || getAttr('Branch ID', '');
+  if (!customBranchVal && rawLocId && rawLocId.includes('gid://shopify/Location/')) {
+    try {
+      const locRes = await context.storefront.query(
+        `#graphql
+        query GetLocationsBranchMeta {
+          locations(first: 250) {
+            nodes {
+              id
+              branch_id: metafield(namespace: "custom", key: "branch_id") {
+                value
+              }
+            }
+          }
+        }`,
+        {
+          cache: context.storefront.CacheNone(),
+        },
+      );
+      const matchedNode = locRes?.locations?.nodes?.find((n: any) => n.id === rawLocId);
+      if (matchedNode?.branch_id?.value) {
+        customBranchVal = matchedNode.branch_id.value;
+      }
+    } catch (e) {}
+  }
+
   const finalAttributes = [
     {key: 'Branch', value: getAttr('Branch', sessionBranch)},
-    {key: 'Branch ID', value: getAttr('Branch ID', sessionBranchId)},
+    {key: 'Branch ID', value: customBranchVal || getAttr('Branch ID', sessionBranchId)},
     {
       key: 'Fulfillment Type',
       value: getAttr(
@@ -266,22 +373,9 @@ async function processCheckoutInitiate({request, context}: ActionFunctionArgs) {
     },
   ];
 
-  const customBranchVal =
-    getAttr('custom.branch_id', sessionCustomBranchId) ||
-    getAttr('branch_id', sessionCustomBranchId);
   if (customBranchVal) {
     finalAttributes.push({key: 'custom.branch_id', value: customBranchVal});
     finalAttributes.push({key: 'branch_id', value: customBranchVal});
-  }
-
-  const customAxStoreVal =
-    getAttr('custom.ax_store_id', sessionAxStoreId) ||
-    getAttr('ax_store_id', sessionAxStoreId) ||
-    getAttr('AX Store ID', sessionAxStoreId);
-  if (customAxStoreVal) {
-    finalAttributes.push({key: 'custom.ax_store_id', value: customAxStoreVal});
-    finalAttributes.push({key: 'ax_store_id', value: customAxStoreVal});
-    finalAttributes.push({key: 'AX Store ID', value: customAxStoreVal});
   }
 
   const deliveryDateVal = getAttr('delivery_date', sessionDate);
@@ -294,9 +388,12 @@ async function processCheckoutInitiate({request, context}: ActionFunctionArgs) {
     finalAttributes.push({key: 'Time Slot', value: timeSlotVal});
   }
 
-  // Preserve any other attributes (like loyalty_points)
+  // Preserve other attributes (like loyalty_points, gift_card_codes), but EXCLUDE ax_store_id keys
   rawAttributes.forEach((attr: any) => {
-    if (!finalAttributes.find((f) => f.key === attr.key)) {
+    const isAxKey = ['custom.ax_store_id', 'ax_store_id', 'ax store id'].includes(
+      attr.key.toLowerCase().trim(),
+    );
+    if (!isAxKey && !finalAttributes.find((f) => f.key === attr.key)) {
       finalAttributes.push({key: attr.key, value: attr.value || ''});
     }
   });
@@ -319,8 +416,7 @@ async function processCheckoutInitiate({request, context}: ActionFunctionArgs) {
     (a: any) => a.key === 'Fulfillment Type',
   )?.value;
   const isPickup = fulfillmentType?.toLowerCase() === 'pickup';
-
-  const branchNoteBlock = `[Fulfillment: ${fulfillmentType || 'Delivery'}, Branch: ${branchName || 'N/A'}, Branch ID: ${branchId || 'N/A'}, custom.branch_id: ${customBranchVal || 'N/A'}, custom.ax_store_id: ${customAxStoreVal || 'N/A'}, delivery_date: ${deliveryDateVal || 'N/A'}, Time Slot: ${timeSlotVal || 'N/A'}]`;
+  const branchNoteBlock = `[Fulfillment: ${fulfillmentType || 'Delivery'}, Branch: ${branchName || 'N/A'}, Branch ID: ${branchId || 'N/A'}, custom.branch_id: ${customBranchVal || 'N/A'}, delivery_date: ${deliveryDateVal || 'N/A'}, Time Slot: ${timeSlotVal || 'N/A'}]`;
 
   // Only pass the customer-written note — do NOT modify the Shopify cart note with internal metadata
   const customerNote = (cart.note || '')
@@ -364,7 +460,7 @@ async function processCheckoutInitiate({request, context}: ActionFunctionArgs) {
     pointsToRedeem,
     deliveryType: isPickup ? 'Pick Up' : 'Delivery',
     branchId: customBranchVal || branchId || '',
-    axStoreId: customAxStoreVal || '',
+    axStoreId: sessionAxStoreId || '',
     noteAttributes: finalAttributes.map((a: any) => ({
       name: a.key,
       value: a.key === 'Time Slot' ? extractMinTime(a.value) : a.value,

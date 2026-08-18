@@ -20,6 +20,7 @@ import {LogoSplash} from '~/components/LogoSplash';
 import {SaadeddinApi} from '~/lib/saadeddin-api.server';
 import {derivePassword} from '~/lib/auth.server';
 import {validatePhoneNumber, sanitizePhoneInput} from '~/lib/phone-validation';
+import {COUNTRY_CODES, parsePhoneCountry} from '~/lib/country-codes';
 
 export const meta: MetaFunction<typeof loader> = () => {
   return [{title: 'Create Account | Saadeddin'}];
@@ -221,6 +222,40 @@ export async function action({request, context}: ActionFunctionArgs) {
     const phone = String(form.get('phone') || '');
     const countryCode = String(form.get('countryCode') || '+966');
     const email = String(form.get('email') || '').trim();
+    const accountType = String(form.get('accountType') || 'individual');
+
+    if (accountType === 'company') {
+      const taxRegistration = String(form.get('taxRegistration') || '').trim();
+      const nationalAddress = String(form.get('nationalAddress') || '').trim();
+      const commercialRegister = String(form.get('commercialRegister') || '').trim();
+
+      if (!/^\d{15}$/.test(taxRegistration)) {
+        return data({
+          error:
+            lang === 'en'
+              ? 'Tax Registration Number must be exactly 15 digits.'
+              : 'الرقم الضريبي يجب أن يتكون من 15 رقماً.',
+        });
+      }
+
+      if (nationalAddress.length !== 8) {
+        return data({
+          error:
+            lang === 'en'
+              ? 'National Address must be exactly 8 characters.'
+              : 'العنوان الوطني يجب أن يتكون من 8 خانات.',
+        });
+      }
+
+      if (!/^\d{10}$/.test(commercialRegister)) {
+        return data({
+          error:
+            lang === 'en'
+              ? 'Commercial Register (CR) must be exactly 10 digits.'
+              : 'السجل التجاري يجب أن يتكون من 10 أرقام.',
+        });
+      }
+    }
 
     const phoneValidation = validatePhoneNumber(phone, countryCode);
     if (!phoneValidation.isValid) {
@@ -367,6 +402,8 @@ export async function action({request, context}: ActionFunctionArgs) {
     const companyName = String(form.get('companyName') || '').trim();
     const email = String(form.get('email') || '');
     const taxRegistration = String(form.get('taxRegistration') || '');
+    const nationalAddress = String(form.get('nationalAddress') || '').trim();
+    const commercialRegister = String(form.get('commercialRegister') || '').trim();
     const companyAddress = String(form.get('companyAddress') || '');
     const selectedLanguage =
       String(form.get('language') || '')
@@ -374,6 +411,35 @@ export async function action({request, context}: ActionFunctionArgs) {
         .trim() === 'en'
         ? 'en'
         : 'ar';
+
+    if (accountType === 'company') {
+      if (!/^\d{15}$/.test(taxRegistration)) {
+        return data({
+          error:
+            lang === 'en'
+              ? 'Tax Registration Number must be exactly 15 digits.'
+              : 'الرقم الضريبي يجب أن يتكون من 15 رقماً.',
+        });
+      }
+
+      if (nationalAddress.length !== 8) {
+        return data({
+          error:
+            lang === 'en'
+              ? 'National Address must be exactly 8 characters.'
+              : 'العنوان الوطني يجب أن يتكون من 8 خانات.',
+        });
+      }
+
+      if (!/^\d{10}$/.test(commercialRegister)) {
+        return data({
+          error:
+            lang === 'en'
+              ? 'Commercial Register (CR) must be exactly 10 digits.'
+              : 'السجل التجاري يجب أن يتكون من 10 أرقام.',
+        });
+      }
+    }
 
     // Validate email and phone uniqueness in Shopify Admin API before calling register
     try {
@@ -490,6 +556,8 @@ export async function action({request, context}: ActionFunctionArgs) {
         preferredLanguage: selectedLanguage,
         companyName: companyName || undefined,
         taxNumber: taxRegistration || undefined,
+        nationalAddress: nationalAddress || undefined,
+        commercialRegister: commercialRegister || undefined,
         companyAddress: companyAddress || undefined,
       };
 
@@ -722,13 +790,9 @@ export default function Register() {
   let initialPhone = '';
   let initialCountryCode = '+966';
   if (loaderData?.otpPhone) {
-    const matched = loaderData.otpPhone.match(/^(\+\d{1,3})(.*)$/);
-    if (matched) {
-      initialCountryCode = matched[1];
-      initialPhone = matched[2];
-    } else {
-      initialPhone = loaderData.otpPhone;
-    }
+    const parsed = parsePhoneCountry(loaderData.otpPhone);
+    initialCountryCode = parsed.countryCode;
+    initialPhone = parsed.localNumber;
   }
 
   const location = useLocation();
@@ -1202,17 +1266,22 @@ export default function Register() {
                                 ? 'Tax Registration Number'
                                 : 'الرقم الضريبي'}
                             </span>
+                            <span className="text-[#7D7D7D] text-[11px] font-normal">
+                              {isEn ? '(15 digits)' : '(15 رقماً)'}
+                            </span>
                           </label>
                           <input
                             name="taxRegistration"
                             type="text"
+                            inputMode="numeric"
+                            maxLength={15}
                             placeholder="310000000000003"
-                            className="w-full bg-white border border-[#BBCFCD] rounded-[12px] px-4 py-3 h-[48px] focus:border-[#234745] outline-none text-[#171717] font-medium text-[14px] placeholder:text-[#BBCFCD] transition-colors"
+                            className={`w-full bg-white border ${formData.taxRegistration && formData.taxRegistration.trim().length !== 15 ? 'border-[#E55C5C]' : 'border-[#BBCFCD]'} rounded-[12px] px-4 py-3 h-[48px] focus:border-[#234745] outline-none text-[#171717] font-medium text-[14px] placeholder:text-[#BBCFCD] transition-colors`}
                             value={formData.taxRegistration}
                             onChange={(e) =>
                               setFormData({
                                 ...formData,
-                                taxRegistration: e.target.value,
+                                taxRegistration: e.target.value.replace(/\D/g, '').slice(0, 15),
                               })
                             }
                             required={formData.accountType === 'company'}
@@ -1221,6 +1290,13 @@ export default function Register() {
                                 "'EnglishDigits', 'GE Dinar One', sans-serif",
                             }}
                           />
+                          {formData.taxRegistration && formData.taxRegistration.trim().length > 0 && formData.taxRegistration.trim().length !== 15 && (
+                            <span className="text-[#E55C5C] text-[11px] font-medium px-1">
+                              {isEn
+                                ? `Tax Registration Number must be exactly 15 digits (${formData.taxRegistration.trim().length}/15)`
+                                : `الرقم الضريبي يجب أن يتكون من 15 رقماً (${formData.taxRegistration.trim().length}/15)`}
+                            </span>
+                          )}
                         </div>
 
                         <div className="flex flex-col gap-2 w-full">
@@ -1235,21 +1311,25 @@ export default function Register() {
                             <span>
                               {isEn ? 'National Address' : 'العنوان الوطني'}
                             </span>
+                            <span className="text-[#7D7D7D] text-[11px] font-normal">
+                              {isEn ? '(8 characters)' : '(8 خانات)'}
+                            </span>
                           </label>
                           <input
                             name="nationalAddress"
                             type="text"
+                            maxLength={8}
                             placeholder={
                               isEn
-                                ? 'RRRD2929, Riyadh 12345'
-                                : 'RRRD2929، الرياض 12345'
+                                ? 'RRRD2929'
+                                : 'RRRD2929'
                             }
-                            className="w-full bg-white border border-[#BBCFCD] rounded-[12px] px-4 py-3 h-[48px] focus:border-[#234745] outline-none text-[#171717] font-medium text-[14px] placeholder:text-[#BBCFCD] transition-colors"
+                            className={`w-full bg-white border ${formData.nationalAddress && formData.nationalAddress.trim().length !== 8 ? 'border-[#E55C5C]' : 'border-[#BBCFCD]'} rounded-[12px] px-4 py-3 h-[48px] focus:border-[#234745] outline-none text-[#171717] font-medium text-[14px] placeholder:text-[#BBCFCD] transition-colors`}
                             value={formData.nationalAddress}
                             onChange={(e) =>
                               setFormData({
                                 ...formData,
-                                nationalAddress: e.target.value,
+                                nationalAddress: e.target.value.trim().slice(0, 8),
                               })
                             }
                             required={formData.accountType === 'company'}
@@ -1258,6 +1338,13 @@ export default function Register() {
                                 "'EnglishDigits', 'GE Dinar One', sans-serif",
                             }}
                           />
+                          {formData.nationalAddress && formData.nationalAddress.trim().length > 0 && formData.nationalAddress.trim().length !== 8 && (
+                            <span className="text-[#E55C5C] text-[11px] font-medium px-1">
+                              {isEn
+                                ? `National Address must be exactly 8 characters (${formData.nationalAddress.trim().length}/8)`
+                                : `العنوان الوطني يجب أن يتكون من 8 خانات (${formData.nationalAddress.trim().length}/8)`}
+                            </span>
+                          )}
                         </div>
 
                         <div className="flex flex-col gap-2 w-full">
@@ -1274,17 +1361,22 @@ export default function Register() {
                                 ? 'Commercial Register (CR)'
                                 : 'السجل التجاري'}
                             </span>
+                            <span className="text-[#7D7D7D] text-[11px] font-normal">
+                              {isEn ? '(10 digits)' : '(10 أرقام)'}
+                            </span>
                           </label>
                           <input
                             name="commercialRegister"
                             type="text"
+                            inputMode="numeric"
+                            maxLength={10}
                             placeholder="1010000000"
-                            className="w-full bg-white border border-[#BBCFCD] rounded-[12px] px-4 py-3 h-[48px] focus:border-[#234745] outline-none text-[#171717] font-medium text-[14px] placeholder:text-[#BBCFCD] transition-colors"
+                            className={`w-full bg-white border ${formData.commercialRegister && formData.commercialRegister.trim().length !== 10 ? 'border-[#E55C5C]' : 'border-[#BBCFCD]'} rounded-[12px] px-4 py-3 h-[48px] focus:border-[#234745] outline-none text-[#171717] font-medium text-[14px] placeholder:text-[#BBCFCD] transition-colors`}
                             value={formData.commercialRegister}
                             onChange={(e) =>
                               setFormData({
                                 ...formData,
-                                commercialRegister: e.target.value,
+                                commercialRegister: e.target.value.replace(/\D/g, '').slice(0, 10),
                               })
                             }
                             required={formData.accountType === 'company'}
@@ -1293,6 +1385,13 @@ export default function Register() {
                                 "'EnglishDigits', 'GE Dinar One', sans-serif",
                             }}
                           />
+                          {formData.commercialRegister && formData.commercialRegister.trim().length > 0 && formData.commercialRegister.trim().length !== 10 && (
+                            <span className="text-[#E55C5C] text-[11px] font-medium px-1">
+                              {isEn
+                                ? `Commercial Register (CR) must be exactly 10 digits (${formData.commercialRegister.trim().length}/10)`
+                                : `السجل التجاري يجب أن يتكون من 10 أرقام (${formData.commercialRegister.trim().length}/10)`}
+                            </span>
+                          )}
                         </div>
 
                         <div className="flex flex-col gap-2 w-full">
@@ -1350,47 +1449,63 @@ export default function Register() {
                         className="flex flex-row items-center border border-[#BBCFCD] bg-white rounded-[12px] h-[48px] focus-within:border-[#234745] transition-colors overflow-hidden"
                         dir="ltr"
                       >
-                        <select
-                          name="countryCode"
-                          value={formData.countryCode}
-                          onChange={(e) => {
-                            setFormData({
-                              ...formData,
-                              countryCode: e.target.value,
-                            });
-                            setClientPhoneError(null);
-                          }}
-                          className="bg-transparent border-none text-[#171717] font-bold text-[14px] focus:ring-0 outline-none pl-4 pr-6 py-3 appearance-none cursor-pointer"
-                          style={{
-                            backgroundImage:
-                              "url(\"data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e\")",
-                            backgroundRepeat: 'no-repeat',
-                            backgroundPosition: 'right 0.2rem center',
-                            backgroundSize: '1.2em',
-                            width: '90px',
-                          }}
-                        >
-                          <option value="+966">+966</option>
-                          <option value="+971">+971</option>
-                          <option value="+965">+965</option>
-                          <option value="+974">+974</option>
-                          <option value="+973">+973</option>
-                          <option value="+968">+968</option>
-                          <option value="+962">+962</option>
-                        </select>
-                        <div className="w-[1px] h-3/5 bg-[#BBCFCD] mx-2"></div>
+                        <div className="relative flex items-center justify-center shrink-0 pl-4 pr-3 py-3 cursor-pointer min-w-[72px]">
+                          <div className="flex items-center gap-1.5 text-[#171717] font-bold text-[14px] pointer-events-none select-none">
+                            <span>{formData.countryCode}</span>
+                            <svg
+                              width="10"
+                              height="6"
+                              viewBox="0 0 10 6"
+                              fill="none"
+                              className="text-[#171717]"
+                            >
+                              <path
+                                d="M1 1L5 5L9 1"
+                                stroke="currentColor"
+                                strokeWidth="1.6"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                            </svg>
+                          </div>
+                          <select
+                            name="countryCode"
+                            value={formData.countryCode}
+                            onChange={(e) => {
+                              setFormData({
+                                ...formData,
+                                countryCode: e.target.value,
+                              });
+                              setClientPhoneError(null);
+                            }}
+                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer text-[14px]"
+                          >
+                            {COUNTRY_CODES.map((c) => (
+                              <option key={`${c.code}-${c.dialCode}`} value={c.dialCode}>
+                                {c.flag} {c.dialCode} ({isEn ? c.nameEn : c.nameAr})
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="w-[1px] h-3/5 bg-[#BBCFCD] mx-1 shrink-0"></div>
                         <input
                           name="phone"
                           type="tel"
-                          maxLength={formData.phone.startsWith('0') ? 10 : 9}
+                          maxLength={
+                            formData.countryCode === '+966' || formData.countryCode === '+971' || formData.countryCode === '+962'
+                              ? formData.phone.startsWith('0') ? 10 : 9
+                              : 15
+                          }
                           placeholder={
                             formData.countryCode === '+966'
                               ? '05XXXXXXXX'
                               : formData.countryCode === '+962'
                                 ? '07XXXXXXXX'
-                                : '5XXXXXXXX'
+                                : formData.countryCode === '+971'
+                                  ? '05XXXXXXXX'
+                                  : 'XXXXXXXX'
                           }
-                          className="flex-1 bg-transparent border-none outline-none text-[#171717] font-medium text-[14px] focus:ring-0 placeholder:text-[#BBCFCD] px-2 py-3"
+                          className="flex-1 bg-transparent border-none outline-none text-[#171717] font-medium text-[14px] focus:ring-0 placeholder:text-[#BBCFCD] px-2 py-3 min-w-0"
                           style={{
                             fontFamily:
                               "'EnglishDigits', 'GE Dinar One', sans-serif",
@@ -1399,7 +1514,7 @@ export default function Register() {
                           onChange={(e) => {
                             setFormData({
                               ...formData,
-                              phone: sanitizePhoneInput(e.target.value),
+                              phone: sanitizePhoneInput(e.target.value, formData.countryCode),
                             });
                             setClientPhoneError(null);
                           }}
@@ -1581,7 +1696,12 @@ export default function Register() {
                         isLoading ||
                         formData.phone.length < 9 ||
                         (formData.accountType === 'individual' && (!formData.firstName || !formData.lastName)) ||
-                        (formData.accountType === 'company' && !formData.companyName) ||
+                        (formData.accountType === 'company' && (
+                          !formData.companyName ||
+                          formData.taxRegistration.trim().length !== 15 ||
+                          formData.nationalAddress.trim().length !== 8 ||
+                          formData.commercialRegister.trim().length !== 10
+                        )) ||
                         !formData.termsAccepted ||
                         blockCooldown > 0 ||
                         (submittedPhone !== '' && formData.phone === submittedPhone &&

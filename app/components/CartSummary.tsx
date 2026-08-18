@@ -331,19 +331,13 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
 
     const newAttributes = [
       { key: 'Branch', value: branchName },
-      { key: 'Branch ID', value: bId },
+      { key: 'Branch ID', value: customBranchId || bId },
       { key: 'Fulfillment Type', value: type === 'delivery' ? 'Delivery' : 'Pickup' },
     ];
 
     if (customBranchId) {
       newAttributes.push({ key: 'custom.branch_id', value: customBranchId });
       newAttributes.push({ key: 'branch_id', value: customBranchId });
-    }
-
-    if (axStoreId) {
-      newAttributes.push({ key: 'custom.ax_store_id', value: axStoreId });
-      newAttributes.push({ key: 'ax_store_id', value: axStoreId });
-      newAttributes.push({ key: 'AX Store ID', value: axStoreId });
     }
 
     if (addressName) {

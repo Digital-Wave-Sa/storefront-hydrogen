@@ -35,13 +35,14 @@ export class SaadeddinApi {
     if (phone.startsWith('+')) {
       candidates.push(phone.replace('+', ''));
     }
-    const countryCodes = ['+966', '+971', '+965', '+974', '+973', '+968', '+962'];
-    for (const cc of countryCodes) {
-      if (phone.startsWith(cc)) {
-        const local = phone.substring(cc.length);
-        if (!local.startsWith('0')) {
-          candidates.push(`${cc}0${local}`);
-          candidates.push(`${cc.replace('+', '')}0${local}`);
+    const match = phone.match(/^\+?(\d{1,4})/);
+    if (match) {
+      const prefix = phone.startsWith('+') ? `+${match[1]}` : match[1];
+      if (phone.startsWith(prefix)) {
+        const local = phone.substring(prefix.length);
+        if (local && !local.startsWith('0')) {
+          candidates.push(`+${match[1]}0${local}`);
+          candidates.push(`${match[1]}0${local}`);
         }
       }
     }

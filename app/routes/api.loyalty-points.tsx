@@ -54,21 +54,33 @@ export async function loader({request, context}: LoaderFunctionArgs) {
     }
 
     const {getLoyaltyTierInfo} = await import('~/lib/loyalty-tiers');
-    const tierInfo = getLoyaltyTierInfo(points);
+    const tierInfo = getLoyaltyTierInfo(points, loyaltyInfo?.tierName);
 
     return Response.json(
       {
         success: true,
         data: {
           points,
+          amount: loyaltyInfo?.amount ?? (points * 0.01),
           enrollmentDate: enrollmentDate || new Date().toISOString(),
           enrolledSinceYear: enrollmentDate
-            ? new Date(enrollmentDate).getFullYear()
+            ? (new Date(enrollmentDate).getFullYear() || parseInt(enrollmentDate.split('/')?.pop() || '', 10) || new Date().getFullYear())
             : new Date().getFullYear(),
           tier: tierInfo.tier,
           nextTier: tierInfo.nextTier,
           pointsToNextTier: tierInfo.pointsToNextTier,
           progressPercent: tierInfo.progressPercent,
+          tierDetails: loyaltyInfo?.tierName ? {
+            name: loyaltyInfo.tierName,
+            status: loyaltyInfo.tierStatus,
+            daysRemaining: loyaltyInfo.daysRemaining,
+            endDate: loyaltyInfo.endDate,
+            fallbackTier: loyaltyInfo.fallbackTier,
+          } : null,
+          customer: loyaltyInfo?.customer || null,
+          activity: loyaltyInfo?.activity || null,
+          expiry: loyaltyInfo?.expiry || null,
+          purchaseAmounts: loyaltyInfo?.purchaseAmounts || null,
         },
       },
       {

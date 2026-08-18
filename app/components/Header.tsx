@@ -42,19 +42,13 @@ export function Header({ header, isLoggedIn, cart, locations, customer, locale, 
     // Update cart attributes
     const attributes = [
       { key: 'Branch', value: branchName },
-      { key: 'Branch ID', value: branchId },
+      { key: 'Branch ID', value: customBranchId || branchId },
       { key: 'Fulfillment Type', value: type === 'delivery' ? 'Delivery' : 'Pickup' }
     ];
 
     if (customBranchId) {
       attributes.push({ key: 'custom.branch_id', value: customBranchId });
       attributes.push({ key: 'branch_id', value: customBranchId });
-    }
-
-    if (axStoreId) {
-      attributes.push({ key: 'custom.ax_store_id', value: axStoreId });
-      attributes.push({ key: 'ax_store_id', value: axStoreId });
-      attributes.push({ key: 'AX Store ID', value: axStoreId });
     }
 
     if (addressName) {

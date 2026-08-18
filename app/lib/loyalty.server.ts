@@ -97,7 +97,40 @@ export async function getCustomerGid({ customerId, phone, email, env, context }:
  * Specification: GET ${sdlpAppUrl}/api/storefront/loyalty?shop=${shop}&customerId=${customerId}
  * NO fallback points if 0 or error.
  */
-export async function getLoyaltyFullInfo(params: LoyaltyParams): Promise<{balance: number; enrollmentDate: string | null}> {
+export interface LoyaltyFullInfo {
+  balance: number;
+  amount: number;
+  enrollmentDate: string | null;
+  tierName?: string | null;
+  tierStatus?: string | null;
+  daysRemaining?: number | null;
+  endDate?: string | null;
+  fallbackTier?: string | null;
+  customer?: {
+    account?: string;
+    name?: string;
+    group?: string;
+  } | null;
+  activity?: {
+    purchaseCount?: number;
+    firstPurchaseDate?: string;
+    lastPurchaseDate?: string;
+    lastEarnDate?: string;
+    cardCreatedDate?: string;
+  } | null;
+  expiry?: {
+    nextExpireDate?: string;
+    nextExpireAmount?: number;
+  } | null;
+  purchaseAmounts?: {
+    last30Days?: number;
+    last3Months?: number;
+    last6Months?: number;
+    lastYear?: number;
+  } | null;
+}
+
+export async function getLoyaltyFullInfo(params: LoyaltyParams): Promise<LoyaltyFullInfo> {
   const env = params.env;
   const sdlpAppUrl = env?.PUBLIC_SDLP_APP_URL || env?.SDLP_APP_URL || 'https://sdlp.saadeddin.top';
   const shop = env?.PUBLIC_SHOPIFY_STORE_DOMAIN || env?.PUBLIC_STORE_DOMAIN || 'saadeldeenshop-x21xumcd.myshopify.com';
@@ -107,7 +140,7 @@ export async function getLoyaltyFullInfo(params: LoyaltyParams): Promise<{balanc
 
   if (!customerId && !searchPhone) {
     console.warn('[Loyalty] Neither customerId nor searchPhone available for SDLP query.');
-    return {balance: 0, enrollmentDate: null};
+    return {balance: 0, amount: 0, enrollmentDate: null};
   }
 
   try {
@@ -132,10 +165,72 @@ export async function getLoyaltyFullInfo(params: LoyaltyParams): Promise<{balanc
       if (res.ok) {
         const data = (await res.json()) as any;
         console.log('[SDLP Loyalty] GET Response:', data);
-        const balanceVal = data?.balance ?? data?.data?.balance ?? 0;
-        const balance = typeof balanceVal === 'number' ? balanceVal : (parseInt(balanceVal, 10) || 0);
-        const enrollmentDate = data?.enrollmentDate || data?.createdAt || data?.customer?.createdtime || data?.data?.enrollmentDate || null;
-        return {balance, enrollmentDate};
+
+        const rawPoints =
+          data?.data?.points ??
+          data?.points ??
+          data?.data?.balance ??
+          data?.balance ??
+          0;
+        const balance = typeof rawPoints === 'number' ? rawPoints : (parseFloat(rawPoints) || 0);
+        const rawAmount = data?.data?.amount ?? data?.amount;
+        const amount = typeof rawAmount === 'number' ? rawAmount : (parseFloat(rawAmount) || (balance * 0.01));
+
+        const enrollmentDate =
+          data?.data?.activity?.card_created_date ||
+          data?.data?.activity?.first_purchase_date ||
+          data?.data?.enrollmentDate ||
+          data?.enrollmentDate ||
+          data?.createdAt ||
+          data?.customer?.createdtime ||
+          null;
+
+        const tierObj = data?.data?.tier || data?.tier;
+        const customerObj = data?.data?.customer || data?.customer;
+        const activityObj = data?.data?.activity || data?.activity;
+        const expiryObj = data?.data?.expiry || data?.expiry;
+        const purchaseAmountsObj = data?.data?.purchase_amounts || data?.purchase_amounts;
+
+        return {
+          balance,
+          amount,
+          enrollmentDate,
+          tierName: tierObj?.name || null,
+          tierStatus: tierObj?.status || null,
+          daysRemaining: tierObj?.days_remaining || null,
+          endDate: tierObj?.end_date || null,
+          fallbackTier: tierObj?.fallback_tier || null,
+          customer: customerObj
+            ? {
+                account: customerObj.account,
+                name: customerObj.name,
+                group: customerObj.group,
+              }
+            : null,
+          activity: activityObj
+            ? {
+                purchaseCount: activityObj.purchase_count,
+                firstPurchaseDate: activityObj.first_purchase_date,
+                lastPurchaseDate: activityObj.last_purchase_date,
+                lastEarnDate: activityObj.last_earn_date,
+                cardCreatedDate: activityObj.card_created_date,
+              }
+            : null,
+          expiry: expiryObj
+            ? {
+                nextExpireDate: expiryObj.next_expire_date,
+                nextExpireAmount: expiryObj.next_expire_amount,
+              }
+            : null,
+          purchaseAmounts: purchaseAmountsObj
+            ? {
+                last30Days: purchaseAmountsObj.last_30_days,
+                last3Months: purchaseAmountsObj.last_3_months,
+                last6Months: purchaseAmountsObj.last_6_months,
+                lastYear: purchaseAmountsObj.last_year,
+              }
+            : null,
+        };
       } else {
         console.error('[SDLP Loyalty] GET Error status:', res.status, await res.text());
       }
@@ -147,7 +242,7 @@ export async function getLoyaltyFullInfo(params: LoyaltyParams): Promise<{balanc
     console.error('[SDLP Loyalty] GET Exception:', err);
   }
 
-  return {balance: 0, enrollmentDate: null};
+  return {balance: 0, amount: 0, enrollmentDate: null};
 }
 
 export async function getLoyaltyPoints(params: LoyaltyParams): Promise<number> {

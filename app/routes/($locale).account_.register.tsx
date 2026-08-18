@@ -944,7 +944,9 @@ export default function Register() {
       className="min-h-screen bg-[#FEF8EB] w-full flex items-center justify-center p-4 lg:p-8"
       dir={isEn ? 'ltr' : 'rtl'}
     >
-      <div className="w-full max-w-[1280px] flex flex-col lg:flex-row-reverse gap-6 relative min-h-[880px]">
+      <div
+        className={`w-full max-w-[1280px] mx-auto flex flex-col ${isEn ? 'lg:flex-row' : 'lg:flex-row-reverse'} gap-6 relative min-h-[880px]`}
+      >
         {/* Left Pane - Form Area */}
         <div className="w-full lg:w-1/2 bg-white border border-[#BBCFCD]/50 rounded-[24px] overflow-hidden flex flex-col items-center justify-center p-0 lg:p-12 relative shadow-sm">
           {/* Mobile Green Header Box (Visible only on mobile lg:hidden, full width inside container with no padding) */}

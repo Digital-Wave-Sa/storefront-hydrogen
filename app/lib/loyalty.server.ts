@@ -232,14 +232,19 @@ export async function getLoyaltyFullInfo(params: LoyaltyParams): Promise<Loyalty
             : null,
         };
       } else {
-        console.error('[SDLP Loyalty] GET Error status:', res.status, await res.text());
+        console.warn(
+          `[SDLP Loyalty] Customer not enrolled or service returned status ${res.status} (defaulting to 0 points)`,
+        );
       }
     } catch (fetchErr: any) {
       clearTimeout(timeoutId);
-      console.warn('[SDLP Loyalty] GET Fetch aborted/failed (timing out gracefully):', fetchErr?.message || fetchErr);
+      console.warn(
+        '[SDLP Loyalty] GET Fetch aborted/failed (timing out gracefully):',
+        fetchErr?.message || fetchErr,
+      );
     }
   } catch (err) {
-    console.error('[SDLP Loyalty] GET Exception:', err);
+    console.warn('[SDLP Loyalty] GET Exception (defaulting to 0 points):', err);
   }
 
   return {balance: 0, amount: 0, enrollmentDate: null};

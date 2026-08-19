@@ -239,14 +239,13 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
     const isTaxable = line.merchandise?.taxable === true;
     if (!isTaxable) return acc;
 
+    // line.cost.totalAmount is already the net amount for this line in Shopify
     const lineCost = parseFloat(line.cost?.totalAmount?.amount || '0');
-    const lineDiscount = line?.discountAllocations?.reduce((lAcc: number, allocation: any) => {
-      return lAcc + parseFloat(allocation?.discountedAmount?.amount || '0');
-    }, 0) || 0;
-    return acc + Math.max(0, lineCost - lineDiscount);
+    return acc + lineCost;
   }, 0) || 0;
 
-  const netTaxableAmount = Math.max(0, taxableSubtotal - otherDiscountDisplay - loyaltyDiscountDisplay);
+  // Deduct cart-level discounts (e.g. cart-level coupons or loyalty points) from taxable amount
+  const netTaxableAmount = Math.max(0, taxableSubtotal - cartDiscountAmount - loyaltyDiscountDisplay);
   const calculatedTax = (cart?.cost?.totalTaxAmount && parseFloat(cart.cost.totalTaxAmount.amount) > 0)
     ? parseFloat(cart.cost.totalTaxAmount.amount)
     : (netTaxableAmount > 0 ? netTaxableAmount * (15 / 115) : 0);

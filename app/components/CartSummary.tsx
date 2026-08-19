@@ -230,33 +230,14 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
   const deliveryFee = (isFreeDelivery || isPickup || isDigitalOnlyCart) ? 0 : rawDeliveryFee;
   const calculatedTotal = Math.max(0, subtotalBeforeDiscounts - otherDiscountDisplay - loyaltyDiscountDisplay + deliveryFee);
 
-  // Calculate taxable subtotal and 15% VAT for taxable products in cart
+  // Calculate taxable subtotal and 15% VAT strictly for taxable products in cart (based on Shopify's variant-level taxable flag)
   const taxableSubtotal = cart?.lines?.nodes?.reduce((acc: number, line: any) => {
     const isFreeItem = line.attributes?.some((attr: any) => attr.key === '_is_free' && attr.value === 'true') || false;
-    const isVoucher = line.attributes?.some(
-      (a: any) =>
-        (a.key === '_gift_voucher' && a.value === 'true') ||
-        a.key.toLowerCase().includes('voucher') ||
-        a.key.toLowerCase().includes('gift mode') ||
-        a.key.toLowerCase().includes('card color') ||
-        a.key.toLowerCase().includes('_card_'),
-    );
-    const isDigitalTag = line.merchandise?.product?.tags?.some((t: string) =>
-      ['digital', 'gift-card', 'giftcard', 'voucher'].includes(t.toLowerCase().trim()),
-    );
-    const productTitle = (line.merchandise?.product?.title || line.merchandise?.title || '').toLowerCase();
-    const productHandle = (line.merchandise?.product?.handle || '').toLowerCase();
-    const isGiftProduct =
-      productTitle.includes('gift card') ||
-      productTitle.includes('بطاقة هدية') ||
-      productTitle.includes('قسيمة') ||
-      productTitle.includes('voucher') ||
-      productHandle.includes('gift-card') ||
-      productHandle.includes('voucher');
-    
-    if (isFreeItem || isVoucher || isDigitalTag || isGiftProduct) {
-      return acc;
-    }
+    if (isFreeItem) return acc;
+
+    // Only count items that have "Charge tax on this product" enabled in Shopify (taxable: true)
+    const isTaxable = line.merchandise?.taxable === true;
+    if (!isTaxable) return acc;
 
     const lineCost = parseFloat(line.cost?.totalAmount?.amount || '0');
     const lineDiscount = line?.discountAllocations?.reduce((lAcc: number, allocation: any) => {

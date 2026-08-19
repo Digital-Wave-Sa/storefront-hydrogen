@@ -230,8 +230,8 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
   const deliveryFee = (isFreeDelivery || isPickup || isDigitalOnlyCart) ? 0 : rawDeliveryFee;
   const calculatedTotal = Math.max(0, subtotalBeforeDiscounts - otherDiscountDisplay - loyaltyDiscountDisplay + deliveryFee);
 
-  // Calculate taxable subtotal and 15% VAT strictly for taxable products in cart (based on Shopify's variant-level taxable flag)
-  const taxableSubtotal = cart?.lines?.nodes?.reduce((acc: number, line: any) => {
+  // Calculate 15% VAT strictly on taxable products in the cart (independent of delivery/shipping fees)
+  const taxableProductsTotal = cart?.lines?.nodes?.reduce((acc: number, line: any) => {
     const isFreeItem = line.attributes?.some((attr: any) => attr.key === '_is_free' && attr.value === 'true') || false;
     if (isFreeItem) return acc;
 
@@ -239,16 +239,14 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
     const isTaxable = line.merchandise?.taxable === true;
     if (!isTaxable) return acc;
 
-    // line.cost.totalAmount is already the net amount for this line in Shopify
+    // line.cost.totalAmount is the exact net product line price in Shopify
     const lineCost = parseFloat(line.cost?.totalAmount?.amount || '0');
     return acc + lineCost;
   }, 0) || 0;
 
-  // Deduct cart-level discounts (e.g. cart-level coupons or loyalty points) from taxable amount
-  const netTaxableAmount = Math.max(0, taxableSubtotal - cartDiscountAmount - loyaltyDiscountDisplay);
   const calculatedTax = (cart?.cost?.totalTaxAmount && parseFloat(cart.cost.totalTaxAmount.amount) > 0)
     ? parseFloat(cart.cost.totalTaxAmount.amount)
-    : (netTaxableAmount > 0 ? netTaxableAmount * (15 / 115) : 0);
+    : (taxableProductsTotal > 0 ? taxableProductsTotal * (15 / 115) : 0);
   const hasTax = calculatedTax > 0;
 
   const isBranchHidden = currentBranch && (

@@ -230,6 +230,47 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
   const deliveryFee = (isFreeDelivery || isPickup || isDigitalOnlyCart) ? 0 : rawDeliveryFee;
   const calculatedTotal = Math.max(0, subtotalBeforeDiscounts - otherDiscountDisplay - loyaltyDiscountDisplay + deliveryFee);
 
+  // Calculate taxable subtotal and 15% VAT for taxable products in cart
+  const taxableSubtotal = cart?.lines?.nodes?.reduce((acc: number, line: any) => {
+    const isFreeItem = line.attributes?.some((attr: any) => attr.key === '_is_free' && attr.value === 'true') || false;
+    const isVoucher = line.attributes?.some(
+      (a: any) =>
+        (a.key === '_gift_voucher' && a.value === 'true') ||
+        a.key.toLowerCase().includes('voucher') ||
+        a.key.toLowerCase().includes('gift mode') ||
+        a.key.toLowerCase().includes('card color') ||
+        a.key.toLowerCase().includes('_card_'),
+    );
+    const isDigitalTag = line.merchandise?.product?.tags?.some((t: string) =>
+      ['digital', 'gift-card', 'giftcard', 'voucher'].includes(t.toLowerCase().trim()),
+    );
+    const productTitle = (line.merchandise?.product?.title || line.merchandise?.title || '').toLowerCase();
+    const productHandle = (line.merchandise?.product?.handle || '').toLowerCase();
+    const isGiftProduct =
+      productTitle.includes('gift card') ||
+      productTitle.includes('بطاقة هدية') ||
+      productTitle.includes('قسيمة') ||
+      productTitle.includes('voucher') ||
+      productHandle.includes('gift-card') ||
+      productHandle.includes('voucher');
+    
+    if (isFreeItem || isVoucher || isDigitalTag || isGiftProduct) {
+      return acc;
+    }
+
+    const lineCost = parseFloat(line.cost?.totalAmount?.amount || '0');
+    const lineDiscount = line?.discountAllocations?.reduce((lAcc: number, allocation: any) => {
+      return lAcc + parseFloat(allocation?.discountedAmount?.amount || '0');
+    }, 0) || 0;
+    return acc + Math.max(0, lineCost - lineDiscount);
+  }, 0) || 0;
+
+  const netTaxableAmount = Math.max(0, taxableSubtotal - otherDiscountDisplay - loyaltyDiscountDisplay);
+  const calculatedTax = (cart?.cost?.totalTaxAmount && parseFloat(cart.cost.totalTaxAmount.amount) > 0)
+    ? parseFloat(cart.cost.totalTaxAmount.amount)
+    : (netTaxableAmount > 0 ? netTaxableAmount * (15 / 115) : 0);
+  const hasTax = calculatedTax > 0;
+
   const isBranchHidden = currentBranch && (
     currentBranch.hide_from_storefront?.value === 'true' ||
     currentBranch.hide_from_storefront === true ||
@@ -636,12 +677,12 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
                   </div>
                 )}
 
-                {cart?.cost?.totalTaxAmount && (
+                {hasTax && (
                   <div className="flex justify-between items-center text-[15px]">
                     <dt className="text-[#9FB7AE] font-bold" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>{isEn ? 'VAT (15%)' : 'ضريبة القيمة المضافة (١٥٪)'}</dt>
                     <dd className="text-[#234745] font-bold font-en flex items-center gap-1 flex-row-reverse">
                       <SaudiRiyalSymbol className="h-4 w-auto" />
-                      <span>{parseFloat(cart.cost.totalTaxAmount.amount).toFixed(2)}</span>
+                      <span>{calculatedTax.toFixed(2)}</span>
                     </dd>
                   </div>
                 )}
@@ -819,11 +860,12 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
             </div>
           )}
 
-          {cart?.cost?.totalTaxAmount && (
+          {hasTax && (
             <div className="flex justify-between items-center text-[14px]">
-              <dt className="text-gray-400 font-medium">{isEn ? 'VAT' : 'ضريبة القيمة المضافة'}</dt>
-              <dd className="text-[#234745] font-bold font-en">
-                <Price data={cart.cost.totalTaxAmount} isEn={isEn} size="xs" />
+              <dt className="text-gray-400 font-medium">{isEn ? 'VAT (15%)' : 'ضريبة القيمة المضافة (١٥٪)'}</dt>
+              <dd className="text-[#234745] font-bold font-en flex items-center gap-1 flex-row-reverse">
+                <SaudiRiyalSymbol className="h-3.5 w-auto" />
+                <span>{calculatedTax.toFixed(2)}</span>
               </dd>
             </div>
           )}

@@ -277,6 +277,102 @@ export async function action({request, context, params}: Route.ActionArgs) {
         ])) as any;
         break;
       }
+      case 'StoreCreditUpdate': {
+        const isEn = context.storefront.i18n.language === 'EN';
+        const amountToApply = parseFloat(inputs.amount || '0');
+        const intent = inputs.intent;
+
+        const currentCart = await cart.get();
+        if (!currentCart) {
+          return data({error: isEn ? 'Cart not found' : 'السلة غير موجودة'}, {status: 400});
+        }
+
+        if (intent === 'remove' || amountToApply <= 0) {
+          const appliedCodes =
+            currentCart.discountCodes?.filter(
+              (dc) => dc.code.startsWith('CREDIT-'),
+            ) || [];
+          let discountCodes =
+            currentCart.discountCodes?.map((dc) => dc.code) || [];
+          if (appliedCodes.length > 0) {
+            const codesToRemove = new Set(appliedCodes.map((c) => c.code));
+            discountCodes = discountCodes.filter((c) => !codesToRemove.has(c));
+          }
+
+          await cart.updateDiscountCodes(discountCodes);
+          result = (await cart.updateAttributes([
+            {key: 'store_credit_amount', value: '0'},
+            {key: 'store_credit_code', value: ''},
+          ])) as any;
+          break;
+        }
+
+        const userPhone =
+          inputs.phone ||
+          (await context.session.get('loginOtpPhone')) ||
+          (await context.session.get('saadeddinPhone')) ||
+          currentCart.buyerIdentity?.phone;
+
+        if (!userPhone) {
+          return data(
+            {
+              error: isEn
+                ? 'Please log in with your phone number to use store credit.'
+                : 'يرجى تسجيل الدخول برقم الجوال لاستخدام رصيد المحفظة.',
+            },
+            {status: 400},
+          );
+        }
+
+        const {SaadeddinApi} = await import('~/lib/saadeddin-api.server');
+        const api = new SaadeddinApi(context.env);
+
+        const creditRes = await api.applyStoreCredit({
+          phone: userPhone,
+          amount: amountToApply,
+          cartId: currentCart.id,
+        }).catch((err: any) => {
+          console.error('[APPLY STORE CREDIT ERROR]', err);
+          return {
+            success: false,
+            message: err?.message || 'Failed to apply store credit',
+          };
+        });
+
+        if (!creditRes?.success || !creditRes?.discount_code) {
+          let errorMsg = creditRes?.message || (isEn ? 'Failed to apply store credit.' : 'فشل في تطبيق رصيد المحفظة.');
+          if (creditRes?.error_code === 'INSUFFICIENT_CREDIT_BALANCE') {
+            errorMsg = isEn
+              ? 'Your store credit balance is lower than the requested amount.'
+              : 'رصيد المحفظة الخاص بك أقل من المبلغ المطلوب.';
+          } else if (creditRes?.error_code === 'CUSTOMER_NOT_FOUND') {
+            errorMsg = isEn
+              ? 'Customer account not found for this phone number.'
+              : 'لم يتم العثور على حساب مرتبط برقم الجوال هذا.';
+          }
+          return data(
+            {
+              error: errorMsg,
+            },
+            {status: 400},
+          );
+        }
+
+        const generatedCode = creditRes.discount_code;
+
+        const existingCodes =
+          currentCart.discountCodes
+            ?.map((dc) => dc.code)
+            .filter((c) => !c.startsWith('CREDIT-')) || [];
+        const newCodes = [...existingCodes, generatedCode];
+
+        await cart.updateDiscountCodes(newCodes);
+        result = (await cart.updateAttributes([
+          {key: 'store_credit_amount', value: String(amountToApply)},
+          {key: 'store_credit_code', value: generatedCode},
+        ])) as any;
+        break;
+      }
       case CartForm.ACTIONS.DiscountCodesUpdate: {
         const formDiscountCode = inputs.discountCode;
         const isEn = context.storefront.i18n.language === 'EN';

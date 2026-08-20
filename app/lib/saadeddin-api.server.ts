@@ -219,6 +219,23 @@ export class SaadeddinApi {
     return this.api(`/gift-cards/by-phone/${phone}`);
   }
 
+  // ─── STORE CREDIT (CHECKOUT INTEGRATION) ────────────────────────────────────
+
+  async applyStoreCredit(payload: {
+    phone: string;
+    amount: number;
+    cartId: string;
+  }) {
+    return this.api('/api/orders/apply-credit', {
+      method: 'POST',
+      body: JSON.stringify({
+        phone: payload.phone,
+        amount: payload.amount,
+        cart_id: payload.cartId,
+      }),
+    });
+  }
+
   // ─── REVIEWS & CRM ───────────────────────────────────────────────────────────
 
   async sendNegativeReview(payload: {

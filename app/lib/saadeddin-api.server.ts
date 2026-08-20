@@ -232,19 +232,26 @@ export class SaadeddinApi {
     branchName?: string;
   }) {
     try {
+      const bodyPayload: Record<string, any> = {
+        order_number: payload.orderNumber,
+        rating: payload.rating,
+        comment: payload.comment,
+        customer_email: payload.customerEmail || 'customer@saadeddin.com',
+        customer_phone: payload.customerPhone || '+966500000000',
+        branch_name: payload.branchName || 'General',
+        submitted_at: new Date().toISOString(),
+      };
+
+      if (payload.productTitle) {
+        bodyPayload.product_name = payload.productTitle;
+      }
+      if (payload.productHandle) {
+        bodyPayload.product_handle = payload.productHandle;
+      }
+
       return await this.api('/reviews/negative', {
         method: 'POST',
-        body: JSON.stringify({
-          order_number: payload.orderNumber,
-          rating: payload.rating,
-          comment: payload.comment,
-          product_name: payload.productTitle,
-          product_handle: payload.productHandle,
-          customer_email: payload.customerEmail,
-          customer_phone: payload.customerPhone,
-          branch_name: payload.branchName,
-          submitted_at: new Date().toISOString(),
-        }),
+        body: JSON.stringify(bodyPayload),
       });
     } catch (err: any) {
       console.warn('[REVIEWS] Middleware negative review sync notice:', err?.message || err);

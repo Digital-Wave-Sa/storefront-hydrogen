@@ -92,6 +92,8 @@ export async function action({request, context}: ActionFunctionArgs) {
 
   const formData = await request.formData();
   const customerName = String(formData.get('customerName') || 'Verified Customer');
+  const customerEmail = String(formData.get('customerEmail') || formData.get('email') || '');
+  const customerPhone = String(formData.get('customerPhone') || formData.get('phone') || '');
   const orderId = formData.get('orderId');
   const branchRating = formData.get('branchRating') || formData.get('branch_rating');
   const branchName = formData.get('branchName');
@@ -129,6 +131,8 @@ export async function action({request, context}: ActionFunctionArgs) {
     const timestamp = Date.now();
     const cleanOrdId = orderId ? String(orderId).replace(/^#/, '').trim() : '';
 
+    let foundOrder: any = null;
+
     // 1. MARK ORDER AS REVIEWED IN SHOPIFY ADMIN (ONCE)
     if (cleanOrdId) {
       try {
@@ -150,6 +154,7 @@ export async function action({request, context}: ActionFunctionArgs) {
           );
 
           if (targetOrd?.id) {
+            foundOrder = targetOrd;
             const existingTags = targetOrd.tags
               ? targetOrd.tags.split(',').map((t: string) => t.trim())
               : [];
@@ -315,14 +320,31 @@ export async function action({request, context}: ActionFunctionArgs) {
       const isBranchNegative = bRatingNum > 0 && bRatingNum <= 2;
       const api = new SaadeddinApi(context.env);
 
+      const resolvedEmail =
+        customerEmail ||
+        foundOrder?.email ||
+        foundOrder?.customer?.email ||
+        foundOrder?.contact_email ||
+        'customer@saadeddin.com';
+
+      const resolvedPhone =
+        customerPhone ||
+        foundOrder?.phone ||
+        foundOrder?.customer?.phone ||
+        foundOrder?.shipping_address?.phone ||
+        foundOrder?.billing_address?.phone ||
+        '+966500000000';
+
+      const resolvedBranch = String(branchName || foundOrder?.location?.name || 'General');
+
       if (isBranchNegative) {
         await api.sendNegativeReview({
-          orderNumber: String(cleanOrdId || orderName || 'N/A'),
+          orderNumber: String(cleanOrdId || 'N/A'),
           rating: bRatingNum,
-          comment: String(comment || ''),
-          customerEmail: String(customerEmail || ''),
-          customerPhone: String(customerPhone || ''),
-          branchName: String(branchName || ''),
+          comment: String(comment || 'No comment provided'),
+          customerEmail: resolvedEmail,
+          customerPhone: resolvedPhone,
+          branchName: resolvedBranch,
         });
       }
 
@@ -330,14 +352,14 @@ export async function action({request, context}: ActionFunctionArgs) {
         const pRatingNum = Math.round(Number(item.rating) || 0);
         if (pRatingNum > 0 && pRatingNum <= 2) {
           await api.sendNegativeReview({
-            orderNumber: String(cleanOrdId || orderName || 'N/A'),
+            orderNumber: String(cleanOrdId || 'N/A'),
             rating: pRatingNum,
-            comment: String(comment || ''),
+            comment: String(comment || 'No comment provided'),
             productTitle: String(item.title || item.handle || ''),
             productHandle: String(item.handle || ''),
-            customerEmail: String(customerEmail || ''),
-            customerPhone: String(customerPhone || ''),
-            branchName: String(branchName || ''),
+            customerEmail: resolvedEmail,
+            customerPhone: resolvedPhone,
+            branchName: resolvedBranch,
           });
         }
       }

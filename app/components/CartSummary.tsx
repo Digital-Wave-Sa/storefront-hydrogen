@@ -1594,20 +1594,19 @@ function StoreCreditRedemptionUI({ isEn, cart }: { isEn: boolean; cart: any }) {
   }
 
   useEffect(() => {
-    if (phone) {
-      const cleanPhone = phone.replace(/\s+/g, '');
-      fetch(`/api/wallet-balance?phone=${encodeURIComponent(cleanPhone)}&t=${Date.now()}`)
-        .then((res) => res.json())
-        .then((data) => {
-          if (data?.success && data?.balance !== undefined) {
-            setAvailableBalance(data.balance);
-          }
-        })
-        .catch(() => { });
-    }
-  }, [phone]);
+    const cleanPhone = (phone || '').replace(/\s+/g, '');
+    const query = cleanPhone ? `phone=${encodeURIComponent(cleanPhone)}&` : '';
+    fetch(`/api/wallet-balance?${query}t=${Date.now()}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.success && data?.balance !== undefined) {
+          setAvailableBalance(data.balance);
+        }
+      })
+      .catch(() => { });
+  }, [phone, rootData?.customer]);
 
-  if (!phone) {
+  if (!phone && availableBalance === null) {
     return null;
   }
 

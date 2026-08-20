@@ -22,17 +22,29 @@ export async function fetchWalletData({
       new URL(request.url).host.includes('localhost') ||
       new URL(request.url).host.includes('127.0.0.1');
 
-    let formattedPhone = customer?.phone || '';
-    if (isLocal && !formattedPhone) {
-      formattedPhone = '0501234567';
-    }
-    if (formattedPhone.startsWith('+966')) {
-      formattedPhone = '0' + formattedPhone.slice(4);
+    const cleanPhone = (customer?.phone || '').trim();
+
+    if (cleanPhone) {
+      const baseGiftCardUrl = middlewareUrl;
+      try {
+        const cardsRes = await fetch(
+          `${baseGiftCardUrl}/gift-cards/by-phone/${encodeURIComponent(cleanPhone)}`,
+        );
+        if (cardsRes.ok) {
+          const cardsData = (await cardsRes.json()) as any;
+          if (cardsData?.success && cardsData?.data) {
+            cards = cardsData.data.cards || cardsData.data.accounts || [];
+            balance = typeof cardsData.data.totalBalance === 'number' ? cardsData.data.totalBalance : 0;
+          }
+        }
+      } catch (err) {
+        console.warn('[WALLET] Failed fetching live gift cards by phone:', err);
+      }
     }
 
-    if (isLocal) {
+    if (cards.length === 0 && isLocal) {
       const globalGiftCards = (globalThis as any).__giftCards || new Map();
-      const targetPhone = formattedPhone.replace(/\D/g, '');
+      const targetPhone = (cleanPhone || '0501234567').replace(/\D/g, '');
       for (const card of globalGiftCards.values()) {
         if (card.phone && card.phone.replace(/\D/g, '') === targetPhone) {
           cards.push({
@@ -43,42 +55,13 @@ export async function fetchWalletData({
           balance += card.currentBalance;
         }
       }
+    }
 
-      history = cards
-        .flatMap((card: any) => {
-          const fullCard = globalGiftCards.get(card.code);
-          return (fullCard?.transactions || []).map((tx: any) => {
-            const amt = parseFloat(tx.amount || '0');
-            return {
-              id: tx.id,
-              amount:
-                tx.operation === 'REDEEM' || tx.operation === 'VOID'
-                  ? -amt
-                  : amt,
-              date: tx.timestamp,
-              labelEn: `${tx.operation} - ${card.code}`,
-              labelAr: `${tx.operation === 'REDEEM' ? 'استرداد' : tx.operation === 'TOPUP' ? 'شحن' : tx.operation === 'ACTIVATE' ? 'تفعيل' : 'إنشاء'} - ${card.code}`,
-            };
-          });
-        })
-        .sort(
-          (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
-        );
-    } else if (formattedPhone) {
+    if (cards.length > 0) {
       const baseGiftCardUrl = middlewareUrl;
-      const cardsRes = await fetch(
-        `${baseGiftCardUrl}/gift-cards/by-phone/${encodeURIComponent(formattedPhone)}`,
-      );
-      if (cardsRes.ok) {
-        const cardsData = (await cardsRes.json()) as any;
-        if (cardsData?.success && cardsData?.data) {
-          cards = cardsData.data.cards || [];
-          balance = cardsData.data.totalBalance || 0;
-        }
-      }
-
       const historyPromises = cards.map(async (card: any) => {
         try {
+          if (!card.code) return [];
           const txRes = await fetch(
             `${baseGiftCardUrl}/gift-cards/${card.code}/transactions`,
           );

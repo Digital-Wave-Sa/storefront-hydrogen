@@ -7,11 +7,38 @@ import { fetchWalletData } from '~/lib/account-wallet.server';
  */
 export async function loader({ request, context }: LoaderFunctionArgs) {
   const url = new URL(request.url);
-  const phone =
+  let phone =
     url.searchParams.get('phone') ||
     url.searchParams.get('identifier') ||
     (await context.session.get('loginOtpPhone')) ||
     (await context.session.get('saadeddinPhone'));
+
+  if (!phone && context.session) {
+    try {
+      const sessionToken = await context.session.get('customerAccessToken');
+      const tokenStr =
+        typeof sessionToken === 'string'
+          ? sessionToken
+          : sessionToken?.accessToken;
+      if (tokenStr && tokenStr !== 'dev-bypass-token' && context.storefront) {
+        const { customer } = (await context.storefront.query(
+          `#graphql
+          query getCustomerWalletPhone($customerAccessToken: String!) {
+            customer(customerAccessToken: $customerAccessToken) {
+              phone
+              email
+            }
+          }
+          `,
+          {
+            variables: { customerAccessToken: tokenStr },
+            cache: context.storefront.CacheNone(),
+          },
+        )) as any;
+        phone = customer?.phone || customer?.email;
+      }
+    } catch (e) {}
+  }
 
   if (!phone) {
     return data({ success: false, balance: 0, error: 'Phone number required' }, { status: 400 });

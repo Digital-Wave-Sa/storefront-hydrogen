@@ -274,10 +274,23 @@ export class SaadeddinApi {
         bodyPayload.product_handle = payload.productHandle;
       }
 
-      return await this.api('/reviews/negative', {
+      console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log('📤 [MIDDLEWARE OUTBOX] POST /reviews/negative');
+      console.log('📦 Payload Body:', JSON.stringify(bodyPayload, null, 2));
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+
+      const res = await fetch(`${this.baseUrl}/reviews/negative`, {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(this.token ? { Authorization: `Bearer ${this.token}` } : {}),
+        },
         body: JSON.stringify(bodyPayload),
       });
+
+      const resData = await (res.json() as Promise<any>).catch(() => ({}));
+      console.log(`📥 [MIDDLEWARE RESPONSE] Status: ${res.status}`, JSON.stringify(resData, null, 2));
+      return resData;
     } catch (err: any) {
       console.warn('[REVIEWS] Middleware negative review sync notice:', err?.message || err);
       return null;

@@ -32,11 +32,26 @@ export async function action({request, context, params}: Route.ActionArgs) {
     const rawInput = formData.get('cartFormInput');
     console.log('[CART POST] raw cartFormInput:', rawInput);
 
-    const {action: rawAction, inputs: rawInputs} =
+    let {action: rawAction, inputs: rawInputs} =
       CartForm.getFormInput(formData);
+
+    if (!rawAction) {
+      const explicitAction = formData.get('_action') || formData.get('action');
+      if (explicitAction) {
+        rawAction = String(explicitAction) as any;
+        const fallbackInputs: Record<string, any> = {};
+        for (const [key, value] of formData.entries()) {
+          if (key !== '_action' && key !== 'action') {
+            fallbackInputs[key] = value;
+          }
+        }
+        rawInputs = fallbackInputs;
+      }
+    }
+
     const action = rawAction as any;
     const inputs = rawInputs as any;
-    console.log('[CART POST] Parsed action:', action);
+    console.log('[CART POST] Parsed action:', action, 'inputs:', inputs);
 
     if (!action) {
       throw new Error('No action provided');

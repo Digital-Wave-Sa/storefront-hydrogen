@@ -1650,62 +1650,78 @@ function StoreCreditRedemptionUI({ isEn, cart }: { isEn: boolean; cart: any }) {
               </span>
             </div>
           </div>
-          <fetcher.Form method="post" action={isEn ? '/en/cart' : '/cart'}>
-            <input type="hidden" name="_action" value="StoreCreditUpdate" />
-            <input type="hidden" name="intent" value="remove" />
-            <input type="hidden" name="phone" value={phone} />
-            <button
-              type="submit"
-              disabled={fetcher.state !== 'idle'}
-              className="text-[12px] font-bold text-red-600 hover:text-red-700 bg-white hover:bg-red-50 px-3 py-1.5 rounded-lg border border-red-200 transition-colors disabled:opacity-50"
-            >
-              {fetcher.state !== 'idle' ? (isEn ? 'Removing...' : 'جاري الإلغاء...') : (isEn ? 'Remove' : 'إلغاء')}
-            </button>
-          </fetcher.Form>
+          <CartForm
+            route={isEn ? '/en/cart' : '/cart'}
+            action="StoreCreditUpdate"
+            inputs={{ intent: 'remove', phone: String(phone || '') }}
+          >
+            {(fetcher: any) => (
+              <button
+                type="submit"
+                disabled={fetcher.state !== 'idle'}
+                className="text-[12px] font-bold text-red-600 hover:text-red-700 bg-white hover:bg-red-50 px-3 py-1.5 rounded-lg border border-red-200 transition-colors disabled:opacity-50"
+              >
+                {fetcher.state !== 'idle' ? (isEn ? 'Removing...' : 'جاري الإلغاء...') : (isEn ? 'Remove' : 'إلغاء')}
+              </button>
+            )}
+          </CartForm>
         </div>
       ) : availableBalance !== null && availableBalance > 0 ? (
-        <fetcher.Form method="post" action={isEn ? '/en/cart' : '/cart'} className="flex flex-col gap-2">
-          <input type="hidden" name="_action" value="StoreCreditUpdate" />
-          <input type="hidden" name="intent" value="apply" />
-          <input type="hidden" name="phone" value={phone} />
-          <div className="flex gap-2">
-            <div className="relative flex-1">
-              <input
-                type="number"
-                name="amount"
-                step="0.01"
-                min="0.01"
-                max={maxApplicable}
-                value={amountToUse}
-                onChange={(e) => {
-                  setAmountToUse(e.target.value);
-                  setErrorMsg(null);
-                }}
-                placeholder={isEn ? `Max ${maxApplicable.toFixed(2)} SAR` : `بحد أقصى ${maxApplicable.toFixed(2)} ر.س`}
-                className="w-full bg-white border border-[#EADFC9] rounded-xl px-3 py-2.5 text-sm font-medium text-[#234745] focus:outline-none focus:border-[#234745] transition-colors"
-              />
-              {maxApplicable > 0 && (
-                <button
-                  type="button"
-                  onClick={handleUseMax}
-                  className="absolute end-2 top-1/2 -translate-y-1/2 text-[11px] font-bold text-[#234745] bg-[#EBF3F1] hover:bg-[#234745] hover:text-white px-2 py-1 rounded transition-colors"
-                >
-                  {isEn ? 'MAX' : 'الكل'}
-                </button>
-              )}
-            </div>
-            <button
-              type="submit"
-              disabled={fetcher.state !== 'idle' || !amountToUse || parseFloat(amountToUse) <= 0 || parseFloat(amountToUse) > (availableBalance || 0)}
-              className="bg-[#234745] hover:bg-[#1a3533] text-white font-bold px-4 py-2.5 rounded-xl text-xs uppercase tracking-wider transition-all disabled:opacity-50 shrink-0"
-            >
-              {fetcher.state !== 'idle' ? (isEn ? 'Applying...' : 'جاري التطبيق...') : (isEn ? 'Apply' : 'تطبيق')}
-            </button>
-          </div>
-          {errorMsg && (
-            <p className="text-[12px] text-red-600 font-medium px-1 mt-0.5">{errorMsg}</p>
-          )}
-        </fetcher.Form>
+        <CartForm
+          route={isEn ? '/en/cart' : '/cart'}
+          action="StoreCreditUpdate"
+          inputs={{
+            amount: String(amountToUse),
+            intent: 'apply',
+            phone: String(phone || ''),
+          }}
+          className="flex flex-col gap-2"
+        >
+          {(fetcher: any) => {
+            const actionError = fetcher.data?.error || errorMsg;
+            return (
+              <div className="flex flex-col gap-2">
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <input
+                      type="number"
+                      name="amount"
+                      step="0.01"
+                      min="0.01"
+                      max={maxApplicable}
+                      value={amountToUse}
+                      onChange={(e) => {
+                        setAmountToUse(e.target.value);
+                        setErrorMsg(null);
+                      }}
+                      placeholder={isEn ? `Max ${maxApplicable.toFixed(2)} SAR` : `بحد أقصى ${maxApplicable.toFixed(2)} ر.س`}
+                      className="w-full bg-white border border-[#EADFC9] rounded-xl px-3 py-2.5 text-sm font-medium text-[#234745] focus:outline-none focus:border-[#234745] transition-colors"
+                    />
+                    {maxApplicable > 0 && (
+                      <button
+                        type="button"
+                        onClick={handleUseMax}
+                        className="absolute end-2 top-1/2 -translate-y-1/2 text-[11px] font-bold text-[#234745] bg-[#EBF3F1] hover:bg-[#234745] hover:text-white px-2 py-1 rounded transition-colors"
+                      >
+                        {isEn ? 'MAX' : 'الكل'}
+                      </button>
+                    )}
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={fetcher.state !== 'idle' || !amountToUse || parseFloat(amountToUse) <= 0 || parseFloat(amountToUse) > (availableBalance || 0)}
+                    className="bg-[#234745] hover:bg-[#1a3533] text-white font-bold px-4 py-2.5 rounded-xl text-xs uppercase tracking-wider transition-all disabled:opacity-50 shrink-0"
+                  >
+                    {fetcher.state !== 'idle' ? (isEn ? 'Applying...' : 'جاري التطبيق...') : (isEn ? 'Apply' : 'تطبيق')}
+                  </button>
+                </div>
+                {actionError && (
+                  <p className="text-[12px] text-red-600 font-medium px-1 mt-0.5">{actionError}</p>
+                )}
+              </div>
+            );
+          }}
+        </CartForm>
       ) : availableBalance !== null && availableBalance <= 0 ? (
         <p className="text-[12px] text-gray-500 font-medium px-1">
           {isEn ? 'You currently have 0.00 SAR store credit.' : 'لا يوجد لديك رصيد محفظة حالياً.'}

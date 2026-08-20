@@ -25,7 +25,7 @@ export type CartLineFragment = Pick<
   }>;
   merchandise: Pick<
     StorefrontAPI.ProductVariant,
-    'id' | 'availableForSale' | 'requiresShipping' | 'title'
+    'id' | 'availableForSale' | 'requiresShipping' | 'taxable' | 'title'
   > & {
     compareAtPrice?: StorefrontAPI.Maybe<
       Pick<StorefrontAPI.MoneyV2, 'currencyCode' | 'amount'>
@@ -78,7 +78,7 @@ export type CartLineComponentFragment = Pick<
   }>;
   merchandise: Pick<
     StorefrontAPI.ProductVariant,
-    'id' | 'availableForSale' | 'requiresShipping' | 'title'
+    'id' | 'availableForSale' | 'requiresShipping' | 'taxable' | 'title'
   > & {
     compareAtPrice?: StorefrontAPI.Maybe<
       Pick<StorefrontAPI.MoneyV2, 'currencyCode' | 'amount'>
@@ -127,7 +127,7 @@ export type CartLineComponentFragment = Pick<
       }>;
       merchandise: Pick<
         StorefrontAPI.ProductVariant,
-        'id' | 'availableForSale' | 'requiresShipping' | 'title'
+        'id' | 'availableForSale' | 'requiresShipping' | 'taxable' | 'title'
       > & {
         compareAtPrice?: StorefrontAPI.Maybe<
           Pick<StorefrontAPI.MoneyV2, 'currencyCode' | 'amount'>
@@ -212,7 +212,7 @@ export type CartApiQueryFragment = Pick<
           }>;
           merchandise: Pick<
             StorefrontAPI.ProductVariant,
-            'id' | 'availableForSale' | 'requiresShipping' | 'title'
+            'id' | 'availableForSale' | 'requiresShipping' | 'taxable' | 'title'
           > & {
             compareAtPrice?: StorefrontAPI.Maybe<
               Pick<StorefrontAPI.MoneyV2, 'currencyCode' | 'amount'>
@@ -272,7 +272,7 @@ export type CartApiQueryFragment = Pick<
           }>;
           merchandise: Pick<
             StorefrontAPI.ProductVariant,
-            'id' | 'availableForSale' | 'requiresShipping' | 'title'
+            'id' | 'availableForSale' | 'requiresShipping' | 'taxable' | 'title'
           > & {
             compareAtPrice?: StorefrontAPI.Maybe<
               Pick<StorefrontAPI.MoneyV2, 'currencyCode' | 'amount'>
@@ -327,7 +327,11 @@ export type CartApiQueryFragment = Pick<
               }>;
               merchandise: Pick<
                 StorefrontAPI.ProductVariant,
-                'id' | 'availableForSale' | 'requiresShipping' | 'title'
+                | 'id'
+                | 'availableForSale'
+                | 'requiresShipping'
+                | 'taxable'
+                | 'title'
               > & {
                 compareAtPrice?: StorefrontAPI.Maybe<
                   Pick<StorefrontAPI.MoneyV2, 'currencyCode' | 'amount'>
@@ -6444,6 +6448,16 @@ export type GetCustomerEnrollmentDateQuery = {
   customer?: StorefrontAPI.Maybe<Pick<StorefrontAPI.Customer, 'createdAt'>>;
 };
 
+export type GetCustomerWalletPhoneQueryVariables = StorefrontAPI.Exact<{
+  customerAccessToken: StorefrontAPI.Scalars['String']['input'];
+}>;
+
+export type GetCustomerWalletPhoneQuery = {
+  customer?: StorefrontAPI.Maybe<
+    Pick<StorefrontAPI.Customer, 'phone' | 'email'>
+  >;
+};
+
 interface GeneratedQueryTypes {
   '#graphql\n  fragment Shop on Shop {\n    id\n    name\n    description\n    primaryDomain {\n      url\n    }\n    brand {\n      logo {\n        image {\n          url\n        }\n      }\n    }\n  }\n  query Header(\n    $country: CountryCode\n    $headerMenuHandle: String!\n    $language: LanguageCode\n  ) @inContext(language: $language, country: $country) {\n    shop {\n      ...Shop\n    }\n    menu(handle: $headerMenuHandle) {\n      ...Menu\n    }\n  }\n  #graphql\n  fragment MenuItem on MenuItem {\n    id\n    resourceId\n    tags\n    title\n    type\n    url\n  }\n  fragment ChildMenuItem on MenuItem {\n    ...MenuItem\n  }\n  fragment ParentMenuItem on MenuItem {\n    ...MenuItem\n    items {\n      ...ChildMenuItem\n    }\n  }\n  fragment Menu on Menu {\n    id\n    items {\n      ...ParentMenuItem\n    }\n  }\n\n': {
     return: HeaderQuery;
@@ -6732,6 +6746,10 @@ interface GeneratedQueryTypes {
   '#graphql\n            query getCustomerEnrollmentDate($customerAccessToken: String!) {\n              customer(customerAccessToken: $customerAccessToken) { createdAt }\n            }\n            ': {
     return: GetCustomerEnrollmentDateQuery;
     variables: GetCustomerEnrollmentDateQueryVariables;
+  };
+  '#graphql\n          query getCustomerWalletPhone($customerAccessToken: String!) {\n            customer(customerAccessToken: $customerAccessToken) {\n              phone\n              email\n            }\n          }\n          ': {
+    return: GetCustomerWalletPhoneQuery;
+    variables: GetCustomerWalletPhoneQueryVariables;
   };
 }
 

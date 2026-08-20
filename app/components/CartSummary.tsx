@@ -236,7 +236,7 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
   const deliveryFee = (isFreeDelivery || isPickup || isDigitalOnlyCart) ? 0 : rawDeliveryFee;
   const calculatedTotal = Math.max(0, subtotalBeforeDiscounts - otherDiscountDisplay - loyaltyDiscountDisplay - storeCreditDiscountDisplay + deliveryFee);
 
-  // Calculate 15% VAT strictly on taxable products in the cart (independent of delivery/shipping fees)
+  // Calculate 15% VAT strictly on taxable products in the cart (net of product discounts, independent of delivery fees)
   const taxableProductsTotal = cart?.lines?.nodes?.reduce((acc: number, line: any) => {
     const isFreeItem = line.attributes?.some((attr: any) => attr.key === '_is_free' && attr.value === 'true') || false;
     if (isFreeItem) return acc;
@@ -250,9 +250,15 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
     return acc + lineCost;
   }, 0) || 0;
 
+  // Deduct applied discounts (coupons, loyalty points, store credit) from taxable product total
+  const netTaxableAmount = Math.max(
+    0,
+    taxableProductsTotal - otherDiscountDisplay - loyaltyDiscountDisplay - storeCreditDiscountDisplay,
+  );
+
   const calculatedTax = (cart?.cost?.totalTaxAmount && parseFloat(cart.cost.totalTaxAmount.amount) > 0)
     ? parseFloat(cart.cost.totalTaxAmount.amount)
-    : (taxableProductsTotal > 0 ? taxableProductsTotal * (15 / 115) : 0);
+    : (netTaxableAmount > 0 ? netTaxableAmount * (15 / 115) : 0);
   const hasTax = calculatedTax > 0;
 
   const isBranchHidden = currentBranch && (

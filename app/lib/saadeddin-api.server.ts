@@ -226,14 +226,22 @@ export class SaadeddinApi {
     amount: number;
     cartId: string;
   }) {
-    return this.api('/api/orders/apply-credit', {
+    const url = `${this.baseUrl}/api/orders/apply-credit`;
+    const res = await fetch(url, {
       method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(this.token ? { Authorization: `Bearer ${this.token}` } : {}),
+      },
       body: JSON.stringify({
         phone: payload.phone,
         amount: payload.amount,
         cart_id: payload.cartId,
       }),
     });
+
+    const data = await (res.json() as Promise<any>).catch(() => ({}));
+    return data;
   }
 
   // ─── REVIEWS & CRM ───────────────────────────────────────────────────────────

@@ -397,7 +397,7 @@ export default function ContactPage() {
       <div className="max-w-[1400px] mx-auto px-4 md:px-6 mt-10 md:mt-16 relative z-20 pb-20">
         {/* Contact Method Cards */}
         <div
-          className="flex md:grid md:grid-cols-4 overflow-x-auto md:overflow-x-visible snap-x snap-mandatory md:snap-none gap-4 md:gap-6 mb-16 pb-4 md:pb-0"
+          className="flex md:grid md:grid-cols-4 overflow-x-auto md:overflow-x-visible snap-x snap-mandatory md:snap-none gap-3 md:gap-4 lg:gap-6 mb-16 pb-4 md:pb-0 items-stretch"
           style={{
             scrollbarWidth: 'none',
             msOverflowStyle: 'none',
@@ -412,7 +412,7 @@ export default function ContactPage() {
           <ContactCard
             title={isEn ? 'Phone' : 'الهاتف'}
             subtitle={isEn ? 'For urgent inquiries' : 'للاستفسارات العاجلة'}
-            pill={isEn ? '920017070' : '920017070'}
+            pill="920017070"
             href="tel:920017070"
           />
           <ContactCard
@@ -746,38 +746,34 @@ export default function ContactPage() {
 function ContactCard({title, subtitle, pill, href, onClick}: any) {
   const cardInner = (
     <div
-      className="bg-white p-6 md:p-6 border border-[#234745] flex flex-col items-center justify-center text-center transition-all min-h-[180px] w-[200px] md:w-full flex-shrink-0 snap-start snap-always hover:shadow-md cursor-pointer group"
-      style={{borderRadius: '12px'}}
+      className="bg-white p-4 md:p-5 border border-[#234745] flex flex-col items-center justify-between text-center transition-all h-[175px] w-full hover:shadow-md cursor-pointer group rounded-[12px]"
       onClick={onClick}
     >
-      <h3
-        className="text-[24px] md:text-[28px] font-bold text-[#1F413F] mb-3 group-hover:text-[#234745] transition-colors"
-        style={{
-          fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif",
-          lineHeight: '100%',
-        }}
-      >
-        {title}
-      </h3>
-      <p
-        className="text-[14px] md:text-[15px] text-[#9FB7AE] !mb-6 font-medium"
-        style={{
-          lineHeight: '1.4',
-          fontWeight: 500,
-          marginBottom: '24px',
-          fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif",
-        }}
-      >
-        {subtitle}
-      </p>
+      <div className="flex flex-col items-center w-full justify-start">
+        <h3
+          className="text-[20px] md:text-[22px] lg:text-[24px] font-bold text-[#1F413F] mb-1 group-hover:text-[#234745] transition-colors"
+          style={{
+            fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif",
+            lineHeight: '1.2',
+          }}
+        >
+          {title}
+        </h3>
+        <p
+          className="text-[13px] md:text-[14px] text-[#9FB7AE] font-medium leading-snug px-1 line-clamp-2"
+          style={{
+            fontWeight: 500,
+            fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif",
+          }}
+        >
+          {subtitle}
+        </p>
+      </div>
       <div
-        className="inline-flex text-[14px] items-center justify-center px-8 h-[40px] font-bold bg-[#BBCFCD] group-hover:bg-[#ACC4C2] text-[#234745] transition-colors whitespace-nowrap cursor-pointer shadow-sm"
+        className="inline-flex text-[13px] md:text-[14px] items-center justify-center px-5 h-[38px] max-w-full font-bold bg-[#BBCFCD] group-hover:bg-[#ACC4C2] text-[#234745] transition-colors text-center cursor-pointer shadow-sm mt-auto rounded-full truncate leading-none"
         style={{
-          borderRadius: '1000px',
           fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif",
           fontWeight: 700,
-          lineHeight: '100%',
-          minWidth: '89px',
         }}
         dir="auto"
       >
@@ -786,6 +782,9 @@ function ContactCard({title, subtitle, pill, href, onClick}: any) {
     </div>
   );
 
+  const wrapperClass =
+    'flex flex-col flex-shrink-0 w-[200px] sm:w-[220px] md:w-full h-[175px] snap-start snap-always no-underline';
+
   if (href) {
     if (href.startsWith('http') || href.startsWith('tel:')) {
       return (
@@ -793,20 +792,24 @@ function ContactCard({title, subtitle, pill, href, onClick}: any) {
           href={href}
           target={href.startsWith('http') ? '_blank' : undefined}
           rel={href.startsWith('http') ? 'noopener noreferrer' : undefined}
-          className="block w-full text-left no-underline"
+          className={wrapperClass}
         >
           {cardInner}
         </a>
       );
     }
     return (
-      <Link to={href} className="block w-full text-left no-underline">
+      <Link to={href} className={wrapperClass}>
         {cardInner}
       </Link>
     );
   }
 
-  return cardInner;
+  return (
+    <div className={wrapperClass} onClick={onClick}>
+      {cardInner}
+    </div>
+  );
 }
 
 function FormField({

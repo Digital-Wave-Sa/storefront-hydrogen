@@ -249,6 +249,8 @@ export async function loader({params, context, request}: Route.LoaderArgs) {
           order: {
             name: `#${o.order_number}`,
             customerName,
+            email: o.email || o.customer?.email || o.contact_email || '',
+            phone: o.phone || o.customer?.phone || o.shipping_address?.phone || o.billing_address?.phone || '',
             items,
             branchName,
             locationId,
@@ -625,6 +627,17 @@ export default function FeedbackPage() {
                 />
               </div>
 
+              <input
+                type="hidden"
+                name="customerEmail"
+                value={order.email || ''}
+              />
+              <input
+                type="hidden"
+                name="customerPhone"
+                value={order.phone || ''}
+              />
+
               {/* Submit Action */}
               <div className="pt-4">
                 <button
@@ -724,6 +737,8 @@ export async function action({request, context, params}: Route.ActionArgs) {
 
   const apiSubmitData = new FormData();
   apiSubmitData.append('customerName', String(customerName));
+  apiSubmitData.append('customerEmail', String(formData.get('customerEmail') || ''));
+  apiSubmitData.append('customerPhone', String(formData.get('customerPhone') || ''));
   apiSubmitData.append('orderId', String(orderId));
   apiSubmitData.append('branchRating', String(branchRating || '5'));
   apiSubmitData.append('branchName', String(branchName || ''));

@@ -54,18 +54,32 @@ export const LOYALTY_TIERS: LoyaltyTier[] = [
   },
 ];
 
-export function getLoyaltyTierInfo(points: number = 0) {
+export function getLoyaltyTierInfo(points: number = 0, serverTierName?: string | null) {
   const safePoints = Math.max(0, Math.floor(Number(points) || 0));
 
   let currentTier: LoyaltyTier = LOYALTY_TIERS[0];
   let nextTier: LoyaltyTier | null = LOYALTY_TIERS[1];
 
-  if (safePoints >= 5000) {
-    currentTier = LOYALTY_TIERS[2]; // Gold
-    nextTier = null;
-  } else if (safePoints >= 1000) {
-    currentTier = LOYALTY_TIERS[1]; // Silver
-    nextTier = LOYALTY_TIERS[2]; // Gold
+  if (serverTierName) {
+    const found = LOYALTY_TIERS.find(t => t.name.toLowerCase() === serverTierName.toLowerCase() || t.code.toLowerCase() === serverTierName.toLowerCase());
+    if (found) {
+      currentTier = found;
+      if (found.code === 'GOLD') {
+        nextTier = null;
+      } else if (found.code === 'SILVER') {
+        nextTier = LOYALTY_TIERS[2];
+      } else {
+        nextTier = LOYALTY_TIERS[1];
+      }
+    }
+  } else {
+    if (safePoints >= 5000) {
+      currentTier = LOYALTY_TIERS[2]; // Gold
+      nextTier = null;
+    } else if (safePoints >= 1000) {
+      currentTier = LOYALTY_TIERS[1]; // Silver
+      nextTier = LOYALTY_TIERS[2]; // Gold
+    }
   }
 
   const nextTierMinPoints = nextTier ? nextTier.minPoints : 5000;

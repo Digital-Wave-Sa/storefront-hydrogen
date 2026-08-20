@@ -35,13 +35,14 @@ export class SaadeddinApi {
     if (phone.startsWith('+')) {
       candidates.push(phone.replace('+', ''));
     }
-    const countryCodes = ['+966', '+971', '+965', '+974', '+973', '+968', '+962'];
-    for (const cc of countryCodes) {
-      if (phone.startsWith(cc)) {
-        const local = phone.substring(cc.length);
-        if (!local.startsWith('0')) {
-          candidates.push(`${cc}0${local}`);
-          candidates.push(`${cc.replace('+', '')}0${local}`);
+    const match = phone.match(/^\+?(\d{1,4})/);
+    if (match) {
+      const prefix = phone.startsWith('+') ? `+${match[1]}` : match[1];
+      if (phone.startsWith(prefix)) {
+        const local = phone.substring(prefix.length);
+        if (local && !local.startsWith('0')) {
+          candidates.push(`+${match[1]}0${local}`);
+          candidates.push(`${match[1]}0${local}`);
         }
       }
     }
@@ -218,6 +219,31 @@ export class SaadeddinApi {
     return this.api(`/gift-cards/by-phone/${phone}`);
   }
 
+  // ─── STORE CREDIT (CHECKOUT INTEGRATION) ────────────────────────────────────
+
+  async applyStoreCredit(payload: {
+    phone: string;
+    amount: number;
+    cartId: string;
+  }) {
+    const url = `${this.baseUrl}/api/orders/apply-credit`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(this.token ? { Authorization: `Bearer ${this.token}` } : {}),
+      },
+      body: JSON.stringify({
+        phone: payload.phone,
+        amount: payload.amount,
+        cart_id: payload.cartId,
+      }),
+    });
+
+    const data = await (res.json() as Promise<any>).catch(() => ({}));
+    return data;
+  }
+
   // ─── REVIEWS & CRM ───────────────────────────────────────────────────────────
 
   async sendNegativeReview(payload: {
@@ -231,20 +257,40 @@ export class SaadeddinApi {
     branchName?: string;
   }) {
     try {
-      return await this.api('/reviews/negative', {
+      const bodyPayload: Record<string, any> = {
+        order_number: payload.orderNumber,
+        rating: payload.rating,
+        comment: payload.comment,
+        customer_email: payload.customerEmail || 'customer@saadeddin.com',
+        customer_phone: payload.customerPhone || '+966500000000',
+        branch_name: payload.branchName || 'General',
+        submitted_at: new Date().toISOString(),
+      };
+
+      if (payload.productTitle) {
+        bodyPayload.product_name = payload.productTitle;
+      }
+      if (payload.productHandle) {
+        bodyPayload.product_handle = payload.productHandle;
+      }
+
+      console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log('📤 [MIDDLEWARE OUTBOX] POST /reviews/negative');
+      console.log('📦 Payload Body:', JSON.stringify(bodyPayload, null, 2));
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+
+      const res = await fetch(`${this.baseUrl}/reviews/negative`, {
         method: 'POST',
-        body: JSON.stringify({
-          order_number: payload.orderNumber,
-          rating: payload.rating,
-          comment: payload.comment,
-          product_name: payload.productTitle,
-          product_handle: payload.productHandle,
-          customer_email: payload.customerEmail,
-          customer_phone: payload.customerPhone,
-          branch_name: payload.branchName,
-          submitted_at: new Date().toISOString(),
-        }),
+        headers: {
+          'Content-Type': 'application/json',
+          ...(this.token ? { Authorization: `Bearer ${this.token}` } : {}),
+        },
+        body: JSON.stringify(bodyPayload),
       });
+
+      const resData = await (res.json() as Promise<any>).catch(() => ({}));
+      console.log(`📥 [MIDDLEWARE RESPONSE] Status: ${res.status}`, JSON.stringify(resData, null, 2));
+      return resData;
     } catch (err: any) {
       console.warn('[REVIEWS] Middleware negative review sync notice:', err?.message || err);
       return null;

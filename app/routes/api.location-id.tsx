@@ -71,6 +71,7 @@ export async function action({request, context}: ActionFunctionArgs) {
             {
               key: 'Branch ID',
               value:
+                sessionCustomBranchId ||
                 (typeof locationId === 'string'
                   ? locationId
                   : await context.session.get('selectedLocationId')) || '',
@@ -85,6 +86,12 @@ export async function action({request, context}: ActionFunctionArgs) {
                   : 'Pickup',
             },
           ];
+        } else {
+          // If Branch ID exists, replace with sessionCustomBranchId if available
+          const bIdx = attributes.findIndex((a: any) => a.key === 'Branch ID');
+          if (bIdx >= 0 && sessionCustomBranchId) {
+            attributes[bIdx].value = sessionCustomBranchId;
+          }
         }
 
         if (sessionCustomBranchId) {
@@ -98,20 +105,14 @@ export async function action({request, context}: ActionFunctionArgs) {
             attributes.push({key: 'branch_id', value: sessionCustomBranchId});
           }
         }
-        if (sessionAxStoreId) {
-          if (!attributes.find((a: any) => a.key === 'custom.ax_store_id')) {
-            attributes.push({
-              key: 'custom.ax_store_id',
-              value: sessionAxStoreId,
-            });
-          }
-          if (!attributes.find((a: any) => a.key === 'ax_store_id')) {
-            attributes.push({key: 'ax_store_id', value: sessionAxStoreId});
-          }
-          if (!attributes.find((a: any) => a.key === 'AX Store ID')) {
-            attributes.push({key: 'AX Store ID', value: sessionAxStoreId});
-          }
-        }
+
+        // Filter out ax_store_id keys from cart attributes
+        attributes = attributes.filter(
+          (a: any) =>
+            !['custom.ax_store_id', 'ax_store_id', 'ax store id'].includes(
+              a.key.toLowerCase().trim(),
+            ),
+        );
 
         if (typeof context.cart.updateAttributes === 'function') {
           await context.cart.updateAttributes(attributes);

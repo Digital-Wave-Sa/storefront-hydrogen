@@ -65,10 +65,16 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
   const loyaltyPointsRedeemed = parseInt(appliedPointsStr) || 0;
   const expectedLoyaltyDiscount = loyaltyPointsRedeemed * 0.01;
   const hasLoyaltyDiscount = cart?.discountCodes?.some((dc: any) => dc.code?.startsWith('LOYALTY-')) && expectedLoyaltyDiscount > 0;
-
   const loyaltyDiscountDisplay = hasLoyaltyDiscount ? expectedLoyaltyDiscount : 0;
+
+  // Split store credit / wallet discount from other discounts
+  const appliedCreditStr = cart?.attributes?.find((a: any) => a.key === 'store_credit_amount')?.value;
+  const appliedCreditAmount = parseFloat(appliedCreditStr || '0') || 0;
+  const hasStoreCreditDiscount = cart?.discountCodes?.some((dc: any) => dc.code?.startsWith('CREDIT-')) && appliedCreditAmount > 0;
+  const storeCreditDiscountDisplay = hasStoreCreditDiscount ? appliedCreditAmount : 0;
+
   // Make sure we don't show negative other discounts due to floating point math
-  const otherDiscountDisplay = Math.max(0, totalDiscount - loyaltyDiscountDisplay);
+  const otherDiscountDisplay = Math.max(0, totalDiscount - loyaltyDiscountDisplay - storeCreditDiscountDisplay);
 
   const attributes = cart?.attributes || [];
 
@@ -228,7 +234,32 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
                         : 0)))));
 
   const deliveryFee = (isFreeDelivery || isPickup || isDigitalOnlyCart) ? 0 : rawDeliveryFee;
-  const calculatedTotal = Math.max(0, subtotalBeforeDiscounts - otherDiscountDisplay - loyaltyDiscountDisplay + deliveryFee);
+  const calculatedTotal = Math.max(0, subtotalBeforeDiscounts - otherDiscountDisplay - loyaltyDiscountDisplay - storeCreditDiscountDisplay + deliveryFee);
+
+  // Calculate 15% VAT strictly on taxable products in the cart (net of product discounts, independent of delivery fees)
+  const taxableProductsTotal = cart?.lines?.nodes?.reduce((acc: number, line: any) => {
+    const isFreeItem = line.attributes?.some((attr: any) => attr.key === '_is_free' && attr.value === 'true') || false;
+    if (isFreeItem) return acc;
+
+    // Only count items that have "Charge tax on this product" enabled in Shopify (taxable: true)
+    const isTaxable = line.merchandise?.taxable === true;
+    if (!isTaxable) return acc;
+
+    // line.cost.totalAmount is the exact net product line price in Shopify
+    const lineCost = parseFloat(line.cost?.totalAmount?.amount || '0');
+    return acc + lineCost;
+  }, 0) || 0;
+
+  // Deduct applied discounts (coupons, loyalty points, store credit) from taxable product total
+  const netTaxableAmount = Math.max(
+    0,
+    taxableProductsTotal - otherDiscountDisplay - loyaltyDiscountDisplay - storeCreditDiscountDisplay,
+  );
+
+  const calculatedTax = (cart?.cost?.totalTaxAmount && parseFloat(cart.cost.totalTaxAmount.amount) > 0)
+    ? parseFloat(cart.cost.totalTaxAmount.amount)
+    : (netTaxableAmount > 0 ? netTaxableAmount * (15 / 115) : 0);
+  const hasTax = calculatedTax > 0;
 
   const isBranchHidden = currentBranch && (
     currentBranch.hide_from_storefront?.value === 'true' ||
@@ -331,19 +362,13 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
 
     const newAttributes = [
       { key: 'Branch', value: branchName },
-      { key: 'Branch ID', value: bId },
+      { key: 'Branch ID', value: customBranchId || bId },
       { key: 'Fulfillment Type', value: type === 'delivery' ? 'Delivery' : 'Pickup' },
     ];
 
     if (customBranchId) {
       newAttributes.push({ key: 'custom.branch_id', value: customBranchId });
       newAttributes.push({ key: 'branch_id', value: customBranchId });
-    }
-
-    if (axStoreId) {
-      newAttributes.push({ key: 'custom.ax_store_id', value: axStoreId });
-      newAttributes.push({ key: 'ax_store_id', value: axStoreId });
-      newAttributes.push({ key: 'AX Store ID', value: axStoreId });
     }
 
     if (addressName) {
@@ -469,7 +494,10 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
                   </button>
                 </div>
               ) : (
-                <LoyaltyRedemptionUI isEn={isEn} cart={cart} />
+                <>
+                  <LoyaltyRedemptionUI isEn={isEn} cart={cart} />
+                  <StoreCreditRedemptionUI isEn={isEn} cart={cart} />
+                </>
               )}
 
               {/* IF DIGITAL ONLY CART: SHOW DIGITAL DELIVERY NOTICE */}
@@ -626,6 +654,18 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
                   </div>
                 )}
 
+                {storeCreditDiscountDisplay > 0 && (
+                  <div className="flex justify-between items-center text-[15px]">
+                    <dt className="text-green-600 font-bold" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
+                      {isEn ? 'Store Credit' : 'رصيد المحفظة'}
+                    </dt>
+                    <dd className="text-green-600 font-black font-en flex items-center gap-1 flex-row-reverse">
+                      <SaudiRiyalSymbol className="h-4 w-auto" />
+                      <span>-{storeCreditDiscountDisplay.toFixed(2)}</span>
+                    </dd>
+                  </div>
+                )}
+
                 {!isPickup && !isDigitalOnlyCart && (
                   <div className="flex justify-between items-center text-[15px]">
                     <dt className="text-[#9FB7AE] font-medium" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>{isEn ? 'Delivery Fees' : 'رسوم التوصيل'}</dt>
@@ -642,12 +682,12 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
                   </div>
                 )}
 
-                {cart?.cost?.totalTaxAmount && (
+                {hasTax && (
                   <div className="flex justify-between items-center text-[15px]">
                     <dt className="text-[#9FB7AE] font-bold" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>{isEn ? 'VAT (15%)' : 'ضريبة القيمة المضافة (١٥٪)'}</dt>
                     <dd className="text-[#234745] font-bold font-en flex items-center gap-1 flex-row-reverse">
                       <SaudiRiyalSymbol className="h-4 w-auto" />
-                      <span>{parseFloat(cart.cost.totalTaxAmount.amount).toFixed(2)}</span>
+                      <span>{calculatedTax.toFixed(2)}</span>
                     </dd>
                   </div>
                 )}
@@ -825,11 +865,12 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
             </div>
           )}
 
-          {cart?.cost?.totalTaxAmount && (
+          {hasTax && (
             <div className="flex justify-between items-center text-[14px]">
-              <dt className="text-gray-400 font-medium">{isEn ? 'VAT' : 'ضريبة القيمة المضافة'}</dt>
-              <dd className="text-[#234745] font-bold font-en">
-                <Price data={cart.cost.totalTaxAmount} isEn={isEn} size="xs" />
+              <dt className="text-gray-400 font-medium">{isEn ? 'VAT (15%)' : 'ضريبة القيمة المضافة (١٥٪)'}</dt>
+              <dd className="text-[#234745] font-bold font-en flex items-center gap-1 flex-row-reverse">
+                <SaudiRiyalSymbol className="h-3.5 w-auto" />
+                <span>{calculatedTax.toFixed(2)}</span>
               </dd>
             </div>
           )}
@@ -1512,6 +1553,187 @@ function CustomPointsForm({ availablePoints, isEn }: { availablePoints: number; 
         </div>
       )}
     </div>
+  );
+}
+
+// ─── STORE CREDIT / WALLET REDEMPTION ─────────────────────────────────────────
+function StoreCreditRedemptionUI({ isEn, cart }: { isEn: boolean; cart: any }) {
+  const rootData = useRouteLoaderData('root') as any;
+  const appliedCreditStr = cart?.attributes?.find((a: any) => a.key === 'store_credit_amount')?.value;
+  const initialCredit = parseFloat(appliedCreditStr || '0') || 0;
+
+  const [amountToUse, setAmountToUse] = useState<string>(initialCredit > 0 ? initialCredit.toString() : '');
+  const [availableBalance, setAvailableBalance] = useState<number | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const fetcher = useFetcher<any>();
+
+  const [customerInfo, setCustomerInfo] = useState<{ phone?: string; email?: string }>({});
+
+  useEffect(() => {
+    if (rootData?.customer) {
+      Promise.resolve(rootData.customer).then((res: any) => {
+        const cust = res?.customer;
+        if (cust) {
+          setCustomerInfo({
+            phone: cust.phone,
+            email: cust.email,
+          });
+        }
+      }).catch(() => { });
+    }
+  }, [rootData?.customer]);
+
+  useEffect(() => {
+    if (fetcher.state === 'idle' && fetcher.data) {
+      if (fetcher.data.error) {
+        setErrorMsg(fetcher.data.error);
+      } else if (fetcher.data.success || fetcher.data.cart) {
+        setErrorMsg(null);
+      }
+    }
+  }, [fetcher.state, fetcher.data]);
+
+  let phone = rootData?.loginOtpPhone || cart?.buyerIdentity?.phone || cart?.buyerIdentity?.customer?.phone || customerInfo.phone;
+  const email = cart?.buyerIdentity?.email || cart?.buyerIdentity?.customer?.email || customerInfo.email;
+  if (!phone && email && email.includes('@saadeddin.dev')) {
+    phone = email.split('@')[0];
+  }
+
+  useEffect(() => {
+    const cleanPhone = (phone || '').replace(/\s+/g, '');
+    const query = cleanPhone ? `phone=${encodeURIComponent(cleanPhone)}&` : '';
+    fetch(`/api/wallet-balance?${query}t=${Date.now()}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.success && data?.balance !== undefined) {
+          setAvailableBalance(data.balance);
+        }
+      })
+      .catch(() => { });
+  }, [phone, rootData?.customer]);
+
+  if (!phone && availableBalance === null) {
+    return null;
+  }
+
+  const isApplied = initialCredit > 0;
+  const cartSubtotal = parseFloat(cart?.cost?.subtotalAmount?.amount || '0');
+  const maxApplicable = availableBalance ? Math.min(availableBalance, cartSubtotal) : 0;
+
+  const handleUseMax = () => {
+    if (maxApplicable > 0) {
+      setAmountToUse(maxApplicable.toFixed(2));
+      setErrorMsg(null);
+    }
+  };
+
+  return (
+    <section className="flex flex-col gap-3 mt-4 pt-4 border-t border-dashed border-[#f0ece8]">
+      <div className="flex items-center justify-between mb-1">
+        <div className="flex items-center gap-2 text-[#234745]">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="4" width="20" height="16" rx="2"></rect><line x1="2" y1="10" x2="22" y2="10"></line></svg>
+          <span className="font-bold text-[14px]">
+            {isEn ? 'Use Store Credit (Wallet)' : 'استخدام رصيد المحفظة'}
+          </span>
+        </div>
+        {availableBalance !== null && (
+          <span className="text-[12px] font-bold text-[#234745] bg-[#EBF3F1] px-2.5 py-1 rounded-full border border-[#234745]/10">
+            {isEn ? 'Balance:' : 'الرصيد:'} {availableBalance.toFixed(2)} {isEn ? 'SAR' : 'ر.س'}
+          </span>
+        )}
+      </div>
+
+      {isApplied ? (
+        <div className="bg-[#EBF3F1] border border-[#234745]/20 rounded-xl p-3.5 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-base">💳</span>
+            <div>
+              <span className="font-bold text-[13px] text-[#234745] block">
+                {isEn ? 'Store Credit Applied' : 'تم تطبيق رصيد المحفظة'}
+              </span>
+              <span className="text-[11px] text-[#234745]/80 font-medium">
+                -{initialCredit.toFixed(2)} {isEn ? 'SAR' : 'ر.س'}
+              </span>
+            </div>
+          </div>
+          <CartForm
+            route={isEn ? '/en/cart' : '/cart'}
+            action="StoreCreditUpdate"
+            inputs={{ intent: 'remove', phone: String(phone || '') }}
+          >
+            {(fetcher: any) => (
+              <button
+                type="submit"
+                disabled={fetcher.state !== 'idle'}
+                className="text-[12px] font-bold text-red-600 hover:text-red-700 bg-white hover:bg-red-50 px-3 py-1.5 rounded-lg border border-red-200 transition-colors disabled:opacity-50"
+              >
+                {fetcher.state !== 'idle' ? (isEn ? 'Removing...' : 'جاري الإلغاء...') : (isEn ? 'Remove' : 'إلغاء')}
+              </button>
+            )}
+          </CartForm>
+        </div>
+      ) : availableBalance !== null && availableBalance > 0 ? (
+        <CartForm
+          route={isEn ? '/en/cart' : '/cart'}
+          action="StoreCreditUpdate"
+          inputs={{
+            amount: String(amountToUse),
+            intent: 'apply',
+            phone: String(phone || ''),
+          }}
+          className="flex flex-col gap-2"
+        >
+          {(fetcher: any) => {
+            const actionError = fetcher.data?.error || errorMsg;
+            return (
+              <div className="flex flex-col gap-2">
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <input
+                      type="number"
+                      name="amount"
+                      step="0.01"
+                      min="0.01"
+                      max={maxApplicable}
+                      value={amountToUse}
+                      onChange={(e) => {
+                        setAmountToUse(e.target.value);
+                        setErrorMsg(null);
+                      }}
+                      placeholder={isEn ? `Max ${maxApplicable.toFixed(2)} SAR` : `بحد أقصى ${maxApplicable.toFixed(2)} ر.س`}
+                      className="w-full bg-white border border-[#EADFC9] rounded-xl px-3 py-2.5 text-sm font-medium text-[#234745] focus:outline-none focus:border-[#234745] transition-colors"
+                    />
+                    {maxApplicable > 0 && (
+                      <button
+                        type="button"
+                        onClick={handleUseMax}
+                        className="absolute end-2 top-1/2 -translate-y-1/2 text-[11px] font-bold text-[#234745] bg-[#EBF3F1] hover:bg-[#234745] hover:text-white px-2 py-1 rounded transition-colors"
+                      >
+                        {isEn ? 'MAX' : 'الكل'}
+                      </button>
+                    )}
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={fetcher.state !== 'idle' || !amountToUse || parseFloat(amountToUse) <= 0 || parseFloat(amountToUse) > (availableBalance || 0)}
+                    className="bg-[#234745] hover:bg-[#1a3533] text-white font-bold px-4 py-2.5 rounded-xl text-xs uppercase tracking-wider transition-all disabled:opacity-50 shrink-0"
+                  >
+                    {fetcher.state !== 'idle' ? (isEn ? 'Applying...' : 'جاري التطبيق...') : (isEn ? 'Apply' : 'تطبيق')}
+                  </button>
+                </div>
+                {actionError && (
+                  <p className="text-[12px] text-red-600 font-medium px-1 mt-0.5">{actionError}</p>
+                )}
+              </div>
+            );
+          }}
+        </CartForm>
+      ) : availableBalance !== null && availableBalance <= 0 ? (
+        <p className="text-[12px] text-gray-500 font-medium px-1">
+          {isEn ? 'You currently have 0.00 SAR store credit.' : 'لا يوجد لديك رصيد محفظة حالياً.'}
+        </p>
+      ) : null}
+    </section>
   );
 }
 

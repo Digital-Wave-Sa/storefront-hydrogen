@@ -19,6 +19,7 @@ import {LogoSplash} from '~/components/LogoSplash';
 import {SaadeddinApi} from '~/lib/saadeddin-api.server';
 import {derivePassword} from '~/lib/auth.server';
 import {validatePhoneNumber, sanitizePhoneInput} from '~/lib/phone-validation';
+import {COUNTRY_CODES, parsePhoneCountry} from '~/lib/country-codes';
 
 export const meta: MetaFunction<typeof loader> = () => {
   return [{title: 'Login | Saadeddin'}];
@@ -695,13 +696,9 @@ export default function Login() {
   let initialPhone = '';
   let initialCountryCode = '+966';
   if (loaderData?.otpPhone) {
-    const matched = loaderData.otpPhone.match(/^(\+\d{1,3})(.*)$/);
-    if (matched) {
-      initialCountryCode = matched[1];
-      initialPhone = matched[2];
-    } else {
-      initialPhone = loaderData.otpPhone;
-    }
+    const parsed = parsePhoneCountry(loaderData.otpPhone);
+    initialCountryCode = parsed.countryCode;
+    initialPhone = parsed.localNumber;
   }
 
   const actionData = useActionData<any>();
@@ -1104,52 +1101,68 @@ export default function Login() {
                       className="flex flex-row items-center border border-[#234745] bg-white rounded-full h-[48px] focus-within:border-[#234745] transition-colors overflow-hidden"
                       dir="ltr"
                     >
-                      <select
-                        name="countryCode"
-                        value={countryCode}
-                        onChange={(e) => {
-                          setCountryCode(e.target.value);
-                          setClientPhoneError(null);
-                        }}
-                        disabled={blockCooldown > 0}
-                        className="bg-transparent border-none text-[#171717] font-bold text-[14px] focus:ring-0 outline-none pl-4 pr-6 py-3 appearance-none cursor-pointer disabled:opacity-50"
-                        style={{
-                          backgroundImage:
-                            "url(\"data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e\")",
-                          backgroundRepeat: 'no-repeat',
-                          backgroundPosition: 'right 0.2rem center',
-                          backgroundSize: '1.2em',
-                          width: '90px',
-                        }}
-                      >
-                        <option value="+966">+966</option>
-                        <option value="+971">+971</option>
-                        <option value="+965">+965</option>
-                        <option value="+974">+974</option>
-                        <option value="+973">+973</option>
-                        <option value="+968">+968</option>
-                        <option value="+962">+962</option>
-                      </select>
-                      <div className="w-[1px] h-3/5 bg-[#BBCFCD] mx-2"></div>
+                      <div className="relative flex items-center justify-center shrink-0 pl-4 pr-3 py-3 cursor-pointer min-w-[72px]">
+                        <div className="flex items-center gap-1.5 text-[#171717] font-bold text-[14px] pointer-events-none select-none">
+                          <span>{countryCode}</span>
+                          <svg
+                            width="10"
+                            height="6"
+                            viewBox="0 0 10 6"
+                            fill="none"
+                            className="text-[#171717]"
+                          >
+                            <path
+                              d="M1 1L5 5L9 1"
+                              stroke="currentColor"
+                              strokeWidth="1.6"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                        </div>
+                        <select
+                          name="countryCode"
+                          value={countryCode}
+                          onChange={(e) => {
+                            setCountryCode(e.target.value);
+                            setClientPhoneError(null);
+                          }}
+                          disabled={blockCooldown > 0}
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer text-[14px] disabled:cursor-not-allowed"
+                        >
+                          {COUNTRY_CODES.map((c) => (
+                            <option key={`${c.code}-${c.dialCode}`} value={c.dialCode}>
+                              {c.flag} {c.dialCode} ({isEn ? c.nameEn : c.nameAr})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="w-[1px] h-3/5 bg-[#BBCFCD] mx-1 shrink-0"></div>
                       <input
                         name="phone"
                         type="tel"
-                        maxLength={phone.startsWith('0') ? 10 : 9}
+                        maxLength={
+                          countryCode === '+966' || countryCode === '+971' || countryCode === '+962'
+                            ? phone.startsWith('0') ? 10 : 9
+                            : 15
+                        }
                         placeholder={
                           countryCode === '+966'
                             ? '05XXXXXXXX'
                             : countryCode === '+962'
                               ? '07XXXXXXXX'
-                              : '5XXXXXXXX'
+                              : countryCode === '+971'
+                                ? '05XXXXXXXX'
+                                : 'XXXXXXXX'
                         }
-                        className="flex-1 bg-transparent border-none outline-none text-[#171717] font-medium text-[14px] focus:ring-0 placeholder:text-[#BBCFCD] px-2 py-3 disabled:opacity-50"
+                        className="flex-1 bg-transparent border-none outline-none text-[#171717] font-medium text-[14px] focus:ring-0 placeholder:text-[#BBCFCD] px-2 py-3 disabled:opacity-50 min-w-0"
                         style={{
                           fontFamily:
                             "'EnglishDigits', 'GE Dinar One', sans-serif",
                         }}
                         value={phone}
                         onChange={(e) => {
-                          setPhone(sanitizePhoneInput(e.target.value));
+                          setPhone(sanitizePhoneInput(e.target.value, countryCode));
                           setClientPhoneError(null);
                         }}
                         required

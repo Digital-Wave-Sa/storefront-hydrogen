@@ -1439,9 +1439,15 @@ export default function VouchersPage() {
             </div>
 
             {/* Voucher Cards List */}
-            <div className="space-y-4 pt-2 w-full">
+            <div
+              className="flex md:flex-col overflow-x-auto md:overflow-x-visible snap-x snap-mandatory md:snap-none gap-4 md:space-y-4 pb-4 md:pb-0 pt-2 w-full items-stretch"
+              style={{
+                scrollbarWidth: 'none',
+                msOverflowStyle: 'none',
+              }}
+            >
               {currentTabList.length === 0 ? (
-                <div className="bg-white rounded-[24px] p-10 text-center border border-gray-200 shadow-sm flex flex-col items-center gap-3">
+                <div className="bg-white rounded-[24px] p-10 text-center border border-gray-200 shadow-sm flex flex-col items-center gap-3 w-full">
                   <div className="w-14 h-14 rounded-full bg-[#FAF8F5] flex items-center justify-center text-[26px]">
                     🎟️
                   </div>
@@ -1472,10 +1478,13 @@ export default function VouchersPage() {
                       : '#97A7AD';
 
                   return (
-                    <div key={v.id || i} className="w-full">
+                    <div
+                      key={v.id || i}
+                      className="w-[280px] sm:w-[320px] md:w-full flex-shrink-0 snap-start snap-always flex flex-col self-stretch"
+                    >
                       {/* ─── 1. DESKTOP CARD LAYOUT (hidden md:flex) ─── */}
                       <div
-                        className={`hidden md:flex relative bg-white transition-all items-center justify-between shadow-sm border border-gray-100 rounded-[12px] p-6 min-h-[136px] gap-6 ${
+                        className={`hidden md:flex relative bg-white transition-all items-center justify-between shadow-sm border border-gray-100 rounded-[12px] p-6 min-h-[136px] gap-6 w-full ${
                           isActiveState
                             ? isEn
                               ? 'border-l-4 border-l-[#234745]'
@@ -1581,7 +1590,7 @@ export default function VouchersPage() {
 
                       {/* ─── 2. MOBILE CARD LAYOUT (flex md:hidden) ─── */}
                       <div
-                        className="flex md:hidden relative bg-white rounded-[20px] p-5 border border-[#BBCFCD]/60 shadow-sm transition-all flex-col justify-between w-full overflow-hidden"
+                        className="flex md:hidden relative bg-white rounded-[20px] p-5 border border-[#BBCFCD]/60 shadow-sm transition-all flex-col justify-between w-full h-full min-h-[220px] overflow-hidden"
                         dir={isEn ? 'ltr' : 'rtl'}
                       >
                         {/* Top Info + Badge Row */}
@@ -1643,7 +1652,7 @@ export default function VouchersPage() {
                             type="button"
                             disabled={cartFetcher.state !== 'idle'}
                             onClick={() => applyCodeToCart(v.code)}
-                            className="w-full h-[46px] rounded-full bg-[#234745] hover:bg-[#1A3533] text-white font-bold text-[15px] flex items-center justify-center transition-all shadow-sm active:scale-98 disabled:opacity-50 cursor-pointer border-none"
+                            className="w-full h-[46px] rounded-full bg-[#234745] hover:bg-[#1A3533] text-white font-bold text-[15px] flex items-center justify-center transition-all shadow-sm active:scale-98 disabled:opacity-50 cursor-pointer border-none mt-auto"
                             style={{
                               fontFamily: "'GE Dinar One', 'GE SS Two', sans-serif",
                             }}

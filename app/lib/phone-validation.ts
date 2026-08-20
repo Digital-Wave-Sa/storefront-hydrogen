@@ -6,12 +6,15 @@ export interface PhoneValidationResult {
   errorAr?: string;
 }
 
-export function sanitizePhoneInput(rawInput: string): string {
+export function sanitizePhoneInput(rawInput: string, countryCode: string = '+966'): string {
   const digits = rawInput.replace(/\D/g, '');
-  if (digits.startsWith('0')) {
-    return digits.slice(0, 10);
+  if (countryCode === '+966' || countryCode === '+971' || countryCode === '+962') {
+    if (digits.startsWith('0')) {
+      return digits.slice(0, 10);
+    }
+    return digits.slice(0, 9);
   }
-  return digits.slice(0, 9);
+  return digits.slice(0, 15);
 }
 
 export function validatePhoneNumber(
@@ -187,7 +190,7 @@ export function validatePhoneNumber(
     }
   }
 
-  // General GCC / International fallback (+965, +974, +973, +968)
+  // General GCC / International fallback
   let clean = digits;
   if (clean.startsWith('00' + countryDigits))
     clean = clean.substring(2 + countryDigits.length);
@@ -195,7 +198,7 @@ export function validatePhoneNumber(
     clean = clean.substring(countryDigits.length);
   if (clean.startsWith('0')) clean = clean.substring(1);
 
-  if (clean.length < 7 || clean.length > 11) {
+  if (clean.length < 4 || clean.length > 15) {
     return {
       isValid: false,
       cleanLocalPhone: '',

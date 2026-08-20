@@ -882,6 +882,18 @@ const LOCATIONS_QUERY = `#graphql
           key
           value
         }
+        branch_id: metafield(namespace: "custom", key: "branch_id") {
+          key
+          value
+        }
+        ax_store_id: metafield(namespace: "custom", key: "ax_store_id") {
+          key
+          value
+        }
+        name_in_arabic: metafield(namespace: "custom", key: "name_in_arabic") {
+          key
+          value
+        }
       }
     }
   }

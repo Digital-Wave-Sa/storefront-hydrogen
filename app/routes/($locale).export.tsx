@@ -9,12 +9,7 @@ import {
 } from 'react-router';
 import {getPaginationVariables, Pagination} from '@shopify/hydrogen';
 import {useState, useEffect} from 'react';
-import {createPortal} from 'react-dom';
 import {getShopTitle} from '~/lib/seo';
-import {
-  FilterSidebar,
-  ActiveFilterChips,
-} from '~/routes/($locale).collections.all';
 import {ProductItem} from '~/components/ProductItem';
 import exportHeroImg from '/images/export-hero.jpg';
 
@@ -244,7 +239,6 @@ export async function loader({context, request}: LoaderFunctionArgs) {
 export default function ExportPage() {
   const {products, collections, error} = useLoaderData<typeof loader>();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [formSubmitted, setFormSubmitted] = useState(false);
 
@@ -481,177 +475,132 @@ export default function ExportPage() {
               : 'جاري تحميل منتجات التصدير...'}
           </div>
         ) : (
-          <div className="flex flex-col lg:flex-row gap-8 items-start">
-            {/* Products Area */}
-            <div className="flex-1 min-w-0 w-full lg:order-2">
-              {/* Mobile Layout Controls (< lg) */}
-              <div
-                className="lg:hidden flex flex-col gap-4 mb-4"
-                dir={isEn ? 'ltr' : 'rtl'}
-              >
-                <div className="lg:hidden flex flex-wrap items-center justify-between gap-2.5 mb-4 w-full max-w-full">
-                  <button
-                    type="button"
-                    onClick={() => setIsFilterOpen(true)}
-                    className="flex items-center gap-2 px-4 py-2 bg-white border border-[#BBCFCD]/50 text-[#234745] rounded-[8px] font-bold shadow-sm"
+          <div className="w-full">
+            {/* Mobile Layout Controls (< lg) */}
+            <div
+              className="lg:hidden flex flex-wrap items-center justify-between gap-2.5 mb-6 w-full max-w-full"
+              dir={isEn ? 'ltr' : 'rtl'}
+            >
+              <div className="flex items-center gap-1.5 ms-auto">
+                <span
+                  className="text-[#7D7D7D] text-[13px] font-medium whitespace-nowrap"
+                  style={{fontFamily: "'GE Dinar One', sans-serif"}}
+                >
+                  {isEn ? 'Sort by:' : 'ترتيب حسب:'}
+                </span>
+                <div className="flex items-center bg-white border border-[#BBCFCD]/60 rounded-[8px] px-3 py-1.5 relative w-[140px]">
+                  <select
+                    aria-label={isEn ? 'Sort by' : 'ترتيب حسب'}
+                    className="w-full bg-transparent text-[13px] font-bold text-[#234745] cursor-pointer focus:outline-none appearance-none"
                     style={{fontFamily: "'GE Dinar One', sans-serif"}}
+                    onChange={(e) => {
+                      const [key, rev] = e.target.value.split('|');
+                      const params = new URLSearchParams(searchParams);
+                      params.set('sortKey', key);
+                      params.set('reverse', rev);
+                      setSearchParams(params, {preventScrollReset: true});
+                    }}
+                    value={`${searchParams.get('sortKey') || 'RELEVANCE'}|${searchParams.get('reverse') || 'false'}`}
                   >
-                    <svg
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2.2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
-                    </svg>
-                    <span>{isEn ? 'Filter' : 'تصفية'}</span>
-                  </button>
+                    <option value="RELEVANCE|false">
+                      {isEn ? 'Featured' : 'الأكثر مبيعا'}
+                    </option>
+                    <option value="PRICE|false">
+                      {isEn
+                        ? 'Price: Low to High'
+                        : 'السعر: من الأقل للأعلى'}
+                    </option>
+                    <option value="PRICE|true">
+                      {isEn
+                        ? 'Price: High to Low'
+                        : 'السعر: من الأعلى للأقل'}
+                    </option>
+                  </select>
+                </div>
+              </div>
+            </div>
 
-                  <div className="flex items-center gap-1">
-                    <span
-                      className="text-[#7D7D7D] text-[13px] font-medium whitespace-nowrap"
-                      style={{fontFamily: "'GE Dinar One', sans-serif"}}
-                    >
-                      {isEn ? 'Sort by:' : 'ترتيب حسب:'}
-                    </span>
-                    <div className="flex items-center bg-white border border-[#BBCFCD]/60 rounded-[8px] px-3 py-1.5 relative w-[135px]">
-                      <select
-                        aria-label={isEn ? 'Sort by' : 'ترتيب حسب'}
-                        className="w-full bg-transparent text-[13px] font-bold text-[#234745] cursor-pointer focus:outline-none appearance-none"
-                        style={{fontFamily: "'GE Dinar One', sans-serif"}}
-                        onChange={(e) => {
-                          const [key, rev] = e.target.value.split('|');
-                          const params = new URLSearchParams(searchParams);
-                          params.set('sortKey', key);
-                          params.set('reverse', rev);
-                          setSearchParams(params, {preventScrollReset: true});
-                        }}
-                        value={`${searchParams.get('sortKey') || 'RELEVANCE'}|${searchParams.get('reverse') || 'false'}`}
-                      >
-                        <option value="RELEVANCE|false">
-                          {isEn ? 'Featured' : 'الأكثر مبيعا'}
-                        </option>
-                        <option value="PRICE|false">
-                          {isEn
-                            ? 'Price: Low to High'
-                            : 'السعر: من الأقل للأعلى'}
-                        </option>
-                        <option value="PRICE|true">
-                          {isEn
-                            ? 'Price: High to Low'
-                            : 'السعر: من الأعلى للأقل'}
-                        </option>
-                      </select>
+            {/* Desktop Layout Controls (lg+) */}
+            <div
+              className={`hidden lg:flex ${isEn ? 'flex-row-reverse' : 'flex-row'} items-center justify-between gap-4 mb-6 w-full`}
+              dir={isEn ? 'ltr' : 'rtl'}
+            >
+              <div className="flex items-center gap-2.5 shrink-0 ms-auto">
+                <span
+                  className="text-[#7D7D7D] text-[14px] font-bold"
+                  style={{fontFamily: "'GE Dinar One', sans-serif"}}
+                >
+                  {isEn ? 'Sort by:' : 'ترتيب حسب:'}
+                </span>
+                <div className="flex items-center bg-white border border-[#B8D0CC] rounded-[12px] px-4 py-2 relative w-[170px] shadow-sm">
+                  <select
+                    aria-label={isEn ? 'Sort by' : 'ترتيب حسب'}
+                    className="w-full bg-transparent text-[14px] font-bold text-[#234745] cursor-pointer focus:outline-none appearance-none"
+                    style={{fontFamily: "'GE Dinar One', sans-serif"}}
+                    onChange={(e) => {
+                      const [key, rev] = e.target.value.split('|');
+                      const params = new URLSearchParams(searchParams);
+                      params.set('sortKey', key);
+                      params.set('reverse', rev);
+                      setSearchParams(params, {preventScrollReset: true});
+                    }}
+                    value={`${searchParams.get('sortKey') || 'RELEVANCE'}|${searchParams.get('reverse') || 'false'}`}
+                  >
+                    <option value="RELEVANCE|false">
+                      {isEn ? 'Featured' : 'الأكثر مبيعا'}
+                    </option>
+                    <option value="PRICE|false">
+                      {isEn ? 'Price: Low to High' : 'السعر: من الأقل للأعلى'}
+                    </option>
+                    <option value="PRICE|true">
+                      {isEn ? 'Price: High to Low' : 'السعر: من الأعلى للأقل'}
+                    </option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* Pagination & Grid */}
+            <Pagination connection={products}>
+              {({nodes, isLoading, PreviousLink, NextLink}) => (
+                <>
+                  {nodes.length === 0 ? (
+                    <div className="py-16 text-center text-[#234745] font-bold text-lg">
+                      {isEn
+                        ? 'No export products available.'
+                        : 'لا توجد منتجات تصدير متوفرة حالياً.'}
                     </div>
-                  </div>
-                </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                      {nodes.map((product: any, index: number) => (
+                        <ProductItem
+                          key={product.id || index}
+                          product={product}
+                          loading={index < 8 ? 'eager' : 'lazy'}
+                          isExport={true}
+                        />
+                      ))}
+                    </div>
+                  )}
 
-                <div className="flex flex-wrap items-center gap-2.5 justify-start w-full">
-                  <ActiveFilterChips isEn={isEn} collections={collections} />
-                </div>
-              </div>
-
-              {/* Desktop Layout Controls (lg+) */}
-              <div
-                className={`hidden lg:flex ${isEn ? 'flex-row' : 'flex-row-reverse'} items-center justify-between gap-4 mb-6 w-full`}
-                dir={isEn ? 'ltr' : 'rtl'}
-              >
-                <div className="flex items-center gap-2.5 shrink-0">
-                  <span
-                    className="text-[#7D7D7D] text-[14px] font-bold"
-                    style={{fontFamily: "'GE Dinar One', sans-serif"}}
-                  >
-                    {isEn ? 'Sort by:' : 'ترتيب حسب:'}
-                  </span>
-                  <div className="flex items-center bg-white border border-[#B8D0CC] rounded-[12px] px-4 py-2 relative w-[170px] shadow-sm">
-                    <select
-                      aria-label={isEn ? 'Sort by' : 'ترتيب حسب'}
-                      className="w-full bg-transparent text-[14px] font-bold text-[#234745] cursor-pointer focus:outline-none appearance-none"
-                      style={{fontFamily: "'GE Dinar One', sans-serif"}}
-                      onChange={(e) => {
-                        const [key, rev] = e.target.value.split('|');
-                        const params = new URLSearchParams(searchParams);
-                        params.set('sortKey', key);
-                        params.set('reverse', rev);
-                        setSearchParams(params, {preventScrollReset: true});
-                      }}
-                      value={`${searchParams.get('sortKey') || 'RELEVANCE'}|${searchParams.get('reverse') || 'false'}`}
-                    >
-                      <option value="RELEVANCE|false">
-                        {isEn ? 'Featured' : 'الأكثر مبيعا'}
-                      </option>
-                      <option value="PRICE|false">
-                        {isEn ? 'Price: Low to High' : 'السعر: من الأقل للأعلى'}
-                      </option>
-                      <option value="PRICE|true">
-                        {isEn ? 'Price: High to Low' : 'السعر: من الأعلى للأقل'}
-                      </option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="flex-1 flex flex-wrap items-center gap-2.5 justify-start">
-                  <ActiveFilterChips isEn={isEn} collections={collections} />
-                </div>
-              </div>
-
-              {/* Pagination & Grid */}
-              <Pagination connection={products}>
-                {({nodes, isLoading, PreviousLink, NextLink}) => (
-                  <>
-                    {nodes.length === 0 ? (
-                      <div className="py-16 text-center text-[#234745] font-bold text-lg">
-                        {isEn
-                          ? 'No export products match your filters.'
-                          : 'لا توجد منتجات تصدير تطابق الفلاتر.'}
-                      </div>
-                    ) : (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {nodes.map((product: any, index: number) => (
-                          <ProductItem
-                            key={product.id || index}
-                            product={product}
-                            loading={index < 6 ? 'eager' : 'lazy'}
-                            isExport={true}
-                          />
-                        ))}
-                      </div>
-                    )}
-
-                    <div className="flex justify-center mt-12">
-                      <NextLink className="bg-[#234745] text-white px-14 py-3.5 rounded-full font-bold shadow-md hover:bg-[#1A3533] transition-all">
-                        {isLoading ? (
-                          isEn ? (
-                            'Loading...'
-                          ) : (
-                            'جاري التحميل...'
-                          )
+                  <div className="flex justify-center mt-12">
+                    <NextLink className="bg-[#234745] text-white px-14 py-3.5 rounded-full font-bold shadow-md hover:bg-[#1A3533] transition-all">
+                      {isLoading ? (
+                        isEn ? (
+                          'Loading...'
                         ) : (
-                          <span>
-                            {isEn ? 'Browse More ↓' : 'تصفح المزيد ↓'}
-                          </span>
-                        )}
-                      </NextLink>
-                    </div>
-                  </>
-                )}
-              </Pagination>
-            </div>
-
-            {/* Desktop Filter Sidebar (Right in RTL) */}
-            <div className="hidden lg:block w-72 shrink-0 lg:order-1">
-              <FilterSidebar
-                filters={products.productFilters}
-                collections={collections || []}
-                onClose={() => {}}
-                isDesktop={true}
-                isEn={isEn}
-              />
-            </div>
+                          'جاري التحميل...'
+                        )
+                      ) : (
+                        <span>
+                          {isEn ? 'Browse More ↓' : 'تصفح المزيد ↓'}
+                        </span>
+                      )}
+                    </NextLink>
+                  </div>
+                </>
+              )}
+            </Pagination>
           </div>
         )}
       </section>
@@ -978,31 +927,6 @@ export default function ExportPage() {
           </div>
         </div>
       </section>
-
-      {/* Mobile Filter Slideover Portal */}
-      {mounted &&
-        typeof document !== 'undefined' &&
-        createPortal(
-          <div
-            className={`fixed inset-0 z-[999999] pointer-events-none transition-all duration-500 ${isFilterOpen ? 'visible' : 'invisible'}`}
-          >
-            <div
-              className={`absolute inset-0 bg-black/30 backdrop-blur-sm transition-opacity duration-500 ${isFilterOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0'}`}
-              onClick={() => setIsFilterOpen(false)}
-            />
-            <div
-              className={`fixed inset-y-0 ${isEn ? 'left-0' : 'right-0'} w-full max-w-sm bg-[#FEF8EB] shadow-2xl z-50 transform transition-transform duration-300 ease-in-out pointer-events-auto ${isFilterOpen ? 'translate-x-0' : isEn ? '-translate-x-full' : 'translate-x-full'}`}
-            >
-              <FilterSidebar
-                filters={products?.productFilters || []}
-                collections={collections || []}
-                onClose={() => setIsFilterOpen(false)}
-                isEn={isEn}
-              />
-            </div>
-          </div>,
-          document.body,
-        )}
     </div>
   );
 }

@@ -343,27 +343,35 @@ export async function action({request, context}: ActionFunctionArgs) {
       return Response.json({error: 'Invalid price'}, {status: 400});
     }
 
-    // Securely retrieve active customer details from the session
+    // Securely retrieve active customer details from the session (all login types)
     let customerId: string | null = null;
     let customerEmail: string | null = null;
     let customerPhone: string | null = null;
 
     try {
-      const sessionToken = await context.session.get('customerAccessToken');
-      const tokenStr =
-        typeof sessionToken === 'string'
-          ? sessionToken
-          : sessionToken?.accessToken;
+      const customerAccessToken = await context.session.get(
+        'customerAccessToken',
+      );
       const loginOtpPhone = await context.session.get('loginOtpPhone');
-      const loginCustId = await context.session.get('loginCustomerId');
-      const loginCustEmail = await context.session.get('loginCustomerEmail');
+      const loginCustomerId = await context.session.get('loginCustomerId');
+      const loginCustomerEmail = await context.session.get('loginCustomerEmail');
 
-      if (loginCustId) customerId = loginCustId;
-      if (loginCustEmail) customerEmail = loginCustEmail;
-      if (loginOtpPhone) customerPhone = loginOtpPhone;
+      if (loginOtpPhone) {
+        customerPhone = loginOtpPhone;
+      }
+      if (loginCustomerEmail) {
+        customerEmail = loginCustomerEmail;
+      }
+      if (loginCustomerId) {
+        customerId = String(loginCustomerId);
+      }
+
+      const tokenStr =
+        typeof customerAccessToken === 'string'
+          ? customerAccessToken
+          : customerAccessToken?.accessToken;
 
       if (tokenStr && tokenStr !== 'dev-bypass-token' && context.storefront) {
-        // Resolve real logged-in customer via Storefront API token query
         const storefrontRes = (await context.storefront.query(
           `#graphql
             query getCustomerId($customerAccessToken: String!) {
@@ -379,47 +387,12 @@ export async function action({request, context}: ActionFunctionArgs) {
             cache: context.storefront.CacheNone(),
           },
         )) as any;
-        if (storefrontRes?.customer?.id) {
-          customerId = storefrontRes.customer.id;
-          if (storefrontRes.customer.email) customerEmail = storefrontRes.customer.email;
-          if (storefrontRes.customer.phone) customerPhone = storefrontRes.customer.phone;
-        }
-      } else if (tokenStr === 'dev-bypass-token' && loginOtpPhone) {
-        // Resolve dev-bypass customer from Admin API search using phone
-        let cleanPhone = loginOtpPhone.replace(/\D/g, '');
-        if (cleanPhone.startsWith('966')) {
-          cleanPhone = '+' + cleanPhone;
-        } else if (cleanPhone.startsWith('0')) {
-          cleanPhone = '+966' + cleanPhone.slice(1);
-        } else {
-          cleanPhone = '+966' + cleanPhone;
-        }
-
-        const searchMutation = `
-          query searchCustomer($query: String!) {
-            customers(first: 1, query: $query) {
-              nodes {
-                id
-                email
-                phone
-              }
-            }
-          }
-        `;
-        const searchRes = (await adminApiQuery(
-          shopDomain,
-          token,
-          searchMutation,
-          {
-            query: `phone:${cleanPhone}`,
-          },
-        )) as any;
-
-        const foundCust = searchRes?.data?.customers?.nodes?.[0];
-        if (foundCust?.id) {
-          customerId = foundCust.id;
-          customerEmail = foundCust.email;
-          customerPhone = foundCust.phone || cleanPhone;
+        if (storefrontRes?.customer) {
+          if (storefrontRes.customer.id) customerId = storefrontRes.customer.id;
+          if (storefrontRes.customer.email)
+            customerEmail = storefrontRes.customer.email;
+          if (storefrontRes.customer.phone)
+            customerPhone = storefrontRes.customer.phone;
         }
       }
     } catch (sessionErr) {
@@ -427,6 +400,18 @@ export async function action({request, context}: ActionFunctionArgs) {
         '[Custom Cake Order] Error resolving session customer:',
         sessionErr,
       );
+    }
+
+    // Strictly require logged-in customer (No guests allowed to checkout custom cake)
+    if (!customerId && !customerEmail && !customerPhone) {
+      const targetUrl = isEn ? '/en/custom-cake' : '/custom-cake';
+      const loginUrl = isEn
+        ? `/en/account/login?redirectTo=${encodeURIComponent(targetUrl)}`
+        : `/account/login?redirectTo=${encodeURIComponent(targetUrl)}`;
+      return Response.json({
+        requireLogin: true,
+        loginUrl,
+      });
     }
 
     const description = isEn
@@ -606,15 +591,47 @@ export async function action({request, context}: ActionFunctionArgs) {
       taxExempt: true,
     };
 
-    if (customerId) {
-      draftOrderInput.customerId = customerId.startsWith('gid://')
-        ? customerId
-        : `gid://shopify/Customer/${customerId}`;
+    // Resolve Admin API Customer GID to prevent RESOURCE_NOT_FOUND error
+    let adminCustomerId: string | null = null;
+    if (customerEmail || customerPhone) {
+      try {
+        const queryTerm = customerPhone
+          ? `phone:${customerPhone}`
+          : `email:${customerEmail}`;
+        const searchRes = (await adminApiQuery(
+          shopDomain,
+          token,
+          `query searchCustomer($query: String!) {
+            customers(first: 1, query: $query) {
+              nodes {
+                id
+                email
+                phone
+              }
+            }
+          }`,
+          {query: queryTerm},
+        )) as any;
+        const matched = searchRes?.data?.customers?.nodes?.[0];
+        if (matched?.id) {
+          adminCustomerId = matched.id;
+          if (matched.email && !customerEmail) customerEmail = matched.email;
+          if (matched.phone && !customerPhone) customerPhone = matched.phone;
+        }
+      } catch (e) {
+        console.warn('[Custom Cake Order] Admin customer search error:', e);
+      }
+    } else if (customerId && customerId.startsWith('gid://shopify/Customer/')) {
+      adminCustomerId = customerId;
+    }
+
+    if (adminCustomerId) {
+      draftOrderInput.customerId = adminCustomerId;
     }
     if (customerEmail) {
       draftOrderInput.email = customerEmail;
     }
-    if (customerPhone && !draftOrderInput.phone) {
+    if (customerPhone) {
       draftOrderInput.phone = customerPhone;
     }
 

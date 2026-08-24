@@ -6337,7 +6337,9 @@ export type GetCustomerIdQueryVariables = StorefrontAPI.Exact<{
 }>;
 
 export type GetCustomerIdQuery = {
-  customer?: StorefrontAPI.Maybe<Pick<StorefrontAPI.Customer, 'id' | 'email'>>;
+  customer?: StorefrontAPI.Maybe<
+    Pick<StorefrontAPI.Customer, 'id' | 'email' | 'phone'>
+  >;
 };
 
 export type CustomerAddressesForLocationIdQueryVariables = StorefrontAPI.Exact<{
@@ -6727,7 +6729,7 @@ interface GeneratedQueryTypes {
     return: GetVouchersCustomerQuery;
     variables: GetVouchersCustomerQueryVariables;
   };
-  '#graphql\n              query getCustomerId($customerAccessToken: String!) {\n                customer(customerAccessToken: $customerAccessToken) {\n                  id\n                  email\n                }\n              }\n            ': {
+  '#graphql\n            query getCustomerId($customerAccessToken: String!) {\n              customer(customerAccessToken: $customerAccessToken) {\n                id\n                email\n                phone\n              }\n            }\n          ': {
     return: GetCustomerIdQuery;
     variables: GetCustomerIdQueryVariables;
   };

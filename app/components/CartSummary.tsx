@@ -1,7 +1,7 @@
 import type { CartApiQueryFragment } from 'storefrontapi.generated';
 import type { CartLayout } from '~/components/CartMain';
 import { CartForm, Money, type OptimisticCart } from '@shopify/hydrogen';
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useFetcher, useRouteLoaderData, Link, useLocation, Form } from 'react-router';
 import { useAside } from '~/components/Aside';
 import { Price, SaudiRiyalSymbol } from './Price';

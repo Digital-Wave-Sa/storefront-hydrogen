@@ -346,71 +346,80 @@ export async function action({request, context}: ActionFunctionArgs) {
     // Securely retrieve active customer details from the session
     let customerId: string | null = null;
     let customerEmail: string | null = null;
+    let customerPhone: string | null = null;
 
     try {
-      const customerAccessToken = await context.session.get(
-        'customerAccessToken',
-      );
+      const sessionToken = await context.session.get('customerAccessToken');
+      const tokenStr =
+        typeof sessionToken === 'string'
+          ? sessionToken
+          : sessionToken?.accessToken;
       const loginOtpPhone = await context.session.get('loginOtpPhone');
+      const loginCustId = await context.session.get('loginCustomerId');
+      const loginCustEmail = await context.session.get('loginCustomerEmail');
 
-      if (customerAccessToken?.accessToken) {
-        if (customerAccessToken.accessToken === 'dev-bypass-token') {
-          // Resolve dev-bypass customer from Admin API search using phone
-          if (loginOtpPhone) {
-            let cleanPhone = loginOtpPhone.replace(/\D/g, '');
-            if (cleanPhone.startsWith('966')) {
-              cleanPhone = '+' + cleanPhone;
-            } else if (cleanPhone.startsWith('0')) {
-              cleanPhone = '+966' + cleanPhone.slice(1);
-            } else {
-              cleanPhone = '+966' + cleanPhone;
-            }
+      if (loginCustId) customerId = loginCustId;
+      if (loginCustEmail) customerEmail = loginCustEmail;
+      if (loginOtpPhone) customerPhone = loginOtpPhone;
 
-            const searchMutation = `
-              query searchCustomer($query: String!) {
-                customers(first: 1, query: $query) {
-                  nodes {
-                    id
-                    email
-                  }
-                }
+      if (tokenStr && tokenStr !== 'dev-bypass-token' && context.storefront) {
+        // Resolve real logged-in customer via Storefront API token query
+        const storefrontRes = (await context.storefront.query(
+          `#graphql
+            query getCustomerId($customerAccessToken: String!) {
+              customer(customerAccessToken: $customerAccessToken) {
+                id
+                email
+                phone
               }
-            `;
-            const searchRes = (await adminApiQuery(
-              shopDomain,
-              token,
-              searchMutation,
-              {
-                query: `phone:${cleanPhone}`,
-              },
-            )) as any;
-
-            const foundCust = searchRes?.data?.customers?.nodes?.[0];
-            if (foundCust?.id) {
-              customerId = foundCust.id;
-              customerEmail = foundCust.email;
             }
-          }
+          `,
+          {
+            variables: {customerAccessToken: tokenStr},
+            cache: context.storefront.CacheNone(),
+          },
+        )) as any;
+        if (storefrontRes?.customer?.id) {
+          customerId = storefrontRes.customer.id;
+          if (storefrontRes.customer.email) customerEmail = storefrontRes.customer.email;
+          if (storefrontRes.customer.phone) customerPhone = storefrontRes.customer.phone;
+        }
+      } else if (tokenStr === 'dev-bypass-token' && loginOtpPhone) {
+        // Resolve dev-bypass customer from Admin API search using phone
+        let cleanPhone = loginOtpPhone.replace(/\D/g, '');
+        if (cleanPhone.startsWith('966')) {
+          cleanPhone = '+' + cleanPhone;
+        } else if (cleanPhone.startsWith('0')) {
+          cleanPhone = '+966' + cleanPhone.slice(1);
         } else {
-          // Resolve real logged-in customer via Storefront API token query
-          const storefrontRes = (await context.storefront.query(
-            `#graphql
-              query getCustomerId($customerAccessToken: String!) {
-                customer(customerAccessToken: $customerAccessToken) {
-                  id
-                  email
-                }
+          cleanPhone = '+966' + cleanPhone;
+        }
+
+        const searchMutation = `
+          query searchCustomer($query: String!) {
+            customers(first: 1, query: $query) {
+              nodes {
+                id
+                email
+                phone
               }
-            `,
-            {
-              variables: {customerAccessToken: customerAccessToken.accessToken},
-              cache: context.storefront.CacheNone(),
-            },
-          )) as any;
-          if (storefrontRes?.customer?.id) {
-            customerId = storefrontRes.customer.id;
-            customerEmail = storefrontRes.customer.email;
+            }
           }
+        `;
+        const searchRes = (await adminApiQuery(
+          shopDomain,
+          token,
+          searchMutation,
+          {
+            query: `phone:${cleanPhone}`,
+          },
+        )) as any;
+
+        const foundCust = searchRes?.data?.customers?.nodes?.[0];
+        if (foundCust?.id) {
+          customerId = foundCust.id;
+          customerEmail = foundCust.email;
+          customerPhone = foundCust.phone || cleanPhone;
         }
       }
     } catch (sessionErr) {
@@ -418,18 +427,6 @@ export async function action({request, context}: ActionFunctionArgs) {
         '[Custom Cake Order] Error resolving session customer:',
         sessionErr,
       );
-    }
-
-    // If user is not logged in, require sign in before proceeding to checkout
-    if (!customerId && !customerEmail) {
-      const targetUrl = isEn ? '/en/custom-cake' : '/custom-cake';
-      const loginUrl = isEn
-        ? `/en/account/login?redirectTo=${encodeURIComponent(targetUrl)}`
-        : `/account/login?redirectTo=${encodeURIComponent(targetUrl)}`;
-      return Response.json({
-        requireLogin: true,
-        loginUrl,
-      });
     }
 
     const description = isEn
@@ -610,10 +607,15 @@ export async function action({request, context}: ActionFunctionArgs) {
     };
 
     if (customerId) {
-      draftOrderInput.customerId = customerId;
+      draftOrderInput.customerId = customerId.startsWith('gid://')
+        ? customerId
+        : `gid://shopify/Customer/${customerId}`;
     }
     if (customerEmail) {
       draftOrderInput.email = customerEmail;
+    }
+    if (customerPhone && !draftOrderInput.phone) {
+      draftOrderInput.phone = customerPhone;
     }
 
     const result = (await adminApiQuery(shopDomain, token, mutation, {

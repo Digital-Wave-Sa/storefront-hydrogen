@@ -474,36 +474,48 @@ function TopBar({
                 <span className="truncate max-w-[90px] md:max-w-[200px] font-medium leading-none tracking-wide">
                   {fulfillmentType === 'delivery' && selectedAddressName
                     ? (isEn ? `Delivery: ${selectedAddressName}` : `توصيل: ${selectedAddressName}`)
-                    : (selectedLocationId || selectedLocationName
-                      ? (() => {
-                          if (branches?.length > 0) {
-                            const activeNode = branches.find((b: any) => 
-                              (selectedLocationId && (b.id === selectedLocationId || b.numericalId === selectedLocationId?.split('/')?.pop())) ||
-                              (selectedLocationName && (
-                                b.name === selectedLocationName || 
-                                b.rawName === selectedLocationName || 
-                                b.name_in_arabic === selectedLocationName || 
-                                b.nameInArabic === selectedLocationName ||
-                                (b.metafields && b.metafields.find((m: any) => m?.key === 'name_in_arabic')?.value === selectedLocationName)
-                              ))
-                            );
-                            if (activeNode) {
-                              if (isEn) {
-                                // On English view: Use English name
-                                const enName = activeNode.name || activeNode.rawName;
-                                if (enName && String(enName).trim()) return String(enName).trim();
-                              } else {
-                                // On Arabic view: Use Arabic name if available
-                                const arName = activeNode.nameInArabic || activeNode.name_in_arabic?.value || activeNode.name_in_arabic || activeNode.metafields?.find((m: any) => m?.key === 'name_in_arabic')?.value;
-                                if (arName && String(arName).trim()) return String(arName).trim();
-                                const fallbackName = activeNode.name || activeNode.rawName;
-                                if (fallbackName && String(fallbackName).trim()) return String(fallbackName).trim();
-                              }
+                    : (() => {
+                        const isPlaceholder = !selectedLocationName || 
+                          selectedLocationName.includes('اختر') || 
+                          selectedLocationName.toLowerCase().includes('select');
+                        
+                        if (isPlaceholder && !selectedLocationId) {
+                          return isEn ? 'Select Your Branch' : 'اختر الفرع';
+                        }
+
+                        if (branches?.length > 0) {
+                          const targetBranchId = String(selectedLocationId || '').split('/').pop();
+                          const activeNode = branches.find((b: any) => 
+                            (targetBranchId && (
+                              b.id === selectedLocationId || 
+                              String(b.numericalId || b.id || '').split('/').pop() === targetBranchId ||
+                              b.branch_id === targetBranchId ||
+                              b.branch_code === targetBranchId ||
+                              b.ax_store_id === targetBranchId
+                            )) ||
+                            (!isPlaceholder && selectedLocationName && (
+                              String(b.name || b.rawName || '').toLowerCase().trim() === String(selectedLocationName).toLowerCase().trim() || 
+                              String(b.name_in_arabic?.value || b.name_in_arabic || b.nameInArabic || '').toLowerCase().trim() === String(selectedLocationName).toLowerCase().trim() ||
+                              (b.metafields && b.metafields.find((m: any) => m?.key === 'name_in_arabic')?.value === selectedLocationName)
+                            ))
+                          );
+                          if (activeNode) {
+                            if (isEn) {
+                              const enName = activeNode.name || activeNode.rawName || activeNode.name_english?.value || activeNode.name_english;
+                              if (enName && String(enName).trim()) return String(enName).trim();
+                            } else {
+                              const arName = activeNode.nameInArabic || activeNode.name_in_arabic?.value || activeNode.name_in_arabic || activeNode.metafields?.find((m: any) => m?.key === 'name_in_arabic')?.value;
+                              if (arName && String(arName).trim()) return String(arName).trim();
+                              const fallbackName = activeNode.name || activeNode.rawName;
+                              if (fallbackName && String(fallbackName).trim()) return String(fallbackName).trim();
                             }
                           }
-                          return selectedLocationName || (isEn ? 'Select Your Branch' : 'اختر الفرع');
-                        })()
-                      : (isEn ? 'Select Your Branch' : 'اختر الفرع'))
+                        }
+                        if (isPlaceholder) {
+                          return isEn ? 'Select Your Branch' : 'اختر الفرع';
+                        }
+                        return selectedLocationName || (isEn ? 'Select Your Branch' : 'اختر الفرع');
+                      })()
                   }
                 </span>
                 <div className={`absolute -top-[6px] -right-[6px] w-[8px] h-[8px] rounded-full transition-colors duration-300 ${isOpenBranch ? 'bg-[#3ddb6a]' : 'bg-[#ef4444]'}`} />

@@ -252,7 +252,7 @@ export default function LoyaltyPage() {
             ) : (
               redeemOptions.map((pts) => (
                 <option key={pts} value={pts}>
-                  {pts} {isEn ? 'points =' : 'نقطة ='} {(pts / 10).toFixed(2)}{' '}
+                  {pts} {isEn ? 'points =' : 'نقطة ='} {(pts / 100).toFixed(2)}{' '}
                   {isEn ? 'SAR discount' : 'ر.س خصم'}
                 </option>
               ))

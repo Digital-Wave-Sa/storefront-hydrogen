@@ -256,6 +256,68 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
   const isTimeSlotSelected = !!timeSlot && timeSlot.trim() !== '';
   const isBranchSelected = isDigitalOnlyCart || (!!branch && branch.trim() !== '' && !isBranchHidden);
 
+  // Dynamic Branch Display Name based on current locale (English vs Arabic)
+  const branchDisplayName = useMemo(() => {
+    if (!isBranchSelected) return '';
+    const activeNode =
+      currentBranch ||
+      (rawLocations.length > 0
+        ? rawLocations.find((loc: any) => {
+            const lId = String(loc.id || '');
+            const numId = lId.split('/').pop();
+            const targetBranchId = String(branchId || '').split('/').pop();
+            const lName = String(loc.name || '').toLowerCase().trim();
+            const lAr = String(
+              loc.name_in_arabic?.value || loc.name_in_arabic || '',
+            )
+              .toLowerCase()
+              .trim();
+            const s = String(branch || sessionBranchName || '')
+              .toLowerCase()
+              .trim();
+            return (
+              (targetBranchId &&
+                (lId === branchId || numId === targetBranchId)) ||
+              (lName &&
+                (lName === s || s.includes(lName) || lName.includes(s))) ||
+              (lAr && (lAr === s || s.includes(lAr) || lAr.includes(s)))
+            );
+          })
+        : null);
+
+    if (activeNode) {
+      if (isEn) {
+        const enName =
+          activeNode.name ||
+          activeNode.rawName ||
+          activeNode.name_english?.value ||
+          activeNode.name_english ||
+          activeNode.metafields?.find(
+            (m: any) =>
+              m?.key === 'name_english' || m?.key === 'english_name',
+          )?.value;
+        if (enName && String(enName).trim()) return String(enName).trim();
+      } else {
+        const arName =
+          activeNode.nameInArabic ||
+          activeNode.name_in_arabic?.value ||
+          activeNode.name_in_arabic ||
+          activeNode.metafields?.find((m: any) => m?.key === 'name_in_arabic')
+            ?.value;
+        if (arName && String(arName).trim()) return String(arName).trim();
+      }
+    }
+    return branch || sessionBranchName || '';
+  }, [
+    isBranchSelected,
+    currentBranch,
+    isEn,
+    rawLocations,
+    branch,
+    sessionBranchName,
+    branchId,
+  ]);
+
   const hasPreOrderItems = !isDigitalOnlyCart && cart?.lines?.nodes?.some((line: any) =>
     line.merchandise?.product?.tags?.some((tag: string) =>
       ['preorder', 'pre-order', 'طلب مسبق'].includes(tag.toLowerCase().trim())
@@ -445,7 +507,7 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
                 discountCodeInputId={discountCodeInputId}
                 isEn={isEn}
                 invalidActiveDiscount={invalidActiveDiscount}
-                branchName={branch}
+                branchName={branchDisplayName}
                 isBranchPromoFreeDelivery={isBranchPromoFreeDelivery}
                 isThresholdMet={isThresholdMet}
                 isPickup={isPickup}
@@ -559,7 +621,7 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
 
                       {isBranchSelected ? (
                         <div className="text-[15px] font-bold text-[#234745] leading-snug">
-                          {branch}
+                          {branchDisplayName}
                         </div>
                       ) : (
                         <div className="text-[14px] font-bold text-[#DF4646] flex items-center gap-1.5 mt-0.5">
@@ -768,8 +830,8 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
                   validationError={
                     invalidActiveDiscount ? (
                       isEn
-                        ? `Discount code "${invalidActiveDiscount}" is not valid for ${branch || 'the selected branch'}`
-                        : `كود الخصم "${invalidActiveDiscount}" غير صالح لـ ${branch || 'الفرع المختار'}`
+                        ? `Discount code "${invalidActiveDiscount}" is not valid for ${branchDisplayName || 'the selected branch'}`
+                        : `كود الخصم "${invalidActiveDiscount}" غير صالح لـ ${branchDisplayName || 'الفرع المختار'}`
                     ) : isDigitalOnlyCart ? null : !isMinOrderMet ? (
                       isEn ? (
                         <span className="flex items-center justify-center gap-1">Minimum order is <SaudiRiyalSymbol className="h-3 w-auto" /> {minOrderValue}</span>

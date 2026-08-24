@@ -1447,9 +1447,9 @@ function LoyaltyRedemptionUI({ isEn, cart }: { isEn: boolean, cart: any }) {
     );
   }
 
-  const pointsToCurrencyRatio = 0.10;
+  const pointsToCurrencyRatio = 0.01;
   const cartSubtotal = parseFloat(cart?.cost?.subtotalAmount?.amount || '0');
-  const maxRedeemablePoints = availablePoints ? Math.min(availablePoints, Math.floor(cartSubtotal * 10)) : 0;
+  const maxRedeemablePoints = availablePoints ? Math.min(availablePoints, Math.floor(cartSubtotal * 100)) : 0;
   const isApplied = initialPoints > 0;
   const appliedDiscountSAR = (initialPoints * pointsToCurrencyRatio).toFixed(2);
 
@@ -1512,9 +1512,9 @@ function LoyaltyRedemptionUI({ isEn, cart }: { isEn: boolean, cart: any }) {
           ) : (
             <>
               <div className="flex items-center justify-between text-[12px] font-medium text-gray-700">
-                <span>{isEn ? '10 Points = 1 SAR Discount' : '10 نقاط = 1 ر.س خصم'}</span>
+                <span>{isEn ? '100 Points = 1 SAR Discount' : '100 نقطة = 1 ر.س خصم'}</span>
                 <span className="text-[#234745] font-bold">
-                  {isEn ? `Max: ${(availablePoints * 0.10).toFixed(2)} SAR` : `أقصى خصم: ${(availablePoints * 0.10).toFixed(2)} ر.س`}
+                  {isEn ? `Max: ${(availablePoints * 0.01).toFixed(2)} SAR` : `أقصى خصم: ${(availablePoints * 0.01).toFixed(2)} ر.س`}
                 </span>
               </div>
 
@@ -1527,7 +1527,7 @@ function LoyaltyRedemptionUI({ isEn, cart }: { isEn: boolean, cart: any }) {
               >
                 {(fetcher: any) => {
                   const actionError = fetcher.data?.error;
-                  const discountSAR = (availablePoints * 0.10).toFixed(2);
+                  const discountSAR = (availablePoints * 0.01).toFixed(2);
                   return (
                     <div className="w-full flex flex-col gap-1">
                       <button
@@ -1552,8 +1552,8 @@ function LoyaltyRedemptionUI({ isEn, cart }: { isEn: boolean, cart: any }) {
                 }}
               </CartForm>
 
-              {/* Custom Points Input (if availablePoints >= 20) */}
-              {availablePoints >= 20 && (
+              {/* Custom Points Input (if availablePoints >= 100) */}
+              {availablePoints >= 100 && (
                 <div className="pt-2 border-t border-[#f0ece8]">
                   <p className="text-[11px] text-gray-500 mb-1.5 font-medium">
                     {isEn ? 'Or enter custom amount of points to use:' : 'أو أدخل عدد نقاط مخصص لاستخدامه:'}
@@ -1576,8 +1576,8 @@ function CustomPointsForm({ availablePoints, isEn }: { availablePoints: number; 
   const cartRoute = isEn ? '/en/cart' : '/cart';
   const [val, setVal] = useState<string>('');
   const numVal = parseInt(val) || 0;
-  const discountVal = (numVal * 0.10).toFixed(2);
-  const isValid = numVal >= 10 && numVal <= availablePoints;
+  const discountVal = (numVal * 0.01).toFixed(2);
+  const isValid = numVal >= 100 && numVal <= availablePoints;
 
   return (
     <div className="flex flex-col gap-1.5 w-full">
@@ -1595,12 +1595,12 @@ function CustomPointsForm({ availablePoints, isEn }: { availablePoints: number; 
                 <div className="relative flex-1">
                   <input
                     type="number"
-                    min={10}
+                    min={100}
                     max={availablePoints}
-                    step={10}
+                    step={100}
                     value={val}
                     onChange={(e) => setVal(e.target.value)}
-                    placeholder={isEn ? "Enter points (e.g. 50)" : "أدخل عدد النقاط (مثال: 50)"}
+                    placeholder={isEn ? "Enter points (e.g. 500)" : "أدخل عدد النقاط (مثال: 500)"}
                     className="w-full px-3.5 py-2.5 text-[13px] font-bold rounded-lg border border-gray-200 focus:border-[#234745] focus:outline-none text-start bg-white"
                   />
                 </div>
@@ -1628,8 +1628,8 @@ function CustomPointsForm({ availablePoints, isEn }: { availablePoints: number; 
             <span>
               {isEn ? `Equivalent discount: -${discountVal} SAR` : `قيمة الخصم المستحقة: -${discountVal} ر.س`}
             </span>
-          ) : numVal < 10 ? (
-            <span>{isEn ? 'Minimum 10 points required' : 'الحد الأدنى 10 نقاط'}</span>
+          ) : numVal < 100 ? (
+            <span>{isEn ? 'Minimum 100 points required' : 'الحد الأدنى 100 نقطة'}</span>
           ) : (
             <span>{isEn ? `Maximum ${availablePoints} points available` : `لديك ${availablePoints} نقطة كحد أقصى`}</span>
           )}

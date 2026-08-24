@@ -80,15 +80,20 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
 
   // Fallbacks to session values if cart attributes are not written or cleared
   const sessionBranchName = rootData?.selectedLocationName;
-  const isBranchPlaceholder = !sessionBranchName ||
+  const isSessionPlaceholder = !sessionBranchName ||
     sessionBranchName.includes('اختر') ||
     sessionBranchName.toLowerCase().includes('select');
 
   const attrBranch = attributes.find((a: any) => a.key.toLowerCase().trim() === 'branch')?.value;
-  const branch = attrBranch || (!isBranchPlaceholder ? sessionBranchName : undefined);
+  const isAttrPlaceholder = !attrBranch ||
+    attrBranch.includes('اختر') ||
+    attrBranch.toLowerCase().includes('select');
+
+  const isBranchPlaceholder = isAttrPlaceholder && isSessionPlaceholder;
+  const branch = !isAttrPlaceholder ? attrBranch : (!isSessionPlaceholder ? sessionBranchName : undefined);
 
   const attrBranchId = attributes.find((a: any) => a.key.toLowerCase().trim() === 'branch id')?.value;
-  const branchId = attrBranchId || (!isBranchPlaceholder ? rootData?.selectedLocationId : undefined);
+  const branchId = attrBranchId || (!isSessionPlaceholder ? rootData?.selectedLocationId : undefined);
 
   const attrFulfillmentType = attributes.find((a: any) => a.key.toLowerCase().trim() === 'fulfillment type')?.value;
   const fulfillmentType = attrFulfillmentType || rootData?.fulfillmentType;
@@ -113,25 +118,35 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
     if (!loc) return false;
     const locId = String(loc.id || '');
     const numId = locId.split('/').pop();
-    const targetBranchId = String(branchId || '').split('/').pop();
+    const targetBranchId = String(branchId || rootData?.selectedLocationId || '').split('/').pop();
 
-    const locName = String(loc.name || '').toLowerCase().trim();
+    const locBranchCode = String(loc.branch_id?.value || loc.branch_id || loc.branch_code?.value || loc.branch_code || '').toLowerCase().trim();
+    const locAxStoreId = String(loc.ax_store_id?.value || loc.ax_store_id || '').toLowerCase().trim();
+
+    const locName = String(loc.name || loc.rawName || '').toLowerCase().trim();
     const locArabicName = String(
-      loc.name_in_arabic?.value || loc.name_in_arabic || loc.metafields?.find((m: any) => m?.key === 'name_in_arabic')?.value || ''
+      loc.name_in_arabic?.value || loc.name_in_arabic || loc.nameInArabic || loc.metafields?.find((m: any) => m?.key === 'name_in_arabic')?.value || ''
     ).toLowerCase().trim();
-    const searchBranch = String(branch || '').toLowerCase().trim();
+    const searchBranch = String(branch || sessionBranchName || '').toLowerCase().trim();
 
-    return (
-      (targetBranchId && (locId === branchId || numId === targetBranchId)) ||
-      (searchBranch && (
-        locName === searchBranch ||
-        locArabicName === searchBranch ||
-        (locName && searchBranch.includes(locName)) ||
-        (locArabicName && searchBranch.includes(locArabicName)) ||
-        (locName && locName.includes(searchBranch)) ||
-        (locArabicName && locArabicName.includes(searchBranch))
-      ))
+    const isIdMatch = targetBranchId && (
+      locId === branchId ||
+      locId === rootData?.selectedLocationId ||
+      numId === targetBranchId ||
+      (locBranchCode && locBranchCode === targetBranchId.toLowerCase()) ||
+      (locAxStoreId && locAxStoreId === targetBranchId.toLowerCase())
     );
+
+    const isNameMatch = searchBranch && !isBranchPlaceholder && (
+      locName === searchBranch ||
+      locArabicName === searchBranch ||
+      (locName && searchBranch.includes(locName)) ||
+      (locArabicName && searchBranch.includes(locArabicName)) ||
+      (locName && locName.includes(searchBranch)) ||
+      (locArabicName && locArabicName.includes(searchBranch))
+    );
+
+    return isIdMatch || isNameMatch;
   });
 
   const isPickup = fulfillmentType?.toLowerCase() === 'pickup';
@@ -258,17 +273,23 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
 
   // Dynamic Branch Display Name based on current locale (English vs Arabic)
   const branchDisplayName = useMemo(() => {
-    if (!isBranchSelected) return '';
+    if (!isBranchSelected) {
+      return isEn ? 'Select Your Branch' : 'اختر الفرع';
+    }
+
+    const allLocs = locations.length > 0 ? locations : rawLocations;
     const activeNode =
       currentBranch ||
-      (rawLocations.length > 0
-        ? rawLocations.find((loc: any) => {
+      (allLocs.length > 0
+        ? allLocs.find((loc: any) => {
             const lId = String(loc.id || '');
             const numId = lId.split('/').pop();
-            const targetBranchId = String(branchId || '').split('/').pop();
-            const lName = String(loc.name || '').toLowerCase().trim();
+            const targetBranchId = String(branchId || rootData?.selectedLocationId || '').split('/').pop();
+            const locBranchCode = String(loc.branch_id?.value || loc.branch_id || loc.branch_code?.value || loc.branch_code || '').toLowerCase().trim();
+            const locAxStoreId = String(loc.ax_store_id?.value || loc.ax_store_id || '').toLowerCase().trim();
+            const lName = String(loc.name || loc.rawName || '').toLowerCase().trim();
             const lAr = String(
-              loc.name_in_arabic?.value || loc.name_in_arabic || '',
+              loc.name_in_arabic?.value || loc.name_in_arabic || loc.nameInArabic || '',
             )
               .toLowerCase()
               .trim();
@@ -277,7 +298,11 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
               .trim();
             return (
               (targetBranchId &&
-                (lId === branchId || numId === targetBranchId)) ||
+                (lId === branchId ||
+                  lId === rootData?.selectedLocationId ||
+                  numId === targetBranchId ||
+                  (locBranchCode && locBranchCode === targetBranchId.toLowerCase()) ||
+                  (locAxStoreId && locAxStoreId === targetBranchId.toLowerCase()))) ||
               (lName &&
                 (lName === s || s.includes(lName) || lName.includes(s))) ||
               (lAr && (lAr === s || s.includes(lAr) || lAr.includes(s)))
@@ -305,17 +330,27 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
           activeNode.metafields?.find((m: any) => m?.key === 'name_in_arabic')
             ?.value;
         if (arName && String(arName).trim()) return String(arName).trim();
+        const fallbackName = activeNode.name || activeNode.rawName;
+        if (fallbackName && String(fallbackName).trim()) return String(fallbackName).trim();
       }
     }
-    return branch || sessionBranchName || '';
+
+    const rawVal = String(branch || sessionBranchName || '').trim();
+    if (!rawVal || rawVal.includes('اختر') || rawVal.toLowerCase().includes('select')) {
+      return isEn ? 'Select Your Branch' : 'اختر الفرع';
+    }
+
+    return rawVal;
   }, [
     isBranchSelected,
     currentBranch,
     isEn,
+    locations,
     rawLocations,
     branch,
     sessionBranchName,
     branchId,
+    rootData?.selectedLocationId,
   ]);
 
   const hasPreOrderItems = !isDigitalOnlyCart && cart?.lines?.nodes?.some((line: any) =>

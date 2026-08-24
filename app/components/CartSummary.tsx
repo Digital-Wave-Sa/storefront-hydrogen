@@ -151,10 +151,24 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
 
   const isPickup = fulfillmentType?.toLowerCase() === 'pickup';
 
+  const isDigitalOnlyCart =
+    (cart?.lines?.nodes?.length || 0) > 0 &&
+    cart?.lines?.nodes?.every((line: any) => {
+      const isVoucher = line.attributes?.some(
+        (a: any) => a.key === '_gift_voucher' && a.value === 'true',
+      );
+      const isGiftCardProduct =
+        line.merchandise?.product?.isGiftCard === true ||
+        line.merchandise?.product?.handle === 'saadeddin-gift-card' ||
+        line.merchandise?.product?.handle === 'gift-card';
+
+      return isVoucher || isGiftCardProduct;
+    });
+
   const selectedDate = attributes.find((a: any) => a.key === 'delivery_date')?.value || '';
   const timeSlot = attributes.find((a: any) => a.key.toLowerCase().trim() === 'time slot')?.value || '';
   const dynamicTimeSlots = selectedDate ? generateDynamicSlots(currentBranch, isEn, fulfillmentType, selectedDate) : [];
-  const isTimeSlotInvalid = !!timeSlot && dynamicTimeSlots.length > 0 && !dynamicTimeSlots.some((slot: string) => slot === timeSlot || slot.startsWith(timeSlot) || timeSlot.startsWith(slot.split(' - ')[0]));
+  const isTimeSlotInvalid = !isDigitalOnlyCart && !!timeSlot && dynamicTimeSlots.length > 0 && !dynamicTimeSlots.some((slot: string) => slot === timeSlot || slot.startsWith(timeSlot) || timeSlot.startsWith(slot.split(' - ')[0]));
   const minOrderMeta = currentBranch?.min_order_value || currentBranch?.metafields?.find((m: any) => m?.key === 'minimum_order_value');
   const minOrderAttr = attributes.find((a: any) => a.key.toLowerCase().trim() === 'minimum order value')?.value;
   const minOrderAttrVal = minOrderAttr ? parseFloat(minOrderAttr) : null;
@@ -187,20 +201,6 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
   } else if (typeof currentBranch?.freeDeliveryThreshold === 'number') {
     rawThreshold = currentBranch.freeDeliveryThreshold;
   }
-
-  const isDigitalOnlyCart =
-    (cart?.lines?.nodes?.length || 0) > 0 &&
-    cart?.lines?.nodes?.every((line: any) => {
-      const isVoucher = line.attributes?.some(
-        (a: any) => a.key === '_gift_voucher' && a.value === 'true',
-      );
-      const isGiftCardProduct =
-        line.merchandise?.product?.isGiftCard === true ||
-        line.merchandise?.product?.handle === 'saadeddin-gift-card' ||
-        line.merchandise?.product?.handle === 'gift-card';
-
-      return isVoucher || isGiftCardProduct;
-    });
 
   const threshold = rawThreshold > 0 ? rawThreshold : 0;
   const isThresholdMet = threshold > 0 && subtotal >= threshold;
@@ -811,18 +811,18 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
                     </Link>
                   </div>
                 )}
-                {isTimeSlotInvalid && (
+                {!isDigitalOnlyCart && !hasPreOrderItems && isTimeSlotInvalid && (
                   <div className="bg-red-50 border border-red-200 p-3 rounded-lg flex items-start gap-2 mb-1">
                     <span className="text-base leading-none mt-0.5">⚠️</span>
                     <p className="text-red-800 text-[13px] font-bold leading-tight" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
                       {isEn ? (
                         <>
-                          Your selected {isPickup ? 'pickup' : 'delivery'} time ({timeSlot}) is outside the working hours of {currentBranch?.name || 'this branch'}.
+                          Your selected {isPickup ? 'pickup' : 'delivery'} time ({timeSlot}) is outside the working hours of {branchDisplayName || 'this branch'}.
                           {branchHoursStr && <><br />Working hours on this day: <strong>{branchHoursStr}</strong>. Please select a valid window.</>}
                         </>
                       ) : (
                         <>
-                          وقت {isPickup ? 'الاستلام' : 'التوصيل'} المحدد ({timeSlot}) خارج ساعات عمل فرع {currentBranch?.name || 'هذا الفرع'}.
+                          وقت {isPickup ? 'الاستلام' : 'التوصيل'} المحدد ({timeSlot}) خارج ساعات عمل فرع {branchDisplayName || 'هذا الفرع'}.
                           {branchHoursStr && <><br />ساعات العمل في هذا اليوم: <strong>{branchHoursStr}</strong>. يرجى اختيار فترة صالحة.</>}
                         </>
                       )}

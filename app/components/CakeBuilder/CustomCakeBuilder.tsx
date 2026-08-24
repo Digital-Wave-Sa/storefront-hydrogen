@@ -344,24 +344,33 @@ export default function CustomCakeBuilder({
     if (cakeAttributes?.length > 0 && !hasLoadedRef.current) {
       hasLoadedRef.current = true;
 
-      // 1. Check if user is re-ordering from account dashboard orders
+      // 1. Check if user is returning from login with a pending cake design or re-ordering
       if (typeof window !== 'undefined') {
+        let savedPending: any = null;
+        try {
+          const rawPending = localStorage.getItem('pending_custom_cake');
+          if (rawPending) {
+            savedPending = JSON.parse(rawPending);
+            localStorage.removeItem('pending_custom_cake');
+          }
+        } catch (e) {}
+
         const searchParams = new URLSearchParams(window.location.search);
         const isReorder = searchParams.get('reorder') === 'true';
 
-        if (isReorder) {
-          const shapeVal = searchParams.get('shape');
-          const sizeVal = searchParams.get('size');
-          const flavorVal = searchParams.get('flavor');
-          const layersVal = searchParams.get('layers');
-          const colorVal = searchParams.get('color');
-          const toppingVal = searchParams.get('topping');
-          const messageVal = searchParams.get('message') || '';
-          const baseMessageVal = searchParams.get('baseMessage') || '';
-          const specialInstructionsVal = searchParams.get('specialInstructions') || '';
-          const textFontVal = searchParams.get('textFont') || 'Classic';
-          const textColorVal = searchParams.get('textColor') || '#4a2511';
-          const rawPlacement = searchParams.get('messagePlacement') || '';
+        if (savedPending || isReorder) {
+          const shapeVal = savedPending?.shape || searchParams.get('shape');
+          const sizeVal = savedPending?.size || searchParams.get('size');
+          const flavorVal = savedPending?.flavor || searchParams.get('flavor');
+          const layersVal = savedPending?.tier || searchParams.get('layers');
+          const colorVal = savedPending?.color || searchParams.get('color');
+          const toppingVal = savedPending?.style || searchParams.get('topping');
+          const messageVal = savedPending?.message || searchParams.get('message') || '';
+          const baseMessageVal = savedPending?.baseMessage || searchParams.get('baseMessage') || '';
+          const specialInstructionsVal = savedPending?.specialInstructions || searchParams.get('specialInstructions') || '';
+          const textFontVal = savedPending?.textFont || searchParams.get('textFont') || 'Classic';
+          const textColorVal = savedPending?.textColor || searchParams.get('textColor') || '#4a2511';
+          const rawPlacement = savedPending?.messagePlacement || searchParams.get('messagePlacement') || '';
 
           let messagePlacement: 'cake' | 'base' | 'both' = 'cake';
           if (rawPlacement.toLowerCase().includes('both') || rawPlacement.includes('معا')) messagePlacement = 'both';
@@ -387,8 +396,8 @@ export default function CustomCakeBuilder({
             specialInstructions: specialInstructionsVal,
             textColor: textColorVal,
             textFont: textFontVal,
-            uploadedImage: null,
-            prepTime: DEFAULT_PREP_OPTION
+            uploadedImage: savedPending?.uploadedImage || null,
+            prepTime: savedPending?.prepTime || DEFAULT_PREP_OPTION,
           });
 
           setCurrentStep(4);
@@ -397,12 +406,18 @@ export default function CustomCakeBuilder({
       }
 
       const defaultPrep = prepTimeOptions[0];
-      setSelections(prev => ({
+      setSelections((prev) => ({
         ...prev,
-        shape: mergedOptions.shapes.find(s => s.id === prev.shape?.id) || mergedOptions.shapes[0],
-        flavor: mergedOptions.flavors.find(f => f.id === prev.flavor?.id) || mergedOptions.flavors[0],
-        style: mergedOptions.styles.find(s => s.id === prev.style?.id) || mergedOptions.styles[0],
-        prepTime: defaultPrep
+        shape:
+          mergedOptions.shapes.find((s) => s.id === prev.shape?.id) ||
+          mergedOptions.shapes[0],
+        flavor:
+          mergedOptions.flavors.find((f) => f.id === prev.flavor?.id) ||
+          mergedOptions.flavors[0],
+        style:
+          mergedOptions.styles.find((s) => s.id === prev.style?.id) ||
+          mergedOptions.styles[0],
+        prepTime: defaultPrep,
       }));
     }
   }, [mergedOptions, cakeAttributes, prepTimeOptions]);
@@ -614,6 +629,29 @@ export default function CustomCakeBuilder({
       });
       const data = (await response.json()) as any;
       if (data.requireLogin && data.loginUrl) {
+        try {
+          localStorage.setItem(
+            'pending_custom_cake',
+            JSON.stringify({
+              shape: selections.shape?.name || selections.shape?.id,
+              size: selections.size?.name || selections.size?.id,
+              tier: selections.tier?.name || selections.tier?.id || selections.tier?.count,
+              flavor: selections.flavor?.name || selections.flavor?.id,
+              style: selections.style?.name || selections.style?.id,
+              color: selections.color?.name || selections.color?.id || selections.color?.color,
+              messagePlacement: selections.messagePlacement,
+              message: selections.message,
+              baseMessage: selections.baseMessage,
+              specialInstructions: selections.specialInstructions,
+              textFont: selections.textFont,
+              textColor: selections.textColor,
+              uploadedImage: selections.uploadedImage,
+              prepTime: selections.prepTime,
+            }),
+          );
+        } catch (e) {
+          console.warn('Failed to cache pending cake selection:', e);
+        }
         window.location.href = data.loginUrl;
         return;
       }

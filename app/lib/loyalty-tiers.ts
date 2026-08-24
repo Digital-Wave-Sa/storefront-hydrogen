@@ -1,9 +1,9 @@
 export interface LoyaltyTier {
-  name: 'Bronze' | 'Silver' | 'Gold';
+  name: 'Silver' | 'Gold' | 'Platinum';
   nameAr: string;
   levelTitleAr: string;
   levelTitleEn: string;
-  code: 'BRONZE' | 'SILVER' | 'GOLD';
+  code: 'SILVER' | 'GOLD' | 'PLATINUM';
   minPoints: number;
   maxPoints: number | null;
   badgeBg: string;
@@ -14,26 +14,13 @@ export interface LoyaltyTier {
 
 export const LOYALTY_TIERS: LoyaltyTier[] = [
   {
-    name: 'Bronze',
-    nameAr: 'برونزي',
-    levelTitleAr: 'المستوى البرونزي',
-    levelTitleEn: 'Bronze Level',
-    code: 'BRONZE',
-    minPoints: 0,
-    maxPoints: 999,
-    badgeBg: 'bg-[#F9F1EA]',
-    badgeTextColor: 'text-[#A85828]',
-    badgeBorderColor: 'border-[#EAD5C5]',
-    iconColor: '#A85828',
-  },
-  {
     name: 'Silver',
     nameAr: 'فضي',
     levelTitleAr: 'المستوى الفضي',
     levelTitleEn: 'Silver Level',
     code: 'SILVER',
-    minPoints: 1000,
-    maxPoints: 4999,
+    minPoints: 0,
+    maxPoints: 999,
     badgeBg: 'bg-[#F1F5F4]',
     badgeTextColor: 'text-[#4A607A]',
     badgeBorderColor: 'border-[#CBD7DB]',
@@ -45,40 +32,63 @@ export const LOYALTY_TIERS: LoyaltyTier[] = [
     levelTitleAr: 'المستوى الذهبي',
     levelTitleEn: 'Gold Level',
     code: 'GOLD',
-    minPoints: 5000,
-    maxPoints: null,
+    minPoints: 1000,
+    maxPoints: 4999,
     badgeBg: 'bg-[#FFF9E6]',
     badgeTextColor: 'text-[#B8860B]',
     badgeBorderColor: 'border-[#F0E1A1]',
     iconColor: '#B8860B',
+  },
+  {
+    name: 'Platinum',
+    nameAr: 'بلاتيني',
+    levelTitleAr: 'المستوى البلاتيني',
+    levelTitleEn: 'Platinum Level',
+    code: 'PLATINUM',
+    minPoints: 5000,
+    maxPoints: null,
+    badgeBg: 'bg-[#F0F4F8]',
+    badgeTextColor: 'text-[#243B53]',
+    badgeBorderColor: 'border-[#BCCCDC]',
+    iconColor: '#334E68',
   },
 ];
 
 export function getLoyaltyTierInfo(points: number = 0, serverTierName?: string | null) {
   const safePoints = Math.max(0, Math.floor(Number(points) || 0));
 
-  let currentTier: LoyaltyTier = LOYALTY_TIERS[0];
-  let nextTier: LoyaltyTier | null = LOYALTY_TIERS[1];
+  let currentTier: LoyaltyTier = LOYALTY_TIERS[0]; // Silver
+  let nextTier: LoyaltyTier | null = LOYALTY_TIERS[1]; // Gold
 
   if (serverTierName) {
-    const found = LOYALTY_TIERS.find(t => t.name.toLowerCase() === serverTierName.toLowerCase() || t.code.toLowerCase() === serverTierName.toLowerCase());
+    const found = LOYALTY_TIERS.find(
+      (t) =>
+        t.name.toLowerCase() === serverTierName.toLowerCase() ||
+        t.code.toLowerCase() === serverTierName.toLowerCase() ||
+        (serverTierName.toLowerCase().includes('plat') && t.code === 'PLATINUM') ||
+        (serverTierName.toLowerCase().includes('gold') && t.code === 'GOLD') ||
+        (serverTierName.toLowerCase().includes('silver') && t.code === 'SILVER'),
+    );
     if (found) {
       currentTier = found;
-      if (found.code === 'GOLD') {
+      if (found.code === 'PLATINUM') {
         nextTier = null;
-      } else if (found.code === 'SILVER') {
-        nextTier = LOYALTY_TIERS[2];
+      } else if (found.code === 'GOLD') {
+        nextTier = LOYALTY_TIERS[2]; // Platinum
       } else {
-        nextTier = LOYALTY_TIERS[1];
+        nextTier = LOYALTY_TIERS[1]; // Gold
       }
     }
   } else {
     if (safePoints >= 5000) {
-      currentTier = LOYALTY_TIERS[2]; // Gold
+      currentTier = LOYALTY_TIERS[2]; // Platinum
       nextTier = null;
     } else if (safePoints >= 1000) {
-      currentTier = LOYALTY_TIERS[1]; // Silver
-      nextTier = LOYALTY_TIERS[2]; // Gold
+      currentTier = LOYALTY_TIERS[1]; // Gold
+      nextTier = LOYALTY_TIERS[2]; // Platinum
+    } else {
+      currentTier = LOYALTY_TIERS[0]; // Silver
+      nextTier = LOYALTY_TIERS[1]; // Gold
     }
   }
 

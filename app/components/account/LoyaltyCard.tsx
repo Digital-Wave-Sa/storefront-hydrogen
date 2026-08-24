@@ -16,12 +16,12 @@ export function LoyaltyCard({
 
   // Luxury gradient styles per tier matching brand design
   const tierGradients = {
-    BRONZE: 'from-[#A85828] via-[#C87848] to-[#883818]',
     SILVER: 'from-[#4A607A] via-[#7A90AA] to-[#2A405A]',
     GOLD: 'from-[#B38728] via-[#D4AF37] to-[#8C6418]',
+    PLATINUM: 'from-[#1E293B] via-[#334E68] to-[#0F172A]',
   };
 
-  const currentGradient = tierGradients[tierInfo.tier.code] || tierGradients.GOLD;
+  const currentGradient = tierGradients[tierInfo.tier.code] || tierGradients.SILVER;
 
   return (
     <div className={`relative w-full rounded-[16px] p-5 text-white shadow-md overflow-hidden bg-gradient-to-r ${currentGradient} transition-all duration-300 ${className}`}>
@@ -74,7 +74,7 @@ export function LoyaltyCard({
                   ? `${tierInfo.pointsToNextTier.toLocaleString('en-US')} points away from ${tierInfo.nextTier.levelTitleEn}`
                   : `${tierInfo.pointsToNextTier.toLocaleString('en-US')} نقطة تفصلك عن ${tierInfo.nextTier.levelTitleAr}`
               ) : (
-                isEn ? 'Top Gold Level Unlocked! ★★★' : 'أعلى مستوى ذهبي مفعّلة! ★★★'
+                isEn ? 'Top Platinum Level Unlocked! ★★★' : 'أعلى مستوى بلاتيني مفعّل! ★★★'
               )}
             </p>
           </div>

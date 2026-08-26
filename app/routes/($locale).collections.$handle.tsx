@@ -193,7 +193,7 @@ export async function loader({request, params, context}: LoaderFunctionArgs) {
       }),
     );
 
-    const productNodes = matchingProducts.length > 0 ? matchingProducts : all;
+    const productNodes = matchingProducts;
     const edges = productNodes.map((node: any) => ({
       cursor: node.id,
       node,
@@ -254,7 +254,7 @@ export async function loader({request, params, context}: LoaderFunctionArgs) {
       }),
     );
 
-    const productNodes = matchingProducts.length > 0 ? matchingProducts : all;
+    const productNodes = matchingProducts;
     const edges = productNodes.map((node: any) => ({
       cursor: node.id,
       node,

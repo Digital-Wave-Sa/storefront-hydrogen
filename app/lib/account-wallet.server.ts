@@ -100,7 +100,7 @@ export async function fetchWalletData({
         const adminDomain = context.env.PUBLIC_STORE_DOMAIN;
         const adminToken = await getAdminToken(context.env);
         const numId = customer.id?.split('/').pop();
-        const rawPhone = (customer.phone || formattedPhone || '').replace(/\D/g, '');
+        const rawPhone = (customer?.phone || cleanPhone || '').replace(/\D/g, '');
         const phoneSearch = rawPhone.slice(-9);
 
         let fetchUrl = '';
@@ -185,7 +185,7 @@ export async function fetchWalletData({
     // Fetch Loyalty Points explicitly from CRM endpoint
     const loyaltyInfo = await getLoyaltyFullInfo({
       customerId: customer?.id || '',
-      phone: formattedPhone || customer?.phone || undefined,
+      phone: cleanPhone || customer?.phone || undefined,
       email: customer?.email || undefined,
       env: context.env,
       context,

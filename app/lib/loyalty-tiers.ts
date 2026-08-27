@@ -67,6 +67,7 @@ export function getLoyaltyTierInfo(points: number = 0, serverTierName?: string |
 
   let currentTier: LoyaltyTier = LOYALTY_TIERS[0]; // Silver
   let nextTier: LoyaltyTier | null = LOYALTY_TIERS[1]; // Gold
+  let matched = false;
 
   if (serverTierName) {
     const found = LOYALTY_TIERS.find(
@@ -79,6 +80,7 @@ export function getLoyaltyTierInfo(points: number = 0, serverTierName?: string |
     );
     if (found) {
       currentTier = found;
+      matched = true;
       if (found.code === 'PLATINUM') {
         nextTier = null;
       } else if (found.code === 'GOLD') {
@@ -87,7 +89,9 @@ export function getLoyaltyTierInfo(points: number = 0, serverTierName?: string |
         nextTier = LOYALTY_TIERS[1]; // Gold
       }
     }
-  } else {
+  }
+
+  if (!matched) {
     if (safePoints >= 5000) {
       currentTier = LOYALTY_TIERS[2]; // Platinum
       nextTier = null;

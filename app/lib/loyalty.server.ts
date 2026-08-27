@@ -231,6 +231,9 @@ export interface LoyaltyFullInfo {
   } | null;
 }
 
+const LOYALTY_CACHE = new Map<string, { data: LoyaltyFullInfo; timestamp: number }>();
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
 export async function getLoyaltyFullInfo(params: LoyaltyParams): Promise<LoyaltyFullInfo> {
   const env = params.env;
   const sdlpAppUrl = env?.PUBLIC_SDLP_APP_URL || env?.SDLP_APP_URL || 'https://sdlp.saadeddin.top';
@@ -242,6 +245,14 @@ export async function getLoyaltyFullInfo(params: LoyaltyParams): Promise<Loyalty
   if (!resolvedPhone && !customerId) {
     console.warn('[Loyalty] Neither phone nor customerId available for SDLP query.');
     return {balance: 0, amount: 0, enrollmentDate: null};
+  }
+
+  const cacheKey = `${resolvedPhone || ''}_${customerId || ''}`.trim();
+  const cached = LOYALTY_CACHE.get(cacheKey);
+
+  // Return fresh cache if available
+  if (cached && (Date.now() - cached.timestamp < CACHE_TTL_MS) && cached.data.balance > 0) {
+    return cached.data;
   }
 
   try {
@@ -292,7 +303,7 @@ export async function getLoyaltyFullInfo(params: LoyaltyParams): Promise<Loyalty
         const expiryObj = data?.data?.expiry || data?.expiry;
         const purchaseAmountsObj = data?.data?.purchase_amounts || data?.purchase_amounts;
 
-        return {
+        const result: LoyaltyFullInfo = {
           balance,
           amount,
           enrollmentDate,
@@ -332,20 +343,31 @@ export async function getLoyaltyFullInfo(params: LoyaltyParams): Promise<Loyalty
               }
             : null,
         };
+
+        // Cache successful response
+        LOYALTY_CACHE.set(cacheKey, { data: result, timestamp: Date.now() });
+
+        return result;
       } else {
         console.warn(
-          `[SDLP Loyalty] Customer not enrolled or service returned status ${res.status} (defaulting to 0 points)`,
+          `[SDLP Loyalty] Customer not enrolled or service returned status ${res.status} (attempting cache fallback)`,
         );
       }
     } catch (fetchErr: any) {
       clearTimeout(timeoutId);
       console.warn(
-        '[SDLP Loyalty] GET Fetch aborted/failed (timing out gracefully):',
+        '[SDLP Loyalty] GET Fetch aborted/failed (attempting cache fallback):',
         fetchErr?.message || fetchErr,
       );
     }
   } catch (err) {
-    console.warn('[SDLP Loyalty] GET Exception (defaulting to 0 points):', err);
+    console.warn('[SDLP Loyalty] GET Exception (attempting cache fallback):', err);
+  }
+
+  // If live query failed, return cached data if present
+  if (cached) {
+    console.log('[SDLP Loyalty] Returning cached loyalty data due to service unavailability.');
+    return cached.data;
   }
 
   return {balance: 0, amount: 0, enrollmentDate: null};
@@ -483,6 +505,10 @@ export async function redeemLoyaltyPoints({
 
     const resData = (await res.json()) as any;
     console.log('[SDLP Loyalty] POST deduct response:', resData);
+
+    // Invalidate cached loyalty info so the next query fetches updated balance
+    const cacheKey = `${searchPhone || ''}_${resolvedCustomerId || ''}`.trim();
+    LOYALTY_CACHE.delete(cacheKey);
 
     // Return success regardless of SDLP response — the discount is already created in Shopify.
     // If SDLP fails to deduct, log it but don't block the user.

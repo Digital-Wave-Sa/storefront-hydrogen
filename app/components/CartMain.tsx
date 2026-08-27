@@ -499,7 +499,6 @@ export function CartMain({ layout, cart: originalCart }: CartMainProps) {
 
 function CartEmpty({ hidden = false, layout, isEn }: { hidden: boolean; layout?: CartMainProps['layout']; isEn?: boolean }) {
   const { close } = useAside();
-  const allProductsUrl = isEn ? '/en/collections/all' : '/collections/all';
   return (
     <div hidden={hidden} className="flex flex-col items-center justify-center h-full text-center py-10">
       <div className="w-24 h-24 mb-6 rounded-full bg-[#fcfaf8] flex items-center justify-center border border-[#f0ece8]">
@@ -510,9 +509,9 @@ function CartEmpty({ hidden = false, layout, isEn }: { hidden: boolean; layout?:
         {isEn ? "Looks like you haven't added anything yet, let's get you started!" : "يبدو أنك لم تقم بإضافة أي شيء بعد، دعنا نبدأ!"}
       </p>
       <Link
-        to={allProductsUrl}
+        to={isEn ? "/en/collections/all" : "/collections/all"}
         onClick={close}
-        className="bg-[#234745] text-white font-bold py-3 px-8 rounded-full hover:bg-[#d4a06a] transition-colors inline-block text-center shadow-md active:scale-95"
+        className="bg-[#234745] text-white font-bold py-3 px-8 rounded-full hover:bg-[#d4a06a] transition-colors inline-block text-center"
       >
         {isEn ? 'Continue Shopping' : 'مواصلة التسوق'}
       </Link>

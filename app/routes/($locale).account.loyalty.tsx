@@ -189,7 +189,7 @@ export default function LoyaltyPage() {
                       </svg>
                     </div>
                     <div className={`text-xs font-bold ${t.badgeTextColor}`}>
-                      {isEn ? t.name : t.nameAr}
+                      {isEn ? t.levelTitleEn : t.levelTitleAr}
                     </div>
                     <div className="text-[10px] text-gray-500 font-en mt-0.5">
                       {t.maxPoints ? `${t.minPoints.toLocaleString('en-US')}–${t.maxPoints.toLocaleString('en-US')} pts` : `${t.minPoints.toLocaleString('en-US')}+ pts`}

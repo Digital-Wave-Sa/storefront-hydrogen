@@ -6,6 +6,8 @@ export interface LoyaltyTier {
   code: 'SILVER' | 'GOLD' | 'PLATINUM';
   minPoints: number;
   maxPoints: number | null;
+  bgColor: string;
+  borderColor: string;
   badgeBg: string;
   badgeTextColor: string;
   badgeBorderColor: string;
@@ -17,40 +19,46 @@ export const LOYALTY_TIERS: LoyaltyTier[] = [
     name: 'Silver',
     nameAr: 'فضي',
     levelTitleAr: 'المستوى الفضي',
-    levelTitleEn: 'Silver Level',
+    levelTitleEn: 'Silver Tier',
     code: 'SILVER',
     minPoints: 0,
     maxPoints: 999,
-    badgeBg: 'bg-[#F1F5F4]',
-    badgeTextColor: 'text-[#4A607A]',
-    badgeBorderColor: 'border-[#CBD7DB]',
-    iconColor: '#4A607A',
+    bgColor: '#9CA3AF',
+    borderColor: '#B6BDC7',
+    badgeBg: 'bg-[#F3F4F6]',
+    badgeTextColor: 'text-[#4B5563]',
+    badgeBorderColor: 'border-[#B6BDC7]',
+    iconColor: '#9CA3AF',
   },
   {
     name: 'Gold',
     nameAr: 'ذهبي',
     levelTitleAr: 'المستوى الذهبي',
-    levelTitleEn: 'Gold Level',
+    levelTitleEn: 'Gold Tier',
     code: 'GOLD',
     minPoints: 1000,
     maxPoints: 4999,
-    badgeBg: 'bg-[#FFF9E6]',
-    badgeTextColor: 'text-[#B8860B]',
-    badgeBorderColor: 'border-[#F0E1A1]',
-    iconColor: '#B8860B',
+    bgColor: '#C5A96A',
+    borderColor: '#D8BE83',
+    badgeBg: 'bg-[#FEF8EB]',
+    badgeTextColor: 'text-[#8C6D2B]',
+    badgeBorderColor: 'border-[#D8BE83]',
+    iconColor: '#C5A96A',
   },
   {
     name: 'Platinum',
     nameAr: 'بلاتيني',
     levelTitleAr: 'المستوى البلاتيني',
-    levelTitleEn: 'Platinum Level',
+    levelTitleEn: 'Platinum Tier',
     code: 'PLATINUM',
     minPoints: 5000,
     maxPoints: null,
-    badgeBg: 'bg-[#F0F4F8]',
-    badgeTextColor: 'text-[#243B53]',
-    badgeBorderColor: 'border-[#BCCCDC]',
-    iconColor: '#334E68',
+    bgColor: '#234745',
+    borderColor: '#3A6B66',
+    badgeBg: 'bg-[#EBF2F0]',
+    badgeTextColor: 'text-[#234745]',
+    badgeBorderColor: 'border-[#3A6B66]',
+    iconColor: '#234745',
   },
 ];
 

@@ -886,7 +886,7 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
                 />
 
                 <Link
-                  to={isEn ? "/en" : "/"}
+                  to={isEn ? "/en/collections/all" : "/collections/all"}
                   className="w-full h-[52px] bg-[#F9E8E8] hover:bg-[#F2DFDF] active:scale-[0.98] transition-all text-[#DF4646] rounded-[50px] font-black text-[16px] flex items-center justify-center border border-[#EAA2A2]"
                   style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" }}
                 >

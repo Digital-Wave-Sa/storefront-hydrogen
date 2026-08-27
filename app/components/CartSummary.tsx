@@ -1407,22 +1407,20 @@ function LoyaltyRedemptionUI({ isEn, cart }: { isEn: boolean, cart: any }) {
   const customerIdentifier = phone || email || customerId;
 
   useEffect(() => {
-    if (customerIdentifier) {
-      const q = new URLSearchParams();
-      if (phone) q.set('phone', phone);
-      if (email) q.set('email', email);
-      if (customerId) q.set('customerId', customerId);
-      q.set('t', String(Date.now()));
+    const q = new URLSearchParams();
+    if (phone) q.set('phone', phone);
+    if (email) q.set('email', email);
+    if (customerId) q.set('customerId', customerId);
+    q.set('t', String(Date.now()));
 
-      fetch(`/api/loyalty-points?${q.toString()}`)
-        .then(res => res.json())
-        .then(data => {
-          if (data?.success && data?.data?.points !== undefined) {
-            setAvailablePoints(data.data.points);
-          }
-        })
-        .catch(() => { });
-    }
+    fetch(`/api/loyalty-points?${q.toString()}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data?.success && data?.data?.points !== undefined) {
+          setAvailablePoints(data.data.points);
+        }
+      })
+      .catch(() => { });
   }, [customerIdentifier, phone, email, customerId]);
 
   if (!customerIdentifier) {

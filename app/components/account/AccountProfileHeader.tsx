@@ -23,6 +23,11 @@ export function AccountProfileHeader({
   const displayName = `${customer?.firstName || ''} ${customer?.lastName || ''}`.trim() || customer?.email?.split('@')[0] || (isEn ? 'Valued Customer' : 'عميلنا العزيز');
   const initials = (customer?.firstName?.[0] || customer?.email?.[0] || 'C').toUpperCase();
 
+  const forceEnDigits = (str: string | number) => {
+    if (str === null || str === undefined) return '';
+    return String(str).replace(/[٠-٩]/g, (d) => '٠١٢٣٤٥٦٧٨٩'.indexOf(d).toString());
+  };
+
   // Resolve Real Loyalty Membership Enrollment Date
   const rawEnrollment =
     loyaltyInfo?.activity?.card_created_date ||
@@ -38,28 +43,43 @@ export function AccountProfileHeader({
       const year = parseInt(parts[2], 10);
       const parsedDate = new Date(year, month, day);
       formattedJoinDate = isNaN(parsedDate.getTime())
-        ? rawEnrollment
-        : parsedDate.toLocaleDateString(isEn ? 'en-US' : 'ar-SA', {
-            day: 'numeric',
-            month: 'short',
-            year: 'numeric',
-          });
+        ? forceEnDigits(rawEnrollment)
+        : forceEnDigits(
+            parsedDate.toLocaleDateString(
+              isEn ? 'en-US' : 'ar-SA-u-nu-latn-ca-gregory',
+              {
+                day: 'numeric',
+                month: 'short',
+                year: 'numeric',
+              },
+            ),
+          );
     } else {
       const dObj = new Date(rawEnrollment);
       formattedJoinDate = isNaN(dObj.getTime())
-        ? rawEnrollment
-        : dObj.toLocaleDateString(isEn ? 'en-US' : 'ar-SA', {
-            day: 'numeric',
-            month: 'short',
-            year: 'numeric',
-          });
+        ? forceEnDigits(rawEnrollment)
+        : forceEnDigits(
+            dObj.toLocaleDateString(
+              isEn ? 'en-US' : 'ar-SA-u-nu-latn-ca-gregory',
+              {
+                day: 'numeric',
+                month: 'short',
+                year: 'numeric',
+              },
+            ),
+          );
     }
   } else {
-    formattedJoinDate = new Date().toLocaleDateString(isEn ? 'en-US' : 'ar-SA', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-    });
+    formattedJoinDate = forceEnDigits(
+      new Date().toLocaleDateString(
+        isEn ? 'en-US' : 'ar-SA-u-nu-latn-ca-gregory',
+        {
+          day: 'numeric',
+          month: 'short',
+          year: 'numeric',
+        },
+      ),
+    );
   }
 
   const rootData = useRouteLoaderData('root') as any;
@@ -115,7 +135,7 @@ export function AccountProfileHeader({
                   className="text-[14px] md:text-[18px] text-[#9FB7AE] font-medium flex gap-1 flex-wrap !m-0 items-center"
                   style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
                 >
-                  <span dir="ltr" className="truncate max-w-[120px] md:max-w-none font-en">{customer.phone || customer.email}</span>
+                  <span dir="ltr" className="truncate max-w-[120px] md:max-w-none font-en">{forceEnDigits(customer.phone || customer.email)}</span>
                   <span>•</span>
                   <span className="whitespace-nowrap">
                     {isEn ? 'Loyalty Member since ' : 'عضو ولاء منذ '}
@@ -127,19 +147,19 @@ export function AccountProfileHeader({
               {/* Stats Row */}
               <div className="flex items-center justify-start gap-8 md:justify-start w-full md:w-auto gap-2 md:gap-14 mt-1">
                 <div className="text-center">
-                  <p className="text-[14px] md:text-[22px] font-bold leading-none text-white mb-1 md:mb-2 font-en">{Math.max(Number(customer.numberOfOrders) || 0, customer.orders?.nodes?.length || 0)}</p>
+                  <p className="text-[14px] md:text-[22px] font-bold leading-none text-white mb-1 md:mb-2 font-en">{forceEnDigits(Math.max(Number(customer.numberOfOrders) || 0, customer.orders?.nodes?.length || 0))}</p>
                   <p className="text-[12px] md:text-[12px] text-[#9FB7AE] font-normal opacity-90">
                     {isEn ? 'Orders' : 'طلب'}
                   </p>
                 </div>
                 <div className="text-center">
-                  <p className="text-[16px] md:text-[22px] font-bold leading-none text-white mb-1 md:mb-2 font-en">{customer.addresses?.nodes?.length || 0}</p>
+                  <p className="text-[16px] md:text-[22px] font-bold leading-none text-white mb-1 md:mb-2 font-en">{forceEnDigits(customer.addresses?.nodes?.length || 0)}</p>
                   <p className="text-[10px] md:text-[12px] text-[#A6BFB9] font-medium opacity-90">
                     {isEn ? 'Addresses' : 'عنوان'}
                   </p>
                 </div>
                 <div className="text-center">
-                  <p className="text-[16px] md:text-[22px] font-bold leading-none text-white mb-1 md:mb-2 font-en">{wishlistCount || 0}</p>
+                  <p className="text-[16px] md:text-[22px] font-bold leading-none text-white mb-1 md:mb-2 font-en">{forceEnDigits(wishlistCount || 0)}</p>
                   <p className="text-[10px] md:text-[12px] text-[#A6BFB9] font-medium opacity-90">
                     {isEn ? 'Wishlist' : 'مفضلة'}
                   </p>

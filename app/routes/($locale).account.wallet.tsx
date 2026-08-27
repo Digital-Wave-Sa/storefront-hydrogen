@@ -506,7 +506,7 @@ export default function WalletPage() {
                               dir="ltr"
                             >
                               {new Date(tx.date).toLocaleDateString(
-                                isEn ? 'en-US' : 'ar-SA',
+                                isEn ? 'en-US' : 'ar-SA-u-nu-latn-ca-gregory',
                                 {
                                   year: 'numeric',
                                   month: 'short',

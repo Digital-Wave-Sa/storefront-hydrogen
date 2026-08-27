@@ -504,6 +504,16 @@ export type FooterQuery = {
   >;
 };
 
+export type GetCustomerPhoneQueryVariables = StorefrontAPI.Exact<{
+  customerAccessToken: StorefrontAPI.Scalars['String']['input'];
+}>;
+
+export type GetCustomerPhoneQuery = {
+  customer?: StorefrontAPI.Maybe<
+    Pick<StorefrontAPI.Customer, 'id' | 'phone' | 'email'>
+  >;
+};
+
 export type GetCustomerGidQueryVariables = StorefrontAPI.Exact<{
   customerAccessToken: StorefrontAPI.Scalars['String']['input'];
 }>;
@@ -2196,7 +2206,9 @@ export type GetLoyaltyCustomerIdQueryVariables = StorefrontAPI.Exact<{
 }>;
 
 export type GetLoyaltyCustomerIdQuery = {
-  customer?: StorefrontAPI.Maybe<Pick<StorefrontAPI.Customer, 'id'>>;
+  customer?: StorefrontAPI.Maybe<
+    Pick<StorefrontAPI.Customer, 'id' | 'phone' | 'email'>
+  >;
 };
 
 export type OrderItemFragment = Pick<
@@ -6469,6 +6481,10 @@ interface GeneratedQueryTypes {
     return: FooterQuery;
     variables: FooterQueryVariables;
   };
+  '#graphql\n          query getCustomerPhone($customerAccessToken: String!) {\n            customer(customerAccessToken: $customerAccessToken) { id phone email }\n          }\n          ': {
+    return: GetCustomerPhoneQuery;
+    variables: GetCustomerPhoneQueryVariables;
+  };
   '#graphql\n          query getCustomerGid($customerAccessToken: String!) {\n            customer(customerAccessToken: $customerAccessToken) { id }\n          }\n          ': {
     return: GetCustomerGidQuery;
     variables: GetCustomerGidQueryVariables;
@@ -6525,7 +6541,7 @@ interface GeneratedQueryTypes {
     return: GetLoyaltyCustomerQuery;
     variables: GetLoyaltyCustomerQueryVariables;
   };
-  '#graphql\n          query getLoyaltyCustomerId($customerAccessToken: String!) {\n            customer(customerAccessToken: $customerAccessToken) { id }\n          }\n          ': {
+  '#graphql\n          query getLoyaltyCustomerId($customerAccessToken: String!) {\n            customer(customerAccessToken: $customerAccessToken) { id phone email }\n          }\n          ': {
     return: GetLoyaltyCustomerIdQuery;
     variables: GetLoyaltyCustomerIdQueryVariables;
   };

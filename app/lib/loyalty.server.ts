@@ -6,6 +6,107 @@ interface LoyaltyParams {
   context?: any;
 }
 
+export function formatSaPhone(phone?: string | null): string | null {
+  if (!phone) return null;
+  const str = String(phone).trim();
+  if (str.includes('@') || str.startsWith('gid://')) return null;
+  const digits = str.replace(/\D/g, '');
+  if (!digits || digits.length < 8) return null;
+  if (digits.startsWith('9665') && digits.length === 12) {
+    return '0' + digits.substring(3);
+  }
+  if (digits.startsWith('5') && digits.length === 9) {
+    return '0' + digits;
+  }
+  if (digits.startsWith('05') && digits.length === 10) {
+    return digits;
+  }
+  return digits;
+}
+
+/**
+ * Resolves the customer's phone number from direct input, session, or Shopify API lookup
+ */
+export async function resolveCustomerPhone({ customerId, phone, email, env, context }: LoyaltyParams): Promise<string | null> {
+  const directPhone = formatSaPhone(phone);
+  if (directPhone) return directPhone;
+
+  // 1. Try session loginOtpPhone
+  if (context?.session) {
+    try {
+      const sessionPhone = await context.session.get('loginOtpPhone');
+      const formatted = formatSaPhone(sessionPhone);
+      if (formatted) return formatted;
+    } catch (e) {}
+  }
+
+  // 2. Try Storefront session customerAccessToken
+  if (context?.session && context?.storefront) {
+    try {
+      const sessionToken = await context.session.get('customerAccessToken');
+      const tokenStr = typeof sessionToken === 'string' ? sessionToken : sessionToken?.accessToken;
+      if (tokenStr && tokenStr !== 'dev-bypass-token') {
+        const { customer } = await context.storefront.query(
+          `#graphql
+          query getCustomerPhone($customerAccessToken: String!) {
+            customer(customerAccessToken: $customerAccessToken) { id phone email }
+          }
+          `,
+          { variables: { customerAccessToken: tokenStr }, cache: context.storefront.CacheNone() }
+        );
+        const sfPhone = formatSaPhone(customer?.phone);
+        if (sfPhone) return sfPhone;
+      }
+    } catch (e) {
+      console.warn('[Loyalty] Storefront query for customer phone failed:', e);
+    }
+  }
+
+  // 3. Admin API lookup by customerId or email
+  const searchEmail = email || (phone && String(phone).includes('@') ? phone : null) || (context?.session ? await context.session.get('loginCustomerEmail') : null);
+  const targetCustomerId = customerId || (phone && String(phone).startsWith('gid://') ? phone : null);
+
+  if (targetCustomerId || searchEmail) {
+    try {
+      const { getAdminToken, getAdminDomain } = await import('~/lib/shopify-admin.server');
+      const adminToken = await getAdminToken(env);
+      const adminDomain = getAdminDomain(env);
+
+      if (adminToken && adminDomain) {
+        if (targetCustomerId) {
+          const numericId = String(targetCustomerId).split('/').pop();
+          const res = await fetch(
+            `https://${adminDomain}/admin/api/2024-01/customers/${numericId}.json?fields=id,phone,email`,
+            { headers: { 'X-Shopify-Access-Token': adminToken, 'Content-Type': 'application/json' } }
+          );
+          if (res.ok) {
+            const data = (await res.json()) as any;
+            const p = formatSaPhone(data?.customer?.phone);
+            if (p) return p;
+          }
+        }
+
+        if (searchEmail) {
+          const res = await fetch(
+            `https://${adminDomain}/admin/api/2024-01/customers/search.json?query=email:"${encodeURIComponent(searchEmail)}"&fields=id,phone,email`,
+            { headers: { 'X-Shopify-Access-Token': adminToken, 'Content-Type': 'application/json' } }
+          );
+          if (res.ok) {
+            const data = (await res.json()) as any;
+            const found = (data.customers || []).find((c: any) => c.phone);
+            const p = formatSaPhone(found?.phone);
+            if (p) return p;
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('[Loyalty] Admin API search for phone failed:', e);
+    }
+  }
+
+  return null;
+}
+
 /**
  * Resolves full Shopify Customer GID (e.g., gid://shopify/Customer/108701679849)
  */
@@ -135,18 +236,18 @@ export async function getLoyaltyFullInfo(params: LoyaltyParams): Promise<Loyalty
   const sdlpAppUrl = env?.PUBLIC_SDLP_APP_URL || env?.SDLP_APP_URL || 'https://sdlp.saadeddin.top';
   const shop = env?.PUBLIC_SHOPIFY_STORE_DOMAIN || env?.PUBLIC_STORE_DOMAIN || 'saadeldeenshop-x21xumcd.myshopify.com';
 
-  const searchPhone = params.phone || (params.context?.session ? await params.context.session.get('loginOtpPhone') : null);
+  const resolvedPhone = await resolveCustomerPhone(params);
   const customerId = await getCustomerGid(params);
 
-  if (!customerId && !searchPhone) {
-    console.warn('[Loyalty] Neither customerId nor searchPhone available for SDLP query.');
+  if (!resolvedPhone && !customerId) {
+    console.warn('[Loyalty] Neither phone nor customerId available for SDLP query.');
     return {balance: 0, amount: 0, enrollmentDate: null};
   }
 
   try {
     let url = `${sdlpAppUrl}/api/storefront/loyalty?shop=${encodeURIComponent(shop)}`;
-    if (searchPhone) {
-      url += `&phone=${encodeURIComponent(searchPhone)}`;
+    if (resolvedPhone) {
+      url += `&phone=${encodeURIComponent(resolvedPhone)}`;
     } else if (customerId) {
       url += `&customerId=${encodeURIComponent(customerId)}`;
     }
@@ -274,11 +375,12 @@ export async function redeemLoyaltyPoints({
   const shop = env?.PUBLIC_SHOPIFY_STORE_DOMAIN || env?.PUBLIC_STORE_DOMAIN || 'saadeldeenshop-x21xumcd.myshopify.com';
 
   const resolvedCustomerId = await getCustomerGid({ customerId, phone, email, env, context });
-  if (!resolvedCustomerId) {
+  const resolvedPhone = await resolveCustomerPhone({ customerId, phone, email, env, context });
+  if (!resolvedCustomerId && !resolvedPhone) {
     return { success: false, error: 'Customer account not found' };
   }
 
-  const searchPhone = phone || (context?.session ? await context.session.get('loginOtpPhone') : null);
+  const searchPhone = resolvedPhone || (context?.session ? await context.session.get('loginOtpPhone') : null);
 
   // --- Step 1: Create the discount code directly via Shopify Admin REST API ---
   let generatedCode: string;

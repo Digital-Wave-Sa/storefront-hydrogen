@@ -9,6 +9,8 @@ export async function loader({request, context}: LoaderFunctionArgs) {
   const isEn = new URL(request.url).pathname.startsWith('/en');
 
   let customerId: string | undefined = undefined;
+  let customerPhone: string | undefined = undefined;
+  let customerEmail: string | undefined = undefined;
 
   if (context?.session) {
     try {
@@ -29,7 +31,11 @@ export async function loader({request, context}: LoaderFunctionArgs) {
             cache: context.storefront.CacheNone(),
           },
         );
-        if (customer?.id) customerId = customer.id;
+        if (customer?.id) {
+          customerId = customer.id;
+          customerPhone = customer.phone || undefined;
+          customerEmail = customer.email || undefined;
+        }
       }
     } catch (e) {}
   }
@@ -37,19 +43,27 @@ export async function loader({request, context}: LoaderFunctionArgs) {
   if (!customerId && context?.session) {
     customerId = await context.session.get('loginCustomerId');
   }
+  if (!customerPhone && context?.session) {
+    customerPhone = (await context.session.get('loginOtpPhone')) || undefined;
+  }
+  if (!customerEmail && context?.session) {
+    customerEmail = (await context.session.get('loginCustomerEmail')) || undefined;
+  }
 
-  if (!customerId) {
+  if (!customerId && !customerPhone) {
     return {customer: null, loyalty: {balance: 0, error: null}, isEn};
   }
 
   const balance = await getLoyaltyPoints({
     customerId,
+    phone: customerPhone,
+    email: customerEmail,
     env: context.env,
     context,
   });
 
   return {
-    customer: {id: customerId},
+    customer: {id: customerId || 'gid://shopify/Customer/0'},
     loyalty: {balance, error: null},
     isEn,
   };
@@ -67,6 +81,9 @@ export async function action({request, context}: ActionFunctionArgs) {
   }
 
   let customerId: string | undefined = undefined;
+  let customerPhone: string | undefined = undefined;
+  let customerEmail: string | undefined = undefined;
+
   if (context?.session) {
     try {
       const sessionToken = await context.session.get('customerAccessToken');
@@ -78,7 +95,7 @@ export async function action({request, context}: ActionFunctionArgs) {
         const {customer} = await context.storefront.query(
           `#graphql
           query getLoyaltyCustomerId($customerAccessToken: String!) {
-            customer(customerAccessToken: $customerAccessToken) { id }
+            customer(customerAccessToken: $customerAccessToken) { id phone email }
           }
           `,
           {
@@ -86,7 +103,11 @@ export async function action({request, context}: ActionFunctionArgs) {
             cache: context.storefront.CacheNone(),
           },
         );
-        if (customer?.id) customerId = customer.id;
+        if (customer?.id) {
+          customerId = customer.id;
+          customerPhone = customer.phone || undefined;
+          customerEmail = customer.email || undefined;
+        }
       }
     } catch (e) {}
   }
@@ -94,13 +115,21 @@ export async function action({request, context}: ActionFunctionArgs) {
   if (!customerId && context?.session) {
     customerId = await context.session.get('loginCustomerId');
   }
+  if (!customerPhone && context?.session) {
+    customerPhone = (await context.session.get('loginOtpPhone')) || undefined;
+  }
+  if (!customerEmail && context?.session) {
+    customerEmail = (await context.session.get('loginCustomerEmail')) || undefined;
+  }
 
-  if (!customerId) {
+  if (!customerId && !customerPhone) {
     return {success: false, error: 'Unauthorized'};
   }
 
   const res = await redeemLoyaltyPoints({
     customerId,
+    phone: customerPhone,
+    email: customerEmail,
     points,
     env: context.env,
     context,

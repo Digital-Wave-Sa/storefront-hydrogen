@@ -9,17 +9,30 @@ import type {ActionFunctionArgs, LoaderFunctionArgs} from 'react-router';
 export async function loader({request, context}: LoaderFunctionArgs) {
   try {
     const {getLoyaltyFullInfo} = await import('~/lib/loyalty.server');
-    const url = new URL(request.url);
-    const identifier =
-      url.searchParams.get('customerId') ||
-      url.searchParams.get('phone') ||
-      url.searchParams.get('email') ||
-      url.searchParams.get('identifier');
+    const paramCustomerId = url.searchParams.get('customerId') || undefined;
+    const paramPhone = url.searchParams.get('phone') || undefined;
+    const paramEmail = url.searchParams.get('email') || undefined;
+    const paramIdentifier = url.searchParams.get('identifier') || undefined;
+
+    let customerId = paramCustomerId;
+    let phone = paramPhone;
+    let email = paramEmail;
+
+    if (paramIdentifier) {
+      const clean = paramIdentifier.trim();
+      if (clean.startsWith('gid://') || /^\d{11,}$/.test(clean)) {
+        if (!customerId) customerId = clean;
+      } else if (clean.includes('@')) {
+        if (!email) email = clean;
+      } else {
+        if (!phone) phone = clean;
+      }
+    }
 
     const loyaltyInfo = await getLoyaltyFullInfo({
-      customerId: url.searchParams.get('customerId') || undefined,
-      phone: url.searchParams.get('phone') || identifier || undefined,
-      email: url.searchParams.get('email') || undefined,
+      customerId,
+      phone,
+      email,
       env: context.env,
       context,
     });

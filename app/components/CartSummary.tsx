@@ -64,7 +64,7 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
   const appliedPointsStr = cart?.attributes?.find((a: any) => a.key === 'loyalty_points')?.value;
   const loyaltyPointsRedeemed = parseInt(appliedPointsStr) || 0;
   const expectedLoyaltyDiscount = loyaltyPointsRedeemed * 0.01;
-  const hasLoyaltyDiscount = cart?.discountCodes?.some((dc: any) => dc.code?.startsWith('LOYALTY-')) && expectedLoyaltyDiscount > 0;
+  const hasLoyaltyDiscount = cart?.discountCodes?.some((dc: any) => (dc.code?.startsWith('LOYAL-') || dc.code?.startsWith('LOYALTY-'))) && expectedLoyaltyDiscount > 0;
   const loyaltyDiscountDisplay = hasLoyaltyDiscount ? expectedLoyaltyDiscount : 0;
 
   // Split store credit / wallet discount from other discounts
@@ -1399,16 +1399,22 @@ function LoyaltyRedemptionUI({ isEn, cart }: { isEn: boolean, cart: any }) {
   // Extract phone number or email
   let phone = rootData?.loginOtpPhone || cart?.buyerIdentity?.phone || cart?.buyerIdentity?.customer?.phone || customerInfo.phone;
   const email = cart?.buyerIdentity?.email || cart?.buyerIdentity?.customer?.email || customerInfo.email;
+  const customerId = customerInfo.id || cart?.buyerIdentity?.customer?.id;
   if (!phone && email && email.includes('@saadeddin.dev')) {
     phone = email.split('@')[0];
   }
 
-  const customerIdentifier = phone || email;
+  const customerIdentifier = phone || email || customerId;
 
   useEffect(() => {
     if (customerIdentifier) {
-      const cleanId = customerIdentifier.replace(/\s+/g, '');
-      fetch(`/api/loyalty-points?identifier=${encodeURIComponent(cleanId)}&t=${Date.now()}`)
+      const q = new URLSearchParams();
+      if (phone) q.set('phone', phone);
+      if (email) q.set('email', email);
+      if (customerId) q.set('customerId', customerId);
+      q.set('t', String(Date.now()));
+
+      fetch(`/api/loyalty-points?${q.toString()}`)
         .then(res => res.json())
         .then(data => {
           if (data?.success && data?.data?.points !== undefined) {
@@ -1417,7 +1423,7 @@ function LoyaltyRedemptionUI({ isEn, cart }: { isEn: boolean, cart: any }) {
         })
         .catch(() => { });
     }
-  }, [customerIdentifier]);
+  }, [customerIdentifier, phone, email, customerId]);
 
   if (!customerIdentifier) {
     return (

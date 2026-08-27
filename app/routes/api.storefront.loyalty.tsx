@@ -48,8 +48,8 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
     return Response.json(
       {
         balance,
-        amount: parseFloat((balance / 10).toFixed(2)),
-        pointsRedeemRatio: 10,
+        amount: parseFloat((balance * 0.01).toFixed(2)),
+        pointsRedeemRatio: 100,
         enrollmentDate,
         tier: {
           name: tierInfo.tier.name,
@@ -73,7 +73,7 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
       {
         balance: 0,
         amount: 0.00,
-        pointsRedeemRatio: 10,
+        pointsRedeemRatio: 100,
         enrollmentDate: new Date().toISOString(),
         tier: {
           name: tierInfo.tier.name,

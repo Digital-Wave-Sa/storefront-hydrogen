@@ -64,7 +64,7 @@ function mapRestOrderToNode(rawRest: any) {
           originalUnitPriceSet: {
             shopMoney: {amount: String(item.price || '0')},
           },
-          image: null,
+          image: item.image?.src || item.image?.url ? {url: item.image.src || item.image.url} : null,
           variant: {
             id: item.variant_id
               ? `gid://shopify/ProductVariant/${item.variant_id}`
@@ -157,7 +157,17 @@ export async function loader({params, context}: LoaderFunctionArgs) {
                     variantTitle
                     originalUnitPriceSet { shopMoney { amount } }
                     image { url }
-                    variant { id }
+                    variant {
+                      id
+                      image { url }
+                      product {
+                        id
+                        featuredImage { url }
+                        images(first: 1) {
+                          nodes { url }
+                        }
+                      }
+                    }
                   }
                 }
               }
@@ -364,19 +374,16 @@ export async function loader({params, context}: LoaderFunctionArgs) {
     tagSet.has('ready-for-delivery') ||
     tagSet.has('out-for-delivery') ||
     tagSet.has('ready-for-pickup') ||
-    tagSet.has('on-the-way') ||
-    tagSet.has('in-transit') ||
-    tagSet.has('جاهز-للتسليم') ||
-    tagSet.has('جاهز-للاستلام') ||
-    tagSet.has('في-الطريق');
+    tagSet.has('on-the-way');
   const tagIndicatesStep3 =
     tagSet.has('preparing') ||
     tagSet.has('in-progress') ||
     tagSet.has('being-prepared') ||
     tagSet.has('جاري-التجهيز');
 
-  // Fetch Storefront API translated product titles for line items using @inContext
+  // Fetch Storefront API translated product titles & images for line items using @inContext
   const titleMap: Record<string, string> = {};
+  const imageMap: Record<string, string> = {};
   try {
     const variantIds = (orderNode.lineItems?.edges || [])
       .map((e: any) => e.node?.variant?.id)
@@ -386,12 +393,23 @@ export async function loader({params, context}: LoaderFunctionArgs) {
       const lang = context.storefront.i18n.language;
       const country = context.storefront.i18n.country;
       const variantQuery = `
-              query GetVariantTitles($ids: [ID!]!) @inContext(language: ${lang}, country: ${country}) {
+              query GetVariantDetails($ids: [ID!]!) @inContext(language: ${lang}, country: ${country}) {
                 nodes(ids: $ids) {
                   ... on ProductVariant {
                     id
+                    image {
+                      url
+                    }
                     product {
                       title
+                      featuredImage {
+                        url
+                      }
+                      images(first: 1) {
+                        nodes {
+                          url
+                        }
+                      }
                     }
                   }
                 }
@@ -406,13 +424,22 @@ export async function loader({params, context}: LoaderFunctionArgs) {
       )) as any;
 
       for (const node of variantResult?.nodes || []) {
-        if (node?.id && node?.product?.title) {
-          titleMap[node.id] = node.product.title;
+        if (node?.id) {
+          if (node?.product?.title) {
+            titleMap[node.id] = node.product.title;
+          }
+          const imgUrl =
+            node?.image?.url ||
+            node?.product?.featuredImage?.url ||
+            node?.product?.images?.nodes?.[0]?.url;
+          if (imgUrl) {
+            imageMap[node.id] = imgUrl;
+          }
         }
       }
     }
   } catch (e) {
-    console.warn('[TrackOrder Loader] Failed to fetch translated titles:', e);
+    console.warn('[TrackOrder Loader] Failed to fetch translated titles & images:', e);
   }
 
   const orderData = {
@@ -472,24 +499,33 @@ export async function loader({params, context}: LoaderFunctionArgs) {
     tagIndicatesStep3,
     tagIndicatesStep4,
     tagIndicatesStep5,
-    items: orderNode.lineItems.edges.map(({node: item}: any) => ({
-      variantId: item.variant?.id || item.variantId || item.variant_id,
-      quantity: item.quantity || 1,
-      title:
-        item.variant?.id && titleMap[item.variant.id]
-          ? titleMap[item.variant.id]
-          : item.title,
-      price: parseFloat(
-        item.originalUnitPriceSet?.shopMoney?.amount || '0',
-      ).toLocaleString('en-US', {minimumFractionDigits: 2}),
-      options:
-        item.variantTitle && item.variantTitle !== 'Default Title'
-          ? item.variantTitle.split(' / ')
-          : [],
-      image:
+    items: orderNode.lineItems.edges.map(({node: item}: any) => {
+      const variantId = item.variant?.id || item.variantId || item.variant_id;
+      const resolvedImg =
         item.image?.url ||
-        'https://cdn.shopify.com/s/files/1/0533/2089/files/placeholder-images-image_large.png',
-    })),
+        item.variant?.image?.url ||
+        item.variant?.product?.featuredImage?.url ||
+        item.variant?.product?.images?.nodes?.[0]?.url ||
+        (variantId && imageMap[variantId]) ||
+        '';
+
+      return {
+        variantId,
+        quantity: item.quantity || 1,
+        title:
+          variantId && titleMap[variantId]
+            ? titleMap[variantId]
+            : item.title,
+        price: parseFloat(
+          item.originalUnitPriceSet?.shopMoney?.amount || '0',
+        ).toLocaleString('en-US', {minimumFractionDigits: 2}),
+        options:
+          item.variantTitle && item.variantTitle !== 'Default Title'
+            ? item.variantTitle.split(' / ')
+            : [],
+        image: resolvedImg || null,
+      };
+    }),
     summary: {
       subtotal: parseFloat(
         orderNode.subtotalPriceSet?.shopMoney?.amount || '0',
@@ -649,12 +685,19 @@ export default function TrackOrderPage() {
               <div className="flex flex-col gap-6 mb-6">
                 {orderData.items.map((item: any, idx: number) => (
                   <div key={idx} className="flex gap-4">
-                    <div className="w-[60px] h-[60px] shrink-0 rounded-[12px] overflow-hidden bg-gray-50">
-                      <img
-                        src={item.image}
-                        alt={item.title}
-                        className="w-full h-full object-cover"
-                      />
+                    <div className="w-[60px] h-[60px] shrink-0 rounded-[12px] overflow-hidden bg-[#FAF6F0] flex items-center justify-center border border-[#EBEBEB]">
+                      {item.image ? (
+                        <img
+                          src={item.image}
+                          alt={item.title}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            (e.currentTarget as HTMLElement).style.display = 'none';
+                          }}
+                        />
+                      ) : (
+                        <span className="text-2xl">🍰</span>
+                      )}
                     </div>
                     <div className="flex-1 flex flex-col justify-between">
                       <h3 className="text-[14px] font-bold text-[#1A1A1A] leading-tight line-clamp-2">

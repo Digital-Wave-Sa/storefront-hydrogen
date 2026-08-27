@@ -14,17 +14,26 @@ export function LoyaltyCard({
   const tierInfo = getLoyaltyTierInfo(loyaltyPoints);
   const formattedPoints = loyaltyPoints.toLocaleString('en-US');
 
-  // Luxury gradient styles per tier matching brand design
-  const tierGradients = {
-    SILVER: 'from-[#4A607A] via-[#7A90AA] to-[#2A405A]',
-    GOLD: 'from-[#B38728] via-[#D4AF37] to-[#8C6418]',
-    PLATINUM: 'from-[#1E293B] via-[#334E68] to-[#0F172A]',
+  // Luxury gradient & border styles per tier matching brand design
+  const tierStyles: Record<string, { gradient: string; border: string }> = {
+    SILVER: {
+      gradient: 'from-[#9CA3AF] via-[#A8B0BC] to-[#88909C]',
+      border: 'border-[#B6BDC7]',
+    },
+    GOLD: {
+      gradient: 'from-[#C5A96A] via-[#D8BE83] to-[#B59654]',
+      border: 'border-[#D8BE83]',
+    },
+    PLATINUM: {
+      gradient: 'from-[#234745] via-[#2F5B58] to-[#183432]',
+      border: 'border-[#3A6B66]',
+    },
   };
 
-  const currentGradient = tierGradients[tierInfo.tier.code] || tierGradients.SILVER;
+  const currentStyle = tierStyles[tierInfo.tier.code] || tierStyles.SILVER;
 
   return (
-    <div className={`relative w-full rounded-[16px] p-5 text-white shadow-md overflow-hidden bg-gradient-to-r ${currentGradient} transition-all duration-300 ${className}`}>
+    <div className={`relative w-full rounded-[16px] p-5 text-white shadow-md overflow-hidden bg-gradient-to-r ${currentStyle.gradient} border ${currentStyle.border} transition-all duration-300 ${className}`}>
       {/* Background Pattern Layer */}
       <div
         className="absolute inset-0 pointer-events-none opacity-25 bg-repeat bg-center"

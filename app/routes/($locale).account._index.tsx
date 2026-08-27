@@ -930,17 +930,6 @@ export default function AccountDashboard() {
                       <p className="text-[36px] md:text-[46px] font-bold text-[#234745] leading-none mb-1 font-en">
                         {points}
                       </p>
-                      <p className="text-[12px] text-[#A6BFB9] font-medium flex items-center gap-1 justify-start">
-                        {isEn ? (
-                          '1 Point = ~1 Halala'
-                        ) : (
-                          <>
-                            <span className="font-en pt-0.5">1</span> نقطة ={' '}
-                            <span className="font-en pt-0.5">1</span> هللة
-                            تقريباً
-                          </>
-                        )}
-                      </p>
                     </div>
                     <div className="text-end">
                       <p className="text-[12px] text-[#A6BFB9] font-medium mb-1">

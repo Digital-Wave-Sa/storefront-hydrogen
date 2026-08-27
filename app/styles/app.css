@@ -1173,6 +1173,20 @@ button.reset:hover:not(:has(> *)) {
 
 /* Animations */
 /* Account Section Premium Styles */
+.account-layout,
+.account-page-wrapper,
+.account-container,
+.account-main,
+.account-aside,
+.profile-header-bg {
+  font-feature-settings: "lnum" 1, "tnum" 1 !important;
+}
+
+.account-layout *,
+.account-page-wrapper * {
+  font-feature-settings: "lnum" 1, "tnum" 1;
+}
+
 .account-page-wrapper {
   background: #FEF8EB;
   padding: 60px 0;

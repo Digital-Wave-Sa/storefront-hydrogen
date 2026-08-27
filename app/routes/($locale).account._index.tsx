@@ -992,7 +992,12 @@ export default function AccountDashboard() {
                                 dir="ltr"
                               >
                                 {new Date(tx.date).toLocaleDateString(
-                                  isEn ? 'en-US' : 'ar-SA',
+                                  isEn ? 'en-US' : 'ar-SA-u-nu-latn-ca-gregory',
+                                  {
+                                    day: 'numeric',
+                                    month: 'short',
+                                    year: 'numeric',
+                                  }
                                 )}
                               </span>
                             </div>

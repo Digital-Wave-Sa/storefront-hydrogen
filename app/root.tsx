@@ -206,6 +206,9 @@ export async function loader(args: Route.LoaderArgs) {
       timeSlot: await session.get('Time Slot'),
       manualLocationSelection: manualLocationSelection,
       locale: urlLocale,
+      loginOtpPhone: loginOtpPhone || '',
+      loginCustomerId: loginCustomerId || '',
+      loginCustomerEmail: loginCustomerEmail || '',
     }, {
       headers
     });

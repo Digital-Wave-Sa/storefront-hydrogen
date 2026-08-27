@@ -30,6 +30,16 @@ export async function loader({request, context}: LoaderFunctionArgs) {
       }
     }
 
+    if (!phone && context?.session) {
+      phone = (await context.session.get('loginOtpPhone')) || (await context.session.get('saadeddinPhone')) || undefined;
+    }
+    if (!email && context?.session) {
+      email = (await context.session.get('loginCustomerEmail')) || undefined;
+    }
+    if (!customerId && context?.session) {
+      customerId = (await context.session.get('loginCustomerId')) || undefined;
+    }
+
     const loyaltyInfo = await getLoyaltyFullInfo({
       customerId,
       phone,

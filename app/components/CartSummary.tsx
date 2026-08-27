@@ -889,10 +889,12 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
                 <Link
                   to={isEn ? "/en/collections/all" : "/collections/all"}
                   onClick={close}
-                  className="w-full h-[52px] bg-[#F9E8E8] hover:bg-[#F2DFDF] active:scale-[0.98] transition-all text-[#DF4646] rounded-[50px] font-black text-[16px] flex items-center justify-center border border-[#EAA2A2]"
+                  className="w-full h-[52px] bg-[#234745] hover:bg-[#1a3533] active:scale-[0.98] transition-all !text-white rounded-[50px] font-black text-[16px] flex items-center justify-center shadow-md cursor-pointer"
                   style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" }}
                 >
-                  {isEn ? 'Continue Shopping' : 'مواصلة التسوق'}
+                  <span className="!text-white text-white font-bold text-[16px]">
+                    {isEn ? 'Continue Shopping' : 'مواصلة التسوق'}
+                  </span>
                 </Link>
               </div>
 

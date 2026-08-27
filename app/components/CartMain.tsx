@@ -511,9 +511,11 @@ function CartEmpty({ hidden = false, layout, isEn }: { hidden: boolean; layout?:
       <Link
         to={isEn ? "/en/collections/all" : "/collections/all"}
         onClick={close}
-        className="bg-[#234745] text-white font-bold py-3 px-8 rounded-full hover:bg-[#d4a06a] transition-colors inline-block text-center"
+        className="bg-[#234745] hover:bg-[#1a3533] !text-white text-white font-bold py-3 px-8 rounded-full transition-colors inline-block text-center shadow-md cursor-pointer"
       >
-        {isEn ? 'Continue Shopping' : 'مواصلة التسوق'}
+        <span className="!text-white text-white font-bold">
+          {isEn ? 'Continue Shopping' : 'مواصلة التسوق'}
+        </span>
       </Link>
     </div>
   );

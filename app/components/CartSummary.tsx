@@ -20,6 +20,7 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
   const discountCodeInputId = useId();
   const giftCardHeadingId = useId();
   const giftCardInputId = useId();
+  const { close } = useAside();
 
   const location = useLocation();
   const isEn = location.pathname.split('/')[1]?.toLowerCase() === 'en';
@@ -887,10 +888,11 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
 
                 <Link
                   to={isEn ? "/en/collections/all" : "/collections/all"}
+                  onClick={close}
                   className="w-full h-[52px] bg-[#F9E8E8] hover:bg-[#F2DFDF] active:scale-[0.98] transition-all text-[#DF4646] rounded-[50px] font-black text-[16px] flex items-center justify-center border border-[#EAA2A2]"
                   style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" }}
                 >
-                  {isEn ? 'Continue Shopping' : 'متابعة التسوق'}
+                  {isEn ? 'Continue Shopping' : 'مواصلة التسوق'}
                 </Link>
               </div>
 

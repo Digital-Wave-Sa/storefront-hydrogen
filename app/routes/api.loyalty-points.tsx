@@ -9,6 +9,7 @@ import type {ActionFunctionArgs, LoaderFunctionArgs} from 'react-router';
 export async function loader({request, context}: LoaderFunctionArgs) {
   try {
     const {getLoyaltyFullInfo} = await import('~/lib/loyalty.server');
+    const url = new URL(request.url);
     const paramCustomerId = url.searchParams.get('customerId') || undefined;
     const paramPhone = url.searchParams.get('phone') || undefined;
     const paramEmail = url.searchParams.get('email') || undefined;

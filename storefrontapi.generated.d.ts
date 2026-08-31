@@ -522,6 +522,16 @@ export type GetCustomerGidQuery = {
   customer?: StorefrontAPI.Maybe<Pick<StorefrontAPI.Customer, 'id'>>;
 };
 
+export type SessionIdentityCustomerQueryVariables = StorefrontAPI.Exact<{
+  customerAccessToken: StorefrontAPI.Scalars['String']['input'];
+}>;
+
+export type SessionIdentityCustomerQuery = {
+  customer?: StorefrontAPI.Maybe<
+    Pick<StorefrontAPI.Customer, 'id' | 'phone' | 'email'>
+  >;
+};
+
 export type GetReviewsQueryVariables = StorefrontAPI.Exact<{
   [key: string]: never;
 }>;
@@ -3627,7 +3637,7 @@ export type CatalogSearchQueryVariables = StorefrontAPI.Exact<{
 }>;
 
 export type CatalogSearchQuery = {
-  search: {
+  search: Pick<StorefrontAPI.SearchResultItemConnection, 'totalCount'> & {
     productFilters: Array<
       Pick<StorefrontAPI.Filter, 'id' | 'label' | 'type'> & {
         values: Array<
@@ -4629,6 +4639,7 @@ export type ProductFragment = Pick<
       >;
     }>;
   }>;
+  loyalty_points?: StorefrontAPI.Maybe<Pick<StorefrontAPI.Metafield, 'value'>>;
   upsell_products?: StorefrontAPI.Maybe<{
     references?: StorefrontAPI.Maybe<{
       nodes: Array<
@@ -5197,6 +5208,9 @@ export type ProductQuery = {
           >;
         }>;
       }>;
+      loyalty_points?: StorefrontAPI.Maybe<
+        Pick<StorefrontAPI.Metafield, 'value'>
+      >;
       upsell_products?: StorefrontAPI.Maybe<{
         references?: StorefrontAPI.Maybe<{
           nodes: Array<
@@ -6155,6 +6169,80 @@ export type GetPromotionalProductsQuery = {
   };
 };
 
+export type OfferProductsByIdQueryVariables = StorefrontAPI.Exact<{
+  ids:
+    | Array<StorefrontAPI.Scalars['ID']['input']>
+    | StorefrontAPI.Scalars['ID']['input'];
+  country?: StorefrontAPI.InputMaybe<StorefrontAPI.CountryCode>;
+  language?: StorefrontAPI.InputMaybe<StorefrontAPI.LanguageCode>;
+}>;
+
+export type OfferProductsByIdQuery = {
+  nodes: Array<
+    StorefrontAPI.Maybe<
+      Pick<
+        StorefrontAPI.Product,
+        'id' | 'handle' | 'title' | 'tags' | 'availableForSale'
+      > & {
+        featuredImage?: StorefrontAPI.Maybe<
+          Pick<StorefrontAPI.Image, 'url' | 'altText' | 'width' | 'height'>
+        >;
+        priceRange: {
+          minVariantPrice: Pick<
+            StorefrontAPI.MoneyV2,
+            'amount' | 'currencyCode'
+          >;
+        };
+        compareAtPriceRange: {
+          minVariantPrice: Pick<
+            StorefrontAPI.MoneyV2,
+            'amount' | 'currencyCode'
+          >;
+        };
+        variants: {
+          nodes: Array<
+            Pick<
+              StorefrontAPI.ProductVariant,
+              'id' | 'title' | 'availableForSale'
+            > & {
+              price: Pick<StorefrontAPI.MoneyV2, 'amount' | 'currencyCode'>;
+              compareAtPrice?: StorefrontAPI.Maybe<
+                Pick<StorefrontAPI.MoneyV2, 'amount' | 'currencyCode'>
+              >;
+              selectedOptions: Array<
+                Pick<StorefrontAPI.SelectedOption, 'name' | 'value'>
+              >;
+              storeAvailability: {
+                nodes: Array<
+                  Pick<StorefrontAPI.StoreAvailability, 'available'> & {
+                    location: Pick<StorefrontAPI.Location, 'id' | 'name'>;
+                  }
+                >;
+              };
+            }
+          >;
+        };
+      }
+    >
+  >;
+};
+
+export type OfferCollectionProductsQueryVariables = StorefrontAPI.Exact<{
+  ids:
+    | Array<StorefrontAPI.Scalars['ID']['input']>
+    | StorefrontAPI.Scalars['ID']['input'];
+}>;
+
+export type OfferCollectionProductsQuery = {
+  nodes: Array<
+    StorefrontAPI.Maybe<
+      Pick<StorefrontAPI.Collection, 'id'> & {
+        products: {nodes: Array<Pick<StorefrontAPI.Product, 'id'>>};
+      }
+    >
+  >;
+};
+
 export type QualityPolicyPageQueryVariables = StorefrontAPI.Exact<{
   language?: StorefrontAPI.InputMaybe<StorefrontAPI.LanguageCode>;
   country?: StorefrontAPI.InputMaybe<StorefrontAPI.CountryCode>;
@@ -6386,6 +6474,67 @@ export type GetCustomerEnrollmentQuery = {
   customer?: StorefrontAPI.Maybe<Pick<StorefrontAPI.Customer, 'createdAt'>>;
 };
 
+export type ApiOfferProductsByIdQueryVariables = StorefrontAPI.Exact<{
+  ids:
+    | Array<StorefrontAPI.Scalars['ID']['input']>
+    | StorefrontAPI.Scalars['ID']['input'];
+  country?: StorefrontAPI.InputMaybe<StorefrontAPI.CountryCode>;
+  language?: StorefrontAPI.InputMaybe<StorefrontAPI.LanguageCode>;
+}>;
+
+export type ApiOfferProductsByIdQuery = {
+  nodes: Array<
+    StorefrontAPI.Maybe<
+      Pick<
+        StorefrontAPI.Product,
+        'id' | 'handle' | 'title' | 'tags' | 'availableForSale'
+      > & {
+        featuredImage?: StorefrontAPI.Maybe<
+          Pick<StorefrontAPI.Image, 'url' | 'altText'>
+        >;
+        priceRange: {
+          minVariantPrice: Pick<
+            StorefrontAPI.MoneyV2,
+            'amount' | 'currencyCode'
+          >;
+        };
+        compareAtPriceRange: {
+          minVariantPrice: Pick<
+            StorefrontAPI.MoneyV2,
+            'amount' | 'currencyCode'
+          >;
+        };
+        variants: {
+          nodes: Array<
+            Pick<StorefrontAPI.ProductVariant, 'id' | 'availableForSale'> & {
+              price: Pick<StorefrontAPI.MoneyV2, 'amount' | 'currencyCode'>;
+              compareAtPrice?: StorefrontAPI.Maybe<
+                Pick<StorefrontAPI.MoneyV2, 'amount' | 'currencyCode'>
+              >;
+            }
+          >;
+        };
+      }
+    >
+  >;
+};
+
+export type ApiOfferCollectionProductIdsQueryVariables = StorefrontAPI.Exact<{
+  ids:
+    | Array<StorefrontAPI.Scalars['ID']['input']>
+    | StorefrontAPI.Scalars['ID']['input'];
+}>;
+
+export type ApiOfferCollectionProductIdsQuery = {
+  nodes: Array<
+    StorefrontAPI.Maybe<
+      Pick<StorefrontAPI.Collection, 'id'> & {
+        products: {nodes: Array<Pick<StorefrontAPI.Product, 'id'>>};
+      }
+    >
+  >;
+};
+
 export type GetProductsForWishlistQueryVariables = StorefrontAPI.Exact<{
   ids:
     | Array<StorefrontAPI.Scalars['ID']['input']>
@@ -6488,6 +6637,10 @@ interface GeneratedQueryTypes {
   '#graphql\n          query getCustomerGid($customerAccessToken: String!) {\n            customer(customerAccessToken: $customerAccessToken) { id }\n          }\n          ': {
     return: GetCustomerGidQuery;
     variables: GetCustomerGidQueryVariables;
+  };
+  '#graphql\n      query SessionIdentityCustomer($customerAccessToken: String!) {\n        customer(customerAccessToken: $customerAccessToken) {\n          id\n          phone\n          email\n        }\n      }\n      ': {
+    return: SessionIdentityCustomerQuery;
+    variables: SessionIdentityCustomerQueryVariables;
   };
   '#graphql\n      query GetReviews {\n        sfReviews: metaobjects(type: "storefront_review", first: 250) {\n          nodes {\n            id\n            fields { key value }\n          }\n        }\n        ordReviews: metaobjects(type: "order_review", first: 250) {\n          nodes {\n            id\n            fields { key value }\n          }\n        }\n      }\n    ': {
     return: GetReviewsQuery;
@@ -6629,7 +6782,7 @@ interface GeneratedQueryTypes {
     return: CollectionFilterQuery;
     variables: CollectionFilterQueryVariables;
   };
-  '#graphql\n  query CatalogSearch(\n    $country: CountryCode\n    $language: LanguageCode\n    $first: Int\n    $last: Int\n    $startCursor: String\n    $endCursor: String\n    $query: String!\n    $filters: [ProductFilter!]\n    $sortKey: SearchSortKeys\n    $reverse: Boolean\n  ) @inContext(country: $country, language: $language) {\n    search(\n      query: $query, \n      first: $first, \n      last: $last, \n      before: $startCursor, \n      after: $endCursor,\n      types: [PRODUCT],\n      productFilters: $filters,\n      sortKey: $sortKey,\n      reverse: $reverse\n    ) {\n      productFilters {\n        id\n        label\n        type\n        values {\n          id\n          label\n          count\n          input\n        }\n      }\n      nodes {\n        ...on Product {\n           ...AllProductItem\n        }\n      }\n      pageInfo {\n        hasPreviousPage\n        hasNextPage\n        startCursor\n        endCursor\n      }\n    }\n    collections(first: 50) {\n      nodes {\n        id\n        handle\n        title\n        products(first: 250) {\n          nodes {\n            id\n          }\n        }\n      }\n    }\n  }\n  #graphql\n  fragment OccasionsProductItem on Product {\n    id\n    handle\n    title\n    featuredImage {\n      id\n      altText\n      url\n      width\n      height\n    }\n    priceRange {\n      minVariantPrice {\n        amount\n        currencyCode\n      }\n      maxVariantPrice {\n        amount\n        currencyCode\n      }\n    }\n    compareAtPriceRange {\n      minVariantPrice {\n        amount\n        currencyCode\n      }\n    }\n    availableForSale\n    variants(first: 10) {\n      nodes {\n        id\n        title\n        availableForSale\n        quantityAvailable\n        selectedOptions {\n          name\n          value\n        }\n        price {\n          amount\n          currencyCode\n        }\n        storeAvailability(first: 250) {\n          nodes {\n            available\n            location {\n              id\n              name\n            }\n          }\n        }\n      }\n    }\n    tags\n  }\n\n': {
+  "#graphql\n  query CatalogSearch(\n    $country: CountryCode\n    $language: LanguageCode\n    $first: Int\n    $last: Int\n    $startCursor: String\n    $endCursor: String\n    $query: String!\n    $filters: [ProductFilter!]\n    $sortKey: SearchSortKeys\n    $reverse: Boolean\n  ) @inContext(country: $country, language: $language) {\n    search(\n      query: $query, \n      first: $first, \n      last: $last, \n      before: $startCursor, \n      after: $endCursor,\n      types: [PRODUCT],\n      productFilters: $filters,\n      sortKey: $sortKey,\n      reverse: $reverse\n    ) {\n      # Total matching products across all pages, not just this page's nodes.\n      totalCount\n      productFilters {\n        id\n        label\n        type\n        values {\n          id\n          label\n          count\n          input\n        }\n      }\n      nodes {\n        ...on Product {\n           ...AllProductItem\n        }\n      }\n      pageInfo {\n        hasPreviousPage\n        hasNextPage\n        startCursor\n        endCursor\n      }\n    }\n    collections(first: 50) {\n      nodes {\n        id\n        handle\n        title\n        products(first: 250) {\n          nodes {\n            id\n          }\n        }\n      }\n    }\n  }\n  #graphql\n  fragment OccasionsProductItem on Product {\n    id\n    handle\n    title\n    featuredImage {\n      id\n      altText\n      url\n      width\n      height\n    }\n    priceRange {\n      minVariantPrice {\n        amount\n        currencyCode\n      }\n      maxVariantPrice {\n        amount\n        currencyCode\n      }\n    }\n    compareAtPriceRange {\n      minVariantPrice {\n        amount\n        currencyCode\n      }\n    }\n    availableForSale\n    variants(first: 10) {\n      nodes {\n        id\n        title\n        availableForSale\n        quantityAvailable\n        selectedOptions {\n          name\n          value\n        }\n        price {\n          amount\n          currencyCode\n        }\n        storeAvailability(first: 250) {\n          nodes {\n            available\n            location {\n              id\n              name\n            }\n          }\n        }\n      }\n    }\n    tags\n  }\n\n": {
     return: CatalogSearchQuery;
     variables: CatalogSearchQueryVariables;
   };
@@ -6701,7 +6854,7 @@ interface GeneratedQueryTypes {
     return: CustomerPurchasesQuery;
     variables: CustomerPurchasesQueryVariables;
   };
-  '#graphql\n  #graphql\n  fragment ProductDetailRecommendedProduct on Product {\n    id\n    title\n    handle\n    availableForSale\n    productType\n    isGiftCard\n    compareAtPriceRange {\n      minVariantPrice {\n        amount\n        currencyCode\n      }\n    }\n    priceRange {\n      minVariantPrice {\n        amount\n        currencyCode\n      }\n    }\n    featuredImage {\n      id\n      url\n      altText\n      width\n      height\n    }\n    images(first: 1) {\n      nodes {\n        id\n        url\n        altText\n        width\n        height\n      }\n    }\n    visibility_start: metafield(namespace: "custom", key: "visibility_start") {\n      value\n    }\n    visibility_end: metafield(namespace: "custom", key: "visibility_end") {\n      value\n    }\n    average_rating: metafield(namespace: "custom", key: "average_rating") {\n      value\n    }\n    rating_count: metafield(namespace: "custom", key: "rating_count") {\n      value\n    }\n    bogo_free_item: metafield(namespace: "custom", key: "bogo_free_item") {\n      value\n      reference {\n        ... on ProductVariant {\n          id\n        }\n      }\n    }\n    variants(first: 1) {\n      nodes {\n        id\n        title\n        image {\n          url\n          altText\n          width\n          height\n        }\n        price {\n          amount\n          currencyCode\n        }\n        compareAtPrice {\n          amount\n          currencyCode\n        }\n        selectedOptions {\n          name\n          value\n        }\n        product {\n          handle\n          title\n        }\n        storeAvailability(first: 250) {\n          nodes {\n            available\n            location {\n              id\n            }\n          }\n        }\n      }\n    }\n  }\n\n  query Product(\n    $country: CountryCode\n    $language: LanguageCode\n    $handle: String!\n    $selectedOptions: [SelectedOptionInput!]!\n\n  ) @inContext(country: $country, language: $language) {\n    product(handle: $handle) {\n      ...Product\n    }\n  }\n  #graphql\n  fragment Product on Product {\n    id\n    title\n    vendor\n    handle\n    descriptionHtml\n    description\n    productType\n    isGiftCard\n    tags\n    collections(first: 10) {\n      nodes {\n        id\n        title\n        handle\n        title_in_arabic: metafield(namespace: "custom", key: "title_in_arabic") {\n          value\n        }\n        title_ar: metafield(namespace: "custom", key: "title_ar") {\n          value\n        }\n        name_in_arabic: metafield(namespace: "custom", key: "name_in_arabic") {\n          value\n        }\n        name_ar: metafield(namespace: "custom", key: "name_ar") {\n          value\n        }\n        leadTime: metafield(namespace: "custom", key: "delivery_lead_time") {\n          value\n        }\n      }\n    }\n    name_in_arabic: metafield(namespace: "custom", key: "name_in_arabic") {\n      value\n    }\n    title_in_arabic: metafield(namespace: "custom", key: "title_in_arabic") {\n      value\n    }\n    arabic_name: metafield(namespace: "custom", key: "arabic_name") {\n      value\n    }\n    arabic_title: metafield(namespace: "custom", key: "arabic_title") {\n      value\n    }\n    name_ar: metafield(namespace: "custom", key: "name_ar") {\n      value\n    }\n    title_ar: metafield(namespace: "custom", key: "title_ar") {\n      value\n    }\n    bundle_components: metafield(namespace: "custom", key: "bundle_components") {\n      references(first: 20) {\n        nodes {\n          ... on Product {\n            id\n            title\n            handle\n            featuredImage {\n              url\n              altText\n            }\n            variants(first: 1) {\n              nodes {\n                sku\n                price {\n                  amount\n                  currencyCode\n                }\n              }\n            }\n          }\n        }\n      }\n    }\n    options {\n      name\n      optionValues {\n        name\n      }\n    }\n    addons: metafield(namespace: "custom", key: "product_addons") {\n    references(first: 10) {\n      nodes {\n        ... on Product {\n          id\n          title\n          handle\n          availableForSale\n          variants(first: 1) {\n            nodes {\n              id\n              sku\n              price {\n                amount\n                currencyCode\n              }\n              image {\n                url\n                altText\n                width\n                height\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n  upsell_products: metafield(namespace: "custom", key: "upsell_products") {\n    references(first: 10) {\n      nodes {\n        ... on Product {\n          id\n          title\n          handle\n          availableForSale\n          featuredImage {\n            url\n            altText\n            width\n            height\n          }\n          priceRange {\n            minVariantPrice {\n              amount\n              currencyCode\n            }\n          }\n          variants(first: 1) {\n            nodes {\n              id\n              sku\n              availableForSale\n              price {\n                amount\n                currencyCode\n              }\n              image {\n                url\n                altText\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n  product_upsells: metafield(namespace: "custom", key: "product_upsells") {\n    references(first: 10) {\n      nodes {\n        ... on Product {\n          id\n          title\n          handle\n          availableForSale\n          featuredImage {\n            url\n            altText\n            width\n            height\n          }\n          priceRange {\n            minVariantPrice {\n              amount\n              currencyCode\n            }\n          }\n          variants(first: 1) {\n            nodes {\n              id\n              sku\n              availableForSale\n              price {\n                amount\n                currencyCode\n              }\n              image {\n                url\n                altText\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n\n      # --- ADDED FOR VISIBILITY SCHEDULING ---\n    visibility_start: metafield(namespace: "custom", key: "visibility_start") {\n      value\n    }\n    visibility_end: metafield(namespace: "custom", key: "visibility_end") {\n      value\n    }\n    next_season_date: metafield(namespace: "custom", key: "next_season_date") {\n      value\n    }\n    seasonal_message: metafield(namespace: "custom", key: "seasonal_message") {\n      value\n    }\n    nutrition: metafield(namespace: "custom", key: "nutrition") {\n      value\n    }\n    allergens: metafield(namespace: "custom", key: "allergens") {\n      value\n    }\n    calories: metafield(namespace: "custom", key: "calories") {\n      value\n    }\n    prep_time: metafield(namespace: "custom", key: "prep_time") {\n      value\n    }\n    servings: metafield(namespace: "custom", key: "servings") {\n      value\n    }\n    estimated_delivery: metafield(namespace: "custom", key: "estimated_delivery") {\n      value\n    }\n    delivery_override: metafield(namespace: "custom", key: "delivery_lead_time") {\n      value\n    }\n    average_rating: metafield(namespace: "custom", key: "average_rating") {\n      value\n    }\n    rating_count: metafield(namespace: "custom", key: "rating_count") {\n      value\n    }\n    bogo_free_item: metafield(namespace: "custom", key: "bogo_free_item") {\n      value\n      reference {\n        ... on ProductVariant {\n          id\n        }\n      }\n    }\n    vegan: metafield(namespace: "custom", key: "vegan") {\n      value\n    }\n    lactose_free: metafield(namespace: "custom", key: "lactose_free") {\n      value\n    }\n    gluten_free: metafield(namespace: "custom", key: "gluten_free") {\n      value\n    }\n    restock_date: metafield(namespace: "custom", key: "restock_date") {\n      value\n    }\n    expected_restock_date: metafield(namespace: "custom", key: "expected_restock_date") {\n      value\n    }\n    related_products: metafield(namespace: "custom", key: "related_products") {\n      references(first: 4) {\n        nodes {\n          ... on Product {\n            ...ProductDetailRecommendedProduct\n          }\n          ... on ProductVariant {\n            id\n            title\n            image {\n              id\n              url\n              altText\n              width\n              height\n            }\n            price {\n              amount\n              currencyCode\n            }\n            compareAtPrice {\n              amount\n              currencyCode\n            }\n            product {\n              ...ProductDetailRecommendedProduct\n            }\n          }\n        }\n      }\n    }\n    # ---------------------------------------\n\n    selectedVariant: variantBySelectedOptions(selectedOptions: $selectedOptions) {\n      ...ProductVariant\n    }\n    variants(first: 100) {\n      nodes {\n        ...ProductVariant\n      }\n    }\n    seo {\n      description\n      title\n    }\n    images(first: 10) {\n      nodes {\n        id\n        url\n        altText\n        width\n        height\n      }\n    }\n  }\n  #graphql\n  fragment ProductVariant on ProductVariant {\n    availableForSale\n    compareAtPrice {\n      amount\n      currencyCode\n    }\n    id\n    image {\n      __typename\n      id\n      url\n      altText\n      width\n      height\n    }\n    price {\n      amount\n      currencyCode\n    }\n    product {\n      title\n      handle\n    }\n    selectedOptions {\n      name\n      value\n    }\n    sku\n    title\n    unitPrice {\n      amount\n      currencyCode\n    }\n    components(first: 20) {\n      nodes {\n        quantity\n        productVariant {\n          id\n          title\n          sku\n          price {\n            amount\n            currencyCode\n          }\n          image {\n            url\n            altText\n          }\n          product {\n            id\n            title\n            handle\n            featuredImage {\n              url\n              altText\n            }\n          }\n        }\n      }\n    }\n    storeAvailability(first: 250) {\n      nodes {\n        available\n        location {\n          id\n          name\n        }\n      }\n    }\n  }\n\n\n': {
+  '#graphql\n  #graphql\n  fragment ProductDetailRecommendedProduct on Product {\n    id\n    title\n    handle\n    availableForSale\n    productType\n    isGiftCard\n    compareAtPriceRange {\n      minVariantPrice {\n        amount\n        currencyCode\n      }\n    }\n    priceRange {\n      minVariantPrice {\n        amount\n        currencyCode\n      }\n    }\n    featuredImage {\n      id\n      url\n      altText\n      width\n      height\n    }\n    images(first: 1) {\n      nodes {\n        id\n        url\n        altText\n        width\n        height\n      }\n    }\n    visibility_start: metafield(namespace: "custom", key: "visibility_start") {\n      value\n    }\n    visibility_end: metafield(namespace: "custom", key: "visibility_end") {\n      value\n    }\n    average_rating: metafield(namespace: "custom", key: "average_rating") {\n      value\n    }\n    rating_count: metafield(namespace: "custom", key: "rating_count") {\n      value\n    }\n    bogo_free_item: metafield(namespace: "custom", key: "bogo_free_item") {\n      value\n      reference {\n        ... on ProductVariant {\n          id\n        }\n      }\n    }\n    variants(first: 1) {\n      nodes {\n        id\n        title\n        image {\n          url\n          altText\n          width\n          height\n        }\n        price {\n          amount\n          currencyCode\n        }\n        compareAtPrice {\n          amount\n          currencyCode\n        }\n        selectedOptions {\n          name\n          value\n        }\n        product {\n          handle\n          title\n        }\n        storeAvailability(first: 250) {\n          nodes {\n            available\n            location {\n              id\n            }\n          }\n        }\n      }\n    }\n  }\n\n  query Product(\n    $country: CountryCode\n    $language: LanguageCode\n    $handle: String!\n    $selectedOptions: [SelectedOptionInput!]!\n\n  ) @inContext(country: $country, language: $language) {\n    product(handle: $handle) {\n      ...Product\n    }\n  }\n  #graphql\n  fragment Product on Product {\n    id\n    title\n    vendor\n    handle\n    descriptionHtml\n    description\n    productType\n    isGiftCard\n    tags\n    collections(first: 10) {\n      nodes {\n        id\n        title\n        handle\n        title_in_arabic: metafield(namespace: "custom", key: "title_in_arabic") {\n          value\n        }\n        title_ar: metafield(namespace: "custom", key: "title_ar") {\n          value\n        }\n        name_in_arabic: metafield(namespace: "custom", key: "name_in_arabic") {\n          value\n        }\n        name_ar: metafield(namespace: "custom", key: "name_ar") {\n          value\n        }\n        leadTime: metafield(namespace: "custom", key: "delivery_lead_time") {\n          value\n        }\n      }\n    }\n    name_in_arabic: metafield(namespace: "custom", key: "name_in_arabic") {\n      value\n    }\n    title_in_arabic: metafield(namespace: "custom", key: "title_in_arabic") {\n      value\n    }\n    arabic_name: metafield(namespace: "custom", key: "arabic_name") {\n      value\n    }\n    arabic_title: metafield(namespace: "custom", key: "arabic_title") {\n      value\n    }\n    name_ar: metafield(namespace: "custom", key: "name_ar") {\n      value\n    }\n    title_ar: metafield(namespace: "custom", key: "title_ar") {\n      value\n    }\n    bundle_components: metafield(namespace: "custom", key: "bundle_components") {\n      references(first: 20) {\n        nodes {\n          ... on Product {\n            id\n            title\n            handle\n            featuredImage {\n              url\n              altText\n            }\n            variants(first: 1) {\n              nodes {\n                sku\n                price {\n                  amount\n                  currencyCode\n                }\n              }\n            }\n          }\n        }\n      }\n    }\n    options {\n      name\n      optionValues {\n        name\n      }\n    }\n    addons: metafield(namespace: "custom", key: "product_addons") {\n    references(first: 10) {\n      nodes {\n        ... on Product {\n          id\n          title\n          handle\n          availableForSale\n          variants(first: 1) {\n            nodes {\n              id\n              sku\n              price {\n                amount\n                currencyCode\n              }\n              image {\n                url\n                altText\n                width\n                height\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n  # Loyalty points earned by buying this product. Optional — when unset the\n  # UI falls back to the standard earn rate (see POINTS_PER_SAR).\n  loyalty_points: metafield(namespace: "custom", key: "loyalty_points") {\n    value\n  }\n  upsell_products: metafield(namespace: "custom", key: "upsell_products") {\n    references(first: 10) {\n      nodes {\n        ... on Product {\n          id\n          title\n          handle\n          availableForSale\n          featuredImage {\n            url\n            altText\n            width\n            height\n          }\n          priceRange {\n            minVariantPrice {\n              amount\n              currencyCode\n            }\n          }\n          variants(first: 1) {\n            nodes {\n              id\n              sku\n              availableForSale\n              price {\n                amount\n                currencyCode\n              }\n              image {\n                url\n                altText\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n  product_upsells: metafield(namespace: "custom", key: "product_upsells") {\n    references(first: 10) {\n      nodes {\n        ... on Product {\n          id\n          title\n          handle\n          availableForSale\n          featuredImage {\n            url\n            altText\n            width\n            height\n          }\n          priceRange {\n            minVariantPrice {\n              amount\n              currencyCode\n            }\n          }\n          variants(first: 1) {\n            nodes {\n              id\n              sku\n              availableForSale\n              price {\n                amount\n                currencyCode\n              }\n              image {\n                url\n                altText\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n\n      # --- ADDED FOR VISIBILITY SCHEDULING ---\n    visibility_start: metafield(namespace: "custom", key: "visibility_start") {\n      value\n    }\n    visibility_end: metafield(namespace: "custom", key: "visibility_end") {\n      value\n    }\n    next_season_date: metafield(namespace: "custom", key: "next_season_date") {\n      value\n    }\n    seasonal_message: metafield(namespace: "custom", key: "seasonal_message") {\n      value\n    }\n    nutrition: metafield(namespace: "custom", key: "nutrition") {\n      value\n    }\n    allergens: metafield(namespace: "custom", key: "allergens") {\n      value\n    }\n    calories: metafield(namespace: "custom", key: "calories") {\n      value\n    }\n    prep_time: metafield(namespace: "custom", key: "prep_time") {\n      value\n    }\n    servings: metafield(namespace: "custom", key: "servings") {\n      value\n    }\n    estimated_delivery: metafield(namespace: "custom", key: "estimated_delivery") {\n      value\n    }\n    delivery_override: metafield(namespace: "custom", key: "delivery_lead_time") {\n      value\n    }\n    average_rating: metafield(namespace: "custom", key: "average_rating") {\n      value\n    }\n    rating_count: metafield(namespace: "custom", key: "rating_count") {\n      value\n    }\n    bogo_free_item: metafield(namespace: "custom", key: "bogo_free_item") {\n      value\n      reference {\n        ... on ProductVariant {\n          id\n        }\n      }\n    }\n    vegan: metafield(namespace: "custom", key: "vegan") {\n      value\n    }\n    lactose_free: metafield(namespace: "custom", key: "lactose_free") {\n      value\n    }\n    gluten_free: metafield(namespace: "custom", key: "gluten_free") {\n      value\n    }\n    restock_date: metafield(namespace: "custom", key: "restock_date") {\n      value\n    }\n    expected_restock_date: metafield(namespace: "custom", key: "expected_restock_date") {\n      value\n    }\n    related_products: metafield(namespace: "custom", key: "related_products") {\n      references(first: 4) {\n        nodes {\n          ... on Product {\n            ...ProductDetailRecommendedProduct\n          }\n          ... on ProductVariant {\n            id\n            title\n            image {\n              id\n              url\n              altText\n              width\n              height\n            }\n            price {\n              amount\n              currencyCode\n            }\n            compareAtPrice {\n              amount\n              currencyCode\n            }\n            product {\n              ...ProductDetailRecommendedProduct\n            }\n          }\n        }\n      }\n    }\n    # ---------------------------------------\n\n    selectedVariant: variantBySelectedOptions(selectedOptions: $selectedOptions) {\n      ...ProductVariant\n    }\n    variants(first: 100) {\n      nodes {\n        ...ProductVariant\n      }\n    }\n    seo {\n      description\n      title\n    }\n    images(first: 10) {\n      nodes {\n        id\n        url\n        altText\n        width\n        height\n      }\n    }\n  }\n  #graphql\n  fragment ProductVariant on ProductVariant {\n    availableForSale\n    compareAtPrice {\n      amount\n      currencyCode\n    }\n    id\n    image {\n      __typename\n      id\n      url\n      altText\n      width\n      height\n    }\n    price {\n      amount\n      currencyCode\n    }\n    product {\n      title\n      handle\n    }\n    selectedOptions {\n      name\n      value\n    }\n    sku\n    title\n    unitPrice {\n      amount\n      currencyCode\n    }\n    components(first: 20) {\n      nodes {\n        quantity\n        productVariant {\n          id\n          title\n          sku\n          price {\n            amount\n            currencyCode\n          }\n          image {\n            url\n            altText\n          }\n          product {\n            id\n            title\n            handle\n            featuredImage {\n              url\n              altText\n            }\n          }\n        }\n      }\n    }\n    storeAvailability(first: 250) {\n      nodes {\n        available\n        location {\n          id\n          name\n        }\n      }\n    }\n  }\n\n\n': {
     return: ProductQuery;
     variables: ProductQueryVariables;
   };
@@ -6725,9 +6878,17 @@ interface GeneratedQueryTypes {
     return: NewestProductsQuery;
     variables: NewestProductsQueryVariables;
   };
-  '#graphql\n  query getPromotionalProducts($country: CountryCode, $language: LanguageCode) @inContext(country: $country, language: $language) {\n    heroMeta: metaobjects(type: "promotions_hero", first: 1) {\n      nodes {\n        id\n        handle\n        fields {\n          key\n          value\n          reference {\n            ... on MediaImage {\n              image {\n                url\n                altText\n              }\n            }\n          }\n        }\n      }\n    }\n    bogoMeta: metaobjects(type: "promotions_bogo", first: 1) {\n      nodes {\n        id\n        fields {\n          key\n          value\n        }\n      }\n    }\n    gridMeta: metaobjects(type: "promotions_grid", first: 1) {\n      nodes {\n        id\n        fields {\n          key\n          value\n        }\n      }\n    }\n    bannerMeta: metaobjects(type: "promotions_banner", first: 1) {\n      nodes {\n        id\n        fields {\n          key\n          value\n        }\n      }\n    }\n    products(first: 50) {\n      nodes {\n        id\n        handle\n        title\n        tags\n        availableForSale\n        featuredImage {\n          url\n          altText\n          width\n          height\n        }\n        priceRange {\n          minVariantPrice {\n            amount\n            currencyCode\n          }\n        }\n        compareAtPriceRange {\n          minVariantPrice {\n            amount\n            currencyCode\n          }\n        }\n        variants(first: 10) {\n          nodes {\n            id\n            title\n            availableForSale\n            price {\n              amount\n              currencyCode\n            }\n            compareAtPrice {\n              amount\n              currencyCode\n            }\n            selectedOptions {\n              name\n              value\n            }\n            storeAvailability(first: 250) {\n              nodes {\n                available\n                location {\n                  id\n                  name\n                }\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n': {
+  '#graphql\n  query getPromotionalProducts($country: CountryCode, $language: LanguageCode) @inContext(country: $country, language: $language) {\n    heroMeta: metaobjects(type: "promotions_hero", first: 1) {\n      nodes {\n        id\n        handle\n        fields {\n          key\n          value\n          reference {\n            ... on MediaImage {\n              image {\n                url\n                altText\n              }\n            }\n          }\n        }\n      }\n    }\n    bogoMeta: metaobjects(type: "promotions_bogo", first: 1) {\n      nodes {\n        id\n        fields {\n          key\n          value\n        }\n      }\n    }\n    gridMeta: metaobjects(type: "promotions_grid", first: 1) {\n      nodes {\n        id\n        fields {\n          key\n          value\n        }\n      }\n    }\n    bannerMeta: metaobjects(type: "promotions_banner", first: 1) {\n      nodes {\n        id\n        fields {\n          key\n          value\n        }\n      }\n    }\n    products(first: 250) {\n      nodes {\n        id\n        handle\n        title\n        tags\n        availableForSale\n        featuredImage {\n          url\n          altText\n          width\n          height\n        }\n        priceRange {\n          minVariantPrice {\n            amount\n            currencyCode\n          }\n        }\n        compareAtPriceRange {\n          minVariantPrice {\n            amount\n            currencyCode\n          }\n        }\n        variants(first: 10) {\n          nodes {\n            id\n            title\n            availableForSale\n            price {\n              amount\n              currencyCode\n            }\n            compareAtPrice {\n              amount\n              currencyCode\n            }\n            selectedOptions {\n              name\n              value\n            }\n            storeAvailability(first: 250) {\n              nodes {\n                available\n                location {\n                  id\n                  name\n                }\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n': {
     return: GetPromotionalProductsQuery;
     variables: GetPromotionalProductsQueryVariables;
+  };
+  '#graphql\n  query offerProductsById($ids: [ID!]!, $country: CountryCode, $language: LanguageCode) @inContext(country: $country, language: $language) {\n    nodes(ids: $ids) {\n      ... on Product {\n        id\n        handle\n        title\n        tags\n        availableForSale\n        featuredImage {\n          url\n          altText\n          width\n          height\n        }\n        priceRange {\n          minVariantPrice {\n            amount\n            currencyCode\n          }\n        }\n        compareAtPriceRange {\n          minVariantPrice {\n            amount\n            currencyCode\n          }\n        }\n        variants(first: 10) {\n          nodes {\n            id\n            title\n            availableForSale\n            price {\n              amount\n              currencyCode\n            }\n            compareAtPrice {\n              amount\n              currencyCode\n            }\n            selectedOptions {\n              name\n              value\n            }\n            storeAvailability(first: 250) {\n              nodes {\n                available\n                location {\n                  id\n                  name\n                }\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n': {
+    return: OfferProductsByIdQuery;
+    variables: OfferProductsByIdQueryVariables;
+  };
+  '#graphql\n  query offerCollectionProducts($ids: [ID!]!) {\n    nodes(ids: $ids) {\n      ... on Collection {\n        id\n        products(first: 250) { nodes { id } }\n      }\n    }\n  }\n': {
+    return: OfferCollectionProductsQuery;
+    variables: OfferCollectionProductsQueryVariables;
   };
   '#graphql\n  query QualityPolicyPage(\n    $language: LanguageCode,\n    $country: CountryCode,\n    $handle: String!\n  )\n  @inContext(language: $language, country: $country) {\n    page(handle: $handle) {\n      id\n      title\n      body\n      seo {\n        description\n        title\n      }\n    }\n  }\n': {
     return: QualityPolicyPageQuery;
@@ -6756,6 +6917,14 @@ interface GeneratedQueryTypes {
   '#graphql\n            query getCustomerEnrollment($customerAccessToken: String!) {\n              customer(customerAccessToken: $customerAccessToken) { createdAt }\n            }\n            ': {
     return: GetCustomerEnrollmentQuery;
     variables: GetCustomerEnrollmentQueryVariables;
+  };
+  '#graphql\n  query apiOfferProductsById($ids: [ID!]!, $country: CountryCode, $language: LanguageCode) @inContext(country: $country, language: $language) {\n    nodes(ids: $ids) {\n      ... on Product {\n        id\n        handle\n        title\n        tags\n        availableForSale\n        featuredImage {\n          url\n          altText\n        }\n        priceRange {\n          minVariantPrice {\n            amount\n            currencyCode\n          }\n        }\n        compareAtPriceRange {\n          minVariantPrice {\n            amount\n            currencyCode\n          }\n        }\n        variants(first: 1) {\n          nodes {\n            id\n            availableForSale\n            price {\n              amount\n              currencyCode\n            }\n            compareAtPrice {\n              amount\n              currencyCode\n            }\n          }\n        }\n      }\n    }\n  }\n': {
+    return: ApiOfferProductsByIdQuery;
+    variables: ApiOfferProductsByIdQueryVariables;
+  };
+  '#graphql\n  query apiOfferCollectionProductIds($ids: [ID!]!) {\n    nodes(ids: $ids) {\n      ... on Collection {\n        id\n        products(first: 250) {\n          nodes {\n            id\n          }\n        }\n      }\n    }\n  }\n': {
+    return: ApiOfferCollectionProductIdsQuery;
+    variables: ApiOfferCollectionProductIdsQueryVariables;
   };
   '#graphql\n      query getProductsForWishlist($ids: [ID!]!, $country: CountryCode, $language: LanguageCode) @inContext(country: $country, language: $language) {\n        nodes(ids: $ids) {\n          ... on Product {\n            id\n            title\n            handle\n            availableForSale\n            featuredImage {\n              id\n              altText\n              url\n              width\n              height\n            }\n            priceRange {\n              minVariantPrice {\n                amount\n                currencyCode\n              }\n              maxVariantPrice {\n                amount\n                currencyCode\n              }\n            }\n            compareAtPriceRange {\n              minVariantPrice {\n                amount\n                currencyCode\n              }\n            }\n            visibility_start: metafield(namespace: "custom", key: "visibility_start") {\n              value\n            }\n            visibility_end: metafield(namespace: "custom", key: "visibility_end") {\n              value\n            }\n            variants(first: 10) {\n              nodes {\n                id\n                title\n                availableForSale\n                quantityAvailable\n                selectedOptions {\n                  name\n                  value\n                }\n                price {\n                  amount\n                  currencyCode\n                }\n                storeAvailability(first: 250) {\n                  nodes {\n                    available\n                    location {\n                      id\n                      name\n                    }\n                  }\n                }\n              }\n            }\n          }\n        }\n      }\n    ': {
     return: GetProductsForWishlistQuery;

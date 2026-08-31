@@ -11,6 +11,19 @@ export async function action({request, context}: ActionFunctionArgs) {
   }
 
   const {env} = context;
+
+  // Only Shopify may trigger this. Without the signature check, anyone knowing
+  // the URL could fake a restock and email every waiting customer.
+  const {verifyShopifyWebhook, describeRejection} = await import(
+    '~/lib/webhook-verify.server'
+  );
+  const verification = await verifyShopifyWebhook(request, env);
+  if (!verification.ok) {
+    console.error(
+      describeRejection('INVENTORY WEBHOOK', verification, request),
+    );
+    return data({error: 'Unauthorized'}, {status: 401});
+  }
   const {getAdminToken} = await import('~/lib/shopify-admin.server');
   const adminToken =
     (env as any)?.SHOPIFY_ADMIN_API_ACCESS_TOKEN ||
@@ -29,7 +42,8 @@ export async function action({request, context}: ActionFunctionArgs) {
   const shopDomain = getMyshopifyDomain(env);
 
   try {
-    const payload = (await request.json()) as any;
+    // Body already consumed by the signature check — parse what it captured.
+    const payload = JSON.parse(verification.rawBody || '{}') as any;
     const {inventory_item_id, location_id, available} = payload;
 
     // Helper to extract clean numeric ID from GID or raw string

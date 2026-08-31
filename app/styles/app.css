@@ -219,20 +219,32 @@ button:disabled {
   }
 }
 
-aside {
+/*
+ * Scoped to the drawer inside .overlay — this used to be a bare `aside`
+ * selector, which yanked EVERY <aside> element on the site to
+ * position: fixed off the right edge.
+ *
+ * The panel is hidden with translateX rather than parked at
+ * right: -400px. A transformed element contributes nothing to layout
+ * overflow, so the page no longer relies on `overflow-x: clip` on
+ * html/body to hide 400px of off-screen panel.
+ */
+.overlay aside {
   background: var(--color-light);
   box-shadow: 0 0 50px rgba(0, 0, 0, 0.3);
   height: 100vh;
   width: min(var(--aside-width), 100vw);
   position: fixed;
-  right: calc(-1 * var(--aside-width));
+  right: 0;
   top: 0;
-  transition: transform 200ms ease-in-out;
+  transform: translateX(100%);
+  visibility: hidden;
+  transition: transform 200ms ease-in-out, visibility 0s linear 200ms;
   display: flex;
   flex-direction: column;
 }
 
-aside header {
+.overlay aside header {
   align-items: center;
   border-bottom: 1px solid #f0ece8;
   display: flex;
@@ -242,11 +254,11 @@ aside header {
   flex-shrink: 0;
 }
 
-aside header h3 {
+.overlay aside header h3 {
   margin: 0;
 }
 
-aside header .close {
+.overlay aside header .close {
   font-weight: bold;
   opacity: 0.8;
   text-decoration: none;
@@ -254,16 +266,16 @@ aside header .close {
   width: 20px;
 }
 
-aside header .close:hover {
+.overlay aside header .close:hover {
   opacity: 1;
 }
 
-aside header h2 {
+.overlay aside header h2 {
   margin-bottom: 0.6rem;
   margin-top: 0;
 }
 
-aside main {
+.overlay aside main {
   flex: 1;
   overflow: hidden;
   display: flex;
@@ -288,15 +300,15 @@ aside main {
   background: #d4a06a;
 }
 
-aside p {
+.overlay aside p {
   margin: 0 0 0.25rem;
 }
 
-aside p:last-child {
+.overlay aside p:last-child {
   margin: 0;
 }
 
-aside li {
+.overlay aside li {
   margin-bottom: 0.125rem;
 }
 
@@ -356,7 +368,9 @@ aside li {
 }
 /* reveal aside */
 .overlay.expanded aside {
-  transform: translateX(calc(var(--aside-width) * -1));
+  transform: translateX(0);
+  visibility: visible;
+  transition: transform 200ms ease-in-out, visibility 0s;
 }
 
 button.reset {

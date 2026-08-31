@@ -4,6 +4,7 @@ import { useWishlist } from '~/context/WishlistContext';
 import { useRouteLoaderData } from 'react-router';
 import { getLoyaltyTierInfo } from '~/lib/loyalty-tiers';
 import { LoyaltyCard } from './LoyaltyCard';
+import { SaudiRiyalSymbol } from '~/components/Price';
 
 export function AccountProfileHeader({
   customer,
@@ -92,12 +93,17 @@ export function AccountProfileHeader({
     <div className="relative mb-8 w-full">
       {/* Main Header Card */}
       <div className="profile-header-bg py-4 px-4 md:px-12 text-white relative overflow-hidden flex flex-col justify-center shadow-lg w-full" style={{ backgroundColor: '#2C4A47' }}>
-        {/* Background Pattern Layer */}
-        <div className="absolute inset-0 pointer-events-none bg-[length:950px_800px] md:bg-[length:1900px_2000px]"
+        {/* Background Pattern Layer.
+            second-bg-pattern.svg is 360x56 and carries no preserveAspectRatio,
+            so it defaults to "meet": forcing a 950x800 box letterboxed the
+            artwork into a ~148px band with transparent space above and below —
+            which is the gap that showed. Height is `auto` so the tile keeps the
+            SVG's own ratio, and `repeat` then covers the card. */}
+        <div className="absolute inset-0 pointer-events-none bg-[length:950px_auto] md:bg-[length:1900px_auto]"
           style={{
             backgroundImage: `url(${patternBg})`,
-            backgroundPosition: 'center center',
-            backgroundRepeat: 'no-repeat',
+            backgroundPosition: 'top center',
+            backgroundRepeat: 'repeat',
           }}
         />
 
@@ -171,20 +177,25 @@ export function AccountProfileHeader({
           {/* 2-Column Grid: Column 1 = Soft Teal Points Card | Column 2 = Luxury Tier Badge Card */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5 w-full mt-2 z-20">
             
-            {/* Column 1: Points Card (Soft Teal Bar matching user screenshot) */}
+            {/* Column 1: Store Credit Card (Soft Teal Bar) */}
             <div className="bg-[#A6BFB9] rounded-[16px] p-4 md:p-5 flex items-center justify-between shadow-md transition-all h-full">
               <div className="text-start">
                 <p className="text-[11px] md:text-[12px] text-[#234745] font-bold mb-1 opacity-90">
-                  {isEn ? 'All Earned Points' : 'مجموع النقاط المكتسبة'}
+                  {isEn ? 'Current Store Credit' : 'رصيد حسابك الحالي'}
                 </p>
                 <div className="text-[22px] md:text-[26px] font-extrabold text-[#1B3836] leading-none flex items-center gap-1.5 font-en">
-                  <span>{loyaltyPoints.toLocaleString('en-US')}</span>
-                  <span className="text-[13px] md:text-[14px] font-bold text-[#234745]">{isEn ? 'Points' : 'نقطة'}</span>
+                  <span dir="ltr">
+                    {Number(balance || 0).toLocaleString('en-US', {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}
+                  </span>
+                  <SaudiRiyalSymbol className="h-[15px] md:h-[17px] w-auto text-[#234745] inline-block mb-0.5" />
                 </div>
               </div>
               <div className="w-11 h-11 md:w-13 md:h-13 rounded-full bg-white/30 flex items-center justify-center flex-shrink-0 shadow-xs">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="#FFC107" className="drop-shadow-xs">
-                  <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="#234745" className="drop-shadow-xs">
+                  <path d="M21 18v1c0 1.1-.9 2-2 2H5c-1.11 0-2-.9-2-2V5c0-1.1.89-2 2-2h14c1.1 0 2 .9 2 2v1h-9c-1.11 0-2 .9-2 2v8c0 1.1.89 2 2 2h9zm-9-2h10V8H12v8zm4-2.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z" />
                 </svg>
               </div>
             </div>

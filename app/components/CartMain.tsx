@@ -8,6 +8,7 @@ import { CartSummary } from './CartSummary';
 import { Price, SaudiRiyalSymbol } from './Price';
 import { checkBranchFreeDeliveryInterval } from './DeliveryPickupModal';
 import patternBg from '/images/second-bg-pattern.svg';
+import { useAdminLocations } from '~/lib/locations-meta';
 
 export type CartLayout = 'page' | 'aside';
 const CartAnalyticsView = Analytics.CartView as any;
@@ -141,17 +142,8 @@ export function CartMain({ layout, cart: originalCart }: CartMainProps) {
   }, [deletedLine]);
   // -------------------------------
 
-  const [adminLocations, setAdminLocations] = useState<any[]>([]);
-  useEffect(() => {
-    fetch('/api/locations-meta')
-      .then((res) => res.json())
-      .then((data) => {
-        if (data?.locations) {
-          setAdminLocations(data.locations);
-        }
-      })
-      .catch((err) => console.error('[CartMain] Failed to fetch locations-meta:', err));
-  }, []);
+  // Shared with the Header and CartSummary — one request per page, not three.
+  const adminLocations = useAdminLocations();
 
   // Dynamic Delivery Threshold Logic
   const branchName = cart?.attributes?.find(a => a.key === 'Branch')?.value;
@@ -377,8 +369,15 @@ export function CartMain({ layout, cart: originalCart }: CartMainProps) {
     <section className="flex flex-col h-full bg-white relative" aria-label="Cart drawer" dir={isEn ? 'ltr' : 'rtl'}>
       <CartAnalyticsView cart={cart as any} />
 
-      {/* Progress Bar (Only show if items exist and layout is aside AND not pickup) */}
-      {cartHasItems && !isPickup && (
+      {/* Progress Bar — same gate as the page layout above. Without the
+          threshold checks a branch with no free-delivery rule showed
+          "Add 0.00 SAR to unlock free delivery" while still charging for it,
+          because remaining = max(0 - subtotal, 0) = 0 and progress = 0. */}
+      {cartHasItems &&
+        !isPickup &&
+        !isDigitalOnlyCart &&
+        hasExplicitThreshold &&
+        threshold > 0 && (
         <div className="px-6 py-4 bg-[#fcfaf8] border-b border-[#f0ece8]">
           <p className="text-[13px] font-bold text-[#234745] mb-2 text-center">
             {progress >= 100 ? (

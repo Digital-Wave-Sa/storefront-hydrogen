@@ -6,12 +6,11 @@ import { fetchWalletData } from '~/lib/account-wallet.server';
  * Returns the live customer wallet / store credit balance.
  */
 export async function loader({ request, context }: LoaderFunctionArgs) {
-  const url = new URL(request.url);
-  let phone =
-    url.searchParams.get('phone') ||
-    url.searchParams.get('identifier') ||
-    (await context.session.get('loginOtpPhone')) ||
-    (await context.session.get('saadeddinPhone'));
+  // Session only. `?phone=` used to win over the session, which made any
+  // customer's store-credit balance readable from their phone number.
+  const {resolveSelf} = await import('~/lib/session-identity.server');
+  const self = await resolveSelf(context);
+  let phone = self?.phone;
 
   if (!phone && context.session) {
     try {

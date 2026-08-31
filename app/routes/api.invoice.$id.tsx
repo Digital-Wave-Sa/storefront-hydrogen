@@ -78,6 +78,10 @@ export async function loader({params, context}: LoaderFunctionArgs) {
 
   const financialStatus = orderNode.displayFinancialStatus || 'PENDING';
   const isPaid = financialStatus.toUpperCase() === 'PAID';
+  // An invoice is only issued once the order has actually been handed over,
+  // so a paid-but-undelivered order can't pull one yet.
+  const fulfillmentStatus = orderNode.displayFulfillmentStatus || 'UNFULFILLED';
+  const isDelivered = fulfillmentStatus.toUpperCase() === 'FULFILLED';
 
   return json({
     order: {
@@ -93,7 +97,9 @@ export async function loader({params, context}: LoaderFunctionArgs) {
         },
       ),
       isPaid,
+      isDelivered,
       financialStatus,
+      fulfillmentStatus,
       currency: orderNode.totalPriceSet?.shopMoney?.currencyCode || 'SAR',
       total: parseFloat(orderNode.totalPriceSet?.shopMoney?.amount || '0'),
       subtotal: parseFloat(
@@ -126,8 +132,8 @@ export default function InvoicePage() {
   const {order, isEn} = useLoaderData<typeof loader>();
   const navigate = useNavigate();
 
-  // If order is not paid, show error message page
-  if (!order.isPaid) {
+  // An invoice needs both: payment taken AND the order handed over.
+  if (!order.isPaid || !order.isDelivered) {
     return (
       <div
         className="min-h-screen bg-[#FEF8EB] flex items-center justify-center p-6"
@@ -152,9 +158,13 @@ export default function InvoicePage() {
             {isEn ? 'Invoice Not Available' : 'الفاتورة غير متوفرة'}
           </h1>
           <p className="text-[#8B8B8B] text-[14px] leading-relaxed mb-6">
-            {isEn
-              ? 'Invoices are only generated for completed and fully paid orders. Payment is currently pending.'
-              : 'يتم إصدار الفاتورة فقط للطلبات المكتملة والمدفوعة بالكامل. هذا الطلب بانتظار إتمام الدفع حالياً.'}
+            {!order.isPaid
+              ? isEn
+                ? 'Invoices are only generated for completed and fully paid orders. Payment is currently pending.'
+                : 'يتم إصدار الفاتورة فقط للطلبات المكتملة والمدفوعة بالكامل. هذا الطلب بانتظار إتمام الدفع حالياً.'
+              : isEn
+                ? 'The invoice will be available once your order has been delivered.'
+                : 'ستتوفر الفاتورة بعد تسليم طلبك.'}
           </p>
           <button
             onClick={() => navigate(-1)}

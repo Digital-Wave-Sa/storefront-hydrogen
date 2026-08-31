@@ -57,10 +57,15 @@ export async function loader({request, context}: LoaderFunctionArgs) {
       `^${localePrefix}/account/(orders|profile|addresses|addresses/.*|dashboard|feedback-analytics|promotions|wishlist|wallet)$`,
     ).test(pathname);
 
+  // Send the visitor back to the page they were trying to reach after login.
+  const loginUrl = `${localePrefix}/account/login?redirectTo=${encodeURIComponent(
+    pathname + new URL(request.url).search,
+  )}`;
+
   if (!isLoggedIn) {
     if (isPrivateRoute || isAccountHome || isOrderDetail) {
       session.unset('customerAccessToken');
-      return redirect(`${localePrefix}/account/login`, {
+      return redirect(loginUrl, {
         headers: {
           'Set-Cookie': await session.commit(),
         },
@@ -371,7 +376,7 @@ export async function loader({request, context}: LoaderFunctionArgs) {
         fallbackErr,
       );
       session.unset('customerAccessToken');
-      return redirect(`${localePrefix}/account/login`, {
+      return redirect(loginUrl, {
         headers: {'Set-Cookie': await session.commit()},
       });
     }

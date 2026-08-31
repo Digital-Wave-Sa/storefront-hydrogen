@@ -127,6 +127,9 @@ export async function loader({context, request}: LoaderFunctionArgs) {
           pTags.some((pt) => pt === at || pt.includes(at) || at.includes(pt)),
         );
       });
+      // These tags are filtered here, not by Shopify, so its totalCount counts
+      // products this page has just removed. Better no number than a wrong one.
+      (products as any).totalCount = undefined;
     }
 
     // Fallback if category search query returned no results: fetch directly from collection handles
@@ -207,6 +210,8 @@ export async function loader({context, request}: LoaderFunctionArgs) {
 
         products = {
           ...products,
+          // Whole merged list, before slicing to the current page.
+          totalCount: mergedNodes.length,
           nodes: paginatedNodes,
           pageInfo: {
             hasNextPage,
@@ -351,7 +356,9 @@ export default function CollectionAll() {
     <div className="collection-page" dir={isEn ? 'ltr' : 'rtl'}>
       <CollectionAllHero
         title={isEn ? 'All Products' : 'جميع المنتجات'}
-        productsCount={products.nodes?.length || 0}
+        productsCount={
+          (products as any)?.totalCount ?? products.nodes?.length ?? 0
+        }
         isEn={isEn}
       />
 
@@ -2244,6 +2251,8 @@ const CATALOG_QUERY = `#graphql
       sortKey: $sortKey,
       reverse: $reverse
     ) {
+      # Total matching products across all pages, not just this page's nodes.
+      totalCount
       productFilters {
         id
         label

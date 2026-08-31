@@ -943,11 +943,22 @@ export async function action({request, context, params}: Route.ActionArgs) {
           const isPickup = String(fulfillmentTypeVal || '').toLowerCase() === 'pickup';
 
           const currentCodes = currentCart?.discountCodes?.map((dc: any) => dc.code) || [];
+          // Shopify returns discount codes in the casing stored in admin
+          // (often FREESHIPPING), so every comparison here is case-insensitive.
+          const isFreeShippingCode = (c: string) =>
+            String(c).toLowerCase().trim() === 'freeshipping';
+          const hasFreeShippingCode = currentCodes.some(isFreeShippingCode);
+          // The result of the discount mutation must replace `result`, otherwise
+          // the response carries the pre-removal cart and the UI keeps showing
+          // free delivery until the next full page load.
+          let discountResult: any = null;
 
           if (isPickup) {
             // Pickup is always free and never needs freeshipping promo code
-            if (currentCodes.includes('freeshipping')) {
-              await cart.updateDiscountCodes(currentCodes.filter((c: string) => c !== 'freeshipping'));
+            if (hasFreeShippingCode) {
+              discountResult = await cart.updateDiscountCodes(
+                currentCodes.filter((c: string) => !isFreeShippingCode(c)),
+              );
             }
           } else {
             const selectedSlot = timeSlotAttr?.value || (await context.session.get('Time Slot'));
@@ -1001,15 +1012,21 @@ export async function action({request, context, params}: Route.ActionArgs) {
                   const promoResult = checkBranchFreeDeliveryInterval(matchedLoc, selectedSlot);
                   const isPromoFree = promoResult.isPromoFreeDelivery;
 
-                  if (isPromoFree && !currentCodes.includes('freeshipping')) {
-                    await cart.updateDiscountCodes(Array.from(new Set([...currentCodes, 'freeshipping'])));
-                  } else if (!isPromoFree && currentCodes.includes('freeshipping')) {
-                    await cart.updateDiscountCodes(currentCodes.filter((c: string) => c !== 'freeshipping'));
+                  if (isPromoFree && !hasFreeShippingCode) {
+                    discountResult = await cart.updateDiscountCodes(
+                      Array.from(new Set([...currentCodes, 'freeshipping'])),
+                    );
+                  } else if (!isPromoFree && hasFreeShippingCode) {
+                    discountResult = await cart.updateDiscountCodes(
+                      currentCodes.filter((c: string) => !isFreeShippingCode(c)),
+                    );
                   }
                 }
               }
             }
           }
+          // Return the cart as it stands AFTER the discount change.
+          if (discountResult) result = discountResult;
         } catch (promoErr) {
           console.error('[CART] Failed auto-applying promo free shipping code:', promoErr);
         }
@@ -1057,8 +1074,13 @@ export async function action({request, context, params}: Route.ActionArgs) {
             );
             if (isNowPickup) {
               const currentCodes = currentCart?.discountCodes?.map((dc: any) => dc.code) || [];
-              if (currentCodes.includes('freeshipping')) {
-                await cart.updateDiscountCodes(currentCodes.filter((c: string) => c !== 'freeshipping'));
+              // Case-insensitive: Shopify echoes the casing stored in admin.
+              const isFreeShip = (c: string) =>
+                String(c).toLowerCase().trim() === 'freeshipping';
+              if (currentCodes.some(isFreeShip)) {
+                await cart.updateDiscountCodes(
+                  currentCodes.filter((c: string) => !isFreeShip(c)),
+                );
               }
             }
           }

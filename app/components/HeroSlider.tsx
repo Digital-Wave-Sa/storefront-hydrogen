@@ -194,13 +194,13 @@ export function HeroSlider({ config }: { config?: any }) {
                 {/* 4. Main Content Area */}
                 <div
                   dir={isEn ? 'ltr' : 'rtl'}
-                  className={`relative flex-1 flex flex-col justify-end lg:justify-center p-6 lg:p-16 text-white z-20 items-center lg:items-start text-center lg:text-start`}
+                  className={`relative flex-1 min-h-0 flex flex-col justify-end lg:justify-center p-6 pt-14 lg:p-16 lg:pt-28 text-white z-20 items-center lg:items-start text-center lg:text-start`}
                 >
                   <div className="max-w-[95%] lg:max-w-[533px] flex flex-col items-center lg:items-start w-full">
 
                     {/* Title */}
                     <h2
-                      className={`font-bold lg:font-bold whitespace-pre-line mb-3 lg:mb-6 ${isEn ? 'text-[30px] sm:text-[36px] lg:text-[52px] leading-[0.85] lg:leading-[0.85]' : 'text-[38px] lg:text-[90px] leading-[1.0] lg:leading-[0.95]'}`}
+                      className={`font-bold lg:font-bold whitespace-pre-line mb-3 lg:mb-6 line-clamp-3 ${isEn ? 'text-[28px] sm:text-[36px] lg:text-[52px] leading-[1.1] lg:leading-[0.85]' : 'text-[32px] lg:text-[80px] leading-[1.3] lg:leading-[1.2]'}`}
                       style={{ fontFamily: "'Bahij Janna', sans-serif" }}
                     >
                       <span className="text-[#FFFFFF] drop-shadow-lg">{isEn ? slide.title.en : slide.title.ar}</span>
@@ -208,14 +208,14 @@ export function HeroSlider({ config }: { config?: any }) {
 
                     {/* Subtitle */}
                     <p
-                      className={`font-normal leading-[1.2] max-w-[280px] lg:max-w-[400px] mt-0 mb-4 lg:mb-8 whitespace-pre-line !text-[#FFFFFF] ${isEn ? 'text-[14px] lg:text-[16px]' : 'text-[12px] lg:text-[14px]'}`}
+                      className={`font-normal leading-[1.6] lg:leading-[1.2] max-w-[280px] lg:max-w-[400px] mt-0 mb-4 lg:mb-8 whitespace-pre-line line-clamp-4 lg:line-clamp-none !text-[#FFFFFF] ${isEn ? 'text-[14px] lg:text-[16px]' : 'text-[12px] lg:text-[14px]'}`}
                       style={!isEn ? { fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" } : undefined}
                     >
                       {isEn ? slide.subtitle.en : slide.subtitle.ar}
                     </p>
 
                     {/* Buttons */}
-                    <div className="flex flex-col lg:flex-row items-center gap-[8px] w-full mt-4 lg:mt-6">
+                    <div className="flex flex-col lg:flex-row items-center gap-[8px] w-full mt-2 lg:mt-6 shrink-0">
                       {slide.buttons?.map((btn, i) => {
                         const targetUrl = (() => {
                           const url = btn.url || '';

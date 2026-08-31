@@ -17,6 +17,12 @@ import {fixMojibake} from '~/lib/mojibake';
 import {adminApiQuery} from '~/lib/admin.server';
 import {getAdminToken, getAdminDomain} from '~/lib/shopify-admin.server';
 import {createPortal} from 'react-dom';
+
+/**
+ * Loyalty points awarded per 1 SAR spent. Used when a product carries no
+ * `custom.loyalty_points` metafield of its own.
+ */
+const POINTS_PER_SAR = 10;
 import type {MetaFunction} from 'react-router';
 import {data, redirect, type LoaderFunctionArgs} from 'react-router';
 import {
@@ -626,6 +632,23 @@ export default function Product() {
 
   const storeAvailabilityNodes =
     (selectedVariant as any)?.storeAvailability?.nodes || [];
+
+  /**
+   * Loyalty points earned by buying this product.
+   * `custom.loyalty_points` on the product wins when it holds a positive
+   * number; otherwise the standard earn rate applies to the variant price.
+   */
+  const loyaltyPointsEarned = useMemo(() => {
+    const raw = (product as any)?.loyalty_points?.value;
+    const fromMetafield = raw == null ? NaN : parseFloat(String(raw));
+    if (Number.isFinite(fromMetafield) && fromMetafield > 0) {
+      return Math.round(fromMetafield);
+    }
+
+    const price = parseFloat(selectedVariant?.price?.amount || '0');
+    if (!Number.isFinite(price) || price <= 0) return 0;
+    return Math.round(price * POINTS_PER_SAR);
+  }, [product, selectedVariant?.price?.amount]);
 
   const isGiftCard =
     Boolean(product.isGiftCard) ||
@@ -1871,6 +1894,60 @@ export default function Product() {
               >
                 {isEn ? 'VAT Inclusive 15%' : 'شامل ضريبة القيمة المضافة ١٥٪'}
               </span>
+
+              {/* Loyalty points earned by buying this product */}
+              {loyaltyPointsEarned > 0 && (
+                <div
+                  className={`absolute top-1/2 -translate-y-1/2 ${isEn ? 'right-[24px]' : 'left-[24px]'} bg-[#234745] rounded-full px-[18px] py-[10px] flex items-center gap-[10px] shadow-sm ${
+                    isEn ? 'flex-row-reverse' : 'flex-row'
+                  }`}
+                >
+                  {/* Star first in the DOM: in RTL that puts it on the right,
+                      and flex-row-reverse keeps it on the right in LTR too. */}
+                  <svg
+                    width="26"
+                    height="26"
+                    viewBox="0 0 24 24"
+                    fill="#FFCC00"
+                    className="shrink-0 drop-shadow-sm"
+                    aria-hidden="true"
+                  >
+                    <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
+                  </svg>
+
+                  <div
+                    className={`flex flex-col leading-tight gap-[4px] ${
+                      isEn ? 'items-start' : 'items-end'
+                    }`}
+                  >
+                    <span
+                      className="whitespace-nowrap"
+                      style={{
+                        fontFamily:
+                          "'EnglishDigits', 'GE Dinar One', sans-serif",
+                        fontWeight: 400,
+                        fontSize: '10px',
+                        lineHeight: '100%',
+                        letterSpacing: '0%',
+                        textAlign: isEn ? 'left' : 'right',
+                        color: '#BBCFCD',
+                      }}
+                    >
+                      {isEn ? 'Earn reward points' : 'اكسب نقاط مكافآت'}
+                    </span>
+                    <span
+                      className="text-white font-bold text-[15px] whitespace-nowrap"
+                      style={{
+                        fontFamily:
+                          "'EnglishDigits', 'GE Dinar One', sans-serif",
+                      }}
+                    >
+                      {loyaltyPointsEarned.toLocaleString('en-US')}{' '}
+                      {isEn ? 'points' : 'نقطة'}
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Description */}
@@ -5030,6 +5107,11 @@ const PRODUCT_FRAGMENT = `#graphql
         }
       }
     }
+  }
+  # Loyalty points earned by buying this product. Optional — when unset the
+  # UI falls back to the standard earn rate (see POINTS_PER_SAR).
+  loyalty_points: metafield(namespace: "custom", key: "loyalty_points") {
+    value
   }
   upsell_products: metafield(namespace: "custom", key: "upsell_products") {
     references(first: 10) {

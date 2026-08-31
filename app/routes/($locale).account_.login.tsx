@@ -293,6 +293,18 @@ export async function action({request, context}: ActionFunctionArgs) {
 
         session.set('loginOtpPhone', fullPhone);
         session.set('loginOtpCooldown', Date.now() + 60 * 1000);
+        // Remember where the visitor came from (e.g. the cart) so the OTP step
+        // can send them back even if the query string is lost in between.
+        {
+          const wanted = String(
+            new URL(request.url).searchParams.get('redirectTo') ||
+              form.get('redirectTo') ||
+              '',
+          );
+          if (wanted.startsWith('/')) {
+            session.set('loginRedirectTo', wanted);
+          }
+        }
         return data(
           {success: true, step: 'otp', phone: fullPhone},
           {headers: {'Set-Cookie': await session.commit()}},
@@ -660,7 +672,11 @@ export async function action({request, context}: ActionFunctionArgs) {
 
       const url = new URL(request.url);
       const rawRedirect =
-        url.searchParams.get('redirectTo') || form.get('redirectTo') || '';
+        url.searchParams.get('redirectTo') ||
+        form.get('redirectTo') ||
+        (await session.get('loginRedirectTo')) ||
+        '';
+      session.unset('loginRedirectTo');
 
       let targetRedirect = userLang === 'en' ? '/en/account' : '/account';
       if (typeof rawRedirect === 'string' && rawRedirect.startsWith('/')) {
@@ -1084,6 +1100,7 @@ export default function Login() {
                   }}
                 >
                   <input type="hidden" name="intent" value="send-otp" />
+                  <input type="hidden" name="redirectTo" value={redirectTo} />
 
                   {/* Phone Input */}
                   <div className="flex flex-col gap-2 w-full">
@@ -1279,6 +1296,7 @@ export default function Login() {
                   {/* Hidden resend form */}
                   <Form method="POST" ref={resendFormRef} className="hidden">
                     <input type="hidden" name="intent" value="send-otp" />
+                    <input type="hidden" name="redirectTo" value={redirectTo} />
                     <input type="hidden" name="phone" value={phone} />
                     <input
                       type="hidden"
@@ -1289,6 +1307,7 @@ export default function Login() {
 
                   <Form method="POST" className="w-full flex flex-col gap-6">
                     <input type="hidden" name="intent" value="verify-otp" />
+                    <input type="hidden" name="redirectTo" value={redirectTo} />
                     <input type="hidden" name="otp" value={otpValue.join('')} />
                     <input type="hidden" name="phone" value={phone} />
                     <input

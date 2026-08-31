@@ -108,6 +108,434 @@ export async function action({request, context}: ActionFunctionArgs) {
   return data({error: 'Invalid action'}, {status: 400});
 }
 
+// ---------------------------------------------------------------------------
+// Admin API helpers (GraphQL, cursor-based)
+// ---------------------------------------------------------------------------
+
+const ADMIN_API_VERSION = '2024-01';
+
+/** How many orders per page. Also the page size the filter tabs count over. */
+const ORDERS_PAGE_SIZE = 20;
+
+/** Short-lived cache: identity (phone/email) -> Admin customer GID. */
+const customerIdCache = new Map<string, {id: string; expires: number}>();
+const CUSTOMER_ID_TTL_MS = 10 * 60 * 1000;
+
+async function adminGraphql<T = any>(
+  env: any,
+  query: string,
+  variables: Record<string, any>,
+): Promise<T | null> {
+  const {getAdminToken, getAdminDomain} = await import(
+    '~/lib/shopify-admin.server'
+  );
+  const adminToken = await getAdminToken(env);
+  const adminDomain = getAdminDomain(env);
+  if (!adminToken || !adminDomain) return null;
+
+  const res = await fetch(
+    `https://${adminDomain}/admin/api/${ADMIN_API_VERSION}/graphql.json`,
+    {
+      method: 'POST',
+      headers: {
+        'X-Shopify-Access-Token': adminToken,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({query, variables}),
+    },
+  );
+  if (!res.ok) {
+    console.error('[Orders Loader] Admin GraphQL HTTP error:', res.status);
+    return null;
+  }
+  const json = (await res.json()) as any;
+  if (json.errors?.length) {
+    console.error(
+      '[Orders Loader] Admin GraphQL errors:',
+      JSON.stringify(json.errors),
+    );
+  }
+  return json.data ?? null;
+}
+
+const ADMIN_FIND_CUSTOMER_QUERY = `
+  query FindCustomer($q: String!) {
+    customers(first: 10, query: $q) {
+      nodes {
+        id
+        phone
+        email
+      }
+    }
+  }
+`;
+
+const ADMIN_CUSTOMER_ORDERS_QUERY = `
+  query CustomerOrders(
+    $q: String!
+    $first: Int
+    $last: Int
+    $after: String
+    $before: String
+  ) {
+    orders(
+      query: $q
+      sortKey: PROCESSED_AT
+      reverse: true
+      first: $first
+      last: $last
+      after: $after
+      before: $before
+    ) {
+      nodes {
+        id
+        name
+        processedAt
+        # Admin API spells it cancelledAt; aliased to the Storefront-style
+        # name the mapper and UI already use.
+        canceledAt: cancelledAt
+        displayFinancialStatus
+        displayFulfillmentStatus
+        statusPageUrl
+        tags
+        currentTotalPriceSet {
+          shopMoney {
+            amount
+            currencyCode
+          }
+        }
+        totalPriceSet {
+          shopMoney {
+            amount
+            currencyCode
+          }
+        }
+        shippingLine {
+          title
+        }
+        shippingAddress {
+          name
+          address1
+          city
+          phone
+        }
+        customAttributes {
+          key
+          value
+        }
+        fulfillments {
+          status
+          displayStatus
+        }
+        lineItems(first: 20) {
+          nodes {
+            title
+            quantity
+            customAttributes {
+              key
+              value
+            }
+            originalTotalSet {
+              shopMoney {
+                amount
+                currencyCode
+              }
+            }
+            discountedTotalSet {
+              shopMoney {
+                amount
+                currencyCode
+              }
+            }
+            image {
+              url
+              altText
+              width
+              height
+            }
+            variant {
+              id
+              image {
+                url
+                altText
+                width
+                height
+              }
+              product {
+                title
+                tags
+                featuredImage {
+                  url
+                  altText
+                  width
+                  height
+                }
+              }
+            }
+          }
+        }
+      }
+      pageInfo {
+        hasNextPage
+        hasPreviousPage
+        startCursor
+        endCursor
+      }
+    }
+  }
+`;
+
+/**
+ * Shopify's order search defaults to OPEN orders only — cancelled and archived
+ * (closed) orders are silently excluded, which is why the old REST calls passed
+ * `status=any`. Spelled out rather than using `status:any` so it holds whatever
+ * that alias does.
+ */
+const ORDER_STATUS_SCOPE = '(status:open OR status:closed OR status:cancelled)';
+
+const customerOrdersSearch = (numericCustomerId: string) =>
+  `customer_id:${numericCustomerId} AND ${ORDER_STATUS_SCOPE}`;
+
+/**
+ * Status counts for the filter tabs, over the shopper's whole order history
+ * rather than just the page on screen. Deliberately selects no line items:
+ * Shopify caps a single query at 1000 cost points, and nesting lineItems under
+ * 250 orders blows past that.
+ */
+const ADMIN_ORDER_COUNTS_QUERY = `
+  query CustomerOrderCounts($q: String!) {
+    orders(query: $q, sortKey: PROCESSED_AT, reverse: true, first: 250) {
+      nodes {
+        id
+        canceledAt: cancelledAt
+        displayFinancialStatus
+        displayFulfillmentStatus
+      }
+    }
+  }
+`;
+
+/** Most orders we will count over. Hitting it renders counts as "250+". */
+const ORDER_COUNT_CAP = 250;
+
+/** Short-lived cache: customer GID -> computed tab counts. */
+const orderCountsCache = new Map<string, {counts: any; expires: number}>();
+const ORDER_COUNTS_TTL_MS = 60 * 1000;
+
+async function fetchOrderCounts(env: any, numericCustomerId: string) {
+  const hit = orderCountsCache.get(numericCustomerId);
+  if (hit && hit.expires > Date.now()) return hit.counts;
+
+  const data = await adminGraphql<any>(env, ADMIN_ORDER_COUNTS_QUERY, {
+    q: customerOrdersSearch(numericCustomerId),
+  });
+  const nodes: any[] = data?.orders?.nodes || [];
+  if (!data?.orders) {
+    console.warn(
+      '[Orders Loader] Counts query returned no connection — tabs fall back to page counts.',
+    );
+    return null;
+  }
+
+  const isCancelled = (o: any) =>
+    !!o.canceledAt ||
+    String(o.displayFinancialStatus || '').toUpperCase() === 'REFUNDED';
+  const isFulfilled = (o: any) =>
+    String(o.displayFulfillmentStatus || '').toUpperCase() === 'FULFILLED';
+
+  const counts = {
+    all: nodes.length,
+    active: nodes.filter((o) => !isFulfilled(o) && !isCancelled(o)).length,
+    fulfilled: nodes.filter((o) => isFulfilled(o) && !isCancelled(o)).length,
+    cancelled: nodes.filter(isCancelled).length,
+    // Pre-order lives in line item properties / product tags, which Shopify's
+    // order search can't filter on — the page-derived count is used instead.
+    preorder: null as number | null,
+    capped: nodes.length >= ORDER_COUNT_CAP,
+  };
+
+  console.log(
+    `[Orders Loader] Counts for customer ${numericCustomerId}:`,
+    JSON.stringify(counts),
+  );
+
+  orderCountsCache.set(numericCustomerId, {
+    counts,
+    expires: Date.now() + ORDER_COUNTS_TTL_MS,
+  });
+  return counts;
+}
+
+const digitsOnly = (v: string) => (v || '').replace(/\D/g, '');
+
+/**
+ * Resolve the Admin customer GID for the logged-in shopper.
+ * One GraphQL round-trip for phone + email combined, then cached in-process.
+ */
+async function findAdminCustomerId(
+  env: any,
+  phone?: string | null,
+  email?: string | null,
+): Promise<string | null> {
+  const cacheKey = `${digitsOnly(phone || '')}|${(email || '').toLowerCase()}`;
+  if (cacheKey === '|') return null;
+
+  const hit = customerIdCache.get(cacheKey);
+  if (hit && hit.expires > Date.now()) return hit.id;
+
+  const clauses: string[] = [];
+  if (phone) clauses.push(`phone:"${phone.replace(/"/g, '')}"`);
+  if (email) clauses.push(`email:"${email.replace(/"/g, '')}"`);
+  if (clauses.length === 0) return null;
+
+  const data = await adminGraphql<any>(env, ADMIN_FIND_CUSTOMER_QUERY, {
+    q: clauses.join(' OR '),
+  });
+  const candidates: any[] = data?.customers?.nodes || [];
+  if (candidates.length === 0) return null;
+
+  const sp = digitsOnly(phone || '');
+  let match =
+    sp.length > 0
+      ? candidates.find((c) => {
+          const cp = digitsOnly(c.phone || '');
+          if (!cp) return false;
+          return cp === sp || cp.endsWith(sp.slice(-9));
+        })
+      : undefined;
+
+  if (!match && email) {
+    match = candidates.find(
+      (c: any) => c.email && c.email.toLowerCase() === email.toLowerCase(),
+    );
+  }
+  if (!match) return null;
+
+  customerIdCache.set(cacheKey, {
+    id: match.id,
+    expires: Date.now() + CUSTOMER_ID_TTL_MS,
+  });
+  return match.id;
+}
+
+/** Map an Admin GraphQL order node into the shape the UI already consumes. */
+function mapAdminOrder(o: any) {
+  const currency = o.currentTotalPriceSet?.shopMoney?.currencyCode || 'SAR';
+  return {
+    id: o.id,
+    orderNumber: String(o.name || '').replace(/^#/, ''),
+    processedAt: o.processedAt,
+    canceledAt: o.canceledAt,
+    financialStatus: (o.displayFinancialStatus || 'PAID').toUpperCase(),
+    fulfillmentStatus: (o.displayFulfillmentStatus || 'UNFULFILLED').toUpperCase(),
+    totalPrice: {
+      amount: String(o.totalPriceSet?.shopMoney?.amount ?? '0'),
+      currencyCode: o.totalPriceSet?.shopMoney?.currencyCode || currency,
+    },
+    currentTotalPrice: {
+      amount: String(o.currentTotalPriceSet?.shopMoney?.amount ?? '0'),
+      currencyCode: currency,
+    },
+    statusUrl: o.statusPageUrl,
+    customAttributes: o.customAttributes || [],
+    shippingTitle: o.shippingLine?.title || '',
+    shippingAddress: o.shippingAddress || null,
+    tags: o.tags || [],
+    fulfillments: o.fulfillments || [],
+    lineItems: {
+      nodes: (o.lineItems?.nodes || []).map((li: any) => {
+        const image = li.variant?.image || li.image || null;
+        return {
+          title: li.title,
+          quantity: li.quantity || 1,
+          variantId: li.variant?.id,
+          customAttributes: li.customAttributes || [],
+          originalTotalPrice: {
+            amount: String(li.originalTotalSet?.shopMoney?.amount ?? '0'),
+            currencyCode:
+              li.originalTotalSet?.shopMoney?.currencyCode || currency,
+          },
+          discountedTotalPrice: {
+            amount: String(li.discountedTotalSet?.shopMoney?.amount ?? '0'),
+            currencyCode:
+              li.discountedTotalSet?.shopMoney?.currencyCode || currency,
+          },
+          variant: {
+            id: li.variant?.id,
+            image,
+            product: {
+              title: li.variant?.product?.title || li.title,
+              tags: li.variant?.product?.tags || [],
+              featuredImage: li.variant?.product?.featuredImage || image,
+            },
+          },
+        };
+      }),
+    },
+  };
+}
+
+/**
+ * Line item titles on an order are a snapshot taken at purchase time and are
+ * never translated. For non-English locales, swap in the current translated
+ * product title via the Storefront API. Only runs for the visible page.
+ */
+async function translateLineItemTitles(storefront: any, orders: any[]) {
+  const variantIds = Array.from(
+    new Set(
+      orders.flatMap((o) =>
+        o.lineItems.nodes
+          .map((li: any) => li.variant?.id)
+          .filter(Boolean),
+      ),
+    ),
+  );
+  if (variantIds.length === 0) return orders;
+
+  const variantQuery = `
+    query GetVariantTitles($ids: [ID!]!) @inContext(language: ${storefront.i18n.language}, country: ${storefront.i18n.country}) {
+      nodes(ids: $ids) {
+        ... on ProductVariant {
+          id
+          product {
+            title
+          }
+        }
+      }
+    }
+  `;
+
+  const result = (await storefront.query(variantQuery as any, {
+    variables: {ids: variantIds},
+    cache: storefront.CacheShort(),
+  })) as any;
+
+  const titleMap: Record<string, string> = {};
+  for (const node of result?.nodes || []) {
+    if (node?.id && node.product?.title) titleMap[node.id] = node.product.title;
+  }
+  if (Object.keys(titleMap).length === 0) return orders;
+
+  return orders.map((order: any) => ({
+    ...order,
+    lineItems: {
+      ...order.lineItems,
+      nodes: order.lineItems.nodes.map((li: any) => {
+        const translated = li.variant?.id ? titleMap[li.variant.id] : null;
+        if (!translated) return li;
+        return {
+          ...li,
+          title: translated,
+          variant: {
+            ...li.variant,
+            product: {...li.variant.product, title: translated},
+          },
+        };
+      }),
+    },
+  }));
+}
+
 export async function loader({request, context}: LoaderFunctionArgs) {
   const {session, storefront} = context;
   const customerAccessToken = await session.get('customerAccessToken');
@@ -116,355 +544,155 @@ export async function loader({request, context}: LoaderFunctionArgs) {
     return redirect('/account/login');
   }
 
+  // {first, endCursor} going forward, {last, startCursor} going back —
+  // derived from the ?direction & ?cursor params the <Pagination> links set.
   const paginationVariables = getPaginationVariables(request, {
-    pageBy: 20,
-  });
+    pageBy: ORDERS_PAGE_SIZE,
+  }) as {
+    first?: number;
+    last?: number;
+    startCursor?: string | null;
+    endCursor?: string | null;
+  };
 
-  const ordersPromise = (async () => {
-    let customer: any = null;
-    const token =
-      typeof customerAccessToken === 'string'
-        ? customerAccessToken
-        : customerAccessToken?.accessToken;
-    const isFallbackToken =
-      !token || token === 'dev-bypass-token' || token.startsWith('session-');
+  const token =
+    typeof customerAccessToken === 'string'
+      ? customerAccessToken
+      : customerAccessToken?.accessToken;
+  const isFallbackToken =
+    !token || token === 'dev-bypass-token' || token.startsWith('session-');
 
-    if (!isFallbackToken) {
-      try {
-        const result = await storefront.query(CUSTOMER_ORDERS_QUERY, {
-          variables: {
-            customerAccessToken: token,
-            country: storefront.i18n.country,
-            language: storefront.i18n.language,
-            ...paginationVariables,
-          },
-          cache: storefront.CacheNone(),
-        });
-        customer = result?.customer;
-      } catch (e) {
-        console.error(
-          '[Orders Loader] Storefront query failed, falling back to Admin API:',
-          e,
-        );
-      }
+  let storefrontCustomer: any = null;
+  let storefrontQueried: Promise<any> | null = null;
+
+  /** Storefront customer orders — only used when the Admin path can't serve. */
+  const queryStorefront = () => {
+    if (isFallbackToken) return Promise.resolve(null);
+    if (!storefrontQueried) {
+      storefrontQueried = (async () => {
+        try {
+          const result = await storefront.query(CUSTOMER_ORDERS_QUERY, {
+            variables: {
+              customerAccessToken: token,
+              country: storefront.i18n.country,
+              language: storefront.i18n.language,
+              ...paginationVariables,
+            },
+            cache: storefront.CacheNone(),
+          });
+          storefrontCustomer = result?.customer;
+        } catch (e) {
+          console.error('[Orders Loader] Storefront query failed:', e);
+        }
+        return storefrontCustomer;
+      })();
+    }
+    return storefrontQueried;
+  };
+
+  /**
+   * The shopper's Admin customer id. Shared by the orders page and the tab
+   * counts so the lookup happens once, and both requests then run in parallel.
+   */
+  const customerIdPromise = (async () => {
+    const savedPhone = await session.get('loginOtpPhone');
+    let savedEmail = await session.get('loginOtpEmail');
+
+    // Without any identity in session we need the Storefront customer's email
+    // to look the shopper up in the Admin API.
+    if (!savedPhone && !savedEmail) {
+      savedEmail = (await queryStorefront())?.email;
     }
 
-    let mappedOrders: any[] = [];
-    const savedPhone = await session.get('loginOtpPhone');
-    const savedEmail = (await session.get('loginOtpEmail')) || customer?.email;
     try {
-      const {getAdminToken, getAdminDomain} =
-        await import('~/lib/shopify-admin.server');
-      const adminToken = await getAdminToken(context.env);
-      const adminDomain = getAdminDomain(context.env);
+      const gid = await findAdminCustomerId(
+        context.env,
+        savedPhone,
+        savedEmail,
+      );
+      return gid ? String(gid).split('/').pop() ?? null : null;
+    } catch (e) {
+      console.error('[Orders Loader] Admin customer lookup failed:', e);
+      return null;
+    }
+  })();
 
-      let adminCust: any = null;
-      if (savedPhone) {
-        const res = await fetch(
-          `https://${adminDomain}/admin/api/2024-01/customers/search.json?query=phone:"${encodeURIComponent(savedPhone)}"`,
-          {
-            headers: {
-              'X-Shopify-Access-Token': adminToken,
-              'Content-Type': 'application/json',
-            },
-          },
-        );
-        if (res.ok) {
-          const data = (await res.json()) as any;
-          adminCust = (data.customers || []).find((c: any) => {
-            const cp = (c.phone || '').replace(/\D/g, '');
-            const sp = savedPhone.replace(/\D/g, '');
-            if (!cp || !sp) return false;
-            return cp === sp || cp.endsWith(sp.slice(-9));
-          });
-        }
-      }
-      if (!adminCust && savedEmail) {
-        const res = await fetch(
-          `https://${adminDomain}/admin/api/2024-01/customers/search.json?query=email:"${encodeURIComponent(savedEmail)}"`,
-          {
-            headers: {
-              'X-Shopify-Access-Token': adminToken,
-              'Content-Type': 'application/json',
-            },
-          },
-        );
-        if (res.ok) {
-          const data = (await res.json()) as any;
-          adminCust = (data.customers || []).find(
-            (c: any) => c.email && c.email.toLowerCase() === savedEmail.toLowerCase()
-          );
-        }
-      }
+  const ordersPromise = (async () => {
+    try {
+      const numericId = await customerIdPromise;
 
-      if (adminCust?.id) {
-        const ordersRes = await fetch(
-          `https://${adminDomain}/admin/api/2024-01/customers/${adminCust.id}/orders.json?status=any`,
+      if (numericId) {
+        const adminData = await adminGraphql<any>(
+          context.env,
+          ADMIN_CUSTOMER_ORDERS_QUERY,
           {
-            headers: {
-              'X-Shopify-Access-Token': adminToken,
-              'Content-Type': 'application/json',
-            },
+            q: customerOrdersSearch(numericId),
+            first: paginationVariables.first ?? null,
+            last: paginationVariables.last ?? null,
+            after: paginationVariables.endCursor ?? null,
+            before: paginationVariables.startCursor ?? null,
           },
         );
-        if (ordersRes.ok) {
-          const {orders} = (await ordersRes.json()) as any;
-          if (orders && orders.length > 0) {
-            mappedOrders = orders.map((o: any) => ({
-              id: `gid://shopify/Order/${o.id}`,
-              orderNumber: o.order_number,
-              processedAt: o.processed_at,
-              canceledAt: o.canceled_at,
-              financialStatus: o.financial_status
-                ? o.financial_status.toUpperCase()
-                : 'PAID',
-              fulfillmentStatus: o.fulfillment_status
-                ? o.fulfillment_status.toUpperCase()
-                : 'UNFULFILLED',
-              totalPrice: {
-                amount: String(o.total_price),
-                currencyCode: o.currency || 'SAR',
-              },
-              currentTotalPrice: {
-                amount: String(o.total_price),
-                currencyCode: o.currency || 'SAR',
-              },
-              statusUrl: o.order_status_url,
-              customAttributes: (o.note_attributes || []).map(
-                (attr: any) => ({
-                  key: attr.name || attr.key,
-                  value: attr.value,
-                }),
-              ),
-              shippingTitle:
-                o.shipping_lines?.[0]?.title ||
-                o.shipping_lines?.[0]?.code ||
-                '',
-              shippingAddress: o.shipping_address || null,
-              tags: o.tags || '',
-              fulfillments: o.fulfillments || [],
-              lineItems: {
-                nodes: (o.line_items || []).map((li: any) => ({
-                  title: li.title,
-                  quantity: li.quantity || 1,
-                  variantId: li.variant_id,
-                  customAttributes: (li.properties || li.custom_attributes || li.customAttributes || []).map((p: any) => ({
-                    key: p.name || p.key,
-                    value: String(p.value || '')
-                  })),
-                  originalTotalPrice: {
-                    amount: String(li.price),
-                    currencyCode: o.currency || 'SAR',
-                  },
-                  discountedTotalPrice: {
-                    amount: String(li.price),
-                    currencyCode: o.currency || 'SAR',
-                  },
-                  variant: {
-                    id: li.variant_id
-                      ? `gid://shopify/ProductVariant/${li.variant_id}`
-                      : undefined,
-                    image: null,
-                  },
-                })),
-              },
-            }));
+
+        const connection = adminData?.orders;
+        // On a cursor'd request stay on the Admin connection even if this page
+        // came back empty — its cursors are meaningless to the Storefront API.
+        const hasCursor = !!(
+          paginationVariables.endCursor || paginationVariables.startCursor
+        );
+        if (connection && (connection.nodes?.length || hasCursor)) {
+          let nodes = (connection.nodes || []).map(mapAdminOrder);
+
+          if (String(storefront.i18n.language).toUpperCase() !== 'EN') {
+            try {
+              nodes = await translateLineItemTitles(storefront, nodes);
+            } catch (e) {
+              console.warn(
+                '[Orders Loader] Could not translate line item titles:',
+                e,
+              );
+            }
           }
+
+          return {
+            nodes,
+            pageInfo: {
+              hasNextPage: !!connection.pageInfo?.hasNextPage,
+              hasPreviousPage: !!connection.pageInfo?.hasPreviousPage,
+              startCursor: connection.pageInfo?.startCursor ?? null,
+              endCursor: connection.pageInfo?.endCursor ?? null,
+            },
+          };
         }
       }
     } catch (e) {
-      console.error('[Orders Loader] Admin API order fetch failed:', e);
+      console.error('[Orders Loader] Admin order fetch failed:', e);
     }
 
-      if (mappedOrders.length > 0) {
-        // Enrich line items with translated product titles from Storefront API (@inContext)
-        try {
-          // Collect all unique variant GIDs across all orders
-          const variantIds: string[] = [];
-          for (const order of mappedOrders) {
-            for (const li of order.lineItems.nodes) {
-              if (li.variant?.id && !variantIds.includes(li.variant.id)) {
-                variantIds.push(li.variant.id);
-              }
-            }
-          }
-
-          if (variantIds.length > 0) {
-            const lang = storefront.i18n.language;
-            const country = storefront.i18n.country;
-            const variantQuery = `
-                query GetVariantDetails($ids: [ID!]!) @inContext(language: ${lang}, country: ${country}) {
-                  nodes(ids: $ids) {
-                    ... on ProductVariant {
-                      id
-                      image {
-                        url
-                        altText
-                        width
-                        height
-                      }
-                      product {
-                        title
-                        featuredImage {
-                          url
-                          altText
-                          width
-                          height
-                        }
-                      }
-                    }
-                  }
-                }
-              `;
-            const variantResult = (await storefront.query(variantQuery as any, {
-              variables: {ids: variantIds},
-              cache: storefront.CacheShort(),
-            })) as any;
-
-            // Build maps from variant GID → translated product title and image
-            const titleMap: Record<string, string> = {};
-            const imageMap: Record<string, any> = {};
-            for (const node of variantResult?.nodes || []) {
-              if (node?.id) {
-                if (node.product?.title) {
-                  titleMap[node.id] = node.product.title;
-                }
-                const img = node.image?.url ? node.image : node.product?.featuredImage;
-                if (img?.url) {
-                  imageMap[node.id] = img;
-                }
-              }
-            }
-
-            // Overwrite line item titles and images with translated/fetched versions
-            mappedOrders = mappedOrders.map((order: any) => ({
-              ...order,
-              lineItems: {
-                ...order.lineItems,
-                nodes: order.lineItems.nodes.map((li: any) => {
-                  const variantId = li.variant?.id;
-                  const enrichedImg = variantId && imageMap[variantId] ? imageMap[variantId] : null;
-                  return {
-                    ...li,
-                    title:
-                      variantId && titleMap[variantId]
-                        ? titleMap[variantId]
-                        : li.title,
-                    variant: {
-                      ...li.variant,
-                      image: enrichedImg,
-                      product: {
-                        title:
-                          variantId && titleMap[variantId]
-                            ? titleMap[variantId]
-                            : li.title,
-                        tags: [],
-                        featuredImage: enrichedImg,
-                      },
-                    },
-                  };
-                }),
-              },
-            }));
-          }
-        } catch (e) {
-          console.warn(
-            '[Orders Loader] Could not enrich line item titles with translations:',
-            e,
-          );
-        }
-
-        return {
-          nodes: mappedOrders,
-          pageInfo: {
-            hasNextPage: false,
-            hasPreviousPage: false,
-            startCursor: 'start',
-            endCursor: 'end',
-          },
-        };
-      }
-
-    if (customer?.orders?.nodes?.length) {
-      try {
-        const {getAdminToken, getAdminDomain} =
-          await import('~/lib/shopify-admin.server');
-        const adminToken = await getAdminToken(context.env);
-        const adminDomain = getAdminDomain(context.env);
-
-        const orderNumbers = customer.orders.nodes
-          .map((o: any) => o.orderNumber)
-          .filter(Boolean);
-
-        if (orderNumbers.length > 0) {
-          const nameQuery = orderNumbers.map((n: any) => `name:%23${n}`).join('+OR+');
-          const res = await fetch(
-            `https://${adminDomain}/admin/api/2024-01/orders.json?name=${nameQuery}&status=any`,
-            {
-              headers: {
-                'X-Shopify-Access-Token': adminToken,
-                'Content-Type': 'application/json',
-              },
-            },
-          );
-          if (res.ok) {
-            const {orders: adminOrders} = (await res.json()) as any;
-            if (adminOrders && adminOrders.length > 0) {
-              const adminMap = new Map(
-                adminOrders.map((o: any) => [String(o.order_number), o]),
-              );
-              customer.orders.nodes = customer.orders.nodes.map((node: any) => {
-                const adminO: any = adminMap.get(String(node.orderNumber));
-                if (!adminO) return node;
-                return {
-                  ...node,
-                  tags: adminO.tags || '',
-                  fulfillments: adminO.fulfillments || [],
-                  shippingTitle: adminO.shipping_lines?.[0]?.title || '',
-                  shippingAddress: adminO.shipping_address || node.shippingAddress,
-                  customAttributes: (adminO.note_attributes || []).map((a: any) => ({
-                    key: a.name || a.key,
-                    value: a.value,
-                  })),
-                  lineItems: {
-                    nodes: (node.lineItems?.nodes || []).map((li: any, idx: number) => {
-                      const adminLi = adminO.line_items?.[idx] || {};
-                      return {
-                        ...li,
-                        variantId: adminLi.variant_id || li.variant?.id,
-                        customAttributes: (
-                          adminLi.properties ||
-                          adminLi.custom_attributes ||
-                          li.customAttributes ||
-                          []
-                        ).map((p: any) => ({
-                          key: p.name || p.key,
-                          value: String(p.value || ''),
-                        })),
-                        variant: {
-                          ...li.variant,
-                          id: adminLi.variant_id
-                            ? `gid://shopify/ProductVariant/${adminLi.variant_id}`
-                            : li.variant?.id,
-                        },
-                      };
-                    }),
-                  },
-                };
-              });
-            }
-          }
-        }
-      } catch (err) {
-        console.error('[Orders Loader] Storefront fallback enrichment error:', err);
-      }
-    }
-
+    // Fallback: Storefront customer orders (already paginated by Shopify).
+    const customer = await queryStorefront();
     return customer?.orders;
+  })();
+
+  /**
+   * Whole-history counts for the filter tabs. Streams separately so it never
+   * holds up the order list; the UI falls back to page-derived counts until
+   * this resolves (and if it fails).
+   */
+  const countsPromise = (async () => {
+    try {
+      const numericId = await customerIdPromise;
+      if (!numericId) return null;
+      return await fetchOrderCounts(context.env, numericId);
+    } catch (e) {
+      console.error('[Orders Loader] Order counts fetch failed:', e);
+      return null;
+    }
   })();
 
   return data({
     ordersPromise,
+    countsPromise,
   });
 }
 
@@ -479,7 +707,7 @@ const CurrencyIcon = ({className}: {className?: string}) => (
 );
 
 export default function Orders() {
-  const {ordersPromise} = useLoaderData<typeof loader>();
+  const {ordersPromise, countsPromise} = useLoaderData<typeof loader>();
   const {locale} = useOutletContext<{locale: string}>();
   const [searchParams] = useSearchParams();
   const statusFilter = searchParams.get('status') || 'all';
@@ -508,7 +736,9 @@ export default function Orders() {
         >
           <Await resolve={ordersPromise}>
             {(orders) => {
-              const counts = {
+              // Counts over the orders loaded so far — used until (and if) the
+              // whole-history counts arrive, and always for the pre-order tab.
+              const pageCounts = {
                 all: orders?.nodes?.length || 0,
                 active:
                   orders?.nodes?.filter(
@@ -544,11 +774,42 @@ export default function Orders() {
 
               return (
                 <div className="flex flex-col gap-5">
-                  <OrdersFilters
-                    statusFilter={statusFilter}
-                    isEn={isEn}
-                    counts={counts}
-                  />
+                  <Suspense
+                    fallback={
+                      <OrdersFilters
+                        statusFilter={statusFilter}
+                        isEn={isEn}
+                        counts={pageCounts}
+                      />
+                    }
+                  >
+                    <Await
+                      resolve={countsPromise}
+                      errorElement={
+                        <OrdersFilters
+                          statusFilter={statusFilter}
+                          isEn={isEn}
+                          counts={pageCounts}
+                        />
+                      }
+                    >
+                      {(totals: any) => (
+                        <OrdersFilters
+                          statusFilter={statusFilter}
+                          isEn={isEn}
+                          counts={
+                            totals
+                              ? {
+                                  ...totals,
+                                  // Pre-order isn't searchable server-side.
+                                  preorder: pageCounts.preorder,
+                                }
+                              : pageCounts
+                          }
+                        />
+                      )}
+                    </Await>
+                  </Suspense>
 
                   {orders?.nodes?.length ? (
                     <OrdersList
@@ -578,31 +839,36 @@ function OrdersFilters({
   isEn: boolean;
   counts: any;
 }) {
+  // Counts come from the whole order history, capped at ORDER_COUNT_CAP —
+  // past that they read as "250+".
+  const n = (value: number | null | undefined) =>
+    `${value ?? 0}${counts.capped ? '+' : ''}`;
+
   const tabs = [
     {
       value: 'all',
-      labelEn: `All (${counts.all})`,
-      labelAr: `الكل (${counts.all})`,
+      labelEn: `All (${n(counts.all)})`,
+      labelAr: `الكل (${n(counts.all)})`,
     },
     {
       value: 'PREORDER',
-      labelEn: `Pre-orders (${counts.preorder})`,
-      labelAr: `الطلبات المسبقة (${counts.preorder})`,
+      labelEn: `Pre-orders (${counts.preorder ?? 0})`,
+      labelAr: `الطلبات المسبقة (${counts.preorder ?? 0})`,
     },
     {
       value: 'ACTIVE',
-      labelEn: `Active (${counts.active})`,
-      labelAr: `نشطة (${counts.active})`,
+      labelEn: `Active (${n(counts.active)})`,
+      labelAr: `نشطة (${n(counts.active)})`,
     },
     {
       value: 'FULFILLED',
-      labelEn: `Delivered (${counts.fulfilled})`,
-      labelAr: `مستلمة (${counts.fulfilled})`,
+      labelEn: `Delivered (${n(counts.fulfilled)})`,
+      labelAr: `مستلمة (${n(counts.fulfilled)})`,
     },
     {
       value: 'CANCELLED',
-      labelEn: `Cancelled (${counts.cancelled})`,
-      labelAr: `ملغاة (${counts.cancelled})`,
+      labelEn: `Cancelled (${n(counts.cancelled)})`,
+      labelAr: `ملغاة (${n(counts.cancelled)})`,
     },
   ];
 
@@ -707,7 +973,13 @@ function OrdersList({
 
             <div className="flex justify-center mt-8">
               <NextLink className="pagination-link">
-                {isEn ? 'Load More ↓' : 'تحميل المزيد ↓'}
+                {isLoading
+                  ? isEn
+                    ? 'Loading…'
+                    : 'جاري التحميل…'
+                  : isEn
+                    ? 'Load More ↓'
+                    : 'تحميل المزيد ↓'}
               </NextLink>
             </div>
           </>

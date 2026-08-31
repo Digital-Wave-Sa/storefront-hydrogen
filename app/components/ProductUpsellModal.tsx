@@ -1,4 +1,4 @@
-import { X, Heart } from 'lucide-react';
+import { Heart } from 'lucide-react';
 import { useRouteLoaderData, Await } from 'react-router';
 import { Suspense, useState } from 'react';
 import { AddToCartButton } from '~/components/AddToCartButton';
@@ -47,17 +47,9 @@ export function ProductUpsellModal({
       >
         {/* Header Bar */}
         <div className="flex items-start justify-between gap-4 mb-6 pb-2 border-b border-gray-100">
-          {/* Close Button (X) */}
-          <button
-            type="button"
-            onClick={onClose}
-            className="w-10 h-10 border border-gray-200 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-all cursor-pointer shrink-0 mt-1"
-            aria-label={isEn ? 'Close' : 'إغلاق'}
-          >
-            <X className="w-5 h-5" />
-          </button>
-
-          {/* Right Header Text & Cart Subtotal */}
+          {/* Header Text & Cart Subtotal — first in the DOM so the close button
+              lands on the trailing edge in both directions: right in English,
+              left in Arabic. */}
           <div className="text-right rtl:text-right ltr:text-left flex-1">
             <h3 className="text-[#1E3A37] font-bold text-[18px] sm:text-[21px] leading-tight mb-1">
               {isEn ? 'Product added to your cart' : 'تم إضافة المنتج الي سلتك'}
@@ -85,6 +77,32 @@ export function ProductUpsellModal({
               </span>
             </div>
           </div>
+
+          {/* Close Button (X) — the icon draws its own ring, so no border here */}
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-gray-100 transition-all cursor-pointer shrink-0 mt-1"
+            aria-label={isEn ? 'Close' : 'إغلاق'}
+          >
+            <svg
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              aria-hidden="true"
+            >
+              <path
+                d="M12 1.5C6.15 1.5 1.5 6.15 1.5 12C1.5 17.85 6.15 22.5 12 22.5C17.85 22.5 22.5 17.85 22.5 12C22.5 6.15 17.85 1.5 12 1.5ZM12 21C7.05 21 3 16.95 3 12C3 7.05 7.05 3 12 3C16.95 3 21 7.05 21 12C21 16.95 16.95 21 12 21Z"
+                fill="#9FB7AE"
+              />
+              <path
+                d="M16.05 17.25L12 13.2L7.95 17.25L6.75 16.05L10.8 12L6.75 7.95L7.95 6.75L12 10.8L16.05 6.75L17.25 7.95L13.2 12L17.25 16.05L16.05 17.25Z"
+                fill="#9FB7AE"
+              />
+            </svg>
+          </button>
         </div>
 
         {/* Inner Warm Cream Box Container */}

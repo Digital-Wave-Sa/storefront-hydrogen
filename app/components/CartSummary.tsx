@@ -8,6 +8,7 @@ import { Price, SaudiRiyalSymbol } from './Price';
 import { DeliveryPickupModal, checkBranchFreeDeliveryInterval } from './DeliveryPickupModal';
 
 import { isDiscountValidForLocation, parseLocationDiscountsJSON } from '~/lib/discounts';
+import { useAdminLocations } from '~/lib/locations-meta';
 
 type CartSummaryProps = {
   cart: OptimisticCart<CartApiQueryFragment | null>;
@@ -99,17 +100,8 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
   const attrFulfillmentType = attributes.find((a: any) => a.key.toLowerCase().trim() === 'fulfillment type')?.value;
   const fulfillmentType = attrFulfillmentType || rootData?.fulfillmentType;
 
-  const [adminLocations, setAdminLocations] = useState<any[]>([]);
-  useEffect(() => {
-    fetch('/api/locations-meta')
-      .then((res) => res.json())
-      .then((data) => {
-        if (data?.locations) {
-          setAdminLocations(data.locations);
-        }
-      })
-      .catch((err) => console.error('[CartSummary] Failed to fetch locations-meta:', err));
-  }, []);
+  // Shared with the Header and CartMain — one request per page, not three.
+  const adminLocations = useAdminLocations();
 
   // Dynamic Settings from Metafields
   const rawLocations = rootData?.locations?.locations?.nodes || rootData?.locations?.nodes || [];
@@ -1443,7 +1435,11 @@ function LoyaltyRedemptionUI({ isEn, cart }: { isEn: boolean, cart: any }) {
               : 'سجل الدخول لعرض واستبدال نقاط الولاء الخاصة بك.'}
           </p>
           <Link
-            to={isEn ? "/en/account/login" : "/account/login"}
+            to={
+              isEn
+                ? '/en/account/login?redirectTo=%2Fen%2Fcart'
+                : '/account/login?redirectTo=%2Fcart'
+            }
             className="inline-flex items-center justify-center bg-[#234745] hover:bg-[#163529] !text-white font-bold px-6 py-2.5 rounded-full text-[13px] transition-all shadow-sm active:scale-95 mt-1"
             style={{ color: '#FFFFFF', fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
           >

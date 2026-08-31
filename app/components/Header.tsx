@@ -7,6 +7,7 @@ import { useAside } from '~/components/Aside';
 import { useI18n } from '~/lib/i18n';
 import { GlobalSearchBar } from './GlobalSearchBar';
 import { useWishlist } from '~/context/WishlistContext';
+import { fetchAdminLocations } from '~/lib/locations-meta';
 
 type HeaderProps = {
   header: HeaderQuery;
@@ -247,14 +248,12 @@ function TopBar({
       }
     }
     
-    fetch('/api/locations-meta')
-      .then(res => res.json())
-      .then((data: any) => {
-        if (!cancelled && data?.locations?.length > 0) {
-          setBranches(data.locations);
-        }
-      })
-      .catch(() => {});
+    // Shared cache — the cart components ask for the same data.
+    fetchAdminLocations().then((adminLocations) => {
+      if (!cancelled && adminLocations.length > 0) {
+        setBranches(adminLocations);
+      }
+    });
 
     return () => { cancelled = true; };
   }, [locations]);
@@ -419,19 +418,19 @@ function TopBar({
       icon: <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
         <path d="M3.19349 4.348C1.55349 4.71933 0.73349 4.90467 0.538157 5.532C0.34349 6.15867 0.902157 6.81267 2.02016 8.12L2.30949 8.458C2.62682 8.82933 2.78616 9.01533 2.85749 9.24467C2.92882 9.47467 2.90482 9.72267 2.85682 10.218L2.81282 10.6693C2.64416 12.414 2.55949 13.286 3.07016 13.6733C3.58082 14.0607 4.34882 13.7073 5.88349 13.0007L6.28149 12.818C6.71749 12.6167 6.93549 12.5167 7.16682 12.5167C7.39816 12.5167 7.61616 12.6167 8.05282 12.818L8.44949 13.0007C9.98482 13.7073 10.7528 14.0607 11.2628 13.674C11.7742 13.286 11.6895 12.414 11.5208 10.6693M12.3135 8.12C13.4315 6.81333 13.9902 6.15933 13.7955 5.532C13.6008 4.90467 12.7802 4.71867 11.1402 4.348L10.7162 4.252C10.2502 4.14667 10.0175 4.094 9.83016 3.952C9.64282 3.81 9.52349 3.59467 9.28349 3.164L9.06482 2.772C8.22016 1.25733 7.79816 0.5 7.16682 0.5C6.53549 0.5 6.11349 1.25733 5.26882 2.772" stroke="#FEF8EB" strokeLinecap="round" />
       </svg>,
-      text: isEn ? 'Guaranteed Quality' : 'جودة مضمونة'
+      text: isEn ? 'Guaranteed quality' : 'جودة مضمونة'
     },
     {
       icon: <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
         <path d="M0 3V4H9.5V11.5H6.422C6.199 10.6405 5.426 10 4.5 10C3.574 10 2.801 10.6405 2.578 11.5H2V9H1V12.5H2.578C2.801 13.3595 3.574 14 4.5 14C5.426 14 6.199 13.3595 6.422 12.5H10.578C10.801 13.3595 11.574 14 12.5 14C13.426 14 14.199 13.3595 14.422 12.5H16V8.422L15.9685 8.3435L14.9685 5.3435L14.86 5H10.5V3H0ZM0.5 5V6H5V5H0.5ZM10.5 6H14.1405L15 8.5625V11.5H14.422C14.199 10.6405 13.426 10 12.5 10C11.574 10 10.801 10.6405 10.578 11.5H10.5V6ZM1 7V8H4V7H1ZM4.5 11C5.0585 11 5.5 11.4415 5.5 12C5.5 12.5585 5.0585 13 4.5 13C3.9415 13 3.5 12.5585 3.5 12C3.5 11.4415 3.9415 11 4.5 11ZM12.5 11C13.0585 11 13.5 11.4415 13.5 12C13.5 12.5585 13.0585 13 12.5 13C11.9415 13 11.5 12.5585 11.5 12C11.5 11.4415 11.9415 11 12.5 11Z" fill="#FEF8EB" />
       </svg>,
-      text: isEn ? 'Express Delivery' : 'توصيل سريع'
+      text: isEn ? 'Fast delivery' : 'توصيل سريع'
     },
     {
       icon: <svg width="12" height="13" viewBox="0 0 12 13" fill="none" xmlns="http://www.w3.org/2000/svg">
         <path d="M3.5 5.5L5.5 7.5L9 4M0.5 0.5V7C0.5 8.45869 1.07946 9.85764 2.11091 10.8891C3.14236 11.9205 4.54131 12.5 6 12.5C7.45869 12.5 8.85764 11.9205 9.88909 10.8891C10.9205 9.85764 11.5 8.45869 11.5 7V0.5H0.5Z" stroke="#FEF8EB" />
       </svg>,
-      text: isEn ? 'Click & Collect' : 'دفع آمن ومضمون'
+      text: isEn ? 'Secure and reliable payment' : 'دفع آمن ومضمون'
     }
   ];
 
@@ -725,10 +724,10 @@ function MiddleBar({
             </NavLink>
           </div>
 
-          {/* CENTER GROUP: Logo */}
-          <div className="flex items-center justify-center flex-1 max-w-[150px] px-1">
+          {/* CENTER GROUP: Logo (mobile only — the desktop logo is in the lg:grid block above) */}
+          <div className="flex items-center justify-center flex-1 max-w-[190px] px-1">
             <NavLink to={isEn ? "/en" : "/"} prefetch="intent" className="transition-transform hover:scale-[1.02] flex items-center justify-center">
-              <img src="/logo.svg" alt="SAADEDDIN" className="h-[34px] w-auto object-contain" />
+              <img src="/logo.svg" alt="SAADEDDIN" className="h-[46px] w-auto object-contain" />
             </NavLink>
           </div>
 

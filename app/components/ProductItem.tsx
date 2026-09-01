@@ -414,7 +414,7 @@ export function ProductItem({
               className="w-full h-[40px] md:h-[44px] px-2 md:px-4 flex items-center justify-center rounded-full font-bold text-[12px] md:text-[15px] bg-[#234745] text-white hover:bg-[#163529] shadow-sm transition-all duration-300 active:scale-95"
               style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
             >
-              {isEn ? 'Add to Cart' : 'أضف إلى السلة'}
+              {t.common.addToCart}
             </AddToCartButton>
           ) : (
             <button

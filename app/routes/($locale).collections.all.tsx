@@ -11,7 +11,7 @@ import {
 } from 'react-router';
 import {getPaginationVariables, Pagination, Image} from '@shopify/hydrogen';
 import {ProductItem} from '~/components/ProductItem';
-import {useState, useEffect, Fragment} from 'react';
+import {useState, useEffect, useRef, Fragment} from 'react';
 import {createPortal} from 'react-dom';
 import patternBg from '/images/second-bg-pattern.svg';
 import {getShopTitle} from '~/lib/seo';
@@ -21,6 +21,38 @@ import type {Route} from './+types/($locale).collections.all';
 export const meta: Route.MetaFunction = ({matches}) => {
   return [{title: getShopTitle('All Products', matches)}];
 };
+
+/**
+ * Turn what the shopper typed into a Shopify search query.
+ *
+ * Shopify matches whole tokens, so a bare term finds nothing until the word is
+ * complete: "kunafa" returned 24 products while "kun" returned none, and a
+ * single "k" looked like a broken search box. Appending `*` asks for prefix
+ * matching, which is what anyone typing into a search field expects.
+ *
+ * The text is also sanitised — it used to be interpolated straight into the
+ * query, so a stray quote or parenthesis produced a syntax error and an empty
+ * result set rather than a search.
+ */
+function buildTermQuery(raw: string): string {
+  const cleaned = raw
+    // Characters that carry meaning in Shopify's search grammar.
+    .replace(/["'()\[\]{}:\\]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  if (!cleaned) return '*';
+
+  return cleaned
+    .split(' ')
+    // A term already ending in * is left alone; everything else gets prefix
+    // matching. Bare operators would be read as syntax, so they are quoted out.
+    .map((term) => {
+      if (/^(AND|OR|NOT)$/i.test(term)) return `"${term}"`;
+      return term.endsWith('*') ? term : `${term}*`;
+    })
+    .join(' ');
+}
 
 export async function loader({context, request}: LoaderFunctionArgs) {
   const {storefront} = context;
@@ -87,7 +119,7 @@ export async function loader({context, request}: LoaderFunctionArgs) {
   // Build unified search query
   const queryParts: string[] = [];
   if (q && q !== '*') {
-    queryParts.push(`(${q})`);
+    queryParts.push(`(${buildTermQuery(q)})`);
   }
   if (activeTags.length > 0) {
     const tagQueries = activeTags.map((t) => `tag:"${t}"`).join(' OR ');
@@ -127,6 +159,9 @@ export async function loader({context, request}: LoaderFunctionArgs) {
           pTags.some((pt) => pt === at || pt.includes(at) || at.includes(pt)),
         );
       });
+      // These tags are filtered here, not by Shopify, so its totalCount counts
+      // products this page has just removed. Better no number than a wrong one.
+      (products as any).totalCount = undefined;
     }
 
     // Fallback if category search query returned no results: fetch directly from collection handles
@@ -207,6 +242,8 @@ export async function loader({context, request}: LoaderFunctionArgs) {
 
         products = {
           ...products,
+          // Whole merged list, before slicing to the current page.
+          totalCount: mergedNodes.length,
           nodes: paginatedNodes,
           pageInfo: {
             hasNextPage,
@@ -351,7 +388,9 @@ export default function CollectionAll() {
     <div className="collection-page" dir={isEn ? 'ltr' : 'rtl'}>
       <CollectionAllHero
         title={isEn ? 'All Products' : 'جميع المنتجات'}
-        productsCount={products.nodes?.length || 0}
+        productsCount={
+          (products as any)?.totalCount ?? products.nodes?.length ?? 0
+        }
         isEn={isEn}
       />
 
@@ -1200,8 +1239,10 @@ export function FilterSidebar({
     }
   }, [location.search]);
 
-  const handleSearchChange = (value: string) => {
-    setSearchQuery(value);
+  /** Pending keystroke navigation, so typing does not fire one per character. */
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const runSearch = (value: string) => {
     const params = new URLSearchParams(window.location.search);
     if (value.trim()) {
       params.set('q', value);
@@ -1211,10 +1252,33 @@ export function FilterSidebar({
     submit(params, {replace: true, preventScrollReset: true});
   };
 
+  /**
+   * Typing updates the box immediately and the URL shortly after.
+   *
+   * This used to call `submit()` on every keystroke: "plate" meant five
+   * navigations and five Shopify searches, each re-running the loader and
+   * re-rendering the list under the cursor. The results you saw were whichever
+   * request happened to land last, which is why the box felt unresponsive.
+   */
+  const handleSearchChange = (value: string) => {
+    setSearchQuery(value);
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    searchDebounceRef.current = setTimeout(() => runSearch(value), 350);
+  };
+
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    handleSearchChange(searchQuery);
+    // Enter searches now, without waiting out the debounce.
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    runSearch(searchQuery);
   };
+
+  // Drop a pending search if the sidebar unmounts mid-typing.
+  useEffect(() => {
+    return () => {
+      if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    };
+  }, []);
 
   const toggleSection = (id: string) => {
     setOpenSections((prev) => ({...prev, [id]: !prev[id]}));
@@ -1465,18 +1529,26 @@ export function FilterSidebar({
                   onChange={(e) => handleSearchChange(e.target.value)}
                   className={`flex-1 min-w-0 bg-transparent text-[14px] ${isEn ? 'font-en text-left' : "font-['GE_Dinar_One'] text-right"} text-[#234745] placeholder-[#234745] focus:outline-none`}
                 />
-                <svg
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="#234745"
-                  strokeWidth="1.5"
-                  className="shrink-0"
+                {/* The magnifier looked tappable but was decorative — clicking
+                    it did nothing, so the only way to search was pressing
+                    Enter. It submits the form now. */}
+                <button
+                  type="submit"
+                  aria-label={isEn ? 'Search' : 'بحث'}
+                  className="shrink-0 cursor-pointer bg-transparent border-0 p-0 flex items-center"
                 >
-                  <circle cx="11" cy="11" r="8"></circle>
-                  <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                </svg>
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="#234745"
+                    strokeWidth="1.5"
+                  >
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                  </svg>
+                </button>
               </form>
             </div>
 
@@ -2244,6 +2316,8 @@ const CATALOG_QUERY = `#graphql
       sortKey: $sortKey,
       reverse: $reverse
     ) {
+      # Total matching products across all pages, not just this page's nodes.
+      totalCount
       productFilters {
         id
         label

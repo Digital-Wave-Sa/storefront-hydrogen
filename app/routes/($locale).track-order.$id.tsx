@@ -1,7 +1,11 @@
 import {
   data as json,
+  redirect,
   type LoaderFunctionArgs,
+  type ActionFunctionArgs,
   useLoaderData,
+  useActionData,
+  useNavigation,
   useNavigate,
   Form,
   Link,
@@ -27,8 +31,32 @@ function mapRestOrderToNode(rawRest: any) {
     },
     totalTaxSet: {shopMoney: {amount: String(rawRest.total_tax || '0')}},
     totalShippingPriceSet: {
-      shopMoney: {amount: String(rawRest.shipping_lines?.[0]?.price || '0')},
+      shopMoney: {
+        // What the customer was actually charged for shipping.
+        // shipping_lines[].price is the quoted rate BEFORE discounts, so a
+        // free-shipping order would otherwise show a fee it never paid.
+        amount: String(
+          rawRest.total_shipping_price_set?.shop_money?.amount ??
+            rawRest.shipping_lines?.[0]?.discounted_price ??
+            rawRest.shipping_lines?.[0]?.price ??
+            '0',
+        ),
+      },
     },
+    currentShippingPriceSet: null,
+    taxesIncluded: rawRest.taxes_included ?? true,
+    currentTotalPriceSet: rawRest.current_total_price
+      ? {shopMoney: {amount: String(rawRest.current_total_price)}}
+      : null,
+    currentSubtotalPriceSet: rawRest.current_subtotal_price
+      ? {shopMoney: {amount: String(rawRest.current_subtotal_price)}}
+      : null,
+    currentTotalTaxSet: rawRest.current_total_tax
+      ? {shopMoney: {amount: String(rawRest.current_total_tax)}}
+      : null,
+    currentTotalDiscountsSet: rawRest.current_total_discounts
+      ? {shopMoney: {amount: String(rawRest.current_total_discounts)}}
+      : null,
     paymentGatewayNames:
       rawRest.payment_gateway_names ||
       (rawRest.payment_details?.credit_card_company
@@ -39,6 +67,18 @@ function mapRestOrderToNode(rawRest: any) {
       ? {
           address1: rawRest.shipping_address.address1,
           city: rawRest.shipping_address.city,
+          phone: rawRest.shipping_address.phone,
+        }
+      : null,
+    email: rawRest.email || rawRest.contact_email,
+    phone: rawRest.phone,
+    customer: rawRest.customer
+      ? {
+          id: rawRest.customer.id
+            ? `gid://shopify/Customer/${rawRest.customer.id}`
+            : null,
+          email: rawRest.customer.email,
+          phone: rawRest.customer.phone,
         }
       : null,
     customAttributes: (rawRest.note_attributes || []).map((attr: any) => ({
@@ -76,15 +116,11 @@ function mapRestOrderToNode(rawRest: any) {
   };
 }
 
-export async function loader({params, context}: LoaderFunctionArgs) {
-  const locale = context.storefront.i18n.language.toLowerCase() || 'ar';
-  const isEn = locale === 'en';
-  const rawId = decodeURIComponent(params.id || params['*'] || '');
-
-  if (!rawId) {
-    throw new Response('Order number required', {status: 400});
-  }
-
+/**
+ * Fetch one order from the Admin API by GID or order number.
+ * Shared by the loader and the verification action so both see the same order.
+ */
+async function fetchOrderNode(rawId: string, context: any) {
   // Parse the ID correctly:
   // - GID format: "gid://shopify/Order/7037265608937" → internalId = "7037265608937"
   // - Order number: "1011" or "#1011" → orderNumber = "1011"
@@ -113,10 +149,20 @@ export async function loader({params, context}: LoaderFunctionArgs) {
               id
               name
               processedAt
-              canceledAt
+              # Admin API spells it cancelledAt; aliased so the rest of the
+              # loader keeps using canceledAt.
+              canceledAt: cancelledAt
               displayFinancialStatus
               displayFulfillmentStatus
               statusPageUrl
+              # "current*" fields reflect edits, refunds and discounts;
+              # the plain ones are the values at order creation.
+              taxesIncluded
+              currentTotalPriceSet { shopMoney { amount } }
+              currentSubtotalPriceSet { shopMoney { amount } }
+              currentTotalTaxSet { shopMoney { amount } }
+              currentShippingPriceSet { shopMoney { amount } }
+              currentTotalDiscountsSet { shopMoney { amount } }
               totalPriceSet { shopMoney { amount } }
               subtotalPriceSet { shopMoney { amount } }
               totalTaxSet { shopMoney { amount } }
@@ -126,6 +172,15 @@ export async function loader({params, context}: LoaderFunctionArgs) {
               shippingAddress {
                 address1
                 city
+                phone
+              }
+              # Contact details — used only to verify the viewer owns the order
+              email
+              phone
+              customer {
+                id
+                email
+                phone
               }
               customAttributes {
                 key
@@ -268,13 +323,236 @@ export async function loader({params, context}: LoaderFunctionArgs) {
     }
   }
 
+  return orderNode;
+}
+
+// ---------------------------------------------------------------------------
+// Access control for order tracking
+//
+// /track-order/:id is reachable without logging in (order emails and SMS link
+// straight to it), but order numbers are sequential — so the page must not hand
+// over an order to anyone who simply types the next number. A viewer gets in by
+// one of two routes:
+//   1. They are signed in as the person on the order (session phone/email).
+//   2. They prove they know the phone or email on the order, via the form
+//      below; the order is then remembered in their session.
+// ---------------------------------------------------------------------------
+
+/** Session key holding the order GIDs this visitor has proved access to. */
+const VERIFIED_ORDERS_KEY = 'verifiedOrders';
+/** Wrong answers allowed per session before the form stops accepting attempts. */
+const MAX_VERIFY_ATTEMPTS = 8;
+const VERIFY_ATTEMPTS_KEY = 'orderVerifyAttempts';
+
+const onlyDigits = (v: unknown) => String(v ?? '').replace(/\D/g, '');
+const normEmail = (v: unknown) => String(v ?? '').trim().toLowerCase();
+
+/** Every phone/email recorded against the order. */
+function orderContacts(orderNode: any) {
+  const phones = [
+    orderNode?.phone,
+    orderNode?.customer?.phone,
+    orderNode?.shippingAddress?.phone,
+  ]
+    .map(onlyDigits)
+    .filter((p) => p.length >= 7);
+
+  const emails = [orderNode?.email, orderNode?.customer?.email]
+    .map(normEmail)
+    .filter(Boolean);
+
+  return {phones, emails};
+}
+
+/**
+ * Compare a supplied phone/email against the order's own contacts.
+ * Phones match on their last 9 digits so +966 / 05 / 9665 spellings all work.
+ */
+function contactMatchesOrder(orderNode: any, contact: string) {
+  const value = String(contact ?? '').trim();
+  if (!value) return false;
+
+  const {phones, emails} = orderContacts(orderNode);
+
+  if (value.includes('@')) {
+    return emails.includes(normEmail(value));
+  }
+
+  const supplied = onlyDigits(value);
+  if (supplied.length < 7) return false;
+  const tail = supplied.slice(-9);
+  return phones.some((p) => p === supplied || p.endsWith(tail));
+}
+
+/** True when the signed-in visitor is the person on the order, or already verified it. */
+async function viewerMaySeeOrder(orderNode: any, context: any) {
+  const session = context.session;
+
+  // Identity keys written at login: loginOtpPhone / loginCustomerEmail /
+  // loginCustomerId (loginOtpEmail is read elsewhere in the app, so honour it
+  // too in case it starts being written).
+  const sessionPhone = await session.get('loginOtpPhone');
+  const sessionEmail =
+    (await session.get('loginCustomerEmail')) ||
+    (await session.get('loginOtpEmail'));
+  const sessionCustomerId = await session.get('loginCustomerId');
+
+  if (sessionPhone && contactMatchesOrder(orderNode, String(sessionPhone))) {
+    return true;
+  }
+  if (sessionEmail && contactMatchesOrder(orderNode, String(sessionEmail))) {
+    return true;
+  }
+
+  // Orders placed in-store or by phone may carry no contact details of their
+  // own; fall back to the customer the order is attached to.
+  const orderCustomerId = onlyDigits(orderNode?.customer?.id);
+  if (
+    sessionCustomerId &&
+    orderCustomerId &&
+    onlyDigits(sessionCustomerId) === orderCustomerId
+  ) {
+    return true;
+  }
+
+  const verified: string[] = (await session.get(VERIFIED_ORDERS_KEY)) || [];
+  return verified.includes(String(orderNode.id));
+}
+
+/**
+ * Handles the "confirm the phone or email on this order" form.
+ * On success the order id is stored in the session and the page reloads.
+ */
+export async function action({params, context, request}: ActionFunctionArgs) {
+  const session = context.session;
+  const rawId = decodeURIComponent(params.id || params['*'] || '');
+  const formData = await request.formData();
+  const contact = String(formData.get('contact') || '');
+
+  const isEn = (context.storefront.i18n.language.toLowerCase() || 'ar') === 'en';
+
+  const attempts = Number((await session.get(VERIFY_ATTEMPTS_KEY)) || 0);
+  if (attempts >= MAX_VERIFY_ATTEMPTS) {
+    return json({
+      error: isEn
+        ? 'Too many attempts. Please sign in to view this order.'
+        : 'عدد المحاولات كبير. يرجى تسجيل الدخول لعرض هذا الطلب.',
+    });
+  }
+
+  const orderNode = await fetchOrderNode(rawId, context);
+
+  // Deliberately the same response whether the order is missing or the contact
+  // is wrong, so this form can't be used to probe which orders exist.
+  if (!orderNode || !contactMatchesOrder(orderNode, contact)) {
+    session.set(VERIFY_ATTEMPTS_KEY, attempts + 1);
+    return json({
+      error: isEn
+        ? "That doesn't match the contact details on this order."
+        : 'البيانات لا تطابق المسجلة على هذا الطلب.',
+    });
+  }
+
+  const verified: string[] = (await session.get(VERIFIED_ORDERS_KEY)) || [];
+  if (!verified.includes(String(orderNode.id))) {
+    // Keep the list short; a cookie session has limited room.
+    session.set(
+      VERIFIED_ORDERS_KEY,
+      [...verified, String(orderNode.id)].slice(-20),
+    );
+  }
+  session.set(VERIFY_ATTEMPTS_KEY, 0);
+
+  return redirect(new URL(request.url).pathname);
+}
+
+export async function loader({params, context, request}: LoaderFunctionArgs) {
+  const locale = context.storefront.i18n.language.toLowerCase() || 'ar';
+  const isEn = locale === 'en';
+  const rawId = decodeURIComponent(params.id || params['*'] || '');
+
+  if (!rawId) {
+    throw new Response('Order number required', {status: 400});
+  }
+
+  const orderNode = await fetchOrderNode(rawId, context);
+
   if (!orderNode) {
     throw new Response('Order Not Found', {status: 404});
   }
 
-  const shippingAmount = parseFloat(
-    orderNode.totalShippingPriceSet?.shopMoney?.amount || '0',
+  // ---- Access control -----------------------------------------------------
+  // Order numbers are sequential, so without this anyone could walk
+  // /track-order/1231, 1232, 1233 and read other customers' items, totals and
+  // delivery addresses. A viewer must either be signed in as the person on the
+  // order, or prove they know its phone/email.
+  if (!(await viewerMaySeeOrder(orderNode, context))) {
+    return json({
+      isEn,
+      gated: true as const,
+      orderRef: String(orderNode.name || rawId).replace(/^#/, ''),
+      orderData: null,
+    });
+  }
+
+  // -------------------------------------------------------------------------
+  // Money
+  //
+  // Read the "current" figures where Shopify offers them: those account for
+  // order edits, refunds and discounts. Falling back to the creation-time
+  // values only when a current one is absent.
+  //   currentSubtotalPriceSet  line items after line discounts (incl. tax when
+  //                            taxesIncluded)
+  //   currentShippingPriceSet  shipping actually charged, after discounts —
+  //                            NOT shipping_lines[].price, which is the quote
+  //   currentTotalDiscountsSet order-level discounts, shown so the rows add up
+  //   currentTotalPriceSet     what the customer owes, incl. tax and discounts
+  // -------------------------------------------------------------------------
+  const money = (...candidates: any[]) => {
+    for (const c of candidates) {
+      const amount = c?.shopMoney?.amount;
+      if (amount !== undefined && amount !== null && amount !== '') {
+        const n = parseFloat(amount);
+        if (!Number.isNaN(n)) return n;
+      }
+    }
+    return 0;
+  };
+
+  const fmtMoney = (n: number) =>
+    n.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+
+  const taxesIncluded = orderNode.taxesIncluded !== false;
+  const subtotalAmount = money(
+    orderNode.currentSubtotalPriceSet,
+    orderNode.subtotalPriceSet,
   );
+  const shippingAmount = money(
+    orderNode.currentShippingPriceSet,
+    orderNode.totalShippingPriceSet,
+  );
+  const taxAmount = money(orderNode.currentTotalTaxSet, orderNode.totalTaxSet);
+  const discountAmount = money(orderNode.currentTotalDiscountsSet);
+  const totalAmount = money(
+    orderNode.currentTotalPriceSet,
+    orderNode.totalPriceSet,
+  );
+
+  // If the rows don't add up to the total, the page is showing a number Shopify
+  // doesn't agree with — log it rather than letting it slide silently.
+  const rowsSum =
+    subtotalAmount +
+    shippingAmount -
+    discountAmount +
+    (taxesIncluded ? 0 : taxAmount);
+  if (Math.abs(rowsSum - totalAmount) > 0.01) {
+    console.warn(
+      `[TrackOrder] ${orderNode.name} summary does not reconcile: ` +
+        `subtotal=${subtotalAmount} shipping=${shippingAmount} ` +
+        `discounts=${discountAmount} tax=${taxAmount} ` +
+        `taxesIncluded=${taxesIncluded} rows=${rowsSum} total=${totalAmount}`,
+    );
+  }
 
   let paymentGateway = orderNode.paymentGatewayNames?.[0] || 'Credit Card';
   if (!isEn) {
@@ -323,27 +601,6 @@ export async function loader({params, context}: LoaderFunctionArgs) {
     (e: any) => e.node,
   );
 
-  const hasReadyForPickupFulfillment = fulfillments.some(
-    (f: any) =>
-      f.displayStatus === 'READY_FOR_PICKUP' ||
-      f.status === 'READY_FOR_PICKUP',
-  );
-
-  const hasOutForDeliveryFulfillment = fulfillments.some(
-    (f: any) =>
-      f.displayStatus === 'OUT_FOR_DELIVERY' ||
-      f.displayStatus === 'IN_TRANSIT' ||
-      f.displayStatus === 'LABEL_PRINTED' ||
-      f.displayStatus === 'LABEL_PURCHASED' ||
-      f.displayStatus === 'SUBMITTED',
-  );
-
-  const hasPreparingFulfillment = fulfillmentOrders.some(
-    (fo: any) =>
-      fo.status === 'IN_PROGRESS' ||
-      fo.requestStatus === 'ACCEPTED',
-  );
-
   // Read custom order_status metafield as optional override
   const orderStatusMeta = (orderNode.order_status?.value || '')
     .toLowerCase()
@@ -360,26 +617,166 @@ export async function loader({params, context}: LoaderFunctionArgs) {
           .filter(Boolean)
       : [];
 
-  const tagSet = new Set(
-    rawTags.map((t: string) => t.toLowerCase().replace(/[\s_]/g, '-')),
+  // -------------------------------------------------------------------------
+  // Single source of truth for the order's progress.
+  //
+  // One function decides the step (0 = cancelled, 1..5) and the headline
+  // status, so the badge and the timeline can never disagree. Signals are read
+  // in order of trust:
+  //   1. Shopify's own fulfillment state (displayFulfillmentStatus,
+  //      fulfillment displayStatus, fulfillmentOrder status)
+  //   2. ERP order tags / the order_status metafield, matched as whole tokens
+  // Free-text custom attributes are deliberately NOT consulted: values like
+  // "delivery" or "pickup" there describe how the order ships, not where it is.
+  // -------------------------------------------------------------------------
+
+  /** Lowercase and collapse spaces/underscores to hyphens: "Ready For Pickup" -> "ready-for-pickup". */
+  const normToken = (v: unknown) =>
+    String(v ?? '')
+      .toLowerCase()
+      .trim()
+      .replace(/[\s_]+/g, '-');
+
+  // Every token Shopify gives us about fulfillment progress.
+  const fulfillmentTokens = [
+    ...fulfillments.map((f: any) => normToken(f.displayStatus)),
+    ...fulfillments.map((f: any) => normToken(f.shipment_status)),
+    ...fulfillments.map((f: any) => normToken(f.status)),
+    ...fulfillmentOrders.map((fo: any) => normToken(fo.status)),
+    ...fulfillmentOrders.map((fo: any) => normToken(fo.requestStatus)),
+  ].filter(Boolean);
+
+  // ERP tokens: order tags plus the order_status metafield. On the REST
+  // fallback path `order_status` is populated from the tags string, so split it
+  // the same way rather than substring-matching it.
+  const erpTokens = new Set<string>([
+    ...rawTags.map(normToken),
+    ...orderStatusMeta.split(',').map(normToken),
+  ]);
+  erpTokens.delete('');
+
+  const hasFulfillmentToken = (...tokens: string[]) =>
+    tokens.some((t) => fulfillmentTokens.includes(t));
+  const hasErpToken = (...tokens: string[]) => tokens.some((t) => erpTokens.has(t));
+
+  const failedTokens = [
+    'failure',
+    'failed',
+    'attempted-delivery',
+    'expired',
+    'تعذر-التسليم',
+    'انتهت-مدة-الاستلام',
+  ];
+  const step5Tokens = [
+    'delivered',
+    'picked-up',
+    'تم-التسليم',
+    'تم-الاستلام',
+    'تم-استلام-الطلب',
+  ];
+  const step4Tokens = [
+    'ready-for-pickup',
+    'ready-for-delivery',
+    'out-for-delivery',
+    'in-transit',
+    'on-the-way',
+    'label-printed',
+    'label-purchased',
+    'submitted',
+    'جاهز-للاستلام',
+    'جاهز-للتسليم',
+    'في-الطريق',
+  ];
+  const step3Tokens = [
+    'in-progress',
+    'preparing',
+    'being-prepared',
+    'processing',
+    'جاري-التجهيز',
+    'قيد-التجهيز',
+  ];
+  const step2Tokens = ['confirmed', 'accepted', 'تم-التأكيد', 'تأكيد'];
+
+  const fulfillmentStatus = String(
+    orderNode.displayFulfillmentStatus || 'UNFULFILLED',
+  ).toUpperCase();
+
+  const isFailed =
+    hasFulfillmentToken(...failedTokens) || hasErpToken(...failedTokens);
+
+  let step: number;
+  if (orderNode.canceledAt) {
+    step = 0;
+  } else if (
+    fulfillmentStatus === 'FULFILLED' ||
+    hasFulfillmentToken(...step5Tokens) ||
+    hasErpToken(...step5Tokens)
+  ) {
+    step = 5;
+  } else if (
+    fulfillmentStatus === 'PARTIALLY_FULFILLED' ||
+    hasFulfillmentToken(...step4Tokens) ||
+    hasErpToken(...step4Tokens)
+  ) {
+    step = 4;
+  } else if (
+    fulfillmentStatus === 'IN_PROGRESS' ||
+    hasFulfillmentToken(...step3Tokens) ||
+    hasErpToken(...step3Tokens)
+  ) {
+    step = 3;
+  } else if (hasErpToken(...step2Tokens)) {
+    step = 2;
+  } else {
+    step = 1;
+  }
+
+  const statusLabel = (() => {
+    if (step === 0) return isEn ? 'Cancelled' : 'ملغاة';
+    if (isFailed) {
+      return isEn
+        ? isPickup
+          ? 'Pickup Period Expired'
+          : 'Delivery Attempt Failed'
+        : isPickup
+          ? 'انتهت مدة الاستلام'
+          : 'تعذر التسليم';
+    }
+    switch (step) {
+      case 5:
+        // Distinct from step 1's "تم استلام الطلب" (we received your order).
+        return isEn
+          ? isPickup
+            ? 'Order Picked Up'
+            : 'Delivered Successfully'
+          : isPickup
+            ? 'تم استلام طلبك من الفرع'
+            : 'تم التسليم بنجاح';
+      case 4:
+        return isEn
+          ? isPickup
+            ? 'Ready for Pickup'
+            : 'Out for Delivery'
+          : isPickup
+            ? 'الطلب جاهز للاستلام'
+            : 'الطلب في الطريق إليك';
+      case 3:
+        return isEn ? 'Order is Being Prepared' : 'جاري تجهيز الطلب';
+      case 2:
+        return isEn ? 'Order Confirmed' : 'تم تأكيد الطلب';
+      default:
+        return isEn ? 'Order Received' : 'تم استلام الطلب';
+    }
+  })();
+
+  console.log(
+    `[TrackOrder] ${orderNode.name} step=${step} failed=${isFailed} pickup=${isPickup} ` +
+      `displayFulfillmentStatus=${fulfillmentStatus} ` +
+      `fulfillmentTokens=[${fulfillmentTokens.join('|')}] ` +
+      `erpTokens=[${[...erpTokens].join('|')}] ` +
+      `cancelledAt=${orderNode.canceledAt || 'none'}`,
   );
 
-  // Tag-based step detection patterns
-  const tagIndicatesStep5 =
-    tagSet.has('delivered') ||
-    tagSet.has('picked-up') ||
-    tagSet.has('تم-التسليم') ||
-    tagSet.has('تم-الاستلام');
-  const tagIndicatesStep4 =
-    tagSet.has('ready-for-delivery') ||
-    tagSet.has('out-for-delivery') ||
-    tagSet.has('ready-for-pickup') ||
-    tagSet.has('on-the-way');
-  const tagIndicatesStep3 =
-    tagSet.has('preparing') ||
-    tagSet.has('in-progress') ||
-    tagSet.has('being-prepared') ||
-    tagSet.has('جاري-التجهيز');
 
   // Fetch Storefront API translated product titles & images for line items using @inContext
   const titleMap: Record<string, string> = {};
@@ -447,58 +844,15 @@ export async function loader({params, context}: LoaderFunctionArgs) {
     date: isEn
       ? `Ordered on ${new Date(orderNode.processedAt).toLocaleDateString('en-US', {year: 'numeric', month: 'long', day: 'numeric'})}, ${new Date(orderNode.processedAt).toLocaleTimeString('en-US', {hour: 'numeric', minute: '2-digit'})}`
       : `طلب في ${new Date(orderNode.processedAt).toLocaleDateString('ar-SA-u-nu-latn', {year: 'numeric', month: 'long', day: 'numeric'})}, ${new Date(orderNode.processedAt).toLocaleTimeString('ar-SA-u-nu-latn', {hour: 'numeric', minute: '2-digit'})}`,
-    status: (() => {
-      const fulfillmentsList = (orderNode as any).fulfillments || [];
-      const shipmentStatusesTrack = fulfillmentsList
-        .map((f: any) => (f.shipment_status || f.shipmentStatus || f.displayStatus || f.status || '').toLowerCase())
-        .filter(Boolean);
-
-      const customAttrsTrack = (orderNode as any).customAttributes || [];
-      const attrValuesTrack = customAttrsTrack.map((a: any) => String(a.value || '').toLowerCase());
-
-      const allTokensTrack = [
-        ...(Array.isArray(orderNode.tags) ? orderNode.tags : typeof orderNode.tags === 'string' ? orderNode.tags.split(',') : []),
-        ...attrValuesTrack,
-        ...shipmentStatusesTrack,
-        String(orderNode.displayFulfillmentStatus || '').toLowerCase(),
-      ].map((s: string) => String(s).toLowerCase().replace(/[\s_]/g, '-').trim()).filter(Boolean);
-
-      const hasStatusTrack = (...keywords: string[]) => {
-        return keywords.some((kw) => {
-          const target = kw.toLowerCase().replace(/[\s_]/g, '-').trim();
-          return allTokensTrack.some(
-            (st) => st === target || st.includes(target) || target.includes(st),
-          );
-        });
-      };
-
-      if (orderNode.canceledAt) return isEn ? 'Cancelled' : 'ملغاة';
-      if (hasStatusTrack('failure', 'failed', 'expired', 'attempted_delivery', 'تعذر', 'انتهت')) {
-        return isEn ? (isPickup ? 'Pickup Period Expired' : 'Delivery Attempt Failed') : (isPickup ? 'انتهت مدة الاستلام' : 'تعذر التسليم');
-      }
-      if (orderNode.displayFulfillmentStatus === 'FULFILLED' || hasStatusTrack('delivered', 'picked-up', 'picked_up', 'picked', 'تم-التسليم', 'تم-الاستلام', 'تم-استلام-الطلب')) {
-        return isEn ? (isPickup ? 'Order Picked Up' : 'Delivered Successfully') : (isPickup ? 'تم استلام الطلب' : 'تم التسليم بنجاح');
-      }
-      if (hasReadyForPickupFulfillment || hasOutForDeliveryFulfillment || hasStatusTrack('ready-for-pickup', 'ready_for_pickup', 'ready-for-delivery', 'out-for-delivery', 'out_for_delivery', 'in-transit', 'in_transit', 'on-the-way', 'on_the_way', 'ready', 'جاهز', 'جاهز-للاستلام', 'جاهز-للتسليم', 'في-الطريق')) {
-        return isEn ? (isPickup ? 'Ready for Pickup' : 'Out for Delivery') : (isPickup ? 'الطلب جاهز للاستلام' : 'الطلب في الطريق إليك');
-      }
-      if (hasPreparingFulfillment || orderNode.displayFulfillmentStatus === 'IN_PROGRESS' || hasStatusTrack('in-progress', 'in_progress', 'processing', 'submitted', 'label-printed', 'preparing', 'being-prepared', 'جاري-تجهيز-الطلب', 'جاري-التجهيز', 'قيد-التجهيز', 'تجهيز')) {
-        return isEn ? 'Order is Being Prepared' : 'جاري تجهيز الطلب';
-      }
-      return isEn ? 'Order Confirmed' : 'تأكيد الطلب';
-    })(),
+    status: statusLabel,
+    step,
+    isFailed,
     invoiceUrl: orderNode.statusPageUrl,
     rawFulfillmentStatus: orderNode.displayFulfillmentStatus || 'UNFULFILLED',
     rawFinancialStatus: orderNode.displayFinancialStatus || 'PAID',
     canceledAt: orderNode.canceledAt || null,
     isPickup,
-    hasReadyForPickupFulfillment,
-    hasOutForDeliveryFulfillment,
-    hasPreparingFulfillment,
     orderStatusMeta,
-    tagIndicatesStep3,
-    tagIndicatesStep4,
-    tagIndicatesStep5,
     items: orderNode.lineItems.edges.map(({node: item}: any) => {
       const variantId = item.variant?.id || item.variantId || item.variant_id;
       const resolvedImg =
@@ -527,22 +881,18 @@ export async function loader({params, context}: LoaderFunctionArgs) {
       };
     }),
     summary: {
-      subtotal: parseFloat(
-        orderNode.subtotalPriceSet?.shopMoney?.amount || '0',
-      ).toLocaleString('en-US', {minimumFractionDigits: 2}),
+      subtotal: fmtMoney(subtotalAmount),
       delivery:
         shippingAmount > 0
-          ? shippingAmount.toLocaleString('en-US', {minimumFractionDigits: 2})
+          ? fmtMoney(shippingAmount)
           : isEn
             ? 'Free'
             : 'مجاني',
+      discount: discountAmount > 0 ? fmtMoney(discountAmount) : null,
       giftWrap: '0.00',
-      vat: parseFloat(
-        orderNode.totalTaxSet?.shopMoney?.amount || '0',
-      ).toLocaleString('en-US', {minimumFractionDigits: 2}),
-      total: parseFloat(
-        orderNode.totalPriceSet?.shopMoney?.amount || '0',
-      ).toLocaleString('en-US', {minimumFractionDigits: 2}),
+      vat: fmtMoney(taxAmount),
+      taxesIncluded,
+      total: fmtMoney(totalAmount),
     },
     address: orderNode.shippingAddress
       ? `${orderNode.shippingAddress.address1}, ${orderNode.shippingAddress.city}`
@@ -570,7 +920,11 @@ const CurrencyIcon = ({className}: {className?: string}) => (
 );
 
 export default function TrackOrderPage() {
-  const {isEn, orderData} = useLoaderData<typeof loader>();
+  const loaderData = useLoaderData<typeof loader>() as any;
+  const {isEn} = loaderData;
+  const orderData = loaderData.orderData;
+  const actionData = useActionData<typeof action>() as any;
+  const navigation = useNavigation();
   const navigate = useNavigate();
 
   const forceEnNums = (text: string | number | undefined | null) => {
@@ -607,6 +961,68 @@ export default function TrackOrderPage() {
   const handleToggle = (key: keyof typeof toggles) => {
     setToggles((prev) => ({...prev, [key]: !prev[key]}));
   };
+
+  // The visitor hasn't proved this order is theirs — ask before showing
+  // anything. Rendered after every hook above so hook order stays stable.
+  if (loaderData.gated) {
+    const submitting = navigation.state === 'submitting';
+    return (
+      <div
+        className={`min-h-screen bg-[#FEF8EB] flex items-center justify-center px-4 ${isEn ? 'font-en' : "font-['GE_Dinar_One']"}`}
+        dir={isEn ? 'ltr' : 'rtl'}
+      >
+        <div className="w-full max-w-[440px] bg-white rounded-[24px] border border-[#EBEBEB] p-7 shadow-sm">
+          <h1 className="!text-[24px] font-black text-[#1A1A1A] !mt-0 !mb-2">
+            {isEn ? 'Track your order' : 'تتبع طلبك'}
+          </h1>
+          <p className="text-[#8B8B8B] text-[14px] leading-relaxed mb-6">
+            {isEn
+              ? `For your security, confirm the mobile number or email used on order #${loaderData.orderRef}.`
+              : `للحفاظ على خصوصيتك، أدخل رقم الجوال أو البريد الإلكتروني المستخدم في الطلب رقم ${loaderData.orderRef}.`}
+          </p>
+
+          <Form method="post" className="flex flex-col gap-3">
+            <input
+              type="text"
+              name="contact"
+              required
+              autoComplete="tel"
+              dir="ltr"
+              placeholder={isEn ? '05XXXXXXXX or email' : '05XXXXXXXX أو البريد الإلكتروني'}
+              className="w-full h-[52px] px-4 rounded-[14px] border border-[#EBEBEB] bg-[#FAFAFA] text-[15px] text-[#1A1A1A] focus:outline-none focus:border-[#234745] text-start"
+            />
+
+            {actionData?.error ? (
+              <p className="text-[#E64950] text-[13px] font-bold !m-0">
+                {actionData.error}
+              </p>
+            ) : null}
+
+            <button
+              type="submit"
+              disabled={submitting}
+              className="w-full h-[52px] bg-[#234745] hover:bg-[#1a3533] disabled:opacity-60 text-white rounded-[14px] font-bold text-[15px] transition-all cursor-pointer"
+            >
+              {submitting
+                ? isEn
+                  ? 'Checking…'
+                  : 'جاري التحقق…'
+                : isEn
+                  ? 'View Order'
+                  : 'عرض الطلب'}
+            </button>
+          </Form>
+
+          <Link
+            to={isEn ? '/en/account/orders' : '/account/orders'}
+            className="block text-center text-[#234745] text-[14px] font-bold mt-5 hover:underline"
+          >
+            {isEn ? 'Or sign in to your account' : 'أو سجّل الدخول إلى حسابك'}
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -783,9 +1199,29 @@ export default function TrackOrderPage() {
                     {forceEnNums(orderData.summary.giftWrap)}
                   </span>
                 </div>
+                {orderData.summary.discount ? (
+                  <div className="flex justify-between items-center text-[14px]">
+                    <span className="text-[#8B8B8B]">
+                      {isEn ? 'Discount' : 'الخصم'}
+                    </span>
+                    <span
+                      className="font-bold text-[#2E7D5B] flex items-center gap-1"
+                      dir="ltr"
+                    >
+                      -<CurrencyIcon className="h-3 w-auto" />{' '}
+                      {forceEnNums(orderData.summary.discount)}
+                    </span>
+                  </div>
+                ) : null}
                 <div className="flex justify-between items-center text-[14px]">
                   <span className="text-[#8B8B8B]">
-                    {isEn ? 'VAT (15%)' : 'ضريبة القيمة المضافة (15%)'}
+                    {orderData.summary.taxesIncluded
+                      ? isEn
+                        ? 'VAT (15%, included)'
+                        : 'ضريبة القيمة المضافة (15% — مشمولة)'
+                      : isEn
+                        ? 'VAT (15%)'
+                        : 'ضريبة القيمة المضافة (15%)'}
                   </span>
                   <span
                     className="font-bold text-[#1A1A1A] flex items-center gap-1"
@@ -891,22 +1327,43 @@ export default function TrackOrderPage() {
                     </Form>
                   );
                 })()}
-                {orderData.rawFinancialStatus?.toUpperCase() === 'PAID' ? (
-                  <a
-                    href={`/api/invoice/${encodeURIComponent(orderData.id)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-full bg-white border-[1.5px] border-[#234745] text-[#234745] hover:bg-gray-50 py-3.5 rounded-full font-bold transition-colors flex items-center justify-center cursor-pointer"
-                  >
-                    {isEn ? 'Download Invoice' : 'تنزيل الفاتورة'}
-                  </a>
-                ) : (
-                  <div className="w-full bg-[#FFF5F5] border border-[#FFD8D8] text-[#E64950] py-3 rounded-full font-bold text-center text-[13px]">
-                    {isEn
-                      ? 'Invoice pending payment'
-                      : 'الفاتورة بانتظار إتمام الدفع'}
-                  </div>
-                )}
+                {(() => {
+                  // The invoice needs both: payment taken AND the order
+                  // delivered/picked up (step 5). /api/invoice enforces the
+                  // same rule, so the button can't be bypassed by URL.
+                  const isPaid =
+                    orderData.rawFinancialStatus?.toUpperCase() === 'PAID';
+                  const isDelivered = orderData.step === 5;
+
+                  if (isPaid && isDelivered) {
+                    return (
+                      <a
+                        href={`/api/invoice/${encodeURIComponent(orderData.id)}`}
+                        className="w-full bg-white border-[1.5px] border-[#234745] text-[#234745] hover:bg-gray-50 py-3.5 rounded-full font-bold transition-colors flex items-center justify-center cursor-pointer"
+                      >
+                        {isEn ? 'Download Invoice' : 'تنزيل الفاتورة'}
+                      </a>
+                    );
+                  }
+
+                  if (!isPaid) {
+                    return (
+                      <div className="w-full bg-[#FFF5F5] border border-[#FFD8D8] text-[#E64950] py-3 rounded-full font-bold text-center text-[13px]">
+                        {isEn
+                          ? 'Invoice pending payment'
+                          : 'الفاتورة بانتظار إتمام الدفع'}
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="w-full bg-[#FEF8EB] border border-[#E9D9C3] text-[#A67E4E] py-3 rounded-full font-bold text-center text-[13px]">
+                      {isEn
+                        ? 'Invoice available after delivery'
+                        : 'تتوفر الفاتورة بعد تسليم الطلب'}
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           </div>
@@ -928,52 +1385,9 @@ export default function TrackOrderPage() {
                 {(() => {
                   // Determine current step — driven primarily by Shopify's displayFulfillmentStatus,
                   // then by ERP tags/metafield, never by inferred fulfillment existence alone.
-                  let currentStep: number;
-                  const rawStatus = orderData.rawFulfillmentStatus || 'UNFULFILLED';
-                  const meta = (orderData.orderStatusMeta || '').toLowerCase();
-                  const tags = orderData.tagIndicatesStep5 ? 5
-                    : orderData.tagIndicatesStep4 ? 4
-                    : orderData.tagIndicatesStep3 ? 3
-                    : 0;
-
-                  if (orderData.canceledAt) {
-                    currentStep = 0;
-                  } else if (
-                    rawStatus === 'FULFILLED' ||
-                    meta.includes('delivered') ||
-                    meta.includes('picked_up') ||
-                    meta.includes('تم-التسليم') ||
-                    meta.includes('تم-الاستلام') ||
-                    tags === 5
-                  ) {
-                    currentStep = 5;
-                  } else if (
-                    rawStatus === 'PARTIALLY_FULFILLED' ||
-                    meta.includes('ready_for_pickup') ||
-                    meta.includes('out_for_delivery') ||
-                    meta.includes('in_transit') ||
-                    meta.includes('جاهز') ||
-                    meta.includes('الطريق') ||
-                    tags === 4
-                  ) {
-                    currentStep = 4;
-                  } else if (
-                    rawStatus === 'IN_PROGRESS' ||
-                    meta.includes('in_progress') ||
-                    meta.includes('processing') ||
-                    meta.includes('جاري') ||
-                    tags === 3
-                  ) {
-                    currentStep = 3;
-                  } else if (
-                    meta.includes('confirmed') ||
-                    meta.includes('تأكيد')
-                  ) {
-                    currentStep = 2;
-                  } else {
-                    // UNFULFILLED or any unknown status = Step 1 (Order Received)
-                    currentStep = 1;
-                  }
+                  // Computed once in the loader so the badge above and this
+                  // timeline can never disagree. See the status engine there.
+                  const currentStep = orderData.step;
 
                   const toEnglishDigits = (str: string) => {
                     const arabicDigits = [
@@ -1175,7 +1589,7 @@ export default function TrackOrderPage() {
                     <path d="M6.66668 0C10.3487 0 13.3333 2.98467 13.3333 6.66667C13.3333 10.3487 10.3487 13.3333 6.66668 13.3333C5.48851 13.3354 4.33106 13.0236 3.31334 12.43L0.00267697 13.3333L0.90401 10.0213C0.309983 9.00329 -0.00205442 7.84535 1.01791e-05 6.66667C1.01791e-05 2.98467 2.98468 0 6.66668 0ZM4.39468 3.53333L4.26134 3.53867C4.17514 3.54461 4.09091 3.56725 4.01334 3.60533C3.94106 3.64634 3.87505 3.69753 3.81734 3.75733C3.73734 3.83267 3.69201 3.898 3.64334 3.96133C3.39676 4.28194 3.26399 4.67554 3.26601 5.08C3.26734 5.40667 3.35268 5.72467 3.48601 6.022C3.75868 6.62333 4.20734 7.26 4.79934 7.85C4.94201 7.992 5.08201 8.13467 5.23268 8.26733C5.9683 8.91494 6.84486 9.38198 7.79268 9.63133L8.17134 9.68933C8.29468 9.696 8.41801 9.68667 8.54201 9.68067C8.73613 9.67043 8.92567 9.61787 9.09734 9.52667C9.18457 9.48156 9.26977 9.43263 9.35268 9.38C9.35268 9.38 9.3809 9.36089 9.43601 9.32C9.52601 9.25333 9.58134 9.206 9.65601 9.128C9.71201 9.07022 9.75868 9.00311 9.79601 8.92667C9.84801 8.818 9.90001 8.61067 9.92134 8.438C9.93734 8.306 9.93268 8.234 9.93068 8.18933C9.92801 8.118 9.86868 8.044 9.80401 8.01267L9.41601 7.83867C9.41601 7.83867 8.83601 7.586 8.48134 7.42467C8.44422 7.4085 8.40446 7.39924 8.36401 7.39733C8.31839 7.39256 8.27228 7.39765 8.2288 7.41226C8.18532 7.42687 8.14549 7.45065 8.11201 7.482C8.10868 7.48067 8.06401 7.51867 7.58201 8.10267C7.55435 8.13984 7.51624 8.16794 7.47255 8.18337C7.42885 8.19881 7.38155 8.20088 7.33668 8.18933C7.29323 8.17775 7.25067 8.16305 7.20934 8.14533C7.12668 8.11067 7.09801 8.09733 7.04134 8.07333C6.65859 7.90661 6.3043 7.68099 5.99134 7.40467C5.90734 7.33133 5.82934 7.25133 5.74934 7.174C5.48708 6.92281 5.25851 6.63866 5.06934 6.32867L5.03001 6.26533C5.00219 6.22253 4.97937 6.17668 4.96201 6.12867C4.93668 6.03067 5.00268 5.952 5.00268 5.952C5.00268 5.952 5.16468 5.77467 5.24001 5.67867C5.31334 5.58533 5.37534 5.49467 5.41534 5.43C5.49401 5.30333 5.51868 5.17333 5.47734 5.07267C5.29068 4.61667 5.09779 4.16311 4.89868 3.712C4.85934 3.62267 4.74268 3.55867 4.63668 3.546C4.60068 3.54156 4.56468 3.538 4.52868 3.53533C4.43916 3.5302 4.3494 3.53109 4.26001 3.538L4.39468 3.53333Z" fill="#234745"/>
                   </svg>
                   <span className="text-[16px] font-bold text-[#1A1A1A]">
-                    {isEn ? 'Contact us via WhatsApp' : 'تواصل معنا عبر WhatsApp'}
+                    {isEn ? 'Contact us via WhatsApp' : 'تواصل معنا عبر واتساب'}
                   </span>
                 </a>
 

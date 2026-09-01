@@ -7,6 +7,36 @@ import { useAside } from '~/components/Aside';
 import { useI18n } from '~/lib/i18n';
 import { GlobalSearchBar } from './GlobalSearchBar';
 import { useWishlist } from '~/context/WishlistContext';
+import { fetchAdminLocations } from '~/lib/locations-meta';
+import { useOptimisticCart } from '@shopify/hydrogen';
+
+/**
+ * The cart count in the header.
+ *
+ * `useOptimisticCart` layers any in-flight cart mutation over the server's cart,
+ * which is what the cart page already does. Without it the badge could only
+ * change once the root loader revalidated — a full round trip — so emptying the
+ * cart left the page showing "empty" and the header still showing the old count
+ * for several seconds.
+ *
+ * A hook cannot be called inside an `<Await>` render callback, so this lives in
+ * its own component; both header layouts render it.
+ *
+ * Note this now reflects pending state: a mutation the server later rejects will
+ * briefly show, then revert — the same behaviour as the cart page.
+ */
+function CartCountBadge({ cart }: { cart: any }) {
+  const optimisticCart = useOptimisticCart(cart);
+  const count = optimisticCart?.totalQuantity ?? 0;
+
+  if (count === 0) return null;
+
+  return (
+    <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-[#e34242] text-white text-[9px] rounded-full flex items-center justify-center shadow-sm border border-white">
+      {count}
+    </span>
+  );
+}
 
 type HeaderProps = {
   header: HeaderQuery;
@@ -146,6 +176,29 @@ export function Header({ header, isLoggedIn, cart, locations, customer, locale, 
 
   const [activeMega, setActiveMega] = useState<string | null>(null);
 
+  /**
+   * Close the mega menu whenever the route changes.
+   *
+   * It was only ever closed by the pointer leaving the header, by clicking a
+   * nav item, or by a link inside the panel. Every other way of navigating left
+   * it open on top of the new page — browser back/forward, keyboard activation,
+   * a click on a link elsewhere that navigates before the mouse moves, or a
+   * touch device, where `mouseleave` may never fire at all.
+   */
+  useEffect(() => {
+    setActiveMega(null);
+  }, [location.pathname, location.search]);
+
+  /** Escape closes it, as a dropdown should. */
+  useEffect(() => {
+    if (!activeMega) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setActiveMega(null);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [activeMega]);
+
   return (
     <header
       className={`w-full ${isEn ? 'font-en' : 'font-ar'} bg-[#FEF8EB] sticky top-0 z-50 shadow-sm`}
@@ -247,14 +300,12 @@ function TopBar({
       }
     }
     
-    fetch('/api/locations-meta')
-      .then(res => res.json())
-      .then((data: any) => {
-        if (!cancelled && data?.locations?.length > 0) {
-          setBranches(data.locations);
-        }
-      })
-      .catch(() => {});
+    // Shared cache — the cart components ask for the same data.
+    fetchAdminLocations().then((adminLocations) => {
+      if (!cancelled && adminLocations.length > 0) {
+        setBranches(adminLocations);
+      }
+    });
 
     return () => { cancelled = true; };
   }, [locations]);
@@ -419,19 +470,19 @@ function TopBar({
       icon: <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
         <path d="M3.19349 4.348C1.55349 4.71933 0.73349 4.90467 0.538157 5.532C0.34349 6.15867 0.902157 6.81267 2.02016 8.12L2.30949 8.458C2.62682 8.82933 2.78616 9.01533 2.85749 9.24467C2.92882 9.47467 2.90482 9.72267 2.85682 10.218L2.81282 10.6693C2.64416 12.414 2.55949 13.286 3.07016 13.6733C3.58082 14.0607 4.34882 13.7073 5.88349 13.0007L6.28149 12.818C6.71749 12.6167 6.93549 12.5167 7.16682 12.5167C7.39816 12.5167 7.61616 12.6167 8.05282 12.818L8.44949 13.0007C9.98482 13.7073 10.7528 14.0607 11.2628 13.674C11.7742 13.286 11.6895 12.414 11.5208 10.6693M12.3135 8.12C13.4315 6.81333 13.9902 6.15933 13.7955 5.532C13.6008 4.90467 12.7802 4.71867 11.1402 4.348L10.7162 4.252C10.2502 4.14667 10.0175 4.094 9.83016 3.952C9.64282 3.81 9.52349 3.59467 9.28349 3.164L9.06482 2.772C8.22016 1.25733 7.79816 0.5 7.16682 0.5C6.53549 0.5 6.11349 1.25733 5.26882 2.772" stroke="#FEF8EB" strokeLinecap="round" />
       </svg>,
-      text: isEn ? 'Guaranteed Quality' : 'جودة مضمونة'
+      text: isEn ? 'Guaranteed quality' : 'جودة مضمونة'
     },
     {
       icon: <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
         <path d="M0 3V4H9.5V11.5H6.422C6.199 10.6405 5.426 10 4.5 10C3.574 10 2.801 10.6405 2.578 11.5H2V9H1V12.5H2.578C2.801 13.3595 3.574 14 4.5 14C5.426 14 6.199 13.3595 6.422 12.5H10.578C10.801 13.3595 11.574 14 12.5 14C13.426 14 14.199 13.3595 14.422 12.5H16V8.422L15.9685 8.3435L14.9685 5.3435L14.86 5H10.5V3H0ZM0.5 5V6H5V5H0.5ZM10.5 6H14.1405L15 8.5625V11.5H14.422C14.199 10.6405 13.426 10 12.5 10C11.574 10 10.801 10.6405 10.578 11.5H10.5V6ZM1 7V8H4V7H1ZM4.5 11C5.0585 11 5.5 11.4415 5.5 12C5.5 12.5585 5.0585 13 4.5 13C3.9415 13 3.5 12.5585 3.5 12C3.5 11.4415 3.9415 11 4.5 11ZM12.5 11C13.0585 11 13.5 11.4415 13.5 12C13.5 12.5585 13.0585 13 12.5 13C11.9415 13 11.5 12.5585 11.5 12C11.5 11.4415 11.9415 11 12.5 11Z" fill="#FEF8EB" />
       </svg>,
-      text: isEn ? 'Express Delivery' : 'توصيل سريع'
+      text: isEn ? 'Fast delivery' : 'توصيل سريع'
     },
     {
       icon: <svg width="12" height="13" viewBox="0 0 12 13" fill="none" xmlns="http://www.w3.org/2000/svg">
         <path d="M3.5 5.5L5.5 7.5L9 4M0.5 0.5V7C0.5 8.45869 1.07946 9.85764 2.11091 10.8891C3.14236 11.9205 4.54131 12.5 6 12.5C7.45869 12.5 8.85764 11.9205 9.88909 10.8891C10.9205 9.85764 11.5 8.45869 11.5 7V0.5H0.5Z" stroke="#FEF8EB" />
       </svg>,
-      text: isEn ? 'Click & Collect' : 'دفع آمن ومضمون'
+      text: isEn ? 'Secure and reliable payment' : 'دفع آمن ومضمون'
     }
   ];
 
@@ -681,11 +732,9 @@ function MiddleBar({
                   <path d="M12.5 12.5C12.942 12.5 13.3659 12.6756 13.6785 12.9882C13.9911 13.3007 14.1667 13.7246 14.1667 14.1667C14.1667 14.6087 13.9911 15.0326 13.6785 15.3452C13.3659 15.6577 12.942 15.8333 12.5 15.8333C12.058 15.8333 11.634 15.6577 11.3215 15.3452C11.0089 15.0326 10.8333 14.6087 10.8333 14.1667C10.8333 13.7246 11.0089 13.3007 11.3215 12.9882C11.634 12.6756 12.058 12.5 12.5 12.5ZM12.5 13.3333C12.279 13.3333 12.067 13.4211 11.9107 13.5774C11.7545 13.7337 11.6667 13.9457 11.6667 14.1667C11.6667 14.3877 11.7545 14.5996 11.9107 14.7559C12.067 14.9122 12.279 15 12.5 15C12.721 15 12.933 14.9122 13.0893 14.7559C13.2455 14.5996 13.3333 14.3877 13.3333 14.1667C13.3333 13.9457 13.2455 13.7337 13.0893 13.5774C12.933 13.4211 12.721 13.3333 12.5 13.3333ZM5 12.5C5.44203 12.5 5.86595 12.6756 6.17851 12.9882C6.49107 13.3007 6.66667 13.7246 6.66667 14.1667C6.66667 14.6087 6.49107 15.0326 6.17851 15.3452C5.86595 15.6577 5.44203 15.8333 5 15.8333C4.55797 15.8333 4.13405 15.6577 3.82149 15.3452C3.50893 15.0326 3.33333 14.6087 3.33333 14.1667C3.33333 13.7246 3.50893 13.3007 3.82149 12.9882C4.13405 12.6756 4.55797 12.5 5 12.5ZM5 13.3333C4.77899 13.3333 4.56702 13.4211 4.41074 13.5774C4.25446 13.7337 4.16667 13.9457 4.16667 14.1667C4.16667 14.3877 4.25446 14.5996 4.41074 14.7559C4.56702 14.9122 4.77899 15 5 15C5.22101 15 5.43297 14.9122 5.58926 14.7559C5.74554 14.5996 5.83333 14.3877 5.83333 14.1667C5.83333 13.9457 5.74554 13.7337 5.58926 13.5774C5.43297 13.4211 5.22101 13.3333 5 13.3333ZM14.1667 2.5H2.725L4.85 7.5H11.6667C11.9417 7.5 12.1833 7.36667 12.3333 7.16667L14.8333 3.83333C14.9417 3.69167 15 3.51667 15 3.33333C15 3.11232 14.9122 2.90036 14.7559 2.74408C14.5996 2.5878 14.3877 2.5 14.1667 2.5ZM11.6667 8.33333H4.89167L4.25 9.63333L4.16667 10C4.16667 10.221 4.25446 10.433 4.41074 10.5893C4.56702 10.7455 4.77899 10.8333 5 10.8333H14.1667V11.6667H5C4.55797 11.6667 4.13405 11.4911 3.82149 11.1785C3.50893 10.8659 3.33333 10.442 3.33333 10C3.33309 9.71725 3.40478 9.43908 3.54167 9.19167L4.14167 7.96667L1.11667 0.833333H0V0H1.66667L2.375 1.66667H14.1667C14.6087 1.66667 15.0326 1.84226 15.3452 2.15482C15.6577 2.46738 15.8333 2.89131 15.8333 3.33333C15.8333 3.75 15.6917 4.1 15.4583 4.38333L13.0333 7.625C12.7333 8.05 12.2333 8.33333 11.6667 8.33333Z" fill="#255441" />
                 </svg>
                 <Suspense fallback={null}>
-                  <Await resolve={cart}>{(cartData) => {
-                    const count = cartData?.totalQuantity ?? 0;
-                    if (count === 0) return null;
-                    return <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-[#e34242] text-white text-[9px] rounded-full flex items-center justify-center shadow-sm border border-white">{count}</span>
-                  }}</Await>
+                  <Await resolve={cart}>
+                    {(cartData) => <CartCountBadge cart={cartData} />}
+                  </Await>
                 </Suspense>
               </div>
               <span>{isEn ? 'Cart' : 'السلة'}</span>
@@ -725,10 +774,10 @@ function MiddleBar({
             </NavLink>
           </div>
 
-          {/* CENTER GROUP: Logo */}
-          <div className="flex items-center justify-center flex-1 max-w-[150px] px-1">
+          {/* CENTER GROUP: Logo (mobile only — the desktop logo is in the lg:grid block above) */}
+          <div className="flex items-center justify-center flex-1 max-w-[190px] px-1">
             <NavLink to={isEn ? "/en" : "/"} prefetch="intent" className="transition-transform hover:scale-[1.02] flex items-center justify-center">
-              <img src="/logo.svg" alt="SAADEDDIN" className="h-[34px] w-auto object-contain" />
+              <img src="/logo.svg" alt="SAADEDDIN" className="h-[46px] w-auto object-contain" />
             </NavLink>
           </div>
 
@@ -738,11 +787,9 @@ function MiddleBar({
             <button onClick={() => open('cart')} aria-label="Cart" className="text-[#234745] hover:opacity-70 transition-opacity p-0.5 relative">
               <svg width="19" height="19" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12.5132 14.1798C12.8761 14.1798 13.2241 14.324 13.4808 14.5806C13.7374 14.8372 13.8816 15.1853 13.8816 15.5482C13.8816 15.9111 13.7374 16.2592 13.4808 16.5158C13.2241 16.7725 12.8761 16.9166 12.5132 16.9166C12.1502 16.9166 11.8022 16.7725 11.5455 16.5158C11.2889 16.2592 11.1447 15.9111 11.1447 15.5482C11.1447 15.1853 11.2889 14.8372 11.5455 14.5806C11.8022 14.324 12.1502 14.1798 12.5132 14.1798ZM12.5132 14.864C12.3317 14.864 12.1577 14.9361 12.0293 15.0644C11.901 15.1927 11.8289 15.3667 11.8289 15.5482C11.8289 15.7297 11.901 15.9037 12.0293 16.032C12.1577 16.1603 12.3317 16.2324 12.5132 16.2324C12.6946 16.2324 12.8687 16.1603 12.997 16.032C13.1253 15.9037 13.1974 15.7297 13.1974 15.5482C13.1974 15.3667 13.1253 15.1927 12.997 15.0644C12.8687 14.9361 12.6946 14.864 12.5132 14.864ZM6.35526 14.1798C6.71819 14.1798 7.06625 14.324 7.32288 14.5806C7.57951 14.8372 7.72368 15.1853 7.72368 15.5482C7.72368 15.9111 7.57951 16.2592 7.32288 16.5158C7.06625 16.7725 6.71819 16.9166 6.35526 16.9166C5.99234 16.9166 5.64427 16.7725 5.38764 16.5158C5.13101 16.2592 4.98684 15.9111 4.98684 15.5482C4.98684 15.1853 5.13101 14.8372 5.38764 14.5806C5.64427 14.324 5.99234 14.1798 6.35526 14.1798ZM6.35526 14.864C6.1738 14.864 5.99977 14.9361 5.87145 15.0644C5.74314 15.1927 5.67105 15.3667 5.67105 15.5482C5.67105 15.7297 5.74314 15.9037 5.87145 16.032C5.99977 16.1603 6.1738 16.2324 6.35526 16.2324C6.53673 16.2324 6.71076 16.1603 6.83907 16.032C6.96739 15.9037 7.03947 15.7297 7.03947 15.5482C7.03947 15.3667 6.96739 15.1927 6.83907 15.0644C6.71076 14.9361 6.53673 14.864 6.35526 14.864ZM13.8816 5.96926H4.48737L6.23211 10.0745H11.8289C12.0547 10.0745 12.2532 9.96505 12.3763 9.80084L14.4289 7.06399C14.5179 6.94768 14.5658 6.80399 14.5658 6.65347C14.5658 6.472 14.4937 6.29797 14.3654 6.16966C14.2371 6.04134 14.063 5.96926 13.8816 5.96926ZM11.8289 10.7587H6.26632L5.73947 11.8261L5.67105 12.1272C5.67105 12.3086 5.74314 12.4826 5.87145 12.611C5.99977 12.7393 6.1738 12.8114 6.35526 12.8114H13.8816V13.4956H6.35526C5.99234 13.4956 5.64427 13.3514 5.38764 13.0948C5.13101 12.8381 4.98684 12.4901 4.98684 12.1272C4.98664 11.895 5.0455 11.6666 5.15789 11.4635L5.65053 10.4577L3.16684 4.60084H2.25V3.91663H3.61842L4.2 5.28505H13.8816C14.2445 5.28505 14.5926 5.42922 14.8492 5.68585C15.1058 5.94248 15.25 6.29054 15.25 6.65347C15.25 6.99557 15.1337 7.28294 14.9421 7.51557L12.9511 10.1772C12.7047 10.5261 12.2942 10.7587 11.8289 10.7587Z" fill="currentColor" /></svg>
               <Suspense fallback={null}>
-                <Await resolve={cart}>{(cartData) => {
-                  const count = cartData?.totalQuantity ?? 0;
-                  if (count === 0) return null;
-                  return <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-[#e34242] text-white text-[9px] rounded-full flex items-center justify-center shadow-sm border border-white">{count}</span>
-                }}</Await>
+                <Await resolve={cart}>
+                  {(cartData) => <CartCountBadge cart={cartData} />}
+                </Await>
               </Suspense>
             </button>
 

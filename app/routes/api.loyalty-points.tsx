@@ -9,36 +9,20 @@ import type {ActionFunctionArgs, LoaderFunctionArgs} from 'react-router';
 export async function loader({request, context}: LoaderFunctionArgs) {
   try {
     const {getLoyaltyFullInfo} = await import('~/lib/loyalty.server');
-    const url = new URL(request.url);
-    const paramCustomerId = url.searchParams.get('customerId') || undefined;
-    const paramPhone = url.searchParams.get('phone') || undefined;
-    const paramEmail = url.searchParams.get('email') || undefined;
-    const paramIdentifier = url.searchParams.get('identifier') || undefined;
+    const {resolveSelf} = await import('~/lib/session-identity.server');
 
-    let customerId = paramCustomerId;
-    let phone = paramPhone;
-    let email = paramEmail;
-
-    if (paramIdentifier) {
-      const clean = paramIdentifier.trim();
-      if (clean.startsWith('gid://') || /^\d{11,}$/.test(clean)) {
-        if (!customerId) customerId = clean;
-      } else if (clean.includes('@')) {
-        if (!email) email = clean;
-      } else {
-        if (!phone) phone = clean;
-      }
+    // Identity comes from the session only. Query parameters used to be trusted,
+    // which let anyone read a customer's name, ERP account, tier and purchase
+    // history from their phone number alone.
+    const self = await resolveSelf(context);
+    if (!self) {
+      return Response.json(
+        {success: false, error: 'Not signed in'},
+        {status: 401},
+      );
     }
 
-    if (!phone && context?.session) {
-      phone = (await context.session.get('loginOtpPhone')) || (await context.session.get('saadeddinPhone')) || undefined;
-    }
-    if (!email && context?.session) {
-      email = (await context.session.get('loginCustomerEmail')) || undefined;
-    }
-    if (!customerId && context?.session) {
-      customerId = (await context.session.get('loginCustomerId')) || undefined;
-    }
+    const {customerId, phone, email} = self;
 
     const loyaltyInfo = await getLoyaltyFullInfo({
       customerId,
@@ -158,11 +142,23 @@ export async function action({request, context}: ActionFunctionArgs) {
       );
     }
 
+    // Redeem for the signed-in customer only — the body used to name the
+    // customer, so anyone could convert another shopper's points into a
+    // discount code and receive that code in the response.
+    const {resolveSelf} = await import('~/lib/session-identity.server');
+    const self = await resolveSelf(context);
+    if (!self) {
+      return Response.json(
+        {success: false, error: 'Not signed in'},
+        {status: 401},
+      );
+    }
+
     const {redeemLoyaltyPoints} = await import('~/lib/loyalty.server');
     const result = await redeemLoyaltyPoints({
-      customerId: body?.customerId,
-      phone: body?.phone,
-      email: body?.email,
+      customerId: self.customerId,
+      phone: self.phone,
+      email: self.email,
       points: pointsToRedeem,
       env: context.env,
       context,

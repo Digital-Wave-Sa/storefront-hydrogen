@@ -14,6 +14,7 @@ import {
   isDiscountValidForLocation,
   parseLocationDiscountsJSON,
 } from '~/lib/discounts';
+import {filterByOffer, productHasOffer} from '~/lib/offer-tags';
 
 // GraphQL query to fetch promotional products and promotion page metaobjects
 const PROMOTIONS_QUERY = `#graphql
@@ -63,7 +64,7 @@ const PROMOTIONS_QUERY = `#graphql
         }
       }
     }
-    products(first: 50) {
+    products(first: 250) {
       nodes {
         id
         handle
@@ -373,35 +374,38 @@ export default function PromotionsPage() {
     'all' | 'bogo' | 'gifts25' | 'chocolates40'
   >('all');
 
-  // Live Countdown Timer state (calculated from heroData.expirationDate or default 10h)
-  const [timeLeft, setTimeLeft] = useState({
-    hours: 8,
-    minutes: 28,
-    seconds: 45,
-  });
+  /**
+   * Countdown to the hero metaobject's expiration date.
+   *
+   * `null` means no end date is configured, and the timer is hidden. It used to
+   * fall back to a decorative 8h 28m that started over on every page load, so
+   * two visitors saw two different "deadlines" for the same promotion and a
+   * reload bought you another eight hours.
+   */
+  const [timeLeft, setTimeLeft] = useState<{
+    hours: number;
+    minutes: number;
+    seconds: number;
+  } | null>(null);
 
   useEffect(() => {
+    if (!heroData?.expirationDate) {
+      setTimeLeft(null);
+      return;
+    }
+
     const calculateTime = () => {
-      if (heroData?.expirationDate) {
-        const targetTime = new Date(heroData.expirationDate).getTime();
-        const diff = Math.max(0, targetTime - Date.now());
-        const hours = Math.floor(diff / (1000 * 60 * 60));
-        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-        const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-        setTimeLeft({hours, minutes, seconds});
-      } else {
-        setTimeLeft((prev) => {
-          if (prev.seconds > 0) {
-            return {...prev, seconds: prev.seconds - 1};
-          } else if (prev.minutes > 0) {
-            return {...prev, minutes: prev.minutes - 1, seconds: 59};
-          } else if (prev.hours > 0) {
-            return {hours: prev.hours - 1, minutes: 59, seconds: 59};
-          } else {
-            return prev;
-          }
-        });
+      const targetTime = new Date(heroData.expirationDate).getTime();
+      if (!Number.isFinite(targetTime)) {
+        setTimeLeft(null);
+        return;
       }
+      const diff = Math.max(0, targetTime - Date.now());
+      setTimeLeft({
+        hours: Math.floor(diff / (1000 * 60 * 60)),
+        minutes: Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60)),
+        seconds: Math.floor((diff % (1000 * 60)) / 1000),
+      });
     };
 
     calculateTime();
@@ -409,9 +413,15 @@ export default function PromotionsPage() {
     return () => clearInterval(timer);
   }, [heroData?.expirationDate]);
 
-  const promoCode = heroData?.discountCode || 'SAAD20';
+  const showCountdown =
+    timeLeft !== null &&
+    (timeLeft.hours > 0 || timeLeft.minutes > 0 || timeLeft.seconds > 0);
+
+  // Only offer a code when Shopify actually carries one.
+  const promoCode = heroData?.discountCode || null;
 
   const handleCopyCode = () => {
+    if (!promoCode) return;
     navigator.clipboard.writeText(promoCode);
     setShowToast(true);
     setTimeout(() => setShowToast(false), 2000);
@@ -443,79 +453,36 @@ export default function PromotionsPage() {
       compareNum > priceNum
         ? Math.round(((compareNum - priceNum) / compareNum) * 100)
         : 0;
-    const hasBogo =
-      prod.tags?.some(
-        (t: string) =>
-          String(t).toUpperCase().includes('1+1') ||
-          String(t).toUpperCase().includes('BOGO'),
-      ) || prod.title?.includes('1+1');
-
     return {
       ...prod,
       discountPct,
-      isBogo: hasBogo,
+      isBogo: productHasOffer(prod, 'bogo'),
       availableForSale:
         prod.availableForSale ?? variant?.availableForSale ?? true,
     };
   });
 
-  const filteredProducts = displayProducts.filter((prod: any) => {
-    if (activeFilter === 'all') return true;
+  /**
+   * Offer membership comes from Shopify tags only — the same rule the offer
+   * pages and the mobile app use (see ~/lib/offer-tags).
+   *
+   * This previously guessed: any product discounted 15–35% counted as part of
+   * the 25% gift offer, anything over 30% counted as the chocolate offer, and
+   * titles were substring-matched. So an unrelated product on its own markdown
+   * appeared inside an offer it was never part of, and the same filter returned
+   * a different set here than on /promotions/gifts25.
+   */
+  const filteredProducts =
+    activeFilter === 'all'
+      ? displayProducts
+      : filterByOffer(displayProducts, activeFilter);
 
-    const titleLower = (prod.title || '').toLowerCase();
-    const tags = (prod.tags || []).map((t: string) => String(t).toLowerCase());
-
-    if (activeFilter === 'bogo') {
-      return (
-        prod.isBogo ||
-        tags.some(
-          (t: string) =>
-            t.includes('bogo') ||
-            t.includes('1+1') ||
-            t.includes('free') ||
-            t.includes('مجانا'),
-        ) ||
-        titleLower.includes('bogo') ||
-        titleLower.includes('1+1') ||
-        titleLower.includes('مجانا')
-      );
-    }
-
-    if (activeFilter === 'gifts25') {
-      const isGift =
-        tags.some(
-          (t: string) =>
-            t.includes('gift') ||
-            t.includes('box') ||
-            t.includes('هدية') ||
-            t.includes('هدايا') ||
-            t.includes('صندوق') ||
-            t.includes('باكج'),
-        ) ||
-        titleLower.includes('gift') ||
-        titleLower.includes('box') ||
-        titleLower.includes('هدية') ||
-        titleLower.includes('هدايا') ||
-        titleLower.includes('صندوق') ||
-        titleLower.includes('باكج');
-      const isAround25Pct = prod.discountPct >= 15 && prod.discountPct <= 35;
-      return isGift || isAround25Pct;
-    }
-
-    if (activeFilter === 'chocolates40') {
-      const isChoc =
-        tags.some((t: string) => t.includes('choc') || t.includes('شوكول')) ||
-        titleLower.includes('choc') ||
-        titleLower.includes('شوكول');
-      const isAround40Pct = prod.discountPct >= 30;
-      return isChoc || isAround40Pct;
-    }
-
-    return true;
-  });
-
-  const finalDisplayProducts =
-    filteredProducts.length > 0 ? filteredProducts : displayProducts;
+  /**
+   * An empty filter result means nothing carries that tag yet. Show the empty
+   * state rather than silently falling back to every product, which made an
+   * untagged offer look fully stocked.
+   */
+  const finalDisplayProducts = filteredProducts;
 
   const direction = isEn ? 'ltr' : 'rtl';
 
@@ -615,7 +582,8 @@ export default function PromotionsPage() {
               className="flex items-center gap-3 flex-wrap"
               suppressHydrationWarning
             >
-              {/* Timer: Hours | Minutes | Seconds */}
+              {/* Timer: Hours | Minutes | Seconds — only with a real end date */}
+              {showCountdown && timeLeft ? (
               <div className="flex items-center gap-2" suppressHydrationWarning>
                 {/* Hours */}
                 <div className="flex flex-col items-center gap-[7px] justify-center w-[60px] h-[64px] border border-[#9FB7AE] rounded-[8px]">
@@ -663,8 +631,10 @@ export default function PromotionsPage() {
                   </span>
                 </div>
               </div>
+              ) : null}
 
-              {/* Promo Code Box */}
+              {/* Promo Code Box — only when Shopify carries a code */}
+              {promoCode ? (
               <div
                 dir="ltr"
                 className="flex items-center justify-center sm:justify-between h-[64px] w-full sm:w-auto border border-[#9FB7AE] rounded-[8px] px-3 gap-2"
@@ -685,6 +655,7 @@ export default function PromotionsPage() {
                   {isEn ? 'Copy' : 'نسخ الكود'}
                 </button>
               </div>
+              ) : null}
             </div>
 
             {/* Shop Now Button */}
@@ -755,9 +726,9 @@ export default function PromotionsPage() {
                   {renderTextWithRiyalSymbol(
                     isEn
                       ? bogoData?.subtitleEn ||
-                          'On all dark chocolate types — Today only!'
+                          'Exclusive Buy 1 Get 1 Free on selected luxury items!'
                       : bogoData?.subtitleAr ||
-                          'على جميع أنواع الشوكولاتة الداكنة — اليوم فقط!',
+                          'عروض حصرية مضاعفة على تشكيلات مختارة!',
                   )}
                 </p>
               </div>
@@ -807,18 +778,21 @@ export default function PromotionsPage() {
                   )}
                 </Link>
 
-                {/* Shoppers Count (Standard English digits) */}
-                <span className="text-[#D61C4E] text-[13px] font-semibold whitespace-nowrap">
-                  <span
-                    style={{fontFamily: "'EnglishDigits', sans-serif"}}
-                    className="font-bold"
-                  >
-                    {bogoData?.shoppersCount || '243'}
+                {/* Shoppers Count — rendered only when the metaobject supplies a
+                    real number, rather than always claiming 243 shoppers. */}
+                {bogoData?.shoppersCount ? (
+                  <span className="text-[#D61C4E] text-[13px] font-semibold whitespace-nowrap">
+                    <span
+                      style={{fontFamily: "'EnglishDigits', sans-serif"}}
+                      className="font-bold"
+                    >
+                      {bogoData.shoppersCount}
+                    </span>
+                    <span>
+                      {isEn ? ' people shopping now' : ' شخص يتسوق الآن'}
+                    </span>
                   </span>
-                  <span>
-                    {isEn ? ' people shopping now' : ' شخص يتسوق الآن'}
-                  </span>
-                </span>
+                ) : null}
               </div>
             </div>
 
@@ -1079,9 +1053,9 @@ export default function PromotionsPage() {
                 {renderTextWithRiyalSymbol(
                   isEn
                     ? gridData?.card1SubtitleEn ||
-                        'Subscribe now and get 15% discount on your first order'
+                        'Order now and get 25% off your first order with Saadeddin'
                     : gridData?.card1SubtitleAr ||
-                        'اشترك الآن واحصل على خصم 15% على طلبك الأول من سعد الدين',
+                        'إشترك الآن واحصل علي خصم 25% علي طلبك الأول من سعد الدين',
                 )}
               </p>
             </div>

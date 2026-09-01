@@ -4,10 +4,14 @@ import { getLoyaltyTierInfo } from '~/lib/loyalty-tiers';
 
 export async function loader({ request, context }: LoaderFunctionArgs) {
   try {
-    const url = new URL(request.url);
-    const customerId = url.searchParams.get('customerId') || undefined;
-    const phone = url.searchParams.get('phone') || url.searchParams.get('identifier') || undefined;
-    const email = url.searchParams.get('email') || undefined;
+    // Session only — see api.loyalty-points. Query parameters are not trusted
+    // for personal data.
+    const { resolveSelf } = await import('~/lib/session-identity.server');
+    const self = await resolveSelf(context);
+    if (!self) {
+      return Response.json({ success: false, error: 'Not signed in' }, { status: 401 });
+    }
+    const { customerId, phone, email } = self;
 
     const loyaltyInfo = await getLoyaltyFullInfo({
       customerId,

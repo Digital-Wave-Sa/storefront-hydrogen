@@ -34,6 +34,10 @@ export async function loader({context}: LoaderFunctionArgs) {
       query getDashboardCustomerId($customerAccessToken: String!) {
         customer(customerAccessToken: $customerAccessToken) {
           id
+          # Selected because the check below reads it. Without it
+          # customerTags was always undefined and no real admin could
+          # ever pass — only the dev bypass token got in.
+          tags
         }
       }
     `,
@@ -208,6 +212,14 @@ export async function loader({context}: LoaderFunctionArgs) {
 }
 
 export async function action({request, context}: ActionFunctionArgs) {
+  /**
+   * The loader gated this page; nothing gated this action. React Router
+   * runs `action` on POST, so an unauthenticated POST reached the Admin
+   * API below and could create real discount codes.
+   */
+  const {requireAdmin} = await import('~/lib/account-guard.server');
+  await requireAdmin(context);
+
   const {env} = context;
   const adminToken = await getAdminToken(env);
   const shopDomain = env.PUBLIC_STORE_DOMAIN;

@@ -1,4 +1,6 @@
 import type { CartApiQueryFragment } from 'storefrontapi.generated';
+import { getIsOutOfStockForFulfillment, isOutOfStockAtBranch } from '~/lib/stock';
+import { useBranchAvailability } from '~/lib/useBranchAvailability';
 import type { CartLayout } from '~/components/CartMain';
 import { CartForm, Money, type OptimisticCart } from '@shopify/hydrogen';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
@@ -30,29 +32,6 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
 
   const rawSubtotal = Number(cart?.cost?.subtotalAmount?.amount ?? 0);
   const currencyCode = cart?.cost?.subtotalAmount?.currencyCode || 'SAR';
-
-  /**
-   * Money is still being recalculated by Shopify.
-   *
-   * `useOptimisticCart` predicts lines and quantities but NOT `cart.cost`, so
-   * between the click and the server's reply the totals here are wrong in two
-   * ways: a brand-new cart has no cost yet and renders 0.00, and adding to an
-   * existing line shows the new quantity beside the old quantity's subtotal.
-   *
-   * `CartLineItem` already dims optimistic rows; the totals block claimed to be
-   * final. Marking it pending turns "wrong number" into "updating", which is
-   * both honest and less alarming than showing a shopper a 0.00 total.
-   */
-  const totalsPending = Boolean((cart as any)?.isOptimistic);
-
-  /** Dim + ignore pointer events while the figures are provisional. */
-  const pendingTotalsProps = {
-    'aria-busy': totalsPending || undefined,
-    style: {
-      opacity: totalsPending ? 0.45 : 1,
-      transition: 'opacity 150ms ease-in-out',
-    } as React.CSSProperties,
-  };
 
   // Calculate value of lines tagged with _is_free that haven't been discounted by Shopify yet
   const freeItemsValue = cart?.lines?.nodes?.reduce((acc: number, line: any) => {
@@ -398,8 +377,40 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
 
   const isOutOfRange = !isDigitalOnlyCart && !!attributes.find((a: any) => a.key === 'error')?.value;
 
+  /**
+   * Lines the selected branch cannot supply.
+   *
+   * This filtered on `availableForSale` alone — Shopify's "sellable
+   * anywhere" flag — so switching to a branch that does not stock an item
+   * left checkout enabled and the shopper reached payment with an order the
+   * branch could not fill.
+   */
+  const selectedBranchId = attributes.find((a: any) => a.key === 'Branch ID')?.value;
+  const selectedBranchName = attributes.find((a: any) => a.key === 'Branch')?.value;
+
+  // Only a real Shopify location id is useful to the inventory lookup; the
+  // `Branch ID` attribute holds an internal branch code (BRNCH150), which
+  // matches no location and made every line read as 'not stocked here'.
+  const branchLocationId = currentBranch?.id;
+  const cartVariantIds = (cart?.lines?.nodes || [])
+    .map((l: any) => l.merchandise?.id)
+    .filter(Boolean);
+  const {availability: branchStock} = useBranchAvailability(
+    cartVariantIds,
+    branchLocationId,
+  );
+
   const outOfStockItems = cart?.lines?.nodes?.filter((line: any) => {
-    return line.merchandise?.availableForSale === false;
+    if (line.isOptimistic) return false;
+    const verdict = isOutOfStockAtBranch(branchStock[line.merchandise?.id]);
+    if (verdict !== null) return verdict;
+    return getIsOutOfStockForFulfillment(
+      branchLocationId,
+      currentBranch?.name || selectedBranchName,
+      line.merchandise?.storeAvailability?.nodes || [],
+      line.merchandise?.availableForSale !== false,
+      isPickup,
+    );
   }) || [];
 
   const hasOutOfStockItems = outOfStockItems.length > 0;
@@ -720,7 +731,7 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
               <CartOrderNotes isEn={isEn} cart={cart} />
 
               {/* Breakdown */}
-              <div className="flex flex-col gap-4" {...pendingTotalsProps}>
+              <div className="flex flex-col gap-4">
                 <div className="flex justify-between items-center text-[15px]">
                   <dt className="text-[#9FB7AE] font-medium" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>{isEn ? 'Subtotal' : 'المجموع الفرعي'}</dt>
                   <dd className="text-[#234745] font-bold font-en flex items-center gap-1 flex-row-reverse">
@@ -946,7 +957,7 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
       )}
 
       {layout === 'aside' && (
-        <div className="space-y-2 mb-4 px-1" {...pendingTotalsProps}>
+        <div className="space-y-2 mb-4 px-1">
           <div className="flex justify-between items-center text-[14px]">
             <dt className="text-gray-400 font-medium">{isEn ? 'Subtotal' : 'المجموع الفرعي'}</dt>
             <dd className="text-[#234745] font-bold font-en">
@@ -1145,42 +1156,41 @@ function generateDynamicSlots(branch: any, isEn: boolean, fulfillmentType: strin
 
   const slots: string[] = [];
 
-  const addSlotsForWindow = (start: number, end: number, isTomorrow: boolean) => {
+  const addSlotsForWindow = (start: number, end: number) => {
     for (let h = start; h <= end; h += 1) {
       const label = formatHour(h, isEn);
 
-      if (isTomorrow) {
-        if (!slots.includes(label)) slots.push(label);
-      } else {
-        if (isToday) {
-          // Hide hours that are past current Riyadh time + location delivery/preparation lead time
-          if (h >= currentRiyadhHour + leadTimeHours) {
-            if (!slots.includes(label)) slots.push(label);
-          }
-        } else {
-          // Future date: all open hours are available
+      if (isToday) {
+        // Hide hours already past, plus the branch's preparation lead time.
+        if (h >= currentRiyadhHour + leadTimeHours) {
           if (!slots.includes(label)) slots.push(label);
         }
+      } else {
+        // A future date: every open hour is available.
+        if (!slots.includes(label)) slots.push(label);
       }
     }
   };
 
-  // 1. Try adding today's exact hours for Shift 1
-  addSlotsForWindow(startHour1, endHour1, false);
+  addSlotsForWindow(startHour1, endHour1);
 
-  // 2. Try adding today's exact hours for Shift 2
   if (startHour2 !== null && endHour2 !== null) {
-    addSlotsForWindow(startHour2, endHour2, false);
+    addSlotsForWindow(startHour2, endHour2);
   }
 
-  // 3. If all hours for today are in the past, show tomorrow's hours
-  if (slots.length === 0 && isToday) {
-    addSlotsForWindow(startHour1, endHour1, true);
-    if (startHour2 !== null && endHour2 !== null) {
-      addSlotsForWindow(startHour2, endHour2, true);
-    }
-  }
-
+  /**
+   * No third step, deliberately.
+   *
+   * When the branch's hours for today had all passed, this used to re-add
+   * the same window as "tomorrow" — but the labels are bare hours and the
+   * cart's date attribute still said today. A branch closing at 1pm,
+   * viewed at 2pm, therefore offered 10:00 AM - 1:00 PM *today*: times
+   * that had already been and gone.
+   *
+   * An empty list is the honest answer. The caller shows "no times left
+   * for this date" and the shopper picks another day, which then computes
+   * that day's real hours.
+   */
   return slots;
 }
 
@@ -1189,8 +1199,17 @@ function CartTimeSlot({ isEn, cart, currentBranch, hasError }: { isEn: boolean, 
   const timeSlot = cart?.attributes?.find((a: any) => a.key === 'Time Slot')?.value || '';
   const fulfillmentType = cart?.attributes?.find((a: any) => a.key === 'Fulfillment Type')?.value || 'delivery';
 
-  // Dynamically calculate time slots based on the fulfilling branch's active hours
-  const dynamicTimeSlots = generateDynamicSlots(currentBranch, isEn, fulfillmentType);
+  // Dynamically calculate time slots based on the fulfilling branch's active hours.
+  // The date matters: without it every list was computed against today, so a
+  // future date got today's remaining hours instead of that day's own.
+  const selectedDateForSlots =
+    cart?.attributes?.find((a: any) => a.key === 'delivery_date')?.value || '';
+  const dynamicTimeSlots = generateDynamicSlots(
+    currentBranch,
+    isEn,
+    fulfillmentType,
+    selectedDateForSlots || undefined,
+  );
 
   // Check if branch has an active promo free delivery interval
   const generalPromoInfo = checkBranchFreeDeliveryInterval(currentBranch);
@@ -1907,7 +1926,7 @@ function CartDiscounts({
     codes.some(c => c.toUpperCase().includes('EMPLOYEE') || c.toUpperCase().startsWith('EMP') || c.toUpperCase() === 'EMPLOYEE25');
 
   return (
-    <div aria-label="Discounts" className="w-full relative space-y-2">
+    <div aria-label={isEn ? "Discounts" : "الخصومات"} className="w-full relative space-y-2">
       {/* Promo Free Delivery Active Badge */}
       {isBranchPromoFreeDelivery && (
         <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 text-emerald-800 shadow-sm mb-2">
@@ -1975,7 +1994,7 @@ function CartDiscounts({
                         </div>
                         <button
                           type="submit"
-                          aria-label="Remove discount"
+                          aria-label={isEn ? "Remove discount" : "إزالة الخصم"}
                           disabled={isRemoving}
                           className={`${isInvalid ? 'text-red-600 hover:text-red-800' : 'text-green-600 hover:text-red-500'} transition-colors p-1`}
                         >
@@ -2102,7 +2121,7 @@ function CartGiftCard({
   }
 
   return (
-    <section aria-label="Gift card" className="flex flex-col gap-3">
+    <section aria-label={isEn ? "Gift card" : "بطاقة هدية"} className="flex flex-col gap-3">
       <dl hidden={!codes.length}>
         <div>
           <dt id={giftCardHeadingId} className="sr-only">Applied Gift Card</dt>
@@ -2115,7 +2134,7 @@ function CartGiftCard({
               <button
                 type="submit"
                 onSubmit={() => removeAppliedCode()}
-                aria-label="Remove gift card"
+                aria-label={isEn ? "Remove gift card" : "إزالة بطاقة الهدية"}
                 className="text-gray-400 hover:text-red-500 transition-colors p-1"
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
@@ -2143,7 +2162,7 @@ function CartGiftCard({
           />
           <button
             type="submit"
-            aria-label="Apply gift card"
+            aria-label={isEn ? "Apply gift card" : "تطبيق بطاقة الهدية"}
             className="bg-[#f0ece8] text-[#234745] font-bold px-5 py-3 rounded-xl hover:bg-[#e8e4e1] transition-colors"
           >
             {isEn ? 'Apply' : 'تطبيق'}
@@ -2491,7 +2510,15 @@ function CartCalendarPicker({
               }}
               className="w-full bg-[#fcfaf8] border border-[#f0ece8] rounded-xl px-4 py-3 text-[14px] text-[#234745] font-medium appearance-none focus:outline-none focus:border-[#d4a06a] focus:ring-1 focus:ring-[#d4a06a] transition-all cursor-pointer"
             >
-              <option value="">{isPickup ? (isEn ? 'Select preferred pickup time' : 'اختر وقت الاستلام المفضل') : (isEn ? 'Select preferred delivery time' : 'اختر وقت التوصيل المفضل')}</option>
+              <option value="">
+                {dynamicTimeSlots.length === 0
+                  ? isEn
+                    ? 'No times left for this date'
+                    : 'لا تتوفر أوقات في هذا التاريخ'
+                  : isPickup
+                    ? isEn ? 'Select preferred pickup time' : 'اختر وقت الاستلام المفضل'
+                    : isEn ? 'Select preferred delivery time' : 'اختر وقت التوصيل المفضل'}
+              </option>
               {dynamicTimeSlots.map((slot: string, idx: number) => (
                 <option key={idx} value={slot}>{slot}</option>
               ))}
@@ -2500,6 +2527,19 @@ function CartCalendarPicker({
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
             </div>
           </div>
+
+          {/* Say why the list is empty rather than showing a dead dropdown. */}
+          {dynamicTimeSlots.length === 0 && (
+            <div className="mt-1 p-3 bg-amber-50 border border-amber-200 rounded-xl text-[12px] text-amber-900 font-bold leading-relaxed flex items-start gap-2">
+              <span className="text-base leading-none">🕒</span>
+              <div>
+                {isEn
+                  ? `${currentBranch?.name || 'This branch'} has no remaining ${isPickup ? 'pickup' : 'delivery'} times for this date. Please choose another day.`
+                  : `لا تتوفر أوقات ${isPickup ? 'استلام' : 'توصيل'} متبقية في ${currentBranch?.name || 'هذا الفرع'} لهذا التاريخ. يرجى اختيار يوم آخر.`}
+              </div>
+            </div>
+          )}
+
           {isTimeSlotInvalid && (
             <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-xl text-[12px] text-red-800 font-bold leading-relaxed flex items-start gap-2">
               <span className="text-base leading-none">⚠️</span>

@@ -3,6 +3,8 @@ import { useRouteLoaderData, Await } from 'react-router';
 import { Suspense, useState } from 'react';
 import { AddToCartButton } from '~/components/AddToCartButton';
 import { useWishlist } from '~/context/WishlistContext';
+import { isOutOfStockAtBranch, findBranchLocation } from '~/lib/stock';
+import { useBranchAvailabilityReader } from '~/lib/useBranchAvailability';
 
 interface ProductUpsellModalProps {
   isOpen: boolean;
@@ -24,6 +26,20 @@ export function ProductUpsellModal({
   const rootData = useRouteLoaderData('root') as any;
   const [addedProductIds, setAddedProductIds] = useState<Record<string, boolean>>({});
   const { toggleWishlist, isInWishlist } = useWishlist();
+
+  /**
+   * This modal had no availability logic whatsoever — it appears immediately
+   * after Add to Cart and would happily offer a product the chosen branch does
+   * not stock, straight into the same cart that then flags it.
+   */
+  const upsellLocations =
+    rootData?.locations?.locations?.nodes || rootData?.locations?.nodes || [];
+  const upsellBranch = findBranchLocation(
+    upsellLocations,
+    rootData?.selectedLocationId,
+    rootData?.selectedLocationName,
+  );
+  const { read: readUpsellStock } = useBranchAvailabilityReader(upsellBranch?.id);
 
   if (!isOpen || !upsellProducts || upsellProducts.length === 0) return null;
 
@@ -117,6 +133,12 @@ export function ProductUpsellModal({
             {validProducts.slice(0, 6).map((prod: any) => {
               const variant = prod.variants?.nodes?.[0] || prod.variants?.[0];
               if (!variant) return null;
+
+              // Do not upsell what this branch cannot supply. Unknown (lookup
+              // pending or failed) leaves the card alone rather than hiding it.
+              if (isOutOfStockAtBranch(readUpsellStock(variant.id)) === true) {
+                return null;
+              }
 
               const imgUrl =
                 prod.featuredImage?.url ||
@@ -222,7 +244,7 @@ export function ProductUpsellModal({
                           : 'تمت الإضافة ✓'
                         : isEn
                         ? 'Add to Cart'
-                        : 'أضف إلى السلة'}
+                        : 'أضف إلي السلة'}
                     </span>
                   </AddToCartButton>
                 </div>

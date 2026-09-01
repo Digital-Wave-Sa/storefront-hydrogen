@@ -163,7 +163,7 @@ export function GlobalSearchBar({ locale, isMobile }: { locale?: string, isMobil
           className="w-full bg-white !border-transparent !border-none !outline-none !ring-0 !rounded-full !py-3 !ps-12 !pe-5 !text-[14px] !m-0 font-medium text-[#234745] placeholder:text-gray-400 focus:!outline-none focus:!ring-0 focus:!border-transparent !shadow-sm transition-all"
           autoComplete="off"
         />
-        <button type="submit" aria-label="Search" className="absolute start-4 top-1/2 -translate-y-1/2 text-[#234745] hover:opacity-70 transition-opacity">
+        <button type="submit" aria-label={isEn ? "Search" : "بحث"} className="absolute start-4 top-1/2 -translate-y-1/2 text-[#234745] hover:opacity-70 transition-opacity">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
         </button>
       </Form>

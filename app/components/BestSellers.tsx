@@ -1,4 +1,4 @@
-import { Await, Link, useOutletContext } from 'react-router';
+import { Await, Link, useOutletContext, useRouteLoaderData } from 'react-router';
 import { Suspense, useEffect, useId, useState } from 'react';
 import { Image, Money } from '@shopify/hydrogen';
 import { Price } from './Price';
@@ -6,7 +6,8 @@ import { Button } from './layout/Button';
 import { useI18n } from '~/lib/i18n';
 import { useAside } from '~/components/Aside';
 import { getVisibilityStatus } from '~/lib/visibility';
-import { getIsOutOfStock, shouldHideProduct } from '~/lib/stock';
+import { getIsOutOfStock, shouldHideProduct, isOutOfStockAtBranch, findBranchLocation } from '~/lib/stock';
+import { useBranchAvailabilityReader } from '~/lib/useBranchAvailability';
 import { AddToCartButton } from './AddToCartButton';
 
 import { StockNotificationModal } from '~/components/StockNotificationModal';
@@ -22,6 +23,17 @@ export function BestSellers({
     const [selectedProduct, setSelectedProduct] = useState<{ title: string, variantId: string } | null>(null);
 
     const { locale = 'ar', selectedLocationName, selectedLocationId, customer } = useOutletContext<{ locale?: string, selectedLocationName?: string, selectedLocationId?: string, customer?: Promise<any> }>() ?? {};
+
+    /**
+     * Real stock at the chosen branch. `storeAvailability` — the fallback used
+     * below — lists only pickup-enabled locations and is empty for many
+     * products, at which point the old check reduced to the global
+     * availableForSale flag and every card offered Add to Cart everywhere.
+     */
+    const bsRootData = useRouteLoaderData('root') as any;
+    const bsLocations = bsRootData?.locations?.locations?.nodes || bsRootData?.locations?.nodes || [];
+    const bsBranch = findBranchLocation(bsLocations, selectedLocationId, selectedLocationName);
+    const { read: readBranchStock } = useBranchAvailabilityReader(bsBranch?.id);
     const [customerEmail, setCustomerEmail] = useState<string | undefined>(undefined);
 
     useEffect(() => {
@@ -202,12 +214,16 @@ export function BestSellers({
                                         const variant = product.variants?.nodes?.[0];
                                         const storeAvailabilityNodes = variant?.storeAvailability?.nodes || [];
 
-                                        const isOutOfStock = getIsOutOfStock(
-                                            selectedLocationId,
-                                            selectedLocationName,
-                                            storeAvailabilityNodes,
-                                            product.availableForSale
-                                        );
+                                        const bsVerdict = isOutOfStockAtBranch(readBranchStock(variant?.id));
+                                        const isOutOfStock =
+                                            bsVerdict !== null
+                                                ? bsVerdict
+                                                : getIsOutOfStock(
+                                                      selectedLocationId,
+                                                      selectedLocationName,
+                                                      storeAvailabilityNodes,
+                                                      product.availableForSale
+                                                  );
 
 
                                         // --- Visibility scheduling ---
@@ -253,7 +269,11 @@ export function BestSellers({
                                                                 priceRange: product.priceRange
                                                             });
                                                         }}
-                                                        aria-label={isWishlisted ? "Remove from Wishlist" : "Add to Wishlist"}
+                                                        aria-label={
+                isWishlisted
+                  ? isEn ? "Remove from Wishlist" : "إزالة من المفضلة"
+                  : isEn ? "Add to Wishlist" : "إضافة إلى المفضلة"
+              }
                                                         className={`absolute top-2.5 md:top-3.5 ${isEn ? 'right-2.5 md:right-3.5' : 'left-2.5 md:left-3.5'} z-20 w-8 h-8 md:w-10 md:h-10 p-0 rounded-full bg-white shadow-md transition-all flex items-center justify-center ${isWishlisted ? 'text-[#e74c3c]' : 'text-gray-700 hover:text-[#e74c3c]'}`}
                                                     >
                                                         <svg width="20" height="20" viewBox="0 0 24 24" fill={isWishlisted ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.5"><path d="M20.8 4.6a5.5 5.5 0 00-7.7 0l-1.1 1-1.1-1a5.5 5.5 0 00-7.8 7.8l1 1 7.9 7.9 7.9-7.9 1-1a5.5 5.5 0 000-7.8z" /></svg>

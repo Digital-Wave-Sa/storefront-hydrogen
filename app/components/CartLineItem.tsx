@@ -12,6 +12,8 @@ import type {
 } from 'storefrontapi.generated';
 import { SaudiRiyalSymbol } from './Price';
 import { fixMojibake } from '~/lib/mojibake';
+import { getIsOutOfStockForFulfillment, isOutOfStockAtBranch, findBranchLocation } from '~/lib/stock';
+import { useBranchAvailability } from '~/lib/useBranchAvailability';
 
 export type CartLine = OptimisticCartLine<CartApiQueryFragment>;
 
@@ -50,12 +52,58 @@ export function CartLineItem({
   const branchId = cart?.attributes?.find((a: any) => a.key === 'Branch ID')?.value;
   const locations = rootData?.locations?.locations?.nodes || rootData?.locations?.nodes || [];
 
-  const currentBranch = locations.find((loc: any) =>
-    (branchId && (loc.id === branchId || loc.id.split('/').pop() === String(branchId).split('/').pop())) ||
-    (branchName && loc.name?.trim().toLowerCase() === branchName?.trim().toLowerCase())
-  );
+  // Matches on gid, numeric id, branch_id / branch_code / ax_store_id and both
+  // the English and Arabic names — see findBranchLocation for why all of those
+  // are needed.
+  const currentBranch = findBranchLocation(locations, branchId, branchName);
 
-  let isOutOfStock = merchandise?.availableForSale === false;
+  /**
+   * Availability at the branch the shopper has chosen, not just globally.
+   *
+   * `availableForSale` only says the variant is sellable *somewhere*, so a
+   * product stocked in Riyadh but not Sakaka read as available: switching
+   * branch left it in the cart looking perfectly fine. The per-branch data
+   * was already being queried (`storeAvailability` in the cart fragment) and
+   * the branch was already resolved just above — nothing was reading either.
+   */
+  const storeAvailabilityNodes =
+    (merchandise as any)?.storeAvailability?.nodes || [];
+
+  const isPickupOrder =
+    (cart?.attributes?.find((a: any) => a.key === 'Fulfillment Type')?.value || '')
+      .toLowerCase() === 'pickup';
+
+  /**
+   * Real inventory at the selected branch, when we can get it.
+   *
+   * `storeAvailability` (used below as a backup) reports only what is
+   * collectable at pickup-enabled locations, so it could not tell a branch
+   * that does not stock an item from one where pickup is simply switched
+   * off — which is why an item stocked solely at Shop location still read as
+   * available at Al Takhassousi.
+   */
+  // Only a real Shopify location id is useful to the inventory lookup; the raw
+  // attribute is an internal branch code and would match nothing.
+  const branchLocationId = currentBranch?.id;
+  const {availability} = useBranchAvailability(
+    merchandise?.id ? [merchandise.id] : [],
+    branchLocationId,
+  );
+  const inventoryVerdict = isOutOfStockAtBranch(availability[merchandise?.id]);
+
+  let isOutOfStock =
+    inventoryVerdict !== null
+      ? inventoryVerdict
+      : getIsOutOfStockForFulfillment(
+          branchLocationId,
+          currentBranch?.name || branchName,
+          storeAvailabilityNodes,
+          merchandise?.availableForSale !== false,
+          isPickupOrder,
+        );
+
+  // An optimistic line has no availability data yet; flagging it would make
+  // every freshly added product flash as unavailable.
   if (line.isOptimistic) {
     isOutOfStock = false;
   }
@@ -539,7 +587,7 @@ function CartLineQuantity({ line }: { line: CartLine }) {
       ) : (
         <CartLineUpdateButton lines={[{ id: lineId, quantity: prevQuantity }]}>
           <button
-            aria-label="Decrease quantity"
+            aria-label={isEn ? "Decrease quantity" : "إنقاص الكمية"}
             disabled={!!isOptimistic}
             name="decrease-quantity"
             value={prevQuantity}
@@ -556,7 +604,7 @@ function CartLineQuantity({ line }: { line: CartLine }) {
 
       <CartLineUpdateButton lines={[{ id: lineId, quantity: nextQuantity }]}>
         <button
-          aria-label="Increase quantity"
+          aria-label={isEn ? "Increase quantity" : "زيادة الكمية"}
           name="increase-quantity"
           value={nextQuantity}
           disabled={!!isOptimistic}
@@ -607,7 +655,7 @@ function CartLineRemoveButton({
           disabled={disabled}
           type="submit"
           className="flex items-center gap-1 text-[#c1c1c1] hover:text-red-500 text-[13px] font-medium transition-colors"
-          aria-label="Remove item"
+          aria-label={isEn ? "Remove item" : "إزالة المنتج"}
         >
           <svg width="10" height="11" viewBox="0 0 10 11" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M0.666667 10.5133V1.18H0V0.513333H2.66667V0H6.66667V0.513333H9.33333V1.18H8.66667V10.5133H0.666667ZM1.33333 9.84667H8V1.18H1.33333V9.84667ZM3.20533 8.51333H3.872V2.51333H3.20533V8.51333ZM5.46133 8.51333H6.128V2.51333H5.46133V8.51333Z" fill="#9FB7AE" />
@@ -620,7 +668,7 @@ function CartLineRemoveButton({
           disabled={disabled}
           type="submit"
           className="w-10 h-10 flex items-center justify-center bg-transparent rounded-lg text-[#234745] border border-[#BBCFCD]/80 hover:border-[#234745] transition-all"
-          aria-label="Remove item"
+          aria-label={isEn ? "Remove item" : "إزالة المنتج"}
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14" /></svg>
         </button>
@@ -629,7 +677,7 @@ function CartLineRemoveButton({
           disabled={disabled}
           type="submit"
           className="text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed p-1"
-          aria-label="Remove item"
+          aria-label={isEn ? "Remove item" : "إزالة المنتج"}
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
         </button>

@@ -233,6 +233,14 @@ export interface LoyaltyFullInfo {
 
 const LOYALTY_CACHE = new Map<string, { data: LoyaltyFullInfo; timestamp: number }>();
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+/**
+ * How stale a cached balance may be when SDLP is unreachable.
+ *
+ * The outage fallback used to ignore the TTL entirely, so a balance of any
+ * age was served for as long as the isolate lived — including points the
+ * customer had already spent.
+ */
+const STALE_CACHE_MAX_MS = 30 * 60 * 1000; // 30 minutes
 
 export async function getLoyaltyFullInfo(params: LoyaltyParams): Promise<LoyaltyFullInfo> {
   const env = params.env;
@@ -364,13 +372,74 @@ export async function getLoyaltyFullInfo(params: LoyaltyParams): Promise<Loyalty
     console.warn('[SDLP Loyalty] GET Exception (attempting cache fallback):', err);
   }
 
-  // If live query failed, return cached data if present
-  if (cached) {
+  // If the live query failed, fall back to cache — but only while it is
+  // recent enough to still be plausible.
+  if (cached && Date.now() - cached.timestamp < STALE_CACHE_MAX_MS) {
     console.log('[SDLP Loyalty] Returning cached loyalty data due to service unavailability.');
     return cached.data;
   }
+  if (cached) {
+    console.warn('[SDLP Loyalty] Cached loyalty data is too stale to serve; reporting zero.');
+  }
 
   return {balance: 0, amount: 0, enrollmentDate: null};
+}
+
+/**
+ * The customer's balance straight from SDLP, never from cache.
+ *
+ * Returns null when the balance cannot be established — the caller must
+ * treat that as "do not redeem" rather than as zero or as permission to
+ * proceed. Redemption must never run against a cached figure: during an
+ * SDLP outage the cache is exactly where an already-spent balance lives.
+ */
+export async function fetchLiveLoyaltyBalance(
+  params: LoyaltyParams,
+): Promise<number | null> {
+  const env = params.env;
+  const sdlpAppUrl =
+    env?.PUBLIC_SDLP_APP_URL || env?.SDLP_APP_URL || 'https://sdlp.saadeddin.top';
+  const shop =
+    env?.PUBLIC_SHOPIFY_STORE_DOMAIN ||
+    env?.PUBLIC_STORE_DOMAIN ||
+    'saadeldeenshop-x21xumcd.myshopify.com';
+
+  const resolvedPhone = await resolveCustomerPhone(params);
+  const customerId = await getCustomerGid(params);
+  if (!resolvedPhone && !customerId) return null;
+
+  let url = `${sdlpAppUrl}/api/storefront/loyalty?shop=${encodeURIComponent(shop)}`;
+  if (resolvedPhone) {
+    url += `&phone=${encodeURIComponent(resolvedPhone)}`;
+  } else if (customerId) {
+    url += `&customerId=${encodeURIComponent(customerId)}`;
+  }
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 5000);
+  try {
+    const res = await fetch(url, {
+      headers: {Accept: 'application/json'},
+      signal: controller.signal,
+    });
+    if (!res.ok) {
+      console.error('[Loyalty] Live balance check failed with status', res.status);
+      return null;
+    }
+    const data = (await res.json()) as any;
+    const raw =
+      data?.data?.points ??
+      data?.points ??
+      data?.data?.balance ??
+      data?.balance;
+    const balance = typeof raw === 'number' ? raw : parseFloat(String(raw));
+    return Number.isFinite(balance) ? balance : null;
+  } catch (err: any) {
+    console.error('[Loyalty] Live balance check errored:', err?.message || err);
+    return null;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }
 
 export async function getLoyaltyPoints(params: LoyaltyParams): Promise<number> {
@@ -404,8 +473,50 @@ export async function redeemLoyaltyPoints({
 
   const searchPhone = resolvedPhone || (context?.session ? await context.session.get('loginOtpPhone') : null);
 
+  /**
+   * --- Step 0: the customer must actually hold these points ---
+   *
+   * Nothing used to check. `points` arrived from the client and was turned
+   * straight into a Shopify discount, so any signed-in customer could ask
+   * for a million points and receive a 10,000 SAR code.
+   *
+   * The balance is read live, never from cache, and an unreadable balance
+   * refuses the redemption rather than assuming it is fine.
+   */
+  const requested = Number(points);
+  if (!Number.isFinite(requested) || requested <= 0) {
+    return {success: false, error: 'Invalid points amount'};
+  }
+  if (requested % 100 !== 0) {
+    return {success: false, error: 'Points must be redeemed in increments of 100.'};
+  }
+
+  const available = await fetchLiveLoyaltyBalance({
+    customerId: resolvedCustomerId || customerId,
+    phone: resolvedPhone || phone,
+    email,
+    env,
+    context,
+  });
+
+  if (available === null) {
+    return {
+      success: false,
+      error: 'Could not verify your points balance. Please try again shortly.',
+    };
+  }
+  if (requested > available) {
+    return {
+      success: false,
+      error: `Insufficient points: ${available} available, ${requested} requested.`,
+    };
+  }
+
   // --- Step 1: Create the discount code directly via Shopify Admin REST API ---
   let generatedCode: string;
+  // Kept so the rule can be removed again if the deduction does not land.
+  let createdPriceRuleId: number | string | null = null;
+  let adminCreds: {token: string; domain: string} | null = null;
   try {
     const { getAdminToken, getAdminDomain } = await import('~/lib/shopify-admin.server');
     const adminToken = await getAdminToken(env);
@@ -456,6 +567,8 @@ export async function redeemLoyaltyPoints({
     }
 
     const priceRuleId = priceRuleJson.price_rule.id;
+    createdPriceRuleId = priceRuleId;
+    adminCreds = {token: adminToken, domain: adminDomain};
 
     // Create the discount code under the price rule
     const codeRes = await fetch(
@@ -484,7 +597,35 @@ export async function redeemLoyaltyPoints({
     return { success: false, error: err?.message || 'Failed to create discount code' };
   }
 
-  // --- Step 2: Notify SDLP to deduct the points ---
+  /**
+   * --- Step 2: deduct the points, or take the discount back ---
+   *
+   * This used to return success whatever SDLP said, with a comment saying
+   * so: the discount was already created, and a failed deduction was only
+   * logged. The customer kept both the code and the points, and with SDLP
+   * returning intermittent 500s that happened on its own, no attacker
+   * needed. Now a deduction that does not confirm deletes the price rule,
+   * which invalidates the code, and reports failure.
+   */
+  const rollbackDiscount = async (reason: string) => {
+    console.warn('[Loyalty] Rolling back discount:', reason);
+    if (!createdPriceRuleId || !adminCreds) return;
+    try {
+      await fetch(
+        `https://${adminCreds.domain}/admin/api/2024-01/price_rules/${createdPriceRuleId}.json`,
+        {method: 'DELETE', headers: {'X-Shopify-Access-Token': adminCreds.token}},
+      );
+      console.log('[Loyalty] Rolled back price rule', createdPriceRuleId);
+    } catch (e: any) {
+      // Worth shouting about: a live code exists that nobody paid points for.
+      console.error(
+        '[Loyalty] ROLLBACK FAILED — unredeemed discount code is live:',
+        generatedCode,
+        e?.message || e,
+      );
+    }
+  };
+
   try {
     const url = `${sdlpAppUrl}/api/storefront/loyalty`;
     const payload: any = {
@@ -497,23 +638,33 @@ export async function redeemLoyaltyPoints({
 
     console.log('[SDLP Loyalty] POST deduct request:', url, payload);
 
+    // The GET side has always had a timeout; this one did not, so a hanging
+    // SDLP held the request open indefinitely.
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
     const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
       body: JSON.stringify(payload),
+      signal: controller.signal,
     });
+    clearTimeout(timeoutId);
 
-    const resData = (await res.json()) as any;
+    const resData = (await res.json().catch(() => ({}))) as any;
     console.log('[SDLP Loyalty] POST deduct response:', resData);
 
     // Invalidate cached loyalty info so the next query fetches updated balance
     const cacheKey = `${searchPhone || ''}_${resolvedCustomerId || ''}`.trim();
     LOYALTY_CACHE.delete(cacheKey);
 
-    // Return success regardless of SDLP response — the discount is already created in Shopify.
-    // If SDLP fails to deduct, log it but don't block the user.
     if (!res.ok || !resData?.success) {
-      console.warn('[SDLP Loyalty] Points deduction may have failed:', resData?.error);
+      await rollbackDiscount(
+        `SDLP deduction failed: ${resData?.error || res.status}`,
+      );
+      return {
+        success: false,
+        error: 'Could not redeem your points right now. Please try again shortly.',
+      };
     }
 
     return {
@@ -522,9 +673,11 @@ export async function redeemLoyaltyPoints({
       newBalance: resData?.newBalance,
     };
   } catch (err: any) {
-    // Even if SDLP call fails, the Shopify discount is already created — return success.
-    console.error('[SDLP Loyalty] Deduct POST failed (discount already created):', err);
-    return { success: true, discountCode: generatedCode };
+    await rollbackDiscount(`deduct request threw: ${err?.message || err}`);
+    return {
+      success: false,
+      error: 'Could not redeem your points right now. Please try again shortly.',
+    };
   }
 }
 

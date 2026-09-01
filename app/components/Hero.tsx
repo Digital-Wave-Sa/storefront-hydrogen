@@ -110,7 +110,7 @@ function HeroSlider({ locale }: { locale: string }) {
             <button
                 onClick={() => scroll(isEn ? 'right' : 'left')}
                 className={`absolute z-10 ${isEn ? 'right-4 md:right-10' : 'left-4 md:left-10'} top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white text-gray-800 w-12 h-12 rounded-full flex items-center justify-center shadow-lg border border-gray-100 transition-all opacity-0 group-hover:opacity-100`}
-                aria-label="Previous slide"
+                aria-label={isEn ? "Previous slide" : "الشريحة السابقة"}
             >
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={isEn ? "" : "rotate-180"}>
                     <path d="M9 18l6-6-6-6" />
@@ -120,7 +120,7 @@ function HeroSlider({ locale }: { locale: string }) {
             <button
                 onClick={() => scroll(isEn ? 'left' : 'right')}
                 className={`absolute z-10 ${isEn ? 'left-4 md:left-10' : 'right-4 md:right-10'} top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white text-gray-800 w-12 h-12 rounded-full flex items-center justify-center shadow-lg border border-gray-100 transition-all opacity-0 group-hover:opacity-100`}
-                aria-label="Next slide"
+                aria-label={isEn ? "Next slide" : "الشريحة التالية"}
             >
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={isEn ? "" : "rotate-180"}>
                     <path d="M15 18l-6-6 6-6" />

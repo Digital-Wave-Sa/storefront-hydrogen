@@ -28,19 +28,43 @@ export async function sendSMS({
   };
 
   try {
-    // Missing API URL Bypass
+    /**
+     * Delivery bypasses are development-only.
+     *
+     * Both of these used to run in every environment and return
+     * `{success: true}` without sending anything. A caller cannot tell a
+     * pretended send from a real one, so in production the OTP was never
+     * delivered while the login flow carried on as if it had — and the code
+     * the user was expected to type was a fixed one. Outside development a
+     * send that cannot happen now reports failure, so the caller shows an
+     * error instead of waiting for an SMS that is not coming.
+     */
+    const isDev = process.env.NODE_ENV === 'development';
+
     if (!env.SMS_API_URL) {
-      console.log(`[SMS BYPASS] Missing API URL. Pretending to send SMS to ${formattedPhone}.`);
-      console.log(`[SMS BYPASS] Message content: ${message}`);
-      return { success: true, result: 'dev-bypass' };
+      if (isDev) {
+        console.log(`[SMS DEV] No API URL configured. Pretending to send to ${formattedPhone}.`);
+        console.log(`[SMS DEV] Message content: ${message}`);
+        return { success: true, result: 'dev-bypass' };
+      }
+      console.error('[SMS] SMS_API_URL is not configured — cannot send.');
+      return { success: false, error: 'SMS service is not configured' };
     }
 
     // The current SMS API (saadeddinpastry) strictly rejects non-966 numbers.
-    // For international numbers, bypass the API so the user can use '0000' to login/register.
     if (!formattedPhone.startsWith('966')) {
-      console.log(`[SMS BYPASS] International number detected (${formattedPhone}). Pretending to send SMS.`);
-      console.log(`[SMS BYPASS] Message content: ${message}`);
-      return { success: true, result: 'intl-bypass' };
+      if (isDev) {
+        console.log(`[SMS DEV] International number (${formattedPhone}). Pretending to send.`);
+        console.log(`[SMS DEV] Message content: ${message}`);
+        return { success: true, result: 'intl-bypass' };
+      }
+      console.error(
+        `[SMS] Provider does not accept non-966 numbers; refusing to send to ${formattedPhone}.`,
+      );
+      return {
+        success: false,
+        error: 'SMS delivery is not available for this country code',
+      };
     }
 
     console.log('[SMS DEBUG] Sending to API:', {

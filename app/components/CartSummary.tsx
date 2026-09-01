@@ -2534,8 +2534,8 @@ function CartCalendarPicker({
               <span className="text-base leading-none">🕒</span>
               <div>
                 {isEn
-                  ? `${currentBranch?.name || 'This branch'} has no remaining ${isPickup ? 'pickup' : 'delivery'} times for this date. Please choose another day.`
-                  : `لا تتوفر أوقات ${isPickup ? 'استلام' : 'توصيل'} متبقية في ${currentBranch?.name || 'هذا الفرع'} لهذا التاريخ. يرجى اختيار يوم آخر.`}
+                  ? `This branch has no remaining ${isPickup ? 'pickup' : 'delivery'} times for this date. Please choose another day.`
+                  : `لا تتوفر أوقات ${isPickup ? 'استلام' : 'توصيل'} متبقية في هذا الفرع لهذا التاريخ. يرجى اختيار يوم آخر.`}
               </div>
             </div>
           )}

@@ -874,6 +874,73 @@ export async function action({request, context, params}: Route.ActionArgs) {
         ).filter(Boolean);
 
         result = await cart.updateDiscountCodes(discountCodes);
+
+        /**
+         * Tell the customer when the code did not take.
+         *
+         * `cartDiscountCodesUpdate` succeeds for a code that does not exist —
+         * Shopify simply does not apply it and returns 200. Everything above
+         * only produces an error for codes it recognises: an unknown code has no
+         * price rule, so that whole block is skipped, and the voucher check
+         * swallows its own failures. The action then returned a plain success
+         * with no `error`, the UI had nothing to render, and the field just sat
+         * there looking ignored.
+         *
+         * A code can also be real but not applicable — conditions unmet, expired,
+         * wrong customer. That is equally worth saying out loud.
+         */
+        if (formDiscountCode) {
+          const submitted = String(formDiscountCode).trim().toUpperCase();
+
+          /**
+           * Ask the cart, not the mutation.
+           *
+           * The `cartDiscountCodesUpdate` payload does not reliably carry
+           * `discountCodes`, so reading applicability off it reported a
+           * perfectly valid code as rejected — the error flashed for one render
+           * before the loader revalidated and showed the discount applied.
+           * `cart.get()` returns the authoritative cart.
+           */
+          type AppliedCode = {code: string; applicable: boolean};
+          let appliedCodes: AppliedCode[] | null = null;
+          try {
+            const verifyCart = await cart.get();
+            appliedCodes = (verifyCart?.discountCodes || []) as AppliedCode[];
+          } catch (verifyErr) {
+            console.error('[CART] Could not verify discount code:', verifyErr);
+          }
+
+          // Fail open: if the cart could not be re-read, never block a code that
+          // may well be valid. A missed message beats a rejected discount.
+          if (appliedCodes) {
+            const landed = appliedCodes.find(
+              (dc) => String(dc.code || '').trim().toUpperCase() === submitted,
+            );
+
+            if (!landed || !landed.applicable) {
+              // Don't leave a dud in the cart for the next request to trip on.
+              if (landed) {
+                try {
+                  await cart.updateDiscountCodes(
+                    appliedCodes.filter((dc) => dc.applicable).map((dc) => dc.code),
+                  );
+                } catch (revertErr) {
+                  console.error('[CART] Failed to drop invalid code:', revertErr);
+                }
+              }
+
+              return data(
+                {
+                  error: isEn
+                    ? `"${submitted}" is not a valid discount code, or it cannot be used with this order.`
+                    : `الكود "${submitted}" غير صحيح أو لا يمكن استخدامه مع هذا الطلب.`,
+                },
+                {status: 400},
+              );
+            }
+          }
+        }
+
         break;
       }
       case CartForm.ACTIONS.GiftCardCodesUpdate: {

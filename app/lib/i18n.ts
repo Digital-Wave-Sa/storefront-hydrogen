@@ -215,7 +215,7 @@ export const translations = {
             inStock: 'متوفر',
             reviews: 'مراجعة',
             quantity: 'الكمية',
-            addToCart: 'أضف إلي السلة',
+            addToCart: 'أضف إلى السلة',
             buyNow: 'إشتري الان',
             freeDelivery: 'توصيل مجاني للطلبات فوق ٣٠٠',
             installments: 'قسّط مع تمارا وتابي',

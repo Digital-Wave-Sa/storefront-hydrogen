@@ -234,7 +234,13 @@ button:disabled {
   box-shadow: 0 0 50px rgba(0, 0, 0, 0.3);
   height: 100vh;
   width: min(var(--aside-width), 100vw);
-  position: fixed;
+  /*
+   * Absolute, not fixed: a fixed element is positioned against the viewport and
+   * escapes the overlay's `overflow: hidden`, so it could still extend the page.
+   * `.overlay` is itself fixed and pinned to all four edges, so an absolutely
+   * positioned child lands in exactly the same place on screen — but is clipped.
+   */
+  position: absolute;
   right: 0;
   top: 0;
   transform: translateX(100%);
@@ -337,6 +343,16 @@ button:disabled {
   transition: opacity 400ms;
   visibility: hidden;
   z-index: 100;
+  /*
+   * Clip the drawer to the viewport.
+   *
+   * The closed panel is parked one full width to the right by a transform, and
+   * a transform DOES still contribute scrollable overflow — so the document grew
+   * past the screen and the only thing hiding it was `overflow-x: clip` on
+   * html/body. In an RTL layout that surplus shifts the whole page sideways,
+   * which is how a product page ended up rendered ~135px off to one side.
+   */
+  overflow: hidden;
 }
 
 .overlay .close-outside {
@@ -371,6 +387,55 @@ button:disabled {
   transform: translateX(0);
   visibility: visible;
   transition: transform 200ms ease-in-out, visibility 0s;
+}
+
+/*
+ * Merchant-authored description HTML ("rich text editor" content).
+ *
+ * Descriptions are pasted into Shopify from Word and Excel, which carry hard
+ * pixel widths with them — one product ships
+ * `<table width="487" style="width:365pt">` inside a 327px column. That table
+ * does not shrink, so on a phone it pushed ~160px past the container; in the
+ * RTL layout the surplus dragged the whole document sideways, which is why some
+ * product pages rendered offset with the header and nav clipped.
+ *
+ * Nothing here restyles the content — it only stops pasted fixed widths from
+ * escaping. A genuinely wide table scrolls inside its own box instead of
+ * breaking the page.
+ */
+.rte {
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.rte table,
+.rte col,
+.rte colgroup,
+.rte td,
+.rte th,
+.rte tr {
+  max-width: 100% !important;
+  width: auto !important;
+  height: auto !important;
+}
+
+.rte table {
+  table-layout: auto;
+  border-collapse: collapse;
+}
+
+.rte img,
+.rte video,
+.rte iframe {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Long unbroken strings — pasted URLs, SKUs — must not widen the column either. */
+.rte {
+  overflow-wrap: anywhere;
+  word-break: normal;
 }
 
 button.reset {

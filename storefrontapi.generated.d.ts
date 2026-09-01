@@ -6442,6 +6442,38 @@ export type GetCustomerIdQuery = {
   >;
 };
 
+export type I18nAuditProductsQueryVariables = StorefrontAPI.Exact<{
+  language?: StorefrontAPI.InputMaybe<StorefrontAPI.LanguageCode>;
+  country?: StorefrontAPI.InputMaybe<StorefrontAPI.CountryCode>;
+  cursor?: StorefrontAPI.InputMaybe<StorefrontAPI.Scalars['String']['input']>;
+}>;
+
+export type I18nAuditProductsQuery = {
+  products: {
+    nodes: Array<
+      Pick<StorefrontAPI.Product, 'id' | 'handle' | 'title'> & {
+        variants: {
+          nodes: Array<Pick<StorefrontAPI.ProductVariant, 'id' | 'title'>>;
+        };
+      }
+    >;
+    pageInfo: Pick<StorefrontAPI.PageInfo, 'hasNextPage' | 'endCursor'>;
+  };
+};
+
+export type I18nAuditCollectionsQueryVariables = StorefrontAPI.Exact<{
+  language?: StorefrontAPI.InputMaybe<StorefrontAPI.LanguageCode>;
+  country?: StorefrontAPI.InputMaybe<StorefrontAPI.CountryCode>;
+  cursor?: StorefrontAPI.InputMaybe<StorefrontAPI.Scalars['String']['input']>;
+}>;
+
+export type I18nAuditCollectionsQuery = {
+  collections: {
+    nodes: Array<Pick<StorefrontAPI.Collection, 'id' | 'handle' | 'title'>>;
+    pageInfo: Pick<StorefrontAPI.PageInfo, 'hasNextPage' | 'endCursor'>;
+  };
+};
+
 export type CustomerAddressesForLocationIdQueryVariables = StorefrontAPI.Exact<{
   customerAccessToken: StorefrontAPI.Scalars['String']['input'];
 }>;
@@ -6909,6 +6941,14 @@ interface GeneratedQueryTypes {
   '#graphql\n            query getCustomerId($customerAccessToken: String!) {\n              customer(customerAccessToken: $customerAccessToken) {\n                id\n                email\n                phone\n              }\n            }\n          ': {
     return: GetCustomerIdQuery;
     variables: GetCustomerIdQueryVariables;
+  };
+  '#graphql\n  query i18nAuditProducts($language: LanguageCode, $country: CountryCode, $cursor: String)\n  @inContext(language: $language, country: $country) {\n    products(first: 250, after: $cursor) {\n      nodes {\n        id\n        handle\n        title\n        variants(first: 100) {\n          nodes {\n            id\n            title\n          }\n        }\n      }\n      pageInfo {\n        hasNextPage\n        endCursor\n      }\n    }\n  }\n': {
+    return: I18nAuditProductsQuery;
+    variables: I18nAuditProductsQueryVariables;
+  };
+  '#graphql\n  query i18nAuditCollections($language: LanguageCode, $country: CountryCode, $cursor: String)\n  @inContext(language: $language, country: $country) {\n    collections(first: 250, after: $cursor) {\n      nodes {\n        id\n        handle\n        title\n      }\n      pageInfo {\n        hasNextPage\n        endCursor\n      }\n    }\n  }\n': {
+    return: I18nAuditCollectionsQuery;
+    variables: I18nAuditCollectionsQueryVariables;
   };
   '#graphql\n                          query CustomerAddressesForLocationId($customerAccessToken: String!) {\n                            customer(customerAccessToken: $customerAccessToken) {\n                              addresses(first: 250) {\n                                nodes {\n                                  id\n                                  firstName\n                                  lastName\n                                  address1\n                                  address2\n                                  city\n                                  country\n                                  phone\n                                }\n                              }\n                            }\n                          }\n                        ': {
     return: CustomerAddressesForLocationIdQuery;

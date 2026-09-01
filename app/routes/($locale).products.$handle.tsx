@@ -769,6 +769,36 @@ export default function Product() {
   const [companyLogoName, setCompanyLogoName] = useState('');
   const [companyMessage, setCompanyMessage] = useState('');
 
+  /**
+   * Whether this add needs a `_groupId` stamp.
+   *
+   * `_groupId` ties a line to the companion lines added alongside it — add-ons
+   * and the BOGO free item — and it is a fresh timestamp on every click.
+   *
+   * Shopify merges two cart lines only when their merchandise *and* their
+   * attributes match, so stamping it on a plain product meant the same product
+   * added twice became two lines of quantity 1 rather than one line of
+   * quantity 2 — the cart page showed the split while the drawer's optimistic
+   * guess showed the merge (DEF-001).
+   *
+   * So only stamp it when the add actually produces companion lines or carries
+   * per-add configuration. Every one of those cases behaves exactly as before;
+   * only the plain single-line add changes, and it changes to merging.
+   */
+  const productIsBogo =
+    product.tags?.some((t: string) => t.toLowerCase().includes('bogo')) ||
+    false;
+  const needsGroupId =
+    selectedAddons.length > 0 ||
+    productIsBogo ||
+    (isBundle && bundleComponents.length > 0) ||
+    Boolean(cakeMessage) ||
+    isGiftMode ||
+    Boolean(note) ||
+    Boolean(companyName) ||
+    Boolean(companyLogoName) ||
+    Boolean(companyMessage);
+
   const isCakeProduct =
     product.productType?.toLowerCase().includes('cake') ||
     product.tags?.some((t: string) => t.toLowerCase().includes('cake')) ||
@@ -869,7 +899,7 @@ export default function Product() {
         merchandiseId: selectedVariant.id,
         quantity,
         attributes: [
-          {key: '_groupId', value: groupId},
+          ...(needsGroupId ? [{key: '_groupId', value: groupId}] : []),
           ...(isBundle && bundleComponents.length > 0
             ? [
                 {
@@ -1898,7 +1928,17 @@ export default function Product() {
               {/* Loyalty points earned by buying this product */}
               {loyaltyPointsEarned > 0 && (
                 <div
-                  className={`absolute top-1/2 -translate-y-1/2 ${isEn ? 'right-[24px]' : 'left-[24px]'} bg-[#234745] rounded-full px-[18px] py-[10px] flex items-center gap-[10px] shadow-sm ${
+                  /*
+                   * In flow on small screens, pinned on large ones.
+                   *
+                   * The pill was absolutely positioned and vertically centred so
+                   * it would sit in the empty half of the wide desktop card. On
+                   * a phone that card is only ~343px, so the 151px pill landed
+                   * on top of the price and the VAT line. Below `md` it is now a
+                   * normal block under the price, hugging the same edge it
+                   * occupies on desktop.
+                   */
+                  className={`mt-[12px] self-end md:mt-0 md:self-auto md:absolute md:top-1/2 md:-translate-y-1/2 ${isEn ? 'md:right-[24px]' : 'md:left-[24px]'} bg-[#234745] rounded-full px-[18px] py-[10px] flex items-center gap-[10px] shadow-sm ${
                     isEn ? 'flex-row-reverse' : 'flex-row'
                   }`}
                 >
@@ -2990,7 +3030,9 @@ export default function Product() {
                                   quantity,
                                   selectedVariant,
                                   attributes: [
-                                    {key: '_groupId', value: groupId},
+                                    ...(needsGroupId
+                                      ? [{key: '_groupId', value: groupId}]
+                                      : []),
                                     ...(isBundle && bundleComponents.length > 0
                                       ? [
                                           {
@@ -3169,7 +3211,7 @@ export default function Product() {
                                 lineHeight: '20px',
                               }}
                             >
-                              {isEn ? 'Add to Cart' : 'أضف إلي السلة'}
+                              {isEn ? 'Add to Cart' : 'أضف إلى السلة'}
                             </span>
                           </>
                         )}
@@ -3590,7 +3632,9 @@ export default function Product() {
                                     quantity,
                                     selectedVariant,
                                     attributes: [
-                                      {key: '_groupId', value: groupId},
+                                      ...(needsGroupId
+                                        ? [{key: '_groupId', value: groupId}]
+                                        : []),
                                       ...(isBundle &&
                                       bundleComponents.length > 0
                                         ? [
@@ -3776,7 +3820,7 @@ export default function Product() {
                                   lineHeight: '100%',
                                 }}
                               >
-                                {isEn ? 'Add to Cart' : 'أضف للسلة'}
+                                {isEn ? 'Add to Cart' : 'أضف إلى السلة'}
                               </span>
                             </span>
                           )}
@@ -4176,7 +4220,7 @@ export default function Product() {
               {activeTab === 'details' ? (
                 <div className="w-full">
                   <div
-                    className="text-[#171717] leading-[24px] font-normal text-[16px] mb-[20px] [&>p]:mb-[16px] last:[&>p]:mb-0"
+                    className="rte text-[#171717] leading-[24px] font-normal text-[16px] mb-[20px] [&>p]:mb-[16px] last:[&>p]:mb-0"
                     style={{
                       fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
                     }}
@@ -4292,7 +4336,7 @@ export default function Product() {
               {activeTab === 'details' ? (
                 <div className="w-full flex flex-col gap-4 text-center">
                   <div
-                    className="text-[#171717] font-bold text-[15px] sm:text-[16px] leading-[28px] [&>p]:mb-4 last:[&>p]:mb-0"
+                    className="rte text-[#171717] font-bold text-[15px] sm:text-[16px] leading-[28px] [&>p]:mb-4 last:[&>p]:mb-0"
                     style={{
                       fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
                     }}

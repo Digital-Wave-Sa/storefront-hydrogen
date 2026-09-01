@@ -495,9 +495,11 @@ export function CartLineItem({
             <span style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", fontWeight: 500, fontSize: '16px', lineHeight: '20px', color: '#171717' }}>
               {product?.title || title}
             </span>
-            {/* "لم يعد متاحاً" */}
+            {/* "لم يعد متاحاً في هذا الفرع" */}
             <span style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", fontWeight: 700, fontSize: '16px', lineHeight: '20px', color: '#E64950' }}>
-              {isEn ? 'No longer available' : 'لم يعد متاحاً'}
+              {isEn
+                ? 'No longer available at this branch'
+                : 'لم يعد متاحاً في هذا الفرع'}
             </span>
           </div>
 

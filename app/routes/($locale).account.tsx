@@ -128,12 +128,40 @@ export async function loader({request, context}: LoaderFunctionArgs) {
 
     const walletPromise = fetchWalletData({customer, request, context});
 
+    /**
+     * Lifetime totals, counted the same way the orders page counts them.
+     *
+     * `customer.numberOfOrders` covers only some order states — it said 10
+     * for a customer whose own orders list shows 104 — and the orders here
+     * are a single capped page, so summing them under-reports spend. Both
+     * tiles are numbers the shopper can check against their order list, so
+     * they have to be counted from the same place it is.
+     */
+    const {fetchCustomerOrderStats} = await import('~/lib/order-stats.server');
+    const orderStats = await fetchCustomerOrderStats({
+      env: context.env,
+      customerId: customer.id,
+      phone: customer.phone,
+      email: customer.email,
+    });
+
+    // Leave the existing values in place when the lookup fails, rather than
+    // replacing a wrong number with a confidently wrong zero.
+    const customerWithStats = orderStats
+      ? {
+          ...customer,
+          numberOfOrders: orderStats.orderCount,
+          totalSpent: orderStats.totalSpent,
+          orderStatsCapped: orderStats.capped,
+        }
+      : customer;
+
     return data(
       {
         isLoggedIn,
         isPrivateRoute,
         isAccountHome,
-        customer,
+        customer: customerWithStats,
         isAdmin,
         googleMapsKey: context.env.PUBLIC_GOOGLE_MAPS_KEY,
         walletPromise,
@@ -192,7 +220,7 @@ export async function loader({request, context}: LoaderFunctionArgs) {
           try {
             const encodedPhone = encodeURIComponent(savedPhone);
             let res = await fetch(
-              `https://${adminDomain}/admin/api/2024-01/customers/search.json?query=phone:"${encodedPhone}"&fields=id,email,phone,first_name,last_name,default_address,addresses`,
+              `https://${adminDomain}/admin/api/2024-01/customers/search.json?query=phone:"${encodedPhone}"&fields=id,email,phone,first_name,last_name,default_address,addresses,orders_count,total_spent`,
               {
                 headers: {'X-Shopify-Access-Token': adminToken},
               },
@@ -204,7 +232,9 @@ export async function loader({request, context}: LoaderFunctionArgs) {
                 const cp = (c.phone || '').replace(/\D/g, '');
                 const sp = savedPhone.replace(/\D/g, '');
                 if (!cp || !sp) return false;
-                return cp === sp || cp.endsWith(sp.slice(-9));
+                // Exact only: a last-9-digit match can land on a
+                // different customer and render their account.
+                return cp === sp;
               });
             }
             
@@ -212,7 +242,7 @@ export async function loader({request, context}: LoaderFunctionArgs) {
               const rawDigits = savedPhone.replace(/\D/g, '');
               const last9 = rawDigits.slice(-9);
               res = await fetch(
-                `https://${adminDomain}/admin/api/2024-01/customers/search.json?query=${encodeURIComponent(last9)}&fields=id,email,phone,first_name,last_name,default_address,addresses`,
+                `https://${adminDomain}/admin/api/2024-01/customers/search.json?query=${encodeURIComponent(last9)}&fields=id,email,phone,first_name,last_name,default_address,addresses,orders_count,total_spent`,
                 {
                   headers: {'X-Shopify-Access-Token': adminToken},
                 },
@@ -222,10 +252,9 @@ export async function loader({request, context}: LoaderFunctionArgs) {
                 adminCust = (data.customers || []).find((c: any) => {
                   const cp = (c.phone || '').replace(/\D/g, '');
                   const sp = savedPhone.replace(/\D/g, '');
-                  // Require an exact match on at least the last 9 digits (local number)
-                  // Or exact match on the full normalized string
                   if (!cp || !sp) return false;
-                  return cp === sp || cp.endsWith(last9);
+                  // Exact only — see above.
+                  return cp === sp;
                 });
               }
             }
@@ -264,7 +293,7 @@ export async function loader({request, context}: LoaderFunctionArgs) {
       if (adminCust?.id && adminToken && adminDomain) {
         try {
           const ordersRes = await fetch(
-            `https://${adminDomain}/admin/api/2024-01/customers/${adminCust.id}/orders.json?status=any`,
+            `https://${adminDomain}/admin/api/2024-01/customers/${adminCust.id}/orders.json?status=any&limit=250`,
             {
               headers: {'X-Shopify-Access-Token': adminToken},
             },
@@ -321,19 +350,61 @@ export async function loader({request, context}: LoaderFunctionArgs) {
         }
       }
 
+      /**
+       * Shopify's own totals, not what we happened to fetch.
+       *
+       * This used to be `mappedOrders.length || adminCust?.orders_count`,
+       * so the fetched page size won whenever any order came back — the
+       * dashboard read "50 Orders" for a customer with 104, because the
+       * REST orders endpoint returns 50 by default. `orders_count` and
+       * `total_spent` are lifetime figures and are unaffected by paging.
+       */
+      /**
+       * Same lifetime figures as the primary path, counted from the orders
+       * themselves. This used to be `mappedOrders.length`, so the REST page
+       * size (50) was reported as the customer's order count.
+       */
+      const {fetchCustomerOrderStats} = await import('~/lib/order-stats.server');
+      const orderStats = await fetchCustomerOrderStats({
+        env: context.env,
+        customerId: adminCust?.id ? String(adminCust.id) : null,
+        phone: adminCust?.phone || savedPhone,
+        email: adminCust?.email || savedEmail,
+      });
+
       const realOrderCount =
-        mappedOrders.length || adminCust?.orders_count || 0;
+        orderStats?.orderCount ??
+        (Number(adminCust?.orders_count) || mappedOrders.length || 0);
+      const realTotalSpent =
+        orderStats?.totalSpent ??
+        (adminCust?.total_spent != null
+          ? parseFloat(String(adminCust.total_spent))
+          : null);
+
+      /**
+       * If Shopify could not tell us who this is, say so.
+       *
+       * This used to synthesise a customer — id 123456789, name
+       * "Customer", customer@saadeddin.top, +966500000000 — and render
+       * it as the signed-in account, so a failed lookup looked like a
+       * working page belonging to someone who does not exist.
+       */
+      if (!adminCust?.id) {
+        console.error(
+          '[Account Loader] Could not resolve the signed-in customer from either API.',
+        );
+        throw new Response('Account temporarily unavailable', {status: 503});
+      }
 
       const fallbackCustomer = {
-        id: adminCust
-          ? `gid://shopify/Customer/${adminCust.id}`
-          : 'gid://shopify/Customer/123456789',
-        firstName: adminCust?.first_name || 'Customer',
-        lastName: adminCust?.last_name || '',
-        email: adminCust?.email || savedEmail || 'customer@saadeddin.top',
-        phone: adminCust?.phone || savedPhone || '+966500000000',
+        id: `gid://shopify/Customer/${adminCust.id}`,
+        firstName: adminCust.first_name || '',
+        lastName: adminCust.last_name || '',
+        email: adminCust.email || savedEmail || '',
+        phone: adminCust.phone || savedPhone || '',
         tags,
         numberOfOrders: realOrderCount,
+        totalSpent: realTotalSpent,
         orders: {nodes: mappedOrders},
         addresses: {
           nodes: (adminAddresses.length > 0
@@ -894,6 +965,14 @@ export const CUSTOMER_FRAGMENT = `#graphql
               image {
                 url
                 altText
+              }
+              # Most products carry artwork at product level only, so a
+              # variant image alone leaves the order thumbnail empty.
+              product {
+                featuredImage {
+                  url
+                  altText
+                }
               }
             }
           }

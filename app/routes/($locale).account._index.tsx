@@ -3,9 +3,31 @@ import {useOutletContext, Link, useLocation, Await, Form} from 'react-router';
 import type {CustomerFragment} from 'storefrontapi.generated';
 import {useWishlist} from '~/context/WishlistContext';
 import {SaudiRiyalSymbol} from '~/components/Price';
+import {getLoyaltyTierInfo} from '~/lib/loyalty-tiers';
 import {checkIsPickupOrder} from './($locale).account.orders._index';
 
 // Currency SVG Icon provided by user
+/**
+ * Shown when nothing in the order has artwork — a gift card or a custom
+ * item, say. Deliberately a neutral mark rather than a photo of some other
+ * product: the customer reads this card as "what I ordered".
+ */
+const OrderThumbPlaceholder = ({className}: {className?: string}) => (
+  <svg
+    className={className}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="#9FB7AE"
+    strokeWidth="1.7"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
+    <path d="M6 2h12l1.5 4.2A3 3 0 0 1 17 10.3V20a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2v-9.7A3 3 0 0 1 4.5 6.2L6 2Z" />
+    <path d="M9.5 2v3.5M14.5 2v3.5" />
+  </svg>
+);
+
 const CurrencyIcon = ({className}: {className?: string}) => (
   <svg
     viewBox="0 0 1124.14 1256.39"
@@ -31,10 +53,22 @@ export default function AccountDashboard() {
   const searchParams = new URLSearchParams(location.search);
   const showOverviewOnMobile = searchParams.get('view') === 'overview';
 
+  /**
+   * Lifetime spend, from Shopify's `total_spent` where we have it.
+   *
+   * Summing `orders.nodes` is only ever the spend of the orders that were
+   * fetched — at most one page — so on an account with more orders than
+   * the page size it silently under-reports, and drifts as new orders push
+   * old ones out of the window. The sum stays as a fallback for the path
+   * that has no lifetime figure, where every order is present anyway.
+   */
+  const lifetimeSpend = (customer as any)?.totalSpent;
   const totalSpending =
-    customer?.orders?.nodes?.reduce((acc, order) => {
-      return acc + parseFloat(order.currentTotalPrice?.amount || '0');
-    }, 0) || 0;
+    typeof lifetimeSpend === 'number' && Number.isFinite(lifetimeSpend)
+      ? lifetimeSpend
+      : customer?.orders?.nodes?.reduce((acc, order) => {
+          return acc + parseFloat(order.currentTotalPrice?.amount || '0');
+        }, 0) || 0;
 
   const bottomLinks = [
     {
@@ -72,14 +106,18 @@ export default function AccountDashboard() {
           const points = wallet?.loyaltyPoints || 0;
           const history = wallet?.history || [];
 
-          // Simple level logic for demonstration
-          const nextLevelThreshold =
-            points < 1000 ? 1000 : points < 5000 ? 5000 : 10000;
-          const remainingPoints = Math.max(0, nextLevelThreshold - points);
-          const progressPercent = Math.min(
-            100,
-            (points / nextLevelThreshold) * 100,
-          );
+          /**
+           * Progress from the real tier table, not an ad-hoc ladder.
+           *
+           * This was labelled "for demonstration" and used its own
+           * 1000/5000/10000 thresholds, so the progress bar disagreed
+           * with the tier badge rendered from getLoyaltyTierInfo a few
+           * elements above it on the same screen.
+           */
+          const dashTierInfo = getLoyaltyTierInfo(points);
+          const remainingPoints = dashTierInfo.pointsToNextTier ?? 0;
+          const progressPercent = dashTierInfo.progressPercent ?? 0;
+          const nextLevelThreshold = points + remainingPoints;
 
           // 1. Mobile Directory Layout
           const mobileDirectory = (
@@ -384,10 +422,15 @@ export default function AccountDashboard() {
                 {/* Total Orders */}
                 <div className="bg-white border border-[#9FB7AE] rounded-[12px] py-8 px-4 flex flex-col items-center justify-center text-center gap-2">
                   <span className="text-[28px] md:text-[34px] font-bold text-[#234745] leading-none font-en">
-                    {Math.max(
-                      Number(customer?.numberOfOrders) || 0,
-                      customer?.orders?.nodes?.length || 0
-                    )}
+                    {/*
+                      * `numberOfOrders` is the lifetime count. This was
+                      * `Math.max(numberOfOrders, orders.nodes.length)`, which
+                      * let a capped page of orders win and reported the page
+                      * size as the customer's order count.
+                      */}
+                    {Number(customer?.numberOfOrders) ||
+                      customer?.orders?.nodes?.length ||
+                      0}
                   </span>
                   <p
                     className="text-[14px] text-[#A6BFB9] font-medium"
@@ -409,11 +452,37 @@ export default function AccountDashboard() {
               {customer?.orders?.nodes?.[0] &&
                 (() => {
                   const lastOrder = customer.orders.nodes[0];
-                  const productCount = lastOrder.lineItems?.nodes?.length || 0;
-                  const firstItem = lastOrder.lineItems?.nodes?.[0];
-                  const imageUrl =
-                    firstItem?.variant?.image?.url ||
-                    'https://cdn.shopify.com/s/files/1/0809/4209/4648/files/cake-slice.jpg?v=1710400000';
+                  const lineItemNodes: any[] = lastOrder.lineItems?.nodes || [];
+                  const productCount = lineItemNodes.length;
+                  const firstItem = lineItemNodes[0];
+
+                  /**
+                   * A real photo of something in this order, or nothing.
+                   *
+                   * Two things were wrong here. The image was taken from
+                   * line item 0 and only from `variant.image`, but most
+                   * products carry artwork at product level and the first
+                   * item is often a gift card with no image at all — so it
+                   * usually resolved to nothing. And 'nothing' fell through
+                   * to a stock cake photo hosted on a different store's CDN,
+                   * which 404s: hence the broken-image icon, and a picture
+                   * of a product the customer never ordered.
+                   *
+                   * Now: the first item that actually has artwork, product
+                   * image included, and a neutral placeholder when none does.
+                   */
+                  const lineItemImage = (li: any) =>
+                    li?.variant?.image?.url ||
+                    li?.variant?.product?.featuredImage?.url ||
+                    null;
+                  const imageItem =
+                    lineItemNodes.find((li) => lineItemImage(li)) || firstItem;
+                  const imageUrl = lineItemImage(imageItem);
+                  const imageAlt =
+                    imageItem?.variant?.image?.altText ||
+                    imageItem?.variant?.product?.featuredImage?.altText ||
+                    imageItem?.title ||
+                    (isEn ? 'Product' : 'منتج');
                   const totalAmount =
                     lastOrder.currentTotalPrice?.amount || '0.00';
                   const trackOrderNumber =
@@ -674,15 +743,16 @@ export default function AccountDashboard() {
 
                           {/* Product Image Thumbnail (Right Side) */}
                           <div className="relative flex-shrink-0 w-[82px] h-[82px] rounded-[16px] bg-[#F8FAF9] border border-gray-100 flex items-center justify-center">
-                            <img
-                              src={imageUrl}
-                              alt={firstItem?.title || 'Product'}
-                              className="w-full h-full rounded-[16px] object-cover"
-                              onError={(e) => {
-                                (e.currentTarget as HTMLImageElement).src =
-                                  'https://cdn.shopify.com/s/files/1/0533/2089/files/placeholder-images-image_large.png';
-                              }}
-                            />
+                            {imageUrl ? (
+                              <img
+                                src={imageUrl}
+                                alt={imageAlt}
+                                loading="lazy"
+                                className="w-full h-full rounded-[16px] object-cover"
+                              />
+                            ) : (
+                              <OrderThumbPlaceholder className="w-7 h-7" />
+                            )}
                             <div className="absolute -top-2 -left-2 w-6 h-6 bg-[#234745] text-white rounded-full flex items-center justify-center text-[12px] font-bold border-2 border-white font-en shadow-xs z-10">
                               {productCount.toLocaleString('en-US')}
                             </div>
@@ -758,15 +828,18 @@ export default function AccountDashboard() {
                           {/* Order Details (Right side in RTL) */}
                           <div className="flex items-center gap-4 text-start">
                             <div className="relative flex-shrink-0">
-                              <img
-                                src={imageUrl}
-                                alt={firstItem?.title || 'Product'}
-                                className="w-16 h-16 md:w-20 md:h-20 rounded-[12px] object-cover border border-gray-100"
-                                onError={(e) => {
-                                  (e.currentTarget as HTMLImageElement).src =
-                                    'https://cdn.shopify.com/s/files/1/0533/2089/files/placeholder-images-image_large.png';
-                                }}
-                              />
+                              {imageUrl ? (
+                                <img
+                                  src={imageUrl}
+                                  alt={imageAlt}
+                                  loading="lazy"
+                                  className="w-16 h-16 md:w-20 md:h-20 rounded-[12px] object-cover border border-gray-100"
+                                />
+                              ) : (
+                                <div className="w-16 h-16 md:w-20 md:h-20 rounded-[12px] border border-gray-100 bg-[#F8FAF9] flex items-center justify-center">
+                                  <OrderThumbPlaceholder className="w-7 h-7" />
+                                </div>
+                              )}
                               <div className="absolute -top-2 -start-2 w-6 h-6 bg-[#234745] text-white rounded-full flex items-center justify-center text-[11px] font-bold border-2 border-white font-en">
                                 {productCount.toLocaleString('en-US')}
                               </div>

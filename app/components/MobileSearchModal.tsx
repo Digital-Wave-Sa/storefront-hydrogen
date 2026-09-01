@@ -11,6 +11,43 @@ export function MobileSearchModal({ locale }: { locale: string }) {
 
   const isOpen = type === 'search';
 
+  /**
+   * Height of the area the browser is actually showing.
+   *
+   * The panel was `h-[100dvh]` with the submit button pinned to the
+   * bottom via `mt-auto`. Opening the panel focuses the input, which
+   * raises the on-screen keyboard — and `dvh` does not shrink for the
+   * keyboard on iOS Safari, so the button stayed at the bottom of the
+   * full-height panel, roughly 300px underneath it. Enter worked because
+   * that key is on the keyboard covering the button.
+   *
+   * `visualViewport` is the one measurement that does track the keyboard.
+   */
+  const [viewportHeight, setViewportHeight] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!isOpen || typeof window === 'undefined' || !window.visualViewport) {
+      return;
+    }
+    const vv = window.visualViewport;
+    const sync = () => setViewportHeight(vv.height);
+    sync();
+    vv.addEventListener('resize', sync);
+    vv.addEventListener('scroll', sync);
+    return () => {
+      vv.removeEventListener('resize', sync);
+      vv.removeEventListener('scroll', sync);
+    };
+  }, [isOpen]);
+
+  /** Both the button and the Enter key go through here. */
+  const submitSearch = () => {
+    const term = query.trim();
+    if (!term) return;
+    navigate((isEn ? '/en/search?q=' : '/search?q=') + encodeURIComponent(term));
+    close();
+  };
+
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
@@ -39,7 +76,12 @@ export function MobileSearchModal({ locale }: { locale: string }) {
   if (!isOpen) return null;
 
   return (
-    <div className={`fixed top-0 left-0 w-full h-[100dvh] z-[100] bg-white flex flex-col p-4 md:p-6 animate-in slide-in-from-bottom-4 fade-in duration-300 ${isEn ? 'font-en' : 'font-ar'}`} dir={isEn ? 'ltr' : 'rtl'}>
+    <div
+      className={`fixed top-0 left-0 w-full h-[100dvh] z-[100] bg-white flex flex-col p-4 md:p-6 animate-in slide-in-from-bottom-4 fade-in duration-300 ${isEn ? 'font-en' : 'font-ar'}`}
+      // Falls back to the CSS height when visualViewport is unavailable.
+      style={viewportHeight ? {height: `${viewportHeight}px`} : undefined}
+      dir={isEn ? 'ltr' : 'rtl'}
+    >
       {/* Top Bar */}
       <div className="flex items-center gap-3 w-full">
          <div className="flex-1 flex items-center bg-[#f8f5f2] rounded-full px-4 py-3.5 gap-3">
@@ -50,11 +92,9 @@ export function MobileSearchModal({ locale }: { locale: string }) {
              value={query}
              onChange={(e) => setQuery(e.target.value)}
              onKeyDown={(e) => {
-               if (e.key === 'Enter' && query.trim()) {
-                 navigate((isEn ? "/en/search?q=" : "/search?q=") + encodeURIComponent(query.trim()));
-                 close();
-               }
+               if (e.key === 'Enter') submitSearch();
              }}
+             enterKeyHint="search"
              placeholder={isEn ? "What are you looking for?" : "عن ماذا تبحث؟"}
              className="w-full bg-transparent outline-none border-none ring-0 p-0 text-[#234745] placeholder:text-gray-400 font-medium text-[15px]"
            />
@@ -70,12 +110,14 @@ export function MobileSearchModal({ locale }: { locale: string }) {
 
       {/* Bottom Fixed Button */}
       <div className="mt-auto pb-4 pt-2">
-         <button 
-           onClick={() => {
-             if (query.trim()) {
-               navigate((isEn ? "/en/search?q=" : "/search?q=") + encodeURIComponent(query.trim()));
-               close();
-             }
+         <button
+           type="button"
+           // pointer-down, not click: tapping blurs the input first, which
+           // dismisses the keyboard and moves the button out from under the
+           // finger before the click lands.
+           onPointerDown={(e) => {
+             e.preventDefault();
+             submitSearch();
            }}
            className="w-full bg-[#234745] text-white py-4 rounded-[2rem] font-bold flex items-center justify-center gap-2 text-[16px] shadow-lg active:scale-[0.98] transition-all disabled:opacity-50"
            disabled={!query.trim()}

@@ -3,7 +3,8 @@ import { Image } from '@shopify/hydrogen';
 import { useState, useEffect, useMemo } from 'react';
 import { useVariantUrl } from '~/utils';
 import { useI18n } from '~/lib/i18n';
-import { getIsOutOfStock, isCorporateProduct } from '~/lib/stock';
+import { getIsOutOfStock, isCorporateProduct, isOutOfStockAtBranch, findBranchLocation } from '~/lib/stock';
+import { useBranchAvailability } from '~/lib/useBranchAvailability';
 import { getVisibilityStatus } from '~/lib/visibility';
 import { Price } from '~/components/Price';
 import { AddToCartButton } from '~/components/AddToCartButton';
@@ -95,13 +96,38 @@ export function ProductItem({
 
   const storeAvailabilityNodes = variant?.storeAvailability?.nodes || [];
   const variantAvailable = variant?.availableForSale ?? product.availableForSale ?? true;
-  const isOutOfStock = getIsOutOfStock(
-    // Export products ship from central stock — bypass branch check
-    isExport ? null : selectedLocationId,
-    isExport ? null : selectedLocationName,
-    storeAvailabilityNodes,
-    variantAvailable
+
+  /**
+   * Real stock at the chosen branch, from Shopify's inventory levels.
+   *
+   * `storeAvailability` (still the fallback below) only lists locations with
+   * local pickup enabled, and is empty for many products — at which point the
+   * old check reduced to the global availableForSale flag and every card
+   * offered Add to Cart at every branch, including ones holding none of it.
+   *
+   * Requests from all the cards on a page are batched into one call.
+   */
+  const allLocations =
+    rootData?.locations?.locations?.nodes || rootData?.locations?.nodes || [];
+  const resolvedBranch = isExport
+    ? undefined
+    : findBranchLocation(allLocations, selectedLocationId, selectedLocationName);
+  const {availability: branchStock} = useBranchAvailability(
+    variant?.id ? [variant.id] : [],
+    resolvedBranch?.id,
   );
+  const inventoryVerdict = isOutOfStockAtBranch(branchStock[variant?.id]);
+
+  const isOutOfStock =
+    inventoryVerdict !== null
+      ? inventoryVerdict
+      : getIsOutOfStock(
+          // Export products ship from central stock — bypass branch check
+          isExport ? null : selectedLocationId,
+          isExport ? null : selectedLocationName,
+          storeAvailabilityNodes,
+          variantAvailable,
+        );
   const isAvailable = !isOutOfStock && !!variant;
 
   if (isCorporateProduct(product) && !isCorporatePage) {
@@ -326,7 +352,11 @@ export function ProductItem({
                   priceRange: product.priceRange
                 });
               }}
-              aria-label={isWishlisted ? "Remove from Wishlist" : "Add to Wishlist"}
+              aria-label={
+                isWishlisted
+                  ? isEn ? "Remove from Wishlist" : "إزالة من المفضلة"
+                  : isEn ? "Add to Wishlist" : "إضافة إلى المفضلة"
+              }
               className={`w-7 h-7 md:w-10 md:h-10 p-0 rounded-full bg-white shadow-md transition-all flex items-center justify-center ${isWishlisted ? 'text-[#e74c3c]' : 'text-gray-700 hover:text-[#e74c3c]'}`}
             >
               <svg className="w-3.5 h-3.5 md:w-5 md:h-5" viewBox="0 0 24 24" fill={isWishlisted ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.5"><path d="M20.8 4.6a5.5 5.5 0 00-7.7 0l-1.1 1-1.1-1a5.5 5.5 0 00-7.8 7.8l1 1 7.9 7.9 7.9-7.9 1-1a5.5 5.5 0 000-7.8z" /></svg>
@@ -414,7 +444,7 @@ export function ProductItem({
               className="w-full h-[40px] md:h-[44px] px-2 md:px-4 flex items-center justify-center rounded-full font-bold text-[12px] md:text-[15px] bg-[#234745] text-white hover:bg-[#163529] shadow-sm transition-all duration-300 active:scale-95"
               style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
             >
-              {t.common.addToCart}
+              {isEn ? 'Add to Cart' : 'أضف إلى السلة'}
             </AddToCartButton>
           ) : (
             <button

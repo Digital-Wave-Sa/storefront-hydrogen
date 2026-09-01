@@ -6,6 +6,7 @@ import {
   useState,
 } from 'react';
 import {useId} from 'react';
+import {useLocation} from 'react-router';
 
 type AsideType = 'search' | 'cart' | 'mobile' | 'closed';
 type AsideContextValue = {
@@ -33,6 +34,8 @@ export function Aside({
   type: AsideType;
   heading: React.ReactNode;
 }) {
+  const {pathname} = useLocation();
+  const isEn = pathname.startsWith('/en');
   const {type: activeType, close} = useAside();
   const expanded = type === activeType;
   const id = useId();
@@ -83,7 +86,7 @@ export function Aside({
           <button 
             className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-[#f8f5f2] transition-colors text-[#234745] shrink-0" 
             onClick={close} 
-            aria-label="Close"
+            aria-label={isEn ? 'Close' : 'إغلاق'}
           >
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>

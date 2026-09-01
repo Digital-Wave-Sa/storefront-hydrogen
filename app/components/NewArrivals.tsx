@@ -1,11 +1,12 @@
-import { Await, Link, useOutletContext } from 'react-router';
+import { Await, Link, useOutletContext, useRouteLoaderData } from 'react-router';
 import { Suspense, useEffect, useId, useState } from 'react';
 import { Image, Money } from '@shopify/hydrogen';
 import { Price } from './Price';
 import { useI18n } from '~/lib/i18n';
 import { useAside } from '~/components/Aside';
 import { getVisibilityStatus } from '~/lib/visibility';
-import { getIsOutOfStock, shouldHideProduct } from '~/lib/stock';
+import { getIsOutOfStock, shouldHideProduct, isOutOfStockAtBranch, findBranchLocation } from '~/lib/stock';
+import { useBranchAvailabilityReader } from '~/lib/useBranchAvailability';
 import { AddToCartButton } from './AddToCartButton';
 import { StockNotificationModal } from '~/components/StockNotificationModal';
 import { StarRating, parseRatingValue } from '~/components/StarRating';
@@ -17,6 +18,12 @@ export function NewArrivals({
     products: Promise<any>;
 }) {
     const { locale = 'ar', selectedLocationName, selectedLocationId, customer } = useOutletContext<{ locale?: string, selectedLocationName?: string, selectedLocationId?: string, customer?: Promise<any> }>() ?? {};
+
+    // Same branch-aware stock source as the cart and product page.
+    const naRootData = useRouteLoaderData('root') as any;
+    const naLocations = naRootData?.locations?.locations?.nodes || naRootData?.locations?.nodes || [];
+    const naBranch = findBranchLocation(naLocations, selectedLocationId, selectedLocationName);
+    const { read: readBranchStock } = useBranchAvailabilityReader(naBranch?.id);
     const t = useI18n(locale);
     const isEn = locale === 'en';
 
@@ -75,12 +82,16 @@ export function NewArrivals({
                                             const variant = product.variants?.nodes?.[0];
                                             const storeAvailabilityNodes = variant?.storeAvailability?.nodes || [];
 
-                                            const isOutOfStock = getIsOutOfStock(
-                                                selectedLocationId,
-                                                selectedLocationName,
-                                                storeAvailabilityNodes,
-                                                product.availableForSale
-                                            );
+                                            const naVerdict = isOutOfStockAtBranch(readBranchStock(variant?.id));
+                                            const isOutOfStock =
+                                                naVerdict !== null
+                                                    ? naVerdict
+                                                    : getIsOutOfStock(
+                                                          selectedLocationId,
+                                                          selectedLocationName,
+                                                          storeAvailabilityNodes,
+                                                          product.availableForSale
+                                                      );
 
                                             const { toggleWishlist, isInWishlist } = useWishlist();
                                             const isWishlisted = isInWishlist(product.id);
@@ -122,7 +133,11 @@ export function NewArrivals({
                                                                     priceRange: product.priceRange
                                                                 });
                                                             }}
-                                                            aria-label={isWishlisted ? "Remove from Wishlist" : "Add to Wishlist"}
+                                                            aria-label={
+                isWishlisted
+                  ? isEn ? "Remove from Wishlist" : "إزالة من المفضلة"
+                  : isEn ? "Add to Wishlist" : "إضافة إلى المفضلة"
+              }
                                                             className={`absolute top-2.5 md:top-3.5 ${isEn ? 'right-2.5 md:right-3.5' : 'left-2.5 md:left-3.5'} z-20 w-7 h-7 md:w-10 md:h-10 p-0 rounded-full bg-white shadow-md transition-all flex items-center justify-center ${isWishlisted ? 'text-[#e74c3c]' : 'text-gray-700 hover:text-[#e74c3c]'}`}
                                                         >
                                                             <svg className="w-3.5 h-3.5 md:w-5 md:h-5" viewBox="0 0 24 24" fill={isWishlisted ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.5">

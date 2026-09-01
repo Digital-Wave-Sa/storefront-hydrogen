@@ -139,7 +139,9 @@ async function resolveCustomerNumericId(session: any, env: any, tokenStr?: strin
         const data = (await res.json()) as any;
         const matched = (data.customers || []).find((c: any) => {
           const cp = (c.phone || '').replace(/\D/g, '');
-          return cp === rawDigits || cp.endsWith(last9);
+          // Exact only: a last-9-digit match could point the
+          // Admin-token address mutations at another customer's records.
+          return cp === rawDigits;
         });
         if (matched?.id) {
           return String(matched.id);
@@ -335,6 +337,7 @@ async function adminSetDefaultAddress({
 export async function action({request, context}: ActionFunctionArgs) {
   const {storefront, session} = context;
   const env = context.env;
+  const actionIsEn = storefront.i18n?.language === 'EN';
 
   try {
     const form = await request.formData();
@@ -463,7 +466,23 @@ export async function action({request, context}: ActionFunctionArgs) {
             return data({error: null, defaultAddress: addressId});
           }
 
-          return data({error: null, defaultAddress: addressId});
+          /**
+           * Nothing actually ran. Both the Storefront mutation and the
+           * Admin fallback were skipped, yet this returned `error: null`
+           * and the UI marked the address default locally while Shopify
+           * still held the old one.
+           */
+          console.error(
+            '[Addresses] Could not set default address — no path succeeded.',
+          );
+          return data(
+            {
+              error: actionIsEn
+                ? 'Could not update your default address. Please try again.'
+                : 'تعذر تحديث العنوان الافتراضي. يرجى المحاولة مرة أخرى.',
+            },
+            {status: 500},
+          );
         }
 
         if (!isSessionToken) {
@@ -545,7 +564,22 @@ export async function action({request, context}: ActionFunctionArgs) {
           return data({error: null, deletedAddress: addressId});
         }
 
-        return data({error: null, deletedAddress: addressId});
+        /**
+         * Same as above, and worse: the customer believes a saved address
+         * — name, street, phone — was deleted for privacy, the row
+         * disappears locally, and the record survives on Shopify.
+         */
+        console.error(
+          '[Addresses] Could not delete address — no path succeeded.',
+        );
+        return data(
+          {
+            error: actionIsEn
+              ? 'Could not delete this address. Please try again.'
+              : 'تعذر حذف هذا العنوان. يرجى المحاولة مرة أخرى.',
+          },
+          {status: 500},
+        );
       }
 
       default:

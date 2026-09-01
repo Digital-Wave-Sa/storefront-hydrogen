@@ -27,9 +27,11 @@ export async function loader({context}: LoaderFunctionArgs) {
 
   let isAdmin = false;
 
-  if (customerAccessToken.accessToken === 'dev-bypass-token') {
-    isAdmin = true;
-  } else {
+  // `dev-bypass-token` used to be accepted here and granted admin
+  // outright, with no tag check at all.
+  // eslint-disable-next-line no-lone-blocks
+
+  {
     // 1. Verify if user is an Admin/Manager
     // We first get the customer ID from Storefront API (allowed)
     const {customer: sfCustomer} = await storefront.query(
@@ -37,6 +39,9 @@ export async function loader({context}: LoaderFunctionArgs) {
           query getDashboardCustomerId($customerAccessToken: String!) {
             customer(customerAccessToken: $customerAccessToken) {
               id
+              # The tag check below reads this; it was never selected, so
+              # customerTags was always empty and the check never passed.
+              tags
             }
           }`,
       {
@@ -204,6 +209,14 @@ export async function loader({context}: LoaderFunctionArgs) {
 }
 
 export async function action({request, context}: ActionFunctionArgs) {
+  /**
+   * Unauthenticated POSTs used to reach straight through to the Admin API
+   * below and rewrite delivery fees, free-delivery thresholds and opening
+   * hours for every branch. The loader's admin check never ran on POST.
+   */
+  const {requireAdmin} = await import('~/lib/account-guard.server');
+  await requireAdmin(context);
+
   const {env} = context;
   const formData = await request.formData();
   const intent = formData.get('intent') as string;

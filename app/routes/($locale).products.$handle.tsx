@@ -4,7 +4,8 @@ import {
   getProductVisibility,
   type VisibilityResult,
 } from '~/lib/visibility';
-import {getIsOutOfStock} from '~/lib/stock';
+import {getIsOutOfStock, isOutOfStockAtBranch, findBranchLocation} from '~/lib/stock';
+import {useBranchAvailability} from '~/lib/useBranchAvailability';
 import {StockNotificationModal} from '~/components/StockNotificationModal';
 import {ProductUpsellModal} from '~/components/ProductUpsellModal';
 import {Price, SaudiRiyalSymbol} from '~/components/Price';
@@ -22,7 +23,6 @@ import {createPortal} from 'react-dom';
  * Loyalty points awarded per 1 SAR spent. Used when a product carries no
  * `custom.loyalty_points` metafield of its own.
  */
-const POINTS_PER_SAR = 10;
 import type {MetaFunction} from 'react-router';
 import {data, redirect, type LoaderFunctionArgs} from 'react-router';
 import {
@@ -635,8 +635,12 @@ export default function Product() {
 
   /**
    * Loyalty points earned by buying this product.
-   * `custom.loyalty_points` on the product wins when it holds a positive
-   * number; otherwise the standard earn rate applies to the variant price.
+   *
+   * Read from `custom.loyalty_points` on the product and nowhere else. This
+   * used to fall back to `price * POINTS_PER_SAR` when the metafield was
+   * unset, which advertised an earn rate the ERP had never agreed to — every
+   * product showed a points figure whether or not it actually earned any.
+   * With no metafield the value is 0 and the badge is not rendered at all.
    */
   const loyaltyPointsEarned = useMemo(() => {
     const raw = (product as any)?.loyalty_points?.value;
@@ -644,11 +648,8 @@ export default function Product() {
     if (Number.isFinite(fromMetafield) && fromMetafield > 0) {
       return Math.round(fromMetafield);
     }
-
-    const price = parseFloat(selectedVariant?.price?.amount || '0');
-    if (!Number.isFinite(price) || price <= 0) return 0;
-    return Math.round(price * POINTS_PER_SAR);
-  }, [product, selectedVariant?.price?.amount]);
+    return 0;
+  }, [product]);
 
   const isGiftCard =
     Boolean(product.isGiftCard) ||
@@ -707,8 +708,34 @@ export default function Product() {
     return savings > 0 ? savings : null;
   }, [isBundle, bundleComponents, selectedVariant]);
 
-  // Normalized ID comparison to avoid GID mismatch issues
+  /**
+   * Availability at the branch the shopper has chosen.
+   *
+   * Read from Shopify's inventory levels, the same source the cart uses, so
+   * the two cannot disagree. `storeAvailability` — the old sole source, kept
+   * below as a fallback — reports only what is COLLECTABLE at pickup-enabled
+   * locations, and comes back empty for plenty of products; the fallback then
+   * reduces to the global availableForSale flag and the page says متوفر at
+   * every branch, including ones holding none of it.
+   */
+  const allLocations =
+    rootData?.locations?.locations?.nodes || rootData?.locations?.nodes || [];
+  const resolvedBranch = findBranchLocation(
+    allLocations,
+    selectedLocationId,
+    selectedLocationName,
+  );
+  const {availability: branchStock} = useBranchAvailability(
+    product.selectedVariant?.id ? [product.selectedVariant.id] : [],
+    resolvedBranch?.id,
+  );
+
   const isOutOfStock = useMemo(() => {
+    const verdict = isOutOfStockAtBranch(
+      branchStock[product.selectedVariant?.id as string],
+    );
+    if (verdict !== null) return verdict;
+
     return getIsOutOfStock(
       selectedLocationId,
       selectedLocationName,
@@ -716,6 +743,7 @@ export default function Product() {
       product.selectedVariant?.availableForSale ?? false,
     );
   }, [
+    branchStock,
     selectedLocationId,
     selectedLocationName,
     storeAvailabilityNodes,
@@ -2087,6 +2115,7 @@ export default function Product() {
                     selectedVariant={selectedVariant}
                     variants={data.product?.variants?.nodes || []}
                     isEn={isEn}
+                    isOutOfStock={effectiveOutOfStock}
                   />
 
                   {/* Bundle Components Section */}
@@ -5152,8 +5181,8 @@ const PRODUCT_FRAGMENT = `#graphql
       }
     }
   }
-  # Loyalty points earned by buying this product. Optional — when unset the
-  # UI falls back to the standard earn rate (see POINTS_PER_SAR).
+  # Loyalty points earned by buying this product. Optional — when unset no
+  # points badge is shown, rather than a rate being assumed.
   loyalty_points: metafield(namespace: "custom", key: "loyalty_points") {
     value
   }

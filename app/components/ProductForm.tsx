@@ -12,10 +12,19 @@ export function ProductForm({
   productOptions,
   selectedVariant,
   isBogo = false,
+  isOutOfStock = false,
 }: {
   productOptions: MappedProductOptions[];
   selectedVariant: any;
   isBogo?: boolean;
+  /**
+   * Branch-aware availability, resolved by the caller.
+   *
+   * The button used to gate on `selectedVariant.availableForSale` alone —
+   * Shopify's "sellable somewhere" flag — so it stayed enabled for a product
+   * the selected branch does not stock.
+   */
+  isOutOfStock?: boolean;
 }) {
   const navigate = useNavigate();
   const {open} = useAside();
@@ -104,7 +113,9 @@ export function ProductForm({
         );
       })}
       <AddToCartButton
-        disabled={!selectedVariant || !selectedVariant.availableForSale}
+        disabled={
+          !selectedVariant || !selectedVariant.availableForSale || isOutOfStock
+        }
         selectedVariant={selectedVariant}
         onClick={() => {
           open('cart');
@@ -121,7 +132,9 @@ export function ProductForm({
             : []
         }
       >
-        {selectedVariant?.availableForSale ? 'Add to cart' : 'Sold out'}
+        {selectedVariant?.availableForSale && !isOutOfStock
+          ? 'Add to cart'
+          : 'Sold out'}
       </AddToCartButton>
     </div>
   );

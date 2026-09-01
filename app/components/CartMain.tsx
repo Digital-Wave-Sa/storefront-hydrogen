@@ -187,6 +187,46 @@ export function CartMain({ layout, cart: originalCart }: CartMainProps) {
   const remaining = Math.max(threshold - subtotal, 0);
   const currencyCode = cart?.cost?.subtotalAmount?.currencyCode || 'SAR';
 
+  /**
+   * Whether delivery is already free — asked the same way CartSummary asks
+   * it, so the progress banner and the totals block cannot contradict
+   * each other.
+   *
+   * The banner used to know only about the subtotal-vs-threshold rule, so
+   * with a freeshipping code applied or during a branch's promotional
+   * window the totals said "Delivery: Free" while the banner still asked
+   * the shopper to spend more.
+   */
+  const cartHasFreeShippingCode =
+    cart?.discountCodes?.some(
+      (d: any) =>
+        d.applicable &&
+        (d.code?.toLowerCase() === 'freeshipping' ||
+          d.code?.toLowerCase() === 'free_shipping'),
+    ) || false;
+  const isThresholdMet = threshold > 0 && subtotal >= threshold;
+  const isFreeDelivery =
+    isPickup ||
+    isDigitalOnlyCart ||
+    cartHasFreeShippingCode ||
+    isBranchPromoFreeDelivery ||
+    isThresholdMet;
+
+  /**
+   * Switch the banner on the amount, not on the percentage.
+   *
+   * `progress >= 100` and `remaining.toFixed(2)` round differently: a
+   * subtotal of 199.999 against a 200 threshold left progress at 99.9995
+   * — so the "add more" branch ran — while the remainder printed as
+   * "0.00". Hence "Add 0.00 SAR to get free delivery".
+   */
+  const freeDeliveryUnlocked = isFreeDelivery || remaining < 0.01;
+
+  // The bar tracks the message: a freeshipping code or a promo window
+  // makes delivery free outright, so a part-filled bar under "unlocked"
+  // would be the same contradiction in another form.
+  const displayProgress = freeDeliveryUnlocked ? 100 : progress;
+
   if (layout === 'page') {
     return (
       <div className="w-full bg-[#FEF8EB] min-h-screen" dir={isEn ? 'ltr' : 'rtl'}>
@@ -271,7 +311,7 @@ export function CartMain({ layout, cart: originalCart }: CartMainProps) {
                 <div className="bg-white rounded-[24px] p-6 border border-[#BBCFCD]/80 mb-2">
                   <div className="flex justify-between items-center mb-3">
                     <p className="text-[14px] font-bold text-[#234745]">
-                      {progress >= 100 ? (
+                      {freeDeliveryUnlocked ? (
                         <span className="text-green-600 flex items-center gap-1">
                           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
                           {isEn ? "Free delivery unlocked!" : "لقد حصلت على توصيل مجاني!"}
@@ -286,12 +326,12 @@ export function CartMain({ layout, cart: originalCart }: CartMainProps) {
                         )
                       )}
                     </p>
-                    <span className="text-[12px] font-bold text-gray-300">{Math.round(progress)}%</span>
+                    <span className="text-[12px] font-bold text-gray-300">{Math.round(displayProgress)}%</span>
                   </div>
                   <div className="w-full h-2 bg-[#f8f5f2] rounded-full overflow-hidden">
                     <div
-                      className={`h-full transition-all duration-700 ease-out rounded-full ${progress >= 100 ? 'bg-green-500' : 'bg-[#d4a06a]'}`}
-                      style={{ width: `${progress}%` }}
+                      className={`h-full transition-all duration-700 ease-out rounded-full ${freeDeliveryUnlocked ? 'bg-green-500' : 'bg-[#d4a06a]'}`}
+                      style={{ width: `${displayProgress}%` }}
                     />
                   </div>
                 </div>
@@ -366,7 +406,7 @@ export function CartMain({ layout, cart: originalCart }: CartMainProps) {
 
   // ASIDE LAYOUT
   return (
-    <section className="flex flex-col h-full bg-white relative" aria-label="Cart drawer" dir={isEn ? 'ltr' : 'rtl'}>
+    <section className="flex flex-col h-full bg-white relative" aria-label={isEn ? 'Cart drawer' : 'سلة التسوق'} dir={isEn ? 'ltr' : 'rtl'}>
       <CartAnalyticsView cart={cart as any} />
 
       {/* Progress Bar — same gate as the page layout above. Without the
@@ -380,7 +420,7 @@ export function CartMain({ layout, cart: originalCart }: CartMainProps) {
         threshold > 0 && (
         <div className="px-6 py-4 bg-[#fcfaf8] border-b border-[#f0ece8]">
           <p className="text-[13px] font-bold text-[#234745] mb-2 text-center">
-            {progress >= 100 ? (
+            {freeDeliveryUnlocked ? (
               <span className="text-green-600 flex items-center justify-center gap-1">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
                 {isEn ? "You've unlocked free delivery!" : "لقد حصلت على توصيل مجاني!"}
@@ -397,8 +437,8 @@ export function CartMain({ layout, cart: originalCart }: CartMainProps) {
           </p>
           <div className="w-full h-1.5 bg-[#e8e4e1] rounded-full overflow-hidden">
             <div
-              className={`h-full transition-all duration-500 ease-out rounded-full ${progress >= 100 ? 'bg-green-500' : 'bg-yellow-500'}`}
-              style={{ width: `${progress}%` }}
+              className={`h-full transition-all duration-500 ease-out rounded-full ${freeDeliveryUnlocked ? 'bg-green-500' : 'bg-yellow-500'}`}
+              style={{ width: `${displayProgress}%` }}
             />
           </div>
         </div>

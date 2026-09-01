@@ -400,7 +400,10 @@ async function findAdminCustomerId(
       ? candidates.find((c) => {
           const cp = digitsOnly(c.phone || '');
           if (!cp) return false;
-          return cp === sp || cp.endsWith(sp.slice(-9));
+          // Was cp.endsWith(sp.slice(-9)), so two numbers sharing
+          // their last 9 digits resolved to the same customer — and
+          // this id decides whose orders get fetched.
+          return cp === sp;
         })
       : undefined;
 
@@ -426,7 +429,9 @@ function mapAdminOrder(o: any) {
     orderNumber: String(o.name || '').replace(/^#/, ''),
     processedAt: o.processedAt,
     canceledAt: o.canceledAt,
-    financialStatus: (o.displayFinancialStatus || 'PAID').toUpperCase(),
+    // Unknown is unknown. This defaulted to 'PAID', so an order whose
+            // financial status Shopify did not return was shown as paid.
+            financialStatus: (o.displayFinancialStatus || 'UNKNOWN').toUpperCase(),
     fulfillmentStatus: (o.displayFulfillmentStatus || 'UNFULFILLED').toUpperCase(),
     totalPrice: {
       amount: String(o.totalPriceSet?.shopMoney?.amount ?? '0'),
@@ -1434,7 +1439,7 @@ function OrderCard({order, isEn}: {order: OrderItemFragment; isEn: boolean}) {
             >
               {isEn
                 ? `Order — #${order.orderNumber}`
-                : `آخر طلب — #${order.orderNumber}`}
+                : `طلب — #${order.orderNumber}`}
             </h3>
 
             {/* Subtitle: product count & total */}
@@ -1466,15 +1471,24 @@ function OrderCard({order, isEn}: {order: OrderItemFragment; isEn: boolean}) {
 
           {/* Product Image on RIGHT */}
           <div className="relative flex-shrink-0 w-[82px] h-[82px] rounded-[16px] bg-[#F8FAF9] border border-gray-100 flex items-center justify-center">
-            <img
-              src={imageUrl || 'https://cdn.shopify.com/s/files/1/0533/2089/files/placeholder-images-image_large.png'}
-              alt={firstItem?.title || 'Order thumbnail'}
-              className="w-full h-full rounded-[16px] object-cover"
-              onError={(e) => {
-                (e.currentTarget as HTMLImageElement).src =
-                  'https://cdn.shopify.com/s/files/1/0533/2089/files/placeholder-images-image_large.png';
-              }}
-            />
+            {/*
+              The fallback and the onError handler both pointed at
+              cdn.shopify.com/s/files/1/0533/2089/... — a different
+              store's CDN, which 404s. An empty tile beats a broken
+              image icon, and beats a photo of someone else's product.
+            */}
+            {imageUrl ? (
+              <img
+                src={imageUrl}
+                alt={firstItem?.title || 'Order thumbnail'}
+                loading="lazy"
+                className="w-full h-full rounded-[16px] object-cover"
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).style.visibility =
+                    'hidden';
+                }}
+              />
+            ) : null}
             {/* Quantity Badge on Top-Left of Image */}
             <div className="absolute -top-2 -left-2 w-6 h-6 bg-[#234745] text-white rounded-full flex items-center justify-center text-[12px] font-bold border-2 border-white font-en shadow-xs z-10">
               {productCount.toLocaleString('en-US')}

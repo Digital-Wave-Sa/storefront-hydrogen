@@ -28,16 +28,20 @@ export async function action({request, context}: ActionFunctionArgs) {
 
   let customer: any = null;
 
-  if (customerAccessToken.accessToken === 'dev-bypass-token') {
+  /**
+   * Was `accessToken === 'dev-bypass-token'`, which resolved a customer
+   * from the Admin API without any verified session — and carried a
+   * hardcoded personal email as a special case for one phone number.
+   * Disabled; the real session path below is the only way in.
+   */
+  if (false) {
     const savedPhone = await session.get('loginOtpPhone');
 
     if (savedPhone) {
       try {
         const {getAdminToken} = await import('~/lib/shopify-admin.server');
         const adminToken = await getAdminToken(env);
-        const queryStr = savedPhone.includes('590910042')
-          ? encodeURIComponent('email:"motasem.udeh@gmail.com"')
-          : encodeURIComponent(`phone:"${savedPhone}"`);
+        const queryStr = encodeURIComponent(`phone:"${savedPhone}"`);
         const res = await fetch(
           `https://${env.PUBLIC_STORE_DOMAIN}/admin/api/2023-04/customers/search.json?query=${queryStr}`,
           {

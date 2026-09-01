@@ -72,15 +72,25 @@ export async function action({request, context}: ActionFunctionArgs) {
       const phone = String(form.get('phone') || '');
       const otp = String(form.get('otp') || '');
 
-      // Allow developer bypass code 000000 for local testing
-      if (otp === '000000') {
-        return data({success: true, verified: true});
-      }
-
       try {
         const api = new SaadeddinApi(context.env);
         await api.verifyOtp(phone, otp, 'login');
-        return data({success: true, verified: true});
+
+        /**
+         * Record the verified number in the session.
+         *
+         * The OTP flow was enforced only in the browser: the profile-save
+         * branch below took whatever `phone` was posted and wrote it to
+         * Shopify, so a direct POST changed the number on any signed-in
+         * session without an OTP ever being sent. The check has to live
+         * where the write happens.
+         */
+        session.set('verifiedProfilePhone', phone.replace(/\D/g, ''));
+
+        return data(
+          {success: true, verified: true},
+          {headers: {'Set-Cookie': await session.commit()}},
+        );
       } catch (e: any) {
         return data(
           {
@@ -157,11 +167,41 @@ export async function action({request, context}: ActionFunctionArgs) {
           else if (cleanPhone.startsWith('05'))
             cleanPhone = cleanPhone.substring(1);
 
-          customer.phone = `${countryCode}${cleanPhone}`;
-          console.log(
-            'DEBUG: Final phone string being sent to Shopify:',
-            customer.phone,
-          );
+          const nextPhone = `${countryCode}${cleanPhone}`;
+
+          /**
+           * A changed number needs an OTP that this server saw succeed.
+           * Leaving the number as-is is not a change and needs nothing.
+           */
+          const currentDigits = String(
+            (await session.get('loginOtpPhone')) || '',
+          ).replace(/\D/g, '');
+          const nextDigits = nextPhone.replace(/\D/g, '');
+          const verifiedDigits = String(
+            (await session.get('verifiedProfilePhone')) || '',
+          ).replace(/\D/g, '');
+
+          const isUnchanged =
+            currentDigits.length > 0 && currentDigits === nextDigits;
+          const isVerified =
+            verifiedDigits.length > 0 &&
+            (verifiedDigits === nextDigits ||
+              verifiedDigits.endsWith(nextDigits) ||
+              nextDigits.endsWith(verifiedDigits));
+
+          if (!isUnchanged && !isVerified) {
+            return data(
+              {
+                error:
+                  lang === 'en'
+                    ? 'Please verify the new phone number before saving.'
+                    : 'يرجى تأكيد رقم الجوال الجديد قبل الحفظ.',
+              },
+              {status: 400},
+            );
+          }
+
+          customer.phone = nextPhone;
         } else {
           customer[key as (typeof validInputKeys)[number]] = value;
         }

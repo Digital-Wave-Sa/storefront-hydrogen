@@ -25,7 +25,7 @@ export function NotFound() {
       {/* Text Content */}
       <div className="text-center mb-8 flex flex-col items-center gap-2">
         <span className="text-gray-400 text-sm font-medium" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
-          {isEn ? 'Error 404' : 'خطأ ٤٠٤'}
+          {isEn ? 'Error 404' : 'خطأ 404'}
         </span>
         
         <h1 className="!text-[40px] md:!text-[50px] !font-bold text-[#1F413F] !leading-none mt-2 text-center" style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" }}>

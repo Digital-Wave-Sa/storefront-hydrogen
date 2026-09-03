@@ -99,7 +99,7 @@ export default function CustomRequestPage() {
           </div>
 
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white text-[#906B51] font-bold text-[13px] w-max border border-[#E6E2D8]">
-            {isEn ? 'Bespoke Corporate Package (Min 200 Boxes)' : 'الباقة المخصصة (الحد الأدنى ٢٠٠ علبة)'}
+            {isEn ? 'Bespoke Corporate Package (Min 200 Boxes)' : 'الباقة المخصصة (الحد الأدنى 200 علبة)'}
           </div>
 
           <h1
@@ -111,7 +111,7 @@ export default function CustomRequestPage() {
           <p className="text-[16px] text-[#8B9895] max-w-2xl m-0 leading-relaxed">
             {isEn
               ? 'Design your corporate gift from scratch — content, packaging, colors, and identity. Fill in your requirements and our team will contact you within 24-48 hours with a sample approval & Draft Order.'
-              : 'صمّم هديتك المؤسسية بما يعكس هويتك بالكامل من الصفر (محتوى، تغليف، ألوان، شعار). املأ التفاصيل وسيتواصل معك فريقنا خلال ٢٤-٤٨ ساعة لتأكيد الطلب وإصدار فاتورة مسودة (Draft Order).'}
+              : 'صمّم هديتك المؤسسية بما يعكس هويتك بالكامل من الصفر (محتوى، تغليف، ألوان، شعار). املأ التفاصيل وسيتواصل معك فريقنا خلال 24-48 ساعة لتأكيد الطلب وإصدار فاتورة مسودة (Draft Order).'}
           </p>
         </div>
 
@@ -128,12 +128,12 @@ export default function CustomRequestPage() {
               <p className="text-[16px] text-[#8B9895] max-w-xl m-0 leading-relaxed">
                 {isEn
                   ? 'Your request has been forwarded to info@saadeddin.com. Our corporate sales manager will review your brand assets and issue a Draft Order within 24-48 hours.'
-                  : 'تم تحويل طلبك بنجاح إلى info@saadeddin.com. سيتواصل معك مدير حسابك المختص خلال ٢٤-٤٨ ساعة لمراجعة الأصول وإصدار فاتورة مسودة (Draft Order).'}
+                  : 'تم تحويل طلبك بنجاح إلى info@saadeddin.com. سيتواصل معك مدير حسابك المختص خلال 24-48 ساعة لمراجعة الأصول وإصدار فاتورة مسودة (Draft Order).'}
               </p>
 
               {/* Delivery Lead Time Note */}
               <div className="bg-white px-5 py-3 rounded-full border border-[#E6E2D8] text-[14px] text-[#906B51] font-bold my-2">
-                {isEn ? '⏱ Expected Delivery Lead Time: 10 - 15 Business Days' : '⏱ وقت التسليم المتوقع: ١٠ - ١٥ يوم عمل'}
+                {isEn ? '⏱ Expected Delivery Lead Time: 10 - 15 Business Days' : '⏱ وقت التسليم المتوقع: 10 - 15 يوم عمل'}
               </div>
 
               <div className="flex flex-col sm:flex-row gap-4 w-full max-w-md mt-4">
@@ -158,7 +158,7 @@ export default function CustomRequestPage() {
             <form onSubmit={handleSubmit} className="flex flex-col gap-6 text-start">
               <div className="border-b border-[#E6E2D8] pb-4 mb-2">
                 <h3 className="text-[20px] font-bold text-[#234745] m-0" style={{ fontFamily: isEn ? 'inherit' : "'Bahij Janna', sans-serif" }}>
-                  {isEn ? '1. Company & Contact Info' : '١. معلومات الشركة والمسؤول'}
+                  {isEn ? '1. Company & Contact Info' : '1. معلومات الشركة والمسؤول'}
                 </h3>
               </div>
 
@@ -226,14 +226,14 @@ export default function CustomRequestPage() {
 
               <div className="border-b border-[#E6E2D8] pb-4 mb-2 mt-4">
                 <h3 className="text-[20px] font-bold text-[#234745] m-0" style={{ fontFamily: isEn ? 'inherit' : "'Bahij Janna', sans-serif" }}>
-                  {isEn ? '2. Package Specifications & Brand Assets' : '٢. مواصفات الباقة وأصول الهوية'}
+                  {isEn ? '2. Package Specifications & Brand Assets' : '2. مواصفات الباقة وأصول الهوية'}
                 </h3>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-[14px] font-bold text-[#234745] mb-2">
-                    {isEn ? 'Expected Quantity (Minimum 200) *' : 'الكمية المتوقعة (الحد الأدنى ٢٠٠ علبة) *'}
+                    {isEn ? 'Expected Quantity (Minimum 200) *' : 'الكمية المتوقعة (الحد الأدنى 200 علبة) *'}
                   </label>
                   <input
                     type="number"
@@ -254,7 +254,7 @@ export default function CustomRequestPage() {
                     name="budgetPerBox"
                     value={formData.budgetPerBox}
                     onChange={(e) => setFormData({ ...formData, budgetPerBox: e.target.value })}
-                    placeholder={isEn ? 'e.g. 150-300 SAR' : 'مثال: ١٥٠ - ٣٠٠ ريال'}
+                    placeholder={isEn ? 'e.g. 150-300 SAR' : 'مثال: 150 - 300 ريال'}
                     className="w-full border border-[#E6E2D8] rounded-[14px] px-4 py-3 text-[15px] focus:outline-none focus:border-[#234745]"
                   />
                 </div>

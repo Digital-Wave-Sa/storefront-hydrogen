@@ -57,7 +57,7 @@ export function LoyaltyProgram() {
 
                                 {/* Card Number */}
                                 <p className="text-white/40 text-[12px] font-en tracking-[3px] font-medium">
-                                    ........ ........ {isEn ? '7841' : '٧٨٤١'}
+                                    ........ ........ {isEn ? '7841' : '7841'}
                                 </p>
                             </div>
                         </div>

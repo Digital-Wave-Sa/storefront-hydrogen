@@ -980,7 +980,7 @@ export default function CorporatePage() {
 
   return (
     <div
-      className={`min-h-screen bg-[#FFFFFF] ${isEn ? 'font-en' : "font-['GE_Dinar_One']"}`}
+      className={`min-h-screen bg-[#FFFFFF] ${isEn ? 'font-en' : 'font-dinar'}`}
       dir={isEn ? 'ltr' : 'rtl'}
     >
       {/* 1. Hero Section */}

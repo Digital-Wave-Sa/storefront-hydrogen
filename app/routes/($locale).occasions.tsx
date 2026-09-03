@@ -227,26 +227,29 @@ export async function loader({context}: LoaderFunctionArgs) {
   }
 }
 
-const homepageOccasionsEn = [
-  {name: 'Wedding', handle: 'wedding', image: ''},
-  {name: 'Ramadan', handle: 'ramadan', image: ''},
-  {name: 'Birthdays', handle: 'birthdays', image: ''},
-  {name: 'Eid', handle: 'eid', image: ''},
-  {name: 'New Baby', handle: 'new-baby', image: ''},
-  {name: 'National Day', handle: 'national-day', image: ''},
-  {name: "Mother's Day", handle: 'mothers-day', image: ''},
-  {name: 'Graduation', handle: 'graduation', image: ''},
-];
+/**
+ * The occasion cards on first load, and the filter chips after one is picked.
+ *
+ * Order here is the order on the page. `visible: false` hides an occasion from
+ * both without deleting it, so a seasonal one can be brought back for its
+ * season by flipping one word. Keep this list in step with the homepage list in
+ * app/components/ShopByOccasion.tsx -- until both are moved onto an `occasion`
+ * metaobject, they are two copies of the same thing and can drift apart.
+ *
+ * Note this does NOT control filtering: `categories` below still holds all
+ * eight, so an existing /occasions?category=eid link keeps working.
+ */
+const occasionList = [
+  {handle: 'national-day', nameEn: 'National Day', nameAr: 'اليوم الوطني', visible: true},
+  {handle: 'birthdays', nameEn: 'Birthdays', nameAr: 'أعياد الميلاد', visible: true},
+  {handle: 'graduation', nameEn: 'Graduation', nameAr: 'التخرج', visible: true},
+  {handle: 'new-baby', nameEn: 'New Baby', nameAr: 'مواليد', visible: true},
+  {handle: 'wedding', nameEn: 'Wedding', nameAr: 'زفاف', visible: true},
 
-const homepageOccasionsAr = [
-  {name: 'زفاف', handle: 'wedding', image: ''},
-  {name: 'رمضان', handle: 'ramadan', image: ''},
-  {name: 'أعياد الميلاد', handle: 'birthdays', image: ''},
-  {name: 'العيد', handle: 'eid', image: ''},
-  {name: 'مواليد', handle: 'new-baby', image: ''},
-  {name: 'اليوم الوطني', handle: 'national-day', image: ''},
-  {name: 'يوم الأم', handle: 'mothers-day', image: ''},
-  {name: 'التخرج', handle: 'graduation', image: ''},
+  // Seasonal -- hidden for now, kept so they can be switched back on.
+  {handle: 'mothers-day', nameEn: "Mother's Day", nameAr: 'يوم الأم', visible: false},
+  {handle: 'ramadan', nameEn: 'Ramadan', nameAr: 'رمضان', visible: false},
+  {handle: 'eid', nameEn: 'Eid', nameAr: 'العيد', visible: false},
 ];
 
 export default function OccasionsPage() {
@@ -277,7 +280,13 @@ export default function OccasionsPage() {
     setSelectedCategory(urlCategory || null);
   }, [urlCategory]);
 
-  const baseOccasions = isEn ? homepageOccasionsEn : homepageOccasionsAr;
+  const baseOccasions = occasionList
+    .filter((occ) => occ.visible)
+    .map((occ) => ({
+      handle: occ.handle,
+      name: isEn ? occ.nameEn : occ.nameAr,
+      image: '',
+    }));
 
   const occasionCards = baseOccasions.map((occ) => {
     const shopifyColl = (collections || []).find(

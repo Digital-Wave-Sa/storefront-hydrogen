@@ -1857,7 +1857,7 @@ export default function Product() {
                               fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
                             }}
                           >
-                            {isEn ? 'Calories / 100g' : 'سعر حراري / ١٠٠جم'}
+                            {isEn ? 'Calories / 100g' : 'سعر حراري / 100جم'}
                           </span>
                         </div>
                       )}
@@ -1960,7 +1960,7 @@ export default function Product() {
                   verticalAlign: 'middle',
                 }}
               >
-                {isEn ? 'VAT Inclusive 15%' : 'شامل ضريبة القيمة المضافة ١٥٪'}
+                {isEn ? 'VAT Inclusive 15%' : 'شامل ضريبة القيمة المضافة 15٪'}
               </span>
 
               {/* Loyalty points earned by buying this product */}
@@ -2415,7 +2415,7 @@ export default function Product() {
                               <span>
                                 {isEn
                                   ? 'Max 150 chars'
-                                  : 'الحد الأقصى ١٥٠ حرفاً'}
+                                  : 'الحد الأقصى 150 حرفاً'}
                               </span>
                               <span>
                                 {isEn
@@ -2834,7 +2834,7 @@ export default function Product() {
                     if (formattedRestock) {
                       formattedRestock = formattedRestock.replace(
                         /[٠-٩]/g,
-                        (d) => '٠١٢٣٥٦٧٨٩'.indexOf(d).toString(),
+                        (d) => '٠١٢٣٤٥٦٧٨٩'.indexOf(d).toString(),
                       );
                     }
                   }
@@ -2965,7 +2965,7 @@ export default function Product() {
                   >
                     {isEn
                       ? 'Split it into 4 interest-free payments'
-                      : 'قسّطها على ٤ دفعات بدون فوائد'}
+                      : 'قسّطها على 4 دفعات بدون فوائد'}
                   </span>
                 </div>
 

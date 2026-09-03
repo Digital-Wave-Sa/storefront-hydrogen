@@ -9,7 +9,7 @@ const DEFAULT_SLIDES = [
     url: '/collections/all',
     title: { ar: 'نصنع لحظات\nلا تنسي', en: 'We Make Unforgettable\nMoments' },
     subtitle: {
-      ar: 'منذ عام ١٩١٩، نقدّم أرقى الحلويات العربية والشوكولاتة الفاخرة، لكل مناسبة تستحق الاحتفال.',
+      ar: 'منذ عام 1919، نقدّم أرقى الحلويات العربية والشوكولاتة الفاخرة، لكل مناسبة تستحق الاحتفال.',
       en: 'Since 1919, we offer the finest Arabic sweets and premium chocolate for every occasion worth celebrating.'
     },
     badge: { ar: 'منذ 1919 . مصنوعة بحُب', en: 'Since 1919 . Made With Love' },

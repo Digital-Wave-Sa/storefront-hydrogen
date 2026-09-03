@@ -7,14 +7,14 @@ export function ShopByCategory() {
     const isEn = locale === 'en';
 
     const categories = [
-        { id: 1, name: t.categories.chocolate, icon: '🍫', count: isEn ? '+40' : '+٤٠', link: isEn ? '/en/collections/chocolate' : '/collections/chocolate' },
-        { id: 2, name: t.categories.cakes, icon: '🎂', count: isEn ? '+50' : '+٥٠', link: isEn ? '/en/collections/cakes' : '/collections/cakes' },
-        { id: 3, name: t.categories.biscuits, icon: '🍪', count: isEn ? '+99' : '+٩٩', link: isEn ? '/en/collections/biscuits' : '/collections/biscuits' },
-        { id: 4, name: t.categories.oriental, icon: '🍬', count: isEn ? '+10' : '+١٠', link: isEn ? '/en/collections/oriental' : '/collections/oriental' },
-        { id: 5, name: t.categories.coffee, icon: '☕', count: isEn ? '+60' : '+٦٠', link: isEn ? '/en/collections/coffee' : '/collections/coffee' },
-        { id: 6, name: t.categories.strawberry, icon: '🍓', count: isEn ? '+70' : '+٧٠', link: isEn ? '/en/collections/strawberry' : '/collections/strawberry' },
-        { id: 7, name: t.categories.gifts, icon: '🎁', count: isEn ? '+76' : '+٧٦', link: isEn ? '/en/collections/gifts' : '/collections/gifts' },
-        { id: 8, name: t.categories.cupcakes, icon: '🧁', count: isEn ? '+24' : '+٢٤', link: isEn ? '/en/collections/cupcakes' : '/collections/cupcakes' },
+        { id: 1, name: t.categories.chocolate, icon: '🍫', count: isEn ? '+40' : '+40', link: isEn ? '/en/collections/chocolate' : '/collections/chocolate' },
+        { id: 2, name: t.categories.cakes, icon: '🎂', count: isEn ? '+50' : '+50', link: isEn ? '/en/collections/cakes' : '/collections/cakes' },
+        { id: 3, name: t.categories.biscuits, icon: '🍪', count: isEn ? '+99' : '+99', link: isEn ? '/en/collections/biscuits' : '/collections/biscuits' },
+        { id: 4, name: t.categories.oriental, icon: '🍬', count: isEn ? '+10' : '+10', link: isEn ? '/en/collections/oriental' : '/collections/oriental' },
+        { id: 5, name: t.categories.coffee, icon: '☕', count: isEn ? '+60' : '+60', link: isEn ? '/en/collections/coffee' : '/collections/coffee' },
+        { id: 6, name: t.categories.strawberry, icon: '🍓', count: isEn ? '+70' : '+70', link: isEn ? '/en/collections/strawberry' : '/collections/strawberry' },
+        { id: 7, name: t.categories.gifts, icon: '🎁', count: isEn ? '+76' : '+76', link: isEn ? '/en/collections/gifts' : '/collections/gifts' },
+        { id: 8, name: t.categories.cupcakes, icon: '🧁', count: isEn ? '+24' : '+24', link: isEn ? '/en/collections/cupcakes' : '/collections/cupcakes' },
     ];
 
     return (

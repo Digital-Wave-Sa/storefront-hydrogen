@@ -144,6 +144,23 @@ a, a:hover, a:focus, a:active {
   font-family: 'Montserrat', 'Segoe UI', system-ui, sans-serif !important;
 }
 
+/*
+ * GE Dinar One draws the Latin digit codepoints U+0030-U+0039 with
+ * Arabic-Indic glyphs, so "200" in the source renders as "٢٠٠" wherever that
+ * face wins. Bahij Janna does not. That is what the 'EnglishDigits' face
+ * above exists to prevent: it claims the digit range and maps it to a Latin
+ * system font, but only where it is first in the stack.
+ *
+ * Roughly a hundred call sites set the face with a Tailwind arbitrary value
+ * -- font-['GE_Dinar_One'] or [font-family:'GE_Dinar_One',sans-serif] -- which
+ * compiles to a bare family name with no EnglishDigits in front, and every
+ * descendant inherits it. Rather than edit each one, re-assert the full stack
+ * for any element whose class names that face. Same typeface, Latin digits.
+ */
+[class*='GE_Dinar_One'] {
+  font-family: 'EnglishDigits', 'GE Dinar One', sans-serif !important;
+}
+
 
 img {
   border-radius: 4px;

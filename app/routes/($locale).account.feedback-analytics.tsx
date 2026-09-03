@@ -662,7 +662,7 @@ function FeedbackAnalyticsDashboardContent({
             ))}
           </div>
           <div className="flex justify-between text-[10px] text-gray-400 font-bold mt-3 uppercase tracking-wider">
-            <span>{isEn ? '30 Days Ago' : 'قبل ٣٠ يوماً'}</span>
+            <span>{isEn ? '30 Days Ago' : 'قبل 30 يوماً'}</span>
             <span>{isEn ? 'Today' : 'اليوم'}</span>
           </div>
         </div>

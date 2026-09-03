@@ -79,7 +79,7 @@ export default function FAQPage() {
             : 'كم يستغرق التوصيل؟',
           answer: isEn
             ? 'Delivery usually takes 2-4 hours for fresh sweets.'
-            : 'عادة ما يستغرق التوصيل من ساعتين إلى ٤ ساعات للحلويات الطازجة.',
+            : 'عادة ما يستغرق التوصيل من ساعتين إلى 4 ساعات للحلويات الطازجة.',
         },
       ],
     },

@@ -60,9 +60,9 @@ const cakeOptions = {
     { id: 'small_standard', name: 'ستاندرد صغير (Small Standard)', price: 190, image: '/images/cake-builder/cake-tall.webp', is3D: true }
   ],
   sizes: [
-    { id: '6-inch', name: 'صغير (Small)', personsAr: '٤-٦ أشخاص', personsEn: '4-6 Persons', price: 120, scale: 0.8 },
-    { id: '8-inch', name: 'وسط (Medium)', personsAr: '٨-١٢ شخصاً', personsEn: '8-12 Persons', price: 180, scale: 1.0 },
-    { id: '10-inch', name: 'كبير (Large)', personsAr: '١٥-٢٠ شخصاً', personsEn: '15-20 Persons', price: 260, scale: 1.25 }
+    { id: '6-inch', name: 'صغير (Small)', personsAr: '4-6 أشخاص', personsEn: '4-6 Persons', price: 120, scale: 0.8 },
+    { id: '8-inch', name: 'وسط (Medium)', personsAr: '8-12 شخصاً', personsEn: '8-12 Persons', price: 180, scale: 1.0 },
+    { id: '10-inch', name: 'كبير (Large)', personsAr: '15-20 شخصاً', personsEn: '15-20 Persons', price: 260, scale: 1.25 }
   ],
   tiers: [
     { id: '1-tier', name: 'طبقة واحدة (Single Tier)', price: 0, count: 1 },
@@ -277,7 +277,7 @@ export default function CustomCakeBuilder({
 
   const [selections, setSelections] = useState({
     shape: mergedOptions.shapes[0],
-    size: cakeOptions.sizes[1] || { id: '8-inch', name: 'وسط (Medium)', personsAr: '٨-١٢ شخصاً', personsEn: '8-12 Persons', price: 180, scale: 1.0 },
+    size: cakeOptions.sizes[1] || { id: '8-inch', name: 'وسط (Medium)', personsAr: '8-12 شخصاً', personsEn: '8-12 Persons', price: 180, scale: 1.0 },
     tier: { id: '1-tier', name: 'طبقة واحدة (Single Tier)', price: 0, count: 1 },
     flavor: mergedOptions.flavors[0],
     style: mergedOptions.styles[0],

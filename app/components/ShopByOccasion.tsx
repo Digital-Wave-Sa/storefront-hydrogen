@@ -1,40 +1,47 @@
 import { Link, useOutletContext } from 'react-router';
 
-const occasionsEn = [
-    { name: 'Wedding', handle: 'wedding', image: 'https://cdn.shopify.com/s/files/1/0809/4253/0869/files/wedding_design.png?v=1711234567' },
-    { name: 'Ramadan', handle: 'ramadan', image: 'https://cdn.shopify.com/s/files/1/0809/4253/0869/files/ramadan_design.png?v=1711234568' },
-    { name: 'Birthdays', handle: 'birthdays', image: 'https://cdn.shopify.com/s/files/1/0809/4253/0869/files/birthday_design.png?v=1711234569' },
-    { name: 'Eid', handle: 'eid', image: 'https://cdn.shopify.com/s/files/1/0809/4253/0869/files/eid_design.png?v=1711234570' },
-    { name: 'New Baby', handle: 'new-baby', image: 'https://cdn.shopify.com/s/files/1/0809/4253/0869/files/new_baby_design.png?v=1711234571' },
-    { name: 'National Day', handle: 'national-day', image: 'https://cdn.shopify.com/s/files/1/0809/4253/0869/files/national_day_design.png?v=1711234572' },
-    { name: 'Mother\'s Day', handle: 'mothers-day', image: 'https://cdn.shopify.com/s/files/1/0809/4253/0869/files/mothers_day_design.png?v=1711234573' },
-    { name: 'Graduation', handle: 'graduation', image: 'https://cdn.shopify.com/s/files/1/0809/4253/0869/files/graduation_design.png?v=1711234574' },
-];
+const CDN = 'https://cdn.shopify.com/s/files/1/0809/4253/0869/files';
 
-const occasionsAr = [
-    { name: 'زفاف', handle: 'wedding', image: 'https://cdn.shopify.com/s/files/1/0809/4253/0869/files/wedding_design.png?v=1711234567' },
-    { name: 'رمضان', handle: 'ramadan', image: 'https://cdn.shopify.com/s/files/1/0809/4253/0869/files/ramadan_design.png?v=1711234568' },
-    { name: 'أعياد الميلاد', handle: 'birthdays', image: 'https://cdn.shopify.com/s/files/1/0809/4253/0869/files/birthday_design.png?v=1711234569' },
-    { name: 'العيد', handle: 'eid', image: 'https://cdn.shopify.com/s/files/1/0809/4253/0869/files/eid_design.png?v=1711234570' },
-    { name: 'مواليد', handle: 'new-baby', image: 'https://cdn.shopify.com/s/files/1/0809/4253/0869/files/new_baby_design.png?v=1711234571' },
-    { name: 'اليوم الوطني', handle: 'national-day', image: 'https://cdn.shopify.com/s/files/1/0809/4253/0869/files/national_day_design.png?v=1711234572' },
-    { name: 'يوم الأم', handle: 'mothers-day', image: 'https://cdn.shopify.com/s/files/1/0809/4253/0869/files/mothers_day_design.png?v=1711234573' },
-    { name: 'التخرج', handle: 'graduation', image: 'https://cdn.shopify.com/s/files/1/0809/4253/0869/files/graduation_design.png?v=1711234574' },
+/**
+ * Homepage occasion cards.
+ *
+ * Order here is the order on the page. `visible: false` hides a card without
+ * deleting it, so a seasonal occasion can be brought back for its season by
+ * flipping one word — Ramadan and Eid before Ramadan, Mother's Day in March.
+ *
+ * `image` is only a fallback. If the matching Shopify collection has a
+ * collection image set, that wins (see the merge in the component below), so
+ * the client can change a card's picture from the Shopify admin today.
+ */
+const occasions = [
+    {handle: 'national-day', nameEn: 'National Day', nameAr: 'اليوم الوطني', image: `${CDN}/national_day_design.png?v=1711234572`, visible: true},
+    {handle: 'birthdays', nameEn: 'Birthdays', nameAr: 'أعياد الميلاد', image: `${CDN}/birthday_design.png?v=1711234569`, visible: true},
+    {handle: 'graduation', nameEn: 'Graduation', nameAr: 'التخرج', image: `${CDN}/graduation_design.png?v=1711234574`, visible: true},
+    {handle: 'new-baby', nameEn: 'New Baby', nameAr: 'مواليد', image: `${CDN}/new_baby_design.png?v=1711234571`, visible: true},
+    {handle: 'wedding', nameEn: 'Wedding', nameAr: 'زفاف', image: `${CDN}/wedding_design.png?v=1711234567`, visible: true},
+
+    // Seasonal — hidden for now, kept so they can be switched back on.
+    {handle: 'mothers-day', nameEn: "Mother's Day", nameAr: 'يوم الأم', image: `${CDN}/mothers_day_design.png?v=1711234573`, visible: false},
+    {handle: 'ramadan', nameEn: 'Ramadan', nameAr: 'رمضان', image: `${CDN}/ramadan_design.png?v=1711234568`, visible: false},
+    {handle: 'eid', nameEn: 'Eid', nameAr: 'العيد', image: `${CDN}/eid_design.png?v=1711234570`, visible: false},
 ];
 
 export function ShopByOccasion({ collections }: { collections?: any[] }) {
     const { locale = 'ar' } = useOutletContext<{ locale?: string }>() ?? {};
     const isEn = locale === 'en';
 
-    // Merge Shopify data with static metadata
-    const occasions = (isEn ? occasionsEn : occasionsAr).map(occasion => {
-        const shopifyCollection = collections?.find(c => c.handle === occasion.handle);
-        return {
-            ...occasion,
-            image: shopifyCollection?.image?.url || occasion.image,
-            name: occasion.name
-        };
-    });
+    // Visible cards only, in the order declared above, with the Shopify
+    // collection image taking priority over the static fallback.
+    const visibleOccasions = occasions
+        .filter(occasion => occasion.visible)
+        .map(occasion => {
+            const shopifyCollection = collections?.find(c => c.handle === occasion.handle);
+            return {
+                handle: occasion.handle,
+                name: isEn ? occasion.nameEn : occasion.nameAr,
+                image: shopifyCollection?.image?.url || occasion.image,
+            };
+        });
 
     return (
         <section className={`w-full lg:py-24 bg-[#FEF8EB] ${isEn ? 'font-en' : 'font-ar'}`} dir={isEn ? 'ltr' : 'rtl'} style={{ paddingTop: '50px', paddingBottom: '50px' }}>
@@ -51,7 +58,7 @@ export function ShopByOccasion({ collections }: { collections?: any[] }) {
 
                 {/* Slider (Mobile) / Flex (Desktop) */}
                 <div className="flex flex-nowrap md:flex-wrap justify-start md:justify-center gap-4 lg:gap-6 overflow-x-auto md:overflow-visible snap-x snap-mandatory pb-4 md:pb-0 -mx-6 px-6 md:mx-0 md:px-0" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-                    {occasions.map((occasion, index) => (
+                    {visibleOccasions.map((occasion, index) => (
                         <Link
                             key={index}
                             to={isEn ? `/en/occasions?category=${occasion.handle}` : `/occasions?category=${occasion.handle}`}

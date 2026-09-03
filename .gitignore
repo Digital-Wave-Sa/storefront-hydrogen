@@ -22,3 +22,9 @@ out.txt
 
 # Deploy metadata
 .vercel
+
+# Commit message scratch
+COMMIT_MSG.txt
+
+# Claude desktop app output folder
+Claude outputs/

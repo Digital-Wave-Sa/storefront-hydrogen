@@ -252,7 +252,7 @@ export async function action({request, context}: ActionFunctionArgs) {
         {
           error: isEn
             ? 'Voucher Code must be at least 3 characters.'
-            : 'رمز القسيمة يجب أن يكون على الأقل ٣ أحرف.',
+            : 'رمز القسيمة يجب أن يكون على الأقل 3 أحرف.',
         },
         {status: 400},
       );
@@ -272,7 +272,7 @@ export async function action({request, context}: ActionFunctionArgs) {
         {
           error: isEn
             ? 'Percentage discount value cannot exceed 100%.'
-            : 'قيمة خصم النسبة المئوية لا يمكن أن تتجاوز ١٠٠٪.',
+            : 'قيمة خصم النسبة المئوية لا يمكن أن تتجاوز 100٪.',
         },
         {status: 400},
       );
@@ -920,7 +920,7 @@ function PromotionsDashboardContent({adminData}: {adminData: any}) {
                       title={
                         isEn
                           ? 'Alphanumeric, minimum 3 characters'
-                          : 'أحرف وأرقام فقط، ٣ رموز كحد أدنى'
+                          : 'أحرف وأرقام فقط، 3 رموز كحد أدنى'
                       }
                       placeholder="SAADEDDIN_OFFER"
                       className="luxury-input-field"

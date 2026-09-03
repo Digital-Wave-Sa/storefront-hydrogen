@@ -786,7 +786,7 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
 
                 {hasTax && (
                   <div className="flex justify-between items-center text-[15px]">
-                    <dt className="text-[#9FB7AE] font-bold" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>{isEn ? 'VAT (15%)' : 'ضريبة القيمة المضافة (١٥٪)'}</dt>
+                    <dt className="text-[#9FB7AE] font-bold" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>{isEn ? 'VAT (15%)' : 'ضريبة القيمة المضافة (15٪)'}</dt>
                     <dd className="text-[#234745] font-bold font-en flex items-center gap-1 flex-row-reverse">
                       <SaudiRiyalSymbol className="h-4 w-auto" />
                       <span>{calculatedTax.toFixed(2)}</span>
@@ -805,7 +805,7 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
                     {isEn ? 'Total' : 'الإجمالي'}
                   </dt>
                   <span className="text-[12px] text-[#9FB7AE] font-bold">
-                    {isEn ? 'Includes 15% VAT' : 'شامل ضريبة القيمة المضافة ١٥٪'}
+                    {isEn ? 'Includes 15% VAT' : 'شامل ضريبة القيمة المضافة 15٪'}
                   </span>
                 </div>
                 <dd className="text-[28px] font-black text-[#234745] font-en flex items-center gap-2 flex-row-reverse">
@@ -820,7 +820,7 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
                   <div className="bg-[#FEF8EB] border border-[#C5A96A]/60 rounded-2xl p-4 flex flex-col gap-2.5 my-1 text-start animate-fade-in">
                     <div className="flex items-center gap-2.5 font-bold text-[#234745] text-[14px]">
                       <span className="text-lg">🎁</span>
-                      <span>{isEn ? 'Our team will contact you within 24 hours to confirm your custom package request.' : 'سيتواصل معك فريقنا خلال ٢٤ ساعة لتأكيد طلبك'}</span>
+                      <span>{isEn ? 'Our team will contact you within 24 hours to confirm your custom package request.' : 'سيتواصل معك فريقنا خلال 24 ساعة لتأكيد طلبك'}</span>
                     </div>
                     <Link
                       to={isEn ? '/en/pages/custom-request' : '/pages/custom-request'}
@@ -922,7 +922,7 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
                   <span className="text-[#1a1a1a] font-black text-[18px] tracking-tight font-en leading-none block pt-0.5">tamara</span>
                 </div>
                 <h4 className="text-[15px] font-black text-[#1a1a1a] leading-tight mb-2" style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" }}>
-                  {isEn ? 'Split it into 4 interest-free payments' : 'قسّطها على ٤ دفعات بدون فوائد'}
+                  {isEn ? 'Split it into 4 interest-free payments' : 'قسّطها على 4 دفعات بدون فوائد'}
                 </h4>
                 <div className="w-full flex justify-end mt-1">
                   <p className="text-[11px] font-bold text-gray-500">
@@ -972,7 +972,7 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
 
           {hasTax && (
             <div className="flex justify-between items-center text-[14px]">
-              <dt className="text-gray-400 font-medium">{isEn ? 'VAT (15%)' : 'ضريبة القيمة المضافة (١٥٪)'}</dt>
+              <dt className="text-gray-400 font-medium">{isEn ? 'VAT (15%)' : 'ضريبة القيمة المضافة (15٪)'}</dt>
               <dd className="text-[#234745] font-bold font-en flex items-center gap-1 flex-row-reverse">
                 <SaudiRiyalSymbol className="h-3.5 w-auto" />
                 <span>{calculatedTax.toFixed(2)}</span>

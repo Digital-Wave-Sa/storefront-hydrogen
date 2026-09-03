@@ -9,6 +9,16 @@ import { GlobalSearchBar } from './GlobalSearchBar';
 import { useWishlist } from '~/context/WishlistContext';
 import { fetchAdminLocations } from '~/lib/locations-meta';
 
+/**
+ * Header count badges.
+ *
+ * The wishlist bubble and the loyalty-points pill are hidden by request. Set
+ * either to true to bring it back -- nothing else needs changing, and the
+ * loyalty request below is skipped entirely while the pill is off.
+ */
+const SHOW_WISHLIST_COUNT: boolean = false;
+const SHOW_LOYALTY_POINTS: boolean = false;
+
 type HeaderProps = {
   header: HeaderQuery;
   cart: Promise<CartApiQueryFragment | null>;
@@ -636,6 +646,11 @@ function MiddleBar({
   const customerIdentifier = phone || email;
 
   useEffect(() => {
+    // Nothing renders `points` while the pill is hidden, so don't ask for it.
+    if (!SHOW_LOYALTY_POINTS) {
+      setPoints(null);
+      return;
+    }
     if (customerIdentifier) {
       const cleanId = customerIdentifier.replace(/\s+/g, '');
       fetch(`/api/loyalty-points?identifier=${encodeURIComponent(cleanId)}&t=${Date.now()}`)
@@ -741,7 +756,7 @@ function MiddleBar({
             {/* Loyalty Star */}
             <NavLink to={isEn ? "/en/account/wallet" : "/account/wallet"} className="text-[#234745] hover:opacity-70 transition-opacity p-0.5 relative">
               <svg width="19" height="19" viewBox="0 0 24 24" fill="#f1c40f" stroke="#f1c40f" strokeWidth="1.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
-              {points !== null && (
+              {SHOW_LOYALTY_POINTS && points !== null && (
                 <span className="absolute -top-1 -right-1.5 bg-[#234745] text-white text-[8px] font-bold px-1 rounded-full">{points}</span>
               )}
             </NavLink>
@@ -1152,7 +1167,7 @@ export function HeaderMenu({
 function WishlistBadge() {
   const { wishlist } = useWishlist();
   const count = wishlist.length;
-  if (count === 0) return null;
+  if (!SHOW_WISHLIST_COUNT || count === 0) return null;
   return (
     <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-[#e34242] text-white text-[9px] rounded-full flex items-center justify-center shadow-sm border border-white">
       {count}

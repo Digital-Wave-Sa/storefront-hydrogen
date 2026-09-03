@@ -19,7 +19,7 @@ export function CorporateGifting({ config }: { config?: any }) {
     const title = (isEn ? getField('title_en') : getField('title')) || (isEn ? 'Gifts that Suit Your Company' : 'هدايا تليق بشركتك');
     const description = (isEn ? getField('description_en') : getField('description')) || (isEn
         ? "Leave a mark on every institutional occasion — luxury collections customized with your company name, with Saadeddin's elegance and craftsmanship since 1919. • Bulk orders • Corporate packaging • Delivery to all branches."
-        : 'اترك أثراً في كل مناسبة مؤسسية — تشكيلات فاخرة مخصصة لاسم شركتك، بأناقة سعد الدين وحرفتها منذ ١٩١٩. • طلبات بالجملة • تغليف مؤسسي • توصيل لجميع الفروع.');
+        : 'اترك أثراً في كل مناسبة مؤسسية — تشكيلات فاخرة مخصصة لاسم شركتك، بأناقة سعد الدين وحرفتها منذ 1919. • طلبات بالجملة • تغليف مؤسسي • توصيل لجميع الفروع.');
     const button = (isEn ? getField('button_text_en') : getField('button_text')) || (isEn ? 'Discover More' : 'إكتشف المزيد');
     const rawLink = (isEn ? getField('button_link_en') : '') || getField('button_link') || (isEn ? '/en/corporate' : '/corporate');
     let buttonLink = rawLink;

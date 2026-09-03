@@ -724,7 +724,7 @@ export default function BranchDashboard() {
             <div className="grid grid-cols-2 gap-4">
               <div className="luxury-field">
                 <label className="luxury-label">
-                  {isEn ? 'Shift 1 Open From' : 'الوردية ١ تفتح من'}
+                  {isEn ? 'Shift 1 Open From' : 'الوردية 1 تفتح من'}
                 </label>
                 <input
                   name="hoursFrom"
@@ -734,7 +734,7 @@ export default function BranchDashboard() {
               </div>
               <div className="luxury-field">
                 <label className="luxury-label">
-                  {isEn ? 'Shift 1 Close At' : 'الوردية ١ تغلق في'}
+                  {isEn ? 'Shift 1 Close At' : 'الوردية 1 تغلق في'}
                 </label>
                 <input
                   name="hoursTo"
@@ -747,7 +747,7 @@ export default function BranchDashboard() {
             <div className="grid grid-cols-2 gap-4">
               <div className="luxury-field">
                 <label className="luxury-label">
-                  {isEn ? 'Shift 2 Open From' : 'الوردية ٢ تفتح من (اختياري)'}
+                  {isEn ? 'Shift 2 Open From' : 'الوردية 2 تفتح من (اختياري)'}
                 </label>
                 <input
                   name="hoursFromShift2"
@@ -757,7 +757,7 @@ export default function BranchDashboard() {
               </div>
               <div className="luxury-field">
                 <label className="luxury-label">
-                  {isEn ? 'Shift 2 Close At' : 'الوردية ٢ تغلق في (اختياري)'}
+                  {isEn ? 'Shift 2 Close At' : 'الوردية 2 تغلق في (اختياري)'}
                 </label>
                 <input
                   name="hoursToShift2"
@@ -1022,7 +1022,7 @@ export default function BranchDashboard() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="luxury-field">
                     <label className="luxury-label">
-                      {isEn ? 'Shift 2 Open' : 'الوردية ٢ تفتح من'}
+                      {isEn ? 'Shift 2 Open' : 'الوردية 2 تفتح من'}
                     </label>
                     <input
                       name="hoursFromShift2"
@@ -1033,7 +1033,7 @@ export default function BranchDashboard() {
                   </div>
                   <div className="luxury-field">
                     <label className="luxury-label">
-                      {isEn ? 'Shift 2 Close' : 'الوردية ٢ تغلق في'}
+                      {isEn ? 'Shift 2 Close' : 'الوردية 2 تغلق في'}
                     </label>
                     <input
                       name="hoursToShift2"

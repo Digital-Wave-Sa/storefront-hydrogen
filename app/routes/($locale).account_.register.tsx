@@ -1739,7 +1739,7 @@ export default function Register() {
                           </>
                         ) : (
                           <>
-                            بعد ٣ محاولات فاشلة — يمكنك المحاولة مجدداً بعد{' '}
+                            بعد 3 محاولات فاشلة — يمكنك المحاولة مجدداً بعد{' '}
                             <span className="font-bold">
                               {formatMMSS(blockCooldown)}
                             </span>{' '}

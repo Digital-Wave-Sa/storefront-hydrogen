@@ -807,7 +807,7 @@ function CartLineGiftForm({ line, isEn }: { line: CartLine, isEn: boolean }) {
             className="w-full bg-white border border-[#f0ece8] rounded-lg px-3 py-2 text-[13px] text-[#234745] focus:outline-none focus:border-[#d4a06a] focus:ring-1 focus:ring-[#d4a06a] transition-all resize-none"
           />
           <div className="flex justify-between items-center text-[10px] text-gray-400 font-bold -mt-2 px-1">
-            <span>{isEn ? 'Max 150 chars' : 'الحد الأقصى ١٥٠ حرفاً'}</span>
+            <span>{isEn ? 'Max 150 chars' : 'الحد الأقصى 150 حرفاً'}</span>
             <span>
               {isEn
                 ? `${150 - message.length} remaining`

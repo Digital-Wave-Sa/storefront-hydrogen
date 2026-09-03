@@ -131,7 +131,7 @@ export default function GeneralFeedbackPage() {
             {/* 1. Branch Rating */}
             <div className="space-y-3">
               <label className="block text-[11px] font-black uppercase tracking-wider text-gray-400">
-                {isEn ? '1. Branch & Service' : '١. الفرع والخدمة'}
+                {isEn ? '1. Branch & Service' : '1. الفرع والخدمة'}
               </label>
               <div className="mt-5 p-4 rounded-2xl bg-[#FCFAF7] border border-[#EADFC9]/40 flex justify-center">
                 <StarRating
@@ -147,7 +147,7 @@ export default function GeneralFeedbackPage() {
             {/* 2. Comments */}
             <div className="pt-6 border-t border-[#EADFC9]/30 space-y-3">
               <label className="block text-[11px] font-black uppercase tracking-wider text-gray-400">
-                {isEn ? '2. Your Comments' : '٢. ملاحظاتك'}
+                {isEn ? '2. Your Comments' : '2. ملاحظاتك'}
               </label>
               <textarea
                 name="comment"

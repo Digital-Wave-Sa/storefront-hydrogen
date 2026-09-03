@@ -118,115 +118,6 @@ function formatOtpError(errorMessage: string, lang: 'en' | 'ar'): string {
   return errorMessage;
 }
 
-function translateOtpErrorMessage(msg: string, lang: 'en' | 'ar'): string {
-  if (!msg) return '';
-
-  // Extract inner message if backend returned "SMS gateway returned XXX: <json or message>"
-  let cleanMsg = msg;
-  const gatewayMatch = msg.match(/SMS gateway returned \d+:\s*(.*)/i);
-  if (gatewayMatch) {
-    cleanMsg = gatewayMatch[1];
-    try {
-      const parsed = JSON.parse(cleanMsg) as any;
-      if (parsed.message) cleanMsg = parsed.message;
-      else if (parsed.error) cleanMsg = parsed.error;
-    } catch {}
-  }
-
-  const lowerMsg = cleanMsg.toLowerCase();
-
-  // 1. Rate limiting matches MUST come first!
-  const minutesMatch = cleanMsg.match(
-    /please\s+wait\s+(\d+)\s+minutes?\s+before\s+requesting/i,
-  );
-  if (minutesMatch) {
-    const mins = minutesMatch[1];
-    if (mins === '1') {
-      return lang === 'en'
-        ? 'Please wait 1 minute before requesting a new code.'
-        : 'يرجى الانتظار دقيقة واحدة قبل طلب رمز تحقق جديد.';
-    } else if (mins === '2') {
-      return lang === 'en'
-        ? 'Please wait 2 minutes before requesting a new code.'
-        : 'يرجى الانتظار دقيقتين قبل طلب رمز تحقق جديد.';
-    } else {
-      return lang === 'en'
-        ? `Please wait ${mins} minutes before requesting a new code.`
-        : `يرجى الانتظار ${mins} دقائق قبل طلب رمز تحقق جديد.`;
-    }
-  }
-
-  const secondsMatch = cleanMsg.match(
-    /please\s+wait\s+(\d+)\s+seconds?\s+before\s+requesting/i,
-  );
-  if (secondsMatch) {
-    const secs = secondsMatch[1];
-    return lang === 'en'
-      ? `Please wait ${secs} seconds before requesting a new code.`
-      : `يرجى الانتظار ${secs} ثانية قبل طلب رمز تحقق جديد.`;
-  }
-
-  // 2. Specific error matches
-  if (lowerMsg.includes('invalid phone') || lowerMsg.includes('phone_number')) {
-    return lang === 'en'
-      ? 'Invalid phone number format. Please check the number and try again.'
-      : 'رقم الجوال غير صحيح. يرجى التحقق من الرقم والمحاولة مرة أخرى.';
-  }
-
-  if (
-    lowerMsg.includes('invalid otp') ||
-    lowerMsg.includes('otp is invalid') ||
-    lowerMsg.includes('incorrect otp')
-  ) {
-    return lang === 'en'
-      ? 'Invalid verification code.'
-      : 'رمز التحقق غير صحيح.';
-  }
-  if (
-    lowerMsg.includes('otp expired') ||
-    lowerMsg.includes('otp has expired')
-  ) {
-    return lang === 'en'
-      ? 'Verification code expired. Please request a new code.'
-      : 'انتهت صلاحية رمز التحقق. يرجى طلب رمز جديد.';
-  }
-  if (
-    lowerMsg.includes('too many attempts') ||
-    lowerMsg.includes('too many failed')
-  ) {
-    return lang === 'en'
-      ? 'Too many failed attempts. Please try again later.'
-      : 'لقد تجاوزت الحد الأقصى للمحاولات. يرجى المحاولة بعد قليل.';
-  }
-  if (lowerMsg.includes('not found') || lowerMsg.includes('not exist')) {
-    return lang === 'en'
-      ? 'Account not found. Please register.'
-      : 'الحساب غير موجود. يرجى إنشاء حساب جديد.';
-  }
-  if (
-    lowerMsg.includes('already registered') ||
-    lowerMsg.includes('already exists')
-  ) {
-    return lang === 'en'
-      ? 'This phone number is already registered.'
-      : 'رقم الجوال هذا مسجل بالفعل.';
-  }
-
-  // 3. Fallback for hard gateway failure ONLY
-  if (
-    lowerMsg.includes('gateway dispatch failed') ||
-    lowerMsg.includes('service unavailable') ||
-    lowerMsg.includes('dispatch failed') ||
-    lowerMsg.includes('gateway failed')
-  ) {
-    return lang === 'en'
-      ? 'SMS service is temporarily unavailable. Please try again in a few moments.'
-      : 'خدمة الرسائل القصيرة غير متاحة حالياً. يرجى المحاولة بعد قليل.';
-  }
-
-  return cleanMsg;
-}
-
 export async function action({request, context}: ActionFunctionArgs) {
   try {
     const {storefront, session, env} = context;
@@ -280,15 +171,41 @@ export async function action({request, context}: ActionFunctionArgs) {
       }
 
       try {
-        // Try to send OTP via Custom CRM API (Bypass fallback if service fails)
+        /**
+         * A failed send stops here.
+         *
+         * This used to catch the error, log it as "Bypass Mode Active" and
+         * carry straight on to the code screen. There is no bypass: the verify
+         * step below calls the same CRM (api.verifyOtp). So when the send
+         * failed, the shopper was shown the code screen, never received an
+         * SMS, and whatever they typed came back as a wrong code — an SMS or
+         * CRM outage presented itself as "every customer is entering the wrong
+         * code", with a log line claiming a fallback that does not exist.
+         *
+         * Returning here also leaves loginOtpCooldown unset, so the shopper
+         * can retry immediately instead of waiting 60 seconds for a code that
+         * was never sent.
+         */
         try {
           const api = new SaadeddinApi(env);
           await api.requestOtp(fullPhone, 'login');
         } catch (otpErr: any) {
-          console.warn(
-            '[Login] OTP send API warning (Bypass Mode Active):',
-            otpErr?.message,
-          );
+          const detail = otpErr?.message || String(otpErr);
+          console.error('[Login] OTP send failed:', detail);
+
+          // A rate limit is the shopper's to act on. Anything else is ours, and
+          // the backend's wording ("SMS gateway returned 500: ...") is not
+          // something to put in front of a customer.
+          const isRateLimited = /wait|too many|rate.?limit|throttl/i.test(detail);
+          return data({
+            error: isRateLimited
+              ? lang === 'en'
+                ? 'Please wait a moment before requesting a new code.'
+                : 'يرجى الانتظار قليلاً قبل طلب رمز تحقق جديد.'
+              : lang === 'en'
+                ? 'We could not send the verification code right now. Please try again in a moment.'
+                : 'تعذّر إرسال رمز التحقق حالياً. يرجى المحاولة مرة أخرى بعد قليل.',
+          });
         }
 
         session.set('loginOtpPhone', fullPhone);
@@ -385,8 +302,23 @@ export async function action({request, context}: ActionFunctionArgs) {
         savedPhone,
         env.SESSION_SECRET || 'saadeddin-otp-secret',
       );
-      let resolvedEmail: string | null =
-        crmProfile?.email || session.get('loginCustomerEmail') || null;
+      /**
+       * The CRM's email is a HINT, never a credential.
+       *
+       * It used to seed `resolvedEmail`, which is the address this route then
+       * signs into Shopify with. When the CRM returned an address belonging to
+       * a different Shopify customer, the OTP login minted a real access token
+       * for THAT customer — so the shopper browsed as themselves but every
+       * order they placed was attributed to someone else's account.
+       *
+       * It is now only used when CREATING a customer for this phone. Shopify
+       * rejects a duplicate email on create, so it cannot take over an
+       * existing account that way.
+       */
+      const crmEmail: string | null = crmProfile?.email || null;
+
+      /** Only ever set from a customer whose phone matches this login exactly. */
+      let resolvedEmail: string | null = null;
       let resolvedCustomerId: string | null = null;
 
       let adminToken: string | null = null;
@@ -400,26 +332,34 @@ export async function action({request, context}: ActionFunctionArgs) {
 
       if (adminToken && adminDomain) {
         const rawDigits = savedPhone.replace(/\D/g, ''); // e.g. "962790910041"
-        const last9Digits = rawDigits.slice(-9); // e.g. "790910041"
         const localFormat = rawDigits.startsWith('962')
           ? '0' + rawDigits.slice(3)
           : rawDigits.startsWith('966')
             ? '0' + rawDigits.slice(3)
             : rawDigits;
 
+        /**
+         * Every spelling of THIS number, for exact comparison.
+         *
+         * `phoneVariants` is compared with `===`, never as a prefix or suffix.
+         * The old filter accepted primaryPhone.endsWith(last 9 digits), so any
+         * customer whose number merely ended in the same nine digits was a
+         * candidate — and a bare last-9-digits query searched every field on
+         * every customer, not just the phone, dragging in matches from
+         * addresses, notes and company names.
+         */
+        const nationalDigits = localFormat.replace(/^0/, '');
+        const phoneVariants = new Set(
+          [rawDigits, localFormat, nationalDigits].filter(
+            (v) => v && v.length >= 9,
+          ),
+        );
+
         const searchQueries = [
           `phone:${rawDigits}`,
           `phone:${localFormat}`,
           `phone:${savedPhone}`,
-          `${last9Digits}`,
         ];
-
-        if (
-          resolvedEmail &&
-          !resolvedEmail.endsWith('@saadeddin.placeholder')
-        ) {
-          searchQueries.unshift(`email:"${resolvedEmail}"`);
-        }
 
         for (const q of searchQueries) {
           if (resolvedCustomerId) break;
@@ -430,49 +370,44 @@ export async function action({request, context}: ActionFunctionArgs) {
             );
             if (searchRes.ok) {
               const searchData = (await searchRes.json()) as any;
-              const candidates = (searchData.customers || []).filter(
-                (c: any) => {
-                  const primaryPhone = (c.phone || '').replace(/\D/g, '');
-                  const matchesPhone = Boolean(
-                    primaryPhone && 
-                    rawDigits && 
-                    (primaryPhone === rawDigits || primaryPhone.endsWith(last9Digits))
-                  );
-
-                  const matchesEmail =
-                    resolvedEmail &&
-                    c.email &&
-                    c.email.toLowerCase() === resolvedEmail.toLowerCase();
-                  if (matchesPhone) return true;
-                  if (matchesEmail && !primaryPhone) return true;
-                  return false;
-                },
-              );
-
-              // Prioritize original customer account: real email first, real first name, then oldest customer ID
-              candidates.sort((a: any, b: any) => {
-                const aPlaceholder = (a.email || '').endsWith(
-                  '@saadeddin.placeholder',
-                );
-                const bPlaceholder = (b.email || '').endsWith(
-                  '@saadeddin.placeholder',
-                );
-                if (aPlaceholder !== bPlaceholder) return aPlaceholder ? 1 : -1;
-
-                const aCustName =
-                  (a.first_name || '').toLowerCase() === 'customer';
-                const bCustName =
-                  (b.first_name || '').toLowerCase() === 'customer';
-                if (aCustName !== bCustName) return aCustName ? 1 : -1;
-
-                return Number(a.id) - Number(b.id);
+              /**
+               * Phone equality and nothing else.
+               *
+               * A customer with no phone is never a candidate, however
+               * promising their email looks: matching on email alone is what
+               * let a login land on an unrelated account.
+               */
+              const candidates = (searchData.customers || []).filter((c: any) => {
+                const primaryPhone = (c.phone || '').replace(/\D/g, '');
+                return Boolean(primaryPhone) && phoneVariants.has(primaryPhone);
               });
+
+              /**
+               * Every candidate here carries this exact phone, so any of them
+               * is the same person — duplicates of one account. The oldest
+               * wins, which is the one with the history.
+               *
+               * This sort used to run over LOOSE matches and prefer "a real
+               * email over a placeholder", which is precisely how a login for
+               * a placeholder-email customer was handed a different, older
+               * customer with a real address.
+               */
+              if (candidates.length > 1) {
+                console.warn(
+                  `[Login] ${candidates.length} customers share the phone ${rawDigits}: ${candidates
+                    .map((c: any) => c.id)
+                    .join(', ')}. Using the oldest; these should be merged in Shopify.`,
+                );
+              }
+              candidates.sort((a: any, b: any) => Number(a.id) - Number(b.id));
 
               const found = candidates[0];
 
               if (found) {
                 resolvedCustomerId = String(found.id);
-                resolvedEmail = found.email || resolvedEmail;
+                // Only this customer's own email — never a value carried over
+                // from the CRM or a previous session.
+                resolvedEmail = found.email || null;
               }
             }
           } catch (_) {}
@@ -489,11 +424,17 @@ export async function action({request, context}: ActionFunctionArgs) {
             if (verifyRes.ok) {
               const verifyData = (await verifyRes.json()) as any;
               const cp = (verifyData.customer?.phone || '').replace(/\D/g, '');
-              const matchesPhone = Boolean(cp && rawDigits && (cp === rawDigits || cp.endsWith(last9Digits)));
-              
+              // Exact only. A CRM record pointing at the wrong Shopify id must
+              // not be able to hand over that account.
+              const matchesPhone = Boolean(cp) && phoneVariants.has(cp);
+
               if (matchesPhone) {
                 resolvedCustomerId = numericId;
-                resolvedEmail = verifyData.customer?.email || resolvedEmail;
+                resolvedEmail = verifyData.customer?.email || null;
+              } else {
+                console.warn(
+                  `[Login] CRM shopifyId ${numericId} has phone ${cp || '(none)'}, which is not ${rawDigits}. Ignoring it.`,
+                );
               }
             }
           } catch (_) {}
@@ -504,9 +445,15 @@ export async function action({request, context}: ActionFunctionArgs) {
           const nameParts = (crmProfile?.name || '').trim().split(/\s+/);
           const firstName = nameParts[0] || 'Customer';
           const lastName = nameParts.slice(1).join(' ') || '(N/A)';
+          /**
+           * Creating is the one place the CRM's email is welcome: this phone
+           * has no Shopify customer, so there is no account to take over, and
+           * Shopify rejects the create outright if the address already belongs
+           * to someone else — the retry below then falls back to the
+           * per-phone placeholder.
+           */
           const createEmail =
-            resolvedEmail ||
-            `${savedPhone.replace(/\D/g, '')}@saadeddin.placeholder`;
+            crmEmail || `${savedPhone.replace(/\D/g, '')}@saadeddin.placeholder`;
 
           try {
             const createRes = await fetch(
@@ -540,25 +487,32 @@ export async function action({request, context}: ActionFunctionArgs) {
               resolvedCustomerId = String(createData.customer?.id);
               resolvedEmail = createData.customer?.email || createEmail;
             } else {
-              // If creation failed because customer already exists in Shopify, query by raw digits or email
+              /**
+               * Creation failed — usually because a customer already holds this
+               * phone or this email. Look the phone up again, exactly.
+               *
+               * This search used to be a bare last-9-digits full-text query
+               * with an `endsWith` filter, which is the same defect as above:
+               * it could recover a completely different customer and then sign
+               * the shopper in as them.
+               */
               const rawDigits = savedPhone.replace(/\D/g, '');
-              const last9Digits = rawDigits.slice(-9);
 
               try {
                 const recoverRes = await fetch(
-                  `https://${adminDomain}/admin/api/2024-01/customers/search.json?query=${encodeURIComponent(last9Digits)}&fields=id,email,phone`,
+                  `https://${adminDomain}/admin/api/2024-01/customers/search.json?query=${encodeURIComponent(`phone:${rawDigits}`)}&fields=id,email,phone`,
                   {headers: {'X-Shopify-Access-Token': adminToken}},
                 );
                 if (recoverRes.ok) {
                   const recoverData = (await recoverRes.json()) as any;
                   const found = (recoverData.customers || []).find((c: any) => {
                     const cp = (c.phone || '').replace(/\D/g, '');
-                    return Boolean(cp && rawDigits && (cp === rawDigits || cp.endsWith(last9Digits)));
+                    return Boolean(cp) && phoneVariants.has(cp);
                   });
-                  
+
                   if (found) {
                     resolvedCustomerId = String(found.id);
-                    resolvedEmail = found.email || resolvedEmail;
+                    resolvedEmail = found.email || null;
                   } else if (!resolvedCustomerId) {
                     // If creation failed due to email collision, and phone wasn't found, try creating with placeholder email
                     const retryEmail = `${rawDigits}@saadeddin.placeholder`;
@@ -620,6 +574,15 @@ export async function action({request, context}: ActionFunctionArgs) {
       }
 
       // ── Step 3: Create Shopify Storefront access token ───────────────────────
+      /**
+       * The address signed into decides who this session IS.
+       *
+       * `resolvedEmail` is now only ever the email of a customer whose phone
+       * equals the one that just passed OTP. If nothing matched, this is the
+       * per-phone placeholder — an account keyed to this number and no one
+       * else's. There is deliberately no third option: an OTP for a phone can
+       * only ever open the account holding that phone.
+       */
       const loginEmail =
         resolvedEmail ||
         `${savedPhone.replace(/\D/g, '')}@saadeddin.placeholder`;
@@ -662,8 +625,22 @@ export async function action({request, context}: ActionFunctionArgs) {
         session.set('saadeddinToken', saadeddinToken);
       }
       session.set('loginOtpPhone', savedPhone);
-      session.unset('loginCustomerEmail');
-      session.unset('loginCustomerId');
+      /**
+       * Keep the customer we actually resolved. These used to be unset here,
+       * which left the phone as the only identity in the session and forced
+       * every later lookup to re-derive the customer — each with its own
+       * matching rules, and each able to derive a different one.
+       */
+      if (resolvedCustomerId) {
+        session.set('loginCustomerId', resolvedCustomerId);
+      } else {
+        session.unset('loginCustomerId');
+      }
+      if (resolvedEmail && !resolvedEmail.endsWith('@saadeddin.placeholder')) {
+        session.set('loginCustomerEmail', resolvedEmail);
+      } else {
+        session.unset('loginCustomerEmail');
+      }
       session.unset('loginOtpAttempts');
       session.unset('loginOtpBlockUntil');
 

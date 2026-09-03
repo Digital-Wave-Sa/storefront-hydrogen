@@ -10,12 +10,12 @@ import {useWishlist} from '~/context/WishlistContext';
 import {PageHeader} from '~/components/layout/PageHeader';
 import {SaudiRiyalSymbol} from '~/components/Price';
 import {ProductItem} from '~/components/ProductItem';
-import {tagsForOfferHandle} from '~/lib/offer-tags';
-import {fetchOfferByTags} from '~/lib/offer-discounts.server';
+import {resolveOffer} from '~/lib/offer-products.server';
+import {fetchOfferDefinition} from '~/lib/offer-registry.server';
 
 // GraphQL query to fetch promotional products and promotion page metaobjects
 const PROMOTIONS_QUERY = `#graphql
-  query getPromotionalProducts($country: CountryCode, $language: LanguageCode) @inContext(country: $country, language: $language) {
+  query getOfferPageProducts($country: CountryCode, $language: LanguageCode) @inContext(country: $country, language: $language) {
     heroMeta: metaobjects(type: "promotions_hero", first: 1) {
       nodes {
         id
@@ -168,79 +168,6 @@ function renderTextWithRiyalSymbol(
   );
 }
 
-/** The offer's products fetched by id — exact, and not capped by a catalogue window. */
-const OFFER_PRODUCTS_BY_ID_QUERY = `#graphql
-  query offerProductsById($ids: [ID!]!, $country: CountryCode, $language: LanguageCode) @inContext(country: $country, language: $language) {
-    nodes(ids: $ids) {
-      ... on Product {
-        id
-        handle
-        title
-        tags
-        availableForSale
-        featuredImage {
-          url
-          altText
-          width
-          height
-        }
-        priceRange {
-          minVariantPrice {
-            amount
-            currencyCode
-          }
-        }
-        compareAtPriceRange {
-          minVariantPrice {
-            amount
-            currencyCode
-          }
-        }
-        variants(first: 10) {
-          nodes {
-            id
-            title
-            availableForSale
-            price {
-              amount
-              currencyCode
-            }
-            compareAtPrice {
-              amount
-              currencyCode
-            }
-            selectedOptions {
-              name
-              value
-            }
-            storeAvailability(first: 250) {
-              nodes {
-                available
-                location {
-                  id
-                  name
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-` as const;
-
-/** Products of the collections a discount targets, as Storefront nodes. */
-const COLLECTION_PRODUCTS_QUERY = `#graphql
-  query offerCollectionProducts($ids: [ID!]!) {
-    nodes(ids: $ids) {
-      ... on Collection {
-        id
-        products(first: 250) { nodes { id } }
-      }
-    }
-  }
-` as const;
-
 export async function loader({context, params, request}: LoaderFunctionArgs) {
   const {storefront, env} = context;
   const debugOffers =
@@ -356,104 +283,34 @@ export async function loader({context, params, request}: LoaderFunctionArgs) {
     });
 
     /**
-     * Offer membership comes from the Shopify discount itself.
-     *
-     * We find the discount tagged for this offer and take the products it
-     * actually entitles, so the page can only ever list what the cart will
-     * genuinely discount. Product tags described an offer; the discount *is*
-     * the offer.
+     * Offer membership and pricing both come from the Shopify discount, via the
+     * shared resolver that /promotions also uses — so the hub and this page can
+     * only ever list the same products at the same prices.
      */
-    const offer = await fetchOfferByTags(env, tagsForOfferHandle(offerHandle));
+    /**
+     * The offer's registry entry supplies its discount tag and its copy, so a
+     * new offer is a `promotion_offer` metaobject in Shopify rather than a code
+     * change. A handle with no entry still resolves through the built-in tag
+     * table and then through the handle itself, which keeps one-off promotion
+     * URLs working.
+     */
+    const definition = await fetchOfferDefinition(storefront, offerHandle);
+
+    const {offer, gridProducts, freeItems} = await resolveOffer({
+      storefront,
+      env,
+      handle: offerHandle,
+      tags: definition?.tags,
+      catalogue: processedProducts,
+    });
 
     if (!offer.title && offer.products.length === 0 && !offer.allProducts) {
       console.warn(
         `[offers] No ACTIVE discount found for /promotions/${offerHandle}. ` +
-          `Searched discount tags: ${tagsForOfferHandle(offerHandle).join(', ')}. ` +
           `Tag the discount in Shopify Admin and check its dates — an expired ` +
           `discount is excluded on purpose.`,
       );
     }
-
-    let offerProducts: any[] = [];
-
-    if (offer.allProducts) {
-      offerProducts = processedProducts;
-    } else {
-      /**
-       * Fetch the discount's products by id rather than filtering the page's
-       * product list.
-       *
-       * That list is capped (`products(first: 250)`), and on a catalogue larger
-       * than the cap a discounted product simply is not in it — which is exactly
-       * what happened here: the discount named two products, both sat outside
-       * the first 250, and the offer rendered empty while being perfectly valid.
-       * The ids come straight from the discount, so ask for those.
-       */
-      const wantedIds = new Set(offer.products.map((p) => p.id));
-
-      // A discount can target collections rather than individual products.
-      if (offer.collectionIds.length > 0) {
-        try {
-          const collectionData: any = await storefront.query(
-            COLLECTION_PRODUCTS_QUERY,
-            {
-              variables: {ids: offer.collectionIds},
-              cache: storefront.CacheNone(),
-            },
-          );
-          for (const node of collectionData?.nodes || []) {
-            for (const p of node?.products?.nodes || []) {
-              if (p?.id) wantedIds.add(p.id);
-            }
-          }
-        } catch (err) {
-          console.error('[offers] Failed to resolve discount collections:', err);
-        }
-      }
-
-      if (wantedIds.size > 0) {
-        try {
-          const byId: any = await storefront.query(OFFER_PRODUCTS_BY_ID_QUERY, {
-            variables: {
-              ids: [...wantedIds],
-              country: storefront.i18n.country,
-              language: storefront.i18n.language,
-            },
-            cache: storefront.CacheNone(),
-          });
-          const roleById = new Map(
-            offer.products.map((p) => [p.id, p.role] as const),
-          );
-          offerProducts = (byId?.nodes || [])
-            .filter(Boolean)
-            .map((product: any) => {
-              const variant = product.variants?.nodes?.[0];
-              return {
-                ...product,
-                role: roleById.get(product.id),
-                tags: (product.tags || []).map((t: string) => t.toLowerCase()),
-                availableForSale:
-                  product.availableForSale ?? variant?.availableForSale ?? true,
-              };
-            });
-        } catch (err) {
-          console.error('[offers] Failed to fetch offer products by id:', err);
-        }
-      }
-    }
-
-    /**
-     * On a Buy X Get Y offer the free item is not something to add to the cart —
-     * listing it as an ordinary product card invites the shopper to buy the very
-     * thing they are supposed to receive. Qualifying products go in the grid; the
-     * free item is named separately.
-     */
-    const freeItems = offer.isBxgy
-      ? offerProducts.filter((p: any) => p.role === 'get')
-      : [];
-    const gridProducts = offer.isBxgy
-      ? offerProducts.filter((p: any) => p.role === 'buy' || p.role === 'both')
-      : offerProducts;
 
     return {
       offerHandle,
@@ -462,6 +319,19 @@ export async function loader({context, params, request}: LoaderFunctionArgs) {
         title: p.title,
         handle: p.handle,
       })),
+      /** Registry copy for this offer, when it has an entry. */
+      definition: definition
+        ? {
+            handle: definition.handle,
+            titleAr: definition.titleAr ?? null,
+            titleEn: definition.titleEn ?? null,
+            subtitleAr: definition.subtitleAr ?? null,
+            subtitleEn: definition.subtitleEn ?? null,
+            badgeAr: definition.badgeAr ?? null,
+            badgeEn: definition.badgeEn ?? null,
+            imageUrl: definition.imageUrl ?? null,
+          }
+        : null,
       offer: {
         isBxgy: offer.isBxgy,
         debug: debugOffers
@@ -471,7 +341,8 @@ export async function loader({context, params, request}: LoaderFunctionArgs) {
               catalogueSample: processedProducts
                 .slice(0, 3)
                 .map((p: any) => p.id),
-              matchedInCatalogue: offerProducts.length,
+              matchedInCatalogue: gridProducts.length,
+              discountValue: offer.discountValue ?? null,
             }
           : null,
         title: offer.title ?? null,
@@ -490,6 +361,7 @@ export async function loader({context, params, request}: LoaderFunctionArgs) {
     return {
       offerHandle,
       freeItems: [],
+      definition: null,
       offer: {isBxgy: false, title: null, summary: null, code: null, endsAt: null},
       products: [],
       heroData: null,
@@ -610,8 +482,8 @@ export default function SubPromotionPage() {
             </h3>
             <p className="text-[#7D7D7D] text-[14px] max-w-[420px]">
               {isEn
-                ? 'Products tagged with this offer in Shopify Admin will automatically appear here.'
-                : 'المنتجات المضاف لها تاج هذا العرض في لوحة تحكم شوبيفاي ستظهر هنا تلقائياً.'}
+                ? 'This offer is not running at the moment. Products appear here once an active discount in Shopify Admin carries this offer\u2019s tag.'
+                : 'هذا العرض غير مفعّل حالياً. تظهر المنتجات هنا عندما يحمل خصم مُفعّل في لوحة تحكم شوبيفاي تاج هذا العرض.'}
             </p>
             <Link
               to="/promotions"

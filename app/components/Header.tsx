@@ -1046,7 +1046,16 @@ export function HeaderMenu({
   const NAV_ITEMS = isEn ? STATIC_NAV_EN : STATIC_NAV_AR;
 
   return (
-    <div className="flex flex-col h-full bg-[#FEF8EB]">
+    /*
+      This is the drawer's scrolling element. The panel body it sits in is
+      `overflow: hidden` so the cart can manage its own scrolling, which left
+      this menu clipped at whatever fit on screen — on a phone the list ended
+      partway down and the items below it could not be reached.
+
+      overscroll-contain stops a flick at the end of the list from scrolling
+      the page behind the drawer.
+    */
+    <div className="flex flex-col h-full min-h-0 overflow-y-auto overscroll-contain bg-[#FEF8EB]">
       <div className="px-4 py-6 flex flex-col gap-3">
 
         {/* Mobile Header Links */}

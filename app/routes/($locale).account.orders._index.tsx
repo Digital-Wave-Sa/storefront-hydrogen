@@ -84,6 +84,70 @@ export function checkIsPickupOrder(order: any): boolean {
   return false;
 }
 
+/**
+ * What an order card is called.
+ *
+ * The product names, not the order number: an order headed "Order — #1257"
+ * tells the customer nothing they can recognise. Three names, then an ellipsis.
+ *
+ * Exported so the account dashboard's last-order card names an order exactly
+ * the way the orders list does — the two used to disagree.
+ */
+export function getOrderTitles(lineItems: any[]): string {
+  const items = lineItems || [];
+  // Prefer the live, translated product title over the line item's title,
+  // which is an English snapshot taken at purchase time.
+  const displayTitle = (item: any) => {
+    const productTitle = item?.variant?.product?.title;
+    if (productTitle && productTitle.trim()) return productTitle;
+    return item?.title || '';
+  };
+  return (
+    items.slice(0, 3).map(displayTitle).filter(Boolean).join(' • ') +
+    (items.length > 3 ? '...' : '')
+  );
+}
+
+const AR_MONTHS = [
+  'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
+  'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر',
+];
+const EN_MONTHS = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+];
+
+/**
+ * The order date, formatted the way the order cards show it.
+ *
+ * Read off the ISO string rather than through `new Date`, so the date shown is
+ * the one Shopify recorded and not that date shifted into the reader's
+ * timezone. Returns null when there is no usable date, and callers omit the
+ * line entirely.
+ */
+export function formatOrderDate(processedAt: string | null | undefined, isEn: boolean) {
+  if (!processedAt) return null;
+  const [yearStr, monthStr, dayStr] = String(processedAt).split('T')[0].split('-');
+  if (!yearStr || !monthStr || !dayStr) return null;
+
+  const dayNum = parseInt(dayStr, 10);
+  const monthIndex = parseInt(monthStr, 10) - 1;
+  const month = (isEn ? EN_MONTHS : AR_MONTHS)[monthIndex];
+  if (!month || Number.isNaN(dayNum)) return null;
+
+  return isEn ? (
+    <>
+      {month} <span className="font-en">{dayNum}</span>,{' '}
+      <span className="font-en">{yearStr}</span>
+    </>
+  ) : (
+    <>
+      <span className="font-en">{dayNum}</span> {month}{' '}
+      <span className="font-en">{yearStr}</span>
+    </>
+  );
+}
+
 export const meta: MetaFunction<typeof loader> = () => {
   return [{title: 'طلباتي | Saadeddin'}];
 };
@@ -95,13 +159,15 @@ export async function action({request, context}: ActionFunctionArgs) {
 
   if (intent === 'reorder') {
     const items = JSON.parse(String(formData.get('items') || '[]')) as any[];
-    if (items.length > 0) {
-      await cart.addLines(
-        items.map((item: any) => ({
-          merchandiseId: item.merchandiseId,
-          quantity: item.quantity,
-        })),
-      );
+    const lines = items
+      .map((item: any) => ({
+        merchandiseId: String(item?.merchandiseId || ''),
+        quantity: Number(item?.quantity) || 1,
+      }))
+      .filter((item) => item.merchandiseId.startsWith('gid://shopify/ProductVariant/'));
+
+    if (lines.length > 0) {
+      await cart.addLines(lines);
       return redirect('/cart');
     }
   }
@@ -171,7 +237,7 @@ const ADMIN_FIND_CUSTOMER_QUERY = `
 `;
 
 const ADMIN_CUSTOMER_ORDERS_QUERY = `
-  query CustomerOrders(
+  query AdminCustomerOrders(
     $q: String!
     $first: Int
     $last: Int
@@ -1020,69 +1086,9 @@ function OrderCard({order, isEn}: {order: OrderItemFragment; isEn: boolean}) {
     0,
   );
 
-  // Parse Date safely
-  let dateNode = null;
-  if (order.processedAt) {
-    const isoDate = order.processedAt.split('T')[0];
-    const [yearStr, monthStr, dayStr] = isoDate.split('-');
-    if (yearStr && monthStr && dayStr) {
-      const dayNum = parseInt(dayStr, 10);
-      const arMonths = [
-        'يناير',
-        'فبراير',
-        'مارس',
-        'أبريل',
-        'مايو',
-        'يونيو',
-        'يوليو',
-        'أغسطس',
-        'سبتمبر',
-        'أكتوبر',
-        'نوفمبر',
-        'ديسمبر',
-      ];
-      const enMonths = [
-        'January',
-        'February',
-        'March',
-        'April',
-        'May',
-        'June',
-        'July',
-        'August',
-        'September',
-        'October',
-        'November',
-        'December',
-      ];
-      const monthIndex = parseInt(monthStr, 10) - 1;
-      const monthEn = enMonths[monthIndex] || '';
-      const monthAr = arMonths[monthIndex] || '';
+  const dateNode = formatOrderDate(order.processedAt, isEn);
 
-      dateNode = isEn ? (
-        <>
-          {monthEn} <span className="font-en">{dayNum}</span>,{' '}
-          <span className="font-en">{yearStr}</span>
-        </>
-      ) : (
-        <>
-          <span className="font-en">{dayNum}</span> {monthAr}{' '}
-          <span className="font-en">{yearStr}</span>
-        </>
-      );
-    }
-  }
-
-  // Use translated product title (from @inContext) when available; fall back to lineItem.title snapshot
-  const getDisplayTitle = (item: any) => {
-    const productTitle = item.variant?.product?.title;
-    // If product title exists and differs from the line item title (which is always English snapshot), prefer it
-    if (productTitle && productTitle.trim()) return productTitle;
-    return item.title;
-  };
-  const titles =
-    lineItems.slice(0, 3).map(getDisplayTitle).join(' • ') +
-    (lineItems.length > 3 ? '...' : '');
+  const titles = getOrderTitles(lineItems);
 
   const reorderLines = lineItems
     .map((item: any) => {
@@ -1105,11 +1111,25 @@ function OrderCard({order, isEn}: {order: OrderItemFragment; isEn: boolean}) {
   const fulfillments = (order as any).fulfillments || [];
 
   // Collect ERP-assigned Shopify API tags as exact keys (per ERP→Shopify status mapping)
+  /**
+   * Same normalisation as the tracking page (track-order.$id.tsx), on purpose.
+   *
+   * This collapsed only spaces, to underscores, while the tracking page collapses
+   * spaces AND underscores to hyphens. So an ERP tag written with hyphens —
+   * `ready-for-pickup` — reached the tracking page as a match and reached this
+   * screen unchanged, where every lookup key was underscored, and matched
+   * nothing. The same order then showed its real progress on one page and sat on
+   * 'Order Received' on the other. Hyphen form is now the shared spelling, and
+   * underscore and space spellings still fold into it.
+   */
+  const normTag = (t: unknown) =>
+    String(t ?? '').trim().toLowerCase().replace(/[\s_]+/g, '-');
+
   const rawTags = (order as any).tags
     ? typeof (order as any).tags === 'string'
-      ? (order as any).tags.split(',').map((t: string) => t.trim().toLowerCase().replace(/[\s]/g, '_'))
+      ? (order as any).tags.split(',').map(normTag)
       : Array.isArray((order as any).tags)
-        ? (order as any).tags.map((t: string) => String(t).trim().toLowerCase().replace(/[\s]/g, '_'))
+        ? (order as any).tags.map(normTag)
         : []
     : [];
 
@@ -1117,7 +1137,7 @@ function OrderCard({order, isEn}: {order: OrderItemFragment; isEn: boolean}) {
 
   // Shipment-level statuses from fulfillment records
   const shipmentStatuses = fulfillments
-    .map((f: any) => (f.shipment_status || f.shipmentStatus || f.displayStatus || f.status || '').toLowerCase().replace(/[\s]/g, '_'))
+    .map((f: any) => normTag(f.shipment_status || f.shipmentStatus || f.displayStatus || f.status || ''))
     .filter(Boolean);
   const shipmentSet = new Set(shipmentStatuses);
 
@@ -1144,23 +1164,23 @@ function OrderCard({order, isEn}: {order: OrderItemFragment; isEn: boolean}) {
     statusAr = 'ملغاة';
     statusColor = '#E64950';
   } else if (
-    hasTag('failure', 'تعذر_التسليم', 'انتهت_مدة_الاستلام') ||
-    hasShipment('failure', 'failed', 'attempted_delivery')
+    hasTag('failure', 'تعذر-التسليم', 'انتهت-مدة-الاستلام') ||
+    hasShipment('failure', 'failed', 'attempted-delivery')
   ) {
     statusEn = isPickup ? 'Pickup Period Expired' : 'Delivery Attempt Failed';
     statusAr = isPickup ? 'انتهت مدة الاستلام' : 'تعذر التسليم';
     statusColor = '#E64950';
   } else if (
     fs === 'FULFILLED' ||
-    hasTag('delivered', 'picked_up', 'تم_التسليم', 'تم_الاستلام') ||
-    hasShipment('delivered', 'picked_up')
+    hasTag('delivered', 'picked-up', 'تم-التسليم', 'تم-الاستلام') ||
+    hasShipment('delivered', 'picked-up')
   ) {
     statusEn = isPickup ? 'Order Picked Up' : 'Delivered Successfully';
     statusAr = isPickup ? 'تم استلام الطلب' : 'تم التسليم بنجاح';
     statusColor = '#234745';
   } else if (
-    hasTag('ready_for_pickup', 'in_transit', 'out_for_delivery', 'جاهز_للاستلام', 'في_الطريق') ||
-    hasShipment('ready_for_pickup', 'in_transit', 'out_for_delivery')
+    hasTag('ready-for-pickup', 'in-transit', 'out-for-delivery', 'جاهز-للاستلام', 'في-الطريق') ||
+    hasShipment('ready-for-pickup', 'in-transit', 'out-for-delivery')
   ) {
     statusEn = isPickup ? 'Ready for Pickup' : 'Out for Delivery';
     statusAr = isPickup ? 'الطلب جاهز للاستلام' : 'الطلب في الطريق إليك';
@@ -1168,14 +1188,14 @@ function OrderCard({order, isEn}: {order: OrderItemFragment; isEn: boolean}) {
   } else if (
     fs === 'IN_PROGRESS' ||
     fs === 'PARTIALLY_FULFILLED' ||
-    hasTag('in_progress', 'processing', 'جاري_التجهيز') ||
-    hasShipment('in_progress', 'label_printed', 'submitted')
+    hasTag('in-progress', 'processing', 'جاري-التجهيز') ||
+    hasShipment('in-progress', 'label-printed', 'submitted')
   ) {
     statusEn = 'Order is Being Prepared';
     statusAr = 'جاري تجهيز الطلب';
     statusColor = '#906B51';
   } else if (
-    hasTag('confirmed', 'تم_التأكيد')
+    hasTag('confirmed', 'تم-التأكيد')
   ) {
     statusEn = 'Order Confirmed';
     statusAr = 'تم التأكيد';
@@ -1428,18 +1448,27 @@ function OrderCard({order, isEn}: {order: OrderItemFragment; isEn: boolean}) {
         <div className="flex items-center justify-between gap-4">
           {/* Details column (Left Side) */}
           <div className="flex flex-col gap-1.5 flex-1 min-w-0 items-start text-start" dir={isEn ? 'ltr' : 'rtl'}>
-            {/* Order ID */}
+            {/*
+              Order number above, product names as the heading — the same way
+              round the desktop card has it. This card used to be headed
+              "Order — #1252" and never named what was in it, so the same
+              order read as two different things depending on window width.
+
+              line-clamp-2 rather than truncate: this column is narrow, and a
+              title cut mid-word after four characters names nothing.
+            */}
+            <span className="text-[12px] text-[#9FB7AE] font-medium font-en">
+              #{order.orderNumber}
+            </span>
             <h3
-              className="text-[17px] font-bold text-[#171717] leading-tight flex items-center gap-1"
+              className="text-[17px] font-bold text-[#171717] leading-tight line-clamp-2"
               style={
                 !isEn
                   ? {fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif"}
                   : undefined
               }
             >
-              {isEn
-                ? `Order — #${order.orderNumber}`
-                : `طلب — #${order.orderNumber}`}
+              {titles}
             </h3>
 
             {/* Subtitle: product count & total */}
@@ -1750,7 +1779,7 @@ const CUSTOMER_FRAGMENT = `#graphql
 
 const CUSTOMER_ORDERS_QUERY = `#graphql
   ${CUSTOMER_FRAGMENT}
-  query CustomerOrders(
+  query StorefrontCustomerOrders(
     $country: CountryCode
     $customerAccessToken: String!
     $endCursor: String

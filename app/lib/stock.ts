@@ -160,6 +160,29 @@ export function findBranchLocation(
 }
 
 /**
+ * The Shopify location id for the branch, however the caller has it.
+ *
+ * Product grids get `selectedLocationId` from the root session, which is
+ * already a `gid://shopify/Location/...`. Resolving that through the
+ * locations list is not just unnecessary, it is fragile: root defers the
+ * locations, so on first render the list is empty, `findBranchLocation`
+ * returns undefined, and the card asks about no branch at all — no request
+ * is made, the verdict stays unknown, and every product falls back to
+ * looking available. Trust a well-formed gid directly and only fall back to
+ * the lookup for the cart's internal branch code (BRNCH150) or a name.
+ */
+export function resolveBranchLocationId(
+  locations: any[],
+  branchId?: string | null,
+  branchName?: string | null,
+): string | undefined {
+  const id = String(branchId || '').trim();
+  if (/^gid:\/\/shopify\/Location\/\d+$/.test(id)) return id;
+  if (/^\d{6,}$/.test(id)) return `gid://shopify/Location/${id}`;
+  return findBranchLocation(locations, branchId, branchName)?.id;
+}
+
+/**
  * Is this variant stocked at the branch fulfilling the order?
  *
  * Answered from Shopify's inventory levels (see /api/branch-availability),

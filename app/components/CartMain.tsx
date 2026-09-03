@@ -9,6 +9,7 @@ import { Price, SaudiRiyalSymbol } from './Price';
 import { checkBranchFreeDeliveryInterval } from './DeliveryPickupModal';
 import patternBg from '/images/second-bg-pattern.svg';
 import { useAdminLocations } from '~/lib/locations-meta';
+import { isDigitalOnlyCart as cartIsDigitalOnly } from '~/lib/digital-lines';
 
 export type CartLayout = 'page' | 'aside';
 const CartAnalyticsView = Analytics.CartView as any;
@@ -168,19 +169,7 @@ export function CartMain({ layout, cart: originalCart }: CartMainProps) {
   const fulfillmentType = cart?.attributes?.find(a => a.key.toLowerCase().trim() === 'fulfillment type')?.value;
   const isPickup = (fulfillmentType?.toLowerCase() === 'pickup') || (rootData?.fulfillmentType?.toLowerCase() === 'pickup');
 
-  const isDigitalOnlyCart =
-    (cart?.lines?.nodes?.length || 0) > 0 &&
-    cart?.lines?.nodes?.every((line: any) => {
-      const isVoucher = line.attributes?.some(
-        (a: any) => a.key === '_gift_voucher' && a.value === 'true',
-      );
-      const isGiftCardProduct =
-        line.merchandise?.product?.isGiftCard === true ||
-        line.merchandise?.product?.handle === 'saadeddin-gift-card' ||
-        line.merchandise?.product?.handle === 'gift-card';
-
-      return isVoucher || isGiftCardProduct;
-    });
+  const isDigitalOnlyCart = cartIsDigitalOnly(cart);
 
   const subtotal = cart?.cost?.subtotalAmount?.amount ? parseFloat(cart.cost.subtotalAmount.amount) : 0;
   const progress = threshold > 0 ? Math.min((subtotal / threshold) * 100, 100) : 0;

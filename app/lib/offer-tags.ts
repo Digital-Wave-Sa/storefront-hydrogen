@@ -20,6 +20,13 @@
 
 export type OfferHandle = 'bogo' | 'gifts25' | 'chocolates40';
 
+/**
+ * Every offer the hub knows about, in the order it lists them. The hub resolves
+ * each one's products from its Shopify discount so they appear in the grid, and
+ * the filter tabs are built from the same list.
+ */
+export const OFFER_HANDLES: OfferHandle[] = ['bogo', 'gifts25', 'chocolates40'];
+
 const OFFER_TAGS: Record<OfferHandle, string[]> = {
   bogo: ['bogo', '1+1', 'bogo-offer', '1+1 مجاناً', '1+1-مجاناً'],
   gifts25: ['gifts25', '25-off', '25%', 'gifts-25', 'خصم-25'],

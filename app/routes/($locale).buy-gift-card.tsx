@@ -33,7 +33,7 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
     if (tokenStr && tokenStr !== 'dev-bypass-token') {
       const { customer } = await storefront.query(
         `#graphql
-        query GetCustomerBasic($customerAccessToken: String!) {
+        query GetGiftCardCustomerBasic($customerAccessToken: String!) {
           customer(customerAccessToken: $customerAccessToken) {
             firstName
             lastName
@@ -53,7 +53,7 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
   try {
     const { product } = await storefront.query(
       `#graphql
-      query GetGiftCardProduct {
+      query GetGiftCardProductForPurchase {
         product(id: "gid://shopify/Product/9370203521257") {
           id
           title

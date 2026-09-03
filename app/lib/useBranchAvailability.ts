@@ -27,15 +27,33 @@ export type BranchAvailabilityMap = Record<string, BranchAvailabilityEntry>;
  *
  * Callers get an empty map while loading or on failure, and must treat a
  * missing entry as "unknown" — flagging on absence would turn a slow or failed
- * lookup into every product reading as unavailable.
+ * lookup into every product reading as unavailable. `pending` says which of the
+ * two it is: true while an answer is still outstanding, false once the ids are
+ * either cached or given up on. A card that has nothing else to go on can hold
+ * its Add to Cart button until then instead of offering a product the branch
+ * may not stock.
  */
 
 const TTL_MS = 60 * 1000;
 const BATCH_WINDOW_MS = 40;
 /** Keep each request well inside the API's own per-call variant cap. */
 const MAX_PER_REQUEST = 50;
+/**
+ * How long to stop asking about ids a request could not answer.
+ *
+ * A failed batch used to leave its ids uncached with nothing to retry it, so
+ * the card stayed on its fallback until something remounted — and with a
+ * `pending` flag in play it would have stayed pending forever. Ids are now
+ * retried a few times inside the batch, and then parked so callers fall back
+ * cleanly instead of waiting on an answer that is not coming.
+ */
+const UNRESOLVED_TTL_MS = 30 * 1000;
+const MAX_ATTEMPTS = 3;
+const RETRY_DELAY_MS = [250, 750];
 
 const cache = new Map<string, {value: BranchAvailabilityEntry; expires: number}>();
+/** key -> when to allow asking about this id again. */
+const unresolved = new Map<string, number>();
 
 interface PendingBatch {
   ids: Set<string>;
@@ -47,6 +65,14 @@ const subscribers = new Set<() => void>();
 
 const cacheKey = (locationId: string, variantId: string) =>
   `${locationId}|${variantId}`;
+
+function isParked(key: string, now = Date.now()): boolean {
+  const until = unresolved.get(key);
+  if (!until) return false;
+  if (until > now) return true;
+  unresolved.delete(key);
+  return false;
+}
 
 function readCache(
   locationId: string,
@@ -63,6 +89,17 @@ function readCache(
   return {found, missing};
 }
 
+/** True while any of these ids is neither cached nor given up on. */
+function hasPending(locationId: string, variantIds: string[]): boolean {
+  const now = Date.now();
+  return variantIds.some((id) => {
+    const key = cacheKey(locationId, id);
+    const hit = cache.get(key);
+    if (hit && hit.expires > now) return false;
+    return !isParked(key, now);
+  });
+}
+
 async function flush(locationId: string) {
   const batch = pending.get(locationId);
   if (!batch) return;
@@ -72,23 +109,47 @@ async function flush(locationId: string) {
   const ids = [...batch.ids];
   for (let i = 0; i < ids.length; i += MAX_PER_REQUEST) {
     const chunk = ids.slice(i, i + MAX_PER_REQUEST);
-    try {
-      const params = new URLSearchParams({
-        locationId,
-        variantIds: chunk.join(','),
-      });
-      const res = await fetch(`/api/branch-availability?${params.toString()}`);
-      const json: any = res.ok ? await res.json() : null;
-      const availability = json?.availability || {};
-      const expires = Date.now() + TTL_MS;
-      for (const id of chunk) {
-        if (availability[id]) {
-          cache.set(cacheKey(locationId, id), {value: availability[id], expires});
-        }
+    let answered = false;
+
+    for (let attempt = 0; attempt < MAX_ATTEMPTS && !answered; attempt++) {
+      if (attempt > 0) {
+        await new Promise((resolve) =>
+          setTimeout(resolve, RETRY_DELAY_MS[attempt - 1] ?? 750),
+        );
       }
-    } catch {
-      // Leave these ids uncached; callers treat a miss as "unknown" and fall
-      // back rather than flagging the product.
+      try {
+        const params = new URLSearchParams({
+          locationId,
+          variantIds: chunk.join(','),
+        });
+        const res = await fetch(`/api/branch-availability?${params.toString()}`);
+        if (!res.ok) continue;
+        const json: any = await res.json();
+        const availability = json?.availability || {};
+        const expires = Date.now() + TTL_MS;
+        const parkUntil = Date.now() + UNRESOLVED_TTL_MS;
+        for (const id of chunk) {
+          const key = cacheKey(locationId, id);
+          if (availability[id]) {
+            cache.set(key, {value: availability[id], expires});
+            unresolved.delete(key);
+          } else {
+            // Answered, but this variant was not in the reply. Park it so the
+            // caller falls back rather than waiting on it indefinitely.
+            unresolved.set(key, parkUntil);
+          }
+        }
+        answered = true;
+      } catch {
+        // Retry, then park below.
+      }
+    }
+
+    if (!answered) {
+      const parkUntil = Date.now() + UNRESOLVED_TTL_MS;
+      for (const id of chunk) {
+        unresolved.set(cacheKey(locationId, id), parkUntil);
+      }
     }
   }
 
@@ -97,13 +158,18 @@ async function flush(locationId: string) {
 }
 
 function request(locationId: string, variantIds: string[]) {
-  if (!locationId || variantIds.length === 0) return;
+  if (!locationId) return;
+  // Skip ids a recent request already failed to answer, so a render loop
+  // cannot turn one outage into a request per card per render.
+  const wanted = variantIds.filter((id) => !isParked(cacheKey(locationId, id)));
+  if (wanted.length === 0) return;
+
   let batch = pending.get(locationId);
   if (!batch) {
     batch = {ids: new Set(), timer: null, waiters: []};
     pending.set(locationId, batch);
   }
-  variantIds.forEach((id) => batch!.ids.add(id));
+  wanted.forEach((id) => batch!.ids.add(id));
   if (!batch.timer) {
     batch.timer = setTimeout(() => flush(locationId), BATCH_WINDOW_MS);
   }
@@ -112,7 +178,7 @@ function request(locationId: string, variantIds: string[]) {
 export function useBranchAvailability(
   variantIds: string[],
   locationId?: string | null,
-): {availability: BranchAvailabilityMap; loaded: boolean} {
+): {availability: BranchAvailabilityMap; loaded: boolean; pending: boolean} {
   const [, forceRender] = useState(0);
 
   // Stable key so we refetch on a branch switch or a changed id set, not on
@@ -133,11 +199,16 @@ export function useBranchAvailability(
   }, [key]);
 
   if (!locationId || variantIds.length === 0) {
-    return {availability: {}, loaded: false};
+    // Nothing to ask about — not pending, so callers do not hold their UI.
+    return {availability: {}, loaded: false, pending: false};
   }
 
   const {found, missing} = readCache(locationId, variantIds);
-  return {availability: found, loaded: missing.length === 0};
+  return {
+    availability: found,
+    loaded: missing.length === 0,
+    pending: hasPending(locationId, variantIds),
+  };
 }
 
 /**

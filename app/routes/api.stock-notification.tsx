@@ -196,17 +196,29 @@ export async function action({request, context}: ActionFunctionArgs) {
       console.warn('[STOCK_NOTIFICATION MW ERR]', mwErr);
     }
 
+    /**
+     * Declared out here on purpose, not inside the STOQ block below.
+     *
+     * It used to live inside that try, while the metafield step further down
+     * read it again from a different block — so
+     * `String(productId || numericProductId || '')` threw a ReferenceError
+     * whenever `productId` was absent, which is exactly when the Admin API
+     * lookup below had run to supply it. That step has its own catch, so the
+     * throw was swallowed and the subscription simply never reached the
+     * stock_alerts metafield: the shopper saw success, STOQ and the middleware
+     * both got their copy, and our own record was quietly missing.
+     */
+    let numericProductId = productId
+      ? String(productId).includes('/')
+        ? String(productId).split('/').pop()
+        : productId
+      : null;
+
     // 2. Forward subscription to STOQ App API (v1 intents API as recommended by STOQ support)
     try {
       const numericVariantId = String(variantId).includes('/')
         ? String(variantId).split('/').pop()
         : variantId;
-
-      let numericProductId = productId
-        ? String(productId).includes('/')
-          ? String(productId).split('/').pop()
-          : productId
-        : null;
 
       const stoqApiKey =
         (env as any)?.STOQ_API_KEY ||

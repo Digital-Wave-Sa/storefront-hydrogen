@@ -3,16 +3,25 @@ import { getLoyaltyTierInfo } from '~/lib/loyalty-tiers';
 const lpPatternBg = '/images/loyality-points/LP-bg-badge.svg';
 
 export function LoyaltyCard({
-  loyaltyPoints = 0,
+  loyaltyPoints = null,
   isEn = false,
   className = '',
 }: {
-  loyaltyPoints: number;
+  /**
+   * null when the balance could not be established. A tier is a claim about
+   * the customer, so it is not asserted from a number we do not have — this
+   * card used to badge an unreachable lookup as "المستوى الفضي، 0 نقطة".
+   */
+  loyaltyPoints: number | null;
   isEn: boolean;
   className?: string;
 }) {
-  const tierInfo = getLoyaltyTierInfo(loyaltyPoints);
-  const formattedPoints = loyaltyPoints.toLocaleString('en-US');
+  const pointsKnown =
+    typeof loyaltyPoints === 'number' && Number.isFinite(loyaltyPoints);
+  const tierInfo = getLoyaltyTierInfo(pointsKnown ? loyaltyPoints : 0);
+  const formattedPoints = pointsKnown
+    ? loyaltyPoints.toLocaleString('en-US')
+    : '—';
 
   // Luxury gradient & border styles per tier matching brand design
   const tierStyles: Record<string, { gradient: string; border: string }> = {
@@ -75,10 +84,16 @@ export function LoyaltyCard({
           {/* Tier Name & Subtext */}
           <div className="text-start">
             <h3 className="text-xl md:text-2xl font-bold leading-tight tracking-wide text-white drop-shadow-sm">
-              {isEn ? tierInfo.tier.levelTitleEn : tierInfo.tier.levelTitleAr}
+              {pointsKnown
+                ? (isEn ? tierInfo.tier.levelTitleEn : tierInfo.tier.levelTitleAr)
+                : (isEn ? 'Loyalty' : 'برنامج الولاء')}
             </h3>
             <p className="text-xs md:text-sm text-white/90 font-medium mt-1">
-              {tierInfo.nextTier ? (
+              {!pointsKnown ? (
+                isEn
+                  ? 'Your points are unavailable right now. Please try again shortly.'
+                  : 'تعذّر عرض نقاطك حالياً. يرجى المحاولة بعد قليل.'
+              ) : tierInfo.nextTier ? (
                 isEn
                   ? `${tierInfo.pointsToNextTier.toLocaleString('en-US')} points away from ${tierInfo.nextTier.levelTitleEn}`
                   : `${tierInfo.pointsToNextTier.toLocaleString('en-US')} نقطة تفصلك عن ${tierInfo.nextTier.levelTitleAr}`

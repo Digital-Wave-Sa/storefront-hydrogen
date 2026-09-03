@@ -19,7 +19,7 @@ export async function loader({params, context}: LoaderFunctionArgs) {
 
   // Fetch order from Admin GraphQL API
   const query = `
-      query GetOrder($query: String!) {
+      query GetOrderForInvoice($query: String!) {
         orders(first: 1, query: $query) {
           edges {
             node {

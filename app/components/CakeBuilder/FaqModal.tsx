@@ -112,30 +112,38 @@ export const FaqModal = ({ isOpen, onClose, isEn = false }: { isOpen: boolean; o
           })}
         </div>
 
-        {/* Contact Footer */}
-        <div className="p-6 pt-4">
-          <div className="bg-[#255441] rounded-2xl p-6 flex flex-col sm:flex-row items-center justify-between gap-6 text-white">
-            <div className="flex items-center gap-4">
+        {/*
+          Contact Footer
+
+          Sized down on small screens: the padding, gaps, icon and type were all
+          set for the side-by-side desktop row, and on a phone — where the block
+          stacks — they added up to a green panel taller than the FAQ answer
+          above it. Every size below returns to its original value at `sm`, so
+          the desktop layout is untouched.
+        */}
+        <div className="p-4 pt-2 sm:p-6 sm:pt-4">
+          <div className="bg-[#255441] rounded-2xl p-4 sm:p-6 flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-6 text-white">
+            <div className="flex items-center gap-3 sm:gap-4">
               <div className="shrink-0 relative">
-                <Headphones className="w-8 h-8 text-white/80" />
-                <div className="absolute -top-1 -right-1 w-3 h-3 bg-[#C4A462] rounded-full border-2 border-[#255441]" />
+                <Headphones className="w-6 h-6 sm:w-8 sm:h-8 text-white/80" />
+                <div className="absolute -top-1 -right-1 w-2.5 h-2.5 sm:w-3 sm:h-3 bg-[#C4A462] rounded-full border-2 border-[#255441]" />
               </div>
               <div className={isEn ? 'text-left' : 'text-right'}>
-                <h3 className="font-bold text-lg mb-1">
+                <h3 className="font-bold text-[15px] sm:text-lg mb-0.5 sm:mb-1 leading-snug">
                   {isEn ? 'Need Help with Design?' : 'تحتاج مساعدة في التصميم؟'}
                 </h3>
-                <p className="text-xs text-white/80">
+                <p className="text-[11px] sm:text-xs text-white/80 leading-snug">
                   {isEn
                     ? 'Our team is ready to help you create a custom cake for your occasion'
                     : 'فريقنا جاهز لمساعدتك في تصميم كيك يناسب مناسبتك'}
                 </p>
               </div>
             </div>
-            <a 
+            <a
               href="https://wa.me/966920017070"
               target="_blank"
               rel="noopener noreferrer"
-              className="shrink-0 bg-white !text-[#255441] px-6 py-2.5 rounded-full font-bold text-sm hover:bg-[#F9F7EC] transition-colors whitespace-nowrap"
+              className="shrink-0 bg-white !text-[#255441] px-5 py-2 sm:px-6 sm:py-2.5 rounded-full font-bold text-[13px] sm:text-sm hover:bg-[#F9F7EC] transition-colors whitespace-nowrap"
               style={{ color: '#255441' }}
             >
               {isEn ? 'Contact Us' : 'تواصل معنا'}

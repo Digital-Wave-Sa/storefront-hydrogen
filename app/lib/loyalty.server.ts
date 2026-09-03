@@ -174,7 +174,13 @@ export async function getCustomerGid({ customerId, phone, email, env, context }:
               const cp = (c.phone || '').replace(/\D/g, '');
               const sp = searchPhone.replace(/\D/g, '');
               if (!cp || !sp) return false;
-              return cp === sp || cp.endsWith(sp.slice(-9));
+              /**
+               * Exact only. `endsWith(sp.slice(-9))` matched any customer whose
+               * number ended in the same nine digits, and this id is what the
+               * loyalty balance is then fetched against — so the wrong match
+               * showed one customer another's points.
+               */
+              return cp === sp;
             } else if (searchEmail) {
               return c.email && c.email.toLowerCase() === searchEmail.toLowerCase();
             }
@@ -242,7 +248,9 @@ const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
  */
 const STALE_CACHE_MAX_MS = 30 * 60 * 1000; // 30 minutes
 
-export async function getLoyaltyFullInfo(params: LoyaltyParams): Promise<LoyaltyFullInfo> {
+export async function getLoyaltyFullInfo(
+  params: LoyaltyParams,
+): Promise<LoyaltyFullInfo | null> {
   const env = params.env;
   const sdlpAppUrl = env?.PUBLIC_SDLP_APP_URL || env?.SDLP_APP_URL || 'https://sdlp.saadeddin.top';
   const shop = env?.PUBLIC_SHOPIFY_STORE_DOMAIN || env?.PUBLIC_STORE_DOMAIN || 'saadeldeenshop-x21xumcd.myshopify.com';
@@ -379,10 +387,22 @@ export async function getLoyaltyFullInfo(params: LoyaltyParams): Promise<Loyalty
     return cached.data;
   }
   if (cached) {
-    console.warn('[SDLP Loyalty] Cached loyalty data is too stale to serve; reporting zero.');
+    console.warn(
+      '[SDLP Loyalty] Cached loyalty data is too stale to serve; reporting unavailable.',
+    );
   }
 
-  return {balance: 0, amount: 0, enrollmentDate: null};
+  /**
+   * null, not a zeroed object.
+   *
+   * This used to return {balance: 0} when SDLP was down, timed out, or had only
+   * stale cache. Every caller downstream tests `typeof balance === 'number'` to
+   * decide whether the figure is known — and 0 passes that test, so an outage
+   * reached the customer as `0 points, SILVER tier`: a confident claim about
+   * their account built on a failed request. Returning null lets those callers
+   * report it as unavailable, which is what they were written to do.
+   */
+  return null;
 }
 
 /**
@@ -444,7 +464,9 @@ export async function fetchLiveLoyaltyBalance(
 
 export async function getLoyaltyPoints(params: LoyaltyParams): Promise<number> {
   const info = await getLoyaltyFullInfo(params);
-  return info.balance;
+  // 0 for an unknown balance is wrong, but this helper's signature has no way
+  // to say so; callers that must tell them apart use getLoyaltyFullInfo.
+  return info?.balance ?? 0;
 }
 
 /**

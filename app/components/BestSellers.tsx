@@ -6,7 +6,7 @@ import { Button } from './layout/Button';
 import { useI18n } from '~/lib/i18n';
 import { useAside } from '~/components/Aside';
 import { getVisibilityStatus } from '~/lib/visibility';
-import { getIsOutOfStock, shouldHideProduct, isOutOfStockAtBranch, findBranchLocation } from '~/lib/stock';
+import { getIsOutOfStock, shouldHideProduct, isOutOfStockAtBranch, resolveBranchLocationId } from '~/lib/stock';
 import { useBranchAvailabilityReader } from '~/lib/useBranchAvailability';
 import { AddToCartButton } from './AddToCartButton';
 
@@ -32,8 +32,8 @@ export function BestSellers({
      */
     const bsRootData = useRouteLoaderData('root') as any;
     const bsLocations = bsRootData?.locations?.locations?.nodes || bsRootData?.locations?.nodes || [];
-    const bsBranch = findBranchLocation(bsLocations, selectedLocationId, selectedLocationName);
-    const { read: readBranchStock } = useBranchAvailabilityReader(bsBranch?.id);
+    const bsBranchId = resolveBranchLocationId(bsLocations, selectedLocationId, selectedLocationName);
+    const { read: readBranchStock } = useBranchAvailabilityReader(bsBranchId);
     const [customerEmail, setCustomerEmail] = useState<string | undefined>(undefined);
 
     useEffect(() => {
@@ -118,20 +118,28 @@ export function BestSellers({
                 <Suspense fallback={<div className="text-center py-20 text-gray-500">{isEn ? 'Loading products...' : 'جاري تحميل المنتجات...'}</div>}>
                     <Await resolve={products}>
                         {(resolvedData) => {
+                            /**
+                             * The loader returns null when the query fails, and this used to read
+                             * `resolvedData.fallbackProducts` straight away — so one failed request
+                             * threw a TypeError and took the whole Best Sellers section off the
+                             * page rather than showing the empty state a few lines below.
+                             */
+                            const bsData = (resolvedData as any) || {};
+
                             // Dynamically resolve products based on activeTab
                             const getNodes = (coll: any) => coll?.products?.nodes || [];
-                            const fallback = (resolvedData as any).fallbackProducts?.nodes || (resolvedData as any).products?.nodes || [];
+                            const fallback = bsData.fallbackProducts?.nodes || bsData.products?.nodes || [];
 
                             let tabProducts = [];
                             switch (activeTab) {
                                 case 0: { // All
-                                    const bs = getNodes((resolvedData as any).bestSellers);
+                                    const bs = getNodes(bsData.bestSellers);
                                     tabProducts = bs.length > 0 ? bs : fallback;
                                     break;
                                 }
                                 case 1: { // Sweets / الحلويات
-                                    const sweets = getNodes((resolvedData as any).sweets);
-                                    const kunafa = getNodes((resolvedData as any).kunafa);
+                                    const sweets = getNodes(bsData.sweets);
+                                    const kunafa = getNodes(bsData.kunafa);
                                     tabProducts = sweets.length > 0 ? sweets : (kunafa.length > 0 ? kunafa : []);
                                     if (tabProducts.length === 0) {
                                         tabProducts = fallback.filter((p: any) => {
@@ -146,9 +154,9 @@ export function BestSellers({
                                     break;
                                 }
                                 case 2: { // Cakes
-                                    const cake = getNodes((resolvedData as any).cake);
-                                    const cakes = getNodes((resolvedData as any).cakes);
-                                    const chocCake = getNodes((resolvedData as any).chocolateCake);
+                                    const cake = getNodes(bsData.cake);
+                                    const cakes = getNodes(bsData.cakes);
+                                    const chocCake = getNodes(bsData.chocolateCake);
                                     tabProducts = cake.length > 0 ? cake : (cakes.length > 0 ? cakes : (chocCake.length > 0 ? chocCake : []));
                                     if (tabProducts.length === 0) {
                                         tabProducts = fallback.filter((p: any) => {
@@ -163,7 +171,7 @@ export function BestSellers({
                                     break;
                                 }
                                 case 3: { // Chocolate
-                                    const choc = getNodes((resolvedData as any).chocolate);
+                                    const choc = getNodes(bsData.chocolate);
                                     tabProducts = choc.length > 0 ? choc : [];
                                     if (tabProducts.length === 0) {
                                         tabProducts = fallback.filter((p: any) => {
@@ -177,20 +185,31 @@ export function BestSellers({
                                     }
                                     break;
                                 }
-                                case 4: { // Gifts
-                                    const gifts = getNodes((resolvedData as any).gifts);
-                                    const gifting = getNodes((resolvedData as any).gifting);
-                                    tabProducts = gifts.length > 0 ? gifts : (gifting.length > 0 ? gifting : []);
-                                    if (tabProducts.length === 0) {
-                                        tabProducts = fallback.filter((p: any) => {
-                                            const type = (p.productType || '').toLowerCase();
-                                            const tags = (p.tags || []).map((t: string) => t.toLowerCase());
-                                            const title = (p.title || '').toLowerCase();
-                                            return type.includes('gift') || type.includes('gifting') || type.includes('هدايا') || type.includes('الهدايا') || type.includes('bundle') || type.includes('box') || type.includes('باقة') ||
-                                                title.includes('gift') || title.includes('gifting') || title.includes('هدايا') || title.includes('الهدايا') || title.includes('bundle') || title.includes('box') || title.includes('باقة') || title.includes('add on') ||
-                                                tags.some((t: string) => t.includes('gift') || t.includes('gifting') || t.includes('هدايا') || t.includes('الهدايا') || t.includes('bundle') || t.includes('box') || t.includes('باقة'));
-                                        });
-                                    }
+                                case 4: { // Gifts — tagged products only
+                                    /**
+                                     * Tag, and nothing else.
+                                     *
+                                     * This tab used to match title and productType against "gift",
+                                     * "bundle", "box", "باقة", "add on" across whatever happened to
+                                     * be in the 30 most recently updated products, because neither
+                                     * the "gifts" nor the "gifting" collection exists in the store.
+                                     * That is how "National Day Bites Box" — no gift tag, just the
+                                     * word "box" in its name — ended up under Gifts.
+                                     *
+                                     * `giftTagged` is a tag query against the whole catalogue. The
+                                     * collections stay ahead of it in case one is created later; the
+                                     * keyword sweep is gone, so an untagged product cannot appear
+                                     * here however it happens to be named.
+                                     */
+                                    const gifts = getNodes(bsData.gifts);
+                                    const gifting = getNodes(bsData.gifting);
+                                    const tagged = bsData.giftTagged?.nodes || [];
+                                    tabProducts =
+                                        gifts.length > 0
+                                            ? gifts
+                                            : gifting.length > 0
+                                                ? gifting
+                                                : tagged;
                                     break;
                                 }
                                 default:
@@ -214,7 +233,8 @@ export function BestSellers({
                                         const variant = product.variants?.nodes?.[0];
                                         const storeAvailabilityNodes = variant?.storeAvailability?.nodes || [];
 
-                                        const bsVerdict = isOutOfStockAtBranch(readBranchStock(variant?.id));
+                                        const bsEntry = readBranchStock(variant?.id);
+                                        const bsVerdict = isOutOfStockAtBranch(bsEntry);
                                         const isOutOfStock =
                                             bsVerdict !== null
                                                 ? bsVerdict
@@ -437,6 +457,19 @@ function BestSellersAddToCart({
     onNotifyClick?: () => void;
 }) {
     const { open: openAside } = useAside();
+
+    /**
+     * Above the early return, not below it.
+     *
+     * `useId` used to be called after the out-of-stock branch had already
+     * returned, so a card rendered one hook while unavailable and two once it
+     * became available. Branch availability resolves after first paint and
+     * flips exactly that flag, which made React throw "rendered more hooks
+     * than during the previous render" and took the entire Best Sellers
+     * section off the page.
+     */
+    const groupId = useId();
+
     const variantId = variant?.id;
     const isBogo = !!bogoFreeVariantId || (productTags?.some((t: string) => t.toLowerCase().includes('bogo')) ?? false);
 
@@ -457,7 +490,6 @@ function BestSellersAddToCart({
         );
     }
 
-    const groupId = useId();
     const lines = [{
         merchandiseId: variantId,
         quantity: 1,

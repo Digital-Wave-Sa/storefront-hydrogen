@@ -45,7 +45,8 @@ export async function loader({request, context}: LoaderFunctionArgs) {
           const cp = (c.phone || '').replace(/\D/g, '');
           const sp = savedPhone.replace(/\D/g, '');
           if (!cp || !sp) return false;
-          return cp === sp || cp.endsWith(sp.slice(-9));
+          // Exact only — these tags decide admin access to this screen.
+          return cp === sp;
         });
         if (found?.tags) {
           customerTags = found.tags
@@ -63,7 +64,7 @@ export async function loader({request, context}: LoaderFunctionArgs) {
     // Verify if user is an Admin/Manager
     const {customer: sfCustomer} = await storefront.query(
       `#graphql
-      query getDashboardCustomerId($customerAccessToken: String!) {
+      query getFeedbackAnalyticsCustomerId($customerAccessToken: String!) {
         customer(customerAccessToken: $customerAccessToken) {
           id
         }

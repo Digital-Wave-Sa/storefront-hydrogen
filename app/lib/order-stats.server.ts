@@ -138,20 +138,32 @@ async function resolveNumericCustomerId(
   const candidates: any[] = data?.customers?.nodes || [];
 
   const sp = digitsOnly(phone);
+  /**
+   * Exact identity or nothing.
+   *
+   * This decided whose order count and lifetime spend the account header
+   * shows, and it used to accept a phone that merely ENDED with the same nine
+   * digits — and then, failing everything, `candidates[0]`: whichever customer
+   * Shopify happened to return first. That is another person's purchase
+   * history rendered as yours. The orders list next door already resolves
+   * exactly and returns null when nothing matches; this now matches it.
+   */
   const match =
     (sp.length >= 9
-      ? candidates.find((c) => {
-          const cp = digitsOnly(c.phone);
-          return cp && (cp === sp || cp.endsWith(sp.slice(-9)));
-        })
+      ? candidates.find((c) => digitsOnly(c.phone) === sp)
       : null) ||
     (email
       ? candidates.find(
           (c) => (c.email || '').toLowerCase() === String(email).toLowerCase(),
         )
       : null) ||
-    candidates[0] ||
     null;
+
+  if (!match && candidates.length > 0) {
+    console.warn(
+      `[OrderStats] ${candidates.length} customer(s) came back for this lookup but none matched exactly; reporting no stats rather than guessing.`,
+    );
+  }
 
   const id = match?.id ? String(match.id).split('/').pop() ?? null : null;
   idCache.set(cacheKey, {id, expires: Date.now() + TTL_MS});

@@ -89,7 +89,7 @@ export function links() {
     },
     {
       rel: 'stylesheet',
-      href: 'https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap',
+      href: 'https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&family=Montserrat:wght@300;400;500;600;700&display=swap',
     },
     {rel: 'stylesheet', href: tailwindCss},
     {rel: 'stylesheet', href: resetStyles},
@@ -785,11 +785,11 @@ const LOCATIONS_QUERY = `#graphql
           key
           value
         }
-        delivery_hours_from: metafield(namespace: "custom", key: "delivery_hours_from") {
+        delivery_time_from: metafield(namespace: "custom", key: "delivery_time_from") {
           key
           value
         }
-        delivery_hours_to: metafield(namespace: "custom", key: "delivery_hours_to") {
+        delivery_time_to: metafield(namespace: "custom", key: "delivery_time_to") {
           key
           value
         }

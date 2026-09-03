@@ -9,18 +9,28 @@ import { SaudiRiyalSymbol } from '~/components/Price';
 export function AccountProfileHeader({
   customer,
   isEn,
-  loyaltyPoints = 0,
-  balance = 0,
+  loyaltyPoints = null,
+  balance = null,
   wishlistCount = 0,
   loyaltyInfo,
 }: {
   customer: CustomerFragment;
   isEn: boolean;
-  loyaltyPoints?: number;
-  balance?: number;
+  /**
+   * null means the figure could not be established — an SDLP outage, a
+   * timeout, a failed gift-card lookup. It is NOT zero, and must not be shown
+   * as zero: this header used to print "0.00" and "0 نقطة، المستوى الفضي" for
+   * a customer whose balance and points simply had not loaded.
+   */
+  loyaltyPoints?: number | null;
+  balance?: number | null;
   wishlistCount?: number;
   loyaltyInfo?: any;
 }) {
+  const balanceKnown = typeof balance === 'number' && Number.isFinite(balance);
+  const pointsKnown =
+    typeof loyaltyPoints === 'number' && Number.isFinite(loyaltyPoints);
+  const unavailable = isEn ? 'Unavailable' : 'غير متاح';
   const displayName = `${customer?.firstName || ''} ${customer?.lastName || ''}`.trim() || customer?.email?.split('@')[0] || (isEn ? 'Valued Customer' : 'عميلنا العزيز');
   const initials = (customer?.firstName?.[0] || customer?.email?.[0] || 'C').toUpperCase();
 
@@ -85,7 +95,7 @@ export function AccountProfileHeader({
 
   const rootData = useRouteLoaderData('root') as any;
   const tierInfo = getLoyaltyTierInfo(
-    loyaltyPoints,
+    pointsKnown ? (loyaltyPoints as number) : 0,
     loyaltyInfo?.tierName || loyaltyInfo?.tier?.name,
   );
 
@@ -130,12 +140,16 @@ export function AccountProfileHeader({
                   >
                     {displayName}
                   </h2>
+                  {/* No tier badge without points to justify it: an unreachable
+                      loyalty service used to be badged as Silver. */}
+                  {pointsKnown && (
                   <span className={`px-2.5 py-0.5 rounded-full text-[12px] font-bold border flex items-center gap-1.5 shadow-sm ${tierInfo.tier.badgeBg} ${tierInfo.tier.badgeTextColor} ${tierInfo.tier.badgeBorderColor}`}>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5 flex-shrink-0">
                       <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
                     </svg>
                     <span>{isEn ? tierInfo.tier.levelTitleEn : tierInfo.tier.levelTitleAr}</span>
                   </span>
+                  )}
                 </div>
                 <p
                   className="text-[14px] md:text-[18px] text-[#9FB7AE] font-medium flex gap-1 flex-wrap !m-0 items-center"
@@ -183,15 +197,21 @@ export function AccountProfileHeader({
                 <p className="text-[11px] md:text-[12px] text-[#234745] font-bold mb-1 opacity-90">
                   {isEn ? 'Current Store Credit' : 'رصيد حسابك الحالي'}
                 </p>
-                <div className="text-[22px] md:text-[26px] font-extrabold text-[#1B3836] leading-none flex items-center gap-1.5 font-en">
-                  <span dir="ltr">
-                    {Number(balance || 0).toLocaleString('en-US', {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}
-                  </span>
-                  <SaudiRiyalSymbol className="h-[15px] md:h-[17px] w-auto text-[#234745] inline-block mb-0.5" />
-                </div>
+                {balanceKnown ? (
+                  <div className="text-[22px] md:text-[26px] font-extrabold text-[#1B3836] leading-none flex items-center gap-1.5 font-en">
+                    <span dir="ltr">
+                      {Number(balance).toLocaleString('en-US', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}
+                    </span>
+                    <SaudiRiyalSymbol className="h-[15px] md:h-[17px] w-auto text-[#234745] inline-block mb-0.5" />
+                  </div>
+                ) : (
+                  <div className="text-[15px] md:text-[17px] font-bold text-[#1B3836]/70 leading-none">
+                    {unavailable}
+                  </div>
+                )}
               </div>
               <div className="w-11 h-11 md:w-13 md:h-13 rounded-full bg-white/30 flex items-center justify-center flex-shrink-0 shadow-xs">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="#234745" className="drop-shadow-xs">

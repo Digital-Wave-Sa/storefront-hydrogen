@@ -123,7 +123,7 @@ async function processCheckoutInitiate({request, context}: ActionFunctionArgs) {
           cartId = restoreRes.cart.id;
           const reQuery = await storefront.query(
             `#graphql
-            query checkoutCart($cartId: ID!, $language: LanguageCode, $country: CountryCode)
+            query checkoutCartRestored($cartId: ID!, $language: LanguageCode, $country: CountryCode)
               @inContext(language: $language, country: $country) {
               cart(id: $cartId) {
                 id

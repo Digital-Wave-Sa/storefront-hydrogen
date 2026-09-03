@@ -1,5 +1,6 @@
 import { getLoyaltyFullInfo } from './loyalty.server';
 import { getAdminToken } from './shopify-admin.server';
+import { toGiftCardPhone } from './phone-validation';
 
 export async function fetchWalletData({
   customer,
@@ -10,32 +11,125 @@ export async function fetchWalletData({
   request: Request;
   context: any;
 }) {
-  let loyaltyPoints = 0;
-  let balance = 0;
+  let loyaltyPoints: number | null = null;
+  /**
+   * null means "we could not establish it", which is not the same as zero.
+   * Callers must render it as unavailable rather than as an empty wallet — a
+   * failed lookup used to print 0.00 as though it were the customer's balance.
+   */
+  let balance: number | null = null;
   let history: any[] = [];
   let cards: any[] = [];
 
   try {
     const middlewareUrl =
       context.env.MIDDLEWARE_URL || 'https://api.saadeddin.top';
+    /**
+     * The store-credit service, keyed by customer id.
+     *
+     * This is the SAME source the wallet page's StoreCreditBalance card reads,
+     * and it is the authority on the balance. The header used to read a
+     * different service entirely — `${middlewareUrl}/gift-cards/by-phone/…` —
+     * so /account/wallet showed two balances at once for the same customer:
+     * 50.00 in the header from the phone lookup, 134.00 in the card from this
+     * one. A phone is not a reliable key (spelling, country code, a number
+     * reused after a customer changes it); a customer id is.
+     */
+    const storeCreditUrl =
+      context.env.STORE_CREDIT_API_URL || 'https://sdgc.saadeddin.top';
     const isLocal =
       new URL(request.url).host.includes('localhost') ||
       new URL(request.url).host.includes('127.0.0.1');
 
-    const cleanPhone = (customer?.phone || '').trim();
+    // One canonical spelling for every gift-card call — see toGiftCardPhone.
+    const cleanPhone = toGiftCardPhone(customer?.phone);
+
+    /**
+     * Balance by customer id — the figure the wallet page shows.
+     *
+     * Runs first and wins. The phone lookup below still runs, because it is
+     * where the individual card codes and their transaction history come from,
+     * but it no longer decides the balance.
+     */
+    let authoritativeBalance: number | null = null;
+
+    /**
+     * The id reaches here in two shapes: a gid from the Storefront customer,
+     * and a bare numeric id from the `loginCustomerId` session key. The
+     * store-credit service is asked with the gid, which is what the wallet
+     * page's own card already sends.
+     */
+    const rawId = String(customer?.id || '').trim();
+    const customerGid = /^\d+$/.test(rawId)
+      ? `gid://shopify/Customer/${rawId}`
+      : rawId;
+
+    if (customerGid) {
+      try {
+        const creditRes = await fetch(
+          `${storeCreditUrl}/api/storefront/gift-card?customerId=${encodeURIComponent(customerGid)}`,
+        );
+        if (creditRes.ok) {
+          const creditData = (await creditRes.json()) as any;
+          const value = parseFloat(creditData?.balance);
+          if (creditData?.success && Number.isFinite(value)) {
+            authoritativeBalance = value;
+          }
+        } else {
+          console.warn(
+            `[WALLET] Store-credit lookup returned ${creditRes.status} for ${customerGid}`,
+          );
+        }
+      } catch (err) {
+        console.warn('[WALLET] Store-credit lookup failed:', err);
+      }
+    }
 
     if (cleanPhone) {
       const baseGiftCardUrl = middlewareUrl;
       try {
+        /**
+         * No encodeURIComponent: it escaped the leading `+` to `%2B`, and a URL
+         * path is not decoded before route matching, so this request answered
+         * 400 for every customer whose Shopify phone is stored in `+` form.
+         * `cleanPhone` is digits only, so there is nothing to escape.
+         */
         const cardsRes = await fetch(
-          `${baseGiftCardUrl}/gift-cards/by-phone/${encodeURIComponent(cleanPhone)}`,
+          `${baseGiftCardUrl}/gift-cards/by-phone/${cleanPhone}`,
         );
         if (cardsRes.ok) {
           const cardsData = (await cardsRes.json()) as any;
           if (cardsData?.success && cardsData?.data) {
             cards = cardsData.data.cards || cardsData.data.accounts || [];
-            balance = typeof cardsData.data.totalBalance === 'number' ? cardsData.data.totalBalance : 0;
+
+            /**
+             * Parse, do not type-check. A middleware returning "500.00" as a
+             * string used to fail `typeof === 'number'` and be recorded as 0.
+             * The cards are summed as a cross-check: when the two disagree the
+             * reported total is still trusted, but the mismatch is logged —
+             * that gap is exactly what a customer reports as "I have 500 but
+             * the site shows 50".
+             */
+            const reported = parseFloat(cardsData.data.totalBalance);
+            const summed = (cards as any[]).reduce(
+              (n, c) => n + (parseFloat(c?.currentBalance) || 0),
+              0,
+            );
+            if (Number.isFinite(reported)) {
+              if (cards.length > 0 && Math.abs(reported - summed) > 0.01) {
+                console.warn(
+                  `[WALLET] totalBalance ${reported} does not match the sum of ${cards.length} card(s) (${summed}) for ${cleanPhone}`,
+                );
+              }
+              balance = reported;
+            } else {
+              balance = summed;
+            }
           }
+        } else {
+          console.warn(
+            `[WALLET] Gift-card lookup returned ${cardsRes.status} for ${cleanPhone}; balance reported as unavailable.`,
+          );
         }
       } catch (err) {
         console.warn('[WALLET] Failed fetching live gift cards by phone:', err);
@@ -52,7 +146,7 @@ export async function fetchWalletData({
             currentBalance: card.currentBalance,
             status: card.status,
           });
-          balance += card.currentBalance;
+          balance = (balance ?? 0) + card.currentBalance;
         }
       }
     }
@@ -190,8 +284,33 @@ export async function fetchWalletData({
       env: context.env,
       context,
     });
-    loyaltyPoints = loyaltyInfo?.balance || 0;
+    /**
+     * Points are `null` on the same terms as the balance: getLoyaltyFullInfo
+     * returns a zeroed object for "not enrolled", for an SDLP outage and for a
+     * timeout alike, and the account header used to state all three as
+     * "0 نقطة، المستوى الفضي" — a tier claim built on a failed request.
+     */
+    /**
+     * One balance, from the customer-id service.
+     *
+     * The phone lookup's figure is kept only as a fallback for a customer with
+     * no id, and a disagreement between the two is logged rather than silently
+     * picked between — that mismatch is exactly what a customer reports as
+     * "the site shows 50 but I have more".
+     */
+    if (authoritativeBalance !== null) {
+      if (balance !== null && Math.abs(balance - authoritativeBalance) > 0.01) {
+        console.warn(
+          `[WALLET] Balance sources disagree for ${customerGid}: store credit ${authoritativeBalance}, phone lookup ${balance}. Using store credit.`,
+        );
+      }
+      balance = authoritativeBalance;
+    }
+
+    loyaltyPoints = typeof loyaltyInfo?.balance === 'number' ? loyaltyInfo.balance : null;
     return {loyaltyPoints, balance, history, cards, loyaltyInfo};
-  } catch (e) {}
+  } catch (e) {
+    console.error('[WALLET] fetchWalletData failed:', e);
+  }
   return {loyaltyPoints, balance, history, cards, loyaltyInfo: null};
 }

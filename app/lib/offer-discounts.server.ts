@@ -45,6 +45,17 @@ export interface OfferProductRef {
   role?: 'buy' | 'get' | 'both';
 }
 
+/**
+ * What the discount takes off a qualifying line, as a number the storefront can
+ * apply to a price. `percentage` is a fraction: 0.25 is 25% off.
+ */
+export interface OfferDiscountValue {
+  type: 'percentage' | 'amount';
+  percentage?: number;
+  amount?: number;
+  currencyCode?: string;
+}
+
 export interface OfferData {
   /** The tag that was looked up. */
   tag: string;
@@ -65,6 +76,12 @@ export interface OfferData {
   collectionIds: string[];
   /** True when the discount applies to the entire catalogue. */
   allProducts: boolean;
+  /**
+   * The discount itself, so a page can show a before and after price. Absent
+   * when Shopify reports a shape we do not model (shipping discounts, say),
+   * and callers then show the plain price rather than inventing a number.
+   */
+  discountValue?: OfferDiscountValue;
   /** Why a lookup came back empty. Surfaced only via ?debug=offers. */
   diagnostic?: {
     searched: string[];
@@ -150,6 +167,34 @@ const ITEMS_FRAGMENT = `
   }
 `;
 
+/**
+ * What the discount actually takes off.
+ *
+ * Needed so an offer page can show a before and after price. Parsing it out of
+ * `summary` ("25% off products") would be reading a human sentence that Shopify
+ * is free to reword and that is localised; this is the number the cart uses.
+ *
+ * `DiscountOnQuantity` is the "buy N, get M at X% off" shape — its percentage
+ * lives one level down, on the effect.
+ */
+const VALUE_FRAGMENT = `
+  value {
+    __typename
+    ... on DiscountPercentage { percentage }
+    ... on DiscountAmount {
+      amount { amount currencyCode }
+      appliesOnEachItem
+    }
+    ... on DiscountOnQuantity {
+      effect {
+        __typename
+        ... on DiscountPercentage { percentage }
+        ... on DiscountAmount { amount { amount currencyCode } }
+      }
+    }
+  }
+`;
+
 const OFFER_BY_TAG_QUERY = `
   query offerByTag($query: String!) {
     discountNodes(first: 10, query: $query) {
@@ -164,7 +209,7 @@ const OFFER_BY_TAG_QUERY = `
             startsAt
             endsAt
             codes(first: 1) { nodes { code } }
-            customerGets { ${ITEMS_FRAGMENT} }
+            customerGets { ${ITEMS_FRAGMENT} ${VALUE_FRAGMENT} }
           }
           ... on DiscountAutomaticBasic {
             title
@@ -172,7 +217,7 @@ const OFFER_BY_TAG_QUERY = `
             status
             startsAt
             endsAt
-            customerGets { ${ITEMS_FRAGMENT} }
+            customerGets { ${ITEMS_FRAGMENT} ${VALUE_FRAGMENT} }
           }
           ... on DiscountCodeBxgy {
             title
@@ -182,7 +227,7 @@ const OFFER_BY_TAG_QUERY = `
             endsAt
             codes(first: 1) { nodes { code } }
             customerBuys { ${ITEMS_FRAGMENT} }
-            customerGets { ${ITEMS_FRAGMENT} }
+            customerGets { ${ITEMS_FRAGMENT} ${VALUE_FRAGMENT} }
           }
           ... on DiscountAutomaticBxgy {
             title
@@ -191,13 +236,48 @@ const OFFER_BY_TAG_QUERY = `
             startsAt
             endsAt
             customerBuys { ${ITEMS_FRAGMENT} }
-            customerGets { ${ITEMS_FRAGMENT} }
+            customerGets { ${ITEMS_FRAGMENT} ${VALUE_FRAGMENT} }
           }
         }
       }
     }
   }
 `;
+
+/**
+ * Read `customerGets.value` into a plain number.
+ *
+ * Shopify has reported `percentage` both as a fraction (0.25) and as a whole
+ * number (25) depending on the discount and API version, and the two differ by
+ * 100x — which as a displayed price is the difference between a small saving
+ * and giving the product away. Anything above 1 is therefore treated as a whole
+ * percent, and the result is clamped into 0–1.
+ */
+function readDiscountValue(value: any): OfferDiscountValue | undefined {
+  if (!value) return undefined;
+
+  const node =
+    value.__typename === 'DiscountOnQuantity' ? value.effect : value;
+  if (!node) return undefined;
+
+  if (typeof node.percentage === 'number' && Number.isFinite(node.percentage)) {
+    const raw = node.percentage;
+    const fraction = raw > 1 ? raw / 100 : raw;
+    if (fraction <= 0) return undefined;
+    return {type: 'percentage', percentage: Math.min(fraction, 1)};
+  }
+
+  const amount = parseFloat(node.amount?.amount ?? '');
+  if (Number.isFinite(amount) && amount > 0) {
+    return {
+      type: 'amount',
+      amount,
+      currencyCode: node.amount?.currencyCode || undefined,
+    };
+  }
+
+  return undefined;
+}
 
 /** Collapse a discount's item union into product refs and collection ids. */
 function readItems(items: any): {
@@ -297,6 +377,12 @@ export async function fetchOfferByTag(
 
     const isBxgy = String(d.__typename || '').includes('Bxgy');
     if (isBxgy) merged.isBxgy = true;
+
+    // First discount under the tag that states a value wins; several discounts
+    // sharing a tag with different values cannot be shown as one price anyway.
+    if (!merged.discountValue) {
+      merged.discountValue = readDiscountValue(d.customerGets?.value);
+    }
 
     /**
      * A Buy X Get Y discount has two sides and only `customerGets` is the free

@@ -467,13 +467,32 @@ export default function Acccount() {
   const rootData = useRouteLoaderData('root') as any;
   const locale = rootData?.locale || 'ar';
 
+  /**
+   * The selected branch, forwarded to everything under /account.
+   *
+   * ($locale).tsx puts these on its outlet context, and this layout nests
+   * inside it — but an outlet context replaces its parent's rather than
+   * extending it, so naming only {customer, googleMapsKey, isAdmin,
+   * walletPromise, locale} here dropped the branch for every account page.
+   * ProductItem reads selectedLocationId/Name from context, so the wishlist
+   * grid asked about no branch at all and fell back to `availableForSale` —
+   * which is "sellable somewhere" — and showed every saved product as in
+   * stock whatever branch the shopper had chosen.
+   */
+  const outletContext = {
+    customer,
+    googleMapsKey,
+    isAdmin,
+    walletPromise,
+    locale,
+    selectedLocationId: rootData?.selectedLocationId,
+    selectedLocationName: rootData?.selectedLocationName,
+    fulfillmentType: rootData?.fulfillmentType,
+  };
+
   if (!isPrivateRoute && !isAccountHome) {
     // This covers /account/orders/:id detail pages and other non-private routes
-    return (
-      <Outlet
-        context={{customer, googleMapsKey, isAdmin, walletPromise, locale}}
-      />
-    );
+    return <Outlet context={outletContext} />;
   }
 
   return (
@@ -482,9 +501,7 @@ export default function Acccount() {
       isAdmin={isAdmin}
       walletPromise={walletPromise}
     >
-      <Outlet
-        context={{customer, googleMapsKey, isAdmin, walletPromise, locale}}
-      />
+      <Outlet context={outletContext} />
     </AccountLayout>
   );
 }
@@ -516,7 +533,22 @@ function AccountLayout({
 }: {
   customer: CustomerFragment;
   isAdmin: boolean;
-  walletPromise?: Promise<{loyaltyPoints: number; balance: number}>;
+  /**
+   * Shape of fetchWalletData's result, as far as this layout uses it.
+   *
+   * The old annotation named only loyaltyPoints and balance, and typed both
+   * as plain numbers. It has since become possible for either to be null —
+   * a lookup that could not be established is not a zero balance — and the
+   * header also reads loyaltyInfo for the tier badge, which this type did
+   * not admit existed.
+   */
+  walletPromise?: Promise<{
+    loyaltyPoints: number | null;
+    balance: number | null;
+    history?: any[];
+    cards?: any[];
+    loyaltyInfo?: any;
+  }>;
   children: React.ReactNode;
 }) {
   const location = useLocation();
@@ -623,19 +655,20 @@ function AccountLayout({
           <AccountProfileHeader
             customer={customer}
             isEn={isEn}
-            loyaltyPoints={0}
-            balance={0}
+            loyaltyPoints={null}
+            balance={null}
             wishlistCount={0}
           />
         }
       >
         <Await resolve={walletPromise}>
           {(wallet) => (
+            /* `?? null`, never `|| 0`: a failed lookup is not a zero balance. */
             <AccountProfileHeader
               customer={customer}
               isEn={isEn}
-              loyaltyPoints={wallet?.loyaltyPoints || 0}
-              balance={wallet?.balance || 0}
+              loyaltyPoints={wallet?.loyaltyPoints ?? null}
+              balance={wallet?.balance ?? null}
               wishlistCount={wishlistCount}
               loyaltyInfo={wallet?.loyaltyInfo}
             />
@@ -969,6 +1002,13 @@ export const CUSTOMER_FRAGMENT = `#graphql
               # Most products carry artwork at product level only, so a
               # variant image alone leaves the order thumbnail empty.
               product {
+                # The live, translated product name. A line item's own title
+                # field is an English snapshot frozen at purchase time, so
+                # without this the dashboard card read "Car Chocolate Box"
+                # where the orders list read the Arabic name for the same
+                # order. This query runs with inContext(language:), so Shopify
+                # returns the name in the shopper's language.
+                title
                 featuredImage {
                   url
                   altText

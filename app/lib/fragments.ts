@@ -53,6 +53,7 @@ export const CART_QUERY_FRAGMENT = `#graphql
           id
           vendor
           tags
+          isGiftCard
           collections(first: 1) {
             nodes {
               id
@@ -134,6 +135,7 @@ export const CART_QUERY_FRAGMENT = `#graphql
           id
           vendor
           tags
+          isGiftCard
           availability_date: metafield(namespace: "custom", key: "visibility_start") {
             value
           }

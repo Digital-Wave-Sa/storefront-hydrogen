@@ -13,3 +13,12 @@ node_modules
 *.tsbuildinfo
 *.xlsx
 
+# Build / diagnostic output
+build_output*.log
+build-new.log
+typecheck.log
+typecheck-new.log
+out.txt
+
+# Deploy metadata
+.vercel

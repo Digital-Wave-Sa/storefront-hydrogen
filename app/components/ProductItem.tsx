@@ -3,7 +3,7 @@ import { Image } from '@shopify/hydrogen';
 import { useState, useEffect, useMemo } from 'react';
 import { useVariantUrl } from '~/utils';
 import { useI18n } from '~/lib/i18n';
-import { getIsOutOfStock, isCorporateProduct, isOutOfStockAtBranch, findBranchLocation } from '~/lib/stock';
+import { getIsOutOfStock, isCorporateProduct, isOutOfStockAtBranch, resolveBranchLocationId } from '~/lib/stock';
 import { useBranchAvailability } from '~/lib/useBranchAvailability';
 import { getVisibilityStatus } from '~/lib/visibility';
 import { Price } from '~/components/Price';
@@ -109,14 +109,30 @@ export function ProductItem({
    */
   const allLocations =
     rootData?.locations?.locations?.nodes || rootData?.locations?.nodes || [];
-  const resolvedBranch = isExport
+  const resolvedBranchId = isExport
     ? undefined
-    : findBranchLocation(allLocations, selectedLocationId, selectedLocationName);
-  const {availability: branchStock} = useBranchAvailability(
-    variant?.id ? [variant.id] : [],
-    resolvedBranch?.id,
-  );
+    : resolveBranchLocationId(allLocations, selectedLocationId, selectedLocationName);
+  const {availability: branchStock, pending: branchStockPending} =
+    useBranchAvailability(variant?.id ? [variant.id] : [], resolvedBranchId);
   const inventoryVerdict = isOutOfStockAtBranch(branchStock[variant?.id]);
+
+  /**
+   * The branch answer has not arrived and the fallback has nothing real to say.
+   *
+   * On first paint the cache is empty, so `inventoryVerdict` is null and the
+   * fallback below decides. For the many products whose `storeAvailability` is
+   * empty — the exact case this hook exists for — that reduces to the global
+   * `availableForSale` flag, i.e. true, so the card offered Add to Cart for
+   * items the chosen branch does not stock and then flipped to out-of-stock
+   * once the request resolved. A fast tap in between put the line in the cart,
+   * where the shopper only found out at checkout.
+   *
+   * The card still renders exactly as before; only the button waits.
+   */
+  const availabilityUnresolved =
+    inventoryVerdict === null &&
+    branchStockPending &&
+    storeAvailabilityNodes.length === 0;
 
   const isOutOfStock =
     inventoryVerdict !== null
@@ -259,7 +275,9 @@ export function ProductItem({
                 {effectiveAvailable ? (
                   <AddToCartButton
                     lines={cartLines as any}
-                    disabled={!effectiveAvailable || isOutOfStock}
+                    disabled={
+                      !effectiveAvailable || isOutOfStock || availabilityUnresolved
+                    }
                     isExport={isExport}
                     className="h-[44px] px-8 flex items-center justify-center rounded-full font-bold text-[15px] bg-[#234745] text-white hover:bg-[#163529] shadow-sm transition-all duration-300 active:scale-95"
                     style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
@@ -439,7 +457,9 @@ export function ProductItem({
           ) : effectiveAvailable ? (
             <AddToCartButton
               lines={cartLines as any}
-              disabled={!effectiveAvailable || isOutOfStock}
+              disabled={
+                !effectiveAvailable || isOutOfStock || availabilityUnresolved
+              }
               isExport={isExport}
               className="w-full h-[40px] md:h-[44px] px-2 md:px-4 flex items-center justify-center rounded-full font-bold text-[12px] md:text-[15px] bg-[#234745] text-white hover:bg-[#163529] shadow-sm transition-all duration-300 active:scale-95"
               style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}

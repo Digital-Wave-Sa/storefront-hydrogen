@@ -11,8 +11,18 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
   const {resolveSelf} = await import('~/lib/session-identity.server');
   const self = await resolveSelf(context);
   let phone = self?.phone;
+  /**
+   * The customer id matters as much as the phone here.
+   *
+   * fetchWalletData reads the authoritative balance from the store-credit
+   * service keyed on this id, and falls back to a phone lookup only without
+   * one. This route used to hand it `{phone}` alone, so the cart asked the
+   * phone service while /account asked the store-credit service — and the two
+   * disagreed: 134.00 on the account page, 50.00 in the cart, same customer.
+   */
+  let customerId = self?.customerId;
 
-  if (!phone && context.session) {
+  if ((!phone || !customerId) && context.session) {
     try {
       const sessionToken = await context.session.get('customerAccessToken');
       const tokenStr =
@@ -24,6 +34,7 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
           `#graphql
           query getCustomerWalletPhone($customerAccessToken: String!) {
             customer(customerAccessToken: $customerAccessToken) {
+              id
               phone
               email
             }
@@ -34,27 +45,42 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
             cache: context.storefront.CacheNone(),
           },
         )) as any;
-        phone = customer?.phone || customer?.email;
+        phone = phone || customer?.phone || customer?.email;
+        customerId = customerId || customer?.id;
       }
     } catch (e) {}
   }
 
-  if (!phone) {
-    return data({ success: false, balance: 0, error: 'Phone number required' }, { status: 400 });
+  if (!phone && !customerId) {
+    return data(
+      {success: false, balance: null, error: 'Not signed in'},
+      {status: 401},
+    );
   }
 
   try {
     const walletData = await fetchWalletData({
-      customer: { phone },
+      customer: {id: customerId, phone},
       request,
       context,
     });
 
-    const balance = typeof walletData?.balance === 'number' ? walletData.balance : 0;
+    /**
+     * A balance that could not be established is reported as a failure, not as
+     * zero. Callers render "unavailable" from `success: false`; answering 0
+     * would have them tell the customer their wallet is empty because a
+     * lookup timed out.
+     */
+    if (typeof walletData?.balance !== 'number' || !Number.isFinite(walletData.balance)) {
+      return data(
+        {success: false, balance: null, error: 'balance-unavailable'},
+        {status: 503},
+      );
+    }
 
     return data({
       success: true,
-      balance,
+      balance: walletData.balance,
       currency: 'SAR',
     });
   } catch (error: any) {

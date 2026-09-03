@@ -11,6 +11,7 @@ import { DeliveryPickupModal, checkBranchFreeDeliveryInterval } from './Delivery
 
 import { isDiscountValidForLocation, parseLocationDiscountsJSON } from '~/lib/discounts';
 import { useAdminLocations } from '~/lib/locations-meta';
+import { isDigitalOnlyCart as cartIsDigitalOnly, isNonShippableLine } from '~/lib/digital-lines';
 
 type CartSummaryProps = {
   cart: OptimisticCart<CartApiQueryFragment | null>;
@@ -146,19 +147,7 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
 
   const isPickup = fulfillmentType?.toLowerCase() === 'pickup';
 
-  const isDigitalOnlyCart =
-    (cart?.lines?.nodes?.length || 0) > 0 &&
-    cart?.lines?.nodes?.every((line: any) => {
-      const isVoucher = line.attributes?.some(
-        (a: any) => a.key === '_gift_voucher' && a.value === 'true',
-      );
-      const isGiftCardProduct =
-        line.merchandise?.product?.isGiftCard === true ||
-        line.merchandise?.product?.handle === 'saadeddin-gift-card' ||
-        line.merchandise?.product?.handle === 'gift-card';
-
-      return isVoucher || isGiftCardProduct;
-    });
+  const isDigitalOnlyCart = cartIsDigitalOnly(cart);
 
   const selectedDate = attributes.find((a: any) => a.key === 'delivery_date')?.value || '';
   const timeSlot = attributes.find((a: any) => a.key.toLowerCase().trim() === 'time slot')?.value || '';
@@ -402,6 +391,9 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
 
   const outOfStockItems = cart?.lines?.nodes?.filter((line: any) => {
     if (line.isOptimistic) return false;
+    // Vouchers are not held at a branch, so branch inventory says nothing
+    // about them — and blocking checkout over one would be nonsense.
+    if (isNonShippableLine(line)) return false;
     const verdict = isOutOfStockAtBranch(branchStock[line.merchandise?.id]);
     if (verdict !== null) return verdict;
     return getIsOutOfStockForFulfillment(
@@ -1084,10 +1076,13 @@ function generateDynamicSlots(branch: any, isEn: boolean, fulfillmentType: strin
 
   if (isDelivery) {
     // If delivery hours exist, we use them. Otherwise we fall back to working_hours.
-    const hasDeliveryHrs = getMeta('delivery_hours_from');
+    // `delivery_time_*` is what every branch actually stores. This asked for
+    // `delivery_hours_*`, which exists on no location, so the branch delivery
+    // window was never found here and the generic fallback always won.
+    const hasDeliveryHrs = getMeta('delivery_time_from');
     if (hasDeliveryHrs) {
-      fromKey = 'delivery_hours_from';
-      toKey = 'delivery_hours_to';
+      fromKey = 'delivery_time_from';
+      toKey = 'delivery_time_to';
       fromKey2 = 'delivery_hours_from_shift2';
       toKey2 = 'delivery_hours_to_shift2';
     }

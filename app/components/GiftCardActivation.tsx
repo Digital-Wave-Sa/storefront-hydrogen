@@ -1,8 +1,6 @@
 import { useState } from 'react';
 import { SaudiRiyalSymbol } from '~/components/Price';
 
-const API_BASE = 'https://sdgc.saadeddin.top';
-
 export interface GiftCardActivationProps {
   customerId?: string;
   isEn?: boolean;
@@ -12,11 +10,15 @@ export interface GiftCardActivationProps {
 /**
  * GiftCardActivation
  *
- * Renders a gift card code input form. On submission it calls the
- * backend redemption API (`POST https://sdgc.saadeddin.top/api/storefront/gift-card`)
- * and shows the result inline with instant feedback.
+ * Renders a gift card code input form. On submission it posts the code to our
+ * own POST /api/store-credit, which resolves the customer from the session and
+ * forwards the redemption; the result is shown inline.
  *
- * @param {string} customerId - Shopify Customer GID (e.g. "gid://shopify/Customer/9443785965801")
+ * This used to post the code AND the Shopify customer gid straight to
+ * sdgc.saadeddin.top from the browser, with nothing proving the caller was that
+ * customer. The gid is no longer sent at all.
+ *
+ * @param {string} customerId - present only to tell whether anyone is signed in
  * @param {boolean} isEn - Language flag for English/Arabic text
  * @param {function} onActivated - Optional callback invoked on successful activation
  */
@@ -59,13 +61,11 @@ export function GiftCardActivation({
     setNewBalance(null);
 
     try {
-      const response = await fetch(`${API_BASE}/api/storefront/gift-card`, {
+      const response = await fetch('/api/store-credit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          code: formattedCode,
-          customerId, // Shopify GID string
-        }),
+        // No customerId: the route reads it from the session.
+        body: JSON.stringify({ code: formattedCode }),
       });
 
       const data = (await response.json()) as any;

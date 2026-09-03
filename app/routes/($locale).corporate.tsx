@@ -370,7 +370,7 @@ function CorporateProductCard({
               <h3
                 className="text-[#234745] font-bold text-[18px] group-hover:text-[#906B51] transition-colors m-0 leading-snug"
                 style={{
-                  fontFamily: isEn ? 'inherit' : "'Bahij Janna', sans-serif",
+                  fontFamily: isEn ? 'inherit' : "'EnglishDigits', 'Bahij Janna', sans-serif",
                 }}
               >
                 {displayTitle}
@@ -381,7 +381,7 @@ function CorporateProductCard({
               <h3
                 className="text-[#234745] font-bold text-[18px] hover:text-[#906B51] transition-colors m-0 leading-snug"
                 style={{
-                  fontFamily: isEn ? 'inherit' : "'Bahij Janna', sans-serif",
+                  fontFamily: isEn ? 'inherit' : "'EnglishDigits', 'Bahij Janna', sans-serif",
                 }}
               >
                 {displayTitle}
@@ -402,7 +402,7 @@ function CorporateProductCard({
             <p className="text-[#234745] font-medium text-[13px] m-0 leading-relaxed">
               {isEn
                 ? 'Full custom design tailored to your brand identity. Minimum order 200 boxes.'
-                : 'تصميم خاص بالكامل من الصفر حسب هوية شركتك. الحد الأدنى للطلب ٢٠٠ علبة.'}
+                : 'تصميم خاص بالكامل من الصفر حسب هوية شركتك. الحد الأدنى للطلب 200 علبة.'}
             </p>
           </div>
         ) : (
@@ -451,7 +451,7 @@ function CorporateProductCard({
             onClick={onOpenCustomModal}
             className="w-full bg-[#234745] !text-white font-bold text-[16px] py-3 rounded-full hover:bg-[#1a3533] transition-colors text-center block mt-1 shadow-sm cursor-pointer"
             style={{
-              fontFamily: isEn ? 'inherit' : "'Bahij Janna', sans-serif",
+              fontFamily: isEn ? 'inherit' : "'EnglishDigits', 'Bahij Janna', sans-serif",
               color: '#ffffff',
             }}
           >
@@ -462,7 +462,7 @@ function CorporateProductCard({
             to={productUrl}
             className="w-full bg-[#234745] !text-white font-bold text-[16px] py-3 rounded-full hover:bg-[#1a3533] transition-colors text-center block mt-1 shadow-sm"
             style={{
-              fontFamily: isEn ? 'inherit' : "'Bahij Janna', sans-serif",
+              fontFamily: isEn ? 'inherit' : "'EnglishDigits', 'Bahij Janna', sans-serif",
               color: '#ffffff',
             }}
           >
@@ -489,7 +489,7 @@ function B2BCompanyModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in" dir={isEn ? 'ltr' : 'rtl'}>
-      <div className="bg-white rounded-[24px] max-w-[540px] w-full p-6 sm:p-8 shadow-2xl relative border border-[#E6E2D8] text-center" style={{fontFamily: isEn ? "'Gotham Light', 'Gotham', 'Inter', sans-serif" : "'GE Dinar One', 'Bahij Janna', sans-serif"}}>
+      <div className="bg-white rounded-[24px] max-w-[540px] w-full p-6 sm:p-8 shadow-2xl relative border border-[#E6E2D8] text-center" style={{fontFamily: isEn ? "'Montserrat', 'Segoe UI', system-ui, sans-serif" : "'EnglishDigits', 'GE Dinar One', 'Bahij Janna', sans-serif"}}>
         {/* Close Button */}
         <button
           onClick={onClose}
@@ -502,7 +502,7 @@ function B2BCompanyModal({
           🏢
         </div>
 
-        <h3 className="text-[22px] sm:text-[24px] font-bold text-[#234745] mb-2" style={{fontFamily: isEn ? 'inherit' : "'Bahij Janna', sans-serif"}}>
+        <h3 className="text-[22px] sm:text-[24px] font-bold text-[#234745] mb-2" style={{fontFamily: isEn ? 'inherit' : "'EnglishDigits', 'Bahij Janna', sans-serif"}}>
           {isEn ? 'Corporate Accounts Only' : 'حسابات الشركات والمؤسسات فقط'}
         </h3>
 
@@ -596,7 +596,7 @@ function CustomQuoteModal({
     >
       <div
         className="bg-[#FFFDF9] rounded-[24px] max-w-[640px] w-full p-6 sm:p-8 relative max-h-[92vh] overflow-y-auto border border-[#E6E2D8] text-start"
-        style={{fontFamily: isEn ? "'Gotham Light', 'Gotham', 'Inter', sans-serif" : "'Bahij Janna', 'GE Dinar One', sans-serif"}}
+        style={{fontFamily: isEn ? "'Montserrat', 'Segoe UI', system-ui, sans-serif" : "'EnglishDigits', 'Bahij Janna', 'GE Dinar One', sans-serif"}}
       >
         {/* Close Button */}
         <button
@@ -895,7 +895,7 @@ export default function CorporatePage() {
       description: isEn
         ? 'An elegant gift for various corporate occasions with premium packaging and your company logo.'
         : 'هدية أنيقة لمختلف المناسبات الرسمية مع تغليف فاخر وشعار شركتك.',
-      minQty: isEn ? 'Starts from 20 Boxes' : 'تبدأ من ٢٠ علبة',
+      minQty: isEn ? 'Starts from 20 Boxes' : 'تبدأ من 20 علبة',
       bgColor: '#BBCFCD',
       icon: 'box',
       image: null,
@@ -907,7 +907,7 @@ export default function CorporatePage() {
       description: isEn
         ? 'A sophisticated choice for VIP clients and partners, with curated contents and striking packaging.'
         : 'اختيار راقٍ للعملاء وكبار الشركاء، بمحتوى مدروس وتغليف لافت.',
-      minQty: isEn ? 'Starts from 20 Boxes' : 'تبدأ من ٢٠ علبة',
+      minQty: isEn ? 'Starts from 20 Boxes' : 'تبدأ من 20 علبة',
       bgColor: '#234745',
       icon: 'star',
       image: null,
@@ -919,7 +919,7 @@ export default function CorporatePage() {
       description: isEn
         ? 'Design your gift to reflect your identity — contents, packaging, and logo as requested.'
         : 'صمّم هديتك بما يعكس هويتك — محتوى وتغليف وشعار حسب طلبك.',
-      minQty: isEn ? 'Custom +200 Boxes' : 'حسب الطلب +٢٠٠ علبة',
+      minQty: isEn ? 'Custom +200 Boxes' : 'حسب الطلب +200 علبة',
       bgColor: '#BBCFCD',
       icon: 'tool',
       image: null,
@@ -950,7 +950,7 @@ export default function CorporatePage() {
               (isEn
                 ? 'Custom corporate gift package tailored to your company needs.'
                 : 'باقة إهداء مؤسسي مميزة مصممة لتلبية احتياجات شركتك.'),
-            minQty: isEn ? 'Starts from 20 Boxes' : 'تبدأ من ٢٠ علبة',
+            minQty: isEn ? 'Starts from 20 Boxes' : 'تبدأ من 20 علبة',
             bgColor: isPremium ? '#234745' : '#BBCFCD',
             icon: isPremium ? 'star' : isCustom ? 'tool' : 'box',
             image: c.image?.url || null,
@@ -1063,7 +1063,7 @@ export default function CorporatePage() {
             </h4>
             <h2
               className="text-[#FEF8EB] text-[36px] md:text-[50px] font-bold leading-tight !mb-0"
-              style={{fontFamily: "'Bahij Janna', sans-serif"}}
+              style={{fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif"}}
             >
               {isEn ? 'How does the service work?' : 'كيف تعمل الخدمة؟'}
             </h2>
@@ -1087,7 +1087,7 @@ export default function CorporatePage() {
                 </div>
                 <h3
                   className="text-[#FEF8EB] font-bold text-[22px] md:text-[26px] leading-[42px] m-0"
-                  style={{fontFamily: "'Bahij Janna', sans-serif"}}
+                  style={{fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif"}}
                 >
                   {isEn ? 'Choose Path' : 'اختر المسار'}
                 </h3>
@@ -1108,7 +1108,7 @@ export default function CorporatePage() {
                 </div>
                 <h3
                   className="text-[#FEF8EB] font-bold text-[22px] md:text-[26px] leading-[42px] m-0"
-                  style={{fontFamily: "'Bahij Janna', sans-serif"}}
+                  style={{fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif"}}
                 >
                   {isEn ? 'Customize Details' : 'خصّص التفاصيل'}
                 </h3>
@@ -1133,7 +1133,7 @@ export default function CorporatePage() {
                 <p className="text-[#9FB7AE] text-[14px] leading-[17px] m-0 max-w-[300px]">
                   {isEn
                     ? 'We prepare and pack within 24h and deliver to any city.'
-                    : 'نجهّز ونغلّف خلال ٢٤ ساعة ونوصل إلى أي مدينة تختارها.'}
+                    : 'نجهّز ونغلّف خلال 24 ساعة ونوصل إلى أي مدينة تختارها.'}
                 </p>
               </div>
             </div>
@@ -1151,7 +1151,7 @@ export default function CorporatePage() {
             </h4>
             <h2
               className="text-[#234745] text-[36px] md:text-[50px] font-bold leading-[80px]"
-              style={{fontFamily: isEn ? 'inherit' : "'Bahij Janna'"}}
+              style={{fontFamily: isEn ? 'inherit' : "'EnglishDigits', 'Bahij Janna'"}}
             >
               {isEn ? 'How would you like to proceed?' : 'كيف تريد المتابعة؟'}
             </h2>
@@ -1216,7 +1216,7 @@ export default function CorporatePage() {
                 <div className="bg-[#BBCFCD] px-4 py-2 rounded-full flex items-center justify-center mt-2">
                   <span
                     className="text-[#234745] font-bold text-[14px] leading-[17px]"
-                    style={{fontFamily: isEn ? 'inherit' : "'Bahij Janna'"}}
+                    style={{fontFamily: isEn ? 'inherit' : "'EnglishDigits', 'Bahij Janna'"}}
                   >
                     {isEn ? '20 - 200 Boxes' : '20 - 200 علبة'}
                   </span>
@@ -1265,7 +1265,7 @@ export default function CorporatePage() {
                 <div className="bg-[#FEF8EB] px-4 py-2 rounded-full flex items-center justify-center mt-2">
                   <span
                     className="text-[#906B51] font-bold text-[14px] leading-[17px]"
-                    style={{fontFamily: isEn ? 'inherit' : "'Bahij Janna'"}}
+                    style={{fontFamily: isEn ? 'inherit' : "'EnglishDigits', 'Bahij Janna'"}}
                   >
                     {isEn
                       ? '200+ Boxes or Custom Order'
@@ -1290,14 +1290,14 @@ export default function CorporatePage() {
               </h4>
               <h2
                 className="text-[#234745] text-[36px] md:text-[50px] font-bold leading-tight"
-                style={{fontFamily: isEn ? 'inherit' : "'Bahij Janna'"}}
+                style={{fontFamily: isEn ? 'inherit' : "'EnglishDigits', 'Bahij Janna'"}}
               >
                 {isEn ? 'Choose Your Selection' : 'اختر تشكيلتك'}
               </h2>
               <p className="text-[#8B9895] text-[16px] md:text-[18px] font-medium leading-relaxed max-w-xl">
                 {isEn
                   ? '12 B2B collections fitting every corporate occasion and budget'
-                  : '١٢ تشكيلة B2B تناسب كل مناسبة وميزانية مؤسسية'}
+                  : '12 تشكيلة B2B تناسب كل مناسبة وميزانية مؤسسية'}
               </p>
             </div>
 
@@ -1393,7 +1393,7 @@ export default function CorporatePage() {
               </h4>
               <h2
                 className="text-[#234745] text-[36px] md:text-[50px] font-bold leading-tight"
-                style={{fontFamily: isEn ? 'inherit' : "'Bahij Janna'"}}
+                style={{fontFamily: isEn ? 'inherit' : "'EnglishDigits', 'Bahij Janna'"}}
               >
                 {isEn ? 'Corporate Gift Packages' : 'باقات الهدايا المؤسسية'}
               </h2>
@@ -1420,7 +1420,7 @@ export default function CorporatePage() {
                 </div>
                 <div className="p-6 flex flex-col flex-1 justify-between gap-4 text-start">
                   <div>
-                    <h3 className="text-[#234745] font-bold text-[20px] mb-2" style={{fontFamily: isEn ? 'inherit' : "'Bahij Janna'"}}>
+                    <h3 className="text-[#234745] font-bold text-[20px] mb-2" style={{fontFamily: isEn ? 'inherit' : "'EnglishDigits', 'Bahij Janna'"}}>
                       {isEn ? 'Classic Collection' : 'التشكيلة الكلاسيكية'}
                     </h3>
                     <p className="text-[#8B9895] text-[14px] leading-relaxed m-0">
@@ -1454,7 +1454,7 @@ export default function CorporatePage() {
                 </div>
                 <div className="p-6 flex flex-col flex-1 justify-between gap-4 text-start">
                   <div>
-                    <h3 className="text-[#234745] font-bold text-[20px] mb-2" style={{fontFamily: isEn ? 'inherit' : "'Bahij Janna'"}}>
+                    <h3 className="text-[#234745] font-bold text-[20px] mb-2" style={{fontFamily: isEn ? 'inherit' : "'EnglishDigits', 'Bahij Janna'"}}>
                       {isEn ? 'Featured Collection' : 'التشكيلة المميزة'}
                     </h3>
                     <p className="text-[#8B9895] text-[14px] leading-relaxed m-0">
@@ -1488,7 +1488,7 @@ export default function CorporatePage() {
                 </div>
                 <div className="p-6 flex flex-col flex-1 justify-between gap-4 text-start">
                   <div>
-                    <h3 className="text-[#234745] font-bold text-[20px] mb-2" style={{fontFamily: isEn ? 'inherit' : "'Bahij Janna'"}}>
+                    <h3 className="text-[#234745] font-bold text-[20px] mb-2" style={{fontFamily: isEn ? 'inherit' : "'EnglishDigits', 'Bahij Janna'"}}>
                       {isEn ? 'Custom Collection' : 'التشكيلة المخصصة'}
                     </h3>
                     <p className="text-[#8B9895] text-[14px] leading-relaxed m-0">
@@ -1523,7 +1523,7 @@ export default function CorporatePage() {
                 <h3
                   className="text-[#234745] font-bold text-[22px] sm:text-[26px] text-start m-0 leading-tight"
                   style={{
-                    fontFamily: isEn ? 'inherit' : "'Bahij Janna', sans-serif",
+                    fontFamily: isEn ? 'inherit' : "'EnglishDigits', 'Bahij Janna', sans-serif",
                   }}
                 >
                   {isEn
@@ -1834,7 +1834,7 @@ export default function CorporatePage() {
                     style={{
                       fontFamily: isEn
                         ? 'inherit'
-                        : "'Bahij Janna', sans-serif",
+                        : "'EnglishDigits', 'Bahij Janna', sans-serif",
                     }}
                   >
                     {isEn ? 'Send Quote Request' : 'إرسال طلب عرض السعر'}
@@ -1849,7 +1849,7 @@ export default function CorporatePage() {
                 <h2
                   className="text-[#234745] font-bold text-[32px] sm:text-[38px] md:text-[44px] leading-tight m-0"
                   style={{
-                    fontFamily: isEn ? 'inherit' : "'Bahij Janna', sans-serif",
+                    fontFamily: isEn ? 'inherit' : "'EnglishDigits', 'Bahij Janna', sans-serif",
                   }}
                 >
                   {isEn
@@ -1925,7 +1925,7 @@ export default function CorporatePage() {
             <h2
               className="text-[#234745] text-[36px] sm:text-[46px] lg:text-[52px] font-bold leading-tight mb-4"
               style={{
-                fontFamily: isEn ? 'inherit' : "'Bahij Janna', sans-serif",
+                fontFamily: isEn ? 'inherit' : "'EnglishDigits', 'Bahij Janna', sans-serif",
               }}
             >
               {isEn
@@ -2005,7 +2005,7 @@ export default function CorporatePage() {
             <h2
               className="text-[#234745] text-[36px] sm:text-[50px] font-bold leading-tight"
               style={{
-                fontFamily: isEn ? 'inherit' : "'Bahij Janna', sans-serif",
+                fontFamily: isEn ? 'inherit' : "'EnglishDigits', 'Bahij Janna', sans-serif",
               }}
             >
               {isEn ? 'Why Choose Us?' : 'لماذا تختارنا؟'}
@@ -2043,7 +2043,7 @@ export default function CorporatePage() {
                 <p
                   className="text-[#9FB7AE] font-bold text-[14px] leading-tight"
                   style={{
-                    fontFamily: isEn ? 'inherit' : "'Bahij Janna', sans-serif",
+                    fontFamily: isEn ? 'inherit' : "'EnglishDigits', 'Bahij Janna', sans-serif",
                   }}
                 >
                   {isEn
@@ -2074,7 +2074,7 @@ export default function CorporatePage() {
                 <p
                   className="text-[#9FB7AE] font-bold text-[14px] leading-tight"
                   style={{
-                    fontFamily: isEn ? 'inherit' : "'Bahij Janna', sans-serif",
+                    fontFamily: isEn ? 'inherit' : "'EnglishDigits', 'Bahij Janna', sans-serif",
                   }}
                 >
                   {isEn
@@ -2108,7 +2108,7 @@ export default function CorporatePage() {
                 <p
                   className="text-[#9FB7AE] font-bold text-[14px] leading-tight"
                   style={{
-                    fontFamily: isEn ? 'inherit' : "'Bahij Janna', sans-serif",
+                    fontFamily: isEn ? 'inherit' : "'EnglishDigits', 'Bahij Janna', sans-serif",
                   }}
                 >
                   {isEn
@@ -2139,7 +2139,7 @@ export default function CorporatePage() {
                 <p
                   className="text-[#9FB7AE] font-bold text-[14px] leading-tight"
                   style={{
-                    fontFamily: isEn ? 'inherit' : "'Bahij Janna', sans-serif",
+                    fontFamily: isEn ? 'inherit' : "'EnglishDigits', 'Bahij Janna', sans-serif",
                   }}
                 >
                   {isEn
@@ -2171,7 +2171,7 @@ export default function CorporatePage() {
                 <p
                   className="text-[#9FB7AE] font-bold text-[14px] leading-tight"
                   style={{
-                    fontFamily: isEn ? 'inherit' : "'Bahij Janna', sans-serif",
+                    fontFamily: isEn ? 'inherit' : "'EnglishDigits', 'Bahij Janna', sans-serif",
                   }}
                 >
                   {isEn
@@ -2203,7 +2203,7 @@ export default function CorporatePage() {
                 <p
                   className="text-[#9FB7AE] font-bold text-[14px] leading-tight"
                   style={{
-                    fontFamily: isEn ? 'inherit' : "'Bahij Janna', sans-serif",
+                    fontFamily: isEn ? 'inherit' : "'EnglishDigits', 'Bahij Janna', sans-serif",
                   }}
                 >
                   {isEn

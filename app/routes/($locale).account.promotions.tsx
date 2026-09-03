@@ -31,7 +31,7 @@ export async function loader({context}: LoaderFunctionArgs) {
   // We first get the customer ID from Storefront API (allowed)
   const {customer: sfCustomer} = await storefront.query(
       `#graphql
-      query getDashboardCustomerId($customerAccessToken: String!) {
+      query getPromotionsCustomerId($customerAccessToken: String!) {
         customer(customerAccessToken: $customerAccessToken) {
           id
           # Selected because the check below reads it. Without it

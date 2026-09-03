@@ -33,16 +33,39 @@ export async function action({request, context}: ActionFunctionArgs) {
     return data({error: 'Method not allowed'}, {status: 405});
   }
 
-  try {
-    if (!email) {
-      throw new Error('Please provide an email.');
-    }
+  if (!email) {
+    return data(
+      {error: 'Please provide an email.', resetRequested: false},
+      {status: 400},
+    );
+  }
 
-    // DEBUG STEP: Check Admin API first to see if customer exists
+  /**
+   * Every outcome past this point answers the visitor the same way.
+   *
+   * This route used to return "Admin check: No customer found with email
+   * <address> in Shopify database" straight to the browser, which turned the
+   * forgot-password form into a membership oracle: submit an address, read the
+   * reply, learn whether that person shops here. One request per address, no
+   * rate limit. The disabled-account message leaked the same way, and both
+   * exposed internal wording to customers.
+   *
+   * The success copy was already written neutrally ("If that email address is
+   * in our system..."); these two paths defeated it. The reason now lives in
+   * the server log — without the address in it — and the visitor sees the same
+   * screen whichever way it went.
+   */
+  const neutral = () => data({resetRequested: true});
+
+  try {
+    // Confirm the account exists and is usable before asking Shopify to send
+    // a reset link.
     const adminToken = await getAdminToken(env);
     if (adminToken) {
       const adminResponse = await fetch(
-        `https://${env.PUBLIC_STORE_DOMAIN}/admin/api/2024-01/customers/search.json?query=email:${email}`,
+        `https://${env.PUBLIC_STORE_DOMAIN}/admin/api/2024-01/customers/search.json?query=${encodeURIComponent(
+          `email:${email}`,
+        )}`,
         {
           headers: {
             'X-Shopify-Access-Token': adminToken,
@@ -52,15 +75,31 @@ export async function action({request, context}: ActionFunctionArgs) {
       );
       const adminData = (await adminResponse.json()) as any;
 
-      if (!adminData.customers || adminData.customers.length === 0) {
-        throw new Error(
-          `Admin check: No customer found with email "${email}" in Shopify database.`,
+      /**
+       * The customer whose email actually equals the one submitted.
+       *
+       * This took the first row of a fuzzy Shopify search and read `state` off
+       * it, so the "is this account disabled" check could be answered by a
+       * different customer entirely. Shopify's customer search matches on more
+       * than exact email.
+       */
+      const wantedEmail = email.trim().toLowerCase();
+      const customer = (adminData.customers || []).find(
+        (c: any) => (c?.email || '').toLowerCase() === wantedEmail,
+      );
+
+      if (!customer) {
+        console.warn(
+          '[Recover] No Shopify customer matches the submitted address; answering neutrally.',
         );
+        return neutral();
       }
 
-      const customer = adminData.customers[0];
       if (customer.state === 'disabled') {
-        throw new Error('This account is disabled. Please contact support.');
+        console.warn(
+          `[Recover] Customer ${customer.id} is disabled; no reset link sent.`,
+        );
+        return neutral();
       }
     }
 
@@ -71,27 +110,17 @@ export async function action({request, context}: ActionFunctionArgs) {
       },
     )) as any;
 
-    console.log(
-      '[DEBUG] Storefront Recover Response:',
-      JSON.stringify(customerRecover),
-    );
-
     if (customerRecover?.customerUserErrors?.length) {
-      throw new Error(
-        customerRecover.customerUserErrors[0]?.message || 'Verification failed',
+      console.warn(
+        '[Recover] customerRecover returned errors:',
+        customerRecover.customerUserErrors,
       );
     }
 
-    return data({resetRequested: true});
+    return neutral();
   } catch (error: unknown) {
-    return data(
-      {
-        error:
-          error instanceof Error ? error.message : 'Failed to send reset link',
-        resetRequested: false,
-      },
-      {status: 400},
-    );
+    console.error('[Recover] Failed to process a reset request:', error);
+    return neutral();
   }
 }
 

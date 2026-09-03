@@ -19,6 +19,32 @@ interface GiftCard {
   transactions: Transaction[];
 }
 
+/**
+ * DEVELOPMENT ONLY — a fake gift-card backend.
+ *
+ * This route answers the same paths as the real middleware
+ * (`/gift-cards/by-phone/:phone`, `/gift-cards/:code/activate`, …) with an
+ * in-memory map seeded with mock cards. It exists so the wallet UI can be
+ * exercised without the live service.
+ *
+ * It previously shipped unguarded, which meant that in production
+ * `GET /gift-cards/by-phone/<any phone>` answered with mock data and
+ * `POST /gift-cards/<code>/activate` was open to anyone. It also gave the
+ * storefront a split brain on localhost: account.wallet.tsx wrote activations
+ * here while the account header read real balances from api.saadeddin.top, so
+ * a test account could show a balance from one ledger and card history from
+ * another.
+ *
+ * `import.meta.env.DEV` is replaced at build time, so in a production build
+ * this is statically false and every handler below answers 404.
+ */
+const MOCK_GIFT_CARDS_ENABLED = Boolean(import.meta.env?.DEV);
+
+/** 404 in production, so this route does not exist outside development. */
+function mockDisabled() {
+  return json({success: false, error: 'Not found'}, {status: 404});
+}
+
 // In-memory persistent database survival across Vite HMR reloads
 const globalAny = globalThis as any;
 if (!globalAny.__giftCards) {
@@ -27,7 +53,7 @@ if (!globalAny.__giftCards) {
 const giftCards: Map<string, GiftCard> = globalAny.__giftCards;
 
 // Pre-populate standard mock codes for QA and UI verification
-if (giftCards.size === 0) {
+if (MOCK_GIFT_CARDS_ENABLED && giftCards.size === 0) {
   giftCards.set('GC-WELCOME50', {
     code: 'GC-WELCOME50',
     currentBalance: 50,
@@ -77,6 +103,7 @@ function generateCode(): string {
 }
 
 export async function loader({request}: LoaderFunctionArgs) {
+  if (!MOCK_GIFT_CARDS_ENABLED) return mockDisabled();
   const url = new URL(request.url);
   const path = url.pathname.replace(/^\/(?:[a-z]{2}\/)?gift-cards/, '');
 
@@ -156,6 +183,7 @@ export async function loader({request}: LoaderFunctionArgs) {
 }
 
 export async function action({request}: ActionFunctionArgs) {
+  if (!MOCK_GIFT_CARDS_ENABLED) return mockDisabled();
   const url = new URL(request.url);
   const path = url.pathname.replace(/^\/(?:[a-z]{2}\/)?gift-cards/, '');
   const method = request.method.toUpperCase();

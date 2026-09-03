@@ -88,115 +88,6 @@ function formatOtpError(errorMessage: string, lang: 'en' | 'ar'): string {
   return errorMessage;
 }
 
-function translateOtpErrorMessage(msg: string, lang: 'en' | 'ar'): string {
-  if (!msg) return '';
-
-  // Extract inner message if backend returned "SMS gateway returned XXX: <json or message>"
-  let cleanMsg = msg;
-  const gatewayMatch = msg.match(/SMS gateway returned \d+:\s*(.*)/i);
-  if (gatewayMatch) {
-    cleanMsg = gatewayMatch[1];
-    try {
-      const parsed = JSON.parse(cleanMsg);
-      if (parsed.message) cleanMsg = parsed.message;
-      else if (parsed.error) cleanMsg = parsed.error;
-    } catch {}
-  }
-
-  const lowerMsg = cleanMsg.toLowerCase();
-
-  // 1. Rate limiting matches MUST come first!
-  const minutesMatch = cleanMsg.match(
-    /please\s+wait\s+(\d+)\s+minutes?\s+before\s+requesting/i,
-  );
-  if (minutesMatch) {
-    const mins = minutesMatch[1];
-    if (mins === '1') {
-      return lang === 'en'
-        ? 'Please wait 1 minute before requesting a new code.'
-        : 'يرجى الانتظار دقيقة واحدة قبل طلب رمز تحقق جديد.';
-    } else if (mins === '2') {
-      return lang === 'en'
-        ? 'Please wait 2 minutes before requesting a new code.'
-        : 'يرجى الانتظار دقيقتين قبل طلب رمز تحقق جديد.';
-    } else {
-      return lang === 'en'
-        ? `Please wait ${mins} minutes before requesting a new code.`
-        : `يرجى الانتظار ${mins} دقائق قبل طلب رمز تحقق جديد.`;
-    }
-  }
-
-  const secondsMatch = cleanMsg.match(
-    /please\s+wait\s+(\d+)\s+seconds?\s+before\s+requesting/i,
-  );
-  if (secondsMatch) {
-    const secs = secondsMatch[1];
-    return lang === 'en'
-      ? `Please wait ${secs} seconds before requesting a new code.`
-      : `يرجى الانتظار ${secs} ثانية قبل طلب رمز تحقق جديد.`;
-  }
-
-  // 2. Specific error matches
-  if (lowerMsg.includes('invalid phone') || lowerMsg.includes('phone_number')) {
-    return lang === 'en'
-      ? 'Invalid phone number format. Please check the number and try again.'
-      : 'رقم الجوال غير صحيح. يرجى التحقق من الرقم والمحاولة مرة أخرى.';
-  }
-
-  if (
-    lowerMsg.includes('invalid otp') ||
-    lowerMsg.includes('otp is invalid') ||
-    lowerMsg.includes('incorrect otp')
-  ) {
-    return lang === 'en'
-      ? 'Invalid verification code.'
-      : 'رمز التحقق غير صحيح.';
-  }
-  if (
-    lowerMsg.includes('otp expired') ||
-    lowerMsg.includes('otp has expired')
-  ) {
-    return lang === 'en'
-      ? 'Verification code expired. Please request a new code.'
-      : 'انتهت صلاحية رمز التحقق. يرجى طلب رمز جديد.';
-  }
-  if (
-    lowerMsg.includes('too many attempts') ||
-    lowerMsg.includes('too many failed')
-  ) {
-    return lang === 'en'
-      ? 'Too many failed attempts. Please try again later.'
-      : 'لقد تجاوزت الحد الأقصى للمحاولات. يرجى المحاولة بعد قليل.';
-  }
-  if (lowerMsg.includes('not found') || lowerMsg.includes('not exist')) {
-    return lang === 'en'
-      ? 'Account not found. Please register.'
-      : 'الحساب غير موجود. يرجى إنشاء حساب جديد.';
-  }
-  if (
-    lowerMsg.includes('already registered') ||
-    lowerMsg.includes('already exists')
-  ) {
-    return lang === 'en'
-      ? 'This phone number is already registered.'
-      : 'رقم الجوال هذا مسجل بالفعل.';
-  }
-
-  // 3. Fallback for hard gateway failure ONLY
-  if (
-    lowerMsg.includes('gateway dispatch failed') ||
-    lowerMsg.includes('service unavailable') ||
-    lowerMsg.includes('dispatch failed') ||
-    lowerMsg.includes('gateway failed')
-  ) {
-    return lang === 'en'
-      ? 'SMS service is temporarily unavailable. Please try again in a few moments.'
-      : 'خدمة الرسائل القصيرة غير متاحة حالياً. يرجى المحاولة بعد قليل.';
-  }
-
-  return cleanMsg;
-}
-
 export async function action({request, context}: ActionFunctionArgs) {
   const {storefront, session, env} = context;
   const form = await request.formData();
@@ -330,7 +221,9 @@ export async function action({request, context}: ActionFunctionArgs) {
           const phoneData = (await phoneCheckRes.json()) as any;
           const existingCustomer = (phoneData.customers || []).find((c: any) => {
             const cp = (c.phone || '').replace(/\D/g, '');
-            return cp && (cp === rawDigits || cp.endsWith(last9Digits));
+            // Exact only: an endsWith match reported an unrelated customer's
+            // number as "already registered", and blocked a real signup.
+            return Boolean(cp) && cp === rawDigits;
           });
 
           if (existingCustomer) {
@@ -356,14 +249,12 @@ export async function action({request, context}: ActionFunctionArgs) {
 
     try {
       const api = new SaadeddinApi(env);
-      try {
-        await api.requestOtp(fullPhone, 'register');
-      } catch (err: any) {
-        console.warn(
-          '[Register] Custom requestOtp warning (Bypass Mode Active):',
-          err?.message,
-        );
-      }
+      /**
+       * A failed send stops here — same reasoning as the login route. Showing
+       * the code screen after a failed send asks the shopper for a code that
+       * was never sent, and the old outer catch did it a second time.
+       */
+      await api.requestOtp(fullPhone, 'register');
 
       session.set('otpPhone', fullPhone);
       session.set('otpCooldown', Date.now() + 60 * 1000);
@@ -372,12 +263,18 @@ export async function action({request, context}: ActionFunctionArgs) {
         {headers: {'Set-Cookie': await session.commit()}},
       );
     } catch (err: any) {
-      console.error('[Register] requestOtp fallback:', err);
-      session.set('otpPhone', fullPhone);
-      return data(
-        {step: 'otp'},
-        {headers: {'Set-Cookie': await session.commit()}},
-      );
+      const detail = err?.message || String(err);
+      console.error('[Register] OTP send failed:', detail);
+      const isRateLimited = /wait|too many|rate.?limit|throttl/i.test(detail);
+      return data({
+        error: isRateLimited
+          ? lang === 'en'
+            ? 'Please wait a moment before requesting a new code.'
+            : 'يرجى الانتظار قليلاً قبل طلب رمز تحقق جديد.'
+          : lang === 'en'
+            ? 'We could not send the verification code right now. Please try again in a moment.'
+            : 'تعذّر إرسال رمز التحقق حالياً. يرجى المحاولة مرة أخرى بعد قليل.',
+      });
     }
   }
 
@@ -483,7 +380,9 @@ export async function action({request, context}: ActionFunctionArgs) {
           const phoneData = (await phoneCheckRes.json()) as any;
           const existingCustomer = (phoneData.customers || []).find((c: any) => {
             const cp = (c.phone || '').replace(/\D/g, '');
-            return cp && (cp === rawDigits || cp.endsWith(last9Digits));
+            // Exact only: an endsWith match reported an unrelated customer's
+            // number as "already registered", and blocked a real signup.
+            return Boolean(cp) && cp === rawDigits;
           });
           if (existingCustomer) {
             console.warn(
@@ -521,18 +420,34 @@ export async function action({request, context}: ActionFunctionArgs) {
     try {
       const api = new SaadeddinApi(env);
 
-      // 1. Verify OTP directly via CRM API to get otpToken (or use bypass fallback token)
-      let otpToken = `bypass-token-${Date.now()}`;
+      /**
+       * 1. Verify the OTP with the CRM. A failure stops registration here.
+       *
+       * This used to catch the error, log it as "Bypass Mode Active" and carry
+       * on with a synthesised `bypass-token-<timestamp>`. There is no bypass —
+       * so a wrong code, or no code at all, still reached the account-creation
+       * steps below. Since the CRM registration failure at step 3 was swallowed
+       * the same way, the flow ended at the Admin API fallback, which creates
+       * the Shopify customer tagged `verified_phone` with a password derived
+       * from the phone number. Nothing in the path ever established that the
+       * person held the phone.
+       *
+       * Worse, step 4 asks Shopify for an access token with the submitted
+       * email and that derived password. For any account created through this
+       * same OTP flow that password matches, so submitting an existing
+       * customer's phone and email returned a real session for them without a
+       * valid code.
+       */
+      let otpToken = '';
       try {
         const verifyRes = await api.verifyOtp(savedPhone, otp, 'register');
-        if (verifyRes?.otpToken) {
-          otpToken = verifyRes.otpToken;
-        }
+        // Verified. Some CRM builds answer without a token; the phone is
+        // confirmed either way, so registration continues.
+        otpToken = verifyRes?.otpToken || `verified-${Date.now()}`;
       } catch (verifyErr: any) {
-        console.warn(
-          '[Register] verifyOtp warning (Bypass Mode Active):',
-          verifyErr?.message,
-        );
+        const detail = verifyErr?.message || String(verifyErr);
+        console.error('[Register] OTP verification failed:', detail);
+        return data({error: formatOtpError(detail, lang)});
       }
 
       session.unset('otpCooldown');
@@ -574,7 +489,7 @@ export async function action({request, context}: ActionFunctionArgs) {
         }
       } catch (apiErr: any) {
         console.warn(
-          '[Register] Custom CRM API registration warning (Bypass Mode Active):',
+          '[Register] CRM registration failed; the phone is already verified, so the Shopify customer is created directly:',
           apiErr?.message,
         );
         saadeddinToken = `bypass-token-${Date.now()}`;

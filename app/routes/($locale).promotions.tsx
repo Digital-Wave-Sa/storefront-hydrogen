@@ -14,7 +14,7 @@ import {
   isDiscountValidForLocation,
   parseLocationDiscountsJSON,
 } from '~/lib/discounts';
-import {filterByOffer, productHasOffer} from '~/lib/offer-tags';
+import {productHasOffer} from '~/lib/offer-tags';
 
 // GraphQL query to fetch promotional products and promotion page metaobjects
 const PROMOTIONS_QUERY = `#graphql
@@ -123,7 +123,7 @@ const PROMOTIONS_QUERY = `#graphql
 ` as const;
 
 export async function loader({context}: LoaderFunctionArgs) {
-  const {storefront} = context;
+  const {storefront, env} = context;
   try {
     const data = await storefront.query(PROMOTIONS_QUERY, {
       variables: {
@@ -219,33 +219,79 @@ export async function loader({context}: LoaderFunctionArgs) {
         }
       : null;
 
-    // Filter ONLY products that have a discount (compareAtPrice > price) or discount/promotion tags
-    const discountedProducts = allProducts.filter((product: any) => {
-      const variants = product.variants?.nodes || [];
-      const hasDiscountedVariant = variants.some((v: any) => {
-        const price = parseFloat(v.price?.amount || '0');
-        const comparePrice = parseFloat(v.compareAtPrice?.amount || '0');
-        return comparePrice > price;
+    /**
+     * The grid is the offers on this page, and nothing else.
+     *
+     * "منتجات مختارة بخصومات حصرية" used to be built from the catalogue
+     * instead: any product whose compareAtPrice sat above its price, plus
+     * anything carrying a discount-ish tag ("sale", "خصم", "promo"). That is a
+     * different question from the one the page asks. It let in products that are
+     * merely marked down and have nothing to do with the offers advertised
+     * above, while the offers' own products were missing unless they happened to
+     * also be marked down — the offers are Shopify discounts applied at the
+     * cart, which change nothing on the product record.
+     *
+     * These come from the same resolver the offer pages use, priced with the
+     * same discount, so a product shows the same before-and-after here as it
+     * does on /promotions/gifts25.
+     */
+    let offerProducts: any[] = [];
+    let offerList: any[] = [];
+    try {
+      const {fetchOfferRegistry} = await import('~/lib/offer-registry.server');
+      const {resolveOffers} = await import('~/lib/offer-products.server');
+
+      /**
+       * The offers themselves are content, not code — a `promotion_offer`
+       * metaobject entry per offer. Publishing one adds it to this grid, its
+       * filter tab and its own page; unpublishing removes it from all three,
+       * with no deploy. See offer-registry.server.ts for the field list.
+       */
+      const registry = await fetchOfferRegistry(storefront);
+      const resolved = await resolveOffers({
+        storefront,
+        env,
+        offers: registry.map((o) => ({handle: o.handle, tags: o.tags})),
+        catalogue: allProducts,
       });
+      offerProducts = resolved.products;
 
-      const tags = (product.tags || []).map((t: string) => t.toLowerCase());
-      const hasDiscountTag = tags.some(
-        (t: string) =>
-          t.includes('discount') ||
-          t.includes('sale') ||
-          t.includes('promotion') ||
-          t.includes('bogo') ||
-          t.includes('1+1') ||
-          t.includes('خصم') ||
-          t.includes('عرض') ||
-          t.includes('promo'),
+      // Counts come from the resolved discounts, so a tab can say how many
+      // products are actually behind it rather than promising an empty page.
+      const countByHandle = new Map(
+        resolved.offers.map((r) => [r.handle, r.gridProducts.length]),
       );
+      offerList = registry.map((o) => ({
+        handle: o.handle,
+        titleAr: o.titleAr ?? null,
+        titleEn: o.titleEn ?? null,
+        subtitleAr: o.subtitleAr ?? null,
+        subtitleEn: o.subtitleEn ?? null,
+        badgeAr: o.badgeAr ?? null,
+        badgeEn: o.badgeEn ?? null,
+        buttonTextAr: o.buttonTextAr ?? null,
+        buttonTextEn: o.buttonTextEn ?? null,
+        imageUrl: o.imageUrl ?? null,
+        productCount: countByHandle.get(o.handle) ?? 0,
+      }));
+    } catch (err) {
+      /**
+       * No markdown fallback on purpose. The grid promises the offers on this
+       * page; filling it with unrelated markdowns because a lookup failed would
+       * advertise discounts these products do not have. The empty state below
+       * says so honestly instead.
+       */
+      console.error('[promotions] Failed to resolve offer products:', err);
+    }
 
-      return hasDiscountedVariant || hasDiscountTag;
-    });
+    const byId = new Map<string, any>();
+    for (const product of offerProducts) {
+      if (product?.id) byId.set(product.id, product);
+    }
 
     return {
-      products: discountedProducts,
+      products: [...byId.values()],
+      offerList,
       heroData,
       bogoData,
       gridData,
@@ -255,6 +301,7 @@ export async function loader({context}: LoaderFunctionArgs) {
     console.error('Error loading promotional products:', error);
     return {
       products: [],
+      offerList: [],
       heroData: null,
       bogoData: null,
       gridData: null,
@@ -342,8 +389,23 @@ const DEFAULT_LOCATION_DISCOUNTS = [
 ];
 
 export default function PromotionsPage() {
-  const {products, heroData, bogoData, gridData, bannerData} =
+  const {products, offerList, heroData, bogoData, gridData, bannerData} =
     useLoaderData<typeof loader>();
+
+  /**
+   * The offers this page promotes, from the `promotion_offer` metaobjects.
+   *
+   * The three promotional blocks below used to hardcode their destinations —
+   * /promotions/bogo, /promotions/gifts25, /promotions/chocolates40 — so
+   * retiring an offer left a card pointing at a page with nothing on it, and
+   * launching one meant editing this file. Each block now takes its handle and
+   * copy from the registry by position and hides itself when there is no offer
+   * in that slot, so the page shrinks and grows with the list in Shopify.
+   */
+  const offers: any[] = offerList || [];
+  const featuredOffer = offers[0] ?? null;
+  const cardOffer1 = offers[1] ?? null;
+  const cardOffer2 = offers[2] ?? null;
   const routeData = useRouteLoaderData('root') as any;
   const locale = routeData?.locale || 'ar';
   const selectedLocationId = routeData?.selectedLocationId;
@@ -366,6 +428,14 @@ export default function PromotionsPage() {
   });
 
   const isEn = locale.toLowerCase().startsWith('en');
+
+  const offerText = (
+    offer: any,
+    key: 'title' | 'subtitle' | 'badge' | 'buttonText',
+  ): string | null =>
+    (isEn
+      ? offer?.[`${key}En`] || offer?.[`${key}Ar`]
+      : offer?.[`${key}Ar`] || offer?.[`${key}En`]) ?? null;
   const {isInWishlist, toggleWishlist} = useWishlist();
 
   // Toast message state for "Copy Code"
@@ -456,26 +526,35 @@ export default function PromotionsPage() {
     return {
       ...prod,
       discountPct,
-      isBogo: productHasOffer(prod, 'bogo'),
+      isBogo:
+        productHasOffer(prod, 'bogo') ||
+        (prod.offerHandles || []).includes('bogo'),
       availableForSale:
         prod.availableForSale ?? variant?.availableForSale ?? true,
     };
   });
 
   /**
-   * Offer membership comes from Shopify tags only — the same rule the offer
-   * pages and the mobile app use (see ~/lib/offer-tags).
+   * Offer membership, by the discount first and the product tag second.
    *
-   * This previously guessed: any product discounted 15–35% counted as part of
-   * the 25% gift offer, anything over 30% counted as the chocolate offer, and
-   * titles were substring-matched. So an unrelated product on its own markdown
-   * appeared inside an offer it was never part of, and the same filter returned
-   * a different set here than on /promotions/gifts25.
+   * `offerHandles` is set by the loader on products resolved from a Shopify
+   * discount, which is the authority on what an offer contains — that is the
+   * same rule /promotions/:offer follows, so the two cannot list different
+   * products. The tag check stays as a fallback for a product a merchant has
+   * tagged but not yet added to the discount.
+   *
+   * This once guessed instead: anything discounted 15-35% counted as the 25%
+   * gift offer and anything over 30% as the chocolate offer, so an unrelated
+   * product on its own markdown landed inside an offer it was never part of.
    */
   const filteredProducts =
     activeFilter === 'all'
       ? displayProducts
-      : filterByOffer(displayProducts, activeFilter);
+      : displayProducts.filter(
+          (prod: any) =>
+            (prod.offerHandles || []).includes(activeFilter) ||
+            productHasOffer(prod, activeFilter),
+        );
 
   /**
    * An empty filter result means nothing carries that tag yet. Show the empty
@@ -680,7 +759,10 @@ export default function PromotionsPage() {
         <div
           className={`w-full ${activeLocationDiscount ? 'grid grid-cols-1 lg:grid-cols-[1.5fr_1fr] gap-6 items-stretch' : ''}`}
         >
-          {/* 3. BOGO Banner (Buy 1 Get 1 Free) */}
+          {/* 3. Featured offer banner — the first registered offer.
+                 Hidden entirely when no offer occupies that slot, rather than
+                 linking to a page that would resolve nothing. */}
+          {featuredOffer && (
           <section
             dir={direction}
             className="w-full bg-[#EED5D7] rounded-[24px] p-6 md:p-10 flex flex-col md:flex-row items-center justify-between gap-8 relative overflow-hidden"
@@ -737,12 +819,12 @@ export default function PromotionsPage() {
               <div className="flex flex-row items-center gap-4 mt-2">
                 {/* Button */}
                 <Link
-                  to="/promotions/bogo"
+                  to={`/promotions/${featuredOffer.handle}`}
                   className="inline-flex items-center gap-2 px-8 h-[48px] bg-[#BBCFCD] hover:bg-[#ACC4C2] !text-[#234745] font-bold text-[14px] rounded-full transition-colors flex-shrink-0 cursor-pointer"
                 >
                   {isEn ? (
                     <>
-                      <span>{bogoData?.buttonTextEn || 'Shop Offer'}</span>
+                      <span>{offerText(featuredOffer, 'buttonText') || bogoData?.buttonTextEn || 'Shop Offer'}</span>
                       <svg
                         width="16"
                         height="16"
@@ -951,6 +1033,7 @@ export default function PromotionsPage() {
               </div>
             </div>
           </section>
+          )}
 
           {/* Side-by-Side Branch Location Offer Card (Shown ONLY when active store has a matching location offer) */}
           {activeLocationDiscount && (
@@ -1029,7 +1112,8 @@ export default function PromotionsPage() {
           dir={direction}
           className="grid grid-cols-1 md:grid-cols-2 gap-6"
         >
-          {/* Left card: 25% Gifts */}
+          {/* Left card — the second registered offer. */}
+          {cardOffer1 && (
           <div className="bg-[#E64C53] rounded-[24px] p-6 md:p-8 flex flex-col items-start text-start justify-between min-h-[220px] shadow-sm relative overflow-hidden">
             <div className="flex items-center gap-2 !mb-6 self-start">
               <span className="text-white/80 font-bold text-[11px] uppercase tracking-wider">
@@ -1060,16 +1144,19 @@ export default function PromotionsPage() {
               </p>
             </div>
             <Link
-              to="/promotions/gifts25"
+              to={`/promotions/${cardOffer1.handle}`}
               className="px-6 h-[40px] inline-flex items-center justify-center bg-[#BBCFCD] hover:bg-[#ACC4C2] !text-[#234745] font-bold text-[13px] rounded-full transition-colors cursor-pointer"
             >
-              {isEn
-                ? gridData?.card1ButtonTextEn || 'Get Discount'
-                : gridData?.card1ButtonTextAr || 'احصل على الخصم'}
+              {offerText(cardOffer1, 'buttonText') ||
+                (isEn
+                  ? gridData?.card1ButtonTextEn || 'Get Discount'
+                  : gridData?.card1ButtonTextAr || 'احصل على الخصم')}
             </Link>
           </div>
+          )}
 
-          {/* Right card: 40% Chocolate */}
+          {/* Right card — the third registered offer. */}
+          {cardOffer2 && (
           <div className="bg-[#D3E1DF] rounded-[24px] p-6 md:p-8 flex flex-col items-start text-start justify-between min-h-[220px] shadow-sm relative overflow-hidden">
             <div className="flex items-center gap-2 self-start">
               <span className="text-[#234745] font-bold text-[11px] uppercase tracking-wider">
@@ -1100,14 +1187,15 @@ export default function PromotionsPage() {
               </p>
             </div>
             <Link
-              to="/promotions/chocolates40"
+              to={`/promotions/${cardOffer2.handle}`}
               className="px-6 h-[40px] inline-flex items-center justify-center bg-[#234745] hover:bg-[#1a3533] !text-white font-bold text-[13px] rounded-full transition-colors cursor-pointer"
             >
               {isEn
-                ? gridData?.card2ButtonTextEn || 'Shop Now'
-                : gridData?.card2ButtonTextAr || 'تسوق الآن'}
+                ? offerText(cardOffer2, 'buttonText') || gridData?.card2ButtonTextEn || 'Shop Now'
+                : offerText(cardOffer2, 'buttonText') || gridData?.card2ButtonTextAr || 'تسوق الآن'}
             </Link>
           </div>
+          )}
         </section>
 
         {/* 5. Horizontal Gold Banner */}

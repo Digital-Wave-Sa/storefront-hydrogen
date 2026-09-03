@@ -3,7 +3,7 @@ import { useRouteLoaderData, Await } from 'react-router';
 import { Suspense, useState } from 'react';
 import { AddToCartButton } from '~/components/AddToCartButton';
 import { useWishlist } from '~/context/WishlistContext';
-import { isOutOfStockAtBranch, findBranchLocation } from '~/lib/stock';
+import { isOutOfStockAtBranch, resolveBranchLocationId } from '~/lib/stock';
 import { useBranchAvailabilityReader } from '~/lib/useBranchAvailability';
 
 interface ProductUpsellModalProps {
@@ -34,12 +34,12 @@ export function ProductUpsellModal({
    */
   const upsellLocations =
     rootData?.locations?.locations?.nodes || rootData?.locations?.nodes || [];
-  const upsellBranch = findBranchLocation(
+  const upsellBranchId = resolveBranchLocationId(
     upsellLocations,
     rootData?.selectedLocationId,
     rootData?.selectedLocationName,
   );
-  const { read: readUpsellStock } = useBranchAvailabilityReader(upsellBranch?.id);
+  const { read: readUpsellStock } = useBranchAvailabilityReader(upsellBranchId);
 
   if (!isOpen || !upsellProducts || upsellProducts.length === 0) return null;
 

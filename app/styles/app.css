@@ -79,12 +79,22 @@ a, a:hover, a:focus, a:active {
   unicode-range: U+0030-0039, U+0025, U+002C, U+002E; /* 0-9, %, ,, . */
 }
 
-@font-face {
-  font-family: 'Gotham Light';
-  src: local('Gotham-Light'), local('Gotham Light'), local('Gotham'), url('/fonts/Gotham-Light.woff2') format('woff2'), url('/fonts/Gotham-Light.woff') format('woff'), url('/fonts/Gotham-Light.ttf') format('truetype');
-  font-weight: 300;
-  font-style: normal;
-}
+/*
+ * Gotham was declared here and never shipped.
+ *
+ * The @font-face pointed at /fonts/Gotham-Light.woff2|woff|ttf, none of which
+ * exist in public/fonts — the build warned about all three every time. It also
+ * led with local('Gotham-Light'), local('Gotham Light'), local('Gotham'), so it
+ * rendered correctly on any machine with Gotham installed (the ones the brand
+ * work was done on) and fell through to Segoe UI on Windows, Helvetica on
+ * macOS and Roboto on Android for everyone else. English customers were seeing
+ * three different fonts depending on their device, and no one could tell.
+ *
+ * Gotham is a commercial face from Hoefler&Co and we hold no web licence for
+ * it, so it is replaced with Montserrat (Google Fonts, loaded in root.tsx).
+ * If a licence is bought later, restore an @font-face here with the real files
+ * and swap 'Montserrat' back in the rules below.
+ */
 
 .font-ar {
   font-family: 'EnglishDigits', 'Bahij Janna', 'Cairo', sans-serif !important;
@@ -92,7 +102,7 @@ a, a:hover, a:focus, a:active {
 
 /* English Version Font Hierarchy */
 .font-en {
-  font-family: 'Gotham Light', 'Gotham', 'Inter', 'Outfit', 'Segoe UI', sans-serif !important;
+  font-family: 'Montserrat', 'Segoe UI', system-ui, sans-serif !important;
 }
 
 /* English Main Titles / Headings: Bahij Janna Bold */
@@ -111,7 +121,7 @@ a, a:hover, a:focus, a:active {
   font-weight: 700 !important;
 }
 
-/* English Subtitles, Descriptions, Body Text & Nav Links: Gotham Light */
+/* English Subtitles, Descriptions, Body Text & Nav Links */
 .font-en p,
 .font-en span,
 .font-en a,
@@ -131,7 +141,7 @@ a, a:hover, a:focus, a:active {
 .font-en footer span,
 .font-en footer a,
 .font-en footer li {
-  font-family: 'Gotham Light', 'Gotham', 'Inter', 'Segoe UI', sans-serif !important;
+  font-family: 'Montserrat', 'Segoe UI', system-ui, sans-serif !important;
 }
 
 
@@ -232,7 +242,13 @@ button:disabled {
 .overlay aside {
   background: var(--color-light);
   box-shadow: 0 0 50px rgba(0, 0, 0, 0.3);
+  /*
+   * dvh, not vh: on a phone `100vh` is the height with the browser chrome
+   * retracted, so the bottom of the panel sat underneath the address bar and
+   * the last menu item was unreachable. vh first as the fallback.
+   */
   height: 100vh;
+  height: 100dvh;
   width: min(var(--aside-width), 100vw);
   /*
    * Absolute, not fixed: a fixed element is positioned against the viewport and
@@ -281,8 +297,22 @@ button:disabled {
   margin-top: 0;
 }
 
+/*
+ * `min-height: 0` is what makes the drawer body scroll.
+ *
+ * A flex item defaults to `min-height: auto`, which means it refuses to
+ * shrink below its content. So this element grew to the full height of the
+ * menu instead of being capped at the panel, `overflow: hidden` clipped
+ * whatever fell past the bottom of the screen, and nothing scrolled — the
+ * mobile menu simply ended at القسائم with no way to reach the rest.
+ *
+ * The overflow stays hidden here on purpose: each drawer's own content
+ * scrolls (the cart manages its own scrolling region), and making this
+ * element scroll too would give the cart two nested scrollbars.
+ */
 .overlay aside main {
   flex: 1;
+  min-height: 0;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -1236,7 +1266,7 @@ button.reset:hover:not(:has(> *)) {
 }
 
 .otp-login-header h1 {
-  font-family: 'Gotham Light', 'Cairo', sans-serif;
+  font-family: 'Montserrat', 'Segoe UI', system-ui, sans-serif;
   font-weight: 300;
   font-size: 36px;
   margin-bottom: 12px;

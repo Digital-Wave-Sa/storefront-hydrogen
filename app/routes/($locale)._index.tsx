@@ -111,8 +111,10 @@ function loadDeferredData({context}: Route.LoaderArgs) {
         'bestSellers', 'kunafa', 'sweets', 'arabic', 'cake',
         'chocolateCake', 'cakes', 'chocolate', 'gifts', 'gifting',
       ];
-      if (result.fallbackProducts?.nodes)
-        result.fallbackProducts.nodes = filterPhysicalProducts(result.fallbackProducts.nodes);
+      for (const key of ['fallbackProducts', 'giftTagged']) {
+        if (result[key]?.nodes)
+          result[key].nodes = filterPhysicalProducts(result[key].nodes);
+      }
       for (const key of collectionKeys) {
         if (result[key]?.products?.nodes)
           result[key].products.nodes = filterPhysicalProducts(result[key].products.nodes);
@@ -393,6 +395,22 @@ const RECOMMENDED_PRODUCTS_QUERY = `#graphql
         nodes {
           ...RecommendedProduct
         }
+      }
+    }
+
+    # The Gifts tab, by product tag.
+    #
+    # Neither the "gifts" nor the "gifting" collection exists in the store, so
+    # that tab always fell through to a keyword sweep over the 30 most recently
+    # updated products, matching title and type against "gift", "bundle",
+    # "box", "add on". "National Day Bites Box" appeared there because its name
+    # contains "box" — nothing to do with it being a gift or a best seller.
+    #
+    # This asks Shopify for the tag directly, and across the whole catalogue
+    # rather than a recently-updated window.
+    giftTagged: products(first: 20, query: "tag:gift OR tag:gifts OR tag:هدايا") {
+      nodes {
+        ...RecommendedProduct
       }
     }
   }

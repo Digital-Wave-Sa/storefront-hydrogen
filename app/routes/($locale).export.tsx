@@ -177,8 +177,13 @@ export async function loader({context, request}: LoaderFunctionArgs) {
         });
 
         let finalNodes = mergedNodes;
-        if (q && q !== '*') {
-          const searchLower = q.toLowerCase();
+        // `userQuery`, not `q` — the variable was renamed at the top of the
+        // loader and this one occurrence was missed, so every category-filtered
+        // request threw a ReferenceError here. The catch below swallowed it and
+        // `products` kept its pre-filter value, which is why picking a category
+        // appeared to do nothing at all.
+        if (userQuery && userQuery !== '*') {
+          const searchLower = userQuery.toLowerCase();
           finalNodes = mergedNodes.filter((n) =>
             n.title?.toLowerCase().includes(searchLower),
           );

@@ -14,6 +14,7 @@ import { SaudiRiyalSymbol } from './Price';
 import { fixMojibake } from '~/lib/mojibake';
 import { getIsOutOfStockForFulfillment, isOutOfStockAtBranch, findBranchLocation } from '~/lib/stock';
 import { useBranchAvailability } from '~/lib/useBranchAvailability';
+import { isNonShippableLine } from '~/lib/digital-lines';
 
 export type CartLine = OptimisticCartLine<CartApiQueryFragment>;
 
@@ -40,9 +41,13 @@ export function CartLineItem({
   const rootData = useRouteLoaderData('root') as any;
   const isEn = location.pathname.startsWith('/en');
   const isFreeItem = line.attributes?.some((attr: any) => attr.key === '_is_free' && attr.value === 'true') || false;
-  const isGiftCard =
-    line.attributes?.some((attr: any) => attr.key === '_gift_voucher' && attr.value === 'true') ||
-    product?.handle === 'saadeddin-gift-card';
+  /**
+   * The `_gift_voucher` attribute and the hard-coded handle both miss a
+   * voucher that reached the cart any way other than the wizard — a reorder,
+   * for instance, rebuilds a line from a variant id alone. The shared helper
+   * identifies the gift-card product itself, by id, handle and title.
+   */
+  const isGiftCard = isNonShippableLine(line);
 
   // Filter out default title option
   const validOptions = selectedOptions?.filter((opt: any) => opt.value !== 'Default Title') || [];
@@ -105,6 +110,12 @@ export function CartLineItem({
   // An optimistic line has no availability data yet; flagging it would make
   // every freshly added product flash as unavailable.
   if (line.isOptimistic) {
+    isOutOfStock = false;
+  }
+
+  // A voucher is not held at a branch, so branch inventory says nothing about
+  // it. Without this it rides on whatever the lookup happens to return.
+  if (isGiftCard) {
     isOutOfStock = false;
   }
 
@@ -250,10 +261,13 @@ export function CartLineItem({
                 <CartLineRemoveButton lineIds={[id]} disabled={!!line.isOptimistic} isText isEn={isEn} />
               </div>
               {(() => {
-                const isGiftable = product?.tags?.some((t: string) => {
+                // A gift card is itself the gift, and its tags contain the
+                // word "gift" by definition — which is how a voucher came to
+                // offer being gift-wrapped and addressed to a recipient.
+                const isGiftable = !isGiftCard && (product?.tags?.some((t: string) => {
                   const lowerTag = t.toLowerCase();
                   return lowerTag.includes('gift') || lowerTag.includes('mother') || lowerTag.includes('father') || lowerTag.includes('friend') || lowerTag.includes('grad');
-                }) ?? false;
+                }) ?? false);
 
                 return isGiftable ? (
                   <CartLineGiftForm line={line} isEn={isEn} />
@@ -416,10 +430,13 @@ export function CartLineItem({
                 <span>{isEn ? 'Save for later' : 'حفظ لاحقاً'}</span>
               </button>
               {(() => {
-                const isGiftable = product?.tags?.some((t: string) => {
+                // A gift card is itself the gift, and its tags contain the
+                // word "gift" by definition — which is how a voucher came to
+                // offer being gift-wrapped and addressed to a recipient.
+                const isGiftable = !isGiftCard && (product?.tags?.some((t: string) => {
                   const lowerTag = t.toLowerCase();
                   return lowerTag.includes('gift') || lowerTag.includes('mother') || lowerTag.includes('father') || lowerTag.includes('friend') || lowerTag.includes('grad');
-                }) ?? false;
+                }) ?? false);
 
                 return isGiftable ? (
                   <CartLineGiftForm line={line} isEn={isEn} />
@@ -566,7 +583,11 @@ export function CartLineItem({
             <line x1="12" y1="16" x2="12.01" y2="16" />
           </svg>
           <span style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", fontWeight: 700, fontSize: '13px' }}>
-            {isEn ? 'Out of stock at selected branch' : 'نفد من الفرع المحدد'}
+            {/* Same wording as the cart-page card above, so the drawer and
+                the page cannot describe the same line differently. */}
+            {isEn
+              ? 'No longer available at this branch'
+              : 'لم يعد متاحاً في هذا الفرع'}
           </span>
         </div>
       )}

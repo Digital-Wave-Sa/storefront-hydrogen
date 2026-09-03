@@ -1821,7 +1821,7 @@ export default function VouchersPage() {
                   className="text-[#7D7D7D] text-center mt-2"
                   style={{
                     fontFamily: isEn
-                      ? "'Gotham Light', sans-serif"
+                      ? "'Montserrat', 'Segoe UI', system-ui, sans-serif"
                       : "'GE Dinar One', sans-serif",
                     fontWeight: 500,
                     fontSize: '16px',
@@ -1890,7 +1890,7 @@ export default function VouchersPage() {
                       className="text-[#9FB7AE] max-w-[420px] !mb-[16px] text-center"
                       style={{
                         fontFamily: isEn
-                          ? "'Gotham Light', sans-serif"
+                          ? "'Montserrat', 'Segoe UI', system-ui, sans-serif"
                           : "'GE Dinar One', sans-serif",
                         fontWeight: 500,
                         fontSize: '14px',
@@ -1973,7 +1973,7 @@ export default function VouchersPage() {
                       className="text-[#9FB7AE] max-w-[420px] !mb-[16px] text-center"
                       style={{
                         fontFamily: isEn
-                          ? "'Gotham Light', sans-serif"
+                          ? "'Montserrat', 'Segoe UI', system-ui, sans-serif"
                           : "'GE Dinar One', sans-serif",
                         fontWeight: 500,
                         fontSize: '14px',

@@ -306,7 +306,7 @@ export default function BranchesPage() {
       }
 
       const hasDelivery = branchList.some(
-        (b: any) => b.delivery_fee?.value || b.delivery_hours_from?.value,
+        (b: any) => b.delivery_fee?.value || b.delivery_time_from?.value,
       );
 
       return {

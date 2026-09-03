@@ -489,7 +489,7 @@ function B2BCompanyModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in" dir={isEn ? 'ltr' : 'rtl'}>
-      <div className="bg-white rounded-[24px] max-w-[540px] w-full p-6 sm:p-8 shadow-2xl relative border border-[#E6E2D8] text-center" style={{fontFamily: isEn ? "'Gotham Light', 'Gotham', 'Inter', sans-serif" : "'GE Dinar One', 'Bahij Janna', sans-serif"}}>
+      <div className="bg-white rounded-[24px] max-w-[540px] w-full p-6 sm:p-8 shadow-2xl relative border border-[#E6E2D8] text-center" style={{fontFamily: isEn ? "'Montserrat', 'Segoe UI', system-ui, sans-serif" : "'GE Dinar One', 'Bahij Janna', sans-serif"}}>
         {/* Close Button */}
         <button
           onClick={onClose}
@@ -596,7 +596,7 @@ function CustomQuoteModal({
     >
       <div
         className="bg-[#FFFDF9] rounded-[24px] max-w-[640px] w-full p-6 sm:p-8 relative max-h-[92vh] overflow-y-auto border border-[#E6E2D8] text-start"
-        style={{fontFamily: isEn ? "'Gotham Light', 'Gotham', 'Inter', sans-serif" : "'Bahij Janna', 'GE Dinar One', sans-serif"}}
+        style={{fontFamily: isEn ? "'Montserrat', 'Segoe UI', system-ui, sans-serif" : "'Bahij Janna', 'GE Dinar One', sans-serif"}}
       >
         {/* Close Button */}
         <button

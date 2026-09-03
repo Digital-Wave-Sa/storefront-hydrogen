@@ -6,6 +6,48 @@ export interface PhoneValidationResult {
   errorAr?: string;
 }
 
+/**
+ * One phone spelling for the gift-card / wallet middleware.
+ *
+ * Every call that asks about a customer's balance must use the same key, and
+ * before this they did not: `account-wallet.server.ts` sent the raw Shopify
+ * value (`+966501234567`) while `account.wallet.tsx` converted `+966` to `05`
+ * before activating or gifting. Cards were therefore registered under one
+ * spelling and the balance was looked up under another, so a customer saw a
+ * fragment of what they actually held.
+ *
+ * Worse, the balance lookup wrapped that raw value in `encodeURIComponent`,
+ * turning the leading `+` into `%2B`. A URL path is not percent-decoded before
+ * route matching, so `/gift-cards/by-phone/%2B966501234567` matched nothing and
+ * answered 400 — and the caller, seeing a failed response, displayed a balance
+ * of zero.
+ *
+ * Output is digits only, so there is nothing left for a URL to escape:
+ *   +966501234567, 966501234567, 0501234567, 501234567  ->  0501234567
+ *   +962777997792                                        ->  962777997792
+ *
+ * Returns null when there is nothing usable, so a caller can skip the request
+ * rather than ask the middleware about an empty string.
+ */
+export function toGiftCardPhone(phone?: string | null): string | null {
+  if (!phone) return null;
+  const raw = String(phone).trim();
+  if (!raw || raw.includes('@') || raw.startsWith('gid://')) return null;
+
+  const digits = raw.replace(/\D/g, '');
+  if (digits.length < 8) return null;
+
+  // Saudi numbers settle on the local 05XXXXXXXX form the middleware stores.
+  if (digits.startsWith('966') && digits.length === 12) return '0' + digits.slice(3);
+  if (digits.startsWith('05') && digits.length === 10) return digits;
+  if (digits.startsWith('5') && digits.length === 9) return '0' + digits;
+
+  // Everything else keeps its country code. There is no local form to convert
+  // to without knowing the country's trunk rules, and guessing one would be a
+  // worse failure than an honest lookup miss.
+  return digits;
+}
+
 export function sanitizePhoneInput(rawInput: string, countryCode: string = '+966'): string {
   const digits = rawInput.replace(/\D/g, '');
   if (countryCode === '+966' || countryCode === '+971' || countryCode === '+962') {

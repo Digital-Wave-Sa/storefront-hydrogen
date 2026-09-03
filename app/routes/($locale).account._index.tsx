@@ -4,7 +4,11 @@ import type {CustomerFragment} from 'storefrontapi.generated';
 import {useWishlist} from '~/context/WishlistContext';
 import {SaudiRiyalSymbol} from '~/components/Price';
 import {getLoyaltyTierInfo} from '~/lib/loyalty-tiers';
-import {checkIsPickupOrder} from './($locale).account.orders._index';
+import {
+  checkIsPickupOrder,
+  formatOrderDate,
+  getOrderTitles,
+} from './($locale).account.orders._index';
 
 // Currency SVG Icon provided by user
 /**
@@ -485,6 +489,20 @@ export default function AccountDashboard() {
                     (isEn ? 'Product' : 'منتج');
                   const totalAmount =
                     lastOrder.currentTotalPrice?.amount || '0.00';
+
+                  /**
+                   * Named and dated exactly as on /account/orders.
+                   *
+                   * This card used to be headed "آخر طلب — #1257" with a
+                   * "2 منتجات • 95" subtitle, so the same order looked like a
+                   * different thing here than in the orders list. Both now come
+                   * from the shared helpers in that route.
+                   */
+                  const titles = getOrderTitles(lineItemNodes);
+                  const dateNode = formatOrderDate(
+                    (lastOrder as any).processedAt,
+                    isEn,
+                  );
                   const trackOrderNumber =
                     lastOrder.orderNumber ||
                     ((lastOrder as any).name
@@ -537,19 +555,25 @@ export default function AccountDashboard() {
 
                   let statusEn = 'Order Confirmed';
                   let statusAr = 'تأكيد الطلب';
+                  // Same palette the order cards on /account/orders use, so a
+                  // status is the same colour wherever the customer sees it.
+                  let statusColor = '#906B51';
 
                   if (isCancelled) {
                     statusEn = 'Cancelled';
                     statusAr = 'ملغاة';
+                    statusColor = '#E64950';
                   } else if (hasStatus('failure', 'failed', 'expired', 'attempted_delivery', 'تعذر', 'انتهت')) {
                     statusEn = isPickup ? 'Pickup Period Expired' : 'Delivery Attempt Failed';
                     statusAr = isPickup ? 'انتهت مدة الاستلام' : 'تعذر التسليم';
+                    statusColor = '#E64950';
                   } else if (
                     lastOrder.fulfillmentStatus === 'FULFILLED' ||
                     hasStatus('delivered', 'picked-up', 'picked_up', 'picked', 'تم-التسليم', 'تم-الاستلام', 'تم-استلام-الطلب')
                   ) {
                     statusEn = isPickup ? 'Order Picked Up' : 'Delivered Successfully';
                     statusAr = isPickup ? 'تم استلام الطلب' : 'تم التسليم بنجاح';
+                    statusColor = '#234745';
                   } else if (
                     hasStatus(
                       'ready-for-pickup',
@@ -570,6 +594,7 @@ export default function AccountDashboard() {
                   ) {
                     statusEn = isPickup ? 'Ready for Pickup' : 'Out for Delivery';
                     statusAr = isPickup ? 'الطلب جاهز للاستلام' : 'الطلب في الطريق إليك';
+                    statusColor = '#004F59';
                   } else if (
                     lastOrder.fulfillmentStatus === 'IN_PROGRESS' ||
                     lastOrder.fulfillmentStatus === 'PARTIALLY_FULFILLED' ||
@@ -589,6 +614,7 @@ export default function AccountDashboard() {
                   ) {
                     statusEn = 'Order is Being Prepared';
                     statusAr = 'جاري تجهيز الطلب';
+                    statusColor = '#906B51';
                   }
 
                   const reorderLines = (
@@ -697,8 +723,13 @@ export default function AccountDashboard() {
                         <div className="flex items-center justify-between gap-4">
                           {/* Text Details (Left Side) */}
                           <div className="flex flex-col gap-1.5 flex-1 min-w-0 items-start text-start" dir={isEn ? 'ltr' : 'rtl'}>
+                            {/* Order number then item titles — the mobile order
+                                card on /account/orders reads the same way. */}
+                            <span className="text-[12px] text-[#9FB7AE] font-medium font-en">
+                              #{lastOrder.orderNumber}
+                            </span>
                             <h3
-                              className="text-[17px] font-bold text-[#171717] leading-tight flex items-center gap-1"
+                              className="text-[17px] font-bold text-[#171717] leading-tight line-clamp-2"
                               style={
                                 !isEn
                                   ? {
@@ -708,16 +739,7 @@ export default function AccountDashboard() {
                                   : undefined
                               }
                             >
-                              {isEn ? (
-                                `Last Order — #${lastOrder.orderNumber}`
-                              ) : (
-                                <>
-                                  آخر طلب —{' '}
-                                  <span className="font-en">
-                                    #{lastOrder.orderNumber}
-                                  </span>
-                                </>
-                              )}
+                              {titles}
                             </h3>
                             <div className="text-[13px] text-[#9FB7AE] font-medium leading-tight flex items-center gap-1.5 flex-wrap">
                               <span>
@@ -822,31 +844,40 @@ export default function AccountDashboard() {
                         </div>
                       </div>
 
-                      {/* 2. Desktop-Only Card View (md+) with original layout */}
+                      {/* 2. Desktop-Only Card View (md+) — mirrors the desktop
+                             order card on /account/orders: 90px thumbnail,
+                             order number, item titles, date, then the total. */}
                       <div className="hidden md:block bg-white border border-[#9FB7AE] rounded-[12px] p-6" dir={isEn ? 'ltr' : 'rtl'}>
                         <div className="flex items-center justify-between gap-6">
                           {/* Order Details (Right side in RTL) */}
-                          <div className="flex items-center gap-4 text-start">
+                          <div className="flex items-center gap-5 flex-1 min-w-0 text-start">
                             <div className="relative flex-shrink-0">
                               {imageUrl ? (
                                 <img
                                   src={imageUrl}
                                   alt={imageAlt}
                                   loading="lazy"
-                                  className="w-16 h-16 md:w-20 md:h-20 rounded-[12px] object-cover border border-gray-100"
+                                  className="w-[90px] h-[90px] rounded-xl object-cover border border-gray-100"
                                 />
                               ) : (
-                                <div className="w-16 h-16 md:w-20 md:h-20 rounded-[12px] border border-gray-100 bg-[#F8FAF9] flex items-center justify-center">
+                                <div className="w-[90px] h-[90px] rounded-xl border border-gray-100 bg-[#F8FAF9] flex items-center justify-center">
                                   <OrderThumbPlaceholder className="w-7 h-7" />
                                 </div>
                               )}
-                              <div className="absolute -top-2 -start-2 w-6 h-6 bg-[#234745] text-white rounded-full flex items-center justify-center text-[11px] font-bold border-2 border-white font-en">
+                              <div className="absolute -top-2 -start-2 w-6 h-6 bg-[#234745] text-white rounded-full flex items-center justify-center text-[11px] font-bold border-2 border-white font-en shadow-sm">
                                 {productCount.toLocaleString('en-US')}
                               </div>
                             </div>
-                            <div className="flex flex-col gap-1">
+                            {/* Details column — same order and styling as the
+                                desktop card on /account/orders. */}
+                            <div className="flex flex-col gap-1 min-w-0">
+                              {/* Order number */}
+                              <span className="text-[12px] text-[#9FB7AE] font-medium font-en">
+                                #{lastOrder.orderNumber}
+                              </span>
+                              {/* Item titles */}
                               <h3
-                                className="text-[16px] md:text-[18px] font-bold text-[#234745] leading-none flex items-center gap-1"
+                                className="text-[15px] md:text-[17px] font-bold text-[#234745] leading-tight mb-0.5 truncate"
                                 style={
                                   !isEn
                                     ? {
@@ -856,66 +887,51 @@ export default function AccountDashboard() {
                                     : undefined
                                 }
                               >
-                                {isEn ? (
-                                  `Last Order — #${lastOrder.orderNumber}`
-                                ) : (
-                                  <>
-                                    آخر طلب —{' '}
-                                    <span className="font-en pt-1">
-                                      #{lastOrder.orderNumber}
-                                    </span>
-                                  </>
-                                )}
+                                {titles}
                               </h3>
-                              <p className="text-[12px] text-[#A6BFB9] font-medium leading-tight">
-                                {isEn ? (
-                                  `${productCount} Products`
-                                ) : (
-                                  <>
-                                    <span className="font-en">
-                                      {productCount.toLocaleString('en-US')}
-                                    </span>{' '}
-                                    منتجات
-                                  </>
-                                )}{' '}
-                                •{' '}
-                                <span className="font-en">
+                              {/* Date */}
+                              {dateNode && (
+                                <span className="text-[12px] text-[#9FB7AE] font-medium leading-tight">
+                                  {dateNode}
+                                </span>
+                              )}
+                              {/* Paid total */}
+                              <div className="flex items-center gap-1 mt-1 text-[#234745]">
+                                <span className="text-[18px] md:text-[20px] font-black leading-none font-en">
                                   {parseFloat(totalAmount).toLocaleString(
                                     'en-US',
-                                  )}
-                                </span>{' '}
-                                <SaudiRiyalSymbol className="h-3.5 w-auto inline-block ms-1" />
-                              </p>
-                              <div className="flex items-center justify-start gap-1.5 mt-1">
-                                <span className="text-[#234745]">
-                                  <SaudiRiyalSymbol className="h-4.5 w-auto" />
-                                </span>
-                                <span className="text-[16px] font-bold text-[#234745] leading-none font-en">
-                                  {parseFloat(totalAmount).toLocaleString(
-                                    'en-US',
+                                    {minimumFractionDigits: 2},
                                   )}
                                 </span>
+                                <SaudiRiyalSymbol className="h-4.5 w-auto fill-current" />
                               </div>
                             </div>
                           </div>
 
-                          {/* Status & Actions (Left side in RTL) */}
-                          <div className="flex flex-col items-end gap-3">
+                          {/* Status & Actions (Left side in RTL) — dot and
+                              label sized and coloured as on /account/orders,
+                              where the colour tracks the status rather than
+                              being fixed to the brand green. */}
+                          <div className="flex flex-col items-end justify-between gap-4 shrink-0">
                             <div className="flex items-center gap-2">
                               <span
-                                className="text-[13px] font-bold text-[#234745]"
-                                style={
-                                  !isEn
+                                className="text-[14px] font-bold"
+                                style={{
+                                  color: statusColor,
+                                  ...(!isEn
                                     ? {
                                         fontFamily:
                                           "'EnglishDigits', 'Bahij Janna', sans-serif",
                                       }
-                                    : undefined
-                                }
+                                    : {}),
+                                }}
                               >
                                 {isEn ? statusEn : statusAr}
                               </span>
-                              <div className="w-1.5 h-1.5 rounded-full bg-[#234745]" />
+                              <div
+                                className="w-2.5 h-2.5 rounded-full"
+                                style={{backgroundColor: statusColor}}
+                              />
                             </div>
                             <div className="flex items-center gap-2">
                               <Link

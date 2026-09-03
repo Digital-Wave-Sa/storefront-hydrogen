@@ -4,7 +4,7 @@ import {
   getProductVisibility,
   type VisibilityResult,
 } from '~/lib/visibility';
-import {getIsOutOfStock, isOutOfStockAtBranch, findBranchLocation} from '~/lib/stock';
+import {getIsOutOfStock, isOutOfStockAtBranch, resolveBranchLocationId} from '~/lib/stock';
 import {useBranchAvailability} from '~/lib/useBranchAvailability';
 import {StockNotificationModal} from '~/components/StockNotificationModal';
 import {ProductUpsellModal} from '~/components/ProductUpsellModal';
@@ -375,8 +375,18 @@ export async function loader(args: LoaderFunctionArgs) {
                   ).catch(() => null);
                   if (res && res.ok) {
                     const {customers} = (await res.json()) as any;
-                    if (customers && customers.length > 0) {
-                      const adminCust = customers[0];
+                    /**
+                     * Verify before trusting. `customers[0]` was whatever the
+                     * fuzzy search returned first, and this id then fetched an
+                     * order history that is shown back to the shopper — so an
+                     * unverified match displayed someone else's purchases.
+                     */
+                    const wantedPhone = String(savedPhone).replace(/\D/g, '');
+                    const adminCust = (customers || []).find((c: any) => {
+                      const cp = String(c?.phone || '').replace(/\D/g, '');
+                      return Boolean(cp) && cp === wantedPhone;
+                    });
+                    if (adminCust) {
                       const ordersRes = await fetch(
                         `https://${shopDomain}/admin/api/2024-04/customers/${adminCust.id}/orders.json?status=any`,
                         {
@@ -720,14 +730,14 @@ export default function Product() {
    */
   const allLocations =
     rootData?.locations?.locations?.nodes || rootData?.locations?.nodes || [];
-  const resolvedBranch = findBranchLocation(
+  const resolvedBranchId = resolveBranchLocationId(
     allLocations,
     selectedLocationId,
     selectedLocationName,
   );
   const {availability: branchStock} = useBranchAvailability(
     product.selectedVariant?.id ? [product.selectedVariant.id] : [],
-    resolvedBranch?.id,
+    resolvedBranchId,
   );
 
   const isOutOfStock = useMemo(() => {

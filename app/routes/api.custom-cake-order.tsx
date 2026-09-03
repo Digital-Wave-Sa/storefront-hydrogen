@@ -1,6 +1,7 @@
 import {type ActionFunctionArgs, type LoaderFunctionArgs} from 'react-router';
 import {adminApiQuery} from '../lib/admin.server';
 import {getAdminToken, getAdminDomain} from '~/lib/shopify-admin.server';
+import {toGiftCardPhone} from '~/lib/phone-validation';
 
 /**
  * GET /api/custom-cake-order — Returns 405
@@ -591,9 +592,40 @@ export async function action({request, context}: ActionFunctionArgs) {
       taxExempt: true,
     };
 
-    // Resolve Admin API Customer GID to prevent RESOURCE_NOT_FOUND error
+    /**
+     * Who this draft order belongs to.
+     *
+     * This used to run `customers(first: 1, query: "phone:…")` and take
+     * `nodes[0]` with NO verification — Shopify's customer search is fuzzy, so
+     * whatever came back first became the draft order's customer. Worse, the
+     * search took priority and the session's own customer id was consulted only
+     * when there was neither an email nor a phone. The most reliable identifier
+     * we hold was the last one considered.
+     *
+     * That is why ordinary orders were attributed correctly — they go through
+     * the cart's buyer identity — while every custom cake draft order landed on
+     * one unrelated customer.
+     *
+     * Now: the session's customer id wins outright, a search is only a last
+     * resort, and a searched result must prove it is the same person before it
+     * is used. If nothing proves it, the draft order carries no customerId at
+     * all — Shopify then matches or creates by the contact details below, which
+     * are the shopper's own. It is never attributed to a customer we cannot
+     * verify.
+     */
     let adminCustomerId: string | null = null;
-    if (customerEmail || customerPhone) {
+
+    if (customerId) {
+      const raw = String(customerId).trim();
+      if (raw.startsWith('gid://shopify/Customer/')) {
+        adminCustomerId = raw;
+      } else if (/^\d+$/.test(raw)) {
+        // `loginCustomerId` is stored as a bare number.
+        adminCustomerId = `gid://shopify/Customer/${raw}`;
+      }
+    }
+
+    if (!adminCustomerId && (customerEmail || customerPhone)) {
       try {
         const queryTerm = customerPhone
           ? `phone:${customerPhone}`
@@ -602,7 +634,7 @@ export async function action({request, context}: ActionFunctionArgs) {
           shopDomain,
           token,
           `query searchCustomer($query: String!) {
-            customers(first: 1, query: $query) {
+            customers(first: 10, query: $query) {
               nodes {
                 id
                 email
@@ -612,18 +644,41 @@ export async function action({request, context}: ActionFunctionArgs) {
           }`,
           {query: queryTerm},
         )) as any;
-        const matched = searchRes?.data?.customers?.nodes?.[0];
+
+        const nodes: any[] = searchRes?.data?.customers?.nodes || [];
+        const wantedPhone = toGiftCardPhone(customerPhone);
+        const wantedEmail = (customerEmail || '').toLowerCase();
+
+        // Prove it, or do not use it.
+        const matched = nodes.find((c: any) => {
+          const phoneMatches =
+            Boolean(wantedPhone) && toGiftCardPhone(c?.phone) === wantedPhone;
+          const emailMatches =
+            Boolean(wantedEmail) &&
+            (c?.email || '').toLowerCase() === wantedEmail;
+          return phoneMatches || emailMatches;
+        });
+
         if (matched?.id) {
           adminCustomerId = matched.id;
-          if (matched.email && !customerEmail) customerEmail = matched.email;
-          if (matched.phone && !customerPhone) customerPhone = matched.phone;
+        } else if (nodes.length > 0) {
+          console.error(
+            `[Custom Cake Order] ${nodes.length} customer(s) returned for ${queryTerm} but none matched the signed-in shopper. Creating the draft order without a customerId rather than attributing it to someone else.`,
+          );
         }
       } catch (e) {
         console.warn('[Custom Cake Order] Admin customer search error:', e);
       }
-    } else if (customerId && customerId.startsWith('gid://shopify/Customer/')) {
-      adminCustomerId = customerId;
     }
+
+    /**
+     * Say who this is being attributed to, and on what basis. Attribution has
+     * silently gone to the wrong customer before; a one-line record of the
+     * decision makes that visible in the log rather than only in Shopify.
+     */
+    console.log(
+      `[Custom Cake Order] Attributing draft order to ${adminCustomerId || '(no customer — Shopify will match on contact details)'} | session id: ${customerId || '(none)'} | phone: ${customerPhone || '(none)'} | email: ${customerEmail || '(none)'}`,
+    );
 
     if (adminCustomerId) {
       draftOrderInput.customerId = adminCustomerId;

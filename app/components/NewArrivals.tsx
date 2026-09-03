@@ -5,7 +5,7 @@ import { Price } from './Price';
 import { useI18n } from '~/lib/i18n';
 import { useAside } from '~/components/Aside';
 import { getVisibilityStatus } from '~/lib/visibility';
-import { getIsOutOfStock, shouldHideProduct, isOutOfStockAtBranch, findBranchLocation } from '~/lib/stock';
+import { getIsOutOfStock, shouldHideProduct, isOutOfStockAtBranch, resolveBranchLocationId } from '~/lib/stock';
 import { useBranchAvailabilityReader } from '~/lib/useBranchAvailability';
 import { AddToCartButton } from './AddToCartButton';
 import { StockNotificationModal } from '~/components/StockNotificationModal';
@@ -22,8 +22,8 @@ export function NewArrivals({
     // Same branch-aware stock source as the cart and product page.
     const naRootData = useRouteLoaderData('root') as any;
     const naLocations = naRootData?.locations?.locations?.nodes || naRootData?.locations?.nodes || [];
-    const naBranch = findBranchLocation(naLocations, selectedLocationId, selectedLocationName);
-    const { read: readBranchStock } = useBranchAvailabilityReader(naBranch?.id);
+    const naBranchId = resolveBranchLocationId(naLocations, selectedLocationId, selectedLocationName);
+    const { read: readBranchStock } = useBranchAvailabilityReader(naBranchId);
     const t = useI18n(locale);
     const isEn = locale === 'en';
 
@@ -312,6 +312,18 @@ function NewArrivalsAddToCart({
     onNotifyClick?: () => void;
 }) {
     const { open: openAside } = useAside();
+
+    /**
+     * Above the early return — same fix as BestSellers.tsx.
+     *
+     * `useId` used to sit after the out-of-stock branch had returned, so a card
+     * rendered one hook while unavailable and two once it became available.
+     * Branch availability resolves after first paint and flips exactly that
+     * flag, so React threw "rendered more hooks than during the previous
+     * render" and took the whole section off the page.
+     */
+    const groupId = useId();
+
     const variantId = variant?.id;
     const isBogo = !!bogoFreeVariantId || (productTags?.some((t: string) => t.toLowerCase().includes('bogo')) ?? false);
 
@@ -332,7 +344,6 @@ function NewArrivalsAddToCart({
         );
     }
 
-    const groupId = useId();
     const lines = [{
         merchandiseId: variantId,
         quantity: 1,

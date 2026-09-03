@@ -16,6 +16,7 @@ import {
 } from 'react-router';
 import {Button} from '~/components/layout/Button';
 import {SaudiRiyalSymbol} from '~/components/Price';
+import {toGiftCardPhone} from '~/lib/phone-validation';
 
 // The loader has been removed because WalletPage relies entirely on data from the parent AccountLayout (via useOutletContext)
 export async function action({request, context}: ActionFunctionArgs) {
@@ -58,7 +59,8 @@ export async function action({request, context}: ActionFunctionArgs) {
             const cp = (c.phone || '').replace(/\D/g, '');
             const sp = savedPhone.replace(/\D/g, '');
             if (!cp || !sp) return false;
-            return cp === sp || cp.endsWith(sp.slice(-9));
+            // Exact only — this id selects whose wallet is shown.
+            return cp === sp;
           });
           if (found) {
             customer = {
@@ -108,13 +110,17 @@ export async function action({request, context}: ActionFunctionArgs) {
     new URL(request.url).host.includes('127.0.0.1');
   const baseGiftCardUrl = isLocal ? 'http://localhost:3000' : middlewareUrl;
 
-  // Format customer phone to match backend expectation
-  let formattedPhone = customer.phone || '';
+  /**
+   * The same spelling the balance lookup uses.
+   *
+   * This used to convert only `+966`, while fetchWalletData sent the raw
+   * Shopify value — so cards were activated under `05XXXXXXXX` and the balance
+   * was queried under `%2B966XXXXXXXXX`, and the two never met. `+962` and
+   * every other country code were not converted at all.
+   */
+  let formattedPhone = toGiftCardPhone(customer.phone) || '';
   if (isLocal && !formattedPhone) {
     formattedPhone = '0501234567';
-  }
-  if (formattedPhone.startsWith('+966')) {
-    formattedPhone = '0' + formattedPhone.slice(4);
   }
 
   if (intent === 'gift_balance') {
@@ -262,8 +268,13 @@ export async function action({request, context}: ActionFunctionArgs) {
         currency: 'SAR',
       });
     } else {
-      // Call POST https://sdgc.saadeddin.top/api/storefront/gift-card
-      const res = await fetch('https://sdgc.saadeddin.top/api/storefront/gift-card', {
+      // The host moves with STORE_CREDIT_API_URL, the same variable
+      // account-wallet.server.ts and /api/store-credit read. It used to be
+      // hardcoded here, so pointing the env at a staging service left this one
+      // call still hitting production.
+      const storeCreditUrl =
+        env.STORE_CREDIT_API_URL || 'https://sdgc.saadeddin.top';
+      const res = await fetch(`${storeCreditUrl}/api/storefront/gift-card`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -363,10 +374,17 @@ export default function WalletPage() {
     >
       <Await resolve={walletPromise}>
         {({balance, loyaltyPoints, history, cards}) => {
-          const currentBalance =
+          /**
+           * `balance` is null when the lookup could not be completed, which is
+           * not the same as an empty wallet — see fetchWalletData.
+           */
+          const rawBalance =
             actionData?.success && actionData.newBalance !== undefined
               ? actionData.newBalance
               : balance;
+          const balanceUnavailable =
+            rawBalance === null || rawBalance === undefined;
+          const currentBalance = balanceUnavailable ? 0 : rawBalance;
 
           const activeCards = cards || [];
 
@@ -388,10 +406,15 @@ export default function WalletPage() {
 
               {/* Top Row: Store Credit Balance & Loyalty Points */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* null, not 0, when the balance is unknown — the component
+                    then shows its loading state and fetches, instead of
+                    flashing a zero balance it was handed. Both this card and
+                    the account header now read the same customer-id service,
+                    so they cannot show two different numbers. */}
                 <StoreCreditBalance
                   customerId={customer?.id}
                   isEn={isEn}
-                  initialBalance={currentBalance}
+                  initialBalance={balanceUnavailable ? null : currentBalance}
                 />
 
                 {/* Loyalty Points Card */}

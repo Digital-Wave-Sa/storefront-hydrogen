@@ -1,8 +1,6 @@
 import { useEffect, useState } from 'react';
 import { SaudiRiyalSymbol } from '~/components/Price';
 
-const API_BASE = 'https://sdgc.saadeddin.top';
-
 export interface StoreCreditBalanceProps {
   customerId?: string;
   isEn?: boolean;
@@ -12,8 +10,13 @@ export interface StoreCreditBalanceProps {
 /**
  * StoreCreditBalance
  *
- * Displays customer's current gift card / store credit balance
- * fetched from GET `https://sdgc.saadeddin.top/api/storefront/gift-card?customerId=<id>`
+ * Displays the signed-in customer's gift card / store credit balance.
+ *
+ * The balance is fetched from our own GET /api/store-credit, which resolves the
+ * customer from the session. This used to call sdgc.saadeddin.top directly from
+ * the browser with the customer gid in the query string and no credential
+ * attached; `customerId` is still taken as a prop, but only to tell whether
+ * anyone is signed in — it is never sent.
  */
 export function StoreCreditBalance({
   customerId,
@@ -29,12 +32,10 @@ export function StoreCreditBalance({
     let isMounted = true;
     setLoading(true);
 
-    fetch(
-      `${API_BASE}/api/storefront/gift-card?customerId=${encodeURIComponent(customerId)}`,
-    )
+    fetch('/api/store-credit')
       .then((r) => r.json())
       .then((data: any) => {
-        if (isMounted && data.success && data.balance !== undefined) {
+        if (isMounted && data.success && typeof data.balance === 'number') {
           setBalance(data.balance);
         }
       })
@@ -75,15 +76,34 @@ export function StoreCreditBalance({
           {isEn ? 'Current Store Credit' : 'رصيد حسابك الحالي'}
         </span>
 
-        <div className="flex items-baseline gap-2 font-black text-3xl md:text-4xl text-white">
-          <span dir="ltr">{(balance ?? 0).toFixed(2)}</span>
-          <SaudiRiyalSymbol className="h-6 md:h-7 w-auto text-white inline-block mb-1" />
-        </div>
+        {/*
+          * A balance we could not establish shows as unavailable, never as 0.00.
+          *
+          * The route answers 503 with balance: null when the store-credit service
+          * cannot be reached, and this card rendered `(balance ?? 0)` — so an
+          * outage told the customer their wallet was empty while the account
+          * header directly above it correctly said unavailable. Two different
+          * answers about the same money on the same screen.
+          */}
+        {balance === null ? (
+          <div className="font-black text-2xl md:text-3xl text-white/70">
+            {isEn ? 'Unavailable right now' : 'غير متاح حالياً'}
+          </div>
+        ) : (
+          <div className="flex items-baseline gap-2 font-black text-3xl md:text-4xl text-white">
+            <span dir="ltr">{balance.toFixed(2)}</span>
+            <SaudiRiyalSymbol className="h-6 md:h-7 w-auto text-white inline-block mb-1" />
+          </div>
+        )}
 
         <p className="text-xs text-[#9FB7AE] font-medium mt-3">
-          {isEn
-            ? 'Use your store credit at checkout on any order.'
-            : 'يمكنك استخدام رصيدك عند إتمام الشراء لأي طلب.'}
+          {balance === null
+            ? isEn
+              ? 'We could not reach the balance service. Your credit is safe — please try again shortly.'
+              : 'تعذّر الوصول إلى خدمة الرصيد. رصيدك محفوظ — يرجى المحاولة بعد قليل.'
+            : isEn
+              ? 'Use your store credit at checkout on any order.'
+              : 'يمكنك استخدام رصيدك عند إتمام الشراء لأي طلب.'}
         </p>
       </div>
     </div>

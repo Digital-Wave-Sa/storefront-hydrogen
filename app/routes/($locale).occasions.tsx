@@ -182,13 +182,26 @@ const PRODUCT_ITEM_FRAGMENT = `#graphql
   }
 ` as const;
 
-export async function loader({context}: LoaderFunctionArgs) {
+export async function loader({context, request}: LoaderFunctionArgs) {
   const {storefront} = context;
 
-  // Fetch products and collections to dynamically map occasion images from Shopify
+  // Which occasion is open, if any. The occasion handle is also the handle of
+  // the Shopify collection behind it, so this is what we look the collection up
+  // by. "all" is not a collection -- it means show everything.
+  const requested = new URL(request.url).searchParams.get('category') || '';
+  const collectionHandle = requested && requested !== 'all' ? requested : '';
+
+  // collections  -> card images and titles only
+  // occasionCollection -> the products actually shown for the open occasion
+  // products     -> tag-based fallback, for occasions with no collection yet
   const query = `#graphql
     ${PRODUCT_ITEM_FRAGMENT}
-    query OccasionsProducts($country: CountryCode, $language: LanguageCode) @inContext(country: $country, language: $language) {
+    query OccasionsProducts(
+      $country: CountryCode
+      $language: LanguageCode
+      $handle: String!
+      $hasHandle: Boolean!
+    ) @inContext(country: $country, language: $language) {
       collections(first: 100) {
         nodes {
           id
@@ -197,6 +210,16 @@ export async function loader({context}: LoaderFunctionArgs) {
           image {
             url
             altText
+          }
+        }
+      }
+      occasionCollection: collection(handle: $handle) @include(if: $hasHandle) {
+        id
+        handle
+        title
+        products(first: 250) {
+          nodes {
+            ...OccasionsProductItem
           }
         }
       }
@@ -209,21 +232,31 @@ export async function loader({context}: LoaderFunctionArgs) {
   `;
 
   try {
-    const {products, collections} = await storefront.query(query, {
+    const result: any = await storefront.query(query, {
       variables: {
         country: storefront.i18n.country,
         language: storefront.i18n.language,
+        handle: collectionHandle,
+        hasHandle: Boolean(collectionHandle),
       },
       cache: storefront.CacheNone(),
     });
 
     return data({
-      products: products.nodes,
-      collections: collections.nodes,
+      products: result?.products?.nodes || [],
+      collections: result?.collections?.nodes || [],
+      collectionHandle,
+      collectionProducts: result?.occasionCollection?.products?.nodes || [],
       error: null,
     });
   } catch (e: any) {
-    return data({products: [], collections: [], error: e.message});
+    return data({
+      products: [],
+      collections: [],
+      collectionHandle: '',
+      collectionProducts: [],
+      error: e.message,
+    });
   }
 }
 
@@ -253,7 +286,8 @@ const occasionList = [
 ];
 
 export default function OccasionsPage() {
-  const {products, collections, error} = useLoaderData<typeof loader>();
+  const {products, collections, collectionHandle, collectionProducts, error} =
+    useLoaderData<typeof loader>();
   const rootData = useRouteLoaderData('root') as any;
   const locale = rootData?.locale || 'ar';
   const isEn = locale === 'en';
@@ -308,7 +342,9 @@ export default function OccasionsPage() {
     };
   });
 
-  // Filter products based on selected category tags
+  // Tag-based selection. This is now the FALLBACK, kept for occasions that have
+  // no collection in Shopify yet -- most products carry no tags at all, which is
+  // why these pages were coming up empty.
   const filteredProducts = products.filter((p: any) => {
     if (!selectedCategory || selectedCategory === 'all') return true;
 
@@ -325,7 +361,24 @@ export default function OccasionsPage() {
     );
   });
 
-  const displayProducts = filteredProducts;
+  // What the page actually shows.
+  //
+  // An occasion handle is also its collection handle, so the collection's own
+  // products win: adding a product to the national-day collection in Shopify is
+  // enough to make it appear here, with no tagging and no deploy.
+  //
+  // The handle check matters. Clicking a chip updates local state immediately
+  // while the loader is still fetching, so without it the page would briefly
+  // show the previous occasion's collection under the new occasion's heading.
+  const collectionMatchesSelection =
+    Boolean(selectedCategory) &&
+    selectedCategory !== 'all' &&
+    collectionHandle === selectedCategory;
+
+  const displayProducts =
+    collectionMatchesSelection && collectionProducts.length > 0
+      ? collectionProducts
+      : filteredProducts;
   const selectedCatLabel = isEn
     ? categories.find((c) => c.id === selectedCategory)?.en || selectedCategory
     : categories.find((c) => c.id === selectedCategory)?.ar || selectedCategory;

@@ -4527,6 +4527,8 @@ export type OccasionsProductItemFragment = Pick<
 export type OccasionsProductsQueryVariables = StorefrontAPI.Exact<{
   country?: StorefrontAPI.InputMaybe<StorefrontAPI.CountryCode>;
   language?: StorefrontAPI.InputMaybe<StorefrontAPI.LanguageCode>;
+  handle: StorefrontAPI.Scalars['String']['input'];
+  hasHandle: StorefrontAPI.Scalars['Boolean']['input'];
 }>;
 
 export type OccasionsProductsQuery = {
@@ -4539,6 +4541,61 @@ export type OccasionsProductsQuery = {
       }
     >;
   };
+  occasionCollection?: StorefrontAPI.Maybe<
+    Pick<StorefrontAPI.Collection, 'id' | 'handle' | 'title'> & {
+      products: {
+        nodes: Array<
+          Pick<
+            StorefrontAPI.Product,
+            'id' | 'handle' | 'title' | 'availableForSale' | 'tags'
+          > & {
+            featuredImage?: StorefrontAPI.Maybe<
+              Pick<
+                StorefrontAPI.Image,
+                'id' | 'altText' | 'url' | 'width' | 'height'
+              >
+            >;
+            priceRange: {
+              minVariantPrice: Pick<
+                StorefrontAPI.MoneyV2,
+                'amount' | 'currencyCode'
+              >;
+              maxVariantPrice: Pick<
+                StorefrontAPI.MoneyV2,
+                'amount' | 'currencyCode'
+              >;
+            };
+            compareAtPriceRange: {
+              minVariantPrice: Pick<
+                StorefrontAPI.MoneyV2,
+                'amount' | 'currencyCode'
+              >;
+            };
+            variants: {
+              nodes: Array<
+                Pick<
+                  StorefrontAPI.ProductVariant,
+                  'id' | 'title' | 'availableForSale' | 'quantityAvailable'
+                > & {
+                  selectedOptions: Array<
+                    Pick<StorefrontAPI.SelectedOption, 'name' | 'value'>
+                  >;
+                  price: Pick<StorefrontAPI.MoneyV2, 'amount' | 'currencyCode'>;
+                  storeAvailability: {
+                    nodes: Array<
+                      Pick<StorefrontAPI.StoreAvailability, 'available'> & {
+                        location: Pick<StorefrontAPI.Location, 'id' | 'name'>;
+                      }
+                    >;
+                  };
+                }
+              >;
+            };
+          }
+        >;
+      };
+    }
+  >;
   products: {
     nodes: Array<
       Pick<
@@ -7143,7 +7200,7 @@ interface GeneratedQueryTypes {
     return: GiftingProductsQuery;
     variables: GiftingProductsQueryVariables;
   };
-  '#graphql\n    #graphql\n  fragment OccasionsProductItem on Product {\n    id\n    handle\n    title\n    featuredImage {\n      id\n      altText\n      url\n      width\n      height\n    }\n    priceRange {\n      minVariantPrice {\n        amount\n        currencyCode\n      }\n      maxVariantPrice {\n        amount\n        currencyCode\n      }\n    }\n    compareAtPriceRange {\n      minVariantPrice {\n        amount\n        currencyCode\n      }\n    }\n    availableForSale\n    variants(first: 10) {\n      nodes {\n        id\n        title\n        availableForSale\n        quantityAvailable\n        selectedOptions {\n          name\n          value\n        }\n        price {\n          amount\n          currencyCode\n        }\n        storeAvailability(first: 250) {\n          nodes {\n            available\n            location {\n              id\n              name\n            }\n          }\n        }\n      }\n    }\n    tags\n  }\n\n    query OccasionsProducts($country: CountryCode, $language: LanguageCode) @inContext(country: $country, language: $language) {\n      collections(first: 100) {\n        nodes {\n          id\n          title\n          handle\n          image {\n            url\n            altText\n          }\n        }\n      }\n      products(first: 200, query: "tag:wedding OR tag:ramadan OR tag:birthdays OR tag:eid OR tag:new-baby OR tag:national-day OR tag:mothers-day OR tag:graduation OR tag:occasion") {\n        nodes {\n          ...OccasionsProductItem\n        }\n      }\n    }\n  ': {
+  '#graphql\n    #graphql\n  fragment OccasionsProductItem on Product {\n    id\n    handle\n    title\n    featuredImage {\n      id\n      altText\n      url\n      width\n      height\n    }\n    priceRange {\n      minVariantPrice {\n        amount\n        currencyCode\n      }\n      maxVariantPrice {\n        amount\n        currencyCode\n      }\n    }\n    compareAtPriceRange {\n      minVariantPrice {\n        amount\n        currencyCode\n      }\n    }\n    availableForSale\n    variants(first: 10) {\n      nodes {\n        id\n        title\n        availableForSale\n        quantityAvailable\n        selectedOptions {\n          name\n          value\n        }\n        price {\n          amount\n          currencyCode\n        }\n        storeAvailability(first: 250) {\n          nodes {\n            available\n            location {\n              id\n              name\n            }\n          }\n        }\n      }\n    }\n    tags\n  }\n\n    query OccasionsProducts(\n      $country: CountryCode\n      $language: LanguageCode\n      $handle: String!\n      $hasHandle: Boolean!\n    ) @inContext(country: $country, language: $language) {\n      collections(first: 100) {\n        nodes {\n          id\n          title\n          handle\n          image {\n            url\n            altText\n          }\n        }\n      }\n      occasionCollection: collection(handle: $handle) @include(if: $hasHandle) {\n        id\n        handle\n        title\n        products(first: 250) {\n          nodes {\n            ...OccasionsProductItem\n          }\n        }\n      }\n      products(first: 200, query: "tag:wedding OR tag:ramadan OR tag:birthdays OR tag:eid OR tag:new-baby OR tag:national-day OR tag:mothers-day OR tag:graduation OR tag:occasion") {\n        nodes {\n          ...OccasionsProductItem\n        }\n      }\n    }\n  ': {
     return: OccasionsProductsQuery;
     variables: OccasionsProductsQueryVariables;
   };

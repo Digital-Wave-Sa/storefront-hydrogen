@@ -3,6 +3,16 @@
 /* eslint-disable */
 import type * as StorefrontAPI from '@shopify/hydrogen/storefront-api-types';
 
+export type AccountGuardCustomerQueryVariables = StorefrontAPI.Exact<{
+  customerAccessToken: StorefrontAPI.Scalars['String']['input'];
+}>;
+
+export type AccountGuardCustomerQuery = {
+  customer?: StorefrontAPI.Maybe<
+    Pick<StorefrontAPI.Customer, 'id' | 'email' | 'phone' | 'tags'>
+  >;
+};
+
 export type MoneyFragment = Pick<
   StorefrontAPI.MoneyV2,
   'currencyCode' | 'amount'
@@ -36,7 +46,7 @@ export type CartLineFragment = Pick<
     >;
     product: Pick<
       StorefrontAPI.Product,
-      'handle' | 'title' | 'id' | 'vendor' | 'tags'
+      'handle' | 'title' | 'id' | 'vendor' | 'tags' | 'isGiftCard'
     > & {
       collections: {
         nodes: Array<Pick<StorefrontAPI.Collection, 'id' | 'title' | 'handle'>>;
@@ -89,7 +99,7 @@ export type CartLineComponentFragment = Pick<
     >;
     product: Pick<
       StorefrontAPI.Product,
-      'handle' | 'title' | 'id' | 'vendor' | 'tags'
+      'handle' | 'title' | 'id' | 'vendor' | 'tags' | 'isGiftCard'
     > & {
       availability_date?: StorefrontAPI.Maybe<
         Pick<StorefrontAPI.Metafield, 'value'>
@@ -141,7 +151,7 @@ export type CartLineComponentFragment = Pick<
         >;
         product: Pick<
           StorefrontAPI.Product,
-          'handle' | 'title' | 'id' | 'vendor' | 'tags'
+          'handle' | 'title' | 'id' | 'vendor' | 'tags' | 'isGiftCard'
         > & {
           collections: {
             nodes: Array<
@@ -226,7 +236,7 @@ export type CartApiQueryFragment = Pick<
             >;
             product: Pick<
               StorefrontAPI.Product,
-              'handle' | 'title' | 'id' | 'vendor' | 'tags'
+              'handle' | 'title' | 'id' | 'vendor' | 'tags' | 'isGiftCard'
             > & {
               collections: {
                 nodes: Array<
@@ -286,7 +296,7 @@ export type CartApiQueryFragment = Pick<
             >;
             product: Pick<
               StorefrontAPI.Product,
-              'handle' | 'title' | 'id' | 'vendor' | 'tags'
+              'handle' | 'title' | 'id' | 'vendor' | 'tags' | 'isGiftCard'
             > & {
               availability_date?: StorefrontAPI.Maybe<
                 Pick<StorefrontAPI.Metafield, 'value'>
@@ -345,7 +355,7 @@ export type CartApiQueryFragment = Pick<
                 >;
                 product: Pick<
                   StorefrontAPI.Product,
-                  'handle' | 'title' | 'id' | 'vendor' | 'tags'
+                  'handle' | 'title' | 'id' | 'vendor' | 'tags' | 'isGiftCard'
                 > & {
                   collections: {
                     nodes: Array<
@@ -522,6 +532,102 @@ export type GetCustomerGidQuery = {
   customer?: StorefrontAPI.Maybe<Pick<StorefrontAPI.Customer, 'id'>>;
 };
 
+export type OfferProductsByIdQueryVariables = StorefrontAPI.Exact<{
+  ids:
+    | Array<StorefrontAPI.Scalars['ID']['input']>
+    | StorefrontAPI.Scalars['ID']['input'];
+  country?: StorefrontAPI.InputMaybe<StorefrontAPI.CountryCode>;
+  language?: StorefrontAPI.InputMaybe<StorefrontAPI.LanguageCode>;
+}>;
+
+export type OfferProductsByIdQuery = {
+  nodes: Array<
+    StorefrontAPI.Maybe<
+      Pick<
+        StorefrontAPI.Product,
+        'id' | 'handle' | 'title' | 'tags' | 'availableForSale'
+      > & {
+        featuredImage?: StorefrontAPI.Maybe<
+          Pick<StorefrontAPI.Image, 'url' | 'altText' | 'width' | 'height'>
+        >;
+        priceRange: {
+          minVariantPrice: Pick<
+            StorefrontAPI.MoneyV2,
+            'amount' | 'currencyCode'
+          >;
+        };
+        compareAtPriceRange: {
+          minVariantPrice: Pick<
+            StorefrontAPI.MoneyV2,
+            'amount' | 'currencyCode'
+          >;
+        };
+        variants: {
+          nodes: Array<
+            Pick<
+              StorefrontAPI.ProductVariant,
+              'id' | 'title' | 'availableForSale'
+            > & {
+              price: Pick<StorefrontAPI.MoneyV2, 'amount' | 'currencyCode'>;
+              compareAtPrice?: StorefrontAPI.Maybe<
+                Pick<StorefrontAPI.MoneyV2, 'amount' | 'currencyCode'>
+              >;
+              selectedOptions: Array<
+                Pick<StorefrontAPI.SelectedOption, 'name' | 'value'>
+              >;
+              storeAvailability: {
+                nodes: Array<
+                  Pick<StorefrontAPI.StoreAvailability, 'available'> & {
+                    location: Pick<StorefrontAPI.Location, 'id' | 'name'>;
+                  }
+                >;
+              };
+            }
+          >;
+        };
+      }
+    >
+  >;
+};
+
+export type OfferCollectionProductsQueryVariables = StorefrontAPI.Exact<{
+  ids:
+    | Array<StorefrontAPI.Scalars['ID']['input']>
+    | StorefrontAPI.Scalars['ID']['input'];
+}>;
+
+export type OfferCollectionProductsQuery = {
+  nodes: Array<
+    StorefrontAPI.Maybe<
+      Pick<StorefrontAPI.Collection, 'id'> & {
+        products: {nodes: Array<Pick<StorefrontAPI.Product, 'id'>>};
+      }
+    >
+  >;
+};
+
+export type PromotionOfferRegistryQueryVariables = StorefrontAPI.Exact<{
+  [key: string]: never;
+}>;
+
+export type PromotionOfferRegistryQuery = {
+  offers: {
+    nodes: Array<
+      Pick<StorefrontAPI.Metaobject, 'id' | 'handle'> & {
+        fields: Array<
+          Pick<StorefrontAPI.MetaobjectField, 'key' | 'value'> & {
+            reference?: StorefrontAPI.Maybe<{
+              image?: StorefrontAPI.Maybe<
+                Pick<StorefrontAPI.Image, 'url' | 'altText'>
+              >;
+            }>;
+          }
+        >;
+      }
+    >;
+  };
+};
+
 export type SessionIdentityCustomerQueryVariables = StorefrontAPI.Exact<{
   customerAccessToken: StorefrontAPI.Scalars['String']['input'];
 }>;
@@ -601,10 +707,10 @@ export type LocationsQuery = {
         promo_free_delivery_to?: StorefrontAPI.Maybe<
           Pick<StorefrontAPI.Metafield, 'key' | 'value'>
         >;
-        delivery_hours_from?: StorefrontAPI.Maybe<
+        delivery_time_from?: StorefrontAPI.Maybe<
           Pick<StorefrontAPI.Metafield, 'key' | 'value'>
         >;
-        delivery_hours_to?: StorefrontAPI.Maybe<
+        delivery_time_to?: StorefrontAPI.Maybe<
           Pick<StorefrontAPI.Metafield, 'key' | 'value'>
         >;
         delivery_hours_from_shift2?: StorefrontAPI.Maybe<
@@ -1808,6 +1914,90 @@ export type RecommendedProductsQuery = {
       >;
     };
   }>;
+  giftTagged: {
+    nodes: Array<
+      Pick<
+        StorefrontAPI.Product,
+        | 'id'
+        | 'title'
+        | 'handle'
+        | 'availableForSale'
+        | 'productType'
+        | 'isGiftCard'
+        | 'tags'
+      > & {
+        compareAtPriceRange: {
+          minVariantPrice: Pick<
+            StorefrontAPI.MoneyV2,
+            'amount' | 'currencyCode'
+          >;
+        };
+        priceRange: {
+          minVariantPrice: Pick<
+            StorefrontAPI.MoneyV2,
+            'amount' | 'currencyCode'
+          >;
+        };
+        images: {
+          nodes: Array<
+            Pick<
+              StorefrontAPI.Image,
+              'id' | 'url' | 'altText' | 'width' | 'height'
+            >
+          >;
+        };
+        visibility_start?: StorefrontAPI.Maybe<
+          Pick<StorefrontAPI.Metafield, 'value'>
+        >;
+        visibility_end?: StorefrontAPI.Maybe<
+          Pick<StorefrontAPI.Metafield, 'value'>
+        >;
+        is_limited_time?: StorefrontAPI.Maybe<
+          Pick<StorefrontAPI.Metafield, 'value'>
+        >;
+        average_rating?: StorefrontAPI.Maybe<
+          Pick<StorefrontAPI.Metafield, 'value'>
+        >;
+        rating_count?: StorefrontAPI.Maybe<
+          Pick<StorefrontAPI.Metafield, 'value'>
+        >;
+        bogo_free_item?: StorefrontAPI.Maybe<
+          Pick<StorefrontAPI.Metafield, 'value'> & {
+            reference?: StorefrontAPI.Maybe<
+              Pick<StorefrontAPI.ProductVariant, 'id'>
+            >;
+          }
+        >;
+        variants: {
+          nodes: Array<
+            Pick<StorefrontAPI.ProductVariant, 'id' | 'title'> & {
+              image?: StorefrontAPI.Maybe<
+                Pick<
+                  StorefrontAPI.Image,
+                  'url' | 'altText' | 'width' | 'height'
+                >
+              >;
+              price: Pick<StorefrontAPI.MoneyV2, 'amount' | 'currencyCode'>;
+              compareAtPrice?: StorefrontAPI.Maybe<
+                Pick<StorefrontAPI.MoneyV2, 'amount' | 'currencyCode'>
+              >;
+              selectedOptions: Array<
+                Pick<StorefrontAPI.SelectedOption, 'name' | 'value'>
+              >;
+              product: Pick<StorefrontAPI.Product, 'handle' | 'title'>;
+              storeAvailability: {
+                nodes: Array<
+                  Pick<StorefrontAPI.StoreAvailability, 'available'> & {
+                    location: Pick<StorefrontAPI.Location, 'id' | 'name'>;
+                  }
+                >;
+              };
+            }
+          >;
+        };
+      }
+    >;
+  };
 };
 
 export type NewArrivalProductFragment = Pick<
@@ -2198,6 +2388,14 @@ export type GetDashboardCustomerIdQueryVariables = StorefrontAPI.Exact<{
 }>;
 
 export type GetDashboardCustomerIdQuery = {
+  customer?: StorefrontAPI.Maybe<Pick<StorefrontAPI.Customer, 'id' | 'tags'>>;
+};
+
+export type GetFeedbackAnalyticsCustomerIdQueryVariables = StorefrontAPI.Exact<{
+  customerAccessToken: StorefrontAPI.Scalars['String']['input'];
+}>;
+
+export type GetFeedbackAnalyticsCustomerIdQuery = {
   customer?: StorefrontAPI.Maybe<Pick<StorefrontAPI.Customer, 'id'>>;
 };
 
@@ -2324,7 +2522,7 @@ export type CustomerOrdersFragment = Pick<
   };
 };
 
-export type CustomerOrdersQueryVariables = StorefrontAPI.Exact<{
+export type StorefrontCustomerOrdersQueryVariables = StorefrontAPI.Exact<{
   country?: StorefrontAPI.InputMaybe<StorefrontAPI.CountryCode>;
   customerAccessToken: StorefrontAPI.Scalars['String']['input'];
   endCursor?: StorefrontAPI.InputMaybe<
@@ -2338,7 +2536,7 @@ export type CustomerOrdersQueryVariables = StorefrontAPI.Exact<{
   >;
 }>;
 
-export type CustomerOrdersQuery = {
+export type StorefrontCustomerOrdersQuery = {
   customer?: StorefrontAPI.Maybe<
     Pick<StorefrontAPI.Customer, 'numberOfOrders'> & {
       orders: {
@@ -2447,6 +2645,14 @@ export type CustomerUpdateMutation = {
   }>;
 };
 
+export type GetPromotionsCustomerIdQueryVariables = StorefrontAPI.Exact<{
+  customerAccessToken: StorefrontAPI.Scalars['String']['input'];
+}>;
+
+export type GetPromotionsCustomerIdQuery = {
+  customer?: StorefrontAPI.Maybe<Pick<StorefrontAPI.Customer, 'id' | 'tags'>>;
+};
+
 export type CustomerFragment = Pick<
   StorefrontAPI.Customer,
   | 'id'
@@ -2520,7 +2726,7 @@ export type CustomerFragment = Pick<
                   image?: StorefrontAPI.Maybe<
                     Pick<StorefrontAPI.Image, 'url' | 'altText'>
                   >;
-                  product: {
+                  product: Pick<StorefrontAPI.Product, 'title'> & {
                     featuredImage?: StorefrontAPI.Maybe<
                       Pick<StorefrontAPI.Image, 'url' | 'altText'>
                     >;
@@ -2632,7 +2838,7 @@ export type CustomerQuery = {
                       image?: StorefrontAPI.Maybe<
                         Pick<StorefrontAPI.Image, 'url' | 'altText'>
                       >;
-                      product: {
+                      product: Pick<StorefrontAPI.Product, 'title'> & {
                         featuredImage?: StorefrontAPI.Maybe<
                           Pick<StorefrontAPI.Image, 'url' | 'altText'>
                         >;
@@ -2878,21 +3084,21 @@ export type BlogsQuery = {
   };
 };
 
-export type GetCustomerBasicQueryVariables = StorefrontAPI.Exact<{
+export type GetGiftCardCustomerBasicQueryVariables = StorefrontAPI.Exact<{
   customerAccessToken: StorefrontAPI.Scalars['String']['input'];
 }>;
 
-export type GetCustomerBasicQuery = {
+export type GetGiftCardCustomerBasicQuery = {
   customer?: StorefrontAPI.Maybe<
     Pick<StorefrontAPI.Customer, 'firstName' | 'lastName' | 'email'>
   >;
 };
 
-export type GetGiftCardProductQueryVariables = StorefrontAPI.Exact<{
+export type GetGiftCardProductForPurchaseQueryVariables = StorefrontAPI.Exact<{
   [key: string]: never;
 }>;
 
-export type GetGiftCardProductQuery = {
+export type GetGiftCardProductForPurchaseQuery = {
   product?: StorefrontAPI.Maybe<
     Pick<
       StorefrontAPI.Product,
@@ -2942,6 +3148,46 @@ export type CheckoutCartQueryVariables = StorefrontAPI.Exact<{
 }>;
 
 export type CheckoutCartQuery = {
+  cart?: StorefrontAPI.Maybe<
+    Pick<StorefrontAPI.Cart, 'id' | 'checkoutUrl' | 'note'> & {
+      cost: {
+        subtotalAmount: Pick<StorefrontAPI.MoneyV2, 'amount' | 'currencyCode'>;
+        totalAmount: Pick<StorefrontAPI.MoneyV2, 'amount' | 'currencyCode'>;
+      };
+      lines: {
+        nodes: Array<
+          | (Pick<StorefrontAPI.CartLine, 'id' | 'quantity'> & {
+              merchandise: Pick<
+                StorefrontAPI.ProductVariant,
+                'id' | 'title' | 'sku'
+              > & {
+                price: Pick<StorefrontAPI.MoneyV2, 'amount'>;
+                product: Pick<StorefrontAPI.Product, 'title' | 'id'>;
+              };
+            })
+          | (Pick<StorefrontAPI.ComponentizableCartLine, 'id' | 'quantity'> & {
+              merchandise: Pick<
+                StorefrontAPI.ProductVariant,
+                'id' | 'title' | 'sku'
+              > & {
+                price: Pick<StorefrontAPI.MoneyV2, 'amount'>;
+                product: Pick<StorefrontAPI.Product, 'title' | 'id'>;
+              };
+            })
+        >;
+      };
+      attributes: Array<Pick<StorefrontAPI.Attribute, 'key' | 'value'>>;
+    }
+  >;
+};
+
+export type CheckoutCartRestoredQueryVariables = StorefrontAPI.Exact<{
+  cartId: StorefrontAPI.Scalars['ID']['input'];
+  language?: StorefrontAPI.InputMaybe<StorefrontAPI.LanguageCode>;
+  country?: StorefrontAPI.InputMaybe<StorefrontAPI.CountryCode>;
+}>;
+
+export type CheckoutCartRestoredQuery = {
   cart?: StorefrontAPI.Maybe<
     Pick<StorefrontAPI.Cart, 'id' | 'checkoutUrl' | 'note'> & {
       cost: {
@@ -6179,17 +6425,50 @@ export type GetPromotionalProductsQuery = {
   };
 };
 
-export type OfferProductsByIdQueryVariables = StorefrontAPI.Exact<{
-  ids:
-    | Array<StorefrontAPI.Scalars['ID']['input']>
-    | StorefrontAPI.Scalars['ID']['input'];
+export type GetOfferPageProductsQueryVariables = StorefrontAPI.Exact<{
   country?: StorefrontAPI.InputMaybe<StorefrontAPI.CountryCode>;
   language?: StorefrontAPI.InputMaybe<StorefrontAPI.LanguageCode>;
 }>;
 
-export type OfferProductsByIdQuery = {
-  nodes: Array<
-    StorefrontAPI.Maybe<
+export type GetOfferPageProductsQuery = {
+  heroMeta: {
+    nodes: Array<
+      Pick<StorefrontAPI.Metaobject, 'id' | 'handle'> & {
+        fields: Array<
+          Pick<StorefrontAPI.MetaobjectField, 'key' | 'value'> & {
+            reference?: StorefrontAPI.Maybe<{
+              image?: StorefrontAPI.Maybe<
+                Pick<StorefrontAPI.Image, 'url' | 'altText'>
+              >;
+            }>;
+          }
+        >;
+      }
+    >;
+  };
+  bogoMeta: {
+    nodes: Array<
+      Pick<StorefrontAPI.Metaobject, 'id'> & {
+        fields: Array<Pick<StorefrontAPI.MetaobjectField, 'key' | 'value'>>;
+      }
+    >;
+  };
+  gridMeta: {
+    nodes: Array<
+      Pick<StorefrontAPI.Metaobject, 'id'> & {
+        fields: Array<Pick<StorefrontAPI.MetaobjectField, 'key' | 'value'>>;
+      }
+    >;
+  };
+  bannerMeta: {
+    nodes: Array<
+      Pick<StorefrontAPI.Metaobject, 'id'> & {
+        fields: Array<Pick<StorefrontAPI.MetaobjectField, 'key' | 'value'>>;
+      }
+    >;
+  };
+  products: {
+    nodes: Array<
       Pick<
         StorefrontAPI.Product,
         'id' | 'handle' | 'title' | 'tags' | 'availableForSale'
@@ -6233,24 +6512,8 @@ export type OfferProductsByIdQuery = {
           >;
         };
       }
-    >
-  >;
-};
-
-export type OfferCollectionProductsQueryVariables = StorefrontAPI.Exact<{
-  ids:
-    | Array<StorefrontAPI.Scalars['ID']['input']>
-    | StorefrontAPI.Scalars['ID']['input'];
-}>;
-
-export type OfferCollectionProductsQuery = {
-  nodes: Array<
-    StorefrontAPI.Maybe<
-      Pick<StorefrontAPI.Collection, 'id'> & {
-        products: {nodes: Array<Pick<StorefrontAPI.Product, 'id'>>};
-      }
-    >
-  >;
+    >;
+  };
 };
 
 export type QualityPolicyPageQueryVariables = StorefrontAPI.Exact<{
@@ -6423,6 +6686,38 @@ export type GetVouchersCustomerQueryVariables = StorefrontAPI.Exact<{
 export type GetVouchersCustomerQuery = {
   customer?: StorefrontAPI.Maybe<
     Pick<StorefrontAPI.Customer, 'id' | 'phone' | 'email'>
+  >;
+};
+
+export type GetCustomerBasicQueryVariables = StorefrontAPI.Exact<{
+  customerAccessToken: StorefrontAPI.Scalars['String']['input'];
+}>;
+
+export type GetCustomerBasicQuery = {
+  customer?: StorefrontAPI.Maybe<
+    Pick<StorefrontAPI.Customer, 'firstName' | 'lastName' | 'email'>
+  >;
+};
+
+export type GetGiftCardProductQueryVariables = StorefrontAPI.Exact<{
+  [key: string]: never;
+}>;
+
+export type GetGiftCardProductQuery = {
+  product?: StorefrontAPI.Maybe<
+    Pick<
+      StorefrontAPI.Product,
+      'id' | 'title' | 'handle' | 'availableForSale'
+    > & {
+      variants: {
+        nodes: Array<
+          Pick<
+            StorefrontAPI.ProductVariant,
+            'id' | 'title' | 'availableForSale'
+          > & {price: Pick<StorefrontAPI.MoneyV2, 'amount' | 'currencyCode'>}
+        >;
+      };
+    }
   >;
 };
 
@@ -6627,11 +6922,15 @@ export type GetCustomerWalletPhoneQueryVariables = StorefrontAPI.Exact<{
 
 export type GetCustomerWalletPhoneQuery = {
   customer?: StorefrontAPI.Maybe<
-    Pick<StorefrontAPI.Customer, 'phone' | 'email'>
+    Pick<StorefrontAPI.Customer, 'id' | 'phone' | 'email'>
   >;
 };
 
 interface GeneratedQueryTypes {
+  '#graphql\n  query accountGuardCustomer($customerAccessToken: String!) {\n    customer(customerAccessToken: $customerAccessToken) {\n      id\n      email\n      phone\n      tags\n    }\n  }\n': {
+    return: AccountGuardCustomerQuery;
+    variables: AccountGuardCustomerQueryVariables;
+  };
   '#graphql\n  fragment Shop on Shop {\n    id\n    name\n    description\n    primaryDomain {\n      url\n    }\n    brand {\n      logo {\n        image {\n          url\n        }\n      }\n    }\n  }\n  query Header(\n    $country: CountryCode\n    $headerMenuHandle: String!\n    $language: LanguageCode\n  ) @inContext(language: $language, country: $country) {\n    shop {\n      ...Shop\n    }\n    menu(handle: $headerMenuHandle) {\n      ...Menu\n    }\n  }\n  #graphql\n  fragment MenuItem on MenuItem {\n    id\n    resourceId\n    tags\n    title\n    type\n    url\n  }\n  fragment ChildMenuItem on MenuItem {\n    ...MenuItem\n  }\n  fragment ParentMenuItem on MenuItem {\n    ...MenuItem\n    items {\n      ...ChildMenuItem\n    }\n  }\n  fragment Menu on Menu {\n    id\n    items {\n      ...ParentMenuItem\n    }\n  }\n\n': {
     return: HeaderQuery;
     variables: HeaderQueryVariables;
@@ -6648,6 +6947,18 @@ interface GeneratedQueryTypes {
     return: GetCustomerGidQuery;
     variables: GetCustomerGidQueryVariables;
   };
+  '#graphql\n  query offerProductsById($ids: [ID!]!, $country: CountryCode, $language: LanguageCode) @inContext(country: $country, language: $language) {\n    nodes(ids: $ids) {\n      ... on Product {\n        id\n        handle\n        title\n        tags\n        availableForSale\n        featuredImage {\n          url\n          altText\n          width\n          height\n        }\n        priceRange {\n          minVariantPrice {\n            amount\n            currencyCode\n          }\n        }\n        compareAtPriceRange {\n          minVariantPrice {\n            amount\n            currencyCode\n          }\n        }\n        variants(first: 10) {\n          nodes {\n            id\n            title\n            availableForSale\n            price {\n              amount\n              currencyCode\n            }\n            compareAtPrice {\n              amount\n              currencyCode\n            }\n            selectedOptions {\n              name\n              value\n            }\n            storeAvailability(first: 250) {\n              nodes {\n                available\n                location {\n                  id\n                  name\n                }\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n': {
+    return: OfferProductsByIdQuery;
+    variables: OfferProductsByIdQueryVariables;
+  };
+  '#graphql\n  query offerCollectionProducts($ids: [ID!]!) {\n    nodes(ids: $ids) {\n      ... on Collection {\n        id\n        products(first: 250) { nodes { id } }\n      }\n    }\n  }\n': {
+    return: OfferCollectionProductsQuery;
+    variables: OfferCollectionProductsQueryVariables;
+  };
+  '#graphql\n  query promotionOfferRegistry {\n    offers: metaobjects(type: "promotion_offer", first: 20) {\n      nodes {\n        id\n        handle\n        fields {\n          key\n          value\n          reference {\n            ... on MediaImage {\n              image {\n                url\n                altText\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n': {
+    return: PromotionOfferRegistryQuery;
+    variables: PromotionOfferRegistryQueryVariables;
+  };
   '#graphql\n      query SessionIdentityCustomer($customerAccessToken: String!) {\n        customer(customerAccessToken: $customerAccessToken) {\n          id\n          phone\n          email\n        }\n      }\n      ': {
     return: SessionIdentityCustomerQuery;
     variables: SessionIdentityCustomerQueryVariables;
@@ -6660,7 +6971,7 @@ interface GeneratedQueryTypes {
     return: GetShopLocationDiscountsQuery;
     variables: GetShopLocationDiscountsQueryVariables;
   };
-  '#graphql\n  query Locations {\n    locations(first: 250) {\n      nodes {\n        id\n        name\n        address {\n          address1\n          address2\n          city\n          country\n          latitude\n          longitude\n          phone\n        }\n        city: metafield(namespace: "custom", key: "city") {\n          key\n          value\n        }\n        delivery_fee: metafield(namespace: "custom", key: "delivery_fee") {\n          key\n          value\n        }\n        free_delivery_threshold: metafield(namespace: "custom", key: "free_delivery_threshold") {\n          key\n          value\n        }\n        promo_free_delivery_from: metafield(namespace: "custom", key: "promo_free_delivery_from") {\n          key\n          value\n        }\n        promo_free_delivery_to: metafield(namespace: "custom", key: "promo_free_delivery_to") {\n          key\n          value\n        }\n        delivery_hours_from: metafield(namespace: "custom", key: "delivery_hours_from") {\n          key\n          value\n        }\n        delivery_hours_to: metafield(namespace: "custom", key: "delivery_hours_to") {\n          key\n          value\n        }\n        delivery_hours_from_shift2: metafield(namespace: "custom", key: "delivery_hours_from_shift2") {\n          key\n          value\n        }\n        delivery_hours_to_shift2: metafield(namespace: "custom", key: "delivery_hours_to_shift2") {\n          key\n          value\n        }\n        working_hours_from: metafield(namespace: "custom", key: "working_hours_from") {\n          key\n          value\n        }\n        working_hours_to: metafield(namespace: "custom", key: "working_hours_to") {\n          key\n          value\n        }\n        working_hours_from_shift2: metafield(namespace: "custom", key: "working_hours_from_shift2") {\n          key\n          value\n        }\n        working_hours_to_shift2: metafield(namespace: "custom", key: "working_hours_to_shift2") {\n          key\n          value\n        }\n        sunday_working_hours_from: metafield(namespace: "custom", key: "sunday_working_hours_from") {\n          key\n          value\n        }\n        sunday_working_hours_to: metafield(namespace: "custom", key: "sunday_working_hours_to") {\n          key\n          value\n        }\n        monday_working_hours_from: metafield(namespace: "custom", key: "monday_working_hours_from") {\n          key\n          value\n        }\n        monday_working_hours_to: metafield(namespace: "custom", key: "monday_working_hours_to") {\n          key\n          value\n        }\n        tuesday_working_hours_from: metafield(namespace: "custom", key: "tuesday_working_hours_from") {\n          key\n          value\n        }\n        tuesday_working_hours_to: metafield(namespace: "custom", key: "tuesday_working_hours_to") {\n          key\n          value\n        }\n        wednesday_working_hours_from: metafield(namespace: "custom", key: "wednesday_working_hours_from") {\n          key\n          value\n        }\n        wednesday_working_hours_to: metafield(namespace: "custom", key: "wednesday_working_hours_to") {\n          key\n          value\n        }\n        thursday_working_hours_from: metafield(namespace: "custom", key: "thursday_working_hours_from") {\n          key\n          value\n        }\n        thursday_working_hours_to: metafield(namespace: "custom", key: "thursday_working_hours_to") {\n          key\n          value\n        }\n        friday_working_hours_from: metafield(namespace: "custom", key: "friday_working_hours_from") {\n          key\n          value\n        }\n        friday_working_hours_to: metafield(namespace: "custom", key: "friday_working_hours_to") {\n          key\n          value\n        }\n        saturday_working_hours_from: metafield(namespace: "custom", key: "saturday_working_hours_from") {\n          key\n          value\n        }\n        saturday_working_hours_to: metafield(namespace: "custom", key: "saturday_working_hours_to") {\n          key\n          value\n        }\n        rating: metafield(namespace: "custom", key: "rating") {\n          key\n          value\n        }\n        rating_count: metafield(namespace: "custom", key: "rating_count") {\n          key\n          value\n        }\n        hide_from_storefront: metafield(namespace: "custom", key: "hide_from_storefront") {\n          key\n          value\n        }\n        branch_id: metafield(namespace: "custom", key: "branch_id") {\n          key\n          value\n        }\n        ax_store_id: metafield(namespace: "custom", key: "ax_store_id") {\n          key\n          value\n        }\n        name_in_arabic: metafield(namespace: "custom", key: "name_in_arabic") {\n          key\n          value\n        }\n      }\n    }\n  }\n': {
+  '#graphql\n  query Locations {\n    locations(first: 250) {\n      nodes {\n        id\n        name\n        address {\n          address1\n          address2\n          city\n          country\n          latitude\n          longitude\n          phone\n        }\n        city: metafield(namespace: "custom", key: "city") {\n          key\n          value\n        }\n        delivery_fee: metafield(namespace: "custom", key: "delivery_fee") {\n          key\n          value\n        }\n        free_delivery_threshold: metafield(namespace: "custom", key: "free_delivery_threshold") {\n          key\n          value\n        }\n        promo_free_delivery_from: metafield(namespace: "custom", key: "promo_free_delivery_from") {\n          key\n          value\n        }\n        promo_free_delivery_to: metafield(namespace: "custom", key: "promo_free_delivery_to") {\n          key\n          value\n        }\n        delivery_time_from: metafield(namespace: "custom", key: "delivery_time_from") {\n          key\n          value\n        }\n        delivery_time_to: metafield(namespace: "custom", key: "delivery_time_to") {\n          key\n          value\n        }\n        delivery_hours_from_shift2: metafield(namespace: "custom", key: "delivery_hours_from_shift2") {\n          key\n          value\n        }\n        delivery_hours_to_shift2: metafield(namespace: "custom", key: "delivery_hours_to_shift2") {\n          key\n          value\n        }\n        working_hours_from: metafield(namespace: "custom", key: "working_hours_from") {\n          key\n          value\n        }\n        working_hours_to: metafield(namespace: "custom", key: "working_hours_to") {\n          key\n          value\n        }\n        working_hours_from_shift2: metafield(namespace: "custom", key: "working_hours_from_shift2") {\n          key\n          value\n        }\n        working_hours_to_shift2: metafield(namespace: "custom", key: "working_hours_to_shift2") {\n          key\n          value\n        }\n        sunday_working_hours_from: metafield(namespace: "custom", key: "sunday_working_hours_from") {\n          key\n          value\n        }\n        sunday_working_hours_to: metafield(namespace: "custom", key: "sunday_working_hours_to") {\n          key\n          value\n        }\n        monday_working_hours_from: metafield(namespace: "custom", key: "monday_working_hours_from") {\n          key\n          value\n        }\n        monday_working_hours_to: metafield(namespace: "custom", key: "monday_working_hours_to") {\n          key\n          value\n        }\n        tuesday_working_hours_from: metafield(namespace: "custom", key: "tuesday_working_hours_from") {\n          key\n          value\n        }\n        tuesday_working_hours_to: metafield(namespace: "custom", key: "tuesday_working_hours_to") {\n          key\n          value\n        }\n        wednesday_working_hours_from: metafield(namespace: "custom", key: "wednesday_working_hours_from") {\n          key\n          value\n        }\n        wednesday_working_hours_to: metafield(namespace: "custom", key: "wednesday_working_hours_to") {\n          key\n          value\n        }\n        thursday_working_hours_from: metafield(namespace: "custom", key: "thursday_working_hours_from") {\n          key\n          value\n        }\n        thursday_working_hours_to: metafield(namespace: "custom", key: "thursday_working_hours_to") {\n          key\n          value\n        }\n        friday_working_hours_from: metafield(namespace: "custom", key: "friday_working_hours_from") {\n          key\n          value\n        }\n        friday_working_hours_to: metafield(namespace: "custom", key: "friday_working_hours_to") {\n          key\n          value\n        }\n        saturday_working_hours_from: metafield(namespace: "custom", key: "saturday_working_hours_from") {\n          key\n          value\n        }\n        saturday_working_hours_to: metafield(namespace: "custom", key: "saturday_working_hours_to") {\n          key\n          value\n        }\n        rating: metafield(namespace: "custom", key: "rating") {\n          key\n          value\n        }\n        rating_count: metafield(namespace: "custom", key: "rating_count") {\n          key\n          value\n        }\n        hide_from_storefront: metafield(namespace: "custom", key: "hide_from_storefront") {\n          key\n          value\n        }\n        branch_id: metafield(namespace: "custom", key: "branch_id") {\n          key\n          value\n        }\n        ax_store_id: metafield(namespace: "custom", key: "ax_store_id") {\n          key\n          value\n        }\n        name_in_arabic: metafield(namespace: "custom", key: "name_in_arabic") {\n          key\n          value\n        }\n      }\n    }\n  }\n': {
     return: LocationsQuery;
     variables: LocationsQueryVariables;
   };
@@ -6676,7 +6987,7 @@ interface GeneratedQueryTypes {
     return: FeaturedCollectionQuery;
     variables: FeaturedCollectionQueryVariables;
   };
-  '#graphql\n  fragment RecommendedProduct on Product {\n    id\n    title\n    handle\n    availableForSale\n    productType\n    isGiftCard\n    tags\n    compareAtPriceRange {\n      minVariantPrice {\n        amount\n        currencyCode\n      }\n    }\n    priceRange {\n      minVariantPrice {\n        amount\n        currencyCode\n      }\n    }\n    images(first: 1) {\n      nodes {\n        id\n        url\n        altText\n        width\n        height\n      }\n    }\n    visibility_start: metafield(namespace: "custom", key: "visibility_start") {\n      value\n    }\n    visibility_end: metafield(namespace: "custom", key: "visibility_end") {\n      value\n    }\n    is_limited_time: metafield(namespace: "custom", key: "is_limited_time") {\n      value\n    }\n    average_rating: metafield(namespace: "custom", key: "average_rating") {\n      value\n    }\n    rating_count: metafield(namespace: "custom", key: "rating_count") {\n      value\n    }\n    bogo_free_item: metafield(namespace: "custom", key: "bogo_free_item") {\n      value\n      reference {\n        ... on ProductVariant {\n          id\n        }\n      }\n    }\n    variants(first: 10) {\n      nodes {\n        id\n        title\n        image {\n          url\n          altText\n          width\n          height\n        }\n        price {\n          amount\n          currencyCode\n        }\n        compareAtPrice {\n          amount\n          currencyCode\n        }\n        selectedOptions {\n          name\n          value\n        }\n        product {\n          handle\n          title\n        }\n        storeAvailability(first: 250) {\n          nodes {\n            available\n            location {\n              id\n              name\n            }\n          }\n        }\n      }\n    }\n  }\n  query RecommendedProducts ($country: CountryCode, $language: LanguageCode)\n    @inContext(country: $country, language: $language) {\n    \n    fallbackProducts: products(first: 30, sortKey: UPDATED_AT, reverse: true) {\n      nodes {\n        ...RecommendedProduct\n      }\n    }\n\n    bestSellers: collection(handle: "best-sellers") {\n      products(first: 20) {\n        nodes {\n          ...RecommendedProduct\n        }\n      }\n    }\n\n    kunafa: collection(handle: "kunafa") {\n      products(first: 20) {\n        nodes {\n          ...RecommendedProduct\n        }\n      }\n    }\n\n    sweets: collection(handle: "sweets") {\n      products(first: 20) {\n        nodes {\n          ...RecommendedProduct\n        }\n      }\n    }\n\n    arabic: collection(handle: "arabic") {\n      products(first: 20) {\n        nodes {\n          ...RecommendedProduct\n        }\n      }\n    }\n\n    cake: collection(handle: "cake") {\n      products(first: 20) {\n        nodes {\n          ...RecommendedProduct\n        }\n      }\n    }\n\n    chocolateCake: collection(handle: "chocolate-cake") {\n      products(first: 20) {\n        nodes {\n          ...RecommendedProduct\n        }\n      }\n    }\n\n    cakes: collection(handle: "cakes") {\n      products(first: 20) {\n        nodes {\n          ...RecommendedProduct\n        }\n      }\n    }\n\n    chocolate: collection(handle: "chocolate") {\n      products(first: 20) {\n        nodes {\n          ...RecommendedProduct\n        }\n      }\n    }\n\n    gifts: collection(handle: "gifts") {\n      products(first: 20) {\n        nodes {\n          ...RecommendedProduct\n        }\n      }\n    }\n\n    gifting: collection(handle: "gifting") {\n      products(first: 20) {\n        nodes {\n          ...RecommendedProduct\n        }\n      }\n    }\n  }\n': {
+  '#graphql\n  fragment RecommendedProduct on Product {\n    id\n    title\n    handle\n    availableForSale\n    productType\n    isGiftCard\n    tags\n    compareAtPriceRange {\n      minVariantPrice {\n        amount\n        currencyCode\n      }\n    }\n    priceRange {\n      minVariantPrice {\n        amount\n        currencyCode\n      }\n    }\n    images(first: 1) {\n      nodes {\n        id\n        url\n        altText\n        width\n        height\n      }\n    }\n    visibility_start: metafield(namespace: "custom", key: "visibility_start") {\n      value\n    }\n    visibility_end: metafield(namespace: "custom", key: "visibility_end") {\n      value\n    }\n    is_limited_time: metafield(namespace: "custom", key: "is_limited_time") {\n      value\n    }\n    average_rating: metafield(namespace: "custom", key: "average_rating") {\n      value\n    }\n    rating_count: metafield(namespace: "custom", key: "rating_count") {\n      value\n    }\n    bogo_free_item: metafield(namespace: "custom", key: "bogo_free_item") {\n      value\n      reference {\n        ... on ProductVariant {\n          id\n        }\n      }\n    }\n    variants(first: 10) {\n      nodes {\n        id\n        title\n        image {\n          url\n          altText\n          width\n          height\n        }\n        price {\n          amount\n          currencyCode\n        }\n        compareAtPrice {\n          amount\n          currencyCode\n        }\n        selectedOptions {\n          name\n          value\n        }\n        product {\n          handle\n          title\n        }\n        storeAvailability(first: 250) {\n          nodes {\n            available\n            location {\n              id\n              name\n            }\n          }\n        }\n      }\n    }\n  }\n  query RecommendedProducts ($country: CountryCode, $language: LanguageCode)\n    @inContext(country: $country, language: $language) {\n    \n    fallbackProducts: products(first: 30, sortKey: UPDATED_AT, reverse: true) {\n      nodes {\n        ...RecommendedProduct\n      }\n    }\n\n    bestSellers: collection(handle: "best-sellers") {\n      products(first: 20) {\n        nodes {\n          ...RecommendedProduct\n        }\n      }\n    }\n\n    kunafa: collection(handle: "kunafa") {\n      products(first: 20) {\n        nodes {\n          ...RecommendedProduct\n        }\n      }\n    }\n\n    sweets: collection(handle: "sweets") {\n      products(first: 20) {\n        nodes {\n          ...RecommendedProduct\n        }\n      }\n    }\n\n    arabic: collection(handle: "arabic") {\n      products(first: 20) {\n        nodes {\n          ...RecommendedProduct\n        }\n      }\n    }\n\n    cake: collection(handle: "cake") {\n      products(first: 20) {\n        nodes {\n          ...RecommendedProduct\n        }\n      }\n    }\n\n    chocolateCake: collection(handle: "chocolate-cake") {\n      products(first: 20) {\n        nodes {\n          ...RecommendedProduct\n        }\n      }\n    }\n\n    cakes: collection(handle: "cakes") {\n      products(first: 20) {\n        nodes {\n          ...RecommendedProduct\n        }\n      }\n    }\n\n    chocolate: collection(handle: "chocolate") {\n      products(first: 20) {\n        nodes {\n          ...RecommendedProduct\n        }\n      }\n    }\n\n    gifts: collection(handle: "gifts") {\n      products(first: 20) {\n        nodes {\n          ...RecommendedProduct\n        }\n      }\n    }\n\n    gifting: collection(handle: "gifting") {\n      products(first: 20) {\n        nodes {\n          ...RecommendedProduct\n        }\n      }\n    }\n\n    # The Gifts tab, by product tag.\n    #\n    # Neither the "gifts" nor the "gifting" collection exists in the store, so\n    # that tab always fell through to a keyword sweep over the 30 most recently\n    # updated products, matching title and type against "gift", "bundle",\n    # "box", "add on". "National Day Bites Box" appeared there because its name\n    # contains "box" — nothing to do with it being a gift or a best seller.\n    #\n    # This asks Shopify for the tag directly, and across the whole catalogue\n    # rather than a recently-updated window.\n    giftTagged: products(first: 20, query: "tag:gift OR tag:gifts OR tag:هدايا") {\n      nodes {\n        ...RecommendedProduct\n      }\n    }\n  }\n': {
     return: RecommendedProductsQuery;
     variables: RecommendedProductsQueryVariables;
   };
@@ -6692,13 +7003,13 @@ interface GeneratedQueryTypes {
     return: HomepageConfigQuery;
     variables: HomepageConfigQueryVariables;
   };
-  '#graphql\n          query getDashboardCustomerId($customerAccessToken: String!) {\n            customer(customerAccessToken: $customerAccessToken) {\n              id\n            }\n          }': {
+  '#graphql\n          query getDashboardCustomerId($customerAccessToken: String!) {\n            customer(customerAccessToken: $customerAccessToken) {\n              id\n              # The tag check below reads this; it was never selected, so\n              # customerTags was always empty and the check never passed.\n              tags\n            }\n          }': {
     return: GetDashboardCustomerIdQuery;
     variables: GetDashboardCustomerIdQueryVariables;
   };
-  '#graphql\n      query getDashboardCustomerId($customerAccessToken: String!) {\n        customer(customerAccessToken: $customerAccessToken) {\n          id\n        }\n      }\n    ': {
-    return: GetDashboardCustomerIdQuery;
-    variables: GetDashboardCustomerIdQueryVariables;
+  '#graphql\n      query getFeedbackAnalyticsCustomerId($customerAccessToken: String!) {\n        customer(customerAccessToken: $customerAccessToken) {\n          id\n        }\n      }\n    ': {
+    return: GetFeedbackAnalyticsCustomerIdQuery;
+    variables: GetFeedbackAnalyticsCustomerIdQueryVariables;
   };
   '#graphql\n          query getLoyaltyCustomer($customerAccessToken: String!) {\n            customer(customerAccessToken: $customerAccessToken) { id phone email }\n          }\n          ': {
     return: GetLoyaltyCustomerQuery;
@@ -6708,9 +7019,9 @@ interface GeneratedQueryTypes {
     return: GetLoyaltyCustomerIdQuery;
     variables: GetLoyaltyCustomerIdQueryVariables;
   };
-  '#graphql\n  #graphql\n  fragment Customer on Customer {\n    id\n    createdAt\n    acceptsMarketing\n    addresses(first: 6) {\n      nodes {\n        ...Address\n      }\n    }\n    defaultAddress {\n      ...Address\n    }\n    email\n    firstName\n    lastName\n    numberOfOrders\n    phone\n    birthdate: metafield(namespace: "custom", key: "birthdate") {\n      value\n    }\n    orders(first: 50, sortKey: PROCESSED_AT, reverse: true) {\n      nodes {\n        id\n        orderNumber\n        processedAt\n        financialStatus\n        fulfillmentStatus\n        currentTotalPrice {\n          amount\n          currencyCode\n        }\n        lineItems(first: 20) {\n          nodes {\n            title\n            quantity\n            customAttributes {\n              key\n              value\n            }\n            variant {\n              id\n              image {\n                url\n                altText\n              }\n              # Most products carry artwork at product level only, so a\n              # variant image alone leaves the order thumbnail empty.\n              product {\n                featuredImage {\n                  url\n                  altText\n                }\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n  fragment Address on MailingAddress {\n    id\n    formatted\n    firstName\n    lastName\n    company\n    address1\n    address2\n    country\n    province\n    city\n    zip\n    phone\n  }\n\n  query CustomerOrders(\n    $country: CountryCode\n    $customerAccessToken: String!\n    $endCursor: String\n    $first: Int\n    $language: LanguageCode\n    $last: Int\n    $startCursor: String\n  ) @inContext(country: $country, language: $language) {\n    customer(customerAccessToken: $customerAccessToken) {\n      ...CustomerOrders\n    }\n  }\n': {
-    return: CustomerOrdersQuery;
-    variables: CustomerOrdersQueryVariables;
+  '#graphql\n  #graphql\n  fragment Customer on Customer {\n    id\n    createdAt\n    acceptsMarketing\n    addresses(first: 6) {\n      nodes {\n        ...Address\n      }\n    }\n    defaultAddress {\n      ...Address\n    }\n    email\n    firstName\n    lastName\n    numberOfOrders\n    phone\n    birthdate: metafield(namespace: "custom", key: "birthdate") {\n      value\n    }\n    orders(first: 50, sortKey: PROCESSED_AT, reverse: true) {\n      nodes {\n        id\n        orderNumber\n        processedAt\n        financialStatus\n        fulfillmentStatus\n        currentTotalPrice {\n          amount\n          currencyCode\n        }\n        lineItems(first: 20) {\n          nodes {\n            title\n            quantity\n            customAttributes {\n              key\n              value\n            }\n            variant {\n              id\n              image {\n                url\n                altText\n              }\n              # Most products carry artwork at product level only, so a\n              # variant image alone leaves the order thumbnail empty.\n              product {\n                # The live, translated product name. A line item\'s own title\n                # field is an English snapshot frozen at purchase time, so\n                # without this the dashboard card read "Car Chocolate Box"\n                # where the orders list read the Arabic name for the same\n                # order. This query runs with inContext(language:), so Shopify\n                # returns the name in the shopper\'s language.\n                title\n                featuredImage {\n                  url\n                  altText\n                }\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n  fragment Address on MailingAddress {\n    id\n    formatted\n    firstName\n    lastName\n    company\n    address1\n    address2\n    country\n    province\n    city\n    zip\n    phone\n  }\n\n  query StorefrontCustomerOrders(\n    $country: CountryCode\n    $customerAccessToken: String!\n    $endCursor: String\n    $first: Int\n    $language: LanguageCode\n    $last: Int\n    $startCursor: String\n  ) @inContext(country: $country, language: $language) {\n    customer(customerAccessToken: $customerAccessToken) {\n      ...CustomerOrders\n    }\n  }\n': {
+    return: StorefrontCustomerOrdersQuery;
+    variables: StorefrontCustomerOrdersQueryVariables;
   };
   '#graphql\n        query getDeleteProfileCustomerId($customerAccessToken: String!) {\n          customer(customerAccessToken: $customerAccessToken) {\n            id\n          }\n        }\n      ': {
     return: GetDeleteProfileCustomerIdQuery;
@@ -6720,7 +7031,11 @@ interface GeneratedQueryTypes {
     return: GetProfileCustomerIdQuery;
     variables: GetProfileCustomerIdQueryVariables;
   };
-  '#graphql\n  query Customer(\n    $customerAccessToken: String!\n    $country: CountryCode\n    $language: LanguageCode\n  ) @inContext(country: $country, language: $language) {\n    customer(customerAccessToken: $customerAccessToken) {\n      ...Customer\n    }\n  }\n  #graphql\n  fragment Customer on Customer {\n    id\n    createdAt\n    acceptsMarketing\n    addresses(first: 6) {\n      nodes {\n        ...Address\n      }\n    }\n    defaultAddress {\n      ...Address\n    }\n    email\n    firstName\n    lastName\n    numberOfOrders\n    phone\n    birthdate: metafield(namespace: "custom", key: "birthdate") {\n      value\n    }\n    orders(first: 50, sortKey: PROCESSED_AT, reverse: true) {\n      nodes {\n        id\n        orderNumber\n        processedAt\n        financialStatus\n        fulfillmentStatus\n        currentTotalPrice {\n          amount\n          currencyCode\n        }\n        lineItems(first: 20) {\n          nodes {\n            title\n            quantity\n            customAttributes {\n              key\n              value\n            }\n            variant {\n              id\n              image {\n                url\n                altText\n              }\n              # Most products carry artwork at product level only, so a\n              # variant image alone leaves the order thumbnail empty.\n              product {\n                featuredImage {\n                  url\n                  altText\n                }\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n  fragment Address on MailingAddress {\n    id\n    formatted\n    firstName\n    lastName\n    company\n    address1\n    address2\n    country\n    province\n    city\n    zip\n    phone\n  }\n\n': {
+  '#graphql\n      query getPromotionsCustomerId($customerAccessToken: String!) {\n        customer(customerAccessToken: $customerAccessToken) {\n          id\n          # Selected because the check below reads it. Without it\n          # customerTags was always undefined and no real admin could\n          # ever pass — only the dev bypass token got in.\n          tags\n        }\n      }\n    ': {
+    return: GetPromotionsCustomerIdQuery;
+    variables: GetPromotionsCustomerIdQueryVariables;
+  };
+  '#graphql\n  query Customer(\n    $customerAccessToken: String!\n    $country: CountryCode\n    $language: LanguageCode\n  ) @inContext(country: $country, language: $language) {\n    customer(customerAccessToken: $customerAccessToken) {\n      ...Customer\n    }\n  }\n  #graphql\n  fragment Customer on Customer {\n    id\n    createdAt\n    acceptsMarketing\n    addresses(first: 6) {\n      nodes {\n        ...Address\n      }\n    }\n    defaultAddress {\n      ...Address\n    }\n    email\n    firstName\n    lastName\n    numberOfOrders\n    phone\n    birthdate: metafield(namespace: "custom", key: "birthdate") {\n      value\n    }\n    orders(first: 50, sortKey: PROCESSED_AT, reverse: true) {\n      nodes {\n        id\n        orderNumber\n        processedAt\n        financialStatus\n        fulfillmentStatus\n        currentTotalPrice {\n          amount\n          currencyCode\n        }\n        lineItems(first: 20) {\n          nodes {\n            title\n            quantity\n            customAttributes {\n              key\n              value\n            }\n            variant {\n              id\n              image {\n                url\n                altText\n              }\n              # Most products carry artwork at product level only, so a\n              # variant image alone leaves the order thumbnail empty.\n              product {\n                # The live, translated product name. A line item\'s own title\n                # field is an English snapshot frozen at purchase time, so\n                # without this the dashboard card read "Car Chocolate Box"\n                # where the orders list read the Arabic name for the same\n                # order. This query runs with inContext(language:), so Shopify\n                # returns the name in the shopper\'s language.\n                title\n                featuredImage {\n                  url\n                  altText\n                }\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n  fragment Address on MailingAddress {\n    id\n    formatted\n    firstName\n    lastName\n    company\n    address1\n    address2\n    country\n    province\n    city\n    zip\n    phone\n  }\n\n': {
     return: CustomerQuery;
     variables: CustomerQueryVariables;
   };
@@ -6744,13 +7059,13 @@ interface GeneratedQueryTypes {
     return: BlogsQuery;
     variables: BlogsQueryVariables;
   };
-  '#graphql\n        query GetCustomerBasic($customerAccessToken: String!) {\n          customer(customerAccessToken: $customerAccessToken) {\n            firstName\n            lastName\n            email\n          }\n        }': {
-    return: GetCustomerBasicQuery;
-    variables: GetCustomerBasicQueryVariables;
+  '#graphql\n        query GetGiftCardCustomerBasic($customerAccessToken: String!) {\n          customer(customerAccessToken: $customerAccessToken) {\n            firstName\n            lastName\n            email\n          }\n        }': {
+    return: GetGiftCardCustomerBasicQuery;
+    variables: GetGiftCardCustomerBasicQueryVariables;
   };
-  '#graphql\n      query GetGiftCardProduct {\n        product(id: "gid://shopify/Product/9370203521257") {\n          id\n          title\n          handle\n          availableForSale\n          variants(first: 20) {\n            nodes {\n              id\n              title\n              price {\n                amount\n                currencyCode\n              }\n              availableForSale\n            }\n          }\n        }\n      }': {
-    return: GetGiftCardProductQuery;
-    variables: GetGiftCardProductQueryVariables;
+  '#graphql\n      query GetGiftCardProductForPurchase {\n        product(id: "gid://shopify/Product/9370203521257") {\n          id\n          title\n          handle\n          availableForSale\n          variants(first: 20) {\n            nodes {\n              id\n              title\n              price {\n                amount\n                currencyCode\n              }\n              availableForSale\n            }\n          }\n        }\n      }': {
+    return: GetGiftCardProductForPurchaseQuery;
+    variables: GetGiftCardProductForPurchaseQueryVariables;
   };
   '#graphql\n                query GetLocationDiscountsForCart {\n                  shop {\n                    locationDiscounts: metafield(namespace: "custom", key: "location_discounts") { value }\n                    locationDiscountsAlt: metafield(namespace: "location", key: "discounts") { value }\n                  }\n                }\n              ': {
     return: GetLocationDiscountsForCartQuery;
@@ -6764,9 +7079,9 @@ interface GeneratedQueryTypes {
     return: CheckoutCartQuery;
     variables: CheckoutCartQueryVariables;
   };
-  '#graphql\n            query checkoutCart($cartId: ID!, $language: LanguageCode, $country: CountryCode)\n              @inContext(language: $language, country: $country) {\n              cart(id: $cartId) {\n                id\n                checkoutUrl\n                note\n                cost {\n                  subtotalAmount { amount currencyCode }\n                  totalAmount { amount currencyCode }\n                }\n                lines(first: 100) {\n                  nodes {\n                    id\n                    quantity\n                    merchandise {\n                      ... on ProductVariant {\n                        id\n                        title\n                        sku\n                        price { amount }\n                        product { title id }\n                      }\n                    }\n                  }\n                }\n                attributes {\n                  key\n                  value\n                }\n              }\n            }\n          ': {
-    return: CheckoutCartQuery;
-    variables: CheckoutCartQueryVariables;
+  '#graphql\n            query checkoutCartRestored($cartId: ID!, $language: LanguageCode, $country: CountryCode)\n              @inContext(language: $language, country: $country) {\n              cart(id: $cartId) {\n                id\n                checkoutUrl\n                note\n                cost {\n                  subtotalAmount { amount currencyCode }\n                  totalAmount { amount currencyCode }\n                }\n                lines(first: 100) {\n                  nodes {\n                    id\n                    quantity\n                    merchandise {\n                      ... on ProductVariant {\n                        id\n                        title\n                        sku\n                        price { amount }\n                        product { title id }\n                      }\n                    }\n                  }\n                }\n                attributes {\n                  key\n                  value\n                }\n              }\n            }\n          ': {
+    return: CheckoutCartRestoredQuery;
+    variables: CheckoutCartRestoredQueryVariables;
   };
   '#graphql\n          query GetCustomerAddressesForCheckout($customerAccessToken: String!) {\n            customer(customerAccessToken: $customerAccessToken) {\n              addresses(first: 50) {\n                nodes {\n                  id\n                  firstName\n                  lastName\n                  address1\n                  address2\n                  city\n                  province\n                  zip\n                  country\n                  phone\n                }\n              }\n            }\n          }': {
     return: GetCustomerAddressesForCheckoutQuery;
@@ -6892,13 +7207,9 @@ interface GeneratedQueryTypes {
     return: GetPromotionalProductsQuery;
     variables: GetPromotionalProductsQueryVariables;
   };
-  '#graphql\n  query offerProductsById($ids: [ID!]!, $country: CountryCode, $language: LanguageCode) @inContext(country: $country, language: $language) {\n    nodes(ids: $ids) {\n      ... on Product {\n        id\n        handle\n        title\n        tags\n        availableForSale\n        featuredImage {\n          url\n          altText\n          width\n          height\n        }\n        priceRange {\n          minVariantPrice {\n            amount\n            currencyCode\n          }\n        }\n        compareAtPriceRange {\n          minVariantPrice {\n            amount\n            currencyCode\n          }\n        }\n        variants(first: 10) {\n          nodes {\n            id\n            title\n            availableForSale\n            price {\n              amount\n              currencyCode\n            }\n            compareAtPrice {\n              amount\n              currencyCode\n            }\n            selectedOptions {\n              name\n              value\n            }\n            storeAvailability(first: 250) {\n              nodes {\n                available\n                location {\n                  id\n                  name\n                }\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n': {
-    return: OfferProductsByIdQuery;
-    variables: OfferProductsByIdQueryVariables;
-  };
-  '#graphql\n  query offerCollectionProducts($ids: [ID!]!) {\n    nodes(ids: $ids) {\n      ... on Collection {\n        id\n        products(first: 250) { nodes { id } }\n      }\n    }\n  }\n': {
-    return: OfferCollectionProductsQuery;
-    variables: OfferCollectionProductsQueryVariables;
+  '#graphql\n  query getOfferPageProducts($country: CountryCode, $language: LanguageCode) @inContext(country: $country, language: $language) {\n    heroMeta: metaobjects(type: "promotions_hero", first: 1) {\n      nodes {\n        id\n        handle\n        fields {\n          key\n          value\n          reference {\n            ... on MediaImage {\n              image {\n                url\n                altText\n              }\n            }\n          }\n        }\n      }\n    }\n    bogoMeta: metaobjects(type: "promotions_bogo", first: 1) {\n      nodes {\n        id\n        fields {\n          key\n          value\n        }\n      }\n    }\n    gridMeta: metaobjects(type: "promotions_grid", first: 1) {\n      nodes {\n        id\n        fields {\n          key\n          value\n        }\n      }\n    }\n    bannerMeta: metaobjects(type: "promotions_banner", first: 1) {\n      nodes {\n        id\n        fields {\n          key\n          value\n        }\n      }\n    }\n    products(first: 250) {\n      nodes {\n        id\n        handle\n        title\n        tags\n        availableForSale\n        featuredImage {\n          url\n          altText\n          width\n          height\n        }\n        priceRange {\n          minVariantPrice {\n            amount\n            currencyCode\n          }\n        }\n        compareAtPriceRange {\n          minVariantPrice {\n            amount\n            currencyCode\n          }\n        }\n        variants(first: 10) {\n          nodes {\n            id\n            title\n            availableForSale\n            price {\n              amount\n              currencyCode\n            }\n            compareAtPrice {\n              amount\n              currencyCode\n            }\n            selectedOptions {\n              name\n              value\n            }\n            storeAvailability(first: 250) {\n              nodes {\n                available\n                location {\n                  id\n                  name\n                }\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n': {
+    return: GetOfferPageProductsQuery;
+    variables: GetOfferPageProductsQueryVariables;
   };
   '#graphql\n  query QualityPolicyPage(\n    $language: LanguageCode,\n    $country: CountryCode,\n    $handle: String!\n  )\n  @inContext(language: $language, country: $country) {\n    page(handle: $handle) {\n      id\n      title\n      body\n      seo {\n        description\n        title\n      }\n    }\n  }\n': {
     return: QualityPolicyPageQuery;
@@ -6915,6 +7226,14 @@ interface GeneratedQueryTypes {
   '#graphql\n        query getVouchersCustomer($customerAccessToken: String!) {\n          customer(customerAccessToken: $customerAccessToken) {\n            id\n            phone\n            email\n          }\n        }\n      ': {
     return: GetVouchersCustomerQuery;
     variables: GetVouchersCustomerQueryVariables;
+  };
+  '#graphql\n        query GetCustomerBasic($customerAccessToken: String!) {\n          customer(customerAccessToken: $customerAccessToken) {\n            firstName\n            lastName\n            email\n          }\n        }': {
+    return: GetCustomerBasicQuery;
+    variables: GetCustomerBasicQueryVariables;
+  };
+  '#graphql\n      query GetGiftCardProduct {\n        product(id: "gid://shopify/Product/9370203521257") {\n          id\n          title\n          handle\n          availableForSale\n          variants(first: 20) {\n            nodes {\n              id\n              title\n              price {\n                amount\n                currencyCode\n              }\n              availableForSale\n            }\n          }\n        }\n      }': {
+    return: GetGiftCardProductQuery;
+    variables: GetGiftCardProductQueryVariables;
   };
   '#graphql\n            query getCustomerId($customerAccessToken: String!) {\n              customer(customerAccessToken: $customerAccessToken) {\n                id\n                email\n                phone\n              }\n            }\n          ': {
     return: GetCustomerIdQuery;
@@ -6944,7 +7263,7 @@ interface GeneratedQueryTypes {
     return: GetCustomerEnrollmentDateQuery;
     variables: GetCustomerEnrollmentDateQueryVariables;
   };
-  '#graphql\n          query getCustomerWalletPhone($customerAccessToken: String!) {\n            customer(customerAccessToken: $customerAccessToken) {\n              phone\n              email\n            }\n          }\n          ': {
+  '#graphql\n          query getCustomerWalletPhone($customerAccessToken: String!) {\n            customer(customerAccessToken: $customerAccessToken) {\n              id\n              phone\n              email\n            }\n          }\n          ': {
     return: GetCustomerWalletPhoneQuery;
     variables: GetCustomerWalletPhoneQueryVariables;
   };

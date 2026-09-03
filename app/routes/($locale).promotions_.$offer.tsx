@@ -15,7 +15,7 @@ import {fetchOfferDefinition} from '~/lib/offer-registry.server';
 
 // GraphQL query to fetch promotional products and promotion page metaobjects
 const PROMOTIONS_QUERY = `#graphql
-  query getPromotionalProducts($country: CountryCode, $language: LanguageCode) @inContext(country: $country, language: $language) {
+  query getOfferPageProducts($country: CountryCode, $language: LanguageCode) @inContext(country: $country, language: $language) {
     heroMeta: metaobjects(type: "promotions_hero", first: 1) {
       nodes {
         id

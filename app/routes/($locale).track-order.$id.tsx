@@ -142,7 +142,7 @@ async function fetchOrderNode(rawId: string, context: any) {
 
   // Build the Admin GraphQL query — search by GID or order name
   const gqlQuery = `
-      query GetOrder($id: ID, $query: String) {
+      query GetOrderForTracking($id: ID, $query: String) {
         orders(first: 1, query: $query) {
           edges {
             node {

@@ -64,7 +64,7 @@ export async function loader({request, context}: LoaderFunctionArgs) {
     // Verify if user is an Admin/Manager
     const {customer: sfCustomer} = await storefront.query(
       `#graphql
-      query getDashboardCustomerId($customerAccessToken: String!) {
+      query getFeedbackAnalyticsCustomerId($customerAccessToken: String!) {
         customer(customerAccessToken: $customerAccessToken) {
           id
         }

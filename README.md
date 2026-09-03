@@ -4,9 +4,6 @@ Headless storefront for Saadeddin Pastry, built on **Shopify Hydrogen** and depl
 **Shopify Oxygen**. Bilingual (Arabic default, English under `/en`), with branch-aware
 inventory, a loyalty programme, a store-credit wallet and a custom-cake builder.
 
-This replaces the stock Hydrogen skeleton README, which described a Remix-based
-template and Node 18 — neither of which matches this project.
-
 ---
 
 ## Table of contents
@@ -18,9 +15,10 @@ template and Node 18 — neither of which matches this project.
 5. [Environment variables](#5-environment-variables)
 6. [External services](#6-external-services)
 7. [Project layout](#7-project-layout)
-8. [Build and deploy](#8-build-and-deploy)
-9. [Before you ship](#9-before-you-ship)
-10. [Troubleshooting](#10-troubleshooting)
+8. [Documentation](#8-documentation)
+9. [Build and deploy](#9-build-and-deploy)
+10. [Before you ship](#10-before-you-ship)
+11. [Troubleshooting](#11-troubleshooting)
 
 ---
 
@@ -29,7 +27,7 @@ template and Node 18 — neither of which matches this project.
 | Tool | Version | Notes |
 |---|---|---|
 | Node.js | **^22 or ^24** | Enforced by `engines` in `package.json`. Node 20 and below will not run this build. |
-| npm | 10.x | Ships with Node 22. |
+| npm | 10.x | Ships with Node 22. The repo has a `package-lock.json` and no `yarn.lock`. |
 | Shopify CLI | 3.93.2 | Installed as a dev dependency — no global install needed. |
 | Git | any recent | |
 
@@ -41,13 +39,6 @@ node -v      # must print v22.x or v24.x
 
 If it prints something else, install Node 22 LTS (via [nvm](https://github.com/nvm-sh/nvm),
 [fnm](https://github.com/Schniz/fnm), or the installer from nodejs.org) and re-run.
-
-> **Package manager note.** `package.json` declares
-> `"packageManager": "yarn@4.16.0"`, but the repository contains a
-> **`package-lock.json` and no `yarn.lock`** — the project is actually
-> installed and built with **npm**. Use npm. The `packageManager` field is
-> stale and should be removed or corrected so tooling like Corepack doesn't
-> try to force Yarn.
 
 ---
 
@@ -98,13 +89,16 @@ cd saad-al-deen-storefront
 
 npm install                # installs from package-lock.json
 
-# .env is not committed — get the values from a maintainer
-# or from the Oxygen environment settings (see section 5)
-
+cp .env.example .env       # then fill in the values
 npm run dev
 ```
 
 The dev server starts on **http://localhost:3000**.
+
+`.env.example` lists every variable the code reads, grouped by purpose, with
+notes on which ones matter for which feature. It contains **names only** — get
+the values from a maintainer or from the Oxygen environment settings in the
+Shopify admin.
 
 `.env` is gitignored and holds live credentials. **Never commit it**, and never
 paste its contents into a chat, an issue or a pull request. If a secret is
@@ -118,7 +112,7 @@ file.
 | Command | What it does |
 |---|---|
 | `npm run dev` | Dev server on :3000 with GraphQL codegen watching |
-| `npm run build` | Production build, runs codegen first |
+| `npm run build` | Production build, runs codegen |
 | `npm run preview` | Builds, then serves the production bundle locally |
 | `npm run typecheck` | `react-router typegen` then `tsc --noEmit` |
 | `npm run lint` | ESLint over the repo |
@@ -127,125 +121,69 @@ file.
 ### Codegen matters here
 
 `storefrontapi.generated.d.ts` and `customer-accountapi.generated.d.ts` are
-generated from the `#graphql` tagged template literals in the source. Two
-consequences worth knowing:
+generated from the `#graphql` tagged template literals in the source. Three
+rules follow from that:
 
 - **Every `#graphql` document in the project is validated together.** One
   malformed query fails the whole build, not just its own route.
+
+- **Operation names must be unique across the entire project.** Two routes
+  cannot both declare `query GetOrder`. Codegen reports only the first
+  collision it finds, so a batch of duplicates surfaces one at a time. Name
+  operations after their route — `GetOrderForInvoice`, not `GetOrder`.
+
 - **A backtick inside a `#graphql` template literal terminates the literal.**
   Writing a field name in backticks inside a GraphQL comment produces a
   confusing parse error far from the real cause. Use plain words there.
+
+Note that `npm run build` prints `✓ built` for the client and SSR bundles
+**before** codegen runs. A codegen failure appears after those lines, in a box
+at the very end. Read to the bottom of the output.
 
 ---
 
 ## 5. Environment variables
 
-No `.env.example` is committed. The names below are every variable the code
-reads — get the values from a maintainer or from the Oxygen environment
-settings.
+**`.env.example` is the source of truth** — it lists every variable the code
+reads, with inline notes. This section covers only what that file cannot say
+for itself.
 
-`PUBLIC_*` variables are exposed to the browser. Everything else is
-server-only and must never be referenced from client components.
+`PUBLIC_*` variables are exposed to the browser. Everything else is server-only
+and must never be referenced from a client component.
 
-### Shopify — required
+Oxygen caps a project at **110 custom environment variables**; this project uses
+roughly 60.
 
-```
-PUBLIC_STORE_DOMAIN
-PUBLIC_STOREFRONT_API_TOKEN
-PUBLIC_STOREFRONT_ID
-PUBLIC_CHECKOUT_DOMAIN
-PUBLIC_SHOPIFY_STORE_DOMAIN
-SESSION_SECRET
-SHOPIFY_CLIENT_ID
-SHOPIFY_CLIENT_SECRET
-SHOPIFY_ADMIN_DOMAIN
-SHOPIFY_ADMIN_CLIENT_ID
-SHOPIFY_ADMIN_CLIENT_SECRET
-SHOPIFY_ADMIN_API_ACCESS_TOKENS
-SHOPIFY_STORE_DOMAIN
-SHOPIFY_STOREFRONT_ACCESS_TOKEN
-SHOPIFY_SHOP
-SHOPIFY_MARKET_ID
-```
+### Email needs care on Oxygen
 
-The Admin API is used for per-location inventory, order history, discounts and
-draft orders — the Storefront API cannot answer those. Admin credentials are
-strictly server-side.
+`sendEmail` tries three transports in order and returns `false`, silently, if
+all three are unavailable:
 
-### Saadeddin backend services
+1. **SMTP via nodemailer** — needs raw TCP sockets, which Oxygen's workerd
+   runtime does not provide. **This path can never succeed on Oxygen.** It works
+   locally and on Node hosts.
+2. **Microsoft Graph** — plain HTTPS. Needs `GRAPH_TENANT_ID`,
+   `GRAPH_CLIENT_ID`, `GRAPH_CLIENT_SECRET`.
+3. **Resend** — plain HTTPS. Needs `RESEND_API_KEY`.
 
-```
-MIDDLEWARE_URL              # default https://api.saadeddin.top
-STORE_CREDIT_API_URL        # default https://sdgc.saadeddin.top
-PUBLIC_SDLP_APP_URL         # loyalty, default https://sdlp.saadeddin.top
-SDLP_APP_URL                # server-side alias of the above
-CRM_API_URL
-CRM_API_KEY
-SAADEDDIN_CRM_API_URL
-SAADEDDIN_CRM_API_KEY
-CUSTOM_API_URL
-```
-
-### Messaging
-
-```
-SMS_API_URL
-SMS_API_USERNAME
-SMS_API_PASSWORD
-SMTP_HOST
-SMTP_PORT
-SMTP_USER
-SMTP_PASS
-CONTACT_RECEIVER_EMAIL
-```
-
-### Social sign-in
-
-```
-GOOGLE_CLIENT_ID
-GOOGLE_CLIENT_SECRET
-FACEBOOK_CLIENT_ID
-FACEBOOK_CLIENT_SECRET
-APPLE_CLIENT_ID
-```
-
-### Maps and analytics
-
-```
-PUBLIC_GOOGLE_MAPS_KEY
-PUBLIC_GOOGLE_PLACES_KEY
-PUBLIC_GOOGLE_GEOCODING_KEY
-PUBLIC_GOOGLE_DISTANCE_MATRIX_KEY
-PUBLIC_GA4_MEASUREMENT_ID
-PUBLIC_GTM_ID
-PUBLIC_SMILE_CHANNEL_KEY
-```
-
-### Shipping and other
-
-```
-ARAMEX_USERNAME
-ARAMEX_PASSWORD
-ARAMEX_ACCOUNT_NUMBER
-ARAMEX_ACCOUNT_PIN
-ARAMEX_ACCOUNT_ENTITY
-ARAMEX_ACCOUNT_COUNTRY_CODE
-STOQ_MARKET_ID
-NODE_ENV
-```
+**On Oxygen, configure Graph or Resend.** SMTP alone will not deliver there, so
+without one of the HTTPS transports the contact form, custom request, corporate
+enquiry and back-in-stock alerts have no way to send.
 
 ---
 
 ## 6. External services
 
-Four Saadeddin hosts sit behind the storefront. Confusing them has caused real
-production bugs, so they are worth stating plainly:
+Several hosts sit behind the storefront. They serve different purposes and are
+not interchangeable:
 
 | Host | Purpose | Configurable via |
 |---|---|---|
 | `api.saadeddin.top` | Order middleware; gift-card **codes and transaction history**, looked up by phone | `MIDDLEWARE_URL` |
 | `sdgc.saadeddin.top` | Store credit — the **authoritative wallet balance**, looked up by customer id | `STORE_CREDIT_API_URL` |
 | `sdlp.saadeddin.top` | Loyalty points and tiers | `PUBLIC_SDLP_APP_URL` |
+| `saadeddinpastry.com/shopifyAPI` | CRM / ERP order and customer sync | hardcoded |
+| `app.stoqapp.com` | Back-in-stock signups | hardcoded |
 | `wh.saadeddin.top` | Webhooks | hardcoded |
 
 **The wallet balance comes from `sdgc`, keyed on the Shopify customer id.**
@@ -253,10 +191,12 @@ production bugs, so they are worth stating plainly:
 can disagree; when they do, `fetchWalletData` logs
 `[WALLET] Balance sources disagree …` and uses the store-credit figure.
 
-`sdgc.saadeddin.top` is still hardcoded in `StoreCreditBalance.tsx`,
-`GiftCardActivation.tsx`, `account.wallet.tsx` and the CSP in
-`entry.server.tsx`. Only the server-side lookup honours
-`STORE_CREDIT_API_URL`.
+Store credit is read and redeemed through **`/api/store-credit`**, which
+resolves the customer from the session. Browser components never send a customer
+id.
+
+**Loyalty is the only service with timeouts** — 3s on read, 5s on live balance,
+8s on deduct. Nothing else has a timeout or a retry.
 
 ---
 
@@ -269,11 +209,13 @@ app/
   lib/                Server helpers, API clients, domain logic
   styles/             Global CSS (Tailwind v4)
   context/            React context (wishlist, …)
+guides/               Client and developer documentation (see §8)
 public/               Static assets
 server.ts             Oxygen worker entry
 vite.config.ts        Vite + Hydrogen + Oxygen + Tailwind + React Router
 react-router.config.ts
 .graphqlrc.ts         Codegen configuration
+.env.example          Every environment variable, with notes
 ```
 
 Routes named `($locale).*` serve Arabic at the root and English under `/en`.
@@ -285,45 +227,90 @@ layout.
 | File | Why |
 |---|---|
 | `lib/phone-validation.ts` | `toGiftCardPhone()` — the single canonical phone format for every gift-card/wallet call. Do not add a fourth phone helper. |
+| `lib/session-identity.server.ts` | `resolveSelf()` — who is asking. Personal-data routes derive the customer from the session, never from a query parameter. |
+| `lib/account-guard.server.ts` | `requireCustomer` / `requireAdmin` for privileged actions. Guarding is a property of the request, not the page — `action` runs on POST and `loader` does not. |
 | `lib/account-wallet.server.ts` | Wallet balance resolution and the source-disagreement warning |
-| `lib/loyalty.server.ts` | SDLP loyalty; returns `null`, never a fabricated `0` |
-| `lib/stock.ts` + `lib/useBranchAvailability.ts` | Per-branch availability |
+| `routes/api.store-credit.tsx` | Session-authenticated store-credit read and redeem |
+| `lib/loyalty.server.ts` | SDLP loyalty. Returns `null` when a balance cannot be established, never `0` |
+| `lib/stock.ts` + `lib/useBranchAvailability.ts` | Per-branch availability, with batching, retry and a `pending` state |
 | `lib/offer-registry.server.ts` | Promotions are content: a `promotion_offer` metaobject per offer |
 | `lib/offer-products.server.ts` | Shared offer resolution for `/promotions` and `/promotions/:offer` |
+| `lib/offer-tags.ts` | Which product tags belong to which offer — mirrored by the mobile app |
 | `lib/digital-lines.ts` | Gift-card / non-shippable line detection |
-| `lib/account-guard.server.ts` | `requireCustomer` / `requireAdmin` for privileged actions |
 
-### Two conventions that are load-bearing
+### Three conventions that are load-bearing
 
 **Customer identity must match exactly.** Phone matching is `===` against a
 canonical form — never `endsWith`, never "take the first search result".
-Resolving the wrong customer has previously shown one shopper another's orders
-and attributed draft orders to the wrong account. If no customer matches
-exactly, the correct behaviour is to resolve nothing and log it.
+Shopify's customer search is fuzzy, so a loose match can return someone else. If
+no customer matches exactly, resolve nothing and log it.
 
 **A failed lookup is not a zero.** Balances and loyalty points are
 `number | null`. `null` renders as "unavailable"; it must not be coerced to `0`,
-which states a false fact about the customer's money.
+which states a false fact about the customer's money. This applies at every
+layer — a server route that correctly returns `null` is undone by a component
+that renders `balance ?? 0`.
+
+**A swallowed error is a lie to the customer.** Do not catch a failure, log a
+warning and return success. If an operation did not happen, the response must
+say so — a shopper told their code was sent, or their message delivered, will
+act on that.
 
 ---
 
-## 8. Build and deploy
+## 8. Documentation
+
+`guides/` holds documentation written for two audiences.
+
+**For whoever runs the store in Shopify admin:**
+
+| Document | Covers |
+|---|---|
+| `1 - Product Tags Guide` | Every tag the storefront reads, what each does, exact spellings including Arabic, and the matching traps |
+| `2 - Product Metafields Guide` | The 16 product metafields that work, what to enter, what empty means — and the 5 that exist but nothing reads |
+| `3 - Branch Settings Guide` | Location metafields, verified against live branch data |
+| `4 - Metaobjects Guide` | Home page banners, offers pages, cake builder — including how to add a new offer without a deploy |
+| `5 - Order Status Tags` | The vocabulary the ERP must write on an order for the tracking timeline to work |
+
+**For the development team:**
+
+| Document | Covers |
+|---|---|
+| `5 - Configuration Issues (Developer Reference)` | Technical reference: how metafield and tag names in the code map to the Shopify store, where they differ, and a suggested order of work |
+
+These were written from the code, a Shopify product export and live branch
+data. When you change how a tag or metafield is read, update the matching
+guide — documentation that misdescribes the system is worse than none.
+
+---
+
+## 9. Build and deploy
 
 ```bash
-npm run build      # runs codegen, then builds
+npm run build      # builds, then runs codegen
 npm run preview    # verify the production bundle locally
 ```
 
-Deployment is to Shopify Oxygen, normally via the Hydrogen GitHub integration
-on push to `main`. Environment variables are configured per-environment in the
-Shopify admin, not in the repository.
+Deployment is to Shopify Oxygen. Environment variables are configured
+per-environment in the Shopify admin, not in the repository.
 
-The build output targets the Oxygen worker runtime (Cloudflare Workers-like) —
-Node built-ins are not available at runtime unless explicitly polyfilled.
+### Oxygen runtime limits
+
+The build targets the Oxygen worker runtime (Cloudflare workerd). Node built-ins
+are not available unless explicitly polyfilled.
+
+| Limit | Value | Current |
+|---|---|---|
+| Bundle size | 10 MB | ~2.7 MB |
+| Worker memory | 128 MB | |
+| Startup time | 400 ms | a large bundle is the usual cause of a failed first deploy |
+| CPU per request | 30 s | |
+| Outbound request | 2 min | |
+| Environment variables | 110 | ~60 |
 
 ---
 
-## 9. Before you ship
+## 10. Before you ship
 
 ```bash
 npm run typecheck
@@ -331,51 +318,61 @@ npm run lint
 npm run build
 ```
 
+`npm run typecheck` reports errors that predate any individual change, and they
+do not block the build — Vite strips types without checking them. Judge a change
+by whether it *adds* errors, not by the total.
+
 Then check by hand:
 
 - **Sign in as two different customers in turn.** Confirm each sees their own
-  name, orders, wallet balance and loyalty points. Include one Saudi number
-  (`+9665…` or `05…`) and one international number.
+  name, orders, wallet balance and loyalty points. Include two numbers that
+  differ only in formatting (`+9665…` and `05…`).
+- **Register with a wrong verification code.** It must fail and create nothing.
+- **Register with a correct code.** It must still succeed.
 - **Place a custom cake order** and confirm the draft order is attributed to
   the signed-in customer. The server logs
   `[Custom Cake Order] Attributing draft order to gid://shopify/Customer/…`.
 - **Switch branches** on a product grid and confirm out-of-stock products are
-  marked unavailable.
-- **Check the cart** shows the same wallet balance as `/account`.
+  marked unavailable, and that Add to Cart does not briefly offer them.
+- **Check the cart, the account header and the wallet page** all show the same
+  balance — and all show "unavailable" together if the service is down.
+- **Confirm `/api/store-credit`** returns a balance when signed in and 401 when
+  not.
+- **Confirm the development-only gift-card routes 404** in a production build.
 
-Server log lines that indicate a problem — all of these should be absent in a
-healthy run:
+Log lines worth monitoring. All of these should be absent in a healthy run:
 
 ```
 [Login] N customers share the phone …
 [Login] CRM shopifyId … is not …. Ignoring it.
+[Login] OTP send failed: …
 [Custom Cake Order] … none matched the signed-in shopper …
 [WALLET] Balance sources disagree for …
 [WALLET] totalBalance … does not match the sum of … card(s)
+[StoreCredit] Lookup returned … / Lookup failed: …
+[SDLP Loyalty] GET Fetch aborted/failed …
+[Loyalty] ROLLBACK FAILED — unredeemed discount code is live:
 [OrderStats] … none matched exactly …
+[CRM] ⚠️ Live CRM returned 401 …
 [offers] No ACTIVE discount found for /promotions/…
 ```
 
-### Known items still outstanding
-
-- `routes/gift-cards.$.tsx` is a **mock gift-card backend**, gated behind
-  `import.meta.env.DEV`. Verify it 404s in a production build.
-- Untracked inventory (`inventoryItem.tracked === false`) currently reads as
-  available at every branch. Whether that is intended is a question for
-  whoever manages the catalogue.
-- `account_.recover.tsx` still takes `customers[0]` from an email search.
-- International numbers cannot receive OTP — the SMS provider rejects
-  non-`+966`.
+`[Loyalty] ROLLBACK FAILED` is the one to alert on — it means a discount code
+was created and the points were never deducted.
 
 ---
 
-## 10. Troubleshooting
+## 11. Troubleshooting
 
 **`Unsupported engine` on install** — you are not on Node 22 or 24. See
 section 1.
 
-**Corepack tries to use Yarn** — the stale `packageManager` field. Use
-`npm install` regardless; consider removing that field.
+**Build prints `✓ built` then fails** — that is codegen, which runs after the
+bundles. Read the box at the very bottom of the output.
+
+**`Not all operations have an unique name`** — two `#graphql` documents declare
+the same operation. Rename one after its route. Codegen reports one collision
+at a time, so expect to repeat this if several were introduced together.
 
 **Codegen fails with a parse error in a file you didn't touch** — all
 `#graphql` documents validate together. Check for an unbalanced brace, or a
@@ -390,3 +387,7 @@ preserve them, or diffs become unreadable.
 
 **Changes to promotions don't appear** — offers are cached for five minutes.
 Wait, or restart the dev server.
+
+**A wallet or loyalty figure reads "unavailable"** — that is correct behaviour
+for a failed lookup, not a bug. Check the `[WALLET]`, `[StoreCredit]` or
+`[SDLP Loyalty]` log lines to find which service did not answer.

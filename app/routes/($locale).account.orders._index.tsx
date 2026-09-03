@@ -237,7 +237,7 @@ const ADMIN_FIND_CUSTOMER_QUERY = `
 `;
 
 const ADMIN_CUSTOMER_ORDERS_QUERY = `
-  query CustomerOrders(
+  query AdminCustomerOrders(
     $q: String!
     $first: Int
     $last: Int
@@ -1779,7 +1779,7 @@ const CUSTOMER_FRAGMENT = `#graphql
 
 const CUSTOMER_ORDERS_QUERY = `#graphql
   ${CUSTOMER_FRAGMENT}
-  query CustomerOrders(
+  query StorefrontCustomerOrders(
     $country: CountryCode
     $customerAccessToken: String!
     $endCursor: String

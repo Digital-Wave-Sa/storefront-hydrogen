@@ -95,10 +95,28 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
     attrBranch.toLowerCase().includes('select');
 
   const isBranchPlaceholder = isAttrPlaceholder && isSessionPlaceholder;
-  const branch = !isAttrPlaceholder ? attrBranch : (!isSessionPlaceholder ? sessionBranchName : undefined);
 
+  // The SESSION is the source of truth, not the cart attribute.
+  //
+  // The session is what the branch picker writes first and unconditionally
+  // (api.location-id.tsx), what root.tsx maintains, and what the Header shows.
+  // The cart attribute is a derived copy for the order, written afterwards
+  // inside a try/catch that only logs on failure -- so it can silently fall
+  // behind. Preferring it here is what let the Header and this panel display
+  // two different branches at once.
+  //
+  // The attribute is still the fallback for the case it was there to cover: a
+  // cart that carries a branch while the session has none yet. When the two
+  // agree -- every healthy session -- this resolves exactly as before.
   const attrBranchId = attributes.find((a: any) => a.key.toLowerCase().trim() === 'branch id')?.value;
-  const branchId = attrBranchId || (!isSessionPlaceholder ? rootData?.selectedLocationId : undefined);
+
+  const branch = !isSessionPlaceholder
+    ? sessionBranchName
+    : (!isAttrPlaceholder ? attrBranch : undefined);
+
+  const branchId =
+    (!isSessionPlaceholder ? rootData?.selectedLocationId : undefined) ||
+    attrBranchId;
 
   const attrFulfillmentType = attributes.find((a: any) => a.key.toLowerCase().trim() === 'fulfillment type')?.value;
   const fulfillmentType = attrFulfillmentType || rootData?.fulfillmentType;
@@ -624,10 +642,13 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
                   {/* ALWAYS-VISIBLE LOCATION & BRANCH CARD */}
                   <div
                     onClick={() => {
+                      // Opens this component's own modal only. Do NOT also
+                      // dispatch 'openDeliveryModal' -- the Header listens for
+                      // that event and would mount a SECOND DeliveryPickupModal
+                      // with its own onSelectBranch handler, so two selections
+                      // could race and leave the session and the cart attribute
+                      // pointing at different branches.
                       setIsLocationModalOpen(true);
-                      if (typeof window !== 'undefined') {
-                        window.dispatchEvent(new CustomEvent('openDeliveryModal'));
-                      }
                     }}
                     className={`w-full rounded-2xl p-4 transition-all cursor-pointer border shadow-sm ${
                       isBranchSelected
@@ -651,10 +672,8 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
+                          // See the note above: this component's modal only.
                           setIsLocationModalOpen(true);
-                          if (typeof window !== 'undefined') {
-                            window.dispatchEvent(new CustomEvent('openDeliveryModal'));
-                          }
                         }}
                         className="px-3.5 py-1 rounded-full text-[13px] font-bold bg-[#234745] text-white hover:bg-[#1a3533] transition-colors cursor-pointer border-none"
                         style={{ fontFamily: "'GE Dinar One', sans-serif" }}

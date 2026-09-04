@@ -1,4 +1,4 @@
-import {Suspense} from 'react';
+import {Suspense, useState} from 'react';
 import {
   data as json,
   redirect,
@@ -348,6 +348,17 @@ export default function WalletPage() {
 
   const isSubmitting = navigation.state === 'submitting';
 
+  /**
+   * Balance reported by a gift card activation in this session.
+   *
+   * Activation posts straight to /api/store-credit rather than through this
+   * route's action, so `actionData` never hears about it and the deferred
+   * loader has long since resolved. Without somewhere to put the number, the
+   * card above kept showing the old balance until a reload — while the success
+   * message right below it showed the new one.
+   */
+  const [activatedBalance, setActivatedBalance] = useState<number | null>(null);
+
   return (
     <Suspense
       fallback={
@@ -378,10 +389,14 @@ export default function WalletPage() {
            * `balance` is null when the lookup could not be completed, which is
            * not the same as an empty wallet — see fetchWalletData.
            */
+          // A just-activated gift card is the freshest figure we have, ahead
+          // of both the route action and the resolved loader.
           const rawBalance =
-            actionData?.success && actionData.newBalance !== undefined
-              ? actionData.newBalance
-              : balance;
+            activatedBalance !== null
+              ? activatedBalance
+              : actionData?.success && actionData.newBalance !== undefined
+                ? actionData.newBalance
+                : balance;
           const balanceUnavailable =
             rawBalance === null || rawBalance === undefined;
           const currentBalance = balanceUnavailable ? 0 : rawBalance;
@@ -480,6 +495,7 @@ export default function WalletPage() {
               <GiftCardActivation
                 customerId={customer?.id}
                 isEn={isEn}
+                onActivated={(nb) => setActivatedBalance(nb)}
               />
 
               {/* RECENT ACTIVITY (HISTORY) SECTION */}

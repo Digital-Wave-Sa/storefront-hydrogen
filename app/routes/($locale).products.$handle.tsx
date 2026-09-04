@@ -886,10 +886,15 @@ export default function Product() {
   const bogoFreeVariantId =
     (product as any).bogo_free_item?.reference?.id ||
     (product as any).bogo_free_item?.value;
-  const isBogo =
-    !!bogoFreeVariantId ||
-    (product.tags?.some((t: string) => t.toLowerCase().includes('bogo')) ??
-      false);
+  /**
+   * Only an explicit give-away variant counts as a storefront-managed BOGO.
+   * The free half of a Buy X Get Y is added by the cart action now, from the
+   * Shopify discount itself — see ~/lib/bogo-auto-add.server. Treating a bare
+   * `bogo` tag as one duplicated *this* product as the give-away, which the
+   * discount does not cover, so the shopper paid full price for a line the
+   * storefront had labelled free.
+   */
+  const isBogo = !!bogoFreeVariantId;
 
   const [recipientContact, setRecipientContact] = useState('');
   const [giftCardMessage, setGiftCardMessage] = useState('');
@@ -929,9 +934,9 @@ export default function Product() {
 
     try {
       const groupId = Date.now().toString();
-      const isBogoTag = product.tags?.some((t: string) =>
-        t.toLowerCase().includes('bogo'),
-      );
+      // See the note on `isBogo` above: the tag alone is not enough, and the
+      // cart action adds the discount's own give-away.
+      const isBogoTag = isBogo;
 
       const mainLine = {
         merchandiseId: selectedVariant.id,
@@ -3060,9 +3065,9 @@ export default function Product() {
                           selectedVariant
                             ? (() => {
                                 const groupId = Date.now().toString();
-                                const isBogo = product.tags?.some((t: string) =>
-                                  t.toLowerCase().includes('bogo'),
-                                );
+                                // Uses the component-level `isBogo`, which
+                                // requires an explicit give-away variant. The
+                                // cart action adds the discount's own.
 
                                 const mainLine = {
                                   merchandiseId: selectedVariant.id,
@@ -3661,10 +3666,9 @@ export default function Product() {
                             selectedVariant
                               ? (() => {
                                   const groupId = Date.now().toString();
-                                  const isBogo = product.tags?.some(
-                                    (t: string) =>
-                                      t.toLowerCase().includes('bogo'),
-                                  );
+                                  // Uses the component-level `isBogo`, which
+                                  // requires an explicit give-away variant.
+                                  // The cart action adds the discount's own.
 
                                   const mainLine = {
                                     merchandiseId: selectedVariant.id,

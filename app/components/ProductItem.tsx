@@ -161,8 +161,18 @@ export function ProductItem({
     ['preorder', 'pre-order', 'طلب مسبق'].includes(tag.toLowerCase())
   );
 
+  /**
+   * The give-away half of a Buy X Get Y is added by the cart action now,
+   * resolved from the Shopify discount itself — see ~/lib/bogo-auto-add.server.
+   *
+   * A `bogo` product tag used to be enough to trigger it here, which was safe
+   * only while `custom.bogo_free_item` named the item to give away. With that
+   * metafield retired, the tag alone added a second unit of *this* product
+   * labelled free — and the discount, which grants a different product, takes
+   * nothing off it. The shopper would be charged full price for a line the
+   * storefront told them was free.
+   */
   const bogoFreeVariantId = product.bogo_free_item?.reference?.id || product.bogo_free_item?.value || null;
-  const isBogo = !!bogoFreeVariantId || (product.tags?.some((tag: string) => tag.toLowerCase().includes('bogo')) ?? false);
 
   const cartLines = useMemo(() => {
     if (!variant) return [];
@@ -172,23 +182,18 @@ export function ProductItem({
       selectedVariant: variant
     };
 
-    if (isBogo) {
-      if (bogoFreeVariantId) {
-        return [
-          mainLine,
-          {
-            merchandiseId: bogoFreeVariantId,
-            quantity: 1,
-            attributes: [{ key: '_is_free', value: 'true' }]
-          }
-        ];
-      } else {
-        mainLine.quantity = 2;
-        return [mainLine];
-      }
+    if (bogoFreeVariantId) {
+      return [
+        mainLine,
+        {
+          merchandiseId: bogoFreeVariantId,
+          quantity: 1,
+          attributes: [{ key: '_is_free', value: 'true' }]
+        }
+      ];
     }
     return [mainLine];
-  }, [variant, isBogo, bogoFreeVariantId]);
+  }, [variant, bogoFreeVariantId]);
 
   const effectiveAvailable = isAvailable && !isVisibilityBlocked;
   const showOutOfStock = !isAvailable && !isVisibilityBlocked;

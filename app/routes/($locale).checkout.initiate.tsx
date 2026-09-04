@@ -361,16 +361,31 @@ async function processCheckoutInitiate({request, context}: ActionFunctionArgs) {
     } catch (e) {}
   }
 
+  // `Branch ID` above resolves SESSION FIRST (sessionCustomBranchId, then
+  // sessionBranchId). `Branch` used to resolve ATTRIBUTE first, so when the
+  // session and the cart attribute disagreed an order could be created naming
+  // one branch while carrying another branch's routing id -- the customer sees
+  // one shop, the kitchen gets another. Both now resolve session first, so the
+  // name and the id can no longer come from different branches. Where the two
+  // sources agree, which is every healthy session, this is unchanged.
+  const branchNameForOrder = sessionBranch || getAttr('Branch', '');
+
+  // Same rule for the fulfillment type, and for the same reason: it is chosen
+  // in the same picker, in the same click, as the branch. Resolving it from the
+  // attribute while the branch came from the session could put Pickup on an
+  // order whose branch was chosen for delivery. The session stores it lower
+  // case ('pickup'/'delivery'); the order attribute is capitalised. Falls back
+  // to the attribute, then to Delivery, exactly as before.
+  const fulfillmentForOrder = sessionFulfillmentType
+    ? String(sessionFulfillmentType).toLowerCase() === 'pickup'
+      ? 'Pickup'
+      : 'Delivery'
+    : getAttr('Fulfillment Type', '') || 'Delivery';
+
   const finalAttributes = [
-    {key: 'Branch', value: getAttr('Branch', sessionBranch)},
+    {key: 'Branch', value: branchNameForOrder},
     {key: 'Branch ID', value: customBranchVal || getAttr('Branch ID', sessionBranchId)},
-    {
-      key: 'Fulfillment Type',
-      value: getAttr(
-        'Fulfillment Type',
-        sessionFulfillmentType === 'pickup' ? 'Pickup' : 'Delivery',
-      ),
-    },
+    {key: 'Fulfillment Type', value: fulfillmentForOrder},
   ];
 
   if (customBranchVal) {

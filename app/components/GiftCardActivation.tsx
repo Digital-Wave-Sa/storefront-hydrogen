@@ -72,8 +72,20 @@ export function GiftCardActivation({
 
       if (response.ok && data.success) {
         setStatus('success');
+        /**
+         * The redemption service writes its confirmation in English only
+         * ("Card activated! 200 SAR credited to your profile"), so taking it
+         * whenever it is present put an English sentence in the middle of the
+         * Arabic page. It is used only on the English interface now.
+         *
+         * Nothing is lost in Arabic: the credited figure it mentions is
+         * implied by the new balance shown on the line below, which is
+         * already translated. Subtracting to name the amount ourselves would
+         * mean trusting a previous balance that may already be stale, and a
+         * wrong number is worse than no number.
+         */
         const successMsg =
-          data.message ||
+          (isEn && data.message) ||
           (isEn
             ? 'Gift card activated successfully! Store credit added to your account.'
             : 'تم تفعيل بطاقة الهدايا بنجاح! تم إضافة الرصيد إلى حسابك.');

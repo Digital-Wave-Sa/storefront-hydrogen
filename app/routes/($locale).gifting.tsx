@@ -10,6 +10,7 @@ import {
 import {useState, useEffect, useRef} from 'react';
 import {ProductItem} from '~/components/ProductItem';
 import {PageHeader} from '~/components/layout/PageHeader';
+import {CardSlider} from '~/components/CardSlider';
 
 function ProductSlider({products}: {products: any[]}) {
   const sliderRef = useRef<HTMLDivElement>(null);
@@ -614,7 +615,9 @@ export default function GiftingPage() {
       {/* FIRST LOAD: Gifting Cards Grid (Exact Grid as Occasions) */}
       {isInitialLanding ? (
         <div className="max-w-[1200px] mx-auto px-4 lg:px-8 py-10 pb-16">
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 lg:gap-6">
+          {/* A slider rather than a grid — six recipients across four columns
+              left two stranded on a second row. */}
+          <CardSlider isEn={isEn} trackClassName="pb-4 -mx-4 px-4 lg:mx-0 lg:px-0">
             {recipientCards.map((recipient, index) => (
               <Link
                 key={index}
@@ -624,7 +627,7 @@ export default function GiftingPage() {
                     : `/gifting?category=${recipient.catId}`
                 }
                 onClick={() => setSelectedCategory(recipient.catId)}
-                className="group flex flex-col bg-[#EED5D7] rounded-[16px] overflow-hidden transition-all duration-500 hover:shadow-xl hover:-translate-y-2 relative shadow-sm"
+                className="snap-start shrink-0 w-[calc(50vw-32px)] sm:w-[220px] md:w-[260px] max-w-full group flex flex-col bg-[#EED5D7] rounded-[16px] overflow-hidden transition-all duration-500 hover:shadow-xl hover:-translate-y-2 relative shadow-sm"
                 style={{aspectRatio: '280/328'}}
               >
                 {/* Pattern Overlay Layer */}
@@ -668,7 +671,7 @@ export default function GiftingPage() {
                 </div>
               </Link>
             ))}
-          </div>
+          </CardSlider>
         </div>
       ) : (
         /* INNER PAGE: Gifting Category View with Back Button, Filter Pills & Products */

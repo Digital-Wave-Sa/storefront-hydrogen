@@ -20,6 +20,14 @@ import {SaadeddinApi} from '~/lib/saadeddin-api.server';
 import {derivePassword} from '~/lib/auth.server';
 import {validatePhoneNumber, sanitizePhoneInput} from '~/lib/phone-validation';
 import {COUNTRY_CODES, parsePhoneCountry} from '~/lib/country-codes';
+import {
+  formatOtpError,
+  classifyOtpError,
+  otpBlockedMessage,
+  otpAttemptsLeftMessage,
+  MAX_OTP_ATTEMPTS,
+  OTP_BLOCK_MS,
+} from '~/lib/otp-errors';
 
 export const meta: MetaFunction<typeof loader> = () => {
   return [{title: 'Login | Saadeddin'}];
@@ -90,33 +98,8 @@ const LOGIN_MUTATION = `#graphql
   }
 `;
 
-function formatOtpError(errorMessage: string, lang: 'en' | 'ar'): string {
-  if (!errorMessage) {
-    return lang === 'en'
-      ? 'Invalid verification code.'
-      : 'رمز التحقق غير صحيح.';
-  }
-
-  const lowercaseMsg = errorMessage.toLowerCase();
-  const numberMatch = errorMessage.match(/\d+/);
-  const attempts = numberMatch ? numberMatch[0] : '2';
-
-  if (
-    lowercaseMsg.includes('invalid code') ||
-    lowercaseMsg.includes('incorrect code') ||
-    lowercaseMsg.includes('invalid verification code') ||
-    lowercaseMsg.includes('incorrect verification code') ||
-    lowercaseMsg.includes('otp')
-  ) {
-    if (lang === 'en') {
-      return `Invalid code. You have ${attempts} attempts remaining`;
-    } else {
-      return `الرمز غير صحيح — تبقى لك ${attempts} محاولة`;
-    }
-  }
-
-  return errorMessage;
-}
+// Shared with the register flow — see ~/lib/otp-errors for why the CRM's own
+// wording is never shown to the customer.
 
 export async function action({request, context}: ActionFunctionArgs) {
   try {
@@ -130,10 +113,9 @@ export async function action({request, context}: ActionFunctionArgs) {
     if (blockUntil && Date.now() < blockUntil) {
       const waitSecs = Math.ceil((blockUntil - Date.now()) / 1000);
       return data({
-        error:
-          lang === 'en'
-            ? `Too many failed attempts. Please try again after ${Math.ceil(waitSecs / 60)} minutes.`
-            : `لقد تجاوزت الحد الأقصى للمحاولات. يرجى المحاولة بعد ${Math.ceil(waitSecs / 60)} دقيقة.`,
+        // Counted in seconds while under a minute, which is what a 60-second
+        // block spends most of its life being.
+        error: otpBlockedMessage(waitSecs, lang),
         isBlocked: true,
         blockRemaining: waitSecs,
       });
@@ -292,9 +274,50 @@ export async function action({request, context}: ActionFunctionArgs) {
           session.set('loginCustomerId', id);
         }
       } catch (apiErr: any) {
-        // CRM returned a real error (wrong OTP, too many attempts, etc.) — show it
-        const errMsg = formatOtpError(apiErr?.message || '', lang);
-        return data({error: errMsg});
+        // `retryAfter` is lifted off the error by SaadeddinApi when the CRM
+        // sends one, so a lockout can name the wait instead of guessing.
+        const info = classifyOtpError(apiErr?.message || '', apiErr?.retryAfter);
+
+        /**
+         * Wrong codes are counted here as well as upstream, so the number
+         * shown to the customer is one this route can actually stand behind —
+         * it is the same count that triggers the block below. Reading it out
+         * of the CRM's prose meant announcing whatever number happened to
+         * appear in the message, or a hard-coded "2" when none did.
+         *
+         * Every branch commits the session: `data()` does not, and without a
+         * Set-Cookie the incremented count never survives the response, which
+         * would leave the block permanently one attempt away.
+         */
+        if (info.kind === 'invalid') {
+          const used = Number(session.get('loginOtpAttempts') || 0) + 1;
+
+          if (used >= MAX_OTP_ATTEMPTS) {
+            const blockSecs = OTP_BLOCK_MS / 1000;
+            session.set('loginOtpAttempts', 0);
+            session.set('loginOtpBlockUntil', Date.now() + OTP_BLOCK_MS);
+            return data(
+              {
+                error: otpBlockedMessage(blockSecs, lang),
+                isBlocked: true,
+                blockRemaining: blockSecs,
+              },
+              {headers: {'Set-Cookie': await session.commit()}},
+            );
+          }
+
+          session.set('loginOtpAttempts', used);
+          return data(
+            {error: otpAttemptsLeftMessage(MAX_OTP_ATTEMPTS - used, lang)},
+            {headers: {'Set-Cookie': await session.commit()}},
+          );
+        }
+
+        // Expired, rate-limited upstream, no code on file — the CRM's verdict
+        // stands; only its wording is replaced.
+        return data({
+          error: formatOtpError(apiErr?.message || '', lang, apiErr?.retryAfter),
+        });
       }
 
       // ── Step 2: Get/create Shopify customer via Admin API ────────────────────
@@ -747,7 +770,10 @@ export default function Login() {
       otpRefs[0].current?.focus();
     }
     if (actionData?.isBlocked) {
-      setBlockCooldown(actionData?.blockRemaining || 30 * 60);
+      // Falls back to the real block length. It used to default to 30 minutes,
+      // so any blocked response that arrived without `blockRemaining` locked
+      // the shopper out for thirty times the policy.
+      setBlockCooldown(actionData?.blockRemaining || OTP_BLOCK_MS / 1000);
     }
     if (actionData?.verifyCooldownRemaining) {
       setVerifyCooldown(actionData.verifyCooldownRemaining);
@@ -1028,13 +1054,19 @@ export default function Login() {
                     </span>
                   </div>
                   <p className="leading-relaxed font-medium">
+                    {/*
+                      otpWaitPhrase carries its own unit. This used to print
+                      formatMMSS() and then append "دقيقة", so an 18-second
+                      wait read as "0:18 دقيقة" — eighteen minutes, in words.
+                    */}
                     {isEn ? (
                       <>
-                        After 3 failed attempts — you can try again after{' '}
+                        After {MAX_OTP_ATTEMPTS} failed attempts — you can try
+                        again in{' '}
                         <span className="font-bold">
-                          {formatMMSS(blockCooldown)}
+                          {otpWaitPhrase(blockCooldown, 'en')}
                         </span>{' '}
-                        minutes or{' '}
+                        or{' '}
                         <Link
                           to="/en/account/recover"
                           className="underline font-bold hover:text-[#7A5C33]"
@@ -1044,11 +1076,12 @@ export default function Login() {
                       </>
                     ) : (
                       <>
-                        بعد 3 محاولات فاشلة — يمكنك المحاولة مجدداً بعد{' '}
+                        بعد {MAX_OTP_ATTEMPTS} محاولات فاشلة — يمكنك المحاولة
+                        مجدداً بعد{' '}
                         <span className="font-bold">
-                          {formatMMSS(blockCooldown)}
+                          {otpWaitPhrase(blockCooldown, 'ar')}
                         </span>{' '}
-                        دقيقة أو{' '}
+                        أو{' '}
                         <Link
                           to="/account/recover"
                           className="underline font-bold hover:text-[#7A5C33]"

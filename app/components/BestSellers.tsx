@@ -471,7 +471,14 @@ function BestSellersAddToCart({
     const groupId = useId();
 
     const variantId = variant?.id;
-    const isBogo = !!bogoFreeVariantId || (productTags?.some((t: string) => t.toLowerCase().includes('bogo')) ?? false);
+    /**
+     * Only an explicit give-away variant qualifies. The cart action adds the
+     * free half of a Buy X Get Y from the discount itself now
+     * (~/lib/bogo-auto-add.server); a bare `bogo` tag here would add a second
+     * unit of this same product marked free, which the discount does not
+     * cover — the shopper pays full price for it.
+     */
+    const isBogo = !!bogoFreeVariantId;
 
     if (!variantId || isOutOfStock) {
         return (

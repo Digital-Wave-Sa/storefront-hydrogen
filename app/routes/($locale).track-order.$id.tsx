@@ -11,6 +11,7 @@ import {
   Link,
 } from 'react-router';
 import {useState} from 'react';
+import {isNonShippableLine} from '~/lib/digital-lines';
 
 function mapRestOrderToNode(rawRest: any) {
   return {
@@ -595,6 +596,27 @@ export async function loader({params, context, request}: LoaderFunctionArgs) {
     fulfillmentAttr.includes('pickup') ||
     fulfillmentAttr.includes('استلام');
 
+  /**
+   * An order of nothing but gift cards has no branch, no courier and nothing
+   * to prepare — it is issued and sent. It was being given the full physical
+   * timeline anyway, so a gift card announced that it was being prepared and
+   * then collected from a branch.
+   *
+   * `isNonShippableLine` identifies the gift-card product; here it is fed the
+   * order's line items, whose `title` alone is enough for it to match.
+   */
+  const orderLineNodes = (orderNode.lineItems?.edges || []).map(
+    (edge: any) => edge?.node,
+  );
+  const isDigitalOnly =
+    orderLineNodes.length > 0 &&
+    orderLineNodes.every((node: any) =>
+      isNonShippableLine({
+        title: node?.title,
+        merchandise: {product: node?.variant?.product},
+      }),
+    );
+
   // Parse native Shopify fulfillments and fulfillmentOrders
   const fulfillments = orderNode.fulfillments || [];
   const fulfillmentOrders = (orderNode.fulfillmentOrders?.edges || []).map(
@@ -852,6 +874,7 @@ export async function loader({params, context, request}: LoaderFunctionArgs) {
     rawFinancialStatus: orderNode.displayFinancialStatus || 'PAID',
     canceledAt: orderNode.canceledAt || null,
     isPickup,
+    isDigitalOnly,
     orderStatusMeta,
     items: orderNode.lineItems.edges.map(({node: item}: any) => {
       const variantId = item.variant?.id || item.variantId || item.variant_id;
@@ -1260,12 +1283,27 @@ export default function TrackOrderPage() {
 
               {/* Details */}
               <div className="flex flex-col gap-4 mb-8">
+                {/*
+                  A gift card has no delivery address — it was showing
+                  «استلام من الفرع», inviting the customer to collect an email
+                  from a branch.
+                */}
                 <div className="flex justify-between items-center text-[14px]">
                   <span className="text-[#8B8B8B]">
-                    {isEn ? 'Delivery Address' : 'عنوان التوصيل'}
+                    {orderData.isDigitalOnly
+                      ? isEn
+                        ? 'Delivery Method'
+                        : 'طريقة التسليم'
+                      : isEn
+                        ? 'Delivery Address'
+                        : 'عنوان التوصيل'}
                   </span>
                   <span className="font-medium text-[#234745] text-end">
-                    {orderData.address}
+                    {orderData.isDigitalOnly
+                      ? isEn
+                        ? 'Email'
+                        : 'بريد إلكتروني'
+                      : orderData.address}
                   </span>
                 </div>
                 <div className="flex justify-between items-center text-[14px]">
@@ -1438,7 +1476,37 @@ export default function TrackOrderPage() {
                   // Pickup orders get different stage 4 & 5 labels
                   const isPickup = orderData.isPickup;
 
-                  const stages = [
+                  /**
+                   * A gift card is issued and sent — nothing to prepare,
+                   * nowhere to collect it, no courier. On the physical
+                   * timeline it announced that it was being prepared and then
+                   * picked up from a branch.
+                   *
+                   * The loader's step still runs 1–5, so it is folded onto
+                   * these two below: "ready" (4) or beyond means the card has
+                   * gone out.
+                   */
+                  const isDigitalOnly = !!orderData.isDigitalOnly;
+
+                  const stages = isDigitalOnly
+                    ? [
+                        {
+                          id: 1,
+                          en: 'Order Received',
+                          ar: 'تم استلام الطلب',
+                          descEn: 'Order successfully received',
+                          descAr: 'تم استلام طلبك بنجاح',
+                          time: timeStr,
+                        },
+                        {
+                          id: 2,
+                          en: 'Gift Card Sent',
+                          ar: 'تم إرسال البطاقة',
+                          descEn: 'The gift card has been sent to the recipient',
+                          descAr: 'تم إرسال بطاقة الهدية إلى المستلم',
+                        },
+                      ]
+                    : [
                     {
                       id: 1,
                       en: 'Order Received',
@@ -1485,9 +1553,22 @@ export default function TrackOrderPage() {
                     },
                   ];
 
+                  /**
+                   * Fold the 1–5 step onto the two digital stages: received,
+                   * then sent once the order reaches "ready" or beyond. Left
+                   * unmapped, a fulfilled gift card (step 5) would compare
+                   * against ids 1 and 2 and light up as complete far too
+                   * early — and an unfulfilled one would too.
+                   */
+                  const effectiveStep = isDigitalOnly
+                    ? currentStep >= 4
+                      ? 2
+                      : 1
+                    : currentStep;
+
                   return stages.map((stage) => {
-                    const isCompleted = currentStep >= stage.id;
-                    const isCurrent = currentStep === stage.id;
+                    const isCompleted = effectiveStep >= stage.id;
+                    const isCurrent = effectiveStep === stage.id;
 
                     return (
                       <div

@@ -21,6 +21,14 @@ import {SaadeddinApi} from '~/lib/saadeddin-api.server';
 import {derivePassword} from '~/lib/auth.server';
 import {validatePhoneNumber, sanitizePhoneInput} from '~/lib/phone-validation';
 import {COUNTRY_CODES, parsePhoneCountry} from '~/lib/country-codes';
+import {
+  formatOtpError,
+  classifyOtpError,
+  otpBlockedMessage,
+  otpAttemptsLeftMessage,
+  MAX_OTP_ATTEMPTS,
+  OTP_BLOCK_MS,
+} from '~/lib/otp-errors';
 
 export const meta: MetaFunction<typeof loader> = () => {
   return [{title: 'Create Account | Saadeddin'}];
@@ -60,33 +68,8 @@ export async function loader({context, request}: LoaderFunctionArgs) {
   });
 }
 
-function formatOtpError(errorMessage: string, lang: 'en' | 'ar'): string {
-  if (!errorMessage) {
-    return lang === 'en'
-      ? 'Invalid verification code.'
-      : 'رمز التحقق غير صحيح.';
-  }
-
-  const lowercaseMsg = errorMessage.toLowerCase();
-  const numberMatch = errorMessage.match(/\d+/);
-  const attempts = numberMatch ? numberMatch[0] : '2';
-
-  if (
-    lowercaseMsg.includes('invalid code') ||
-    lowercaseMsg.includes('incorrect code') ||
-    lowercaseMsg.includes('invalid verification code') ||
-    lowercaseMsg.includes('incorrect verification code') ||
-    lowercaseMsg.includes('otp')
-  ) {
-    if (lang === 'en') {
-      return `Invalid code. You have ${attempts} attempts remaining`;
-    } else {
-      return `الرمز غير صحيح — تبقى لك ${attempts} محاولة`;
-    }
-  }
-
-  return errorMessage;
-}
+// Shared with the login flow — see ~/lib/otp-errors for why the CRM's own
+// wording is never shown to the customer.
 
 export async function action({request, context}: ActionFunctionArgs) {
   const {storefront, session, env} = context;
@@ -97,13 +80,13 @@ export async function action({request, context}: ActionFunctionArgs) {
   // Check if they are blocked due to too many failed OTP attempts
   const blockUntil = session.get('registerOtpBlockUntil');
   if (blockUntil && Date.now() < blockUntil) {
-    const waitMins = Math.ceil((blockUntil - Date.now()) / (1000 * 60));
+    const waitSecs = Math.ceil((blockUntil - Date.now()) / 1000);
     return data({
-      error:
-        lang === 'en'
-          ? `Too many failed attempts. Please try again after ${waitMins} minutes.`
-          : `لقد تجاوزت الحد الأقصى للمحاولات. يرجى المحاولة بعد ${waitMins} دقيقة.`,
+      // Counted in seconds while under a minute, which is what a 60-second
+      // block spends most of its life being.
+      error: otpBlockedMessage(waitSecs, lang),
       isBlocked: true,
+      blockRemaining: waitSecs,
     });
   }
 
@@ -447,7 +430,45 @@ export async function action({request, context}: ActionFunctionArgs) {
       } catch (verifyErr: any) {
         const detail = verifyErr?.message || String(verifyErr);
         console.error('[Register] OTP verification failed:', detail);
-        return data({error: formatOtpError(detail, lang)});
+
+        // `retryAfter` is lifted off the error by SaadeddinApi when the CRM
+        // sends one, so a lockout can name the wait instead of guessing.
+        const info = classifyOtpError(detail, verifyErr?.retryAfter);
+
+        /**
+         * Wrong codes are counted here as well as upstream, so the number
+         * shown is one this route can stand behind — the same count that
+         * triggers the block. Every branch commits the session: `data()` does
+         * not, and without a Set-Cookie the increment never survives the
+         * response, leaving the block permanently one attempt away.
+         */
+        if (info.kind === 'invalid') {
+          const used = Number(session.get('registerOtpAttempts') || 0) + 1;
+
+          if (used >= MAX_OTP_ATTEMPTS) {
+            const blockSecs = OTP_BLOCK_MS / 1000;
+            session.set('registerOtpAttempts', 0);
+            session.set('registerOtpBlockUntil', Date.now() + OTP_BLOCK_MS);
+            return data(
+              {
+                error: otpBlockedMessage(blockSecs, lang),
+                isBlocked: true,
+                blockRemaining: blockSecs,
+              },
+              {headers: {'Set-Cookie': await session.commit()}},
+            );
+          }
+
+          session.set('registerOtpAttempts', used);
+          return data(
+            {error: otpAttemptsLeftMessage(MAX_OTP_ATTEMPTS - used, lang)},
+            {headers: {'Set-Cookie': await session.commit()}},
+          );
+        }
+
+        // Expired, rate-limited upstream, no code on file — the CRM's verdict
+        // stands; only its wording is replaced.
+        return data({error: formatOtpError(detail, lang, verifyErr?.retryAfter)});
       }
 
       session.unset('otpCooldown');
@@ -792,7 +813,17 @@ export default function Register() {
       otpRefs[0].current?.focus();
     }
     if (actionData?.isBlocked || fetcher.data?.isBlocked) {
-      setBlockCooldown(30 * 60);
+      /**
+       * Honour the length the server actually set. This was hard-coded to 30
+       * minutes and ignored `blockRemaining` completely, so the countdown
+       * disagreed with the real block by a factor of thirty — the shopper was
+       * free again long before the timer said so.
+       */
+      setBlockCooldown(
+        actionData?.blockRemaining ||
+          fetcher.data?.blockRemaining ||
+          OTP_BLOCK_MS / 1000,
+      );
     }
   }, [actionData, fetcher.data]);
 
@@ -802,12 +833,11 @@ export default function Register() {
     return () => clearTimeout(timer);
   }, [blockCooldown]);
 
-  const waitMins = Math.ceil(blockCooldown / 60);
+  // Ticks down in seconds while under a minute, so a 60-second block reads as
+  // a live countdown rather than "1 minute" for its whole life.
   const blockError =
     blockCooldown > 0
-      ? isEn
-        ? `Too many failed attempts. Please try again after ${waitMins} minutes.`
-        : `لقد تجاوزت الحد الأقصى للمحاولات. يرجى المحاولة بعد ${waitMins} دقيقة.`
+      ? otpBlockedMessage(blockCooldown, isEn ? 'en' : 'ar')
       : null;
 
   const errorToDisplay = blockError || fetcher.data?.error || actionData?.error;
@@ -1723,13 +1753,20 @@ export default function Register() {
                         </span>
                       </div>
                       <p className="leading-relaxed font-medium">
+                        {/*
+                          otpWaitPhrase carries its own unit. This used to
+                          print formatMMSS() and then append "دقيقة", so an
+                          18-second wait read as "0:18 دقيقة" — eighteen
+                          minutes, in words.
+                        */}
                         {isEn ? (
                           <>
-                            After 3 failed attempts — you can try again after{' '}
+                            After {MAX_OTP_ATTEMPTS} failed attempts — you can
+                            try again in{' '}
                             <span className="font-bold">
-                              {formatMMSS(blockCooldown)}
+                              {otpWaitPhrase(blockCooldown, 'en')}
                             </span>{' '}
-                            minutes or{' '}
+                            or{' '}
                             <Link
                               to="/en/account/recover"
                               className="underline font-bold hover:text-[#7A5C33]"
@@ -1739,11 +1776,12 @@ export default function Register() {
                           </>
                         ) : (
                           <>
-                            بعد 3 محاولات فاشلة — يمكنك المحاولة مجدداً بعد{' '}
+                            بعد {MAX_OTP_ATTEMPTS} محاولات فاشلة — يمكنك
+                            المحاولة مجدداً بعد{' '}
                             <span className="font-bold">
-                              {formatMMSS(blockCooldown)}
+                              {otpWaitPhrase(blockCooldown, 'ar')}
                             </span>{' '}
-                            دقيقة أو{' '}
+                            أو{' '}
                             <Link
                               to="/account/recover"
                               className="underline font-bold hover:text-[#7A5C33]"

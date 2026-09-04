@@ -5,6 +5,7 @@ import type { CartApiQueryFragment } from 'storefrontapi.generated';
 import { useAside } from '~/components/Aside';
 import { CartLineItem, type CartLine } from '~/components/CartLineItem';
 import { CartSummary } from './CartSummary';
+import { BogoSuggestion } from './BogoSuggestion';
 import { Price, SaudiRiyalSymbol } from './Price';
 import { checkBranchFreeDeliveryInterval } from './DeliveryPickupModal';
 import patternBg from '/images/second-bg-pattern.svg';
@@ -377,6 +378,18 @@ export function CartMain({ layout, cart: originalCart }: CartMainProps) {
                       );
                     })}
                   </ul>
+
+                  {/*
+                    A Buy X Get Y discount never adds its own free item —
+                    Shopify only discounts one already in the cart — so offer
+                    it. Renders nothing unless the cart has earned one.
+                  */}
+                  <BogoSuggestion
+                    cartKey={`${cart?.totalQuantity ?? 0}:${(cart?.lines?.nodes ?? [])
+                      .map((l: any) => l.id)
+                      .join(',')}`}
+                    isEn={isEn}
+                  />
                 </div>
               )}
             </div>

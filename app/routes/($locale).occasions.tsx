@@ -7,118 +7,10 @@ import {
   useRouteLoaderData,
   useSearchParams,
 } from 'react-router';
-import {useState, useEffect, useRef} from 'react';
+import {useState, useEffect} from 'react';
 import {ProductItem} from '~/components/ProductItem';
 import {PageHeader} from '~/components/layout/PageHeader';
-
-function ProductSlider({products}: {products: any[]}) {
-  const sliderRef = useRef<HTMLDivElement>(null);
-  const [canScrollLeft, setCanScrollLeft] = useState(false);
-  const [canScrollRight, setCanScrollRight] = useState(false);
-
-  const checkScrollable = () => {
-    if (!sliderRef.current) return;
-    const {scrollLeft, scrollWidth, clientWidth} = sliderRef.current;
-    const maxScroll = scrollWidth - clientWidth;
-    if (maxScroll <= 5) {
-      setCanScrollLeft(false);
-      setCanScrollRight(false);
-      return;
-    }
-
-    const absScroll = Math.abs(scrollLeft);
-    setCanScrollLeft(absScroll > 5);
-    setCanScrollRight(absScroll < maxScroll - 5);
-  };
-
-  useEffect(() => {
-    checkScrollable();
-    const timer = setTimeout(checkScrollable, 100);
-    window.addEventListener('resize', checkScrollable);
-    return () => {
-      clearTimeout(timer);
-      window.removeEventListener('resize', checkScrollable);
-    };
-  }, [products]);
-
-  const scroll = (direction: 'left' | 'right') => {
-    if (!sliderRef.current) return;
-    const container = sliderRef.current;
-    const firstCard =
-      container.querySelector<HTMLElement>('[data-slider-item]');
-    const step = firstCard ? firstCard.offsetWidth + 24 : 304;
-    const scrollAmount = direction === 'left' ? -step : step;
-    container.scrollBy({left: scrollAmount, behavior: 'smooth'});
-  };
-
-  return (
-    <div className="relative w-full group py-2">
-      {/* Navigation Arrows */}
-      {canScrollLeft && (
-        <button
-          onClick={() => scroll('left')}
-          className="hidden lg:flex absolute -left-5 top-1/2 -translate-y-1/2 z-20 w-12 h-12 bg-white hover:bg-gray-50 text-[#234745] border border-gray-200 rounded-full items-center justify-center shadow-lg transition-all hover:scale-110 active:scale-95 outline-none"
-          aria-label="Previous Product"
-          type="button"
-        >
-          <svg
-            className="w-6 h-6 rotate-180"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth="2.5"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M9 5l7 7-7 7"
-            />
-          </svg>
-        </button>
-      )}
-
-      {canScrollRight && (
-        <button
-          onClick={() => scroll('right')}
-          className="hidden lg:flex absolute -right-5 top-1/2 -translate-y-1/2 z-20 w-12 h-12 bg-white hover:bg-gray-50 text-[#234745] border border-gray-200 rounded-full items-center justify-center shadow-lg transition-all hover:scale-110 active:scale-95 outline-none"
-          aria-label="Next Product"
-          type="button"
-        >
-          <svg
-            className="w-6 h-6"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth="2.5"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M9 5l7 7-7 7"
-            />
-          </svg>
-        </button>
-      )}
-
-      {/* Scrollable Container with Padding (No Card Cropping) */}
-      <div
-        ref={sliderRef}
-        onScroll={checkScrollable}
-        className="flex gap-6 overflow-x-auto hide-scrollbars py-4 px-2 snap-x snap-mandatory scroll-smooth"
-      >
-        {products.map((product: any) => (
-          <div
-            key={product.id}
-            data-slider-item
-            className="w-[260px] sm:w-[280px] md:w-[290px] shrink-0 snap-start"
-          >
-            <ProductItem product={product} loading="lazy" />
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
+import {CardSlider} from '~/components/CardSlider';
 
 export const meta: MetaFunction = () => {
   return [{title: `Saadeddin | Occasions`}];
@@ -404,7 +296,9 @@ export default function OccasionsPage() {
       {/* FIRST LOAD: Occasion Cards Grid */}
       {isInitialLanding ? (
         <div className="max-w-[1200px] mx-auto px-4 lg:px-8 py-10 pb-16">
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 lg:gap-6">
+          {/* A slider rather than a grid — five occasions across four columns
+              stranded الزفاف alone on a second row. */}
+          <CardSlider isEn={isEn} trackClassName="pb-4 -mx-4 px-4 lg:mx-0 lg:px-0">
             {occasionCards.map((occasion, index) => (
               <Link
                 key={index}
@@ -414,7 +308,7 @@ export default function OccasionsPage() {
                     : `/occasions?category=${occasion.handle}`
                 }
                 onClick={() => setSelectedCategory(occasion.handle)}
-                className="group flex flex-col bg-[#EED5D7] rounded-[16px] overflow-hidden transition-all duration-500 hover:shadow-xl hover:-translate-y-2 relative shadow-sm"
+                className="snap-start shrink-0 w-[calc(50vw-32px)] sm:w-[220px] md:w-[260px] max-w-full group flex flex-col bg-[#EED5D7] rounded-[16px] overflow-hidden transition-all duration-500 hover:shadow-xl hover:-translate-y-2 relative shadow-sm"
                 style={{aspectRatio: '280/328'}}
               >
                 {/* Pattern Overlay Layer */}
@@ -458,7 +352,7 @@ export default function OccasionsPage() {
                 </div>
               </Link>
             ))}
-          </div>
+          </CardSlider>
         </div>
       ) : (
         /* INNER PAGE: Occasion Category View with Back Button, Filter Pills & Products */
@@ -519,7 +413,13 @@ export default function OccasionsPage() {
             </h2>
 
             {displayProducts.length > 0 ? (
-              <ProductSlider products={displayProducts} />
+              // Same column counts as the occasion cards grid above, so the two
+              // sections line up at every breakpoint.
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 lg:gap-6">
+                {displayProducts.map((product: any) => (
+                  <ProductItem key={product.id} product={product} loading="lazy" />
+                ))}
+              </div>
             ) : (
               <div className="text-center py-12 text-[#8B8B8B] font-bold">
                 {isEn

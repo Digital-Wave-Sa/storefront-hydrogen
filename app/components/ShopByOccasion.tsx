@@ -1,4 +1,5 @@
 import { Link, useOutletContext } from 'react-router';
+import { CardSlider } from './CardSlider';
 
 const CDN = 'https://cdn.shopify.com/s/files/1/0809/4253/0869/files';
 
@@ -56,8 +57,9 @@ export function ShopByOccasion({ collections }: { collections?: any[] }) {
                     </p>
                 </div>
 
-                {/* Slider (Mobile) / Flex (Desktop) */}
-                <div className="flex flex-nowrap md:flex-wrap justify-start md:justify-center gap-4 lg:gap-6 overflow-x-auto md:overflow-visible snap-x snap-mandatory pb-4 md:pb-0 -mx-6 px-6 md:mx-0 md:px-0" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                {/* A slider at every size now. It used to wrap from md up,
+                    which stranded the fifth occasion alone on its own row. */}
+                <CardSlider isEn={isEn} trackClassName="pb-4 -mx-6 px-6 md:mx-0 md:px-0">
                     {visibleOccasions.map((occasion, index) => (
                         <Link
                             key={index}
@@ -100,7 +102,7 @@ export function ShopByOccasion({ collections }: { collections?: any[] }) {
                             </div>
                         </Link>
                     ))}
-                </div>
+                </CardSlider>
 
                 {/* Footer Button */}
                 <div className="mt-8 lg:mt-12 flex justify-center">

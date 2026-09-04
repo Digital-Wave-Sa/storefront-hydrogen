@@ -26,6 +26,21 @@ export function StoreCreditBalance({
   const [balance, setBalance] = useState<number | null>(initialBalance);
   const [loading, setLoading] = useState<boolean>(initialBalance === null);
 
+  /**
+   * Follow the prop, rather than only seeding from it.
+   *
+   * `useState(initialBalance)` reads the prop once, on mount. So when the
+   * wallet page learned a new balance from a gift card activation and passed
+   * it down, nothing happened — this card kept the figure it was born with
+   * until the page reloaded, while the activation's own success message sat
+   * directly below showing the new one.
+   */
+  useEffect(() => {
+    if (initialBalance === null || initialBalance === undefined) return;
+    setBalance(initialBalance);
+    setLoading(false);
+  }, [initialBalance]);
+
   useEffect(() => {
     if (!customerId) return;
 

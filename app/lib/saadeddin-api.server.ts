@@ -21,9 +21,38 @@ export class SaadeddinApi {
     const data = await (res.json() as Promise<any>).catch(() => ({}));
 
     if (!res.ok || data.success === false) {
-      const err = new Error(data.error || `Request failed with status ${res.status}`);
+      /**
+       * `error` is not always a string. The rate-limit reply sends an array —
+       * ["Too many attempts. Try again in 60 seconds.", 60] — and handing that
+       * to `new Error()` stringified it with the array's own comma, so the
+       * customer was shown "…in 60 seconds.,60".
+       *
+       * That trailing value is the retry-after in seconds. It is pulled out
+       * and kept on the error rather than pasted into the sentence, so callers
+       * can tell the customer when to come back.
+       */
+      const raw = data.error;
+      let message = '';
+      let retryAfter: number | undefined;
+
+      if (typeof raw === 'string') {
+        message = raw;
+      } else if (Array.isArray(raw)) {
+        message = String(raw[0] ?? '');
+        const tail = Number(raw[1]);
+        if (Number.isFinite(tail)) retryAfter = tail;
+      } else if (raw && typeof raw === 'object') {
+        message = String((raw as any).message ?? (raw as any).error ?? '');
+        const tail = Number((raw as any).retryAfter);
+        if (Number.isFinite(tail)) retryAfter = tail;
+      }
+
+      const err = new Error(
+        message || `Request failed with status ${res.status}`,
+      );
       (err as any).status = res.status;
       (err as any).data = data.data;
+      if (retryAfter !== undefined) (err as any).retryAfter = retryAfter;
       throw err;
     }
     

@@ -197,13 +197,9 @@ export async function action({request, context}: ActionFunctionArgs) {
           }
 
           if (typeof context.cart.updateBuyerIdentity === 'function') {
-            if (buyerIdentity) {
-              await context.cart.updateBuyerIdentity(buyerIdentity);
-            } else {
-              await context.cart.updateBuyerIdentity({
-                customerAccessToken: tokenStr,
-              });
-            }
+            await context.cart.updateBuyerIdentity(
+              buyerIdentity || {customerAccessToken: tokenStr},
+            );
           }
         }
       }

@@ -208,6 +208,56 @@ async function processCheckoutInitiate({request, context}: ActionFunctionArgs) {
   // Attach delivery address preferences so Shopify Checkout pre-selects the address chosen in the storefront
   const selectedAddressName = await session.get('selectedAddressName');
   const sessionFulfillment = await session.get('fulfillmentType');
+  const sessionLocationId = await session.get('selectedLocationId');
+
+  /**
+   * Tell Shopify Checkout which delivery method the shopper actually chose.
+   *
+   * Until this existed, the choice travelled only as cart attributes and a
+   * note — `attributes[Fulfillment Type]=Pickup` and friends, appended to the
+   * checkout URL. Checkout shows those on the order and ignores them when
+   * picking a delivery method, so a shopper who selected «استلام من الفرع» at
+   * Al Olaya arrived at a checkout opened on شحن, asking for a shipping
+   * address. Nothing in the storefront was wrong; nothing in it was heard.
+   *
+   * `pickupHandle` wants the Shopify Location id, which is exactly what the
+   * session holds — `gid://shopify/Location/91178074345` for Al Olaya. The
+   * ERP's own `Branch ID` (70) means nothing to Shopify and is not it.
+   *
+   * Both fields are lists in the Storefront API schema, hence the arrays. A
+   * branch with local pickup switched off in Shopify admin simply will not
+   * offer the option, which is a setting rather than something code can force.
+   */
+  const pickupLocationId =
+    typeof sessionLocationId === 'string'
+      ? sessionLocationId.split('/').pop() || ''
+      : '';
+
+  if (sessionFulfillment === 'pickup' && pickupLocationId) {
+    buyerIdentity.preferences = {
+      delivery: {
+        deliveryMethod: ['PICK_UP'],
+        pickupHandle: [pickupLocationId],
+      },
+    };
+  } else if (sessionFulfillment === 'delivery') {
+    buyerIdentity.preferences = {
+      delivery: {
+        deliveryMethod: ['SHIPPING'],
+      },
+    };
+  }
+
+  /**
+   * Sent on its own, after the identity update, never bundled into it.
+   *
+   * `deliveryAddressPreferences` is not a field on CartBuyerIdentityInput in
+   * Storefront API 2026-04, which is the version this storefront runs — so
+   * including it can fail the whole mutation and take the customer token, the
+   * email, the phone and the delivery-method preference above down with it.
+   * Isolated here, a rejection costs only the address pre-fill.
+   */
+  let addressPreference: any = null;
 
   if (sessionFulfillment === 'delivery' && selectedAddressName) {
     let deliveryAddress: any = null;
@@ -274,11 +324,7 @@ async function processCheckoutInitiate({request, context}: ActionFunctionArgs) {
       };
     }
 
-    buyerIdentity.deliveryAddressPreferences = [
-      {
-        deliveryAddress,
-      },
-    ];
+    addressPreference = [{deliveryAddress}];
   }
 
   if (Object.keys(buyerIdentity).length > 0) {
@@ -306,6 +352,24 @@ async function processCheckoutInitiate({request, context}: ActionFunctionArgs) {
     } catch (err: any) {
       console.error(
         '[CHECKOUT DIAGNOSTIC] Failed to update cart buyer identity:',
+        err?.message || err,
+      );
+    }
+  }
+
+  /**
+   * The address pre-fill, on its own so it cannot take anything else with it.
+   * A failure here means the shopper types their address at checkout, which is
+   * a worse checkout rather than a broken one.
+   */
+  if (addressPreference) {
+    try {
+      await context.cart.updateBuyerIdentity({
+        deliveryAddressPreferences: addressPreference,
+      } as any);
+    } catch (err: any) {
+      console.error(
+        '[CHECKOUT DIAGNOSTIC] Delivery address preference rejected:',
         err?.message || err,
       );
     }

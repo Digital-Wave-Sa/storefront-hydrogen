@@ -29,7 +29,10 @@
  * only — see the note atop offer-discounts.server.ts.
  */
 
-import {fetchOfferByTags} from '~/lib/offer-discounts.server';
+import {
+  fetchOfferByTags,
+  type BxgyPair,
+} from '~/lib/offer-discounts.server';
 import {OFFER_HANDLES, tagsForOfferHandle} from '~/lib/offer-tags';
 
 /**
@@ -67,6 +70,13 @@ export interface BogoGift {
   /** Which offer granted this, for the banner's wording and for logging. */
   offerHandle: string;
   offerTitle?: string;
+  /**
+   * The product in the cart that earned this gift.
+   *
+   * A tag can carry several Buy X Get Y discounts, and then "what did I get
+   * this for" has a real answer rather than a guess.
+   */
+  earnedByProductId: string;
   productId: string;
   variantId: string;
   handle: string;
@@ -74,6 +84,29 @@ export interface BogoGift {
   imageUrl?: string;
   imageAlt?: string;
   price?: {amount: string; currencyCode: string};
+}
+
+/**
+ * The Buy X Get Y pairs under one tag, each keeping its own two sides.
+ *
+ * Falls back to the merged product list for a discount that targets
+ * collections rather than named products, whose ids are not known this far
+ * down. That fallback is the old behaviour, lossy in the old way — it just no
+ * longer applies to the ordinary case of a discount naming its products.
+ */
+function pairsFor(offer: any): BxgyPair[] {
+  if (offer.bxgy?.length > 0) return offer.bxgy;
+  return [
+    {
+      title: offer.title,
+      buyIds: offer.products
+        .filter((p: any) => p.role === 'buy')
+        .map((p: any) => p.id),
+      giftIds: offer.products
+        .filter((p: any) => p.role === 'get')
+        .map((p: any) => p.id),
+    },
+  ];
 }
 
 /**
@@ -116,70 +149,85 @@ export async function resolveBogoGift({
 
     if (!offer?.isBxgy) continue;
 
-    const buyIds = offer.products
-      .filter((p) => p.role === 'buy')
-      .map((p) => p.id);
-    const giftIds = offer.products
-      .filter((p) => p.role === 'get')
-      .map((p) => p.id);
+    /**
+     * Each discount is judged on its own two sides.
+     *
+     * Reading the merged list instead — every buy id under the tag against
+     * every get id — was lossless while one discount carried the tag, and
+     * became wrong the moment a second did. The cart would offer whichever
+     * gift came back first, which can belong to the other discount: Shopify
+     * then does not discount it, and the shopper pays full price for a line
+     * the storefront called free.
+     */
+    for (const pair of pairsFor(offer)) {
+      if (pair.buyIds.length === 0 || pair.giftIds.length === 0) continue;
 
-    if (buyIds.length === 0 || giftIds.length === 0) continue;
+      // Nothing in the cart qualifies for this particular discount.
+      const earnedByProductId = pair.buyIds.find((id) =>
+        productIdsInCart.has(id),
+      );
+      if (!earnedByProductId) continue;
 
-    // Nothing in the cart qualifies for this offer.
-    if (!buyIds.some((id) => productIdsInCart.has(id))) continue;
+      // Already there — whether the shopper added it or a previous suggestion
+      // did. Offering it again would hand them a second one the discount does
+      // not cover. It is also what keeps a 1+1 on the same product out: its
+      // gift id is its buy id, so it reads as already held.
+      if (pair.giftIds.some((id) => productIdsInCart.has(id))) continue;
 
-    // Already there — whether the shopper added it or a previous suggestion
-    // did. Offering it again would hand them a second one the discount does
-    // not cover.
-    if (giftIds.some((id) => productIdsInCart.has(id))) continue;
+      let giftProducts: any[] = [];
+      try {
+        const res: any = await storefront.query(BOGO_GIFT_PRODUCTS_QUERY, {
+          variables: {
+            ids: pair.giftIds,
+            country: storefront.i18n?.country,
+            language: storefront.i18n?.language,
+          },
+          cache: storefront.CacheNone(),
+        });
+        giftProducts = (res?.nodes || []).filter(Boolean);
+      } catch (err) {
+        console.error(`[bogo] Could not read the ${handle} gift product:`, err);
+        continue;
+      }
 
-    let giftProducts: any[] = [];
-    try {
-      const res: any = await storefront.query(BOGO_GIFT_PRODUCTS_QUERY, {
-        variables: {
-          ids: giftIds,
-          country: storefront.i18n?.country,
-          language: storefront.i18n?.language,
-        },
-        cache: storefront.CacheNone(),
-      });
-      giftProducts = (res?.nodes || []).filter(Boolean);
-    } catch (err) {
-      console.error(`[bogo] Could not read the ${handle} gift product:`, err);
-      continue;
-    }
+      for (const product of giftProducts) {
+        const variant = product?.variants?.nodes?.[0];
+        if (!variant?.id) continue;
+        /**
+         * Out of stock is worse than silent here: Shopify rejects an
+         * unfulfillable line inside cartLinesAdd while letting the rest of the
+         * request through, so offering it would produce a button that appears
+         * to do nothing.
+         *
+         * This is Shopify's global sellable flag, not per-branch stock. A gift
+         * held at another branch can still be offered and then flagged by the
+         * cart's own per-branch check once it is in.
+         */
+        if (product.availableForSale === false) continue;
+        if (variant.availableForSale === false) continue;
 
-    for (const product of giftProducts) {
-      const variant = product?.variants?.nodes?.[0];
-      if (!variant?.id) continue;
+        return {
+          offerHandle: handle,
+          offerTitle: pair.title || offer.title,
+          earnedByProductId,
+          productId: product.id,
+          variantId: variant.id,
+          handle: product.handle,
+          title: product.title,
+          imageUrl: product.featuredImage?.url,
+          imageAlt: product.featuredImage?.altText || product.title,
+          price: variant.price,
+        };
+      }
+
       /**
-       * Out of stock is worse than silent here: Shopify rejects an
-       * unfulfillable line inside cartLinesAdd while letting the rest of the
-       * request through, so offering it would produce a button that appears
-       * to do nothing.
-       *
-       * This is Shopify's global sellable flag, not per-branch stock. A gift
-       * held at another branch can still be offered and then flagged by the
-       * cart's own per-branch check once it is in.
+       * This discount is earned but cannot be honoured. Another discount
+       * under the same tag still might be, so keep looking rather than
+       * returning — the old code stopped here, which meant one out-of-stock
+       * gift hid every other offer the cart had earned.
        */
-      if (product.availableForSale === false) continue;
-      if (variant.availableForSale === false) continue;
-
-      return {
-        offerHandle: handle,
-        offerTitle: offer.title,
-        productId: product.id,
-        variantId: variant.id,
-        handle: product.handle,
-        title: product.title,
-        imageUrl: product.featuredImage?.url,
-        imageAlt: product.featuredImage?.altText || product.title,
-        price: variant.price,
-      };
+      console.warn(`[bogo] ${handle}: cart qualifies but no gift is in stock.`);
     }
-
-    console.warn(`[bogo] ${handle}: cart qualifies but no gift is in stock.`);
-    return null;
   }
 
   return null;

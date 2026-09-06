@@ -52,56 +52,32 @@ const steps = [
   { id: 4, titleEn: 'Message', titleAr: 'أضف رسالتك الخاصة', icon: MessageIcon }
 ];
 
-const cakeOptions = {
-  shapes: [
-    { id: 'classic_round', name: 'دائري كلاسيكي (Classic Round)', price: 250, image: '/images/cake-builder/cake-round.webp', is3D: true },
-    { id: 'standard', name: 'ستاندرد (Standard)', price: 270, image: '/images/cake-builder/cake-tall.webp', is3D: true },
-    { id: 'mini_cake', name: 'ميني كيك (Mini Cake)', price: 100, image: '/images/cake-builder/cake-round.webp', is3D: true },
-    { id: 'small_standard', name: 'ستاندرد صغير (Small Standard)', price: 190, image: '/images/cake-builder/cake-tall.webp', is3D: true }
-  ],
-  sizes: [
-    { id: '6-inch', name: 'صغير (Small)', personsAr: '4-6 أشخاص', personsEn: '4-6 Persons', price: 120, scale: 0.8 },
-    { id: '8-inch', name: 'وسط (Medium)', personsAr: '8-12 شخصاً', personsEn: '8-12 Persons', price: 180, scale: 1.0 },
-    { id: '10-inch', name: 'كبير (Large)', personsAr: '15-20 شخصاً', personsEn: '15-20 Persons', price: 260, scale: 1.25 }
-  ],
-  tiers: [
-    { id: '1-tier', name: 'طبقة واحدة (Single Tier)', price: 0, count: 1 },
-    { id: '2-tier', name: 'طبقتين (Two Tiers)', price: 45, count: 2 },
-    { id: '3-tier', name: '3 طبقات (Three Tiers)', price: 85, count: 3 }
-  ],
-  flavors: [
-    { id: 'vanilla', name: 'فانيلا (Vanilla)', price: 0, image: '/cake/flavors/vanilla.png', color: '#f5deb3' },
-    { id: 'chocolate', name: 'شوكولاتة (Chocolate)', price: 5, image: '/cake/flavors/chocolate.png', color: '#3E2723' },
-    { id: 'red-velvet', name: 'ريد فيلفيت (Red Velvet)', price: 10, image: '/cake/flavors/red-velvet.png', color: '#8b0000' },
-    { id: 'nutella', name: 'نوتيلا (Nutella)', price: 15, image: '/cake/flavors/nutella.png', color: '#5C4033' }
-  ],
-  styles: [
-    { id: 'basic', name: 'ناعم (Smooth Minimalist)', price: 0 },
-    { id: 'witches-dont-age', name: 'الساحرات لا يشيخن (Witches Dont Age)', price: 30, image: '/cake/toppings/witches_dont_age/standard_front.png' }
-  ],
-  colors: [
-    { id: 'white', name: 'أبيض كلاسيكي (White)', price: 0, color: '#fdf5e6' },
-    { id: 'pink', name: 'وردي سعد الدين (Saadeddin Pink)', price: 0, color: '#ffb6c1' },
-    { id: 'magenta', name: 'ماجنتا (Magenta)', price: 0, color: '#a32c81' },
-    { id: 'red', name: 'أحمر مخملي (Red)', price: 0, color: '#dc143c' },
-    { id: 'orange', name: 'برتقالي (Orange)', price: 0, color: '#ff8c00' },
-    { id: 'yellow', name: 'أصفر (Yellow)', price: 0, color: '#ffd700' },
-    { id: 'green', name: 'أخضر نعناعي (Green)', price: 0, color: '#98fb98' },
-    { id: 'blue', name: 'أزرق سماوي (Blue)', price: 0, color: '#87ceeb' },
-    { id: 'purple', name: 'لافندر (Purple)', price: 0, color: '#e6e6fa' },
-    { id: 'black', name: 'أسود ليلي (Black)', price: 0, color: '#1a1a1a' },
-    { id: 'custom', name: 'لون مخصص (Custom)', price: 0, color: '#4a90e2', isCustom: true }
-  ]
-};
-
-const DEFAULT_PREP_OPTION = {
-  id: '24h',
-  nameEn: 'Express Preparation (Ready in 24 Hours)',
-  nameAr: 'تحضير سريع (جاهز خلال 24 ساعة)',
-  price: 0,
-  descEn: 'Your cake will be ready for pickup or delivery starting 24 hours from now.',
-  descAr: 'ستكون الكيكة جاهزة للاستلام أو التوصيل بعد 24 ساعة من الآن.'
-};
+/**
+ * Frosting swatches.
+ *
+ * The only option list still declared in code, and only because a swatch is a
+ * hex value with no price: `cake_attribute` has no colour field to read one
+ * from. Everything that costs money — shapes, flavours, toppings — comes from
+ * those metaobjects, so a price can never be invented here.
+ *
+ * What used to sit at this line was a full catalogue — shapes, sizes, tiers,
+ * flavours and toppings, each with its own price, shadowing the merchant's
+ * own. The sizes in particular had no step anywhere in the builder, so every
+ * cake opened already charged 180 for a Medium nobody had picked.
+ */
+const FROSTING_COLORS = [
+  { id: 'white', name: 'أبيض كلاسيكي (White)', price: 0, color: '#fdf5e6' },
+  { id: 'pink', name: 'وردي سعد الدين (Saadeddin Pink)', price: 0, color: '#ffb6c1' },
+  { id: 'magenta', name: 'ماجنتا (Magenta)', price: 0, color: '#a32c81' },
+  { id: 'red', name: 'أحمر مخملي (Red)', price: 0, color: '#dc143c' },
+  { id: 'orange', name: 'برتقالي (Orange)', price: 0, color: '#ff8c00' },
+  { id: 'yellow', name: 'أصفر (Yellow)', price: 0, color: '#ffd700' },
+  { id: 'green', name: 'أخضر نعناعي (Green)', price: 0, color: '#98fb98' },
+  { id: 'blue', name: 'أزرق سماوي (Blue)', price: 0, color: '#87ceeb' },
+  { id: 'purple', name: 'لافندر (Purple)', price: 0, color: '#e6e6fa' },
+  { id: 'black', name: 'أسود ليلي (Black)', price: 0, color: '#1a1a1a' },
+  { id: 'custom', name: 'لون مخصص (Custom)', price: 0, color: '#4a90e2', isCustom: true }
+];
 
 export default function CustomCakeBuilder({
   cakeAttributes = [],
@@ -175,7 +151,10 @@ export default function CustomCakeBuilder({
       const name = attr.nameEn.value.toLowerCase();
       return name.includes('photo') || name.includes('print') || name.includes('upload') || name.includes('image');
     });
-    return photoPrintAttribute?.priceDelta?.value ? parseInt(photoPrintAttribute.priceDelta.value, 10) : 20; // Default 20 SAR
+    // No metaobject, no charge — a price is never invented in code.
+    return photoPrintAttribute?.priceDelta?.value
+      ? parseInt(photoPrintAttribute.priceDelta.value, 10)
+      : 0;
   }, [cakeAttributes]);
 
   const mergedOptions = React.useMemo(() => {
@@ -249,39 +228,41 @@ export default function CustomCakeBuilder({
 
     // Add default "Smooth Minimalist" (basic) option as index 0 for toppings
     const basicStyle = { id: 'basic', name: isEn ? 'Smooth Minimalist' : 'ناعم (Smooth Minimalist)', price: 0, image: '' };
-    const toppingsFallback = [
-      basicStyle,
-      { id: 'witches-dont-age', name: isEn ? 'Witches Dont Age' : 'الساحرات لا يشيخن (Witches Dont Age)', price: 30, image: '/cake/toppings/witches_dont_age/standard_front.png', imageFront: '/cake/toppings/witches_dont_age/standard_front.png' },
-      { id: 'fresh-berries', name: isEn ? 'Fresh Berries' : 'توت بري طازج (Fresh Berries)', price: 35, image: '/cake/flavors/chocolate.png', imageFront: undefined }
-    ];
-    const styles = toppingsList.length > 0 ? [basicStyle, ...toppingsList] : toppingsFallback;
+    /**
+     * "Smooth" is the absence of a topping rather than a topping, so it has no
+     * metaobject and no price. Every other entry is the merchant's.
+     */
+    const styles = [basicStyle, ...toppingsList];
 
-    // Fallbacks if lists are empty (to prevent crash)
-    const finalShapes = shapes.length ? shapes : [
-      { id: 'classic_round', name: 'دائري كلاسيكي (Classic Round)', price: 250, image: '/images/cake-builder/cake-round.webp', imageFront: undefined, imageTop: undefined, imageSliced: undefined, is3D: true },
-      { id: 'standard_tall', name: 'ستاندرد طولي (Standard Tall)', price: 270, image: '/images/cake-builder/cake-tall.webp', imageFront: undefined, imageTop: undefined, imageSliced: undefined, is3D: true }
-    ];
-    const finalFlavors = flavors.length ? flavors : [
-      { id: 'vanilla', name: 'فانيلا (Vanilla)', price: 0, image: '/cake/flavors/vanilla.png', color: '#f5deb3' }
-    ];
-
+    /**
+     * No substitute lists. There used to be a `finalShapes` / `finalFlavors` /
+     * `toppingsFallback` set here that stood in whenever a metaobject query
+     * came back empty — inventing products, and prices, that nobody in Shopify
+     * had agreed to. An empty group now renders as an empty group, which is
+     * visible and fixable; a fabricated 250 SAR shape was neither.
+     */
     return {
-      shapes: finalShapes,
-      sizes: cakeOptions.sizes,
-      tiers: cakeOptions.tiers,
-      flavors: finalFlavors,
+      shapes,
+      flavors,
       styles,
-      colors: cakeOptions.colors.map(c => ({ ...c, price: 0 }))
+      colors: FROSTING_COLORS
     };
   }, [cakeAttributes, isEn]);
 
+  /**
+   * Nothing is chosen until the customer chooses it, so the total opens at
+   * 0.00 and every riyal on it is something they clicked.
+   *
+   * This used to open on a complete cake and charge 370 before the first
+   * click. Size and tier are gone entirely: neither had a step anywhere in
+   * the builder, so the 180 for a "Medium" was money taken for a decision the
+   * customer was never offered.
+   */
   const [selections, setSelections] = useState({
-    shape: mergedOptions.shapes[0],
-    size: cakeOptions.sizes[1] || { id: '8-inch', name: 'وسط (Medium)', personsAr: '8-12 شخصاً', personsEn: '8-12 Persons', price: 180, scale: 1.0 },
-    tier: { id: '1-tier', name: 'طبقة واحدة (Single Tier)', price: 0, count: 1 },
-    flavor: mergedOptions.flavors[0],
-    style: mergedOptions.styles[0],
-    color: cakeOptions.colors[0],
+    shape: null as any,
+    flavor: null as any,
+    style: null as any,
+    color: null as any,
     messagePlacement: 'cake' as 'cake' | 'base' | 'both',
     message: '',
     baseMessage: '',
@@ -289,7 +270,7 @@ export default function CustomCakeBuilder({
     textColor: '#4a2511',
     textFont: 'Classic',
     uploadedImage: null as string | null,
-    prepTime: DEFAULT_PREP_OPTION
+    prepTime: null as any
   });
 
   const hasLoadedRef = useRef(false);
@@ -360,9 +341,7 @@ export default function CustomCakeBuilder({
 
         if (savedPending || isReorder) {
           const shapeVal = savedPending?.shape || searchParams.get('shape');
-          const sizeVal = savedPending?.size || searchParams.get('size');
           const flavorVal = savedPending?.flavor || searchParams.get('flavor');
-          const layersVal = savedPending?.tier || searchParams.get('layers');
           const colorVal = savedPending?.color || searchParams.get('color');
           const toppingVal = savedPending?.style || searchParams.get('topping');
           const messageVal = savedPending?.message || searchParams.get('message') || '';
@@ -376,17 +355,18 @@ export default function CustomCakeBuilder({
           if (rawPlacement.toLowerCase().includes('both') || rawPlacement.includes('معا')) messagePlacement = 'both';
           else if (rawPlacement.toLowerCase().includes('base') || rawPlacement.includes('القاعدة')) messagePlacement = 'base';
 
-          const shape = findMatchingOption(mergedOptions.shapes, shapeVal, mergedOptions.shapes[0]);
-          const size = findMatchingOption(cakeOptions.sizes, sizeVal, selections.size);
-          const tier = findMatchingOption(cakeOptions.tiers, layersVal, selections.tier);
-          const flavor = findMatchingOption(mergedOptions.flavors, flavorVal, mergedOptions.flavors[0]);
-          const style = findMatchingOption(mergedOptions.styles, toppingVal, mergedOptions.styles[0]);
-          const color = findMatchingOption(cakeOptions.colors, colorVal, selections.color);
+          /**
+           * An unmatched value stays unchosen. Falling back to the first
+           * option would quietly rebuild a different cake — and charge for it
+           * — while looking like the one the customer saved.
+           */
+          const shape = findMatchingOption(mergedOptions.shapes, shapeVal, null as any);
+          const flavor = findMatchingOption(mergedOptions.flavors, flavorVal, null as any);
+          const style = findMatchingOption(mergedOptions.styles, toppingVal, null as any);
+          const color = findMatchingOption(mergedOptions.colors, colorVal, null as any);
 
           setSelections({
             shape,
-            size,
-            tier,
             flavor,
             style,
             color,
@@ -397,7 +377,7 @@ export default function CustomCakeBuilder({
             textColor: textColorVal,
             textFont: textFontVal,
             uploadedImage: savedPending?.uploadedImage || null,
-            prepTime: savedPending?.prepTime || DEFAULT_PREP_OPTION,
+            prepTime: savedPending?.prepTime || prepTimeOptions[0] || null,
           });
 
           setCurrentStep(4);
@@ -405,19 +385,28 @@ export default function CustomCakeBuilder({
         }
       }
 
-      const defaultPrep = prepTimeOptions[0];
+      /**
+       * Re-maps a choice already made onto the freshly loaded options — it
+       * does not fill one in. It used to end each line with
+       * `|| mergedOptions.shapes[0]`, which is how an untouched builder ended
+       * up holding a cake.
+       *
+       * Preparation time keeps a default because it is a delivery window
+       * rather than a purchase: every option costs 0, and one of them has to
+       * be true.
+       */
       setSelections((prev) => ({
         ...prev,
-        shape:
-          mergedOptions.shapes.find((s) => s.id === prev.shape?.id) ||
-          mergedOptions.shapes[0],
-        flavor:
-          mergedOptions.flavors.find((f) => f.id === prev.flavor?.id) ||
-          mergedOptions.flavors[0],
-        style:
-          mergedOptions.styles.find((s) => s.id === prev.style?.id) ||
-          mergedOptions.styles[0],
-        prepTime: defaultPrep,
+        shape: prev.shape
+          ? mergedOptions.shapes.find((s) => s.id === prev.shape?.id) || prev.shape
+          : null,
+        flavor: prev.flavor
+          ? mergedOptions.flavors.find((f) => f.id === prev.flavor?.id) || prev.flavor
+          : null,
+        style: prev.style
+          ? mergedOptions.styles.find((s) => s.id === prev.style?.id) || prev.style
+          : null,
+        prepTime: prev.prepTime || prepTimeOptions[0] || null,
       }));
     }
   }, [mergedOptions, cakeAttributes, prepTimeOptions]);
@@ -486,7 +475,8 @@ export default function CustomCakeBuilder({
         s.name === selections.style?.name ||
         (s.id && selections.style?.id && (s.id.includes(selections.style.id) || selections.style.id.includes(s.id)))
       );
-      if (!isAvailable && selections.style?.id !== 'basic') {
+      // Only re-points a choice already made; never makes one.
+      if (selections.style && !isAvailable && selections.style.id !== 'basic') {
         setSelections(prev => ({ ...prev, style: availableStyles[0] }));
       }
     }
@@ -496,6 +486,7 @@ export default function CustomCakeBuilder({
 
   const supportedViews = React.useMemo(() => {
     const shape = selections.shape;
+    if (!shape) return {front: true, top: false, sliced: false};
     const hasTop = !!((shape as any).imageTop || ['classic_round', 'standard', 'mini_cake', 'small_standard', 'circle'].includes(shape.id));
     const hasSliced = !!((shape as any).imageSliced || ['classic_round', 'standard', 'mini_cake', 'small_standard', 'circle'].includes(shape.id));
     return {
@@ -524,12 +515,12 @@ export default function CustomCakeBuilder({
 
   // Reset style/topping to basic if shape changes to square or sheet
   React.useEffect(() => {
-    const isSquareOrSheet = selections.shape.id === 'square' || selections.shape.id === 'sheet';
-    if (isSquareOrSheet && selections.style.id !== 'basic') {
+    const isSquareOrSheet = selections.shape?.id === 'square' || selections.shape?.id === 'sheet';
+    if (isSquareOrSheet && selections.style && selections.style.id !== 'basic') {
       const basicStyle = mergedOptions.styles.find(s => s.id === 'basic') || { id: 'basic', name: 'ناعم (Smooth Minimalist)', price: 0, image: '' };
       setSelections(prev => ({ ...prev, style: basicStyle }));
     }
-  }, [selections.shape.id, mergedOptions.styles, selections.style.id]);
+  }, [selections.shape?.id, mergedOptions.styles, selections.style?.id]);
 
   // Automatically switch views based on the active step
   React.useEffect(() => {
@@ -541,7 +532,26 @@ export default function CustomCakeBuilder({
     setSelections(prev => ({ ...prev, [category]: item }));
   };
 
+  /**
+   * What a step needs before it can be left.
+   *
+   * Nothing is pre-chosen any more, so Next has to stop asking the customer to
+   * move past a decision they have not made — it used to always work, because
+   * a default was always sitting there.
+   */
+  const stepComplete = (step: number) => {
+    if (step === 1) return Boolean(selections.shape);
+    if (step === 2) return Boolean(selections.flavor && selections.color);
+    if (step === 3) return Boolean(selections.style);
+    return true;
+  };
+
+  /** Every choice the order needs before it can be paid for. */
+  const canCheckout =
+    stepComplete(1) && stepComplete(2) && stepComplete(3);
+
   const nextStep = () => {
+    if (!stepComplete(currentStep)) return;
     if (currentStep < steps.length) setCurrentStep(currentStep + 1);
   };
 
@@ -578,8 +588,6 @@ export default function CustomCakeBuilder({
   const calculateTotal = () => {
     let total = 0;
     if (selections.shape && !isNaN(Number(selections.shape.price))) total += Number(selections.shape.price);
-    if (selections.size && !isNaN(Number(selections.size.price))) total += Number(selections.size.price);
-    if (selections.tier && !isNaN(Number(selections.tier.price))) total += Number(selections.tier.price);
     if (selections.flavor && !isNaN(Number(selections.flavor.price))) total += Number(selections.flavor.price);
     if (selections.style && !isNaN(Number(selections.style.price))) total += Number(selections.style.price);
     if (selections.color && !isNaN(Number(selections.color.price))) total += Number(selections.color.price);
@@ -608,12 +616,10 @@ export default function CustomCakeBuilder({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          shape: selections.shape.name,
-          size: selections.size.name,
-          flavor: selections.flavor.name,
-          layers: selections.tier.name,
-          color: selections.color.name,
-          topping: selections.style.name,
+          shape: selections.shape?.name,
+          flavor: selections.flavor?.name,
+          color: selections.color?.name,
+          topping: selections.style?.name,
           messagePlacement: selections.messagePlacement,
           message: selections.message,
           baseMessage: selections.baseMessage,
@@ -621,7 +627,7 @@ export default function CustomCakeBuilder({
           messageFont: selections.textFont,
           messageColor: selections.textColor,
           uploadedImage: selections.uploadedImage,
-          prepTime: isEn ? selections.prepTime.nameEn : selections.prepTime.nameAr,
+          prepTime: isEn ? selections.prepTime?.nameEn : selections.prepTime?.nameAr,
           cakePreviewImage, // Send the screenshot
           finalTotal: calculateTotal(),
           isEn: isEn
@@ -634,8 +640,6 @@ export default function CustomCakeBuilder({
             'pending_custom_cake',
             JSON.stringify({
               shape: selections.shape?.name || selections.shape?.id,
-              size: selections.size?.name || selections.size?.id,
-              tier: selections.tier?.name || selections.tier?.id || selections.tier?.count,
               flavor: selections.flavor?.name || selections.flavor?.id,
               style: selections.style?.name || selections.style?.id,
               color: selections.color?.name || selections.color?.id || selections.color?.color,
@@ -732,7 +736,7 @@ export default function CustomCakeBuilder({
                 className="w-12 h-12 rounded-full border-2 border-gray-200 shadow-sm mb-3 flex items-center justify-center overflow-hidden relative"
                 style={
                   option.isCustom
-                    ? (isSelected ? { backgroundColor: selections.color.color } : { background: 'conic-gradient(red, yellow, lime, aqua, blue, magenta, red)' })
+                    ? (isSelected ? { backgroundColor: selections.color?.color } : { background: 'conic-gradient(red, yellow, lime, aqua, blue, magenta, red)' })
                     : { backgroundColor: option.color }
                 }
               >
@@ -746,7 +750,7 @@ export default function CustomCakeBuilder({
                     <input
                       type="color"
                       className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                      value={isSelected ? selections.color.color : option.color}
+                      value={isSelected ? selections.color?.color : option.color}
                       onChange={(e) => {
                         const hex = e.target.value;
                         setSelections(prev => ({
@@ -921,7 +925,7 @@ export default function CustomCakeBuilder({
                 <div className="animate-in fade-in duration-300 space-y-4">
                   <h2 className={`text-2xl font-bold text-[#1a1a1a] ${isEn ? 'text-left' : 'text-right'}`}>{isEn ? 'Choose Decoration Style' : 'اختر أسلوب التزيين'}</h2>
 
-                  {selections.shape.id === 'square' || selections.shape.id === 'sheet' ? (
+                  {selections.shape?.id === 'square' || selections.shape?.id === 'sheet' ? (
                     <div className={`p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-sm font-medium ${isEn ? 'text-left' : 'text-right'}`}>
                       {isEn
                         ? 'Topping decorations are only available for Round, Standard, and Heart shapes.'
@@ -1058,7 +1062,7 @@ export default function CustomCakeBuilder({
                   <div className={isEn ? 'text-left' : 'text-right'}>
                     <div className="flex items-center justify-between mb-2">
                       <h2 className="text-2xl font-bold text-[#1a1a1a]">
-                        {isEn ? 'Special Instructions for the Baker' : 'ملاحظات وتعليمات خاصة للمخبز'}
+                        {isEn ? 'Special Instructions' : 'ملاحظات'}
                       </h2>
                       <span className="text-xs text-gray-400 font-medium">
                         {selections.specialInstructions.length}/300
@@ -1163,8 +1167,9 @@ export default function CustomCakeBuilder({
             <div className={`mt-12 flex items-center justify-start w-full ${isEn ? 'flex-row-reverse' : ''}`}>
               {currentStep < steps.length ? (
                 <button
-                  className={`inline-flex items-center gap-3 px-10 py-4 rounded-full font-bold bg-[#294941] text-white hover:bg-[#1E3A34] transition-all text-xl ${isEn ? 'flex-row-reverse' : ''}`}
+                  className={`inline-flex items-center gap-3 px-10 py-4 rounded-full font-bold bg-[#294941] text-white hover:bg-[#1E3A34] transition-all text-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-[#294941] ${isEn ? 'flex-row-reverse' : ''}`}
                   onClick={nextStep}
+                  disabled={!stepComplete(currentStep)}
                 >
                   {isEn ? `Next, ${steps[currentStep].titleEn}` : `التالي، ${steps[currentStep].titleAr}`}
                   <ArrowLeft className={`w-5 h-5 ${isEn ? 'rotate-180' : ''}`} />
@@ -1173,7 +1178,7 @@ export default function CustomCakeBuilder({
                 <button
                   className={`inline-flex items-center gap-3 px-10 py-4 rounded-full font-bold bg-[#294941] text-white hover:bg-[#1E3A34] transition-all text-xl disabled:opacity-50 disabled:cursor-not-allowed ${isEn ? 'flex-row-reverse' : ''}`}
                   onClick={() => setIsPrepModalOpen(true)}
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || !canCheckout}
                 >
                   {isSubmitting ? (isEn ? 'Preparing...' : 'جاري التحضير...') : (isEn ? 'Checkout and Pay' : 'إتمام الطلب والدفع')}
                   <ArrowLeft className={`w-5 h-5 ${isEn ? 'rotate-180' : ''}`} />
@@ -1205,22 +1210,45 @@ export default function CustomCakeBuilder({
 
             {/* Top Pill showing selected shape */}
             <div className="bg-[#20584A] text-white px-6 py-2 rounded-full font-bold text-sm flex items-center gap-1.5 whitespace-nowrap shadow-sm">
-              <span>{isEn ? selections.shape.name.split(' (')[1]?.replace(')', '') || selections.shape.name.split(' (')[0] : selections.shape.name.split(' (')[0]}</span>
+              <span>
+                {selections.shape
+                  ? isEn
+                    ? selections.shape.name.split(' (')[1]?.replace(')', '') || selections.shape.name.split(' (')[0]
+                    : selections.shape.name.split(' (')[0]
+                  : isEn
+                    ? 'Choose a shape to begin'
+                    : 'اختر الشكل للبدء'}
+              </span>
             </div>
 
             {/* Circle & 3D Canvas */}
             <div className="relative w-[260px] h-[260px] sm:w-[320px] sm:h-[320px] lg:w-auto lg:h-[50vh] aspect-square rounded-full border-[12px] lg:border-[24px] border-white bg-[#EED5D7] shadow-sm flex items-center justify-center overflow-hidden shrink-0">
               <div className="absolute inset-0 z-20 flex items-center justify-center">
+                {/*
+                  There is no cake to draw until a shape is picked, and drawing
+                  a stand-in would put a cake on screen that the total says
+                  costs nothing.
+                */}
+                {!selections.shape ? (
+                  <p
+                    className="px-8 text-center text-[#20584A]/70 font-bold text-sm"
+                    style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
+                  >
+                    {isEn
+                      ? 'Your cake will appear here as you choose'
+                      : 'ستظهر كيكتك هنا كلما اخترت'}
+                  </p>
+                ) : (
                 <CakePreview
                   shape={selections.shape.id}
-                  layers={selections.tier.count === 3 ? 'three' : selections.tier.count === 2 ? 'two' : 'one'}
-                  color={selections.color.color}
-                  toppings={[{ id: selections.style.id, gid: (selections.style as any)?.gid, name: selections.style.name }]}
-                  scale={selections.size.scale}
+                  layers={'one'}
+                  color={selections.color?.color || '#fdf5e6'}
+                  toppings={selections.style ? [{ id: selections.style.id, gid: (selections.style as any)?.gid, name: selections.style.name }] : []}
+                  scale={1}
                   message={selections.message}
                   baseMessage={selections.baseMessage}
                   messagePlacement={selections.messagePlacement}
-                  flavorName={selections.flavor.name}
+                  flavorName={selections.flavor?.name || ''}
                   isCutaway={currentStep === 2 && isCutaway}
                   textColor={selections.textColor}
                   textFont={selections.textFont}
@@ -1231,6 +1259,7 @@ export default function CustomCakeBuilder({
                   cakeAttributes={cakeAttributes}
                   toppingDesigns={toppingDesigns}
                 />
+                )}
               </div>
             </div>
 

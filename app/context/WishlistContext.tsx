@@ -15,6 +15,28 @@ export interface WishlistItem {
       currencyCode: string;
     };
   };
+  /**
+   * When this was added, so the list can be shown newest first.
+   *
+   * Absent on anything saved before this existed. Those are, by definition,
+   * older than everything stamped from now on, which is exactly where the
+   * ordering below puts them.
+   */
+  addedAt?: number;
+}
+
+/**
+ * Newest first.
+ *
+ * Items used to be appended, so a customer's wishlist showed whatever they
+ * favourited first at the top and their most recent find at the very bottom —
+ * past the fold on any list of a decent size.
+ *
+ * Sort is stable, so untimestamped items keep the order they already had
+ * relative to one another and simply sit below the stamped ones.
+ */
+function newestFirst(items: WishlistItem[]): WishlistItem[] {
+  return [...items].sort((a, b) => (b.addedAt || 0) - (a.addedAt || 0));
 }
 
 interface WishlistContextType {
@@ -81,10 +103,13 @@ export function WishlistProvider({
       }
 
       if (isMounted) {
-        setWishlist(currentWishlist);
+        // Applied here rather than in each view, so the wishlist page, the
+        // header count and anything else reading the context all agree.
+        const ordered = newestFirst(currentWishlist);
+        setWishlist(ordered);
         if (typeof window !== 'undefined') {
           try {
-            localStorage.setItem(storageKey, JSON.stringify(currentWishlist));
+            localStorage.setItem(storageKey, JSON.stringify(ordered));
           } catch (e) {}
         }
         setIsLoaded(true);
@@ -127,7 +152,7 @@ export function WishlistProvider({
       const exists = prev.find((i) => i.id === item.id);
       const updated = exists
         ? prev.filter((i) => i.id !== item.id)
-        : [...prev, item];
+        : [{...item, addedAt: Date.now()}, ...prev];
       
       if (typeof window !== 'undefined') {
         try {

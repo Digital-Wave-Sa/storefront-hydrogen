@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { Await, useFetcher, useRouteLoaderData, Link, useLocation } from 'react-router';
 import { Suspense } from 'react';
 import { Price } from './Price';
@@ -485,7 +486,24 @@ export function DeliveryPickupModal({
     // Memoize the combined promise to prevent Await from re-suspending on every state change (like typing in search or switching tabs)
     const combinedPromise = useMemo(() => Promise.all([locationsPromise, customerPromise]), [locationsPromise, customerPromise]);
 
+    /**
+     * Close on navigation — and only on navigation.
+     *
+     * An effect keyed on the pathname also runs once on mount, and a caller
+     * that mounts this component only while it is open (CartSummary does,
+     * so that two of these can never race over the same branch selection)
+     * mounts it with `isOpen` already true. That mount run called onClose
+     * immediately: the modal opened and unmounted in the same commit, so the
+     * button in the cart looked dead.
+     *
+     * Comparing against the path the modal opened on distinguishes the two —
+     * a real navigation changes it, mounting does not. Callers that keep the
+     * modal permanently mounted, like Header, are unaffected either way.
+     */
+    const openedAtPathRef = useRef(location.pathname);
     useEffect(() => {
+        if (openedAtPathRef.current === location.pathname) return;
+        openedAtPathRef.current = location.pathname;
         if (isOpen) {
             onClose();
         }
@@ -541,7 +559,22 @@ export function DeliveryPickupModal({
         });
     };
 
-    return (
+    /**
+     * Rendered into <body>, not into whatever called it.
+     *
+     * `z-index` only ranks an element inside its own stacking context, so the
+     * overlay's 2147483647 was worth nothing against the header once this
+     * modal was mounted from deep inside the cart's layout: the page behind it
+     * blurred correctly while the header painted straight over the top of the
+     * dialog and clipped its tabs. Opened from Header the same markup happened
+     * to land in a context that outranked it, which is why it only ever looked
+     * right there.
+     *
+     * A portal also makes the modal immune to a transformed or filtered
+     * ancestor, which would turn `position: fixed` into something anchored to
+     * that ancestor rather than to the viewport.
+     */
+    const overlay = (
         <div className="dpm-overlay" onClick={onClose} dir={isEn ? 'ltr' : 'rtl'}>
             <div
                 className={`dpm-container ${isAnimating ? 'dpm-enter' : ''}`}
@@ -629,6 +662,11 @@ export function DeliveryPickupModal({
             </div>
         </div>
     );
+
+    // No document during SSR; this only ever opens from a click anyway.
+    return typeof document === 'undefined'
+        ? overlay
+        : createPortal(overlay, document.body);
 }
 
 // ─── SUB-COMPONENTS ───────────────────────────────────────────────────────

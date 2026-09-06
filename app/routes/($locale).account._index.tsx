@@ -9,6 +9,10 @@ import {
   formatOrderDate,
   getOrderTitles,
 } from './($locale).account.orders._index';
+import {
+  isCustomCakeOrder,
+  CUSTOM_CAKE_IMAGE_URL,
+} from '~/lib/cake-order';
 
 // Currency SVG Icon provided by user
 /**
@@ -481,7 +485,10 @@ export default function AccountDashboard() {
                     null;
                   const imageItem =
                     lineItemNodes.find((li) => lineItemImage(li)) || firstItem;
-                  const imageUrl = lineItemImage(imageItem);
+                  // A custom cake has no product artwork to find; see cake-order.
+                  const imageUrl = isCustomCakeOrder(lastOrder)
+                    ? CUSTOM_CAKE_IMAGE_URL
+                    : lineItemImage(imageItem);
                   const imageAlt =
                     imageItem?.variant?.image?.altText ||
                     imageItem?.variant?.product?.featuredImage?.altText ||

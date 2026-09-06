@@ -1764,14 +1764,7 @@ export default function Register() {
                             try again in{' '}
                             <span className="font-bold">
                               {otpWaitPhrase(blockCooldown, 'en')}
-                            </span>{' '}
-                            or{' '}
-                            <Link
-                              to="/en/account/recover"
-                              className="underline font-bold hover:text-[#7A5C33]"
-                            >
-                              reset password
-                            </Link>
+                            </span>
                           </>
                         ) : (
                           <>
@@ -1779,14 +1772,7 @@ export default function Register() {
                             المحاولة مجدداً بعد{' '}
                             <span className="font-bold">
                               {otpWaitPhrase(blockCooldown, 'ar')}
-                            </span>{' '}
-                            أو{' '}
-                            <Link
-                              to="/account/recover"
-                              className="underline font-bold hover:text-[#7A5C33]"
-                            >
-                              إعادة تعيين كلمة المرور
-                            </Link>
+                            </span>
                           </>
                         )}
                       </p>

@@ -45,6 +45,16 @@ export interface OfferProductRef {
   role?: 'buy' | 'get' | 'both';
 }
 
+/** One Buy X Get Y discount, with the two sides it actually pairs. */
+export interface BxgyPair {
+  /** The discount's own title in Shopify, for wording and for logs. */
+  title?: string;
+  /** Products that qualify. Buying one of these earns one of `giftIds`. */
+  buyIds: string[];
+  /** Products this discount discounts — and only when a `buyIds` is present. */
+  giftIds: string[];
+}
+
 /**
  * What the discount takes off a qualifying line, as a number the storefront can
  * apply to a price. `percentage` is a fraction: 0.25 is 25% off.
@@ -72,6 +82,22 @@ export interface OfferData {
   products: OfferProductRef[];
   /** True when this is a Buy X Get Y promotion (the two sides may differ). */
   isBxgy: boolean;
+  /**
+   * One entry per Buy X Get Y discount found under the tag, each keeping its
+   * own two sides.
+   *
+   * `products` above is every discount's products merged into one list, which
+   * is all a grid needs and is lossy for anything else: two discounts sharing
+   * a tag become "buy any of these, get any of those", a claim neither
+   * discount makes. A cart that acts on the merged view can offer a gift the
+   * discount will not cover, and charge for it.
+   *
+   * Empty for a Buy X Get Y that targets collections rather than named
+   * products — those ids are only known after the collections are resolved,
+   * which happens a layer up in resolveOffer. Callers fall back to the merged
+   * view there.
+   */
+  bxgy: BxgyPair[];
   /** Collection GIDs the discount targets, when it targets collections. */
   collectionIds: string[];
   /** True when the discount applies to the entire catalogue. */
@@ -102,6 +128,7 @@ const EMPTY = (tag: string): OfferData => ({
   collectionIds: [],
   allProducts: false,
   isBxgy: false,
+  bxgy: [],
 });
 
 async function adminGraphql<T = any>(
@@ -408,6 +435,20 @@ export async function fetchOfferByTag(
 
     for (const p of buys.products) record(p, 'buy');
     for (const p of gets.products) record(p, 'get');
+
+    /**
+     * Kept before the two sides are merged into `seen`, which is where the
+     * pairing is lost. A discount that names products on both sides can then
+     * be honoured exactly; one that targets collections has no ids yet and is
+     * skipped, leaving callers on the merged view as before.
+     */
+    if (isBxgy && buys.products.length > 0 && gets.products.length > 0) {
+      merged.bxgy.push({
+        title: d.title || undefined,
+        buyIds: buys.products.map((p) => p.id),
+        giftIds: gets.products.map((p) => p.id),
+      });
+    }
 
     for (const id of [...buys.collectionIds, ...gets.collectionIds]) {
       if (!merged.collectionIds.includes(id)) merged.collectionIds.push(id);

@@ -3,8 +3,10 @@ import {
   type LoaderFunctionArgs,
   useLoaderData,
   useRouteLoaderData,
+  useLocation,
   Link,
 } from 'react-router';
+import {getVariantUrl} from '~/utils';
 import {AddToCartButton} from '~/components/AddToCartButton';
 import {useWishlist} from '~/context/WishlistContext';
 import {PageHeader} from '~/components/layout/PageHeader';
@@ -168,6 +170,98 @@ function renderTextWithRiyalSymbol(
   );
 }
 
+/**
+ * One product as a small row: thumbnail, title, and what it costs here.
+ *
+ * `free` switches the price to the gift treatment — the real price struck
+ * through beside «مجاناً» — so a shopper reading a pair can see at a glance
+ * which side costs money.
+ */
+function OfferProductChip({
+  product,
+  pathname,
+  isEn,
+  free = false,
+}: {
+  product: any;
+  pathname: string;
+  isEn: boolean;
+  free?: boolean;
+}) {
+  const soldOut = product.availableForSale === false;
+  const price = Number(product.price);
+  const hasPrice = Number.isFinite(price) && price > 0;
+
+  return (
+    <Link
+      to={getVariantUrl({
+        handle: product.handle,
+        pathname,
+        searchParams: new URLSearchParams(),
+        selectedOptions: [],
+      })}
+      prefetch="intent"
+      className={`flex items-center gap-3 bg-white border border-[#EBDCC5] rounded-[12px] p-2.5 pe-4 transition-colors hover:border-[#CBBF9B] ${
+        soldOut ? 'opacity-60' : ''
+      }`}
+    >
+      {product.image ? (
+        <img
+          src={product.image}
+          alt={product.imageAlt || product.title}
+          width={48}
+          height={48}
+          loading="lazy"
+          className="w-[48px] h-[48px] rounded-[8px] object-cover shrink-0 bg-[#FEF8EB]"
+        />
+      ) : (
+        <div className="w-[48px] h-[48px] rounded-[8px] bg-[#FEF8EB] shrink-0" />
+      )}
+      <div className="flex flex-col gap-0.5 min-w-0">
+        <span className="text-[#234745] text-[14px] font-bold truncate max-w-[200px]">
+          {product.title}
+        </span>
+        {soldOut ? (
+          <span className="text-[#B93B3B] text-[12px] font-bold">
+            {isEn ? 'Out of stock' : 'نفذت الكمية'}
+          </span>
+        ) : (
+          <span className="flex items-center gap-2">
+            {hasPrice ? (
+              <span
+                className={`inline-flex items-center gap-1 text-[12px] ${
+                  free ? 'text-[#9C9C9C] line-through' : 'text-[#7D7D7D]'
+                }`}
+              >
+                {new Intl.NumberFormat('en-US').format(Math.round(price))}
+                <SaudiRiyalSymbol className="h-[9px] w-auto" />
+              </span>
+            ) : null}
+            {free ? (
+              <span className="text-[#2C7A4B] text-[12px] font-bold">
+                {isEn ? 'Free' : 'مجاناً'}
+              </span>
+            ) : null}
+          </span>
+        )}
+      </div>
+    </Link>
+  );
+}
+
+/** The fields a small product row needs, from a full Storefront product. */
+function offerCardShape(p: any) {
+  return {
+    id: p.id,
+    title: p.title,
+    handle: p.handle,
+    image: p.featuredImage?.url ?? null,
+    imageAlt: p.featuredImage?.altText ?? null,
+    price: p.priceRange?.minVariantPrice?.amount ?? null,
+    availableForSale: p.availableForSale ?? true,
+  };
+}
+
 export async function loader({context, params, request}: LoaderFunctionArgs) {
   const {storefront, env} = context;
   const debugOffers =
@@ -296,7 +390,7 @@ export async function loader({context, params, request}: LoaderFunctionArgs) {
      */
     const definition = await fetchOfferDefinition(storefront, offerHandle);
 
-    const {offer, gridProducts, freeItems} = await resolveOffer({
+    const {offer, gridProducts, freeItems, bxgyPairs} = await resolveOffer({
       storefront,
       env,
       handle: offerHandle,
@@ -314,10 +408,22 @@ export async function loader({context, params, request}: LoaderFunctionArgs) {
 
     return {
       offerHandle,
-      freeItems: freeItems.map((p: any) => ({
-        id: p.id,
-        title: p.title,
-        handle: p.handle,
+      /**
+       * Enough to render the gift as a product the shopper can actually go to.
+       * It used to carry a title only, which is all a sentence needs — but a
+       * sentence was the wrong shape for something they have to add
+       * themselves.
+       */
+      freeItems: freeItems.map(offerCardShape),
+      /**
+       * Each discount with its own two sides, so the page can say which gift
+       * comes with which product instead of listing every gift under the tag
+       * as though any purchase earned any of them.
+       */
+      bxgyPairs: bxgyPairs.map((pair: any) => ({
+        title: pair.title ?? null,
+        buyProducts: pair.buyProducts.map(offerCardShape),
+        giftProducts: pair.giftProducts.map(offerCardShape),
       })),
       /** Registry copy for this offer, when it has an entry. */
       definition: definition
@@ -361,6 +467,7 @@ export async function loader({context, params, request}: LoaderFunctionArgs) {
     return {
       offerHandle,
       freeItems: [],
+      bxgyPairs: [],
       definition: null,
       offer: {isBxgy: false, title: null, summary: null, code: null, endsAt: null},
       products: [],
@@ -373,14 +480,35 @@ export async function loader({context, params, request}: LoaderFunctionArgs) {
 }
 
 export default function SubPromotionPage() {
-  const {offerHandle, products, freeItems, offer, heroData, bogoData, gridData, bannerData} =
+  const {offerHandle, products, freeItems, bxgyPairs, offer, heroData, bogoData, gridData, bannerData} =
     useLoaderData<typeof loader>();
   const routeData = useRouteLoaderData('root') as {locale?: string};
   const locale = routeData?.locale || 'ar';
   const isEn = locale.toLowerCase().startsWith('en');
   const {isInWishlist, toggleWishlist} = useWishlist();
+  const {pathname} = useLocation();
 
   const direction = isEn ? 'ltr' : 'rtl';
+
+  /**
+   * Which gift each qualifying product actually earns.
+   *
+   * Built per discount, so a card can only ever name the gift its own
+   * discount pays for. Reading the tag's merged gift list instead would put
+   * the same two gifts on every card, which is the confusion this is here to
+   * remove. A product that qualifies for two discounts keeps the first — the
+   * card has room for one, and Shopify picks at checkout anyway.
+   */
+  const giftByProductId = new Map<string, any>();
+  for (const pair of bxgyPairs) {
+    const gift = pair.giftProducts[0];
+    if (!gift) continue;
+    for (const buyProduct of pair.buyProducts) {
+      if (!giftByProductId.has(buyProduct.id)) {
+        giftByProductId.set(buyProduct.id, gift);
+      }
+    }
+  }
 
   // Dynamic titles based on offer handle
   let pageTitle = isEn ? 'Special Promotion' : 'عرض خاص';
@@ -447,23 +575,70 @@ export default function SubPromotionPage() {
           </span>
         </div>
 
-        {/* Buy X Get Y: say what comes free, rather than listing it as a card. */}
-        {freeItems.length > 0 ? (
+        {/*
+          Buy X Get Y: show each discount's own two sides.
+
+          This block used to name every free item under the tag in one
+          comma-joined line and say they were added automatically at checkout.
+          Neither held up. Shopify's Buy X Get Y never adds the "get" item —
+          its discount only discounts a line already in the cart — and a tag
+          can carry more than one such discount, at which point one merged
+          list reads as "buy any of these, get any of those", a promise no
+          single discount makes. A shopper could not tell which gift was
+          theirs, and neither could the sentence.
+
+          So: one row per discount, its qualifying products on one side and
+          the gift it actually pays for on the other. `bxgyPairs` is empty for
+          a discount that targets collections rather than named products, and
+          the flat list below is the fallback for that case.
+        */}
+        {bxgyPairs.length > 0 ? (
           <div
             dir={direction}
             className="w-full rounded-[16px] border border-[#CBBF9B] bg-[#FDF6E6] px-5 py-4 flex flex-col gap-1"
           >
             <span className="text-[#906B51] text-[12px] font-bold uppercase tracking-wider">
-              {isEn ? 'Your free item' : 'هديتك المجانية'}
-            </span>
-            <span className="text-[#234745] text-[16px] md:text-[18px] font-bold">
-              {freeItems.map((f: any) => f.title).join('، ')}
+              {isEn ? 'Every product here comes with a gift' : 'لكل منتج هنا هديته'}
             </span>
             <span className="text-[#7D7D7D] text-[13px]">
               {isEn
-                ? 'Added automatically at checkout when you buy a qualifying product below.'
-                : 'يُضاف تلقائياً عند إتمام الطلب بشراء أحد المنتجات المؤهلة أدناه.'}
+                ? 'Each product below shows the gift it comes with. Add it to your cart and we will offer you that gift to add for free.'
+                : 'كل منتج بالأسفل يوضّح الهدية التي تأتي معه. أضفه إلى السلة وستُعرض عليك هديته لإضافتها مجاناً.'}
             </span>
+          </div>
+        ) : freeItems.length > 0 ? (
+          <div
+            dir={direction}
+            className="w-full rounded-[16px] border border-[#CBBF9B] bg-[#FDF6E6] px-5 py-4 flex flex-col gap-3"
+          >
+            <div className="flex flex-col gap-1">
+              <span className="text-[#906B51] text-[12px] font-bold uppercase tracking-wider">
+                {freeItems.length > 1
+                  ? isEn
+                    ? 'Your free gift — choose one'
+                    : 'هديتك المجانية — اختر واحدة'
+                  : isEn
+                    ? 'Your free gift'
+                    : 'هديتك المجانية'}
+              </span>
+              <span className="text-[#7D7D7D] text-[13px]">
+                {isEn
+                  ? 'Add a qualifying product below to your cart, and we will offer you the gift to add for free.'
+                  : 'أضف أحد المنتجات المؤهلة أدناه إلى السلة، وستُعرض عليك الهدية لإضافتها مجاناً.'}
+              </span>
+            </div>
+
+            <div className="flex flex-wrap gap-3">
+              {freeItems.map((gift: any) => (
+                <OfferProductChip
+                  key={gift.id}
+                  product={gift}
+                  pathname={pathname}
+                  isEn={isEn}
+                  free
+                />
+              ))}
+            </div>
           </div>
         ) : null}
 
@@ -499,6 +674,7 @@ export default function SubPromotionPage() {
                 key={product.id || index}
                 product={product}
                 loading={index < 8 ? 'eager' : 'lazy'}
+                giftFor={giftByProductId.get(product.id)}
               />
             ))}
           </section>

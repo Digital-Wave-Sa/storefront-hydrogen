@@ -215,6 +215,12 @@ export async function loader({context}: LoaderFunctionArgs) {
             (m: any) => m.key === 'minimum_order_value',
           )?.value || '0',
         ),
+        // Left as the raw value: absent must stay distinguishable from zero,
+        // so the product page can fall back to its own default rather than
+        // telling a shopper the order is ready in 0 minutes.
+        pickup_ready_minutes: (loc.metafields?.nodes || []).find(
+          (m: any) => m.key === 'pickup_ready_minutes',
+        )?.value,
         delivery_time_from: (loc.metafields?.nodes || []).find(
           (m: any) => m.key === 'delivery_time_from',
         )?.value,

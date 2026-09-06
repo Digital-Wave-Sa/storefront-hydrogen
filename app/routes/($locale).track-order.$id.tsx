@@ -12,6 +12,10 @@ import {
 } from 'react-router';
 import {useState} from 'react';
 import {isNonShippableLine} from '~/lib/digital-lines';
+import {
+  isCustomCakeLine,
+  CUSTOM_CAKE_IMAGE_URL,
+} from '~/lib/cake-order';
 
 function mapRestOrderToNode(rawRest: any) {
   return {
@@ -879,6 +883,8 @@ export async function loader({params, context, request}: LoaderFunctionArgs) {
     items: orderNode.lineItems.edges.map(({node: item}: any) => {
       const variantId = item.variant?.id || item.variantId || item.variant_id;
       const resolvedImg =
+        // The builder's own line, which has no product image anywhere.
+        (isCustomCakeLine(item) ? CUSTOM_CAKE_IMAGE_URL : '') ||
         item.image?.url ||
         item.variant?.image?.url ||
         item.variant?.product?.featuredImage?.url ||

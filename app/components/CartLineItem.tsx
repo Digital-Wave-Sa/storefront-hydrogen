@@ -41,6 +41,26 @@ export function CartLineItem({
   const rootData = useRouteLoaderData('root') as any;
   const isEn = location.pathname.startsWith('/en');
   const isFreeItem = line.attributes?.some((attr: any) => attr.key === '_is_free' && attr.value === 'true') || false;
+
+  /**
+   * What this line costs, including while it is still optimistic.
+   *
+   * useOptimisticCart builds the pending line from the variant it was handed,
+   * so the title, image and price are all there — but not `cost`, which only
+   * Shopify can work out, discounts and all. Reading `cost.totalAmount` alone
+   * rendered 0.00 for the whole gap between the drawer opening and the server
+   * answering, which is precisely the moment the shopper is looking at it.
+   *
+   * The fallback is used only when `cost` is missing, never when it is zero —
+   * a Buy X Get Y gift really does cost nothing, and must keep saying so
+   * rather than jumping to the variant's full price.
+   */
+  const lineTotal = (() => {
+    const fromCost = parseFloat(line?.cost?.totalAmount?.amount ?? '');
+    if (Number.isFinite(fromCost)) return fromCost;
+    const unitPrice = parseFloat((merchandise as any)?.price?.amount ?? '');
+    return Number.isFinite(unitPrice) ? unitPrice * (line?.quantity ?? 1) : 0;
+  })();
   /**
    * The `_gift_voucher` attribute and the hard-coded handle both miss a
    * voucher that reached the cart any way other than the wizard — a reorder,
@@ -350,7 +370,7 @@ export function CartLineItem({
                 )}
                 <div className={`font-black text-[#234745] font-en flex items-center gap-1.5 flex-row-reverse ${layout === 'aside' ? 'text-[16px]' : 'text-[24px]'}`} style={{ fontFamily: "'Outfit', sans-serif" }}>
                   <SaudiRiyalSymbol className="w-[22px] h-auto text-[#234745]" />
-                  <span>{parseFloat(line?.cost?.totalAmount?.amount || '0').toFixed(2)}</span>
+                  <span>{lineTotal.toFixed(2)}</span>
                 </div>
               </>
             )}
@@ -507,7 +527,7 @@ export function CartLineItem({
                 <>
                   <SaudiRiyalSymbol className="w-[18px] h-auto text-[#234745]" />
                   <span className="font-black text-[#234745] text-[18px]" style={{ fontFamily: "'Outfit', sans-serif" }}>
-                    {parseFloat(line?.cost?.totalAmount?.amount || '0').toFixed(2)}
+                    {lineTotal.toFixed(2)}
                   </span>
                   {line?.cost?.compareAtAmountPerQuantity && (
                     <span className="text-gray-400 text-[12px] font-bold line-through flex items-center gap-0.5 flex-row-reverse mr-2" style={{ fontFamily: "'Outfit', sans-serif" }}>

@@ -425,16 +425,38 @@ export async function action({request, context}: ActionFunctionArgs) {
       });
     }
 
-    const description = isEn
-      ? `${shape} • ${size} • ${flavor} • ${layers} layers • ${color} • ${topping}${prepTime ? ` • Prep: ${prepTime}` : ''}${message ? ` • Cake Text: "${message}"` : ''}${baseMessage ? ` • Base Text: "${baseMessage}"` : ''}${specialInstructions ? ` • Instructions: "${specialInstructions}"` : ''}`
-      : `${shape} • ${size} • ${flavor} • ${layers} طبقات • ${color} • ${topping}${prepTime ? ` • تجهيز: ${prepTime}` : ''}${message ? ` • نص الكيكة: "${message}"` : ''}${baseMessage ? ` • نص القاعدة: "${baseMessage}"` : ''}${specialInstructions ? ` • تعليمات خاصة: "${specialInstructions}"` : ''}`;
+    /**
+     * Built from what the customer actually chose.
+     *
+     * Interpolating every field unconditionally wrote "undefined" into the
+     * baker's description whenever one was absent — which is now the ordinary
+     * case for size and layers, since the builder no longer offers them.
+     */
+    const description = [
+      shape,
+      size,
+      flavor,
+      layers ? (isEn ? `${layers} layers` : `${layers} طبقات`) : null,
+      color,
+      topping,
+      prepTime ? (isEn ? `Prep: ${prepTime}` : `تجهيز: ${prepTime}`) : null,
+      message ? (isEn ? `Cake Text: "${message}"` : `نص الكيكة: "${message}"`) : null,
+      baseMessage ? (isEn ? `Base Text: "${baseMessage}"` : `نص القاعدة: "${baseMessage}"`) : null,
+      specialInstructions
+        ? isEn
+          ? `Instructions: "${specialInstructions}"`
+          : `تعليمات خاصة: "${specialInstructions}"`
+        : null,
+    ]
+      .filter(Boolean)
+      .join(' • ');
 
     const customAttributes = [
       {key: '_cake_custom', value: 'true'},
       {key: isEn ? 'Shape' : 'الشكل', value: shape || '-'},
-      {key: isEn ? 'Size' : 'الحجم', value: size || '-'},
+      ...(size ? [{key: isEn ? 'Size' : 'الحجم', value: String(size)}] : []),
       {key: isEn ? 'Flavor' : 'النكهة', value: flavor || '-'},
-      {key: isEn ? 'Layers' : 'الطبقات', value: String(layers || 1)},
+      ...(layers ? [{key: isEn ? 'Layers' : 'الطبقات', value: String(layers)}] : []),
       {key: isEn ? 'Color' : 'اللون', value: color || '-'},
       {key: isEn ? 'Topping' : 'الإضافة', value: topping || '-'},
       {

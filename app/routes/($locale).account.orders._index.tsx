@@ -21,6 +21,10 @@ import type {
   OrderItemFragment,
 } from 'storefrontapi.generated';
 import {Button} from '~/components/layout/Button';
+import {
+  isCustomCakeOrder,
+  CUSTOM_CAKE_IMAGE_URL,
+} from '~/lib/cake-order';
 
 export function checkIsPickupOrder(order: any): boolean {
   if (!order) return false;
@@ -1068,16 +1072,22 @@ function OrderCard({order, isEn}: {order: OrderItemFragment; isEn: boolean}) {
     0,
   );
   const firstItem = lineItems[0];
-  const imageUrl =
-    lineItems
-      .map(
-        (item: any) =>
-          item.variant?.image?.url ||
-          item.variant?.product?.featuredImage?.url ||
-          item.image?.url ||
-          (item.variant?.product as any)?.image?.url,
-      )
-      .find(Boolean) || '';
+  /**
+   * A cake designed in the builder has no product behind it and so no
+   * artwork of any kind — without this it is the one item in the whole
+   * account area that renders as an empty tile.
+   */
+  const imageUrl = isCustomCakeOrder(order)
+    ? CUSTOM_CAKE_IMAGE_URL
+    : lineItems
+        .map(
+          (item: any) =>
+            item.variant?.image?.url ||
+            item.variant?.product?.featuredImage?.url ||
+            item.image?.url ||
+            (item.variant?.product as any)?.image?.url,
+        )
+        .find(Boolean) || '';
   const totalAmount = parseFloat(order.currentTotalPrice?.amount || '0.00');
 
   // Calculate original total using discountedTotalPrice

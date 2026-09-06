@@ -1,4 +1,4 @@
-import { Await, NavLink, useMatches, Form, useLocation, useFetcher, useRouteLoaderData } from 'react-router';
+import { Await, NavLink, useMatches, Form, useLocation, useFetcher, useRouteLoaderData, useRevalidator } from 'react-router';
 import React, { Suspense, useState, useEffect } from 'react';
 import type { HeaderQuery, CartApiQueryFragment } from 'storefrontapi.generated';
 import { Button } from './layout/Button';
@@ -43,6 +43,74 @@ export function Header({ header, isLoggedIn, cart, locations, customer, locale, 
   const isEn = location.pathname.startsWith('/en');
   const fetcher = useFetcher();
   const locationFetcher = useFetcher();
+  const revalidator = useRevalidator();
+
+  /**
+   * The branch the shopper just picked, shown before the server confirms it.
+   *
+   * The pill reads root's loader data, and root only re-reads the session
+   * after a full revalidation — which re-runs the header, locations, reviews,
+   * mega-menu and cart queries. That is a second or more of the pill still
+   * naming the branch they just left, right after they pressed «تأكيد
+   * الاختيار», which reads as the choice not having registered.
+   *
+   * So the pill shows the new branch immediately and the revalidation catches
+   * up behind it. Cleared the moment root agrees, below, so this can never
+   * mask what the session actually holds.
+   */
+  const [pendingLocation, setPendingLocation] = useState<null | {
+    branchId: string;
+    branchName: string;
+    fulfillmentType: string;
+    addressName?: string;
+  }>(null);
+
+  const shownLocationId = pendingLocation?.branchId ?? selectedLocationId;
+  const shownLocationName = pendingLocation?.branchName ?? selectedLocationName;
+  const shownFulfillmentType = pendingLocation?.fulfillmentType ?? fulfillmentType;
+  const shownAddressName = pendingLocation?.addressName ?? selectedAddressName;
+
+  // Root has caught up — stop overriding it.
+  useEffect(() => {
+    if (pendingLocation && selectedLocationId === pendingLocation.branchId) {
+      setPendingLocation(null);
+    }
+  }, [selectedLocationId, pendingLocation]);
+
+  /**
+   * The branch can also be changed from the cart, which has its own copy of
+   * the modal and its own fetcher. It announces the choice so the pill can
+   * move at the same moment there as it does here.
+   */
+  useEffect(() => {
+    const onSelected = (event: Event) => {
+      const detail = (event as CustomEvent).detail;
+      if (detail?.branchId) setPendingLocation(detail);
+    };
+    window.addEventListener('location-selected', onSelected);
+    return () => window.removeEventListener('location-selected', onSelected);
+  }, []);
+
+  /**
+   * Re-read the session once the branch has actually been saved.
+   *
+   * The pill renders `selectedLocationName` and `selectedLocationId` straight
+   * from root's loader data, so it can only change when that loader runs
+   * again — and the branch itself lives in the session, which /api/location-id
+   * writes and returns as a Set-Cookie. Until root re-reads that cookie the
+   * header keeps naming the branch the shopper just left, and only a manual
+   * refresh corrects it.
+   *
+   * Waiting for the fetcher to go idle with data is what makes this land after
+   * the cookie, rather than racing the request that set it.
+   */
+  useEffect(() => {
+    if (locationFetcher.state === 'idle' && locationFetcher.data) {
+      revalidator.revalidate();
+    }
+    // The revalidator identity is stable; re-running on it would loop.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [locationFetcher.state, locationFetcher.data]);
 
   const handleSelectBranch = async (branch: any, type: 'delivery' | 'pickup', addressName?: string, isOutOfRange?: boolean, fullAddress?: any) => {
     const branchName = branch?.name || 'Main';
@@ -152,6 +220,12 @@ export function Header({ header, isLoggedIn, cart, locations, customer, locale, 
     if (addressName) {
       locFormData.append('addressName', addressName);
     }
+    setPendingLocation({
+      branchId: branchId,
+      branchName,
+      fulfillmentType: type,
+      addressName,
+    });
     locationFetcher.submit(locFormData, { method: 'POST', action: '/api/location-id' });
   };
 
@@ -191,10 +265,10 @@ export function Header({ header, isLoggedIn, cart, locations, customer, locale, 
         locations={locations}
         customer={customer}
         googleMapsKey={googleMapsKey}
-        selectedLocationName={selectedLocationName}
-        selectedAddressName={selectedAddressName}
-        selectedLocationId={selectedLocationId}
-        fulfillmentType={fulfillmentType}
+        selectedLocationName={shownLocationName}
+        selectedAddressName={shownAddressName}
+        selectedLocationId={shownLocationId}
+        fulfillmentType={shownFulfillmentType}
         onSelectBranch={handleSelectBranch}
       />
       <MiddleBar

@@ -4,7 +4,7 @@ import { useBranchAvailability } from '~/lib/useBranchAvailability';
 import type { CartLayout } from '~/components/CartMain';
 import { CartForm, Money, type OptimisticCart } from '@shopify/hydrogen';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
-import { useFetcher, useRouteLoaderData, Link, useLocation, Form } from 'react-router';
+import { useFetcher, useRouteLoaderData, Link, useLocation, Form, useRevalidator } from 'react-router';
 import { useAside } from '~/components/Aside';
 import { Price, SaudiRiyalSymbol } from './Price';
 import { DeliveryPickupModal, checkBranchFreeDeliveryInterval } from './DeliveryPickupModal';
@@ -48,7 +48,26 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
     return acc;
   }, 0) || 0;
 
-  const subtotal = Math.max(0, rawSubtotal - freeItemsValue);
+  /**
+   * A line the server has not costed yet, priced from the variant it came with.
+   *
+   * `cart.cost` belongs to the cart Shopify last confirmed, so during the
+   * optimistic window it does not include whatever was just added — and on a
+   * first add to an empty cart that means the drawer opens showing 0.00 for
+   * both the line and the total, next to the item the shopper can plainly see.
+   *
+   * Only lines Hydrogen has marked optimistic are counted, so the moment the
+   * real cart arrives this contributes nothing and the total is Shopify's
+   * own number, exactly as before.
+   */
+  const optimisticValue = cart?.lines?.nodes?.reduce((acc: number, line: any) => {
+    if (!line?.isOptimistic) return acc;
+    const unitPrice = parseFloat(line?.merchandise?.price?.amount ?? '');
+    if (!Number.isFinite(unitPrice)) return acc;
+    return acc + unitPrice * (line?.quantity ?? 1);
+  }, 0) || 0;
+
+  const subtotal = Math.max(0, rawSubtotal + optimisticValue - freeItemsValue);
 
   // Calculate total discount from all discount allocations
   const cartDiscountAmount = cart?.discountAllocations?.reduce((acc: number, allocation: any) => {
@@ -470,6 +489,22 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
 
 
   const locationFetcher = useFetcher();
+  const revalidator = useRevalidator();
+
+  /**
+   * Re-read the session once the branch has actually been saved — the same
+   * reason as in Header, and needed here too because the branch can be changed
+   * from either place. Everything that names the branch (this summary, the
+   * header pill, the per-line stock checks) reads root's loader data, which
+   * holds the session as it was when the page loaded.
+   */
+  useEffect(() => {
+    if (locationFetcher.state === 'idle' && locationFetcher.data) {
+      revalidator.revalidate();
+    }
+    // The revalidator identity is stable; re-running on it would loop.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [locationFetcher.state, locationFetcher.data]);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
 
   const handleSelectBranchFromCart = (
@@ -540,6 +575,28 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
     if (customBranchId) locFormData.append('customBranchId', customBranchId);
     if (axStoreId) locFormData.append('axStoreId', axStoreId);
     if (addressName) locFormData.append('addressName', addressName);
+
+    /**
+     * Tell the header at once.
+     *
+     * It renders the branch from root's loader data, which will not change
+     * until the revalidation below finishes re-running every root query — long
+     * enough that the pill still names the old branch while the cart already
+     * shows the new one. The header holds this as a pending value and drops it
+     * the moment root agrees.
+     */
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(
+        new CustomEvent('location-selected', {
+          detail: {
+            branchId,
+            branchName,
+            fulfillmentType: type,
+            addressName,
+          },
+        }),
+      );
+    }
 
     locationFetcher.submit(locFormData, { method: 'POST', action: '/api/location-id' });
     setIsLocationModalOpen(false);

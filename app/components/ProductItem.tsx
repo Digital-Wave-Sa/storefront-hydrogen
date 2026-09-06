@@ -28,12 +28,27 @@ export function ProductItem({
   loading,
   view = 'grid',
   isExport,
+  giftFor,
 }: {
   product: any;
   loading?: 'eager' | 'lazy';
   view?: 'grid' | 'list';
   /** When true: add-to-cart goes to the export journey (/export-cart) */
   isExport?: boolean;
+  /**
+   * The gift buying THIS product earns, on a Buy X Get Y offer.
+   *
+   * Named on the card rather than in a banner above the grid, because a
+   * banner can only list every gift under the offer at once — and once an
+   * offer carries two discounts, that list stops saying which gift is whose.
+   * The caller resolves it per discount; absent everywhere else, and the card
+   * then renders exactly as it always has.
+   */
+  giftFor?: {
+    title?: string;
+    image?: string | null;
+    imageAlt?: string | null;
+  } | null;
 }) {
   const location = useLocation();
   const isCorporatePage = 
@@ -486,6 +501,35 @@ export function ProductItem({
           )}
         </div>
       </div>
+
+      {/* The gift this product earns, at the moment the shopper decides. */}
+      {giftFor?.title ? (
+        <div
+          className="mt-auto flex items-center gap-2.5 bg-[#EFF7F1] border-t border-dashed border-[#2C7A4B] px-3 py-2.5"
+          style={{fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif"}}
+        >
+          {giftFor.image ? (
+            <img
+              src={giftFor.image}
+              alt={giftFor.imageAlt || giftFor.title}
+              width={36}
+              height={36}
+              loading="lazy"
+              className="w-[36px] h-[36px] rounded-[8px] object-cover shrink-0 bg-white"
+            />
+          ) : (
+            <div className="w-[36px] h-[36px] rounded-[8px] bg-white shrink-0" />
+          )}
+          <div className="min-w-0 leading-tight text-start">
+            <span className="block text-[#2C7A4B] text-[10px] font-bold tracking-wide">
+              {isEn ? 'Your free gift' : 'هديتك مع هذا المنتج'}
+            </span>
+            <span className="block text-[#234745] text-[11.5px] font-bold truncate">
+              {giftFor.title}
+            </span>
+          </div>
+        </div>
+      ) : null}
 
       <StockNotificationModal
         isOpen={isNotifyModalOpen}

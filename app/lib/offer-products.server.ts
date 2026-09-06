@@ -91,6 +91,16 @@ export const COLLECTION_PRODUCTS_QUERY = `#graphql
   }
 ` as const;
 
+/** One Buy X Get Y discount, with both its sides as resolved products. */
+export interface ResolvedBxgyPair {
+  /** The discount's title in Shopify. */
+  title?: string;
+  /** Products that qualify for this discount specifically. */
+  buyProducts: any[];
+  /** What buying one of them earns — this discount's gifts, not the tag's. */
+  giftProducts: any[];
+}
+
 export interface ResolvedOffer {
   handle: string;
   offer: OfferData;
@@ -98,6 +108,18 @@ export interface ResolvedOffer {
   gridProducts: any[];
   /** On a Buy X Get Y offer, the item the shopper receives. */
   freeItems: any[];
+  /**
+   * The offer's discounts kept apart, one entry each.
+   *
+   * `freeItems` is every gift under the tag in one list, which reads as "buy
+   * anything here, get any of these" — true while one discount carries the
+   * tag, and wrong the moment a second does, because each discount pairs its
+   * own two sides and a shopper cannot tell which gift is theirs.
+   *
+   * Empty for a discount that targets collections rather than named products,
+   * and for a plain percentage offer. Callers fall back to `freeItems` there.
+   */
+  bxgyPairs: ResolvedBxgyPair[];
 }
 
 /**
@@ -186,10 +208,15 @@ export async function resolveOffer({
   }
 
   /**
-   * On a Buy X Get Y offer the free item is not something to add to the cart —
-   * listing it as an ordinary product card invites the shopper to buy the very
-   * thing they are supposed to receive. Qualifying products go in the grid; the
-   * free item is named separately.
+   * On a Buy X Get Y offer the free item is kept out of the grid and returned
+   * separately, because it is not one of the products that qualifies — buying
+   * it earns nothing.
+   *
+   * It is still something the shopper has to put in their cart themselves.
+   * Shopify's Buy X Get Y never adds the "get" item: the discount only ever
+   * discounts a line that is already there. So the caller must present these
+   * as reachable products, not as a prize that arrives on its own — see
+   * BogoSuggestion, which offers the gift once the cart has earned it.
    */
   const freeItems = offer.isBxgy
     ? offerProducts.filter((p: any) => p.role === 'get')
@@ -213,7 +240,29 @@ export async function resolveOffer({
         }),
   );
 
-  return {handle, offer, gridProducts, freeItems};
+  /**
+   * Built from the ids each discount actually names, against the products
+   * already fetched above — so no extra round-trip, and a pair only survives
+   * if both of its sides resolved.
+   */
+  const productById = new Map<string, any>(
+    offerProducts.filter((p: any) => p?.id).map((p: any) => [p.id, p]),
+  );
+  const bxgyPairs: ResolvedBxgyPair[] = (offer.bxgy || [])
+    .map((pair) => ({
+      title: pair.title,
+      buyProducts: pair.buyIds
+        .map((id) => productById.get(id))
+        .filter(Boolean),
+      giftProducts: pair.giftIds
+        .map((id) => productById.get(id))
+        .filter(Boolean),
+    }))
+    .filter(
+      (pair) => pair.buyProducts.length > 0 && pair.giftProducts.length > 0,
+    );
+
+  return {handle, offer, gridProducts, freeItems, bxgyPairs};
 }
 
 /**

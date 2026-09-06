@@ -1,4 +1,4 @@
-import {Suspense, useState, useEffect, useMemo} from 'react';
+import {Suspense, Fragment, useState, useEffect, useMemo} from 'react';
 import {
   getVisibilityStatus,
   getProductVisibility,
@@ -18,6 +18,7 @@ import {fixMojibake} from '~/lib/mojibake';
 import {adminApiQuery} from '~/lib/admin.server';
 import {getAdminToken, getAdminDomain} from '~/lib/shopify-admin.server';
 import {createPortal} from 'react-dom';
+import {readMetaobject, firstMetaobject} from '~/lib/metaobject';
 
 /**
  * Loyalty points awarded per 1 SAR spent. Used when a product carries no
@@ -52,6 +53,62 @@ import {useAside} from '~/components/Aside';
 import type {CartLineInput} from '@shopify/hydrogen/storefront-api-types';
 import {getVariantUrl} from '~/utils';
 import patternBg from '/images/second-bg-pattern.svg';
+
+/**
+ * A location metafield reaches a page in more than one shape — `{key, value}`
+ * from root's Storefront query, a bare value from api.locations-meta, or an
+ * entry in the raw `metafields` array — and all three mean the same number.
+ * Zero and a blank are treated as absent so the caller's default survives.
+ *
+ * `pickup_ready_minutes` is deliberately NOT queried in root's LOCATIONS_QUERY.
+ * That query ends in `.catch(() => null)`, so anything it dislikes takes the
+ * whole locations list down without a word — and an empty locations list is a
+ * branch picker that opens onto nothing. It reaches this page through the
+ * `metafields` array instead, which costs nothing to read and cannot break
+ * the query.
+ */
+function readBranchNumber(branch: any, key: string): number | null {
+  const direct = branch?.[key];
+  const raw =
+    (direct && typeof direct === 'object' ? direct.value : direct) ??
+    branch?.metafields?.find((m: any) => m?.key === key)?.value;
+  const value = typeof raw === 'number' ? raw : parseInt(String(raw ?? ''), 10);
+  return Number.isFinite(value) && value > 0 ? value : null;
+}
+
+/**
+ * The branch stores pickup readiness as a number of minutes; this says it in
+ * whichever unit reads naturally, so a branch that needs a day is not
+ * described to a shopper as "1440 minutes".
+ *
+ * otp-errors.ts has arabicCount for the same plural problem on the OTP screen.
+ * It is not imported here: that module is about OTP failures, and this needs
+ * hour and day forms it does not carry.
+ */
+function formatReadyIn(minutes: number, isEn: boolean): string {
+  const ar = (n: number, one: string, two: string, few: string, many: string) =>
+    n === 1 ? one : n === 2 ? two : n <= 10 ? `${n} ${few}` : `${n} ${many}`;
+
+  if (minutes >= 60 && minutes % 60 === 0) {
+    const hours = minutes / 60;
+    if (hours >= 24 && hours % 24 === 0) {
+      const days = hours / 24;
+      return isEn
+        ? `${days} day${days === 1 ? '' : 's'}`
+        : ar(days, 'يوم واحد', 'يومين', 'أيام', 'يوم');
+    }
+    return isEn
+      ? `${hours} hour${hours === 1 ? '' : 's'}`
+      : ar(hours, 'ساعة واحدة', 'ساعتين', 'ساعات', 'ساعة');
+  }
+
+  return isEn
+    ? `${minutes} minute${minutes === 1 ? '' : 's'}`
+    : ar(minutes, 'دقيقة واحدة', 'دقيقتين', 'دقائق', 'دقيقة');
+}
+
+/** Said when a branch has no `custom.pickup_ready_minutes` of its own. */
+const DEFAULT_PICKUP_READY_MINUTES = 15;
 
 export const shouldRevalidate = ({
   currentUrl,
@@ -282,7 +339,7 @@ export async function loader(args: LoaderFunctionArgs) {
     }
   }
   // --- PARALLEL FETCH FOR SECONDARY DATA ---
-  const [reviewsData, hasPurchasedResult, recommendedResult] =
+  const [reviewsData, hasPurchasedResult, recommendedResult, panelContent] =
     await Promise.all([
       // 1. REVIEWS
       (async () => {
@@ -550,6 +607,29 @@ export async function loader(args: LoaderFunctionArgs) {
         }
         return recommended;
       })(),
+
+      // 4. EDITABLE COPY FOR THE DELIVERY / PICKUP / PAYMENT PANEL
+      /**
+       * Fetched defensively, and last, for the same reason the export page
+       * does it: a missing or malformed metaobject must not take a product
+       * page down with it, so a failure here just leaves the built-in copy
+       * in place.
+       */
+      storefront
+        .query(PRODUCT_INFO_PANEL_QUERY, {
+          variables: {
+            country: storefront.i18n.country,
+            language: storefront.i18n.language,
+          },
+          cache: storefront.CacheShort(),
+        })
+        .catch((err: any) => {
+          console.error(
+            '[Product] Failed to load info panel content metaobjects:',
+            err,
+          );
+          return null;
+        }),
     ]);
 
   return data({
@@ -561,6 +641,7 @@ export async function loader(args: LoaderFunctionArgs) {
     dynamicCount: reviewsData.dynamicCount,
     recommended: recommendedResult,
     hasPurchased: hasPurchasedResult,
+    panelContent,
   });
 }
 
@@ -598,6 +679,7 @@ export default function Product() {
     dynamicCount: loaderCount,
     recommended,
     hasPurchased,
+    panelContent,
   } = useLoaderData<any>();
   const rootData = useRouteLoaderData('root') as any;
   const {open} = useAside();
@@ -681,6 +763,106 @@ export default function Product() {
       ['digital', 'gift-card', 'giftcard', 'voucher'].includes(t.toLowerCase().trim()),
     ) ||
     selectedVariant?.requiresShipping === false;
+
+  /**
+   * Merchant-editable copy for the panel under the buy button.
+   *
+   * The three rows — delivery, pickup, payment — were hard-coded, so changing
+   * "Ready in 15 minutes" meant a deploy. They read from a metaobject now,
+   * field by field over the text that is there today: the panel is unchanged
+   * until someone creates the entry in Shopify, and a half-filled entry falls
+   * back row by row rather than rendering a blank heading.
+   *
+   * Gift cards read their own entry. The panel says something else entirely
+   * for them — a voucher is not delivered free above 200 SAR and is not
+   * collected from a branch — so sharing one set of fields would mean a
+   * merchant editing the pickup line had to know which products it reached.
+   *
+   * A missing translation deliberately does not fall back across languages;
+   * see readMetaobject for why.
+   */
+  const panel = readMetaobject(
+    firstMetaobject(
+      isGiftCard
+        ? (panelContent as any)?.giftCardPanel
+        : (panelContent as any)?.productPanel,
+    ),
+  );
+
+  const panelCopy = isGiftCard
+    ? [
+        {
+          key: 'voucher',
+          title:
+            panel.localized('voucher_title', isEn) ||
+            (isEn ? 'Instant Digital Voucher' : 'قسيمة إلكترونية فورية'),
+          text:
+            panel.localized('voucher_text', isEn) ||
+            (isEn
+              ? 'Delivered via Email & SMS instantly'
+              : 'تصل للمستلم فوراً عبر البريد ورسائل SMS'),
+        },
+        {
+          key: 'wallet',
+          title:
+            panel.localized('wallet_title', isEn) ||
+            (isEn ? 'Direct Wallet Balance' : 'شحن مباشر للمحفظة'),
+          text:
+            panel.localized('wallet_text', isEn) ||
+            (isEn
+              ? 'Easily redeemable in account wallet'
+              : 'يمكن تفعيلها وشحن الرصيد مباشرة في المحفظة'),
+        },
+        {
+          key: 'payment',
+          title:
+            panel.localized('payment_title', isEn) ||
+            (isEn ? '100% Secure Payment' : 'دفع آمن 100%'),
+          text:
+            panel.localized('payment_text', isEn) ||
+            (isEn
+              ? 'Multiple electronic payment options'
+              : 'طرق دفع إلكترونية متعددة ومشفرة'),
+        },
+      ]
+    : [
+        {
+          key: 'delivery',
+          title:
+            panel.localized('delivery_title', isEn) ||
+            (isEn ? 'Free Delivery' : 'توصيل مجاني'),
+          // `{threshold}` is filled in per branch where the panel renders.
+          text:
+            panel.localized('delivery_text', isEn) ||
+            (isEn ? 'On orders above {threshold} SAR' : 'للطلبات فوق {threshold} ر.س'),
+        },
+        {
+          key: 'pickup',
+          title:
+            panel.localized('pickup_title', isEn) ||
+            (isEn ? 'Branch Pickup' : 'استلام من الفرع'),
+          /**
+           * `{ready}` is filled in from the branch's own
+           * `custom.pickup_ready_minutes`, already worded and pluralised —
+           * the wait is not the same at every branch, and it is a number a
+           * merchant should not have to keep in sync across two languages.
+           */
+          text:
+            panel.localized('pickup_text', isEn) ||
+            (isEn ? 'Ready in {ready}' : 'جاهز خلال {ready}'),
+        },
+        {
+          key: 'payment',
+          title:
+            panel.localized('payment_title', isEn) ||
+            (isEn ? '100% Secure Payment' : 'دفع آمن 100%'),
+          text:
+            panel.localized('payment_text', isEn) ||
+            (isEn
+              ? 'Multiple electronic payment options'
+              : 'خيارات دفع إلكترونية متعددة'),
+        },
+      ];
 
   const rawMetaComponents =
     (product as any).bundle_components?.references?.nodes || [];
@@ -1793,11 +1975,18 @@ export default function Product() {
                   const hasAnyCard = Boolean(servingsVal || prepTimeVal || caloriesVal);
                   if (!hasAnyCard) return null;
 
+                  /**
+                   * Each card holds a third of the row whether or not the
+                   * other two are filled. `flex-1` used to let a lone card
+                   * stretch the full width, so the same calories card was a
+                   * banner on one product and a third of a row on the next.
+                   * The basis is a third of the row minus the two 12px gaps.
+                   */
                   return (
                     <div className="flex flex-wrap sm:flex-nowrap items-center gap-[12px] mb-[24px] w-full">
                       {/* Servings Card */}
                       {servingsVal && (
-                        <div className="flex-1 min-w-[100px] h-[64px] rounded-[12px] border border-[#D2D2D2] flex flex-col items-center justify-center relative">
+                        <div className="basis-[calc((100%-24px)/3)] grow-0 shrink-0 min-w-[100px] h-[64px] rounded-[12px] border border-[#D2D2D2] flex flex-col items-center justify-center relative">
                           <span
                             className="text-[#234745] text-[16px] font-bold absolute top-[8px]"
                             style={{
@@ -1819,7 +2008,7 @@ export default function Product() {
 
                       {/* Prep Time Card */}
                       {prepTimeVal && (
-                        <div className="flex-1 min-w-[100px] h-[64px] rounded-[12px] border border-[#D2D2D2] flex flex-col items-center justify-center relative">
+                        <div className="basis-[calc((100%-24px)/3)] grow-0 shrink-0 min-w-[100px] h-[64px] rounded-[12px] border border-[#D2D2D2] flex flex-col items-center justify-center relative">
                           <div className="absolute top-[8px] flex items-center gap-1">
                             <span
                               className="text-[#234745] text-[16px] font-bold"
@@ -1853,7 +2042,7 @@ export default function Product() {
 
                       {/* Calories Card */}
                       {caloriesVal && (
-                        <div className="flex-1 min-w-[100px] h-[64px] rounded-[12px] border border-[#D2D2D2] flex flex-col items-center justify-center relative">
+                        <div className="basis-[calc((100%-24px)/3)] grow-0 shrink-0 min-w-[100px] h-[64px] rounded-[12px] border border-[#D2D2D2] flex flex-col items-center justify-center relative">
                           <span
                             className="text-[#234745] text-[16px] font-bold absolute top-[8px]"
                             style={{
@@ -2489,8 +2678,8 @@ export default function Product() {
                             }}
                           >
                             {isEn
-                              ? 'Write on Cake or Board'
-                              : 'الكتابة على الكيكة أو القاعدة'}
+                              ? 'Text Customization & Personalization'
+                              : 'الكتابة وتخصيص الكيكة'}
                           </span>
                           <span
                             className="text-[#7D7D7D] text-[14px] mt-[8px]"
@@ -2501,8 +2690,8 @@ export default function Product() {
                             }}
                           >
                             {isEn
-                              ? 'Select location and enter what you would like written:'
-                              : 'حدد موقع الكتابة وماذا تود أن نكتب لك:'}
+                              ? 'Choose where you want your custom message to be written (on the cake surface, base board, or both).'
+                              : 'اختر موقع موضع الكتابة المخصص (على سطح الكيكة، على القاعدة، أو كلاهما).'}
                           </span>
                         </div>
 
@@ -2517,7 +2706,6 @@ export default function Product() {
                                 : 'bg-white text-[#234745] border-[#BBCFCD]/60 hover:bg-gray-50'
                             }`}
                           >
-                            <span>🎂</span>
                             <span>{isEn ? 'On the Cake' : 'على الكيكة'}</span>
                           </button>
 
@@ -2530,7 +2718,6 @@ export default function Product() {
                                 : 'bg-white text-[#234745] border-[#BBCFCD]/60 hover:bg-gray-50'
                             }`}
                           >
-                            <span>🔳</span>
                             <span>{isEn ? 'On the Board' : 'على القاعدة'}</span>
                           </button>
                         </div>
@@ -2554,8 +2741,8 @@ export default function Product() {
                         <div className="flex items-center gap-2 mt-1 z-10">
                           <span className="text-[12px] text-[#d4a06a] font-semibold text-start">
                             {isEn
-                              ? '⚠️ Note: If you do not enter a message, the cake will be prepared plain without any writing.'
-                              : '⚠️ ملاحظة: إذا لم تقم بكتابة أي رسالة، سيتم تحضير الكيكة سادة بدون أي كتابة.'}
+                              ? 'Note: If you do not enter a message, the cake will be prepared plain without any writing.'
+                              : 'ملاحظة: إذا لم تقم بكتابة أي رسالة، سيتم تحضير الكيكة سادة بدون أي كتابة.'}
                           </span>
                         </div>
                       </div>
@@ -4016,186 +4203,73 @@ export default function Product() {
                 ? parseInt(thresholdMeta.value)
                 : 200;
 
+              /**
+               * The free-delivery line names an amount that comes from the
+               * branch, so its editable text carries a `{threshold}` token
+               * rather than a number a merchant would have to keep in sync.
+               */
+              const thresholdText = isEn
+                ? String(threshold)
+                : new Intl.NumberFormat('en-US').format(threshold);
+              const readyText = formatReadyIn(
+                readBranchNumber(currentBranch, 'pickup_ready_minutes') ??
+                  DEFAULT_PICKUP_READY_MINUTES,
+                isEn,
+              );
+              const panelRows = panelCopy.map((row) => ({
+                ...row,
+                text: row.text
+                  .split('{threshold}')
+                  .join(thresholdText)
+                  .split('{ready}')
+                  .join(readyText),
+              }));
+
               return (
                 <div
                   className={`bg-[#FEF8EB] rounded-[20px] p-[16px] border border-[#BBCFCD]/50 flex flex-col gap-0 text-start`}
                 >
-                  {isGiftCard ? (
-                    <>
-                      {/* Item 1: Instant Digital Delivery */}
-                      <div className="pb-[12px] flex flex-col justify-center gap-[4px]">
-                        <h4
-                          className="font-bold text-[14px] text-[#234745] leading-[17px] !mt-[0]"
-                          style={{
-                            fontFamily:
-                              "'EnglishDigits', 'GE Dinar One', sans-serif",
-                          }}
+                  {panelRows.map((row, i) => {
+                    const isFirst = i === 0;
+                    const isLast = i === panelRows.length - 1;
+                    return (
+                      <Fragment key={row.key}>
+                        <div
+                          className={`${
+                            isFirst
+                              ? 'pb-[12px]'
+                              : isLast
+                                ? 'pt-[12px]'
+                                : 'py-[12px]'
+                          } flex flex-col justify-center gap-[4px]`}
                         >
-                          {isEn ? 'Instant Digital Voucher' : 'قسيمة إلكترونية فورية'}
-                        </h4>
-                        <p
-                          className="text-[12px] text-[#7D7D7D] font-normal leading-[15px]"
-                          style={{
-                            fontFamily:
-                              "'EnglishDigits', 'GE Dinar One', sans-serif",
-                          }}
-                        >
-                          {isEn
-                            ? 'Delivered via Email & SMS instantly'
-                            : 'تصل للمستلم فوراً عبر البريد ورسائل SMS'}
-                        </p>
-                      </div>
-                      <div className="h-[1px] w-full bg-[#BBCFCD]/50"></div>
-
-                      {/* Item 2: Store Credit Balance */}
-                      <div className="py-[12px] flex flex-col justify-center gap-[4px]">
-                        <h4
-                          className="font-bold text-[14px] text-[#234745] leading-[17px]"
-                          style={{
-                            fontFamily:
-                              "'EnglishDigits', 'GE Dinar One', sans-serif",
-                          }}
-                        >
-                          {isEn ? 'Direct Wallet Balance' : 'شحن مباشر للمحفظة'}
-                        </h4>
-                        <p
-                          className="text-[12px] text-[#7D7D7D] font-normal leading-[15px]"
-                          style={{
-                            fontFamily:
-                              "'EnglishDigits', 'GE Dinar One', sans-serif",
-                          }}
-                        >
-                          {isEn
-                            ? 'Easily redeemable in account wallet'
-                            : 'يمكن تفعيلها وشحن الرصيد مباشرة في المحفظة'}
-                        </p>
-                      </div>
-                      <div className="h-[1px] w-full bg-[#BBCFCD]/50"></div>
-
-                      {/* Item 3: 100% Secure Payment */}
-                      <div className="pt-[12px] flex flex-col justify-center gap-[4px]">
-                        <h4
-                          className="font-bold text-[14px] text-[#234745] leading-[17px]"
-                          style={{
-                            fontFamily:
-                              "'EnglishDigits', 'GE Dinar One', sans-serif",
-                          }}
-                        >
-                          {isEn ? '100% Secure Payment' : 'دفع آمن 100%'}
-                        </h4>
-                        <p
-                          className="text-[12px] text-[#7D7D7D] font-normal leading-[15px]"
-                          style={{
-                            fontFamily:
-                              "'EnglishDigits', 'GE Dinar One', sans-serif",
-                          }}
-                        >
-                          {isEn
-                            ? 'Multiple electronic payment options'
-                            : 'طرق دفع إلكترونية متعددة ومشفرة'}
-                        </p>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      {/* Item 1: Free Delivery */}
-                      <div className="pb-[12px] flex flex-col justify-center gap-[4px]">
-                        <h4
-                          className="font-bold text-[14px] text-[#234745] leading-[17px] !mt-[0]"
-                          style={{
-                            fontFamily:
-                              "'EnglishDigits', 'GE Dinar One', sans-serif",
-                          }}
-                        >
-                          {isEn ? 'Free Delivery' : 'توصيل مجاني'}
-                        </h4>
-                        <p
-                          className="text-[12px] text-[#7D7D7D] font-normal leading-[15px]"
-                          style={{
-                            fontFamily:
-                              "'EnglishDigits', 'GE Dinar One', sans-serif",
-                          }}
-                        >
-                          {isEn
-                            ? `On orders above ${threshold} SAR`
-                            : `للطلبات فوق ${new Intl.NumberFormat('en-US').format(threshold)} ر.س`}
-                        </p>
-                      </div>
-                      <div className="h-[1px] w-full bg-[#BBCFCD]/50"></div>
-
-                      {/* Item 2: Branch Pickup */}
-                      <div className="py-[12px] flex flex-col justify-center gap-[4px]">
-                        <h4
-                          className="font-bold text-[14px] text-[#234745] leading-[17px]"
-                          style={{
-                            fontFamily:
-                              "'EnglishDigits', 'GE Dinar One', sans-serif",
-                          }}
-                        >
-                          {isEn ? 'Branch Pickup' : 'استلام من الفرع'}
-                        </h4>
-                        <p
-                          className="text-[12px] text-[#7D7D7D] font-normal leading-[15px]"
-                          style={{
-                            fontFamily:
-                              "'EnglishDigits', 'GE Dinar One', sans-serif",
-                          }}
-                        >
-                          {isEn ? 'Ready in 15 minutes' : 'جاهز خلال 15 دقيقة'}
-                        </p>
-                      </div>
-                      <div className="h-[1px] w-full bg-[#BBCFCD]/50"></div>
-
-                      {/* Item 3: Guaranteed Return */}
-                      <div className="py-[12px] flex flex-col justify-center gap-[4px]">
-                        <h4
-                          className="font-bold text-[14px] text-[#234745] leading-[17px]"
-                          style={{
-                            fontFamily:
-                              "'EnglishDigits', 'GE Dinar One', sans-serif",
-                          }}
-                        >
-                          {isEn ? 'Guaranteed Return' : 'استرجاع مضمون'}
-                        </h4>
-                        <p
-                          className="text-[12px] text-[#7D7D7D] font-normal leading-[15px]"
-                          style={{
-                            fontFamily:
-                              "'EnglishDigits', 'GE Dinar One', sans-serif",
-                          }}
-                        >
-                          {isEn
-                            ? 'Within 24 hours of receipt'
-                            : 'خلال 24 ساعة من الاستلام'}
-                        </p>
-                      </div>
-                      <div className="h-[1px] w-full bg-[#BBCFCD]/50"></div>
-
-                      {/* Item 4: Secure Payment */}
-                      <div className="pt-[12px] flex flex-col justify-center gap-[4px]">
-                        <h4
-                          className="font-bold text-[14px] text-[#234745] leading-[17px]"
-                          style={{
-                            fontFamily:
-                              "'EnglishDigits', 'GE Dinar One', sans-serif",
-                          }}
-                        >
-                          {isEn ? '100% Secure Payment' : 'دفع آمن 100%'}
-                        </h4>
-                        <p
-                          className="text-[12px] text-[#7D7D7D] font-normal leading-[15px]"
-                          style={{
-                            fontFamily:
-                              "'EnglishDigits', 'GE Dinar One', sans-serif",
-                          }}
-                        >
-                          {isEn
-                            ? 'Multiple electronic payment options'
-                            : 'خيارات دفع إلكترونية متعددة'}
-                        </p>
-                      </div>
-                    </>
-                  )}
+                          <h4
+                            className={`font-bold text-[14px] text-[#234745] leading-[17px]${
+                              isFirst ? ' !mt-[0]' : ''
+                            }`}
+                            style={{
+                              fontFamily:
+                                "'EnglishDigits', 'GE Dinar One', sans-serif",
+                            }}
+                          >
+                            {row.title}
+                          </h4>
+                          <p
+                            className="text-[12px] text-[#7D7D7D] font-normal leading-[15px]"
+                            style={{
+                              fontFamily:
+                                "'EnglishDigits', 'GE Dinar One', sans-serif",
+                            }}
+                          >
+                            {row.text}
+                          </p>
+                        </div>
+                        {!isLast && (
+                          <div className="h-[1px] w-full bg-[#BBCFCD]/50"></div>
+                        )}
+                      </Fragment>
+                    );
+                  })}
                 </div>
               );
             })()}
@@ -5502,6 +5576,41 @@ const RECOMMENDED_PRODUCT_FRAGMENT = `#graphql
     }
   }
 `;
+
+/**
+ * Editable copy for the delivery / pickup / payment panel on a product page.
+ *
+ * Two entries rather than one: an ordinary product's panel and a gift card's
+ * say different things, and Shopify caps a metaobject definition's fields, so
+ * twelve fields per type (six rows of copy, each with its `_en` twin) keeps
+ * both well inside it.
+ *
+ * The operation name is validated across the whole project by Hydrogen's
+ * codegen, hence the `product` prefix.
+ */
+const PRODUCT_INFO_PANEL_QUERY = `#graphql
+  query productInfoPanelContent($country: CountryCode, $language: LanguageCode)
+    @inContext(country: $country, language: $language) {
+    productPanel: metaobjects(type: "product_info_panel", first: 1) {
+      nodes {
+        id
+        fields {
+          key
+          value
+        }
+      }
+    }
+    giftCardPanel: metaobjects(type: "product_info_panel_giftcard", first: 1) {
+      nodes {
+        id
+        fields {
+          key
+          value
+        }
+      }
+    }
+  }
+` as const;
 
 const PRODUCT_QUERY = `#graphql
   ${RECOMMENDED_PRODUCT_FRAGMENT}

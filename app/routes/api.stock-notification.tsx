@@ -143,7 +143,19 @@ export async function action({request, context}: ActionFunctionArgs) {
     } = body;
 
     if (!email || !variantId) {
-      return data({error: 'Email and variant ID are required'}, {status: 400});
+      /**
+       * Was 'Email and variant ID are required' — our field names, shown to
+       * a shopper who can only do anything about one of them.
+       */
+      return data(
+        {
+          error:
+            context.storefront.i18n.language === 'EN'
+              ? 'Please enter a valid email address.'
+              : 'يرجى إدخال بريد إلكتروني صحيح.',
+        },
+        {status: 400},
+      );
     }
 
     const numericLocationId =

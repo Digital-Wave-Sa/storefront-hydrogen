@@ -12,7 +12,7 @@ import type {
 } from 'storefrontapi.generated';
 import { SaudiRiyalSymbol } from './Price';
 import { fixMojibake } from '~/lib/mojibake';
-import { getIsOutOfStockForFulfillment, isOutOfStockAtBranch, findBranchLocation } from '~/lib/stock';
+import { getIsOutOfStockForFulfillment, isOutOfStockAtBranch, findBranchLocation, resolveBranchLocationId } from '~/lib/stock';
 import { useBranchAvailability } from '~/lib/useBranchAvailability';
 import { isNonShippableLine } from '~/lib/digital-lines';
 
@@ -53,9 +53,40 @@ export function CartLineItem({
   const validOptions = selectedOptions?.filter((opt: any) => opt.value !== 'Default Title') || [];
 
   // Check branch specific availability
-  const branchName = cart?.attributes?.find((a: any) => a.key === 'Branch')?.value;
-  const branchId = cart?.attributes?.find((a: any) => a.key === 'Branch ID')?.value;
+  const attrBranchName = cart?.attributes?.find((a: any) => a.key === 'Branch')?.value;
+  const attrBranchId = cart?.attributes?.find((a: any) => a.key === 'Branch ID')?.value;
   const locations = rootData?.locations?.locations?.nodes || rootData?.locations?.nodes || [];
+
+  /**
+   * The session is the source of truth for the branch; the cart attribute is
+   * a copy that can lag. `api.location-id` writes the session unconditionally
+   * and only then copies it onto the cart, inside a try/catch that logs and
+   * moves on — so after a branch switch the header (session) and this line
+   * (attribute) could name different branches. CartSummary and
+   * checkout.initiate already resolve session-first for exactly that reason;
+   * this was the one reader still trusting the attribute alone.
+   *
+   * It cut both ways. A product added at Al Olaya stayed "available" after
+   * switching to a branch that does not stock it, because the check was still
+   * being run against Al Olaya. And at Shop location, with 982 units on hand,
+   * a line read "not available at this branch" because the check was being
+   * run against a branch holding zero.
+   *
+   * Same rule as CartSummary: a placeholder ("اختر الفرع" / "Select your
+   * branch") does not count as a choice.
+   */
+  const isPlaceholder = (name?: string | null) =>
+    !name || name.includes('اختر') || name.toLowerCase().includes('select');
+
+  const sessionBranchName = rootData?.selectedLocationName as string | undefined;
+  const sessionBranchId = rootData?.selectedLocationId as string | undefined;
+
+  const branchName = !isPlaceholder(sessionBranchName)
+    ? sessionBranchName
+    : (!isPlaceholder(attrBranchName) ? attrBranchName : undefined);
+  const branchId =
+    (!isPlaceholder(sessionBranchName) ? sessionBranchId : undefined) ||
+    attrBranchId;
 
   // Matches on gid, numeric id, branch_id / branch_code / ax_store_id and both
   // the English and Arabic names — see findBranchLocation for why all of those
@@ -74,9 +105,14 @@ export function CartLineItem({
   const storeAvailabilityNodes =
     (merchandise as any)?.storeAvailability?.nodes || [];
 
+  // Session first here too — same reason as the branch above, and
+  // checkout.initiate already resolves Fulfillment Type this way.
   const isPickupOrder =
-    (cart?.attributes?.find((a: any) => a.key === 'Fulfillment Type')?.value || '')
-      .toLowerCase() === 'pickup';
+    String(
+      rootData?.fulfillmentType ||
+        cart?.attributes?.find((a: any) => a.key === 'Fulfillment Type')?.value ||
+        '',
+    ).toLowerCase() === 'pickup';
 
   /**
    * Real inventory at the selected branch, when we can get it.
@@ -88,13 +124,18 @@ export function CartLineItem({
    * available at Al Takhassousi.
    */
   // Only a real Shopify location id is useful to the inventory lookup; the raw
-  // attribute is an internal branch code and would match nothing.
-  const branchLocationId = currentBranch?.id;
+  // attribute is an internal branch code and would match nothing. The session
+  // id is already a gid, and resolveBranchLocationId trusts one directly rather
+  // than round-tripping it through the locations list — which is empty on first
+  // render while root defers it, and left the lookup asking about no branch.
+  const branchLocationId =
+    resolveBranchLocationId(locations, branchId, branchName) || currentBranch?.id;
   const {availability} = useBranchAvailability(
     merchandise?.id ? [merchandise.id] : [],
     branchLocationId,
   );
-  const inventoryVerdict = isOutOfStockAtBranch(availability[merchandise?.id]);
+  const branchEntry = availability[merchandise?.id];
+  const inventoryVerdict = isOutOfStockAtBranch(branchEntry);
 
   let isOutOfStock =
     inventoryVerdict !== null
@@ -105,6 +146,9 @@ export function CartLineItem({
           storeAvailabilityNodes,
           merchandise?.availableForSale !== false,
           isPickupOrder,
+          // Untracked inventory is sellable everywhere — never let the
+          // storeAvailability guesswork below refuse it.
+          branchEntry?.tracked,
         );
 
   // An optimistic line has no availability data yet; flagging it would make

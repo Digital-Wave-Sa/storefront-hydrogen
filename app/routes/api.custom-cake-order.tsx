@@ -304,8 +304,18 @@ export async function action({request, context}: ActionFunctionArgs) {
 
     if (!shopDomain || !token) {
       console.error('[Custom Cake Order] Missing admin domain or token');
+      /**
+       * The cause is logged above. Naming our missing Admin credentials to a
+       * customer tells them nothing they can act on and something about our
+       * setup they should not know.
+       */
       return Response.json(
-        {error: 'Server configuration error. Missing Admin API credentials.'},
+        {
+          error:
+            context.storefront.i18n.language === 'EN'
+              ? 'We could not submit your order right now. Please try again shortly.'
+              : 'تعذّر إرسال طلبك حالياً. يرجى المحاولة بعد قليل.',
+        },
         {status: 500},
       );
     }

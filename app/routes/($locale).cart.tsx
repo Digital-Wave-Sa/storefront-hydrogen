@@ -350,7 +350,11 @@ export async function action({request, context, params}: Route.ActionArgs) {
           console.error('[APPLY STORE CREDIT ERROR]', err);
           return {
             success: false,
-            message: err?.message || 'Failed to apply store credit',
+            // The wallet service answers in English; its wording is logged
+            // above rather than shown to the shopper.
+            message: isEn
+              ? 'Could not apply your wallet balance. Please try again.'
+              : 'تعذّر تطبيق رصيد المحفظة. يرجى المحاولة مرة أخرى.',
           };
         });
 

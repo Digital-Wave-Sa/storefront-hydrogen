@@ -27,9 +27,18 @@ export function getIsOutOfStock(
   selectedLocationId: string | undefined | null,
   selectedLocationName: string | undefined | null,
   storeAvailabilityNodes: any[],
-  availableForSale: boolean
+  availableForSale: boolean,
+  /**
+   * Whether Shopify tracks inventory for this variant, when the caller knows.
+   *
+   * Explicit `false` means the item is sellable everywhere and none of the
+   * per-branch reasoning below applies — no counts exist, so an absent
+   * location is not evidence of anything. Leave undefined when unknown.
+   */
+  tracked?: boolean,
 ): boolean {
   if (!availableForSale) return true;
+  if (tracked === false) return false;
   if (!selectedLocationId) return false;
 
   // Fallback branches (not in Shopify)
@@ -87,8 +96,20 @@ export function getIsOutOfStockForFulfillment(
   storeAvailabilityNodes: any[],
   availableForSale: boolean,
   isPickup: boolean,
+  /** See getIsOutOfStock — explicit `false` means sellable everywhere. */
+  tracked?: boolean,
 ): boolean {
   if (!availableForSale) return true;
+
+  /**
+   * Untracked items skip every test below, including the pickup rule.
+   *
+   * `storeAvailability` lists only what is collectable at pickup-enabled
+   * locations, and an untracked variant has no inventory to be collectable
+   * *of* — so it comes back empty and the pickup rule would refuse an item
+   * Shopify is perfectly happy to sell.
+   */
+  if (tracked === false) return false;
 
   const hasNodes =
     Array.isArray(storeAvailabilityNodes) && storeAvailabilityNodes.length > 0;
@@ -105,6 +126,7 @@ export function getIsOutOfStockForFulfillment(
     selectedLocationName,
     storeAvailabilityNodes,
     availableForSale,
+    tracked,
   );
 }
 
@@ -195,10 +217,33 @@ export function resolveBranchLocationId(
  * rather than guessing, which is what the old storeAvailability fallback did.
  */
 export function isOutOfStockAtBranch(
-  entry: {stockedHere?: boolean; available?: number | null; tracked?: boolean} | undefined | null,
+  entry:
+    | {
+        stockedHere?: boolean;
+        available?: number | null;
+        tracked?: boolean;
+        inventoryKnown?: boolean;
+      }
+    | undefined
+    | null,
 ): boolean | null {
   if (!entry) return null;
+
+  /**
+   * Untracked inventory is sellable everywhere, always. Shopify keeps no
+   * counts for it, so there is no location list to be absent from and no
+   * quantity to be zero. Checked first, because both tests below would read
+   * that absence as "not stocked at this branch".
+   */
   if (entry.tracked === false) return false;
+
+  /**
+   * The inventory item could not be read, so we know nothing. Falling through
+   * would hit `stockedHere === false` on an empty level list and report a
+   * confident "out of stock here" on no evidence.
+   */
+  if (entry.inventoryKnown === false || entry.tracked === undefined) return null;
+
   if (entry.stockedHere === false) return true;
   if (typeof entry.available === 'number') return entry.available <= 0;
   return null;

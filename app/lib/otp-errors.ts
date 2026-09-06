@@ -217,13 +217,31 @@ export function otpAttemptsLeftMessage(
 
   if (typeof remaining !== 'number' || remaining < 0) {
     return isEn
-      ? 'Invalid code. Please check and try again.'
-      : 'الرمز غير صحيح. يرجى التحقق والمحاولة مرة أخرى.';
+      ? 'The code you entered is incorrect. Please check and try again.'
+      : 'الرمز الذي أدخلته غير صحيح. يرجى التحقق والمحاولة مرة أخرى.';
   }
 
   return isEn
-    ? `Invalid code. You have ${remaining} attempt${remaining === 1 ? '' : 's'} remaining.`
-    : `الرمز غير صحيح — تبقّت لك ${arabicAttempts(remaining)}.`;
+    ? `The code you entered is incorrect. You have ${remaining} attempt${remaining === 1 ? '' : 's'} remaining.`
+    : `الرمز الذي أدخلته غير صحيح. تبقى لديك ${arabicAttempts(remaining)}.`;
+}
+
+/**
+ * Asked for a new code before the resend window is up.
+ *
+ * The wording names the wait rather than fixing it at "1 minute", so it stays
+ * true as the window counts down — at a full window it reads exactly as the
+ * approved copy does, and at 40 seconds in it says forty seconds instead of
+ * repeating a minute the shopper has already mostly waited.
+ */
+export function otpResendTooSoonMessage(
+  secondsRemaining: number,
+  lang: 'en' | 'ar',
+): string {
+  const wait = otpWaitPhrase(secondsRemaining, lang);
+  return lang === 'en'
+    ? `Please wait ${wait} before requesting a new verification code.`
+    : `يرجى الانتظار ${wait} قبل طلب رمز تحقق جديد.`;
 }
 
 /**
@@ -239,8 +257,10 @@ export function formatOtpError(
 ): string {
   const isEn = lang === 'en';
 
+  // Same wording as a wrong code with no count — an empty error from the CRM
+  // tells us nothing more than that the code did not go through.
   if (!errorMessage) {
-    return isEn ? 'Invalid verification code.' : 'رمز التحقق غير صحيح.';
+    return otpAttemptsLeftMessage(undefined, lang);
   }
 
   const {kind, attemptsRemaining, retryAfterSeconds} = classifyOtpError(
@@ -252,10 +272,15 @@ export function formatOtpError(
     case 'rate_limited':
       return otpBlockedMessage(retryAfterSeconds ?? 0, lang);
 
+    /**
+     * Names the validity window and the button to press. A code that has
+     * merely expired is not a wrong code, and telling the shopper only that it
+     * is invalid sends them back to retype the same digits.
+     */
     case 'expired':
       return isEn
-        ? 'This code has expired. Please request a new one.'
-        : 'انتهت صلاحية الرمز. يرجى طلب رمز جديد.';
+        ? 'This verification code has expired. Codes are valid for 1 minute. Please tap “Resend Code” to receive a new one.'
+        : 'انتهت صلاحية رمز التحقق. الرمز صالح لمدة دقيقة واحدة. يرجى الضغط على «إعادة إرسال الرمز» للحصول على رمز جديد.';
 
     case 'not_found':
       return isEn

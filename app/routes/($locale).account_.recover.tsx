@@ -35,7 +35,13 @@ export async function action({request, context}: ActionFunctionArgs) {
 
   if (!email) {
     return data(
-      {error: 'Please provide an email.', resetRequested: false},
+      {
+        error:
+          context.storefront.i18n.language === 'EN'
+            ? 'Please enter your email address.'
+            : 'يرجى إدخال بريدك الإلكتروني.',
+        resetRequested: false,
+      },
       {status: 400},
     );
   }

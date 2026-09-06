@@ -73,10 +73,14 @@ export async function action({request, context}: ActionFunctionArgs) {
   const formData = await request.formData();
   const points = parseInt(formData.get('points')?.toString() || '0');
 
+  const isEn = context.storefront.i18n.language === 'EN';
+
   if (points <= 0 || points % 100 !== 0) {
     return {
       success: false,
-      error: 'Points must be redeemed in increments of 100.',
+      error: isEn
+        ? 'Points must be redeemed in increments of 100.'
+        : 'يجب استبدال النقاط بمضاعفات 100 نقطة.',
     };
   }
 

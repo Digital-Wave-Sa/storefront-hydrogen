@@ -26,6 +26,8 @@ import {
   classifyOtpError,
   otpBlockedMessage,
   otpAttemptsLeftMessage,
+  otpWaitPhrase,
+  otpResendTooSoonMessage,
   MAX_OTP_ATTEMPTS,
   OTP_BLOCK_MS,
 } from '~/lib/otp-errors';
@@ -148,10 +150,7 @@ export async function action({request, context}: ActionFunctionArgs) {
     if (cooldown && Date.now() < cooldown) {
       const waitSecs = Math.ceil((cooldown - Date.now()) / 1000);
       return data({
-        error:
-          lang === 'en'
-            ? `Please wait ${waitSecs} seconds before requesting another code.`
-            : `يرجى الانتظار ${waitSecs} ثانية قبل طلب رمز تحقق جديد.`,
+        error: otpResendTooSoonMessage(waitSecs, lang),
         verifyCooldownRemaining: waitSecs,
       });
     }
@@ -1776,7 +1775,7 @@ export default function Register() {
                           </>
                         ) : (
                           <>
-                            بعد {MAX_OTP_ATTEMPTS} محاولات فاشلة — يمكنك
+                            بعد {MAX_OTP_ATTEMPTS} محاولات غير ناجحة — يمكنك
                             المحاولة مجدداً بعد{' '}
                             <span className="font-bold">
                               {otpWaitPhrase(blockCooldown, 'ar')}

@@ -136,7 +136,9 @@ export async function action({request, context}: ActionFunctionArgs) {
       return Response.json(
         {
           success: false,
-          error: 'Points must be redeemed in increments of 100.',
+          error: context.storefront.i18n.language === 'EN'
+            ? 'Points must be redeemed in increments of 100.'
+            : 'يجب استبدال النقاط بمضاعفات 100 نقطة.',
         },
         {status: 400},
       );
@@ -172,7 +174,14 @@ export async function action({request, context}: ActionFunctionArgs) {
       });
     } else {
       return Response.json(
-        {success: false, error: result.error || 'Failed to redeem points'},
+        {
+          success: false,
+          // result.error is the loyalty service's own English wording, so it
+          // is logged rather than shown — see the OTP path for the same rule.
+          error: context.storefront.i18n.language === 'EN'
+            ? 'Could not redeem your points. Please try again.'
+            : 'تعذّر استبدال نقاطك. يرجى المحاولة مرة أخرى.',
+        },
         {status: 400},
       );
     }

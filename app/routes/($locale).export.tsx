@@ -12,6 +12,7 @@ import {useState, useEffect} from 'react';
 import {getShopTitle} from '~/lib/seo';
 import {ProductItem} from '~/components/ProductItem';
 import exportHeroImg from '/images/export-hero.jpg';
+import {readMetaobject, firstMetaobject} from '~/lib/metaobject';
 
 export async function action({request, context}: LoaderFunctionArgs) {
   const isEn =
@@ -113,6 +114,24 @@ export async function loader({context, request}: LoaderFunctionArgs) {
   const reverse = searchParams.get('reverse') === 'true';
   const userQuery = searchParams.get('q');
   const exportQuery = userQuery && userQuery !== '*' ? userQuery : '*';
+
+  /**
+   * Content is fetched separately and defensively: a missing or malformed
+   * metaobject must not take the product catalogue down with it, so a failure
+   * here just leaves the built-in copy in place.
+   */
+  const contentPromise = storefront
+    .query(EXPORT_PAGE_CONTENT_QUERY, {
+      variables: {
+        country: storefront.i18n.country,
+        language: storefront.i18n.language,
+      },
+      cache: storefront.CacheShort(),
+    })
+    .catch((err: any) => {
+      console.error('[Export] Failed to load page content metaobjects:', err);
+      return null;
+    });
 
   try {
     const response = await storefront.query(EXPORT_CATALOG_QUERY, {
@@ -219,10 +238,13 @@ export async function loader({context, request}: LoaderFunctionArgs) {
       };
     }
 
+    const content = await contentPromise;
+
     if (!products) {
       return data({
         products: null,
         collections: null,
+        content,
         error: 'GraphQL query returned null.',
       });
     }
@@ -230,19 +252,21 @@ export async function loader({context, request}: LoaderFunctionArgs) {
     return data({
       products,
       collections: response.collections?.nodes || [],
+      content,
       error: null,
     });
   } catch (e: any) {
     return data({
       products: null,
       collections: null,
+      content: await contentPromise,
       error: e.message || String(e),
     });
   }
 }
 
 export default function ExportPage() {
-  const {products, collections, error} = useLoaderData<typeof loader>();
+  const {products, collections, content, error} = useLoaderData<typeof loader>();
   const [searchParams, setSearchParams] = useSearchParams();
   const [mounted, setMounted] = useState(false);
   const [formSubmitted, setFormSubmitted] = useState(false);
@@ -250,6 +274,98 @@ export default function ExportPage() {
   const rootData = useRouteLoaderData('root') as any;
   const locale = rootData?.locale || 'ar';
   const isEn = locale === 'en';
+
+  /**
+   * Merchant-editable copy, with the original hard-coded text as the fallback.
+   *
+   * Every value below reads "whatever the metaobject says, otherwise what this
+   * page has always said", so the page is unchanged until someone creates the
+   * entries in Shopify — and a half-filled entry falls back field by field
+   * rather than blanking a heading.
+   */
+  const hero = readMetaobject(firstMetaobject((content as any)?.exportHero));
+  const why = readMetaobject(firstMetaobject((content as any)?.exportWhy));
+
+  const heroCopy = {
+    badge:
+      hero.localized('badge', isEn) ||
+      (isEn ? 'Saudi Heritage Since 1919' : 'تراث سعودي من 1919'),
+    /**
+     * Two lines by design — the headline breaks after the comma. A merchant
+     * writes a newline in the field; anything without one simply renders as a
+     * single line.
+     */
+    title:
+      hero.localized('title', isEn) ||
+      (isEn
+        ? 'Saudi Taste,\nReaching Around the World'
+        : 'طعم سعودي،\nيصل حول العالم'),
+    subtitle:
+      hero.localized('subtitle', isEn) ||
+      (isEn
+        ? 'Luxury Arabic sweets, maamoul, and chocolates — crafted in heritage ovens and exported via cold-chain logistics to over 30 countries.'
+        : 'حلويات عربية فاخرة، معمول وشوكولاتة — صُنعت بأكثر من قرن من العراقة، وتُصوّر بموجب خدمات لوجستية مبرّدة ومعتمدة حلال إلى أكثر من 30 دولة'),
+    primaryCta:
+      hero.localized('primary_button_text', isEn) ||
+      (isEn ? 'Browse Export Products' : 'استعرض منتجات التصدير'),
+    secondaryCta:
+      hero.localized('secondary_button_text', isEn) ||
+      (isEn ? 'Request Export Quote' : 'طلب عرض أسعار للتصدير'),
+    image: hero.image('background_image') || '/images/export/export-hero.png',
+  };
+
+  const whyCopy = {
+    eyebrow:
+      why.localized('eyebrow', isEn) ||
+      (isEn
+        ? 'Quality & Global Logistics Assurance'
+        : 'ضمانات الجودة والشحن الدولي'),
+    title:
+      why.localized('title', isEn) ||
+      (isEn ? 'Why Export with Saadeddin?' : 'لماذا تصدر مع سعد الدين؟'),
+    cards: [
+      {
+        title:
+          why.localized('card1_title', isEn) ||
+          (isEn ? 'Global Cold Shipping' : 'شحن مبرد عالمي'),
+        text:
+          why.localized('card1_text', isEn) ||
+          (isEn
+            ? 'Fast cold chain logistics ensuring freshness and original taste worldwide.'
+            : 'شحن سريع ومبرد يضمن وصول كافة المنتجات بنفس الجودة والطزاجة لجميع دول العالم.'),
+      },
+      {
+        title:
+          why.localized('card2_title', isEn) ||
+          (isEn ? 'Certified Standards' : 'شهادات معتمدة'),
+        text:
+          why.localized('card2_text', isEn) ||
+          (isEn
+            ? 'Fully certified with ISO 22000, HACCP, and SFDA global food safety standards.'
+            : 'شهادات معتمدة بالكامل (ISO 22000, HACCP, SFDA) ومطابقة لمعايير السلامة والجودة العالمية.'),
+      },
+      {
+        title:
+          why.localized('card3_title', isEn) ||
+          (isEn ? 'Export Vacuum Packaging' : 'تغليف محكم'),
+        text:
+          why.localized('card3_text', isEn) ||
+          (isEn
+            ? 'Advanced export modified atmosphere packaging preserving product shelf life.'
+            : 'تغليف متطور وعالي الجودة يحافظ على سلامة وطزاجة الشحنات لأطول فترة ممكنة.'),
+      },
+      {
+        title:
+          why.localized('card4_title', isEn) ||
+          (isEn ? 'Wholesale Pricing' : 'أسعار الجملة'),
+        text:
+          why.localized('card4_text', isEn) ||
+          (isEn
+            ? 'Competitive wholesale tiers designed for global distributors to maximize margin.'
+            : 'أسعار تنافسية مخصصة لطلبات الجملة والتصدير تتيح لك تحقيق أعلى هامش ربح.'),
+      },
+    ],
+  };
 
   useEffect(() => {
     setMounted(true);
@@ -293,7 +409,7 @@ export default function ExportPage() {
         {/* Background Image & Soft Gradient Overlay */}
         <div className="absolute inset-0 z-0">
           <img
-            src="/images/export/export-hero.png"
+            src={heroCopy.image}
             alt="Saudi Export Pastry Table"
             className="w-full h-full object-cover object-center"
           />
@@ -311,7 +427,7 @@ export default function ExportPage() {
             <div className="inline-flex items-center gap-2 px-6 py-1.5 rounded-full bg-[#C5A96A] text-[#1A3533] font-bold text-[13px] sm:text-[14px] mb-6 shadow-md">
               <span className="text-[#1A3533]/60">—</span>
               <span style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
-                {isEn ? 'Saudi Heritage Since 1919' : 'تراث سعودي من 1919'}
+                {heroCopy.badge}
               </span>
               <span className="text-[#1A3533]/60">—</span>
             </div>
@@ -321,19 +437,13 @@ export default function ExportPage() {
               className={`!text-[42px] sm:!text-[68px] lg:!text-[90px] font-bold text-white mb-6 !mt-0 leading-[100%] ${isEn ? '!text-left' : '!text-right'}`}
               style={{fontFamily: "'Bahij Janna', sans-serif", fontWeight: 700}}
             >
-              {isEn ? (
-                <>
-                  Saudi Taste,
-                  <br />
-                  Reaching Around the World
-                </>
-              ) : (
-                <>
-                  طعم سعودي،
-                  <br />
-                  يصل حول العالم
-                </>
-              )}
+              {/* A newline in the metaobject field becomes a line break. */}
+              {heroCopy.title.split('\n').map((line, i, all) => (
+                <span key={i}>
+                  {line}
+                  {i < all.length - 1 ? <br /> : null}
+                </span>
+              ))}
             </h1>
 
             {/* Subtitle */}
@@ -344,9 +454,7 @@ export default function ExportPage() {
                 fontWeight: 400,
               }}
             >
-              {isEn
-                ? 'Luxury Arabic sweets, maamoul, and chocolates — crafted in heritage ovens and exported via cold-chain logistics to over 30 countries.'
-                : 'حلويات عربية فاخرة، معمول وشوكولاتة — صُنعت بأكثر من قرن من العراقة، وتُصوّر بموجب خدمات لوجستية مبرّدة ومعتمدة حلال إلى أكثر من 30 دولة'}
+              {heroCopy.subtitle}
             </p>
 
             {/* CTA Buttons */}
@@ -360,7 +468,7 @@ export default function ExportPage() {
                   fontWeight: 700,
                 }}
               >
-                {isEn ? 'Browse Export Products' : 'استعرض منتجات التصدير'}
+                {heroCopy.primaryCta}
               </a>
               <a
                 href="#export-form"
@@ -371,7 +479,7 @@ export default function ExportPage() {
                   fontWeight: 700,
                 }}
               >
-                {isEn ? 'Request Export Quote' : 'طلب عرض أسعار للتصدير'}
+                {heroCopy.secondaryCta}
               </a>
             </div>
           </div>
@@ -618,9 +726,7 @@ export default function ExportPage() {
               className="text-[#906B51] text-[18px] font-medium tracking-wide uppercase mb-1 block"
               style={{fontFamily: "'GE Dinar One', sans-serif"}}
             >
-              {isEn
-                ? 'Quality & Global Logistics Assurance'
-                : 'ضمانات الجودة والشحن الدولي'}
+              {whyCopy.eyebrow}
             </span>
             <h2
               className="text-[30px] sm:text-[50px] font-bold text-[#234745]"
@@ -630,82 +736,32 @@ export default function ExportPage() {
                   : "'Bahij Janna', 'Bahij', serif",
               }}
             >
-              {isEn ? 'Why Export with Saadeddin?' : 'لماذا تصدر مع سعد الدين؟'}
+              {whyCopy.title}
             </h2>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {/* Card 1 */}
-            <div className="bg-[#ffffff] rounded-[12px] py-[24px] px-[12px] border border-[#234745] text-center flex flex-col items-center hover:shadow-md transition-all">
-              <h3
-                className="text-[26px] font-bold text-[#234745] mb-2"
-                style={{fontFamily: "'Bahij Janna', serif"}}
+            {whyCopy.cards.map((card, i) => (
+              <div
+                key={i}
+                className="bg-[#ffffff] rounded-[12px] py-[24px] px-[12px] border border-[#234745] text-center flex flex-col items-center hover:shadow-md transition-all"
               >
-                {isEn ? 'Global Cold Shipping' : 'شحن مبرد عالمي'}
-              </h3>
-              <p
-                className="text-[#9FB7AE] text-[14px] font-normal leading-relaxed"
-                style={{fontFamily: "'GE Dinar One', sans-serif"}}
-              >
-                {isEn
-                  ? 'Fast cold chain logistics ensuring freshness and original taste worldwide.'
-                  : 'شحن سريع ومبرد يضمن وصول كافة المنتجات بنفس الجودة والطزاجة لجميع دول العالم.'}
-              </p>
-            </div>
-
-            {/* Card 2 */}
-            <div className="bg-[#ffffff] rounded-[12px] py-[24px] px-[12px] border border-[#234745] text-center flex flex-col items-center hover:shadow-md transition-all">
-              <h3
-                className="text-[26px] font-bold text-[#234745] mb-2"
-                style={{fontFamily: "'Bahij Janna', serif"}}
-              >
-                {isEn ? 'Certified Standards' : 'شهادات معتمدة'}
-              </h3>
-              <p
-                className="text-[#9FB7AE] text-[14px] font-normal leading-relaxed"
-                style={{fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif"}}
-              >
-                {isEn
-                  ? 'Fully certified with ISO 22000, HACCP, and SFDA global food safety standards.'
-                  : 'شهادات معتمدة بالكامل (ISO 22000, HACCP, SFDA) ومطابقة لمعايير السلامة والجودة العالمية.'}
-              </p>
-            </div>
-
-            {/* Card 3 */}
-            <div className="bg-[#ffffff] rounded-[12px] py-[24px] px-[12px] border border-[#234745] text-center flex flex-col items-center hover:shadow-md transition-all">
-              <h3
-                className="text-[26px] font-bold text-[#234745] mb-2"
-                style={{fontFamily: "'Bahij Janna', serif"}}
-              >
-                {isEn ? 'Export Vacuum Packaging' : 'تغليف محكم'}
-              </h3>
-              <p
-                className="text-[#9FB7AE] text-[14px] font-normal leading-relaxed"
-                style={{fontFamily: "'GE Dinar One', sans-serif"}}
-              >
-                {isEn
-                  ? 'Advanced export modified atmosphere packaging preserving product shelf life.'
-                  : 'تغليف متطور وعالي الجودة يحافظ على سلامة وطزاجة الشحنات لأطول فترة ممكنة.'}
-              </p>
-            </div>
-
-            {/* Card 4 */}
-            <div className="bg-[#ffffff] rounded-[12px] py-[24px] px-[12px] border border-[#234745] text-center flex flex-col items-center hover:shadow-md transition-all">
-              <h3
-                className="text-[26px] font-bold text-[#234745] mb-2"
-                style={{fontFamily: "'Bahij Janna', serif"}}
-              >
-                {isEn ? 'Wholesale Pricing' : 'أسعار الجملة'}
-              </h3>
-              <p
-                className="text-[#9FB7AE] text-[14px] font-normal leading-relaxed"
-                style={{fontFamily: "'GE Dinar One', sans-serif"}}
-              >
-                {isEn
-                  ? 'Competitive wholesale tiers designed for global distributors to maximize margin.'
-                  : 'أسعار تنافسية مخصصة لطلبات الجملة والتصدير تتيح لك تحقيق أعلى هامش ربح.'}
-              </p>
-            </div>
+                <h3
+                  className="text-[26px] font-bold text-[#234745] mb-2"
+                  style={{fontFamily: "'Bahij Janna', serif"}}
+                >
+                  {card.title}
+                </h3>
+                <p
+                  className="text-[#9FB7AE] text-[14px] font-normal leading-relaxed"
+                  style={{
+                    fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
+                  }}
+                >
+                  {card.text}
+                </p>
+              </div>
+            ))}
           </div>
         </div>
       </section>
@@ -936,7 +992,51 @@ export default function ExportPage() {
   );
 }
 
-const EXPORT_CATALOG_QUERY = `#graphql
+/**
+ * Editable copy for the export page.
+ *
+ * The hero and the "why export" cards were hard-coded in the JSX, so changing a
+ * headline meant a deploy. Both are metaobjects now, read here and applied over
+ * the built-in copy — see readMetaobject for the field conventions.
+ *
+ * Operation names are validated across the whole project by Hydrogen's codegen,
+ * hence the `export` prefix.
+ */
+const EXPORT_PAGE_CONTENT_QUERY = `#graphql
+  query exportPageContent($country: CountryCode, $language: LanguageCode)
+    @inContext(country: $country, language: $language) {
+    exportHero: metaobjects(type: "export_hero", first: 1) {
+      nodes {
+        id
+        fields {
+          key
+          value
+          reference {
+            ... on MediaImage {
+              image { url }
+            }
+          }
+        }
+      }
+    }
+    exportWhy: metaobjects(type: "export_why", first: 1) {
+      nodes {
+        id
+        fields {
+          key
+          value
+          reference {
+            ... on MediaImage {
+              image { url }
+            }
+          }
+        }
+      }
+    }
+  }
+` as const;
+
+const EXPORT_CATALOG_QUERY = `#graphql
   query ExportCatalogSearch(
     $country: CountryCode
     $language: LanguageCode

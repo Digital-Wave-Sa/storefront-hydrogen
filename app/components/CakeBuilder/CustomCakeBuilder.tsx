@@ -658,11 +658,20 @@ export default function CustomCakeBuilder({
       if (data.checkoutUrl) {
         window.location.href = data.checkoutUrl;
       } else {
-        alert(data.error || 'حدث خطأ أثناء إتمام الطلب');
+        alert(
+          data.error ||
+            (isEn
+              ? 'Something went wrong while placing your order.'
+              : 'حدث خطأ أثناء إتمام الطلب'),
+        );
         setIsSubmitting(false);
       }
     } catch (error) {
-      alert('حدث خطأ في الاتصال بالخادم');
+      alert(
+        isEn
+          ? 'Connection error. Please check your internet and try again.'
+          : 'حدث خطأ في الاتصال بالخادم',
+      );
       setIsSubmitting(false);
     }
   };
@@ -1018,7 +1027,7 @@ export default function CustomCakeBuilder({
                                   ${isSelected ? 'ring-2 ring-offset-2 ring-[#294941] scale-110' : 'border border-gray-300 hover:scale-105'}
                                 `}
                                 style={{ backgroundColor: color }}
-                                title="اختر هذا اللون"
+                                title={isEn ? 'Choose this colour' : 'اختر هذا اللون'}
                               >
                                 {isSelected && (
                                   <svg className={`w-6 h-6 ${color === '#ffffff' ? 'text-[#1a1a1a]' : 'text-white'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">

@@ -98,6 +98,13 @@ export async function loader({context}: LoaderFunctionArgs) {
 }
 
 export async function action({request, context}: ActionFunctionArgs) {
+  /**
+   * getLocaleFromRequest resolves the locale for /api/* routes from the
+   * Referer, so this is the shopper's actual language even though the path
+   * carries no /en prefix.
+   */
+  const isEn = context.storefront.i18n.language === 'EN';
+
   if (request.method !== 'POST') {
     return data({success: false, error: 'Method not allowed'}, {status: 405});
   }
@@ -110,7 +117,12 @@ export async function action({request, context}: ActionFunctionArgs) {
   const customerGid = toCustomerGid(self.customerId);
   if (!customerGid) {
     return data(
-      {success: false, error: 'Your account is not ready for redemption yet.'},
+      {
+        success: false,
+        error: isEn
+          ? 'Your account is not ready for redemption yet.'
+          : 'حسابك غير جاهز للاستبدال بعد.',
+      },
       {status: 503},
     );
   }
@@ -126,7 +138,15 @@ export async function action({request, context}: ActionFunctionArgs) {
   }
 
   if (!code) {
-    return data({success: false, error: 'Missing gift card code.'}, {status: 400});
+    return data(
+      {
+        success: false,
+        error: isEn
+          ? 'Please enter your gift card code.'
+          : 'يرجى إدخال رمز بطاقة الهدايا.',
+      },
+      {status: 400},
+    );
   }
 
   try {

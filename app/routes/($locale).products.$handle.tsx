@@ -92,7 +92,14 @@ export async function action({request, context}: any) {
   } catch (err: any) {
     console.error('[PRODUCT ACTION ERROR]', err);
     return data(
-      {error: err?.message || 'Error processing cart action'},
+      {
+        // err.message is ours or Shopify's, English either way, and is
+        // already logged above.
+        error:
+          context.storefront.i18n.language === 'EN'
+            ? 'Something went wrong. Please try again.'
+            : 'حدث خطأ ما. يرجى المحاولة مرة أخرى.',
+      },
       {status: 500},
     );
   }
@@ -741,9 +748,8 @@ export default function Product() {
   );
 
   const isOutOfStock = useMemo(() => {
-    const verdict = isOutOfStockAtBranch(
-      branchStock[product.selectedVariant?.id as string],
-    );
+    const entry = branchStock[product.selectedVariant?.id as string];
+    const verdict = isOutOfStockAtBranch(entry);
     if (verdict !== null) return verdict;
 
     return getIsOutOfStock(
@@ -751,6 +757,8 @@ export default function Product() {
       selectedLocationName,
       storeAvailabilityNodes,
       product.selectedVariant?.availableForSale ?? false,
+      // Untracked inventory is sellable everywhere.
+      entry?.tracked,
     );
   }, [
     branchStock,

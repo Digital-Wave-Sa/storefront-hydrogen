@@ -222,7 +222,18 @@ export async function loader({request, context}: LoaderFunctionArgs) {
     for (const node of json?.data?.nodes || []) {
       if (!node?.id) continue;
       const levels = node.inventoryItem?.inventoryLevels?.nodes || [];
-      const tracked = node.inventoryItem?.tracked !== false;
+
+      /**
+       * Reported exactly as Shopify gives it, including `undefined`.
+       *
+       * This used to be `node.inventoryItem?.tracked !== false`, which turned
+       * a *missing* inventoryItem into `tracked: true`. Paired with an empty
+       * levels list that reads as "tracked, and stocked nowhere" — so a
+       * variant whose inventory we simply could not read came back as out of
+       * stock everywhere. Not knowing is not the same as zero.
+       */
+      const tracked: boolean | undefined = node.inventoryItem?.tracked;
+      const inventoryKnown = !!node.inventoryItem;
 
       const level = levels.find(
         (l: any) => numericId(l?.location?.id) === wanted,
@@ -239,9 +250,12 @@ export async function loader({request, context}: LoaderFunctionArgs) {
         available,
         /**
          * Untracked inventory is sellable everywhere by definition — Shopify
-         * does not hold counts for it, so absence proves nothing.
+         * holds no counts for it, so an absent location proves nothing.
+         * `undefined` means we could not read the inventory item at all.
          */
         tracked,
+        /** False when inventoryItem came back empty — treat as unknown. */
+        inventoryKnown,
         locations: levels.map((l: any) => ({
           id: l?.location?.id,
           name: l?.location?.name,

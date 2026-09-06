@@ -412,7 +412,8 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
     // Vouchers are not held at a branch, so branch inventory says nothing
     // about them — and blocking checkout over one would be nonsense.
     if (isNonShippableLine(line)) return false;
-    const verdict = isOutOfStockAtBranch(branchStock[line.merchandise?.id]);
+    const entry = branchStock[line.merchandise?.id];
+    const verdict = isOutOfStockAtBranch(entry);
     if (verdict !== null) return verdict;
     return getIsOutOfStockForFulfillment(
       branchLocationId,
@@ -420,6 +421,8 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
       line.merchandise?.storeAvailability?.nodes || [],
       line.merchandise?.availableForSale !== false,
       isPickup,
+      // Untracked inventory is sellable everywhere.
+      entry?.tracked,
     );
   }) || [];
 

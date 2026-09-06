@@ -25,6 +25,8 @@ import {
   classifyOtpError,
   otpBlockedMessage,
   otpAttemptsLeftMessage,
+  otpWaitPhrase,
+  otpResendTooSoonMessage,
   MAX_OTP_ATTEMPTS,
   OTP_BLOCK_MS,
 } from '~/lib/otp-errors';
@@ -144,10 +146,7 @@ export async function action({request, context}: ActionFunctionArgs) {
       if (cooldown && Date.now() < cooldown) {
         const waitSecs = Math.ceil((cooldown - Date.now()) / 1000);
         return data({
-          error:
-            lang === 'en'
-              ? `Please wait ${waitSecs} seconds before requesting another code.`
-              : `يرجى الانتظار ${waitSecs} ثانية قبل طلب رمز تحقق جديد.`,
+          error: otpResendTooSoonMessage(waitSecs, lang),
           verifyCooldownRemaining: waitSecs,
         });
       }
@@ -1076,7 +1075,7 @@ export default function Login() {
                       </>
                     ) : (
                       <>
-                        بعد {MAX_OTP_ATTEMPTS} محاولات فاشلة — يمكنك المحاولة
+                        بعد {MAX_OTP_ATTEMPTS} محاولات غير ناجحة — يمكنك المحاولة
                         مجدداً بعد{' '}
                         <span className="font-bold">
                           {otpWaitPhrase(blockCooldown, 'ar')}
@@ -1472,7 +1471,18 @@ export default function Login() {
 
                     {/* Resend OTP */}
                     <div className="flex flex-col items-center gap-1">
-                      {resendCooldown > 0 ? (
+                      {/*
+                        Hidden entirely while locked out.
+
+                        The lockout check in the action runs before the intent
+                        is dispatched, so a resend during a lock is refused
+                        like everything else — the countdown was ticking down
+                        to a moment when the button still would not work, next
+                        to a second countdown for the lock itself. One clock,
+                        the one that governs.
+                      */}
+                      {blockCooldown <= 0 &&
+                        (resendCooldown > 0 ? (
                         <p
                           className="text-[#9FB7AE] text-sm font-medium"
                           style={{
@@ -1500,8 +1510,8 @@ export default function Login() {
                           {isEn
                             ? 'Resend verification code'
                             : 'إعادة إرسال رمز التحقق'}
-                        </button>
-                      )}
+                          </button>
+                        ))}
                       <button
                         type="button"
                         className="text-[#9FB7AE] hover:underline text-sm font-medium disabled:opacity-50 disabled:no-underline disabled:cursor-not-allowed"

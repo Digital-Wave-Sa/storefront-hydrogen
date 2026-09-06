@@ -114,7 +114,8 @@ export function ProductItem({
     : resolveBranchLocationId(allLocations, selectedLocationId, selectedLocationName);
   const {availability: branchStock, pending: branchStockPending} =
     useBranchAvailability(variant?.id ? [variant.id] : [], resolvedBranchId);
-  const inventoryVerdict = isOutOfStockAtBranch(branchStock[variant?.id]);
+  const branchEntry = branchStock[variant?.id];
+  const inventoryVerdict = isOutOfStockAtBranch(branchEntry);
 
   /**
    * The branch answer has not arrived and the fallback has nothing real to say.
@@ -143,6 +144,8 @@ export function ProductItem({
           isExport ? null : selectedLocationName,
           storeAvailabilityNodes,
           variantAvailable,
+          // Untracked inventory is sellable everywhere.
+          branchEntry?.tracked,
         );
   const isAvailable = !isOutOfStock && !!variant;
 

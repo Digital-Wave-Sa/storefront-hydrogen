@@ -167,37 +167,52 @@ export function Header({ header, isLoggedIn, cart, locations, customer, locale, 
     let buyerIdentity = undefined;
     const resolvedCustomer = await customer;
 
-    if (type === 'pickup' && branch) {
-      buyerIdentity = {
-        email: resolvedCustomer?.email || undefined,
-        deliveryAddressPreferences: [{
-          deliveryAddress: {
-            address1: branch.address || 'Address',
-            city: branch.city || 'City',
-            country: 'SA',
-            firstName: resolvedCustomer?.firstName || 'Guest',
-            lastName: resolvedCustomer?.lastName || 'User'
-          }
-        }]
+    /**
+     * A delivery address is sent only when there is a real one to send.
+     *
+     * Picking a branch for pickup used to write one built from `branch.address`
+     * and `branch.city`, which a branch object does not have — so the
+     * placeholders below them went to Shopify verbatim and the cart carried a
+     * delivery address reading «Address, City, Guest User». It is a
+     * preference, so it persists: switch to delivery later and checkout
+     * prefills that, over the real address the customer has saved. Sending
+     * nothing is strictly better, because Shopify then uses their own default.
+     *
+     * Pickup sends no address at all now. It never should have — an address
+     * preference is a shipping signal, and checkout.initiate sends the pickup
+     * one as `preferences.delivery` where it belongs.
+     */
+    const realAddress =
+      type === 'delivery' && fullAddress?.address1 ? fullAddress : null;
+
+    if (realAddress) {
+      /** Omitted rather than invented: an absent field must stay absent. */
+      const deliveryAddress: Record<string, string> = {
+        address1: realAddress.address1,
       };
-    } else if (type === 'delivery' && fullAddress) {
+      const firstName = realAddress.firstName || resolvedCustomer?.firstName;
+      const lastName = realAddress.lastName || resolvedCustomer?.lastName;
+      const phone = realAddress.phone || resolvedCustomer?.phone;
+      const country =
+        realAddress.countryCodeV2 ||
+        realAddress.countryCode ||
+        (realAddress.country?.includes('Emirates') || realAddress.country?.includes('الإمارات')
+          ? 'AE'
+          : realAddress.country?.includes('Saudi') || realAddress.country?.includes('السعودية')
+            ? 'SA'
+            : realAddress.country);
+
+      if (realAddress.address2) deliveryAddress.address2 = realAddress.address2;
+      if (realAddress.city) deliveryAddress.city = realAddress.city;
+      if (realAddress.zip) deliveryAddress.zip = realAddress.zip;
+      if (country) deliveryAddress.country = country;
+      if (firstName) deliveryAddress.firstName = firstName;
+      if (lastName) deliveryAddress.lastName = lastName;
+      if (phone) deliveryAddress.phone = phone;
+
       buyerIdentity = {
         email: resolvedCustomer?.email || undefined,
-        deliveryAddressPreferences: [{
-          deliveryAddress: {
-            address1: fullAddress.address1 || 'Address',
-            address2: fullAddress.address2 || '',
-            city: fullAddress.city || 'City',
-            country: fullAddress.countryCodeV2 || fullAddress.countryCode ||
-              (fullAddress.country?.includes('Emirates') || fullAddress.country?.includes('الإمارات') ? 'AE' :
-                (fullAddress.country?.includes('Saudi') || fullAddress.country?.includes('السعودية') ? 'SA' :
-                  (fullAddress.country || 'SA'))),
-            firstName: fullAddress.firstName || resolvedCustomer?.firstName || 'Guest',
-            lastName: fullAddress.lastName || resolvedCustomer?.lastName || 'User',
-            phone: fullAddress.phone || resolvedCustomer?.phone || '',
-            zip: fullAddress.zip || ''
-          }
-        }]
+        deliveryAddressPreferences: [{deliveryAddress}],
       };
     }
 

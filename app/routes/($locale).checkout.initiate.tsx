@@ -361,11 +361,22 @@ async function processCheckoutInitiate({request, context}: ActionFunctionArgs) {
    * The address pre-fill, on its own so it cannot take anything else with it.
    * A failure here means the shopper types their address at checkout, which is
    * a worse checkout rather than a broken one.
+   *
+   * Sent on every checkout, including as an empty list, because a preference
+   * is stored on the cart and nothing else removes one. Header used to write
+   * a placeholder address for pickup — literally «Address, City, Guest User»,
+   * from a branch object that has no address fields — and that outranked the
+   * real address the customer had saved. Ceasing to write it fixes new carts
+   * and does nothing for the ones already carrying it: emptying a cart clears
+   * its lines, not its buyer identity, so those carts would have gone on
+   * pre-filling nonsense until they expired.
+   *
+   * An empty list on a cart that has no preference is a no-op.
    */
-  if (addressPreference) {
+  {
     try {
       await context.cart.updateBuyerIdentity({
-        deliveryAddressPreferences: addressPreference,
+        deliveryAddressPreferences: addressPreference ?? [],
       } as any);
     } catch (err: any) {
       console.error(

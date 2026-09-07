@@ -211,6 +211,19 @@ export async function loader({context}: LoaderFunctionArgs) {
         }
       : null;
 
+    /**
+     * Whether a section appears at all.
+     *
+     * A missing or empty value counts as visible, so adding the field to a
+     * metaobject definition hides nothing until someone actually unchecks it —
+     * and a section whose entry does not exist yet keeps rendering its built-in
+     * copy, as it always has.
+     */
+    const sectionVisible = (value: unknown) => {
+      const v = String(value ?? '').trim().toLowerCase();
+      return v === '' || v === 'true' || v === '1' || v === 'yes';
+    };
+
     const bannerFields = parseFields(data?.bannerMeta?.nodes?.[0]);
     const bannerData = bannerFields
       ? {
@@ -296,6 +309,12 @@ export async function loader({context}: LoaderFunctionArgs) {
       bogoData,
       gridData,
       bannerData,
+      heroVisible: sectionVisible(heroFields?.enabled),
+      bogoVisible: sectionVisible(bogoFields?.enabled),
+      gridVisible: sectionVisible(gridFields?.enabled),
+      gridCard1Visible: sectionVisible(gridFields?.card1_enabled),
+      gridCard2Visible: sectionVisible(gridFields?.card2_enabled),
+      bannerVisible: sectionVisible(bannerFields?.enabled),
     };
   } catch (error) {
     console.error('Error loading promotional products:', error);
@@ -306,6 +325,12 @@ export async function loader({context}: LoaderFunctionArgs) {
       bogoData: null,
       gridData: null,
       bannerData: null,
+      heroVisible: true,
+      bogoVisible: true,
+      gridVisible: true,
+      gridCard1Visible: true,
+      gridCard2Visible: true,
+      bannerVisible: true,
     };
   }
 }
@@ -389,7 +414,20 @@ const DEFAULT_LOCATION_DISCOUNTS = [
 ];
 
 export default function PromotionsPage() {
-  const {products, offerList, heroData, bogoData, gridData, bannerData} =
+  const {
+    products,
+    offerList,
+    heroData,
+    bogoData,
+    gridData,
+    bannerData,
+    heroVisible,
+    bogoVisible,
+    gridVisible,
+    gridCard1Visible,
+    gridCard2Visible,
+    bannerVisible,
+  } =
     useLoaderData<typeof loader>();
 
   /**
@@ -594,6 +632,7 @@ export default function PromotionsPage() {
       {/* Main Container */}
       <div className="max-w-[1280px] mx-auto px-4 mt-12 md:mt-8 flex flex-col gap-8">
         {/* 2. Hero Offer Card */}
+        {heroVisible && (
         <section
           dir={direction}
           style={{boxSizing: 'border-box', background: '#FEF8EB'}}
@@ -754,8 +793,10 @@ export default function PromotionsPage() {
             </div>
           </div>
         </section>
+        )}
 
         {/* 3. BOGO & Branch Location Offer Section */}
+        {bogoVisible && (
         <div
           className={`w-full ${activeLocationDiscount ? 'grid grid-cols-1 lg:grid-cols-[1.5fr_1fr] gap-6 items-stretch' : ''}`}
         >
@@ -1106,14 +1147,16 @@ export default function PromotionsPage() {
             </section>
           )}
         </div>
+        )}
 
         {/* 4. Two Grid Cards Side-by-Side */}
+        {gridVisible && (
         <section
           dir={direction}
           className="grid grid-cols-1 md:grid-cols-2 gap-6"
         >
           {/* Left card — the second registered offer. */}
-          {cardOffer1 && (
+          {gridCard1Visible && cardOffer1 && (
           <div className="bg-[#E64C53] rounded-[24px] p-6 md:p-8 flex flex-col items-start text-start justify-between min-h-[220px] shadow-sm relative overflow-hidden">
             <div className="flex items-center gap-2 !mb-6 self-start">
               <span className="text-white/80 font-bold text-[11px] uppercase tracking-wider">
@@ -1156,7 +1199,7 @@ export default function PromotionsPage() {
           )}
 
           {/* Right card — the third registered offer. */}
-          {cardOffer2 && (
+          {gridCard2Visible && cardOffer2 && (
           <div className="bg-[#D3E1DF] rounded-[24px] p-6 md:p-8 flex flex-col items-start text-start justify-between min-h-[220px] shadow-sm relative overflow-hidden">
             <div className="flex items-center gap-2 self-start">
               <span className="text-[#234745] font-bold text-[11px] uppercase tracking-wider">
@@ -1197,8 +1240,10 @@ export default function PromotionsPage() {
           </div>
           )}
         </section>
+        )}
 
         {/* 5. Horizontal Gold Banner */}
+        {bannerVisible && (
         <section className="w-full bg-[#C5A96A] rounded-[16px] p-6 flex items-center justify-center shadow-sm">
           <h3 className="text-[#234745] text-[18px] md:text-[30px] font-bold text-center flex items-center justify-center flex-wrap gap-1 leading-tight">
             {renderTextWithRiyalSymbol(
@@ -1211,6 +1256,7 @@ export default function PromotionsPage() {
             )}
           </h3>
         </section>
+        )}
 
         {/* 6. Exclusive Products Grid ("منتجات مختارة بخصومات حصرية") */}
         <section

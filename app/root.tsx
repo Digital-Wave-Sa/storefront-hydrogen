@@ -28,6 +28,7 @@ import {NotFound} from './components/NotFound';
 import {ServerError} from './components/ServerError';
 import {CookieConsentBanner} from './components/CookieConsentBanner';
 import {ProductSkeleton} from './components/ProductSkeleton';
+import {NavigationProgress} from './components/NavigationProgress';
 import {useLocale} from '~/lib/i18n';
 
 export const meta: MetaFunction = () => {

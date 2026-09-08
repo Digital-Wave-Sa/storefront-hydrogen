@@ -4,6 +4,7 @@ import type {CustomerFragment} from 'storefrontapi.generated';
 import {useWishlist} from '~/context/WishlistContext';
 import {SaudiRiyalSymbol} from '~/components/Price';
 import {getLoyaltyTierInfo} from '~/lib/loyalty-tiers';
+import {resolveOrderStatus} from '~/lib/order-status';
 import {
   checkIsPickupOrder,
   formatOrderDate,
@@ -523,106 +524,23 @@ export default function AccountDashboard() {
                   const isPickup = checkIsPickupOrder(lastOrder);
 
                   const fulfillments = (lastOrder as any).fulfillments || [];
-                  const shipmentStatuses = fulfillments
-                    .map((f: any) => (f.shipment_status || f.shipmentStatus || f.displayStatus || f.status || '').toLowerCase())
-                    .filter(Boolean);
 
-                  const rawTags = (lastOrder as any).tags
-                    ? typeof (lastOrder as any).tags === 'string'
-                      ? (lastOrder as any).tags.split(',').map((t: string) => t.trim().toLowerCase())
-                      : Array.isArray((lastOrder as any).tags)
-                        ? (lastOrder as any).tags.map((t: string) => String(t).toLowerCase())
-                        : []
-                    : [];
-
-                  const customAttrs = (lastOrder as any).customAttributes || (lastOrder as any).note_attributes || [];
-                  const attrValues = customAttrs.map((a: any) => String(a.value || '').toLowerCase());
-
-                  const allStatusTokens = [
-                    ...rawTags,
-                    ...attrValues,
-                    ...shipmentStatuses,
-                    String(lastOrder.fulfillmentStatus || '').toLowerCase(),
-                  ].map((s) => s.replace(/[\s_]/g, '-').trim()).filter(Boolean);
-
-                  const hasStatus = (...keywords: string[]) => {
-                    return keywords.some((kw) => {
-                      const target = kw.toLowerCase().replace(/[\s_]/g, '-').trim();
-                      return allStatusTokens.some(
-                        (st) => st === target || st.includes(target) || target.includes(st),
-                      );
-                    });
-                  };
-
-                  const isCancelled = !!(
-                    (lastOrder as any).canceledAt ||
-                    lastOrder.financialStatus === 'REFUNDED' ||
-                    (lastOrder.fulfillmentStatus as any) === 'CANCELLED'
-                  );
-
-                  let statusEn = 'Order Confirmed';
-                  let statusAr = 'تأكيد الطلب';
-                  // Same palette the order cards on /account/orders use, so a
-                  // status is the same colour wherever the customer sees it.
-                  let statusColor = '#906B51';
-
-                  if (isCancelled) {
-                    statusEn = 'Cancelled';
-                    statusAr = 'ملغاة';
-                    statusColor = '#E64950';
-                  } else if (hasStatus('failure', 'failed', 'expired', 'attempted_delivery', 'تعذر', 'انتهت')) {
-                    statusEn = isPickup ? 'Pickup Period Expired' : 'Delivery Attempt Failed';
-                    statusAr = isPickup ? 'انتهت مدة الاستلام' : 'تعذر التسليم';
-                    statusColor = '#E64950';
-                  } else if (
-                    lastOrder.fulfillmentStatus === 'FULFILLED' ||
-                    hasStatus('delivered', 'picked-up', 'picked_up', 'picked', 'تم-التسليم', 'تم-الاستلام', 'تم-استلام-الطلب')
-                  ) {
-                    statusEn = isPickup ? 'Order Picked Up' : 'Delivered Successfully';
-                    statusAr = isPickup ? 'تم استلام الطلب' : 'تم التسليم بنجاح';
-                    statusColor = '#234745';
-                  } else if (
-                    hasStatus(
-                      'ready-for-pickup',
-                      'ready_for_pickup',
-                      'ready-for-delivery',
-                      'out-for-delivery',
-                      'out_for_delivery',
-                      'in-transit',
-                      'in_transit',
-                      'on-the-way',
-                      'on_the_way',
-                      'ready',
-                      'جاهز',
-                      'جاهز-للاستلام',
-                      'جاهز-للتسليم',
-                      'في-الطريق',
-                    )
-                  ) {
-                    statusEn = isPickup ? 'Ready for Pickup' : 'Out for Delivery';
-                    statusAr = isPickup ? 'الطلب جاهز للاستلام' : 'الطلب في الطريق إليك';
-                    statusColor = '#004F59';
-                  } else if (
-                    lastOrder.fulfillmentStatus === 'IN_PROGRESS' ||
-                    lastOrder.fulfillmentStatus === 'PARTIALLY_FULFILLED' ||
-                    hasStatus(
-                      'in-progress',
-                      'in_progress',
-                      'processing',
-                      'submitted',
-                      'label-printed',
-                      'preparing',
-                      'being-prepared',
-                      'جاري-تجهيز-الطلب',
-                      'جاري-التجهيز',
-                      'قيد-التجهيز',
-                      'تجهيز',
-                    )
-                  ) {
-                    statusEn = 'Order is Being Prepared';
-                    statusAr = 'جاري تجهيز الطلب';
-                    statusColor = '#906B51';
-                  }
+                  /**
+                   * One reading of the status, shared with the orders list.
+                   *
+                   * This card kept its own copy, which matched loosely -- both
+                   * `token.includes(keyword)` AND `keyword.includes(token)` -- over a
+                   * token set that folded in every order ATTRIBUTE VALUE: delivery
+                   * dates, time slots, fulfilment type. A bare keyword like «تعذر» then
+                   * matched almost anything, and since the failure branch is tested
+                   * before the delivered one, a false positive beat a FULFILLED order.
+                   * The same delivered order read «تم التسليم بنجاح» on /account/orders
+                   * and «تعذر التسليم» here.
+                   */
+                  const {statusEn, statusAr, statusColor} = resolveOrderStatus(lastOrder, {
+                    isPickup,
+                    fulfillments,
+                  });
 
                   const reorderLines = (
                     lastOrder.lineItems?.nodes || []

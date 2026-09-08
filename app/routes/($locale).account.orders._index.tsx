@@ -25,6 +25,7 @@ import {
   isCustomCakeOrder,
   CUSTOM_CAKE_IMAGE_URL,
 } from '~/lib/cake-order';
+import {resolveOrderStatus} from '~/lib/order-status';
 
 export function checkIsPickupOrder(order: any): boolean {
   if (!order) return false;
@@ -1120,97 +1121,24 @@ function OrderCard({order, isEn}: {order: OrderItemFragment; isEn: boolean}) {
 
   const fulfillments = (order as any).fulfillments || [];
 
-  // Collect ERP-assigned Shopify API tags as exact keys (per ERP→Shopify status mapping)
   /**
-   * Same normalisation as the tracking page (track-order.$id.tsx), on purpose.
+   * One reading of the status, shared with the dashboard card.
    *
-   * This collapsed only spaces, to underscores, while the tracking page collapses
-   * spaces AND underscores to hyphens. So an ERP tag written with hyphens —
-   * `ready-for-pickup` — reached the tracking page as a match and reached this
-   * screen unchanged, where every lookup key was underscored, and matched
-   * nothing. The same order then showed its real progress on one page and sat on
-   * 'Order Received' on the other. Hyphen form is now the shared spelling, and
-   * underscore and space spellings still fold into it.
+   * This version was the correct one -- exact matches on a normalised tag
+   * set -- so it moved to ~/lib/order-status unchanged rather than being
+   * rewritten, and the dashboard now calls the same function instead of
+   * keeping a looser copy that read a delivered order as a failed one.
    */
-  const normTag = (t: unknown) =>
-    String(t ?? '').trim().toLowerCase().replace(/[\s_]+/g, '-');
-
-  const rawTags = (order as any).tags
-    ? typeof (order as any).tags === 'string'
-      ? (order as any).tags.split(',').map(normTag)
-      : Array.isArray((order as any).tags)
-        ? (order as any).tags.map(normTag)
-        : []
-    : [];
-
-  const tagSet = new Set(rawTags);
-
-  // Shipment-level statuses from fulfillment records
-  const shipmentStatuses = fulfillments
-    .map((f: any) => normTag(f.shipment_status || f.shipmentStatus || f.displayStatus || f.status || ''))
-    .filter(Boolean);
-  const shipmentSet = new Set(shipmentStatuses);
-
-  // Primary: Shopify native displayFulfillmentStatus
-  const fs = String(order.fulfillmentStatus || 'UNFULFILLED').toUpperCase();
-
-  // Helper: check if any ERP tag exactly matches any of the given keys
-  const hasTag = (...keys: string[]) => keys.some((k) => tagSet.has(k));
-  const hasShipment = (...keys: string[]) => keys.some((k) => shipmentSet.has(k));
+  const {statusEn, statusAr, statusColor} = resolveOrderStatus(order, {
+    isPickup,
+    fulfillments,
+  });
 
   const isCancelled = !!(
     (order as any).canceledAt ||
     order.financialStatus === 'REFUNDED' ||
-    fs === 'CANCELLED'
+    String(order.fulfillmentStatus || '').toUpperCase() === 'CANCELLED'
   );
-
-  // Default: UNFULFILLED / new order = “Order Received” (Step 1)
-  let statusEn = 'Order Received';
-  let statusAr = 'تم استلام الطلب';
-  let statusColor = '#906B51';
-
-  if (isCancelled) {
-    statusEn = 'Cancelled';
-    statusAr = 'ملغاة';
-    statusColor = '#E64950';
-  } else if (
-    hasTag('failure', 'تعذر-التسليم', 'انتهت-مدة-الاستلام') ||
-    hasShipment('failure', 'failed', 'attempted-delivery')
-  ) {
-    statusEn = isPickup ? 'Pickup Period Expired' : 'Delivery Attempt Failed';
-    statusAr = isPickup ? 'انتهت مدة الاستلام' : 'تعذر التسليم';
-    statusColor = '#E64950';
-  } else if (
-    fs === 'FULFILLED' ||
-    hasTag('delivered', 'picked-up', 'تم-التسليم', 'تم-الاستلام') ||
-    hasShipment('delivered', 'picked-up')
-  ) {
-    statusEn = isPickup ? 'Order Picked Up' : 'Delivered Successfully';
-    statusAr = isPickup ? 'تم استلام الطلب' : 'تم التسليم بنجاح';
-    statusColor = '#234745';
-  } else if (
-    hasTag('ready-for-pickup', 'in-transit', 'out-for-delivery', 'جاهز-للاستلام', 'في-الطريق') ||
-    hasShipment('ready-for-pickup', 'in-transit', 'out-for-delivery')
-  ) {
-    statusEn = isPickup ? 'Ready for Pickup' : 'Out for Delivery';
-    statusAr = isPickup ? 'الطلب جاهز للاستلام' : 'الطلب في الطريق إليك';
-    statusColor = '#004F59';
-  } else if (
-    fs === 'IN_PROGRESS' ||
-    fs === 'PARTIALLY_FULFILLED' ||
-    hasTag('in-progress', 'processing', 'جاري-التجهيز') ||
-    hasShipment('in-progress', 'label-printed', 'submitted')
-  ) {
-    statusEn = 'Order is Being Prepared';
-    statusAr = 'جاري تجهيز الطلب';
-    statusColor = '#906B51';
-  } else if (
-    hasTag('confirmed', 'تم-التأكيد')
-  ) {
-    statusEn = 'Order Confirmed';
-    statusAr = 'تم التأكيد';
-    statusColor = '#906B51';
-  }
 
   return (
     <div

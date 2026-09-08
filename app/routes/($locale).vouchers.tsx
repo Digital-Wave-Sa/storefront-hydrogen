@@ -770,7 +770,7 @@ function SaadeddinLogo({
 }
 export default function VouchersPage() {
   // URL-based locale detection — reliable on both server and client, no hydration mismatch
-  const {pathname} = useLocation();
+  const {pathname, search} = useLocation();
   const isEn = pathname.startsWith('/en/') || pathname === '/en';
   const loaderData = useLoaderData<typeof loader>();
   const {
@@ -787,6 +787,39 @@ export default function VouchersPage() {
   const {open} = useAside();
 
   const [activeWizardMode, setActiveWizardMode] = useState<'gift' | 'self' | null>(null);
+
+  /**
+   * Open the gift-card wizard when the visitor arrived asking for it.
+   *
+   * This page does two jobs: it lists the discount coupons on an account, and
+   * it sells gift cards. At rest it opens on the coupons, and the wizard sits
+   * below them behind a button that does not say "gift card" -- so a customer
+   * following the homepage CTA («إشتري قسيمة الان», under copy promising to
+   * choose a value and add a message) lands on a coupon wallet and reasonably
+   * concludes the link is broken. It was reported as the gift-card journey
+   * being missing entirely; it is present, just never the first thing on the
+   * page.
+   *
+   * A CTA that already knows what the customer came for says so in the URL:
+   * `?buy=gift` or `?buy=self`. Anything else leaves the page exactly as it
+   * was, so the coupon view remains the default for people who navigated here
+   * on their own.
+   */
+  useEffect(() => {
+    const mode = (new URLSearchParams(search).get('buy') || '')
+      .trim()
+      .toLowerCase();
+    if (!mode) return;
+
+    setActiveWizardMode(mode === 'self' ? 'self' : 'gift');
+
+    // After paint, or the section is not yet in the document to scroll to.
+    requestAnimationFrame(() => {
+      document
+        .getElementById('voucher-wizard-section')
+        ?.scrollIntoView({behavior: 'smooth', block: 'start'});
+    });
+  }, [search]);
 
   const [activeTab, setActiveTab] = useState<'active' | 'used' | 'expired'>(
     'active',

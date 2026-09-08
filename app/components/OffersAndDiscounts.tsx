@@ -44,7 +44,21 @@ export function OffersAndDiscounts({ config }: { config?: any }) {
         return path.startsWith('/en/') ? path.replace(/^\/en/, '') : (path === '/en' ? '/' : path);
     };
 
-    const c1BtnLink = formatLink(getC1Val('button_link'), '/vouchers');
+    /**
+     * The gift-voucher CTA opens the wizard, not the coupon list.
+     *
+     * /vouchers sells gift cards AND lists discount coupons, and opens on the
+     * coupons. This button promises "choose value, add message, send
+     * instantly", so it carries `?buy=gift` and the page opens on the step
+     * that does that. Added only when the destination is /vouchers and the
+     * merchandiser has not written a query of their own -- an explicit
+     * `button_link` in the metafield still wins.
+     */
+    const c1BtnLinkRaw = formatLink(getC1Val('button_link'), '/vouchers');
+    const c1BtnLink =
+      /\/vouchers\/?$/.test(c1BtnLinkRaw) && !c1BtnLinkRaw.includes('?')
+        ? `${c1BtnLinkRaw}?buy=gift`
+        : c1BtnLinkRaw;
     const c1Img = getC1Img('image') || "/images/voucher.webp";
 
     // Card 2 (Promotions / Green Card)

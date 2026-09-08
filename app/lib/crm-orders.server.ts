@@ -7,7 +7,20 @@
  */
 
 const CRM_BASE_URL = 'https://saadeddinpastry.com/shopifyAPI';
-const CRM_API_KEY = 'sdn_sk_a7f3b9c2e8d1f6a4b5c9d2e7f8a1b3c4d5e6f7a8';
+
+/**
+ * The key lives in `SAADEDDIN_CRM_API_KEY` and nowhere else.
+ *
+ * It used to sit here as a literal, with the environment variable only a
+ * preferred override -- so the hardcoded value worked, nobody ever noticed the
+ * variable was unset, and the key went into every clone of this repository and
+ * every commit of its history. It unlocks customer lookup by phone, loyalty
+ * balances, and order creation in the ERP the kitchen works from.
+ *
+ * Removing it from HEAD does not remove it from history. The key it held has
+ * to be rotated at the ERP; this only stops the next one from being pasted
+ * back in.
+ */
 
 // ─── TYPES ──────────────────────────────────────────────────────────────────
 
@@ -47,7 +60,31 @@ interface CRMLoyaltyPoints {
 
 async function crmFetch<T>(endpoint: string, body: Record<string, any>, env?: any): Promise<CRMResponse<T>> {
   const baseUrl = env?.SAADEDDIN_CRM_API_URL || CRM_BASE_URL;
-  const apiKey = env?.SAADEDDIN_CRM_API_KEY || CRM_API_KEY;
+  const apiKey = env?.SAADEDDIN_CRM_API_KEY;
+
+  if (!apiKey) {
+    console.error(
+      `[CRM] SAADEDDIN_CRM_API_KEY is not set. Refusing to call ${endpoint}. ` +
+        `Set it in the Oxygen environment variables and in .env locally.`,
+    );
+    return {
+      success: false,
+      data: null,
+      message: 'CRM API key is not configured',
+    };
+  }
+
+  /**
+   * The simulations below answer with invented data. They exist for local work
+   * against a CRM that will not authorise a developer, and they must never run
+   * where a real order is at stake: a rejected key would otherwise report every
+   * order as synced while nothing reached the ERP, and hand customers loyalty
+   * balances that do not exist.
+   *
+   * Opt-in by an explicit variable rather than by guessing at NODE_ENV, so
+   * production cannot fall into it by default.
+   */
+  const sandbox = String(env?.SAADEDDIN_CRM_SANDBOX || '') === 'true';
 
   const url = `${baseUrl}${endpoint}`;
 
@@ -62,7 +99,20 @@ async function crmFetch<T>(endpoint: string, body: Record<string, any>, env?: an
     });
 
     if (response.status === 401 || response.status === 403) {
-      console.warn(`[CRM] ⚠️ Live CRM returned ${response.status} (Unauthorized). Using Sandbox Dev simulation for local testing.`);
+      if (!sandbox) {
+        console.error(
+          `[CRM] ${response.status} from ${endpoint}: the API key was rejected. ` +
+            `Nothing has been synced. Check SAADEDDIN_CRM_API_KEY -- this is what ` +
+            `a rotated key looks like from here.`,
+        );
+        return {
+          success: false,
+          data: null,
+          message: `CRM rejected the API key (HTTP ${response.status})`,
+        };
+      }
+
+      console.warn(`[CRM] ⚠️ ${response.status} (Unauthorized) with SAADEDDIN_CRM_SANDBOX on — answering with simulated data. Never enable this in production.`);
       
       // Return beautiful sandbox simulated success responses based on the endpoint
       if (endpoint === '/searchCustomer') {
@@ -117,8 +167,10 @@ async function crmFetch<T>(endpoint: string, body: Record<string, any>, env?: an
   } catch (error: any) {
     console.error(`[CRM] Network error calling ${endpoint}:`, error.message);
     
-    // Offline / Local fallback simulation
-    if (endpoint === '/getLoyaltyPoints') {
+    // Same rule as the 401 path: a network failure is a failure, and inventing
+    // a 500-point balance for a customer who cannot be reached is worse than
+    // telling them the balance is unavailable.
+    if (sandbox && endpoint === '/getLoyaltyPoints') {
       return {
         success: true,
         data: { phone: body.phone, points: 500, amount: 5.0 } as any,

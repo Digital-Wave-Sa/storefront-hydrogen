@@ -485,7 +485,11 @@ export async function action({request, context}: ActionFunctionArgs) {
         if (!resolvedCustomerId) {
           const nameParts = (crmProfile?.name || '').trim().split(/\s+/);
           const firstName = nameParts[0] || 'Customer';
-          const lastName = nameParts.slice(1).join(' ') || '(N/A)';
+          // A one-word CRM profile name means no surname, not "(N/A)" -- see
+          // the note in account_.register. This is the likelier source of the
+          // stored placeholder, since the registration form requires a surname
+          // while this path accepts whatever the CRM holds.
+          const lastName = nameParts.slice(1).join(' ');
           /**
            * Creating is the one place the CRM's email is welcome: this phone
            * has no Shopify customer, so there is no account to take over, and

@@ -395,7 +395,19 @@ export async function action({request, context}: ActionFunctionArgs) {
       lastName = '(Company)';
     } else {
       firstName = firstNameInput || '';
-      lastName = lastNameInput || '(N/A)';
+      /**
+       * An absent surname is absent, not "(N/A)".
+       *
+       * This wrote the literal string into the Shopify customer record, so a
+       * shopper with no surname was called «NOOR (N/A)» everywhere a full name
+       * appears -- their address book, their orders, and the order slips the
+       * kitchen and the driver read. It is stored data, not a display quirk,
+       * so it outlives any UI fix.
+       *
+       * `(Company)` on the branch above is deliberate and stays: account.profile
+       * and GTMAnalytics both identify a B2B account by that exact string.
+       */
+      lastName = lastNameInput || '';
     }
 
     const fullName = `${firstName} ${lastName}`.trim();

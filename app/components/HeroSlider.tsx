@@ -162,13 +162,13 @@ export function HeroSlider({ config }: { config?: any }) {
           return (
             <div
               key={slide.id}
-              className="snap-center shrink-0 w-[300px] lg:w-[1024px] max-w-[90vw] transition-all duration-700 ease-out"
+              className="snap-center shrink-0 w-[300px] sm:w-[560px] md:w-[720px] lg:w-[1024px] max-w-[90vw] transition-all duration-700 ease-out"
               style={{
                 opacity: isActive ? 1 : 0.4,
                 transform: isActive ? 'scale(1)' : 'scale(0.98)'
               }}
             >
-              <div className="relative w-full h-[360px] lg:h-[610px] rounded-[6px] lg:rounded-[20px] overflow-hidden bg-[#f8f5f2] group/slide flex flex-col">
+              <div className="relative w-full h-[360px] sm:h-[430px] md:h-[510px] lg:h-[610px] rounded-[6px] sm:rounded-[12px] lg:rounded-[20px] overflow-hidden bg-[#f8f5f2] group/slide flex flex-col">
                 {/* 1. Background Image - Stays Absolute */}
                 <img
                   src={slide.image}
@@ -181,7 +181,7 @@ export function HeroSlider({ config }: { config?: any }) {
                 <div className={`absolute inset-0 bg-gradient-to-r ${isEn ? 'from-black/70 via-black/20 to-transparent' : 'to-black/70 via-black/20 from-transparent'} pointer-events-none opacity-90 z-10`} />
 
                 {/* 3. Top-Center Badge */}
-                <div className="absolute top-4 lg:top-10 left-1/2 -translate-x-1/2 z-30 flex justify-center w-full px-4 lg:px-10">
+                <div className="absolute top-4 sm:top-6 md:top-8 lg:top-10 left-1/2 -translate-x-1/2 z-30 flex justify-center w-full px-4 lg:px-10">
                   <div className="bg-[#234745] px-4 lg:px-8 py-1 lg:py-2 rounded-full shadow-2xl flex items-center gap-2 lg:gap-4">
                     <div className="w-4 lg:w-6 h-[1px] bg-[#BBCFCD]" />
                     <span className="text-[#BBCFCD] font-medium text-[12px] lg:text-[16px] tracking-wide whitespace-nowrap" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
@@ -194,13 +194,14 @@ export function HeroSlider({ config }: { config?: any }) {
                 {/* 4. Main Content Area */}
                 <div
                   dir={isEn ? 'ltr' : 'rtl'}
-                  className={`relative flex-1 min-h-0 flex flex-col justify-end lg:justify-center p-6 pt-14 lg:p-16 lg:pt-28 text-white z-20 items-center lg:items-start text-center lg:text-start`}
+                  className={`relative flex-1 min-h-0 flex flex-col justify-end md:justify-center p-6 pt-14 sm:p-8 sm:pt-16 md:p-10 md:pt-20 lg:p-16 lg:pt-28 text-white z-20 items-center md:items-start text-center md:text-start`}
                 >
-                  <div className="max-w-[95%] lg:max-w-[533px] flex flex-col items-center lg:items-start w-full">
+                  {/* English needs a wider column: 52px Latin text overflows 533px and hits the title's line-clamp */}
+                  <div className={`max-w-[95%] sm:max-w-full ${isEn ? 'md:max-w-[520px] lg:max-w-[700px]' : 'md:max-w-[420px] lg:max-w-[533px]'} flex flex-col items-center md:items-start w-full`}>
 
                     {/* Title */}
                     <h2
-                      className={`font-bold lg:font-bold whitespace-pre-line mb-3 lg:mb-6 line-clamp-3 ${isEn ? 'text-[28px] sm:text-[36px] lg:text-[52px] leading-[1.1] lg:leading-[0.85]' : 'text-[32px] lg:text-[80px] leading-[1.3] lg:leading-[1.2]'}`}
+                      className={`font-bold lg:font-bold whitespace-pre-line mb-3 lg:mb-6 line-clamp-3 ${isEn ? 'text-[28px] sm:text-[32px] md:text-[36px] lg:text-[52px] leading-[1.1] lg:leading-[0.85]' : 'text-[32px] md:text-[44px] lg:text-[80px] leading-[1.3] lg:leading-[1.2]'}`}
                       style={{ fontFamily: "'Bahij Janna', sans-serif" }}
                     >
                       <span className="text-[#FFFFFF] drop-shadow-lg">{isEn ? slide.title.en : slide.title.ar}</span>
@@ -208,14 +209,14 @@ export function HeroSlider({ config }: { config?: any }) {
 
                     {/* Subtitle */}
                     <p
-                      className={`font-normal leading-[1.6] lg:leading-[1.2] max-w-[280px] lg:max-w-[400px] mt-0 mb-4 lg:mb-8 whitespace-pre-line line-clamp-4 lg:line-clamp-none !text-[#FFFFFF] ${isEn ? 'text-[14px] lg:text-[16px]' : 'text-[12px] lg:text-[14px]'}`}
+                      className={`font-normal leading-[1.6] lg:leading-[1.2] max-w-[280px] sm:max-w-[360px] lg:max-w-[400px] mt-0 mb-4 lg:mb-8 whitespace-pre-line line-clamp-4 md:line-clamp-none !text-[#FFFFFF] ${isEn ? 'text-[14px] lg:text-[16px]' : 'text-[12px] lg:text-[14px]'}`}
                       style={!isEn ? { fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" } : undefined}
                     >
                       {isEn ? slide.subtitle.en : slide.subtitle.ar}
                     </p>
 
                     {/* Buttons */}
-                    <div className="flex flex-col lg:flex-row items-center gap-[8px] w-full mt-2 lg:mt-6 shrink-0">
+                    <div className="flex flex-col sm:flex-row items-center justify-center md:justify-start gap-[8px] w-full mt-2 lg:mt-6 shrink-0">
                       {slide.buttons?.map((btn, i) => {
                         const targetUrl = (() => {
                           const url = btn.url || '';
@@ -233,7 +234,7 @@ export function HeroSlider({ config }: { config?: any }) {
                           <NavLink
                             key={i}
                             to={targetUrl}
-                            className={`flex items-center !no-underline justify-center transition-all duration-300 hover:!bg-[#F9F9F9] transform w-full lg:w-[277px] h-[48px] py-[12px] px-[20px] rounded-[24px] ${btn.type === 'filled'
+                            className={`flex items-center !no-underline justify-center transition-all duration-300 hover:!bg-[#F9F9F9] transform w-full sm:w-auto sm:min-w-[277px] whitespace-nowrap h-[48px] py-[12px] px-[20px] sm:px-[28px] rounded-[24px] ${btn.type === 'filled'
                               ? 'bg-[#BBCFCD] text-[#234745]'
                               : 'bg-transparent text-[#F9F9F9] border border-[#BBCFCD]'
                               }`}

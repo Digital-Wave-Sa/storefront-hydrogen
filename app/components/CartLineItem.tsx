@@ -1,6 +1,7 @@
 import type { CartLineUpdateInput } from '@shopify/hydrogen/storefront-api-types';
 import type { CartLayout, LineItemChildrenMap } from '~/components/CartMain';
 import { CartForm, Image, type OptimisticCartLine } from '@shopify/hydrogen';
+import { usePendingCartMutations, lineTotalOf } from '~/lib/cart-pending';
 import { useVariantUrl } from '~/lib/variants';
 import { Link, useRouteLoaderData, useLocation } from 'react-router';
 import { useState, useEffect } from 'react';
@@ -43,24 +44,24 @@ export function CartLineItem({
   const isFreeItem = line.attributes?.some((attr: any) => attr.key === '_is_free' && attr.value === 'true') || false;
 
   /**
-   * What this line costs, including while it is still optimistic.
+   * What this line costs, including while a change is still in the air.
    *
-   * useOptimisticCart builds the pending line from the variant it was handed,
-   * so the title, image and price are all there — but not `cost`, which only
-   * Shopify can work out, discounts and all. Reading `cost.totalAmount` alone
-   * rendered 0.00 for the whole gap between the drawer opening and the server
-   * answering, which is precisely the moment the shopper is looking at it.
+   * Two gaps to cover. A line Hydrogen has just invented has no `cost` at all
+   * -- only Shopify can work that out, discounts and all -- so reading
+   * `cost.totalAmount` alone rendered 0.00 for the whole gap between the
+   * drawer opening and the server answering. And a line whose quantity was
+   * just changed keeps the cost Shopify confirmed for the OLD quantity, so it
+   * read "2" beside the price of one for a second or two.
    *
-   * The fallback is used only when `cost` is missing, never when it is zero —
-   * a Buy X Get Y gift really does cost nothing, and must keep saying so
-   * rather than jumping to the variant's full price.
+   * `lineTotalOf` prefers Shopify's confirmed total whenever it is current,
+   * and falls back to unit price x quantity only while this line is pending.
+   * Never when the total is merely zero: a Buy X Get Y gift really does cost
+   * nothing and must keep saying so rather than jumping to full price.
    */
-  const lineTotal = (() => {
-    const fromCost = parseFloat(line?.cost?.totalAmount?.amount ?? '');
-    if (Number.isFinite(fromCost)) return fromCost;
-    const unitPrice = parseFloat((merchandise as any)?.price?.amount ?? '');
-    return Number.isFinite(unitPrice) ? unitPrice * (line?.quantity ?? 1) : 0;
-  })();
+  const pendingCart = usePendingCartMutations();
+  const isLinePending =
+    pendingCart.lineIds.has(id) || !!(line as any)?.isOptimistic;
+  const lineTotal = lineTotalOf(line, isLinePending);
   /**
    * The `_gift_voucher` attribute and the hard-coded handle both miss a
    * voucher that reached the cart any way other than the wizard — a reorder,
@@ -660,22 +661,33 @@ export function CartLineItem({
 }
 
 function CartLineQuantity({ line }: { line: CartLine }) {
-  if (!line || typeof line?.quantity === 'undefined') return null;
   const location = useLocation();
+  const pendingCart = usePendingCartMutations();
+  if (!line || typeof line?.quantity === 'undefined') return null;
   const isEn = location.pathname.startsWith('/en');
   const { id: lineId, quantity, isOptimistic } = line;
+  /**
+   * `isOptimistic` alone left these buttons live through every quantity
+   * change, because Hydrogen sets that flag on adds and not on updates. A
+   * shopper could tap + four times in the second before the first one landed
+   * and send four separate mutations racing each other.
+   */
+  const isPending = !!isOptimistic || pendingCart.lineIds.has(lineId);
   const prevQuantity = Number(Math.max(0, quantity - 1).toFixed(0));
   const nextQuantity = Number((quantity + 1).toFixed(0));
 
   return (
-    <div className="flex items-center gap-2">
+    <div
+      className={`flex items-center gap-2 transition-opacity duration-150 ${isPending ? 'opacity-60' : ''}`}
+      aria-busy={isPending}
+    >
       {quantity <= 1 ? (
-        <CartLineRemoveButton lineIds={[lineId]} disabled={!!isOptimistic} isBox isEn={isEn} />
+        <CartLineRemoveButton lineIds={[lineId]} disabled={isPending} isBox isEn={isEn} />
       ) : (
         <CartLineUpdateButton lines={[{ id: lineId, quantity: prevQuantity }]}>
           <button
             aria-label={isEn ? "Decrease quantity" : "إنقاص الكمية"}
-            disabled={!!isOptimistic}
+            disabled={isPending}
             name="decrease-quantity"
             value={prevQuantity}
             className="w-10 h-10 flex items-center justify-center bg-transparent rounded-lg text-[#234745] border border-[#BBCFCD]/80 hover:border-[#234745] transition-all"
@@ -694,7 +706,7 @@ function CartLineQuantity({ line }: { line: CartLine }) {
           aria-label={isEn ? "Increase quantity" : "زيادة الكمية"}
           name="increase-quantity"
           value={nextQuantity}
-          disabled={!!isOptimistic}
+          disabled={isPending}
           className="w-10 h-10 flex items-center justify-center bg-transparent rounded-lg text-[#234745] border border-[#BBCFCD]/80 hover:border-[#234745] transition-all"
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 5v14M5 12h14" strokeLinecap="round" strokeLinejoin="round" /></svg>

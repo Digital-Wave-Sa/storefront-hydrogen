@@ -43,6 +43,67 @@ export function hasIdentity(identity: SessionIdentity): boolean {
 }
 
 /**
+ * Every session key that says who someone is.
+ *
+ * Logging out cleared four of them -- `saadeddinToken`, `loginOtpPhone`,
+ * `customerAccessToken`, `selectedAddressName` -- and left `loginCustomerId`
+ * and `loginCustomerEmail` behind. `getSessionIdentity` above reads both. So
+ * a logged-out session still resolved to the customer who had just left, and
+ * `/api/wallet-balance` and `/api/loyalty-points` answered for them: the next
+ * person at that browser saw the previous shopper's store credit.
+ *
+ * The gap was invisible because the two questions were answered by different
+ * lists. `isSignedIn` looks at the tokens, which logout did clear, so checkout
+ * correctly treated them as a guest -- while the personal-data endpoints,
+ * reading the keys it did not clear, treated them as signed in.
+ *
+ * One list now, next to the function that reads it, so the two cannot drift
+ * apart again. Anything identifying belongs here; branch, locale and delivery
+ * preferences deliberately do not -- they are not who someone is.
+ */
+export const IDENTITY_SESSION_KEYS = [
+  // Tokens
+  'customerAccessToken',
+  'saadeddinToken',
+  // Identity read by getSessionIdentity
+  'loginOtpPhone',
+  'loginOtpEmail',
+  'saadeddinPhone',
+  'loginCustomerId',
+  'loginCustomerEmail',
+  // Login and registration flow state
+  'pendingOtpPhone',
+  'verifiedProfilePhone',
+  'otpPhone',
+  'otpCooldown',
+  'socialProfile',
+  'loginOtpAttempts',
+  'loginOtpBlockUntil',
+  'loginOtpCooldown',
+  'loginOtpLastFailedAttemptAt',
+  'loginRedirectTo',
+  'registerOtpAttempts',
+  'registerOtpBlockUntil',
+  // Personal data carried alongside
+  'selectedAddressName',
+  'backupCartLines',
+] as const;
+
+/**
+ * Forget the person entirely. Used by logout, and by every path that discovers
+ * a token no longer resolves to a customer -- in both cases the session is
+ * about to belong to nobody, and half-clearing it is what caused the leak.
+ */
+export function clearIdentity(session: any): void {
+  if (!session) return;
+  for (const key of IDENTITY_SESSION_KEYS) {
+    try {
+      session.unset(key);
+    } catch {}
+  }
+}
+
+/**
  * True when a supplied identifier belongs to the signed-in customer.
  * Phones compare on their last 9 digits so +966 / 05 / 9665 spellings match.
  */

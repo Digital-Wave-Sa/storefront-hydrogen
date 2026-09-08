@@ -3,7 +3,14 @@ import {redirect} from 'react-router';
 import type {Route} from './+types/cart.$lines';
 
 /**
- * Automatically creates a new cart based on the URL and redirects straight to checkout.
+ * Automatically creates a new cart based on the URL and sends the shopper to
+ * the cart page.
+ *
+ * It used to redirect to `cart.checkoutUrl`, which walked straight past the
+ * login gate on `/checkout/initiate` and past everything the cart collects on
+ * the way -- branch, fulfilment type, delivery preference, time slot. A link
+ * of this shape was a guest checkout with none of the order's context
+ * attached. It now lands on the cart, where the gated button is.
  * Expected URL structure:
  * ```js
  * /cart/<variant_id>:<quantity>
@@ -23,7 +30,10 @@ import type {Route} from './+types/cart.$lines';
 export async function loader({request, context, params}: Route.LoaderArgs) {
   const {cart} = context;
   const {lines} = params;
-  if (!lines) return redirect('/cart');
+  const localePrefix = params.locale ? `/${params.locale}` : '';
+  const cartPath = `${localePrefix}/cart`;
+
+  if (!lines) return redirect(cartPath);
   const linesMap = lines.split(',').map((line: any) => {
     const lineDetails = line.split(':');
     const variantId = lineDetails[0];
@@ -58,12 +68,7 @@ export async function loader({request, context, params}: Route.LoaderArgs) {
   // Update cart id in cookie
   const headers = cart.setCartId(cartResult.id);
 
-  // redirect to checkout
-  if (cartResult.checkoutUrl) {
-    return redirect(cartResult.checkoutUrl, {headers});
-  } else {
-    throw new Error('No checkout URL found');
-  }
+  return redirect(cartPath, {headers});
 }
 
 export default function Component() {

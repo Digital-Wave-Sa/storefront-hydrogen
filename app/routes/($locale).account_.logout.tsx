@@ -32,15 +32,17 @@ export async function action({request, context}: ActionFunctionArgs) {
     // Ignore custom API errors on logout
   }
 
-  // 2. Unset Custom Token
-  session.unset('saadeddinToken');
-  session.unset('loginOtpPhone');
-
-  // 3. Unset Shopify Token
-  session.unset('customerAccessToken');
-
-  // 4. Clear PII from session (like delivery address name)
-  session.unset('selectedAddressName');
+  /**
+    * 2. Forget the person, all of them.
+    *
+    * This used to unset four keys and leave `loginCustomerId` and
+    * `loginCustomerEmail` in the session -- which is exactly what
+    * `getSessionIdentity` reads. A logged-out browser still resolved to the
+    * customer who had just left, and the wallet and loyalty endpoints
+    * answered for them.
+    */
+  const {clearIdentity} = await import('~/lib/session-identity.server');
+  clearIdentity(session);
 
   const headers = new Headers();
   headers.append('Set-Cookie', await session.commit());

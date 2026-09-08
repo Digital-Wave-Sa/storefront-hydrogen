@@ -2,6 +2,7 @@ import {type MetaFunction} from 'react-router';
 import {useRouteLoaderData} from 'react-router';
 import {useState} from 'react';
 import {PageHeader} from '~/components/layout/PageHeader';
+import {useIsEn} from '~/lib/i18n';
 
 export const meta: MetaFunction = () => {
   return [
@@ -22,7 +23,7 @@ export const meta: MetaFunction = () => {
 
 export default function FAQPage() {
   const rootData = useRouteLoaderData('root') as any;
-  const isEn = rootData?.consent?.language?.toLowerCase() === 'en';
+  const isEn = useIsEn();
 
   const [openId, setOpenId] = useState<string | null>('0-0');
 

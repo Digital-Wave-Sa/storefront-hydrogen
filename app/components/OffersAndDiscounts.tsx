@@ -53,7 +53,7 @@ export function OffersAndDiscounts({ config }: { config?: any }) {
     const getC2Img = (k: string) => card2Node?.fields?.find((f: any) => f.key === k)?.reference?.image?.url;
 
     const c2TitleEn = getC2Val('title_en') || 'Offers on our Best Products';
-    const c2TitleAr = getC2Val('title_ar') || 'عروض وتخفضيات علي افضل منتجاتنا';
+    const c2TitleAr = getC2Val('title_ar') || 'عروض وتخفيضات على افضل منتجاتنا';
     const c2BtnEn = getC2Val('button_text_en') || 'Browse Now';
     const c2BtnAr = getC2Val('button_text_ar') || 'تصفح الان';
     const c2BtnLink = formatLink(getC2Val('button_link'), '/promotions');

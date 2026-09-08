@@ -41,6 +41,29 @@ function getLineItemChildrenMap(lines: CartLine[]): LineItemChildrenMap {
   return children;
 }
 
+/**
+ * "N products" where N counts products, not items.
+ *
+ * The cart headed a list of one row with «المنتجات (4)», because it printed
+ * `cart.totalQuantity` -- four of one cake, not four cakes. The number now
+ * counts the rows the shopper can actually see: lines nested under a parent
+ * are rendered inside it and were never separate products either.
+ *
+ * Arabic does not pluralize by adding an s. One, two, a few and many each
+ * take a different form, and «4 منتجات في سلتك» read as broken Arabic for
+ * every count but 3-10.
+ */
+function productsInCartLabel(count: number, isEn: boolean): string {
+  if (isEn) {
+    return count === 1 ? '1 product in your cart' : `${count} products in your cart`;
+  }
+  if (count === 0) return 'لا توجد منتجات في سلتك';
+  if (count === 1) return 'منتج واحد في سلتك';
+  if (count === 2) return 'منتجان في سلتك';
+  if (count <= 10) return `${count} منتجات في سلتك`;
+  return `${count} منتجًا في سلتك`;
+}
+
 export function CartMain({ layout, cart: originalCart }: CartMainProps) {
   const location = useLocation();
   const isEn = location.pathname.split('/')[1]?.toLowerCase() === 'en';
@@ -92,6 +115,14 @@ export function CartMain({ layout, cart: originalCart }: CartMainProps) {
 
   const cartLines = cart?.lines?.nodes || [];
   const linesCount = cartLines.length;
+  /**
+   * The rows on screen. The list below skips any line with a parent -- add-ons
+   * and bundle components are drawn inside the product they belong to -- so
+   * the heading counts the same thing the shopper is looking at.
+   */
+  const productCount = cartLines.filter(
+    (line: any) => !('parentRelationship' in line && line.parentRelationship?.parent),
+  ).length;
   const cartHasItems = (cart?.totalQuantity ? cart.totalQuantity > 0 : false) || linesCount > 0;
   const childrenMap = getLineItemChildrenMap(cartLines);
 
@@ -254,7 +285,7 @@ export function CartMain({ layout, cart: originalCart }: CartMainProps) {
                   {isEn ? 'Shopping Cart' : 'سلة التسوق'}
                 </h1>
                 <p className="!m-0 text-[13px] md:text-[15px] font-medium text-[#c4d0cc] leading-none" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
-                  {isEn ? `${cart?.totalQuantity || 0} products in your cart` : `${new Intl.NumberFormat('en-US').format(cart?.totalQuantity || 0)} منتجات في سلتك`}
+                  {productsInCartLabel(productCount, isEn)}
                 </p>
               </div>
 
@@ -348,7 +379,7 @@ export function CartMain({ layout, cart: originalCart }: CartMainProps) {
                 <div className="flex flex-col gap-4">
                   <div className="flex items-center justify-between border-b border-[#F2E8D5] pb-4">
                     <h3 className="text-[16px] font-medium text-[#234745]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
-                      {isEn ? `Products (${cart?.totalQuantity || 0})` : `المنتجات (${new Intl.NumberFormat('en-US').format(cart?.totalQuantity || 0)})`}
+                      {isEn ? `Products (${productCount})` : `المنتجات (${productCount})`}
                     </h3>
                     <CartForm
                       route={cartRoute}
@@ -397,7 +428,7 @@ export function CartMain({ layout, cart: originalCart }: CartMainProps) {
             {/* Right Column (Summary) */}
             {cartHasItems && (
               <div className="lg:sticky lg:top-[140px] flex flex-col gap-6 self-start">
-                <CartSummary cart={cart} layout={layout} />
+                <CartSummary cart={cart} layout={layout} confirmedCart={effectiveCart as any} />
               </div>
             )}
           </div>
@@ -448,17 +479,13 @@ export function CartMain({ layout, cart: originalCart }: CartMainProps) {
 
       {/* Cart Content Area */}
       <div className="flex-1 overflow-y-auto px-6 py-6 custom-scrollbar">
-        {cartHasItems && isPickup && (
-          <div className="mb-6 p-4 bg-[#fcfaf8] rounded-2xl border border-[#f0ece8] flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-[#234745] shadow-sm shrink-0">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" /><polyline points="9 22 9 12 15 12 15 22" /></svg>
-            </div>
-            <div>
-              <p className="text-[13px] font-black text-[#234745]">{isEn ? 'Store Pickup' : 'استلام من الفرع'}</p>
-              <p className="text-[11px] text-gray-500 font-medium">{isEn ? 'No delivery fees applied' : 'لا توجد رسوم توصيل'}</p>
-            </div>
-          </div>
-        )}
+        {/*
+          The «استلام من الفرع / لا توجد رسوم توصيل» card used to sit here.
+          Removed from the drawer only -- the cart page keeps its own
+          fulfilment display, and the summary below already says the delivery
+          fee is nil for a pickup, so in a panel this narrow the card was
+          repeating what the totals state anyway.
+        */}
 
         {/* Dynamic Delivery Alert */}
         {(cart?.attributes?.find(a => a.key === 'error')?.value) && (
@@ -497,7 +524,7 @@ export function CartMain({ layout, cart: originalCart }: CartMainProps) {
       {/* Cart Summary Footer */}
       {cartHasItems && (
         <div className="mt-auto shrink-0 bg-white border-t border-[#f0ece8] p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom,1rem))] shadow-[0_-10px_40px_rgba(0,0,0,0.03)]">
-          <CartSummary cart={cart} layout={layout} />
+          <CartSummary cart={cart} layout={layout} confirmedCart={effectiveCart as any} />
         </div>
       )}
 

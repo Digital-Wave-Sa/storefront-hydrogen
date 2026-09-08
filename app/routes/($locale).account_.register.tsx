@@ -21,6 +21,7 @@ import {SaadeddinApi} from '~/lib/saadeddin-api.server';
 import {derivePassword} from '~/lib/auth.server';
 import {validatePhoneNumber, sanitizePhoneInput} from '~/lib/phone-validation';
 import {COUNTRY_CODES, parsePhoneCountry} from '~/lib/country-codes';
+import {useIsEn} from '~/lib/i18n';
 import {
   formatOtpError,
   classifyOtpError,
@@ -732,10 +733,7 @@ export default function Register() {
 
   const location = useLocation();
   const rootData = useRouteLoaderData('root') as any;
-  const isEn =
-    location.pathname.startsWith('/en') ||
-    rootData?.locale === 'en' ||
-    rootData?.consent?.language?.toLowerCase() === 'en';
+  const isEn = useIsEn();
   const actionData = useActionData() as any;
   const navigation = useNavigation();
   const isLoading = navigation.state === 'submitting';

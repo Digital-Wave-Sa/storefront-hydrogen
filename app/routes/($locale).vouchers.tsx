@@ -818,6 +818,17 @@ export default function VouchersPage() {
       if (cartFetcher.data.error) {
         setAppliedVoucherError(cartFetcher.data.error);
         setAppliedVoucherSuccess(null);
+      } else if (cartFetcher.data.notice) {
+        /**
+         * A real code whose conditions the cart does not meet yet. It is on
+         * the cart and Shopify will apply it as soon as a qualifying item is
+         * added, so this is neither a failure nor a success -- claiming
+         * either would be a lie the shopper can see through.
+         */
+        setAppliedVoucherError(null);
+        setAppliedVoucherSuccess(cartFetcher.data.notice);
+        showToast(cartFetcher.data.notice);
+        open('cart');
       } else {
         setAppliedVoucherError(null);
         const code = lastAppliedCode.toUpperCase();
@@ -1688,7 +1699,7 @@ export default function VouchersPage() {
             >
               {isEn
                 ? 'Enter the code to apply it to your cart'
-                : 'أدخل الرمز لتطبيقه علي سلتك'}
+                : 'أدخل الرمز لتطبيقه على سلتك'}
             </p>
 
             {/* Voucher Code Form */}
@@ -1772,7 +1783,7 @@ export default function VouchersPage() {
               >
                 {isEn
                   ? 'One voucher code per order. Cannot be combined with other offers.'
-                  : 'يمكن استخدام قسيمة واحدة لكل طلب. لا تجمع القسائم مع العروض الأخري'}
+                  : 'يمكن استخدام قسيمة واحدة لكل طلب. لا تجمع القسائم مع العروض الأخرى'}
               </p>
             </form>
           </div>

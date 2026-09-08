@@ -1,7 +1,48 @@
 import type {I18nBase} from '@shopify/hydrogen';
+import {useLocation} from 'react-router';
+
+export type Locale = 'en' | 'ar';
 
 export interface I18nLocale extends I18nBase {
   pathPrefix: string;
+}
+
+/**
+ * The one place the UI language is decided: the URL.
+ *
+ * There used to be three answers to "what language is this page?".  The
+ * pathname drove `<html lang dir>`, the layout and the whole header; the
+ * loaders used `context.storefront.i18n`; and a long tail of components --
+ * the product page, Search, the policy pages, register, recover, feedback --
+ * read `rootData.consent.language`, which root only ever set to localize
+ * Shopify's privacy banner (see the comment on it in root's loader).
+ *
+ * They agreed most of the time, so the disagreement showed up as something
+ * stranger than a wrong language: an Arabic right-to-left header sitting on
+ * top of an English left-to-right product page, because the product page set
+ * its own `dir` from `consent.language` while root set the document's from
+ * the path.
+ *
+ * The path wins, because it is what the shopper can see, what the canonical
+ * and hreflang tags already claim, and the only one of the three that cannot
+ * drift from the address bar.
+ *
+ * Matching on the first path segment rather than `startsWith('/en')` also
+ * stops a route like `/enquiries` from being read as English.
+ */
+export function localeFromPath(pathname: string): Locale {
+  return pathname.split('/')[1]?.toLowerCase() === 'en' ? 'en' : 'ar';
+}
+
+/** The current page's language, from the URL. */
+export function useLocale(): Locale {
+  const {pathname} = useLocation();
+  return localeFromPath(pathname);
+}
+
+/** Shorthand for the overwhelmingly common `useLocale() === 'en'`. */
+export function useIsEn(): boolean {
+  return useLocale() === 'en';
 }
 
 export function getLocaleFromRequest(request: Request): I18nLocale {
@@ -53,7 +94,6 @@ export function getLocaleFromRequest(request: Request): I18nLocale {
   };
 }
 
-export type Locale = 'en' | 'ar';
 
 export const translations = {
     en: {

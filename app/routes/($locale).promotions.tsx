@@ -1182,7 +1182,7 @@ export default function PromotionsPage() {
                     ? gridData?.card1SubtitleEn ||
                         'Order now and get 25% off your first order with Saadeddin'
                     : gridData?.card1SubtitleAr ||
-                        'إشترك الآن واحصل علي خصم 25% علي طلبك الأول من سعد الدين',
+                        'إشترك الآن واحصل على خصم 25% على طلبك الأول من سعد الدين',
                 )}
               </p>
             </div>

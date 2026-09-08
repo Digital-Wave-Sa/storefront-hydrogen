@@ -7,6 +7,7 @@ import {
 import {Form, Link, useActionData, useRouteLoaderData} from 'react-router';
 import {Button} from '~/components/layout/Button';
 import {getAdminToken} from '~/lib/shopify-admin.server';
+import {useLocale} from '~/lib/i18n';
 
 type ActionResponse = {
   error?: string;
@@ -133,7 +134,7 @@ export async function action({request, context}: ActionFunctionArgs) {
 export default function Recover() {
   const action = useActionData<ActionResponse>();
   const rootData = useRouteLoaderData('root') as any;
-  const locale = rootData?.consent?.language?.toLowerCase() || 'ar';
+  const locale = useLocale();
   const isEn = locale === 'en';
 
   return (

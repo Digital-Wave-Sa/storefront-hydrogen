@@ -30,6 +30,7 @@ import {
   Await,
   Link,
   useLoaderData,
+  useNavigate,
   useRouteLoaderData,
   useOutletContext,
   type FetcherWithComponents,
@@ -53,6 +54,7 @@ import {useAside} from '~/components/Aside';
 import type {CartLineInput} from '@shopify/hydrogen/storefront-api-types';
 import {getVariantUrl} from '~/utils';
 import patternBg from '/images/second-bg-pattern.svg';
+import {useLocale} from '~/lib/i18n';
 
 /**
  * A location metafield reaches a page in more than one shape — `{key, value}`
@@ -683,7 +685,8 @@ export default function Product() {
   } = useLoaderData<any>();
   const rootData = useRouteLoaderData('root') as any;
   const {open} = useAside();
-  const locale = rootData?.consent?.language?.toLowerCase() || 'ar';
+  const navigate = useNavigate();
+  const locale = useLocale();
   const isEn = locale === 'en';
   const customer = rootData?.customer;
 
@@ -1229,20 +1232,27 @@ export default function Product() {
         body: formData,
       });
 
-      const data = (await res.json()) as any;
-      const checkoutUrl =
-        data?.cart?.checkoutUrl || rootData?.cart?.checkoutUrl;
-
-      if (
-        checkoutUrl &&
-        (checkoutUrl.startsWith('http://') ||
-          checkoutUrl.startsWith('https://')) &&
-        !checkoutUrl.includes('localhost')
-      ) {
-        window.location.href = checkoutUrl;
-      } else {
+      /**
+       * The response is deliberately not parsed.
+       *
+       * `/cart` is a page route, not a resource route, so a plain POST to it
+       * comes back as an HTML document. `res.json()` threw on the first
+       * character every single time, the catch below swallowed it, and Buy
+       * Now quietly fell through to opening the drawer -- whatever the branch
+       * above it claimed to do. The status is the only thing worth reading.
+       *
+       * Where it goes: the cart page. The cart is where the branch, the
+       * fulfilment type and the delivery date are chosen, and its own
+       * checkout button is already gated, so this route needs to know nothing
+       * about checkout.
+       */
+      if (!res.ok) {
+        console.error('Buy Now: cart add failed with status', res.status);
         open('cart');
+        return;
       }
+
+      navigate(isEn ? '/en/cart' : '/cart');
     } catch (err) {
       console.error('Buy Now error:', err);
       open('cart');

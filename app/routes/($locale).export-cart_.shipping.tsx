@@ -24,8 +24,23 @@ export const meta: Route.MetaFunction = ({matches}) => [
 
 // ─── Loader ──────────────────────────────────────────────────────────────────
 
-export async function loader({context}: Route.LoaderArgs) {
+export async function loader({context, params}: Route.LoaderArgs) {
   const {cart, session, storefront} = context;
+
+  /**
+   * This page ends by sending the shopper to a checkout URL it builds itself,
+   * complete with prefilled shipping params -- another way past the gate on
+   * `/checkout/initiate`. It is guarded here rather than rerouted through
+   * that route, because the prefill is the point of the flow and initiate
+   * builds its own URL.
+   */
+  const {requireSignedIn} = await import('~/lib/checkout-gate.server');
+  const lang = (params as any)?.locale === 'en' ? 'en' : 'ar';
+  await requireSignedIn(
+    context,
+    lang,
+    lang === 'en' ? '/en/export-cart/shipping' : '/export-cart/shipping',
+  );
   let cartData = null;
   let customerData = null;
 

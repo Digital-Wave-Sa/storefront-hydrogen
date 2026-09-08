@@ -4,6 +4,7 @@ import {useState, useRef} from 'react';
 import patternBg from '/images/second-bg-pattern.svg';
 // You should place the actual image in assets and update this path
 import storyImage from '~/assets/patteren-collection-header.svg';
+import {useIsEn} from '~/lib/i18n';
 
 export const meta: MetaFunction = () => {
   return [
@@ -24,7 +25,7 @@ export const meta: MetaFunction = () => {
 
 export default function AboutPage() {
   const rootData = useRouteLoaderData('root') as any;
-  const isEn = rootData?.consent?.language?.toLowerCase() === 'en';
+  const isEn = useIsEn();
 
   const [activeStep, setActiveStep] = useState(0);
 

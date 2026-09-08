@@ -6,6 +6,7 @@ import { Price } from './Price';
 import { Button } from './layout/Button';
 import { useI18n } from '~/lib/i18n';
 import { StarRating } from './StarRating';
+import { addressCoords } from '~/lib/address-coords';
 
 // ─── TYPES ──────────────────────────────────────────────────────────────────
 export type Tab = 'delivery' | 'pickup';
@@ -854,8 +855,12 @@ function ModalContent({
     // Map Logic: Handle both Branch and User Address
     const getMapUrl = () => {
         if (isUserAddressSelected && currentAddress) {
-            // Geocode by address string for user addresses
-            const query = encodeURIComponent(`${currentAddress.address1}, ${currentAddress.city}, SA`);
+            // Prefer the coordinates Shopify already resolved; fall back to
+            // letting Google geocode the address string itself.
+            const pin = addressCoords(currentAddress);
+            const query = pin
+                ? `${pin.lat},${pin.lng}`
+                : encodeURIComponent(`${currentAddress.address1}, ${currentAddress.city}, SA`);
             return `https://www.google.com/maps/embed/v1/place?key=${googleMapsKey}&q=${query}&zoom=16`;
         }
         return `https://www.google.com/maps/embed/v1/place?key=${googleMapsKey}&q=${currentBranch.lat},${currentBranch.lng}&zoom=${zoom}`;
@@ -1140,21 +1145,18 @@ function ModalContent({
                                 if (isUserAddressSelected) {
                                     const currentAddress = addresses.find((a: any) => a.id === effectiveSelectedBranch);
                                     
-                                    // Parse coords from address2 if present (formatted as COORDS:lat,lng)
-                                    let addressCoords: { lat: number; lng: number } | null = null;
-                                    if (currentAddress?.address2?.startsWith('COORDS:')) {
-                                        const [lat, lng] = currentAddress.address2.replace('COORDS:', '').split(',').map(Number);
-                                        if (!isNaN(lat) && !isNaN(lng)) addressCoords = { lat, lng };
-                                    }
+                                    // Shopify's own geocoding of the address,
+                                    // with the legacy address2 marker as a fallback.
+                                    const coords = addressCoords(currentAddress);
 
                                     // Map address to nearest branch for stock and fees (ignoring disabled/hidden stores)
                                     let nearestBranch = branches.find((b: any) => !b.hideFromStorefront) || branches[0];
                                     let isOutOfRange = false;
-                                    if (addressCoords) {
+                                    if (coords) {
                                         let minDistance = Infinity;
                                         for (const b of branches) {
                                             if (b.lat && b.lng && !b.hideFromStorefront) {
-                                                const dist = getDistance(addressCoords, { lat: b.lat, lng: b.lng });
+                                                const dist = getDistance(coords, { lat: b.lat, lng: b.lng });
                                                 if (dist < minDistance) {
                                                     minDistance = dist;
                                                     nearestBranch = b;

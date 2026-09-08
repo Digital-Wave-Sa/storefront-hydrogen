@@ -5,6 +5,7 @@ import {
   type ActionFunctionArgs,
 } from 'react-router';
 import {useLoaderData, useFetcher, useRouteLoaderData} from 'react-router';
+import {useIsEn} from '~/lib/i18n';
 
 export async function loader({request, params, context}: LoaderFunctionArgs) {
   const url = new URL(request.url);
@@ -23,7 +24,7 @@ export async function loader({request, params, context}: LoaderFunctionArgs) {
 export default function GeneralFeedbackPage() {
   const {orderId, branchName, locationId} = useLoaderData<typeof loader>();
   const rootData = useRouteLoaderData('root') as any;
-  const isEn = rootData?.consent?.language?.toLowerCase() === 'en';
+  const isEn = useIsEn();
 
   const fetcher = useFetcher();
   const formRef = useRef<HTMLFormElement>(null);

@@ -12,13 +12,21 @@ import { DeliveryPickupModal, checkBranchFreeDeliveryInterval } from './Delivery
 import { isDiscountValidForLocation, parseLocationDiscountsJSON } from '~/lib/discounts';
 import { useAdminLocations } from '~/lib/locations-meta';
 import { isDigitalOnlyCart as cartIsDigitalOnly, isNonShippableLine } from '~/lib/digital-lines';
+import { usePendingCartMutations, lineTotalOf } from '~/lib/cart-pending';
 
 type CartSummaryProps = {
   cart: OptimisticCart<CartApiQueryFragment | null>;
   layout: CartLayout;
+  /**
+   * The cart before `useOptimisticCart` touched it. Needed to price a change
+   * that has not landed yet: the difference between what a line costs on
+   * screen now and what Shopify last confirmed for it is exactly the amount
+   * the total is out by.
+   */
+  confirmedCart?: CartApiQueryFragment | null;
 };
 
-export function CartSummary({ cart, layout }: CartSummaryProps) {
+export function CartSummary({ cart, layout, confirmedCart }: CartSummaryProps) {
   const summaryId = useId();
   const discountsHeadingId = useId();
   const discountCodeInputId = useId();
@@ -49,25 +57,60 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
   }, 0) || 0;
 
   /**
-   * A line the server has not costed yet, priced from the variant it came with.
+   * How far `cart.cost.subtotalAmount` is behind what is on screen.
    *
-   * `cart.cost` belongs to the cart Shopify last confirmed, so during the
-   * optimistic window it does not include whatever was just added — and on a
-   * first add to an empty cart that means the drawer opens showing 0.00 for
-   * both the line and the total, next to the item the shopper can plainly see.
+   * That figure belongs to the cart Shopify last confirmed. Every mutation
+   * leaves it stale for the second or two of the round trip, in three
+   * different ways: an added line is missing from it, an updated line is in
+   * it at the old quantity, and a removed line is still in it.
    *
-   * Only lines Hydrogen has marked optimistic are counted, so the moment the
-   * real cart arrives this contributes nothing and the total is Shopify's
-   * own number, exactly as before.
+   * So rather than guessing per action, this compares like with like -- what
+   * each line costs on screen now against what Shopify last confirmed for
+   * that same line id -- and adds the difference. Lines that have gone are
+   * subtracted. When nothing is pending every term is zero and the total is
+   * Shopify's own number, untouched.
+   *
+   * The previous version only handled additions, and double-counted when the
+   * added item was already in the cart: it left the old line cost in the
+   * subtotal AND added unit price x the new quantity on top.
    */
-  const optimisticValue = cart?.lines?.nodes?.reduce((acc: number, line: any) => {
-    if (!line?.isOptimistic) return acc;
-    const unitPrice = parseFloat(line?.merchandise?.price?.amount ?? '');
-    if (!Number.isFinite(unitPrice)) return acc;
-    return acc + unitPrice * (line?.quantity ?? 1);
-  }, 0) || 0;
+  const pendingCart = usePendingCartMutations();
 
-  const subtotal = Math.max(0, rawSubtotal + optimisticValue - freeItemsValue);
+  const confirmedLineTotals = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const line of (confirmedCart as any)?.lines?.nodes ?? []) {
+      const amount = parseFloat(line?.cost?.totalAmount?.amount ?? '');
+      if (line?.id && Number.isFinite(amount)) map.set(line.id, amount);
+    }
+    return map;
+  }, [confirmedCart]);
+
+  const optimisticDelta = useMemo(() => {
+    if (!confirmedLineTotals.size && !cart?.isOptimistic && !pendingCart.busy) {
+      return 0;
+    }
+
+    let delta = 0;
+    const shown = new Set<string>();
+
+    for (const line of (cart as any)?.lines?.nodes ?? []) {
+      if (!line?.id) continue;
+      shown.add(line.id);
+      const isPending =
+        !!line.isOptimistic || pendingCart.lineIds.has(line.id);
+      const onScreen = lineTotalOf(line, isPending);
+      delta += onScreen - (confirmedLineTotals.get(line.id) ?? 0);
+    }
+
+    // Lines Hydrogen has already taken off the screen but Shopify still bills.
+    for (const [lineId, confirmed] of confirmedLineTotals) {
+      if (!shown.has(lineId)) delta -= confirmed;
+    }
+
+    return delta;
+  }, [cart, confirmedLineTotals, pendingCart.lineIds, pendingCart.busy]);
+
+  const subtotal = Math.max(0, rawSubtotal + optimisticDelta - freeItemsValue);
 
   // Calculate total discount from all discount allocations
   const cartDiscountAmount = cart?.discountAllocations?.reduce((acc: number, allocation: any) => {
@@ -241,7 +284,58 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
   const feeAttribute = attributes.find((a: any) => a.key.toLowerCase().trim() === 'delivery fee')?.value;
   const feeAttrVal = feeAttribute ? parseFloat(feeAttribute) : null;
   
-  const rawDeliveryFee = (typeof feeAttrVal === 'number' && !isNaN(feeAttrVal) && feeAttrVal > 0)
+  /**
+   * What Shopify will charge.
+   *
+   * The cart used to quote the branch's `custom.delivery_fee` metafield while
+   * checkout charged the rate from the shop's shipping profile, and the two
+   * disagreed -- 33.00 in the cart against 20.00 at checkout for the same
+   * order. The storefront can only ever make checkout cheaper (by appending
+   * `freeshipping` when its own threshold is met); it has no way to make it
+   * dearer, so the cart's number was simply a promise nobody could keep.
+   *
+   * Shopify's own rate is read from the cart's delivery groups instead: the
+   * option the shopper has selected where there is one, otherwise the
+   * cheapest on offer, which is what checkout preselects. Summed across
+   * groups, because a cart split across locations is quoted per group.
+   */
+  const shopifyDeliveryFee = (() => {
+    const groups: any[] = (cart as any)?.deliveryGroups?.nodes ?? [];
+    if (groups.length === 0) return null;
+
+    let total = 0;
+    let quoted = false;
+
+    for (const group of groups) {
+      const selected = parseFloat(
+        group?.selectedDeliveryOption?.estimatedCost?.amount ?? '',
+      );
+      if (Number.isFinite(selected)) {
+        total += selected;
+        quoted = true;
+        continue;
+      }
+
+      const costs = (group?.deliveryOptions ?? [])
+        .map((o: any) => parseFloat(o?.estimatedCost?.amount ?? ''))
+        .filter((n: number) => Number.isFinite(n));
+      if (costs.length > 0) {
+        total += Math.min(...costs);
+        quoted = true;
+      }
+    }
+
+    // A group can legitimately quote 0.00 (free shipping rate), which is a
+    // real answer -- so this returns null only when nothing quoted at all.
+    return quoted ? total : null;
+  })();
+
+  /**
+   * The metafield chain survives as the fallback: Shopify quotes nothing
+   * until the cart has a delivery address, and showing no fee at all in that
+   * window would read as free delivery.
+   */
+  const branchDeliveryFee = (typeof feeAttrVal === 'number' && !isNaN(feeAttrVal) && feeAttrVal > 0)
     ? feeAttrVal
     : (feeMeta?.value && parseFloat(feeMeta.value) > 0
         ? parseFloat(feeMeta.value)
@@ -254,6 +348,8 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
                     : (typeof currentBranch?.deliveryFee === 'number' && currentBranch.deliveryFee > 0
                         ? currentBranch.deliveryFee
                         : 0)))));
+
+  const rawDeliveryFee = shopifyDeliveryFee ?? branchDeliveryFee;
 
   const deliveryFee = (isFreeDelivery || isPickup || isDigitalOnlyCart) ? 0 : rawDeliveryFee;
   const calculatedTotal = Math.max(0, subtotalBeforeDiscounts - otherDiscountDisplay - loyaltyDiscountDisplay - storeCreditDiscountDisplay + deliveryFee);
@@ -848,7 +944,9 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
                 )}
 
                 {!isPickup && !isDigitalOnlyCart && (
-                  <div className="flex justify-between items-center text-[15px]">
+                  <div
+                    className={`flex justify-between items-center text-[15px] transition-opacity duration-150 ${pendingCart.busy ? 'opacity-50' : ''}`}
+                  >
                     <dt className="text-[#9FB7AE] font-medium" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>{isEn ? 'Delivery Fees' : 'رسوم التوصيل'}</dt>
                     <dd className="text-[#234745] font-bold font-en flex items-center gap-1">
                       {isFreeDelivery ? (
@@ -887,9 +985,26 @@ export function CartSummary({ cart, layout }: CartSummaryProps) {
                     {isEn ? 'Includes 15% VAT' : 'شامل ضريبة القيمة المضافة 15٪'}
                   </span>
                 </div>
-                <dd className="text-[28px] font-black text-[#234745] font-en flex items-center gap-2 flex-row-reverse">
+                <dd
+                  className="text-[28px] font-black text-[#234745] font-en flex items-center gap-2 flex-row-reverse"
+                  aria-busy={pendingCart.busy}
+                  aria-live="polite"
+                >
                   <SaudiRiyalSymbol className="h-6 w-auto" />
                   <span>{calculatedTotal.toFixed(2)}</span>
+                  {/*
+                    The number beside this is already correct -- it follows the
+                    quantity rather than waiting for Shopify. The spinner says
+                    the figure is still being confirmed, which is the honest
+                    state during the round trip: not "loading", not "done".
+                  */}
+                  {pendingCart.busy && (
+                    <span
+                      className="w-4 h-4 rounded-full border-2 border-[#234745]/25 border-t-[#234745] animate-spin shrink-0"
+                      role="status"
+                      aria-label={isEn ? 'Updating total' : 'جارٍ تحديث الإجمالي'}
+                    />
+                  )}
                 </dd>
               </div>
 
@@ -2129,6 +2244,17 @@ function CartDiscounts({
                       <div className="text-red-500 text-xs font-bold px-3 py-2 bg-red-50 border border-red-200 rounded-lg flex items-center gap-1.5 mt-1">
                         <span className="w-1.5 h-1.5 rounded-full bg-red-500 flex-shrink-0" />
                         <span>{fetcher.data.error}</span>
+                      </div>
+                    )}
+                    {/*
+                      Saved, not rejected. The code is on the cart and Shopify
+                      will apply it once the cart qualifies, so it must not
+                      wear the red of a mistyped code.
+                    */}
+                    {!fetcher.data?.error && fetcher.data?.notice && (
+                      <div className="text-[#8a6d1f] text-xs font-bold px-3 py-2 bg-[#FEF8EB] border border-[#C5A96A]/50 rounded-lg flex items-center gap-1.5 mt-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#C5A96A] flex-shrink-0" />
+                        <span>{fetcher.data.notice}</span>
                       </div>
                     )}
                   </div>

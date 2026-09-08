@@ -9,6 +9,7 @@ import {
 } from 'react-router';
 import {PageLayout} from '~/components/PageLayout';
 import patternBg from '/images/second-bg-pattern.svg';
+import {useIsEn} from '~/lib/i18n';
 
 export const meta: MetaFunction = () => {
   return [
@@ -311,10 +312,7 @@ export async function loader() {
 
 export default function ContactPage() {
   const rootData = useRouteLoaderData('root') as any;
-  const isEn = Boolean(
-    rootData?.locale?.toLowerCase()?.startsWith('en') ||
-    rootData?.consent?.language?.toLowerCase() === 'en',
-  );
+  const isEn = useIsEn();
   const actionData = useActionData<typeof action>();
   const navigation = useNavigation();
   const isSubmitting = navigation.state === 'submitting';

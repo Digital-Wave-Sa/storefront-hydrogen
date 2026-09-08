@@ -1,6 +1,7 @@
 import {data, type LoaderFunctionArgs, type MetaFunction} from 'react-router';
 import {useLoaderData, useRouteLoaderData} from 'react-router';
 import {PageHeader} from '~/components/layout/PageHeader';
+import {useIsEn} from '~/lib/i18n';
 
 const PAGE_QUERY = `#graphql
   query QualityPolicyPage(
@@ -60,7 +61,7 @@ export const meta: MetaFunction<typeof loader> = ({data}) => {
 export default function QualityPolicyPage() {
   const {page} = useLoaderData<typeof loader>();
   const rootData = useRouteLoaderData('root') as any;
-  const isEn = rootData?.consent?.language?.toLowerCase() === 'en';
+  const isEn = useIsEn();
 
   return (
     <div

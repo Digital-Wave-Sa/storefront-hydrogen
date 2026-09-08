@@ -203,6 +203,34 @@ export const CART_QUERY_FRAGMENT = `#graphql
         ...Money
       }
     }
+    # What Shopify will actually charge for delivery, so the cart cannot
+    # quote a fee checkout then disagrees with. Populated once the cart has
+    # a delivery address; empty for pickup and for a cart with none yet.
+    # withCarrierRates is left off - these are the shop's own rates, and
+    # turning it on would put a carrier round trip on every cart query.
+    deliveryGroups(first: 10) {
+      nodes {
+        id
+        deliveryOptions {
+          handle
+          title
+          code
+          deliveryMethodType
+          estimatedCost {
+            ...Money
+          }
+        }
+        selectedDeliveryOption {
+          handle
+          title
+          code
+          deliveryMethodType
+          estimatedCost {
+            ...Money
+          }
+        }
+      }
+    }
     note
     attributes {
       key

@@ -2,6 +2,7 @@ import type {ActionFunctionArgs} from 'react-router';
 import {syncOrderToCRM} from '~/lib/crm-orders.server';
 import {getAdminToken} from '~/lib/shopify-admin.server';
 import {extractMinTime} from '~/lib/time-utils';
+import {stripCoordsMarker} from '~/lib/address-coords';
 
 /**
  * Shopify Order Webhook → CRM/ERP Sync
@@ -70,7 +71,7 @@ export async function action({request, context}: ActionFunctionArgs) {
     // Build delivery address string
     const addressParts = [
       shippingAddress.address1,
-      shippingAddress.address2,
+      stripCoordsMarker(shippingAddress.address2),
       shippingAddress.city,
       shippingAddress.province,
     ].filter(Boolean);

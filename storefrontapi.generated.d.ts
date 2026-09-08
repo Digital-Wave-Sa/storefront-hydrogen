@@ -425,6 +425,34 @@ export type CartApiQueryFragment = Pick<
       Pick<StorefrontAPI.MoneyV2, 'currencyCode' | 'amount'>
     >;
   };
+  deliveryGroups: {
+    nodes: Array<
+      Pick<StorefrontAPI.CartDeliveryGroup, 'id'> & {
+        deliveryOptions: Array<
+          Pick<
+            StorefrontAPI.CartDeliveryOption,
+            'handle' | 'title' | 'code' | 'deliveryMethodType'
+          > & {
+            estimatedCost: Pick<
+              StorefrontAPI.MoneyV2,
+              'currencyCode' | 'amount'
+            >;
+          }
+        >;
+        selectedDeliveryOption?: StorefrontAPI.Maybe<
+          Pick<
+            StorefrontAPI.CartDeliveryOption,
+            'handle' | 'title' | 'code' | 'deliveryMethodType'
+          > & {
+            estimatedCost: Pick<
+              StorefrontAPI.MoneyV2,
+              'currencyCode' | 'amount'
+            >;
+          }
+        >;
+      }
+    >;
+  };
   attributes: Array<Pick<StorefrontAPI.Attribute, 'key' | 'value'>>;
   discountCodes: Array<
     Pick<StorefrontAPI.CartDiscountCode, 'code' | 'applicable'>
@@ -848,6 +876,8 @@ export type CustomerAddressesQuery = {
             | 'firstName'
             | 'lastName'
             | 'phone'
+            | 'latitude'
+            | 'longitude'
           >
         >;
       };
@@ -2710,6 +2740,8 @@ export type CustomerFragment = Pick<
         | 'city'
         | 'zip'
         | 'phone'
+        | 'latitude'
+        | 'longitude'
       >
     >;
   };
@@ -2728,6 +2760,8 @@ export type CustomerFragment = Pick<
       | 'city'
       | 'zip'
       | 'phone'
+      | 'latitude'
+      | 'longitude'
     >
   >;
   birthdate?: StorefrontAPI.Maybe<Pick<StorefrontAPI.Metafield, 'value'>>;
@@ -2785,6 +2819,8 @@ export type AddressFragment = Pick<
   | 'city'
   | 'zip'
   | 'phone'
+  | 'latitude'
+  | 'longitude'
 >;
 
 export type CustomerQueryVariables = StorefrontAPI.Exact<{
@@ -2822,6 +2858,8 @@ export type CustomerQuery = {
             | 'city'
             | 'zip'
             | 'phone'
+            | 'latitude'
+            | 'longitude'
           >
         >;
       };
@@ -2840,6 +2878,8 @@ export type CustomerQuery = {
           | 'city'
           | 'zip'
           | 'phone'
+          | 'latitude'
+          | 'longitude'
         >
       >;
       birthdate?: StorefrontAPI.Maybe<Pick<StorefrontAPI.Metafield, 'value'>>;
@@ -7122,7 +7162,7 @@ interface GeneratedQueryTypes {
     return: LocationsQuery;
     variables: LocationsQueryVariables;
   };
-  '#graphql\n  query CustomerAddresses($customerAccessToken: String!) {\n    customer(customerAccessToken: $customerAccessToken) {\n      id\n      email\n      phone\n      firstName\n      lastName\n      addresses(first: 20) {\n        nodes {\n          id\n          address1\n          address2\n          city\n          country\n          firstName\n          lastName\n          phone\n        }\n      }\n    }\n  }\n': {
+  '#graphql\n  query CustomerAddresses($customerAccessToken: String!) {\n    customer(customerAccessToken: $customerAccessToken) {\n      id\n      email\n      phone\n      firstName\n      lastName\n      addresses(first: 20) {\n        nodes {\n          id\n          address1\n          address2\n          city\n          country\n          firstName\n          lastName\n          phone\n          # Read-only, geocoded by Shopify from the address above. There is no\n          # input field for these - a dropped map pin cannot be stored - so\n          # this is where nearest-branch matching gets its coordinates.\n          latitude\n          longitude\n        }\n      }\n    }\n  }\n': {
     return: CustomerAddressesQuery;
     variables: CustomerAddressesQueryVariables;
   };
@@ -7166,7 +7206,7 @@ interface GeneratedQueryTypes {
     return: GetLoyaltyCustomerIdQuery;
     variables: GetLoyaltyCustomerIdQueryVariables;
   };
-  '#graphql\n  #graphql\n  fragment Customer on Customer {\n    id\n    createdAt\n    acceptsMarketing\n    addresses(first: 6) {\n      nodes {\n        ...Address\n      }\n    }\n    defaultAddress {\n      ...Address\n    }\n    email\n    firstName\n    lastName\n    numberOfOrders\n    phone\n    birthdate: metafield(namespace: "custom", key: "birthdate") {\n      value\n    }\n    orders(first: 50, sortKey: PROCESSED_AT, reverse: true) {\n      nodes {\n        id\n        orderNumber\n        processedAt\n        financialStatus\n        fulfillmentStatus\n        currentTotalPrice {\n          amount\n          currencyCode\n        }\n        lineItems(first: 20) {\n          nodes {\n            title\n            quantity\n            customAttributes {\n              key\n              value\n            }\n            variant {\n              id\n              image {\n                url\n                altText\n              }\n              # Most products carry artwork at product level only, so a\n              # variant image alone leaves the order thumbnail empty.\n              product {\n                # The live, translated product name. A line item\'s own title\n                # field is an English snapshot frozen at purchase time, so\n                # without this the dashboard card read "Car Chocolate Box"\n                # where the orders list read the Arabic name for the same\n                # order. This query runs with inContext(language:), so Shopify\n                # returns the name in the shopper\'s language.\n                title\n                featuredImage {\n                  url\n                  altText\n                }\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n  fragment Address on MailingAddress {\n    id\n    formatted\n    firstName\n    lastName\n    company\n    address1\n    address2\n    country\n    province\n    city\n    zip\n    phone\n  }\n\n  query StorefrontCustomerOrders(\n    $country: CountryCode\n    $customerAccessToken: String!\n    $endCursor: String\n    $first: Int\n    $language: LanguageCode\n    $last: Int\n    $startCursor: String\n  ) @inContext(country: $country, language: $language) {\n    customer(customerAccessToken: $customerAccessToken) {\n      ...CustomerOrders\n    }\n  }\n': {
+  '#graphql\n  #graphql\n  fragment Customer on Customer {\n    id\n    createdAt\n    acceptsMarketing\n    addresses(first: 6) {\n      nodes {\n        ...Address\n      }\n    }\n    defaultAddress {\n      ...Address\n    }\n    email\n    firstName\n    lastName\n    numberOfOrders\n    phone\n    birthdate: metafield(namespace: "custom", key: "birthdate") {\n      value\n    }\n    orders(first: 50, sortKey: PROCESSED_AT, reverse: true) {\n      nodes {\n        id\n        orderNumber\n        processedAt\n        financialStatus\n        fulfillmentStatus\n        currentTotalPrice {\n          amount\n          currencyCode\n        }\n        lineItems(first: 20) {\n          nodes {\n            title\n            quantity\n            customAttributes {\n              key\n              value\n            }\n            variant {\n              id\n              image {\n                url\n                altText\n              }\n              # Most products carry artwork at product level only, so a\n              # variant image alone leaves the order thumbnail empty.\n              product {\n                # The live, translated product name. A line item\'s own title\n                # field is an English snapshot frozen at purchase time, so\n                # without this the dashboard card read "Car Chocolate Box"\n                # where the orders list read the Arabic name for the same\n                # order. This query runs with inContext(language:), so Shopify\n                # returns the name in the shopper\'s language.\n                title\n                featuredImage {\n                  url\n                  altText\n                }\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n  fragment Address on MailingAddress {\n    id\n    formatted\n    firstName\n    lastName\n    company\n    address1\n    address2\n    country\n    province\n    city\n    zip\n    phone\n    latitude\n    longitude\n  }\n\n  query StorefrontCustomerOrders(\n    $country: CountryCode\n    $customerAccessToken: String!\n    $endCursor: String\n    $first: Int\n    $language: LanguageCode\n    $last: Int\n    $startCursor: String\n  ) @inContext(country: $country, language: $language) {\n    customer(customerAccessToken: $customerAccessToken) {\n      ...CustomerOrders\n    }\n  }\n': {
     return: StorefrontCustomerOrdersQuery;
     variables: StorefrontCustomerOrdersQueryVariables;
   };
@@ -7182,7 +7222,7 @@ interface GeneratedQueryTypes {
     return: GetPromotionsCustomerIdQuery;
     variables: GetPromotionsCustomerIdQueryVariables;
   };
-  '#graphql\n  query Customer(\n    $customerAccessToken: String!\n    $country: CountryCode\n    $language: LanguageCode\n  ) @inContext(country: $country, language: $language) {\n    customer(customerAccessToken: $customerAccessToken) {\n      ...Customer\n    }\n  }\n  #graphql\n  fragment Customer on Customer {\n    id\n    createdAt\n    acceptsMarketing\n    addresses(first: 6) {\n      nodes {\n        ...Address\n      }\n    }\n    defaultAddress {\n      ...Address\n    }\n    email\n    firstName\n    lastName\n    numberOfOrders\n    phone\n    birthdate: metafield(namespace: "custom", key: "birthdate") {\n      value\n    }\n    orders(first: 50, sortKey: PROCESSED_AT, reverse: true) {\n      nodes {\n        id\n        orderNumber\n        processedAt\n        financialStatus\n        fulfillmentStatus\n        currentTotalPrice {\n          amount\n          currencyCode\n        }\n        lineItems(first: 20) {\n          nodes {\n            title\n            quantity\n            customAttributes {\n              key\n              value\n            }\n            variant {\n              id\n              image {\n                url\n                altText\n              }\n              # Most products carry artwork at product level only, so a\n              # variant image alone leaves the order thumbnail empty.\n              product {\n                # The live, translated product name. A line item\'s own title\n                # field is an English snapshot frozen at purchase time, so\n                # without this the dashboard card read "Car Chocolate Box"\n                # where the orders list read the Arabic name for the same\n                # order. This query runs with inContext(language:), so Shopify\n                # returns the name in the shopper\'s language.\n                title\n                featuredImage {\n                  url\n                  altText\n                }\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n  fragment Address on MailingAddress {\n    id\n    formatted\n    firstName\n    lastName\n    company\n    address1\n    address2\n    country\n    province\n    city\n    zip\n    phone\n  }\n\n': {
+  '#graphql\n  query Customer(\n    $customerAccessToken: String!\n    $country: CountryCode\n    $language: LanguageCode\n  ) @inContext(country: $country, language: $language) {\n    customer(customerAccessToken: $customerAccessToken) {\n      ...Customer\n    }\n  }\n  #graphql\n  fragment Customer on Customer {\n    id\n    createdAt\n    acceptsMarketing\n    addresses(first: 6) {\n      nodes {\n        ...Address\n      }\n    }\n    defaultAddress {\n      ...Address\n    }\n    email\n    firstName\n    lastName\n    numberOfOrders\n    phone\n    birthdate: metafield(namespace: "custom", key: "birthdate") {\n      value\n    }\n    orders(first: 50, sortKey: PROCESSED_AT, reverse: true) {\n      nodes {\n        id\n        orderNumber\n        processedAt\n        financialStatus\n        fulfillmentStatus\n        currentTotalPrice {\n          amount\n          currencyCode\n        }\n        lineItems(first: 20) {\n          nodes {\n            title\n            quantity\n            customAttributes {\n              key\n              value\n            }\n            variant {\n              id\n              image {\n                url\n                altText\n              }\n              # Most products carry artwork at product level only, so a\n              # variant image alone leaves the order thumbnail empty.\n              product {\n                # The live, translated product name. A line item\'s own title\n                # field is an English snapshot frozen at purchase time, so\n                # without this the dashboard card read "Car Chocolate Box"\n                # where the orders list read the Arabic name for the same\n                # order. This query runs with inContext(language:), so Shopify\n                # returns the name in the shopper\'s language.\n                title\n                featuredImage {\n                  url\n                  altText\n                }\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n  fragment Address on MailingAddress {\n    id\n    formatted\n    firstName\n    lastName\n    company\n    address1\n    address2\n    country\n    province\n    city\n    zip\n    phone\n    latitude\n    longitude\n  }\n\n': {
     return: CustomerQuery;
     variables: CustomerQueryVariables;
   };

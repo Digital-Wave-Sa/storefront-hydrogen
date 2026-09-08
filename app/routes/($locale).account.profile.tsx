@@ -141,7 +141,10 @@ export async function action({request, context}: ActionFunctionArgs) {
         }
       }
 
-      session.unset('customerAccessToken');
+      // The token resolves to nobody, so neither should the session --
+      // clearing only the token left wallet and loyalty answering for
+      // the last shopper. See ~/lib/session-identity.server.
+      await (await import('~/lib/session-identity.server')).clearIdentity(session);
       return redirect('/', {
         headers: {
           'Set-Cookie': await session.commit(),

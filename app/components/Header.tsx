@@ -8,6 +8,7 @@ import { useI18n } from '~/lib/i18n';
 import { GlobalSearchBar } from './GlobalSearchBar';
 import { useWishlist } from '~/context/WishlistContext';
 import { fetchAdminLocations } from '~/lib/locations-meta';
+import { stripCoordsMarker } from '~/lib/address-coords';
 
 /**
  * Header count badges.
@@ -202,7 +203,8 @@ export function Header({ header, isLoggedIn, cart, locations, customer, locale, 
             ? 'SA'
             : realAddress.country);
 
-      if (realAddress.address2) deliveryAddress.address2 = realAddress.address2;
+      const address2 = stripCoordsMarker(realAddress.address2);
+      if (address2) deliveryAddress.address2 = address2;
       if (realAddress.city) deliveryAddress.city = realAddress.city;
       if (realAddress.zip) deliveryAddress.zip = realAddress.zip;
       if (country) deliveryAddress.country = country;
@@ -760,7 +762,19 @@ function MiddleBar({
       <div className="max-w-[1400px] mx-auto px-4 lg:px-6">
 
         {/* 1. Desktop Header Layout (hidden on mobile screen sizes) */}
-        <div className="hidden lg:grid grid-cols-[1fr_auto_1fr] items-center w-full">
+        {/*
+          * 1400px, and not `lg`, because that is where this layout actually
+          * fits. Measured in a browser rather than guessed: the English nav
+          * is 553px wide and cannot wrap (every item is `whitespace-nowrap`),
+          * the logo column is 136px, so a centred logo needs 553*2 + 136 + 48
+          * = 1290px before anything overlaps. At `lg` it was 100px short and
+          * the nav simply drew on top of the logo.
+          *
+          * `minmax(0,...)` keeps the side tracks able to yield -- a plain
+          * `1fr` carries an auto minimum and would push the grid wider than
+          * its container instead. Below 1400px the compact header takes over.
+          */}
+        <div className="hidden min-[1400px]:grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center w-full">
 
           {/* RIGHT (in RTL) / LEFT (in LTR): Desktop Nav */}
           <div className="flex items-center justify-start min-w-0">
@@ -768,29 +782,38 @@ function MiddleBar({
           </div>
 
           {/* CENTER: Logo */}
-          <div className="flex justify-center px-12 shrink-0">
+          <div className="flex justify-center px-4 min-[1800px]:px-12">
             <NavLink to={isEn ? "/en" : "/"} prefetch="intent" className="flex items-center justify-center transition-transform hover:scale-[1.02]">
               <img src="/logo.svg" alt="SAADEDDIN" width="120" height="32" style={{ width: '120px', maxWidth: '100%', height: 'auto' }} className="object-contain" />
             </NavLink>
           </div>
 
           {/* LEFT (in RTL) / RIGHT (in LTR): Icons & Search */}
-          <div className="flex items-center gap-6 justify-end">
-            <div className="flex-1 max-w-[280px] hidden xl:block">
+          <div className="flex items-center gap-3 min-[1800px]:gap-6 justify-end min-w-0">
+            <div className="flex-1 max-w-[160px] min-[1600px]:max-w-[200px] min-[1800px]:max-w-[280px] block">
               <GlobalSearchBar locale={locale} />
             </div>
 
             {/* Loyalty Points */}
-            <NavLink to={isEn ? "/en/account/wallet" : "/account/wallet"} className="flex group items-center gap-2 hover:opacity-70 transition-all !text-[#234745] text-[13px]" style={{ fontWeight: 500, fontFamily: 'EnglishDigits, "GE Dinar One", sans-serif' }}>
+            <NavLink to={isEn ? "/en/account/wallet" : "/account/wallet"} title={isEn ? 'Points' : 'نقاطي'} aria-label={isEn ? 'Points' : 'نقاطي'} className="flex group items-center gap-2 hover:opacity-70 transition-all !text-[#234745] text-[13px]" style={{ fontWeight: 500, fontFamily: 'EnglishDigits, "GE Dinar One", sans-serif' }}>
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M7.62729 4.50667C8.68312 2.61334 9.21062 1.66667 9.99979 1.66667C10.789 1.66667 11.3165 2.61334 12.3723 4.50667L12.6456 4.99667C12.9456 5.53501 13.0956 5.80417 13.329 5.98167C13.5623 6.15917 13.854 6.22501 14.4373 6.35667L14.9673 6.47667C17.0173 6.94084 18.0415 7.17251 18.2856 7.95667C18.529 8.74001 17.8306 9.55751 16.4331 11.1917L16.0715 11.6142C15.6748 12.0783 15.4756 12.3108 15.3865 12.5975C15.2973 12.885 15.3273 13.195 15.3873 13.8142L15.4423 14.3783C15.6531 16.5592 15.759 17.6492 15.1206 18.1333C14.4823 18.6175 13.5223 18.1758 11.604 17.2925L11.1065 17.0642C10.5615 16.8125 10.289 16.6875 9.99979 16.6875C9.71062 16.6875 9.43812 16.8125 8.89312 17.0642L8.39646 17.2925C6.47729 18.1758 5.51729 18.6175 4.87979 18.1342C4.24062 17.6492 4.34646 16.5592 4.55729 14.3783L4.61229 13.815C4.67229 13.195 4.70229 12.885 4.61229 12.5983C4.52396 12.3108 4.32479 12.0783 3.92812 11.615L3.56646 11.1917C2.16896 9.55834 1.47062 8.74084 1.71396 7.95667C1.95729 7.17251 2.98312 6.94001 5.03312 6.47667L5.56312 6.35667C6.14562 6.22501 6.43646 6.15917 6.67062 5.98167C6.90479 5.80417 7.05396 5.53501 7.35396 4.99667L7.62729 4.50667Z" fill="#FFCC00" />
               </svg>
 
+              {/*
+                * The labels stay. Measured: this group is 561px beside the
+                * 200px search and 521px beside the 160px one, against 608px
+                * of track at 1400px -- it fits from the moment this header
+                * appears. Only the roomy variant (a 280px search, wide gaps,
+                * the 96px logo gutter) needs 689px, which is why those widen
+                * at 1800px rather than here. The title and aria-label on each
+                * control are kept regardless, for hover and screen readers.
+                */}
               <span>{isEn ? 'Points' : 'نقاطي'}</span>
             </NavLink>
 
             {/* Wishlist */}
-            <NavLink to={isEn ? "/en/account/wishlist" : "/account/wishlist"} className="flex group items-center gap-2 hover:opacity-70 transition-all !text-[#234745] text-[13px]" style={{ fontWeight: 500, fontFamily: 'EnglishDigits, "GE Dinar One", sans-serif' }}>
+            <NavLink to={isEn ? "/en/account/wishlist" : "/account/wishlist"} title={isEn ? 'Wishlist' : 'المفضلة'} aria-label={isEn ? 'Wishlist' : 'المفضلة'} className="flex group items-center gap-2 hover:opacity-70 transition-all !text-[#234745] text-[13px]" style={{ fontWeight: 500, fontFamily: 'EnglishDigits, "GE Dinar One", sans-serif' }}>
               <div className="relative">
                 <svg xmlns="http://www.w3.org/2000/svg" width="15" height="14" viewBox="0 0 15 14" fill="none">
                   <path d="M7.5 13.3367L6.86834 12.7658C5.50834 11.5236 4.38334 10.4603 3.49334 9.57583C2.60389 8.69083 1.90167 7.91028 1.38667 7.23417C0.871669 6.55806 0.511669 5.94694 0.306669 5.40083C0.101669 4.85472 -0.000553303 4.30444 2.25225e-06 3.75C2.25225e-06 2.69 0.360002 1.8 1.08 1.08C1.8 0.36 2.69 0 3.75 0C4.48334 0 5.17084 0.1875 5.8125 0.5625C6.45417 0.9375 7.01667 1.48306 7.5 2.19917C7.98334 1.48306 8.54584 0.9375 9.1875 0.5625C9.82917 0.1875 10.5167 0 11.25 0C12.31 0 13.2 0.36 13.92 1.08C14.64 1.8 15 2.69 15 3.75C15 4.30333 14.8978 4.85333 14.6933 5.4C14.4883 5.94778 14.1283 6.55944 13.6133 7.235C13.0983 7.91055 12.3986 8.69083 11.5142 9.57583C10.6297 10.4603 9.50195 11.5236 8.13084 12.7658L7.5 13.3367ZM7.5 12.2083C8.83334 11.0028 9.93056 9.97056 10.7917 9.11167C11.6528 8.25278 12.3333 7.50694 12.8333 6.87417C13.3333 6.24139 13.6806 5.68167 13.875 5.195C14.0694 4.70722 14.1667 4.22555 14.1667 3.75C14.1667 2.91667 13.8889 2.22222 13.3333 1.66667C12.7778 1.11111 12.0833 0.833333 11.25 0.833333C10.5867 0.833333 9.97445 1.02278 9.41333 1.40167C8.85222 1.78056 8.35056 2.35083 7.90834 3.1125H7.09334C6.63945 2.34028 6.13472 1.76722 5.57917 1.39333C5.02361 1.02 4.41417 0.833333 3.75084 0.833333C2.92861 0.833333 2.23695 1.11111 1.67584 1.66667C1.11472 2.22222 0.833891 2.91667 0.833336 3.75C0.833336 4.22555 0.930558 4.70722 1.125 5.195C1.31945 5.68278 1.66667 6.2425 2.16667 6.87417C2.66667 7.50583 3.34722 8.24889 4.20834 9.10333C5.06945 9.95778 6.16667 10.9928 7.5 12.2083Z" fill="#255441" />
@@ -818,7 +841,7 @@ function MiddleBar({
             </button>
 
             {/* Account */}
-            <NavLink to={isEn ? "/en/account" : "/account"} className="flex group items-center gap-2 hover:opacity-70 transition-all !text-[#234745] text-[13px]" style={{ fontWeight: 500, fontFamily: '"GE Dinar One", sans-serif' }}>
+            <NavLink to={isEn ? "/en/account" : "/account"} title={isEn ? 'Account' : 'حسابي'} aria-label={isEn ? 'Account' : 'حسابي'} className="flex group items-center gap-2 hover:opacity-70 transition-all !text-[#234745] text-[13px]" style={{ fontWeight: 500, fontFamily: '"GE Dinar One", sans-serif' }}>
               <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 12 12" fill="none">
                 <path d="M4.06417 4.26917C3.57694 3.78139 3.33333 3.19167 3.33333 2.5C3.33333 1.80833 3.57694 1.21861 4.06417 0.730834C4.55139 0.243056 5.14111 -0.000554608 5.83333 9.48048e-07C6.52556 0.000556504 7.11528 0.244168 7.6025 0.730834C8.08972 1.2175 8.33333 1.80722 8.33333 2.5C8.33333 3.19278 8.08972 3.7825 7.6025 4.26917C7.11528 4.75583 6.52556 4.99945 5.83333 5C5.14111 5.00056 4.55139 4.75695 4.06417 4.26917ZM0 10.16V9.65333C0 9.30945 0.1 8.98778 0.3 8.68833C0.500556 8.38833 0.77 8.15556 1.10833 7.99C1.895 7.61278 2.68222 7.33 3.47 7.14167C4.25722 6.95278 5.045 6.85833 5.83333 6.85833C6.62167 6.85833 7.40972 6.95278 8.1975 7.14167C8.98528 7.33056 9.77194 7.61333 10.5575 7.99C10.8964 8.15556 11.1658 8.38833 11.3658 8.68833C11.5664 8.98778 11.6667 9.30945 11.6667 9.65333V10.16C11.6667 10.4044 11.5836 10.61 11.4175 10.7767C11.2514 10.9422 11.0458 11.025 10.8008 11.025H0.866667C0.621667 11.025 0.416111 10.9419 0.25 10.7758C0.083889 10.6097 0.000555556 10.4044 0 10.16ZM0.833333 10.1925H10.8333V9.65333C10.8333 9.46889 10.7736 9.29528 10.6542 9.1325C10.5353 8.97028 10.3706 8.83306 10.16 8.72083C9.47444 8.38861 8.76833 8.13417 8.04167 7.9575C7.315 7.78083 6.57889 7.6925 5.83333 7.6925C5.08778 7.6925 4.35167 7.78083 3.625 7.9575C2.89833 8.13417 2.19222 8.38861 1.50667 8.72083C1.29556 8.83306 1.13083 8.97028 1.0125 9.1325C0.893056 9.29528 0.833333 9.46917 0.833333 9.65417V10.1925ZM7.01083 3.67667C7.33694 3.35056 7.5 2.95833 7.5 2.5C7.5 2.04167 7.33694 1.64917 7.01083 1.3225C6.68472 0.995834 6.29222 0.832779 5.83333 0.833334C5.37444 0.83389 4.98222 0.996945 4.65667 1.3225C4.33111 1.64806 4.16778 2.04056 4.16667 2.5C4.16556 2.95945 4.32889 3.35167 4.65667 3.67667C4.98444 4.00167 5.37667 4.165 5.83333 4.16667C6.29 4.16833 6.6825 4.005 7.01083 3.67667Z" fill="#255441" />
               </svg>
@@ -827,24 +850,24 @@ function MiddleBar({
           </div>
         </div>
 
-        {/* 2. Mobile Header Layout (lg:hidden, forced LTR layout matching mockup exactly) */}
-        <div className="lg:hidden flex items-center justify-between w-full px-1" dir="ltr">
+        {/* 2. Compact Header Layout (below 1400px — see the note on the grid above) */}
+        <div className="min-[1400px]:hidden flex items-center justify-between w-full px-1" dir="ltr">
           {/* LEFT GROUP: Account, Wishlist, Loyalty Star */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 min-[550px]:gap-3">
             {/* Account */}
-            <NavLink to={isEn ? "/en/account" : "/account"} className="text-[#234745] hover:opacity-70 transition-opacity p-0.5">
-              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
+            <NavLink to={isEn ? "/en/account" : "/account"} className="text-[#234745] hover:opacity-70 transition-opacity p-0.5 min-[550px]:p-1">
+              <svg width="19" height="19" className="w-[19px] h-[19px] min-[550px]:w-6 min-[550px]:h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
             </NavLink>
 
             {/* Wishlist */}
-            <NavLink to={isEn ? "/en/account/wishlist" : "/account/wishlist"} className="text-[#234745] hover:opacity-70 transition-opacity p-0.5 relative">
-              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" /></svg>
+            <NavLink to={isEn ? "/en/account/wishlist" : "/account/wishlist"} className="text-[#234745] hover:opacity-70 transition-opacity p-0.5 min-[550px]:p-1 relative">
+              <svg width="19" height="19" className="w-[19px] h-[19px] min-[550px]:w-6 min-[550px]:h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" /></svg>
               <WishlistBadge />
             </NavLink>
 
             {/* Loyalty Star */}
-            <NavLink to={isEn ? "/en/account/wallet" : "/account/wallet"} className="text-[#234745] hover:opacity-70 transition-opacity p-0.5 relative">
-              <svg width="19" height="19" viewBox="0 0 24 24" fill="#f1c40f" stroke="#f1c40f" strokeWidth="1.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+            <NavLink to={isEn ? "/en/account/wallet" : "/account/wallet"} className="text-[#234745] hover:opacity-70 transition-opacity p-0.5 min-[550px]:p-1 relative">
+              <svg width="19" height="19" className="w-[19px] h-[19px] min-[550px]:w-6 min-[550px]:h-6" viewBox="0 0 24 24" fill="#f1c40f" stroke="#f1c40f" strokeWidth="1.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
               {SHOW_LOYALTY_POINTS && points !== null && (
                 <span className="absolute -top-1 -right-1.5 bg-[#234745] text-white text-[8px] font-bold px-1 rounded-full">{points}</span>
               )}
@@ -859,10 +882,10 @@ function MiddleBar({
           </div>
 
           {/* RIGHT GROUP: Cart, Search, Menu */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 min-[550px]:gap-3">
             {/* Cart */}
-            <button onClick={() => open('cart')} aria-label={isEn ? "Cart" : "سلة التسوق"} className="text-[#234745] hover:opacity-70 transition-opacity p-0.5 relative">
-              <svg width="19" height="19" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12.5132 14.1798C12.8761 14.1798 13.2241 14.324 13.4808 14.5806C13.7374 14.8372 13.8816 15.1853 13.8816 15.5482C13.8816 15.9111 13.7374 16.2592 13.4808 16.5158C13.2241 16.7725 12.8761 16.9166 12.5132 16.9166C12.1502 16.9166 11.8022 16.7725 11.5455 16.5158C11.2889 16.2592 11.1447 15.9111 11.1447 15.5482C11.1447 15.1853 11.2889 14.8372 11.5455 14.5806C11.8022 14.324 12.1502 14.1798 12.5132 14.1798ZM12.5132 14.864C12.3317 14.864 12.1577 14.9361 12.0293 15.0644C11.901 15.1927 11.8289 15.3667 11.8289 15.5482C11.8289 15.7297 11.901 15.9037 12.0293 16.032C12.1577 16.1603 12.3317 16.2324 12.5132 16.2324C12.6946 16.2324 12.8687 16.1603 12.997 16.032C13.1253 15.9037 13.1974 15.7297 13.1974 15.5482C13.1974 15.3667 13.1253 15.1927 12.997 15.0644C12.8687 14.9361 12.6946 14.864 12.5132 14.864ZM6.35526 14.1798C6.71819 14.1798 7.06625 14.324 7.32288 14.5806C7.57951 14.8372 7.72368 15.1853 7.72368 15.5482C7.72368 15.9111 7.57951 16.2592 7.32288 16.5158C7.06625 16.7725 6.71819 16.9166 6.35526 16.9166C5.99234 16.9166 5.64427 16.7725 5.38764 16.5158C5.13101 16.2592 4.98684 15.9111 4.98684 15.5482C4.98684 15.1853 5.13101 14.8372 5.38764 14.5806C5.64427 14.324 5.99234 14.1798 6.35526 14.1798ZM6.35526 14.864C6.1738 14.864 5.99977 14.9361 5.87145 15.0644C5.74314 15.1927 5.67105 15.3667 5.67105 15.5482C5.67105 15.7297 5.74314 15.9037 5.87145 16.032C5.99977 16.1603 6.1738 16.2324 6.35526 16.2324C6.53673 16.2324 6.71076 16.1603 6.83907 16.032C6.96739 15.9037 7.03947 15.7297 7.03947 15.5482C7.03947 15.3667 6.96739 15.1927 6.83907 15.0644C6.71076 14.9361 6.53673 14.864 6.35526 14.864ZM13.8816 5.96926H4.48737L6.23211 10.0745H11.8289C12.0547 10.0745 12.2532 9.96505 12.3763 9.80084L14.4289 7.06399C14.5179 6.94768 14.5658 6.80399 14.5658 6.65347C14.5658 6.472 14.4937 6.29797 14.3654 6.16966C14.2371 6.04134 14.063 5.96926 13.8816 5.96926ZM11.8289 10.7587H6.26632L5.73947 11.8261L5.67105 12.1272C5.67105 12.3086 5.74314 12.4826 5.87145 12.611C5.99977 12.7393 6.1738 12.8114 6.35526 12.8114H13.8816V13.4956H6.35526C5.99234 13.4956 5.64427 13.3514 5.38764 13.0948C5.13101 12.8381 4.98684 12.4901 4.98684 12.1272C4.98664 11.895 5.0455 11.6666 5.15789 11.4635L5.65053 10.4577L3.16684 4.60084H2.25V3.91663H3.61842L4.2 5.28505H13.8816C14.2445 5.28505 14.5926 5.42922 14.8492 5.68585C15.1058 5.94248 15.25 6.29054 15.25 6.65347C15.25 6.99557 15.1337 7.28294 14.9421 7.51557L12.9511 10.1772C12.7047 10.5261 12.2942 10.7587 11.8289 10.7587Z" fill="currentColor" /></svg>
+            <button onClick={() => open('cart')} aria-label={isEn ? "Cart" : "سلة التسوق"} className="text-[#234745] hover:opacity-70 transition-opacity p-0.5 min-[550px]:p-1 relative">
+              <svg width="19" height="19" className="w-[19px] h-[19px] min-[550px]:w-6 min-[550px]:h-6" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12.5132 14.1798C12.8761 14.1798 13.2241 14.324 13.4808 14.5806C13.7374 14.8372 13.8816 15.1853 13.8816 15.5482C13.8816 15.9111 13.7374 16.2592 13.4808 16.5158C13.2241 16.7725 12.8761 16.9166 12.5132 16.9166C12.1502 16.9166 11.8022 16.7725 11.5455 16.5158C11.2889 16.2592 11.1447 15.9111 11.1447 15.5482C11.1447 15.1853 11.2889 14.8372 11.5455 14.5806C11.8022 14.324 12.1502 14.1798 12.5132 14.1798ZM12.5132 14.864C12.3317 14.864 12.1577 14.9361 12.0293 15.0644C11.901 15.1927 11.8289 15.3667 11.8289 15.5482C11.8289 15.7297 11.901 15.9037 12.0293 16.032C12.1577 16.1603 12.3317 16.2324 12.5132 16.2324C12.6946 16.2324 12.8687 16.1603 12.997 16.032C13.1253 15.9037 13.1974 15.7297 13.1974 15.5482C13.1974 15.3667 13.1253 15.1927 12.997 15.0644C12.8687 14.9361 12.6946 14.864 12.5132 14.864ZM6.35526 14.1798C6.71819 14.1798 7.06625 14.324 7.32288 14.5806C7.57951 14.8372 7.72368 15.1853 7.72368 15.5482C7.72368 15.9111 7.57951 16.2592 7.32288 16.5158C7.06625 16.7725 6.71819 16.9166 6.35526 16.9166C5.99234 16.9166 5.64427 16.7725 5.38764 16.5158C5.13101 16.2592 4.98684 15.9111 4.98684 15.5482C4.98684 15.1853 5.13101 14.8372 5.38764 14.5806C5.64427 14.324 5.99234 14.1798 6.35526 14.1798ZM6.35526 14.864C6.1738 14.864 5.99977 14.9361 5.87145 15.0644C5.74314 15.1927 5.67105 15.3667 5.67105 15.5482C5.67105 15.7297 5.74314 15.9037 5.87145 16.032C5.99977 16.1603 6.1738 16.2324 6.35526 16.2324C6.53673 16.2324 6.71076 16.1603 6.83907 16.032C6.96739 15.9037 7.03947 15.7297 7.03947 15.5482C7.03947 15.3667 6.96739 15.1927 6.83907 15.0644C6.71076 14.9361 6.53673 14.864 6.35526 14.864ZM13.8816 5.96926H4.48737L6.23211 10.0745H11.8289C12.0547 10.0745 12.2532 9.96505 12.3763 9.80084L14.4289 7.06399C14.5179 6.94768 14.5658 6.80399 14.5658 6.65347C14.5658 6.472 14.4937 6.29797 14.3654 6.16966C14.2371 6.04134 14.063 5.96926 13.8816 5.96926ZM11.8289 10.7587H6.26632L5.73947 11.8261L5.67105 12.1272C5.67105 12.3086 5.74314 12.4826 5.87145 12.611C5.99977 12.7393 6.1738 12.8114 6.35526 12.8114H13.8816V13.4956H6.35526C5.99234 13.4956 5.64427 13.3514 5.38764 13.0948C5.13101 12.8381 4.98684 12.4901 4.98684 12.1272C4.98664 11.895 5.0455 11.6666 5.15789 11.4635L5.65053 10.4577L3.16684 4.60084H2.25V3.91663H3.61842L4.2 5.28505H13.8816C14.2445 5.28505 14.5926 5.42922 14.8492 5.68585C15.1058 5.94248 15.25 6.29054 15.25 6.65347C15.25 6.99557 15.1337 7.28294 14.9421 7.51557L12.9511 10.1772C12.7047 10.5261 12.2942 10.7587 11.8289 10.7587Z" fill="currentColor" /></svg>
               <Suspense fallback={null}>
                 <Await resolve={cart}>{(cartData) => {
                   const count = cartData?.totalQuantity ?? 0;
@@ -873,13 +896,13 @@ function MiddleBar({
             </button>
 
             {/* Search */}
-            <button onClick={() => open('search')} aria-label={isEn ? "Search" : "بحث"} className="text-[#234745] hover:opacity-70 transition-opacity p-0.5">
-              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
+            <button onClick={() => open('search')} aria-label={isEn ? "Search" : "بحث"} className="text-[#234745] hover:opacity-70 transition-opacity p-0.5 min-[550px]:p-1">
+              <svg width="19" height="19" className="w-[19px] h-[19px] min-[550px]:w-6 min-[550px]:h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
             </button>
 
             {/* Menu Hamburger */}
-            <button onClick={() => open('mobile')} aria-label={isEn ? "Open Menu" : "فتح القائمة"} className="text-[#234745] hover:opacity-70 transition-opacity p-0.5">
-              <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="18" x2="21" y2="18" /></svg>
+            <button onClick={() => open('mobile')} aria-label={isEn ? "Open Menu" : "فتح القائمة"} className="text-[#234745] hover:opacity-70 transition-opacity p-0.5 min-[550px]:p-1">
+              <svg width="21" height="21" className="w-[21px] h-[21px] min-[550px]:w-[26px] min-[550px]:h-[26px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="18" x2="21" y2="18" /></svg>
             </button>
           </div>
         </div>

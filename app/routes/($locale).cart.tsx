@@ -4,6 +4,7 @@ import type {CartQueryDataReturn} from '@shopify/hydrogen';
 import {CartForm} from '@shopify/hydrogen';
 import {CartMain} from '~/components/CartMain';
 import {getShopTitle} from '~/lib/seo';
+import {stripCoordsMarker} from '~/lib/address-coords';
 
 export const meta: Route.MetaFunction = ({matches}) => {
   return [{title: getShopTitle('Cart', matches)}];
@@ -921,18 +922,24 @@ export async function action({request, context, params}: Route.ActionArgs) {
               (dc) => String(dc.code || '').trim().toUpperCase() === submitted,
             );
 
-            if (!landed || !landed.applicable) {
-              // Don't leave a dud in the cart for the next request to trip on.
-              if (landed) {
-                try {
-                  await cart.updateDiscountCodes(
-                    appliedCodes.filter((dc) => dc.applicable).map((dc) => dc.code),
-                  );
-                } catch (revertErr) {
-                  console.error('[CART] Failed to drop invalid code:', revertErr);
-                }
-              }
-
+            /**
+             * Two different answers, told apart at last.
+             *
+             * Shopify returns 200 whether a code is unknown or merely not
+             * applicable yet, so this used to treat both as invalid: it
+             * stripped the code off the cart and told the shopper it was
+             * wrong. For a discount scoped to particular products -- the
+             * commonest kind -- that is exactly backwards. Shopify marks such
+             * a code `applicable: false` while the cart holds nothing that
+             * qualifies, keeps it on the cart, and turns it applicable the
+             * moment a qualifying item is added. Entering the code first and
+             * shopping second is a perfectly ordinary thing to do, and it
+             * cost the shopper their discount and accused them of mistyping.
+             *
+             * A code Shopify has never heard of does not appear on the cart at
+             * all. That, and only that, is an error.
+             */
+            if (!landed) {
               return data(
                 {
                   error: isEn
@@ -940,6 +947,19 @@ export async function action({request, context, params}: Route.ActionArgs) {
                     : `الكود "${submitted}" غير صحيح أو لا يمكن استخدامه مع هذا الطلب.`,
                 },
                 {status: 400},
+              );
+            }
+
+            if (!landed.applicable) {
+              // Left on the cart on purpose: Shopify applies it by itself once
+              // the cart qualifies. Reported as a notice, not an error.
+              return data(
+                {
+                  notice: isEn
+                    ? `"${submitted}" is saved to your cart. It will apply once your cart includes a qualifying item.`
+                    : `تم حفظ الكود "${submitted}" في سلتك، وسيُطبَّق تلقائياً عند إضافة منتج مشمول بالعرض.`,
+                },
+                {status: 200},
               );
             }
           }
@@ -1185,7 +1205,7 @@ export async function action({request, context, params}: Route.ActionArgs) {
           if (buyerIdentity.deliveryAddressPreferences?.[0]?.deliveryAddress) {
             const addr =
               buyerIdentity.deliveryAddressPreferences[0].deliveryAddress;
-            const addressName = addr.address1 || addr.address2;
+            const addressName = addr.address1 || stripCoordsMarker(addr.address2);
             if (addressName) {
               context.session.set('selectedAddressName', addressName);
             }

@@ -958,6 +958,28 @@ export default function CorporatePage() {
         })
       : defaultPackages;
 
+  /**
+   * Choosing a path should take you to it.
+   *
+   * The two cards under "How would you like to proceed?" swapped the whole
+   * section below them and left the viewport on the cards, so on a laptop the
+   * thing that changed was below the fold and the only visible feedback was
+   * the card's own highlight. It read as a dead button.
+   *
+   * The timeout is what `handlePackageSelect` below already does, and for the
+   * same reason: the target section does not exist in the DOM until the state
+   * change has rendered, so there is nothing to scroll to on the same tick.
+   */
+  const handleModeSelect = (mode: 'self' | 'custom') => {
+    setActiveMode(mode);
+    setTimeout(() => {
+      const target = document.getElementById(
+        mode === 'self' ? 'products' : 'custom-quote',
+      );
+      target?.scrollIntoView({behavior: 'smooth', block: 'start'});
+    }, 100);
+  };
+
   const handlePackageSelect = (pkgTitle: string) => {
     setSelectedPackage(pkgTitle);
     setActiveMode('custom');
@@ -1162,7 +1184,7 @@ export default function CorporatePage() {
             {/* Card 1: Self Order (طلب ذاتي) */}
             <button
               type="button"
-              onClick={() => setActiveMode('self')}
+              onClick={() => handleModeSelect('self')}
               className={`flex-1 flex flex-row justify-end items-start p-6 md:p-8 gap-6 rounded-[16px] transition-all cursor-pointer text-start ${
                 activeMode === 'self'
                   ? 'bg-[#FEF8EB] border-1 border-[#234745] shadow-md ring-2 ring-[#234745]/10'
@@ -1227,7 +1249,7 @@ export default function CorporatePage() {
             {/* Card 2: Custom Quote (عرض سعر مخصص) */}
             <button
               type="button"
-              onClick={() => setActiveMode('custom')}
+              onClick={() => handleModeSelect('custom')}
               className={`flex-1 flex flex-row justify-end items-start p-6 md:p-8 gap-6 rounded-[16px] transition-all cursor-pointer text-start ${
                 activeMode === 'custom'
                   ? 'bg-[#FEF8EB] border-1 border-[#234745] shadow-md ring-2 ring-[#234745]/10'

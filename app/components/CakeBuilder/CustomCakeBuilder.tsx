@@ -1,4 +1,6 @@
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
+import { useRouteLoaderData, useFetcher, useRevalidator } from 'react-router';
+import { DeliveryPickupModal } from '~/components/DeliveryPickupModal';
 import { Cake, Palette, Sparkles, MessageSquare, Layers, ArrowRight, ArrowLeft, Eye, Compass, Clock, Check } from 'lucide-react';
 import { CakePreview } from './CakePreview';
 import { FaqModal } from './FaqModal';
@@ -94,6 +96,57 @@ export default function CustomCakeBuilder({
   const [isFaqOpen, setIsFaqOpen] = useState(false);
   const [isCutaway, setIsCutaway] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  /**
+   * The branch and fulfilment choice, from the same session the cart reads.
+   *
+   * A cake order used to go straight to a Shopify invoice with none of this
+   * attached, so the kitchen got an order that did not say which branch was
+   * making it or whether anyone was coming to collect it. The shopper may
+   * already have chosen -- from the header pill, or on an earlier visit -- in
+   * which case nothing is asked twice.
+   */
+  const cakeRootData = useRouteLoaderData('root') as any;
+  const selectedBranchId: string = cakeRootData?.selectedLocationId || '';
+  const selectedBranchName: string = cakeRootData?.selectedLocationName || '';
+  const selectedFulfillment: string = cakeRootData?.fulfillmentType || '';
+  const selectedDeliveryDate: string = cakeRootData?.deliveryDate || '';
+  const hasFulfilmentChoice = !!(selectedBranchId && selectedFulfillment);
+
+  /**
+   * This page renders its own header -- PageLayout swaps the site header for a
+   * bare logo on /custom-cake -- so the Header's branch modal, and the
+   * `openDeliveryModal` listener that opens it from the cart, are both absent
+   * here. The modal is mounted directly instead.
+   */
+  const [isBranchModalOpen, setIsBranchModalOpen] = useState(false);
+  const branchFetcher = useFetcher();
+  const revalidator = useRevalidator();
+
+  const handleSelectBranchForCake = (
+    branchSelected: any,
+    type: 'delivery' | 'pickup',
+    addressName?: string,
+  ) => {
+    const formData = new FormData();
+    formData.append('locationId', branchSelected?.id || '');
+    formData.append('branchName', branchSelected?.name || '');
+    formData.append('fulfillmentType', type);
+    formData.append('manualLocationSelection', 'true');
+    if (addressName) formData.append('addressName', addressName);
+    branchFetcher.submit(formData, {
+      method: 'POST',
+      action: '/api/location-id',
+    });
+    setIsBranchModalOpen(false);
+  };
+
+  // The choice lives in the session, so the page has to re-read it to see it.
+  useEffect(() => {
+    if (branchFetcher.state === 'idle' && branchFetcher.data) {
+      revalidator.revalidate();
+    }
+  }, [branchFetcher.state, branchFetcher.data]);
   const [isPrepModalOpen, setIsPrepModalOpen] = useState(false);
 
   // Reset modal state when user returns via browser Back button (bfcache)
@@ -597,6 +650,16 @@ export default function CustomCakeBuilder({
   };
 
   const handleCheckout = async () => {
+    /**
+     * The Header owns the branch modal and listens for this event, which is
+     * how the cart opens it too. Asking here rather than on the invoice page
+     * is the whole point: a draft order has no way to collect it afterwards.
+     */
+    if (!hasFulfilmentChoice) {
+      setIsBranchModalOpen(true);
+      return;
+    }
+
     setIsSubmitting(true);
 
     // Capture the 3D Canvas as a screenshot
@@ -630,7 +693,11 @@ export default function CustomCakeBuilder({
           prepTime: isEn ? selections.prepTime?.nameEn : selections.prepTime?.nameAr,
           cakePreviewImage, // Send the screenshot
           finalTotal: calculateTotal(),
-          isEn: isEn
+          isEn: isEn,
+          branchId: selectedBranchId,
+          branchName: selectedBranchName,
+          fulfillmentType: selectedFulfillment,
+          deliveryDate: selectedDeliveryDate,
         })
       });
       const data = (await response.json()) as any;
@@ -1225,19 +1292,21 @@ export default function CustomCakeBuilder({
             <div className="relative w-[260px] h-[260px] sm:w-[320px] sm:h-[320px] lg:w-auto lg:h-[50vh] aspect-square rounded-full border-[12px] lg:border-[24px] border-white bg-[#EED5D7] shadow-sm flex items-center justify-center overflow-hidden shrink-0">
               <div className="absolute inset-0 z-20 flex items-center justify-center">
                 {/*
-                  There is no cake to draw until a shape is picked, and drawing
-                  a stand-in would put a cake on screen that the total says
-                  costs nothing.
+                  The live preview still draws nothing until a shape is picked
+                  -- a rendered cake beside a 0.00 total would be a cake nobody
+                  is buying. A photograph stands in until then: it reads as
+                  decoration rather than as the cake being configured, which is
+                  the distinction that matters here.
                 */}
                 {!selections.shape ? (
-                  <p
-                    className="px-8 text-center text-[#20584A]/70 font-bold text-sm"
-                    style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
-                  >
-                    {isEn
+                  <img
+                    src="/cake/cake-builder-placeholder.jpeg"
+                    alt={isEn
                       ? 'Your cake will appear here as you choose'
                       : 'ستظهر كيكتك هنا كلما اخترت'}
-                  </p>
+                    className="w-full h-full object-cover select-none"
+                    draggable={false}
+                  />
                 ) : (
                 <CakePreview
                   shape={selections.shape.id}
@@ -1348,6 +1417,23 @@ export default function CustomCakeBuilder({
       </div>
       <FaqModal isOpen={isFaqOpen} onClose={() => setIsFaqOpen(false)} isEn={isEn} />
 
+      <DeliveryPickupModal
+        isOpen={isBranchModalOpen}
+        onClose={() => setIsBranchModalOpen(false)}
+        defaultTab={
+          String(selectedFulfillment).toLowerCase() === 'pickup'
+            ? 'pickup'
+            : 'delivery'
+        }
+        locationsPromise={cakeRootData?.locations}
+        customerPromise={cakeRootData?.customer}
+        locale={isEn ? 'en' : 'ar'}
+        googleMapsKey={cakeRootData?.googleMapsKey}
+        onSelectBranch={handleSelectBranchForCake}
+        selectedLocationId={cakeRootData?.selectedLocationId}
+        selectedAddressName={cakeRootData?.selectedAddressName}
+      />
+
       {isPrepModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in" dir={isEn ? 'ltr' : 'rtl'}>
           <div className="bg-white rounded-[32px] max-w-lg w-full p-8 shadow-2xl border border-gray-100 flex flex-col gap-6 animate-zoom-in max-h-[90vh] overflow-y-auto">
@@ -1395,6 +1481,41 @@ export default function CustomCakeBuilder({
                 );
               })}
             </div>
+
+            {/*
+              Where the cake is going, before it is paid for. The invoice page
+              this leads to cannot ask, so it is asked here -- and shown, so
+              nobody discovers their branch only on the order confirmation.
+            */}
+            <button
+              type="button"
+              onClick={() => setIsBranchModalOpen(true)}
+              className={`w-full mt-4 flex items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-start transition-all ${
+                hasFulfilmentChoice
+                  ? 'border-[#E5E7EB] bg-white hover:border-[#294941]/50'
+                  : 'border-[#E64950]/40 bg-[#FDEBEC] hover:border-[#E64950]'
+              }`}
+            >
+              <span className="flex flex-col">
+                <span className="text-[12px] text-[#8BA19C]">
+                  {isEn ? 'Pickup branch or delivery' : 'فرع الاستلام أو التوصيل'}
+                </span>
+                <span className="font-bold text-[15px] text-[#1a1a1a]">
+                  {hasFulfilmentChoice
+                    ? `${selectedBranchName}${
+                        String(selectedFulfillment).toLowerCase() === 'pickup'
+                          ? isEn ? ' — Pickup' : ' — استلام'
+                          : isEn ? ' — Delivery' : ' — توصيل'
+                      }`
+                    : isEn
+                      ? 'Choose before checking out'
+                      : 'اختر قبل إتمام الطلب'}
+                </span>
+              </span>
+              <span className="text-[13px] font-bold text-[#294941] shrink-0">
+                {isEn ? 'Change' : 'تغيير'}
+              </span>
+            </button>
 
             <div className={`flex gap-4 w-full mt-4 ${isEn ? 'flex-row' : 'flex-row-reverse'}`}>
               <button

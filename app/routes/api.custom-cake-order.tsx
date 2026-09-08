@@ -346,7 +346,41 @@ export async function action({request, context}: ActionFunctionArgs) {
       subtotal,
       finalTotal,
       isEn,
+      // The fulfilment choices, made in the builder before it posts here.
+      branchName,
+      branchId,
+      fulfillmentType,
+      deliveryFee,
+      deliveryDate,
+      timeSlot,
     } = body;
+
+    /**
+     * A cake order is still an order.
+     *
+     * This route builds a draft order rather than a cart line, because only a
+     * draft order can carry the exact computed price -- the SKU ladder below
+     * is a nearest match, and a 190.00 cake maps to the 200.00 SKU. The cost
+     * of that is that none of the cart's machinery runs: no branch, no
+     * fulfilment type, no delivery preference, no date. The order reached the
+     * kitchen saying nothing about where or how to deliver it.
+     *
+     * So the builder now asks the same questions the cart does and sends the
+     * answers here, and they are written onto the draft order in the same
+     * attribute names the cart uses -- `Branch`, `Fulfillment Type`,
+     * `delivery_date`, `Time Slot` -- so the CRM sync and everything reading
+     * an order downstream finds them where it already looks.
+     */
+    const isPickup = String(fulfillmentType || '').toLowerCase() === 'pickup';
+    const fulfilmentAttributes = [
+      ...(branchName ? [{key: 'Branch', value: String(branchName)}] : []),
+      ...(branchId ? [{key: 'Branch ID', value: String(branchId)}] : []),
+      ...(fulfillmentType
+        ? [{key: 'Fulfillment Type', value: isPickup ? 'Pickup' : 'Delivery'}]
+        : []),
+      ...(deliveryDate ? [{key: 'delivery_date', value: String(deliveryDate)}] : []),
+      ...(timeSlot ? [{key: 'Time Slot', value: String(timeSlot)}] : []),
+    ];
 
     // Use finalTotal (which already includes 15% VAT) so the checkout matches the builder
     const priceNum = Number(finalTotal || subtotal);
@@ -453,6 +487,7 @@ export async function action({request, context}: ActionFunctionArgs) {
 
     const customAttributes = [
       {key: '_cake_custom', value: 'true'},
+      ...fulfilmentAttributes,
       {key: isEn ? 'Shape' : 'الشكل', value: shape || '-'},
       ...(size ? [{key: isEn ? 'Size' : 'الحجم', value: String(size)}] : []),
       {key: isEn ? 'Flavor' : 'النكهة', value: flavor || '-'},
@@ -619,9 +654,43 @@ export async function action({request, context}: ActionFunctionArgs) {
           ],
         },
       ],
-      note: description,
-      tags: ['custom-cake', 'cake-builder', 'disable-cod', 'no-cod', 'hide-cod'],
+      note: [
+        description,
+        branchName
+          ? `[${isPickup ? 'Pickup' : 'Delivery'}: ${branchName}${
+              deliveryDate ? `, ${deliveryDate}` : ''
+            }${timeSlot ? ` ${timeSlot}` : ''}]`
+          : null,
+      ]
+        .filter(Boolean)
+        .join(' • '),
+      tags: [
+        'custom-cake',
+        'cake-builder',
+        'disable-cod',
+        'no-cod',
+        'hide-cod',
+        ...(fulfillmentType ? [isPickup ? 'pickup' : 'delivery'] : []),
+      ],
       taxExempt: true,
+      /**
+       * A draft order has no local-pickup option -- `shippingLine` is the only
+       * delivery field on it -- so pickup is expressed as a zero-priced line
+       * named for the branch, and delivery carries the branch's own fee. Both
+       * print on the order, which is what the kitchen and the driver read.
+       */
+      ...(fulfillmentType
+        ? {
+            shippingLine: {
+              title: isPickup
+                ? `استلام من الفرع${branchName ? ` — ${branchName}` : ''}`
+                : `توصيل${branchName ? ` — ${branchName}` : ''}`,
+              price: isPickup
+                ? '0.00'
+                : Number(deliveryFee || 0).toFixed(2),
+            },
+          }
+        : {}),
     };
 
     /**
@@ -722,6 +791,40 @@ export async function action({request, context}: ActionFunctionArgs) {
       draftOrderInput.phone = customerPhone;
     }
 
+    /**
+     * The invoice comes through in the customer's language, not the shop's.
+     *
+     * `DraftOrder` has no locale field -- checked against the Admin schema --
+     * so there is nothing to set on the order itself, and an Arabic-speaking
+     * shopper was handed an English invoice. `Customer.locale` is the field
+     * Shopify actually reads for a person's language, so it is set to match
+     * the storefront the order was built on.
+     *
+     * Best effort on purpose: a failure here costs the shopper a translation,
+     * not their cake, so it must never take the order down with it.
+     */
+    if (adminCustomerId) {
+      const wantedLocale = isEn ? 'en' : 'ar';
+      try {
+        await adminApiQuery(
+          shopDomain,
+          token,
+          `mutation setCustomerLocale($input: CustomerInput!) {
+            customerUpdate(input: $input) {
+              customer { id locale }
+              userErrors { field message }
+            }
+          }`,
+          {input: {id: adminCustomerId, locale: wantedLocale}},
+        );
+      } catch (localeErr: any) {
+        console.warn(
+          '[Custom Cake Order] Could not set customer locale:',
+          localeErr?.message || localeErr,
+        );
+      }
+    }
+
     const result = (await adminApiQuery(shopDomain, token, mutation, {
       input: draftOrderInput,
     })) as any;
@@ -739,9 +842,23 @@ export async function action({request, context}: ActionFunctionArgs) {
 
     if (draftOrder?.invoiceUrl) {
       console.log(`[Custom Cake] ✅ Draft order created: ${draftOrder.id}`);
+
+      /**
+       * `locale` on the URL as well as on the customer. It is not documented
+       * for invoice URLs, so it may do nothing -- but it costs a query string
+       * and covers the case where the order has no customer record to carry a
+       * locale of its own.
+       */
+      let checkoutUrl = draftOrder.invoiceUrl;
+      try {
+        const url = new URL(checkoutUrl);
+        url.searchParams.set('locale', isEn ? 'en' : 'ar');
+        checkoutUrl = url.toString();
+      } catch {}
+
       return Response.json({
         success: true,
-        checkoutUrl: draftOrder.invoiceUrl,
+        checkoutUrl,
         draftOrderId: draftOrder.id,
       });
     }

@@ -28,6 +28,7 @@ import {NotFound} from './components/NotFound';
 import {ServerError} from './components/ServerError';
 import {CookieConsentBanner} from './components/CookieConsentBanner';
 import {ProductSkeleton} from './components/ProductSkeleton';
+import {useLocale} from '~/lib/i18n';
 
 export const meta: MetaFunction = () => {
   return [
@@ -611,6 +612,13 @@ export function Layout({children}: {children?: React.ReactNode}) {
 
 export default function App() {
   const data = useRouteLoaderData<RootLoader>('root');
+  /**
+   * From the URL, not from `consent.language`. `consent` exists to localize
+   * Shopify's privacy banner; it was also being handed to the whole app
+   * through the Outlet context below, which is how an English product page
+   * ended up under an Arabic header. See ~/lib/i18n.
+   */
+  const pageLocale = useLocale();
   const [customerId, setCustomerId] = useState<string | undefined>(undefined);
   const navigation = useNavigation();
   const locationFetcher = useFetcher();
@@ -672,10 +680,9 @@ export default function App() {
       const hasManualSelection = data?.manualLocationSelection === 'true';
       
       if (!isSaTz && isDefaultLoc && !hasManualSelection && locationFetcher.state === 'idle') {
-        const locale = data?.consent?.language?.toLowerCase() || 'ar';
         const formData = new FormData();
         formData.append('locationId', '');
-        formData.append('branchName', locale === 'en' ? 'Select Your Branch' : 'اختر الفرع');
+        formData.append('branchName', pageLocale === 'en' ? 'Select Your Branch' : 'اختر الفرع');
         formData.append('fulfillmentType', 'delivery');
         formData.append('isInternational', 'true');
         
@@ -687,7 +694,7 @@ export default function App() {
     } catch (e) {
       console.warn('Timezone detection failed:', e);
     }
-  }, [data?.selectedLocationId, data?.consent?.language, data?.manualLocationSelection, locationFetcher]);
+  }, [data?.selectedLocationId, pageLocale, data?.manualLocationSelection, locationFetcher]);
 
   const isNavigatingToProduct = navigation.state === 'loading' && navigation.location.pathname.includes('/products/');
 
@@ -699,13 +706,13 @@ export default function App() {
     >
       <WishlistProvider customerId={customerId}>
         <GTMAnalytics />
-        <CookieConsentBanner locale={data?.consent?.language?.toLowerCase() === 'en' ? 'en' : 'ar'} />
+        <CookieConsentBanner locale={pageLocale} />
         <PageLayout {...(data as any)}>
           {isNavigatingToProduct ? (
-            <ProductSkeleton isEn={data!.consent.language.toLowerCase() === 'en'} />
+            <ProductSkeleton isEn={pageLocale === 'en'} />
           ) : (
             <Outlet context={{ 
-              locale: data!.consent.language.toLowerCase(),
+              locale: pageLocale,
               selectedLocationId: data!.selectedLocationId,
               selectedLocationName: data!.selectedLocationName,
               fulfillmentType: data!.fulfillmentType
@@ -920,6 +927,11 @@ const CUSTOMER_ADDRESSES_QUERY = `#graphql
           firstName
           lastName
           phone
+          # Read-only, geocoded by Shopify from the address above. There is no
+          # input field for these - a dropped map pin cannot be stored - so
+          # this is where nearest-branch matching gets its coordinates.
+          latitude
+          longitude
         }
       }
     }

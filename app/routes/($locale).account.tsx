@@ -64,7 +64,10 @@ export async function loader({request, context}: LoaderFunctionArgs) {
 
   if (!isLoggedIn) {
     if (isPrivateRoute || isAccountHome || isOrderDetail) {
-      session.unset('customerAccessToken');
+      // The token resolves to nobody, so neither should the session --
+      // clearing only the token left wallet and loyalty answering for
+      // the last shopper. See ~/lib/session-identity.server.
+      await (await import('~/lib/session-identity.server')).clearIdentity(session);
       return redirect(loginUrl, {
         headers: {
           'Set-Cookie': await session.commit(),
@@ -446,7 +449,10 @@ export async function loader({request, context}: LoaderFunctionArgs) {
         '[Account Loader] Fallback customer fetch failed:',
         fallbackErr,
       );
-      session.unset('customerAccessToken');
+      // The token resolves to nobody, so neither should the session --
+      // clearing only the token left wallet and loyalty answering for
+      // the last shopper. See ~/lib/session-identity.server.
+      await (await import('~/lib/session-identity.server')).clearIdentity(session);
       return redirect(loginUrl, {
         headers: {'Set-Cookie': await session.commit()},
       });
@@ -1033,6 +1039,8 @@ export const CUSTOMER_FRAGMENT = `#graphql
     city
     zip
     phone
+    latitude
+    longitude
   }
 ` as const;
 

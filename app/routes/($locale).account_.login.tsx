@@ -20,6 +20,7 @@ import {SaadeddinApi} from '~/lib/saadeddin-api.server';
 import {derivePassword} from '~/lib/auth.server';
 import {validatePhoneNumber, sanitizePhoneInput} from '~/lib/phone-validation';
 import {COUNTRY_CODES, parsePhoneCountry} from '~/lib/country-codes';
+import {useIsEn} from '~/lib/i18n';
 import {
   formatOtpError,
   classifyOtpError,
@@ -52,7 +53,9 @@ export async function loader({request, context}: LoaderFunctionArgs) {
 
     // Recover active OTP cooldown/phone session state on page refresh
     const cooldown = await context.session.get('loginOtpCooldown');
-    const phone = await context.session.get('loginOtpPhone');
+    const phone =
+      (await context.session.get('pendingOtpPhone')) ||
+      (await context.session.get('loginOtpPhone'));
     let remainingSeconds = 0;
     if (cooldown && Date.now() < cooldown) {
       remainingSeconds = Math.ceil((cooldown - Date.now()) / 1000);
@@ -189,7 +192,19 @@ export async function action({request, context}: ActionFunctionArgs) {
           });
         }
 
-        session.set('loginOtpPhone', fullPhone);
+        /**
+          * The phone a code was SENT to, which is not the phone of anyone who
+          * is signed in. This used to be written to `loginOtpPhone` -- the
+          * key the checkout gate, root's customer lookup and the loyalty
+          * lookup all read as proof of a completed login. Typing a number and
+          * pressing send was therefore enough to be treated as that customer:
+          * no code received, none entered, straight past checkout.
+          *
+          * `loginOtpPhone` is now written only after the code is verified,
+          * below. Until then the pending number lives here, where nothing
+          * mistakes it for an identity.
+          */
+         session.set('pendingOtpPhone', fullPhone);
         session.set('loginOtpCooldown', Date.now() + 60 * 1000);
         // Remember where the visitor came from (e.g. the cart) so the OTP step
         // can send them back even if the query string is lost in between.
@@ -233,7 +248,11 @@ export async function action({request, context}: ActionFunctionArgs) {
         cleanPhone = cleanPhone.substring(1);
       }
       const fullFormPhone = formPhone ? `${formCountryCode}${cleanPhone}` : '';
-      const savedPhone = session.get('loginOtpPhone') || fullFormPhone;
+      const savedPhone =
+        session.get('pendingOtpPhone') ||
+        // Sessions that were mid-flow when this shipped still hold the old key.
+        session.get('loginOtpPhone') ||
+        fullFormPhone;
 
       if (!savedPhone) {
         return data({
@@ -647,6 +666,7 @@ export async function action({request, context}: ActionFunctionArgs) {
         session.set('saadeddinToken', saadeddinToken);
       }
       session.set('loginOtpPhone', savedPhone);
+      session.unset('pendingOtpPhone');
       /**
        * Keep the customer we actually resolved. These used to be unset here,
        * which left the phone as the only identity in the session and forced
@@ -720,10 +740,7 @@ export default function Login() {
   const navigation = useNavigation();
   const location = useLocation();
   const rootData = useRouteLoaderData('root') as any;
-  const isEn =
-    location.pathname.startsWith('/en') ||
-    rootData?.locale === 'en' ||
-    rootData?.consent?.language?.toLowerCase() === 'en';
+  const isEn = useIsEn();
   const isLoading = navigation.state === 'submitting';
 
   const [step, setStep] = useState<'input' | 'otp'>(initialStep);

@@ -1,6 +1,8 @@
 import {redirect, type ActionFunctionArgs, type LoaderFunctionArgs} from 'react-router';
 import {SaadeddinApi} from '~/lib/saadeddin-api.server';
 import {extractMinTime} from '~/lib/time-utils';
+import {stripCoordsMarker} from '~/lib/address-coords';
+import {isSignedIn, loginUrlFor} from '~/lib/checkout-gate.server';
 
 export async function loader({request, context}: LoaderFunctionArgs) {
   return processCheckoutInitiate({request, context});
@@ -15,26 +17,18 @@ async function processCheckoutInitiate({request, context}: ActionFunctionArgs) {
   const lang = storefront.i18n.language === 'EN' ? 'en' : 'ar';
 
   // 1. Ensure user is logged in via Custom API or Shopify Customer Access Token
+  const loggedIn = await isSignedIn(session);
+
+  // Both are read again below -- the Saadeddin API token and the Shopify
+  // customer token identify the shopper to the two systems this route talks
+  // to. The gate above only asks whether any of the four ways to be signed in
+  // is present; these are the two it goes on to use.
   const customToken = await session.get('saadeddinToken');
   const customerAccessToken = await session.get('customerAccessToken');
-  const loginOtpPhone = await session.get('loginOtpPhone');
-  const loginCustomerEmail = await session.get('loginCustomerEmail');
-  console.log('\n====================================================');
-  console.log('[CHECKOUT DIAGNOSTIC ENTRY]', request.method, request.url);
-  console.log('[CHECKOUT DIAGNOSTIC] customToken:', customToken);
-  console.log('[CHECKOUT DIAGNOSTIC] customerAccessToken:', customerAccessToken);
-  console.log('[CHECKOUT DIAGNOSTIC] loginOtpPhone:', loginOtpPhone);
-  console.log('[CHECKOUT DIAGNOSTIC] loginCustomerEmail:', loginCustomerEmail);
 
-  const isLoggedIn = !!(customToken || customerAccessToken || loginOtpPhone || loginCustomerEmail);
-
-  if (!isLoggedIn) {
-    console.log(
-      '[CHECKOUT DIAGNOSTIC REDIRECT] Redirecting to login: no customToken and no customerAccessToken',
-    );
+  if (!loggedIn) {
     const checkoutInitiateUrl = lang === 'en' ? '/en/checkout/initiate' : '/checkout/initiate';
-    const loginUrl = (lang === 'en' ? `/en/account/login` : `/account/login`) +
-      `?redirectTo=${encodeURIComponent(checkoutInitiateUrl)}`;
+    const loginUrl = loginUrlFor(lang, checkoutInitiateUrl);
 
     const existingCartId = await context.cart.getCartId();
     if (existingCartId) {
@@ -301,7 +295,7 @@ async function processCheckoutInitiate({request, context}: ActionFunctionArgs) {
           if (match) {
             deliveryAddress = {
               address1: match.address1 || selectedAddressName,
-              address2: match.address2 || '',
+              address2: stripCoordsMarker(match.address2),
               city: match.city || 'Riyadh',
               province: match.province || '',
               zip: match.zip || '',

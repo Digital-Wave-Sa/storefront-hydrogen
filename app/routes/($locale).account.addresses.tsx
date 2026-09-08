@@ -16,6 +16,7 @@ import {
   useOutletContext,
 } from 'react-router';
 import {Button} from '~/components/layout/Button';
+import {addressCoords, stripCoordsMarker} from '~/lib/address-coords';
 
 export type ActionResponse = {
   addressId?: string | null;
@@ -103,7 +104,7 @@ function formatAdminAddressToFragment(adminAddr: any): AddressFragment {
     firstName: adminAddr.first_name || '',
     lastName: adminAddr.last_name || '',
     address1: adminAddr.address1 || '',
-    address2: adminAddr.address2 || '',
+    address2: stripCoordsMarker(adminAddr.address2),
     city: adminAddr.city || '',
     country: adminAddr.country || adminAddr.country_name || 'Saudi Arabia',
     phone: adminAddr.phone || '',
@@ -368,26 +369,27 @@ export async function action({request, context}: ActionFunctionArgs) {
       'lng',
     ];
 
-    const latlng = {lat: '', lng: ''};
-
     for (const key of keys) {
       const value = form.get(key);
       if (typeof value === 'string') {
         if (key === 'phone') {
           address.phone = formatAddressPhone(value);
-        } else if (key === 'lat') {
-          latlng.lat = value;
-        } else if (key === 'lng') {
-          latlng.lng = value;
+        } else if (key === 'lat' || key === 'lng') {
+          /**
+           * The map pin is accepted and deliberately not stored. Shopify has
+           * no field for it, so it used to be written over address2 - the
+           * shopper's apartment/floor line, which checkout prints and which
+           * they had just typed. Nearest-branch matching reads Shopify's own
+           * geocoding of the address instead; see ~/lib/address-coords.
+           */
         } else {
           (address as any)[key] = value;
         }
       }
     }
 
-    if (latlng.lat && latlng.lng) {
-      address.address2 = `COORDS:${latlng.lat},${latlng.lng}`;
-    }
+    // Never carry a legacy marker back into Shopify on save.
+    address.address2 = stripCoordsMarker(address.address2);
 
     if (!address.country) {
       address.country = 'Saudi Arabia';
@@ -1010,16 +1012,7 @@ function AddressModal({
 
   // State to hold coordinates
   const [coords, setCoords] = useState<{lat: number; lng: number} | null>(
-    () => {
-      if (address?.address2?.includes('COORDS:')) {
-        const match = address.address2.match(
-          /COORDS:(-?\d+\.\d+),(-?\d+\.\d+)/,
-        );
-        if (match)
-          return {lat: parseFloat(match[1]), lng: parseFloat(match[2])};
-      }
-      return null;
-    },
+    () => addressCoords(address),
   );
 
   const handleLocationConfirm = (result: any) => {
@@ -1107,6 +1100,17 @@ function AddressModal({
           <input type="hidden" name="addressId" value={address?.id ?? 'new'} />
           <input type="hidden" name="lat" value={coords?.lat ?? ''} />
           <input type="hidden" name="lng" value={coords?.lng ?? ''} />
+          {/*
+            This form has never shown address2. It was only ever the hiding
+            place for the pin, so it is carried through cleaned: a real
+            apartment line typed in Shopify admin survives an edit here, and
+            a legacy COORDS marker does not.
+          */}
+          <input
+            type="hidden"
+            name="address2"
+            value={stripCoordsMarker(address?.address2)}
+          />
 
           <div style={{marginBottom: '24px'}}>
             <label className="account-field-label">

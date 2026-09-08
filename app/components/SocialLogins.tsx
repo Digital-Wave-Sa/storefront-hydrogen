@@ -1,9 +1,10 @@
 import { useRouteLoaderData } from 'react-router';
 import { useState } from 'react';
+import {useLocale} from '~/lib/i18n';
 
 export function SocialLogins() {
   const rootData = useRouteLoaderData('root') as any;
-  const locale = rootData?.consent?.language?.toLowerCase() || 'ar';
+  const locale = useLocale();
   const isEn = locale === 'en';
 
   const [loadingProvider, setLoadingProvider] = useState<string | null>(null);

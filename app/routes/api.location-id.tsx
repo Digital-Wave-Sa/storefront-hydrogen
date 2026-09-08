@@ -1,4 +1,5 @@
 import {type ActionFunctionArgs} from 'react-router';
+import {stripCoordsMarker} from '~/lib/address-coords';
 
 export async function action({request, context}: ActionFunctionArgs) {
   try {
@@ -182,7 +183,7 @@ export async function action({request, context}: ActionFunctionArgs) {
                     {
                       deliveryAddress: {
                         address1: selectedAddr.address1,
-                        address2: selectedAddr.address2,
+                        address2: stripCoordsMarker(selectedAddr.address2),
                         city: selectedAddr.city,
                         country: selectedAddr.country || 'SA',
                         firstName: selectedAddr.firstName,

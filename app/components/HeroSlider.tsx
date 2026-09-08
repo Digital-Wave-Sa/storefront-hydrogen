@@ -168,7 +168,23 @@ export function HeroSlider({ config }: { config?: any }) {
                 transform: isActive ? 'scale(1)' : 'scale(0.98)'
               }}
             >
-              <div className="relative w-full h-[360px] sm:h-[430px] md:h-[510px] lg:h-[610px] rounded-[6px] sm:rounded-[12px] lg:rounded-[20px] overflow-hidden bg-[#f8f5f2] group/slide flex flex-col">
+              {/*
+                A minimum height, not a fixed one.
+                
+                With the title free to run to its full length, a long headline
+                on a narrow screen made the content taller than the slide. The
+                content column is `justify-end`, so the overflow went out of
+                the TOP -- the first line ran under the badge and was clipped
+                by `overflow-hidden`.
+                
+                `min-h` lets a slide grow to fit what is in it. The track is a
+                flex row with the default `align-items: stretch`, so every
+                slide takes the height of the tallest and `h-full` makes each
+                one fill it -- the carousel stays level, and the background
+                image is absolutely positioned so it covers whatever height
+                results.
+              */}
+              <div className="relative w-full h-full min-h-[360px] sm:min-h-[430px] md:min-h-[510px] lg:min-h-[610px] rounded-[6px] sm:rounded-[12px] lg:rounded-[20px] overflow-hidden bg-[#f8f5f2] group/slide flex flex-col">
                 {/* 1. Background Image - Stays Absolute */}
                 <img
                   src={slide.image}
@@ -196,12 +212,20 @@ export function HeroSlider({ config }: { config?: any }) {
                   dir={isEn ? 'ltr' : 'rtl'}
                   className={`relative flex-1 min-h-0 flex flex-col justify-end md:justify-center p-6 pt-14 sm:p-8 sm:pt-16 md:p-10 md:pt-20 lg:p-16 lg:pt-28 text-white z-20 items-center md:items-start text-center md:text-start`}
                 >
-                  {/* English needs a wider column: 52px Latin text overflows 533px and hits the title's line-clamp */}
+                  {/* English needs a wider column: 52px Latin text overflows the 533px Arabic column */}
                   <div className={`max-w-[95%] sm:max-w-full ${isEn ? 'md:max-w-[520px] lg:max-w-[700px]' : 'md:max-w-[420px] lg:max-w-[533px]'} flex flex-col items-center md:items-start w-full`}>
 
                     {/* Title */}
                     <h2
-                      className={`font-bold lg:font-bold whitespace-pre-line mb-3 lg:mb-6 line-clamp-3 ${isEn ? 'text-[28px] sm:text-[32px] md:text-[36px] lg:text-[52px] leading-[1.1] lg:leading-[0.85]' : 'text-[32px] md:text-[44px] lg:text-[80px] leading-[1.3] lg:leading-[1.2]'}`}
+                      /*
+                        No line-clamp. A headline that ends in an ellipsis is
+                        a headline nobody finished reading -- the slide's whole
+                        job is that sentence. The subtitle below still clamps
+                        on small screens, which is what gives the title the
+                        room to run to its full length inside a fixed-height
+                        slide.
+                      */
+                      className={`font-bold lg:font-bold whitespace-pre-line mb-3 lg:mb-6 ${isEn ? 'text-[28px] sm:text-[32px] md:text-[36px] lg:text-[52px] leading-[1.1] lg:leading-[0.85]' : 'text-[32px] md:text-[44px] lg:text-[80px] leading-[1.3] lg:leading-[1.2]'}`}
                       style={{ fontFamily: "'Bahij Janna', sans-serif" }}
                     >
                       <span className="text-[#FFFFFF] drop-shadow-lg">{isEn ? slide.title.en : slide.title.ar}</span>
@@ -234,16 +258,30 @@ export function HeroSlider({ config }: { config?: any }) {
                           <NavLink
                             key={i}
                             to={targetUrl}
-                            className={`flex items-center !no-underline justify-center transition-all duration-300 hover:!bg-[#F9F9F9] transform w-full sm:w-auto sm:min-w-[277px] whitespace-nowrap h-[48px] py-[12px] px-[20px] sm:px-[28px] rounded-[24px] ${btn.type === 'filled'
+                            /*
+                              A label longer than the button wraps rather than
+                              spilling out of it. `whitespace-nowrap` with a
+                              fixed `h-[48px]` gave the text no way to yield --
+                              "Shop Ice cream Collection" at 18px is wider than
+                              the column on a 360px screen, so it ran out past
+                              both edges of the pill.
+                              
+                              Wrapping is allowed below `sm`, where the button
+                              is full-width anyway; from `sm` up the 277px
+                              minimum is roomy enough that a single line reads
+                              better. `min-h` replaces `h` so two lines have
+                              somewhere to go.
+                            */
+                            className={`flex items-center !no-underline justify-center text-center transition-all duration-300 hover:!bg-[#F9F9F9] transform w-full sm:w-auto sm:min-w-[277px] sm:whitespace-nowrap min-h-[48px] py-[12px] px-[20px] sm:px-[28px] rounded-[24px] text-[15px] sm:text-[18px] leading-tight ${btn.type === 'filled'
                               ? 'bg-[#BBCFCD] text-[#234745]'
                               : 'bg-transparent text-[#F9F9F9] border border-[#BBCFCD]'
                               }`}
                             style={{
+                              // fontSize and lineHeight moved to classes above:
+                              // an inline value outranks every breakpoint, so
+                              // the button could never shrink on a small screen.
                               fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
                               fontWeight: 700,
-                              fontSize: '18px',
-                              lineHeight: '100%',
-                              textAlign: 'center',
                               color: btn.type === 'filled' ? '#234745' : '#F9F9F9'
                             }}
                           >

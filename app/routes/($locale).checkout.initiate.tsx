@@ -201,6 +201,7 @@ async function processCheckoutInitiate({request, context}: ActionFunctionArgs) {
 
   // Attach delivery address preferences so Shopify Checkout pre-selects the address chosen in the storefront
   const selectedAddressName = await session.get('selectedAddressName');
+  const selectedAddressId = await session.get('selectedAddressId');
   const sessionFulfillment = await session.get('fulfillmentType');
   const sessionLocationId = await session.get('selectedLocationId');
 
@@ -253,9 +254,26 @@ async function processCheckoutInitiate({request, context}: ActionFunctionArgs) {
    */
   let addressPreference: any = null;
 
+  /**
+   * Rebuilt only when it can be rebuilt properly, and never invented.
+   *
+   * `selectedAddressName` is a label, not an address, so this has to look the
+   * real one up again. Two things went wrong when it could not.
+   *
+   * The lookup is skipped entirely unless there is a genuine Shopify token,
+   * and anyone who signed in by OTP holds a `session-...` one. The fallback
+   * below it then hardcoded `city: 'Riyadh'`, with no province and no
+   * postcode. An Abha customer was handed to checkout as a Riyadh one, which
+   * is a different shipping zone and a different rate -- 33.00 quoted in the
+   * cart against 20.00 charged at checkout, or 0.00 when the invented address
+   * matched no zone at all.
+   *
+   * Header has already written the real, complete address onto the cart, and
+   * it is what the cart's delivery groups were priced from. So when the lookup
+   * cannot produce something at least as good, nothing is sent and that
+   * address stands, rather than being replaced by a guess.
+   */
   if (sessionFulfillment === 'delivery' && selectedAddressName) {
-    let deliveryAddress: any = null;
-
     try {
       if (tokenString && !tokenString.startsWith('session-')) {
         const {customer} = await context.storefront.query(
@@ -284,41 +302,59 @@ async function processCheckoutInitiate({request, context}: ActionFunctionArgs) {
           },
         );
 
-        if (customer?.addresses?.nodes) {
-          const match = customer.addresses.nodes.find(
+        const nodes = customer?.addresses?.nodes ?? [];
+
+        /**
+         * The id first. `selectedAddressName` is the customer's own name, so
+         * it matches every address they have saved equally and `find` returned
+         * whichever Shopify listed first -- the wrong one, for anybody with
+         * more than one address.
+         */
+        const match =
+          (typeof selectedAddressId === 'string' && selectedAddressId
+            ? nodes.find((a: any) => a.id === selectedAddressId)
+            : null) ||
+          nodes.find(
             (a: any) =>
               `${a.firstName || ''} ${a.lastName || ''}`.trim() === selectedAddressName ||
               a.address1 === selectedAddressName ||
-              (a.address1 && selectedAddressName.includes(a.address1)) ||
-              (selectedAddressName && a.address1 && selectedAddressName.includes(a.address1)),
+              (a.address1 && selectedAddressName.includes(a.address1)),
           );
-          if (match) {
-            deliveryAddress = {
-              address1: match.address1 || selectedAddressName,
-              address2: stripCoordsMarker(match.address2),
-              city: match.city || 'Riyadh',
-              province: match.province || '',
-              zip: match.zip || '',
-              country: match.country || 'SA',
-              firstName: match.firstName || '',
-              lastName: match.lastName || '',
-              phone: match.phone || buyerIdentity.phone || '',
-            };
-          }
+
+        /**
+         * A city is what places an address in a delivery zone, so a record
+         * without one is no more usable here than no record at all. Every
+         * other field is omitted when absent rather than defaulted: sending
+         * `province: ''` tells Shopify the address has no province, which
+         * drops it out of any province-scoped zone -- and Saudi zones are
+         * normally scoped that way.
+         */
+        if (match?.address1 && match?.city) {
+          const deliveryAddress: Record<string, string> = {
+            address1: match.address1,
+            city: match.city,
+          };
+
+          const address2 = stripCoordsMarker(match.address2);
+          if (address2) deliveryAddress.address2 = address2;
+          if (match.province) deliveryAddress.province = match.province;
+          if (match.zip) deliveryAddress.zip = match.zip;
+          if (match.country) deliveryAddress.country = match.country;
+          if (match.firstName) deliveryAddress.firstName = match.firstName;
+          if (match.lastName) deliveryAddress.lastName = match.lastName;
+
+          const phone = match.phone || buyerIdentity.phone;
+          if (phone) deliveryAddress.phone = phone;
+
+          addressPreference = [{deliveryAddress}];
         }
       }
-    } catch (e) {}
-
-    if (!deliveryAddress) {
-      deliveryAddress = {
-        address1: selectedAddressName,
-        city: 'Riyadh',
-        country: 'SA',
-        phone: buyerIdentity.phone || '',
-      };
+    } catch (e: any) {
+      console.error(
+        '[CHECKOUT DIAGNOSTIC] Address lookup failed; keeping the address the cart already carries:',
+        e?.message || e,
+      );
     }
-
-    addressPreference = [{deliveryAddress}];
   }
 
   if (Object.keys(buyerIdentity).length > 0) {
@@ -356,18 +392,21 @@ async function processCheckoutInitiate({request, context}: ActionFunctionArgs) {
    * A failure here means the shopper types their address at checkout, which is
    * a worse checkout rather than a broken one.
    *
-   * Sent on every checkout, including as an empty list, because a preference
-   * is stored on the cart and nothing else removes one. Header used to write
-   * a placeholder address for pickup — literally «Address, City, Guest User»,
-   * from a branch object that has no address fields — and that outranked the
-   * real address the customer had saved. Ceasing to write it fixes new carts
-   * and does nothing for the ones already carrying it: emptying a cart clears
-   * its lines, not its buyer identity, so those carts would have gone on
-   * pre-filling nonsense until they expired.
+   * Clearing is deliberate; overwriting is not. Anything that is not a
+   * delivery still sends an empty list, because a preference is stored on the
+   * cart and nothing else removes one -- that is what clears the placeholder
+   * «Address, City, Guest User» Header used to write for pickup, from a branch
+   * object with no address fields, which outranked the real address the
+   * customer had saved. Emptying a cart clears its lines, not its buyer
+   * identity, so those carts would otherwise pre-fill nonsense until they
+   * expired. An empty list on a cart that has no preference is a no-op.
    *
-   * An empty list on a cart that has no preference is a no-op.
+   * A delivery with nothing to send skips the call instead. Overwriting is how
+   * the fee moved between the cart and checkout: the address the cart was
+   * priced with is better than anything reconstructed from a label, so it is
+   * left alone.
    */
-  {
+  if (addressPreference || sessionFulfillment !== 'delivery') {
     try {
       await context.cart.updateBuyerIdentity({
         deliveryAddressPreferences: addressPreference ?? [],
@@ -378,6 +417,10 @@ async function processCheckoutInitiate({request, context}: ActionFunctionArgs) {
         err?.message || err,
       );
     }
+  } else {
+    console.log(
+      '[CHECKOUT DIAGNOSTIC] No usable address to pre-fill; keeping the one the cart was priced with.',
+    );
   }
 
   // 3. Build payload for Saadeddin API and restore location properties

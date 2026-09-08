@@ -8,6 +8,7 @@ export async function action({request, context}: ActionFunctionArgs) {
     const branchName = formData.get('branchName');
     const fulfillmentType = formData.get('fulfillmentType');
     const addressName = formData.get('addressName');
+    const addressId = formData.get('addressId');
     const manualLocationSelection = formData.get('manualLocationSelection');
     const attributesStr = formData.get('attributes');
     const buyerIdentityStr = formData.get('buyerIdentity');
@@ -26,6 +27,12 @@ export async function action({request, context}: ActionFunctionArgs) {
     }
     if (typeof addressName === 'string') {
       context.session.set('selectedAddressName', addressName);
+    }
+    if (typeof addressId === 'string' && addressId) {
+      context.session.set('selectedAddressId', addressId);
+    } else if (typeof addressName === 'string') {
+      // A selection with no id must not leave the previous one behind.
+      context.session.set('selectedAddressId', '');
     }
     if (typeof manualLocationSelection === 'string') {
       context.session.set('manualLocationSelection', manualLocationSelection);
@@ -119,25 +126,48 @@ export async function action({request, context}: ActionFunctionArgs) {
           await context.cart.updateAttributes(attributes);
         }
 
-        // Sync Buyer Identity if needed
-        if (customerAccessToken) {
-          const tokenStr =
-            typeof customerAccessToken === 'string'
-              ? customerAccessToken
-              : customerAccessToken?.accessToken;
+        /**
+         * Sync buyer identity -- and, above all, the delivery address.
+         *
+         * This used to attach `customerAccessToken` to the mutation whatever
+         * the token was. A customer who signed in by OTP holds one of this
+         * storefront's own `session-...` tokens, which Shopify does not
+         * recognise: `cartBuyerIdentityUpdate` answers with a userError and
+         * applies NONE of the input -- so the delivery address Header had just
+         * built travelled all the way here and was thrown away with it. The
+         * cart then had no address, and checkout fell back to whichever
+         * address the customer account happened to have on file. That is the
+         * Riyadh address appearing on an order whose shopper picked a
+         * different one. Every other file in this flow already guards against
+         * the `session-` prefix; this one did not.
+         *
+         * The address no longer depends on the token at all. A real Shopify
+         * token is attached when there is one, and a rejection is retried
+         * without it so the address still lands.
+         */
+        const tokenStr =
+          typeof customerAccessToken === 'string'
+            ? customerAccessToken
+            : (customerAccessToken as any)?.accessToken;
 
+        const shopifyToken =
+          typeof tokenStr === 'string' &&
+          tokenStr &&
+          !tokenStr.startsWith('session-')
+            ? tokenStr
+            : null;
+
+        {
           let buyerIdentity: any = undefined;
           if (typeof buyerIdentityStr === 'string') {
             try {
               buyerIdentity = JSON.parse(buyerIdentityStr);
-              if (buyerIdentity) {
-                buyerIdentity.customerAccessToken = tokenStr;
-              }
             } catch (e) {}
           }
 
           if (
-            !buyerIdentity &&
+            !buyerIdentity?.deliveryAddressPreferences &&
+            shopifyToken &&
             typeof fulfillmentType === 'string' &&
             fulfillmentType === 'delivery' &&
             typeof addressName === 'string'
@@ -163,22 +193,27 @@ export async function action({request, context}: ActionFunctionArgs) {
             const res = await context.storefront.query(
               CUSTOMER_ADDRESSES_QUERY,
               {
-                variables: {customerAccessToken: tokenStr},
+                variables: {customerAccessToken: shopifyToken},
                 cache: context.storefront.CacheNone(),
               },
             );
             const customer = res.customer;
 
             if (customer) {
-              const selectedAddr = customer.addresses?.nodes?.find(
-                (a: any) =>
-                  `${a.firstName} ${a.lastName}` === addressName ||
-                  a.address1 === addressName,
-              );
+              const nodes = customer.addresses?.nodes ?? [];
+              // The id first: a customer's addresses all share their name.
+              const selectedAddr =
+                (typeof addressId === 'string' && addressId
+                  ? nodes.find((a: any) => a.id === addressId)
+                  : null) ||
+                nodes.find(
+                  (a: any) =>
+                    `${a.firstName} ${a.lastName}` === addressName ||
+                    a.address1 === addressName,
+                );
 
               if (selectedAddr) {
                 buyerIdentity = {
-                  customerAccessToken: tokenStr,
                   deliveryAddressPreferences: [
                     {
                       deliveryAddress: {
@@ -197,10 +232,39 @@ export async function action({request, context}: ActionFunctionArgs) {
             }
           }
 
-          if (typeof context.cart.updateBuyerIdentity === 'function') {
-            await context.cart.updateBuyerIdentity(
-              buyerIdentity || {customerAccessToken: tokenStr},
-            );
+          const payload: any = {...(buyerIdentity || {})};
+          if (shopifyToken) payload.customerAccessToken = shopifyToken;
+
+          if (
+            Object.keys(payload).length > 0 &&
+            typeof context.cart.updateBuyerIdentity === 'function'
+          ) {
+            const result: any = await context.cart.updateBuyerIdentity(payload);
+
+            /**
+             * `updateBuyerIdentity` resolves with userErrors rather than
+             * throwing, so the catch below never saw a rejected token. If the
+             * token is what Shopify objected to, send the rest again without
+             * it: an address pre-fill is worth more than an association
+             * Shopify has already refused.
+             */
+            const userErrors =
+              result?.cartBuyerIdentityUpdate?.userErrors ||
+              result?.userErrors ||
+              [];
+
+            if (userErrors.length > 0) {
+              console.warn(
+                '[LOCATION API] cartBuyerIdentityUpdate userErrors:',
+                JSON.stringify(userErrors),
+              );
+              if (payload.customerAccessToken) {
+                delete payload.customerAccessToken;
+                if (Object.keys(payload).length > 0) {
+                  await context.cart.updateBuyerIdentity(payload);
+                }
+              }
+            }
           }
         }
       }

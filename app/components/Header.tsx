@@ -237,6 +237,17 @@ export function Header({ header, isLoggedIn, cart, locations, customer, locale, 
     if (addressName) {
       locFormData.append('addressName', addressName);
     }
+    /**
+     * The address id, because the name is not unique.
+     *
+     * `addressName` is «motasem odeh» -- the customer's own name, which every
+     * address they have saved carries. Matching on it downstream returns
+     * whichever address Shopify happens to list first, so picking the second
+     * of two home addresses pre-filled the first one at checkout.
+     */
+    if (fullAddress?.id) {
+      locFormData.append('addressId', String(fullAddress.id));
+    }
     setPendingLocation({
       branchId: branchId,
       branchName,

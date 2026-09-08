@@ -1300,7 +1300,10 @@ export default function Product() {
 
     // Format the date based on locale
     return date.toLocaleDateString(
-      locale === 'ar' ? 'ar-SA-u-ca-gregory' : 'en-US',
+      // -u-nu-latn to match the rest of the storefront: Arabic month and
+      // weekday names, Western digits. Without it this one date rendered
+      // ٨ سبتمبر ٢٠٢٦ beside prices and quantities in 8, 9, 2026.
+      locale === 'ar' ? 'ar-SA-u-nu-latn-ca-gregory' : 'en-US',
       {
         weekday: 'long',
         year: 'numeric',

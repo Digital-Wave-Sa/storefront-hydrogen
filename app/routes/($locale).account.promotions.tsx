@@ -808,7 +808,7 @@ function PromotionsDashboardContent({adminData}: {adminData: any}) {
 
     const rows = filteredRedemptions.map((r: any) => [
       r.orderName,
-      new Date(r.date).toLocaleDateString(isEn ? 'en-US' : 'ar-SA'),
+      new Date(r.date).toLocaleDateString(isEn ? 'en-US' : 'ar-SA-u-nu-latn'),
       r.code,
       r.customerName,
       r.customerEmail,
@@ -1511,7 +1511,7 @@ function PromotionsDashboardContent({adminData}: {adminData: any}) {
                           </td>
                           <td className="px-6 py-4 text-gray-400 font-en">
                             {new Date(red.date).toLocaleDateString(
-                              isEn ? 'en-US' : 'ar-SA',
+                              isEn ? 'en-US' : 'ar-SA-u-nu-latn',
                               {
                                 month: 'short',
                                 day: 'numeric',

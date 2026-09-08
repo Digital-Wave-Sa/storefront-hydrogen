@@ -43,7 +43,7 @@ export default function Article() {
   const [copied, setCopied] = useState(false);
 
   const publishedDate = publishedAt
-    ? new Intl.DateTimeFormat(isEn ? 'en-US' : 'ar-SA', {
+    ? new Intl.DateTimeFormat(isEn ? 'en-US' : 'ar-SA-u-nu-latn', {
         year: 'numeric',
         month: 'long',
         day: 'numeric',
@@ -117,18 +117,13 @@ export default function Article() {
               </span>
             )}
 
-            {author?.name && (
-              <>
-                <span>•</span>
-                <span className="flex items-center gap-1.5">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                    <circle cx="12" cy="7" r="4"></circle>
-                  </svg>
-                  {author.name}
-                </span>
-              </>
-            )}
+            {/*
+              No byline. Shopify records whichever staff account published the
+              article as its author, which is an internal detail rather than a
+              credit anyone intended to print -- these are the shop's articles,
+              not a named columnist's. `author` is still queried, so restoring
+              this is a matter of putting the markup back.
+            */}
           </div>
         </header>
 
@@ -181,8 +176,14 @@ export default function Article() {
         <div className="text-center">
           <Link
             to={`/blogs/${blogHandle}`}
-            className="inline-flex items-center gap-2 px-8 py-3.5 rounded-full bg-[#234745] text-white font-bold text-sm hover:bg-[#1a3533] transition-all shadow-md"
-            style={{fontFamily: fontFam}}
+            className="inline-flex items-center gap-2 px-8 py-3.5 rounded-full bg-[#234745] !text-white font-bold text-sm hover:bg-[#1a3533] transition-all shadow-md"
+            /*
+              `!text-white` and the inline colour together, which is the
+              pattern the cart and vouchers buttons already use here: a global
+              `a { color: … }` rule outranks Tailwind's plain `text-white`, so
+              this button was rendering near-black on dark green.
+            */
+            style={{fontFamily: fontFam, color: '#FFFFFF'}}
           >
             <span className={`text-base ${isEn ? '' : 'rotate-180'}`}>←</span>
             <span>{isEn ? 'Back to News & Articles' : 'العودة لكافة المقالات والأخبار'}</span>

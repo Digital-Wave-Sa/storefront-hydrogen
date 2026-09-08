@@ -300,7 +300,7 @@ function FeaturedArticleCard({
   isEn: boolean;
 }) {
   const publishedDate = article.publishedAt
-    ? new Intl.DateTimeFormat(isEn ? 'en-US' : 'ar-SA', {
+    ? new Intl.DateTimeFormat(isEn ? 'en-US' : 'ar-SA-u-nu-latn', {
         year: 'numeric',
         month: 'long',
         day: 'numeric',
@@ -408,7 +408,7 @@ function ArticleCard({
   loading?: HTMLImageElement['loading'];
 }) {
   const publishedDate = article.publishedAt
-    ? new Intl.DateTimeFormat(isEn ? 'en-US' : 'ar-SA', {
+    ? new Intl.DateTimeFormat(isEn ? 'en-US' : 'ar-SA-u-nu-latn', {
         year: 'numeric',
         month: 'short',
         day: 'numeric',

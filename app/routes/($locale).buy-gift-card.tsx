@@ -9,7 +9,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { useLocation, useNavigate, useLoaderData, useFetcher } from 'react-router';
+import { redirect, useLocation, useNavigate, useLoaderData, useFetcher } from 'react-router';
 import type { MetaFunction, LoaderFunctionArgs } from 'react-router';
 import { CartForm } from '@shopify/hydrogen';
 import { SaudiRiyalSymbol } from '~/components/Price';
@@ -20,7 +20,22 @@ export const meta: MetaFunction = () => [
 ];
 
 // ─── Loader: pre-fill customer info from session & verify Gift Card product ──
-export async function loader({ request, context }: LoaderFunctionArgs) {
+/**
+ * Retired. /vouchers renders the same GiftVoucherWizard and runs the same
+ * live-variant query, and is what the header, the offers section, the gifting
+ * page and the occasions page all link to. The only link that ever pointed
+ * here was on the gift-card product page, which is now closed as well, so this
+ * route is reachable only by typing it.
+ *
+ * Kept as a redirect rather than deleted: the URL has been in circulation.
+ */
+export async function loader({context}: LoaderFunctionArgs) {
+  const isEn = context.storefront.i18n.language === 'EN';
+  return redirect(isEn ? '/en/vouchers' : '/vouchers', {status: 301});
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+async function legacyLoader({ request, context }: LoaderFunctionArgs) {
   const { session, storefront } = context;
   let customerName = '';
   let customerEmail = '';

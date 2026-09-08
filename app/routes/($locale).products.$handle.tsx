@@ -5,6 +5,7 @@ import {
   type VisibilityResult,
 } from '~/lib/visibility';
 import {getIsOutOfStock, isOutOfStockAtBranch, resolveBranchLocationId} from '~/lib/stock';
+import {isGiftCardProduct} from '~/lib/digital-lines';
 import {useBranchAvailability} from '~/lib/useBranchAvailability';
 import {StockNotificationModal} from '~/components/StockNotificationModal';
 import {ProductUpsellModal} from '~/components/ProductUpsellModal';
@@ -259,6 +260,24 @@ export async function loader(args: LoaderFunctionArgs) {
   if (decodedHandle === 'cart') {
     const isEn = storefront.i18n.language === 'EN';
     return redirect(isEn ? '/en/cart' : '/cart');
+  }
+
+  /**
+   * The gift card has no product page.
+   *
+   * It is sold by the wizard on /vouchers, which collects the recipient, the
+   * amount, the design and the message. This page collects none of those, so a
+   * card bought here would be issued with nothing attached to it. Every variant
+   * URL lands here too -- ?Title=200+SAR and the rest -- so the redirect is
+   * before the query rather than after it, and drops the query string with it.
+   *
+   * A redirect rather than a 404 because the handle has been in circulation and
+   * may sit in bookmarks, old links and Google's index; those people wanted a
+   * gift card and should be given one.
+   */
+  if (isGiftCardProduct(decodedHandle)) {
+    const isEn = storefront.i18n.language === 'EN';
+    return redirect(isEn ? '/en/vouchers' : '/vouchers', {status: 301});
   }
 
   let {product} = await storefront.query(PRODUCT_QUERY, {

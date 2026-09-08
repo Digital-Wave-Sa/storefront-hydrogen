@@ -584,6 +584,19 @@ export default function FeedbackPage() {
                         name={`product_${item.id}_handle`}
                         value={(item as any).handle || 'general-feedback'}
                       />
+                      {/*
+                        The readable title, so a complaint reaches the CRM
+                        naming the product rather than its slug. The loader
+                        already resolves this -- including the translated
+                        title from the Storefront API -- and it was simply
+                        never posted, so `product_name` arrived as
+                        "large-mango-velvet".
+                      */}
+                      <input
+                        type="hidden"
+                        name={`product_${item.id}_title`}
+                        value={(item as any).title || ''}
+                      />
                     </div>
                   </div>
                 ))}
@@ -723,14 +736,19 @@ export async function action({request, context, params}: Route.ActionArgs) {
   const customerName = formData.get('customerName') || 'Verified Customer';
 
   // Find all rated products — keys are product_{itemId}_rating and product_{itemId}_handle
-  const productRatingsList: Array<{handle: string; rating: number}> = [];
+  const productRatingsList: Array<{
+    handle: string;
+    rating: number;
+    title?: string;
+  }> = [];
   for (const [key, value] of formData.entries()) {
     if (key.startsWith('product_') && key.endsWith('_rating')) {
       const productId = key.replace('product_', '').replace('_rating', '');
       const handle = String(formData.get(`product_${productId}_handle`) || 'general-feedback');
+      const title = String(formData.get(`product_${productId}_title`) || '');
       const rating = parseInt(String(value), 10) || 0;
       if (handle && handle !== 'general-feedback') {
-        productRatingsList.push({handle, rating});
+        productRatingsList.push({handle, rating, ...(title ? {title} : {})});
       }
     }
   }

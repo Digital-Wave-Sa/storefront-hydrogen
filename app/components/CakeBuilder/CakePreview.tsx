@@ -247,8 +247,27 @@ export function CakePreview({
       }
     }
 
+    /**
+     * Whether this topping has shape-specific artwork registered at all.
+     *
+     * A topping with no designs is generic -- it looks the same on everything,
+     * and its own image is the right one to draw. A topping that HAS designs
+     * but none for this shape is a different case: its own image was taken on
+     * some other shape, and drawing it produces a cake nobody can bake. Better
+     * to show the shape with no topping, which reads as "not available here",
+     * than a confident picture of the wrong thing.
+     */
+    const toppingHasShapeDesigns =
+      !!toppingMatch &&
+      !!toppingDesigns?.length &&
+      toppingDesigns.some((d: any) => {
+        const tRefId = (d.topping?.reference?.id || d.topping?.value || '').toLowerCase();
+        const tMatchId = (toppingMatch.id || '').toLowerCase();
+        return tRefId && tMatchId && (tRefId === tMatchId || tRefId.includes(tMatchId));
+      });
+
     // Direct fallback from the cake_attribute metaobject itself
-    if (!resolvedToppingImg && toppingMatch) {
+    if (!resolvedToppingImg && toppingMatch && !(shapeMatch && toppingHasShapeDesigns)) {
       resolvedToppingImg = view === 'top' && toppingMatch.imageTop?.reference?.image?.url
         ? toppingMatch.imageTop.reference.image.url
         : view === 'sliced' && toppingMatch.imageSliced?.reference?.image?.url
@@ -321,6 +340,24 @@ export function CakePreview({
     let loadedCount = 0;
     const loadedImages: Record<string, HTMLImageElement> = {};
 
+    /**
+     * Whether this run of the effect still owns the canvas.
+     *
+     * The images load asynchronously and the canvas is painted from inside
+     * their `onload`. Nothing used to cancel a run, so moving between steps --
+     * back from the topping step above all, where the sources change while the
+     * previous images are still in flight -- left two runs racing for the same
+     * canvas. Each clears before it draws, so the picture is never a blend;
+     * it is whichever run finished LAST, and a cached image resolving
+     * instantly means that is often the older one. The result is a preview
+     * showing a cake the customer has already moved on from.
+     *
+     * Browser image caching makes it worse rather than better: a repeat visit
+     * to a step resolves from cache in the same tick, so the stale run wins
+     * reliably rather than occasionally.
+     */
+    let cancelled = false;
+
     if (imagesToLoad.length === 0) {
       ctx.clearRect(0, 0, width, height);
       return;
@@ -330,6 +367,7 @@ export function CakePreview({
       const img = new Image();
       img.crossOrigin = 'anonymous';
       img.onload = () => {
+        if (cancelled) return;
         loadedImages[item.key] = img;
         loadedCount++;
         if (loadedCount === imagesToLoad.length) {
@@ -337,6 +375,7 @@ export function CakePreview({
         }
       };
       img.onerror = () => {
+        if (cancelled) return;
         loadedCount++;
         if (loadedCount === imagesToLoad.length) {
           render();
@@ -344,6 +383,10 @@ export function CakePreview({
       };
       img.src = item.src;
     });
+
+    return () => {
+      cancelled = true;
+    };
 
     function render() {
       if (!ctx) return;

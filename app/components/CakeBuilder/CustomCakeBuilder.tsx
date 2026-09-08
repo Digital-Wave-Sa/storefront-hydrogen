@@ -328,6 +328,22 @@ export default function CustomCakeBuilder({
 
   const hasLoadedRef = useRef(false);
 
+  /**
+   * Has the customer chosen a shape themselves, as opposed to one arriving
+   * from a reorder?
+   *
+   * `availableStyles` keeps whatever topping is currently selected in its list
+   * no matter which shape is chosen, so that a re-ordered cake still shows a
+   * topping that has since been delisted. That allowance also covered the
+   * customer's own choices: pick a topping on one shape, go back and change
+   * the shape, and the topping stayed "available" by construction -- so the
+   * effect meant to catch exactly that never fired, and the preview drew the
+   * old shape's artwork on the new cake.
+   *
+   * Once this is true, availability is judged on the shape alone.
+   */
+  const shapeTouchedRef = useRef(false);
+
   // Helper to find matching option by name, id, gid, or partial string match
   const findMatchingOption = <T extends { id?: string; name?: string; color?: string; count?: number }>(
     options: T[],
@@ -482,8 +498,16 @@ export default function CustomCakeBuilder({
     return mergedOptions.styles.filter(style => {
       if (style.id === 'basic') return true;
 
-      // Always include currently selected style (e.g. from reorder)
-      if (selections.style && (style.id === selections.style.id || style.name === selections.style.name)) return true;
+      // The reorder allowance, and only that: until the customer picks a shape
+      // of their own, a topping carried in from a previous order stays listed
+      // even if it is no longer offered. After that it has to earn its place.
+      if (
+        !shapeTouchedRef.current &&
+        selections.style &&
+        (style.id === selections.style.id || style.name === selections.style.name)
+      ) {
+        return true;
+      }
 
       const styleGid = ((style as any)?.gid || style.id || '').toLowerCase();
 
@@ -520,19 +544,42 @@ export default function CustomCakeBuilder({
     });
   }, [mergedOptions.styles, selections.shape, selections.style, toppingDesigns, cakeAttributes]);
 
-  // Keep selected style synced if shape changes and previous style becomes unavailable
+  /**
+   * Re-resolve the chosen topping against the chosen shape.
+   *
+   * Checking that the id is still available is not enough: the same topping is
+   * a different object per shape, and that object carries the artwork. Keeping
+   * the old one is what put a topping photographed on one shape onto another.
+   * So the match is looked up and stored, not merely counted.
+   *
+   * When the topping is not offered for the new shape it is cleared rather than
+   * swapped for `availableStyles[0]`. Substituting silently changes the cake
+   * somebody ordered without telling them -- they would find out from the order
+   * confirmation, or the kitchen would. `stepComplete(3)` already blocks Next
+   * without a topping, so clearing sends them back to choose one.
+   */
   React.useEffect(() => {
-    if (availableStyles.length > 0) {
-      const isAvailable = availableStyles.some(s => 
-        s.id === selections.style?.id || 
-        s.name === selections.style?.name ||
-        (s.id && selections.style?.id && (s.id.includes(selections.style.id) || selections.style.id.includes(s.id)))
-      );
-      // Only re-points a choice already made; never makes one.
-      if (selections.style && !isAvailable && selections.style.id !== 'basic') {
-        setSelections(prev => ({ ...prev, style: availableStyles[0] }));
+    if (!selections.style) return;
+
+    const match = availableStyles.find(s =>
+      s.id === selections.style?.id ||
+      s.name === selections.style?.name ||
+      (s.id && selections.style?.id && (s.id.includes(selections.style.id) || selections.style.id.includes(s.id)))
+    );
+
+    if (match) {
+      // Same topping, fresh object -- the one carrying this shape's image.
+      if (match !== selections.style) {
+        setSelections(prev => ({ ...prev, style: match }));
       }
+      return;
     }
+
+    // Basic is offered on every shape, and a reorder that has not been
+    // touched keeps whatever it arrived with.
+    if (selections.style.id === 'basic' || !shapeTouchedRef.current) return;
+
+    setSelections(prev => ({ ...prev, style: null }));
   }, [availableStyles, selections.style]);
 
   const [view, setView] = useState<'front' | 'top' | 'sliced'>('front');
@@ -582,6 +629,10 @@ export default function CustomCakeBuilder({
   }, [currentStep]);
 
   const handleSelect = (category: string, item: any) => {
+    // From here on, topping availability answers to the shape rather than to
+    // whatever was already selected. Set before the state update, so the
+    // re-computation on the next render already sees it.
+    if (category === 'shape') shapeTouchedRef.current = true;
     setSelections(prev => ({ ...prev, [category]: item }));
   };
 

@@ -11,6 +11,7 @@ import { AddToCartButton } from '~/components/AddToCartButton';
 import { StockNotificationModal } from '~/components/StockNotificationModal';
 import { useWishlist } from '~/context/WishlistContext';
 import { fixMojibake } from '~/lib/mojibake';
+import { isGiftCardProduct } from '~/lib/digital-lines';
 
 function formatNumbers(text: string) {
   if (!text) return text;
@@ -23,7 +24,25 @@ function formatNumbers(text: string) {
   });
 }
 
-export function ProductItem({
+/**
+ * The gift card never appears as a card.
+ *
+ * It is sold by the wizard on /vouchers, and its product page now redirects
+ * there -- so a tile linking to that page would send shoppers through a
+ * redirect to reach a form they could have opened from the nav. Filtering here
+ * covers every grid at once: collections, search, promotions, gifting,
+ * corporate and the wishlist all render through this component.
+ *
+ * A wrapper rather than an early return inside the component, because the body
+ * below calls hooks from its first line and a conditional return above them
+ * would change the hook order between renders.
+ */
+export function ProductItem(props: any) {
+  if (isGiftCardProduct(props?.product)) return null;
+  return <ProductItemCard {...props} />;
+}
+
+function ProductItemCard({
   product,
   loading,
   view = 'grid',

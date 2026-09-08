@@ -43,6 +43,38 @@ const GIFT_CARD_HANDLE_PATTERN = /gift[-_]?card/i;
 const GIFT_CARD_TITLE_PATTERN = /gift\s*card|بطاقة\s*هدية/i;
 
 /**
+ * True when this is THE gift-card product.
+ *
+ * The gift card is sold through the wizard on /vouchers, which asks for the
+ * recipient, the amount, the design and the message. Its product page asks for
+ * none of that, so a shopper who lands there buys a card that goes nowhere.
+ * The page is therefore closed and every route to it redirects.
+ *
+ * Takes a product, a handle or a title, because the callers have different
+ * things to hand: the product route has only a handle string at the point it
+ * needs to decide, and listing components have the whole object.
+ */
+export function isGiftCardProduct(input: any): boolean {
+  if (!input) return false;
+
+  if (typeof input === 'string') {
+    return (
+      GIFT_CARD_HANDLE_PATTERN.test(input) || GIFT_CARD_TITLE_PATTERN.test(input)
+    );
+  }
+
+  if (input?.isGiftCard === true) return true;
+  if (input?.id && String(input.id) === GIFT_CARD_PRODUCT_ID) return true;
+  if (input?.handle && GIFT_CARD_HANDLE_PATTERN.test(String(input.handle))) {
+    return true;
+  }
+  if (input?.title && GIFT_CARD_TITLE_PATTERN.test(String(input.title))) {
+    return true;
+  }
+  return false;
+}
+
+/**
  * True when this line is a gift voucher: no branch, no address, no time slot,
  * and it cannot be reordered by variant id alone.
  */

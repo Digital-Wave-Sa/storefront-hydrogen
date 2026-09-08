@@ -1,6 +1,7 @@
 import {Link} from 'react-router';
 import {Image, Money, Pagination} from '@shopify/hydrogen';
 import {urlWithTrackingParams, type RegularSearchReturn} from '~/lib/search';
+import {isGiftCardProduct} from '~/lib/digital-lines';
 
 type SearchItems = RegularSearchReturn['result']['items'];
 type PartialSearchResult<ItemType extends keyof SearchItems> = Pick<
@@ -106,7 +107,11 @@ function SearchResultsProducts({
       <h2>Products</h2>
       <Pagination connection={products}>
         {({nodes, isLoading, NextLink, PreviousLink}) => {
-          const ItemsMarkup = nodes.map((product: any) => {
+          // The gift card is sold on /vouchers and its product page redirects
+          // there, so a search hit linking to it is a dead end.
+          const ItemsMarkup = nodes
+            .filter((product: any) => !isGiftCardProduct(product))
+            .map((product: any) => {
             const productUrl = urlWithTrackingParams({
               baseUrl: `/products/${product.handle}`,
               trackingParams: product.trackingParameters,

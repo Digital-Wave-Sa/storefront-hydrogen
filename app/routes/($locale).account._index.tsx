@@ -511,6 +511,17 @@ export default function AccountDashboard() {
                     (lastOrder as any).processedAt,
                     isEn,
                   );
+                  /**
+                   * The name the customer recognises, not the bare number.
+                   * /account/orders shows «SDN-1321»; this card printed
+                   * «#1321» for the same order, because the Admin REST mapper
+                   * kept only `order_number`. It now carries `name` too, and
+                   * a leading # is stripped so it is not doubled.
+                   */
+                  const displayOrderName = String(
+                    (lastOrder as any).name || lastOrder.orderNumber || '',
+                  ).replace(/^#/, '');
+
                   const trackOrderNumber =
                     lastOrder.orderNumber ||
                     ((lastOrder as any).name
@@ -651,7 +662,7 @@ export default function AccountDashboard() {
                             {/* Order number then item titles — the mobile order
                                 card on /account/orders reads the same way. */}
                             <span className="text-[12px] text-[#9FB7AE] font-medium font-en">
-                              #{lastOrder.orderNumber}
+                              #{displayOrderName}
                             </span>
                             <h3
                               className="text-[17px] font-bold text-[#171717] leading-tight line-clamp-2"
@@ -798,7 +809,7 @@ export default function AccountDashboard() {
                             <div className="flex flex-col gap-1 min-w-0">
                               {/* Order number */}
                               <span className="text-[12px] text-[#9FB7AE] font-medium font-en">
-                                #{lastOrder.orderNumber}
+                                #{displayOrderName}
                               </span>
                               {/* Item titles */}
                               <h3

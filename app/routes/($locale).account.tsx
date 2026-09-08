@@ -307,6 +307,10 @@ export async function loader({request, context}: LoaderFunctionArgs) {
               mappedOrders = ordersData.orders.map((o: any) => ({
                 id: `gid://shopify/Order/${o.id}`,
                 orderNumber: o.order_number,
+                // The customer-facing name (SDN-1321), which is what
+                // /account/orders shows. Without it this card could only
+                // print the bare number and read "#1321" for the same order.
+                name: o.name || (o.order_number ? `#${o.order_number}` : ''),
                 processedAt: o.processed_at,
                 financialStatus: o.financial_status
                   ? o.financial_status.toUpperCase()
@@ -334,11 +338,18 @@ export async function loader({request, context}: LoaderFunctionArgs) {
                       key: p.name || p.key,
                       value: String(p.value || '')
                     })),
+                    /**
+                     * Admin REST gives a line item no image and no product,
+                     * so this is a shell -- filled in below by a Storefront
+                     * lookup keyed on the variant id. Left null rather than
+                     * absent so the shape matches the Storefront path.
+                     */
                     variant: {
                       id: li.variant_id
                         ? `gid://shopify/ProductVariant/${li.variant_id}`
                         : undefined,
                       image: null,
+                      product: null,
                     },
                   })),
                 },
@@ -351,6 +362,17 @@ export async function loader({request, context}: LoaderFunctionArgs) {
             e,
           );
         }
+      }
+
+      /**
+       * Admin REST hands back a title frozen in English at purchase time and
+       * no artwork at all, so the dashboard card read "PANUT CRUNCH" beside an
+       * empty tile for an order that /account/orders shows in Arabic with a
+       * photograph. One Storefront lookup on the variant ids fixes both.
+       */
+      if (mappedOrders.length > 0) {
+        const {enrichOrderLineItems} = await import('~/lib/order-media.server');
+        mappedOrders = await enrichOrderLineItems(storefront, mappedOrders);
       }
 
       /**

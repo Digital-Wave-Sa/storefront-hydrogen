@@ -242,11 +242,17 @@ export async function action({request, context}: ActionFunctionArgs) {
             const result: any = await context.cart.updateBuyerIdentity(payload);
 
             /**
+             * Reported, never retried.
+             *
              * `updateBuyerIdentity` resolves with userErrors rather than
-             * throwing, so the catch below never saw a rejected token. If the
-             * token is what Shopify objected to, send the rest again without
-             * it: an address pre-fill is worth more than an association
-             * Shopify has already refused.
+             * throwing, so a rejection used to pass silently -- worth logging.
+             * But it must not be answered by resending without the token.
+             * `cartBuyerIdentityUpdate` REPLACES the buyer identity rather than
+             * patching it: a call that omits `customerAccessToken` succeeds and
+             * takes the customer association off the cart, and the shopper
+             * arrives at Shopify Checkout signed out. A failed address pre-fill
+             * costs a shopper some typing; a dropped association costs them
+             * their account, their saved addresses and their loyalty.
              */
             const userErrors =
               result?.cartBuyerIdentityUpdate?.userErrors ||
@@ -258,12 +264,6 @@ export async function action({request, context}: ActionFunctionArgs) {
                 '[LOCATION API] cartBuyerIdentityUpdate userErrors:',
                 JSON.stringify(userErrors),
               );
-              if (payload.customerAccessToken) {
-                delete payload.customerAccessToken;
-                if (Object.keys(payload).length > 0) {
-                  await context.cart.updateBuyerIdentity(payload);
-                }
-              }
             }
           }
         }

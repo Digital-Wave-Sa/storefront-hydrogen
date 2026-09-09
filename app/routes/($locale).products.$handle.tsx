@@ -4175,7 +4175,7 @@ export default function Product() {
                                   : 'جاري...'
                                 : isEn
                                   ? 'Buy Now'
-                                  : 'شراء الآن'}
+                                  : 'إشتري الان'}
                             </span>
                           </span>
                         </button>

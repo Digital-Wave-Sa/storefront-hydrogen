@@ -1,126 +1,223 @@
-import {data, type ActionFunctionArgs} from 'react-router';
+import {
+  data,
+  type ActionFunctionArgs,
+  type LoaderFunctionArgs,
+} from 'react-router';
 
-const createMutation = `
-  mutation metaobjectCreate($metaobject: MetaobjectCreateInput!) {
-    metaobjectCreate(metaobject: $metaobject) {
-      metaobject {
-        id
-        handle
-      }
-      userErrors {
-        field
-        message
-      }
-    }
+/**
+ * GET /api/stock-notification
+ *
+ * What this shopper is waiting for. The middleware can only list by phone --
+ * it is the key it deduplicates and cancels on -- and the phone comes from the
+ * SESSION, never from a query parameter: `?phone=` would otherwise be an open
+ * read of anybody's waiting list, the same hole `resolveSelf` was written to
+ * close for loyalty and wallet.
+ *
+ * With `?variantId=` (and optionally `?locationId=`) it also answers the one
+ * question the modal needs: is this shopper already on the list for THIS
+ * product at THIS branch? The modal cannot work that out for itself -- the
+ * middleware files a subscription under the SKU, and no product fragment on
+ * the storefront selects `sku`, so the browser only ever holds a variant id.
+ * The match is therefore made here, where the SKU can be looked up.
+ *
+ * A guest gets a plain "no" rather than a 401. The modal probes this on every
+ * open, and an error in the console for the ordinary case of not being signed
+ * in is noise that hides real ones.
+ */
+export async function loader({request, context}: LoaderFunctionArgs) {
+  const {resolveSelf} = await import('~/lib/session-identity.server');
+  const {listNotifySubscriptions, resolveProductCode, normalizeLocationId} =
+    await import('~/lib/notify-me.server');
+
+  const self = await resolveSelf(context);
+  if (!self) {
+    return data({
+      success: true,
+      signedIn: false,
+      hasPhone: false,
+      subscriptions: [],
+      subscribed: false,
+      subscriptionId: null,
+    });
   }
-`;
 
-const defMutation = `
-  mutation metaobjectDefinitionCreate($definition: MetaobjectDefinitionCreateInput!) {
-    metaobjectDefinitionCreate(definition: $definition) {
-      createdDefinition {
-        id
-        type
-      }
-      userErrors {
-        field
-        message
-      }
-    }
+  const {ok, subscriptions} = await listNotifySubscriptions({
+    env: context.env,
+    phone: self.phone,
+  });
+
+  const url = new URL(request.url);
+  const variantId = url.searchParams.get('variantId');
+  const locationId = url.searchParams.get('locationId');
+
+  let match: any = null;
+  if (variantId && subscriptions.length > 0) {
+    const productCode = await resolveProductCode(context.storefront, variantId);
+    const wantedLocation = normalizeLocationId(locationId);
+
+    match =
+      subscriptions.find(
+        (s) =>
+          s.productCode &&
+          productCode &&
+          s.productCode === productCode &&
+          // No branch in the query means "anywhere" -- better to say "you are
+          // already on the list" than to offer a second identical alert.
+          (!wantedLocation ||
+            normalizeLocationId(s.locationId) === wantedLocation),
+      ) || null;
   }
-`;
 
+  return data({
+    success: ok,
+    signedIn: true,
+    hasPhone: Boolean(self.phone),
+    subscriptions,
+    subscribed: Boolean(match),
+    subscriptionId: match?.id || null,
+  });
+}
+
+/**
+ * A single Admin GraphQL call.
+ *
+ * Kept when the STOQ integration was removed: the manager-notification step
+ * still uses it to read `custom.product_manager` and `custom.regional_manager`
+ * off the product. Deleting it broke that step with a ReferenceError --
+ * swallowed by its own catch, so subscriptions carried on working while nobody
+ * was emailed.
+ */
 async function executeAdminQuery(
   query: string,
-  variables: any,
-  token: string,
+  variables: Record<string, any>,
+  adminToken: string,
   shopDomain: string,
 ) {
-  const response = await fetch(
+  const res = await fetch(
     `https://${shopDomain}/admin/api/2024-04/graphql.json`,
     {
       method: 'POST',
       headers: {
-        'X-Shopify-Access-Token': token,
+        'X-Shopify-Access-Token': adminToken,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({query, variables}),
     },
   );
-  return response.json();
-}
-
-async function getShopifyMarketId(
-  env: any,
-  shopDomain: string,
-  targetCountry: string,
-): Promise<string | null> {
-  const envMarketId =
-    env?.SHOPIFY_MARKET_ID || env?.STOQ_MARKET_ID || env?.PUBLIC_STOQ_MARKET_ID;
-  if (envMarketId) return String(envMarketId);
-
-  try {
-    const {getAdminToken} = await import('~/lib/shopify-admin.server');
-    const adminToken = await getAdminToken(env || {}).catch(() => null);
-    if (!adminToken) return null;
-
-    const marketsQuery = `
-      query getMarkets {
-        markets(first: 20) {
-          nodes {
-            id
-            name
-            enabled
-            regions(first: 250) {
-              nodes {
-                ... on MarketRegionCountry {
-                  code
-                }
-              }
-            }
-          }
-        }
-      }
-    `;
-
-    const res = await executeAdminQuery(
-      marketsQuery,
-      {},
-      adminToken,
-      shopDomain,
-    );
-    const markets = res?.data?.markets?.nodes || [];
-    const enabledMarkets = markets.filter((m: any) => m.enabled !== false);
-
-    const countryUpper = (targetCountry || 'SA').toUpperCase();
-    let matchedMarket = enabledMarkets.find((m: any) =>
-      m.regions?.nodes?.some((r: any) => r.code === countryUpper),
-    );
-
-    if (!matchedMarket && enabledMarkets.length > 0) {
-      matchedMarket = enabledMarkets[0];
-    }
-
-    if (matchedMarket?.id) {
-      const numericId = String(matchedMarket.id).split('/').pop();
-      return numericId || null;
-    }
-  } catch (err) {
-    console.warn('[STOQ_MARKET_LOOKUP WARN]', err);
-  }
-  return null;
+  return (await res.json()) as any;
 }
 
 /**
  * POST /api/stock-notification
- * Registers a customer subscription for out of stock notification.
- * 1. Forwards to Saadeddin Backend API (api.saadeddin.top) for automated email notification dispatch
- * 2. Forwards to STOQ App v1 API (with Shopify Market support)
- * 3. Saves subscription as a Shopify Metaobject of type "stock_notification"
+ *
+ * Registers a shopper on the waiting list for a product that is out of stock
+ * at their branch, by forwarding to the middleware's `/notify-me/subscribe`.
+ * The middleware owns the list and forwards to the ERP itself, so this is the
+ * only copy; it used to also write to the STOQ app and a `stock_alerts`
+ * metafield, which meant three records that could disagree.
+ *
+ * Managers are still emailed separately, which is a different job: telling the
+ * business a product is being asked for, rather than remembering who asked.
  */
 export async function action({request, context}: ActionFunctionArgs) {
   if (request.method !== 'POST') {
     return data({error: 'Method not allowed'}, {status: 405});
+  }
+
+  /**
+   * Leaving the waiting list.
+   *
+   * The middleware cancels by (phone, productCode, locationId) or by the id it
+   * handed back at subscribe time. Phone is the reliable one -- it is also the
+   * key it deduplicates on -- so an email-only subscriber can only be removed
+   * with the id, which is why the subscribe response's id is worth keeping.
+   */
+  {
+    const url = new URL(request.url);
+    if (url.searchParams.get('intent') === 'unsubscribe') {
+      const isEnRequest = context.storefront.i18n.language === 'EN';
+      const failure = {
+        success: false,
+        error: isEnRequest
+          ? 'We could not remove you from the list right now. Please try again shortly.'
+          : 'تعذّر إلغاء التنبيه حالياً. يرجى المحاولة بعد قليل.',
+      };
+
+      let payload: any = {};
+      try {
+        payload = (await request.json()) as any;
+      } catch {
+        return data({success: false, error: 'Invalid JSON body'}, {status: 400});
+      }
+
+      const {resolveSelf, identifierMatchesSession} = await import(
+        '~/lib/session-identity.server'
+      );
+      const {cancelNotifySubscription, resolveProductCode} = await import(
+        '~/lib/notify-me.server'
+      );
+
+      /**
+       * Whose subscription is this?
+       *
+       * The phone comes from the session. A phone in the request body is only
+       * honoured when it is the signed-in shopper's own -- otherwise
+       * `{"phone": "05XXXXXXXX", "productCode": ...}` would cancel a stranger's
+       * alert, which is the same open-lookup shape `resolveSelf` exists to
+       * close on the loyalty and wallet endpoints.
+       *
+       * An id is accepted on its own: it was handed to this browser at
+       * subscribe time and is the only handle an email-only subscriber has.
+       */
+      const self = await resolveSelf(context);
+      const supplied = payload.phone ? String(payload.phone).trim() : '';
+      const phone = self?.phone
+        ? String(self.phone)
+        : supplied && self && identifierMatchesSession(self, supplied)
+          ? supplied
+          : null;
+
+      const subscriptionId = payload.subscriptionId
+        ? String(payload.subscriptionId)
+        : null;
+
+      if (!subscriptionId && !phone) {
+        return data(
+          {
+            success: false,
+            error: isEnRequest
+              ? 'Please sign in to manage your stock alerts.'
+              : 'يرجى تسجيل الدخول لإدارة تنبيهات التوفر.',
+          },
+          {status: 401},
+        );
+      }
+
+      /**
+       * The modal knows the variant, never the SKU -- so the code is resolved
+       * here, the same way subscribe resolves it.
+       *
+       * Resolved even when an id was sent, because the id is no longer trusted
+       * on its own: a `DELETE /notify-me/:id` that answers "not found" falls
+       * back to cancelling by (phone, productCode, locationId), and that
+       * fallback only exists if the code was looked up first.
+       */
+      const productCode =
+        (payload.productCode && String(payload.productCode)) ||
+        (payload.variantId
+          ? await resolveProductCode(context.storefront, payload.variantId)
+          : null);
+
+      const {ok} = await cancelNotifySubscription({
+        env: context.env,
+        subscriptionId,
+        phone,
+        productCode,
+        locationId: payload.locationId,
+      });
+
+      return ok ? data({success: true}) : data(failure, {status: 503});
+    }
   }
 
   const {env} = context;
@@ -130,17 +227,29 @@ export async function action({request, context}: ActionFunctionArgs) {
     const body = (await request.json()) as any;
     const {
       email,
+      phone,
       variantId,
       productId,
+      productHandle,
+      imageUrl,
       productTitle,
       locationId,
       locationName,
+      branchName,
       country = 'SA',
       shopifyMarketId,
       customerName,
       acceptsMarketing = true,
       quantity = 1,
     } = body;
+
+    const isEnRequest = context.storefront.i18n.language === 'EN';
+
+    /** Used by the manager-notification step's Admin API call, below. */
+    const shopDomain =
+      (env as any)?.PUBLIC_STORE_DOMAIN ||
+      (env as any)?.SHOPIFY_STORE_DOMAIN ||
+      'saadeldeenshop-x21xumcd.myshopify.com';
 
     if (!email || !variantId) {
       /**
@@ -163,244 +272,102 @@ export async function action({request, context}: ActionFunctionArgs) {
         ? String(locationId).split('/').pop()
         : (locationId && String(locationId).trim()) || '80198500503';
 
-    // Helper for STOQ & Admin API myshopify domain
-    const getMyshopifyDomain = (envObj: any) => {
-      if (envObj?.SHOPIFY_ADMIN_DOMAIN) {
-        return envObj.SHOPIFY_ADMIN_DOMAIN.replace(/^https?:\/\//, '').replace(
-          /\/$/,
-          '',
-        );
-      }
-      if (
-        envObj?.SHOPIFY_SHOP &&
-        String(envObj.SHOPIFY_SHOP).includes('myshopify.com')
-      ) {
-        return envObj.SHOPIFY_SHOP;
-      }
-      if (
-        envObj?.PUBLIC_STORE_DOMAIN &&
-        String(envObj.PUBLIC_STORE_DOMAIN).includes('myshopify.com')
-      ) {
-        return envObj.PUBLIC_STORE_DOMAIN;
-      }
-      return 'saadeldeenshop-x21xumcd.myshopify.com';
-    };
-
-    const shopDomain = getMyshopifyDomain(env);
-
-    // 1. Forward subscription to Saadeddin Backend Middleware for email dispatch
+    /**
+     * The waiting list lives in the middleware, and only there.
+     *
+     * This used to write the subscription to three places at once: the
+     * middleware, the STOQ app, and a `stock_alerts` metafield on the shop.
+     * Three copies, three chances to disagree, and a hardcoded STOQ key in the
+     * repository. The middleware now forwards to the ERP itself (`/logNotifyMe`),
+     * so it is the record.
+     */
     const middlewareUrl =
-      (env as any)?.SAADEDDIN_API_URL || 'https://api.saadeddin.top';
+      (env as any)?.SAADEDDIN_API_URL ||
+      (env as any)?.CUSTOM_API_URL ||
+      'https://api.saadeddin.top';
+
+    /**
+     * `productCode` is the SKU. Resolved by the shared helper, so that the
+     * subscribe, unsubscribe and "are you already subscribed?" paths all file
+     * the shopper under the SAME code -- three spellings of it is exactly how
+     * an existing subscription would read as absent.
+     */
+    const {resolveProductCode} = await import('~/lib/notify-me.server');
+    const productCode = await resolveProductCode(context.storefront, variantId);
+
+    /**
+     * The phone matters more than it looks. The middleware deduplicates on
+     * (phone, productCode, locationId) and can only cancel by phone -- an
+     * email-only subscription creates a new row every time somebody presses
+     * the button and can be cancelled by id alone. So a signed-in shopper's
+     * phone is sent whenever the session has one.
+     */
+    const sessionPhone = await context.session.get('loginOtpPhone');
+    const resolvedPhone =
+      (phone && String(phone).trim()) ||
+      (sessionPhone ? String(sessionPhone) : '') ||
+      null;
+
+    let subscribed = false;
+    let subscriptionId: string | null = null;
+
     try {
-      await fetch(`${middlewareUrl}/api/stock-notification`, {
+      const res = await fetch(`${middlewareUrl}/notify-me/subscribe`, {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
+        headers: {
+          'Content-Type': 'application/json',
+          'x-client-source': 'web',
+        },
         body: JSON.stringify({
+          ...(resolvedPhone ? {phone: resolvedPhone} : {}),
           email,
-          variant_id: variantId,
-          product_title: productTitle || 'Product',
-          location_id: String(numericLocationId),
-          location_name: locationName || 'Global',
-          created_at: new Date().toISOString(),
+          productCode,
+          locationId: String(numericLocationId),
+          productTitle: productTitle || 'Product',
+          ...(branchName || locationName
+            ? {branchName: branchName || locationName}
+            : {}),
+          ...(productId ? {productId: String(productId)} : {}),
+          ...(variantId ? {variantId: String(variantId)} : {}),
+          ...(productHandle ? {productHandle: String(productHandle)} : {}),
+          ...(imageUrl ? {imageUrl: String(imageUrl)} : {}),
+          source: 'web',
         }),
       });
+
+      const payload = (await res.json().catch(() => ({}))) as any;
+      subscribed = res.ok && payload?.success === true;
+      subscriptionId = payload?.data?.id || null;
+
+      if (!subscribed) {
+        console.error(
+          `[NOTIFY_ME] Subscribe rejected (HTTP ${res.status}):`,
+          JSON.stringify(payload).slice(0, 300),
+        );
+      }
     } catch (mwErr) {
-      console.warn('[STOCK_NOTIFICATION MW ERR]', mwErr);
+      console.error('[NOTIFY_ME] Subscribe failed:', mwErr);
     }
 
     /**
-     * Declared out here on purpose, not inside the STOQ block below.
+     * A failure is reported as one.
      *
-     * It used to live inside that try, while the metafield step further down
-     * read it again from a different block — so
-     * `String(productId || numericProductId || '')` threw a ReferenceError
-     * whenever `productId` was absent, which is exactly when the Admin API
-     * lookup below had run to supply it. That step has its own catch, so the
-     * throw was swallowed and the subscription simply never reached the
-     * stock_alerts metafield: the shopper saw success, STOQ and the middleware
-     * both got their copy, and our own record was quietly missing.
+     * This route used to answer `{success: true}` from every path, including
+     * its own outermost catch, "so customer experience is smooth" -- so with
+     * the middleware down a shopper was promised an email that nothing would
+     * ever send. Being told to try again is better than being told a lie.
      */
-    let numericProductId = productId
-      ? String(productId).includes('/')
-        ? String(productId).split('/').pop()
-        : productId
-      : null;
-
-    // 2. Forward subscription to STOQ App API (v1 intents API as recommended by STOQ support)
-    try {
-      const numericVariantId = String(variantId).includes('/')
-        ? String(variantId).split('/').pop()
-        : variantId;
-
-      const stoqApiKey =
-        (env as any)?.STOQ_API_KEY ||
-        (env as any)?.STOQ_KEY ||
-        (env as any)?.PUBLIC_STOQ_API_KEY ||
-        'stoq_api_key_61aaceb43c5ffcf013318e26fe6eb854';
-
-      // If productId was not provided, resolve shopify_product_id from Admin API
-      if (!numericProductId && numericVariantId) {
-        try {
-          const {getAdminToken} = await import('~/lib/shopify-admin.server');
-          const adminToken = await getAdminToken(env || {}).catch(() => null);
-          if (adminToken) {
-            const varRes = await fetch(
-              `https://${shopDomain}/admin/api/2024-01/variants/${numericVariantId}.json`,
-              {
-                headers: {'X-Shopify-Access-Token': adminToken},
-              },
-            );
-            if (varRes.ok) {
-              const varData = (await varRes.json()) as any;
-              numericProductId = varData?.variant?.product_id
-                ? String(varData.variant.product_id)
-                : null;
-            }
-          }
-        } catch (_) {}
-      }
-
-      // Resolve Market ID for STOQ v1 API
-      const resolvedMarketId =
-        shopifyMarketId || (await getShopifyMarketId(env, shopDomain, country));
-
-      const stoqHeaders: Record<string, string> = {
-        'Content-Type': 'application/json',
-        'X-Shopify-Shop-Domain': shopDomain,
-      };
-      if (stoqApiKey) {
-        stoqHeaders['X-Auth-Token'] = stoqApiKey;
-      }
-
-      // STOQ v1 API Payload (recommended by STOQ support for Hydrogen & Markets)
-      const v1Payload = {
-        intent: {
-          shopify_variant_id: Number(numericVariantId) || numericVariantId,
-          ...(numericProductId
-            ? {shopify_product_id: Number(numericProductId) || numericProductId}
-            : {}),
-          ...(numericLocationId && numericLocationId !== 'global'
-            ? {
-                shopify_location_id:
-                  Number(numericLocationId) || numericLocationId,
-              }
-            : {}),
-          variant_id: Number(numericVariantId) || numericVariantId,
-          channel: 'email',
-          quantity: Number(quantity) || 1,
-          source: 'api',
+    if (!subscribed) {
+      return data(
+        {
+          success: false,
+          error:
+            (isEnRequest
+              ? 'We could not add you to the waiting list right now. Please try again shortly.'
+              : 'تعذّر تسجيلك في قائمة الانتظار حالياً. يرجى المحاولة بعد قليل.'),
         },
-        customer: {
-          email,
-          name: customerName || email.split('@')[0],
-          accepts_marketing: Boolean(acceptsMarketing),
-          country: String(country || 'sa').toLowerCase(),
-          ...(resolvedMarketId
-            ? {shopify_market_id: String(resolvedMarketId)}
-            : {}),
-        },
-      };
-
-      // 1. Primary: STOQ v1 Intents API
-      let stoqRes = await fetch('https://app.stoqapp.com/api/v1/intents.json', {
-        method: 'POST',
-        headers: stoqHeaders,
-        body: JSON.stringify(v1Payload),
-      });
-
-      // 2. Fallback: STOQ v2 Action API
-      if (!stoqRes.ok) {
-        stoqRes = await fetch(
-          'https://app.stoqapp.com/api/v2/external/back_in_stock/signups',
-          {
-            method: 'POST',
-            headers: stoqHeaders,
-            body: JSON.stringify({
-              channel: 'email',
-              shopify_variant_id: Number(numericVariantId) || numericVariantId,
-              ...(numericProductId
-                ? {
-                    shopify_product_id:
-                      Number(numericProductId) || numericProductId,
-                  }
-                : {}),
-              email,
-            }),
-          },
-        );
-      }
-
-      console.log(
-        `[STOQ_SIGNUP RES] Status: ${stoqRes.status} for shop: ${shopDomain}, variant: ${numericVariantId}, product: ${numericProductId}, marketId: ${resolvedMarketId || 'none'}`,
+        {status: 503},
       );
-    } catch (stoqErr) {
-      console.warn('[STOQ_SIGNUP WARN]', stoqErr);
-    }
-
-    // 3. Save subscription into Shopify Shop Metafields (namespace: stock_alerts)
-    try {
-      const {getAdminToken} = await import('~/lib/shopify-admin.server');
-      const adminToken = await getAdminToken(env || {}).catch(() => null);
-
-      if (adminToken) {
-        // Fetch Shop ID
-        const shopQuery = `query { shop { id } }`;
-        const shopRes = await executeAdminQuery(
-          shopQuery,
-          {},
-          adminToken,
-          shopDomain,
-        );
-        const shopId = shopRes?.data?.shop?.id;
-
-        if (shopId) {
-          const subKey = `sub_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
-          const subData = {
-            email,
-            variant_id: String(variantId),
-            product_id: String(productId || numericProductId || ''),
-            location_id: String(numericLocationId),
-            location_name: locationName || 'Global',
-            product_title: productTitle || 'Product',
-            created_at: new Date().toISOString(),
-          };
-
-          const setMetafieldMutation = `
-            mutation MetafieldsSet($metafields: [MetafieldsSetInput!]!) {
-              metafieldsSet(metafields: $metafields) {
-                metafields {
-                  id
-                  key
-                }
-                userErrors {
-                  field
-                  message
-                }
-              }
-            }
-          `;
-
-          await executeAdminQuery(
-            setMetafieldMutation,
-            {
-              metafields: [
-                {
-                  ownerId: shopId,
-                  namespace: 'stock_alerts',
-                  key: subKey,
-                  type: 'json',
-                  value: JSON.stringify(subData),
-                },
-              ],
-            },
-            adminToken,
-            shopDomain,
-          );
-          console.log(`[STOCK_NOTIFICATION METAFIELD SUCCESS] Saved sub ${subKey} for ${email}`);
-        }
-      }
-    } catch (metaErr) {
-      console.warn('[STOCK_NOTIFICATION METAFIELD WARN]', metaErr);
     }
 
     // 4. Send email notification to Product Manager & Regional Manager from Product Metafields (custom.product_manager, custom.regional_manager)
@@ -512,10 +479,33 @@ export async function action({request, context}: ActionFunctionArgs) {
       `[STOCK_NOTIFICATION SUCCESS] Registered: email=${email}, variant=${variantId}, location=${locationName || 'N/A'}`,
     );
 
-    return data({success: true});
+    /**
+     * The id comes back to the caller, because for an email-only subscriber it
+     * is the only way to cancel: the middleware deduplicates and unsubscribes
+     * on (phone, productCode, locationId), and a subscription with no phone
+     * can only be removed by id.
+     */
+    return data({success: true, subscriptionId});
   } catch (error: any) {
     console.error('[STOCK_NOTIFICATION ERROR]', error);
-    // Still return success if email was received so customer experience is smooth
-    return data({success: true});
+    /**
+     * An unexpected failure is still a failure.
+     *
+     * This answered `{success: true}` "so customer experience is smooth",
+     * which meant every fault in this route -- an outage, a bad payload, a
+     * thrown lookup -- ended with the shopper being told they would be
+     * emailed when the item returned. Nothing was recorded and nobody was
+     * ever going to write to them.
+     */
+    return data(
+      {
+        success: false,
+        error:
+          context.storefront.i18n.language === 'EN'
+            ? 'We could not add you to the waiting list right now. Please try again shortly.'
+            : 'تعذّر تسجيلك في قائمة الانتظار حالياً. يرجى المحاولة بعد قليل.',
+      },
+      {status: 500},
+    );
   }
 }

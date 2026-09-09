@@ -54,7 +54,7 @@ export async function loader({request, context}: LoaderFunctionArgs) {
   const isPrivateRoute =
     !isOrderDetail &&
     new RegExp(
-      `^${localePrefix}/account/(orders|profile|addresses|addresses/.*|dashboard|feedback-analytics|promotions|wishlist|wallet)$`,
+      `^${localePrefix}/account/(orders|profile|addresses|addresses/.*|dashboard|feedback-analytics|promotions|wishlist|wallet|notifications)$`,
     ).test(pathname);
 
   // Send the visitor back to the page they were trying to reach after login.
@@ -546,6 +546,8 @@ function getSectionTitle(pathname: string, isEn: boolean) {
     return isEn ? 'Favorites' : 'المفضلة';
   if (cleanPath.startsWith('/account/wallet'))
     return isEn ? 'Wallet & Vouchers' : 'المحفظة والقسائم';
+  if (cleanPath.startsWith('/account/notifications'))
+    return isEn ? 'Stock Alerts' : 'تنبيهات التوفر';
   if (cleanPath.startsWith('/account/addresses'))
     return isEn ? 'Addresses' : 'عناوين التوصيل';
   if (cleanPath.startsWith('/account/profile'))
@@ -801,6 +803,25 @@ function AcccountMenu({
           <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4" />
           <path d="M3 5v14a2 2 0 0 0 2 2h16v-5" />
           <path d="M18 12a2 2 0 0 0 0 4h4v-4Z" />
+        </svg>
+      ),
+    },
+    {
+      to: `${localePrefix}/account/notifications`,
+      label: isEn ? 'Stock Alerts' : 'تنبيهات التوفر',
+      icon: (
+        <svg
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+          <path d="M13.73 21a2 2 0 0 1-3.46 0" />
         </svg>
       ),
     },

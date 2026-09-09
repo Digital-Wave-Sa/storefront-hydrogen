@@ -123,17 +123,43 @@ export default function CustomCakeBuilder({
   const branchFetcher = useFetcher();
   const revalidator = useRevalidator();
 
+  /**
+   * The address and fee the shopper chose, kept for the submit.
+   *
+   * A cake never enters the cart -- it becomes a draft order -- and that draft
+   * was created with no `shippingAddress` at all, so Shopify's invoice page
+   * fell back to the customer's DEFAULT address. A cake ordered to one address
+   * was billed and printed to another. The delivery line priced at 0.00 for
+   * the same reason: no fee was ever sent.
+   *
+   * The picker hands both to `onSelectBranch`; this handler used to ignore
+   * them.
+   */
+  const [pickedAddress, setPickedAddress] = useState<any>(null);
+  const [pickedDeliveryFee, setPickedDeliveryFee] = useState<number>(0);
+
   const handleSelectBranchForCake = (
     branchSelected: any,
     type: 'delivery' | 'pickup',
     addressName?: string,
+    isOutOfRange?: boolean,
+    fullAddress?: any,
   ) => {
+    setPickedAddress(type === 'delivery' && fullAddress?.address1 ? fullAddress : null);
+    setPickedDeliveryFee(
+      type === 'delivery'
+        ? Number(branchSelected?.deliveryFee ?? branchSelected?.baseDeliveryFee ?? 0) || 0
+        : 0,
+    );
+
     const formData = new FormData();
     formData.append('locationId', branchSelected?.id || '');
     formData.append('branchName', branchSelected?.name || '');
     formData.append('fulfillmentType', type);
     formData.append('manualLocationSelection', 'true');
     if (addressName) formData.append('addressName', addressName);
+    // The id, because a customer's addresses all carry their own name.
+    if (fullAddress?.id) formData.append('addressId', String(fullAddress.id));
     branchFetcher.submit(formData, {
       method: 'POST',
       action: '/api/location-id',
@@ -749,6 +775,22 @@ export default function CustomCakeBuilder({
           branchName: selectedBranchName,
           fulfillmentType: selectedFulfillment,
           deliveryDate: selectedDeliveryDate,
+          // Without these the draft order has no address and a free delivery
+          // line -- see the note on handleSelectBranchForCake.
+          deliveryFee: pickedDeliveryFee,
+          address: pickedAddress
+            ? {
+                address1: pickedAddress.address1 || '',
+                address2: pickedAddress.address2 || '',
+                city: pickedAddress.city || '',
+                province: pickedAddress.province || '',
+                zip: pickedAddress.zip || '',
+                country: pickedAddress.country || pickedAddress.countryCodeV2 || 'SA',
+                firstName: pickedAddress.firstName || '',
+                lastName: pickedAddress.lastName || '',
+                phone: pickedAddress.phone || '',
+              }
+            : null,
         })
       });
       const data = (await response.json()) as any;

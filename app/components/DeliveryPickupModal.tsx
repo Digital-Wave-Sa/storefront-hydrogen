@@ -6,7 +6,7 @@ import { Price } from './Price';
 import { Button } from './layout/Button';
 import { useI18n } from '~/lib/i18n';
 import { StarRating } from './StarRating';
-import { addressCoords } from '~/lib/address-coords';
+import { addressCoords, sameAddressId } from '~/lib/address-coords';
 
 // ─── TYPES ──────────────────────────────────────────────────────────────────
 export type Tab = 'delivery' | 'pickup';
@@ -14,6 +14,10 @@ export type Tab = 'delivery' | 'pickup';
 export interface Branch {
     id: string;
     name: string;
+    /** The branch's own English name, before the Arabic display name. */
+    rawName?: string;
+    /** The `name_in_arabic` metafield, when the branch has one. */
+    nameInArabic?: string;
     address: string;
     city: string;
     lat: number;
@@ -749,6 +753,60 @@ export function detectCityFromAddress(addr: any): string {
     return normalizeCity(addr.city);
 }
 
+/**
+ * Find the branch whose own city or name appears in the address.
+ *
+ * `detectCityFromAddress` above knows six cities. The chain that used it ended
+ * in a hardcoded Riyadh fallback, so an address anywhere the dictionary had not
+ * heard of -- السديرية, in القريات, where there IS a branch -- was assigned to
+ * Riyadh. Silently, and with a Riyadh delivery fee.
+ *
+ * A dictionary cannot keep up: there are over a hundred branches across some
+ * forty cities, and every one of them is one customer address away from the
+ * same bug. So this asks the branch list instead. القريات matches the القريات
+ * branch because that branch says so itself, and a branch opened next year
+ * works with no code change.
+ *
+ * Both languages are checked, because the address is written in Arabic and the
+ * branch may be named in either.
+ *
+ * The longest match wins: «الرياض» and «حي الرياض الجديد» should not be decided
+ * by list order, and a longer token is the more specific place name. Tokens
+ * under four characters are skipped -- short ones match inside unrelated words
+ * and would assign a branch on a coincidence.
+ */
+export function findBranchForAddress(branches: any[], addr: any): any | null {
+    if (!addr || !Array.isArray(branches) || branches.length === 0) return null;
+
+    const text = [addr.city, addr.address1, addr.address2, addr.province, addr.company, addr.zip]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+
+    if (!text.trim()) return null;
+
+    let best: any = null;
+    let bestLength = 0;
+
+    for (const branch of branches as any[]) {
+        if (!branch || branch.hideFromStorefront) continue;
+
+        const tokens = [branch.city, branch.rawName, branch.nameInArabic, branch.name]
+            .filter(Boolean)
+            .map((t: any) => String(t).toLowerCase().trim());
+
+        for (const token of tokens) {
+            if (token.length < 4) continue;
+            if (text.includes(token) && token.length > bestLength) {
+                best = branch;
+                bestLength = token.length;
+            }
+        }
+    }
+
+    return best;
+}
+
 function ModalContent({
     activeTab,
     setActiveTab,
@@ -786,7 +844,34 @@ function ModalContent({
     if (activeTab === 'delivery') {
         let isValidAddress = addresses.some((a: any) => a.id === selectedBranch);
         
-        // If we have a selectedAddressName from session but selectedBranch is a Store Location ID
+        /**
+         * Which saved address is the selected one.
+         *
+         * The id settles it. This used to match the session's
+         * `selectedAddressName` -- the customer's own full name -- against
+         * each address's `address1` or `firstName` by substring, so with two
+         * addresses saved under the same name `find` returned whichever came
+         * first. The modal highlighted one address while the header pill named
+         * another, and confirming sent the wrong one.
+         *
+         * The name match survives as a fallback for sessions that predate the
+         * id being stored.
+         */
+        const sessionAddressId = rootData?.selectedAddressId;
+
+        if (!isValidAddress && sessionAddressId) {
+            /**
+             * Compared without the query string: a MailingAddress id carries a
+             * per-query `customer_access_token`, so the same address read twice
+             * has two different ids and exact equality never matches.
+             */
+            const byId = addresses.find((a: any) => sameAddressId(a.id, sessionAddressId));
+            if (byId) {
+                effectiveSelectedBranch = byId.id;
+                isValidAddress = true;
+            }
+        }
+
         if (!isValidAddress && selectedAddressName) {
             const matchedAddress = addresses.find((a: any) => 
                 selectedAddressName.includes(a.address1) || 
@@ -1177,18 +1262,54 @@ function ModalContent({
                                              ? branches.find((b: any) => !b.hideFromStorefront && detectCityFromAddress(b) === targetCity) ||
                                                branches.find((b: any) => !b.hideFromStorefront && normalizeCity(b.city) === targetCity)
                                              : null
-                                         ) || branches.find((b: any) => !b.hideFromStorefront && (normalizeCity(b.city) === 'riyadh' || b.name?.includes('الرياض') || b.name?.includes('العليا')))
+                                         )
+                                           /**
+                                            * Ask the branches before defaulting to Riyadh.
+                                            *
+                                            * The six-city dictionary above cannot answer for
+                                            * القريات, الجوف, حائل or the thirty other cities with
+                                            * branches -- and the Riyadh line below is not a
+                                            * sensible guess for any of them, it is simply the
+                                            * last thing in the chain.
+                                            */
+                                           || findBranchForAddress(branches, currentAddress)
+                                           || branches.find((b: any) => !b.hideFromStorefront && (normalizeCity(b.city) === 'riyadh' || b.name?.includes('الرياض') || b.name?.includes('العليا')))
                                            || branches.find((b: any) => !b.hideFromStorefront)
                                            || branches[0];
+
+                                         console.log(
+                                             '[BRANCH MATCH] address:',
+                                             [currentAddress?.city, currentAddress?.address1].filter(Boolean).join(' / '),
+                                             '→ branch:',
+                                             nearestBranch?.name,
+                                             `(${targetCity ? `city=${targetCity}` : 'no city detected'}, no coordinates on this address)`,
+                                         );
                                          
                                          // Reset to base fee if no exact coordinates
                                          nearestBranch = { ...nearestBranch, deliveryFee: nearestBranch.baseDeliveryFee || nearestBranch.deliveryFee };
                                      }
 
+                                    /**
+                                     * Name the place, not the person.
+                                     *
+                                     * This preferred `firstName lastName`, so the header pill read
+                                     * «توصيل: معتصم عودة» -- telling the shopper they are delivering
+                                     * to themselves rather than where. Every address a customer saves
+                                     * carries their own name, which is the same reason checkout used
+                                     * to match the wrong one.
+                                     *
+                                     * The district or city is what identifies an address at a glance,
+                                     * and it fits the pill, which truncates at 90px on mobile. The
+                                     * street line is the fallback, the name only after that.
+                                     */
                                     let addrName = isEn ? 'Home' : 'المنزل';
                                     if (currentAddress) {
                                         const fullName = `${currentAddress.firstName || ''} ${currentAddress.lastName || ''}`.trim();
-                                        addrName = fullName || currentAddress.address1 || addrName;
+                                        addrName =
+                                            (currentAddress.city && String(currentAddress.city).trim()) ||
+                                            (currentAddress.address1 && String(currentAddress.address1).trim()) ||
+                                            fullName ||
+                                            addrName;
                                     }
                                     // Set Branch to the fulfilling store, but pass addrName as the delivery destination
                                     onSelectBranch(nearestBranch, 'delivery', addrName, isOutOfRange, currentAddress);

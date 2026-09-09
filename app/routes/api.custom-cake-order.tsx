@@ -353,7 +353,36 @@ export async function action({request, context}: ActionFunctionArgs) {
       deliveryFee,
       deliveryDate,
       timeSlot,
+      address,
     } = body;
+
+    /**
+     * Where the cake is going.
+     *
+     * A draft order created without `shippingAddress` makes Shopify fall back
+     * to the customer's default address, so a cake ordered to one address was
+     * invoiced and printed to another. Empty fields are omitted rather than
+     * sent blank: `province: ''` reads to Shopify as "this address has no
+     * province" and drops it out of any province-scoped zone.
+     */
+    const shippingAddress = (() => {
+      if (!address?.address1) return null;
+      const out: Record<string, string> = {address1: String(address.address1)};
+      for (const key of [
+        'address2',
+        'city',
+        'province',
+        'zip',
+        'country',
+        'firstName',
+        'lastName',
+        'phone',
+      ] as const) {
+        const value = address[key];
+        if (value) out[key] = String(value);
+      }
+      return out;
+    })();
 
     /**
      * A cake order is still an order.
@@ -679,6 +708,13 @@ export async function action({request, context}: ActionFunctionArgs) {
        * named for the branch, and delivery carries the branch's own fee. Both
        * print on the order, which is what the kitchen and the driver read.
        */
+      /**
+       * Delivery goes to the address the shopper picked, not to whichever one
+       * Shopify has on file. Pickup carries none: the branch is the
+       * destination, and a shipping address on a collection order only
+       * confuses the slip.
+       */
+      ...(shippingAddress && !isPickup ? {shippingAddress} : {}),
       ...(fulfillmentType
         ? {
             shippingLine: {

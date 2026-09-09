@@ -136,6 +136,93 @@ export async function action({request, context}: ActionFunctionArgs) {
       }
     }
 
+    /**
+     * Close the abandoned-cart record.
+     *
+     * The cart action reports ACTIVE on every change and CLEARED when the cart
+     * empties, but it cannot report the sale: Shopify hosts the checkout, so
+     * that action finished minutes before the payment went through. Nothing
+     * ever sent COMPLETED, which left the CRM holding an ACTIVE cart for every
+     * successful order -- a shopper chased over WhatsApp to come back and buy
+     * what they had already bought.
+     *
+     * This webhook is the first thing the storefront hears after a sale, so it
+     * is where the record is closed. Best effort and never awaited into the
+     * result: Shopify retries a webhook that does not answer 200, and the ERP
+     * order sync below matters more than the cart record.
+     */
+    try {
+      const {SaadeddinApi} = await import('~/lib/saadeddin-api.server');
+      const cartApi = new SaadeddinApi(env);
+
+      const cartIdFromOrder =
+        cartAttributes.find(
+          (a: any) => a.name === 'cart_id' || a.key === 'cart_id',
+        )?.value || '';
+
+      if (!cartIdFromOrder) {
+        console.warn(
+          `[CRM Webhook] Order #${payload.order_number} carries no cart_id note attribute; falling back to cart_token, which the CRM will not recognise.`,
+        );
+      }
+
+      await cartApi
+        .syncCartToCrm({
+          phone: customerPhone,
+          customerName,
+          // Shopify's own cart handle for the order. It is not the Storefront
+          // cart gid the ACTIVE syncs carry, so the CRM has to match on phone.
+          /**
+           * The Storefront cart id, as the CRM knows it.
+           *
+           * `checkout/initiate` writes it into a `cart_id` note attribute for
+           * exactly this moment, because the CRM closes a cart record by the
+           * same `cartId` the browser opened it with, and Shopify's own
+           * `cart_token` is a different value. The token is kept only as a
+           * last resort for an order that did not come through our checkout.
+           */
+          cartId:
+            cartIdFromOrder || payload.cart_token || payload.checkout_token || '',
+          subtotal: parseFloat(
+            payload.subtotal_price || payload.total_price || '0',
+          ),
+          currency: payload.currency || 'SAR',
+          cartUrl: payload.order_status_url || '',
+          status: 'COMPLETED',
+          orderName: payload.name || `#${payload.order_number}`,
+          orderNumber: String(payload.order_number),
+          items: (payload.line_items || []).map((item: any) => ({
+            id: item.variant_id ? String(item.variant_id) : '',
+            title: item.name || item.title || 'Product',
+            quantity: item.quantity || 1,
+            price: parseFloat(item.price) || 0,
+          })),
+        })
+        .then((res: any) =>
+          /**
+           * The middleware's own words, not our assumption.
+           *
+           * This used to log a fixed "cart closed" sentence the moment the
+           * call resolved -- which only proves it answered 2xx without
+           * `success:false`. It said nothing about whether the record actually
+           * closed, and the first time the CRM accepted a COMPLETED and did
+           * nothing with it, this line still read like a success.
+           */
+          console.log(
+            `[CRM Webhook] COMPLETED sent for ${customerPhone} (order #${payload.order_number}) cart=${cartIdFromOrder || payload.cart_token || 'none'} — CRM answered:`,
+            JSON.stringify(res ?? {}).slice(0, 300),
+          ),
+        )
+        .catch((err: any) =>
+          console.error(
+            '[CRM Webhook] Failed to close cart as COMPLETED:',
+            err?.message || err,
+          ),
+        );
+    } catch (e: any) {
+      console.error('[CRM Webhook] Cart close threw:', e?.message || e);
+    }
+
     // Sync to CRM
     const result = await syncOrderToCRM(
       {

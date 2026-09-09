@@ -1278,24 +1278,111 @@ export async function action({request, context, params}: Route.ActionArgs) {
         const { SaadeddinApi } = await import('~/lib/saadeddin-api.server');
         const api = new SaadeddinApi(context.env);
         const lang = context.storefront.i18n.language === 'EN' ? 'en' : 'ar';
-        const cartUrl = `${context.env.PUBLIC_STORE_DOMAIN || 'https://saadeddin.com'}${lang === 'en' ? '/en' : ''}/cart`;
-        const hasItems = (cartResult.lines?.nodes?.length || 0) > 0;
 
-        await api.syncCartToCrm({
+        /**
+         * A link the shopper can actually open.
+         *
+         * The fallback was built from `PUBLIC_STORE_DOMAIN`, which holds a bare
+         * hostname with no scheme -- `saadeldeenshop-x21xumcd.myshopify.com` --
+         * so whenever `checkoutUrl` was missing, the WhatsApp recovery message
+         * carried a dead link. The request's own origin is the storefront the
+         * shopper is standing on, scheme included.
+         */
+        const origin = new URL(request.url).origin;
+        const cartUrl = `${origin}${lang === 'en' ? '/en' : ''}/cart`;
+
+        /**
+         * The cart a mutation hands back is not the whole cart.
+         *
+         * `cart.addLines` and friends resolve with the slice the mutation
+         * selected -- in practice `{id, totalQuantity, checkoutUrl}` -- with no
+         * `lines` and no `cost`. This block read `lines.nodes.length` off it,
+         * found nothing, and concluded the cart was empty: adding an item
+         * logged `CLEARED items=0 subtotal=0`, so the CRM was told the shopper
+         * had emptied a cart they had just filled. Recovery could never fire,
+         * because no cart was ever ACTIVE.
+         *
+         * `totalQuantity` is the field that is actually there, so it decides.
+         * The full cart is only fetched when there is something to describe
+         * and the mutation did not describe it.
+         */
+        let syncCart: any = cartResult;
+        const totalQuantity = Number(cartResult.totalQuantity ?? 0);
+        const hasItems =
+          (cartResult.lines?.nodes?.length || 0) > 0 || totalQuantity > 0;
+
+        if (hasItems && !cartResult.lines?.nodes?.length) {
+          try {
+            const full = await cart.get();
+            if (full) syncCart = full;
+          } catch (e) {
+            console.warn('[CART CRM SYNC] Could not load full cart:', e);
+          }
+        }
+
+        /**
+         * Which branch this cart is priced for. A recovery message that cannot
+         * name the branch cannot say where the order would come from, nor
+         * whether the items are still available there.
+         */
+        const rawLocationId = await context.session.get('selectedLocationId');
+        const locationId = String(rawLocationId || '').includes('/')
+          ? String(rawLocationId).split('/').pop() || ''
+          : String(rawLocationId || '');
+
+        const cartSyncPayload = {
           phone: userPhone,
-          cartId: cartResult.id || '',
-          subtotal: parseFloat(cartResult.cost?.subtotalAmount?.amount || '0'),
-          currency: cartResult.cost?.subtotalAmount?.currencyCode || 'SAR',
-          cartUrl: cartResult.checkoutUrl || cartUrl,
-          status: hasItems ? 'ACTIVE' : 'CLEARED',
-          items: (cartResult.lines?.nodes || []).map((l: any) => ({
+          customerName:
+            syncCart.buyerIdentity?.customer?.displayName ||
+            [
+              syncCart.buyerIdentity?.customer?.firstName,
+              syncCart.buyerIdentity?.customer?.lastName,
+            ]
+              .filter(Boolean)
+              .join(' ') ||
+            undefined,
+          cartId: syncCart.id || cartResult.id || '',
+          subtotal: parseFloat(syncCart.cost?.subtotalAmount?.amount || '0'),
+          currency: syncCart.cost?.subtotalAmount?.currencyCode || 'SAR',
+          cartUrl: syncCart.checkoutUrl || cartResult.checkoutUrl || cartUrl,
+          status: (hasItems ? 'ACTIVE' : 'CLEARED') as 'ACTIVE' | 'CLEARED',
+          locale: lang,
+          locationId: locationId || undefined,
+          branchName:
+            (await context.session.get('selectedLocationName')) || undefined,
+          fulfillmentType:
+            (await context.session.get('fulfillmentType')) || undefined,
+          items: (syncCart.lines?.nodes || []).map((l: any) => ({
             id: l.merchandise?.id || '',
             title: l.merchandise?.product?.title || l.merchandise?.title || 'Saadeddin Product',
             quantity: l.quantity,
             price: parseFloat(l.merchandise?.price?.amount || '0'),
             image: l.merchandise?.image?.url || '',
           })),
-        }).catch((err) => console.error('[CRM CART SYNC SILENT ERROR]', err));
+        };
+
+        /**
+         * Say what went out, not only what failed.
+         *
+         * This call only ever logged its errors, so a sync that worked left no
+         * trace at all -- and "is the storefront actually sending abandoned
+         * cart data?" could not be answered from this end. Whether the CRM
+         * then does anything with it is the middleware's to show; this line is
+         * the storefront's half of that conversation.
+         */
+        console.log(
+          `[CART CRM SYNC] ${cartSyncPayload.status} phone=${userPhone} totalQuantity=${totalQuantity} items=${cartSyncPayload.items.length} subtotal=${cartSyncPayload.subtotal} ${cartSyncPayload.currency} branch=${cartSyncPayload.branchName || 'none'}(${cartSyncPayload.locationId || 'no-id'}) cart=${cartSyncPayload.cartId}`,
+        );
+
+        await api
+          .syncCartToCrm(cartSyncPayload)
+          .then((res: any) =>
+            console.log(
+              '[CART CRM SYNC] accepted:',
+              JSON.stringify(res ?? {}).slice(0, 200),
+            ),
+          )
+          .catch((err) => console.error('[CRM CART SYNC SILENT ERROR]', err));
       }
     } catch (e) {
       console.error('[CART] Failed syncing cart to CRM:', e);

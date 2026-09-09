@@ -119,6 +119,15 @@ export async function loader(args: Route.LoaderArgs) {
   let selectedLocName = session.get('selectedLocationName');
   let fType = session.get('fulfillmentType');
   const selectedAddrName = session.get('selectedAddressName');
+  /**
+   * The id, because the name is not unique.
+   *
+   * Every address a customer saves carries their own name, so the picker had
+   * to guess which one was selected by substring-matching the name and
+   * returned whichever came first in the list -- highlighting one address
+   * while the header named another.
+   */
+  const selectedAddrId = session.get('selectedAddressId');
   const manualLocationSelection = session.get('manualLocationSelection');
 
   const clientCountry = args.request.headers.get('cf-ipcountry') || 
@@ -203,6 +212,7 @@ export async function loader(args: Route.LoaderArgs) {
       selectedLocationId: selectedLocId,
       selectedLocationName: selectedLocName,
       selectedAddressName: selectedAddrName,
+      selectedAddressId: selectedAddrId,
       fulfillmentType: fType,
       deliveryDate: await session.get('delivery_date'),
       timeSlot: await session.get('Time Slot'),

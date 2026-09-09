@@ -62,3 +62,36 @@ export function stripCoordsMarker(address2?: string | null): string {
     .replace(/^[\s,;،-]+|[\s,;،-]+$/g, '')
     .trim();
 }
+
+/**
+ * The address id, without the part of it that changes.
+ *
+ * A Shopify MailingAddress id is not a bare gid. It arrives as
+ *
+ *   gid://shopify/MailingAddress/10802009833705?model_name=CustomerAddress&customer_access_token=j1ptKQ47…
+ *
+ * and that trailing `customer_access_token` is minted per query, so the SAME
+ * address read twice carries two different ids. Every `a.id === selectedId`
+ * comparison in this codebase was therefore comparing two spellings of one
+ * address and concluding they were different ones.
+ *
+ * That is why matching by id -- added precisely because a customer's addresses
+ * all share their name -- silently never matched. Each caller fell through to
+ * its own fallback: a name lookup against a district label that appears in no
+ * address field, or `addresses[0]`. So the shopper picked one address and the
+ * cart kept another, the header pill named a third, and checkout, which will
+ * not overwrite the cart's address, faithfully preserved the wrong one.
+ *
+ * Only the numeric id identifies the address. Everything after `?` is context.
+ */
+export function baseAddressId(id?: string | null): string {
+  if (!id) return '';
+  return String(id).split('?')[0].trim();
+}
+
+/** True when two Shopify address ids name the same address. */
+export function sameAddressId(a?: string | null, b?: string | null): boolean {
+  const left = baseAddressId(a);
+  const right = baseAddressId(b);
+  return Boolean(left) && left === right;
+}

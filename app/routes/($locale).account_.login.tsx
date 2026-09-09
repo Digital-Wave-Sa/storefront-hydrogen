@@ -597,7 +597,7 @@ export async function action({request, context}: ActionFunctionArgs) {
         // 4. Always reset password so Storefront mutation works
         if (resolvedCustomerId) {
           try {
-            await fetch(
+            const pwRes = await fetch(
               `https://${adminDomain}/admin/api/2024-01/customers/${resolvedCustomerId}.json`,
               {
                 method: 'PUT',
@@ -614,7 +614,38 @@ export async function action({request, context}: ActionFunctionArgs) {
                 }),
               },
             );
-          } catch (_) {}
+
+            /**
+             * This step decides whether the shopper is signed in at checkout.
+             *
+             * The token below is minted with this password; without it the
+             * mutation returns nothing and login falls back to a `session-...`
+             * token, which Shopify does not recognise -- so Shopify Checkout
+             * shows «تسجيل الدخول» to somebody who is signed in, and the
+             * address lookups that require a real token are all skipped.
+             *
+             * The call was awaited and its result thrown away inside a bare
+             * `catch (_) {}`, so a 422 here looked exactly like success and
+             * the failure only surfaced two steps later as a fallback token
+             * with no stated cause.
+             */
+            if (!pwRes.ok) {
+              const body = await pwRes.text().catch(() => '');
+              console.error(
+                `[Login] Password reset FAILED for customer ${resolvedCustomerId} (HTTP ${pwRes.status}) — the Storefront token will not be created:`,
+                body.slice(0, 300),
+              );
+            } else {
+              console.log(
+                `[Login] Password reset OK for customer ${resolvedCustomerId}`,
+              );
+            }
+          } catch (err: any) {
+            console.error(
+              '[Login] Password reset threw:',
+              err?.message || err,
+            );
+          }
         }
       }
 
@@ -645,8 +676,13 @@ export async function action({request, context}: ActionFunctionArgs) {
           tokenResponse.customerAccessTokenCreate?.customerUserErrors || [];
         if (userErrors.length > 0) {
           console.error(
-            '[Login] Storefront mutation errors:',
+            `[Login] Storefront mutation errors for email=${loginEmail}:`,
             JSON.stringify(userErrors),
+          );
+        }
+        if (storefrontToken) {
+          console.log(
+            `[Login] Real Shopify token created for ${loginEmail} — checkout will recognise this shopper.`,
           );
         }
       } catch (sfErr: any) {

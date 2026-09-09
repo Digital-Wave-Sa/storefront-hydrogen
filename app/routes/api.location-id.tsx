@@ -1,5 +1,5 @@
 import {type ActionFunctionArgs} from 'react-router';
-import {stripCoordsMarker} from '~/lib/address-coords';
+import {stripCoordsMarker, sameAddressId} from '~/lib/address-coords';
 
 export async function action({request, context}: ActionFunctionArgs) {
   try {
@@ -204,7 +204,7 @@ export async function action({request, context}: ActionFunctionArgs) {
               // The id first: a customer's addresses all share their name.
               const selectedAddr =
                 (typeof addressId === 'string' && addressId
-                  ? nodes.find((a: any) => a.id === addressId)
+                  ? nodes.find((a: any) => sameAddressId(a.id, addressId))
                   : null) ||
                 nodes.find(
                   (a: any) =>
@@ -234,6 +234,33 @@ export async function action({request, context}: ActionFunctionArgs) {
 
           const payload: any = {...(buyerIdentity || {})};
           if (shopifyToken) payload.customerAccessToken = shopifyToken;
+
+          /**
+           * What this call is about to do to the cart's address.
+           *
+           * A delivery address preference PERSISTS on a cart. A selection that
+           * sends no address therefore does not clear the old one -- it leaves
+           * it, and every screen afterwards shows the NEW label over the OLD
+           * address. That is indistinguishable, in the logs we had, from a
+           * selection that worked: both are silent.
+           *
+           * Read-only. It names the address being sent, or says plainly that
+           * none is.
+           */
+          const outgoing =
+            payload?.deliveryAddressPreferences?.[0]?.deliveryAddress;
+          console.log(
+            '[LOCATION API] Cart sync —',
+            `fulfillment=${typeof fulfillmentType === 'string' ? fulfillmentType : 'unchanged'}`,
+            `label=${typeof addressName === 'string' ? addressName : 'none'}`,
+            `addressId=${typeof addressId === 'string' && addressId ? addressId : 'NOT SENT'}`,
+            `token=${shopifyToken ? 'shopify' : 'session-only'}`,
+            `sending=${
+              outgoing
+                ? `${outgoing.address1 || '?'} / ${outgoing.city || 'NO CITY'}`
+                : 'NO ADDRESS — the cart keeps whichever one it already had'
+            }`,
+          );
 
           if (
             Object.keys(payload).length > 0 &&

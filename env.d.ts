@@ -49,6 +49,12 @@ declare global {
     /** Store credit service — the authoritative wallet balance. */
     STORE_CREDIT_API_URL?: string;
     CUSTOM_API_URL: string;
+    /**
+     * Bearer token for the middleware's authenticated endpoints
+     * (`POST /orders/ratings`). Server-side only — never reaches the browser.
+     * Without it those calls go unauthenticated and are likely rejected.
+     */
+    SAADEDDIN_MIDDLEWARE_TOKEN?: string;
     SDLP_APP_URL?: string;
   }
 }

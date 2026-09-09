@@ -337,14 +337,21 @@ export async function action({request, context}: ActionFunctionArgs) {
 
       const resolvedBranch = String(branchName || foundOrder?.location?.name || 'General');
 
+      /**
+       * The order id the middleware expects. Shopify's numeric order id when
+       * the lookup found the order, and the order number only as a fallback.
+       */
+      const resolvedOrderId = String(foundOrder?.id || cleanOrdId || 'N/A');
+
       if (isBranchNegative) {
         await api.sendNegativeReview({
-          orderNumber: String(cleanOrdId || 'N/A'),
+          orderId: resolvedOrderId,
           rating: bRatingNum,
+          branchRating: bRatingNum,
           comment: String(comment || 'No comment provided'),
-          customerEmail: resolvedEmail,
-          customerPhone: resolvedPhone,
+          customerName,
           branchName: resolvedBranch,
+          language,
         });
       }
 
@@ -352,19 +359,153 @@ export async function action({request, context}: ActionFunctionArgs) {
         const pRatingNum = Math.round(Number(item.rating) || 0);
         if (pRatingNum > 0 && pRatingNum <= 2) {
           await api.sendNegativeReview({
-            orderNumber: String(cleanOrdId || 'N/A'),
+            orderId: resolvedOrderId,
             rating: pRatingNum,
+            // The branch score alongside the product's, so the ERP can see
+            // whether one bad item sat inside an otherwise fine order.
+            branchRating: bRatingNum || pRatingNum,
             comment: String(comment || 'No comment provided'),
+            customerName,
+            branchName: resolvedBranch,
+            language,
             productTitle: String(item.title || item.handle || ''),
             productHandle: String(item.handle || ''),
-            customerEmail: resolvedEmail,
-            customerPhone: resolvedPhone,
-            branchName: resolvedBranch,
           });
         }
       }
     } catch (crmErr) {
       console.warn('[REVIEWS] Negative review sync notice:', crmErr);
+    }
+
+    /**
+     * 5. FORWARD EVERY PRODUCT RATING — not only the complaints.
+     *
+     * The block above sends 1 and 2 stars to the ERP complaints inbox, which
+     * is a request for action. This sends the whole order's ratings, good and
+     * bad, to `/orders/ratings`, which is the score. Without it a 5-star
+     * rating was written to a Shopify metaobject and forwarded nowhere, so the
+     * business could see everything customers disliked and nothing they liked.
+     *
+     * The middleware keys on SKU. The form only carries handles, so the SKUs
+     * come from the order's own line items where possible -- those are the
+     * exact items being rated -- and from a Storefront lookup by handle
+     * otherwise.
+     */
+    try {
+      const ratedItems = productRatings.filter(
+        (item) => Math.round(Number(item.rating) || 0) > 0,
+      );
+
+      if (ratedItems.length > 0 && cleanOrdId) {
+        const skuFor = async (item: any): Promise<string | null> => {
+          const handle = String(item.handle || '').trim();
+          const title = String(item.title || '').trim();
+
+          // The order's own line items: the exact things being rated.
+          const line = (foundOrder?.line_items || []).find((li: any) => {
+            const liTitle = String(li?.title || li?.name || '').trim();
+            return (
+              (title && liTitle === title) ||
+              (handle &&
+                liTitle.toLowerCase().replace(/\s+/g, '-') === handle.toLowerCase())
+            );
+          });
+          if (line?.sku) return String(line.sku);
+
+          if (!handle) return null;
+          try {
+            const res: any = await context.storefront.query(
+              `#graphql
+              query ReviewProductSku($handle: String!) {
+                product(handle: $handle) {
+                  variants(first: 1) { nodes { sku } }
+                }
+              }`,
+              {variables: {handle}, cache: context.storefront.CacheShort()},
+            );
+            const sku = res?.product?.variants?.nodes?.[0]?.sku;
+            return sku ? String(sku) : null;
+          } catch {
+            return null;
+          }
+        };
+
+        const resolved = await Promise.all(
+          ratedItems.map(async (item) => ({
+            item,
+            sku: await skuFor(item),
+          })),
+        );
+
+        const items = resolved
+          .filter((r) => r.sku)
+          .map((r) => ({
+            productSku: r.sku as string,
+            rating: Math.round(Number(r.item.rating) || 0),
+          }));
+
+        const missing = resolved.filter((r) => !r.sku);
+        if (missing.length > 0) {
+          /**
+           * A handful of products genuinely have no SKU. Naming them is
+           * better than a silently shorter list -- the middleware keys on SKU
+           * and cannot record a rating without one.
+           */
+          console.warn(
+            '[REVIEWS] No SKU for:',
+            missing.map((r) => r.item.handle || r.item.title).join(', '),
+          );
+        }
+
+        if (items.length > 0) {
+          /**
+           * The middleware secret, under whichever name it was stored.
+           *
+           * `/orders/ratings` is the one authenticated endpoint, and the token
+           * is shared with the mobile app -- so it may already exist in the
+           * environment under the app's own name rather than ours.
+           */
+          const TOKEN_KEYS = [
+            'SAADEDDIN_MIDDLEWARE_TOKEN',
+            'MOBILE_APP_SECRET_TOKEN',
+            'MIDDLEWARE_TOKEN',
+            'SAADEDDIN_API_TOKEN',
+          ];
+
+          const middlewareToken = TOKEN_KEYS.map(
+            (k) => (env as any)?.[k],
+          ).find((v) => typeof v === 'string' && v.trim());
+
+          /**
+           * The token is the switch.
+           *
+           * Forwarding whole-order ratings is not wanted for now, and
+           * `/orders/ratings` is the only authenticated endpoint -- so with no
+           * token configured, nothing is sent at all. Calling it anyway would
+           * put a 401 in the logs after every product review, which is exactly
+           * the kind of routine error that trains people to ignore real ones.
+           *
+           * Setting any of TOKEN_KEYS turns this back on with no code change.
+           */
+          if (!middlewareToken) {
+            console.log(
+              '[REVIEWS] Order ratings not forwarded: no middleware token configured (this is the off switch, not a failure).',
+            );
+          } else {
+            const ratingsApi = new SaadeddinApi(context.env, middlewareToken);
+
+            await ratingsApi.sendOrderRatings({
+              orderId: String(foundOrder?.id || cleanOrdId),
+              orderNumber: String(foundOrder?.order_number || cleanOrdId),
+              comment: comment ? String(comment) : undefined,
+              language,
+              items,
+            });
+          }
+        }
+      }
+    } catch (ratingsErr) {
+      console.warn('[REVIEWS] Order ratings sync notice:', ratingsErr);
     }
 
     return data({success: true});

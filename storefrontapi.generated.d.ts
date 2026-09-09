@@ -590,6 +590,14 @@ export type GetCustomerGidQuery = {
   customer?: StorefrontAPI.Maybe<Pick<StorefrontAPI.Customer, 'id'>>;
 };
 
+export type NotifyMeVariantSkuQueryVariables = StorefrontAPI.Exact<{
+  id: StorefrontAPI.Scalars['ID']['input'];
+}>;
+
+export type NotifyMeVariantSkuQuery = {
+  node?: StorefrontAPI.Maybe<Pick<StorefrontAPI.ProductVariant, 'sku'>>;
+};
+
 export type OfferProductsByIdQueryVariables = StorefrontAPI.Exact<{
   ids:
     | Array<StorefrontAPI.Scalars['ID']['input']>
@@ -684,6 +692,31 @@ export type PromotionOfferRegistryQuery = {
       }
     >;
   };
+};
+
+export type OrderLineItemMediaQueryVariables = StorefrontAPI.Exact<{
+  ids:
+    | Array<StorefrontAPI.Scalars['ID']['input']>
+    | StorefrontAPI.Scalars['ID']['input'];
+  country?: StorefrontAPI.InputMaybe<StorefrontAPI.CountryCode>;
+  language?: StorefrontAPI.InputMaybe<StorefrontAPI.LanguageCode>;
+}>;
+
+export type OrderLineItemMediaQuery = {
+  nodes: Array<
+    StorefrontAPI.Maybe<
+      Pick<StorefrontAPI.ProductVariant, 'id'> & {
+        image?: StorefrontAPI.Maybe<
+          Pick<StorefrontAPI.Image, 'url' | 'altText'>
+        >;
+        product: Pick<StorefrontAPI.Product, 'title'> & {
+          featuredImage?: StorefrontAPI.Maybe<
+            Pick<StorefrontAPI.Image, 'url' | 'altText'>
+          >;
+        };
+      }
+    >
+  >;
 };
 
 export type SessionIdentityCustomerQueryVariables = StorefrontAPI.Exact<{
@@ -3330,6 +3363,37 @@ export type GetLocationsBranchMetaQuery = {
       }
     >;
   };
+};
+
+export type CheckoutCartDiagnosticQueryVariables = StorefrontAPI.Exact<{
+  cartId: StorefrontAPI.Scalars['ID']['input'];
+}>;
+
+export type CheckoutCartDiagnosticQuery = {
+  cart?: StorefrontAPI.Maybe<
+    Pick<StorefrontAPI.Cart, 'id'> & {
+      buyerIdentity: Pick<
+        StorefrontAPI.CartBuyerIdentity,
+        'email' | 'phone'
+      > & {customer?: StorefrontAPI.Maybe<Pick<StorefrontAPI.Customer, 'id'>>};
+      deliveryGroups: {
+        nodes: Array<{
+          deliveryAddress: Pick<
+            StorefrontAPI.MailingAddress,
+            'address1' | 'address2' | 'city' | 'province' | 'zip'
+          >;
+          selectedDeliveryOption?: StorefrontAPI.Maybe<
+            Pick<StorefrontAPI.CartDeliveryOption, 'title'> & {
+              estimatedCost: Pick<
+                StorefrontAPI.MoneyV2,
+                'amount' | 'currencyCode'
+              >;
+            }
+          >;
+        }>;
+      };
+    }
+  >;
 };
 
 export type MoneyProductItemFragment = Pick<
@@ -7099,6 +7163,16 @@ export type GetCustomerEnrollmentDateQuery = {
   customer?: StorefrontAPI.Maybe<Pick<StorefrontAPI.Customer, 'createdAt'>>;
 };
 
+export type ReviewProductSkuQueryVariables = StorefrontAPI.Exact<{
+  handle: StorefrontAPI.Scalars['String']['input'];
+}>;
+
+export type ReviewProductSkuQuery = {
+  product?: StorefrontAPI.Maybe<{
+    variants: {nodes: Array<Pick<StorefrontAPI.ProductVariant, 'sku'>>};
+  }>;
+};
+
 export type GetCustomerWalletPhoneQueryVariables = StorefrontAPI.Exact<{
   customerAccessToken: StorefrontAPI.Scalars['String']['input'];
 }>;
@@ -7134,6 +7208,10 @@ interface GeneratedQueryTypes {
     return: GetCustomerGidQuery;
     variables: GetCustomerGidQueryVariables;
   };
+  '#graphql\n      query NotifyMeVariantSku($id: ID!) {\n        node(id: $id) {\n          ... on ProductVariant {\n            sku\n          }\n        }\n      }': {
+    return: NotifyMeVariantSkuQuery;
+    variables: NotifyMeVariantSkuQueryVariables;
+  };
   '#graphql\n  query offerProductsById($ids: [ID!]!, $country: CountryCode, $language: LanguageCode) @inContext(country: $country, language: $language) {\n    nodes(ids: $ids) {\n      ... on Product {\n        id\n        handle\n        title\n        tags\n        availableForSale\n        featuredImage {\n          url\n          altText\n          width\n          height\n        }\n        priceRange {\n          minVariantPrice {\n            amount\n            currencyCode\n          }\n        }\n        compareAtPriceRange {\n          minVariantPrice {\n            amount\n            currencyCode\n          }\n        }\n        variants(first: 10) {\n          nodes {\n            id\n            title\n            availableForSale\n            price {\n              amount\n              currencyCode\n            }\n            compareAtPrice {\n              amount\n              currencyCode\n            }\n            selectedOptions {\n              name\n              value\n            }\n            storeAvailability(first: 250) {\n              nodes {\n                available\n                location {\n                  id\n                  name\n                }\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n': {
     return: OfferProductsByIdQuery;
     variables: OfferProductsByIdQueryVariables;
@@ -7145,6 +7223,10 @@ interface GeneratedQueryTypes {
   '#graphql\n  query promotionOfferRegistry {\n    offers: metaobjects(type: "promotion_offer", first: 20) {\n      nodes {\n        id\n        handle\n        fields {\n          key\n          value\n          reference {\n            ... on MediaImage {\n              image {\n                url\n                altText\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n': {
     return: PromotionOfferRegistryQuery;
     variables: PromotionOfferRegistryQueryVariables;
+  };
+  '#graphql\n    query OrderLineItemMedia($ids: [ID!]!, $country: CountryCode, $language: LanguageCode)\n      @inContext(country: $country, language: $language) {\n      nodes(ids: $ids) {\n        ... on ProductVariant {\n          id\n          image { url altText }\n          product {\n            title\n            featuredImage { url altText }\n          }\n        }\n      }\n    }\n  ': {
+    return: OrderLineItemMediaQuery;
+    variables: OrderLineItemMediaQueryVariables;
   };
   '#graphql\n      query SessionIdentityCustomer($customerAccessToken: String!) {\n        customer(customerAccessToken: $customerAccessToken) {\n          id\n          phone\n          email\n        }\n      }\n      ': {
     return: SessionIdentityCustomerQuery;
@@ -7277,6 +7359,10 @@ interface GeneratedQueryTypes {
   '#graphql\n        query GetLocationsBranchMeta {\n          locations(first: 250) {\n            nodes {\n              id\n              branch_id: metafield(namespace: "custom", key: "branch_id") {\n                value\n              }\n            }\n          }\n        }': {
     return: GetLocationsBranchMetaQuery;
     variables: GetLocationsBranchMetaQueryVariables;
+  };
+  '#graphql\n        query CheckoutCartDiagnostic($cartId: ID!) {\n          cart(id: $cartId) {\n            id\n            buyerIdentity {\n              email\n              phone\n              customer { id }\n            }\n            deliveryGroups(first: 5) {\n              nodes {\n                deliveryAddress {\n                  address1\n                  address2\n                  city\n                  province\n                  zip\n                }\n                selectedDeliveryOption {\n                  title\n                  estimatedCost { amount currencyCode }\n                }\n              }\n            }\n          }\n        }': {
+    return: CheckoutCartDiagnosticQuery;
+    variables: CheckoutCartDiagnosticQueryVariables;
   };
   '#graphql\n  #graphql\n  fragment OccasionsProductItem on Product {\n    id\n    handle\n    title\n    featuredImage {\n      id\n      altText\n      url\n      width\n      height\n    }\n    priceRange {\n      minVariantPrice {\n        amount\n        currencyCode\n      }\n      maxVariantPrice {\n        amount\n        currencyCode\n      }\n    }\n    compareAtPriceRange {\n      minVariantPrice {\n        amount\n        currencyCode\n      }\n    }\n    availableForSale\n    variants(first: 10) {\n      nodes {\n        id\n        title\n        availableForSale\n        quantityAvailable\n        selectedOptions {\n          name\n          value\n        }\n        price {\n          amount\n          currencyCode\n        }\n        storeAvailability(first: 250) {\n          nodes {\n            available\n            location {\n              id\n              name\n            }\n          }\n        }\n      }\n    }\n    tags\n  }\n\n  query Collection(\n    $handle: String!\n    $country: CountryCode\n    $language: LanguageCode\n    $filters: [ProductFilter!]\n    $sortKey: ProductCollectionSortKeys\n    $reverse: Boolean\n    $first: Int\n    $last: Int\n    $startCursor: String\n    $endCursor: String\n  ) @inContext(country: $country, language: $language) {\n    collection(handle: $handle) {\n      id\n      handle\n      title\n      description\n      image {\n        id\n        url\n        altText\n        width\n        height\n      }\n      products(\n        first: $first,\n        last: $last,\n        before: $startCursor,\n        after: $endCursor,\n        filters: $filters\n        sortKey: $sortKey,\n        reverse: $reverse\n      ) {\n        nodes {\n          ...HandleProductItem\n        }\n        edges {\n          cursor\n          node {\n            id\n          }\n        }\n        filters {\n          id\n          label\n          type\n          values {\n            id\n            label\n            count\n            input\n          }\n        }\n        pageInfo {\n          hasPreviousPage\n          hasNextPage\n          startCursor\n          endCursor\n        }\n      }\n    }\n  }\n': {
     return: CollectionQuery;
@@ -7457,6 +7543,10 @@ interface GeneratedQueryTypes {
   '#graphql\n            query getCustomerEnrollmentDate($customerAccessToken: String!) {\n              customer(customerAccessToken: $customerAccessToken) { createdAt }\n            }\n            ': {
     return: GetCustomerEnrollmentDateQuery;
     variables: GetCustomerEnrollmentDateQueryVariables;
+  };
+  '#graphql\n              query ReviewProductSku($handle: String!) {\n                product(handle: $handle) {\n                  variants(first: 1) { nodes { sku } }\n                }\n              }': {
+    return: ReviewProductSkuQuery;
+    variables: ReviewProductSkuQueryVariables;
   };
   '#graphql\n          query getCustomerWalletPhone($customerAccessToken: String!) {\n            customer(customerAccessToken: $customerAccessToken) {\n              id\n              phone\n              email\n            }\n          }\n          ': {
     return: GetCustomerWalletPhoneQuery;

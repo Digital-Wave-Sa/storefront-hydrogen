@@ -603,11 +603,34 @@ export function CartSummary({ cart, layout, confirmedCart }: CartSummaryProps) {
   }, [locationFetcher.state, locationFetcher.data]);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
 
+  /**
+   * `fullAddress` is the fifth argument, and it used to be dropped.
+   *
+   * DeliveryPickupModal has always called
+   * `onSelectBranch(branch, type, addrName, isOutOfRange, currentAddress)`,
+   * but this handler declared four parameters -- so the address the shopper
+   * picked on the CART page never left the browser. The branch, the label and
+   * the attributes were sent; the address was not.
+   *
+   * A delivery address preference PERSISTS on a Shopify cart, so sending none
+   * does not clear the old one. The cart kept whichever address it was first
+   * given, the pill and the «Delivery Address» attribute updated on every
+   * pick, and checkout -- which deliberately refuses to overwrite the cart's
+   * own address -- then protected the stale one. That is how a Riyadh address
+   * ended up on an order for another district, with the storefront showing 33
+   * and Shopify charging 25.
+   *
+   * The id alone is enough. `api.location-id` looks the address up and builds
+   * the preference server-side, matching on the id before the name -- the same
+   * path the cake builder already uses. Nothing about the address needs to be
+   * reconstructed here.
+   */
   const handleSelectBranchFromCart = (
     branchSelected: any,
     type: 'delivery' | 'pickup',
     addressName?: string,
-    isOutOfRangeLoc?: boolean
+    isOutOfRangeLoc?: boolean,
+    fullAddress?: any
   ) => {
     const branchName = branchSelected?.name || 'Main';
     const bId = branchSelected?.id || '';
@@ -671,6 +694,8 @@ export function CartSummary({ cart, layout, confirmedCart }: CartSummaryProps) {
     if (customBranchId) locFormData.append('customBranchId', customBranchId);
     if (axStoreId) locFormData.append('axStoreId', axStoreId);
     if (addressName) locFormData.append('addressName', addressName);
+    /** The id, because every address a customer saves carries their own name. */
+    if (fullAddress?.id) locFormData.append('addressId', String(fullAddress.id));
 
     /**
      * Tell the header at once.

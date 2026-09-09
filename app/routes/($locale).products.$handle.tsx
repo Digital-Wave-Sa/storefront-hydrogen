@@ -1928,8 +1928,19 @@ export default function Product() {
                       lineHeight: '100%',
                     }}
                   >
+                    {/**
+                      * One decimal, both ways.
+                      *
+                      * Only the minimum was set, so a whole number padded to
+                      * «5.0» as intended -- and an average that did not divide
+                      * evenly ran to its full precision: three reviews of 1, 1
+                      * and 2 stars printed «1.333». `Intl.NumberFormat`
+                      * defaults the maximum to 3 decimals, so the minimum
+                      * alone only ever fixes half the problem.
+                      */}
                     {new Intl.NumberFormat('en-US', {
                       minimumFractionDigits: 1,
+                      maximumFractionDigits: 1,
                     }).format(dynamicRating || 0)}
                   </span>
                   <span
@@ -3211,11 +3222,28 @@ export default function Product() {
                   >
                     {isEn ? 'Quantity' : 'الكمية'}
                   </span>
-                  <div className="flex items-center gap-[8px]">
+                  {/**
+                    * The direction is stated, not inherited.
+                    *
+                    * These two steppers were written in opposite DOM orders --
+                    * this one plus-first, the mobile one below minus-first --
+                    * and each simply took whatever direction it happened to
+                    * inherit. So each was right in one language and backwards
+                    * in the other: English desktop read «+ 1 −», where the
+                    * left button added and the right one removed.
+                    *
+                    * Arabic storefronts mirror the control, so «+ 1 −» in
+                    * Arabic and «− 1 +» in English. Both steppers now say so
+                    * explicitly and share one source order, which is what
+                    * stops them drifting apart again -- and makes the
+                    * convention one line to change if it is ever revisited.
+                    */}
+                  <div className="flex items-center gap-[8px]" dir={isEn ? 'ltr' : 'rtl'}>
                     <button
                       type="button"
-                      onClick={() => setQuantity(quantity + 1)}
-                      className="w-[40px] h-[40px] flex items-center justify-center bg-white rounded-[8px] text-[#234745] border border-[#BBCFCD]/50 hover:border-[#234745] transition-all"
+                      onClick={() => setQuantity(Math.max(minQuantity, quantity - 1))}
+                      aria-label={isEn ? 'Decrease quantity' : 'إنقاص الكمية'}
+                      className="w-[40px] h-[40px] flex items-center justify-center bg-white rounded-[8px] text-[#906B51] border border-[#BBCFCD]/50 hover:border-[#234745] transition-all"
                     >
                       <svg
                         width="24"
@@ -3225,7 +3253,7 @@ export default function Product() {
                         stroke="currentColor"
                         strokeWidth="2"
                       >
-                        <path d="M12 5v14M5 12h14" />
+                        <path d="M5 12h14" />
                       </svg>
                     </button>
 
@@ -3241,8 +3269,9 @@ export default function Product() {
 
                     <button
                       type="button"
-                      onClick={() => setQuantity(Math.max(minQuantity, quantity - 1))}
-                      className="w-[40px] h-[40px] flex items-center justify-center bg-white rounded-[8px] text-[#906B51] border border-[#BBCFCD]/50 hover:border-[#234745] transition-all"
+                      onClick={() => setQuantity(quantity + 1)}
+                      aria-label={isEn ? 'Increase quantity' : 'زيادة الكمية'}
+                      className="w-[40px] h-[40px] flex items-center justify-center bg-white rounded-[8px] text-[#234745] border border-[#BBCFCD]/50 hover:border-[#234745] transition-all"
                     >
                       <svg
                         width="24"
@@ -3252,7 +3281,7 @@ export default function Product() {
                         stroke="currentColor"
                         strokeWidth="2"
                       >
-                        <path d="M5 12h14" />
+                        <path d="M12 5v14M5 12h14" />
                       </svg>
                     </button>
                   </div>
@@ -3586,7 +3615,8 @@ export default function Product() {
                     >
                       {isEn ? 'Quantity' : 'الكمية'}
                     </span>
-                    <div className="flex items-center gap-[8px]">
+                    {/* Same axis, same direction as the desktop stepper above. */}
+                    <div className="flex items-center gap-[8px]" dir={isEn ? 'ltr' : 'rtl'}>
                       <button
                         type="button"
                         onClick={() => setQuantity(Math.max(1, quantity - 1))}

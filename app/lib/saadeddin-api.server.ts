@@ -206,6 +206,21 @@ export class SaadeddinApi {
     });
   }
 
+  /**
+   * Tell the CRM what state a cart is in, so it knows whether to chase it.
+   *
+   * ACTIVE starts the recovery clock, CLEARED means the shopper emptied it
+   * themselves, COMPLETED means they bought it. COMPLETED was declared here
+   * from the start and never sent by anything: the cart action that does the
+   * syncing has long finished by the time Shopify's hosted checkout takes the
+   * payment, so the CRM's last word on every successful cart was ACTIVE -- and
+   * a shopper could be chased over a cart they had already paid for. It is now
+   * sent from the `orders/create` webhook.
+   *
+   * The branch fields are optional because only the cart knows them. A bakery
+   * order is made at a branch, and a recovery message that cannot say which
+   * one -- or tell whether the items are still in stock there -- is guessing.
+   */
   async syncCartToCrm(payload: {
     phone: string;
     customerName?: string;
@@ -221,6 +236,15 @@ export class SaadeddinApi {
     currency: string;
     cartUrl: string;
     status: 'ACTIVE' | 'CLEARED' | 'COMPLETED';
+    /** 'ar' or 'en' -- which language to write to the shopper in. */
+    locale?: string;
+    /** Numeric Shopify location id of the branch the cart is priced for. */
+    locationId?: string;
+    branchName?: string;
+    fulfillmentType?: string;
+    /** Sent with COMPLETED, so the CRM can see which order closed the cart. */
+    orderName?: string;
+    orderNumber?: string;
   }) {
     return this.api('/cart/sync', {
       method: 'POST',
@@ -275,27 +299,113 @@ export class SaadeddinApi {
 
   // ─── REVIEWS & CRM ───────────────────────────────────────────────────────────
 
-  async sendNegativeReview(payload: {
+  /**
+   * Every product rating in an order, not only the complaints.
+   *
+   * `/reviews/negative` is an ERP complaints inbox: the storefront only ever
+   * called it for 1 and 2 stars, so a 3, 4 or 5 star rating was written to a
+   * Shopify metaobject and forwarded nowhere. The business could see what
+   * customers disliked and nothing they liked.
+   *
+   * This is the other endpoint: the whole order's ratings in one call, keyed on
+   * SKU, which the middleware forwards to the ERP. Negative ratings still go to
+   * the complaints inbox as well -- the two are different jobs, one asking for
+   * action and one recording a score.
+   *
+   * Authenticated, unlike the complaints inbox. The secret belongs on the
+   * server; nothing here is reachable from the browser.
+   */
+  async sendOrderRatings(payload: {
+    orderId: string;
     orderNumber: string;
+    comment?: string;
+    language?: string;
+    items: Array<{productSku: string; rating: number}>;
+  }) {
+    try {
+      const body = {
+        orderId: String(payload.orderId),
+        orderNumber: String(payload.orderNumber),
+        ...(payload.comment ? {comment: payload.comment} : {}),
+        createdAt: new Date().toISOString(),
+        language: payload.language === 'en' ? 'en' : 'ar',
+        items: payload.items,
+      };
+
+      console.log(
+        '📤 [MIDDLEWARE OUTBOX] POST /orders/ratings',
+        JSON.stringify(body),
+      );
+
+      if (!this.token) {
+        console.warn(
+          '[REVIEWS] No middleware token set — /orders/ratings will be sent unauthenticated and may be rejected.',
+        );
+      }
+
+      const res = await fetch(`${this.baseUrl}/orders/ratings`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(this.token ? {Authorization: `Bearer ${this.token}`} : {}),
+        },
+        body: JSON.stringify(body),
+      });
+
+      const resData = await (res.json() as Promise<any>).catch(() => ({}));
+      console.log(
+        `📥 [MIDDLEWARE RESPONSE] /orders/ratings status ${res.status}`,
+        JSON.stringify(resData).slice(0, 300),
+      );
+      return resData;
+    } catch (err: any) {
+      /** Best effort: a rating that cannot be forwarded is still recorded. */
+      console.warn('[REVIEWS] Order ratings sync notice:', err?.message || err);
+      return null;
+    }
+  }
+
+  /**
+   * The ERP complaints inbox, in the shape the middleware documents.
+   *
+   * This used to send `order_number`, `customer_email`, `customer_phone` and
+   * `submitted_at`. The documented contract asks for `order_id`,
+   * `customer_name`, `branch_rating` and `language` instead -- so the order
+   * identifier arrived under a key the middleware does not read, and the
+   * complaint had no order attached to it. The call is fire-and-forget with a
+   * catch that only warns, so nothing ever said so.
+   *
+   * Contact details are deliberately no longer sent: they are not in the
+   * contract, and the ERP resolves the customer from the order.
+   */
+  async sendNegativeReview(payload: {
+    orderId: string;
     rating: number;
     comment: string;
+    customerName?: string;
+    branchName?: string;
+    branchRating?: number | string;
+    language?: string;
     productTitle?: string;
     productHandle?: string;
-    customerEmail?: string;
-    customerPhone?: string;
-    branchName?: string;
   }) {
     try {
       const bodyPayload: Record<string, any> = {
-        order_number: payload.orderNumber,
+        order_id: String(payload.orderId),
+        customer_name: payload.customerName || 'عميل سعد الدين',
+        branch_name: payload.branchName || 'General',
+        // A string in the documented example, unlike `rating`.
+        branch_rating: String(payload.branchRating ?? payload.rating),
         rating: payload.rating,
         comment: payload.comment,
-        customer_email: payload.customerEmail || 'customer@saadeddin.com',
-        customer_phone: payload.customerPhone || '+966500000000',
-        branch_name: payload.branchName || 'General',
-        submitted_at: new Date().toISOString(),
+        language: payload.language === 'en' ? 'en' : 'ar',
       };
 
+      /**
+       * Kept beyond the contract: without them a product complaint cannot be
+       * told from a branch complaint, since both carry the same order and the
+       * same branch.
+       */
       if (payload.productTitle) {
         bodyPayload.product_name = payload.productTitle;
       }

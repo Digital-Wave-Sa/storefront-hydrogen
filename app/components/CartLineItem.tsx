@@ -677,9 +677,20 @@ function CartLineQuantity({ line }: { line: CartLine }) {
   const nextQuantity = Number((quantity + 1).toFixed(0));
 
   return (
+    /**
+     * Direction stated, not inherited -- the same rule as the product page:
+     * «+ 1 −» in Arabic, «− 1 +» in English.
+     *
+     * A stepper left to inherit takes the direction of whatever wrapper it
+     * happens to sit inside, which is how the product page ended up with its
+     * two steppers pointing opposite ways and each one wrong in a different
+     * language. Saying it here means the cart cannot disagree with the product
+     * page about which button adds.
+     */
     <div
       className={`flex items-center gap-2 transition-opacity duration-150 ${isPending ? 'opacity-60' : ''}`}
       aria-busy={isPending}
+      dir={isEn ? 'ltr' : 'rtl'}
     >
       {quantity <= 1 ? (
         <CartLineRemoveButton lineIds={[lineId]} disabled={isPending} isBox isEn={isEn} />

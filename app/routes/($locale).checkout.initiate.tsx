@@ -1,7 +1,7 @@
 import {redirect, type ActionFunctionArgs, type LoaderFunctionArgs} from 'react-router';
 import {SaadeddinApi} from '~/lib/saadeddin-api.server';
 import {extractMinTime} from '~/lib/time-utils';
-import {stripCoordsMarker} from '~/lib/address-coords';
+import {stripCoordsMarker, sameAddressId} from '~/lib/address-coords';
 import {isSignedIn, loginUrlFor} from '~/lib/checkout-gate.server';
 
 export async function loader({request, context}: LoaderFunctionArgs) {
@@ -312,7 +312,7 @@ async function processCheckoutInitiate({request, context}: ActionFunctionArgs) {
          */
         const match =
           (typeof selectedAddressId === 'string' && selectedAddressId
-            ? nodes.find((a: any) => a.id === selectedAddressId)
+            ? nodes.find((a: any) => sameAddressId(a.id, selectedAddressId))
             : null) ||
           nodes.find(
             (a: any) =>
@@ -515,6 +515,24 @@ async function processCheckoutInitiate({request, context}: ActionFunctionArgs) {
     finalAttributes.push({key: 'Time Slot', value: timeSlotVal});
   }
 
+  /**
+   * Carry the Storefront cart id into the order.
+   *
+   * The CRM's abandoned-cart record is keyed on the `cartId` the browser sent
+   * while the shopper was still shopping --
+   * `gid://shopify/Cart/<token>?key=...`. The `orders/create` webhook, which is
+   * where that record gets closed, never sees it: a Shopify order carries
+   * `cart_token` and `checkout_token`, which are different values. Closing on
+   * those would open a SECOND record rather than close the first, and the
+   * shopper would still be chased over a cart they had already paid for.
+   *
+   * Attributes set here arrive on the order as `note_attributes`, so this is
+   * what lets the webhook name the same cart the CRM opened.
+   */
+  if (cart?.id) {
+    finalAttributes.push({key: 'cart_id', value: String(cart.id)});
+  }
+
   // Preserve other attributes (like loyalty_points, gift_card_codes), but EXCLUDE ax_store_id keys
   rawAttributes.forEach((attr: any) => {
     const isAxKey = ['custom.ax_store_id', 'ax_store_id', 'ax store id'].includes(
@@ -681,6 +699,81 @@ async function processCheckoutInitiate({request, context}: ActionFunctionArgs) {
         : branchNoteBlock;
       urlObj.searchParams.set('note', urlNote);
       checkoutUrl = urlObj.toString();
+    }
+
+    /**
+     * What the cart actually holds at the moment of handover.
+     *
+     * Everything logged above this point is what we TRIED to set. Nothing read
+     * back the result, so two different faults produced the same silence: a
+     * cart with no customer association, and a cart with no delivery address.
+     * The first shows up at checkout as «تسجيل الدخول» on a shopper who is
+     * signed in; the second as «أدخل عنوان الشحن» -- and from the storefront
+     * logs alone the two were indistinguishable from a normal handover.
+     *
+     * `deliveryGroups.deliveryAddress` is the address the cart was PRICED
+     * with, which is the one that decides the fee -- more useful here than the
+     * preference we asked for, because it is what Shopify agreed to.
+     *
+     * Read-only, best effort, and never allowed to hold up the redirect.
+     */
+    try {
+      const diag: any = await context.storefront.query(
+        `#graphql
+        query CheckoutCartDiagnostic($cartId: ID!) {
+          cart(id: $cartId) {
+            id
+            buyerIdentity {
+              email
+              phone
+              customer { id }
+            }
+            deliveryGroups(first: 5) {
+              nodes {
+                deliveryAddress {
+                  address1
+                  address2
+                  city
+                  province
+                  zip
+                }
+                selectedDeliveryOption {
+                  title
+                  estimatedCost { amount currencyCode }
+                }
+              }
+            }
+          }
+        }`,
+        {
+          variables: {cartId: cart.id},
+          cache: context.storefront.CacheNone(),
+        },
+      );
+
+      const dc = diag?.cart;
+      const group = dc?.deliveryGroups?.nodes?.[0];
+      console.log(
+        '[CHECKOUT DIAGNOSTIC] Cart at handover —',
+        `customer=${dc?.buyerIdentity?.customer?.id || 'NONE (checkout will treat this shopper as a guest)'}`,
+        `email=${dc?.buyerIdentity?.email || 'none'}`,
+        `phone=${dc?.buyerIdentity?.phone || 'none'}`,
+        `address=${
+          group?.deliveryAddress
+            ? `${group.deliveryAddress.address1 || '?'} / ${group.deliveryAddress.city || 'NO CITY'} / ${group.deliveryAddress.province || 'no province'}`
+            : 'NONE (checkout will ask for one)'
+        }`,
+        `rate=${
+          group?.selectedDeliveryOption
+            ? `${group.selectedDeliveryOption.title} ${group.selectedDeliveryOption.estimatedCost?.amount} ${group.selectedDeliveryOption.estimatedCost?.currencyCode}`
+            : 'none selected'
+        }`,
+      );
+    } catch (diagErr: any) {
+      console.warn(
+        '[CHECKOUT DIAGNOSTIC] Could not read the cart back:',
+        diagErr?.message || diagErr,
+      );
     }
 
     if (checkoutUrl) {

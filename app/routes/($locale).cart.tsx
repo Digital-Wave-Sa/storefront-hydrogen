@@ -1195,13 +1195,22 @@ export async function action({request, context, params}: Route.ActionArgs) {
           result = await cart.updateAttributes(finalAttributes);
         }
         if (buyerIdentity) {
-          const customerAccessToken = await context.session.get(
-            'customerAccessToken',
-          );
-          if (customerAccessToken?.accessToken) {
-            buyerIdentity.customerAccessToken = customerAccessToken.accessToken;
-          }
-
+          /**
+           * No customer token is attached here, deliberately.
+           *
+           * The shop runs Shopify's NEW customer accounts, which rejects every
+           * token this storefront can mint -- all of them come from the classic
+           * `customerAccessTokenCreate` flow. `cartBuyerIdentityUpdate` is
+           * atomic, so that one refused field discarded the delivery address
+           * riding along with it, and the cart kept a stale address: wrong
+           * branch, wrong delivery fee. The retry that used to follow the
+           * rejection is gone with it -- there is nothing left to refuse.
+           *
+           * IF THE STORE IS EVER SWITCHED BACK to legacy customer accounts,
+           * restore it by reading `customerAccessToken` off the session again
+           * and setting `buyerIdentity.customerAccessToken`, plus the matching
+           * lines in `api.location-id.tsx` and `($locale).checkout.initiate.tsx`.
+           */
           if (buyerIdentity.deliveryAddressPreferences?.[0]?.deliveryAddress) {
             const addr =
               buyerIdentity.deliveryAddressPreferences[0].deliveryAddress;
@@ -1211,28 +1220,21 @@ export async function action({request, context, params}: Route.ActionArgs) {
             }
           }
 
-          let innerResult: any = await cart.updateBuyerIdentity(buyerIdentity);
+          const innerResult: any = await cart.updateBuyerIdentity(buyerIdentity);
 
-          // Check if the update failed due to Customer Invalid error
-          const userErrors =
-            (innerResult as any).cartBuyerIdentityUpdate?.userErrors || [];
-          const isCustomerError = userErrors.some(
-            (err: any) =>
-              err.message === 'Customer غير صالح' ||
-              err.message === 'Customer is invalid' ||
-              err.field?.includes('customerAccessToken'),
-          );
+          /**
+           * Includes the nested path. Storefront userErrors arrive under
+           * `cartBuyerIdentityUpdate.userErrors`, which the two checks below it
+           * miss -- that is how «Customer غير صالح» went unlogged for so long.
+           */
+          const identityErrors =
+            innerResult?.errors ||
+            innerResult?.userErrors ||
+            innerResult?.cartBuyerIdentityUpdate?.userErrors ||
+            [];
 
-          if (isCustomerError && buyerIdentity.customerAccessToken) {
-            delete buyerIdentity.customerAccessToken;
-            innerResult = await cart.updateBuyerIdentity(buyerIdentity);
-          }
-
-          if (innerResult?.errors?.length || innerResult?.userErrors?.length) {
-            console.error(
-              '[CART BUYER IDENTITY ERROR]',
-              innerResult.errors || innerResult.userErrors,
-            );
+          if (identityErrors.length > 0) {
+            console.error('[CART BUYER IDENTITY ERROR]', identityErrors);
           }
           result = innerResult;
         } else if (!result) {
@@ -1330,9 +1332,31 @@ export async function action({request, context, params}: Route.ActionArgs) {
           ? String(rawLocationId).split('/').pop() || ''
           : String(rawLocationId || '');
 
+        /**
+         * The name, from the session first.
+         *
+         * `buyerIdentity.customer` is null on every cart: the shop runs
+         * Shopify's NEW customer accounts, so the classic token that would have
+         * associated a customer is refused, and the object those three fields
+         * read from never exists. Sourced from it alone, `customerName` went to
+         * the CRM undefined on every abandoned cart -- a recovery message with
+         * nobody's name on it.
+         *
+         * `selectedAddressName` carries the customer's own name: it is written
+         * from the chosen address's first+last, which is why matching addresses
+         * by it elsewhere in this flow matches all of them equally. The customer
+         * object stays as a fallback for the day an association does form.
+         */
+        const sessionCustomerName = await context.session.get(
+          'selectedAddressName',
+        );
+
         const cartSyncPayload = {
           phone: userPhone,
           customerName:
+            (typeof sessionCustomerName === 'string' && sessionCustomerName
+              ? sessionCustomerName
+              : undefined) ||
             syncCart.buyerIdentity?.customer?.displayName ||
             [
               syncCart.buyerIdentity?.customer?.firstName,

@@ -175,7 +175,28 @@ async function processCheckoutInitiate({request, context}: ActionFunctionArgs) {
     return redirect(lang === 'en' ? '/en/cart' : '/cart');
   }
 
-  // Associate customerAccessToken, email & phone with Cart Buyer Identity so Shopify Checkout recognizes logged-in customer
+  /**
+   * Email & phone onto the Cart Buyer Identity, so Shopify Checkout opens with
+   * the shopper's contact details already filled in.
+   *
+   * No customer token goes with them. The shop runs Shopify's NEW customer
+   * accounts, which rejects every token this storefront can mint -- they all
+   * come from the classic `customerAccessTokenCreate` flow. Because
+   * `cartBuyerIdentityUpdate` is atomic, that one refused field used to discard
+   * the email, the phone, the delivery-method preference and the address in the
+   * same call, and the shopper reached checkout with a stale address and the
+   * wrong delivery fee.
+   *
+   * Checkout therefore treats the shopper as a guest -- as it already did,
+   * since the association never once succeeded -- but a guest whose details,
+   * address, branch and fee are all correct.
+   *
+   * IF THE STORE IS EVER SWITCHED BACK to legacy customer accounts, restore the
+   * association by re-adding, here:
+   *   if (tokenString && !tokenString.startsWith('session-'))
+   *     buyerIdentity.customerAccessToken = tokenString;
+   * and the matching lines in `api.location-id.tsx` and `($locale).cart.tsx`.
+   */
   const loginEmail = await session.get('loginCustomerEmail');
   const loginPhone = await session.get('loginOtpPhone');
   const tokenString = typeof customerAccessToken === 'string'
@@ -183,10 +204,6 @@ async function processCheckoutInitiate({request, context}: ActionFunctionArgs) {
     : (customerAccessToken as any)?.accessToken;
 
   const buyerIdentity: any = {};
-
-  if (tokenString && typeof tokenString === 'string' && !tokenString.startsWith('session-')) {
-    buyerIdentity.customerAccessToken = tokenString;
-  }
 
   if (loginEmail && typeof loginEmail === 'string' && !loginEmail.endsWith('@saadeddin.placeholder')) {
     buyerIdentity.email = loginEmail;
@@ -365,19 +382,20 @@ async function processCheckoutInitiate({request, context}: ActionFunctionArgs) {
         JSON.stringify(updateResult, null, 2),
       );
 
+      /**
+       * Nothing to retry here any more.
+       *
+       * This used to resend the call without the customer token once Shopify
+       * refused it. No token is sent in the first place now, so every field in
+       * this payload is one Shopify accepts -- a userError would mean something
+       * genuinely new, and is surfaced rather than worked around.
+       */
       const userErrors = (updateResult as any)?.cartBuyerIdentityUpdate?.userErrors || (updateResult as any)?.userErrors || [];
-      const hasInvalidCustomerToken = userErrors.some(
-        (err: any) =>
-          err.message?.toLowerCase().includes('customer') ||
-          err.field?.includes('customerAccessToken'),
-      );
-
-      if (hasInvalidCustomerToken && buyerIdentity.customerAccessToken) {
+      if (userErrors.length > 0) {
         console.warn(
-          '[CHECKOUT DIAGNOSTIC] customerAccessToken rejected by Shopify for cart buyer identity. Retrying cart update with email/phone only while preserving customer session...',
+          '[CHECKOUT DIAGNOSTIC] cartBuyerIdentityUpdate userErrors:',
+          JSON.stringify(userErrors),
         );
-        delete buyerIdentity.customerAccessToken;
-        await context.cart.updateBuyerIdentity(buyerIdentity);
       }
     } catch (err: any) {
       console.error(

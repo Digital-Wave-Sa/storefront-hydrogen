@@ -5,6 +5,8 @@ import { Cake, Palette, Sparkles, MessageSquare, Layers, ArrowRight, ArrowLeft, 
 import { CakePreview } from './CakePreview';
 import { FaqModal } from './FaqModal';
 import { SaudiRiyalSymbol } from '~/components/Price';
+import { sameAddressId } from '~/lib/address-coords';
+import { trackSelectBranch } from '~/lib/analytics-events';
 
 const toArabicDigits = (num: number | string) => {
   return String(num);
@@ -138,6 +140,130 @@ export default function CustomCakeBuilder({
   const [pickedAddress, setPickedAddress] = useState<any>(null);
   const [pickedDeliveryFee, setPickedDeliveryFee] = useState<number>(0);
 
+  /**
+   * The same two values, for a shopper who never picked a branch HERE.
+   *
+   * `selectedBranchId` and friends above come from the session, so the branch
+   * row reads «القريات — توصيل» for anyone who chose in the header or the cart
+   * on an earlier screen. The fee and the address did not: they are set only by
+   * `handleSelectBranchForCake`, which fires only when the picker is used
+   * inside this builder. Arrive with a branch already chosen and they stay at
+   * their initial `0` and `null` -- so the draft order was created with a
+   * «توصيل — القريات» line priced 0.00, and with no shippingAddress, which
+   * makes Shopify's invoice fall back to the customer's default address. Every
+   * shopper who set their branch once and then ordered a cake got free
+   * delivery to possibly the wrong address.
+   *
+   * Both are resolved here from data this component already holds -- the same
+   * `locations` and `customer` promises it hands to the picker below -- so no
+   * new query is added. Only ever fills what is empty: a real pick always wins,
+   * and re-picking in the builder overwrites this.
+   */
+  useEffect(() => {
+    if (!hasFulfilmentChoice) return;
+    if (String(selectedFulfillment).toLowerCase() !== 'delivery') return;
+    if (pickedDeliveryFee > 0 && pickedAddress) return;
+
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const [locations, customer] = await Promise.all([
+          Promise.resolve(cakeRootData?.locations).catch(() => null),
+          Promise.resolve(cakeRootData?.customer).catch(() => null),
+        ]);
+        if (cancelled) return;
+
+        /** The branch's own fee, read the way the picker reads it. */
+        if (!(pickedDeliveryFee > 0)) {
+          /**
+           * `{locations: {nodes: [...]}}` -- the raw LOCATIONS_QUERY result
+           * root defers, the same object the picker receives. The looser reads
+           * after it are only there so a shape change downgrades this to «no
+           * fee seeded» rather than a crash on the checkout path.
+           */
+          const nodes =
+            (locations as any)?.locations?.nodes ||
+            (locations as any)?.nodes ||
+            (Array.isArray(locations) ? locations : []) ||
+            [];
+
+          const branch = nodes.find(
+            (n: any) => String(n?.id || '') === String(selectedBranchId),
+          );
+
+          if (branch) {
+            let raw = (branch as any).delivery_fee?.value;
+            if (raw === undefined) {
+              raw = branch.metafields?.find(
+                (m: any) => m?.key === 'delivery_fee',
+              )?.value;
+            }
+
+            /** Metafields of this type arrive either bare or JSON-wrapped. */
+            let fee = 0;
+            if (raw !== undefined && raw !== null && raw !== '') {
+              if (typeof raw === 'string' && raw.trim().startsWith('{')) {
+                try {
+                  const parsed = JSON.parse(raw) as any;
+                  fee = parseFloat(parsed?.value);
+                } catch (e) {}
+              } else {
+                fee = parseFloat(raw);
+              }
+            }
+
+            if (!cancelled && !isNaN(fee) && fee > 0) setPickedDeliveryFee(fee);
+          }
+        }
+
+        /**
+         * The address, matched by the id the session kept. Falling back to the
+         * saved name is deliberate but weak -- every address a customer saves
+         * carries their own name -- so the id is tried first.
+         */
+        if (!pickedAddress) {
+          const addresses =
+            (customer as any)?.customer?.addresses?.nodes ||
+            (customer as any)?.addresses?.nodes ||
+            (customer as any)?.addresses ||
+            [];
+
+          const wantedId = cakeRootData?.selectedAddressId;
+          const wantedName = cakeRootData?.selectedAddressName;
+
+          const match =
+            (wantedId
+              ? addresses.find((a: any) => sameAddressId(a?.id, wantedId))
+              : null) ||
+            (wantedName
+              ? addresses.find(
+                  (a: any) =>
+                    a?.address1 === wantedName ||
+                    `${a?.firstName || ''} ${a?.lastName || ''}`.trim() ===
+                      wantedName,
+                )
+              : null);
+
+          if (!cancelled && match?.address1) setPickedAddress(match);
+        }
+      } catch (e) {
+        console.warn('[CAKE] Could not seed delivery fee/address from session:', e);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    hasFulfilmentChoice,
+    selectedFulfillment,
+    selectedBranchId,
+    cakeRootData,
+    pickedDeliveryFee,
+    pickedAddress,
+  ]);
+
   const handleSelectBranchForCake = (
     branchSelected: any,
     type: 'delivery' | 'pickup',
@@ -146,11 +272,20 @@ export default function CustomCakeBuilder({
     fullAddress?: any,
   ) => {
     setPickedAddress(type === 'delivery' && fullAddress?.address1 ? fullAddress : null);
-    setPickedDeliveryFee(
+    const feeForBranch =
       type === 'delivery'
         ? Number(branchSelected?.deliveryFee ?? branchSelected?.baseDeliveryFee ?? 0) || 0
-        : 0,
-    );
+        : 0;
+    setPickedDeliveryFee(feeForBranch);
+
+    /** Best-effort; a tag must never break the picker. */
+    trackSelectBranch({
+      branchId: branchSelected?.id,
+      branchName: branchSelected?.name,
+      fulfillmentType: type,
+      source: 'cake_builder',
+      deliveryFee: type === 'delivery' ? feeForBranch : null,
+    });
 
     const formData = new FormData();
     formData.append('locationId', branchSelected?.id || '');
@@ -679,6 +814,46 @@ export default function CustomCakeBuilder({
   /** Every choice the order needs before it can be paid for. */
   const canCheckout =
     stepComplete(1) && stepComplete(2) && stepComplete(3);
+
+  /**
+   * What the step is still waiting for, named.
+   *
+   * «Next» is disabled until `stepComplete` passes and said nothing about why,
+   * which read as a dead button -- and worst on step 2, whose title is «أختر
+   * النكهة» while its gate wants a flavour AND a frosting colour. Pick the
+   * flavour the step asks for, press Next, and nothing happens: no movement, no
+   * message, no console error. Pick a colour too and the same press works, so
+   * it looked like a control that needed clicking twice.
+   *
+   * The gate itself is right -- both are needed further down, and a cake with
+   * no colour cannot be made -- so this names the gap instead of loosening it.
+   */
+  const missingForStep = (step: number): string[] => {
+    const missing: string[] = [];
+
+    if (step === 1 && !selections.shape) {
+      missing.push(isEn ? 'a shape' : 'الشكل');
+    }
+
+    if (step === 2) {
+      if (!selections.flavor) missing.push(isEn ? 'a flavour' : 'النكهة');
+      if (!selections.color) missing.push(isEn ? 'a frosting colour' : 'لون الكريمة');
+    }
+
+    if (step === 3 && !selections.style) {
+      missing.push(isEn ? 'a decoration' : 'التزيين');
+    }
+
+    return missing;
+  };
+
+  /** «النكهة ولون الكريمة» / «a flavour and a frosting colour». */
+  const listMissing = (items: string[]): string =>
+    items.length <= 1
+      ? items[0] || ''
+      : isEn
+        ? `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`
+        : items.join(' و');
 
   const nextStep = () => {
     if (!stepComplete(currentStep)) return;
@@ -1324,12 +1499,19 @@ export default function CustomCakeBuilder({
             </div>
 
             {/* Next Button */}
-            <div className={`mt-12 flex items-center justify-start w-full ${isEn ? 'flex-row-reverse' : ''}`}>
+            <div className={`mt-12 flex items-center justify-start gap-4 flex-wrap w-full ${isEn ? 'flex-row-reverse' : ''}`}>
               {currentStep < steps.length ? (
                 <button
                   className={`inline-flex items-center gap-3 px-10 py-4 rounded-full font-bold bg-[#294941] text-white hover:bg-[#1E3A34] transition-all text-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-[#294941] ${isEn ? 'flex-row-reverse' : ''}`}
                   onClick={nextStep}
                   disabled={!stepComplete(currentStep)}
+                  /**
+                    * Named for a screen reader too, which otherwise hears only
+                    * «Next, dimmed» with no reason given.
+                    */
+                  aria-describedby={
+                    stepComplete(currentStep) ? undefined : 'cake-step-missing'
+                  }
                 >
                   {isEn ? `Next, ${steps[currentStep].titleEn}` : `التالي، ${steps[currentStep].titleAr}`}
                   <ArrowLeft className={`w-5 h-5 ${isEn ? 'rotate-180' : ''}`} />
@@ -1344,6 +1526,40 @@ export default function CustomCakeBuilder({
                   <ArrowLeft className={`w-5 h-5 ${isEn ? 'rotate-180' : ''}`} />
                 </button>
               )}
+
+              {/*
+                Why the button beside this is dim.
+
+                Rendered for the last step too, where «إتمام الطلب والدفع» is
+                gated on all three earlier steps -- reaching it with something
+                unchosen is rarer, but just as silent when it happens.
+
+                `aria-live` so the message is announced as choices are made,
+                rather than only being there for anyone who goes looking.
+              */}
+              {(() => {
+                const gateStep =
+                  currentStep < steps.length
+                    ? currentStep
+                    : [1, 2, 3].find((s) => !stepComplete(s));
+
+                if (!gateStep) return null;
+
+                const missing = missingForStep(gateStep);
+                if (!missing.length) return null;
+
+                return (
+                  <span
+                    id="cake-step-missing"
+                    aria-live="polite"
+                    className="text-[#8BA19C] text-sm font-medium"
+                  >
+                    {isEn
+                      ? `Choose ${listMissing(missing)} to continue`
+                      : `اختر ${listMissing(missing)} للمتابعة`}
+                  </span>
+                );
+              })()}
             </div>
 
             {/* Sticky FAQ Floating Button */}
@@ -1609,6 +1825,51 @@ export default function CustomCakeBuilder({
                 {isEn ? 'Change' : 'تغيير'}
               </span>
             </button>
+
+            {/*
+              What it comes to, before they commit to it.
+
+              This is the last screen before checkout, and the prep-time choice
+              above carries a price of its own -- so the figure moves while the
+              shopper is standing here. Showing it means «تأكيد وإتمام الطلب» is
+              pressed on a known number rather than a remembered one from the
+              header.
+
+              «شامل الضريبة» because the option prices already carry the 15%, the
+              same way the cart says it: a bare «المجموع الفرعي» in a store that
+              prices VAT-inclusive invites the shopper to expect tax added on
+              the next screen.
+
+              Not a button -- filled rather than outlined, so it does not read
+              as another thing to press next to the branch row above it.
+            */}
+            <div className="w-full mt-3 flex items-start justify-between gap-3 rounded-2xl bg-[#F2F6F5] px-4 py-3">
+              {/*
+                A note, not a label.
+
+                It read «المجموع الفرعي (شامل الضريبة)», which answered only
+                half of what a shopper wants to know here: the tax is inside
+                the figure, but delivery is not -- that is quoted at checkout,
+                once the branch and the address decide it. Saying so beside the
+                number stops the total appearing to grow later for no reason
+                the shopper was given.
+
+                `items-start` because this wraps to two lines on a narrow
+                screen, and the amount should stay level with its first line
+                rather than drift to the middle of the sentence.
+              */}
+              <span className="text-[12px] leading-[1.5] text-[#5F7B75] font-medium">
+                {isEn
+                  ? 'VAT included. Delivery is calculated at checkout.'
+                  : 'الضريبة مشمولة، ويتم احتساب تكلفة الشحن عند الدفع.'}
+              </span>
+              <span className="flex items-center gap-1.5 shrink-0" dir="ltr">
+                <SaudiRiyalSymbol className="w-auto h-3.5 text-[#294941]" />
+                <span className="text-[16px] font-black text-[#294941] font-en tracking-tight">
+                  {calculateTotal().toFixed(2)}
+                </span>
+              </span>
+            </div>
 
             <div className={`flex gap-4 w-full mt-4 ${isEn ? 'flex-row' : 'flex-row-reverse'}`}>
               <button

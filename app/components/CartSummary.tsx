@@ -10,9 +10,12 @@ import { Price, SaudiRiyalSymbol } from './Price';
 import { DeliveryPickupModal, checkBranchFreeDeliveryInterval } from './DeliveryPickupModal';
 
 import { isDiscountValidForLocation, parseLocationDiscountsJSON } from '~/lib/discounts';
+import { localizeTimeSlot } from '~/lib/time-utils';
+import { stripCoordsMarker } from '~/lib/address-coords';
 import { useAdminLocations } from '~/lib/locations-meta';
 import { isDigitalOnlyCart as cartIsDigitalOnly, isNonShippableLine } from '~/lib/digital-lines';
 import { usePendingCartMutations, lineTotalOf } from '~/lib/cart-pending';
+import { trackSelectBranch, trackLoyaltyRedeem } from '~/lib/analytics-events';
 
 type CartSummaryProps = {
   cart: OptimisticCart<CartApiQueryFragment | null>;
@@ -685,6 +688,60 @@ export function CartSummary({ cart, layout, confirmedCart }: CartSummaryProps) {
       newAttributes.push({ key: 'Available Time Slots', value: branchSelected.timeSlots });
     }
 
+    /**
+     * The address itself, carried rather than looked up.
+     *
+     * This used to send only `addressId` and leave the server to resolve it,
+     * which `api.location-id.tsx` did with a `customer(customerAccessToken:)`
+     * query. The shop runs Shopify's NEW customer accounts, so that query
+     * returns null for every token this storefront can mint -- the token is
+     * refused for reads exactly as it is for writes. No customer meant no
+     * address, and the log read «sending=NO ADDRESS»: the cart kept whichever
+     * address it already had, and checkout priced the wrong branch and fee.
+     *
+     * `fullAddress` is the address the shopper just picked, already in hand on
+     * this side. `Header.tsx` has always sent it this way and has always
+     * worked; this is that path, mirrored. The id still goes too, for the
+     * session bookkeeping downstream that matches on it.
+     *
+     * Worth extracting into one shared builder with Header's copy at some
+     * point. Left duplicated deliberately for now, so fixing this page cannot
+     * disturb the header path that already works.
+     */
+    let buyerIdentity: {deliveryAddressPreferences: Array<{deliveryAddress: Record<string, string>}>} | undefined;
+
+    if (type === 'delivery' && fullAddress?.address1) {
+      /** Omitted rather than invented: an absent field must stay absent. */
+      const deliveryAddress: Record<string, string> = {
+        address1: fullAddress.address1,
+      };
+
+      const country =
+        fullAddress.countryCodeV2 ||
+        fullAddress.countryCode ||
+        (fullAddress.country?.includes('Emirates') ||
+        fullAddress.country?.includes('الإمارات')
+          ? 'AE'
+          : fullAddress.country?.includes('Saudi') ||
+              fullAddress.country?.includes('السعودية')
+            ? 'SA'
+            : fullAddress.country);
+
+      const address2 = stripCoordsMarker(fullAddress.address2);
+      const phone = fullAddress.phone || rootData?.loginOtpPhone;
+
+      if (address2) deliveryAddress.address2 = address2;
+      if (fullAddress.city) deliveryAddress.city = fullAddress.city;
+      if (fullAddress.province) deliveryAddress.province = fullAddress.province;
+      if (fullAddress.zip) deliveryAddress.zip = fullAddress.zip;
+      if (country) deliveryAddress.country = country;
+      if (fullAddress.firstName) deliveryAddress.firstName = fullAddress.firstName;
+      if (fullAddress.lastName) deliveryAddress.lastName = fullAddress.lastName;
+      if (phone) deliveryAddress.phone = String(phone);
+
+      buyerIdentity = {deliveryAddressPreferences: [{deliveryAddress}]};
+    }
+
     const locFormData = new FormData();
     locFormData.append('locationId', bId);
     locFormData.append('branchName', branchName);
@@ -694,6 +751,9 @@ export function CartSummary({ cart, layout, confirmedCart }: CartSummaryProps) {
     if (customBranchId) locFormData.append('customBranchId', customBranchId);
     if (axStoreId) locFormData.append('axStoreId', axStoreId);
     if (addressName) locFormData.append('addressName', addressName);
+    if (buyerIdentity) {
+      locFormData.append('buyerIdentity', JSON.stringify(buyerIdentity));
+    }
     /** The id, because every address a customer saves carries their own name. */
     if (fullAddress?.id) locFormData.append('addressId', String(fullAddress.id));
 
@@ -718,6 +778,19 @@ export function CartSummary({ cart, layout, confirmedCart }: CartSummaryProps) {
         }),
       );
     }
+
+    /** Best-effort, and never in the way of the submit below it. */
+    trackSelectBranch({
+      branchId: bId,
+      branchName,
+      fulfillmentType: type,
+      source: 'cart',
+      deliveryFee:
+        type === 'delivery' &&
+        typeof branchSelected?.deliveryFee === 'number'
+          ? branchSelected.deliveryFee
+          : null,
+    });
 
     locationFetcher.submit(locFormData, { method: 'POST', action: '/api/location-id' });
     setIsLocationModalOpen(false);
@@ -925,7 +998,7 @@ export function CartSummary({ cart, layout, confirmedCart }: CartSummaryProps) {
               {/* Breakdown */}
               <div className="flex flex-col gap-4">
                 <div className="flex justify-between items-center text-[15px]">
-                  <dt className="text-[#9FB7AE] font-medium" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>{isEn ? 'Subtotal' : 'المجموع الفرعي'}</dt>
+                  <dt className="text-[#9FB7AE] font-medium" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>{isEn ? 'Subtotal (Including VAT)' : 'المجموع الفرعي (شامل الضريبة)'}</dt>
                   <dd className="text-[#234745] font-bold font-en flex items-center gap-1 flex-row-reverse">
                     <SaudiRiyalSymbol className="h-4 w-auto" />
                     <span>{subtotalBeforeDiscounts.toFixed(2)}</span>
@@ -988,6 +1061,21 @@ export function CartSummary({ cart, layout, confirmedCart }: CartSummaryProps) {
 
                 {hasTax && (
                   <div className="flex justify-between items-center text-[15px]">
+                    {/**
+                      * A breakdown figure, not a charge.
+                      *
+                      * The VAT is already inside the subtotal: 99 subtotal + 40
+                      * delivery is the 139 total, and 12.91 is the tax within
+                      * the 99, not something added on top of it. In a column
+                      * where every other number IS additive, that invites the
+                      * shopper to add this one too.
+                      *
+                      * This row carried «included / مشمولة» to say so. The
+                      * inclusion is stated on the Subtotal line instead now --
+                      * «(Including VAT)» -- which is the better place for it:
+                      * it names the figure the tax is actually inside, and
+                      * leaves this row to be the plain breakdown it is.
+                      */}
                     <dt className="text-[#9FB7AE] font-bold" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>{isEn ? 'VAT (15%)' : 'ضريبة القيمة المضافة (15٪)'}</dt>
                     <dd className="text-[#234745] font-bold font-en flex items-center gap-1 flex-row-reverse">
                       <SaudiRiyalSymbol className="h-4 w-auto" />
@@ -1002,13 +1090,17 @@ export function CartSummary({ cart, layout, confirmedCart }: CartSummaryProps) {
 
               {/* Total */}
               <div className="flex justify-between items-center">
+                {/**
+                  * Total alone. The «شامل ضريبة القيمة المضافة 15٪» subtext
+                  * that sat under it is gone: the Subtotal line above now
+                  * reads «(شامل الضريبة)», so saying it twice on one panel
+                  * only made the shopper look for a difference between the
+                  * two statements that was never there.
+                  */}
                 <div className="flex flex-col gap-1">
                   <dt className="text-[20px] font-black text-[#234745]" style={{ fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif" }}>
                     {isEn ? 'Total' : 'الإجمالي'}
                   </dt>
-                  <span className="text-[12px] text-[#9FB7AE] font-bold">
-                    {isEn ? 'Includes 15% VAT' : 'شامل ضريبة القيمة المضافة 15٪'}
-                  </span>
                 </div>
                 <dd
                   className="text-[28px] font-black text-[#234745] font-en flex items-center gap-2 flex-row-reverse"
@@ -1049,24 +1141,21 @@ export function CartSummary({ cart, layout, confirmedCart }: CartSummaryProps) {
                     </Link>
                   </div>
                 )}
-                {!isDigitalOnlyCart && !hasPreOrderItems && isTimeSlotInvalid && (
-                  <div className="bg-red-50 border border-red-200 p-3 rounded-lg flex items-start gap-2 mb-1">
-                    <span className="text-base leading-none mt-0.5">⚠️</span>
-                    <p className="text-red-800 text-[13px] font-bold leading-tight" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
-                      {isEn ? (
-                        <>
-                          Your selected {isPickup ? 'pickup' : 'delivery'} time ({timeSlot}) is outside the working hours of {branchDisplayName || 'this branch'}.
-                          {branchHoursStr && <><br />Working hours on this day: <strong>{branchHoursStr}</strong>. Please select a valid window.</>}
-                        </>
-                      ) : (
-                        <>
-                          وقت {isPickup ? 'الاستلام' : 'التوصيل'} المحدد ({timeSlot}) خارج ساعات عمل فرع {branchDisplayName || 'هذا الفرع'}.
-                          {branchHoursStr && <><br />ساعات العمل في هذا اليوم: <strong>{branchHoursStr}</strong>. يرجى اختيار فترة صالحة.</>}
-                        </>
-                      )}
-                    </p>
-                  </div>
-                )}
+                {/**
+                  * The out-of-hours warning lives with the time picker, not here.
+                  *
+                  * This block and the one under the slot dropdown were both
+                  * gated on `isTimeSlotInvalid`, so an invalid slot printed the
+                  * same paragraph twice on the same screen, in two different
+                  * fonts, side by side.
+                  *
+                  * The picker's copy is the one that survives: an error belongs
+                  * beside the control that caused it and that has to be used to
+                  * clear it. The summary still says why the shopper cannot
+                  * continue -- the checkout button's blocked reason below reads
+                  * «Time slot is outside working hours» -- so nothing is lost
+                  * by not repeating the full explanation here.
+                  */}
 
 
                 {hasPrepaidOnly && (
@@ -1170,9 +1259,29 @@ export function CartSummary({ cart, layout, confirmedCart }: CartSummaryProps) {
       {layout === 'aside' && (
         <div className="space-y-2 mb-4 px-1">
           <div className="flex justify-between items-center text-[14px]">
-            <dt className="text-gray-400 font-medium">{isEn ? 'Subtotal' : 'المجموع الفرعي'}</dt>
+            <dt className="text-gray-400 font-medium">{isEn ? 'Subtotal (Including VAT)' : 'المجموع الفرعي (شامل الضريبة)'}</dt>
             <dd className="text-[#234745] font-bold font-en">
-              <Price data={cart?.cost?.subtotalAmount!} isEn={isEn} size="xs" />
+              {/**
+                * The corrected figure, not `cart.cost.subtotalAmount`.
+                *
+                * That raw field belongs to the cart Shopify last confirmed, so
+                * for the second or so of a round trip it still holds the old
+                * quantity. The Total below it is `calculatedTotal`, which
+                * follows the quantity immediately -- so lowering a quantity
+                * left this drawer showing a subtotal and a total that
+                * disagreed, 131 against 262, until something else nudged the
+                * cart. Alarming, and it reads as a pricing fault rather than
+                * the refresh one it is.
+                *
+                * `subtotalBeforeDiscounts` is what the cart page shows, and
+                * what `calculatedTotal` is itself derived from -- so both
+                * lines here now come from one number and cannot drift apart.
+                */}
+              <Price
+                data={{amount: subtotalBeforeDiscounts.toString(), currencyCode}}
+                isEn={isEn}
+                size="xs"
+              />
             </dd>
           </div>
 
@@ -1191,6 +1300,8 @@ export function CartSummary({ cart, layout, confirmedCart }: CartSummaryProps) {
 
           {hasTax && (
             <div className="flex justify-between items-center text-[14px]">
+              {/** A breakdown figure, not a charge -- see the note on the page
+                *  summary above. The inclusion is stated on Subtotal. */}
               <dt className="text-gray-400 font-medium">{isEn ? 'VAT (15%)' : 'ضريبة القيمة المضافة (15٪)'}</dt>
               <dd className="text-[#234745] font-bold font-en flex items-center gap-1 flex-row-reverse">
                 <SaudiRiyalSymbol className="h-3.5 w-auto" />
@@ -1451,7 +1562,7 @@ function CartTimeSlot({ isEn, cart, currentBranch, hasError }: { isEn: boolean, 
               const slotPromo = checkBranchFreeDeliveryInterval(currentBranch, slot);
               const isFreeSlot = slotPromo.isPromoFreeDelivery;
               const displayLabel = isFreeSlot
-                ? `⚡ ${slot} (${isEn ? 'Free Delivery' : 'توصيل مجاني'})`
+                ? `⚡ ${localizeTimeSlot(slot, isEn)} (${isEn ? 'Free Delivery' : 'توصيل مجاني'})`
                 : slot;
               return (
                 <option key={idx} value={slot}>
@@ -1793,6 +1904,19 @@ function LoyaltyRedemptionUI({ isEn, cart }: { isEn: boolean, cart: any }) {
                       <button
                         type="submit"
                         disabled={fetcher.state !== 'idle' || availablePoints <= 0}
+                        /**
+                          * Fired on the click rather than on the response,
+                          * because the redemption's own success is a cart
+                          * revalidation with no distinct moment to hook. The
+                          * event is best-effort and cannot block the submit.
+                          */
+                        onClick={() =>
+                          trackLoyaltyRedeem({
+                            points: availablePoints,
+                            value: parseFloat(discountSAR),
+                            currency: 'SAR',
+                          })
+                        }
                         className="w-full py-2.5 bg-[#234745] hover:bg-[#142e22] text-white rounded-lg text-[13px] font-bold transition-all shadow-sm flex items-center justify-center gap-2"
                       >
                         <span>⭐</span>
@@ -2745,7 +2869,7 @@ function CartCalendarPicker({
                     : isEn ? 'Select preferred delivery time' : 'اختر وقت التوصيل المفضل'}
               </option>
               {dynamicTimeSlots.map((slot: string, idx: number) => (
-                <option key={idx} value={slot}>{slot}</option>
+                <option key={idx} value={slot}>{localizeTimeSlot(slot, isEn)}</option>
               ))}
             </select>
             <div className="absolute top-1/2 -translate-y-1/2 rtl:left-4 ltr:right-4 pointer-events-none text-[#d4a06a]">
@@ -2771,13 +2895,13 @@ function CartCalendarPicker({
               <div>
                 {isEn ? (
                   <>
-                    Your selected {isPickup ? 'pickup' : 'delivery'} time (<span className="underline">{localTimeSlot}</span>) is outside the working hours of <strong>{currentBranch?.name || 'this branch'}</strong>.
+                    Your selected {isPickup ? 'pickup' : 'delivery'} time (<span className="underline">{localizeTimeSlot(localTimeSlot, isEn)}</span>) is outside the working hours of <strong>{currentBranch?.name || 'this branch'}</strong>.
                     <br />
                     Working hours on this day: <strong>{branchHoursStr}</strong>. Please select a different time window.
                   </>
                 ) : (
                   <>
-                    وقت {isPickup ? 'الاستلام' : 'التوصيل'} المحدد (<span className="underline">{localTimeSlot}</span>) خارج ساعات عمل فرع <strong>{currentBranch?.name || 'هذا الفرع'}</strong>.
+                    وقت {isPickup ? 'الاستلام' : 'التوصيل'} المحدد (<span className="underline">{localizeTimeSlot(localTimeSlot, isEn)}</span>) خارج ساعات عمل فرع <strong>{currentBranch?.name || 'هذا الفرع'}</strong>.
                     <br />
                     ساعات العمل في هذا اليوم: <strong>{branchHoursStr}</strong>. يرجى اختيار فترة {isPickup ? 'الاستلام' : 'التوصيل'} الأخرى.
                   </>

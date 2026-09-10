@@ -951,8 +951,81 @@ export async function action({request, context, params}: Route.ActionArgs) {
             }
 
             if (!landed.applicable) {
-              // Left on the cart on purpose: Shopify applies it by itself once
-              // the cart qualifies. Reported as a notice, not an error.
+              /**
+               * Ask Shopify whether this code exists at all.
+               *
+               * The branch above cannot catch an invalid code: Shopify answers
+               * 200 for a code it has never issued and KEEPS it on the cart
+               * with `applicable: false` -- the same shape a real, not-yet-
+               * qualifying code has. So `landed` is truthy for nonsense too,
+               * and «KJGJHGJ» was told it had been saved and would apply once
+               * a qualifying item was added. It never would.
+               *
+               * `codeDiscountNodeByCode` is the only thing that separates the
+               * two, and it also exposes the status -- so an expired code stops
+               * being described as one that is waiting to apply.
+               *
+               * Only on this path, so a code that applied cleanly costs nothing
+               * extra. Failing open throughout: an unanswered lookup leaves the
+               * code exactly where it is.
+               */
+              const isSystemCode =
+                submitted.startsWith('LOYALTY-') ||
+                submitted.startsWith('LOYAL-') ||
+                submitted.startsWith('CREDIT-');
+
+              /** Imported here, as the other admin calls in this file are, so
+               *  the server-only helper stays out of the client bundle. */
+              let lookup: any = null;
+              if (!isSystemCode) {
+                const {lookupDiscountCode} = await import(
+                  '~/lib/shopify-admin.server'
+                );
+                lookup = await lookupDiscountCode(context.env, submitted);
+              }
+
+              if (lookup && (!lookup.known || lookup.expired)) {
+                /**
+                 * Taken back off the cart. Left on, it sits in the discount
+                 * box looking accepted and rides along to checkout, where
+                 * Shopify would ignore it anyway.
+                 */
+                try {
+                  const keep = appliedCodes
+                    .map((dc) => String(dc.code || '').trim())
+                    .filter((c) => c && c.toUpperCase() !== submitted);
+                  await cart.updateDiscountCodes(keep);
+                } catch (stripErr) {
+                  console.error(
+                    `[CART] Could not remove rejected code "${submitted}":`,
+                    stripErr,
+                  );
+                }
+
+                if (!lookup.known) {
+                  return data(
+                    {
+                      error: isEn
+                        ? `"${submitted}" is not a valid discount code.`
+                        : `الكود "${submitted}" غير صحيح.`,
+                    },
+                    {status: 400},
+                  );
+                }
+
+                return data(
+                  {
+                    error: isEn
+                      ? `"${submitted}" has expired and can no longer be used.`
+                      : `الكود "${submitted}" منتهي الصلاحية ولم يعد صالحاً للاستخدام.`,
+                  },
+                  {status: 400},
+                );
+              }
+
+              // Real, active, and simply not qualifying yet -- left on the cart
+              // on purpose, because Shopify applies it by itself once the cart
+              // qualifies. Reported as a notice, not an error.
               return data(
                 {
                   notice: isEn

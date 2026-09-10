@@ -31,6 +31,111 @@ export function getAdminDomain(env: any): string {
   return env.PUBLIC_STORE_DOMAIN || '';
 }
 
+/**
+ * What Shopify knows about a discount code, which the cart cannot tell alone.
+ *
+ * `cartDiscountCodesUpdate` answers 200 for a code that does not exist and
+ * keeps it on the cart with `applicable: false` -- the identical shape to a
+ * real code whose conditions the cart has not met yet. So «KJGJHGJ» and a
+ * genuine product-scoped code were indistinguishable, and the cart told a
+ * shopper who had typed nonsense that it was saved and would apply later.
+ *
+ * `codeDiscountNodeByCode` separates them: null for a code that was never
+ * created, otherwise the discount with its status.
+ *
+ * `known: false` -- Shopify has no such code.
+ * `known: true, expired` -- it exists; whether it is past its end date or
+ *   otherwise not active.
+ * `null` -- the question could not be asked. Callers must fail open on this
+ *   and leave the code alone rather than reject something possibly valid.
+ */
+export type DiscountCodeLookup =
+  | {known: false}
+  | {known: true; expired: boolean; title: string}
+  | null;
+
+export async function lookupDiscountCode(
+  env: any,
+  code: string,
+): Promise<DiscountCodeLookup> {
+  const submitted = String(code || '').trim();
+  if (!submitted) return null;
+
+  try {
+    const domain = getAdminDomain(env);
+    // getAdminToken throws when credentials are missing; caught below.
+    const token = await getAdminToken(env);
+    if (!domain || !token) return null;
+
+    const res = await fetch(`https://${domain}/admin/api/2024-01/graphql.json`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Shopify-Access-Token': token,
+      },
+      body: JSON.stringify({
+        query: `#graphql
+          query LookupDiscountCode($code: String!) {
+            codeDiscountNodeByCode(code: $code) {
+              id
+              codeDiscount {
+                __typename
+                ... on DiscountCodeBasic { title status endsAt }
+                ... on DiscountCodeBxgy { title status endsAt }
+                ... on DiscountCodeFreeShipping { title status endsAt }
+              }
+            }
+          }`,
+        variables: {code: submitted},
+      }),
+    });
+
+    if (!res.ok) {
+      console.warn(
+        `[ShopifyAdmin] Discount lookup for "${submitted}" answered ${res.status}; leaving the code alone.`,
+      );
+      return null;
+    }
+
+    const body: any = await res.json();
+
+    /**
+     * A GraphQL error is not an answer. Returning `known: false` here would
+     * strip a valid code off a shopper's cart because a query failed.
+     */
+    if (body?.errors?.length) {
+      console.warn(
+        '[ShopifyAdmin] Discount lookup returned errors; leaving the code alone:',
+        JSON.stringify(body.errors),
+      );
+      return null;
+    }
+
+    const node = body?.data?.codeDiscountNodeByCode;
+    if (!node) return {known: false};
+
+    const discount = node.codeDiscount || {};
+    const status = String(discount.status || '').toUpperCase();
+    const endsAt = discount.endsAt ? Date.parse(discount.endsAt) : NaN;
+
+    /**
+     * `status` already reads EXPIRED once Shopify has caught up, but it lags
+     * the end date by a little, so the date is checked too.
+     */
+    const expired =
+      status === 'EXPIRED' ||
+      (Number.isFinite(endsAt) && endsAt < Date.now());
+
+    return {known: true, expired, title: discount.title || submitted};
+  } catch (e: any) {
+    console.warn(
+      `[ShopifyAdmin] Could not verify discount code "${submitted}":`,
+      e?.message || e,
+    );
+    return null;
+  }
+}
+
 export async function getAdminToken(env: any): Promise<string> {
   const currentTime = Math.floor(Date.now() / 1000);
 

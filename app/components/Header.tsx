@@ -1,5 +1,5 @@
 import { Await, NavLink, useMatches, Form, useLocation, useFetcher, useRouteLoaderData, useRevalidator } from 'react-router';
-import React, { Suspense, useState, useEffect } from 'react';
+import React, { Suspense, useState, useEffect, startTransition } from 'react';
 import type { HeaderQuery, CartApiQueryFragment } from 'storefrontapi.generated';
 import { Button } from './layout/Button';
 import { DeliveryPickupModal } from './DeliveryPickupModal';
@@ -9,6 +9,7 @@ import { GlobalSearchBar } from './GlobalSearchBar';
 import { useWishlist } from '~/context/WishlistContext';
 import { fetchAdminLocations } from '~/lib/locations-meta';
 import { stripCoordsMarker } from '~/lib/address-coords';
+import { trackSelectBranch } from '~/lib/analytics-events';
 
 /**
  * Header count badges.
@@ -254,6 +255,19 @@ export function Header({ header, isLoggedIn, cart, locations, customer, locale, 
       fulfillmentType: type,
       addressName,
     });
+
+    /** Best-effort, and never in the way of the submit below it. */
+    trackSelectBranch({
+      branchId,
+      branchName,
+      fulfillmentType: type,
+      source: 'header',
+      deliveryFee:
+        type === 'delivery' && typeof branch?.deliveryFee === 'number'
+          ? branch.deliveryFee
+          : null,
+    });
+
     locationFetcher.submit(locFormData, { method: 'POST', action: '/api/location-id' });
   };
 
@@ -368,26 +382,51 @@ function TopBar({
   }, []);
 
   // 1. Resolve locations promise or use direct object
+  /**
+   * Every `setBranches` here is a transition, and that is the whole point.
+   *
+   * This component renders two `<Suspense>` boundaries around `<Await
+   * resolve={cart}>`. `branches` starts empty and `locations` is a promise root
+   * defers -- usually already resolved by the time the client mounts -- so this
+   * effect's `.then` landed in a microtask DURING hydration. A state change
+   * there is an update to a boundary that has not finished hydrating, so React
+   * threw away the server HTML for both and logged «Minified React error #421»
+   * twice on every single page load. Twice because there are two boundaries.
+   *
+   * That was not only noise in the console. When a boundary bails to client
+   * rendering its subtree is rebuilt, and the whole nav -- the Offers link
+   * included -- lives inside this header. A click landing in that window is
+   * discarded, which is what «the link needed a second click» actually was.
+   *
+   * `startTransition` marks these as non-urgent, which is the fix React's own
+   * error message recommends: hydration finishes first, then the branches
+   * arrive. Nothing about what renders changes -- only whether React is
+   * allowed to interrupt itself to do it.
+   */
   useEffect(() => {
     let cancelled = false;
+
+    /** Guarded, so a cancelled effect never writes to a gone component. */
+    const applyBranches = (nodes: any[]) => {
+      if (cancelled || !nodes?.length) return;
+      startTransition(() => setBranches(nodes));
+    };
+
     if (locations) {
       if (typeof (locations as any).then === 'function') {
         locations.then((data: any) => {
-          if (cancelled) return;
           const nodes = data?.locations?.nodes || data?.locations || [];
-          if (nodes.length > 0) setBranches(nodes);
+          applyBranches(nodes);
         }).catch(() => { });
       } else {
         const nodes = (locations as any)?.locations?.nodes || (locations as any)?.locations || [];
-        if (nodes.length > 0) setBranches(nodes);
+        applyBranches(nodes);
       }
     }
-    
+
     // Shared cache — the cart components ask for the same data.
     fetchAdminLocations().then((adminLocations) => {
-      if (!cancelled && adminLocations.length > 0) {
-        setBranches(adminLocations);
-      }
+      applyBranches(adminLocations);
     });
 
     return () => { cancelled = true; };

@@ -55,6 +55,16 @@ declare global {
      * Without it those calls go unauthenticated and are likely rejected.
      */
     SAADEDDIN_MIDDLEWARE_TOKEN?: string;
+    /**
+     * Where checkout failures are reported. Server-side only.
+     *
+     * Optional. With nothing set, `logCheckoutError` writes its line to the
+     * console and posts nothing -- so this ships dormant and starts working
+     * the moment a URL exists, with no code change. Unset, it falls back to
+     * `${CUSTOM_API_URL}/logs/checkout-error`, so this only needs setting when
+     * the endpoint lives somewhere other than the middleware.
+     */
+    SAADEDDIN_ERROR_LOG_URL?: string;
     SDLP_APP_URL?: string;
   }
 }

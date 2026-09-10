@@ -51,3 +51,31 @@ export function formatHourRange(h: number, isEn: boolean): string {
 
   return `${startDisplay}:00 ${startPeriod} - ${endDisplay}:00 ${endPeriod}`;
 }
+
+/**
+ * Show a stored time slot in the language being read.
+ *
+ * A slot is written onto the cart as text -- «2:00 م - 3:00 م» -- at the moment
+ * the shopper picks it, in whichever language they were using. It is then
+ * displayed verbatim, so an English shopper saw «6:00 م - 7:00 م»: English
+ * words around an Arabic clock. The reverse happens to an Arabic shopper who
+ * chose the slot on the English site.
+ *
+ * Only the meridiem marker carries language here; the digits and the dash are
+ * already shared. So this swaps that one token rather than parsing and
+ * rebuilding the string, which keeps every other format the branches use --
+ * half hours, other separators -- intact.
+ */
+export function localizeTimeSlot(
+  slot: string | null | undefined,
+  isEn: boolean,
+): string {
+  const value = String(slot ?? '').trim();
+  if (!value) return '';
+
+  return isEn
+    ? value.replace(/م/g, 'PM').replace(/ص/g, 'AM')
+    : value
+        .replace(/\bPM\b/gi, 'م')
+        .replace(/\bAM\b/gi, 'ص');
+}

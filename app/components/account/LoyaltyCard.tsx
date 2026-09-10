@@ -23,8 +23,21 @@ export function LoyaltyCard({
     ? loyaltyPoints.toLocaleString('en-US')
     : '—';
 
-  // Luxury gradient & border styles per tier matching brand design
+  /**
+   * Luxury gradient & border per tier.
+   *
+   * Keyed BRONZE / SILVER / GOLD. It was SILVER / GOLD / PLATINUM, and the
+   * fallback below returned the silver card for anything unrecognised -- so
+   * after the tier change every Bronze customer, the largest group by far,
+   * would have been handed a silver card while the badge beside it said
+   * برونزي. The fallback is Bronze now: the entry tier, which is the safer
+   * thing to show when a code is not recognised.
+   */
   const tierStyles: Record<string, { gradient: string; border: string }> = {
+    BRONZE: {
+      gradient: 'from-[#A9744F] via-[#C08B62] to-[#8E5E3E]',
+      border: 'border-[#C08B62]',
+    },
     SILVER: {
       gradient: 'from-[#9CA3AF] via-[#A8B0BC] to-[#88909C]',
       border: 'border-[#B6BDC7]',
@@ -33,13 +46,9 @@ export function LoyaltyCard({
       gradient: 'from-[#C5A96A] via-[#D8BE83] to-[#B59654]',
       border: 'border-[#D8BE83]',
     },
-    PLATINUM: {
-      gradient: 'from-[#234745] via-[#2F5B58] to-[#183432]',
-      border: 'border-[#3A6B66]',
-    },
   };
 
-  const currentStyle = tierStyles[tierInfo.tier.code] || tierStyles.SILVER;
+  const currentStyle = tierStyles[tierInfo.tier.code] || tierStyles.BRONZE;
 
   return (
     <div className={`relative w-full rounded-[16px] p-5 text-white shadow-md overflow-hidden bg-gradient-to-r ${currentStyle.gradient} border ${currentStyle.border} transition-all duration-300 ${className}`}>
@@ -98,7 +107,11 @@ export function LoyaltyCard({
                   ? `${tierInfo.pointsToNextTier.toLocaleString('en-US')} points away from ${tierInfo.nextTier.levelTitleEn}`
                   : `${tierInfo.pointsToNextTier.toLocaleString('en-US')} نقطة تفصلك عن ${tierInfo.nextTier.levelTitleAr}`
               ) : (
-                isEn ? 'Top Platinum Level Unlocked! ★★★' : 'أعلى مستوى بلاتيني مفعّل! ★★★'
+                /** The top tier is Gold now, not Platinum. Named from the
+                 *  table so it follows any future change to the top rung. */
+                isEn
+                  ? `Top ${tierInfo.tier.name} Level Unlocked! ★★★`
+                  : `أعلى مستوى ${tierInfo.tier.nameAr} مفعّل! ★★★`
               )}
             </p>
           </div>

@@ -17,6 +17,34 @@ import type {CustomerFragment} from 'storefrontapi.generated';
 import {Suspense} from 'react';
 import {AccountProfileHeader} from '~/components/account/AccountProfileHeader';
 
+/**
+ * Nothing under /account may be stored by a cache. Ever.
+ *
+ * The loader below has six return paths carrying customer data, and exactly
+ * one of them set this. The Storefront success path did; the Admin API
+ * fallback -- which returns the name, orders, addresses, wallet and phone --
+ * returned bare `data(...)` with no headers at all. That was not a rare branch
+ * either: the fallback runs whenever the Storefront `customer(customerAccessToken:)`
+ * query fails, and under the shop's new customer accounts setting that query
+ * fails every time. So in practice every account page was being served with no
+ * cache directive, which a browser may replay on a reload or a back
+ * navigation -- and which matched a tester seeing an account survive a fresh
+ * page load.
+ *
+ * Declared here rather than repeated per return, because the bug was a
+ * forgotten header and the sixth return would have forgotten it too. This is a
+ * layout route, so it covers every page nested under it.
+ */
+export function headers() {
+  return {
+    'Cache-Control': 'no-cache, no-store, must-revalidate',
+    Pragma: 'no-cache',
+    Expires: '0',
+    /** Keep account pages out of shared caches and off other origins. */
+    Vary: 'Cookie',
+  };
+}
+
 export const shouldRevalidate: ShouldRevalidateFunction = ({
   formMethod,
   currentUrl,
@@ -457,15 +485,26 @@ export async function loader({request, context}: LoaderFunctionArgs) {
         context,
       });
 
-      return data({
-        isLoggedIn: true,
-        isPrivateRoute,
-        isAccountHome,
-        customer: fallbackCustomer,
-        isAdmin,
-        googleMapsKey: context.env.PUBLIC_GOOGLE_MAPS_KEY,
-        walletPromise,
-      });
+      /**
+       * Explicit as well as declared in `headers` above -- belt and braces on
+       * the one path that carries a full customer record and had nothing.
+       */
+      return data(
+        {
+          isLoggedIn: true,
+          isPrivateRoute,
+          isAccountHome,
+          customer: fallbackCustomer,
+          isAdmin,
+          googleMapsKey: context.env.PUBLIC_GOOGLE_MAPS_KEY,
+          walletPromise,
+        },
+        {
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+          },
+        },
+      );
     } catch (fallbackErr) {
       console.error(
         '[Account Loader] Fallback customer fetch failed:',

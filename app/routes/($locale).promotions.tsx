@@ -15,6 +15,10 @@ import {
   parseLocationDiscountsJSON,
 } from '~/lib/discounts';
 import {productHasOffer} from '~/lib/offer-tags';
+import {
+  trackViewPromotion,
+  trackSelectPromotion,
+} from '~/lib/analytics-events';
 
 // GraphQL query to fetch promotional products and promotion page metaobjects
 const PROMOTIONS_QUERY = `#graphql
@@ -476,6 +480,41 @@ export default function PromotionsPage() {
       : offer?.[`${key}Ar`] || offer?.[`${key}En`]) ?? null;
   const {isInWishlist, toggleWishlist} = useWishlist();
 
+  /**
+   * The offers on this page were invisible to analytics.
+   *
+   * They are `promotion_offer` metaobjects rather than Shopify line items, so
+   * nothing in the GA4 commerce funnel -- which only ever sees products --
+   * recorded that they had been shown or clicked. The gap read as «GTM isn't
+   * loading»; the container loads, these events simply did not exist.
+   *
+   * Fired once per set of offers rather than per render, so re-renders from
+   * the filter buttons and the countdown below do not repeat it.
+   */
+  useEffect(() => {
+    const shown = [
+      {offer: featuredOffer, slot: 'featured'},
+      {offer: cardOffer1, slot: 'card_1'},
+      {offer: cardOffer2, slot: 'card_2'},
+    ]
+      .filter((entry) => entry.offer)
+      .map((entry) => ({
+        id: entry.offer.handle,
+        name: offerText(entry.offer, 'title') || entry.offer.handle,
+        slot: entry.slot,
+      }));
+
+    if (shown.length) trackViewPromotion(shown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [featuredOffer?.handle, cardOffer1?.handle, cardOffer2?.handle]);
+
+  /** One place to describe an offer, so the two events always agree. */
+  const promoPayload = (offer: any, slot: string) => ({
+    id: offer?.handle,
+    name: offerText(offer, 'title') || offer?.handle,
+    slot,
+  });
+
   // Toast message state for "Copy Code"
   const [showToast, setShowToast] = useState(false);
   const [activeFilter, setActiveFilter] = useState<
@@ -861,6 +900,7 @@ export default function PromotionsPage() {
                 {/* Button */}
                 <Link
                   to={`/promotions/${featuredOffer.handle}`}
+                  onClick={() => trackSelectPromotion(promoPayload(featuredOffer, 'featured'))}
                   className="inline-flex items-center gap-2 px-8 h-[48px] bg-[#BBCFCD] hover:bg-[#ACC4C2] !text-[#234745] font-bold text-[14px] rounded-full transition-colors flex-shrink-0 cursor-pointer"
                 >
                   {isEn ? (
@@ -1188,6 +1228,7 @@ export default function PromotionsPage() {
             </div>
             <Link
               to={`/promotions/${cardOffer1.handle}`}
+                  onClick={() => trackSelectPromotion(promoPayload(cardOffer1, 'card_1'))}
               className="px-6 h-[40px] inline-flex items-center justify-center bg-[#BBCFCD] hover:bg-[#ACC4C2] !text-[#234745] font-bold text-[13px] rounded-full transition-colors cursor-pointer"
             >
               {offerText(cardOffer1, 'buttonText') ||
@@ -1231,6 +1272,7 @@ export default function PromotionsPage() {
             </div>
             <Link
               to={`/promotions/${cardOffer2.handle}`}
+                  onClick={() => trackSelectPromotion(promoPayload(cardOffer2, 'card_2'))}
               className="px-6 h-[40px] inline-flex items-center justify-center bg-[#234745] hover:bg-[#1a3533] !text-white font-bold text-[13px] rounded-full transition-colors cursor-pointer"
             >
               {isEn

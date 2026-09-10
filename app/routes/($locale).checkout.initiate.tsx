@@ -3,6 +3,7 @@ import {SaadeddinApi} from '~/lib/saadeddin-api.server';
 import {extractMinTime} from '~/lib/time-utils';
 import {stripCoordsMarker, sameAddressId} from '~/lib/address-coords';
 import {isSignedIn, loginUrlFor} from '~/lib/checkout-gate.server';
+import {logCheckoutError, type CheckoutErrorStage} from '~/lib/error-log.server';
 
 export async function loader({request, context}: LoaderFunctionArgs) {
   return processCheckoutInitiate({request, context});
@@ -15,6 +16,43 @@ export async function action({request, context}: ActionFunctionArgs) {
 async function processCheckoutInitiate({request, context}: ActionFunctionArgs) {
   const {storefront, session, env} = context;
   const lang = storefront.i18n.language === 'EN' ? 'en' : 'ar';
+
+  /**
+   * Report a failure on THIS side of the handover.
+   *
+   * Declared here, above the try below, so the outer catch can reach it too --
+   * the failure that matters most is the one nobody anticipated.
+   *
+   * Never awaited by its callers: a shopper's checkout must not wait on a
+   * logging service, nor fail because one is down. Each call site marks it
+   * `void` to say that discarding the promise is deliberate.
+   *
+   * The context is gathered here rather than at each call site so every report
+   * carries the same fields, and so adding a fifth call site cannot produce a
+   * report with nothing in it to identify the shopper.
+   */
+  const reportCheckoutError = async (
+    stage: CheckoutErrorStage,
+    message: string,
+    userErrors?: unknown,
+  ) => {
+    try {
+      await logCheckoutError(env, {
+        stage,
+        message,
+        userErrors,
+        phone: (await session.get('loginOtpPhone')) || null,
+        cartId: (await context.cart.getCartId()) || null,
+        branchName: (await session.get('selectedLocationName')) || null,
+        locationId: (await session.get('selectedLocationId')) || null,
+        fulfillmentType: (await session.get('fulfillmentType')) || null,
+        locale: lang,
+      });
+    } catch {
+      // logCheckoutError already swallows its own failures; this guards the
+      // session reads above it.
+    }
+  };
 
   // 1. Ensure user is logged in via Custom API or Shopify Customer Access Token
   const loggedIn = await isSignedIn(session);
@@ -396,6 +434,7 @@ async function processCheckoutInitiate({request, context}: ActionFunctionArgs) {
           '[CHECKOUT DIAGNOSTIC] cartBuyerIdentityUpdate userErrors:',
           JSON.stringify(userErrors),
         );
+        void reportCheckoutError('buyer_identity', 'cartBuyerIdentityUpdate returned userErrors', userErrors);
       }
     } catch (err: any) {
       console.error(
@@ -434,6 +473,7 @@ async function processCheckoutInitiate({request, context}: ActionFunctionArgs) {
         '[CHECKOUT DIAGNOSTIC] Delivery address preference rejected:',
         err?.message || err,
       );
+      void reportCheckoutError('delivery_address', err?.message || String(err));
     }
   } else {
     console.log(
@@ -812,9 +852,12 @@ async function processCheckoutInitiate({request, context}: ActionFunctionArgs) {
     }
     console.log('[CHECKOUT DIAGNOSTIC FAIL] No checkoutUrl available, redirecting back to cart');
     console.log('====================================================\n');
+    /** The worst of them: the shopper cannot check out at all. */
+    void reportCheckoutError('no_checkout_url', 'Cart produced no checkoutUrl; shopper returned to cart');
     return redirect(lang === 'en' ? '/en/cart' : '/cart');
   } catch (error: any) {
     console.error('[CHECKOUT DIAGNOSTIC CATCH ERROR]', error);
+    void reportCheckoutError('unhandled', error?.message || String(error));
     console.log('====================================================\n');
     return redirect(lang === 'en' ? `/en/cart` : `/cart`);
   }

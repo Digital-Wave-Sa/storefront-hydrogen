@@ -1,5 +1,5 @@
 import { Await, NavLink, useMatches, Form, useLocation, useFetcher, useRouteLoaderData, useRevalidator } from 'react-router';
-import React, { Suspense, useState, useEffect, startTransition } from 'react';
+import React, { Suspense, useState, useEffect, useRef, startTransition } from 'react';
 import type { HeaderQuery, CartApiQueryFragment } from 'storefrontapi.generated';
 import { Button } from './layout/Button';
 import { DeliveryPickupModal } from './DeliveryPickupModal';
@@ -72,8 +72,26 @@ export function Header({ header, isLoggedIn, cart, locations, customer, locale, 
   const shownFulfillmentType = pendingLocation?.fulfillmentType ?? fulfillmentType;
   const shownAddressName = pendingLocation?.addressName ?? selectedAddressName;
 
-  // Root has caught up — stop overriding it.
+  /**
+   * Root has spoken — stop overriding it.
+   *
+   * This cleared only when root's branch EQUALLED the pending one, on the
+   * assumption that root can only ever catch up to what we set. It can also
+   * move somewhere else: the branch is changeable from the cart as well, so a
+   * pending value left over from a header pick would disagree with root
+   * forever, pinning the pill to a branch the shopper had already replaced.
+   *
+   * Any CHANGE in root's branch means root has reported, whatever it reports,
+   * and the pending value exists only to cover the gap until then.
+   */
+  const lastRootLocationId = useRef(selectedLocationId);
   useEffect(() => {
+    if (selectedLocationId !== lastRootLocationId.current) {
+      lastRootLocationId.current = selectedLocationId;
+      setPendingLocation(null);
+      return;
+    }
+    // Root already agreed before this effect ran.
     if (pendingLocation && selectedLocationId === pendingLocation.branchId) {
       setPendingLocation(null);
     }
@@ -828,6 +846,20 @@ function MiddleBar({
 
           {/* RIGHT (in RTL) / LEFT (in LTR): Desktop Nav */}
           <div className="flex items-center justify-start min-w-0">
+            {/**
+              * No `navMenuData` here.
+              *
+              * MiddleBar has never received one, so passing it threw
+              * «navMenuData is not defined» on every server render — left over
+              * from an abandoned attempt to drive this bar from a Shopify
+              * menu. `CategoryNav` declares the prop optional and falls back to
+              * STATIC_NAV_AR / STATIC_NAV_EN without it, which is the nav that
+              * has always been shown here.
+              *
+              * If this bar is ever driven by a Shopify menu, the data has to be
+              * threaded down from Header as a real prop, not referenced out of
+              * thin air.
+              */}
             <CategoryNav locale={locale} activeMega={activeMega} setActiveMega={setActiveMega} />
           </div>
 
@@ -963,6 +995,90 @@ function MiddleBar({
 }
 
 // ─── ROW 3: CATEGORY NAV ────────────────────────────────────────────────────
+
+/**
+ * A Shopify Navigation menu, turned into the items this header renders.
+ *
+ * The bar used to be the two arrays below and nothing else, so renaming
+ * «العروض» or adding a link meant a code change and a deploy. The client now
+ * edits Content → Menus in Shopify admin -- the same screen they already use
+ * for the mega panel -- and this converts what they build there.
+ *
+ * Three things are derived rather than configured, because a Shopify menu item
+ * carries only a title and a URL, and the client should not have to learn
+ * flags to get the bar they want:
+ *
+ *   url        Shopify writes links against the shop's own domain. Left alone
+ *              they would send the shopper off this storefront and back in,
+ *              losing the in-app navigation. Shop URLs are reduced to a path
+ *              and prefixed with /en on the English store; anything genuinely
+ *              elsewhere is left exactly as typed.
+ *   isExternal a URL that is not on this shop.
+ *   hasMega    the item the mega panel opens under -- one with child items in
+ *              the menu, or pointing at a collections page. Both are true of
+ *              «المنتجات» and of nothing else in a sensible menu.
+ *
+ * Returns an empty array when there is no usable menu, and every caller falls
+ * back to the static lists below. So a deleted menu, a failed query or a
+ * mistake in admin can never leave the site with no navigation.
+ */
+function navItemsFromMenu(menu: any, isEn: boolean): any[] {
+  const items = menu?.items;
+  if (!Array.isArray(items) || items.length === 0) return [];
+
+  const toPath = (rawUrl: string): {url: string; isExternal: boolean} => {
+    const value = String(rawUrl || '').trim();
+    if (!value) return {url: '', isExternal: false};
+
+    /** Already relative -- the client typed a path rather than picking a page. */
+    if (value.startsWith('/')) {
+      return {
+        url: isEn && !value.startsWith('/en') ? `/en${value}` : value,
+        isExternal: false,
+      };
+    }
+
+    try {
+      const parsed = new URL(value);
+      const host = parsed.hostname.toLowerCase();
+      const isShopHost =
+        host.endsWith('.myshopify.com') ||
+        host.includes('saadeddin') ||
+        host.includes('saadaldeen');
+
+      if (!isShopHost) return {url: value, isExternal: true};
+
+      const path = `${parsed.pathname}${parsed.search}`.replace(/\/+$/, '') || '/';
+      if (!isEn) return {url: path, isExternal: false};
+      if (path === '/') return {url: '/en', isExternal: false};
+      return {
+        url: path.startsWith('/en') ? path : `/en${path}`,
+        isExternal: false,
+      };
+    } catch {
+      /** Not a URL at all -- keep it as a path rather than drop the item. */
+      return {url: `/${value.replace(/^\/+/, '')}`, isExternal: false};
+    }
+  };
+
+  return items
+    .map((item: any) => {
+      const {url, isExternal} = toPath(item?.url);
+      if (!url || !item?.title) return null;
+
+      const hasChildren = Array.isArray(item?.items) && item.items.length > 0;
+      const pointsAtCollections = url.includes('/collections');
+
+      return {
+        title: String(item.title),
+        url,
+        isExternal,
+        hasMega: !isExternal && (hasChildren || pointsAtCollections),
+      };
+    })
+    .filter(Boolean);
+}
+
 const STATIC_NAV_AR = [
   { title: 'الرئيسية', url: '/' },
   { title: 'المنتجات', url: '/collections/all', hasMega: true },
@@ -986,15 +1102,22 @@ const STATIC_NAV_EN = [
 function CategoryNav({
   locale,
   activeMega,
-  setActiveMega
+  setActiveMega,
+  navMenuData
 }: {
   locale?: string,
   activeMega: string | null,
-  setActiveMega: (v: string | null) => void
+  setActiveMega: (v: string | null) => void,
+  navMenuData?: any
 }) {
   const location = useLocation();
   const isEn = location.pathname.startsWith('/en');
-  const NAV_ITEMS = isEn ? STATIC_NAV_EN : STATIC_NAV_AR;
+
+  /** The client's menu when there is one, the built-in list when there is not. */
+  const fromMenu = navItemsFromMenu(navMenuData?.menu, isEn);
+  const NAV_ITEMS = fromMenu.length
+    ? fromMenu
+    : (isEn ? STATIC_NAV_EN : STATIC_NAV_AR);
 
   return (
     <nav className="flex items-center gap-1 xl:gap-2 h-full">
@@ -1211,16 +1334,31 @@ export function HeaderMenu({
   menu,
   viewport,
   locale,
-  onClose
+  onClose,
+  navMenuData
 }: {
   menu: any;
   viewport: Viewport;
   locale?: string;
   onClose?: () => void;
+  navMenuData?: any;
 }) {
   const location = useLocation();
   const isEn = location.pathname.startsWith('/en');
-  const NAV_ITEMS = isEn ? STATIC_NAV_EN : STATIC_NAV_AR;
+
+  /**
+   * The same client-managed menu the desktop bar reads.
+   *
+   * This component was already handed a `menu` prop and ignored it entirely,
+   * rendering the hardcoded list -- so the drawer and the desktop bar were two
+   * copies of the same thing that could only be kept in step by editing both.
+   * Now one menu in Shopify admin drives both, and the built-in list is still
+   * the fallback if that menu is missing or empty.
+   */
+  const fromMenu = navItemsFromMenu(navMenuData?.menu ?? menu, isEn);
+  const NAV_ITEMS = fromMenu.length
+    ? fromMenu
+    : (isEn ? STATIC_NAV_EN : STATIC_NAV_AR);
 
   return (
     /*

@@ -1,0 +1,26 @@
+# Input for the delivery customization function.
+#
+# `Delivery Fee` is the cart attribute the storefront already writes whenever a
+# shopper picks a branch -- see `handleSelectBranchFromCart` in
+# app/components/CartSummary.tsx and the matching code in Header.tsx. Its value
+# is that branch's delivery fee as a plain number, e.g. "40".
+#
+# Nothing else is requested. Functions are billed by instruction count and the
+# platform caps them, so the query stays to the minimum the logic reads.
+
+query RunInput {
+  cart {
+    attribute(key: "Delivery Fee") {
+      value
+    }
+    deliveryGroups {
+      deliveryOptions {
+        handle
+        title
+        cost {
+          amount
+        }
+      }
+    }
+  }
+}

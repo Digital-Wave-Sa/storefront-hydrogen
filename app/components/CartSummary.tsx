@@ -17,6 +17,10 @@ import { isDigitalOnlyCart as cartIsDigitalOnly, isNonShippableLine } from '~/li
 import { usePendingCartMutations, lineTotalOf } from '~/lib/cart-pending';
 import { trackSelectBranch, trackLoyaltyRedeem } from '~/lib/analytics-events';
 import {
+  STANDARD_DELIVERY_FEE,
+  STANDARD_FREE_DELIVERY_THRESHOLD,
+} from '~/lib/delivery-defaults';
+import {
   MIN_REDEEMABLE_POINTS,
   POINT_REDEEM_STEP,
   floorToRedeemablePoints,
@@ -303,9 +307,38 @@ export function CartSummary({ cart, layout, confirmedCart }: CartSummaryProps) {
    * dearer, so the cart's number was simply a promise nobody could keep.
    *
    * Shopify's own rate is read from the cart's delivery groups instead: the
-   * option the shopper has selected where there is one, otherwise the
-   * cheapest on offer, which is what checkout preselects. Summed across
-   * groups, because a cart split across locations is quoted per group.
+   * option the shopper has selected where there is one, otherwise the one
+   * checkout will preselect. Summed across groups, because a cart split
+   * across locations is quoted per group.
+   *
+   * ── Why LOCAL beats the cheapest ──
+   *
+   * Branch delivery fees are configured as Shopify LOCAL DELIVERY, per
+   * location, each branch with its own price. An address inside a branch's
+   * delivery area is therefore quoted twice: that branch's local delivery
+   * (say 40) AND the shop-wide standard rate (25).
+   *
+   * Taking the cheapest would show 25 in the cart while the shopper picks
+   * local delivery at checkout and pays 40 — the same cart/checkout mismatch
+   * this block was written to end, only inverted. A shopper who asked for
+   * delivery to their address wants the local option, so that is the one
+   * quoted when they have not chosen yet.
+   *
+   * ── Why LOCAL is checked BEFORE selectedDeliveryOption ──
+   *
+   * This read `selectedDeliveryOption` first, on the reasoning that the
+   * shopper's own choice should beat any guess of ours. That reasoning was
+   * wrong: the cart page has no delivery-option picker, so nothing on it is
+   * ever the shopper's choice. `selectedDeliveryOption` is Shopify's own
+   * automatic pick, and Shopify picks the cheapest — قياسي 25.
+   *
+   * So the cart showed 25 while `checkout.initiate` explicitly selected the
+   * branch's 40, and the two disagreed again in the opposite direction.
+   * Checking LOCAL first makes the cart quote the same option checkout is
+   * about to open on.
+   *
+   * Once checkout.initiate has run, the cart's selected option IS the local
+   * one, so both paths agree either way.
    */
   const shopifyDeliveryFee = (() => {
     const groups: any[] = (cart as any)?.deliveryGroups?.nodes ?? [];
@@ -315,6 +348,30 @@ export function CartSummary({ cart, layout, confirmedCart }: CartSummaryProps) {
     let quoted = false;
 
     for (const group of groups) {
+      const options: any[] = group?.deliveryOptions ?? [];
+
+      /**
+       * `deliveryMethodType` is LOCAL for local delivery, SHIPPING for a rate
+       * from a shipping profile. Already requested in the cart fragment.
+       *
+       * Matched on the type, never the title: Shopify returns «Local
+       * Delivery» in English through the Storefront API while rendering
+       * «توصيل محلي» at checkout, so a title match would miss on the Arabic
+       * storefront and nowhere else.
+       */
+      const localCosts = options
+        .filter((o: any) => String(o?.deliveryMethodType).toUpperCase() === 'LOCAL')
+        .map((o: any) => parseFloat(o?.estimatedCost?.amount ?? ''))
+        .filter((n: number) => Number.isFinite(n));
+
+      if (!isPickup && localCosts.length > 0) {
+        // More than one local option for a single group would mean overlapping
+        // delivery areas; the cheaper is the safer promise.
+        total += Math.min(...localCosts);
+        quoted = true;
+        continue;
+      }
+
       const selected = parseFloat(
         group?.selectedDeliveryOption?.estimatedCost?.amount ?? '',
       );
@@ -324,7 +381,7 @@ export function CartSummary({ cart, layout, confirmedCart }: CartSummaryProps) {
         continue;
       }
 
-      const costs = (group?.deliveryOptions ?? [])
+      const costs = options
         .map((o: any) => parseFloat(o?.estimatedCost?.amount ?? ''))
         .filter((n: number) => Number.isFinite(n));
       if (costs.length > 0) {
@@ -359,7 +416,53 @@ export function CartSummary({ cart, layout, confirmedCart }: CartSummaryProps) {
 
   const rawDeliveryFee = shopifyDeliveryFee ?? branchDeliveryFee;
 
-  const deliveryFee = (isFreeDelivery || isPickup || isDigitalOnlyCart) ? 0 : rawDeliveryFee;
+  /**
+   * Zero because it is free, or zero because nobody has told us yet?
+   *
+   * Shopify quotes nothing until the cart has a delivery address, and only 3
+   * of 117 branches carry a `custom.delivery_fee` metafield. So at the other
+   * 114 the fallback chain bottomed out at 0 and the cart printed «رسوم
+   * التوصيل 0.00» — indistinguishable from free delivery, right up until an
+   * address turned it into 25.
+   *
+   * A real zero has a reason: pickup, a digital-only cart, or a free-delivery
+   * rule that actually fired. Without one of those, and with no quote and no
+   * metafield, the honest answer is that the fee is not known yet.
+   *
+   * Local delivery being the real source of these fees is what makes this
+   * safe to say: once the shopper has an address, Shopify answers, and the
+   * number the cart shows is the number checkout charges.
+   */
+  const isDeliveryFeeUnknown =
+    !isFreeDelivery &&
+    !isPickup &&
+    !isDigitalOnlyCart &&
+    shopifyDeliveryFee === null &&
+    !(branchDeliveryFee > 0);
+
+  /**
+   * The standard rate stands in until Shopify quotes.
+   *
+   * A branch with no local delivery of its own IS charged the standard rate,
+   * so this is not really a guess — it is what checkout asks for unless a
+   * branch fee overrides it. The only branches it can under-quote are ones
+   * charging more than the standard AND carrying no `custom.delivery_fee`
+   * metafield; those correct upward the moment an address is entered.
+   *
+   * The free-over-320 condition on that rate is honoured too. Promising 25 to
+   * a shopper whose order already qualifies for free delivery would be wrong
+   * in the direction that costs them money, which is the one direction worth
+   * being careful about.
+   */
+  const standardFallbackFee =
+    subtotalBeforeDiscounts >= STANDARD_FREE_DELIVERY_THRESHOLD
+      ? 0
+      : STANDARD_DELIVERY_FEE;
+
+  const deliveryFee = (isFreeDelivery || isPickup || isDigitalOnlyCart)
+    ? 0
+    : (isDeliveryFeeUnknown ? standardFallbackFee : rawDeliveryFee);
+
   const calculatedTotal = Math.max(0, subtotalBeforeDiscounts - otherDiscountDisplay - loyaltyDiscountDisplay - storeCreditDiscountDisplay + deliveryFee);
 
   // Calculate 15% VAT strictly on taxable products in the cart (net of product discounts, independent of delivery fees)
@@ -775,7 +878,21 @@ export function CartSummary({ cart, layout, confirmedCart }: CartSummaryProps) {
       window.dispatchEvent(
         new CustomEvent('location-selected', {
           detail: {
-            branchId,
+            /**
+             * `bId`, the branch just picked — NOT `branchId`.
+             *
+             * This said `branchId`, which is not a variable in this function:
+             * it resolved to the component-level `branchId` declared far
+             * above, holding the branch the cart ALREADY had. So choosing a
+             * new branch in the cart announced the old one, the header pinned
+             * its pill to that, and the pill then never moved — its clearing
+             * rule only fires when root's branch matches the pending one, and
+             * root had moved on to the new branch while pending held the old.
+             *
+             * Nothing errored, because the wrong name resolved to a real
+             * variable of the right shape.
+             */
+            branchId: bId,
             branchName,
             fulfillmentType: type,
             addressName,
@@ -1003,7 +1120,20 @@ export function CartSummary({ cart, layout, confirmedCart }: CartSummaryProps) {
               {/* Breakdown */}
               <div className="flex flex-col gap-4">
                 <div className="flex justify-between items-center text-[15px]">
-                  <dt className="text-[#9FB7AE] font-medium" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>{isEn ? 'Subtotal (Including VAT)' : 'المجموع الفرعي (شامل الضريبة)'}</dt>
+                  {/**
+                    * «(شامل الضريبة)» only when there is VAT inside the
+                    * figure. Most of the catalogue has «Charge tax on this
+                    * product» switched off in Shopify, and on a cart made
+                    * entirely of those items the suffix claimed a tax the
+                    * shopper is not paying and no VAT row appeared to
+                    * contradict it. `hasTax` is the same flag that decides
+                    * whether that row renders, so the two cannot disagree.
+                    */}
+                  <dt className="text-[#9FB7AE] font-medium" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
+                    {hasTax
+                      ? (isEn ? 'Subtotal (Including VAT)' : 'المجموع الفرعي (شامل الضريبة)')
+                      : (isEn ? 'Subtotal' : 'المجموع الفرعي')}
+                  </dt>
                   <dd className="text-[#234745] font-bold font-en flex items-center gap-1 flex-row-reverse">
                     <SaudiRiyalSymbol className="h-4 w-auto" />
                     <span>{subtotalBeforeDiscounts.toFixed(2)}</span>
@@ -1264,7 +1394,12 @@ export function CartSummary({ cart, layout, confirmedCart }: CartSummaryProps) {
       {layout === 'aside' && (
         <div className="space-y-2 mb-4 px-1">
           <div className="flex justify-between items-center text-[14px]">
-            <dt className="text-gray-400 font-medium">{isEn ? 'Subtotal (Including VAT)' : 'المجموع الفرعي (شامل الضريبة)'}</dt>
+            {/** Tied to `hasTax` for the same reason as the drawer above. */}
+            <dt className="text-gray-400 font-medium">
+              {hasTax
+                ? (isEn ? 'Subtotal (Including VAT)' : 'المجموع الفرعي (شامل الضريبة)')
+                : (isEn ? 'Subtotal' : 'المجموع الفرعي')}
+            </dt>
             <dd className="text-[#234745] font-bold font-en">
               {/**
                 * The corrected figure, not `cart.cost.subtotalAmount`.

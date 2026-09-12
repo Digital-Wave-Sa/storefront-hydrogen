@@ -309,13 +309,32 @@ export async function getLoyaltyFullInfo(
         const rawAmount = data?.data?.amount ?? data?.amount;
         const amount = typeof rawAmount === 'number' ? rawAmount : (parseFloat(rawAmount) || (balance * 0.01));
 
+        /**
+         * When the customer joined the loyalty programme.
+         *
+         * The three `data.data.*` paths this used to prefer were unreachable:
+         * SDLP's response is flat, there is no `data` wrapper, so every
+         * customer fell through to `data.enrollmentDate`. That field is the
+         * only date in the payload in ISO form with milliseconds — every
+         * other SDLP date is DD/MM/YYYY — which marks it as Shopify's
+         * customer `createdAt` echoed back, not a loyalty date at all. It is
+         * days later than the real one and sits under a label that says
+         * «عضو ولاء منذ».
+         *
+         * `card_created_date` is the loyalty card itself, corroborated by
+         * `first_purchase_date` and `tier.start_date`. It is preferred, with
+         * `enrollmentDate` kept as a last resort rather than a default.
+         *
+         * Both response shapes are read so a future SDLP that does nest under
+         * `data` keeps working.
+         */
+        const root = data?.data || data;
         const enrollmentDate =
-          data?.data?.activity?.card_created_date ||
-          data?.data?.activity?.first_purchase_date ||
-          data?.data?.enrollmentDate ||
-          data?.enrollmentDate ||
-          data?.createdAt ||
-          data?.customer?.createdtime ||
+          root?.activity?.card_created_date ||
+          root?.activity?.first_purchase_date ||
+          root?.enrollmentDate ||
+          root?.createdAt ||
+          root?.customer?.createdtime ||
           null;
 
         const tierObj = data?.data?.tier || data?.tier;

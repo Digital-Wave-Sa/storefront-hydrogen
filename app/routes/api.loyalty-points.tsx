@@ -70,10 +70,14 @@ export async function loader({request, context}: LoaderFunctionArgs) {
         data: {
           points,
           amount: loyaltyInfo?.amount ?? (points * 0.01),
-          enrollmentDate: enrollmentDate || new Date().toISOString(),
+          // null, never today / this year: an unknown enrollment date is not
+          // a customer who joined this morning.
+          enrollmentDate: enrollmentDate || null,
           enrolledSinceYear: enrollmentDate
-            ? (new Date(enrollmentDate).getFullYear() || parseInt(enrollmentDate.split('/')?.pop() || '', 10) || new Date().getFullYear())
-            : new Date().getFullYear(),
+            ? (new Date(enrollmentDate).getFullYear() ||
+               parseInt(enrollmentDate.split('/')?.pop() || '', 10) ||
+               null)
+            : null,
           tier: tierInfo.tier,
           nextTier: tierInfo.nextTier,
           pointsToNextTier: tierInfo.pointsToNextTier,
@@ -106,8 +110,8 @@ export async function loader({request, context}: LoaderFunctionArgs) {
         success: true,
         data: {
           points: 0,
-          enrollmentDate: new Date().toISOString(),
-          enrolledSinceYear: new Date().getFullYear(),
+          enrollmentDate: null,
+          enrolledSinceYear: null,
           tier: tierInfo.tier,
           nextTier: tierInfo.nextTier,
           pointsToNextTier: tierInfo.pointsToNextTier,

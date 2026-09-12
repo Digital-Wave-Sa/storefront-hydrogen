@@ -39,11 +39,23 @@ export function AccountProfileHeader({
     return String(str).replace(/[٠-٩]/g, (d) => '٠١٢٣٤٥٦٧٨٩'.indexOf(d).toString());
   };
 
-  // Resolve Real Loyalty Membership Enrollment Date
+  /**
+   * When the customer joined the loyalty programme.
+   *
+   * `card_created_date` was asked for in snake_case, but getLoyaltyFullInfo
+   * maps that field to `cardCreatedDate` — so this always read undefined and
+   * fell through to enrollmentDate, which is a different (later) date.
+   *
+   * `customer.createdAt` is deliberately NOT a fallback any more. It is when
+   * the Shopify account was created, which for anyone who shopped before
+   * joining is simply not the same event — and this line claims «عضو ولاء
+   * منذ». An unknown date now hides the line instead of stating a wrong one.
+   */
   const rawEnrollment =
-    loyaltyInfo?.activity?.card_created_date ||
+    loyaltyInfo?.activity?.cardCreatedDate ||
+    loyaltyInfo?.activity?.firstPurchaseDate ||
     loyaltyInfo?.enrollmentDate ||
-    customer?.createdAt;
+    null;
 
   let formattedJoinDate = '';
   if (rawEnrollment) {
@@ -80,18 +92,10 @@ export function AccountProfileHeader({
             ),
           );
     }
-  } else {
-    formattedJoinDate = forceEnDigits(
-      new Date().toLocaleDateString(
-        isEn ? 'en-US' : 'ar-SA-u-nu-latn-ca-gregory',
-        {
-          day: 'numeric',
-          month: 'short',
-          year: 'numeric',
-        },
-      ),
-    );
   }
+  // No else. An unknown enrollment date used to render as TODAY, telling a
+  // customer of two years that they joined this morning. It now stays empty
+  // and the line is not rendered at all.
 
   const rootData = useRouteLoaderData('root') as any;
   const tierInfo = getLoyaltyTierInfo(
@@ -156,11 +160,17 @@ export function AccountProfileHeader({
                   style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
                 >
                   <span dir="ltr" className="truncate max-w-[120px] md:max-w-none font-en">{forceEnDigits(customer.phone || customer.email)}</span>
-                  <span>•</span>
-                  <span className="whitespace-nowrap">
-                    {isEn ? 'Loyalty Member since ' : 'عضو ولاء منذ '}
-                    <span className="font-en">{formattedJoinDate}</span>
-                  </span>
+                  {/* The separator belongs to the date, not to the phone —
+                      it used to be left stranded when the date was absent. */}
+                  {formattedJoinDate && (
+                    <>
+                      <span>•</span>
+                      <span className="whitespace-nowrap">
+                        {isEn ? 'Loyalty Member since ' : 'عضو ولاء منذ '}
+                        <span className="font-en">{formattedJoinDate}</span>
+                      </span>
+                    </>
+                  )}
                 </p>
               </div>
 

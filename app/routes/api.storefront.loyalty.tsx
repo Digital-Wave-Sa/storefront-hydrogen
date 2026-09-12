@@ -22,7 +22,12 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
     });
 
     const balance = loyaltyInfo?.balance || 0;
-    let enrollmentDate: string = loyaltyInfo?.enrollmentDate || new Date().toISOString();
+    /**
+     * null, never today's date. This defaulted to new Date(), so a customer
+     * of two years was reported as having joined this morning — a fabricated
+     * fact, and one consumers cannot tell apart from a real one.
+     */
+    let enrollmentDate: string | null = loyaltyInfo?.enrollmentDate || null;
 
     if (!loyaltyInfo?.enrollmentDate && context?.storefront && context?.session) {
       try {
@@ -78,7 +83,7 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
         balance: 0,
         amount: 0.00,
         pointsRedeemRatio: 100,
-        enrollmentDate: new Date().toISOString(),
+        enrollmentDate: null,
         tier: {
           name: tierInfo.tier.name,
           code: tierInfo.tier.code,

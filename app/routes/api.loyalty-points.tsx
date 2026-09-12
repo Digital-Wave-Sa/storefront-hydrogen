@@ -132,13 +132,30 @@ export async function action({request, context}: ActionFunctionArgs) {
     const body = (await request.json()) as any;
     const pointsToRedeem = parseInt(body?.points) || 0;
 
-    if (pointsToRedeem <= 0 || pointsToRedeem % 100 !== 0) {
+    // Quantity rules live in loyalty-tiers.ts — see the note there.
+    const {MIN_REDEEMABLE_POINTS, POINT_REDEEM_STEP} = await import(
+      '~/lib/loyalty-tiers'
+    );
+    const isEnLocale = context.storefront.i18n.language === 'EN';
+
+    if (pointsToRedeem < MIN_REDEEMABLE_POINTS) {
       return Response.json(
         {
           success: false,
-          error: context.storefront.i18n.language === 'EN'
-            ? 'Points must be redeemed in increments of 100.'
-            : 'يجب استبدال النقاط بمضاعفات 100 نقطة.',
+          error: isEnLocale
+            ? `A minimum of ${MIN_REDEEMABLE_POINTS} points is required to redeem.`
+            : `الحد الأدنى لاستبدال النقاط هو ${MIN_REDEEMABLE_POINTS} نقطة.`,
+        },
+        {status: 400},
+      );
+    }
+    if (POINT_REDEEM_STEP > 1 && pointsToRedeem % POINT_REDEEM_STEP !== 0) {
+      return Response.json(
+        {
+          success: false,
+          error: isEnLocale
+            ? `Points must be redeemed in increments of ${POINT_REDEEM_STEP}.`
+            : `يجب استبدال النقاط بمضاعفات ${POINT_REDEEM_STEP} نقطة.`,
         },
         {status: 400},
       );

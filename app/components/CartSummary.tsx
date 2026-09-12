@@ -16,6 +16,11 @@ import { useAdminLocations } from '~/lib/locations-meta';
 import { isDigitalOnlyCart as cartIsDigitalOnly, isNonShippableLine } from '~/lib/digital-lines';
 import { usePendingCartMutations, lineTotalOf } from '~/lib/cart-pending';
 import { trackSelectBranch, trackLoyaltyRedeem } from '~/lib/analytics-events';
+import {
+  MIN_REDEEMABLE_POINTS,
+  POINT_REDEEM_STEP,
+  floorToRedeemablePoints,
+} from '~/lib/loyalty-tiers';
 
 type CartSummaryProps = {
   cart: OptimisticCart<CartApiQueryFragment | null>;
@@ -1820,7 +1825,18 @@ function LoyaltyRedemptionUI({ isEn, cart }: { isEn: boolean, cart: any }) {
 
   const pointsToCurrencyRatio = 0.01;
   const cartSubtotal = parseFloat(cart?.cost?.subtotalAmount?.amount || '0');
-  const maxRedeemablePoints = availablePoints ? Math.min(availablePoints, Math.floor(cartSubtotal * 100)) : 0;
+  /**
+   * The button used to submit the raw balance, which SDLP then refused: 1560
+   * is not a multiple of 100. The step and the minimum both live in
+   * loyalty-tiers.ts so every screen and both server routes agree on them —
+   * see the note there for why the step exists and when it goes away.
+   *
+   * Capped by the cart as well as the balance: there is no point offering
+   * 1560 points against a cart that can only absorb 500.
+   */
+  const redeemablePoints = floorToRedeemablePoints(
+    Math.min(availablePoints ?? 0, cartSubtotal * 100),
+  );
   const isApplied = initialPoints > 0;
   const appliedDiscountSAR = (initialPoints * pointsToCurrencyRatio).toFixed(2);
 
@@ -1835,7 +1851,9 @@ function LoyaltyRedemptionUI({ isEn, cart }: { isEn: boolean, cart: any }) {
         </div>
         {availablePoints !== null && (
           <span className="text-[12px] font-bold text-[#234745] bg-emerald-50 px-3 py-1 rounded-[16px] border border-emerald-100 flex items-center gap-1">
-            <span className="text-emerald-700 font-en font-black">{availablePoints}</span>
+            <span className="text-emerald-700 font-en font-black">
+              {availablePoints.toLocaleString('en-US', {maximumFractionDigits: 1})}
+            </span>
             <span className="text-emerald-600">{isEn ? 'pts available' : 'نقطة متاحة'}</span>
           </span>
         )}
@@ -1880,12 +1898,28 @@ function LoyaltyRedemptionUI({ isEn, cart }: { isEn: boolean, cart: any }) {
             <p className="text-[12px] text-gray-500 text-center py-2 font-medium">
               {isEn ? 'You currently have 0 loyalty points.' : 'لا توجد لديك نقاط ولاء حالياً.'}
             </p>
+          ) : redeemablePoints < MIN_REDEEMABLE_POINTS ? (
+            /**
+             * Holding points but none of them redeemable right now: either
+             * fewer than 100 in the balance, or a cart too small to absorb
+             * 1 SAR of discount. Say which, instead of showing a button that
+             * can only fail.
+             */
+            <p className="text-[12px] text-gray-500 text-center py-2 font-medium">
+              {Math.floor(availablePoints) < MIN_REDEEMABLE_POINTS
+                ? (isEn
+                    ? 'You need at least 100 points to redeem.'
+                    : 'تحتاج إلى 100 نقطة على الأقل للاستبدال.')
+                : (isEn
+                    ? 'Your cart total is too small to redeem points yet.'
+                    : 'قيمة السلة غير كافية لاستبدال النقاط حالياً.')}
+            </p>
           ) : (
             <>
               <div className="flex items-center justify-between text-[12px] font-medium text-gray-700">
                 <span>{isEn ? '100 Points = 1 SAR Discount' : '100 نقطة = 1 ر.س خصم'}</span>
                 <span className="text-[#234745] font-bold">
-                  {isEn ? `Max: ${(availablePoints * 0.01).toFixed(2)} SAR` : `أقصى خصم: ${(availablePoints * 0.01).toFixed(2)} ر.س`}
+                  {isEn ? `Max: ${(redeemablePoints * 0.01).toFixed(2)} SAR` : `أقصى خصم: ${(redeemablePoints * 0.01).toFixed(2)} ر.س`}
                 </span>
               </div>
 
@@ -1893,17 +1927,17 @@ function LoyaltyRedemptionUI({ isEn, cart }: { isEn: boolean, cart: any }) {
               <CartForm
                 route={cartRoute}
                 action="LoyaltyUpdate"
-                inputs={{ points: String(availablePoints), intent: 'apply' }}
+                inputs={{ points: String(redeemablePoints), intent: 'apply' }}
                 className="w-full"
               >
                 {(fetcher: any) => {
                   const actionError = fetcher.data?.error;
-                  const discountSAR = (availablePoints * 0.01).toFixed(2);
+                  const discountSAR = (redeemablePoints * 0.01).toFixed(2);
                   return (
                     <div className="w-full flex flex-col gap-1">
                       <button
                         type="submit"
-                        disabled={fetcher.state !== 'idle' || availablePoints <= 0}
+                        disabled={fetcher.state !== 'idle' || redeemablePoints < MIN_REDEEMABLE_POINTS}
                         /**
                           * Fired on the click rather than on the response,
                           * because the redemption's own success is a cart
@@ -1912,7 +1946,7 @@ function LoyaltyRedemptionUI({ isEn, cart }: { isEn: boolean, cart: any }) {
                           */
                         onClick={() =>
                           trackLoyaltyRedeem({
-                            points: availablePoints,
+                            points: redeemablePoints,
                             value: parseFloat(discountSAR),
                             currency: 'SAR',
                           })
@@ -1923,7 +1957,9 @@ function LoyaltyRedemptionUI({ isEn, cart }: { isEn: boolean, cart: any }) {
                         <span>
                           {fetcher.state !== 'idle'
                             ? (isEn ? 'Redeeming...' : 'جاري الاستبدال...')
-                            : (isEn ? `Redeem All ${availablePoints} Points (-${discountSAR} SAR)` : `استبدال ${availablePoints} نقطة (خصم ${discountSAR} ر.س)`)}
+                            : (isEn
+                                ? `Redeem ${redeemablePoints.toLocaleString('en-US')} Points (-${discountSAR} SAR)`
+                                : `استبدال ${redeemablePoints.toLocaleString('en-US')} نقطة (خصم ${discountSAR} ر.س)`)}
                         </span>
                       </button>
                       {actionError && (
@@ -1937,13 +1973,13 @@ function LoyaltyRedemptionUI({ isEn, cart }: { isEn: boolean, cart: any }) {
               </CartForm>
 
               {/* Custom Points Input (if availablePoints >= 100) */}
-              {availablePoints >= 100 && (
+              {redeemablePoints >= MIN_REDEEMABLE_POINTS && (
                 <div className="pt-2 border-t border-[#f0ece8]">
                   <p className="text-[11px] text-gray-500 mb-1.5 font-medium">
                     {isEn ? 'Or enter custom amount of points to use:' : 'أو أدخل عدد نقاط مخصص لاستخدامه:'}
                   </p>
                   <CustomPointsForm
-                    availablePoints={availablePoints}
+                    availablePoints={redeemablePoints}
                     isEn={isEn}
                   />
                 </div>
@@ -1961,7 +1997,14 @@ function CustomPointsForm({ availablePoints, isEn }: { availablePoints: number; 
   const [val, setVal] = useState<string>('');
   const numVal = parseInt(val) || 0;
   const discountVal = (numVal * 0.01).toFixed(2);
-  const isValid = numVal >= 100 && numVal <= availablePoints;
+  /**
+   * `step` on a number input is a spinner hint, not a constraint — a typed
+   * 150 submits happily and comes back rejected by SDLP. Checked here so the
+   * button explains itself instead.
+   */
+  const isOnStep = POINT_REDEEM_STEP <= 1 || numVal % POINT_REDEEM_STEP === 0;
+  const isValid =
+    numVal >= MIN_REDEEMABLE_POINTS && numVal <= availablePoints && isOnStep;
 
   return (
     <div className="flex flex-col gap-1.5 w-full">
@@ -1979,9 +2022,9 @@ function CustomPointsForm({ availablePoints, isEn }: { availablePoints: number; 
                 <div className="relative flex-1">
                   <input
                     type="number"
-                    min={100}
+                    min={MIN_REDEEMABLE_POINTS}
                     max={availablePoints}
-                    step={100}
+                    step={POINT_REDEEM_STEP}
                     value={val}
                     onChange={(e) => setVal(e.target.value)}
                     placeholder={isEn ? "Enter points (e.g. 500)" : "أدخل عدد النقاط (مثال: 500)"}
@@ -2012,10 +2055,24 @@ function CustomPointsForm({ availablePoints, isEn }: { availablePoints: number; 
             <span>
               {isEn ? `Equivalent discount: -${discountVal} SAR` : `قيمة الخصم المستحقة: -${discountVal} ر.س`}
             </span>
-          ) : numVal < 100 ? (
-            <span>{isEn ? 'Minimum 100 points required' : 'الحد الأدنى 100 نقطة'}</span>
+          ) : numVal < MIN_REDEEMABLE_POINTS ? (
+            <span>
+              {isEn
+                ? `Minimum ${MIN_REDEEMABLE_POINTS} points required`
+                : `الحد الأدنى ${MIN_REDEEMABLE_POINTS} نقطة`}
+            </span>
+          ) : numVal > availablePoints ? (
+            <span>
+              {isEn
+                ? `Maximum ${availablePoints.toLocaleString('en-US')} points available`
+                : `لديك ${availablePoints.toLocaleString('en-US')} نقطة كحد أقصى`}
+            </span>
           ) : (
-            <span>{isEn ? `Maximum ${availablePoints} points available` : `لديك ${availablePoints} نقطة كحد أقصى`}</span>
+            <span>
+              {isEn
+                ? `Points must be entered in multiples of ${POINT_REDEEM_STEP}`
+                : `يجب أن يكون عدد النقاط من مضاعفات ${POINT_REDEEM_STEP}`}
+            </span>
           )}
         </div>
       )}

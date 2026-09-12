@@ -266,6 +266,13 @@ export async function action({request, context, params}: Route.ActionArgs) {
         });
 
         if (!redeemRes.success || !redeemRes.discountCode) {
+          // The customer sees `error`; this is the part that says which of the
+          // failure paths we actually took.
+          console.error(
+            '[Loyalty] Redemption failed —',
+            redeemRes.reason || redeemRes.error || 'no reason given',
+            `(requested ${pointsToRedeem} points)`,
+          );
           return data(
             {
               error:

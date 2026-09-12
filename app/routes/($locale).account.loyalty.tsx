@@ -2,7 +2,12 @@ import {useState} from 'react';
 import {useLoaderData, useFetcher, Link} from 'react-router';
 import type {LoaderFunctionArgs, ActionFunctionArgs} from 'react-router';
 import {getLoyaltyPoints, redeemLoyaltyPoints} from '~/lib/loyalty.server';
-import {LOYALTY_TIERS, getLoyaltyTierInfo} from '~/lib/loyalty-tiers';
+import {
+  LOYALTY_TIERS,
+  getLoyaltyTierInfo,
+  MIN_REDEEMABLE_POINTS,
+  POINT_REDEEM_STEP,
+} from '~/lib/loyalty-tiers';
 import {LoyaltyCard} from '~/components/account/LoyaltyCard';
 
 export async function loader({request, context}: LoaderFunctionArgs) {
@@ -75,12 +80,21 @@ export async function action({request, context}: ActionFunctionArgs) {
 
   const isEn = context.storefront.i18n.language === 'EN';
 
-  if (points <= 0 || points % 100 !== 0) {
+  // Quantity rules live in loyalty-tiers.ts — see the note there.
+  if (points < MIN_REDEEMABLE_POINTS) {
     return {
       success: false,
       error: isEn
-        ? 'Points must be redeemed in increments of 100.'
-        : 'يجب استبدال النقاط بمضاعفات 100 نقطة.',
+        ? `A minimum of ${MIN_REDEEMABLE_POINTS} points is required to redeem.`
+        : `الحد الأدنى لاستبدال النقاط هو ${MIN_REDEEMABLE_POINTS} نقطة.`,
+    };
+  }
+  if (POINT_REDEEM_STEP > 1 && points % POINT_REDEEM_STEP !== 0) {
+    return {
+      success: false,
+      error: isEn
+        ? `Points must be redeemed in increments of ${POINT_REDEEM_STEP}.`
+        : `يجب استبدال النقاط بمضاعفات ${POINT_REDEEM_STEP} نقطة.`,
     };
   }
 
@@ -179,10 +193,23 @@ export default function LoyaltyPage() {
       ? actionData.newBalance
       : initialLoyalty?.balance || 0;
 
+  /**
+   * Hundreds make a convenient picker regardless of the step. The exact
+   * balance is added as a final option only once SDLP accepts it — offering
+   * 1560 today would just produce a rejection and a rolled-back discount.
+   */
+  const wholeBalance = Math.floor(currentBalance);
   const redeemOptions = Array.from(
-    {length: Math.floor(currentBalance / 100)},
+    {length: Math.floor(wholeBalance / 100)},
     (_, i) => (i + 1) * 100,
   );
+  if (
+    POINT_REDEEM_STEP <= 1 &&
+    wholeBalance >= MIN_REDEEMABLE_POINTS &&
+    wholeBalance % 100 !== 0
+  ) {
+    redeemOptions.push(wholeBalance);
+  }
 
   return (
     <div className="loyalty-card p-6 bg-white rounded-xl shadow-md max-w-md mx-auto border border-gray-100 my-6 text-start">
@@ -267,8 +294,8 @@ export default function LoyaltyPage() {
             className="block text-sm font-medium text-gray-700 mb-1"
           >
             {isEn
-              ? 'Redeem Points (in increments of 100):'
-              : 'استبدال النقاط (مضاعفات 100):'}
+              ? 'Redeem Points (minimum 100):'
+              : 'استبدال النقاط (الحد الأدنى 100 نقطة):'}
           </label>
           <select
             id="points"

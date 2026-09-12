@@ -1,3 +1,8 @@
+import {
+  MIN_REDEEMABLE_POINTS,
+  POINT_REDEEM_STEP,
+} from '~/lib/loyalty-tiers';
+
 interface LoyaltyParams {
   customerId?: string;
   phone?: string;
@@ -483,14 +488,34 @@ export async function redeemLoyaltyPoints({
   email,
   env,
   context,
-}: LoyaltyParams & { points: number }): Promise<{ success: boolean; discountCode?: string; newBalance?: number; error?: string }> {
+}: LoyaltyParams & { points: number }): Promise<{
+  success: boolean;
+  discountCode?: string;
+  newBalance?: number;
+  /** Localised, safe to render in the cart. */
+  error?: string;
+  /** Diagnostic detail for the log only — never rendered. */
+  reason?: string;
+}> {
   const sdlpAppUrl = env?.PUBLIC_SDLP_APP_URL || env?.SDLP_APP_URL || 'https://sdlp.saadeddin.top';
   const shop = env?.PUBLIC_SHOPIFY_STORE_DOMAIN || env?.PUBLIC_STORE_DOMAIN || 'saadeldeenshop-x21xumcd.myshopify.com';
+
+  /**
+   * Every string this function returns is rendered straight into the cart, so
+   * it has to follow the storefront locale. They used to be English-only,
+   * which put a left-to-right sentence inside an RTL block — Arabic customers
+   * saw the full stop jump to the front of the line.
+   */
+  const isEn = context?.storefront?.i18n?.language === 'EN';
+  const t = (en: string, ar: string) => (isEn ? en : ar);
 
   const resolvedCustomerId = await getCustomerGid({ customerId, phone, email, env, context });
   const resolvedPhone = await resolveCustomerPhone({ customerId, phone, email, env, context });
   if (!resolvedCustomerId && !resolvedPhone) {
-    return { success: false, error: 'Customer account not found' };
+    return {
+      success: false,
+      error: t('Customer account not found', 'لم يتم العثور على حساب العميل'),
+    };
   }
 
   const searchPhone = resolvedPhone || (context?.session ? await context.session.get('loginOtpPhone') : null);
@@ -505,12 +530,45 @@ export async function redeemLoyaltyPoints({
    * The balance is read live, never from cache, and an unreadable balance
    * refuses the redemption rather than assuming it is fine.
    */
-  const requested = Number(points);
-  if (!Number.isFinite(requested) || requested <= 0) {
-    return {success: false, error: 'Invalid points amount'};
+  const rawRequested = Number(points);
+  if (!Number.isFinite(rawRequested) || rawRequested <= 0) {
+    return {
+      success: false,
+      error: t('Invalid points amount', 'عدد النقاط غير صالح'),
+    };
   }
-  if (requested % 100 !== 0) {
-    return {success: false, error: 'Points must be redeemed in increments of 100.'};
+
+  /**
+   * Whole points, at or above the minimum, on the step SDLP accepts.
+   *
+   * Rejecting rather than silently flooring is deliberate: a redemption that
+   * quietly spends less than the customer asked for is worse than one that
+   * refuses, and the UI already floors before submitting, so reaching this
+   * branch means the two got out of sync and we want to hear about it.
+   *
+   * Everything downstream — the code, the discount value, the deduct payload
+   * — is built from `requested`, never the raw argument, so the amount
+   * charged against the balance can never disagree with the amount
+   * discounted.
+   */
+  const requested = Math.floor(rawRequested);
+  if (requested < MIN_REDEEMABLE_POINTS) {
+    return {
+      success: false,
+      error: t(
+        `A minimum of ${MIN_REDEEMABLE_POINTS} points is required to redeem.`,
+        `الحد الأدنى لاستبدال النقاط هو ${MIN_REDEEMABLE_POINTS} نقطة.`,
+      ),
+    };
+  }
+  if (POINT_REDEEM_STEP > 1 && requested % POINT_REDEEM_STEP !== 0) {
+    return {
+      success: false,
+      error: t(
+        `Points must be redeemed in increments of ${POINT_REDEEM_STEP}.`,
+        `يجب استبدال النقاط بمضاعفات ${POINT_REDEEM_STEP} نقطة.`,
+      ),
+    };
   }
 
   const available = await fetchLiveLoyaltyBalance({
@@ -524,13 +582,19 @@ export async function redeemLoyaltyPoints({
   if (available === null) {
     return {
       success: false,
-      error: 'Could not verify your points balance. Please try again shortly.',
+      error: t(
+        'Could not verify your points balance. Please try again shortly.',
+        'تعذر التحقق من رصيد نقاطك. يرجى المحاولة مرة أخرى بعد قليل.',
+      ),
     };
   }
   if (requested > available) {
     return {
       success: false,
-      error: `Insufficient points: ${available} available, ${requested} requested.`,
+      error: t(
+        `Insufficient points: ${available} available, ${requested} requested.`,
+        `رصيد النقاط غير كافٍ: لديك ${available} نقطة والمطلوب ${requested} نقطة.`,
+      ),
     };
   }
 
@@ -550,10 +614,10 @@ export async function redeemLoyaltyPoints({
 
     // Generate a unique code: LOYAL-{6 random alphanumeric}-{points}
     const rand = Math.random().toString(36).substring(2, 8).toUpperCase();
-    const code = `LOYAL-${rand}-${points}`;
+    const code = `LOYAL-${rand}-${requested}`;
 
     // The discount value: 1 point = 0.01 SAR
-    const discountAmount = (points * 0.01).toFixed(2);
+    const discountAmount = (requested * 0.01).toFixed(2);
 
     // Create a price rule (fixed amount, once per order, no minimum)
     const priceRuleRes = await fetch(
@@ -566,7 +630,7 @@ export async function redeemLoyaltyPoints({
         },
         body: JSON.stringify({
           price_rule: {
-            title: `Loyalty Points Redemption - ${points} pts`,
+            title: `Loyalty Points Redemption - ${requested} pts`,
             target_type: 'line_item',
             target_selection: 'all',
             allocation_method: 'across',
@@ -616,7 +680,16 @@ export async function redeemLoyaltyPoints({
     console.log('[Loyalty] Created discount code:', generatedCode, 'for', discountAmount, 'SAR');
   } catch (err: any) {
     console.error('[Loyalty] Failed to create Shopify discount:', err);
-    return { success: false, error: err?.message || 'Failed to create discount code' };
+    return {
+      success: false,
+      error: t(
+        'Could not create your discount code. Please try again shortly.',
+        'تعذر إنشاء كود الخصم الخاص بك. يرجى المحاولة مرة أخرى بعد قليل.',
+      ),
+      // `err.message` used to be returned verbatim — it is a Shopify Admin API
+      // message and belongs in the log, not in front of a customer.
+      reason: err?.message || 'Failed to create discount code',
+    };
   }
 
   /**
@@ -653,7 +726,7 @@ export async function redeemLoyaltyPoints({
     const payload: any = {
       shop,
       customerId: resolvedCustomerId,
-      points: Number(points),
+      points: requested,
       discountCode: generatedCode, // Pass the already-created code so SDLP doesn't need to create it
     };
     if (searchPhone) payload.phone = searchPhone;
@@ -680,12 +753,21 @@ export async function redeemLoyaltyPoints({
     LOYALTY_CACHE.delete(cacheKey);
 
     if (!res.ok || !resData?.success) {
-      await rollbackDiscount(
-        `SDLP deduction failed: ${resData?.error || res.status}`,
-      );
+      const sdlpReason = resData?.error || resData?.message || `HTTP ${res.status}`;
+      await rollbackDiscount(`SDLP deduction failed: ${sdlpReason}`);
       return {
         success: false,
-        error: 'Could not redeem your points right now. Please try again shortly.',
+        error: t(
+          'Could not redeem your points right now. Please try again shortly.',
+          'تعذر استبدال نقاطك في الوقت الحالي. يرجى المحاولة مرة أخرى بعد قليل.',
+        ),
+        /**
+         * Not shown to the customer — SDLP's own words, carried back so the
+         * caller can log them. Both failure paths below returned the identical
+         * sentence, which made a rejected redemption and a dead CRM look the
+         * same from the cart.
+         */
+        reason: `sdlp_rejected: ${sdlpReason}`,
       };
     }
 
@@ -695,10 +777,17 @@ export async function redeemLoyaltyPoints({
       newBalance: resData?.newBalance,
     };
   } catch (err: any) {
-    await rollbackDiscount(`deduct request threw: ${err?.message || err}`);
+    const thrown = err?.name === 'AbortError'
+      ? 'timed out after 8s'
+      : err?.message || String(err);
+    await rollbackDiscount(`deduct request threw: ${thrown}`);
     return {
       success: false,
-      error: 'Could not redeem your points right now. Please try again shortly.',
+      error: t(
+        'Could not redeem your points right now. Please try again shortly.',
+        'تعذر استبدال نقاطك في الوقت الحالي. يرجى المحاولة مرة أخرى بعد قليل.',
+      ),
+      reason: `sdlp_unreachable: ${thrown}`,
     };
   }
 }

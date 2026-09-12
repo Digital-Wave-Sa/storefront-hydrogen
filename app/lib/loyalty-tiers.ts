@@ -15,6 +15,43 @@ export interface LoyaltyTier {
 }
 
 /**
+ * ── Redemption quantity rules ────────────────────────────────────────────
+ *
+ * Shared by the cart, the account page and both server routes, so there is
+ * exactly one place to change when SDLP does.
+ *
+ * SDLP rejects any redemption that is not a multiple of 100 ("Points must be
+ * redeemed in increments of 100"), so the storefront has to match it. This is
+ * not our rule and we do not want it: a customer holding 1560 points is shown
+ * 15.60 SAR by the loyalty panel and can only spend 15.00, and the remaining
+ * 60 are stranded until their balance happens to cross the next hundred.
+ *
+ * The backend is removing it. When that lands, set the flag to false — the
+ * step becomes 1, every screen follows, and nothing else needs touching. Do
+ * not delete the flag before the CRM is confirmed changed: without it the
+ * cart submits values SDLP will refuse, which is the bug this replaced.
+ */
+export const SDLP_REQUIRES_MULTIPLES_OF_100 = true;
+
+/** Smallest redemption the programme allows, in points. */
+export const MIN_REDEEMABLE_POINTS = 100;
+
+/** The granularity a redemption must land on. */
+export const POINT_REDEEM_STEP = SDLP_REQUIRES_MULTIPLES_OF_100 ? 100 : 1;
+
+/**
+ * The largest valid redemption at or below `points`.
+ *
+ * Always floors to a whole number, flag or no flag: balances come back
+ * fractional (63564.8) and 635.648 SAR is three decimals where Shopify's
+ * fixed-amount discount takes two. The fraction rounds to the store's side.
+ */
+export function floorToRedeemablePoints(points: number): number {
+  if (!Number.isFinite(points) || points <= 0) return 0;
+  return Math.floor(Math.floor(points) / POINT_REDEEM_STEP) * POINT_REDEEM_STEP;
+}
+
+/**
  * Bronze / Silver / Gold.
  *
  * Replaces Silver / Gold / Platinum, which ran on far smaller numbers --

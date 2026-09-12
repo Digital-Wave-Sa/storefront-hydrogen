@@ -129,31 +129,20 @@ export async function action({request, context}: ActionFunctionArgs) {
         /**
          * Sync buyer identity -- and, above all, the delivery address.
          *
-         * No customer token is sent with this mutation, deliberately.
-         *
-         * The shop runs Shopify's NEW customer accounts
-         * (`shop.customerAccountsV2.customerAccountsVersion`). Under that
-         * setting the Storefront API rejects every token minted by the classic
-         * `customerAccessTokenCreate` flow -- which is the only kind this
-         * storefront has, whether the shopper signed in by OTP (`session-...`)
-         * or through Google/Apple. The rejection reads
-         * `Customer غير صالح` / code INVALID on field
-         * `buyerIdentity.customerAccessToken`.
+         * No customer token travels in THIS mutation — it follows in its own
+         * call further down.
          *
          * `cartBuyerIdentityUpdate` is atomic: one rejected field discards the
-         * WHOLE input. So attaching a token that is certain to be refused threw
-         * away the delivery address travelling in the same call. The cart kept
-         * whatever address it had before, and checkout priced a Riyadh address
-         * for a shopper who picked Al Qurayyat -- wrong branch, wrong fee.
+         * WHOLE input. A refused token therefore threw away the delivery
+         * address travelling in the same call, the cart kept whatever address
+         * it had before, and checkout priced a Riyadh address for a shopper who
+         * picked Al Qurayyat — wrong branch, wrong fee.
          *
-         * Nothing is lost by omitting it: the association it was supposed to
-         * create never once formed. `Header.tsx` has always sent the address
-         * without a token, and that is the path that worked.
-         *
-         * IF THE STORE IS EVER SWITCHED BACK to legacy customer accounts,
-         * restore this by re-adding `payload.customerAccessToken = shopifyToken`
-         * below, and the same two lines in `($locale).checkout.initiate.tsx`
-         * and `($locale).cart.tsx`.
+         * An earlier fix removed the token altogether, on the claim that the
+         * association "never once formed". That claim was never measured and
+         * turned out to be wrong: checkout stopped recognising signed-in
+         * shoppers, and returning the token as a separate call restored it.
+         * Separating the two calls is what actually fixes both.
          */
         const tokenStr =
           typeof customerAccessToken === 'string'
@@ -297,6 +286,39 @@ export async function action({request, context}: ActionFunctionArgs) {
               console.warn(
                 '[LOCATION API] cartBuyerIdentityUpdate userErrors:',
                 JSON.stringify(userErrors),
+              );
+            }
+          }
+
+          /**
+           * The customer association, separately and last.
+           *
+           * It cannot travel in the payload above: that call carries the
+           * delivery address, and an atomic mutation would discard the address
+           * along with a refused token — the wrong-branch, wrong-fee bug. On
+           * its own, a refusal costs only the association.
+           */
+          if (shopifyToken) {
+            try {
+              const assoc: any = await context.cart.updateBuyerIdentity({
+                customerAccessToken: shopifyToken,
+              } as any);
+
+              const assocErrors =
+                assoc?.cartBuyerIdentityUpdate?.userErrors ||
+                assoc?.userErrors ||
+                [];
+
+              if (assocErrors.length > 0) {
+                console.warn(
+                  '[LOCATION API] Customer association refused:',
+                  JSON.stringify(assocErrors),
+                );
+              }
+            } catch (assocErr: any) {
+              console.error(
+                '[LOCATION API] Customer association threw:',
+                assocErr?.message || assocErr,
               );
             }
           }

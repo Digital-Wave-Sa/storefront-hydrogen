@@ -104,6 +104,52 @@ export function clearIdentity(session: any): void {
 }
 
 /**
+ * What the previous shopper CHOSE, as opposed to who they were.
+ *
+ * These are not identity, so `clearIdentity` leaves them alone on purpose — a
+ * token that stops resolving mid-visit should not throw away the branch
+ * someone is currently shopping.
+ *
+ * An explicit logout is different: the next person at this browser is a
+ * different person. Left behind, these keys showed a newly signed-in customer
+ * «توصيل للمنزل / القريات» — the previous shopper's branch, delivery method and
+ * fee, on a cart they had just created and never configured.
+ * `selectedAddressName` is already cleared with identity, which is why no
+ * street address appeared; everything around it still did.
+ *
+ * `selectedAddressId` is the outright personal one: it names a row in the
+ * previous customer's Shopify address book.
+ *
+ * Locale and language are deliberately absent. They belong to the browser
+ * rather than to the shopper, and clearing them would flip a returning Arabic
+ * visitor to English.
+ */
+export const SELECTION_SESSION_KEYS = [
+  'selectedAddressId',
+  'selectedLocationId',
+  'selectedLocationName',
+  'selectedAxStoreId',
+  'selectedCustomBranchId',
+  'manualLocationSelection',
+  'fulfillmentType',
+  'delivery_date',
+  'Time Slot',
+] as const;
+
+/**
+ * Forget what the previous shopper chose. For an explicit logout only, where
+ * it runs alongside `clearIdentity`.
+ */
+export function clearShoppingSelection(session: any): void {
+  if (!session) return;
+  for (const key of SELECTION_SESSION_KEYS) {
+    try {
+      session.unset(key);
+    } catch {}
+  }
+}
+
+/**
  * True when a supplied identifier belongs to the signed-in customer.
  * Phones compare on their last 9 digits so +966 / 05 / 9665 spellings match.
  */

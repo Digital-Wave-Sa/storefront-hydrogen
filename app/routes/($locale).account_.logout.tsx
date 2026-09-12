@@ -34,8 +34,11 @@ export const meta: MetaFunction<typeof loader> = () => {
 export async function loader({context}: LoaderFunctionArgs) {
   const {session} = context;
 
-  const {clearIdentity} = await import('~/lib/session-identity.server');
+  const {clearIdentity, clearShoppingSelection} = await import(
+    '~/lib/session-identity.server'
+  );
   clearIdentity(session);
+  clearShoppingSelection(session);
 
   const headers = new Headers();
   headers.append('Set-Cookie', await session.commit());
@@ -67,17 +70,37 @@ export async function action({request, context}: ActionFunctionArgs) {
     // Ignore custom API errors on logout
   }
 
+  const {clearIdentity, clearShoppingSelection} = await import(
+    '~/lib/session-identity.server'
+  );
+
   /**
-    * 2. Forget the person, all of them.
-    *
-    * This used to unset four keys and leave `loginCustomerId` and
-    * `loginCustomerEmail` in the session -- which is exactly what
-    * `getSessionIdentity` reads. A logged-out browser still resolved to the
-    * customer who had just left, and the wallet and loyalty endpoints
-    * answered for them.
-    */
-  const {clearIdentity} = await import('~/lib/session-identity.server');
+   * 2. Forget the person, all of them.
+   *
+   * This used to unset four keys and leave `loginCustomerId` and
+   * `loginCustomerEmail` in the session -- which is exactly what
+   * `getSessionIdentity` reads. A logged-out browser still resolved to the
+   * customer who had just left, and the wallet and loyalty endpoints
+   * answered for them.
+   *
+   * This call is the one thing in this file that must never be removed. It is
+   * what makes the Sign out button actually sign someone out: this action is
+   * the POST that both buttons submit to, and the GET loader above is only a
+   * safety net for someone typing the URL. It was once dropped here while the
+   * selection clearing below was being added, and logging out stopped ending
+   * the session at all.
+   */
   clearIdentity(session);
+
+  /**
+   * 3. Forget what they chose, too.
+   *
+   * The cart cookie is discarded below, but the branch, fulfilment type, time
+   * slot and saved-address id live in the SESSION and survived it. The next
+   * person to sign in at this browser inherited the previous shopper's
+   * delivery setup — branch, method and fee — on a brand-new cart.
+   */
+  clearShoppingSelection(session);
 
   const headers = new Headers();
   headers.append('Set-Cookie', await session.commit());

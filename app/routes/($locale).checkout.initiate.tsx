@@ -217,23 +217,17 @@ async function processCheckoutInitiate({request, context}: ActionFunctionArgs) {
    * Email & phone onto the Cart Buyer Identity, so Shopify Checkout opens with
    * the shopper's contact details already filled in.
    *
-   * No customer token goes with them. The shop runs Shopify's NEW customer
-   * accounts, which rejects every token this storefront can mint -- they all
-   * come from the classic `customerAccessTokenCreate` flow. Because
-   * `cartBuyerIdentityUpdate` is atomic, that one refused field used to discard
-   * the email, the phone, the delivery-method preference and the address in the
-   * same call, and the shopper reached checkout with a stale address and the
-   * wrong delivery fee.
+   * No customer token goes in THIS payload. `cartBuyerIdentityUpdate` is
+   * atomic, so a token Shopify refuses discards the email, the phone, the
+   * delivery-method preference and the address alongside it — which is how
+   * shoppers ended up at checkout with a stale address and the wrong fee.
    *
-   * Checkout therefore treats the shopper as a guest -- as it already did,
-   * since the association never once succeeded -- but a guest whose details,
-   * address, branch and fee are all correct.
-   *
-   * IF THE STORE IS EVER SWITCHED BACK to legacy customer accounts, restore the
-   * association by re-adding, here:
-   *   if (tokenString && !tokenString.startsWith('session-'))
-   *     buyerIdentity.customerAccessToken = tokenString;
-   * and the matching lines in `api.location-id.tsx` and `($locale).cart.tsx`.
+   * The token is still sent, further down, in a call of its own where a
+   * refusal costs nothing but itself. An earlier version of this comment
+   * claimed the association "never once succeeded" and used that to justify
+   * dropping the token entirely. That claim was never measured, and removing
+   * the token coincided with checkout ceasing to recognise signed-in
+   * shoppers — so it is not repeated here.
    */
   const loginEmail = await session.get('loginCustomerEmail');
   const loginPhone = await session.get('loginOtpPhone');
@@ -575,6 +569,123 @@ async function processCheckoutInitiate({request, context}: ActionFunctionArgs) {
     );
   }
 
+  /**
+   * --- The customer association, last and entirely on its own ---
+   *
+   * This used to ride along inside the buyer-identity payload above. Because
+   * `cartBuyerIdentityUpdate` is atomic, a token Shopify refused discarded the
+   * email, the phone, the delivery preference and the address with it, and the
+   * shopper reached checkout with a stale address and the wrong fee. The fix
+   * applied at the time was to stop sending the token at all, on the reasoning
+   * that the association had never worked anyway.
+   *
+   * That reasoning was an assumption, not a measurement, and it may well have
+   * been wrong: checkout is reported to have recognised signed-in customers
+   * until this token was removed.
+   *
+   * So it goes back — but in a call of its own, where it can only ever cost
+   * itself. By this point the contact details, preferences and address are
+   * already committed by the two calls above. If Shopify refuses the token the
+   * refusal is logged and checkout opens exactly as it does today: a guest
+   * with every detail correct. If Shopify accepts it, the shopper is
+   * recognised, which is the behaviour being restored.
+   *
+   * `session-` tokens are never sent. They are this storefront's own
+   * placeholder for an OTP sign-in that never minted a real Shopify token, and
+   * mean nothing to Shopify.
+   */
+  if (tokenString && !tokenString.startsWith('session-')) {
+    try {
+      const assocResult: any = await context.cart.updateBuyerIdentity({
+        customerAccessToken: tokenString,
+      } as any);
+
+      const assocErrors =
+        assocResult?.cartBuyerIdentityUpdate?.userErrors ||
+        assocResult?.userErrors ||
+        [];
+
+      if (assocErrors.length > 0) {
+        console.warn(
+          '[CHECKOUT DIAGNOSTIC] Customer association REFUSED by Shopify:',
+          JSON.stringify(assocErrors),
+        );
+
+        /**
+         * A refused token is usually a STALE token, not a wrong one.
+         *
+         * Signing in sets a derived password on the Shopify customer, and
+         * setting a password invalidates every token issued before it — so the
+         * next login kills the token an older open session is still holding.
+         * Classic tokens expire on their own too. Either way Shopify answers
+         * «Customer غير صالح» / INVALID, and a shopper who is demonstrably
+         * signed in reaches checkout as a guest.
+         *
+         * The password is derived rather than stored, so a fresh token can be
+         * minted here without involving the shopper. One retry only: if the
+         * new token is refused as well, the token is not the problem and
+         * hammering Shopify will not discover what is.
+         */
+        const isInvalidToken = assocErrors.some(
+          (e: any) =>
+            e?.code === 'INVALID' ||
+            String(e?.field || '').includes('customerAccessToken'),
+        );
+
+        if (isInvalidToken) {
+          const {remintCustomerAccessToken} = await import('~/lib/auth.server');
+          const freshToken = await remintCustomerAccessToken(context);
+
+          if (freshToken) {
+            try {
+              const retry: any = await context.cart.updateBuyerIdentity({
+                customerAccessToken: freshToken,
+              } as any);
+
+              const retryErrors =
+                retry?.cartBuyerIdentityUpdate?.userErrors ||
+                retry?.userErrors ||
+                [];
+
+              if (retryErrors.length > 0) {
+                console.warn(
+                  '[CHECKOUT DIAGNOSTIC] Fresh token ALSO refused:',
+                  JSON.stringify(retryErrors),
+                );
+              } else {
+                console.log(
+                  '[CHECKOUT DIAGNOSTIC] Customer association ACCEPTED after re-minting a fresh token.',
+                );
+              }
+            } catch (retryErr: any) {
+              console.error(
+                '[CHECKOUT DIAGNOSTIC] Association retry threw:',
+                retryErr?.message || retryErr,
+              );
+            }
+          }
+        }
+      } else {
+        console.log(
+          '[CHECKOUT DIAGNOSTIC] Customer association ACCEPTED — checkout should recognise this shopper.',
+        );
+      }
+    } catch (err: any) {
+      // Never fatal: a shopper who cannot be associated still checks out.
+      console.error(
+        '[CHECKOUT DIAGNOSTIC] Customer association threw:',
+        err?.message || err,
+      );
+    }
+  } else {
+    console.log(
+      '[CHECKOUT DIAGNOSTIC] No real customer token to associate:',
+      tokenString
+        ? `placeholder (${String(tokenString).slice(0, 12)}…)`
+        : 'none in session',
+    );
+  }
+
   // 3. Build payload for Saadeddin API and restore location properties
   let rawAttributes = cart.attributes || [];
 
@@ -851,6 +962,132 @@ async function processCheckoutInitiate({request, context}: ActionFunctionArgs) {
         : branchNoteBlock;
       urlObj.searchParams.set('note', urlNote);
       checkoutUrl = urlObj.toString();
+    }
+
+    /**
+     * --- Pre-select the branch's own delivery option ---
+     *
+     * Branch delivery fees are Shopify LOCAL DELIVERY, set per location. An
+     * address inside a branch's delivery area is therefore quoted twice:
+     *
+     *     قياسي        25.00   <- the shop-wide standard rate
+     *     توصيل محلي    40.00   <- the branch's own fee
+     *
+     * Shopify pre-selects the cheaper one, so a shopper in Al Qurayyat lands
+     * on 25 and pays 25 -- while the cart, which reads the local delivery
+     * quote, told them 40. Neither number is wrong on its own; they simply
+     * disagree, which is the fault this whole handover exists to prevent.
+     *
+     * Selecting the local option here makes checkout OPEN on the branch's fee,
+     * and the cart's figure is then the one Shopify charges.
+     *
+     * This sets the default, it does not enforce it: the shopper can still
+     * switch back to قياسي. Removing that choice needs a Delivery
+     * Customization function -- see `shopify-delivery-function/` -- which is a
+     * separate decision. Fixing the default is the part that needs no app.
+     *
+     * `deliveryMethodType` is LOCAL for local delivery. Best effort
+     * throughout: a cart with no local option, a group already on the right
+     * one, or a failed mutation all leave checkout exactly as it would have
+     * been.
+     */
+    if (!isPickupSession) {
+      try {
+        const quoted: any = await context.storefront.query(
+          `#graphql
+          query CheckoutLocalDeliveryOptions($cartId: ID!) {
+            cart(id: $cartId) {
+              deliveryGroups(first: 10) {
+                nodes {
+                  id
+                  selectedDeliveryOption { handle }
+                  deliveryOptions {
+                    handle
+                    title
+                    deliveryMethodType
+                    estimatedCost { amount }
+                  }
+                }
+              }
+            }
+          }`,
+          {variables: {cartId: cart.id}, cache: context.storefront.CacheNone()},
+        );
+
+        const selections: Array<{
+          deliveryGroupId: string;
+          deliveryOptionHandle: string;
+        }> = [];
+
+        const quotedGroups = quoted?.cart?.deliveryGroups?.nodes ?? [];
+
+        /**
+         * Every option the CART was quoted, printed whether or not a local one
+         * turns up.
+         *
+         * Without this the "no local option" case was silent and looked
+         * identical to the block never running. Checkout offers «توصيل محلي»
+         * for this address; if the cart is not offered the same thing, that
+         * difference is the fact worth knowing, and no amount of storefront
+         * code will conjure an option Shopify has not quoted.
+         */
+        console.log(
+          '[CHECKOUT DIAGNOSTIC] Cart was quoted:',
+          quotedGroups.length === 0
+            ? 'NO DELIVERY GROUPS AT ALL'
+            : quotedGroups
+                .map(
+                  (g: any, i: number) =>
+                    `group${i}[${(g?.deliveryOptions ?? [])
+                      .map(
+                        (o: any) =>
+                          `${o?.title}=${o?.estimatedCost?.amount}(${o?.deliveryMethodType})`,
+                      )
+                      .join(', ') || 'no options'}]`,
+                )
+                .join(' '),
+        );
+
+        for (const group of quotedGroups) {
+          const local = (group?.deliveryOptions ?? []).find(
+            (o: any) => String(o?.deliveryMethodType).toUpperCase() === 'LOCAL',
+          );
+          if (!local?.handle) continue;
+          // Already on it; selecting again would be a wasted round trip.
+          if (group?.selectedDeliveryOption?.handle === local.handle) continue;
+          if (!group?.id) continue;
+
+          selections.push({
+            deliveryGroupId: group.id,
+            deliveryOptionHandle: local.handle,
+          });
+          console.log(
+            '[CHECKOUT DIAGNOSTIC] Selecting local delivery:',
+            `${local.title} ${local.estimatedCost?.amount}`,
+          );
+        }
+
+        if (selections.length > 0) {
+          const selResult: any = await (context.cart as any)
+            .updateSelectedDeliveryOption(selections);
+          const selErrors =
+            selResult?.cartSelectedDeliveryOptionsUpdate?.userErrors ||
+            selResult?.userErrors ||
+            [];
+          if (selErrors.length > 0) {
+            console.warn(
+              '[CHECKOUT DIAGNOSTIC] Local delivery selection refused:',
+              JSON.stringify(selErrors),
+            );
+          }
+        }
+      } catch (selErr: any) {
+        // Never fatal: the shopper simply picks the option themselves.
+        console.warn(
+          '[CHECKOUT DIAGNOSTIC] Could not pre-select local delivery:',
+          selErr?.message || selErr,
+        );
+      }
     }
 
     /**

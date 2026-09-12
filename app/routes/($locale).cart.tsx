@@ -1276,20 +1276,17 @@ export async function action({request, context, params}: Route.ActionArgs) {
         }
         if (buyerIdentity) {
           /**
-           * No customer token is attached here, deliberately.
+           * No customer token in THIS payload — it follows in its own call.
            *
-           * The shop runs Shopify's NEW customer accounts, which rejects every
-           * token this storefront can mint -- all of them come from the classic
-           * `customerAccessTokenCreate` flow. `cartBuyerIdentityUpdate` is
-           * atomic, so that one refused field discarded the delivery address
-           * riding along with it, and the cart kept a stale address: wrong
-           * branch, wrong delivery fee. The retry that used to follow the
-           * rejection is gone with it -- there is nothing left to refuse.
+           * `cartBuyerIdentityUpdate` is atomic, so a token Shopify refuses
+           * discards the delivery address riding along with it, and the cart
+           * keeps a stale one: wrong branch, wrong delivery fee. That is why
+           * the token was pulled out of here.
            *
-           * IF THE STORE IS EVER SWITCHED BACK to legacy customer accounts,
-           * restore it by reading `customerAccessToken` off the session again
-           * and setting `buyerIdentity.customerAccessToken`, plus the matching
-           * lines in `api.location-id.tsx` and `($locale).checkout.initiate.tsx`.
+           * Dropping it entirely was the wrong correction, though: checkout
+           * stopped recognising signed-in shoppers, and restoring it as a
+           * separate call brought that back. Sent alone, a refusal costs only
+           * the association. Sent alongside the address, it costs the address.
            */
           if (buyerIdentity.deliveryAddressPreferences?.[0]?.deliveryAddress) {
             const addr =
@@ -1317,6 +1314,49 @@ export async function action({request, context, params}: Route.ActionArgs) {
             console.error('[CART BUYER IDENTITY ERROR]', identityErrors);
           }
           result = innerResult;
+
+          /**
+           * The association, on its own, after the address is safely on the
+           * cart. Keeps the shopper attached to the cart from the moment they
+           * pick an address rather than only at the checkout hand-off, so the
+           * cart carries it for the whole session.
+           *
+           * `session-` tokens are this storefront's placeholder for an OTP
+           * sign-in that never minted a real Shopify token; Shopify has no use
+           * for them, so they are not sent.
+           */
+          try {
+            const sessionToken = await context.session.get('customerAccessToken');
+            const tokenStr =
+              typeof sessionToken === 'string'
+                ? sessionToken
+                : (sessionToken as any)?.accessToken;
+
+            if (tokenStr && !String(tokenStr).startsWith('session-')) {
+              const assoc: any = await cart.updateBuyerIdentity({
+                customerAccessToken: tokenStr,
+              } as any);
+
+              const assocErrors =
+                assoc?.cartBuyerIdentityUpdate?.userErrors ||
+                assoc?.userErrors ||
+                [];
+
+              if (assocErrors.length > 0) {
+                console.warn('[CART] Customer association refused:', assocErrors);
+              } else {
+                // The associated cart is the newer one; keep it as the result
+                // so the response carries the customer rather than dropping it.
+                result = assoc || result;
+              }
+            }
+          } catch (assocErr: any) {
+            // Never fatal — the address update above has already succeeded.
+            console.error(
+              '[CART] Customer association threw:',
+              assocErr?.message || assocErr,
+            );
+          }
         } else if (!result) {
           result = await cart.get();
         }

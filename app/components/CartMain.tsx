@@ -6,11 +6,11 @@ import { useAside } from '~/components/Aside';
 import { CartLineItem, type CartLine } from '~/components/CartLineItem';
 import { CartSummary } from './CartSummary';
 import { BogoSuggestion } from './BogoSuggestion';
-import { Price, SaudiRiyalSymbol } from './Price';
 import { checkBranchFreeDeliveryInterval } from './DeliveryPickupModal';
 import patternBg from '/images/second-bg-pattern.svg';
 import { useAdminLocations } from '~/lib/locations-meta';
 import { isDigitalOnlyCart as cartIsDigitalOnly } from '~/lib/digital-lines';
+import { quotedDeliveryFee } from '~/lib/delivery-defaults';
 
 export type CartLayout = 'page' | 'aside';
 const CartAnalyticsView = Analytics.CartView as any;
@@ -194,29 +194,23 @@ export function CartMain({ layout, cart: originalCart }: CartMainProps) {
   const branchPromo = checkBranchFreeDeliveryInterval(currentBranch, timeSlot);
   const isBranchPromoFreeDelivery = branchPromo.isPromoFreeDelivery;
 
-  const thresholdMeta = currentBranch?.free_delivery_threshold || currentBranch?.metafields?.find((m: any) => m?.key === 'free_delivery_threshold');
-  const thresholdAttr = cart?.attributes?.find(a => a.key.toLowerCase().trim() === 'free delivery threshold')?.value;
-  const hasExplicitThreshold = !!(thresholdAttr || thresholdMeta?.value);
-  const threshold = thresholdAttr ? parseFloat(thresholdAttr) : (thresholdMeta?.value ? parseFloat(thresholdMeta.value) : 0);
   const fulfillmentType = cart?.attributes?.find(a => a.key.toLowerCase().trim() === 'fulfillment type')?.value;
   const isPickup = (fulfillmentType?.toLowerCase() === 'pickup') || (rootData?.fulfillmentType?.toLowerCase() === 'pickup');
 
   const isDigitalOnlyCart = cartIsDigitalOnly(cart);
 
-  const subtotal = cart?.cost?.subtotalAmount?.amount ? parseFloat(cart.cost.subtotalAmount.amount) : 0;
-  const progress = threshold > 0 ? Math.min((subtotal / threshold) * 100, 100) : 0;
-  const remaining = Math.max(threshold - subtotal, 0);
-  const currencyCode = cart?.cost?.subtotalAmount?.currencyCode || 'SAR';
-
   /**
    * Whether delivery is already free — asked the same way CartSummary asks
-   * it, so the progress banner and the totals block cannot contradict
-   * each other.
+   * it, so this banner and the totals block cannot contradict each other.
    *
-   * The banner used to know only about the subtotal-vs-threshold rule, so
-   * with a freeshipping code applied or during a branch's promotional
-   * window the totals said "Delivery: Free" while the banner still asked
-   * the shopper to spend more.
+   * There is no longer a threshold to count down to. The «أضف X للتوصيل
+   * المجاني» progress bar read `custom.free_delivery_threshold` off the
+   * branch, and that number was a promise only the storefront made: Anas Ibn
+   * Malik's said 700 while the rate Shopify actually applied went free at
+   * 320. Branch fees now live in Shopify Local delivery, whose thresholds are
+   * not exposed through any API — so there is nothing truthful to count
+   * against, and the bar is gone. What remains is the one claim we can stand
+   * behind: Shopify has quoted this cart's delivery at zero.
    */
   const cartHasFreeShippingCode =
     cart?.discountCodes?.some(
@@ -225,28 +219,11 @@ export function CartMain({ layout, cart: originalCart }: CartMainProps) {
         (d.code?.toLowerCase() === 'freeshipping' ||
           d.code?.toLowerCase() === 'free_shipping'),
     ) || false;
-  const isThresholdMet = threshold > 0 && subtotal >= threshold;
-  const isFreeDelivery =
-    isPickup ||
-    isDigitalOnlyCart ||
-    cartHasFreeShippingCode ||
-    isBranchPromoFreeDelivery ||
-    isThresholdMet;
-
-  /**
-   * Switch the banner on the amount, not on the percentage.
-   *
-   * `progress >= 100` and `remaining.toFixed(2)` round differently: a
-   * subtotal of 199.999 against a 200 threshold left progress at 99.9995
-   * — so the "add more" branch ran — while the remainder printed as
-   * "0.00". Hence "Add 0.00 SAR to get free delivery".
-   */
-  const freeDeliveryUnlocked = isFreeDelivery || remaining < 0.01;
-
-  // The bar tracks the message: a freeshipping code or a promo window
-  // makes delivery free outright, so a part-filled bar under "unlocked"
-  // would be the same contradiction in another form.
-  const displayProgress = freeDeliveryUnlocked ? 100 : progress;
+  const shopifyQuotedFree = quotedDeliveryFee(cart, {isPickup}) === 0;
+  const freeDeliveryUnlocked =
+    !isPickup &&
+    !isDigitalOnlyCart &&
+    (cartHasFreeShippingCode || isBranchPromoFreeDelivery || shopifyQuotedFree);
 
   if (layout === 'page') {
     return (
@@ -327,34 +304,23 @@ export function CartMain({ layout, cart: originalCart }: CartMainProps) {
                 </div>
               )}
 
-              {/* Free Delivery Progress (Restored) */}
-              {cartHasItems && !isPickup && !isDigitalOnlyCart && hasExplicitThreshold && threshold > 0 && (
+              {/**
+                * Free delivery, confirmed — shown only once it is true.
+                *
+                * This was a progress bar counting down to a metafield
+                * threshold («أضف 531.00 للتوصيل المجاني»). That number was the
+                * storefront's alone; Shopify's real rule differed and a
+                * branch's local-delivery threshold is not readable from any
+                * API, so there is nothing honest to count toward. The
+                * confirmation stays because it is the one claim Shopify itself
+                * backs: it has quoted this cart's delivery at zero.
+                */}
+              {cartHasItems && freeDeliveryUnlocked && (
                 <div className="bg-white rounded-[24px] p-6 border border-[#BBCFCD]/80 mb-2">
-                  <div className="flex justify-between items-center mb-3">
-                    <p className="text-[14px] font-bold text-[#234745]">
-                      {freeDeliveryUnlocked ? (
-                        <span className="text-green-600 flex items-center gap-1">
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                          {isEn ? "Free delivery unlocked!" : "لقد حصلت على توصيل مجاني!"}
-                        </span>
-                      ) : (
-                        isEn ? (
-                          <>Add <span className="text-[#d4a06a]">{currencyCode} {remaining.toFixed(2)}</span> for free delivery</>
-                        ) : (
-                          <span className="inline-flex items-center gap-1">
-                            أضف <span className="text-[#d4a06a] mx-1">{remaining.toFixed(2)}</span> {currencyCode === 'SAR' ? <SaudiRiyalSymbol className="h-3 w-auto" /> : currencyCode} للتوصيل المجاني
-                          </span>
-                        )
-                      )}
-                    </p>
-                    <span className="text-[12px] font-bold text-gray-300">{Math.round(displayProgress)}%</span>
-                  </div>
-                  <div className="w-full h-2 bg-[#f8f5f2] rounded-full overflow-hidden">
-                    <div
-                      className={`h-full transition-all duration-700 ease-out rounded-full ${freeDeliveryUnlocked ? 'bg-green-500' : 'bg-[#d4a06a]'}`}
-                      style={{ width: `${displayProgress}%` }}
-                    />
-                  </div>
+                  <p className="text-[14px] font-bold text-green-600 flex items-center gap-1">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    {isEn ? "Free delivery unlocked!" : "لقد حصلت على توصيل مجاني!"}
+                  </p>
                 </div>
               )}
 
@@ -442,38 +408,16 @@ export function CartMain({ layout, cart: originalCart }: CartMainProps) {
     <section className="flex flex-col h-full bg-white relative" aria-label={isEn ? 'Cart drawer' : 'سلة التسوق'} dir={isEn ? 'ltr' : 'rtl'}>
       <CartAnalyticsView cart={cart as any} />
 
-      {/* Progress Bar — same gate as the page layout above. Without the
-          threshold checks a branch with no free-delivery rule showed
-          "Add 0.00 SAR to unlock free delivery" while still charging for it,
-          because remaining = max(0 - subtotal, 0) = 0 and progress = 0. */}
-      {cartHasItems &&
-        !isPickup &&
-        !isDigitalOnlyCart &&
-        hasExplicitThreshold &&
-        threshold > 0 && (
+      {/* Free delivery, confirmed — same rule as the page layout above:
+          shown only once Shopify has quoted this cart's delivery at zero.
+          The countdown that used to live here is gone for the reason given
+          up there. */}
+      {cartHasItems && freeDeliveryUnlocked && (
         <div className="px-6 py-4 bg-[#fcfaf8] border-b border-[#f0ece8]">
-          <p className="text-[13px] font-bold text-[#234745] mb-2 text-center">
-            {freeDeliveryUnlocked ? (
-              <span className="text-green-600 flex items-center justify-center gap-1">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                {isEn ? "You've unlocked free delivery!" : "لقد حصلت على توصيل مجاني!"}
-              </span>
-            ) : (
-              isEn ? (
-                <>Add <span className="text-yellow-600">{currencyCode} {remaining.toFixed(2)}</span> more to unlock free delivery!</>
-              ) : (
-                <span className="inline-flex items-center gap-1">
-                  أضف <span className="text-yellow-600 mx-1">{remaining.toFixed(2)}</span> {currencyCode === 'SAR' ? <SaudiRiyalSymbol className="h-3.5 w-auto" /> : currencyCode} للحصول على توصيل مجاني!
-                </span>
-              )
-            )}
+          <p className="text-[13px] font-bold text-green-600 flex items-center justify-center gap-1">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+            {isEn ? "You've unlocked free delivery!" : "لقد حصلت على توصيل مجاني!"}
           </p>
-          <div className="w-full h-1.5 bg-[#e8e4e1] rounded-full overflow-hidden">
-            <div
-              className={`h-full transition-all duration-500 ease-out rounded-full ${freeDeliveryUnlocked ? 'bg-green-500' : 'bg-yellow-500'}`}
-              style={{ width: `${displayProgress}%` }}
-            />
-          </div>
         </div>
       )}
 

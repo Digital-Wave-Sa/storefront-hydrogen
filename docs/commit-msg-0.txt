@@ -1,0 +1,35 @@
+fix(cart): read Shopify's delivery quote instead of our own copy
+
+The cart kept its own idea of the delivery fee and the free-delivery threshold
+in metafields. Checkout does not read those, so every promise made from them was
+one checkout would not honour — the cart showed 25 while checkout charged the
+branch's 40, and counted a shopper down to a 700 threshold on a branch whose
+rate goes free at 320.
+
+quotedDeliveryFee reads what Shopify actually quoted for this cart. Within a
+delivery group it takes the LOCAL option first, then the selected one, then the
+cheapest. LOCAL comes before selected deliberately: the cart page has no
+delivery picker, so selectedDeliveryOption there is only ever Shopify's
+automatic cheapest pick, and reading it first was the source of the 25-vs-40
+mismatch. Matched on deliveryMethodType, never on title — the Storefront API
+returns "Local Delivery" in English while checkout renders «توصيل محلي».
+
+A group can legitimately quote 0.00, so null is returned only when nothing was
+quoted at all. That makes quotedDeliveryFee(cart) === 0 the one honest test for
+free delivery: Shopify saying so, for this cart, this address, this total.
+
+STANDARD_DELIVERY_FEE covers the window before a cart has an address and Shopify
+will quote nothing. The cart used to print 0.00 there, which reads as free and
+then became 25 — the one number a shopper checks before committing was the one
+number that changed.
+
+The free-delivery countdown in CartMain is removed rather than repointed.
+Shopify does not expose a branch's local-delivery threshold through any API, so
+there is nothing truthful to count down to; only the confirmation that free
+delivery has been reached survives.
+
+Also fixes a shadowed variable in the location-selected event, which sent the
+previously selected branch id instead of the newly picked one.
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Ge5p61cwcrMGrkQ457NxA2

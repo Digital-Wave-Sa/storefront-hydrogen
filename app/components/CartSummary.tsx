@@ -19,6 +19,7 @@ import { trackSelectBranch, trackLoyaltyRedeem } from '~/lib/analytics-events';
 import {
   STANDARD_DELIVERY_FEE,
   STANDARD_FREE_DELIVERY_THRESHOLD,
+  quotedDeliveryFee,
 } from '~/lib/delivery-defaults';
 import {
   MIN_REDEEMABLE_POINTS,
@@ -258,142 +259,60 @@ export function CartSummary({ cart, layout, confirmedCart }: CartSummaryProps) {
             : 0));
   const minOrderValue = isPickup ? 0 : rawMinOrderValue;
   const isMinOrderMet = subtotal >= minOrderValue;
-  const thresholdMeta = currentBranch?.free_delivery_threshold || currentBranch?.metafields?.find((m: any) => m?.key === 'free_delivery_threshold');
   const feeMeta = currentBranch?.delivery_fee || currentBranch?.metafields?.find((m: any) => m?.key === 'delivery_fee');
-  const thresholdAttr = attributes.find((a: any) => a.key.toLowerCase().trim() === 'free delivery threshold')?.value;
-  
-  const cartHasFreeShippingCode = cart?.discountCodes?.some((d: any) => d.applicable && (d.code.toLowerCase() === 'freeshipping' || d.code.toLowerCase() === 'free_shipping')) || false;
-  
-  // Extract free delivery threshold dynamically from selected branch settings
-  let rawThreshold = 0;
-  if (thresholdAttr && !isNaN(parseFloat(thresholdAttr))) {
-    rawThreshold = parseFloat(thresholdAttr);
-  } else if (thresholdMeta?.value && !isNaN(parseFloat(thresholdMeta.value))) {
-    rawThreshold = parseFloat(thresholdMeta.value);
-  } else if (typeof currentBranch?.free_delivery_threshold === 'number') {
-    rawThreshold = currentBranch.free_delivery_threshold;
-  } else if (typeof currentBranch?.free_delivery_threshold?.value === 'string' && !isNaN(parseFloat(currentBranch.free_delivery_threshold.value))) {
-    rawThreshold = parseFloat(currentBranch.free_delivery_threshold.value);
-  } else if (typeof currentBranch?.freeDeliveryThreshold === 'number') {
-    rawThreshold = currentBranch.freeDeliveryThreshold;
-  }
 
-  const threshold = rawThreshold > 0 ? rawThreshold : 0;
-  const isThresholdMet = threshold > 0 && subtotal >= threshold;
-  
+  const cartHasFreeShippingCode = cart?.discountCodes?.some((d: any) => d.applicable && (d.code.toLowerCase() === 'freeshipping' || d.code.toLowerCase() === 'free_shipping')) || false;
+
+  /**
+   * What Shopify will charge — read once, here, because the free-delivery
+   * decision below depends on it.
+   *
+   * The cart used to quote the branch's `custom.delivery_fee` metafield while
+   * checkout charged the rate from the shop's shipping profile, and the two
+   * disagreed -- 33.00 in the cart against 20.00 at checkout for the same
+   * order. Shopify's own quote is the only number checkout will honour, so it
+   * is the one shown. See quotedDeliveryFee() for how a group's options are
+   * chosen between.
+   */
+  const shopifyDeliveryFee = quotedDeliveryFee(cart, {isPickup});
+
+  /**
+   * Free delivery is free when SHOPIFY says so — a quote of exactly 0.
+   *
+   * This used to be `subtotal >= threshold`, with the threshold read from the
+   * branch's `custom.free_delivery_threshold` metafield. That was a promise
+   * only the storefront made: Anas Ibn Malik's metafield said 700 while the
+   * standard rate Shopify actually applied went free at 320, and a branch's
+   * local-delivery threshold is not exposed through any Shopify API, so there
+   * was nothing truthful to compare against. The threshold-met case also used
+   * to append `?discount=freeshipping` to the checkout URL, which is the
+   * storefront overriding Shopify's pricing rather than reading it.
+   *
+   * The name is kept because several props and subcomponents take it; its
+   * meaning is now "Shopify quoted zero", nothing else.
+   */
+  const isThresholdMet = shopifyDeliveryFee === 0;
+
   // Check promotional free delivery interval for current selected branch and chosen time slot (only for home delivery)
   const branchPromo = checkBranchFreeDeliveryInterval(currentBranch, timeSlot);
   const isBranchPromoFreeDelivery = !isPickup && !isDigitalOnlyCart && branchPromo.isPromoFreeDelivery;
 
+  /**
+   * `freeshipping` is appended for the promo window only. It is a time-of-day
+   * rule Shopify's rates cannot express, so the storefront has to apply it.
+   * A threshold Shopify already honours needs no code from us.
+   */
   const rawCheckoutUrl = cart?.checkoutUrl;
-  const effectiveCheckoutUrl = (rawCheckoutUrl && !isPickup && (isBranchPromoFreeDelivery || isThresholdMet) && !cartHasFreeShippingCode)
+  const effectiveCheckoutUrl = (rawCheckoutUrl && !isPickup && isBranchPromoFreeDelivery && !cartHasFreeShippingCode)
     ? (rawCheckoutUrl.includes('?') ? `${rawCheckoutUrl}&discount=freeshipping` : `${rawCheckoutUrl}?discount=freeshipping`)
     : rawCheckoutUrl;
 
-  // Free delivery applies if freeshipping code is active, branch promo interval is active, or subtotal >= threshold
+  // Free delivery applies if freeshipping code is active, branch promo interval is active, or Shopify quoted zero
   const isFreeDelivery = isPickup || isDigitalOnlyCart || cartHasFreeShippingCode || isBranchPromoFreeDelivery || isThresholdMet;
   
   const feeAttribute = attributes.find((a: any) => a.key.toLowerCase().trim() === 'delivery fee')?.value;
   const feeAttrVal = feeAttribute ? parseFloat(feeAttribute) : null;
   
-  /**
-   * What Shopify will charge.
-   *
-   * The cart used to quote the branch's `custom.delivery_fee` metafield while
-   * checkout charged the rate from the shop's shipping profile, and the two
-   * disagreed -- 33.00 in the cart against 20.00 at checkout for the same
-   * order. The storefront can only ever make checkout cheaper (by appending
-   * `freeshipping` when its own threshold is met); it has no way to make it
-   * dearer, so the cart's number was simply a promise nobody could keep.
-   *
-   * Shopify's own rate is read from the cart's delivery groups instead: the
-   * option the shopper has selected where there is one, otherwise the one
-   * checkout will preselect. Summed across groups, because a cart split
-   * across locations is quoted per group.
-   *
-   * ── Why LOCAL beats the cheapest ──
-   *
-   * Branch delivery fees are configured as Shopify LOCAL DELIVERY, per
-   * location, each branch with its own price. An address inside a branch's
-   * delivery area is therefore quoted twice: that branch's local delivery
-   * (say 40) AND the shop-wide standard rate (25).
-   *
-   * Taking the cheapest would show 25 in the cart while the shopper picks
-   * local delivery at checkout and pays 40 — the same cart/checkout mismatch
-   * this block was written to end, only inverted. A shopper who asked for
-   * delivery to their address wants the local option, so that is the one
-   * quoted when they have not chosen yet.
-   *
-   * ── Why LOCAL is checked BEFORE selectedDeliveryOption ──
-   *
-   * This read `selectedDeliveryOption` first, on the reasoning that the
-   * shopper's own choice should beat any guess of ours. That reasoning was
-   * wrong: the cart page has no delivery-option picker, so nothing on it is
-   * ever the shopper's choice. `selectedDeliveryOption` is Shopify's own
-   * automatic pick, and Shopify picks the cheapest — قياسي 25.
-   *
-   * So the cart showed 25 while `checkout.initiate` explicitly selected the
-   * branch's 40, and the two disagreed again in the opposite direction.
-   * Checking LOCAL first makes the cart quote the same option checkout is
-   * about to open on.
-   *
-   * Once checkout.initiate has run, the cart's selected option IS the local
-   * one, so both paths agree either way.
-   */
-  const shopifyDeliveryFee = (() => {
-    const groups: any[] = (cart as any)?.deliveryGroups?.nodes ?? [];
-    if (groups.length === 0) return null;
-
-    let total = 0;
-    let quoted = false;
-
-    for (const group of groups) {
-      const options: any[] = group?.deliveryOptions ?? [];
-
-      /**
-       * `deliveryMethodType` is LOCAL for local delivery, SHIPPING for a rate
-       * from a shipping profile. Already requested in the cart fragment.
-       *
-       * Matched on the type, never the title: Shopify returns «Local
-       * Delivery» in English through the Storefront API while rendering
-       * «توصيل محلي» at checkout, so a title match would miss on the Arabic
-       * storefront and nowhere else.
-       */
-      const localCosts = options
-        .filter((o: any) => String(o?.deliveryMethodType).toUpperCase() === 'LOCAL')
-        .map((o: any) => parseFloat(o?.estimatedCost?.amount ?? ''))
-        .filter((n: number) => Number.isFinite(n));
-
-      if (!isPickup && localCosts.length > 0) {
-        // More than one local option for a single group would mean overlapping
-        // delivery areas; the cheaper is the safer promise.
-        total += Math.min(...localCosts);
-        quoted = true;
-        continue;
-      }
-
-      const selected = parseFloat(
-        group?.selectedDeliveryOption?.estimatedCost?.amount ?? '',
-      );
-      if (Number.isFinite(selected)) {
-        total += selected;
-        quoted = true;
-        continue;
-      }
-
-      const costs = options
-        .map((o: any) => parseFloat(o?.estimatedCost?.amount ?? ''))
-        .filter((n: number) => Number.isFinite(n));
-      if (costs.length > 0) {
-        total += Math.min(...costs);
-        quoted = true;
-      }
-    }
-
-    // A group can legitimately quote 0.00 (free shipping rate), which is a
-    // real answer -- so this returns null only when nothing quoted at all.
-    return quoted ? total : null;
-  })();
 
   /**
    * The metafield chain survives as the fallback: Shopify quotes nothing

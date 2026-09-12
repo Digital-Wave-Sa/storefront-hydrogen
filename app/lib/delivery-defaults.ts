@@ -39,3 +39,78 @@ export const STANDARD_DELIVERY_FEE = 25;
  * wrong in the direction that costs them money.
  */
 export const STANDARD_FREE_DELIVERY_THRESHOLD = 320;
+
+/**
+ * What Shopify has quoted for delivering this cart, in SAR — or null when it
+ * has not quoted yet (no delivery address on the cart).
+ *
+ * Summed across delivery groups, because a cart split across locations is
+ * quoted per group. Within a group, in order:
+ *
+ *   1. the LOCAL option — the branch's own local-delivery fee
+ *   2. whatever Shopify has selected
+ *   3. the cheapest on offer
+ *
+ * LOCAL comes before the selected option deliberately. The cart page has no
+ * delivery picker, so `selectedDeliveryOption` there is only ever Shopify's
+ * automatic pick — the cheapest — and reading it first showed 25 while
+ * checkout.initiate was about to open on the branch's 40.
+ *
+ * Matched on `deliveryMethodType`, never on title: the Storefront API returns
+ * «Local Delivery» in English while checkout renders «توصيل محلي».
+ *
+ * A group can legitimately quote 0.00 — free delivery — which is a real
+ * answer, so this returns null only when nothing was quoted at all. That
+ * makes `quotedDeliveryFee(cart) === 0` the one honest test for "delivery is
+ * free": it is Shopify saying so for this cart, this address, this total.
+ * The storefront no longer keeps its own free-delivery threshold — the
+ * metafield one promised 700 on a branch whose standard rate went free at 320,
+ * and Shopify does not expose a branch's local-delivery threshold through any
+ * API, so there is nothing truthful to count down to.
+ */
+export function quotedDeliveryFee(
+  cart: any,
+  opts: {isPickup?: boolean} = {},
+): number | null {
+  const groups: any[] = cart?.deliveryGroups?.nodes ?? [];
+  if (groups.length === 0) return null;
+
+  let total = 0;
+  let quoted = false;
+
+  for (const group of groups) {
+    const options: any[] = group?.deliveryOptions ?? [];
+
+    const localCosts = options
+      .filter((o: any) => String(o?.deliveryMethodType).toUpperCase() === 'LOCAL')
+      .map((o: any) => parseFloat(o?.estimatedCost?.amount ?? ''))
+      .filter((n: number) => Number.isFinite(n));
+
+    if (!opts.isPickup && localCosts.length > 0) {
+      // Two local options in one group means overlapping delivery areas;
+      // the cheaper is the safer promise.
+      total += Math.min(...localCosts);
+      quoted = true;
+      continue;
+    }
+
+    const selected = parseFloat(
+      group?.selectedDeliveryOption?.estimatedCost?.amount ?? '',
+    );
+    if (Number.isFinite(selected)) {
+      total += selected;
+      quoted = true;
+      continue;
+    }
+
+    const costs = options
+      .map((o: any) => parseFloat(o?.estimatedCost?.amount ?? ''))
+      .filter((n: number) => Number.isFinite(n));
+    if (costs.length > 0) {
+      total += Math.min(...costs);
+      quoted = true;
+    }
+  }
+
+  return quoted ? total : null;
+}

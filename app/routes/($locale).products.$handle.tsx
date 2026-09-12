@@ -2195,18 +2195,34 @@ export default function Product() {
                     </div>
                   )}
               </div>
-              <span
-                className="text-[#9FB7AE] font-medium w-full mt-[4px]"
-                style={{
-                  fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
-                  fontSize: '14px',
-                  lineHeight: '1.2',
-                  textAlign: isEn ? 'left' : 'right',
-                  verticalAlign: 'middle',
-                }}
-              >
-                {isEn ? 'VAT Inclusive 15%' : 'شامل ضريبة القيمة المضافة 15٪'}
-              </span>
+              {/**
+                * Shown only for a product that actually carries VAT.
+                *
+                * This was unconditional, so every product page stated «شامل
+                * ضريبة القيمة المضافة 15٪» -- including the ~95% of this
+                * catalogue with «Charge tax on this product» switched off in
+                * Shopify, which carry no VAT at all. A price line is the last
+                * place to assert a tax that is not being charged.
+                *
+                * `taxable` is read per VARIANT, because Shopify sets it per
+                * variant: a product can have a taxable size and a non-taxable
+                * one, and the note has to follow whichever the shopper has
+                * selected.
+                */}
+              {selectedVariant?.taxable !== false && (
+                <span
+                  className="text-[#9FB7AE] font-medium w-full mt-[4px]"
+                  style={{
+                    fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
+                    fontSize: '14px',
+                    lineHeight: '1.2',
+                    textAlign: isEn ? 'left' : 'right',
+                    verticalAlign: 'middle',
+                  }}
+                >
+                  {isEn ? 'VAT Inclusive 15%' : 'شامل ضريبة القيمة المضافة 15٪'}
+                </span>
+              )}
 
               {/* Loyalty points earned by buying this product */}
               {loyaltyPointsEarned > 0 && (
@@ -5177,6 +5193,10 @@ const PRODUCT_VARIANT_FRAGMENT = `#graphql
       amount
       currencyCode
     }
+    # Whether "Charge tax on this product" is enabled in Shopify. Most of this
+    # catalogue has it OFF, and the price line stated «شامل ضريبة القيمة
+    # المضافة 15٪» regardless -- a tax claim on a product that carries none.
+    taxable
     product {
       title
       handle

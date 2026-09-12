@@ -1,0 +1,52 @@
+feat(cake): render the builder with the V5 engine
+
+Swaps CakePreview for CakeRenderer inside CustomCakeBuilder, and drives every
+option list from the catalog instead of from metaobject display names.
+
+The engine is imported dynamically inside an effect. It reaches for document and
+createImageBitmap at module scope, so a static import would pull that into the
+server bundle and break SSR for the whole route. Renders are serialised by a
+revision ticket and debounced a frame: a compose is hundreds of milliseconds of
+synchronous work, and a slider drag fires far faster than that.
+
+canvasId="cake-3d-canvas" is load-bearing. handleCheckout captures the order's
+preview with getElementById on that exact id. Drop it and the order still
+completes, just without a picture of the cake — a failure nobody notices until a
+baker phones.
+
+Deleted rather than ported:
+
+  ~60 lines of cake_topping_design filtering. Each topping used to be a
+  photograph taken on one shape, so offering it for another put the wrong
+  artwork on the preview. decorationInstances walks the real footprint and
+  places sprites along it, so there is no per-shape artwork left to mismatch.
+
+  supportedViews, which tested for an imageTop/imageSliced file and fell back
+  to a hardcoded list of five shape ids. The renderer draws any view of any
+  format from one mesh.
+
+  Eleven hand-picked frosting hexes. The old preview recoloured by scanning
+  pixels, so any hex would do; the new one multiplies a luminance curve of
+  photographed white fondant by the colour the client sampled off their own
+  printed swatch, so an invented hex renders a coating the bakery cannot make.
+
+Two latent bugs fixed while in here:
+
+  photoPrintPrice searched every metaobject for a name containing "photo",
+  "print", "upload" or "image". A decoration called "Printed Ribbon" would have
+  matched and charged its price for uploading a picture. Now one exact key.
+
+  The saved-design restore called setCurrentStep(4) unconditionally, on the
+  assumption a restore had rebuilt a whole cake. Unmatched values stay null by
+  design, so it could land the customer on the writing step looking at a
+  placeholder with nothing selected. The catalog swap turned that from an edge
+  case into the normal path — saved designs name a shape "ستاندرد صغير" and the
+  new formats are addressed round-20x20-h8, so nothing from before can match.
+  It now lands on the first unanswered step and says the design could not be
+  restored.
+
+Heart is gone: the vendor's contour() draws circles and rounded rectangles only.
+That removes two products the client may be selling — قلب صغير and قلب.
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Ge5p61cwcrMGrkQ457NxA2

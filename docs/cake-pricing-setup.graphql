@@ -1,0 +1,220 @@
+# =============================================================================
+#  Cake builder — pricing setup
+#
+#  Two mutations, run once, in this order, against the Admin API.
+#  Both were validated against the live schema before being written down.
+#
+#  Step 1 adds one field to an existing metaobject definition.
+#  Step 2 seeds enough prices to take one cake through checkout.
+#
+#  Neither touches the five prototype rows already in `cake_attribute`, and
+#  neither changes the existing /custom-cake behaviour: the new field is
+#  optional, and the new rows are new.
+#
+#  Scopes needed:
+#    step 1 — write_metaobject_definitions, read_metaobject_definitions
+#    step 2 — write_metaobjects, read_metaobjects
+# =============================================================================
+
+
+# -----------------------------------------------------------------------------
+#  STEP 1 — add `builder_key` to the cake_attribute definition
+#
+#  This is the join between a price the client edits in admin and an option in
+#  the render catalog. It exists because the alternative — matching on
+#  `name_english` — breaks the day somebody fixes a typo in admin, silently
+#  unpricing whatever it was joined to.
+#
+#  Variables:
+#    { "id": "gid://shopify/MetaobjectDefinition/20530790633" }
+#
+#  That id is `cake_attribute` on this store. Confirm it with:
+#    { metaobjectDefinitions(first: 25) { nodes { id type } } }
+# -----------------------------------------------------------------------------
+
+mutation AddBuilderKeyField($id: ID!) {
+  metaobjectDefinitionUpdate(
+    id: $id
+    definition: {
+      fieldDefinitions: [
+        {
+          create: {
+            key: "builder_key"
+            type: "single_line_text_field"
+            name: "Builder Key"
+            description: "Catalog id the storefront joins this price to, e.g. round-20x20-h8, 07, rose-garden. Do not edit."
+            required: false
+          }
+        }
+      ]
+    }
+  ) {
+    metaobjectDefinition {
+      id
+      type
+      fieldDefinitions {
+        key
+        name
+        type {
+          name
+        }
+      }
+    }
+    userErrors {
+      field
+      message
+      code
+    }
+  }
+}
+
+
+# -----------------------------------------------------------------------------
+#  STEP 2 — seed a testable set of prices
+#
+#  Six rows: one format, one filling, two decorations, two extras. Enough to
+#  build a cake that costs 255 SAR and reaches checkout.
+#
+#  `metaobjectUpsert` creates or updates by handle, so this is safe to re-run —
+#  running it twice does not make duplicates.
+#
+#  `attribute_type` reuses the store's existing vocabulary (shape / flavor /
+#  topping) so the old /custom-cake page keeps working. `extra` is new and
+#  nothing else reads it.
+#
+#  NOTE ON PRICES: 190 / 25 / 40 are the store's own current numbers for a
+#  Standard Tall and a topping — they are placeholders for testing the flow,
+#  NOT the client's real price list. Replace them from the price sheet.
+# -----------------------------------------------------------------------------
+
+mutation SeedCakePrices {
+  fmt: metaobjectUpsert(
+    handle: {type: "cake_attribute", handle: "price-round-20x20-h8"}
+    metaobject: {
+      fields: [
+        {key: "attribute_type", value: "shape"}
+        {key: "builder_key", value: "round-20x20-h8"}
+        {key: "name_english", value: "Round 20cm"}
+        {key: "name_arabic", value: "دائري — قطر ٢٠ سم"}
+        {key: "price_delta", value: "190"}
+      ]
+    }
+  ) {
+    metaobject { id handle }
+    userErrors { field message code }
+  }
+
+  filling: metaobjectUpsert(
+    handle: {type: "cake_attribute", handle: "price-filling-07"}
+    metaobject: {
+      fields: [
+        {key: "attribute_type", value: "flavor"}
+        {key: "builder_key", value: "07"}
+        {key: "name_english", value: "Nutella"}
+        {key: "name_arabic", value: "كيكة نوتيلا"}
+        {key: "price_delta", value: "25"}
+      ]
+    }
+  ) {
+    metaobject { id handle }
+    userErrors { field message code }
+  }
+
+  decoNone: metaobjectUpsert(
+    handle: {type: "cake_attribute", handle: "price-deco-none"}
+    metaobject: {
+      fields: [
+        {key: "attribute_type", value: "topping"}
+        {key: "builder_key", value: "none"}
+        {key: "name_english", value: "No decoration"}
+        {key: "name_arabic", value: "بدون تزيين"}
+        {key: "price_delta", value: "0"}
+      ]
+    }
+  ) {
+    metaobject { id handle }
+    userErrors { field message code }
+  }
+
+  decoRose: metaobjectUpsert(
+    handle: {type: "cake_attribute", handle: "price-deco-rose-garden"}
+    metaobject: {
+      fields: [
+        {key: "attribute_type", value: "topping"}
+        {key: "builder_key", value: "rose-garden"}
+        {key: "name_english", value: "Rose bouquet"}
+        {key: "name_arabic", value: "باقة ورود"}
+        {key: "price_delta", value: "40"}
+      ]
+    }
+  ) {
+    metaobject { id handle }
+    userErrors { field message code }
+  }
+
+  extraPhoto: metaobjectUpsert(
+    handle: {type: "cake_attribute", handle: "price-extra-photoprint"}
+    metaobject: {
+      fields: [
+        {key: "attribute_type", value: "extra"}
+        {key: "builder_key", value: "photoPrint"}
+        {key: "name_english", value: "Photo print"}
+        {key: "name_arabic", value: "طباعة صورة"}
+        {key: "price_delta", value: "0"}
+      ]
+    }
+  ) {
+    metaobject { id handle }
+    userErrors { field message code }
+  }
+
+  extraWriting: metaobjectUpsert(
+    handle: {type: "cake_attribute", handle: "price-extra-writing"}
+    metaobject: {
+      fields: [
+        {key: "attribute_type", value: "extra"}
+        {key: "builder_key", value: "writing"}
+        {key: "name_english", value: "Cake writing"}
+        {key: "name_arabic", value: "الكتابة على الكيك"}
+        {key: "price_delta", value: "0"}
+      ]
+    }
+  ) {
+    metaobject { id handle }
+    userErrors { field message code }
+  }
+}
+
+
+# -----------------------------------------------------------------------------
+#  AFTER RUNNING — what to expect in the builder
+#
+#  Pick: دائري — قطر ٢٠ سم  +  كيكة نوتيلا  +  باقة ورود
+#  Total: 190 + 25 + 40 = 255 SAR, and «إتمام الطلب والدفع» becomes clickable.
+#
+#  Pick anything else and it stays disabled with «هذا الاختيار غير مُسعّر
+#  حالياً» underneath — correct, and the fastest way to confirm the guard is
+#  doing its job rather than the button being broken.
+#
+#  The storefront caches the price book for five minutes, so a price change
+#  takes up to that long to show. `clearCakePriceBookCache()` exists for tests.
+# -----------------------------------------------------------------------------
+
+
+# -----------------------------------------------------------------------------
+#  THE FULL SEED — 51 rows — is NOT here on purpose.
+#
+#  Writing 51 rows of placeholder prices into Shopify would create exactly the
+#  problem the `priced` flag was built to prevent: a row with a number in it is
+#  indistinguishable from a row the client filled in. Seed the real prices from
+#  the returned sheet, in one pass, once.
+#
+#  Keys, for when that time comes:
+#    formats      23 — the `id` of every entry in CAKE_FORMATS
+#    fillings     10 — '01' through '10'
+#    decorations  16 — none, classic, pearls, retro-cherries, retro-rose,
+#                      retro-chocolate, rose-garden, ribbons, pearl-bows,
+#                      strawberries, berries, mixed-fruit, chocolate,
+#                      macarons, sprinkles, stars
+#    extras        2 — photoPrint, writing
+# -----------------------------------------------------------------------------

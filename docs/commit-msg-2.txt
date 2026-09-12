@@ -1,0 +1,39 @@
+feat(cake): catalog-driven options, prices from Shopify
+
+Splits identity from price.
+
+catalog.ts holds identity — 23 formats with their centimetre dimensions, 10
+fillings, 22 coating colours, 16 decorations — generated from the vendor's
+catalog.json with English labels added, since their package is Arabic-only. It
+holds no prices at all.
+
+Prices come from the cake_attribute metaobject, which the store already used,
+joined by a new builder_key field. Deliberately not joined on name_english: that
+is free text an admin will reasonably fix a typo in one day, silently unpricing
+whatever it was attached to. A key the client never sees is a key the client
+never breaks.
+
+Three states, and the distinctions are load-bearing:
+
+  unpriced     no row at all. No total can be shown. Blocks checkout.
+  provisional  a price we modelled. Full total shown. Notice displayed.
+  priced       the client's number. Sells.
+
+A price_delta of 0 means free and is a valid answer; an absent row is not. That
+is why the seeding must never fill blanks with placeholder numbers — a row with
+a number in it is indistinguishable from one the client filled in.
+
+cake-pricing.ts is the arithmetic, with no numbers in it, returning a line
+breakdown plus a missing[] array. Extras are flat: a filling adds the same to a
+15 cm cake as to a 50 cm one. Changing that is a change to both the function and
+the price book shape, and it is the expensive one.
+
+docs/cake-pricing-setup.graphql documents the metaobject setup, including the
+DRAFT trap: cake_attribute has the publishable capability, so a metaobject
+created without an explicit ACTIVE status is invisible to the Storefront API.
+It reads as "everything is free" rather than "nothing is priced", because a
+DRAFT row and a missing row look identical from the storefront while a zero and
+a missing row do not.
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Ge5p61cwcrMGrkQ457NxA2

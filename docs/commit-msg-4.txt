@@ -1,0 +1,14 @@
+chore(cake): remove the superseded preview components
+
+CakePreview and its selectors composited flat per-shape PNGs and recoloured
+them by scanning pixels for frosting, excluding the purple board and the gold
+logo by hue. All of it is replaced by the procedural renderer.
+
+ShapeSizeSelector is worth calling out separately: its six shape cards
+hotlinked product images from file.lola.do — a competitor's CDN, signed URL
+parameters still attached. It broke whenever they rotated those signatures, it
+sent our shoppers' requests to them, and it was their artwork on our page. The
+23 catalog thumbnails in public/cake/v5/thumbnails replace it.
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Ge5p61cwcrMGrkQ457NxA2

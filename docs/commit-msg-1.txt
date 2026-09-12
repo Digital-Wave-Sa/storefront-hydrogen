@@ -1,0 +1,27 @@
+feat(cake): vendor the Saadeddin V5 cake renderer
+
+The vendor shipped a complete, unminified procedural renderer — a software
+rasterizer that builds a triangle mesh in centimetres, projects it
+orthographically, and samples photographic fondant and filling textures per
+pixel with a z-buffer. It replaces an approach based on flat per-shape
+photographs, which is why a square cake previously had no top view: nobody had
+photographed one.
+
+render-core.ts and finishing.ts are copied byte-for-byte. The only edits are a
+header and the sibling import path. The projection maths, the UV atlas offsets
+and the four-camera table are tuned against their photographic masters, so
+tidying them shows up as a cake that no longer lines up with its own texture.
+Anything we want to change belongs in compose.ts, which wraps them — that keeps
+their next drop a straight overwrite.
+
+91 WebP assets under public/cake/v5, with the vendor's content hashes stripped
+from the filenames since Oxygen handles cache-busting for /public itself. All 69
+catalog paths and all 22 runtime textures verified present before commit.
+
+/cake-render-test is a diagnostic route carrying a live millisecond readout. It
+exists to answer one question — whether ~880,000 pixels shaded in JavaScript per
+frame is fast enough on a mid-range phone, or whether paintGeometry needs moving
+to WebGL. Delete it before launch.
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Ge5p61cwcrMGrkQ457NxA2

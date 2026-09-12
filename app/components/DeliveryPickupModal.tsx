@@ -637,14 +637,30 @@ export function DeliveryPickupModal({
                                 processedBranches.sort((a, b) => (b.rating || 0) - (a.rating || 0));
                             }
 
-                            // Push hidden branches to the bottom of the list
-                            processedBranches.sort((a, b) => (a.hideFromStorefront ? 1 : 0) - (b.hideFromStorefront ? 1 : 0));
+                            /**
+                             * Hidden branches are removed, not demoted.
+                             *
+                             * This used to sort them to the bottom, which left
+                             * them on screen -- and this list feeds more than
+                             * the visible rows: the map pin, the «nearest
+                             * branch» calculation and the selection fallbacks
+                             * all read it. So a location flagged
+                             * `hide_from_storefront` could still be pinned on
+                             * the map or chosen as the closest branch, even
+                             * while its row was greyed out.
+                             *
+                             * Dropping it here is the one place that takes it
+                             * out of all of them at once.
+                             */
+                            const visibleBranches = processedBranches.filter(
+                                (b) => !b.hideFromStorefront,
+                            );
 
                             return (
                                 <ModalContent
                                     activeTab={activeTab}
                                     setActiveTab={setActiveTab}
-                                    branches={processedBranches}
+                                    branches={visibleBranches}
                                     customer={customerData}
                                     selectedBranch={selectedBranch}
                                     setSelectedBranch={setSelectedBranch}
@@ -932,9 +948,26 @@ function ModalContent({
 
 
 
+    /**
+     * Hidden means hidden, not greyed out.
+     *
+     * `hide_from_storefront` was honoured everywhere except here: the branch
+     * was still rendered, at 40% opacity, disabled, sorted to the bottom and
+     * labelled «غير متوفر». That is a reasonable thing to do for a branch that
+     * is temporarily out of service, but it is not what the flag is for -- it
+     * is set on locations a shopper should never be shown at all, like
+     * Shopify's default «Shop location», which is a fulfilment record rather
+     * than a real branch anyone can visit.
+     *
+     * Excluded from the list entirely now. Everything else that reads the flag
+     * already assumed this: root resets a stored branch that turns out to be
+     * hidden, and the selection logic above picks the first non-hidden branch
+     * as a fallback -- so nothing here can strand a shopper on one.
+     */
     const filteredBranches = branches.filter((b: any) =>
-        b.name.toLowerCase().includes(branchSearch.toLowerCase()) || 
-        b.city.toLowerCase().includes(branchSearch.toLowerCase())
+        !b.hideFromStorefront &&
+        (b.name.toLowerCase().includes(branchSearch.toLowerCase()) ||
+         b.city.toLowerCase().includes(branchSearch.toLowerCase()))
     );
 
     // Map Logic: Handle both Branch and User Address

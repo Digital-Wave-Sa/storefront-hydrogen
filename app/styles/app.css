@@ -73,9 +73,37 @@ a, a:hover, a:focus, a:active {
   }
 }
 
+/*
+ * Western numerals inside Arabic text, from a font we actually ship.
+ *
+ * This face exists because 'GE Dinar One' draws Latin digits as Arabic-Indic
+ * ones -- its glyph outlines for 0-9 are byte-identical to ٠-٩ -- so «63,564.8»
+ * set in it comes out «٦٣٬٥٦٤٫٨». The `unicode-range` below confines this rule
+ * to digits and % , . so it overrides only those characters and leaves every
+ * Arabic letter to the real body font.
+ *
+ * The source used to be `local('Arial'), local('Helvetica Neue'), ...` and
+ * nothing else -- no file at all. That resolves by NAME against whatever is
+ * installed on each visitor's machine, so the site rendered correctly on
+ * machines with a genuine Arial and produced mojibake on machines where some
+ * other font answered to one of those names with different digit glyphs:
+ * «63,564.8» arriving as «ÊÍËÊÌÒÒÈ». It looked fine to us and broken to the
+ * client, on the same page, for that reason. Chrome is also progressively
+ * restricting local() lookups for fingerprinting, so it was getting less
+ * reliable over time regardless.
+ *
+ * Bahij Janna is the right source and costs nothing: it is already downloaded
+ * on every page for the Arabic text, so the browser reuses the same file. Its
+ * Latin digits are genuine Western numerals -- all ten outlines differ from its
+ * Arabic-Indic ones -- it carries % , . as well, and they were drawn to sit
+ * beside its own Arabic, which a Latin face like Montserrat would not be.
+ *
+ * Do not reintroduce local(). A real Arial offers nothing these digits do not,
+ * and it is the entire mechanism of the bug.
+ */
 @font-face {
   font-family: 'EnglishDigits';
-  src: local('Arial'), local('Helvetica Neue'), local('Helvetica'), local('Segoe UI'), local('Roboto');
+  src: url('/fonts/Bahij_Janna-Regular.ttf') format('truetype');
   unicode-range: U+0030-0039, U+0025, U+002C, U+002E; /* 0-9, %, ,, . */
 }
 

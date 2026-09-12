@@ -1,7 +1,7 @@
 import {redirect, type ActionFunctionArgs, type LoaderFunctionArgs} from 'react-router';
 import {SaadeddinApi} from '~/lib/saadeddin-api.server';
 import {extractMinTime} from '~/lib/time-utils';
-import {stripCoordsMarker, sameAddressId} from '~/lib/address-coords';
+import {stripCoordsMarker, sameAddressId, baseAddressId} from '~/lib/address-coords';
 import {isSignedIn, loginUrlFor} from '~/lib/checkout-gate.server';
 import {logCheckoutError, type CheckoutErrorStage} from '~/lib/error-log.server';
 
@@ -410,6 +410,87 @@ async function processCheckoutInitiate({request, context}: ActionFunctionArgs) {
         e?.message || e,
       );
     }
+
+    /**
+     * The same lookup again, without the token this time.
+     *
+     * The block above only runs for a real Shopify token, and an OTP shopper
+     * holds a `session-...` one -- so for almost everybody it produced nothing
+     * and this route simply hoped the cart already carried the address from
+     * `api.location-id`. When anything had cleared it since, checkout opened
+     * with empty address fields and no delivery rate, which is what a shopper
+     * sees as «it forgot everything».
+     *
+     * Hope is not a mechanism. The Admin API can read the customer's addresses
+     * without any customer token at all -- it is how `root.tsx` loads them
+     * already -- so the address is rebuilt here from the id the session kept,
+     * and checkout stops depending on the cart having survived intact.
+     *
+     * Only when the block above found nothing, so a real token still wins and
+     * this costs those sessions nothing.
+     */
+    if (!addressPreference && selectedAddressId) {
+      try {
+        const {getAdminToken, getAdminDomain} = await import(
+          '~/lib/shopify-admin.server'
+        );
+        const adminToken = await getAdminToken(context.env);
+        const adminDomain = getAdminDomain(context.env);
+        const customerId = await session.get('loginCustomerId');
+
+        if (adminToken && adminDomain && customerId) {
+          const numericCustomer = String(customerId).split('/').pop();
+          const res = await fetch(
+            `https://${adminDomain}/admin/api/2024-01/customers/${numericCustomer}/addresses.json`,
+            {headers: {'X-Shopify-Access-Token': adminToken}},
+          );
+
+          if (res.ok) {
+            const body = (await res.json()) as any;
+            const wanted = baseAddressId(String(selectedAddressId)).split('/').pop();
+
+            const match = (body.addresses || []).find(
+              (a: any) => String(a.id) === String(wanted),
+            );
+
+            /**
+             * A city is what places an address in a delivery zone, so a record
+             * without one is no more usable than none at all. Absent fields are
+             * omitted rather than sent empty: `province: ''` tells Shopify the
+             * address has no province and drops it out of province-scoped zones.
+             */
+            if (match?.address1 && match?.city) {
+              const deliveryAddress: Record<string, string> = {
+                address1: match.address1,
+                city: match.city,
+              };
+
+              const address2 = stripCoordsMarker(match.address2);
+              if (address2) deliveryAddress.address2 = address2;
+              if (match.province) deliveryAddress.province = match.province;
+              if (match.zip) deliveryAddress.zip = match.zip;
+              if (match.country) deliveryAddress.country = match.country;
+              if (match.first_name) deliveryAddress.firstName = match.first_name;
+              if (match.last_name) deliveryAddress.lastName = match.last_name;
+
+              const phone = match.phone || buyerIdentity.phone;
+              if (phone) deliveryAddress.phone = String(phone);
+
+              addressPreference = [{deliveryAddress}];
+              console.log(
+                '[CHECKOUT DIAGNOSTIC] Address rebuilt from the Admin API:',
+                `${deliveryAddress.address1} / ${deliveryAddress.city}`,
+              );
+            }
+          }
+        }
+      } catch (adminErr: any) {
+        console.error(
+          '[CHECKOUT DIAGNOSTIC] Admin address rebuild failed:',
+          adminErr?.message || adminErr,
+        );
+      }
+    }
   }
 
   if (Object.keys(buyerIdentity).length > 0) {
@@ -463,7 +544,20 @@ async function processCheckoutInitiate({request, context}: ActionFunctionArgs) {
    * priced with is better than anything reconstructed from a label, so it is
    * left alone.
    */
-  if (addressPreference || sessionFulfillment !== 'delivery') {
+  /**
+   * Cleared only for a pickup, never for an unknown.
+   *
+   * This read `sessionFulfillment !== 'delivery'`, so a session whose
+   * fulfilment type was missing or empty -- not pickup, just absent -- sent an
+   * empty list and WIPED whatever delivery address the cart was carrying. The
+   * clearing is meant for pickup, where a stale address preference would
+   * otherwise pre-fill checkout with somewhere the shopper is not going. An
+   * unknown value is not a pickup, and should leave the cart alone.
+   */
+  const isPickupSession =
+    String(sessionFulfillment || '').toLowerCase() === 'pickup';
+
+  if (addressPreference || isPickupSession) {
     try {
       await context.cart.updateBuyerIdentity({
         deliveryAddressPreferences: addressPreference ?? [],

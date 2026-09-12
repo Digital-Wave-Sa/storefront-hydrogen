@@ -271,8 +271,23 @@ async function loadCriticalData({context}: Route.LoaderArgs) {
         console.error('[ROOT] Storefront Review Fetch Failed:', e.message);
         return { nodes: [] };
       }),
+    /**
+     * Short cache, because a person edits this and waits to see it.
+     *
+     * The mega panel is built entirely from the `mega-menu` Navigation menu in
+     * Shopify admin -- add a collection there and it appears with that
+     * collection's image and first products, add child items and they become
+     * the sub-links. So it is already the client's to manage.
+     *
+     * `CacheLong()` undermined that: an hour of fresh cache plus a long
+     * stale-while-revalidate window meant they would change the menu, reload,
+     * see the old panel, conclude it had not worked and ask a developer --
+     * which is exactly what managing it themselves was meant to avoid. A menu
+     * is small and rarely fetched; a short cache costs almost nothing and
+     * makes the edit appear while they are still looking at it.
+     */
     storefront.query(MEGAMENU_QUERY, {
-      cache: storefront.CacheLong(),
+      cache: storefront.CacheShort(),
       variables: {
         handle: 'mega-menu',
         country: storefront.i18n.country,

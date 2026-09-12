@@ -65,6 +65,16 @@ declare global {
      * the endpoint lives somewhere other than the middleware.
      */
     SAADEDDIN_ERROR_LOG_URL?: string;
+    /**
+     * The CRM's `/logCartCheckout`, where abandoned checkouts are forwarded.
+     * Server-side only.
+     *
+     * Kept in the environment rather than the code because the URL first
+     * supplied was plain HTTP to a bare IP, on a body carrying the shopper's
+     * email, phone, name and addresses. Moving it to HTTPS should be a config
+     * change, not a deploy. Unset, nothing is forwarded.
+     */
+    CART_CHECKOUT_LOG_URL?: string;
     SDLP_APP_URL?: string;
   }
 }

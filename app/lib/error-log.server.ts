@@ -27,6 +27,13 @@ export type CheckoutErrorStage =
   | 'attributes'
   | 'no_checkout_url'
   | 'crm_sync'
+  /**
+   * A declined card. Reported by `api.webhooks.payment-failure`, never from
+   * this storefront's own code -- the decline happens inside Shopify's hosted
+   * checkout, where nothing here is running. It reaches us afterwards as a
+   * failed transaction on the order.
+   */
+  | 'payment_failed'
   | 'unhandled';
 
 export interface CheckoutErrorReport {

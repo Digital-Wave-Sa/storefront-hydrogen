@@ -116,12 +116,36 @@ export async function loader({request, context}: LoaderFunctionArgs) {
   }
 
   try {
+    const accountTokenStr =
+      typeof customerAccessToken === 'string'
+        ? customerAccessToken
+        : (customerAccessToken as any)?.accessToken;
+
+    /**
+     * A round trip that cannot succeed, skipped.
+     *
+     * Anyone who signed in by phone OTP holds one of this storefront's own
+     * `session-...` tokens, which is not a Shopify token at all -- the
+     * Storefront `customer(customerAccessToken:)` query below refuses it every
+     * single time, throws, and the loader falls through to the Admin API
+     * fallback in the catch. So every OTP shopper was paying for a guaranteed
+     * failure before any of the real work started, on a page that already
+     * makes six sequential Admin calls after it.
+     *
+     * Throwing here reaches the same fallback by the same path, without the
+     * network. Nothing else changes: a real Shopify token still runs the query
+     * exactly as before, so if the store ever returns to legacy accounts this
+     * costs nothing.
+     */
+    if (!accountTokenStr || String(accountTokenStr).startsWith('session-')) {
+      throw new Error(
+        'OTP session token — Storefront customer query skipped, using Admin API',
+      );
+    }
+
     const {customer} = await storefront.query(CUSTOMER_QUERY, {
       variables: {
-        customerAccessToken:
-          typeof customerAccessToken === 'string'
-            ? customerAccessToken
-            : customerAccessToken?.accessToken,
+        customerAccessToken: accountTokenStr,
       },
       cache: storefront.CacheNone(),
     });

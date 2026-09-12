@@ -189,7 +189,32 @@ export async function sendFormEmailNotification(
   payload: FormSubmissionPayload,
   env: any,
 ) {
-  const recipientEmail = env?.FORM_EMAIL_RECIPIENT || 'motasem.udeh@gmail.com';
+  /**
+   * No personal fallback address. Deliberately.
+   *
+   * This used to fall back to a developer's personal Gmail when
+   * `FORM_EMAIL_RECIPIENT` was unset -- and this function is the destination
+   * for EVERY form on the site: contact enquiries, back-in-stock requests,
+   * catering, the lot. A missing environment variable in production therefore
+   * did not fail; it quietly delivered customers' names, emails and messages
+   * to one person's private inbox, where nobody would think to look and which
+   * keeps working long after whoever owns it has moved on.
+   *
+   * Unset now means nobody is emailed and the log says so loudly, which is a
+   * problem someone notices and fixes. Silently sending customer enquiries to
+   * the wrong person is a problem nobody notices at all.
+   */
+  const recipientEmail = String(env?.FORM_EMAIL_RECIPIENT || '').trim();
+
+  if (!recipientEmail) {
+    console.error(
+      '[FORM EMAIL] FORM_EMAIL_RECIPIENT is not set — the internal notification was NOT sent for:',
+      payload.formTitle,
+      '| from:',
+      payload.email || payload.fullName,
+    );
+  }
+
   const webhookUrl = env?.FORM_WEBHOOK_URL;
 
   const emailSubject = `[Saadeddin Website] New ${payload.formTitle} submission from ${payload.fullName}`;
@@ -270,13 +295,22 @@ export async function sendFormEmailNotification(
     </div>
   `;
 
-  // 1. Send admin notification email to recipientEmail
-  await sendEmail({
-    to: recipientEmail,
-    subject: emailSubject,
-    html: emailHtml,
-    env,
-  });
+  /**
+   * 1. The internal notification -- only when there is somewhere to send it.
+   *
+   * Skipped rather than redirected when `FORM_EMAIL_RECIPIENT` is unset. The
+   * customer's own confirmation below still goes out: a misconfigured internal
+   * address is our problem, and the shopper should not be left wondering
+   * whether their message arrived because of it.
+   */
+  if (recipientEmail) {
+    await sendEmail({
+      to: recipientEmail,
+      subject: emailSubject,
+      html: emailHtml,
+      env,
+    });
+  }
 
   // 2. Send customer confirmation receipt email directly to payload.email (if valid)
   if (payload.email && payload.email.includes('@') && payload.email !== recipientEmail) {

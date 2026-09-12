@@ -1347,15 +1347,31 @@ export function HeaderMenu({
   const isEn = location.pathname.startsWith('/en');
 
   /**
-   * The same client-managed menu the desktop bar reads.
+   * The drawer's nav, resolved exactly the way the desktop bar resolves it.
    *
-   * This component was already handed a `menu` prop and ignored it entirely,
-   * rendering the hardcoded list -- so the drawer and the desktop bar were two
-   * copies of the same thing that could only be kept in step by editing both.
-   * Now one menu in Shopify admin drives both, and the built-in list is still
-   * the fallback if that menu is missing or empty.
+   * This read `navMenuData?.menu ?? menu` for a while, on the belief that the
+   * `menu` prop — the store's `main-menu`, which PageLayout passes in — held
+   * the real navigation and would keep the drawer and the desktop bar in step
+   * from one place in Shopify admin.
+   *
+   * It does not. `main-menu` on this store is still Shopify's stock
+   * Home / Catalog / Contact, untouched since the store was created. Three
+   * items is a non-empty menu, so the STATIC_NAV fallback below never fired
+   * and the drawer quietly showed English boilerplate while the desktop bar
+   * — which has no `navMenuData` either and so falls through to STATIC_NAV —
+   * showed the real Arabic nav. A fallback that is shadowed by stale default
+   * data is worse than no fallback: it fails silently and looks deliberate.
+   *
+   * So the `?? menu` is gone and both now resolve identically.
+   *
+   * To drive navigation from Shopify later, do it properly: populate a menu
+   * with the real items, thread it from the root loader into BOTH this and
+   * CategoryNav as a real prop, and verify the menu is populated before
+   * trusting it. `menu` stays in the props because PageLayout passes it and
+   * because `MobileMenuAside` gates the whole drawer on `header?.menu` being
+   * present — removing it would hide the drawer entirely.
    */
-  const fromMenu = navItemsFromMenu(navMenuData?.menu ?? menu, isEn);
+  const fromMenu = navItemsFromMenu(navMenuData?.menu, isEn);
   const NAV_ITEMS = fromMenu.length
     ? fromMenu
     : (isEn ? STATIC_NAV_EN : STATIC_NAV_AR);

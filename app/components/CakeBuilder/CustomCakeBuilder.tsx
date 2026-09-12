@@ -2,7 +2,15 @@ import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { useRouteLoaderData, useFetcher, useRevalidator } from 'react-router';
 import { DeliveryPickupModal } from '~/components/DeliveryPickupModal';
 import { Cake, Palette, Sparkles, MessageSquare, Layers, ArrowRight, ArrowLeft, Eye, Compass, Clock, Check } from 'lucide-react';
-import { CakePreview } from './CakePreview';
+import CakeRenderer from './CakeRenderer';
+import {
+  buildCakeOptions,
+  unpricedSelections,
+  provisionalSelections,
+  type BuilderOption,
+} from '~/lib/cake-render/builder-options';
+import { CAKE_FILLINGS } from '~/lib/cake-render/catalog';
+import type { CakeView, CakeAngle } from '~/lib/cake-render/compose';
 import { FaqModal } from './FaqModal';
 import { SaudiRiyalSymbol } from '~/components/Price';
 import { sameAddressId } from '~/lib/address-coords';
@@ -49,6 +57,60 @@ const MessageIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
+/**
+ * The builder's three view buttons, expressed as the engine's view + camera.
+ *
+ * Our switcher has always said front / top / sliced, and shoppers know it. The
+ * engine thinks in views (whole, cut, slice, filling, combo) crossed with four
+ * fixed cameras, so the mapping lives here rather than renaming buttons.
+ *
+ * "Top" is the whole cake at the 52° camera, not a true overhead: straight down
+ * on a cake is a flat disc, which reads as a coaster. 52° still shows the
+ * decoration layout, which is what anyone pressing Top is looking for.
+ */
+const VIEW_TO_RENDERER: Record<
+  'front' | 'top' | 'sliced',
+  {view: CakeView; angle: CakeAngle}
+> = {
+  front: {view: 'whole', angle: 'original'},
+  top: {view: 'whole', angle: 'high'},
+  sliced: {view: 'cut', angle: 'original'},
+};
+
+/**
+ * Our four font choices, mapped onto the four the renderer will accept.
+ *
+ * The engine allowlists its font names and silently falls back on anything
+ * else, so an unmapped name would quietly render in the wrong face rather than
+ * erroring. Our labels are Arabic-facing; these are the CSS families.
+ */
+const FONT_FOR_RENDERER: Record<string, string> = {
+  Classic: 'Noto Sans Arabic',
+  'Noto Sans Arabic': 'Noto Sans Arabic',
+  Tahoma: 'Tahoma',
+  Arial: 'Arial',
+  Handwriting: 'cursive',
+  cursive: 'cursive',
+};
+
+/**
+ * Shape families for the step-1 filter.
+ *
+ * `round-tall` is split out rather than left inside `round` because a 14 cm
+ * cake is a different product to an 8 cm one at the same diameter — same
+ * footprint, nearly twice the cake — and burying the twelve round formats in
+ * one list makes the two heights look like duplicates of each other.
+ */
+const SHAPE_FAMILIES = [
+  {id: 'all', nameAr: 'الكل', nameEn: 'All'},
+  {id: 'round', nameAr: 'دائري', nameEn: 'Round'},
+  {id: 'round-tall', nameAr: 'دائري مرتفع', nameEn: 'Round, tall'},
+  {id: 'square', nameAr: 'مربع', nameEn: 'Square'},
+  {id: 'rectangle', nameAr: 'مستطيل', nameEn: 'Rectangle'},
+] as const;
+
+type ShapeFamily = (typeof SHAPE_FAMILIES)[number]['id'];
+
 const steps = [
   { id: 1, titleEn: 'Shape', titleAr: 'اختر الشكل', icon: Cake },
   { id: 2, titleEn: 'Flavor', titleAr: 'أختر النكهة', icon: FlavorIcon },
@@ -57,31 +119,20 @@ const steps = [
 ];
 
 /**
- * Frosting swatches.
+ * Option lists no longer live in this file at all.
  *
- * The only option list still declared in code, and only because a swatch is a
- * hex value with no price: `cake_attribute` has no colour field to read one
- * from. Everything that costs money — shapes, flavours, toppings — comes from
- * those metaobjects, so a price can never be invented here.
+ * Shapes, fillings, coatings and decorations now come from
+ * `~/lib/cake-render/catalog`, generated from the vendor's own package, and
+ * their prices are joined on from the `cake_attribute` metaobject by
+ * `builder_key`. See `builder-options.ts`.
  *
- * What used to sit at this line was a full catalogue — shapes, sizes, tiers,
- * flavours and toppings, each with its own price, shadowing the merchant's
- * own. The sizes in particular had no step anywhere in the builder, so every
- * cake opened already charged 180 for a Medium nobody had picked.
+ * What used to sit at this line was eleven hand-picked frosting hexes. They
+ * were invented here because the old flat-PNG preview recoloured artwork by
+ * scanning pixels, so any hex would do. The new renderer multiplies a
+ * luminance curve of a photographed white fondant by the colour the client
+ * actually sampled off their own printed swatch — so a hand-picked hex would
+ * render a coating the bakery cannot make.
  */
-const FROSTING_COLORS = [
-  { id: 'white', name: 'أبيض كلاسيكي (White)', price: 0, color: '#fdf5e6' },
-  { id: 'pink', name: 'وردي سعد الدين (Saadeddin Pink)', price: 0, color: '#ffb6c1' },
-  { id: 'magenta', name: 'ماجنتا (Magenta)', price: 0, color: '#a32c81' },
-  { id: 'red', name: 'أحمر مخملي (Red)', price: 0, color: '#dc143c' },
-  { id: 'orange', name: 'برتقالي (Orange)', price: 0, color: '#ff8c00' },
-  { id: 'yellow', name: 'أصفر (Yellow)', price: 0, color: '#ffd700' },
-  { id: 'green', name: 'أخضر نعناعي (Green)', price: 0, color: '#98fb98' },
-  { id: 'blue', name: 'أزرق سماوي (Blue)', price: 0, color: '#87ceeb' },
-  { id: 'purple', name: 'لافندر (Purple)', price: 0, color: '#e6e6fa' },
-  { id: 'black', name: 'أسود ليلي (Black)', price: 0, color: '#1a1a1a' },
-  { id: 'custom', name: 'لون مخصص (Custom)', price: 0, color: '#4a90e2', isCustom: true }
-];
 
 export default function CustomCakeBuilder({
   cakeAttributes = [],
@@ -360,108 +411,45 @@ export default function CustomCakeBuilder({
   }, [preparationHours]);
 
   const photoPrintPrice = React.useMemo(() => {
-    const photoPrintAttribute = cakeAttributes?.find(attr => {
-      if (!attr.nameEn?.value) return false;
-      const name = attr.nameEn.value.toLowerCase();
-      return name.includes('photo') || name.includes('print') || name.includes('upload') || name.includes('image');
-    });
-    // No metaobject, no charge — a price is never invented in code.
-    return photoPrintAttribute?.priceDelta?.value
-      ? parseInt(photoPrintAttribute.priceDelta.value, 10)
-      : 0;
+    /**
+     * Matched on `builder_key`, not on the English name.
+     *
+     * The old version searched every metaobject for a name containing "photo",
+     * "print", "upload" or "image" — which would just as happily have matched a
+     * decoration called "Printed Ribbon" and charged its price for uploading a
+     * picture. One exact key, or no charge.
+     */
+    const row = cakeAttributes?.find(
+      (attr) => attr?.builderKey?.value === 'photoPrint',
+    );
+    const raw = row?.priceDelta?.value;
+    const price = raw === null || raw === undefined || raw === '' ? NaN : Number(raw);
+    return Number.isFinite(price) && price >= 0 ? price : 0;
   }, [cakeAttributes]);
 
-  const mergedOptions = React.useMemo(() => {
-    // 1. Filter and map shapes from "base" attributes
-    const shapes = cakeAttributes
-      .filter(attr => attr.attributeType?.value?.toLowerCase() === 'base' || attr.attributeType?.value?.toLowerCase() === 'shape')
-      .map(attr => {
-        const nameEn = attr.nameEn?.value || 'Shape';
-        const nameAr = attr.nameAr?.value || '';
-        const id = nameEn.toLowerCase().replace(/[\s\-_]+/g, '_');
-        const rawPrice = attr.priceDelta?.value ? parseInt(attr.priceDelta.value, 10) : 0;
-        const price = isNaN(rawPrice) ? 0 : rawPrice;
-        const thumbnail = attr.thumbnailUrl?.reference?.image?.url || '/images/cake-builder/cake-round.webp';
-
-        return {
-          id,
-          gid: attr.id,
-          name: nameAr ? `${nameAr} (${nameEn})` : nameEn,
-          price,
-          image: thumbnail,
-          imageFront: attr.imageFront?.reference?.image?.url,
-          imageTop: attr.imageTop?.reference?.image?.url,
-          imageSliced: attr.imageSliced?.reference?.image?.url,
-          is3D: true
-        };
-      });
-
-    // 2. Filter and map flavors
-    const flavors = cakeAttributes
-      .filter(attr => attr.attributeType?.value?.toLowerCase() === 'flavor')
-      .map(attr => {
-        const nameEn = attr.nameEn?.value || 'Flavor';
-        const nameAr = attr.nameAr?.value || '';
-        const id = nameEn.toLowerCase().replace(/[\s\-_]+/g, '_');
-        const rawPrice = attr.priceDelta?.value ? parseInt(attr.priceDelta.value, 10) : 0;
-        const price = isNaN(rawPrice) ? 0 : rawPrice;
-        const thumbnail = attr.thumbnailUrl?.reference?.image?.url || '/cake/flavors/vanilla.png';
-
-        return {
-          id,
-          gid: attr.id,
-          name: nameAr ? `${nameAr} (${nameEn})` : nameEn,
-          price,
-          image: thumbnail,
-          color: '#f5deb3' // default color
-        };
-      });
-
-    // 3. Filter and map toppings (styles)
-    const toppingsList = cakeAttributes
-      .filter(attr => attr.attributeType?.value?.toLowerCase() === 'topping' || attr.attributeType?.value?.toLowerCase() === 'style')
-      .map(attr => {
-        const nameEn = attr.nameEn?.value || 'Topping';
-        const nameAr = attr.nameAr?.value || '';
-        const id = nameEn.toLowerCase().replace(/[\s\-_]+/g, '_');
-        const rawPrice = attr.priceDelta?.value ? parseInt(attr.priceDelta.value, 10) : 0;
-        const price = isNaN(rawPrice) ? 0 : rawPrice;
-        const thumbnail = attr.thumbnailUrl?.reference?.image?.url || '';
-
-        return {
-          id,
-          gid: attr.id,
-          name: nameAr ? `${nameAr} (${nameEn})` : nameEn,
-          price,
-          image: thumbnail,
-          imageFront: attr.imageFront?.reference?.image?.url,
-          imageTop: attr.imageTop?.reference?.image?.url,
-          imageSliced: attr.imageSliced?.reference?.image?.url
-        };
-      });
-
-    // Add default "Smooth Minimalist" (basic) option as index 0 for toppings
-    const basicStyle = { id: 'basic', name: isEn ? 'Smooth Minimalist' : 'ناعم (Smooth Minimalist)', price: 0, image: '' };
-    /**
-     * "Smooth" is the absence of a topping rather than a topping, so it has no
-     * metaobject and no price. Every other entry is the merchant's.
-     */
-    const styles = [basicStyle, ...toppingsList];
-
-    /**
-     * No substitute lists. There used to be a `finalShapes` / `finalFlavors` /
-     * `toppingsFallback` set here that stood in whenever a metaobject query
-     * came back empty — inventing products, and prices, that nobody in Shopify
-     * had agreed to. An empty group now renders as an empty group, which is
-     * visible and fixable; a fabricated 250 SAR shape was neither.
-     */
-    return {
-      shapes,
-      flavors,
-      styles,
-      colors: FROSTING_COLORS
-    };
-  }, [cakeAttributes, isEn]);
+  /**
+   * The option lists: identity from the render catalog, prices from Shopify.
+   *
+   * This replaces about eighty lines that read shapes, flavours and toppings
+   * straight out of `cake_attribute` and derived an id by lowercasing the
+   * English name. That worked while there were five prototype rows, but it
+   * cannot address the renderer: the engine wants `round-20x20-h8`, not
+   * `small_standard`, and it needs width, depth and height in centimetres that
+   * the metaobject has no fields for.
+   *
+   * So identity comes from the catalog — 23 formats, 10 fillings, 22 coatings,
+   * 16 decorations, all generated from the vendor's own package — and the
+   * metaobject is left doing the one job it is genuinely good at, which is
+   * letting the client change a price without a deploy.
+   *
+   * An option the client has not priced comes back `priced: false` and
+   * `canCheckout` refuses it. Until the price sheet returns, that is every
+   * option, and the button stays disabled on purpose.
+   */
+  const mergedOptions = React.useMemo(
+    () => buildCakeOptions(cakeAttributes, isEn),
+    [cakeAttributes, isEn],
+  );
 
   /**
    * Nothing is chosen until the customer chooses it, so the total opens at
@@ -490,20 +478,21 @@ export default function CustomCakeBuilder({
   const hasLoadedRef = useRef(false);
 
   /**
-   * Has the customer chosen a shape themselves, as opposed to one arriving
-   * from a reorder?
+   * A saved or re-ordered design arrived but matched nothing in the catalog.
    *
-   * `availableStyles` keeps whatever topping is currently selected in its list
-   * no matter which shape is chosen, so that a re-ordered cake still shows a
-   * topping that has since been delisted. That allowance also covered the
-   * customer's own choices: pick a topping on one shape, go back and change
-   * the shape, and the topping stayed "available" by construction -- so the
-   * effect meant to catch exactly that never fired, and the preview drew the
-   * old shape's artwork on the new cake.
-   *
-   * Once this is true, availability is judged on the shape alone.
+   * Expected for any cake saved before the 23-format catalog replaced the six
+   * named sizes: the old design names cannot resolve to the new ids. Shown
+   * once, on step 1, so the customer knows their design did not come back
+   * rather than assuming the page is broken.
    */
-  const shapeTouchedRef = useRef(false);
+  const [restoreFailed, setRestoreFailed] = useState(false);
+
+  /*
+   * `shapeTouchedRef` lived here and is gone. It existed to let a re-ordered
+   * cake keep a topping that was no longer offered for its shape — a rule that
+   * only made sense while toppings were per-shape photographs. Every decoration
+   * is now offered on every shape, so there is nothing to keep or drop.
+   */
 
   // Helper to find matching option by name, id, gid, or partial string match
   const findMatchingOption = <T extends { id?: string; name?: string; color?: string; count?: number }>(
@@ -610,7 +599,35 @@ export default function CustomCakeBuilder({
             prepTime: savedPending?.prepTime || prepTimeOptions[0] || null,
           });
 
-          setCurrentStep(4);
+          /**
+           * Land on the first step that still needs an answer, not always on 4.
+           *
+           * This used to jump straight to the last step on the assumption that
+           * a restore had rebuilt the whole cake. It hadn't necessarily: an
+           * unmatched value stays null by design (see above), and jumping
+           * anyway put the customer on the writing step looking at a
+           * placeholder, with nothing selected and no way to tell why.
+           *
+           * The catalog swap turned that from a rare case into the normal one.
+           * Saved designs identify a shape by name — «ستاندرد صغير» — and the
+           * new formats are addressed as `round-20x20-h8`. Nothing from before
+           * this change can match, so every returning customer with a saved
+           * cake would have hit it.
+           */
+          const restoredStep = !shape
+            ? 1
+            : !flavor || !color
+              ? 2
+              : !style
+                ? 3
+                : 4;
+          setCurrentStep(restoredStep);
+
+          if (restoredStep === 1 && (shapeVal || flavorVal || toppingVal)) {
+            // Say so, rather than silently presenting an empty builder to
+            // someone who expected their cake back.
+            setRestoreFailed(true);
+          }
           return;
         }
       }
@@ -641,147 +658,94 @@ export default function CustomCakeBuilder({
     }
   }, [mergedOptions, cakeAttributes, prepTimeOptions]);
 
-  // Dynamically filter available toppings (styles) for the selected shape based on cake_topping_design metaobjects
-  const availableStyles = useMemo(() => {
-    if (!mergedOptions.styles || mergedOptions.styles.length === 0) return [];
-
-    if (selections.shape?.id === 'square' || selections.shape?.id === 'sheet') {
-      return mergedOptions.styles.filter(s => s.id === 'basic');
-    }
-
-    if (!toppingDesigns || toppingDesigns.length === 0) {
-      return mergedOptions.styles;
-    }
-
-    const currentShapeGid = ((selections.shape as any)?.gid || selections.shape?.id || '').toLowerCase();
-    const currentShapeName = (selections.shape?.name || '').toLowerCase();
-
-    return mergedOptions.styles.filter(style => {
-      if (style.id === 'basic') return true;
-
-      // The reorder allowance, and only that: until the customer picks a shape
-      // of their own, a topping carried in from a previous order stays listed
-      // even if it is no longer offered. After that it has to earn its place.
-      if (
-        !shapeTouchedRef.current &&
-        selections.style &&
-        (style.id === selections.style.id || style.name === selections.style.name)
-      ) {
-        return true;
-      }
-
-      const styleGid = ((style as any)?.gid || style.id || '').toLowerCase();
-
-      // Find designs specifically registered for this topping
-      const designsForTopping = toppingDesigns.filter(d => {
-        const tRefId = (d.topping?.reference?.id || d.topping?.value || '').toLowerCase();
-        return tRefId && styleGid && (tRefId === styleGid || tRefId.includes(styleGid) || styleGid.includes(tRefId));
-      });
-
-      // If no shape-specific designs exist for this topping, assume it's generic and available for all shapes
-      if (designsForTopping.length === 0) {
-        return true;
-      }
-
-      // If shape-specific designs exist, check if ONE of them links to the currently selected shape
-      return designsForTopping.some(d => {
-        const sRefId = (d.shape?.reference?.id || d.shape?.value || '').toLowerCase();
-
-        if (sRefId && currentShapeGid && (sRefId === currentShapeGid || sRefId.includes(currentShapeGid) || currentShapeGid.includes(sRefId))) {
-          return true;
-        }
-
-        const shapeMatchAttr = cakeAttributes?.find(attr => (attr.id || '').toLowerCase() === sRefId);
-        if (shapeMatchAttr) {
-          const shopifyShapeNameEn = (shapeMatchAttr.nameEn?.value || '').toLowerCase().replace(/[-_\s]+/g, ' ');
-          const cleanCurrentShape = currentShapeName.replace(/[-_\s]+/g, ' ');
-          if (shopifyShapeNameEn && cleanCurrentShape && (cleanCurrentShape.includes(shopifyShapeNameEn) || shopifyShapeNameEn.includes(cleanCurrentShape))) {
-            return true;
-          }
-        }
-
-        return false;
-      });
-    });
-  }, [mergedOptions.styles, selections.shape, selections.style, toppingDesigns, cakeAttributes]);
+  /**
+   * Every decoration is offered on every shape.
+   *
+   * This used to be sixty lines of filtering against the `cake_topping_design`
+   * metaobject, and it earned its keep: each topping was a photograph taken on
+   * one particular shape, so offering a topping shot on a round cake for a
+   * square one put the wrong artwork on the preview.
+   *
+   * The procedural renderer removes the premise. `decorationInstances` walks
+   * the cake's actual footprint — a circle or a rounded rectangle — and places
+   * piped shells, rosettes and fruit along it at whatever spacing the size
+   * calls for. There is no per-shape artwork left to mismatch, so there is
+   * nothing to filter.
+   *
+   * `toppingDesigns` is still accepted as a prop and still queried by the
+   * route. It is no longer read here. Removing it from the route query is a
+   * separate change, once nothing else depends on those metaobjects.
+   */
+  const availableStyles = mergedOptions.styles;
 
   /**
-   * Re-resolve the chosen topping against the chosen shape.
+   * Keep the selected decoration pointing at the current option object.
    *
-   * Checking that the id is still available is not enough: the same topping is
-   * a different object per shape, and that object carries the artwork. Keeping
-   * the old one is what put a topping photographed on one shape onto another.
-   * So the match is looked up and stored, not merely counted.
-   *
-   * When the topping is not offered for the new shape it is cleared rather than
-   * swapped for `availableStyles[0]`. Substituting silently changes the cake
-   * somebody ordered without telling them -- they would find out from the order
-   * confirmation, or the kitchen would. `stepComplete(3)` already blocks Next
-   * without a topping, so clearing sends them back to choose one.
+   * Prices arrive from the metaobject after first paint, which rebuilds every
+   * option. Without this the shopper's chosen decoration keeps the pre-price
+   * object and the total silently omits it.
    */
   React.useEffect(() => {
     if (!selections.style) return;
-
-    const match = availableStyles.find(s =>
-      s.id === selections.style?.id ||
-      s.name === selections.style?.name ||
-      (s.id && selections.style?.id && (s.id.includes(selections.style.id) || selections.style.id.includes(s.id)))
-    );
-
-    if (match) {
-      // Same topping, fresh object -- the one carrying this shape's image.
-      if (match !== selections.style) {
-        setSelections(prev => ({ ...prev, style: match }));
-      }
-      return;
+    const match = availableStyles.find((s) => s.id === selections.style?.id);
+    if (match && match !== selections.style) {
+      setSelections((prev) => ({ ...prev, style: match }));
     }
-
-    // Basic is offered on every shape, and a reorder that has not been
-    // touched keeps whatever it arrived with.
-    if (selections.style.id === 'basic' || !shapeTouchedRef.current) return;
-
-    setSelections(prev => ({ ...prev, style: null }));
   }, [availableStyles, selections.style]);
+
+  /** The same re-sync for shape and filling, for the same reason. */
+  React.useEffect(() => {
+    if (selections.shape) {
+      const match = mergedOptions.shapes.find((s) => s.id === selections.shape?.id);
+      if (match && match !== selections.shape) {
+        setSelections((prev) => ({ ...prev, shape: match }));
+      }
+    }
+    if (selections.flavor) {
+      const match = mergedOptions.flavors.find((f) => f.id === selections.flavor?.id);
+      if (match && match !== selections.flavor) {
+        setSelections((prev) => ({ ...prev, flavor: match }));
+      }
+    }
+  }, [mergedOptions.shapes, mergedOptions.flavors, selections.shape, selections.flavor]);
 
   const [view, setView] = useState<'front' | 'top' | 'sliced'>('front');
 
-  const supportedViews = React.useMemo(() => {
-    const shape = selections.shape;
-    if (!shape) return {front: true, top: false, sliced: false};
-    const hasTop = !!((shape as any).imageTop || ['classic_round', 'standard', 'mini_cake', 'small_standard', 'circle'].includes(shape.id));
-    const hasSliced = !!((shape as any).imageSliced || ['classic_round', 'standard', 'mini_cake', 'small_standard', 'circle'].includes(shape.id));
-    return {
-      front: true,
-      top: hasTop,
-      sliced: hasSliced,
+  /**
+   * Every view works on every shape now, so this is a constant.
+   *
+   * It used to test for an `imageTop` or `imageSliced` file on the metaobject,
+   * falling back to a hardcoded list of five shape ids — which is why a square
+   * cake had no top view: nobody had photographed one. The renderer draws any
+   * view of any format from the same mesh, so the switcher no longer has to
+   * hide buttons that would show nothing.
+   */
+  const supportedViews = {front: true, top: true, sliced: true} as const;
+
+  const {view: rendererView, angle: rendererAngle} = VIEW_TO_RENDERER[view];
+
+  const [shapeFamily, setShapeFamily] = useState<ShapeFamily>('all');
+
+  const visibleShapes = React.useMemo(() => {
+    const matches = (s: BuilderOption) => {
+      if (shapeFamily === 'all') return true;
+      if (shapeFamily === 'round') return s.shape === 'round' && s.height === 8;
+      if (shapeFamily === 'round-tall') return s.shape === 'round' && s.height === 14;
+      return s.shape === shapeFamily;
     };
-  }, [selections.shape]);
+    return mergedOptions.shapes.filter(
+      (s) => matches(s) || s.id === selections.shape?.id,
+    );
+  }, [mergedOptions.shapes, shapeFamily, selections.shape?.id]);
 
   React.useEffect(() => {
-    if (view === 'top' && !supportedViews.top) {
-      setView('front');
-    }
-    if (view === 'sliced' && !supportedViews.sliced) {
-      setView('front');
-    }
-  }, [supportedViews, view]);
-
-  React.useEffect(() => {
-    if (isCutaway && supportedViews.sliced) {
-      setView('sliced');
-    } else if (!isCutaway && view === 'sliced') {
-      setView('front');
-    }
-  }, [isCutaway, supportedViews]);
-
-  // Reset style/topping to basic if shape changes to square or sheet
-  React.useEffect(() => {
-    const isSquareOrSheet = selections.shape?.id === 'square' || selections.shape?.id === 'sheet';
-    if (isSquareOrSheet && selections.style && selections.style.id !== 'basic') {
-      const basicStyle = mergedOptions.styles.find(s => s.id === 'basic') || { id: 'basic', name: 'ناعم (Smooth Minimalist)', price: 0, image: '' };
-      setSelections(prev => ({ ...prev, style: basicStyle }));
-    }
-  }, [selections.shape?.id, mergedOptions.styles, selections.style?.id]);
+    // Functional form on purpose: the effect depends only on `isCutaway`, so
+    // reading `view` from the closure would read whatever it was when the
+    // cutaway toggled, not what it is now.
+    setView((current) =>
+      isCutaway ? 'sliced' : current === 'sliced' ? 'front' : current,
+    );
+  }, [isCutaway]);
 
   // Automatically switch views based on the active step
   React.useEffect(() => {
@@ -790,10 +754,6 @@ export default function CustomCakeBuilder({
   }, [currentStep]);
 
   const handleSelect = (category: string, item: any) => {
-    // From here on, topping availability answers to the shape rather than to
-    // whatever was already selected. Set before the state update, so the
-    // re-computation on the next render already sees it.
-    if (category === 'shape') shapeTouchedRef.current = true;
     setSelections(prev => ({ ...prev, [category]: item }));
   };
 
@@ -811,9 +771,58 @@ export default function CustomCakeBuilder({
     return true;
   };
 
+  /**
+   * Options the client has not priced yet.
+   *
+   * Empty means every chosen option has a `price_delta` row in Shopify. While
+   * it is not empty the cake genuinely has no price, and selling it would mean
+   * inventing one — so checkout is refused rather than defaulted to zero.
+   *
+   * Before the client returns the price sheet this names everything, and the
+   * pay button stays disabled across the whole builder. That is the intended
+   * state, not a fault: see `builder-options.ts`.
+   */
+  const unpriced = unpricedSelections(selections);
+
+  /**
+   * Options priced by our model rather than by Saadeddin.
+   *
+   * These render a complete, believable total — that is the point, it makes the
+   * builder demonstrable — but they must never reach a payment. Anyone reading
+   * this after the client's sheet has been loaded: if this is still firing,
+   * some rows still carry `provisional: true` in the `cake_attribute`
+   * metaobject and have not been cleared.
+   */
+  const provisional = provisionalSelections(selections);
+
+  /**
+   * Does ANY option still carry a modelled price?
+   *
+   * Drives the notice at the top of the builder. Deliberately catalog-wide
+   * rather than selection-based, so a shopper comparing sizes learns the
+   * numbers are provisional before they commit to one, not after.
+   */
+  const catalogHasProvisionalPrices = React.useMemo(
+    () =>
+      [...mergedOptions.shapes, ...mergedOptions.flavors, ...mergedOptions.styles]
+        .some((o) => o.provisional),
+    [mergedOptions],
+  );
+
   /** Every choice the order needs before it can be paid for. */
   const canCheckout =
-    stepComplete(1) && stepComplete(2) && stepComplete(3);
+    stepComplete(1) &&
+    stepComplete(2) &&
+    stepComplete(3) &&
+    unpriced.length === 0;
+  /*
+   * `provisional` is intentionally NOT in that condition.
+   *
+   * Re-add `&& provisional.length === 0` to stop modelled prices being sold.
+   * That must happen before launch if the client's real prices have not
+   * replaced ours — a cake sold on a curve fit is a cake sold at the wrong
+   * price.
+   */
 
   /**
    * What the step is still waiting for, named.
@@ -846,6 +855,19 @@ export default function CustomCakeBuilder({
 
     return missing;
   };
+
+  /**
+   * Why the pay button is disabled when every step is complete.
+   *
+   * Without this the shopper configures a whole cake, reaches the end and finds
+   * a dead button — the same "control that needs clicking twice" problem the
+   * step gates above were written to fix, one screen later.
+   */
+  const priceUnavailableMessage = unpriced.length
+    ? isEn
+      ? 'This combination is not priced yet. Please pick another, or contact us.'
+      : 'هذا الاختيار غير مُسعّر حالياً. جرّب اختياراً آخر أو تواصل معنا.'
+    : '';
 
   /** «النكهة ولون الكريمة» / «a flavour and a frosting colour». */
   const listMissing = (items: string[]): string =>
@@ -935,6 +957,48 @@ export default function CustomCakeBuilder({
           flavor: selections.flavor?.name,
           color: selections.color?.name,
           topping: selections.style?.name,
+          /**
+           * The machine-readable spec, alongside the human labels above.
+           *
+           * A baker reads «دائري — قطر ٢٠ سم»; a system needs
+           * `round-20x20-h8`. Sending only the label means anyone downstream —
+           * the CRM, a production sheet, a reorder — has to parse Arabic prose
+           * back into dimensions, and will eventually parse it wrong.
+           *
+           * `cakeSpec` is additive: nothing currently reads it, and the
+           * existing attributes are untouched, so this cannot break the orders
+           * going through today.
+           */
+          cakeSpec: {
+            schema: 'saadeddin-cake-v5',
+            formatId: selections.shape?.id || null,
+            shape: selections.shape?.shape || null,
+            widthCm: selections.shape?.width ?? null,
+            depthCm: selections.shape?.depth ?? null,
+            heightCm: selections.shape?.height ?? null,
+            fillingId: selections.flavor?.id || null,
+            colorId: selections.color?.id || null,
+            decorationId: selections.style?.id || null,
+            priceLines: [
+              selections.shape && {
+                key: `format:${selections.shape.id}`,
+                amount: selections.shape.price,
+              },
+              selections.flavor && {
+                key: `filling:${selections.flavor.id}`,
+                amount: selections.flavor.price,
+              },
+              selections.style && {
+                key: `decoration:${selections.style.id}`,
+                amount: selections.style.price,
+              },
+              selections.uploadedImage &&
+                photoPrintPrice > 0 && {
+                  key: 'extra:photo',
+                  amount: photoPrintPrice,
+                },
+            ].filter(Boolean),
+          },
           messagePlacement: selections.messagePlacement,
           message: selections.message,
           baseMessage: selections.baseMessage,
@@ -1061,8 +1125,14 @@ export default function CustomCakeBuilder({
               </div>
             )}
 
-            {/* Show image if category is flavor or if it is a style with an image */}
-            {category === 'flavor' || (category === 'style' && option.image) ? (
+            {/*
+              Show the thumbnail for anything that has one. Shapes were
+              excluded here because the old six had none worth showing — the
+              only art available was hotlinked off a competitor's CDN. The 23
+              catalog formats each ship their own rendered thumbnail, and with
+              23 sizes to choose between, a picture is doing real work.
+            */}
+            {category === 'flavor' || ((category === 'style' || category === 'shape') && option.image) ? (
               <div className="w-14 h-14 rounded-full border border-gray-200 shadow-sm mb-3 flex items-center justify-center overflow-hidden relative bg-[#fafafa]">
                 <img src={option.image} alt={displayName} className="w-full h-full object-cover" />
               </div>
@@ -1188,6 +1258,33 @@ export default function CustomCakeBuilder({
               <span className="text-[14px] font-bold">{isEn ? 'Create an unforgettable moment — step by step' : 'أصنع لحظة لا تُنسى — خطوة بخطوة'}</span>
             </div>
 
+            {/*
+              Provisional-price notice.
+
+              Shown whenever ANY option in the catalog still carries a price we
+              modelled rather than one Saadeddin supplied — not just the ones
+              currently selected. That is deliberate: a shopper comparing sizes
+              is reading numbers that may move, and only telling them once they
+              have picked a flagged one would be telling them too late.
+
+              This replaced a hard checkout block. The block was correct and
+              unusable: with all 51 prices flagged, no cake could be bought at
+              all, which made the order path untestable. The flag still lives
+              in the data and `provisionalSelections` still computes it, so
+              re-arming the block before launch is one condition in
+              `canCheckout`.
+            */}
+            {catalogHasProvisionalPrices && (
+              <div
+                role="status"
+                className={`mb-6 rounded-xl border border-[#E8D8B0] bg-[#FDF8EC] px-4 py-3 text-sm text-[#6B5730] ${isEn ? 'text-left' : 'text-right'}`}
+              >
+                {isEn
+                  ? 'Prices shown are provisional and awaiting confirmation from Saadeddin.'
+                  : 'الأسعار المعروضة مبدئية وقيد الاعتماد من سعد الدين.'}
+              </div>
+            )}
+
             {/* Title */}
             <div className={`mb-[32px] ${isEn ? 'text-left' : 'text-right'}`}>
               <h1 className="sm:!text-[38px] !text-[28px] font-extrabold text-[#171717] !mb-2 !mt-2 leading-tight">{isEn ? 'Design Your Custom Cake' : 'صمّم كيكتك بلمستك الخاصة'}</h1>
@@ -1236,7 +1333,40 @@ export default function CustomCakeBuilder({
                 <div className="animate-in fade-in duration-300 space-y-10">
                   <div>
                     <h2 className={`text-2xl font-bold text-[#1a1a1a] ${isEn ? 'text-left' : 'text-right'}`}>{isEn ? 'Choose Shape' : 'اختر شكل الكيكة'}</h2>
-                    {renderOptionsGrid('shape', mergedOptions.shapes)}
+
+                    {restoreFailed && (
+                      <div className={`mt-4 rounded-xl border border-[#E8D8B0] bg-[#FDF8EC] px-4 py-3 text-sm text-[#6B5730] ${isEn ? 'text-left' : 'text-right'}`}>
+                        {isEn
+                          ? 'Your saved design could not be restored — our sizes and decorations have changed. Please build it again.'
+                          : 'تعذّر استرجاع تصميمك المحفوظ — تغيّرت المقاسات والتزيينات لدينا. من فضلك أعد اختيار كيكتك.'}
+                      </div>
+                    )}
+
+                    {/*
+                      A family filter, because 23 sizes in one flat grid is a
+                      wall. The old list had six and needed none. Filtering
+                      never hides the shape already chosen — changing filter
+                      would otherwise make a selected cake vanish from view
+                      while still being the cake being built.
+                    */}
+                    <div className={`flex flex-wrap gap-2 mt-5 ${isEn ? '' : 'justify-end'}`}>
+                      {SHAPE_FAMILIES.map((family) => (
+                        <button
+                          key={family.id}
+                          type="button"
+                          onClick={() => setShapeFamily(family.id)}
+                          className={`px-4 py-2 rounded-full text-sm font-bold transition-all cursor-pointer border ${
+                            shapeFamily === family.id
+                              ? 'bg-[#294941] text-white border-[#294941]'
+                              : 'bg-white text-[#294941] border-[#E5E7EB] hover:border-[#294941]/50'
+                          }`}
+                        >
+                          {isEn ? family.nameEn : family.nameAr}
+                        </button>
+                      ))}
+                    </div>
+
+                    {renderOptionsGrid('shape', visibleShapes)}
                   </div>
                 </div>
               )}
@@ -1521,6 +1651,7 @@ export default function CustomCakeBuilder({
                   className={`inline-flex items-center gap-3 px-10 py-4 rounded-full font-bold bg-[#294941] text-white hover:bg-[#1E3A34] transition-all text-xl disabled:opacity-50 disabled:cursor-not-allowed ${isEn ? 'flex-row-reverse' : ''}`}
                   onClick={() => setIsPrepModalOpen(true)}
                   disabled={isSubmitting || !canCheckout}
+                  aria-describedby={canCheckout ? undefined : 'cake-step-missing'}
                 >
                   {isSubmitting ? (isEn ? 'Preparing...' : 'جاري التحضير...') : (isEn ? 'Checkout and Pay' : 'إتمام الطلب والدفع')}
                   <ArrowLeft className={`w-5 h-5 ${isEn ? 'rotate-180' : ''}`} />
@@ -1538,6 +1669,25 @@ export default function CustomCakeBuilder({
                 rather than only being there for anyone who goes looking.
               */}
               {(() => {
+                /*
+                  The price gate is checked FIRST, because it is the one case
+                  where every step is complete and the button is still dim.
+                  The missing-choice logic below can never explain it — with
+                  nothing unchosen it finds no gate step and renders nothing,
+                  which left the pay button dead and silent.
+                */
+                if (priceUnavailableMessage) {
+                  return (
+                    <span
+                      id="cake-step-missing"
+                      aria-live="polite"
+                      className="text-[#9B3D32] text-sm font-medium"
+                    >
+                      {priceUnavailableMessage}
+                    </span>
+                  );
+                }
+
                 const gateStep =
                   currentStep < steps.length
                     ? currentStep
@@ -1617,25 +1767,37 @@ export default function CustomCakeBuilder({
                     draggable={false}
                   />
                 ) : (
-                <CakePreview
-                  shape={selections.shape.id}
-                  layers={'one'}
-                  color={selections.color?.color || '#fdf5e6'}
-                  toppings={selections.style ? [{ id: selections.style.id, gid: (selections.style as any)?.gid, name: selections.style.name }] : []}
-                  scale={1}
-                  message={selections.message}
-                  baseMessage={selections.baseMessage}
-                  messagePlacement={selections.messagePlacement}
-                  flavorName={selections.flavor?.name || ''}
-                  isCutaway={currentStep === 2 && isCutaway}
-                  textColor={selections.textColor}
-                  textFont={selections.textFont}
-                  uploadedImage={selections.uploadedImage}
-                  view={view}
-                  setView={setView}
-                  currentStep={currentStep}
-                  cakeAttributes={cakeAttributes}
-                  toppingDesigns={toppingDesigns}
+                <CakeRenderer
+                  /*
+                   * `canvasId` is load-bearing: handleCheckout grabs the
+                   * preview for the order with getElementById('cake-3d-canvas').
+                   */
+                  canvasId="cake-3d-canvas"
+                  formatId={selections.shape.id}
+                  fillingId={selections.flavor?.id || CAKE_FILLINGS[0].id}
+                  colorId={selections.color?.id || '00'}
+                  decorationId={selections.style?.id || 'none'}
+                  view={rendererView}
+                  angle={rendererAngle}
+                  photoSrc={selections.uploadedImage}
+                  text={{
+                    /*
+                     * Only the message written ON the cake reaches the
+                     * renderer. `baseMessage` goes on the board, which the
+                     * engine does not draw, and it still travels to the
+                     * kitchen on the order.
+                     */
+                    value:
+                      selections.messagePlacement === 'base'
+                        ? ''
+                        : selections.message,
+                    color: selections.textColor,
+                    scale: 1,
+                    x: 0,
+                    y: -0.2,
+                    font: FONT_FOR_RENDERER[selections.textFont] || 'Noto Sans Arabic',
+                  }}
+                  isEn={isEn}
                 />
                 )}
               </div>

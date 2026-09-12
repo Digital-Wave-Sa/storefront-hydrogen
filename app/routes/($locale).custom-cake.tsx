@@ -11,16 +11,32 @@ export const meta: Route.MetaFunction = ({matches}) => {
   return [{title: getShopTitle('Customize Your Dream Cake', matches)}];
 };
 
+/**
+ * Preload the two textures the very first render always needs.
+ *
+ * The old list preloaded four flat cake photographs that no longer exist in the
+ * pipeline — the renderer draws the cake rather than showing a picture of one.
+ * What it does need immediately is the white fondant master for the default
+ * format and the default filling, and fetching those in parallel with the JS
+ * bundle takes a visible beat off the first paint.
+ *
+ * Deliberately only two. Preloading all 91 assets would saturate the connection
+ * on a phone and delay the very thing it is trying to speed up.
+ */
 export const links: LinksFunction = () => {
   return [
-    {rel: 'preload', as: 'image', href: '/images/cake-builder/cake-round.webp'},
-    {rel: 'preload', as: 'image', href: '/images/cake-builder/cake-heart.webp'},
     {
       rel: 'preload',
       as: 'image',
-      href: '/images/cake-builder/cake-square.webp',
+      href: '/cake/v5/materials/fondant-photo-round8.webp',
+      type: 'image/webp',
     },
-    {rel: 'preload', as: 'image', href: '/images/cake-builder/cake-tall.webp'},
+    {
+      rel: 'preload',
+      as: 'image',
+      href: '/cake/v5/fillings/filling-04.webp',
+      type: 'image/webp',
+    },
   ];
 };
 
@@ -33,6 +49,14 @@ const CAKE_ATTRIBUTES_QUERY = `#graphql
         nameEn: field(key: "name_english") { value }
         nameAr: field(key: "name_arabic") { value }
         priceDelta: field(key: "price_delta") { value }
+        # The join key between a price in admin and an option in the render
+        # catalog — 'round-20x20-h8', '07', 'rose-garden'. Returns null until
+        # the field is added to the definition, which is safe: an option with
+        # no key is simply unpriced, and unpriced blocks checkout.
+        builderKey: field(key: "builder_key") { value }
+        # "true" only on prices the development team modelled. Absent or
+        # "false" means the price came from Saadeddin and is sellable.
+        provisional: field(key: "provisional") { value }
         thumbnailUrl: field(key: "thumbnail_image") { reference { ... on MediaImage { image { url } } } }
         imageFront: field(key: "image_front") { reference { ... on MediaImage { image { url } } } }
         imageTop: field(key: "image_top") { reference { ... on MediaImage { image { url } } } }

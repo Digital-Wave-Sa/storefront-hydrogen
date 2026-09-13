@@ -67,39 +67,16 @@ export function parseDiscountLocationScope(
   }
 }
 
-export const DEFAULT_LOCATION_DISCOUNTS = [
-  {
-    code: 'RIYADH50',
-    title: {
-      ar: 'عرض فرع العليا المميز 🎉',
-      en: 'Olaya Branch Special Offer 🎉',
-    },
-    description: {
-      ar: 'احصل على خصم 50% على جميع الطلبات من فرع العليا!',
-      en: 'Enjoy 50% off on all orders from Olaya Branch!',
-    },
-    type: 'branch' as const,
-    ids: ['91178139881', 'gid://shopify/Location/91178139881'],
-  },
-  {
-    code: 'JEDDAH20',
-    title: {
-      ar: 'عرض فرع جدة',
-      en: 'Jeddah Branch Offer',
-    },
-    description: {
-      ar: 'خصم 20% حصري على طلبات فرع جدة',
-      en: 'Exclusive 20% off on Jeddah branch orders',
-    },
-    type: 'branch' as const,
-    ids: ['91178074345', 'gid://shopify/Location/91178074345'],
-  },
-];
-
 /**
  * Parses a complete location discounts JSON payload from Shop metafield.
  * Supports dictionary format `{ "CODE": { type: "branch", ids: [...], title: "..." } }`
  * and array format `{ "discounts": [ { code: "CODE", type: "branch", ids: [...] } ] }`.
+ *
+ * The location discounts are read ONLY from the `custom.location_discounts`
+ * metafield — the single source of truth. When the metafield is absent, empty,
+ * or malformed this returns `[]` so the storefront shows no location-scoped
+ * discount rather than a stale, code-baked one. To add or change a branch offer,
+ * edit the metafield in Shopify, not this file.
  */
 export function parseLocationDiscountsJSON(rawData: any): Array<{
   code: string;
@@ -109,18 +86,18 @@ export function parseLocationDiscountsJSON(rawData: any): Array<{
   ids?: string[];
   locationScope?: DiscountLocationScope;
 }> {
-  if (!rawData) return DEFAULT_LOCATION_DISCOUNTS;
+  if (!rawData) return [];
   let parsed = rawData;
   if (typeof rawData === 'string') {
     try {
       parsed = JSON.parse(rawData);
     } catch (e) {
-      return DEFAULT_LOCATION_DISCOUNTS;
+      return [];
     }
   }
 
   if (Array.isArray(parsed)) {
-    if (parsed.length === 0) return DEFAULT_LOCATION_DISCOUNTS;
+    if (parsed.length === 0) return [];
     return parsed.map((item) => ({
       code: item.code || item.discountCode || '',
       title: item.title,
@@ -137,7 +114,7 @@ export function parseLocationDiscountsJSON(rawData: any): Array<{
     }
 
     const entries = Object.entries(parsed);
-    if (entries.length === 0) return DEFAULT_LOCATION_DISCOUNTS;
+    if (entries.length === 0) return [];
 
     return entries.map(([codeKey, val]: [string, any]) => {
       const isObj = val && typeof val === 'object';
@@ -154,7 +131,7 @@ export function parseLocationDiscountsJSON(rawData: any): Array<{
     });
   }
 
-  return DEFAULT_LOCATION_DISCOUNTS;
+  return [];
 }
 
 /**
@@ -183,16 +160,20 @@ export function isDiscountValidForLocation(
   }
 
   if (scope.type === 'branch' && userBranchId) {
+    // Exact matching only. A branch scope id may be written in the metafield as
+    // either a full GID ("gid://shopify/Location/91178139881") or the bare
+    // numeric id ("91178139881"); both forms are matched by comparing the whole
+    // string AND the numeric tail. Substring matching was removed on purpose —
+    // it let one branch id mis-match another whenever one was a substring of the
+    // other, applying a branch offer to the wrong location.
     const cleanUserBranch = userBranchId.trim().toLowerCase();
-    const userNumericId = userBranchId.split('/').pop()?.toLowerCase();
+    const userNumericId = userBranchId.split('/').pop()?.trim().toLowerCase();
     return scope.ids.some((id) => {
       const cleanId = id.trim().toLowerCase();
-      const targetNumericId = id.split('/').pop()?.toLowerCase();
+      const targetNumericId = id.split('/').pop()?.trim().toLowerCase();
       return (
         cleanId === cleanUserBranch ||
-        (targetNumericId && userNumericId && targetNumericId === userNumericId) ||
-        cleanUserBranch.includes(cleanId) ||
-        cleanId.includes(cleanUserBranch)
+        (!!targetNumericId && !!userNumericId && targetNumericId === userNumericId)
       );
     });
   }

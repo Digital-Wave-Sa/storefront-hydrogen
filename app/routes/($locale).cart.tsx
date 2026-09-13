@@ -258,6 +258,37 @@ export async function action({request, context, params}: Route.ActionArgs) {
           break;
         }
 
+        /**
+         * One redemption at a time.
+         *
+         * Two redeem surfaces are mounted at once (quick-redeem and the custom
+         * amount), each with its own button and fetcher, so a quick double-tap
+         * — or two tabs — could call this twice. Each call debits the points
+         * from SDLP and mints a fresh Shopify code, and the second silently
+         * replaced the first on the cart while leaving the first code live and
+         * its points already gone. Redeeming again while a redemption is
+         * already applied is refused; the shopper removes it first, which is
+         * also the only way to change the amount.
+         */
+        const alreadyRedeemed =
+          (currentCart.discountCodes || []).some(
+            (dc) => dc.code.startsWith('LOYAL-') || dc.code.startsWith('LOYALTY-'),
+          ) ||
+          parseInt(
+            currentCart.attributes?.find((a) => a.key === 'loyalty_points')?.value || '0',
+          ) > 0;
+
+        if (alreadyRedeemed) {
+          return data(
+            {
+              error: isEn
+                ? 'You already have a points redemption applied. Remove it first to redeem a different amount.'
+                : 'لديك استبدال نقاط مطبّق بالفعل. أزله أولاً لاستبدال مبلغ مختلف.',
+            },
+            {status: 400},
+          );
+        }
+
         const {redeemLoyaltyPoints} = await import('~/lib/loyalty.server');
         const redeemRes = await redeemLoyaltyPoints({
           points: pointsToRedeem,
@@ -415,12 +446,13 @@ export async function action({request, context, params}: Route.ActionArgs) {
               const shopMetaRes = (await context.storefront.query(`#graphql
                 query GetLocationDiscountsForCart {
                   shop {
+                    locationScope: metafield(namespace: "location", key: "scope") { value }
                     locationDiscounts: metafield(namespace: "custom", key: "location_discounts") { value }
                     locationDiscountsAlt: metafield(namespace: "location", key: "discounts") { value }
                   }
                 }
               `, { cache: context.storefront.CacheNone() })) as any;
-              locationDiscountsData = shopMetaRes?.shop?.locationDiscounts?.value || shopMetaRes?.shop?.locationDiscountsAlt?.value || null;
+              locationDiscountsData = shopMetaRes?.shop?.locationScope?.value || shopMetaRes?.shop?.locationDiscounts?.value || shopMetaRes?.shop?.locationDiscountsAlt?.value || null;
             } catch (e) {}
 
             const locationDiscounts = parseLocationDiscountsJSON(locationDiscountsData);
@@ -886,6 +918,50 @@ export async function action({request, context, params}: Route.ActionArgs) {
         ).filter(Boolean);
 
         result = await cart.updateDiscountCodes(discountCodes);
+
+        /**
+         * A dropped system code takes its attribute with it.
+         *
+         * Loyalty and store credit each mirror their code in an attribute
+         * (`loyalty_points`, `store_credit_amount`) that checkout and the CRM
+         * read to deduct points / debit the wallet. If a `LOYAL-`/`CREDIT-`
+         * code leaves the cart by any route that runs through here — the promo
+         * ✕ that used to submit an empty list, a manual re-entry, anything —
+         * the attribute has to be zeroed too. Otherwise the discount is gone
+         * but the order still says "deduct 500 points", and the customer is
+         * charged for points they no longer have applied.
+         *
+         * This is a safety net beside the dedicated CustomLoyaltyUpdate /
+         * StoreCreditUpdate remove paths, which already clear their own; it
+         * catches every other path.
+         */
+        try {
+          const keptUpper = new Set(discountCodes.map((c) => c.toUpperCase()));
+          const priorCodes = (currentCart?.discountCodes || []).map((dc) => dc.code);
+          const droppedLoyalty = priorCodes.some(
+            (c) =>
+              (c.toUpperCase().startsWith('LOYAL-') ||
+                c.toUpperCase().startsWith('LOYALTY-')) &&
+              !keptUpper.has(c.toUpperCase()),
+          );
+          const droppedCredit = priorCodes.some(
+            (c) => c.toUpperCase().startsWith('CREDIT-') && !keptUpper.has(c.toUpperCase()),
+          );
+          const clears: Array<{key: string; value: string}> = [];
+          if (droppedLoyalty)
+            clears.push(
+              {key: 'loyalty_points', value: '0'},
+              {key: 'loyalty_code', value: ''},
+            );
+          if (droppedCredit)
+            clears.push(
+              {key: 'store_credit_amount', value: '0'},
+              {key: 'store_credit_code', value: ''},
+            );
+          if (clears.length) await cart.updateAttributes(clears);
+        } catch (attrErr) {
+          console.error('[CART] Failed to clear dropped system-code attributes:', attrErr);
+        }
 
         /**
          * Tell the customer when the code did not take.

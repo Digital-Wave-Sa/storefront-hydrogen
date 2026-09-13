@@ -262,11 +262,56 @@ export async function composeCake(
   return {raw, size: geometry.size, geometry};
 }
 
-/** Decode a data URL or object URL into the texture shape `composeCake` wants. */
+/**
+ * A `data:` URL is turned into bytes here, not fetched.
+ *
+ * The shopper's photo arrives as a data URL — `CustomCakeBuilder` reads the
+ * file with `readAsDataURL` so the chosen design survives being written to
+ * storage and restored, which an object URL or a `File` cannot do.
+ *
+ * This used to hand every string to `fetch`, and `fetch` is governed by
+ * `connect-src`. Our CSP lists `data:` under `img-src` and `font-src` but not
+ * `connect-src`, so the browser blocked the request with a bare "Failed to
+ * fetch" — while the same data URL in an `<img>` loaded fine, because that is
+ * `img-src`. The upload thumbnail appeared, the preview died, and the two
+ * outcomes disagreeing is what made it look like a renderer bug.
+ *
+ * Decoding the base64 in-process removes the request altogether, so this no
+ * longer depends on a header in `entry.server.tsx` that nobody would think to
+ * check when adding a photo feature. `http(s)` sources still go through
+ * `fetch`, which is correct — those are real requests and `connect-src` should
+ * have a say in them.
+ */
 export async function decodeUserPhoto(source: Blob | string): Promise<Texture> {
-  const blob =
-    typeof source === 'string' ? await (await fetch(source)).blob() : source;
-  return decode(blob);
+  if (typeof source !== 'string') return decode(source);
+  if (source.startsWith('data:')) return decode(dataURLToBlob(source));
+  return decode(await (await fetch(source)).blob());
+}
+
+/** `data:[<mediatype>][;base64],<data>` → Blob, with no network involved. */
+function dataURLToBlob(url: string): Blob {
+  const comma = url.indexOf(',');
+  if (comma === -1) throw new Error('Malformed data URL: no comma');
+
+  // Between "data:" and the comma. Empty is legal and means text/plain.
+  const meta = url.slice(5, comma);
+  const isBase64 = /;base64$/i.test(meta);
+  const type = meta.replace(/;base64$/i, '') || 'text/plain;charset=US-ASCII';
+  const payload = url.slice(comma + 1);
+
+  if (!isBase64) {
+    return new Blob([decodeURIComponent(payload)], {type});
+  }
+
+  /**
+   * `atob` yields a binary string; each code unit is one byte. Passing that
+   * string to `Blob` directly would UTF-8 encode it and corrupt every byte
+   * above 0x7F, which is most of a JPEG.
+   */
+  const binary = atob(payload);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return new Blob([bytes], {type});
 }
 
 /**

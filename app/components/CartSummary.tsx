@@ -1788,6 +1788,8 @@ function LoyaltyRedemptionUI({ isEn, cart }: { isEn: boolean, cart: any }) {
 
   const [pointsToRedeem, setPointsToRedeem] = useState<number>(initialPoints);
   const [availablePoints, setAvailablePoints] = useState<number | null>(null);
+  /** The lookup answered with a failure, as opposed to not having answered yet. */
+  const [pointsUnavailable, setPointsUnavailable] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const fetcher = useFetcher<any>();
 
@@ -1835,14 +1837,44 @@ function LoyaltyRedemptionUI({ isEn, cart }: { isEn: boolean, cart: any }) {
     if (customerId) q.set('customerId', customerId);
     q.set('t', String(Date.now()));
 
+    /**
+     * Three outcomes, not two: a balance, no balance, or no answer.
+     *
+     * Every failure here used to end in the same place — `availablePoints`
+     * left at `null` by a silent `if`, or by `.catch(() => {})`, which
+     * swallowed network errors, 401s, 503s and malformed bodies alike. The
+     * widget below then rendered `null` and `0` with the same sentence, so a
+     * customer holding 1,560 points read «لا توجد لديك نقاط ولاء حالياً» and
+     * there was nothing on the page, or in the browser console, saying
+     * otherwise. That is why this keeps coming back and why it never looks
+     * like the same bug twice.
+     *
+     * `pointsUnavailable` separates "we asked and the answer is none" from
+     * "we could not find out", and the console line names which failure it
+     * was, so the next occurrence identifies itself.
+     */
+    setPointsUnavailable(false);
+
     fetch(`/api/loyalty-points?${q.toString()}`)
-      .then(res => res.json())
-      .then(data => {
-        if (data?.success && data?.data?.points !== undefined) {
+      .then(async (res) => {
+        const data = await res.json().catch(() => null);
+        if (res.ok && data?.success && typeof data?.data?.points === 'number') {
           setAvailablePoints(data.data.points);
+          return;
         }
+        console.warn(
+          '[Loyalty] Points lookup did not return a balance:',
+          res.status,
+          data?.error || 'unrecognised response',
+        );
+        setAvailablePoints(null);
+        setPointsUnavailable(true);
       })
-      .catch(() => { });
+      .catch((err) => {
+        console.warn('[Loyalty] Points lookup failed:', err?.message || err);
+        setAvailablePoints(null);
+        setPointsUnavailable(true);
+      });
   }, [customerIdentifier, phone, email, customerId]);
 
   if (!customerIdentifier) {
@@ -1948,7 +1980,21 @@ function LoyaltyRedemptionUI({ isEn, cart }: { isEn: boolean, cart: any }) {
       ) : (
         /* Redeem Points Widget */
         <div className="border border-[#f0ece8] bg-[#fcfaf8] rounded-xl p-4 flex flex-col gap-3">
-          {availablePoints === 0 || availablePoints === null ? (
+          {pointsUnavailable || availablePoints === null ? (
+            /**
+             * Unknown, and said as unknown.
+             *
+             * This branch used to be folded in with `availablePoints === 0`
+             * and claim the customer had none. It never had the standing to
+             * say that: the balance had not been established, which is a
+             * different fact and, for someone with points, a false one.
+             */
+            <p className="text-[12px] text-gray-500 text-center py-2 font-medium">
+              {isEn
+                ? 'Could not load your loyalty points. Please try again shortly.'
+                : 'تعذّر تحميل نقاط الولاء. يرجى المحاولة مرة أخرى بعد قليل.'}
+            </p>
+          ) : availablePoints === 0 ? (
             <p className="text-[12px] text-gray-500 text-center py-2 font-medium">
               {isEn ? 'You currently have 0 loyalty points.' : 'لا توجد لديك نقاط ولاء حالياً.'}
             </p>

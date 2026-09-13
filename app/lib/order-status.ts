@@ -26,12 +26,30 @@ export type OrderStatusResult = {
   statusColor: string;
 };
 
-/** Hyphen is the shared spelling; spaces and underscores fold into it. */
+/**
+ * Hyphen is the shared spelling; spaces and underscores fold into it.
+ *
+ * The `status-` prefix is stripped too, because that is how the tags are
+ * actually written on this store: `status-received`, `status-confirmed`,
+ * `status-preparing`, `status-ready-for-pickup`, `status-delivered`.
+ *
+ * Without this, none of the keyword lists below matched anything. Exact
+ * membership on `ready-for-pickup` cannot match a tag named
+ * `status-ready-for-pickup`, so every order fell through to whatever
+ * `fulfillmentStatus` said and the tag vocabulary was decorative. The previous
+ * loose `includes()` matching did match these tags — by accident, while also
+ * matching things it shouldn't — so tightening the comparison without checking
+ * the real tag strings swapped one wrong answer for another.
+ *
+ * `fulfillment-pickup` keeps its prefix: it is not a status, and stripping
+ * `status-` only is deliberate rather than stripping any prefix.
+ */
 export function normalizeStatusToken(t: unknown): string {
   return String(t ?? '')
     .trim()
     .toLowerCase()
-    .replace(/[\s_]+/g, '-');
+    .replace(/[\s_]+/g, '-')
+    .replace(/^status-/, '');
 }
 
 export function resolveOrderStatus(
@@ -106,7 +124,8 @@ export function resolveOrderStatus(
   } else if (
     fs === 'IN_PROGRESS' ||
     fs === 'PARTIALLY_FULFILLED' ||
-    hasTag('in-progress', 'processing', 'جاري-التجهيز') ||
+    // `preparing` is the word this store's tags actually use — status-preparing.
+    hasTag('preparing', 'in-progress', 'processing', 'جاري-التجهيز') ||
     hasShipment('in-progress', 'label-printed', 'submitted')
   ) {
     statusEn = 'Order is Being Prepared';
@@ -117,6 +136,38 @@ export function resolveOrderStatus(
     statusAr = 'تم التأكيد';
     statusColor = '#906B51';
   }
+  // `received` needs no branch: it is the default this function opens on.
 
   return {statusEn, statusAr, statusColor};
 }
+
+/**
+ * The status tags this store actually writes, as observed on live orders.
+ *
+ * Recorded here because the lists above are keyword sets that look plausible
+ * whether or not they match anything, and the only way to know they are right
+ * is to compare them against real data. Checked against the 30 most recently
+ * updated orders:
+ *
+ *   status-received          → the default branch
+ *   status-confirmed         → Order Confirmed
+ *   status-preparing         → Being Prepared
+ *   status-ready-for-pickup  → Ready for Pickup
+ *   status-delivered         → Delivered / Picked Up
+ *
+ * Note what is missing: there is no ready-for-delivery or out-for-delivery tag
+ * on any order. Pickup orders move through a ready state; delivery orders jump
+ * straight from preparing to delivered. That gap is why customers get a
+ * "ready for pickup" email and never a "ready for delivery" one — the state
+ * does not exist in the data, so nothing can trigger on it.
+ *
+ * `out-for-delivery` and `in-transit` stay in the keyword list above so the
+ * branch is ready the day whoever owns these tags starts writing one.
+ */
+export const OBSERVED_STATUS_TAGS = [
+  'status-received',
+  'status-confirmed',
+  'status-preparing',
+  'status-ready-for-pickup',
+  'status-delivered',
+] as const;

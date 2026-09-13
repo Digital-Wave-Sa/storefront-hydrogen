@@ -550,7 +550,19 @@ export default function CustomCakeBuilder({
         try {
           const rawPending = localStorage.getItem('pending_custom_cake');
           if (rawPending) {
-            savedPending = JSON.parse(rawPending);
+            const parsed = JSON.parse(rawPending);
+            /**
+             * A design from yesterday is not one anyone is still in the middle
+             * of. Now that it is saved continuously rather than only on the way
+             * to login, an entry can outlive the session that made it, and
+             * handing someone last week's cake is a surprise rather than a
+             * favour. Entries written before `savedAt` existed are still
+             * honoured.
+             */
+            const age = Date.now() - Number(parsed?.savedAt || 0);
+            if (!parsed?.savedAt || age < 24 * 60 * 60 * 1000) {
+              savedPending = parsed;
+            }
             localStorage.removeItem('pending_custom_cake');
           }
         } catch (e) {}
@@ -659,6 +671,100 @@ export default function CustomCakeBuilder({
   }, [mergedOptions, cakeAttributes, prepTimeOptions]);
 
   /**
+   * One description of the design, used by every code path that stores it.
+   *
+   * The keys and the shapes of their values have to match what the restore
+   * above reads, so they are written once here rather than spelled out at each
+   * save site. `savedAt` is extra and the restore ignores it unless it is
+   * checking the age.
+   */
+  const pendingCakeSnapshot = React.useCallback(
+    () => ({
+      shape: selections.shape?.name || selections.shape?.id,
+      flavor: selections.flavor?.name || selections.flavor?.id,
+      style: selections.style?.name || selections.style?.id,
+      color:
+        selections.color?.name || selections.color?.id || selections.color?.color,
+      messagePlacement: selections.messagePlacement,
+      message: selections.message,
+      baseMessage: selections.baseMessage,
+      specialInstructions: selections.specialInstructions,
+      textFont: selections.textFont,
+      textColor: selections.textColor,
+      uploadedImage: selections.uploadedImage,
+      prepTime: selections.prepTime,
+      savedAt: Date.now(),
+    }),
+    [selections],
+  );
+
+  /**
+   * The design is saved while it is being built, not only on the way to login.
+   *
+   * Storing it was previously a single line inside `handleCheckout`, reached
+   * only when the order API answered `requireLogin`. Every other way of leaving
+   * the page lost the cake — and one of those ways is a link the builder itself
+   * tells people to follow: a shopper with no saved address who picks توصيل is
+   * shown «إضافة عنوان جديد», which sends them to /account/addresses. They add
+   * the address, come back, and the builder is empty. They did exactly what the
+   * page asked and were punished for it.
+   *
+   * Saving on that one link would have fixed that one route out. The modal is
+   * shared with the header and the cart, though, and it has no business knowing
+   * about cakes — and the back button, a tab closing and the login detour all
+   * lose the design the same way. Saving the design whenever it changes covers
+   * all of them and needs nothing from the modal.
+   *
+   * Two guards matter:
+   *
+   *   - `hasLoadedRef` is what the restore sets. Without waiting for it, the
+   *     first render's empty `selections` would be written over the very design
+   *     being restored, which turns a fix into data loss.
+   *   - Nothing is written for an untouched builder. Selections start null (see
+   *     the note above about defaults), so this stays quiet until a real choice
+   *     is made.
+   */
+  React.useEffect(() => {
+    if (!hasLoadedRef.current || typeof window === 'undefined') return;
+
+    const hasChoice = Boolean(
+      selections.shape ||
+        selections.flavor ||
+        selections.style ||
+        selections.color ||
+        selections.message ||
+        selections.baseMessage ||
+        selections.specialInstructions ||
+        selections.uploadedImage,
+    );
+    if (!hasChoice) return;
+
+    /** Debounced: the message field fires this on every keystroke. */
+    const timer = setTimeout(() => {
+      const snapshot = pendingCakeSnapshot();
+      try {
+        localStorage.setItem('pending_custom_cake', JSON.stringify(snapshot));
+      } catch (e) {
+        /**
+         * Quota. The photo is a data URL and the only field big enough to blow
+         * it, so drop that and keep the rest rather than losing the design over
+         * an image the shopper can re-attach.
+         */
+        try {
+          localStorage.setItem(
+            'pending_custom_cake',
+            JSON.stringify({...snapshot, uploadedImage: null}),
+          );
+        } catch (inner) {
+          console.warn('Failed to cache pending cake selection:', inner);
+        }
+      }
+    }, 600);
+
+    return () => clearTimeout(timer);
+  }, [selections, pendingCakeSnapshot]);
+
+  /**
    * Every decoration is offered on every shape.
    *
    * This used to be sixty lines of filtering against the `cake_topping_design`
@@ -747,9 +853,29 @@ export default function CustomCakeBuilder({
     );
   }, [isCutaway]);
 
-  // Automatically switch views based on the active step
+  /**
+   * The view follows the step, because each step is about a different part of
+   * the cake.
+   *
+   * Steps 1, 3 and 4 are outside views — the silhouette, the decoration, the
+   * message — and `front` is right for all three, which is all this effect
+   * used to say. Step 2 is the one step whose choice is invisible from the
+   * outside: swapping شوكولاتة for فراولة changes nothing on an uncut cake, so
+   * a shopper was picking a filling blind unless they happened to know to press
+   * «مقطوع» themselves.
+   *
+   * Resetting on every step change is deliberate, including when stepping back
+   * onto a step already visited: a view chosen by hand belongs to the step it
+   * was chosen on. Within a step the choice stands — this runs on `currentStep`
+   * only.
+   *
+   * This is also the ONLY thing that may set `view` from the step. Adding a
+   * second effect for step 2 alone does not work: this one is declared later in
+   * the component, so React runs it later in the same commit and it silently
+   * wins. If the rule needs to grow, it grows here.
+   */
   React.useEffect(() => {
-    setView('front');
+    setView(currentStep === 2 ? 'sliced' : 'front');
     setIsCutaway(false);
   }, [currentStep]);
 
@@ -1035,22 +1161,14 @@ export default function CustomCakeBuilder({
       const data = (await response.json()) as any;
       if (data.requireLogin && data.loginUrl) {
         try {
+          /**
+           * The autosave above has almost certainly stored this already; this
+           * write stays so the login redirect never depends on the debounce
+           * having fired.
+           */
           localStorage.setItem(
             'pending_custom_cake',
-            JSON.stringify({
-              shape: selections.shape?.name || selections.shape?.id,
-              flavor: selections.flavor?.name || selections.flavor?.id,
-              style: selections.style?.name || selections.style?.id,
-              color: selections.color?.name || selections.color?.id || selections.color?.color,
-              messagePlacement: selections.messagePlacement,
-              message: selections.message,
-              baseMessage: selections.baseMessage,
-              specialInstructions: selections.specialInstructions,
-              textFont: selections.textFont,
-              textColor: selections.textColor,
-              uploadedImage: selections.uploadedImage,
-              prepTime: selections.prepTime,
-            }),
+            JSON.stringify(pendingCakeSnapshot()),
           );
         } catch (e) {
           console.warn('Failed to cache pending cake selection:', e);
@@ -1059,6 +1177,14 @@ export default function CustomCakeBuilder({
         return;
       }
       if (data.checkoutUrl) {
+        /**
+         * The design has been ordered, so it is no longer in progress. Without
+         * this the autosaved copy survives, and the next visit to the builder
+         * would open on the cake they just bought.
+         */
+        try {
+          localStorage.removeItem('pending_custom_cake');
+        } catch (e) {}
         window.location.href = data.checkoutUrl;
       } else {
         alert(
@@ -1349,7 +1475,22 @@ export default function CustomCakeBuilder({
                       would otherwise make a selected cake vanish from view
                       while still being the cake being built.
                     */}
-                    <div className={`flex flex-wrap gap-2 mt-5 ${isEn ? '' : 'justify-end'}`}>
+                    {/*
+                      No `justify-*` here, deliberately.
+
+                      This read `isEn ? '' : 'justify-end'`, which put the
+                      Arabic chips against the LEFT edge while the heading above
+                      them sat on the right. `justify-end` is
+                      `justify-content: flex-end`, and flex-end is the inline
+                      END of the container -- which under `dir="rtl"` is the
+                      left. The conditional was correcting for a direction flex
+                      had already applied.
+
+                      The default, `flex-start`, is the inline START: the right
+                      in Arabic, the left in English. One class list, correct in
+                      both, with nothing to keep in sync.
+                    */}
+                    <div className="flex flex-wrap gap-2 mt-5">
                       {SHAPE_FAMILIES.map((family) => (
                         <button
                           key={family.id}

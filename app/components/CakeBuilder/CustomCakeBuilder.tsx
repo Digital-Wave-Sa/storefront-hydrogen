@@ -151,6 +151,46 @@ export default function CustomCakeBuilder({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   /**
+   * Scrolling anywhere on this screen moves the options column.
+   *
+   * On desktop the builder fills the viewport and never scrolls as a page:
+   * the options list on one side is the only scroller, and the cake preview
+   * on the other is a fixed-height panel. Put the pointer over the preview —
+   * which is half the screen, and the half the eye is drawn to — and the
+   * wheel does nothing at all. Nothing on screen explains why, so it reads as
+   * a frozen page rather than as "aim somewhere else", and a shopper who
+   * concludes the page is broken does not go looking for the sizes below.
+   *
+   * Forwarding the wheel makes the two halves behave as one surface, which
+   * is what the split layout already looks like. Only on desktop: the mobile
+   * layout stacks and scrolls normally, and stealing the wheel there would
+   * break it.
+   */
+  const optionsScrollRef = useRef<HTMLDivElement>(null);
+  const previewPaneRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const preview = previewPaneRef.current;
+    if (!preview) return;
+
+    const onWheel = (e: WheelEvent) => {
+      const scroller = optionsScrollRef.current;
+      // Only while the side-by-side layout is actually in effect.
+      if (!scroller || scroller.clientHeight >= scroller.scrollHeight) return;
+      if (!window.matchMedia('(min-width: 1024px)').matches) return;
+
+      scroller.scrollTop += e.deltaY;
+      // The page cannot scroll here, so nothing is lost by claiming the event;
+      // without this the browser paints a rubber-band bounce instead.
+      e.preventDefault();
+    };
+
+    // Not passive: the handler calls preventDefault.
+    preview.addEventListener('wheel', onWheel, {passive: false});
+    return () => preview.removeEventListener('wheel', onWheel);
+  }, []);
+
+  /**
    * The inline "add your email" step. A phone-OTP account can have a
    * placeholder email; the order API answers `requireEmail`, and we collect a
    * real one right here — no navigation, so the designed cake is never lost —
@@ -1446,6 +1486,7 @@ export default function CustomCakeBuilder({
 
         {/* LEFT COLUMN */}
         <div
+          ref={optionsScrollRef}
           className="w-full lg:w-1/2 flex flex-col h-auto lg:h-full bg-white overflow-y-auto custom-scrollbar relative"
         >
           <div className="px-4 py-8 sm:px-6 md:px-12 lg:px-16 lg:py-16 pb-28 md:pb-36 w-full mx-auto max-w-[800px] flex-1">
@@ -1942,6 +1983,7 @@ export default function CustomCakeBuilder({
 
         {/* RIGHT COLUMN */}
         <div
+          ref={previewPaneRef}
           className="w-full lg:w-1/2 relative flex flex-col items-center justify-center py-10 lg:py-0 lg:h-full shrink-0 overflow-hidden bg-[#EED5D7]"
           style={{ backgroundImage: "url('/images/pattern.svg')", backgroundRepeat: 'repeat', backgroundSize: '600px' }}
         >

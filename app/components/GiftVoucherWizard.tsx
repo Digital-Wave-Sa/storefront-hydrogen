@@ -287,6 +287,23 @@ export function GiftVoucherWizard({
               merchandiseId,
               quantity: 1,
               selectedVariant: selectedVariantObj,
+              /**
+               * Only what this purchase actually is.
+               *
+               * These were written unconditionally, so a card bought for
+               * oneself still carried «Occasion: عيد ميلاد» — the default
+               * `useState` value of a step self mode never shows, which nobody
+               * chose — beside three fields reading "N/A". The order then said
+               * "Gift Mode: For Myself" next to a birthday occasion and an
+               * empty recipient, which is not a record of anything that
+               * happened.
+               *
+               * Self mode buys credit for the buyer's own balance: no
+               * recipient, no sender, no message, no occasion. It now sends
+               * none of them rather than sending them empty. In gift mode the
+               * optional fields are sent only when the shopper filled them in,
+               * so "N/A" never reaches an order either.
+               */
               attributes: [
                 { key: '_gift_voucher', value: 'true' },
                 { key: 'Gift Mode', value: giftMode === 'self' ? 'For Myself' : 'Gift to Someone' },
@@ -296,11 +313,19 @@ export function GiftVoucherWizard({
                 { key: 'Card Color Hex', value: selectedColor.hex },
                 { key: '_card_color', value: selectedColor.hex },
                 { key: '_card_theme', value: selectedColor.name },
-                { key: 'Recipient Name', value: targetRecipientName },
-                { key: 'Recipient Email', value: targetRecipientEmail },
-                { key: 'Sender Name', value: senderName || 'N/A' },
-                { key: 'Personal Message', value: personalMessage || 'N/A' },
-                { key: 'Occasion', value: occasion },
+                ...(giftMode === 'gift'
+                  ? [
+                      { key: 'Recipient Name', value: targetRecipientName },
+                      { key: 'Recipient Email', value: targetRecipientEmail },
+                      ...(senderName.trim()
+                        ? [{ key: 'Sender Name', value: senderName.trim() }]
+                        : []),
+                      ...(personalMessage.trim()
+                        ? [{ key: 'Personal Message', value: personalMessage.trim() }]
+                        : []),
+                      ...(occasion ? [{ key: 'Occasion', value: occasion }] : []),
+                    ]
+                  : []),
               ],
             },
           ],

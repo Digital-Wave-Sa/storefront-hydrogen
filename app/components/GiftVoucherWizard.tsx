@@ -1244,7 +1244,7 @@ function GiftWizardStyles() {
     <style>{`
       .gift-wizard-embedded {
         background: transparent;
-        font-family: 'GE Dinar One', 'Bahij Janna', sans-serif;
+        font-family: 'EnglishDigits', 'GE Dinar One', 'Bahij Janna', sans-serif;
         color: #171717;
       }
 
@@ -1465,7 +1465,7 @@ function GiftWizardStyles() {
         padding: 12px 20px;
         background: #234745;
         color: #ffffff;
-        font-family: 'GE Dinar One', 'GE SS Two', sans-serif;
+        font-family: 'EnglishDigits', 'GE Dinar One', 'GE SS Two', sans-serif;
         font-weight: 700;
         font-style: normal;
         font-size: 16px;
@@ -1507,7 +1507,7 @@ function GiftWizardStyles() {
         font-weight: 700;
         color: #171717;
         margin-bottom: 16px;
-        font-family: 'Bahij Janna', sans-serif;
+        font-family: 'EnglishDigits', 'Bahij Janna', sans-serif;
       }
 
       /* ── 1. AMOUNTS GRID (Selected background: #EED5D780) ── */
@@ -1676,7 +1676,7 @@ function GiftWizardStyles() {
         font-size: 14px;
         font-weight: 700;
         color: #171717;
-        font-family: 'GE Dinar One', sans-serif;
+        font-family: 'EnglishDigits', 'GE Dinar One', sans-serif;
         display: flex;
         align-items: center;
         gap: 4px;
@@ -1694,7 +1694,7 @@ function GiftWizardStyles() {
         font-size: 15px !important;
         font-weight: 500 !important;
         color: #171717 !important;
-        font-family: 'GE Dinar One', sans-serif;
+        font-family: 'EnglishDigits', 'GE Dinar One', sans-serif;
         outline: none;
         transition: all 0.2s ease;
         box-shadow: 0 1px 3px rgba(0,0,0,0.02);
@@ -1729,7 +1729,7 @@ function GiftWizardStyles() {
         padding: 7px 18px !important;
         font-size: 13.5px !important;
         font-weight: 600 !important;
-        font-family: 'GE Dinar One', sans-serif !important;
+        font-family: 'EnglishDigits', 'GE Dinar One', sans-serif !important;
         cursor: pointer !important;
         transition: all 0.2s ease !important;
         white-space: nowrap !important;
@@ -1821,7 +1821,7 @@ function GiftWizardStyles() {
         padding: 12px 32px !important;
         background: #234745 !important;
         color: #ffffff !important;
-        font-family: 'GE Dinar One', 'GE SS Two', sans-serif !important;
+        font-family: 'EnglishDigits', 'GE Dinar One', 'GE SS Two', sans-serif !important;
         font-weight: 700 !important;
         font-style: normal !important;
         font-size: 16px !important;
@@ -1851,7 +1851,7 @@ function GiftWizardStyles() {
         padding: 12px 20px;
         background: #234745;
         color: #ffffff;
-        font-family: 'GE Dinar One', 'GE SS Two', sans-serif;
+        font-family: 'EnglishDigits', 'GE Dinar One', 'GE SS Two', sans-serif;
         font-weight: 700;
         font-style: normal;
         font-size: 16px;
@@ -1885,7 +1885,7 @@ function GiftWizardStyles() {
         background: #FEF8EB;
         color: #234745;
         border: 1px solid #D9CFB8;
-        font-family: 'GE Dinar One', 'GE SS Two', sans-serif;
+        font-family: 'EnglishDigits', 'GE Dinar One', 'GE SS Two', sans-serif;
         font-weight: 700;
         font-size: 15px;
         display: flex;

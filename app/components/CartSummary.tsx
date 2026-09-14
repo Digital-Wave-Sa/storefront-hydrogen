@@ -2340,8 +2340,17 @@ function CustomPointsForm({ availablePoints, isEn }: { availablePoints: number; 
                   {fetcher.state !== 'idle' ? (isEn ? 'Applying...' : 'تطبيق...') : (isEn ? 'Apply' : 'تطبيق')}
                 </button>
               </div>
+              {/*
+                Normal weight and start-aligned. Bold centred red shouted a
+                temporary "try again shortly" as if it were a hard failure,
+                and centring left the Arabic ragged on the right — the edge
+                every other line in this panel is aligned to.
+              */}
               {actionError && (
-                <p className="text-red-500 text-[11px] font-bold text-center bg-red-50 p-2 rounded-lg border border-red-200">
+                <p
+                  role="alert"
+                  className="text-[11px] font-normal leading-relaxed text-start text-[#A63D2B] bg-[#FFF6F4] p-2.5 rounded-lg border border-[#F3D3CC]"
+                >
                   {actionError}
                 </p>
               )}

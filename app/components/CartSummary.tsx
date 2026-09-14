@@ -1962,10 +1962,13 @@ function CartCheckoutActions({
             )}
 
             {validationError && (
-              <p className="text-red-500 text-[12px] font-bold text-center px-4 py-2 bg-red-50 rounded-xl border border-red-100 flex items-center justify-center gap-2">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="shrink-0"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
-                {validationError}
-              </p>
+              <div
+                role="alert"
+                className="flex items-start gap-2.5 px-4 py-3 rounded-xl bg-[#FFF6F4] border border-[#F3D3CC] text-[#A63D2B] text-[13px] font-medium leading-relaxed text-start"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 mt-[2px]" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                <span>{validationError}</span>
+              </div>
             )}
           </>
         )}
@@ -3084,7 +3087,71 @@ function CartCalendarPicker({
   // 7. Time slot generation based on selected date
   const dynamicTimeSlots = localSelectedDate ? generateDynamicSlots(currentBranch, isEn, fulfillmentType, localSelectedDate) : [];
 
-  const isTimeSlotInvalid = localTimeSlot && !dynamicTimeSlots.includes(localTimeSlot);
+  /**
+   * Same rule as the <select> below: a stored slot counts as offered when an
+   * option matches it exactly OR by start hour. The old exact-string check
+   * disagreed with the dropdown after a locale switch (Arabic label vs
+   * English options) and flagged a slot the control was happily showing.
+   *
+   * Only judged once this branch's slots for the day are known — an empty
+   * list means "not resolved yet", not "nothing fits".
+   */
+  const slotsKnown = dynamicTimeSlots.length > 0;
+  const storedSlotIsOffered = (slot: string) =>
+    dynamicTimeSlots.some(
+      (s: string) => s === slot || slotStartHour(s) === slotStartHour(slot),
+    );
+  const isTimeSlotInvalid =
+    !!localTimeSlot && slotsKnown && !storedSlotIsOffered(localTimeSlot);
+
+  /**
+   * A slot the current branch does not offer is cleared, not kept.
+   *
+   * Switching from a branch where the shopper picked 9–10 PM to one that closes
+   * earlier left that slot on the cart: the dropdown showed nothing selected
+   * (no option matched) while a red error insisted the "selected" time was
+   * outside working hours — and checkout was blocked on a value the shopper
+   * could neither see nor change. Drop it, tell them why, and let them pick
+   * again. The date is kept; only the slot is invalid at the new branch.
+   */
+  const [droppedStaleSlot, setDroppedStaleSlot] = useState<string>('');
+
+  /**
+   * Every update this picker sends carries the date and slot the shopper is
+   * LOOKING AT, on top of whatever else is on the cart.
+   *
+   * The merge base is `cart.attributes`, and that is the cart as the page last
+   * loaded it. Picking a date and then a time in quick succession meant the
+   * time request was assembled while the cart still held the previous date —
+   * so it sent "25 Sep + 9:00 AM" over the "2 Oct" the shopper had just
+   * chosen (a second submit on the same fetcher also cancels the first). The
+   * cart saved the old date, the sync below pulled it back into the calendar,
+   * and the selected day appeared to change on its own.
+   *
+   * Local state is the source of truth for these two keys; the cart copy is
+   * never trusted for them.
+   */
+  const submitDateAndSlot = (date: string, slot: string) => {
+    const formData = new FormData();
+    formData.append('cartFormInput', JSON.stringify({
+      action: 'AttributesUpdate',
+      inputs: {
+        attributes: mergeCartAttributes(cart?.attributes, [
+          { key: 'delivery_date', value: date },
+          { key: 'Time Slot', value: slot },
+        ]),
+      },
+    }));
+    fetcher.submit(formData, { method: 'POST', action: cartRoute });
+  };
+
+  useEffect(() => {
+    if (!isTimeSlotInvalid || fetcher.state !== 'idle') return;
+    setDroppedStaleSlot(localTimeSlot);
+    setLocalTimeSlot('');
+    submitDateAndSlot(localSelectedDate, '');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isTimeSlotInvalid, fetcher.state]);
 
   const getBranchHoursStr = () => {
     if (!currentBranch) return '';
@@ -3113,9 +3180,12 @@ function CartCalendarPicker({
     const forceEnglishDigits = (str: string) => {
       return str.replace(/[٠-٩]/g, (d) => String.fromCharCode(d.charCodeAt(0) - 1632));
     };
+    // Metafields hold "09:00:00"; nobody needs the seconds in a working-hours line.
+    const trimSeconds = (str: string) =>
+      String(str || '').replace(/^(\d{1,2}:\d{2}):\d{2}$/, '$1');
 
-    const shift1 = `${fromStr} - ${toStr}`;
-    const shift2 = fromStr2 && toStr2 ? ` & ${fromStr2} - ${toStr2}` : '';
+    const shift1 = `${trimSeconds(fromStr)} - ${trimSeconds(toStr)}`;
+    const shift2 = fromStr2 && toStr2 ? ` & ${trimSeconds(fromStr2)} - ${trimSeconds(toStr2)}` : '';
     return forceEnglishDigits(shift1 + shift2);
   };
 
@@ -3197,17 +3267,7 @@ function CartCalendarPicker({
                    * two keys on their own deleted the branch, the fulfilment
                    * type, the delivery address and the fee.
                    */
-                  const formData = new FormData();
-                  formData.append('cartFormInput', JSON.stringify({
-                    action: 'AttributesUpdate',
-                    inputs: {
-                      attributes: mergeCartAttributes(cart?.attributes, [
-                        { key: 'delivery_date', value: dateStr },
-                        { key: 'Time Slot', value: '' },
-                      ])
-                    }
-                  }));
-                  fetcher.submit(formData, { method: 'POST', action: cartRoute });
+                  submitDateAndSlot(dateStr, '');
                 }}
                 className={`
                                   py-2 rounded-xl text-[13px] font-medium transition-all relative
@@ -3251,25 +3311,15 @@ function CartCalendarPicker({
               onChange={(e) => {
                 const newVal = e.target.value;
                 setLocalTimeSlot(newVal); // Instant local feedback
+                if (newVal) setDroppedStaleSlot(''); // a fresh choice retires the notice
 
                 /**
-                 * Merged. This sent `Time Slot` alone, and because
-                 * AttributesUpdate replaces the list, picking a time deleted
-                 * the `delivery_date` chosen seconds earlier — so the cart
-                 * demanded a date it had just been given, and this picker,
-                 * which only renders once a date exists, disappeared from under
-                 * the shopper as the fetcher settled.
+                 * Sends the date the shopper sees together with the slot.
+                 * Sending the slot alone once deleted the date (AttributesUpdate
+                 * replaces the list); merging it from the cart then reverted
+                 * the date to the previous one when the cart was still stale.
                  */
-                const formData = new FormData();
-                formData.append('cartFormInput', JSON.stringify({
-                  action: 'AttributesUpdate',
-                  inputs: {
-                    attributes: mergeCartAttributes(cart?.attributes, [
-                      { key: 'Time Slot', value: newVal }
-                    ])
-                  }
-                }));
-                fetcher.submit(formData, { method: 'POST', action: cartRoute });
+                submitDateAndSlot(localSelectedDate, newVal);
               }}
               className="w-full bg-[#fcfaf8] border border-[#f0ece8] rounded-xl px-4 py-3 text-[14px] text-[#234745] font-medium appearance-none focus:outline-none focus:border-[#d4a06a] focus:ring-1 focus:ring-[#d4a06a] transition-all cursor-pointer"
             >
@@ -3303,21 +3353,21 @@ function CartCalendarPicker({
             </div>
           )}
 
-          {isTimeSlotInvalid && (
-            <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-xl text-[12px] text-red-800 font-bold leading-relaxed flex items-start gap-2">
-              <span className="text-base leading-none">⚠️</span>
+          {droppedStaleSlot && !localTimeSlot && (
+            <div className="mt-2 p-3 bg-[#FFF7E0] border border-[#F3D48A] rounded-xl text-[12px] text-[#8a5a00] font-bold leading-relaxed flex items-start gap-2">
+              <span className="text-base leading-none">ℹ️</span>
               <div>
                 {isEn ? (
                   <>
-                    Your selected {isPickup ? 'pickup' : 'delivery'} time (<span className="underline">{localizeTimeSlot(localTimeSlot, isEn)}</span>) is outside the working hours of <strong>{currentBranch?.name || 'this branch'}</strong>.
+                    Your previous {isPickup ? 'pickup' : 'delivery'} time (<span className="underline">{localizeTimeSlot(droppedStaleSlot, isEn)}</span>) isn&apos;t available at <strong>{currentBranch?.name || 'this branch'}</strong> on this day.
                     <br />
-                    Working hours on this day: <strong>{branchHoursStr}</strong>. Please select a different time window.
+                    Hours on this day: <strong>{branchHoursStr}</strong>. Please choose a new time above.
                   </>
                 ) : (
                   <>
-                    وقت {isPickup ? 'الاستلام' : 'التوصيل'} المحدد (<span className="underline">{localizeTimeSlot(localTimeSlot, isEn)}</span>) خارج ساعات عمل فرع <strong>{currentBranch?.name || 'هذا الفرع'}</strong>.
+                    وقت {isPickup ? 'الاستلام' : 'التوصيل'} السابق (<span className="underline">{localizeTimeSlot(droppedStaleSlot, isEn)}</span>) غير متاح في فرع <strong>{currentBranch?.name || 'هذا الفرع'}</strong> في هذا اليوم.
                     <br />
-                    ساعات العمل في هذا اليوم: <strong>{branchHoursStr}</strong>. يرجى اختيار فترة {isPickup ? 'الاستلام' : 'التوصيل'} الأخرى.
+                    ساعات العمل في هذا اليوم: <strong>{branchHoursStr}</strong>. يرجى اختيار وقت جديد أعلاه.
                   </>
                 )}
               </div>

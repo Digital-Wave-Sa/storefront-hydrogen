@@ -19,6 +19,41 @@ import { isNonShippableLine } from '~/lib/digital-lines';
 
 export type CartLine = OptimisticCartLine<CartApiQueryFragment>;
 
+/**
+ * The line's thumbnail, linked to the product — except for a gift card.
+ *
+ * A gift card in the cart is not a catalogue item the shopper can go and look
+ * at: its amount, recipient and message were chosen in the wizard, and the
+ * product page behind it shows none of that. Linking there takes them away
+ * from the cart to a page that cannot explain what they are looking at.
+ *
+ * Declared at module level, not inside the component, so it is the same
+ * component type across renders and the image is not torn down and remounted
+ * every time the cart updates.
+ */
+function LineImageFrame({
+  linked,
+  to,
+  className,
+  onNavigate,
+  children,
+}: {
+  linked: boolean;
+  to: string;
+  className: string;
+  onNavigate: () => void;
+  children: React.ReactNode;
+}) {
+  if (!linked) {
+    return <div className={className}>{children}</div>;
+  }
+  return (
+    <Link prefetch="intent" to={to} onClick={onNavigate} className={className}>
+      {children}
+    </Link>
+  );
+}
+
 export function CartLineItem({
   layout,
   line,
@@ -219,10 +254,10 @@ export function CartLineItem({
       <div className={`${layout === 'aside' ? 'hidden' : 'hidden md:flex'} items-center gap-6 w-full ${isOutOfStock ? 'opacity-40 pointer-events-none select-none' : ''} transition-opacity`}>
 
         {/* Product Image */}
-        <Link
-          prefetch="intent"
+        <LineImageFrame
+          linked={!isGiftCard}
           to={lineItemUrl}
-          onClick={() => {
+          onNavigate={() => {
             if (layout === 'aside') close();
           }}
           className={`flex-shrink-0 ${layout === 'aside' ? 'w-[80px] h-[80px]' : 'w-[120px] h-[120px]'} bg-[#f8f5f2] rounded-2xl overflow-hidden`}
@@ -244,7 +279,7 @@ export function CartLineItem({
               className="w-full h-full object-cover"
             />
           )}
-        </Link>
+        </LineImageFrame>
 
         {/* Info Column */}
         <div className={`flex-1 min-w-0 ${isEn ? 'text-left' : 'text-right'}`}>
@@ -428,10 +463,10 @@ export function CartLineItem({
         {/* Top Section: Image on one side, Info on the opposite side */}
         <div className="flex items-start gap-4 w-full">
           {/* Image */}
-          <Link
-            prefetch="intent"
+          <LineImageFrame
+            linked={!isGiftCard}
             to={lineItemUrl}
-            onClick={() => {
+            onNavigate={() => {
               if (layout === 'aside') close();
             }}
             className="flex-shrink-0 w-[90px] h-[90px] bg-[#f8f5f2] rounded-2xl overflow-hidden"
@@ -453,7 +488,7 @@ export function CartLineItem({
                 className="w-full h-full object-cover"
               />
             )}
-          </Link>
+          </LineImageFrame>
 
           {/* Details */}
           <div className={`flex-1 min-w-0 ${isEn ? 'text-left' : 'text-right'}`}>

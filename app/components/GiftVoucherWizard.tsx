@@ -136,9 +136,24 @@ export function GiftVoucherWizard({
     }
   }, [cartFetcher.state, cartFetcher.data, isEn, open]);
 
+  /**
+   * VAT is INSIDE the price, not added on top of it.
+   *
+   * This shop quotes VAT-inclusive prices everywhere else. The cart shows a
+   * 200 voucher as «المجموع الفرعي (شامل الضريبة) 200.00» with 26.09 of VAT
+   * inside it, and checkout charges 200. This wizard computed `amount * 0.15`
+   * and ADDED it, so the last screen before "add to cart" promised a total of
+   * 230.00 for a card the shopper then paid 200.00 for.
+   *
+   * Wrong in the direction that matters most: it overstates the price at the
+   * moment the shopper decides, and the cart contradicts it one click later.
+   *
+   * The inclusive share of a 15% rate is `gross - gross / 1.15` — 26.09 on a
+   * 200 card, which is exactly what the cart already prints.
+   */
   const finalAmount = selectedAmount;
-  const vatAmount = finalAmount * 0.15;
-  const totalAmount = finalAmount + vatAmount;
+  const vatAmount = finalAmount - finalAmount / 1.15;
+  const totalAmount = finalAmount;
 
   const quickMessages = isEn
     ? [
@@ -739,7 +754,12 @@ export function GiftVoucherWizard({
                     </span>
                   </div>
                   <div className="mini-row">
-                    <span>{isEn ? 'VAT (15%)' : 'ضريبة القيمة المضافة (15%)'}</span>
+                    {/* "included", because it is — see the vatAmount comment. */}
+                    <span>
+                      {isEn
+                        ? 'VAT (15%, included)'
+                        : 'ضريبة القيمة المضافة (15% شاملة)'}
+                    </span>
                     <span className={`font-en notranslate flex items-center gap-1 ${isEn ? 'flex-row' : 'flex-row-reverse'}`}>
                       <span>{vatAmount.toFixed(2)}</span>
                       <SaudiRiyalSymbol className="h-3 w-auto fill-current" />

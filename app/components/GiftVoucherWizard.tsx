@@ -506,7 +506,7 @@ export function GiftVoucherWizard({
                 </div>
                 <div className="flex items-center justify-between text-[14.5px]">
                   <span className="text-[#7D7D7D] font-medium">{isEn ? 'Delivery Method' : 'طريقة الاستلام'}</span>
-                  <span className="font-bold text-[#171717]">{isEn ? 'Instant Electronic Balance' : 'رصيد إلكتروني فوري'}</span>
+                  <span className="font-bold text-[#171717]">{isEn ? 'Your email' : 'بريدك الإلكتروني'}</span>
                 </div>
               </div>
 

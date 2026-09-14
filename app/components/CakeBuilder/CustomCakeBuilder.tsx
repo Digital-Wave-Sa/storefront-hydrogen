@@ -151,6 +151,17 @@ export default function CustomCakeBuilder({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   /**
+   * The inline "add your email" step. A phone-OTP account can have a
+   * placeholder email; the order API answers `requireEmail`, and we collect a
+   * real one right here — no navigation, so the designed cake is never lost —
+   * then re-run checkout.
+   */
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  const [emailValue, setEmailValue] = useState('');
+  const [emailError, setEmailError] = useState('');
+  const [emailSaving, setEmailSaving] = useState(false);
+
+  /**
    * The branch and fulfilment choice, from the same session the cart reads.
    *
    * A cake order used to go straight to a Shopify invoice with none of this
@@ -1176,6 +1187,13 @@ export default function CustomCakeBuilder({
         window.location.href = data.loginUrl;
         return;
       }
+      if (data.requireEmail) {
+        // Collect a real email inline; the cake stays exactly as designed.
+        setEmailError('');
+        setShowEmailModal(true);
+        setIsSubmitting(false);
+        return;
+      }
       if (data.checkoutUrl) {
         /**
          * The design has been ordered, so it is no longer in progress. Without
@@ -1202,6 +1220,62 @@ export default function CustomCakeBuilder({
           : 'حدث خطأ في الاتصال بالخادم',
       );
       setIsSubmitting(false);
+    }
+  };
+
+  /**
+   * Save the email the shopper typed inline, then re-run checkout. Nothing about
+   * the cake is touched, so re-submitting simply picks up where it left off —
+   * this time with a real email on the account.
+   */
+  const handleSaveEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const email = emailValue.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setEmailError(
+        isEn ? 'Please enter a valid email address.' : 'يرجى إدخال بريد إلكتروني صحيح.',
+      );
+      return;
+    }
+    setEmailSaving(true);
+    setEmailError('');
+    try {
+      const res = await fetch('/api/customer-email', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({email}),
+      });
+      const d = (await res.json()) as any;
+      if (d?.success) {
+        setShowEmailModal(false);
+        setEmailSaving(false);
+        // Email is saved — resume checkout. The cake design is untouched.
+        handleCheckout();
+        return;
+      }
+      const msg =
+        d?.error === 'in_use'
+          ? isEn
+            ? 'That email is already used by another account.'
+            : 'هذا البريد مستخدم في حساب آخر.'
+          : d?.error === 'not_logged_in'
+            ? isEn
+              ? 'Please sign in again to continue.'
+              : 'يرجى تسجيل الدخول مرة أخرى للمتابعة.'
+            : d?.error === 'server'
+              ? isEn
+                ? 'Could not save your email. Please try again.'
+                : 'تعذّر حفظ البريد. يرجى المحاولة مرة أخرى.'
+              : isEn
+                ? 'Please enter a valid email address.'
+                : 'يرجى إدخال بريد إلكتروني صحيح.';
+      setEmailError(msg);
+      setEmailSaving(false);
+    } catch {
+      setEmailError(
+        isEn ? 'Connection error. Please try again.' : 'حدث خطأ في الاتصال. حاول مرة أخرى.',
+      );
+      setEmailSaving(false);
     }
   };
 
@@ -2028,6 +2102,115 @@ export default function CustomCakeBuilder({
         </div>
       </div>
       <FaqModal isOpen={isFaqOpen} onClose={() => setIsFaqOpen(false)} isEn={isEn} />
+
+      {showEmailModal && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          dir={isEn ? 'ltr' : 'rtl'}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+            padding: '16px',
+          }}
+          onClick={() => {
+            if (!emailSaving) setShowEmailModal(false);
+          }}
+        >
+          <div
+            style={{
+              width: '100%',
+              maxWidth: '400px',
+              background: '#fff',
+              borderRadius: '16px',
+              padding: '24px',
+              boxShadow: '0 20px 60px rgba(0,0,0,0.25)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{fontSize: '18px', fontWeight: 700, margin: '0 0 8px'}}>
+              {isEn ? 'Add your email' : 'أضف بريدك الإلكتروني'}
+            </h3>
+            <p style={{fontSize: '13px', lineHeight: 1.6, color: '#555', margin: '0 0 16px'}}>
+              {isEn
+                ? 'We need a valid email to send your order confirmation. Your cake is saved — just add an email to continue.'
+                : 'نحتاج بريداً إلكترونياً صحيحاً لإرسال تأكيد طلبك. تصميم كيكتك محفوظ — فقط أضف بريدك للمتابعة.'}
+            </p>
+            <form onSubmit={handleSaveEmail} style={{display: 'flex', flexDirection: 'column', gap: '12px'}}>
+              <input
+                type="email"
+                value={emailValue}
+                onChange={(e) => setEmailValue(e.target.value)}
+                required
+                autoFocus
+                inputMode="email"
+                dir="ltr"
+                placeholder="you@example.com"
+                disabled={emailSaving}
+                style={{
+                  width: '100%',
+                  padding: '12px 14px',
+                  fontSize: '15px',
+                  border: '1px solid rgba(0,0,0,0.15)',
+                  borderRadius: '10px',
+                  outline: 'none',
+                }}
+              />
+              {emailError ? (
+                <p style={{color: '#c0392b', fontSize: '13px', margin: 0}}>{emailError}</p>
+              ) : null}
+              <div style={{display: 'flex', gap: '10px', marginTop: '4px'}}>
+                <button
+                  type="button"
+                  onClick={() => setShowEmailModal(false)}
+                  disabled={emailSaving}
+                  style={{
+                    flex: '0 0 auto',
+                    padding: '12px 16px',
+                    fontSize: '14px',
+                    fontWeight: 600,
+                    color: '#555',
+                    background: '#f2f2f2',
+                    border: 'none',
+                    borderRadius: '10px',
+                    cursor: emailSaving ? 'default' : 'pointer',
+                  }}
+                >
+                  {isEn ? 'Cancel' : 'إلغاء'}
+                </button>
+                <button
+                  type="submit"
+                  disabled={emailSaving}
+                  style={{
+                    flex: 1,
+                    padding: '12px 16px',
+                    fontSize: '14px',
+                    fontWeight: 700,
+                    color: '#fff',
+                    background: emailSaving ? '#9a7b52' : '#7a5c2e',
+                    border: 'none',
+                    borderRadius: '10px',
+                    cursor: emailSaving ? 'default' : 'pointer',
+                  }}
+                >
+                  {emailSaving
+                    ? isEn
+                      ? 'Saving...'
+                      : 'جاري الحفظ...'
+                    : isEn
+                      ? 'Save & continue'
+                      : 'حفظ ومتابعة'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       <DeliveryPickupModal
         isOpen={isBranchModalOpen}

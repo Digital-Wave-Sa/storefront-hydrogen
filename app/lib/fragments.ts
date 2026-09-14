@@ -244,6 +244,12 @@ export const CART_QUERY_FRAGMENT = `#graphql
       discountedAmount {
         ...Money
       }
+      # targetType distinguishes an order/line discount (LINE_ITEM) from a
+      # free-shipping one (SHIPPING_LINE). A free-shipping discount shows up
+      # here as a SHIPPING_LINE allocation; summing it into the cart's discount
+      # row while ALSO zeroing the delivery fee subtracted the fee twice, which
+      # is the «مجاني» + -25 double-count on a 297 cart reading 272.
+      targetType
     }
   }
 ` as const;

@@ -1,5 +1,6 @@
 import {type ActionFunctionArgs} from 'react-router';
 import {stripCoordsMarker, sameAddressId} from '~/lib/address-coords';
+import {mergeCartAttributes} from '~/lib/cart-attributes';
 
 export async function action({request, context}: ActionFunctionArgs) {
   try {
@@ -42,6 +43,21 @@ export async function action({request, context}: ActionFunctionArgs) {
     }
     if (typeof customBranchId === 'string') {
       context.session.set('selectedCustomBranchId', customBranchId);
+    }
+
+    /**
+     * Pickup has no delivery address — clear any left by a previous delivery
+     * selection.
+     *
+     * The client sends `addressName` only for delivery, so on a pickup pick the
+     * block above never runs and the session kept whichever address the shopper
+     * last delivered to. The header pill then read «توصيل: <old address>» on a
+     * pickup order, and checkout could resolve that stale address. Cleared
+     * explicitly here so switching to pickup actually drops the address.
+     */
+    if (fulfillmentType === 'pickup') {
+      context.session.set('selectedAddressName', '');
+      context.session.set('selectedAddressId', '');
     }
 
     try {
@@ -113,6 +129,58 @@ export async function action({request, context}: ActionFunctionArgs) {
             attributes.push({key: 'branch_id', value: sessionCustomBranchId});
           }
         }
+
+        /**
+         * Merged onto what the cart already has, never sent on its own.
+         *
+         * `cartAttributesUpdate` replaces the attribute list rather than
+         * merging into it, so this call used to delete every key it did not
+         * mention. The branch set built above names no `delivery_date` and no
+         * `Time Slot` — which is exactly how choosing a branch or an address
+         * wiped the delivery date the shopper had already picked. Checkout then
+         * refused with «يرجى اختيار تاريخ التوصيل», naming a date that had been
+         * chosen and silently thrown away.
+         *
+         * Merging here rather than in each caller covers the header, the cart
+         * summary and the cake builder at once — all three post to this route —
+         * and means a later caller cannot reintroduce the bug by sending a
+         * short list.
+         */
+        let currentAttributes: any[] = [];
+        try {
+          const existingCart =
+            typeof context.cart.get === 'function'
+              ? await context.cart.get()
+              : null;
+          currentAttributes = existingCart?.attributes || [];
+        } catch (e) {
+          /**
+           * A cart that cannot be read is treated as empty, which leaves the
+           * old replace-everything behaviour for that one request rather than
+           * dropping the branch the shopper just chose.
+           */
+          console.warn(
+            '[api.location-id] Could not read cart attributes to merge:',
+            e,
+          );
+        }
+
+        /**
+         * Pickup carries no delivery address or fee.
+         *
+         * The merge keeps every key it is not given a new value for, so a
+         * «Delivery Address» or «Delivery Fee» left on the cart by an earlier
+         * delivery selection would ride along onto a pickup order — the branch
+         * would receive a pickup order stamped with a home address and a
+         * delivery charge. Overwriting them with empty (omission would not
+         * clear them, only an explicit empty value does) drops them on pickup.
+         */
+        if (fulfillmentType === 'pickup') {
+          attributes.push({key: 'Delivery Address', value: ''});
+          attributes.push({key: 'Delivery Fee', value: ''});
+        }
+
+        attributes = mergeCartAttributes(currentAttributes, attributes);
 
         // Filter out ax_store_id keys from cart attributes
         attributes = attributes.filter(

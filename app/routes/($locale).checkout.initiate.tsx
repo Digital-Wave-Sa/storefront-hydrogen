@@ -4,6 +4,8 @@ import {extractMinTime} from '~/lib/time-utils';
 import {stripCoordsMarker, sameAddressId, baseAddressId} from '~/lib/address-coords';
 import {isSignedIn, loginUrlFor} from '~/lib/checkout-gate.server';
 import {logCheckoutError, type CheckoutErrorStage} from '~/lib/error-log.server';
+import {isDigitalOnlyCart} from '~/lib/digital-lines';
+import {needsRealEmail} from '~/lib/needs-email';
 
 export async function loader({request, context}: LoaderFunctionArgs) {
   return processCheckoutInitiate({request, context});
@@ -113,13 +115,14 @@ async function processCheckoutInitiate({request, context}: ActionFunctionArgs) {
             nodes {
               id
               quantity
+              attributes { key value }
               merchandise {
                 ... on ProductVariant {
                   id
                   title
                   sku
                   price { amount }
-                  product { title id }
+                  product { title id handle isGiftCard tags }
                 }
               }
             }
@@ -127,6 +130,14 @@ async function processCheckoutInitiate({request, context}: ActionFunctionArgs) {
           attributes {
             key
             value
+          }
+          # discountCodes is what the free-shipping block below merges into.
+          # Without it, that block read an empty list and REPLACED every code
+          # with ['freeshipping'], dropping a loyalty/credit code whose points
+          # or wallet were already committed.
+          discountCodes {
+            code
+            applicable
           }
         }
       }
@@ -169,13 +180,14 @@ async function processCheckoutInitiate({request, context}: ActionFunctionArgs) {
                   nodes {
                     id
                     quantity
+                    attributes { key value }
                     merchandise {
                       ... on ProductVariant {
                         id
                         title
                         sku
                         price { amount }
-                        product { title id }
+                        product { title id handle isGiftCard tags }
                       }
                     }
                   }
@@ -183,6 +195,10 @@ async function processCheckoutInitiate({request, context}: ActionFunctionArgs) {
                 attributes {
                   key
                   value
+                }
+                discountCodes {
+                  code
+                  applicable
                 }
               }
             }
@@ -805,6 +821,89 @@ async function processCheckoutInitiate({request, context}: ActionFunctionArgs) {
       finalAttributes.push({key: attr.key, value: attr.value || ''});
     }
   });
+
+  /**
+   * The real gate — enforced here, not just in the cart's button.
+   *
+   * Every precondition the cart checks lives in the disabled state of the
+   * "Complete Order" button, and this route trusted whatever was on the cart.
+   * So anything that reached this URL another way — the post-login GET
+   * re-entry, a stale tab, a direct link, a double submit — could create an
+   * order with no branch, no date, a slot that has since closed, or a date in
+   * the past. These are the checks that cannot be bypassed.
+   *
+   * Deliberately conservative: it blocks only what is unambiguously wrong, so
+   * it can never turn away a valid checkout. Minimum order, stock and delivery
+   * range stay client-gated until Phase 4 gives all readers one shared branch
+   * resolver — re-deriving that math here from a second data source is exactly
+   * the drift this audit is trying to remove.
+   *
+   * Digital-only carts (gift cards) need no branch, date or slot. Pre-order
+   * items carry their own timeline, so they are exempt from the date/slot
+   * requirement — matched by the same product tags the cart uses.
+   */
+  const cartIsDigital = isDigitalOnlyCart(cart);
+  const cartHasPreOrder =
+    !cartIsDigital &&
+    (cart.lines?.nodes || []).some(
+      (line: any) =>
+        line.merchandise?.product?.tags?.some((tag: string) =>
+          ['preorder', 'pre-order', 'طلب مسبق'].includes(String(tag).toLowerCase().trim()),
+        ) ||
+        line.attributes?.some((a: any) => a.key === '_is_preorder' && a.value === 'true'),
+    );
+
+  const cartRoute = lang === 'en' ? '/en/cart' : '/cart';
+  const bounceToCart = (reason: string) => {
+    console.warn('[CHECKOUT GATE] Refused —', reason);
+    void reportCheckoutError('validation', `gate: ${reason}`);
+    const url = `${cartRoute}?incomplete=${encodeURIComponent(reason)}`;
+    return redirect(url);
+  };
+
+  // A real fulfilment order needs a branch. (gid or ERP code — either counts.)
+  // Read the id straight from finalAttributes, which is already built above —
+  // the `branchId` const is not declared until further down, so referencing it
+  // here threw "Cannot access 'branchId' before initialization".
+  if (!cartIsDigital) {
+    const gateBranchId = finalAttributes.find((a: any) => a.key === 'Branch ID')?.value;
+    const hasBranch = Boolean(gateBranchId || customBranchVal || sessionBranchId);
+    if (!hasBranch) return bounceToCart('no-branch');
+  }
+
+  const dateTimeRequired = !cartIsDigital && !cartHasPreOrder;
+  if (dateTimeRequired) {
+    if (!deliveryDateVal) return bounceToCart('no-date');
+    if (!timeSlotVal) return bounceToCart('no-time-slot');
+
+    // A date in the past is never valid, whatever put it on the cart.
+    const todayRiyadh = new Intl.DateTimeFormat('en-CA', {timeZone: 'Asia/Riyadh'}).format(new Date());
+    if (String(deliveryDateVal) < todayRiyadh) return bounceToCart('date-in-past');
+  }
+
+  /**
+   * A signed-in shopper needs a real email, or their order confirmation and
+   * updates go to a `@saadeddin.placeholder` address the phone-OTP login
+   * assigned and nobody reads. Send them to add one, then straight back to this
+   * same URL — checkout re-runs on GET, so once the email is real this gate
+   * passes and the order goes through.
+   *
+   * Fail-open by design, in keeping with this gate: it only diverts on a
+   * CONCRETE placeholder/invalid email. A lookup that fails or returns nothing
+   * lets the checkout proceed rather than turning a valid shopper away.
+   */
+  {
+    // Resolve the email authoritatively (Admin API by customer id), so this
+    // holds even when the OTP login fell back to a `session-` token the
+    // Storefront API can't read. Fail-open: a null email (nobody signed in, or a
+    // lookup failure) lets checkout proceed rather than turning a shopper away.
+    const {resolveLoggedInCustomer} = await import('~/lib/customer-email.server');
+    const signedInCustomer = await resolveLoggedInCustomer(context);
+    if (signedInCustomer?.currentEmail && needsRealEmail(signedInCustomer.currentEmail)) {
+      const addEmailPath = lang === 'en' ? '/en/add-email' : '/add-email';
+      return redirect(`${addEmailPath}?redirectTo=${encodeURIComponent(request.url)}`);
+    }
+  }
 
   // 4. Update the cart attributes and cart note on Shopify server
   try {

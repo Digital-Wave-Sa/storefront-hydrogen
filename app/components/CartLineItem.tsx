@@ -4,7 +4,7 @@ import { CartForm, Image, type OptimisticCartLine } from '@shopify/hydrogen';
 import { usePendingCartMutations, lineTotalOf } from '~/lib/cart-pending';
 import { useVariantUrl } from '~/lib/variants';
 import { Link, useRouteLoaderData, useLocation } from 'react-router';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { ProductPrice } from './ProductPrice';
 import { useAside } from './Aside';
 import type {
@@ -151,7 +151,7 @@ export function CartLineItem({
   // render while root defers it, and left the lookup asking about no branch.
   const branchLocationId =
     resolveBranchLocationId(locations, branchId, branchName) || currentBranch?.id;
-  const {availability, pending: branchLookupPending} = useBranchAvailability(
+  const {availability} = useBranchAvailability(
     merchandise?.id ? [merchandise.id] : [],
     branchLocationId,
   );
@@ -159,19 +159,36 @@ export function CartLineItem({
   const inventoryVerdict = isOutOfStockAtBranch(branchEntry);
 
   /**
-   * Never refuse an item on guesswork. While the real branch lookup is still
-   * in flight the fallback below has no `tracked` value to go on, and an
-   * untracked product (no inventory record at the branch) is indistinguishable
-   * from an unstocked one — which is how "Small vanilla chips cookies" read
-   * "not available at this branch" for a moment, then "Add to Cart" once the
-   * answer came back. Hold it as available until the lookup has actually
-   * answered; the verdict then corrects it either way.
+   * While the branch lookup is re-running, HOLD the last real answer for this
+   * branch rather than guessing in either direction.
+   *
+   * Any cart refresh (changing the time slot, say) can expire the cached
+   * lookup and re-fetch it. The previous approach showed the line as
+   * *available* during that window — which for a tracked product that simply
+   * isn't stocked here (Hat-Shape Plate: 1,000 units at Abha, none at Sakaka)
+   * meant "not available" flipped to a normal Add-to-Cart every time the slot
+   * changed, then back again. Guessing "unavailable" instead had the mirror
+   * problem for untracked items. The only honest value during a re-check is
+   * the last confirmed one.
+   *
+   * The held verdict is keyed to the branch it was confirmed for: switching
+   * branch discards it, so the new branch is judged fresh (by the fallback
+   * until its own lookup answers) rather than inheriting the old branch's.
    */
+  const lastVerdictRef = useRef<{branch: string | undefined; verdict: boolean} | null>(null);
+  if (inventoryVerdict !== null) {
+    lastVerdictRef.current = {branch: branchLocationId, verdict: inventoryVerdict};
+  }
+  const heldVerdict =
+    lastVerdictRef.current && lastVerdictRef.current.branch === branchLocationId
+      ? lastVerdictRef.current.verdict
+      : null;
+
   let isOutOfStock =
     inventoryVerdict !== null
       ? inventoryVerdict
-      : branchLookupPending
-        ? false
+      : heldVerdict !== null
+        ? heldVerdict
         : getIsOutOfStockForFulfillment(
           branchLocationId,
           currentBranch?.name || branchName,

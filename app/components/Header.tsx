@@ -10,6 +10,7 @@ import { useWishlist } from '~/context/WishlistContext';
 import { fetchAdminLocations } from '~/lib/locations-meta';
 import { stripCoordsMarker } from '~/lib/address-coords';
 import { trackSelectBranch } from '~/lib/analytics-events';
+import { STANDARD_DELIVERY_FEE } from '~/lib/delivery-defaults';
 
 /**
  * Header count badges.
@@ -46,6 +47,14 @@ export function Header({ header, isLoggedIn, cart, locations, customer, locale, 
   const fetcher = useFetcher();
   const locationFetcher = useFetcher();
   const revalidator = useRevalidator();
+  // The live standard delivery fee from Shopify (via root), used as the
+  // pre-quote fallback when a branch carries no fee of its own. Falls back to
+  // the constant only if root could not supply it.
+  const headerRootData = useRouteLoaderData('root') as any;
+  const standardDeliveryFee =
+    typeof headerRootData?.standardDeliveryFee === 'number'
+      ? headerRootData.standardDeliveryFee
+      : STANDARD_DELIVERY_FEE;
 
   /**
    * The branch the shopper just picked, shown before the server confirms it.
@@ -161,13 +170,25 @@ export function Header({ header, isLoggedIn, cart, locations, customer, locale, 
     }
 
     if (type === 'delivery') {
+      /**
+       * The pre-quote fallback is the ONE standard fee, not a second number.
+       *
+       * This branch had no fee metafield fell through to a hardcoded 30, while
+       * everywhere else — CartSummary's fallback, the `delivery-defaults`
+       * source of truth — uses STANDARD_DELIVERY_FEE (25), the actual Shopify
+       * قياسي rate. So a branch with no fee, picked from the HEADER, wrote 30
+       * onto the cart, the summary read that 30, and Shopify then charged 25:
+       * the fee shown disagreed with the fee charged, and with the same branch
+       * picked from the cart. Falling back to the shared constant makes the
+       * pre-quote fee identical wherever it is written and matches the charge.
+       */
       const calculatedFee = (typeof branch?.deliveryFee === 'number' && branch.deliveryFee > 0)
         ? branch.deliveryFee
         : (typeof branch?.baseDeliveryFee === 'number' && branch.baseDeliveryFee > 0)
           ? branch.baseDeliveryFee
           : (typeof branch?.delivery_fee === 'number' && branch.delivery_fee > 0)
             ? branch.delivery_fee
-            : 30;
+            : standardDeliveryFee;
       attributes.push({ key: 'Delivery Fee', value: calculatedFee.toString() });
     }
 
@@ -741,7 +762,13 @@ function TopBar({
         customerPromise={customer}
         googleMapsKey={googleMapsKey}
         locale={locale}
-        onSelectBranch={(branch: any, type: any) => {
+        onSelectBranch={(
+          branch: any,
+          type: any,
+          addressName?: string,
+          isOutOfRange?: boolean,
+          fullAddress?: any,
+        ) => {
           if (typeof window !== 'undefined') {
             try {
               localStorage.setItem('declaredLocation', 'true');
@@ -751,7 +778,18 @@ function TopBar({
           if (typeof window !== 'undefined') {
             window.dispatchEvent(new CustomEvent('branchSelected', { detail: { branch, type } }));
           }
-          onSelectBranch(branch, type);
+          /**
+           * All five arguments, not two.
+           *
+           * The picker calls `onSelectBranch(branch, type, addrName, isOutOfRange,
+           * fullAddress)`, but this wrapper declared only `(branch, type)`, so a
+           * delivery ADDRESS chosen from the header pill was dropped before it
+           * reached `handleSelectBranch`. The cart kept the old address, the pill
+           * named the new branch, and checkout shipped to the wrong place. The
+           * cart page's copy of this handler already forwards all five; this is
+           * the same, so the two entry points behave identically.
+           */
+          onSelectBranch(branch, type, addressName, isOutOfRange, fullAddress);
         }}
         defaultTab={fulfillmentType as any || 'delivery'}
         selectedLocationId={selectedLocationId}

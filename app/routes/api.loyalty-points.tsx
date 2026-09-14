@@ -32,7 +32,37 @@ export async function loader({request, context}: LoaderFunctionArgs) {
       context,
     });
 
-    const points = loyaltyInfo?.balance || 0;
+    /**
+     * A failed lookup is reported as a failure, not as zero points.
+     *
+     * `getLoyaltyFullInfo` is careful about this: it returns `null` — never a
+     * zeroed object — when SDLP times out, errors, or answers with something
+     * unusable, and says so in its own comment. That care ended here. This
+     * line read `loyaltyInfo?.balance || 0`, so `null` became `0` and the
+     * response still said `success: true`: the one thing the library refused
+     * to claim, the API claimed on its behalf.
+     *
+     * Downstream there is no way back. The cart widget shows «لا توجد لديك
+     * نقاط ولاء حالياً» for a zero, so a customer holding 1,560 points was
+     * told, with confidence and no error anywhere, that they had none —
+     * whenever SDLP was a little slow. SDLP's read timeout is 3s and it has
+     * been answering in ~2.4s, so this fires intermittently and looks random.
+     *
+     * `success: false` leaves both callers (the cart widget and the header
+     * pill) holding `null`, which is their "not known yet" state, and lets
+     * the UI say «unavailable» instead of inventing a balance.
+     */
+    if (!loyaltyInfo) {
+      console.warn(
+        '[API Loyalty Points] Lookup unavailable for this session — reporting unavailable, not zero.',
+      );
+      return Response.json(
+        {success: false, error: 'loyalty_unavailable'},
+        {status: 503, headers: {'Cache-Control': 'no-store'}},
+      );
+    }
+
+    const points = loyaltyInfo.balance;
     let enrollmentDate: string | null = loyaltyInfo?.enrollmentDate || null;
 
     if (!enrollmentDate && context?.storefront && context?.session) {
@@ -102,27 +132,19 @@ export async function loader({request, context}: LoaderFunctionArgs) {
       },
     );
   } catch (err: any) {
+    /**
+     * An exception is an unknown balance, not a balance of zero.
+     *
+     * This caught everything and answered `success: true, points: 0` — so a
+     * thrown error anywhere in this loader (a Storefront query, the tier
+     * lookup, a parse) told the customer they had no points, while the only
+     * trace was this one console line on the server. Same failure as the
+     * `null` case above, reached by a different route.
+     */
     console.error('[API Loyalty Points] Loader Exception:', err);
-    const {getLoyaltyTierInfo} = await import('~/lib/loyalty-tiers');
-    const tierInfo = getLoyaltyTierInfo(0);
     return Response.json(
-      {
-        success: true,
-        data: {
-          points: 0,
-          enrollmentDate: null,
-          enrolledSinceYear: null,
-          tier: tierInfo.tier,
-          nextTier: tierInfo.nextTier,
-          pointsToNextTier: tierInfo.pointsToNextTier,
-          progressPercent: tierInfo.progressPercent,
-        },
-      },
-      {
-        headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-        },
-      },
+      {success: false, error: 'loyalty_unavailable'},
+      {status: 503, headers: {'Cache-Control': 'no-store'}},
     );
   }
 }

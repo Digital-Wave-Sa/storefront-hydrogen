@@ -193,7 +193,33 @@ export async function loader(args: Route.LoaderArgs) {
       headers.append('Set-Cookie', await session.commit());
     }
 
+    /**
+     * The standard delivery rate, read from Shopify — not hardcoded.
+     *
+     * Fed to the cart so the pre-quote fee and free-delivery threshold reflect
+     * whatever the shop's Domestic قياسي rate is set to in admin, rather than a
+     * constant that drifts when the client changes the rate. Cached in
+     * `delivery-rate.server` for 5 minutes, so this is a memory read on almost
+     * every request; a failed lookup returns the constant as an offline
+     * fallback and never blocks the page.
+     */
+    let standardDeliveryRate: {fee: number; freeThreshold: number | null};
+    try {
+      const {getStandardDeliveryRate} = await import('~/lib/delivery-rate.server');
+      standardDeliveryRate = await getStandardDeliveryRate(env);
+    } catch (e) {
+      const {STANDARD_DELIVERY_FEE, STANDARD_FREE_DELIVERY_THRESHOLD} = await import(
+        '~/lib/delivery-defaults'
+      );
+      standardDeliveryRate = {
+        fee: STANDARD_DELIVERY_FEE,
+        freeThreshold: STANDARD_FREE_DELIVERY_THRESHOLD,
+      };
+    }
+
     return data({
+      standardDeliveryFee: standardDeliveryRate.fee,
+      standardFreeDeliveryThreshold: standardDeliveryRate.freeThreshold,
       ...deferredData,
       ...criticalData,
       publicStoreDomain: env.PUBLIC_STORE_DOMAIN,
@@ -300,13 +326,14 @@ async function loadCriticalData({context}: Route.LoaderArgs) {
     storefront.query(`#graphql
       query GetShopLocationDiscounts {
         shop {
+          locationScope: metafield(namespace: "location", key: "scope") { value }
           locationDiscounts: metafield(namespace: "custom", key: "location_discounts") { value }
           locationDiscountsAlt: metafield(namespace: "location", key: "discounts") { value }
         }
       }
     `, {
       cache: storefront.CacheLong(),
-    }).then(res => res.shop?.locationDiscounts?.value || res.shop?.locationDiscountsAlt?.value || null)
+    }).then(res => res.shop?.locationScope?.value || res.shop?.locationDiscounts?.value || res.shop?.locationDiscountsAlt?.value || null)
       .catch(() => null),
   ]);
 

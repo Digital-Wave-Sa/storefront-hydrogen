@@ -8,6 +8,7 @@ import { useFetcher, useRouteLoaderData, Link, useLocation, Form, useRevalidator
 import { useAside } from '~/components/Aside';
 import { Price, SaudiRiyalSymbol } from './Price';
 import { DeliveryPickupModal, checkBranchFreeDeliveryInterval } from './DeliveryPickupModal';
+import { mergeCartAttributes } from '~/lib/cart-attributes';
 
 import { isDiscountValidForLocation, parseLocationDiscountsJSON } from '~/lib/discounts';
 import { localizeTimeSlot } from '~/lib/time-utils';
@@ -125,8 +126,21 @@ export function CartSummary({ cart, layout, confirmedCart }: CartSummaryProps) {
 
   const subtotal = Math.max(0, rawSubtotal + optimisticDelta - freeItemsValue);
 
-  // Calculate total discount from all discount allocations
+  /**
+   * Order/line discounts only — the free-shipping allocation is excluded.
+   *
+   * `cart.discountAllocations` also carries a SHIPPING_LINE entry when a
+   * free-shipping code is on the cart. Summing that into the discount row while
+   * `deliveryFee` is independently forced to 0 for free delivery subtracted the
+   * fee twice: a 297 cart showed «الخصم −25», «التوصيل مجاني» and a 272 total
+   * while Shopify charged 297. The fee is removed once, here, by keeping it out
+   * of this sum and letting the `deliveryFee = 0` branch do the shipping side.
+   *
+   * Allocations with no `targetType` (older API shapes) are treated as
+   * LINE_ITEM, which is what they were before this field existed.
+   */
   const cartDiscountAmount = cart?.discountAllocations?.reduce((acc: number, allocation: any) => {
+    if (allocation?.targetType === 'SHIPPING_LINE') return acc;
     return acc + parseFloat(allocation?.discountedAmount?.amount || '0');
   }, 0) || 0;
 
@@ -140,17 +154,36 @@ export function CartSummary({ cart, layout, confirmedCart }: CartSummaryProps) {
   const totalDiscount = cartDiscountAmount + lineDiscountAmount;
   const subtotalBeforeDiscounts = subtotal + lineDiscountAmount;
 
+  /**
+   * A code counts only when Shopify says it `applicable`.
+   *
+   * Every code on this store is non-combinable (`combinesWith` all false), so
+   * the moment loyalty or store credit is added beside a promo, Shopify keeps
+   * one and marks the other `applicable: false` — it is on the cart but gives
+   * no money. These rows used to key off the presence of the code alone and
+   * read the amount from the cart ATTRIBUTE (`points × 0.01`), so the cart drew
+   * a discount Shopify was not granting and the total came out lower than what
+   * checkout charged. Requiring `applicable` keeps the row honest.
+   */
+  const codeApplies = (matches: (code: string) => boolean) =>
+    !!cart?.discountCodes?.some(
+      (dc: any) => dc?.applicable && typeof dc.code === 'string' && matches(dc.code),
+    );
+
   // Split loyalty discount from other discounts
   const appliedPointsStr = cart?.attributes?.find((a: any) => a.key === 'loyalty_points')?.value;
   const loyaltyPointsRedeemed = parseInt(appliedPointsStr) || 0;
   const expectedLoyaltyDiscount = loyaltyPointsRedeemed * 0.01;
-  const hasLoyaltyDiscount = cart?.discountCodes?.some((dc: any) => (dc.code?.startsWith('LOYAL-') || dc.code?.startsWith('LOYALTY-'))) && expectedLoyaltyDiscount > 0;
+  const hasLoyaltyDiscount =
+    codeApplies((c) => c.startsWith('LOYAL-') || c.startsWith('LOYALTY-')) &&
+    expectedLoyaltyDiscount > 0;
   const loyaltyDiscountDisplay = hasLoyaltyDiscount ? expectedLoyaltyDiscount : 0;
 
   // Split store credit / wallet discount from other discounts
   const appliedCreditStr = cart?.attributes?.find((a: any) => a.key === 'store_credit_amount')?.value;
   const appliedCreditAmount = parseFloat(appliedCreditStr || '0') || 0;
-  const hasStoreCreditDiscount = cart?.discountCodes?.some((dc: any) => dc.code?.startsWith('CREDIT-')) && appliedCreditAmount > 0;
+  const hasStoreCreditDiscount =
+    codeApplies((c) => c.startsWith('CREDIT-')) && appliedCreditAmount > 0;
   const storeCreditDiscountDisplay = hasStoreCreditDiscount ? appliedCreditAmount : 0;
 
   // Make sure we don't show negative other discounts due to floating point math
@@ -194,7 +227,17 @@ export function CartSummary({ cart, layout, confirmedCart }: CartSummaryProps) {
     attrBranchId;
 
   const attrFulfillmentType = attributes.find((a: any) => a.key.toLowerCase().trim() === 'fulfillment type')?.value;
-  const fulfillmentType = attrFulfillmentType || rootData?.fulfillmentType;
+  /**
+   * Session first — same rule as the branch just above, and for the same
+   * reason. `branch`/`branchId` resolve session-first (the session is what the
+   * picker writes first and what the header shows); fulfilment type is chosen
+   * in the same click as the branch, so reading it attribute-first while the
+   * branch came from the session let this panel show Pickup on a cart the rest
+   * of the app treated as Delivery — different fee, different slots, different
+   * checkout. The attribute stays as the fallback for a cart that has one while
+   * the session does not yet.
+   */
+  const fulfillmentType = rootData?.fulfillmentType || attrFulfillmentType;
 
   // Shared with the Header and CartMain — one request per page, not three.
   const adminLocations = useAdminLocations();
@@ -202,50 +245,117 @@ export function CartSummary({ cart, layout, confirmedCart }: CartSummaryProps) {
   // Dynamic Settings from Metafields
   const rawLocations = rootData?.locations?.locations?.nodes || rootData?.locations?.nodes || [];
   const locations = adminLocations.length > 0 ? adminLocations : rawLocations;
-  // Match by numerical ID or full GID, then fallback to English or Arabic name matching
-  const currentBranch = locations.find((loc: any) => {
-    if (!loc) return false;
+  /**
+   * ID first, across ALL locations, before name matching is tried at all.
+   *
+   * This used to be one `.find(loc => isIdMatch || isNameMatch)`, so a location
+   * earlier in the list that matched by a loose NAME substring («العليا»
+   * contained in «الرياض - العليا 2») was returned before a later location that
+   * matched the selected branch's exact ID. CartLineItem resolves the branch
+   * id-first, so the two disagreed: the summary priced and stock-checked one
+   * branch while each line judged another. Two passes make an exact id match
+   * always win; the name pass is only a fallback for a cart that has a branch
+   * name but no id yet.
+   */
+  const targetBranchId = String(branchId || rootData?.selectedLocationId || '').split('/').pop();
+  const searchBranch = String(branch || sessionBranchName || '').toLowerCase().trim();
+
+  const branchIdMatches = (loc: any): boolean => {
+    if (!loc || !targetBranchId) return false;
     const locId = String(loc.id || '');
     const numId = locId.split('/').pop();
-    const targetBranchId = String(branchId || rootData?.selectedLocationId || '').split('/').pop();
-
     const locBranchCode = String(loc.branch_id?.value || loc.branch_id || loc.branch_code?.value || loc.branch_code || '').toLowerCase().trim();
     const locAxStoreId = String(loc.ax_store_id?.value || loc.ax_store_id || '').toLowerCase().trim();
+    return (
+      locId === branchId ||
+      locId === rootData?.selectedLocationId ||
+      numId === targetBranchId ||
+      (!!locBranchCode && locBranchCode === targetBranchId.toLowerCase()) ||
+      (!!locAxStoreId && locAxStoreId === targetBranchId.toLowerCase())
+    );
+  };
 
+  const branchNameMatches = (loc: any): boolean => {
+    if (!loc || !searchBranch || isBranchPlaceholder) return false;
     const locName = String(loc.name || loc.rawName || '').toLowerCase().trim();
     const locArabicName = String(
       loc.name_in_arabic?.value || loc.name_in_arabic || loc.nameInArabic || loc.metafields?.find((m: any) => m?.key === 'name_in_arabic')?.value || ''
     ).toLowerCase().trim();
-    const searchBranch = String(branch || sessionBranchName || '').toLowerCase().trim();
-
-    const isIdMatch = targetBranchId && (
-      locId === branchId ||
-      locId === rootData?.selectedLocationId ||
-      numId === targetBranchId ||
-      (locBranchCode && locBranchCode === targetBranchId.toLowerCase()) ||
-      (locAxStoreId && locAxStoreId === targetBranchId.toLowerCase())
-    );
-
-    const isNameMatch = searchBranch && !isBranchPlaceholder && (
+    return (
       locName === searchBranch ||
       locArabicName === searchBranch ||
-      (locName && searchBranch.includes(locName)) ||
-      (locArabicName && searchBranch.includes(locArabicName)) ||
-      (locName && locName.includes(searchBranch)) ||
-      (locArabicName && locArabicName.includes(searchBranch))
+      (!!locName && searchBranch.includes(locName)) ||
+      (!!locArabicName && searchBranch.includes(locArabicName)) ||
+      (!!locName && locName.includes(searchBranch)) ||
+      (!!locArabicName && locArabicName.includes(searchBranch))
     );
+  };
 
-    return isIdMatch || isNameMatch;
-  });
+  const currentBranch =
+    locations.find(branchIdMatches) || locations.find(branchNameMatches);
 
   const isPickup = fulfillmentType?.toLowerCase() === 'pickup';
 
   const isDigitalOnlyCart = cartIsDigitalOnly(cart);
 
+  /**
+   * Does anything in the cart actually ship? — Shopify's answer, not a guess.
+   *
+   * Each variant carries `requiresShipping`. When NO line requires shipping,
+   * Shopify's checkout skips the delivery step entirely and charges no delivery
+   * — so the cart must not show or add a delivery fee, or it reads a total
+   * (e.g. 376) higher than checkout charges (343). The store's own «is this a
+   * gift card» heuristic only caught vouchers, so a physical product flagged
+   * non-shippable in admin slipped through and looked deliverable.
+   *
+   * `.some(... !== false)` treats a missing/undefined flag as shipping (safe
+   * default), and a mixed cart with even one shippable line still requires
+   * shipping — which matches how Shopify quotes the order as a whole.
+   *
+   * This is separate from `isDigitalOnlyCart`: a gift card needs neither
+   * delivery NOR pickup (it is emailed), whereas a non-shippable physical item
+   * can still be collected, so it keeps its branch, date and slot.
+   */
+  const cartRequiresShipping = (cart?.lines?.nodes || []).some(
+    (line: any) => line?.merchandise?.requiresShipping !== false,
+  );
+
   const selectedDate = attributes.find((a: any) => a.key === 'delivery_date')?.value || '';
   const timeSlot = attributes.find((a: any) => a.key.toLowerCase().trim() === 'time slot')?.value || '';
   const dynamicTimeSlots = selectedDate ? generateDynamicSlots(currentBranch, isEn, fulfillmentType, selectedDate) : [];
-  const isTimeSlotInvalid = !isDigitalOnlyCart && !!timeSlot && dynamicTimeSlots.length > 0 && !dynamicTimeSlots.some((slot: string) => slot === timeSlot || slot.startsWith(timeSlot) || timeSlot.startsWith(slot.split(' - ')[0]));
+
+  /**
+   * Slots are matched by their start HOUR, not their text.
+   *
+   * The stored slot is a formatted label — «2:00 م - 3:00 م» in Arabic,
+   * "2:00 PM - 3:00 PM" in English — and the old check compared those strings
+   * raw. So a slot chosen on /cart was rejected as "outside working hours" the
+   * moment the same cart was viewed on /en/cart, because the Arabic label never
+   * matched an English option. Reducing both sides to a start hour (parsed by
+   * the same helper that reads branch hours, which understands 24h, 12h and
+   * Arabic AM/PM) makes the comparison locale-independent.
+   *
+   * It also closes the stale-slot hole: the old check only invalidated when the
+   * list was non-empty, so once today's remaining slots ran out (empty list) a
+   * slot picked hours earlier still passed. Now an empty list, or a start hour
+   * no longer offered, both count as invalid.
+   */
+  const currentSlotStartHours = new Set(dynamicTimeSlots.map(slotStartHour));
+  const isTimeSlotInvalid =
+    !isDigitalOnlyCart &&
+    !!timeSlot &&
+    (dynamicTimeSlots.length === 0 || !currentSlotStartHours.has(slotStartHour(timeSlot)));
+
+  /**
+   * A date in the past is never valid, even if it once was.
+   *
+   * The calendar disables past days, but a date chosen yesterday and revisited
+   * today sits in the cart as a stale attribute the gate never re-checked, so
+   * checkout stayed enabled with a delivery date that had already gone by.
+   * Compared as ISO `YYYY-MM-DD` strings against Riyadh's today.
+   */
+  const todayRiyadh = new Intl.DateTimeFormat('en-CA', {timeZone: 'Asia/Riyadh'}).format(new Date());
+  const isDateInPast = !!selectedDate && selectedDate < todayRiyadh;
   const minOrderMeta = currentBranch?.min_order_value || currentBranch?.metafields?.find((m: any) => m?.key === 'minimum_order_value');
   const minOrderAttr = attributes.find((a: any) => a.key.toLowerCase().trim() === 'minimum order value')?.value;
   const minOrderAttrVal = minOrderAttr ? parseFloat(minOrderAttr) : null;
@@ -373,12 +483,32 @@ export function CartSummary({ cart, layout, confirmedCart }: CartSummaryProps) {
    * in the direction that costs them money, which is the one direction worth
    * being careful about.
    */
-  const standardFallbackFee =
-    subtotalBeforeDiscounts >= STANDARD_FREE_DELIVERY_THRESHOLD
-      ? 0
+  /**
+   * The standard rate and threshold come from Shopify via root, not constants.
+   *
+   * root reads the shop's Domestic قياسي rate from the Admin API and passes it
+   * here, so if the client changes the fee or the free-over amount in Shopify
+   * admin, this follows without a code change. The imported constants are used
+   * only if root could not supply a value (Admin API unreachable) — the same
+   * numbers the shop is configured with, so nothing breaks offline.
+   */
+  const liveStandardFee =
+    typeof rootData?.standardDeliveryFee === 'number'
+      ? rootData.standardDeliveryFee
       : STANDARD_DELIVERY_FEE;
+  const liveFreeThreshold =
+    typeof rootData?.standardFreeDeliveryThreshold === 'number'
+      ? rootData.standardFreeDeliveryThreshold
+      : STANDARD_FREE_DELIVERY_THRESHOLD;
 
-  const deliveryFee = (isFreeDelivery || isPickup || isDigitalOnlyCart)
+  const standardFallbackFee =
+    liveFreeThreshold != null && subtotalBeforeDiscounts >= liveFreeThreshold
+      ? 0
+      : liveStandardFee;
+
+  // A cart with nothing to ship carries no delivery fee — Shopify won't charge
+  // one, so the cart must not either.
+  const deliveryFee = (isFreeDelivery || isPickup || isDigitalOnlyCart || !cartRequiresShipping)
     ? 0
     : (isDeliveryFeeUnknown ? standardFallbackFee : rawDeliveryFee);
 
@@ -586,7 +716,7 @@ export function CartSummary({ cart, layout, confirmedCart }: CartSummaryProps) {
   });
 
   const isDateTimeRequired = !hasPreOrderItems && !isDigitalOnlyCart;
-  const isDateTimeValid = !isDateTimeRequired || (!isTimeSlotInvalid && !!selectedDate && !!timeSlot && selectedDate.trim() !== '' && timeSlot.trim() !== '');
+  const isDateTimeValid = !isDateTimeRequired || (!isTimeSlotInvalid && !isDateInPast && !!selectedDate && !!timeSlot && selectedDate.trim() !== '' && timeSlot.trim() !== '');
 
   const canCheckout = hasOutOfStockItems
     ? false
@@ -1095,7 +1225,7 @@ export function CartSummary({ cart, layout, confirmedCart }: CartSummaryProps) {
                   </div>
                 )}
 
-                {!isPickup && !isDigitalOnlyCart && (
+                {!isPickup && !isDigitalOnlyCart && cartRequiresShipping && (
                   <div
                     className={`flex justify-between items-center text-[15px] transition-opacity duration-150 ${pendingCart.busy ? 'opacity-50' : ''}`}
                   >
@@ -1244,7 +1374,21 @@ export function CartSummary({ cart, layout, confirmedCart }: CartSummaryProps) {
                           : null
                   }
                   validationError={
-                    invalidActiveDiscount ? (
+                    /**
+                     * Out of stock is the FIRST thing named, because it is the
+                     * first thing `canCheckout` blocks on. The button was
+                     * disabled by `hasOutOfStockItems` while the message chain
+                     * never mentioned it, so a shopper with an out-of-stock line
+                     * saw a dead «إتمام الطلب» with no reason and nothing to act
+                     * on. The offending items are named so they know what to
+                     * remove. (`outOfStockItemNames*` were already computed and
+                     * simply never shown.)
+                     */
+                    hasOutOfStockItems ? (
+                      isEn
+                        ? `Out of stock: ${outOfStockItemNamesEn || 'one or more items'} — please remove to continue`
+                        : `غير متوفّر: ${outOfStockItemNamesAr || 'منتج أو أكثر'} — يرجى إزالته لإتمام الطلب`
+                    ) : invalidActiveDiscount ? (
                       isEn
                         ? `Discount code "${invalidActiveDiscount}" is not valid for ${branchDisplayName || 'the selected branch'}`
                         : `كود الخصم "${invalidActiveDiscount}" غير صالح لـ ${branchDisplayName || 'الفرع المختار'}`
@@ -1256,7 +1400,7 @@ export function CartSummary({ cart, layout, confirmedCart }: CartSummaryProps) {
                       )
                     ) : isOutOfRange ? (
                       isEn ? 'Address is out of delivery range' : 'العنوان خارج نطاق التوصيل'
-                    ) : !selectedDate ? (
+                    ) : (!selectedDate || isDateInPast) ? (
                       isPickup ? (isEn ? 'Please select pickup date' : 'يرجى اختيار تاريخ الاستلام') : (isEn ? 'Please select delivery date' : 'يرجى اختيار تاريخ التوصيل')
                     ) : !timeSlot ? (
                       isPickup ? (isEn ? 'Please select pickup window' : 'يرجى اختيار فترة الاستلام') : (isEn ? 'Please select delivery window' : 'يرجى اختيار فترة التوصيل')
@@ -1344,7 +1488,7 @@ export function CartSummary({ cart, layout, confirmedCart }: CartSummaryProps) {
             </dd>
           </div>
 
-          {!isPickup && !isDigitalOnlyCart && (
+          {!isPickup && !isDigitalOnlyCart && cartRequiresShipping && (
             <div className="flex justify-between items-center text-[14px]">
               <dt className="text-gray-400 font-medium">{isEn ? 'Delivery' : 'التوصيل'}</dt>
               <dd className="text-[#234745] font-bold font-en">
@@ -1390,23 +1534,47 @@ export function CartSummary({ cart, layout, confirmedCart }: CartSummaryProps) {
 // ─── NEW: TIME SLOT PICKER ──────────────────────────────────────────────────
 function parseHourString(hourStr: string): number {
   if (!hourStr) return 9; // Default fallback
-  const clean = hourStr.toUpperCase().trim();
-  // Check if it has PM/AM
-  const isPm = clean.includes('PM');
-  const isAm = clean.includes('AM');
-  const num = parseInt(clean.replace(/\D/g, ''));
-  if (isNaN(num)) return 9;
 
-  if (isPm && num < 12) return num + 12;
-  if (isAm && num === 12) return 0;
+  const clean = String(hourStr).toUpperCase().trim();
+  const isPm = clean.includes('PM') || clean.includes('م');
+  const isAm = clean.includes('AM') || clean.includes('ص');
 
-  // If it is 24h format (e.g., "19:00" -> 19)
-  if (clean.includes(':')) {
-    const parts = clean.split(':');
-    const h = parseInt(parts[0]);
-    return isNaN(h) ? 9 : h;
+  /**
+   * Take the HOUR from an `HH:MM` (or `HH:MM:SS`) string, never the digits run.
+   *
+   * The store's metafields are 24-hour with seconds — `"23:00:00"`, `"00:45:00"`
+   * — but the branch dashboard writes 12-hour, `"11:00 PM"`. The old code did
+   * `parseInt(clean.replace(/\D/g,''))`, i.e. `parseInt("1100")` = 1100, so the
+   * `isPm && num < 12` correction never fired and "11:00 PM" was read as 11 AM;
+   * a "4:00 PM" second shift started at 4 in the morning. Matching the hour
+   * field explicitly handles both formats, and the seconds are simply ignored.
+   */
+  const m = clean.match(/(\d{1,2})\s*:\s*(\d{2})/);
+  let h: number;
+  if (m) {
+    h = parseInt(m[1], 10);
+  } else {
+    const n = parseInt(clean.replace(/[^\d]/g, ''), 10);
+    h = isNaN(n) ? 9 : n;
   }
-  return num;
+  if (isNaN(h)) return 9;
+
+  if (isPm && h < 12) h += 12;
+  if (isAm && h === 12) h = 0;
+  return h % 24;
+}
+
+/**
+ * The start hour of a slot label, whatever locale it is written in.
+ *
+ * A slot is stored as its formatted label — «2:00 م - 3:00 م» or
+ * "2:00 PM - 3:00 PM" — and the two never string-match across locales. Reducing
+ * a label to its start hour (14 for either) gives a stable key for comparing a
+ * stored slot against a freshly generated list, used by both the gate and the
+ * dropdown.
+ */
+function slotStartHour(label: string): number {
+  return parseHourString(String(label).split(/[-–]/)[0] || '');
 }
 
 function formatHour(h: number, isEn: boolean): string {
@@ -1426,7 +1594,15 @@ function formatHour(h: number, isEn: boolean): string {
 }
 
 function generateDynamicSlots(branch: any, isEn: boolean, fulfillmentType: string = 'delivery', targetDateStr?: string): string[] {
-  const isDelivery = fulfillmentType === 'delivery';
+  /**
+   * Case-insensitive: the cart attribute is written `'Delivery'` while this
+   * compared against lowercase `'delivery'`, so `isDelivery` was ALWAYS false.
+   * Every delivery order therefore used the branch's shop hours and the pickup
+   * lead time instead of its delivery window — e.g. Abha delivers 13:00–22:30
+   * but was offered slots from 09:00, so a customer could book a delivery two
+   * hours before the branch delivers.
+   */
+  const isDelivery = String(fulfillmentType).toLowerCase() === 'delivery';
 
   // Helper to extract a metafield's value
   const getMeta = (key: string) => {
@@ -1452,9 +1628,15 @@ function generateDynamicSlots(branch: any, isEn: boolean, fulfillmentType: strin
   // Determine the weekday of the TARGET date (not always today)
   // so future dates use the correct day-specific working hours
   const targetDateObj = targetDateStr ? new Date(targetDateStr + 'T12:00:00') : new Date();
+  /**
+   * Full weekday name, because that is how the day-specific metafields are
+   * keyed — `sunday_working_hours_from`, not `sun_…`. This asked for the short
+   * name, so a branch with different hours on a given day never matched and
+   * silently used its generic hours. `weekday:'long'` → "Sunday" → "sunday".
+   */
   const riyadhDateStr = new Intl.DateTimeFormat('en-US', {
     timeZone: 'Asia/Riyadh',
-    weekday: 'short'
+    weekday: 'long'
   }).format(targetDateObj);
 
   // Determine Shift 1 Open/Close keys
@@ -1540,8 +1722,24 @@ function generateDynamicSlots(branch: any, isEn: boolean, fulfillmentType: strin
 
   const slots: string[] = [];
 
-  const addSlotsForWindow = (start: number, end: number) => {
-    for (let h = start; h <= end; h += 1) {
+  const addSlotsForWindow = (start: number, endRaw: number) => {
+    /**
+     * A close time at or before the open time means the branch closes after
+     * midnight — Abhor is 09:00–00:45. Treated literally the loop was
+     * `for (h = 9; h < 0)`, which produced NO slots at all, so a branch open
+     * past midnight could not be ordered from. Rolling the end past 24 lets
+     * the window span midnight; `formatHour` already wraps `h % 24`, so hour 24
+     * shows as 12 AM, 25 as 1 AM.
+     */
+    const end = endRaw <= start ? endRaw + 24 : endRaw;
+
+    /**
+     * `h < end`, not `h <= end`: a slot is labelled "h:00 – (h+1):00", so the
+     * last slot must START at end-1 and finish exactly at close. The inclusive
+     * bound added one slot past closing — a 22:00 close offered a "10 PM–11 PM"
+     * slot.
+     */
+    for (let h = start; h < end; h += 1) {
       const label = formatHour(h, isEn);
 
       if (isToday) {
@@ -1788,6 +1986,8 @@ function LoyaltyRedemptionUI({ isEn, cart }: { isEn: boolean, cart: any }) {
 
   const [pointsToRedeem, setPointsToRedeem] = useState<number>(initialPoints);
   const [availablePoints, setAvailablePoints] = useState<number | null>(null);
+  /** The lookup answered with a failure, as opposed to not having answered yet. */
+  const [pointsUnavailable, setPointsUnavailable] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const fetcher = useFetcher<any>();
 
@@ -1835,14 +2035,44 @@ function LoyaltyRedemptionUI({ isEn, cart }: { isEn: boolean, cart: any }) {
     if (customerId) q.set('customerId', customerId);
     q.set('t', String(Date.now()));
 
+    /**
+     * Three outcomes, not two: a balance, no balance, or no answer.
+     *
+     * Every failure here used to end in the same place — `availablePoints`
+     * left at `null` by a silent `if`, or by `.catch(() => {})`, which
+     * swallowed network errors, 401s, 503s and malformed bodies alike. The
+     * widget below then rendered `null` and `0` with the same sentence, so a
+     * customer holding 1,560 points read «لا توجد لديك نقاط ولاء حالياً» and
+     * there was nothing on the page, or in the browser console, saying
+     * otherwise. That is why this keeps coming back and why it never looks
+     * like the same bug twice.
+     *
+     * `pointsUnavailable` separates "we asked and the answer is none" from
+     * "we could not find out", and the console line names which failure it
+     * was, so the next occurrence identifies itself.
+     */
+    setPointsUnavailable(false);
+
     fetch(`/api/loyalty-points?${q.toString()}`)
-      .then(res => res.json())
-      .then(data => {
-        if (data?.success && data?.data?.points !== undefined) {
+      .then(async (res) => {
+        const data = await res.json().catch(() => null);
+        if (res.ok && data?.success && typeof data?.data?.points === 'number') {
           setAvailablePoints(data.data.points);
+          return;
         }
+        console.warn(
+          '[Loyalty] Points lookup did not return a balance:',
+          res.status,
+          data?.error || 'unrecognised response',
+        );
+        setAvailablePoints(null);
+        setPointsUnavailable(true);
       })
-      .catch(() => { });
+      .catch((err) => {
+        console.warn('[Loyalty] Points lookup failed:', err?.message || err);
+        setAvailablePoints(null);
+        setPointsUnavailable(true);
+      });
   }, [customerIdentifier, phone, email, customerId]);
 
   if (!customerIdentifier) {
@@ -1948,7 +2178,21 @@ function LoyaltyRedemptionUI({ isEn, cart }: { isEn: boolean, cart: any }) {
       ) : (
         /* Redeem Points Widget */
         <div className="border border-[#f0ece8] bg-[#fcfaf8] rounded-xl p-4 flex flex-col gap-3">
-          {availablePoints === 0 || availablePoints === null ? (
+          {pointsUnavailable || availablePoints === null ? (
+            /**
+             * Unknown, and said as unknown.
+             *
+             * This branch used to be folded in with `availablePoints === 0`
+             * and claim the customer had none. It never had the standing to
+             * say that: the balance had not been established, which is a
+             * different fact and, for someone with points, a false one.
+             */
+            <p className="text-[12px] text-gray-500 text-center py-2 font-medium">
+              {isEn
+                ? 'Could not load your loyalty points. Please try again shortly.'
+                : 'تعذّر تحميل نقاط الولاء. يرجى المحاولة مرة أخرى بعد قليل.'}
+            </p>
+          ) : availablePoints === 0 ? (
             <p className="text-[12px] text-gray-500 text-center py-2 font-medium">
               {isEn ? 'You currently have 0 loyalty points.' : 'لا توجد لديك نقاط ولاء حالياً.'}
             </p>
@@ -2361,15 +2605,46 @@ function CartDiscounts({
 }) {
   const [showInput, setShowInput] = useState(false);
 
-  const codes: string[] =
-    discountCodes
-      ?.filter((discount) => discount.applicable && (!isPickup || discount.code?.toLowerCase() !== 'freeshipping'))
-      ?.map(({ code }) => code) || [];
+  /**
+   * The promo badge is for TYPED promo codes only.
+   *
+   * Loyalty (`LOYAL-`/`LOYALTY-`) and store credit (`CREDIT-`) are system codes:
+   * they have their own rows and their own remove controls, which clear the
+   * matching `loyalty_points` / `store_credit_amount` attribute when they go.
+   * They used to be lumped into this list, so the promo badge showed
+   * «LOYAL-… · تم تطبيق الكود» and — worse — its ✕ submitted an empty code list
+   * that wiped every code including loyalty, while the loyalty attribute stayed
+   * behind and got re-charged at checkout.
+   *
+   * `allApplicableCodes` keeps the full picture (so an automatic-discount badge
+   * is only shown when there is genuinely no code at all); `codes` is the
+   * promo-only subset the badge and its remove button act on; `retainedCodes`
+   * is what a promo removal must leave on the cart — every system code stays.
+   */
+  const isSystemDiscountCode = (code?: string) => {
+    const u = (code || '').toUpperCase();
+    return u.startsWith('LOYAL-') || u.startsWith('LOYALTY-') || u.startsWith('CREDIT-');
+  };
+
+  const allApplicableCodes: string[] =
+    discountCodes?.filter((d) => d.applicable)?.map(({code}) => code) || [];
+
+  const codes: string[] = allApplicableCodes.filter(
+    (code) =>
+      !isSystemDiscountCode(code) &&
+      (!isPickup || code?.toLowerCase() !== 'freeshipping'),
+  );
+
+  // Everything that must survive removing the promo: system codes, plus a
+  // server-managed freeshipping the user did not type.
+  const retainedCodes: string[] = allApplicableCodes.filter(
+    (code) => isSystemDiscountCode(code) || code?.toLowerCase() === 'freeshipping',
+  );
 
   const hasLineAllocations = cart?.lines?.nodes?.some((line: any) => line?.discountAllocations?.length > 0);
   const hasCartAllocations = cart?.discountAllocations?.length > 0;
   const hasAllocations = hasLineAllocations || hasCartAllocations;
-  const hasAutomaticDiscount = hasAllocations && codes.length === 0;
+  const hasAutomaticDiscount = hasAllocations && allApplicableCodes.length === 0;
 
   const isEmployeeDiscountActive =
     codes.some(c => c.toUpperCase().includes('EMPLOYEE') || c.toUpperCase().startsWith('EMP') || c.toUpperCase() === 'EMPLOYEE25');
@@ -2415,7 +2690,7 @@ function CartDiscounts({
           <dl hidden={!codes.length}>
             <div>
               <dt id={discountsHeadingId} className="sr-only">Discounts</dt>
-              <UpdateDiscountForm>
+              <UpdateDiscountForm discountCodes={retainedCodes}>
                 {(fetcher: any) => {
                   const isRemoving = fetcher.state !== 'idle';
                   const isInvalid = !!invalidActiveDiscount;
@@ -2917,14 +3192,19 @@ function CartCalendarPicker({
                   setLocalSelectedDate(dateStr);
                   setLocalTimeSlot(''); // Reset slot locally
 
+                  /**
+                   * Merged: AttributesUpdate replaces the whole list, so these
+                   * two keys on their own deleted the branch, the fulfilment
+                   * type, the delivery address and the fee.
+                   */
                   const formData = new FormData();
                   formData.append('cartFormInput', JSON.stringify({
                     action: 'AttributesUpdate',
                     inputs: {
-                      attributes: [
+                      attributes: mergeCartAttributes(cart?.attributes, [
                         { key: 'delivery_date', value: dateStr },
                         { key: 'Time Slot', value: '' },
-                      ]
+                      ])
                     }
                   }));
                   fetcher.submit(formData, { method: 'POST', action: cartRoute });
@@ -2951,19 +3231,42 @@ function CartCalendarPicker({
             {isPickup ? (isEn ? 'Preferred Pickup Time' : 'وقت الاستلام المفضل') : (isEn ? 'Preferred Delivery Time' : 'وقت التوصيل المفضل')}
           </label>
           <div className="relative">
+            {/*
+              The option that MATCHES the stored slot, by start hour.
+              `localTimeSlot` may be an Arabic label while the options are
+              English (or vice versa) after a locale switch; binding the select
+              to the raw stored string then showed the placeholder even though
+              the gate accepted the slot. Resolving to the same-hour option in
+              the current locale keeps the control showing what is actually set.
+            */}
             <select
-              value={localTimeSlot}
+              value={
+                dynamicTimeSlots.find((s: string) => s === localTimeSlot) ||
+                (localTimeSlot
+                  ? dynamicTimeSlots.find(
+                      (s: string) => slotStartHour(s) === slotStartHour(localTimeSlot),
+                    ) || ''
+                  : '')
+              }
               onChange={(e) => {
                 const newVal = e.target.value;
                 setLocalTimeSlot(newVal); // Instant local feedback
 
+                /**
+                 * Merged. This sent `Time Slot` alone, and because
+                 * AttributesUpdate replaces the list, picking a time deleted
+                 * the `delivery_date` chosen seconds earlier — so the cart
+                 * demanded a date it had just been given, and this picker,
+                 * which only renders once a date exists, disappeared from under
+                 * the shopper as the fetcher settled.
+                 */
                 const formData = new FormData();
                 formData.append('cartFormInput', JSON.stringify({
                   action: 'AttributesUpdate',
                   inputs: {
-                    attributes: [
+                    attributes: mergeCartAttributes(cart?.attributes, [
                       { key: 'Time Slot', value: newVal }
-                    ]
+                    ])
                   }
                 }));
                 fetcher.submit(formData, { method: 'POST', action: cartRoute });

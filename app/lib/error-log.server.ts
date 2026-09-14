@@ -28,6 +28,12 @@ export type CheckoutErrorStage =
   | 'no_checkout_url'
   | 'crm_sync'
   /**
+   * A checkout refused at the server gate before any order was created —
+   * missing branch, missing or past delivery date, missing time slot. The
+   * shopper is redirected back to the cart to complete it.
+   */
+  | 'validation'
+  /**
    * A declined card. Reported by `api.webhooks.payment-failure`, never from
    * this storefront's own code -- the decline happens inside Shopify's hosted
    * checkout, where nothing here is running. It reaches us afterwards as a

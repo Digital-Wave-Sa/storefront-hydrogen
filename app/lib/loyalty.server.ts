@@ -263,9 +263,18 @@ export async function getLoyaltyFullInfo(
   const resolvedPhone = await resolveCustomerPhone(params);
   const customerId = await getCustomerGid(params);
 
+  /**
+   * Not knowing who to ask about is an unknown balance, not a zero.
+   *
+   * This returned `{balance: 0}` — the one thing the bottom of this function
+   * goes out of its way never to do, where the comment reads "null, not a
+   * zeroed object". A shopper whose phone had not resolved yet was told they
+   * had no points, in the same sentence used for a customer who really has
+   * none.
+   */
   if (!resolvedPhone && !customerId) {
     console.warn('[Loyalty] Neither phone nor customerId available for SDLP query.');
-    return {balance: 0, amount: 0, enrollmentDate: null};
+    return null;
   }
 
   const cacheKey = `${resolvedPhone || ''}_${customerId || ''}`.trim();

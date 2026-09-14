@@ -377,12 +377,29 @@ async function getDiscountsFromGraphQL(
             ? `${valNum}%`
             : `${valNum} رس`;
 
-        let subtitleAr = isFreeShipping
-          ? 'توصيل مجاني على طلبك القادم'
-          : d.summary || 'على جميع المنتجات';
-        let subtitleEn = isFreeShipping
-          ? 'Free shipping on your next order'
-          : d.summary || 'On all items';
+        /**
+         * Shopify's `summary` is not shown on these cards.
+         *
+         * It is Shopify's own generated sentence — «10% off 2 collections •
+         * Minimum purchase of SAR300.00 • One use per customer» — composed in
+         * the shop's admin language, which is English, and not localised by the
+         * API. Both branches below used to read it, so the Arabic card printed
+         * an English sentence under an Arabic heading; the Arabic fallback
+         * «على جميع المنتجات» never fired, because Shopify always populates
+         * `summary`.
+         *
+         * The free-shipping line stays: that one is ours, and it is written in
+         * both languages.
+         *
+         * Note what goes with it: `summary` was the only place the cards named
+         * a minimum purchase or a one-use-per-customer limit, so those
+         * conditions are now invisible until checkout refuses the code. The way
+         * back is to compose the sentence from the structured fields the query
+         * already selects — the value and type are parsed just above for the
+         * heading — rather than to restore this.
+         */
+        let subtitleAr = isFreeShipping ? 'توصيل مجاني على طلبك القادم' : '';
+        let subtitleEn = isFreeShipping ? 'Free shipping on your next order' : '';
 
         let expiryDateStrAr = d.endsAt ? formatEnglishDate(d.endsAt, 'ar') : '';
         let expiryDateStrEn = d.endsAt ? formatEnglishDate(d.endsAt, 'en') : '';
@@ -1284,20 +1301,29 @@ export default function VouchersPage() {
                       )}
                     </div>
 
-                    {/* Description */}
-                    <div
-                      className="text-center"
-                      style={{
-                        fontFamily:
-                          "'EnglishDigits', 'GE Dinar One', 'GE SS Two', sans-serif",
-                        fontSize: '15px',
-                        color: theme.textSub,
-                        fontWeight: 400,
-                        lineHeight: '140%',
-                      }}
-                    >
-                      {toEnglishDigits(isEn ? v.subtitleEn : v.subtitleAr)}
-                    </div>
+                    {/*
+                      Description — rendered only when there is one.
+
+                      Most cards now have none (see the note where the subtitle
+                      is built). An always-rendered div would still occupy its
+                      line-height and leave an uneven gap under the heading on
+                      every card except the free-shipping one.
+                    */}
+                    {(isEn ? v.subtitleEn : v.subtitleAr) && (
+                      <div
+                        className="text-center"
+                        style={{
+                          fontFamily:
+                            "'EnglishDigits', 'GE Dinar One', 'GE SS Two', sans-serif",
+                          fontSize: '15px',
+                          color: theme.textSub,
+                          fontWeight: 400,
+                          lineHeight: '140%',
+                        }}
+                      >
+                        {toEnglishDigits(isEn ? v.subtitleEn : v.subtitleAr)}
+                      </div>
+                    )}
                   </div>
 
                   <div>

@@ -2,6 +2,7 @@ import {type ActionFunctionArgs, type LoaderFunctionArgs} from 'react-router';
 import {adminApiQuery} from '../lib/admin.server';
 import {getAdminToken, getAdminDomain} from '~/lib/shopify-admin.server';
 import {toGiftCardPhone} from '~/lib/phone-validation';
+import {needsRealEmail} from '~/lib/needs-email';
 
 /**
  * GET /api/custom-cake-order — Returns 405
@@ -489,6 +490,24 @@ export async function action({request, context}: ActionFunctionArgs) {
     }
 
     /**
+     * A real email, or the invoice and every order update go to the
+     * `@saadeddin.placeholder` address the phone-OTP login assigns. The builder
+     * catches this and collects an email inline — without navigating away and
+     * losing the cake — then re-submits.
+     *
+     * The email is resolved authoritatively via the Admin API by customer id
+     * (inside resolveLoggedInCustomer), NOT via the Storefront token — an OTP
+     * login can hold a `session-` fallback token that the Storefront query can't
+     * read, which previously let a placeholder-email shopper slip past. Fail-open:
+     * a null email (not resolvable) lets the order proceed rather than blocking.
+     */
+    const {resolveLoggedInCustomer} = await import('~/lib/customer-email.server');
+    const gateCustomer = await resolveLoggedInCustomer(context);
+    if (gateCustomer?.currentEmail && needsRealEmail(gateCustomer.currentEmail)) {
+      return Response.json({requireEmail: true});
+    }
+
+    /**
      * Built from what the customer actually chose.
      *
      * Interpolating every field unconditionally wrote "undefined" into the
@@ -661,6 +680,12 @@ export async function action({request, context}: ActionFunctionArgs) {
           customAttributes: [
             { key: 'Item Type', value: 'Custom Cake' },
             { key: 'no_cod', value: 'true' },
+            // Dedicated flag for the ETP payment-customization rule ONLY. Kept
+            // separate from `no_cod` (used elsewhere) and from the order tags
+            // (which payment functions cannot read) so the "hide COD" rule has
+            // a signal it can actually match at draft checkout — as a line
+            // property here and as an order-level cart attribute below.
+            { key: 'disable_cod', value: 'true' },
             ...customAttributes,
             ...(finalImageAttr
               ? [
@@ -702,6 +727,11 @@ export async function action({request, context}: ActionFunctionArgs) {
         ...(fulfillmentType ? [isPickup ? 'pickup' : 'delivery'] : []),
       ],
       taxExempt: true,
+      // Dedicated order-level flag for the ETP payment-customization rule. The
+      // draft otherwise carries no order-level attributes, so this is isolated:
+      // set the ETP rule to hide COD when cart attribute `disable_cod` = true
+      // (or, equivalently, the line property of the same name above).
+      customAttributes: [{key: 'disable_cod', value: 'true'}],
       /**
        * A draft order has no local-pickup option -- `shippingLine` is the only
        * delivery field on it -- so pickup is expressed as a zero-priced line

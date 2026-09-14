@@ -388,35 +388,6 @@ function renderTextWithRiyalSymbol(
   );
 }
 
-const DEFAULT_LOCATION_DISCOUNTS = [
-  {
-    code: 'RIYADH50',
-    title: {
-      ar: 'عرض فرع العليا المميز',
-      en: 'Olaya Branch Special Offer',
-    },
-    description: {
-      ar: 'احصل على خصم 50% على جميع الطلبات من فرع العليا!',
-      en: 'Enjoy 50% off on all orders from Olaya Branch!',
-    },
-    type: 'branch' as const,
-    ids: ['91178139881'],
-  },
-  {
-    code: 'JEDDAH20',
-    title: {
-      ar: 'عرض فرع جدة',
-      en: 'Jeddah Branch Offer',
-    },
-    description: {
-      ar: 'خصم 20% حصري على طلبات فرع جدة',
-      en: 'Exclusive 20% off on Jeddah branch orders',
-    },
-    type: 'branch' as const,
-    ids: ['91178074345'],
-  },
-];
-
 export default function PromotionsPage() {
   const {
     products,
@@ -455,9 +426,10 @@ export default function PromotionsPage() {
   const selectedCity = routeData?.selectedCity;
   const rawLocationDiscounts = routeData?.locationDiscounts;
 
-  const parsedDiscounts = parseLocationDiscountsJSON(rawLocationDiscounts);
-  const discountsToEvaluate =
-    parsedDiscounts.length > 0 ? parsedDiscounts : DEFAULT_LOCATION_DISCOUNTS;
+  // Source of truth: the `custom.location_discounts` metafield only. When it is
+  // empty there are simply no location-scoped discounts to show — no hardcoded
+  // RIYADH50/JEDDAH20 fallback.
+  const discountsToEvaluate = parseLocationDiscountsJSON(rawLocationDiscounts);
 
   const activeLocationDiscount = discountsToEvaluate.find((d: any) => {
     const validById = selectedLocationId

@@ -622,29 +622,102 @@ export async function action({request, context}: ActionFunctionArgs) {
                 JSON.stringify(errBody),
               );
 
-              if (errBody?.errors?.email) {
-                return data({
-                  error:
-                    lang === 'en'
-                      ? 'This email address is already registered. Please use a different one.'
-                      : 'البريد الإلكتروني هذا مسجل بالفعل. يرجى استخدام بريد إلكتروني آخر.',
-                });
-              }
-              if (errBody?.errors?.phone) {
-                return data({
-                  error:
-                    lang === 'en'
-                      ? 'This phone number is already registered. Please use a different one.'
-                      : 'رقم الهاتف هذا مسجل بالفعل. يرجى استخدام رقم هاتف آخر.',
-                });
-              }
+              /**
+               * "Already taken" here does NOT mean a real duplicate. This same
+               * registration just created the customer via the CRM (step 3);
+               * the Storefront token mint (step 4) then raced Shopify's sync and
+               * returned nothing, so this fallback tried to CREATE the customer a
+               * second time — which Shopify rightly rejects. Telling the shopper
+               * "email already registered" fails a signup that actually
+               * succeeded. Instead, recover: find the customer THIS phone just
+               * created, make sure it carries the derived password, mint a token,
+               * and let the success path below sign them in.
+               */
+              if (errBody?.errors?.email || errBody?.errors?.phone) {
+                try {
+                  const rawDigits = savedPhone.replace(/\D/g, '');
+                  const recRes = await fetch(
+                    `https://${env.PUBLIC_STORE_DOMAIN}/admin/api/2024-01/customers/search.json?query=${encodeURIComponent(
+                      `phone:${rawDigits}`,
+                    )}&fields=id,email,phone`,
+                    {headers: {'X-Shopify-Access-Token': adminToken}},
+                  );
+                  if (recRes.ok) {
+                    const recData = (await recRes.json()) as any;
+                    // Exact phone match only — never sign into an unrelated
+                    // account that merely shares trailing digits.
+                    const found = (recData.customers || []).find((c: any) => {
+                      const cp = (c.phone || '').replace(/\D/g, '');
+                      return Boolean(cp) && cp === rawDigits;
+                    });
+                    if (found?.id) {
+                      // Ensure the account carries the password we mint with.
+                      await fetch(
+                        `https://${env.PUBLIC_STORE_DOMAIN}/admin/api/2024-01/customers/${found.id}.json`,
+                        {
+                          method: 'PUT',
+                          headers: {
+                            'Content-Type': 'application/json',
+                            'X-Shopify-Access-Token': adminToken,
+                          },
+                          body: JSON.stringify({
+                            customer: {
+                              id: found.id,
+                              password: stablePassword,
+                              password_confirmation: stablePassword,
+                            },
+                          }),
+                        },
+                      );
+                      session.set(
+                        'loginCustomerId',
+                        `gid://shopify/Customer/${found.id}`,
+                      );
+                      const recTokenResp = await storefront.mutate(
+                        CUSTOMER_ACCESS_TOKEN_CREATE_MUTATION,
+                        {
+                          variables: {
+                            input: {
+                              email: found.email || email,
+                              password: stablePassword,
+                            },
+                          },
+                        },
+                      );
+                      token =
+                        recTokenResp.customerAccessTokenCreate
+                          ?.customerAccessToken || null;
+                      if (token && found.email) {
+                        session.set('loginCustomerEmail', found.email);
+                      }
+                    }
+                  }
+                } catch (recoverErr) {
+                  console.error(
+                    '[Register] Recovery after duplicate create failed:',
+                    recoverErr,
+                  );
+                }
 
-              return data({
-                error:
-                  lang === 'en'
-                    ? 'Shopify customer registration failed. Please contact support.'
-                    : 'فشلت عملية التسجيل في شوبيفاي. يرجى التواصل مع الدعم.',
-              });
+                // Recovery got them a token → fall through to the success path.
+                // If it couldn't, the account exists but we can't sign them in
+                // here, so send them to log in rather than loop on registration.
+                if (!token) {
+                  return data({
+                    error:
+                      lang === 'en'
+                        ? 'This account already exists. Please log in.'
+                        : 'هذا الحساب مسجل بالفعل. يرجى تسجيل الدخول.',
+                  });
+                }
+              } else {
+                return data({
+                  error:
+                    lang === 'en'
+                      ? 'Shopify customer registration failed. Please contact support.'
+                      : 'فشلت عملية التسجيل في شوبيفاي. يرجى التواصل مع الدعم.',
+                });
+              }
             }
           }
         } catch (fallbackErr) {

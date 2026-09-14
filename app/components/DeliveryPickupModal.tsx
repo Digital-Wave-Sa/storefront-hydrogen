@@ -855,10 +855,39 @@ function ModalContent({
     const customerObj = customer?.customer || customer || {};
     const addresses = customerObj?.addresses?.nodes || customerObj?.data?.customer?.addresses?.nodes || [];
     
-    // Ensure the selected branch belongs to the active tab's domain
+    /**
+     * Address ids are compared with `sameAddressId`, never `===`.
+     *
+     * A MailingAddress id carries a per-query `customer_access_token` in its
+     * query string, so the SAME address read twice comes back under two
+     * different id strings. `baseAddressId` strips that; `sameAddressId`
+     * compares what is left.
+     *
+     * Only the session lookup below used it. Everything else on the delivery
+     * side -- this validity gate, `currentAddress`, the row highlight, and the
+     * confirm handler -- compared raw ids, and that is the delivery bug people
+     * kept hitting:
+     *
+     *   1. Shopper opens the modal and taps a different address. `selectedBranch`
+     *      holds that address's id, with the token it was read under.
+     *   2. Anything revalidates root -- a cart line change, the delivery quote,
+     *      the location fetcher -- so `rootData.customer` is a NEW promise.
+     *      `combinedPromise` changes, `Await` re-resolves, and every address
+     *      comes back with a NEW token, so a new id string.
+     *   3. `isValidAddress` is now false for an address the shopper is looking
+     *      at and has selected. The chain falls through to the session's
+     *      `selectedAddressId` -- which is the address they were trying to move
+     *      AWAY from -- and the selection silently snaps back to it.
+     *
+     * So the modal undid the choice, using the previous choice, a beat after it
+     * was made. Intermittent, because it needs a revalidation to land between
+     * picking and confirming -- which is most of the time on the cart page, and
+     * more so on a phone. The branch side is unaffected: location gids carry no
+     * token.
+     */
     let effectiveSelectedBranch = selectedBranch;
     if (activeTab === 'delivery') {
-        let isValidAddress = addresses.some((a: any) => a.id === selectedBranch);
+        let isValidAddress = addresses.some((a: any) => sameAddressId(a.id, selectedBranch));
         
         /**
          * Which saved address is the selected one.
@@ -921,7 +950,7 @@ function ModalContent({
         }
     }
 
-    const currentAddress = activeTab === 'delivery' ? addresses.find((a: any) => a.id === effectiveSelectedBranch) : null;
+    const currentAddress = activeTab === 'delivery' ? addresses.find((a: any) => sameAddressId(a.id, effectiveSelectedBranch)) : null;
     const currentBranch = branches.find((b: any) => b.id === effectiveSelectedBranch) || branches[0];
     const isUserAddressSelected = activeTab === 'delivery' && !!currentAddress;
 
@@ -1029,17 +1058,44 @@ function ModalContent({
 
             <div className="dpm-side-panel">
                 <div className="dpm-header-tabs">
+                    {/*
+                      Switching tabs changes the VIEW, not the selection.
+
+                      Both buttons used to reset the selection to the first row
+                      of the tab being opened -- `setSelectedBranch(addresses[0]?.id || '')`
+                      here and `branches[0]?.id` on the pickup button. So a
+                      shopper collected on التخصصي who tapped «توصيل» to look at
+                      delivery and tapped «استلام» straight back came back
+                      selected on العليا, silently, and confirming then moved
+                      their branch to one they never chose. On mobile that round
+                      trip is the normal way to look at both options, because
+                      the map -- the other place the selection is visible -- is
+                      `display: none` below 768px, so nothing on screen showed
+                      the branch changing underneath them.
+
+                      The reset was also redundant. `effectiveSelectedBranch`
+                      above already confines the selection to the active tab's
+                      domain on every render, non-destructively: an id that is
+                      not an address falls back to the session address or
+                      `addresses[0]` under delivery, and an id that is not a
+                      branch falls back to the nearest branch or العليا under
+                      pickup. That value -- not `selectedBranch` -- is what
+                      renders the highlight, what enables the confirm button and
+                      what the confirm handler reads, so leaving `selectedBranch`
+                      alone here changes nothing except that returning to a tab
+                      returns you to what you had picked on it.
+                    */}
                     <div className="dpm-tabs-toggle">
-                        <button 
+                        <button
                             className={`dpm-tab-btn ${activeTab === 'delivery' ? 'active' : ''}`}
-                            onClick={() => { setActiveTab('delivery'); setSelectedBranch(addresses[0]?.id || ''); }}
+                            onClick={() => setActiveTab('delivery')}
                         >
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 3h15v13H1zM16 8h4l3 3v5h-7V8z" /><circle cx="5.5" cy="18.5" r="2.5" /><circle cx="18.5" cy="18.5" r="2.5" /></svg>
                             {isEn ? 'Delivery' : 'توصيل'}
                         </button>
-                        <button 
+                        <button
                             className={`dpm-tab-btn ${activeTab === 'pickup' ? 'active' : ''}`}
-                            onClick={() => { setActiveTab('pickup'); setSelectedBranch(branches[0]?.id || ''); }}
+                            onClick={() => setActiveTab('pickup')}
                         >
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" /><polyline points="9 22 9 12 15 12 15 22" /></svg>
                             {isEn ? 'Pickup' : 'استلام'}
@@ -1097,12 +1153,12 @@ function ModalContent({
                                 addresses.map((addr: any) => (
                                     <button
                                         key={addr.id}
-                                        className={`w-full p-5 mb-3 text-start border-2 rounded-2xl transition-all ${effectiveSelectedBranch === addr.id ? 'border-[#234745] bg-[#fcfaf5]' : 'border-gray-50 hover:border-gray-200 bg-white'}`}
+                                        className={`w-full p-5 mb-3 text-start border-2 rounded-2xl transition-all ${sameAddressId(effectiveSelectedBranch, addr.id) ? 'border-[#234745] bg-[#fcfaf5]' : 'border-gray-50 hover:border-gray-200 bg-white'}`}
                                         onClick={() => setSelectedBranch(addr.id)}
                                     >
                                         <div className="flex justify-between items-center mb-1">
                                             <p className="font-bold text-[#234745]">{addr.firstName} {addr.lastName}</p>
-                                            {effectiveSelectedBranch === addr.id && <div className="w-2 h-2 rounded-full bg-[#234745]" />}
+                                            {sameAddressId(effectiveSelectedBranch, addr.id) && <div className="w-2 h-2 rounded-full bg-[#234745]" />}
                                         </div>
                                         <p className="text-sm text-gray-500 truncate">{addr.address1}</p>
                                         <p className="text-xs text-gray-400 mt-1">{addr.city}</p>
@@ -1261,7 +1317,7 @@ function ModalContent({
                         disabled={!effectiveSelectedBranch}
                         onClick={() => {
                                 if (isUserAddressSelected) {
-                                    const currentAddress = addresses.find((a: any) => a.id === effectiveSelectedBranch);
+                                    const currentAddress = addresses.find((a: any) => sameAddressId(a.id, effectiveSelectedBranch));
                                     
                                     // Shopify's own geocoding of the address,
                                     // with the legacy address2 marker as a fallback.

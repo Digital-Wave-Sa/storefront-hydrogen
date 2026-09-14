@@ -946,15 +946,30 @@ export default function Product() {
     selectedLocationId,
     selectedLocationName,
   );
-  const {availability: branchStock} = useBranchAvailability(
-    product.selectedVariant?.id ? [product.selectedVariant.id] : [],
-    resolvedBranchId,
-  );
+  const {availability: branchStock, pending: branchStockPending} =
+    useBranchAvailability(
+      product.selectedVariant?.id ? [product.selectedVariant.id] : [],
+      resolvedBranchId,
+    );
 
   const isOutOfStock = useMemo(() => {
     const entry = branchStock[product.selectedVariant?.id as string];
     const verdict = isOutOfStockAtBranch(entry);
     if (verdict !== null) return verdict;
+
+    /**
+     * Claim nothing while the branch lookup is still in flight.
+     *
+     * `storeAvailability` lists only pickup-enabled locations holding stock,
+     * so the chosen branch being absent from a populated list proves nothing —
+     * yet `getIsOutOfStock` reads it as a confident out-of-stock. On this page
+     * that meant a product in stock at the branch rendered as sold out for the
+     * first moment, with the buy button replaced by Notify Me.
+     *
+     * Same rule as the product cards. `availabilityUnresolved` below keeps the
+     * buy button disabled meanwhile, so nothing can be added on a guess.
+     */
+    if (branchStockPending) return false;
 
     return getIsOutOfStock(
       selectedLocationId,
@@ -966,11 +981,21 @@ export default function Product() {
     );
   }, [
     branchStock,
+    branchStockPending,
     selectedLocationId,
     selectedLocationName,
     storeAvailabilityNodes,
     product.selectedVariant,
   ]);
+
+  /**
+   * True while the branch answer is outstanding: the page shows no
+   * out-of-stock claim, but the buy button waits for evidence.
+   */
+  const availabilityUnresolved =
+    branchStockPending &&
+    isOutOfStockAtBranch(branchStock[product.selectedVariant?.id as string]) ===
+      null;
 
   // Visibility scheduling — force unavailable if product is not active
   const isVisibilityBlocked = !visibility.isActive;
@@ -3574,7 +3599,10 @@ export default function Product() {
                         type="button"
                         onClick={handleBuyNow}
                         disabled={
-                          !selectedVariant || effectiveOutOfStock || isBuyingNow
+                          !selectedVariant ||
+                          effectiveOutOfStock ||
+                          availabilityUnresolved ||
+                          isBuyingNow
                         }
                         className={`w-full h-[48px] ${effectiveOutOfStock || !selectedVariant ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-[#EED5D7] hover:bg-[#e4d0d0] active:scale-[0.98] text-[#E64950]'} rounded-[25px] flex items-center justify-center gap-[8px] transition-all`}
                       >
@@ -3924,7 +3952,7 @@ export default function Product() {
                               },
                             ],
                           }}
-                          disabled={!selectedVariant || effectiveOutOfStock}
+                          disabled={!selectedVariant || effectiveOutOfStock || availabilityUnresolved}
                           onClick={() =>
                             window.scrollTo({top: 0, behavior: 'smooth'})
                           }
@@ -4186,6 +4214,7 @@ export default function Product() {
                           disabled={
                             !selectedVariant ||
                             effectiveOutOfStock ||
+                            availabilityUnresolved ||
                             isBuyingNow
                           }
                           className={`w-full h-[48px] ${effectiveOutOfStock || !selectedVariant ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-[#EED5D7] hover:bg-[#e4d0d0] active:scale-[0.98] text-[#E64950]'} rounded-[25px] flex items-center justify-center transition-all`}

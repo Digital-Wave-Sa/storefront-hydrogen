@@ -33,7 +33,8 @@ export function BestSellers({
     const bsRootData = useRouteLoaderData('root') as any;
     const bsLocations = bsRootData?.locations?.locations?.nodes || bsRootData?.locations?.nodes || [];
     const bsBranchId = resolveBranchLocationId(bsLocations, selectedLocationId, selectedLocationName);
-    const { read: readBranchStock } = useBranchAvailabilityReader(bsBranchId);
+    const { read: readBranchStock, pending: branchStockPending } =
+        useBranchAvailabilityReader(bsBranchId);
     const [customerEmail, setCustomerEmail] = useState<string | undefined>(undefined);
 
     useEffect(() => {
@@ -235,14 +236,30 @@ export function BestSellers({
 
                                         const bsEntry = readBranchStock(variant?.id);
                                         const bsVerdict = isOutOfStockAtBranch(bsEntry);
+                                        /**
+                                         * Nothing is claimed while the branch
+                                         * lookup is in flight. See ProductItem:
+                                         * `storeAvailability` lists only
+                                         * pickup-enabled locations holding
+                                         * stock, so an absent branch is not
+                                         * evidence of anything — and reading it
+                                         * as such made in-stock products flash
+                                         * "sold out" on first paint.
+                                         */
+                                        const bsUnresolved =
+                                            bsVerdict === null && branchStockPending(variant?.id);
                                         const isOutOfStock =
                                             bsVerdict !== null
                                                 ? bsVerdict
+                                                : bsUnresolved
+                                                ? false
                                                 : getIsOutOfStock(
                                                       selectedLocationId,
                                                       selectedLocationName,
                                                       storeAvailabilityNodes,
-                                                      product.availableForSale
+                                                      product.availableForSale,
+                                                      // Untracked stock sells everywhere.
+                                                      bsEntry?.tracked
                                                   );
 
 

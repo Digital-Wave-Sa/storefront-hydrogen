@@ -762,6 +762,72 @@ export async function loader({context}: LoaderFunctionArgs) {
     console.error('Failed to query gift card product in vouchers loader:', e);
   }
 
+  /**
+   * Which gift-card denominations are actually taxed.
+   *
+   * `taxable` is an Admin-API field — the Storefront API does not expose it —
+   * so the query above cannot answer this and the wizard was quoting VAT on
+   * every amount. On this shop the flag is NOT uniform: the 50 SAR variant is
+   * `taxable: false` while 100/200/500/1000 are `taxable: true`, so a single
+   * hardcoded rule would be wrong for one of them either way.
+   *
+   * Attached onto the variants the wizard already receives, so it can decide
+   * per amount. Left undefined when the lookup fails, and the wizard then
+   * assumes taxable — the same figure the cart shows, so a failure here can
+   * only ever agree with checkout rather than contradict it.
+   */
+  if (giftProduct?.variants?.nodes?.length) {
+    try {
+      const adminToken = await getAdminToken(env);
+      const adminDomain = getAdminDomain(env);
+      if (adminToken && adminDomain) {
+        const res = await fetch(
+          `https://${adminDomain}/admin/api/2024-01/graphql.json`,
+          {
+            method: 'POST',
+            headers: {
+              'X-Shopify-Access-Token': adminToken,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              query: `query GiftCardVariantTax($id: ID!) {
+                product(id: $id) { variants(first: 50) { nodes { id taxable } } }
+              }`,
+              variables: {id: giftProduct.id},
+            }),
+            signal: AbortSignal.timeout(4000),
+          },
+        );
+        if (res.ok) {
+          const body: any = await res.json();
+          const taxByVariant = new Map<string, boolean>(
+            (body?.data?.product?.variants?.nodes || []).map((v: any) => [
+              String(v.id),
+              Boolean(v.taxable),
+            ]),
+          );
+          if (taxByVariant.size) {
+            giftProduct = {
+              ...giftProduct,
+              variants: {
+                ...giftProduct.variants,
+                nodes: giftProduct.variants.nodes.map((v: any) => ({
+                  ...v,
+                  taxable: taxByVariant.get(String(v.id)),
+                })),
+              },
+            };
+          }
+        }
+      }
+    } catch (e: any) {
+      console.warn(
+        '[Vouchers] Could not read gift card taxability:',
+        e?.message || e,
+      );
+    }
+  }
+
   return {
     lang,
     shopifyVouchers,

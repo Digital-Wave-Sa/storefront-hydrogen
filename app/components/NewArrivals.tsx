@@ -23,7 +23,8 @@ export function NewArrivals({
     const naRootData = useRouteLoaderData('root') as any;
     const naLocations = naRootData?.locations?.locations?.nodes || naRootData?.locations?.nodes || [];
     const naBranchId = resolveBranchLocationId(naLocations, selectedLocationId, selectedLocationName);
-    const { read: readBranchStock } = useBranchAvailabilityReader(naBranchId);
+    const { read: readBranchStock, pending: branchStockPending } =
+        useBranchAvailabilityReader(naBranchId);
     const t = useI18n(locale);
     const isEn = locale === 'en';
 
@@ -82,15 +83,23 @@ export function NewArrivals({
                                             const variant = product.variants?.nodes?.[0];
                                             const storeAvailabilityNodes = variant?.storeAvailability?.nodes || [];
 
-                                            const naVerdict = isOutOfStockAtBranch(readBranchStock(variant?.id));
+                                            const naEntry = readBranchStock(variant?.id);
+                                            const naVerdict = isOutOfStockAtBranch(naEntry);
+                                            // Claim nothing until the branch answers — see ProductItem.
+                                            const naUnresolved =
+                                                naVerdict === null && branchStockPending(variant?.id);
                                             const isOutOfStock =
                                                 naVerdict !== null
                                                     ? naVerdict
+                                                    : naUnresolved
+                                                    ? false
                                                     : getIsOutOfStock(
                                                           selectedLocationId,
                                                           selectedLocationName,
                                                           storeAvailabilityNodes,
-                                                          product.availableForSale
+                                                          product.availableForSale,
+                                                          // Untracked stock sells everywhere.
+                                                          naEntry?.tracked
                                                       );
 
                                             const { toggleWishlist, isInWishlist } = useWishlist();

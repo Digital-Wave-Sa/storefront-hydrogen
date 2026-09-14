@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useFetcher, Form, useNavigate, Link } from 'react-router';
+import { useFetcher, Form, useNavigate, useLocation, Link } from 'react-router';
 import { Image, Money } from '@shopify/hydrogen';
 import { useI18n } from '~/lib/i18n';
 import type { NormalizedPredictiveSearchResults } from './Search';
@@ -14,8 +14,42 @@ export function GlobalSearchBar({ locale, isMobile }: { locale?: string, isMobil
   const [history, setHistory] = useState<string[]>([]);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+  const location = useLocation();
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const [isTyping, setIsTyping] = useState(false);
+
+  /**
+   * A half-typed query does not follow the shopper to the next page.
+   *
+   * The header lives in PageLayout, outside the route outlet, so client-side
+   * navigation never unmounts this component and `query` simply survives it.
+   * Type "fdgd", click Products, and the box still says "fdgd" on a page that
+   * has nothing to do with it — and the dropdown re-opens on the next
+   * keystroke against stale results.
+   *
+   * A few paths already cleared it by hand (picking a suggestion, pressing
+   * the clear button), which is why this only shows up when the shopper
+   * navigates some other way: a nav link, the logo, a product card.
+   *
+   * The search RESULTS page is the exception: there the box should say what
+   * was searched, so it is seeded from `?q=` rather than emptied.
+   */
+  const lastLocationRef = useRef(`${location.pathname}${location.search}`);
+  useEffect(() => {
+    const current = `${location.pathname}${location.search}`;
+    if (current === lastLocationRef.current) return;
+    lastLocationRef.current = current;
+
+    setIsOpen(false);
+    setSelectedIndex(-1);
+    setIsTyping(false);
+
+    const isSearchPage = location.pathname.replace(/\/+$/, '').endsWith('/search');
+    const q = isSearchPage
+      ? new URLSearchParams(location.search).get('q') || ''
+      : '';
+    setQuery(q);
+  }, [location.pathname, location.search]);
 
   // Load history from session storage
   useEffect(() => {
@@ -169,7 +203,7 @@ export function GlobalSearchBar({ locale, isMobile }: { locale?: string, isMobil
       </Form>
 
       {isOpen && (
-        <div className="absolute top-full mt-2 w-[120%] lg:w-full bg-white border border-gray-100 rounded-xl shadow-xl z-50 overflow-hidden end-0 lg:end-auto lg:start-0 animate-fade-in">
+        <div className="absolute top-full mt-2 w-[150%] lg:w-[360px] max-w-[calc(100vw-24px)] bg-white border border-gray-100 rounded-xl shadow-xl z-50 overflow-hidden end-0 lg:end-auto lg:start-0 animate-fade-in">
           {(query.length < 1 && history.length > 0) ? (
             <div className="py-2">
                 <div className="px-4 py-2 flex items-center justify-between">

@@ -682,14 +682,56 @@ export function CartSummary({ cart, layout, confirmedCart }: CartSummaryProps) {
     branchLocationId,
   );
 
+  /**
+   * The last CONFIDENT stock answer per variant, per branch.
+   *
+   * The inventory lookup is cached with a short TTL, so it re-runs on its own
+   * — and every cart change (a quantity nudge, a slot pick) re-renders while
+   * it does. During that window the map holds no entry for the line, the
+   * verdict is null, and the code below falls through to the
+   * `storeAvailability` estimate.
+   *
+   * That estimate is wrong for exactly the items this page must not reject.
+   * `storeAvailability` answers "can this be COLLECTED here", so it lists only
+   * pickup-enabled locations; a delivery-only branch is absent from a list
+   * that is otherwise populated, which `getIsOutOfStock` reads as "stocked
+   * everywhere except here". Small blueberry cheesecake — untracked inventory,
+   * sellable everywhere by definition — was blocked from checkout this way,
+   * while its own cart line (which already holds its verdict) showed nothing
+   * wrong. Two answers to one question, on one screen.
+   *
+   * Holding the resolved verdict removes the window. Same fix as CartLineItem,
+   * and it matters more here: a badge on a line is information, but this flag
+   * disables the checkout button. Guessing wrong costs the order.
+   */
+  const stockVerdictsRef = useRef<Map<string, boolean>>(new Map());
+  const lastVerdictBranchRef = useRef<string | undefined>(branchLocationId);
+  if (lastVerdictBranchRef.current !== branchLocationId) {
+    // A different branch is a different question; nothing carries over.
+    stockVerdictsRef.current = new Map();
+    lastVerdictBranchRef.current = branchLocationId;
+  }
+
   const outOfStockItems = cart?.lines?.nodes?.filter((line: any) => {
     if (line.isOptimistic) return false;
     // Vouchers are not held at a branch, so branch inventory says nothing
     // about them — and blocking checkout over one would be nonsense.
     if (isNonShippableLine(line)) return false;
-    const entry = branchStock[line.merchandise?.id];
+
+    const variantId = line.merchandise?.id;
+    const entry = branchStock[variantId];
     const verdict = isOutOfStockAtBranch(entry);
-    if (verdict !== null) return verdict;
+
+    if (verdict !== null) {
+      if (variantId) stockVerdictsRef.current.set(variantId, verdict);
+      return verdict;
+    }
+
+    // Nothing new to go on: keep answering what we last actually knew.
+    if (variantId && stockVerdictsRef.current.has(variantId)) {
+      return stockVerdictsRef.current.get(variantId)!;
+    }
+
     return getIsOutOfStockForFulfillment(
       branchLocationId,
       currentBranch?.name || selectedBranchName,

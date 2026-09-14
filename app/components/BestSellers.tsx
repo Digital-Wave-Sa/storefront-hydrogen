@@ -8,6 +8,7 @@ import { useAside } from '~/components/Aside';
 import { getVisibilityStatus } from '~/lib/visibility';
 import { getIsOutOfStock, shouldHideProduct, isOutOfStockAtBranch, resolveBranchLocationId } from '~/lib/stock';
 import { useBranchAvailabilityReader } from '~/lib/useBranchAvailability';
+import { StockPendingButton } from './ProductItem';
 import { AddToCartButton } from './AddToCartButton';
 
 import { StockNotificationModal } from '~/components/StockNotificationModal';
@@ -274,7 +275,10 @@ export function BestSellers({
                                         );
 
                                         const effectiveOutOfStock = (isOutOfStock || isVisibilityBlocked) && !isPreorder;
-                                        const showPreorder = isPreorder && !isVisibilityBlocked && !isOutOfStock; // Only show pre-order if it's technically available (continue selling)
+                                        // Held back while unresolved, like the button below: `isOutOfStock`
+                                        // is forced false in that window, so this would otherwise appear
+                                        // and then vanish once the lookup answered.
+                                        const showPreorder = isPreorder && !isVisibilityBlocked && !isOutOfStock && !bsUnresolved; // Only show pre-order if it's technically available (continue selling)
 
                                         const compareAtPrice = product.compareAtPriceRange?.minVariantPrice;
                                         const price = product.priceRange?.minVariantPrice;
@@ -402,6 +406,9 @@ export function BestSellers({
                                                                 <span>{isEn ? 'Notify for Next Season' : 'أبلغني في الموسم القادم'}</span>
 
                                                             </button>
+                                                        ) : bsUnresolved ? (
+                                                            /* Nothing asserted until the lookup answers — see StockPendingButton. */
+                                                            <StockPendingButton className="w-full h-[40px] md:h-[44px] rounded-full" />
                                                         ) : (
                                                             <BestSellersAddToCart
                                                                 variant={variant}

@@ -7,6 +7,7 @@ import { useAside } from '~/components/Aside';
 import { getVisibilityStatus } from '~/lib/visibility';
 import { getIsOutOfStock, shouldHideProduct, isOutOfStockAtBranch, resolveBranchLocationId } from '~/lib/stock';
 import { useBranchAvailabilityReader } from '~/lib/useBranchAvailability';
+import { StockPendingButton } from './ProductItem';
 import { AddToCartButton } from './AddToCartButton';
 import { StockNotificationModal } from '~/components/StockNotificationModal';
 import { StarRating, parseRatingValue } from '~/components/StarRating';
@@ -116,7 +117,10 @@ export function NewArrivals({
                                             );
 
                                             const effectiveOutOfStock = (isOutOfStock || isVisibilityBlocked) && !isPreorder;
-                                            const showPreorder = isPreorder && !isVisibilityBlocked && !isOutOfStock; // Only show pre-order if it's technically available (continue selling)
+                                            // Held back while unresolved, like the button below: `isOutOfStock`
+                                            // is forced false in that window, so this would otherwise appear
+                                            // and then vanish once the lookup answered.
+                                            const showPreorder = isPreorder && !isVisibilityBlocked && !isOutOfStock && !naUnresolved; // Only show pre-order if it's technically available (continue selling)
 
                                             const compareAtPrice = product.compareAtPriceRange?.minVariantPrice;
                                             const price = product.priceRange?.minVariantPrice;
@@ -246,6 +250,9 @@ export function NewArrivals({
                                                                     <span>{isEn ? 'Notify for Next Season' : 'أبلغني في الموسم القادم'}</span>
 
                                                                 </button>
+                                                            ) : naUnresolved ? (
+                                                                /* Nothing asserted until the lookup answers — see StockPendingButton. */
+                                                                <StockPendingButton className="w-full h-[40px] md:h-[44px] rounded-full" />
                                                             ) : (
                                                                 <NewArrivalsAddToCart
                                                                     variant={variant}

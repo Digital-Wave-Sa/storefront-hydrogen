@@ -42,6 +42,35 @@ export function ProductItem(props: any) {
   return <ProductItemCard {...props} />;
 }
 
+/**
+ * The card's third state: not in stock, not out of stock — not yet known.
+ *
+ * The card only ever had two states, so while the branch inventory lookup was
+ * in flight it had to pretend to be one of them, and whichever it picked was
+ * wrong for some products. Guessing "out of stock" made items the branch was
+ * about to sell render «نفذت الكمية» and then flip to Add to Cart. Guessing
+ * "available" moved the same flicker onto genuinely unstocked items, which
+ * showed Add to Cart and then flipped to «أبلغني عند التوفر». Two directions
+ * of the same mistake: asserting an answer before there was one.
+ *
+ * So this asserts nothing. It occupies the button's exact footprint — same
+ * height, same radius, same width behaviour — so the resolved button drops
+ * into place without the card reflowing, and reads as loading rather than as
+ * the store changing its mind.
+ *
+ * The lookup is usually a few hundred milliseconds, so `animate-pulse` is
+ * mostly a hint that something is coming rather than a spinner anyone studies.
+ */
+export function StockPendingButton({className}: {className: string}) {
+  return (
+    <div
+      aria-busy="true"
+      role="status"
+      className={`${className} !bg-[#E4EDEA] !text-transparent pointer-events-none select-none animate-pulse`}
+    />
+  );
+}
+
 function ProductItemCard({
   product,
   loading,
@@ -255,7 +284,15 @@ function ProductItemCard({
 
   const effectiveAvailable = isAvailable && !isVisibilityBlocked;
   const showOutOfStock = !isAvailable && !isVisibilityBlocked;
-  const showPreorder = isPreorder && !isVisibilityBlocked && isAvailable;
+  /**
+   * Held back with the button, for the same reason.
+   *
+   * `isAvailable` is true during the unresolved window (isOutOfStock is forced
+   * false there), so without this the pre-order badge appeared on a card whose
+   * availability was still unknown and vanished again a moment later.
+   */
+  const showPreorder =
+    isPreorder && !isVisibilityBlocked && isAvailable && !availabilityUnresolved;
 
   const isDimmed = isVisibilityBlocked;
 
@@ -335,7 +372,9 @@ function ProductItemCard({
           <div className="mt-4 flex items-center justify-end gap-3">
             {!isVisibilityBlocked && (
               <>
-                {effectiveAvailable ? (
+                {availabilityUnresolved ? (
+                  <StockPendingButton className="h-[44px] px-8 w-[150px] rounded-full" />
+                ) : effectiveAvailable ? (
                   <AddToCartButton
                     lines={cartLines as any}
                     disabled={
@@ -517,6 +556,8 @@ function ProductItemCard({
 
 
             </button>
+          ) : availabilityUnresolved ? (
+            <StockPendingButton className="w-full h-[40px] md:h-[44px] rounded-full" />
           ) : effectiveAvailable ? (
             <AddToCartButton
               lines={cartLines as any}

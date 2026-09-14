@@ -497,10 +497,17 @@ export interface VoucherHistoryItem {
 async function getCustomerUsedCodesAndHistory(context: any, lang: string) {
   const usedCodesSet = new Set<string>();
   const voucherHistory: VoucherHistoryItem[] = [];
+  /**
+   * True when we TRIED to read the customer's orders and could not. The
+   * caller uses this so a failed lookup is not silently rendered as "you have
+   * used nothing" — which would show every used voucher as Active again.
+   */
+  let lookupFailed = false;
 
   try {
     let searchPhone = await context.session.get('loginOtpPhone');
     let searchEmail: string | undefined;
+    let customerGid: string | undefined;
 
     const sessionToken = await context.session.get('customerAccessToken');
     const tokenStr =
@@ -526,39 +533,26 @@ async function getCustomerUsedCodesAndHistory(context: any, lang: string) {
       ).catch(() => null);
 
       if (custRes?.customer) {
+        if (custRes.customer.id) customerGid = custRes.customer.id;
         if (custRes.customer.phone) searchPhone = custRes.customer.phone;
         if (custRes.customer.email) searchEmail = custRes.customer.email;
       }
     }
 
-    if (searchPhone || searchEmail) {
-      const {getAdminToken, getAdminDomain} = await import('~/lib/shopify-admin.server');
-      const adminToken = await getAdminToken(context.env);
-      const adminDomain = getAdminDomain(context.env);
+    const {getAdminToken, getAdminDomain} = await import('~/lib/shopify-admin.server');
+    const adminToken = await getAdminToken(context.env);
+    const adminDomain = getAdminDomain(context.env);
 
-      if (adminToken && adminDomain) {
-        const queryTerms: string[] = [];
-        if (searchPhone) {
-          const cleanPhone = searchPhone.replace(/\D/g, '');
-          queryTerms.push(`phone:${cleanPhone}`);
-          queryTerms.push(`phone:${searchPhone}`);
-        }
-        if (searchEmail) {
-          queryTerms.push(`email:${searchEmail}`);
-        }
+    // The exact customer, from the Storefront record or the login session.
+    const rawCustomerId =
+      customerGid || (await context.session.get('loginCustomerId')) || '';
+    const numericCustomerId = String(rawCustomerId).split('/').pop() || '';
 
-        const queryStr = queryTerms.join(' OR ');
-        const ordersRes = await fetch(
-          `https://${adminDomain}/admin/api/2024-01/orders.json?status=any&fields=id,name,order_number,created_at,processed_at,total_discounts,discount_codes,line_items,financial_status&query=${encodeURIComponent(queryStr)}`,
-          {
-            headers: {'X-Shopify-Access-Token': adminToken},
-            signal: AbortSignal.timeout(2000),
-          },
-        ).catch(() => null);
+    const ORDER_FIELDS =
+      'id,name,order_number,created_at,processed_at,total_discounts,discount_codes,line_items,financial_status';
 
-        if (ordersRes && ordersRes.ok) {
-          const data = (await ordersRes.json()) as any;
-          for (const order of data.orders || []) {
+    // One order at a time, whichever endpoint it came from.
+    const processOrder = (order: any) => {
             const orderDateStr = formatEnglishDate(order.processed_at || order.created_at, lang);
 
             // 1. Record used discount codes to track usage status in tabs
@@ -616,15 +610,42 @@ async function getCustomerUsedCodesAndHistory(context: any, lang: string) {
                 }
               }
             }
-          }
+    };
+
+    if (adminToken && adminDomain && numericCustomerId) {
+      /**
+       * The customer's OWN orders, by id — exact by construction, and paginated
+       * so a repeat customer's older vouchers are not missed past the first
+       * page. This replaces a free-text phone/email search (which the REST
+       * orders endpoint does not filter on, so it could return other
+       * customers' orders) and a 2-second abort that turned any slow response
+       * into "nothing used" — making every used voucher reappear as Active.
+       */
+      let url: string | null =
+        `https://${adminDomain}/admin/api/2024-01/customers/${numericCustomerId}/orders.json?status=any&limit=250&fields=${ORDER_FIELDS}`;
+      for (let page = 0; page < 20 && url; page++) {
+        const res = await fetch(url, {
+          headers: {'X-Shopify-Access-Token': adminToken},
+          signal: AbortSignal.timeout(8000),
+        }).catch(() => null);
+        if (!res || !res.ok) {
+          lookupFailed = true;
+          break;
         }
+        const pageData = (await res.json()) as any;
+        for (const order of pageData.orders || []) processOrder(order);
+        // Cursor pagination: Shopify hands back the next page in the Link header.
+        const link = res.headers.get('link') || '';
+        const next = link.match(/<([^>]+)>;\s*rel="next"/);
+        url = next ? next[1] : null;
       }
     }
   } catch (e) {
     console.error('Error fetching customer voucher history:', e);
+    lookupFailed = true;
   }
 
-  return { usedCodesSet, voucherHistory };
+  return { usedCodesSet, voucherHistory, lookupFailed };
 }
 
 export async function loader({context}: LoaderFunctionArgs) {
@@ -636,7 +657,7 @@ export async function loader({context}: LoaderFunctionArgs) {
   const adminDomain = getAdminDomain(env);
 
   const [
-    {usedCodesSet, voucherHistory: customerVoucherHistory},
+    {usedCodesSet, voucherHistory: customerVoucherHistory, lookupFailed: usedLookupFailed},
   ] = await Promise.all([
     getCustomerUsedCodesAndHistory(context, lang),
   ]);
@@ -726,6 +747,9 @@ export async function loader({context}: LoaderFunctionArgs) {
     customerEmail,
     isLoggedIn,
     giftProduct,
+    // When the order lookup failed, the Used/Expired split is incomplete —
+    // the page says so instead of quietly showing everything as Active.
+    usedLookupFailed,
   };
 }
 
@@ -910,6 +934,21 @@ export default function VouchersPage() {
         isEn
           ? `Voucher "${codeClean.toUpperCase()}" has already been used by your account.`
           : `لقد قمت باستخدام القسيمة "${codeClean.toUpperCase()}" سابقاً.`,
+      );
+      return;
+    }
+
+    // An expired voucher cannot be used again either — say so here rather than
+    // letting Shopify reject it with a generic error.
+    const isExpiredVoucher = expiredVouchers.some(
+      (v) => v.code.toLowerCase() === codeClean.toLowerCase(),
+    );
+    if (isExpiredVoucher) {
+      setAppliedVoucherSuccess(null);
+      setAppliedVoucherError(
+        isEn
+          ? `Voucher "${codeClean.toUpperCase()}" has expired.`
+          : `انتهت صلاحية القسيمة "${codeClean.toUpperCase()}".`,
       );
       return;
     }
@@ -1451,6 +1490,17 @@ export default function VouchersPage() {
                     : 'محفظة القسائم الخاصة بك'}
                 </p>
               </div>
+
+              {(loaderData as any)?.usedLookupFailed && (
+                <div
+                  role="status"
+                  className="w-full md:w-auto text-[12.5px] font-semibold text-[#8a5a00] bg-[#FFF7E0] border border-[#F3D48A] rounded-xl px-4 py-2"
+                >
+                  {isEn
+                    ? 'We could not verify which vouchers you have already used, so some may appear as Active. Please refresh.'
+                    : 'تعذّر التحقق من القسائم التي استخدمتها، فقد تظهر بعضها كفعالة. يرجى تحديث الصفحة.'}
+                </div>
+              )}
 
               {/* Filter Tabs Pills */}
               <div className={`flex items-center gap-2.5 flex-wrap ${isEn ? 'justify-start md:justify-end' : 'justify-center md:justify-end'}`}>

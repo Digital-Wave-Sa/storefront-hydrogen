@@ -239,5 +239,19 @@ export function useBranchAvailabilityReader(locationId?: string | null) {
     return null;
   };
 
-  return {read};
+  /**
+   * Is this variant's answer still on its way?
+   *
+   * `read` returns null both while a lookup is in flight and when there is
+   * genuinely nothing to say, and callers cannot tell those apart — so a card
+   * treated "not yet known" as "fall back to storeAvailability", which is how
+   * a product in stock rendered as sold out for the first moment of a page.
+   * `useBranchAvailability` has always exposed this; the reader did not.
+   */
+  const pending = (variantId?: string | null): boolean => {
+    if (!locationId || !variantId) return false;
+    return hasPending(locationId, [variantId]);
+  };
+
+  return {read, pending};
 }

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useRevalidator } from 'react-router';
 import { SaudiRiyalSymbol } from '~/components/Price';
 
 export interface GiftCardActivationProps {
@@ -28,6 +29,19 @@ export function GiftCardActivation({
   onActivated,
 }: GiftCardActivationProps) {
   const [code, setCode] = useState('');
+  /**
+   * Activation is a plain fetch to /api/store-credit, not a route action, so
+   * React Router has no reason to revalidate anything when it succeeds. The
+   * balance in THIS component updated because the response was pushed into
+   * its own state — but the account layout's wallet loader, which feeds the
+   * header strip at the top of every account page, kept the figure it
+   * fetched when the page loaded. One screen, two balances, 200 apart.
+   *
+   * Revalidating re-runs that loader, so every reader of the balance agrees
+   * rather than only the box next to the form.
+   */
+  const revalidator = useRevalidator();
+
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [message, setMessage] = useState('');
   const [newBalance, setNewBalance] = useState<number | null>(null);
@@ -98,6 +112,9 @@ export function GiftCardActivation({
           }
         }
         setCode('');
+
+        // Bring the header (and anything else reading the wallet) up to date.
+        revalidator.revalidate();
       } else {
         setStatus('error');
         setMessage(

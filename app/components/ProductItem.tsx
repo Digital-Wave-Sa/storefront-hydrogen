@@ -164,14 +164,35 @@ function ProductItemCard({
    *
    * The card still renders exactly as before; only the button waits.
    */
-  const availabilityUnresolved =
-    inventoryVerdict === null &&
-    branchStockPending &&
-    storeAvailabilityNodes.length === 0;
+  const availabilityUnresolved = inventoryVerdict === null && branchStockPending;
 
+  /**
+   * `storeAvailabilityNodes.length === 0` used to be part of the test above,
+   * which left the opposite flash unhandled and is what this now fixes.
+   *
+   * When the list is NOT empty but the chosen branch is missing from it,
+   * `getIsOutOfStock` reads that as "stocked everywhere except here" and
+   * returns a confident out-of-stock. But `storeAvailability` lists only
+   * pickup-enabled locations holding stock, so a branch is routinely absent
+   * from a populated list for reasons that have nothing to do with inventory
+   * — which is the whole reason the branch lookup exists.
+   *
+   * So on first paint a product genuinely in stock at Sakaka rendered the red
+   * «نفذت الكمية» badge and a Notify Me button, then flipped to Add to Cart a
+   * moment later when the real inventory answered. The shopper saw the store
+   * say "sold out" about something it was about to sell them.
+   *
+   * While the authoritative answer is in flight we now assert nothing: no
+   * out-of-stock badge, and the Add to Cart button stays DISABLED via
+   * `availabilityUnresolved` so a fast tap still cannot add something the
+   * branch does not stock. The claim waits for evidence; the layout does not
+   * move.
+   */
   const isOutOfStock =
     inventoryVerdict !== null
       ? inventoryVerdict
+      : availabilityUnresolved
+      ? false
       : getIsOutOfStock(
           // Export products ship from central stock — bypass branch check
           isExport ? null : selectedLocationId,

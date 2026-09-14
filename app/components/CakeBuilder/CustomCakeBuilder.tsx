@@ -191,6 +191,52 @@ export default function CustomCakeBuilder({
   }, []);
 
   /**
+   * A new step starts at ITS top, not where the last one ended.
+   *
+   * The "next" button sits at the BOTTOM of a long list — cream colours run
+   * well past a screen — so by the time it is pressed the column is scrolled
+   * far down. Changing the step swaps the content but not the scroll offset,
+   * dropping the shopper into the middle of the decorations they have not
+   * seen the start of, with the new step's heading somewhere above them. It
+   * reads as the button having done nothing.
+   *
+   * Covers every route into a step — the next and back buttons, and the
+   * numbered tabs — because it watches the step itself rather than hooking
+   * each handler.
+   */
+  const didMountRef = useRef(false);
+  useEffect(() => {
+    // Not on first paint: a restored design sets the step once on mount, and
+    // there is nothing to scroll away from yet.
+    if (!didMountRef.current) {
+      didMountRef.current = true;
+      return;
+    }
+
+    const scroller = optionsScrollRef.current;
+    if (!scroller) return;
+
+    const behavior: ScrollBehavior = window.matchMedia(
+      '(prefers-reduced-motion: reduce)',
+    ).matches
+      ? 'auto'
+      : 'smooth';
+
+    if (scroller.scrollHeight > scroller.clientHeight) {
+      // Desktop: the column is its own scroller.
+      scroller.scrollTo({top: 0, behavior});
+    } else {
+      /**
+       * Mobile: the page scrolls, and the options sit BELOW the preview
+       * (`flex-col-reverse`). Bring the top of the column into view rather
+       * than jumping to the top of the document, which would put the cake
+       * preview on screen and the step the shopper just opened off it.
+       */
+      scroller.scrollIntoView({behavior, block: 'start'});
+    }
+  }, [currentStep]);
+
+  /**
    * The inline "add your email" step. A phone-OTP account can have a
    * placeholder email; the order API answers `requireEmail`, and we collect a
    * real one right here — no navigation, so the designed cake is never lost —

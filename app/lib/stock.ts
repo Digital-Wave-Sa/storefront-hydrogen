@@ -114,8 +114,17 @@ export function getIsOutOfStockForFulfillment(
   const hasNodes =
     Array.isArray(storeAvailabilityNodes) && storeAvailabilityNodes.length > 0;
 
-  // Pickup with nothing collectable anywhere.
-  if (isPickup && !hasNodes) return true;
+  /**
+   * Pickup with nothing collectable anywhere — but ONLY when we know the item
+   * is tracked. The guard above protects untracked items only once `tracked`
+   * has resolved to `false`; this fallback runs precisely while the branch
+   * lookup is still in flight (or has failed), when `tracked` is `undefined`.
+   * In that window an untracked product looks identical to an unstocked one
+   * (both have no storeAvailability node), and refusing on that guess showed
+   * "not available at this branch" for an item Shopify sells anywhere — then
+   * flipped to available once the lookup answered. Unknown is not "out".
+   */
+  if (isPickup && !hasNodes) return tracked === true;
 
   // Delivery: the per-branch list is not the right signal, so fall back to
   // whether Shopify considers the variant sellable at all.

@@ -151,17 +151,28 @@ export function CartLineItem({
   // render while root defers it, and left the lookup asking about no branch.
   const branchLocationId =
     resolveBranchLocationId(locations, branchId, branchName) || currentBranch?.id;
-  const {availability} = useBranchAvailability(
+  const {availability, pending: branchLookupPending} = useBranchAvailability(
     merchandise?.id ? [merchandise.id] : [],
     branchLocationId,
   );
   const branchEntry = availability[merchandise?.id];
   const inventoryVerdict = isOutOfStockAtBranch(branchEntry);
 
+  /**
+   * Never refuse an item on guesswork. While the real branch lookup is still
+   * in flight the fallback below has no `tracked` value to go on, and an
+   * untracked product (no inventory record at the branch) is indistinguishable
+   * from an unstocked one — which is how "Small vanilla chips cookies" read
+   * "not available at this branch" for a moment, then "Add to Cart" once the
+   * answer came back. Hold it as available until the lookup has actually
+   * answered; the verdict then corrects it either way.
+   */
   let isOutOfStock =
     inventoryVerdict !== null
       ? inventoryVerdict
-      : getIsOutOfStockForFulfillment(
+      : branchLookupPending
+        ? false
+        : getIsOutOfStockForFulfillment(
           branchLocationId,
           currentBranch?.name || branchName,
           storeAvailabilityNodes,
@@ -487,6 +498,9 @@ export function CartLineItem({
               <div className="flex items-center gap-1.5 text-[#c1c1c1] hover:text-[#DF4646] transition-colors">
                 <CartLineRemoveButton lineIds={[id]} disabled={!!line.isOptimistic} isText isEn={isEn} />
               </div>
+              {/* "Save for later" is hidden in the drawer. It has no handler
+                  wired up, so it did nothing when tapped there. */}
+              {layout !== 'aside' && (
               <button className="flex items-center gap-1 hover:text-[#234745] transition-colors font-normal text-[13px] text-[#c1c1c1]">
                 <svg width="12" height="11" viewBox="0 0 12 11" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M6 10.6693L5.49467 10.2127C4.40667 9.21889 3.50667 8.36822 2.79467 7.66067C2.08311 6.95267 1.52134 6.32822 1.10934 5.78733C0.697335 5.24644 0.409335 4.75756 0.245335 4.32067C0.0813352 3.88378 -0.000442643 3.44356 1.8018e-06 3C1.8018e-06 2.152 0.288002 1.44 0.864002 0.864C1.44 0.288 2.152 0 3 0C3.58667 0 4.13667 0.15 4.65 0.45C5.16334 0.75 5.61334 1.18644 6 1.75933C6.38667 1.18644 6.83667 0.75 7.35 0.45C7.86334 0.15 8.41334 0 9 0C9.848 0 10.56 0.288 11.136 0.864C11.712 1.44 12 2.152 12 3C12 3.44267 11.9182 3.88267 11.7547 4.32C11.5907 4.75822 11.3027 5.24756 10.8907 5.788C10.4787 6.32844 9.91889 6.95267 9.21134 7.66067C8.50378 8.36822 7.60156 9.21889 6.50467 10.2127L6 10.6693ZM6 9.76667C7.06667 8.80222 7.94445 7.97644 8.63334 7.28933C9.32222 6.60222 9.86667 6.00556 10.2667 5.49933C10.6667 4.99311 10.9444 4.54533 11.1 4.156C11.2556 3.76578 11.3333 3.38044 11.3333 3C11.3333 2.33333 11.1111 1.77778 10.6667 1.33333C10.2222 0.888889 9.66667 0.666667 9 0.666667C8.46934 0.666667 7.97956 0.818222 7.53067 1.12133C7.08178 1.42444 6.68045 1.88067 6.32667 2.49H5.67467C5.31156 1.87222 4.90778 1.41378 4.46334 1.11467C4.01889 0.816 3.53134 0.666667 3.00067 0.666667C2.34289 0.666667 1.78956 0.888889 1.34067 1.33333C0.89178 1.77778 0.667113 2.33333 0.666669 3C0.666669 3.38044 0.744446 3.76578 0.900002 4.156C1.05556 4.54622 1.33334 4.994 1.73334 5.49933C2.13334 6.00467 2.67778 6.59911 3.36667 7.28267C4.05556 7.96622 4.93334 8.79422 6 9.76667Z" fill="#9FB7AE" />
@@ -494,6 +508,7 @@ export function CartLineItem({
 
                 <span>{isEn ? 'Save for later' : 'حفظ لاحقاً'}</span>
               </button>
+              )}
               {(() => {
                 // A gift card is itself the gift, and its tags contain the
                 // word "gift" by definition — which is how a voucher came to

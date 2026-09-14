@@ -1527,6 +1527,51 @@ export function CartSummary({ cart, layout, confirmedCart }: CartSummaryProps) {
             </dd>
           </div>
 
+          {/**
+            * The discounts, which this drawer used to leave out entirely.
+            *
+            * `calculatedTotal` below subtracts them, but no row said so — a
+            * 7.00 subtotal and a 25.00 delivery sat above a 31.30 total, which
+            * does not add up on the face of it. The shopper had just applied a
+            * code and was shown a summary that gave no sign it had worked; the
+            * only way to see the 0.70 was to leave the drawer for the cart
+            * page, which does show these rows.
+            *
+            * Same three rows, same order, same conditions as the page summary
+            * — the two are different sizes, not different arithmetic. Keep
+            * them in step: a discount that renders in one and not the other is
+            * this bug again.
+            */}
+          {otherDiscountDisplay > 0 && (
+            <div className="flex justify-between items-center text-[14px]">
+              <dt className="text-green-600 font-medium">{isEn ? 'Discount' : 'الخصم'}</dt>
+              <dd className="text-green-600 font-bold font-en flex items-center gap-1 flex-row-reverse">
+                <SaudiRiyalSymbol className="h-3.5 w-auto" />
+                <span>-{otherDiscountDisplay.toFixed(2)}</span>
+              </dd>
+            </div>
+          )}
+
+          {loyaltyDiscountDisplay > 0 && (
+            <div className="flex justify-between items-center text-[14px]">
+              <dt className="text-green-600 font-medium">{isEn ? 'Loyalty Discount' : 'خصم نقاط الولاء'}</dt>
+              <dd className="text-green-600 font-bold font-en flex items-center gap-1 flex-row-reverse">
+                <SaudiRiyalSymbol className="h-3.5 w-auto" />
+                <span>-{loyaltyDiscountDisplay.toFixed(2)}</span>
+              </dd>
+            </div>
+          )}
+
+          {storeCreditDiscountDisplay > 0 && (
+            <div className="flex justify-between items-center text-[14px]">
+              <dt className="text-green-600 font-medium">{isEn ? 'Store Credit' : 'رصيد المحفظة'}</dt>
+              <dd className="text-green-600 font-bold font-en flex items-center gap-1 flex-row-reverse">
+                <SaudiRiyalSymbol className="h-3.5 w-auto" />
+                <span>-{storeCreditDiscountDisplay.toFixed(2)}</span>
+              </dd>
+            </div>
+          )}
+
           {!isPickup && !isDigitalOnlyCart && cartRequiresShipping && (
             <div className="flex justify-between items-center text-[14px]">
               <dt className="text-gray-400 font-medium">{isEn ? 'Delivery' : 'التوصيل'}</dt>
@@ -2031,6 +2076,37 @@ function CartCheckoutActions({
  * other line in the panel), and the muted red used by the checkout validation
  * notice: this is a "try again shortly", not a hard failure.
  */
+/**
+ * What is still owed on the merchandise, in SAR — the ceiling for a redemption.
+ *
+ * Both redemption widgets used to cap themselves at
+ * `cart.cost.subtotalAmount`, which is the total BEFORE order-level discounts.
+ * On a 100 SAR cart carrying a 40 SAR promo the shopper owes 60, but the
+ * wallet offered 100 SAR and the points widget offered 10,000 points — and
+ * since the server applies whatever it is handed without a cap of its own,
+ * the shopper really did spend 100 SAR of credit to settle a 60 SAR bill. The
+ * difference is not refunded; it is simply gone.
+ *
+ * Subtracting the allocations Shopify has actually granted gives the real
+ * remaining balance. It also composes: a redemption already on the cart is
+ * itself an allocation, so applying store credit first correctly lowers the
+ * ceiling the points widget then offers, and neither can overshoot the other.
+ *
+ * SHIPPING_LINE allocations are excluded for the same reason the discount row
+ * excludes them — delivery is priced separately and is not what these
+ * redemptions discount. The parent's `totalDiscount` skips them too; the two
+ * must agree or the cart's own arithmetic stops adding up.
+ */
+function amountStillPayable(cart: any): number {
+  const subtotal = parseFloat(cart?.cost?.subtotalAmount?.amount || '0');
+  const orderDiscounts =
+    cart?.discountAllocations?.reduce((acc: number, allocation: any) => {
+      if (allocation?.targetType === 'SHIPPING_LINE') return acc;
+      return acc + parseFloat(allocation?.discountedAmount?.amount || '0');
+    }, 0) || 0;
+  return Math.max(0, subtotal - orderDiscounts);
+}
+
 function PointsRedemptionError({message}: {message?: string | null}) {
   if (!message) return null;
   return (
@@ -2174,18 +2250,19 @@ function LoyaltyRedemptionUI({ isEn, cart }: { isEn: boolean, cart: any }) {
   }
 
   const pointsToCurrencyRatio = 0.01;
-  const cartSubtotal = parseFloat(cart?.cost?.subtotalAmount?.amount || '0');
   /**
    * The button used to submit the raw balance, which SDLP then refused: 1560
    * is not a multiple of 100. The step and the minimum both live in
    * loyalty-tiers.ts so every screen and both server routes agree on them —
    * see the note there for why the step exists and when it goes away.
    *
-   * Capped by the cart as well as the balance: there is no point offering
-   * 1560 points against a cart that can only absorb 500.
+   * Capped by what is still OWED, not by the pre-discount subtotal. The cap
+   * used to read `cart.cost.subtotalAmount`, so a cart already carrying a
+   * promo code offered points against money the shopper no longer had to pay
+   * — and they were spent. See amountStillPayable.
    */
   const redeemablePoints = floorToRedeemablePoints(
-    Math.min(availablePoints ?? 0, cartSubtotal * 100),
+    Math.min(availablePoints ?? 0, amountStillPayable(cart) * 100),
   );
   const isApplied = initialPoints > 0;
   const appliedDiscountSAR = (initialPoints * pointsToCurrencyRatio).toFixed(2);
@@ -2508,8 +2585,15 @@ function StoreCreditRedemptionUI({ isEn, cart }: { isEn: boolean; cart: any }) {
   }
 
   const isApplied = initialCredit > 0;
-  const cartSubtotal = parseFloat(cart?.cost?.subtotalAmount?.amount || '0');
-  const maxApplicable = availableBalance ? Math.min(availableBalance, cartSubtotal) : 0;
+  /**
+   * Capped by what is still owed, not by the pre-discount subtotal — otherwise
+   * «استخدم الحد الأقصى» on a discounted cart spends wallet balance against
+   * money the shopper does not owe, and the excess is not returned.
+   * See amountStillPayable.
+   */
+  const maxApplicable = availableBalance
+    ? Math.min(availableBalance, amountStillPayable(cart))
+    : 0;
 
   const handleUseMax = () => {
     if (maxApplicable > 0) {
@@ -2606,7 +2690,16 @@ function StoreCreditRedemptionUI({ isEn, cart }: { isEn: boolean; cart: any }) {
                   </div>
                   <button
                     type="submit"
-                    disabled={fetcher.state !== 'idle' || !amountToUse || parseFloat(amountToUse) <= 0 || parseFloat(amountToUse) > (availableBalance || 0)}
+                    /**
+                     * Checked against the CEILING, not the balance.
+                     *
+                     * The input carries `max={maxApplicable}`, but that only
+                     * styles the field — React does not enforce it and a typed
+                     * value still submits. This guard read `availableBalance`,
+                     * so a shopper with 500 in the wallet could type 100
+                     * against a cart owing 60 and spend the difference.
+                     */
+                    disabled={fetcher.state !== 'idle' || !amountToUse || parseFloat(amountToUse) <= 0 || parseFloat(amountToUse) > maxApplicable}
                     className="bg-[#234745] hover:bg-[#1a3533] text-white font-bold px-4 py-2.5 rounded-xl text-xs uppercase tracking-wider transition-all disabled:opacity-50 shrink-0"
                   >
                     {fetcher.state !== 'idle' ? (isEn ? 'Applying...' : 'جاري التطبيق...') : (isEn ? 'Apply' : 'تطبيق')}

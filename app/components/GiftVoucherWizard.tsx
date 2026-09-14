@@ -32,6 +32,29 @@ const GIFT_CARD_VARIANTS: Record<number, string> = {
   1000: 'gid://shopify/ProductVariant/51652828627177',
 };
 
+/**
+ * The variant this amount will actually buy — the same choice
+ * `getVariantForAmount` makes, but returning the object rather than its id, so
+ * callers can read the fields that come with it (notably `taxable`).
+ */
+function findVariantForAmount(
+  amount: number,
+  liveVariants?: any[],
+): any | undefined {
+  if (!liveVariants || liveVariants.length === 0) return undefined;
+  const exact = liveVariants.find(
+    (v) => parseFloat(v.price?.amount || '0') === amount,
+  );
+  if (exact) return exact;
+  const sorted = [...liveVariants].sort(
+    (a, b) => parseFloat(a.price?.amount || '0') - parseFloat(b.price?.amount || '0'),
+  );
+  return (
+    sorted.find((v) => parseFloat(v.price?.amount || '0') >= amount) ||
+    sorted[sorted.length - 1]
+  );
+}
+
 function getVariantForAmount(amount: number, liveVariants?: any[]): string {
   if (liveVariants && liveVariants.length > 0) {
     const exact = liveVariants.find((v) => parseFloat(v.price?.amount || '0') === amount);
@@ -152,7 +175,27 @@ export function GiftVoucherWizard({
    * 200 card, which is exactly what the cart already prints.
    */
   const finalAmount = selectedAmount;
-  const vatAmount = finalAmount - finalAmount / 1.15;
+
+  /**
+   * Not every denomination is taxed, so the VAT line is not always true.
+   *
+   * The vouchers loader attaches Shopify's `taxable` flag onto each variant
+   * (it is an Admin-only field — see that loader). On this shop it differs by
+   * amount: the 50 SAR card is not taxable while the others are, so showing a
+   * VAT line on all of them would be wrong for one and hardcoding "no VAT"
+   * would be wrong for the rest.
+   *
+   * `undefined` means we could not read it — treat that as taxable, which is
+   * the figure the cart shows, so an unreadable flag can only ever agree with
+   * checkout.
+   */
+  const selectedVariant = findVariantForAmount(
+    finalAmount,
+    giftProduct?.variants?.nodes,
+  );
+  const isTaxable = selectedVariant?.taxable !== false;
+
+  const vatAmount = isTaxable ? finalAmount - finalAmount / 1.15 : 0;
   const totalAmount = finalAmount;
 
   const quickMessages = isEn
@@ -386,10 +429,10 @@ export function GiftVoucherWizard({
                 </div>
               </div>
 
-              {/* Balance Box: سيتم اضافة الي رصيدك */}
+              {/* Balance Box: سيتم إضافته إلى رصيدك */}
               <div className="rounded-[16px] border border-[#BBCFCD] bg-white p-4 sm:p-5 flex items-center justify-between">
-                <span className="text-[#7D7D7D] font-bold text-[15px]" style={{ fontFamily: "'GE Dinar One', sans-serif" }}>
-                  {isEn ? 'Will be added to your balance' : 'سيتم اضافة الي رصيدك'}
+                <span className="text-[#7D7D7D] font-bold text-[15px]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
+                  {isEn ? 'Will be added to your balance' : 'سيتم إضافته إلى رصيدك'}
                 </span>
                 <span className={`text-[#171717] font-bold text-[17px] sm:text-[19px] font-en notranslate flex items-center gap-1.5 ${isEn ? 'flex-row' : 'flex-row-reverse'}`}>
                   <SaudiRiyalSymbol className="h-4.5 w-auto fill-current" />
@@ -753,18 +796,25 @@ export function GiftVoucherWizard({
                       <SaudiRiyalSymbol className="h-3 w-auto fill-current" />
                     </span>
                   </div>
-                  <div className="mini-row">
-                    {/* "included", because it is — see the vatAmount comment. */}
-                    <span>
-                      {isEn
-                        ? 'VAT (15%, included)'
-                        : 'ضريبة القيمة المضافة (15% شاملة)'}
-                    </span>
-                    <span className={`font-en notranslate flex items-center gap-1 ${isEn ? 'flex-row' : 'flex-row-reverse'}`}>
-                      <span>{vatAmount.toFixed(2)}</span>
-                      <SaudiRiyalSymbol className="h-3 w-auto fill-current" />
-                    </span>
-                  </div>
+                  {/*
+                    No row at all when this denomination is not taxed. A
+                    "VAT 0.00" line invites the question of why, on a total
+                    that is already correct without it.
+                  */}
+                  {isTaxable && (
+                    <div className="mini-row">
+                      {/* "included", because it is — see the vatAmount comment. */}
+                      <span>
+                        {isEn
+                          ? 'VAT (15%, included)'
+                          : 'ضريبة القيمة المضافة (15% شاملة)'}
+                      </span>
+                      <span className={`font-en notranslate flex items-center gap-1 ${isEn ? 'flex-row' : 'flex-row-reverse'}`}>
+                        <span>{vatAmount.toFixed(2)}</span>
+                        <SaudiRiyalSymbol className="h-3 w-auto fill-current" />
+                      </span>
+                    </div>
+                  )}
                   <div className="mini-divider" />
                   <div className="mini-row total">
                     <span>{isEn ? 'Total' : 'الإجمالي'}</span>

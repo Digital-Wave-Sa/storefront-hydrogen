@@ -494,8 +494,8 @@ export function GiftVoucherWizard({
               <div className={`rounded-[16px] border border-[#234745]/30 bg-[#f0f7f5] p-4 ${isEn ? 'text-left' : 'text-right'}`}>
                 <p className="text-[13.5px] text-[#234745] font-medium m-0">
                   {isEn
-                    ? 'Your personal digital voucher will be added directly to your Cart and credited to your balance upon checkout.'
-                    : 'سيتم إضافة قسيمتك الرقمية مباشرة إلى سلة التسوق وشحنها في رصيدك فور إتمام الدفع.'}
+                    ? 'Your personal digital voucher will be added directly to your Cart.'
+                    : 'سيتم إضافة قسيمتك الرقمية مباشرة إلى سلة التسوق.'}
                 </p>
               </div>
 

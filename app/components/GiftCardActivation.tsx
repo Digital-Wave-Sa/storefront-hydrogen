@@ -113,7 +113,24 @@ export function GiftCardActivation({
         }
         setCode('');
 
-        // Bring the header (and anything else reading the wallet) up to date.
+        /**
+         * Two steps, deliberately in this order.
+         *
+         * The event carries the authoritative new balance to every other
+         * reader on the page RIGHT NOW — the header picks it up on the same
+         * tick. The revalidation behind it re-reads the wallet from the
+         * server and supersedes the announced figure when it lands.
+         *
+         * Revalidating alone was correct but slow: the account layout loader
+         * re-reads the wallet and the order stats, which took about three
+         * seconds, and for all of it the header showed the old balance next
+         * to a confirmation saying the credit had been added.
+         */
+        if (typeof data.newBalance === 'number') {
+          window.dispatchEvent(
+            new CustomEvent('wallet:balance', {detail: data.newBalance}),
+          );
+        }
         revalidator.revalidate();
       } else {
         setStatus('error');

@@ -1,4 +1,5 @@
 import type { CustomerFragment } from 'storefrontapi.generated';
+import { useEffect, useState } from 'react';
 import patternBg from '/images/second-bg-pattern.svg';
 import { useWishlist } from '~/context/WishlistContext';
 import { useRouteLoaderData } from 'react-router';
@@ -27,7 +28,41 @@ export function AccountProfileHeader({
   wishlistCount?: number;
   loyaltyInfo?: any;
 }) {
-  const balanceKnown = typeof balance === 'number' && Number.isFinite(balance);
+  /**
+   * Show a new balance the moment it is known, not when the loader catches up.
+   *
+   * Activating a gift card revalidates the account layout, which is correct but
+   * not instant: that loader re-reads the wallet and the order stats, so the
+   * header sat on the old figure for about three seconds while the box beside
+   * the form already showed the new one.
+   *
+   * The activation response already contains the authoritative new balance, so
+   * it is announced on `wallet:balance` and shown here immediately. It is an
+   * override, not a replacement: as soon as the revalidated `balance` prop
+   * arrives the override is dropped and the server's figure is what shows — so
+   * this can only ever be ahead of the loader, never disagree with it.
+   */
+  const [optimisticBalance, setOptimisticBalance] = useState<number | null>(null);
+
+  useEffect(() => {
+    const onBalance = (event: Event) => {
+      const next = (event as CustomEvent).detail;
+      if (typeof next === 'number' && Number.isFinite(next)) {
+        setOptimisticBalance(next);
+      }
+    };
+    window.addEventListener('wallet:balance', onBalance);
+    return () => window.removeEventListener('wallet:balance', onBalance);
+  }, []);
+
+  // The loader has answered — stand down.
+  useEffect(() => {
+    setOptimisticBalance(null);
+  }, [balance]);
+
+  const shownBalance = optimisticBalance ?? balance;
+  const balanceKnown =
+    typeof shownBalance === 'number' && Number.isFinite(shownBalance);
   const pointsKnown =
     typeof loyaltyPoints === 'number' && Number.isFinite(loyaltyPoints);
   const unavailable = isEn ? 'Unavailable' : 'غير متاح';
@@ -210,7 +245,7 @@ export function AccountProfileHeader({
                 {balanceKnown ? (
                   <div className="text-[22px] md:text-[26px] font-extrabold text-[#1B3836] leading-none flex items-center gap-1.5 font-en">
                     <span dir="ltr">
-                      {Number(balance).toLocaleString('en-US', {
+                      {Number(shownBalance).toLocaleString('en-US', {
                         minimumFractionDigits: 2,
                         maximumFractionDigits: 2,
                       })}

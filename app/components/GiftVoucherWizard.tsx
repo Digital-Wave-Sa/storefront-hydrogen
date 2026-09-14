@@ -308,13 +308,20 @@ export function GiftVoucherWizard({
                 { key: '_gift_voucher', value: 'true' },
                 { key: 'Gift Mode', value: giftMode === 'self' ? 'For Myself' : 'Gift to Someone' },
                 { key: 'Voucher Amount', value: `${finalAmount} SAR` },
-                { key: 'Card Color', value: selectedColor.color },
-                { key: 'Card Color Name', value: selectedColor.name },
-                { key: 'Card Color Hex', value: selectedColor.hex },
-                { key: '_card_color', value: selectedColor.hex },
-                { key: '_card_theme', value: selectedColor.name },
                 ...(giftMode === 'gift'
                   ? [
+                      /**
+                       * The card design belongs to the gift, not to the money.
+                       *
+                       * Self mode has no design step either — these carried the
+                       * same default the occasion did, describing a card nobody
+                       * picked and nobody is sent.
+                       */
+                      { key: 'Card Color', value: selectedColor.color },
+                      { key: 'Card Color Name', value: selectedColor.name },
+                      { key: 'Card Color Hex', value: selectedColor.hex },
+                      { key: '_card_color', value: selectedColor.hex },
+                      { key: '_card_theme', value: selectedColor.name },
                       { key: 'Recipient Name', value: targetRecipientName },
                       { key: 'Recipient Email', value: targetRecipientEmail },
                       ...(senderName.trim()

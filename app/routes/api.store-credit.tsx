@@ -166,10 +166,24 @@ export async function action({request, context}: ActionFunctionArgs) {
       return data(
         {
           success: false,
-          // The service's own wording for a bad code is meant for the customer;
-          // anything longer than that is ours, not theirs.
+          /**
+           * The service writes to the customer in ENGLISH only.
+           *
+           * Forwarding its wording whatever the locale put «Invalid gift card
+           * code. Please check and try again.» in the middle of the Arabic
+           * wallet page — the one English sentence on the screen, and the one
+           * telling the shopper something had gone wrong.
+           *
+           * Passing it through only on the English interface is the rule the
+           * success path already follows for `message` (see GiftCardActivation).
+           * On Arabic, `null` hands the wording back to the caller, which has a
+           * translated sentence for exactly this.
+           *
+           * The length cap stays: the service's short wording is written for
+           * customers; anything longer is a developer message, ours to phrase.
+           */
           error:
-            typeof body?.error === 'string' && body.error.length <= 200
+            isEn && typeof body?.error === 'string' && body.error.length <= 200
               ? body.error
               : null,
         },

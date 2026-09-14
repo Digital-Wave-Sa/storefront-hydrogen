@@ -1843,7 +1843,11 @@ export default function VouchersPage() {
                     isEn ? 'text-left pr-[105px] pl-5' : 'text-right pl-[105px] pr-5'
                   }`}
                   style={{
-                    fontFamily: "'GE Dinar One', 'GE SS Two', sans-serif",
+                    // 'EnglishDigits' first: the Arabic faces draw 0-9 as
+                    // Arabic-Indic numerals (٤٥٤٦), and a voucher code must
+                    // read back exactly as typed.
+                    fontFamily:
+                      "'EnglishDigits', 'GE Dinar One', 'GE SS Two', sans-serif",
                   }}
                 />
               </div>

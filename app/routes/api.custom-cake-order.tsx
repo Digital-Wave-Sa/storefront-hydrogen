@@ -493,17 +493,10 @@ export async function action({request, context}: ActionFunctionArgs) {
      * A real email, or the invoice and every order update go to the
      * `@saadeddin.placeholder` address the phone-OTP login assigns. The builder
      * catches this and collects an email inline — without navigating away and
-     * losing the cake — then re-submits.
-     *
-     * The email is resolved authoritatively via the Admin API by customer id
-     * (inside resolveLoggedInCustomer), NOT via the Storefront token — an OTP
-     * login can hold a `session-` fallback token that the Storefront query can't
-     * read, which previously let a placeholder-email shopper slip past. Fail-open:
-     * a null email (not resolvable) lets the order proceed rather than blocking.
+     * losing the cake — then re-submits. Fail-open: only ask when we hold a
+     * CONCRETE placeholder/invalid address, never on a null we couldn't resolve.
      */
-    const {resolveLoggedInCustomer} = await import('~/lib/customer-email.server');
-    const gateCustomer = await resolveLoggedInCustomer(context);
-    if (gateCustomer?.currentEmail && needsRealEmail(gateCustomer.currentEmail)) {
+    if (customerEmail && needsRealEmail(customerEmail)) {
       return Response.json({requireEmail: true});
     }
 
@@ -676,7 +669,26 @@ export async function action({request, context}: ActionFunctionArgs) {
           sku: closestMapping.sku,
           quantity: 1,
           originalUnitPrice: priceNum.toFixed(2),
-          requiresShipping: true,
+          /**
+           * A collection order is not shipped, and this is what says so.
+           *
+           * `DraftOrderInput` has no pickup field — `shippingAddress` and
+           * `shippingLine` are its only delivery fields — so pickup used to be
+           * dressed up as a zero-priced shipping line. Checkout showed the
+           * name correctly but still ran the whole delivery step: country,
+           * first name, last name, street, city, postcode, phone. The shopper
+           * chose «استلام من الفرع» and was then asked where to deliver it.
+           *
+           * A line that does not require shipping removes the step itself
+           * rather than trying to pre-answer it. Shopify skips delivery
+           * entirely when nothing in the order needs shipping, which is the
+           * behaviour the branch picker already promised.
+           *
+           * The branch still reaches the kitchen: `Fulfillment Type`, `Branch`
+           * and `Branch ID` are written as order attributes below, and the
+           * note carries `[Pickup: <branch>]`.
+           */
+          requiresShipping: !isPickup,
           customAttributes: [
             { key: 'Item Type', value: 'Custom Cake' },
             { key: 'no_cod', value: 'true' },
@@ -740,20 +752,20 @@ export async function action({request, context}: ActionFunctionArgs) {
        */
       /**
        * Delivery goes to the address the shopper picked, not to whichever one
-       * Shopify has on file. Pickup carries none: the branch is the
-       * destination, and a shipping address on a collection order only
-       * confuses the slip.
+       * Shopify has on file. Pickup sends neither address nor shipping line —
+       * the line item declares `requiresShipping: false`, so there is no
+       * delivery step for either of them to appear in.
+       *
+       * Sending them anyway would be worse than pointless: a shipping line on
+       * an order with nothing to ship is what re-opens the delivery step, and
+       * an address on a collection order confuses the slip.
        */
       ...(shippingAddress && !isPickup ? {shippingAddress} : {}),
-      ...(fulfillmentType
+      ...(fulfillmentType && !isPickup
         ? {
             shippingLine: {
-              title: isPickup
-                ? `استلام من الفرع${branchName ? ` — ${branchName}` : ''}`
-                : `توصيل${branchName ? ` — ${branchName}` : ''}`,
-              price: isPickup
-                ? '0.00'
-                : Number(deliveryFee || 0).toFixed(2),
+              title: `توصيل${branchName ? ` — ${branchName}` : ''}`,
+              price: Number(deliveryFee || 0).toFixed(2),
             },
           }
         : {}),

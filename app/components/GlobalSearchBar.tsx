@@ -134,6 +134,37 @@ export function GlobalSearchBar({ locale, isMobile }: { locale?: string, isMobil
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  /**
+   * «No results» is only said once the server has answered THIS term.
+   *
+   * The old test was `query.length >= 1 && fetcher.state === 'idle' &&
+   * !isTyping`, which claimed nothing was found in two situations where
+   * nothing had been asked:
+   *
+   *  - At ONE character. The request deliberately does not fire below two
+   *    (see the debounce effect above), so the fetcher sat idle with no data
+   *    and the panel announced «لم نجد أي نتائج» for a search that never ran.
+   *
+   *  - Between the two 300ms timers. `isTyping` clears on one timer and the
+   *    request is submitted on another; `fetcher.state` does not turn
+   *    `loading` until React has processed that submit, so there is a tick
+   *    where the panel is idle, untyped and empty — and it said so.
+   *
+   * Neither was visible on a dev server, where the round trip is a few
+   * milliseconds. Against Oxygen it is hundreds, and the deployed site looked
+   * broken while returning six results perfectly well.
+   *
+   * Comparing the answered term to the typed one settles all of it: stale
+   * data from a previous query cannot be shown as the answer to this one, and
+   * the empty state waits for evidence rather than for a timer.
+   */
+  const trimmedQuery = query.trim();
+  const answeredCurrentTerm =
+    trimmedQuery.length >= 2 &&
+    fetcher.state === 'idle' &&
+    !isTyping &&
+    fetcher.data?.searchTerm === trimmedQuery;
+
   const rawResults = fetcher.data?.searchResults?.results as NormalizedPredictiveSearchResults | undefined;
   const results = rawResults?.map(group => ({
     ...group,
@@ -252,7 +283,17 @@ export function GlobalSearchBar({ locale, isMobile }: { locale?: string, isMobil
                     ))}
                 </ul>
             </div>
-          ) : query.length >= 1 && (fetcher.state === 'loading' || isTyping) ? (
+          ) : query.length >= 1 &&
+            (fetcher.state === 'loading' ||
+              isTyping ||
+              /**
+               * Still searching covers the whole wait, not just the two
+               * timers. Without the second clause there is a tick after
+               * `isTyping` clears and before `fetcher.state` turns `loading`
+               * where nothing matched and the panel went blank — or, before
+               * the fix below it, announced «لم نجد أي نتائج».
+               */
+              (trimmedQuery.length >= 2 && !answeredCurrentTerm)) ? (
             <div className="p-5 text-center text-sm font-medium text-gray-500 animate-pulse">{isEn ? 'Searching...' : 'جاري البحث...'}</div>
           ) : results && flattenedItems.length > 0 ? (
             <div className="max-h-[60vh] lg:max-h-[70vh] overflow-y-auto custom-scrollbar">
@@ -312,7 +353,7 @@ export function GlobalSearchBar({ locale, isMobile }: { locale?: string, isMobil
                 </Link>
               </div>
             </div>
-          ) : query.length >= 1 && fetcher.state === 'idle' && !isTyping ? (
+          ) : answeredCurrentTerm ? (
             <div className="p-6 text-center">
               <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-3">
                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#d4a06a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /><line x1="8" y1="11" x2="14" y2="11" /></svg>

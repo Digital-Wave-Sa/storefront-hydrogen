@@ -78,3 +78,62 @@ export function isCustomCakeOrder(order: any): boolean {
 export function orderLineImage(item: any, resolved?: string | null): string {
   return isCustomCakeLine(item) ? CUSTOM_CAKE_IMAGE_URL : resolved || '';
 }
+
+/**
+ * The cake line's title, in the language being read.
+ *
+ * Ordinary lines take their name from the live product, which Shopify returns
+ * translated. A cake has no product: `api.custom-cake-order` writes the draft
+ * line's title itself, as «طلبية خاصة فئة 510 ريال», and that string is stored
+ * on the order for ever. So the English account pages showed an Arabic name for
+ * the one item the customer designed themselves — and there is nothing to look
+ * up, because the title IS the record.
+ *
+ * Since we write the title, we can read it back: the shapes below are the ones
+ * the builder has produced, and anything else is returned untouched.
+ * Translating at display time rather than storing a second title fixes the
+ * orders already placed, and leaves the title in the Shopify admin as the
+ * Arabic one the kitchen works from.
+ */
+const CAKE_TITLE_FORMS: Array<{
+  test: RegExp;
+  en: (price: string) => string;
+  ar: (price: string) => string;
+}> = [
+  {
+    // «طلبية خاصة فئة 510 ريال» — what the builder writes today.
+    test: /^\s*طلبية\s+خاصة\s+فئة\s+([\d.,]+)\s*ريال\s*$/,
+    en: (p) => `Custom Order — ${p} SAR`,
+    ar: (p) => `طلبية خاصة فئة ${p} ريال`,
+  },
+  {
+    // Its English twin, so the Arabic site is corrected in the same way.
+    test: /^\s*Custom\s+Order\s*[—–-]\s*([\d.,]+)\s*SAR\s*$/i,
+    en: (p) => `Custom Order — ${p} SAR`,
+    ar: (p) => `طلبية خاصة فئة ${p} ريال`,
+  },
+  {
+    // The older, price-less line from an earlier build.
+    test: /^\s*(?:كيكة\s+مخصصة|Custom\s+Cake)\s*$/i,
+    en: () => 'Custom Cake',
+    ar: () => 'كيكة مخصصة',
+  },
+];
+
+export function localizeCakeLineTitle(title: unknown, isEn: boolean): string {
+  const raw = typeof title === 'string' ? title : '';
+  if (!raw.trim()) return raw;
+
+  for (const form of CAKE_TITLE_FORMS) {
+    const match = raw.match(form.test);
+    if (!match) continue;
+    const price = typeof match[1] === 'string' ? match[1] : '';
+    return isEn ? form.en(price) : form.ar(price);
+  }
+
+  /**
+   * Not a title we wrote — a real product name, or a shape we do not know.
+   * Renaming one of those would be a worse bug than the one being fixed.
+   */
+  return raw;
+}

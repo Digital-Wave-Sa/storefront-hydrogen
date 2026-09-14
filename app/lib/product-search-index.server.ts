@@ -46,6 +46,54 @@ const TTL_MS = 10 * 60 * 1000;
 /** One in-flight build at a time, so a burst of first keystrokes shares it. */
 let building: Promise<IndexCache | null> | null = null;
 
+/**
+ * The index also lives in the Oxygen cache, not only in this module.
+ *
+ * Module memory is per-ISOLATE. Locally that is one long-lived Node process,
+ * so the first build serves every later keystroke and everything looks fine.
+ * On Oxygen each request may land in a fresh, short-lived isolate: `cache` is
+ * empty again, the build starts from scratch, and the request answers before
+ * it finishes — which is why Arabic search worked on localhost and returned
+ * nothing on the deployed site.
+ *
+ * The Cache API is shared across isolates, so a build done by one request is
+ * available to the next. Module memory stays as the fast path in front of it.
+ */
+const INDEX_CACHE_URL = 'https://product-search-index.saadeddin.internal/v1';
+
+async function readSharedIndex(): Promise<IndexCache | null> {
+  try {
+    if (typeof caches === 'undefined') return null;
+    const store = await caches.open('hydrogen');
+    const hit = await store.match(new Request(INDEX_CACHE_URL));
+    if (!hit) return null;
+    const parsed = (await hit.json()) as IndexCache;
+    if (!parsed?.items?.length) return null;
+    if (Date.now() - parsed.timestamp > TTL_MS) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+async function writeSharedIndex(idx: IndexCache): Promise<void> {
+  try {
+    if (typeof caches === 'undefined') return;
+    const store = await caches.open('hydrogen');
+    await store.put(
+      new Request(INDEX_CACHE_URL),
+      new Response(JSON.stringify(idx), {
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': `max-age=${Math.floor(TTL_MS / 1000)}`,
+        },
+      }),
+    );
+  } catch (e: any) {
+    console.warn('[product-search-index] Could not share index:', e?.message || e);
+  }
+}
+
 const INDEX_PAGE_QUERY = `
   query ProductSearchIndexPage($after: String) {
     shop { currencyCode }
@@ -206,13 +254,31 @@ async function buildIndex(env: any): Promise<IndexCache | null> {
   return {timestamp: Date.now(), items, currencyCode};
 }
 
-async function getIndex(env: any): Promise<IndexCache | null> {
-  const now = Date.now();
-  if (cache && now - cache.timestamp < TTL_MS) return cache;
+/**
+ * How long a SEARCH will wait for a build before answering without it.
+ *
+ * Crawling the catalog is several sequential Admin pages, so the first search
+ * after a restart used to sit in the request path for the whole crawl. A
+ * typeahead that takes seconds to answer is not a typeahead — and because the
+ * search bar fires as you type, every one of those keystrokes was waiting on
+ * the same thing.
+ *
+ * The build still runs to completion in the background; this only bounds how
+ * long any one request is willing to wait for it. Miss the window and that
+ * keystroke answers from whatever is cached (possibly nothing); the next one,
+ * a moment later, finds a finished index.
+ */
+const BUILD_WAIT_MS = 2500;
+
+function startBuild(env: any): Promise<IndexCache | null> {
   if (!building) {
     building = buildIndex(env)
-      .then((built) => {
-        if (built) cache = built;
+      .then(async (built) => {
+        if (built) {
+          cache = built;
+          // So the next isolate does not have to crawl the catalog again.
+          await writeSharedIndex(built);
+        }
         return built ?? cache;
       })
       .catch((e) => {
@@ -224,6 +290,38 @@ async function getIndex(env: any): Promise<IndexCache | null> {
       });
   }
   return building;
+}
+
+/** Kick the build off without waiting — for warming the index up front. */
+export function warmProductIndex(env: any): void {
+  const now = Date.now();
+  if (cache && now - cache.timestamp < TTL_MS) return;
+  void startBuild(env);
+}
+
+async function getIndex(env: any): Promise<IndexCache | null> {
+  const now = Date.now();
+  if (cache && now - cache.timestamp < TTL_MS) return cache;
+
+  /**
+   * Before crawling, ask whether another isolate already did it. This is the
+   * step that makes the deployed site behave like localhost.
+   */
+  const shared = await readSharedIndex();
+  if (shared) {
+    cache = shared;
+    return shared;
+  }
+
+  const build = startBuild(env);
+
+  // Wait, but not forever. `cache` may be a stale index or null.
+  return Promise.race([
+    build,
+    new Promise<IndexCache | null>((resolve) =>
+      setTimeout(() => resolve(cache), BUILD_WAIT_MS),
+    ),
+  ]);
 }
 
 export type SearchHit = IndexedProduct & {score: number};

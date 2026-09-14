@@ -331,11 +331,33 @@ async function getDiscountsFromGraphQL(
         if (!d) return null;
         const title = d.title || '';
         const codesList = d.codes?.nodes?.map((c: any) => c.code) || [];
-        const code = codesList[0] || title;
+
+        /**
+         * An AUTOMATIC discount has no code, and never will.
+         *
+         * Shopify applies it on its own when the cart matches; there is nothing
+         * for a shopper to type. `codes` is not merely unselected for these
+         * types — the field does not exist on them.
+         *
+         * The old fallback `codesList[0] || title` therefore handed the card
+         * the discount's NAME and presented it as a code. "25 discount product"
+         * was shown under the heading and sent to the cart by "Use Now", which
+         * answered «الكود "25 DISCOUNT PRODUCT" غير صحيح» — correctly, because
+         * that string is a title, not a code.
+         *
+         * Automatic discounts keep an empty code and are labelled as
+         * self-applying instead. The title fallback stays for CODE discounts,
+         * where it covers a code list that failed to load.
+         */
+        const isAutomatic = String(d.__typename || '').startsWith(
+          'DiscountAutomatic',
+        );
+        const code = isAutomatic ? '' : codesList[0] || title;
         const codeLower = code.trim().toLowerCase();
 
         const isUsedByOrders =
-          usedCodesSet.has(codeLower) || usedCodesSet.has(title.trim().toLowerCase());
+          (!!codeLower && usedCodesSet.has(codeLower)) ||
+          usedCodesSet.has(title.trim().toLowerCase());
         const isUsageLimitReached = d.usageLimit && d.asyncUsageCount >= d.usageLimit;
         const isUsed = isUsedByOrders || isUsageLimitReached;
         const isExpired = d.endsAt
@@ -423,6 +445,7 @@ async function getDiscountsFromGraphQL(
           id: n.id,
           title,
           code,
+          isAutomatic,
           status,
           badgeText,
           hasVoucherTag: tagType === 'voucher',
@@ -901,6 +924,7 @@ export default function VouchersPage() {
          */
         setAppliedVoucherError(null);
         setAppliedVoucherSuccess(cartFetcher.data.notice);
+        setVoucherCodeInput('');
         showToast(cartFetcher.data.notice);
         open('cart');
       } else {
@@ -911,6 +935,22 @@ export default function VouchersPage() {
             ? `Voucher "${code}" applied successfully to your cart!`
             : `تم تطبيق القسيمة "${code}" بنجاح على سلتك!`,
         );
+        /**
+         * The box is emptied once a code reaches the cart.
+         *
+         * It is an input for the NEXT code, not a display of the current one,
+         * and leaving what was typed there contradicts the confirmation
+         * underneath it: half-typed "1425" sat in the field while the banner
+         * said DISCOUNT25 had been applied — two different codes on screen at
+         * once, neither of them wrong-looking on its own. The applied code is
+         * named in the banner and shown on the cart, so it does not also
+         * belong in a field whose only purpose is to accept something new.
+         *
+         * Cleared on the `notice` branch too: that code is on the cart as
+         * well, just not yet earning its discount. NOT cleared on error —
+         * there the shopper needs to see and correct what they typed.
+         */
+        setVoucherCodeInput('');
         showToast(
           isEn
             ? 'Voucher code applied to cart!'
@@ -924,6 +964,27 @@ export default function VouchersPage() {
   const applyCodeToCart = (codeToApply: string) => {
     const codeClean = codeToApply.trim();
     if (!codeClean) return;
+
+    /**
+     * Automatic discounts carry no code; Shopify applies them itself. Their
+     * cards no longer offer an apply action, and a typed match here would be
+     * the discount's NAME, which the cart rejects as an invalid code. Say what
+     * is actually true instead.
+     */
+    const automaticMatch = shopifyVouchers.find(
+      (v: any) =>
+        v.isAutomatic &&
+        (v.title || '').trim().toLowerCase() === codeClean.toLowerCase(),
+    );
+    if (automaticMatch) {
+      setAppliedVoucherError(null);
+      setAppliedVoucherSuccess(
+        isEn
+          ? 'This offer is applied automatically at checkout — no code needed.'
+          : 'هذا العرض يُطبق تلقائياً عند الدفع — لا حاجة لإدخال رمز.',
+      );
+      return;
+    }
 
     const isAlreadyUsed = usedVouchers.some(
       (v) => v.code.toLowerCase() === codeClean.toLowerCase(),
@@ -1394,22 +1455,28 @@ export default function VouchersPage() {
                       dir={isEn ? 'ltr' : 'rtl'}
                       className="flex items-center justify-between px-8 sm:px-10 pt-6 pb-4 gap-3"
                     >
-                      <button
-                        type="button"
-                        onClick={() => handleCopyCode(v.code)}
-                        className="flex-shrink-0 font-bold transition-all hover:opacity-90 active:scale-95 cursor-pointer shadow-sm border-none"
-                        style={{
-                          background: theme.btnBg,
-                          color: theme.btnText,
-                          borderRadius: '999px',
-                          padding: '12px 28px',
-                          fontSize: '15px',
-                          fontWeight: 700,
-                          fontFamily: "'GE Dinar One', sans-serif",
-                        }}
-                      >
-                        {isEn ? 'Get Code' : 'إحصل عليه'}
-                      </button>
+                      {/*
+                        An automatic discount has no code to copy — offering
+                        "Get Code" would put its title on the clipboard.
+                      */}
+                      {!v.isAutomatic && (
+                        <button
+                          type="button"
+                          onClick={() => handleCopyCode(v.code)}
+                          className="flex-shrink-0 font-bold transition-all hover:opacity-90 active:scale-95 cursor-pointer shadow-sm border-none"
+                          style={{
+                            background: theme.btnBg,
+                            color: theme.btnText,
+                            borderRadius: '999px',
+                            padding: '12px 28px',
+                            fontSize: '15px',
+                            fontWeight: 700,
+                            fontFamily: "'GE Dinar One', sans-serif",
+                          }}
+                        >
+                          {isEn ? 'Get Code' : 'إحصل عليه'}
+                        </button>
+                      )}
 
                       <div style={{textAlign: isEn ? 'right' : 'right'}}>
                         <div
@@ -1420,18 +1487,30 @@ export default function VouchersPage() {
                             fontFamily: "'GE Dinar One', sans-serif",
                           }}
                         >
-                          {isEn ? 'Code' : 'الرمز'}
+                          {v.isAutomatic
+                            ? isEn
+                              ? 'No code needed'
+                              : 'بدون رمز'
+                            : isEn
+                              ? 'Code'
+                              : 'الرمز'}
                         </div>
                         <div
                           style={{
-                            fontSize: '19px',
+                            fontSize: v.isAutomatic ? '15px' : '19px',
                             fontWeight: 700,
                             color: theme.textPrimary,
-                            fontFamily: 'monospace',
+                            fontFamily: v.isAutomatic
+                              ? "'GE Dinar One', sans-serif"
+                              : 'monospace',
                             letterSpacing: '0.03em',
                           }}
                         >
-                          {v.code}
+                          {v.isAutomatic
+                            ? isEn
+                              ? 'Applies at checkout'
+                              : 'يُطبق عند الدفع'
+                            : v.code}
                         </div>
                       </div>
                     </div>
@@ -1646,7 +1725,11 @@ export default function VouchersPage() {
                                   "'EnglishDigits', 'GE Dinar One', 'GE SS Two', sans-serif",
                               }}
                             >
-                              {v.code}
+                              {v.isAutomatic
+                                ? isEn
+                                  ? 'Applied automatically'
+                                  : 'يُطبق تلقائياً'
+                                : v.code}
                             </p>
                             <span
                               className="text-[#7D7D7D] font-medium text-[16px]"
@@ -1683,28 +1766,46 @@ export default function VouchersPage() {
                                   ? 'Expired'
                                   : 'منتهية'}
                           </span>
-                          {isActiveState && (
-                            <button
-                              type="button"
-                              disabled={cartFetcher.state !== 'idle'}
-                              onClick={() => applyCodeToCart(v.code)}
-                              className="hover:opacity-90 transition-all shadow-sm active:scale-95 border-none cursor-pointer disabled:opacity-50 text-white font-bold text-[16px] rounded-[24px] px-5 py-3 h-[48px] w-[148px] flex items-center justify-center"
-                              style={{
-                                background: '#234745',
-                                fontFamily:
-                                  "'GE Dinar One', 'GE SS Two', sans-serif",
-                              }}
-                            >
-                              {cartFetcher.state !== 'idle' &&
-                              lastAppliedCode === v.code
-                                ? isEn
-                                  ? 'Applying...'
-                                  : 'جاري التطبيق...'
-                                : isEn
-                                  ? 'Use Now'
-                                  : 'إستخدم الان'}
-                            </button>
-                          )}
+                          {/*
+                            No "Use Now" for an automatic discount: there is no
+                            code to apply, and the button used to send the
+                            discount's title to the cart, which rejected it.
+                          */}
+                          {isActiveState &&
+                            (v.isAutomatic ? (
+                              <span
+                                className="text-[#234745] font-medium text-[14px] text-center leading-snug w-[148px]"
+                                style={{
+                                  fontFamily:
+                                    "'GE Dinar One', 'GE SS Two', sans-serif",
+                                }}
+                              >
+                                {isEn
+                                  ? 'Applies at checkout'
+                                  : 'يُطبق عند الدفع'}
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                disabled={cartFetcher.state !== 'idle'}
+                                onClick={() => applyCodeToCart(v.code)}
+                                className="hover:opacity-90 transition-all shadow-sm active:scale-95 border-none cursor-pointer disabled:opacity-50 text-white font-bold text-[16px] rounded-[24px] px-5 py-3 h-[48px] w-[148px] flex items-center justify-center"
+                                style={{
+                                  background: '#234745',
+                                  fontFamily:
+                                    "'GE Dinar One', 'GE SS Two', sans-serif",
+                                }}
+                              >
+                                {cartFetcher.state !== 'idle' &&
+                                lastAppliedCode === v.code
+                                  ? isEn
+                                    ? 'Applying...'
+                                    : 'جاري التطبيق...'
+                                  : isEn
+                                    ? 'Use Now'
+                                    : 'إستخدم الان'}
+                              </button>
+                            ))}
                         </div>
                       </div>
 
@@ -1737,7 +1838,11 @@ export default function VouchersPage() {
                               {toEnglishDigits(isEn ? v.discountDisplayEn : v.discountDisplayAr)}
                             </h4>
                             <p className="text-[#7D7D7D] font-en uppercase text-[12px] font-medium m-0 tracking-wider">
-                              {v.subtitleEn || v.code || 'SWEETS'}
+                              {v.isAutomatic
+                                ? isEn
+                                  ? 'APPLIED AUTOMATICALLY'
+                                  : 'يُطبق تلقائياً'
+                                : v.subtitleEn || v.code || 'SWEETS'}
                             </p>
                             <span
                               className="text-[#A0B2B0] text-[12.5px] font-medium"
@@ -1767,21 +1872,31 @@ export default function VouchersPage() {
                         </div>
 
                         {/* Action Button (Full-width, only if active) */}
-                        {isActiveState && (
-                          <button
-                            type="button"
-                            disabled={cartFetcher.state !== 'idle'}
-                            onClick={() => applyCodeToCart(v.code)}
-                            className="w-full h-[46px] rounded-full bg-[#234745] hover:bg-[#1A3533] text-white font-bold text-[15px] flex items-center justify-center transition-all shadow-sm active:scale-98 disabled:opacity-50 cursor-pointer border-none mt-auto"
-                            style={{
-                              fontFamily: "'GE Dinar One', 'GE SS Two', sans-serif",
-                            }}
-                          >
-                            {cartFetcher.state !== 'idle' && lastAppliedCode === v.code
-                              ? (isEn ? 'Applying...' : 'جاري التطبيق...')
-                              : (isEn ? 'Use Now' : 'إستخدم الان')}
-                          </button>
-                        )}
+                        {isActiveState &&
+                          (v.isAutomatic ? (
+                            <div
+                              className="w-full h-[46px] rounded-full bg-[#F3F7F6] text-[#234745] font-medium text-[14px] flex items-center justify-center mt-auto text-center px-3"
+                              style={{
+                                fontFamily: "'GE Dinar One', 'GE SS Two', sans-serif",
+                              }}
+                            >
+                              {isEn ? 'Applies at checkout' : 'يُطبق عند الدفع'}
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              disabled={cartFetcher.state !== 'idle'}
+                              onClick={() => applyCodeToCart(v.code)}
+                              className="w-full h-[46px] rounded-full bg-[#234745] hover:bg-[#1A3533] text-white font-bold text-[15px] flex items-center justify-center transition-all shadow-sm active:scale-98 disabled:opacity-50 cursor-pointer border-none mt-auto"
+                              style={{
+                                fontFamily: "'GE Dinar One', 'GE SS Two', sans-serif",
+                              }}
+                            >
+                              {cartFetcher.state !== 'idle' && lastAppliedCode === v.code
+                                ? (isEn ? 'Applying...' : 'جاري التطبيق...')
+                                : (isEn ? 'Use Now' : 'إستخدم الان')}
+                            </button>
+                          ))}
                       </div>
                     </div>
                   );

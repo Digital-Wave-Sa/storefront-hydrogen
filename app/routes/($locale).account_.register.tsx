@@ -19,7 +19,7 @@ import {
 import {LogoSplash} from '~/components/LogoSplash';
 import {SaadeddinApi} from '~/lib/saadeddin-api.server';
 import {derivePassword} from '~/lib/auth.server';
-import {validatePhoneNumber, sanitizePhoneInput} from '~/lib/phone-validation';
+import {validatePhoneNumber, sanitizePhoneInput, formatPhoneForDisplay} from '~/lib/phone-validation';
 import {COUNTRY_CODES, parsePhoneCountry} from '~/lib/country-codes';
 import {useIsEn} from '~/lib/i18n';
 import {
@@ -1876,7 +1876,7 @@ export default function Register() {
                           : 'أرسلنا رمز التحقق إلى'}
                       </span>
                       <span className="font-bold text-[#171717]" dir="ltr">
-                        {formData.countryCode} {formData.phone}
+                        {formatPhoneForDisplay(formData.phone, formData.countryCode)}
                       </span>
                       <button
                         type="button"

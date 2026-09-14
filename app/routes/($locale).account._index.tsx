@@ -506,7 +506,7 @@ export default function AccountDashboard() {
                    * different thing here than in the orders list. Both now come
                    * from the shared helpers in that route.
                    */
-                  const titles = getOrderTitles(lineItemNodes);
+                  const titles = getOrderTitles(lineItemNodes, isEn);
                   const dateNode = formatOrderDate(
                     (lastOrder as any).processedAt,
                     isEn,

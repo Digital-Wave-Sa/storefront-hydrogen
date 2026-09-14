@@ -24,6 +24,7 @@ import {Button} from '~/components/layout/Button';
 import {
   isCustomCakeOrder,
   CUSTOM_CAKE_IMAGE_URL,
+  localizeCakeLineTitle,
 } from '~/lib/cake-order';
 import {resolveOrderStatus} from '~/lib/order-status';
 
@@ -98,14 +99,30 @@ export function checkIsPickupOrder(order: any): boolean {
  * Exported so the account dashboard's last-order card names an order exactly
  * the way the orders list does — the two used to disagree.
  */
-export function getOrderTitles(lineItems: any[]): string {
+export function getOrderTitles(lineItems: any[], isEn = true): string {
   const items = lineItems || [];
   // Prefer the live, translated product title over the line item's title,
   // which is an English snapshot taken at purchase time.
   const displayTitle = (item: any) => {
     const productTitle = item?.variant?.product?.title;
-    if (productTitle && productTitle.trim()) return productTitle;
-    return item?.title || '';
+    const chosen =
+      productTitle && productTitle.trim() ? productTitle : item?.title || '';
+
+    /**
+     * Localised LAST, on whatever title won above — not only on the fallback
+     * branch.
+     *
+     * A cake line has no variant, so `mapAdminOrder` fills its
+     * `variant.product.title` from the line's own title (see that function).
+     * The cake's Arabic name therefore arrives here looking like a resolved
+     * product name and takes the first branch, which is why translating only
+     * the fallback left «طلبية خاصة فئة 570 ريال» on /en.
+     *
+     * Running it over the final choice is safe: `localizeCakeLineTitle`
+     * returns anything it does not recognise untouched, so a real product
+     * name passes through whichever branch produced it.
+     */
+    return localizeCakeLineTitle(chosen, isEn);
   };
   return (
     items.slice(0, 3).map(displayTitle).filter(Boolean).join(' • ') +
@@ -1099,7 +1116,7 @@ function OrderCard({order, isEn}: {order: OrderItemFragment; isEn: boolean}) {
 
   const dateNode = formatOrderDate(order.processedAt, isEn);
 
-  const titles = getOrderTitles(lineItems);
+  const titles = getOrderTitles(lineItems, isEn);
 
   const reorderLines = lineItems
     .map((item: any) => {

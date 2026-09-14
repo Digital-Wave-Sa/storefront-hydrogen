@@ -59,6 +59,28 @@ export function sanitizePhoneInput(rawInput: string, countryCode: string = '+966
   return digits.slice(0, 15);
 }
 
+/**
+ * The number as it should be SHOWN next to its country code.
+ *
+ * The input accepts the local spelling with its trunk zero (0512345678), and
+ * the OTP screens printed that raw value straight after the code, giving
+ * "+966 0512345678". Once the +966 is shown the 0 is not part of the number —
+ * the canonical form is "+966 512345678". This returns the national digits
+ * the validator settled on (the same ones the OTP was actually sent to); if
+ * the value does not validate it only drops a leading 0 and leaves the rest.
+ */
+export function formatPhoneForDisplay(
+  rawPhone: string,
+  countryCode: string = '+966',
+): string {
+  const result = validatePhoneNumber(rawPhone || '', countryCode);
+  if (result.isValid && result.cleanLocalPhone) {
+    return `${countryCode} ${result.cleanLocalPhone}`;
+  }
+  const digits = String(rawPhone || '').replace(/\D/g, '').replace(/^0/, '');
+  return `${countryCode} ${digits}`.trim();
+}
+
 export function validatePhoneNumber(
   rawPhone: string,
   countryCode: string = '+966',

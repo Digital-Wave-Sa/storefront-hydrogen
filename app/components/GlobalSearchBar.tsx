@@ -96,14 +96,31 @@ export function GlobalSearchBar({ locale, isMobile }: { locale?: string, isMobil
     return () => clearTimeout(timer);
   }, [query]);
 
-  // Submit search query when typed
+  /**
+   * One request per PAUSE in typing, not one per keystroke.
+   *
+   * This fired `fetcher.submit` on every character. Each submit is a real
+   * round trip to the predictive-search route, and each of those can have to
+   * wait on the catalog index — so typing four letters queued four server
+   * requests, every one of them re-rendering this dropdown as its state
+   * changed. On a dev server that is enough to make the input itself feel
+   * stuck: the keystrokes land, but React is busy re-rendering behind them.
+   *
+   * A 300ms debounce collapses a burst of typing into a single request, and
+   * the two-character minimum keeps a single letter — which matches most of
+   * the catalog and tells the shopper nothing — from asking at all.
+   */
   useEffect(() => {
-    if (!query.trim()) return;
+    const term = query.trim();
+    if (term.length < 2) return;
     const searchEndpoint = isEn ? "/en/predictive-search" : "/predictive-search";
-    fetcher.submit(
-      { q: query, predictive: 'true' },
-      { method: 'get', action: searchEndpoint }
-    );
+    const timer = setTimeout(() => {
+      fetcher.submit(
+        { q: term, predictive: 'true' },
+        { method: 'get', action: searchEndpoint }
+      );
+    }, 300);
+    return () => clearTimeout(timer);
   }, [query, isEn]);
 
   // Click outside listener

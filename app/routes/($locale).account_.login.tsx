@@ -18,7 +18,7 @@ import {
 import {LogoSplash} from '~/components/LogoSplash';
 import {SaadeddinApi} from '~/lib/saadeddin-api.server';
 import {derivePassword} from '~/lib/auth.server';
-import {validatePhoneNumber, sanitizePhoneInput} from '~/lib/phone-validation';
+import {validatePhoneNumber, sanitizePhoneInput, formatPhoneForDisplay} from '~/lib/phone-validation';
 import {COUNTRY_CODES, parsePhoneCountry} from '~/lib/country-codes';
 import {useIsEn} from '~/lib/i18n';
 import {
@@ -1382,7 +1382,7 @@ export default function Login() {
                             : 'أرسلنا رمز التحقق إلى'}
                         </span>
                         <span className="font-bold text-[#171717]" dir="ltr">
-                          {countryCode} {phone}
+                          {formatPhoneForDisplay(phone, countryCode)}
                         </span>
                         <button
                           type="button"

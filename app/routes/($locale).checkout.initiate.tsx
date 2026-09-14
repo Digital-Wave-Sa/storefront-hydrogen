@@ -251,6 +251,54 @@ async function processCheckoutInitiate({request, context}: ActionFunctionArgs) {
     ? customerAccessToken
     : (customerAccessToken as any)?.accessToken;
 
+  /**
+   * A token Shopify can actually use — minted here when the session has none.
+   *
+   * A phone-OTP sign-in mints a real Storefront token at login by logging in
+   * with the derived password. When that mutation fails — the customer was
+   * created with a different password, SESSION_SECRET moved, Shopify hiccuped
+   * — login falls back to a `session-<id>` placeholder that means nothing to
+   * Shopify. Every guard below then skipped the token, and the shopper reached
+   * checkout as a guest: not recognised, nothing pre-filled, and the order not
+   * attached to their account. That is "checkout doesn't remember me".
+   *
+   * Nothing about that is permanent. The password is DERIVED, not stored, and
+   * `remintCustomerAccessToken` rebuilds it from the session's own identity
+   * (`loginOtpPhone` + `loginCustomerId`, with the real email read from
+   * Admin). It was already being used to recover a stale token that Shopify
+   * refused; the placeholder case simply never asked it. So ask.
+   *
+   * The mint also writes the fresh token back to the session, and this route
+   * commits the session on its successful redirect, so the next checkout
+   * starts with a real token and does not pay for this again.
+   *
+   * Failure is not fatal: `null` leaves checkout exactly as it behaves today.
+   */
+  let shopifyToken: string | null =
+    tokenString && !String(tokenString).startsWith('session-')
+      ? String(tokenString)
+      : null;
+
+  if (!shopifyToken) {
+    const signedInCustomerId = await session.get('loginCustomerId');
+    if (loginPhone || signedInCustomerId) {
+      try {
+        const {remintCustomerAccessToken} = await import('~/lib/auth.server');
+        shopifyToken = await remintCustomerAccessToken(context);
+        console.log(
+          shopifyToken
+            ? '[CHECKOUT DIAGNOSTIC] Minted a Shopify token for an OTP sign-in that had only a placeholder.'
+            : '[CHECKOUT DIAGNOSTIC] No Shopify token could be minted; checkout will open as a guest.',
+        );
+      } catch (mintErr: any) {
+        console.warn(
+          '[CHECKOUT DIAGNOSTIC] Token mint threw:',
+          mintErr?.message || mintErr,
+        );
+      }
+    }
+  }
+
   const buyerIdentity: any = {};
 
   if (loginEmail && typeof loginEmail === 'string' && !loginEmail.endsWith('@saadeddin.placeholder')) {
@@ -340,7 +388,7 @@ async function processCheckoutInitiate({request, context}: ActionFunctionArgs) {
    */
   if (sessionFulfillment === 'delivery' && selectedAddressName) {
     try {
-      if (tokenString && !tokenString.startsWith('session-')) {
+      if (shopifyToken) {
         const {customer} = await context.storefront.query(
           `#graphql
           query GetCustomerAddressesForCheckout($customerAccessToken: String!) {
@@ -362,7 +410,7 @@ async function processCheckoutInitiate({request, context}: ActionFunctionArgs) {
             }
           }`,
           {
-            variables: {customerAccessToken: tokenString},
+            variables: {customerAccessToken: shopifyToken},
             cache: context.storefront.CacheNone(),
           },
         );
@@ -610,10 +658,10 @@ async function processCheckoutInitiate({request, context}: ActionFunctionArgs) {
    * placeholder for an OTP sign-in that never minted a real Shopify token, and
    * mean nothing to Shopify.
    */
-  if (tokenString && !tokenString.startsWith('session-')) {
+  if (shopifyToken) {
     try {
       const assocResult: any = await context.cart.updateBuyerIdentity({
-        customerAccessToken: tokenString,
+        customerAccessToken: shopifyToken,
       } as any);
 
       const assocErrors =
@@ -697,8 +745,8 @@ async function processCheckoutInitiate({request, context}: ActionFunctionArgs) {
     console.log(
       '[CHECKOUT DIAGNOSTIC] No real customer token to associate:',
       tokenString
-        ? `placeholder (${String(tokenString).slice(0, 12)}…)`
-        : 'none in session',
+        ? `session held a placeholder (${String(tokenString).slice(0, 12)}…) and re-minting did not produce one`
+        : 'none in session, and re-minting did not produce one',
     );
   }
 

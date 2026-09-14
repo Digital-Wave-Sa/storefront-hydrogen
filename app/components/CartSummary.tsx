@@ -2039,7 +2039,7 @@ function PointsRedemptionError({message}: {message?: string | null}) {
   return (
     <p
       role="alert"
-      className="text-[11px] font-normal leading-relaxed text-start text-[#A63D2B] bg-[#FFF6F4] p-2.5 rounded-lg border border-[#F3D3CC] mt-1"
+      className="text-[11px] font-normal leading-relaxed text-start text-[#A63D2B] bg-[#FFF6F4] px-4 py-3 rounded-xl border border-[#F3D3CC] mt-2"
     >
       {message}
     </p>

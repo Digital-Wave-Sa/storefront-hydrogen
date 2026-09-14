@@ -2405,7 +2405,18 @@ function CustomPointsForm({ availablePoints, isEn }: { availablePoints: number; 
         <div className={`text-[11px] font-bold flex items-center gap-1 px-1 ${isValid ? 'text-emerald-700' : 'text-red-500'}`}>
           {isValid ? (
             <span>
-              {isEn ? `Equivalent discount: -${discountVal} SAR` : `قيمة الخصم المستحقة: -${discountVal} ر.س`}
+              {/*
+                No minus: the line already says "discount".
+
+                "Equivalent discount: -6.00 SAR" states the deduction twice,
+                once in the label and once in the sign — and a leading "-"
+                inside Arabic text is bidi-reordered, so it does not reliably
+                sit where the reader expects. The rule across this panel is
+                that a deduction is signalled ONCE: by the word where there is
+                one, by the sign where there is not (the quick-redeem button's
+                bare "(-77.00 SAR)" keeps its minus for that reason).
+              */}
+              {isEn ? `Equivalent discount: ${discountVal} SAR` : `قيمة الخصم المستحقة: ${discountVal} ر.س`}
             </span>
           ) : numVal < MIN_REDEEMABLE_POINTS ? (
             <span>

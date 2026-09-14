@@ -30,6 +30,17 @@ export default {
 
       const response = await handleRequest(request);
 
+      /**
+       * Renew a signed-in session on use, before the commit below.
+       *
+       * The cookie's 30 days only move forward when a Set-Cookie goes out, and
+       * that happens only when the session was written to. Reading is not a
+       * write, so a shopper who just browsed was counting down from whenever
+       * they last changed something. `touch()` writes at most once a day and
+       * does nothing for anonymous visitors. See app/lib/session.ts.
+       */
+      (hydrogenContext.session as any).touch?.();
+
       if (hydrogenContext.session.isPending) {
         response.headers.set(
           'Set-Cookie',

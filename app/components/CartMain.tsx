@@ -11,6 +11,7 @@ import patternBg from '/images/second-bg-pattern.svg';
 import { useAdminLocations } from '~/lib/locations-meta';
 import { isDigitalOnlyCart as cartIsDigitalOnly } from '~/lib/digital-lines';
 import { quotedDeliveryFee } from '~/lib/delivery-defaults';
+import { branchDisplayNameFor } from '~/lib/branch-name';
 
 export type CartLayout = 'page' | 'aside';
 const CartAnalyticsView = Analytics.CartView as any;
@@ -297,8 +298,8 @@ export function CartMain({ layout, cart: originalCart }: CartMainProps) {
                     </p>
                     <p className="text-[12px] text-[#8C6418] font-medium mt-0.5">
                       {isEn
-                        ? `Free delivery unlocked for ${currentBranch?.name || 'your branch'} (${branchPromo.promoStart12h} – ${branchPromo.promoEnd12h})`
-                        : `توصيل مجاني مفعّل لـ ${currentBranch?.name || 'فرعك'} (من ${branchPromo.promoStart12h} إلى ${branchPromo.promoEnd12h})`}
+                        ? `Free delivery unlocked for ${branchDisplayNameFor(currentBranch, isEn) || 'your branch'} (${branchPromo.promoStart12h} – ${branchPromo.promoEnd12h})`
+                        : `توصيل مجاني مفعّل لـ ${branchDisplayNameFor(currentBranch, isEn) || 'فرعك'} (من ${branchPromo.promoStart12h} إلى ${branchPromo.promoEnd12h})`}
                     </p>
                   </div>
                 </div>

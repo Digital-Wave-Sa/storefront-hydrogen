@@ -298,9 +298,41 @@ async function adminDeleteAddress({
       },
     },
   );
-  if (!res.ok && res.status !== 404) {
-    const json = (await res.json()) as any;
-    throw new Error(json?.errors ? JSON.stringify(json.errors) : 'Failed to delete address');
+
+  /**
+   * Gone is gone. A 404 here means Shopify has no such address on this
+   * customer, which is the state the caller asked for.
+   *
+   * It is logged rather than passed over in silence, because the other way
+   * to get a 404 is a malformed URL -- a customer id that is really a gid,
+   * an address id that kept its `?model_name=` suffix -- and that failure
+   * would otherwise look exactly like success.
+   */
+  if (res.status === 404) {
+    console.warn(
+      `[Addresses] Admin delete returned 404 for customer ${customerId}, address ${numAddrId} — treating as already deleted.`,
+    );
+    return true;
+  }
+
+  if (!res.ok) {
+    const json = (await res.json().catch(() => null)) as any;
+    const detail = json?.errors ? JSON.stringify(json.errors) : '';
+
+    /**
+     * Shopify refuses to delete a customer's default address, and says so
+     * with a 422. That is a rule, not a fault, and the shopper can clear it
+     * themselves by making another address the default first -- so it is
+     * given its own code and its own sentence instead of arriving as a raw
+     * API string in a red box.
+     */
+    if (res.status === 422 || /default/i.test(detail)) {
+      const err: any = new Error(detail || 'Cannot delete the default address');
+      err.code = 'DEFAULT_ADDRESS';
+      throw err;
+    }
+
+    throw new Error(detail || 'Failed to delete address');
   }
   return true;
 }
@@ -551,19 +583,59 @@ export async function action({request, context}: ActionFunctionArgs) {
                 id: targetGid as any,
               },
             });
-            if (!res?.customerAddressDelete?.customerUserErrors?.length) {
+
+            /**
+             * Success is the id coming back — NOT the absence of a complaint.
+             *
+             * This used to accept `!customerUserErrors?.length`. When the
+             * mutation fails outright, `customerAddressDelete` is null, so
+             * that expression reads `undefined?.length` -> undefined ->
+             * `!undefined` -> true: a null payload was indistinguishable
+             * from a clean delete. The route then returned success, the
+             * dialog closed, the row vanished locally, and the address was
+             * still on Shopify — back on the next load.
+             *
+             * This shop runs New Customer Accounts, where a classic
+             * `customerAccessToken` is not a valid credential, so this
+             * mutation fails on EVERY call and every delete took that false
+             * path. The Admin fallback below — the one that actually works —
+             * was never reached.
+             *
+             * `deletedCustomerAddressId` is Shopify confirming what it
+             * removed, which is the same shape of check the create path has
+             * always made with `customerAddress`.
+             */
+            const payload = res?.customerAddressDelete;
+            if (
+              payload?.deletedCustomerAddressId &&
+              !payload?.customerUserErrors?.length
+            ) {
               return data({error: null, deletedAddress: addressId});
             }
           } catch (_) {}
         }
 
         if (customerNumericId && numericAddrId) {
-          await adminDeleteAddress({
-            customerId: customerNumericId,
-            addressId: numericAddrId,
-            env,
-          });
-          return data({error: null, deletedAddress: addressId});
+          try {
+            await adminDeleteAddress({
+              customerId: customerNumericId,
+              addressId: numericAddrId,
+              env,
+            });
+            return data({error: null, deletedAddress: addressId});
+          } catch (err: any) {
+            if (err?.code === 'DEFAULT_ADDRESS') {
+              return data(
+                {
+                  error: actionIsEn
+                    ? 'This is your default address. Set another address as default first, then delete this one.'
+                    : 'هذا هو عنوانك الافتراضي. يرجى تعيين عنوان آخر كافتراضي أولاً، ثم حذف هذا العنوان.',
+                },
+                {status: 409},
+              );
+            }
+            throw err;
+          }
         }
 
         /**
@@ -888,6 +960,23 @@ function DeleteConfirmationModal({
     }
   }, [fetcher.data, addressId, onDeleted, onClose]);
 
+  /**
+   * A refusal has to be readable, not just non-fatal.
+   *
+   * The effect above closes the dialog on success and leaves it open on
+   * failure — but nothing rendered the reason, so a delete Shopify had
+   * refused looked identical to a button that did nothing at all. The route
+   * returns a plain sentence for delete failures (the default-address rule
+   * is the one a shopper can act on); the object shape is read too, because
+   * the shared error handler wraps thrown errors as `{form: message}`.
+   */
+  const deleteError =
+    typeof (fetcher.data as any)?.error === 'string'
+      ? ((fetcher.data as any).error as string)
+      : (fetcher.data as any)?.error?.form ||
+        (fetcher.data as any)?.error?.[addressId] ||
+        null;
+
   return (
     <div
       className="fixed inset-0 z-[1001] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
@@ -924,6 +1013,15 @@ function DeleteConfirmationModal({
             ? 'Are you sure you want to remove this address? This action cannot be undone.'
             : 'هل أنت متأكد من رغبتك في حذف هذا العنوان؟ لا يمكن التراجع عن هذا الإجراء.'}
         </p>
+
+        {deleteError && (
+          <p
+            role="alert"
+            className="text-[13px] font-normal leading-relaxed text-start text-[#A63D2B] bg-[#FFF6F4] px-4 py-3 rounded-xl border border-[#F3D3CC] mb-5"
+          >
+            {deleteError}
+          </p>
+        )}
 
         <div className="flex gap-3">
           <fetcher.Form method="DELETE" className="flex-1">

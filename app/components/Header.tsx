@@ -10,7 +10,6 @@ import { useWishlist } from '~/context/WishlistContext';
 import { fetchAdminLocations } from '~/lib/locations-meta';
 import { stripCoordsMarker } from '~/lib/address-coords';
 import { trackSelectBranch } from '~/lib/analytics-events';
-import { STANDARD_DELIVERY_FEE } from '~/lib/delivery-defaults';
 
 /**
  * Header count badges.
@@ -47,14 +46,14 @@ export function Header({ header, isLoggedIn, cart, locations, customer, locale, 
   const fetcher = useFetcher();
   const locationFetcher = useFetcher();
   const revalidator = useRevalidator();
-  // The live standard delivery fee from Shopify (via root), used as the
-  // pre-quote fallback when a branch carries no fee of its own. Falls back to
-  // the constant only if root could not supply it.
-  const headerRootData = useRouteLoaderData('root') as any;
-  const standardDeliveryFee =
-    typeof headerRootData?.standardDeliveryFee === 'number'
-      ? headerRootData.standardDeliveryFee
-      : STANDARD_DELIVERY_FEE;
+  /**
+   * The standard-rate lookup is gone with the fee it fed.
+   *
+   * It existed only as the pre-quote fallback for the `Delivery Fee` cart
+   * attribute below, which no longer carries a number at all. The rate itself
+   * still comes from Shopify via root where it is genuinely needed — the
+   * free-delivery threshold message in CartSummary.
+   */
 
   /**
    * The branch the shopper just picked, shown before the server confirms it.
@@ -171,25 +170,33 @@ export function Header({ header, isLoggedIn, cart, locations, customer, locale, 
 
     if (type === 'delivery') {
       /**
-       * The pre-quote fallback is the ONE standard fee, not a second number.
+       * No fee is stamped on the cart when a branch is picked. It is CLEARED.
        *
-       * This branch had no fee metafield fell through to a hardcoded 30, while
-       * everywhere else — CartSummary's fallback, the `delivery-defaults`
-       * source of truth — uses STANDARD_DELIVERY_FEE (25), the actual Shopify
-       * قياسي rate. So a branch with no fee, picked from the HEADER, wrote 30
-       * onto the cart, the summary read that 30, and Shopify then charged 25:
-       * the fee shown disagreed with the fee charged, and with the same branch
-       * picked from the cart. Falling back to the shared constant makes the
-       * pre-quote fee identical wherever it is written and matches the charge.
+       * This used to read `custom.delivery_fee` off the branch (via
+       * `deliveryFee` / `baseDeliveryFee` / `delivery_fee`) and fall back to the
+       * standard rate, then write the result here as a number. That was the
+       * metafield entering the cart by a side door: CartSummary no longer reads
+       * the metafield directly, but it would have read this attribute, which is
+       * the same number wearing a different hat.
+       *
+       * It is also a number nobody has agreed to. Shopify prices delivery from
+       * the branch's own local-delivery settings and does not quote anything
+       * until the cart has an address, so at the moment a branch is picked
+       * there is no correct value to write — only a guess that checkout then
+       * contradicts. And the attribute is written ONCE, here, so it stays wrong
+       * for the rest of the session.
+       *
+       * Writing an empty value rather than omitting the key is required:
+       * mergeCartAttributes keeps every key it is not given a new value for, so
+       * omission would leave a stale fee from an earlier selection on the cart.
+       * The ERP and the invoice take delivery off the ORDER's shipping line
+       * (see api.invoice.$id and track-order.$id), which is Shopify's real
+       * charge, so nothing downstream loses anything by this being blank.
+       *
+       * `custom.delivery_fee` keeps its one job: pricing the custom-cake DRAFT
+       * order, which never passes through this cart. See CustomCakeBuilder.
        */
-      const calculatedFee = (typeof branch?.deliveryFee === 'number' && branch.deliveryFee > 0)
-        ? branch.deliveryFee
-        : (typeof branch?.baseDeliveryFee === 'number' && branch.baseDeliveryFee > 0)
-          ? branch.baseDeliveryFee
-          : (typeof branch?.delivery_fee === 'number' && branch.delivery_fee > 0)
-            ? branch.delivery_fee
-            : standardDeliveryFee;
-      attributes.push({ key: 'Delivery Fee', value: calculatedFee.toString() });
+      attributes.push({ key: 'Delivery Fee', value: '' });
     }
 
     if (typeof branch?.freeDeliveryThreshold === 'number' && branch.freeDeliveryThreshold > 0 && branch.freeDeliveryThreshold !== 300) {
@@ -301,10 +308,13 @@ export function Header({ header, isLoggedIn, cart, locations, customer, locale, 
       branchName,
       fulfillmentType: type,
       source: 'header',
-      deliveryFee:
-        type === 'delivery' && typeof branch?.deliveryFee === 'number'
-          ? branch.deliveryFee
-          : null,
+      /**
+       * Null, not the metafield. The fee is genuinely unknown at pick time —
+       * Shopify has not quoted yet — and reporting a storefront guess as
+       * `delivery_fee` would put a number in the analytics that no order was
+       * ever charged.
+       */
+      deliveryFee: null,
     });
 
     locationFetcher.submit(locFormData, { method: 'POST', action: '/api/location-id' });

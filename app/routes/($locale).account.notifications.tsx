@@ -39,18 +39,33 @@ import {findBranchLocation} from '~/lib/stock';
  * English headings on /en. It was never a translation gap; it was a snapshot
  * of the wrong moment.
  *
- * `context.storefront` is built with the request's locale (see
- * `app/lib/context.ts`), so it adds `@inContext(language: EN|AR)` on its own.
- * Asking Shopify for the product by handle therefore returns the title in the
- * language on screen, in both directions, and picks up any later edit or
- * Translate & Adapt change instead of the text frozen at subscribe time.
+ * The locale has to be ASKED FOR. It does not ride along.
+ *
+ * This query used to take only `$handle`, on the belief that a storefront
+ * client built with the request's locale applies it to everything it sends.
+ * It does not: Shopify serves the shop's PRIMARY language unless a request
+ * carries `@inContext`, and this shop's primary language is English. So the
+ * Arabic page asked Shopify for a product and Shopify answered in English --
+ * correctly, because nothing in the request said otherwise. The Arabic titles
+ * were there in Shopify the whole time («فخارية بانوفي آيس كريم» and the
+ * rest); they were simply never requested.
+ *
+ * Declaring `$country`/`$language` and the directive is what every other
+ * locale-aware query here already does (see offer-products.server.ts,
+ * bogo-suggestion.server.ts, root.tsx). The values are passed explicitly at
+ * the call site for the same reason those do it: it is visible, rather than
+ * depending on an injection step to notice the variables.
  *
  * The stored title stays as the fallback: handles can be null, a product can
  * be deleted, and a row with no name at all is worse than one in the wrong
  * language.
  */
 const PRODUCT_BY_HANDLE_QUERY = `#graphql
-  query NotifyProductByHandle($handle: String!) {
+  query NotifyProductByHandle(
+    $handle: String!
+    $country: CountryCode
+    $language: LanguageCode
+  ) @inContext(country: $country, language: $language) {
     product(handle: $handle) {
       handle
       title
@@ -221,7 +236,14 @@ export async function loader({context}: LoaderFunctionArgs) {
         try {
           const res: any = await context.storefront.query(
             PRODUCT_BY_HANDLE_QUERY,
-            {variables: {handle}, cache: context.storefront.CacheShort()},
+            {
+              variables: {
+                handle,
+                country: context.storefront.i18n.country,
+                language: context.storefront.i18n.language,
+              },
+              cache: context.storefront.CacheShort(),
+            },
           );
           return res?.product ? {handle, product: res.product} : null;
         } catch {

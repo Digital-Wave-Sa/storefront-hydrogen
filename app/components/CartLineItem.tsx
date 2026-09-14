@@ -186,7 +186,7 @@ export function CartLineItem({
   // render while root defers it, and left the lookup asking about no branch.
   const branchLocationId =
     resolveBranchLocationId(locations, branchId, branchName) || currentBranch?.id;
-  const {availability} = useBranchAvailability(
+  const {availability, pending: branchStockPending} = useBranchAvailability(
     merchandise?.id ? [merchandise.id] : [],
     branchLocationId,
   );
@@ -219,8 +219,32 @@ export function CartLineItem({
       ? lastVerdictRef.current.verdict
       : null;
 
-  let isOutOfStock =
-    inventoryVerdict !== null
+  /**
+   * On a FRESH MOUNT there is nothing to hold, and that is the gap.
+   *
+   * The held verdict above only helps a re-check inside one mount — the ref
+   * starts empty, so on a page refresh `inventoryVerdict` and `heldVerdict`
+   * are both null and the chain fell straight through to the
+   * `storeAvailability` fallback while the real lookup was still in flight.
+   * That fallback lists only pickup-enabled locations holding stock, so an
+   * absent branch reads as "out of stock" — the line rendered unavailable for
+   * the few hundred milliseconds before the lookup answered, then flipped.
+   *
+   * `pending` distinguishes "the lookup says no" from "the lookup has not
+   * spoken yet". Unresolved is not unavailable, so nothing is claimed until
+   * there is an answer. The same guard is already in ProductItem,
+   * BestSellers, NewArrivals and the product page; the cart was the one place
+   * that still ignored the flag the hook was returning.
+   *
+   * Display only. CartSummary computes its own verdicts for the checkout
+   * gate, so this cannot let a genuinely out-of-stock line through.
+   */
+  const availabilityUnresolved =
+    inventoryVerdict === null && heldVerdict === null && branchStockPending;
+
+  let isOutOfStock = availabilityUnresolved
+    ? false
+    : inventoryVerdict !== null
       ? inventoryVerdict
       : heldVerdict !== null
         ? heldVerdict

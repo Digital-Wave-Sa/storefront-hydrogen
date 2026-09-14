@@ -22,6 +22,7 @@ import {
   STANDARD_FREE_DELIVERY_THRESHOLD,
   quotedDeliveryFee,
 } from '~/lib/delivery-defaults';
+import {branchDisplayNameFor} from '~/lib/branch-name';
 import {
   MIN_REDEEMABLE_POINTS,
   POINT_REDEEM_STEP,
@@ -369,7 +370,6 @@ export function CartSummary({ cart, layout, confirmedCart }: CartSummaryProps) {
             : 0));
   const minOrderValue = isPickup ? 0 : rawMinOrderValue;
   const isMinOrderMet = subtotal >= minOrderValue;
-  const feeMeta = currentBranch?.delivery_fee || currentBranch?.metafields?.find((m: any) => m?.key === 'delivery_fee');
 
   const cartHasFreeShippingCode = cart?.discountCodes?.some((d: any) => d.applicable && (d.code.toLowerCase() === 'freeshipping' || d.code.toLowerCase() === 'free_shipping')) || false;
 
@@ -420,69 +420,36 @@ export function CartSummary({ cart, layout, confirmedCart }: CartSummaryProps) {
   // Free delivery applies if freeshipping code is active, branch promo interval is active, or Shopify quoted zero
   const isFreeDelivery = isPickup || isDigitalOnlyCart || cartHasFreeShippingCode || isBranchPromoFreeDelivery || isThresholdMet;
   
-  const feeAttribute = attributes.find((a: any) => a.key.toLowerCase().trim() === 'delivery fee')?.value;
-  const feeAttrVal = feeAttribute ? parseFloat(feeAttribute) : null;
-  
+  /**
+   * The `Delivery Fee` cart attribute is not read either.
+   *
+   * Header writes it from the same branch metafield, so trusting it here was
+   * the metafield arriving by a second route — and it is written once, when
+   * the branch is picked, so it goes stale the moment Shopify quotes something
+   * different. It is still WRITTEN, because the ERP and the invoice read it;
+   * it is simply not a pricing input for this cart.
+   */
 
   /**
-   * The metafield chain survives as the fallback: Shopify quotes nothing
-   * until the cart has a delivery address, and showing no fee at all in that
-   * window would read as free delivery.
+   * `custom.delivery_fee` is NOT consulted here, and that is deliberate.
+   *
+   * It is a storefront-only number that Shopify has never agreed to: checkout
+   * prices delivery from the branch's local delivery settings, and the two
+   * disagreed every time they were both present — 33 in the cart against 20
+   * charged, then against free, then against an address checkout refused
+   * outright. A fallback that can contradict the charge is worse than no
+   * number at all, because the shopper only discovers it one click later.
+   *
+   * The metafield keeps its one legitimate job: pricing the custom-cake DRAFT
+   * order, which never goes through this cart and where the storefront really
+   * is the pricing authority. See CustomCakeBuilder.
+   *
+   * So the cart has exactly one live source — Shopify's own quote, which
+   * already prefers the branch's LOCAL option — and the shop's قياسي rate as
+   * the placeholder until that quote exists. See `deliveryFee` below.
    */
-  const branchDeliveryFee = (typeof feeAttrVal === 'number' && !isNaN(feeAttrVal) && feeAttrVal > 0)
-    ? feeAttrVal
-    : (feeMeta?.value && parseFloat(feeMeta.value) > 0
-        ? parseFloat(feeMeta.value)
-        : (typeof currentBranch?.delivery_fee === 'number' && currentBranch.delivery_fee > 0
-            ? currentBranch.delivery_fee
-            : (typeof currentBranch?.delivery_fee?.value === 'string' && parseFloat(currentBranch.delivery_fee.value) > 0
-                ? parseFloat(currentBranch.delivery_fee.value)
-                : (typeof currentBranch?.baseDeliveryFee === 'number' && currentBranch.baseDeliveryFee > 0
-                    ? currentBranch.baseDeliveryFee
-                    : (typeof currentBranch?.deliveryFee === 'number' && currentBranch.deliveryFee > 0
-                        ? currentBranch.deliveryFee
-                        : 0)))));
+  const rawDeliveryFee = shopifyDeliveryFee;
 
-  const rawDeliveryFee = shopifyDeliveryFee ?? branchDeliveryFee;
-
-  /**
-   * Zero because it is free, or zero because nobody has told us yet?
-   *
-   * Shopify quotes nothing until the cart has a delivery address, and only 3
-   * of 117 branches carry a `custom.delivery_fee` metafield. So at the other
-   * 114 the fallback chain bottomed out at 0 and the cart printed «رسوم
-   * التوصيل 0.00» — indistinguishable from free delivery, right up until an
-   * address turned it into 25.
-   *
-   * A real zero has a reason: pickup, a digital-only cart, or a free-delivery
-   * rule that actually fired. Without one of those, and with no quote and no
-   * metafield, the honest answer is that the fee is not known yet.
-   *
-   * Local delivery being the real source of these fees is what makes this
-   * safe to say: once the shopper has an address, Shopify answers, and the
-   * number the cart shows is the number checkout charges.
-   */
-  const isDeliveryFeeUnknown =
-    !isFreeDelivery &&
-    !isPickup &&
-    !isDigitalOnlyCart &&
-    shopifyDeliveryFee === null &&
-    !(branchDeliveryFee > 0);
-
-  /**
-   * The standard rate stands in until Shopify quotes.
-   *
-   * A branch with no local delivery of its own IS charged the standard rate,
-   * so this is not really a guess — it is what checkout asks for unless a
-   * branch fee overrides it. The only branches it can under-quote are ones
-   * charging more than the standard AND carrying no `custom.delivery_fee`
-   * metafield; those correct upward the moment an address is entered.
-   *
-   * The free-over-320 condition on that rate is honoured too. Promising 25 to
-   * a shopper whose order already qualifies for free delivery would be wrong
-   * in the direction that costs them money, which is the one direction worth
-   * being careful about.
-   */
   /**
    * The standard rate and threshold come from Shopify via root, not constants.
    *
@@ -506,11 +473,28 @@ export function CartSummary({ cart, layout, confirmedCart }: CartSummaryProps) {
       ? 0
       : liveStandardFee;
 
-  // A cart with nothing to ship carries no delivery fee — Shopify won't charge
-  // one, so the cart must not either.
+  /**
+   * Local delivery when Shopify quotes it; قياسي when it does not.
+   *
+   * `quotedDeliveryFee` already picks the LOCAL option ahead of everything
+   * else in a group, so a branch with local delivery shows ITS fee and a
+   * branch without it shows the قياسي rate Shopify returns in the same group.
+   * That ordering is the whole answer whenever there is a quote at all.
+   *
+   * `standardFallbackFee` covers only the window before the cart has an
+   * address, when Shopify has not been asked yet. It is the shop's own قياسي
+   * rate read live from root — NOT the branch's `custom.delivery_fee`, which
+   * is what used to make the cart say 33 while checkout charged 20. A
+   * shop-level rate cannot disagree with a branch it does not describe: the
+   * worst it can be is superseded, and the moment an address lands the quote
+   * replaces it.
+   *
+   * Printing it also beats printing «0.00», which shoppers read as free
+   * delivery right up until checkout charged them.
+   */
   const deliveryFee = (isFreeDelivery || isPickup || isDigitalOnlyCart || !cartRequiresShipping)
     ? 0
-    : (isDeliveryFeeUnknown ? standardFallbackFee : rawDeliveryFee);
+    : (rawDeliveryFee ?? standardFallbackFee);
 
   const calculatedTotal = Math.max(0, subtotalBeforeDiscounts - otherDiscountDisplay - loyaltyDiscountDisplay - storeCreditDiscountDisplay + deliveryFee);
 
@@ -588,28 +572,15 @@ export function CartSummary({ cart, layout, confirmedCart }: CartSummaryProps) {
         : null);
 
     if (activeNode) {
-      if (isEn) {
-        const enName =
-          activeNode.name ||
-          activeNode.rawName ||
-          activeNode.name_english?.value ||
-          activeNode.name_english ||
-          activeNode.metafields?.find(
-            (m: any) =>
-              m?.key === 'name_english' || m?.key === 'english_name',
-          )?.value;
-        if (enName && String(enName).trim()) return String(enName).trim();
-      } else {
-        const arName =
-          activeNode.nameInArabic ||
-          activeNode.name_in_arabic?.value ||
-          activeNode.name_in_arabic ||
-          activeNode.metafields?.find((m: any) => m?.key === 'name_in_arabic')
-            ?.value;
-        if (arName && String(arName).trim()) return String(arName).trim();
-        const fallbackName = activeNode.name || activeNode.rawName;
-        if (fallbackName && String(fallbackName).trim()) return String(fallbackName).trim();
-      }
+      /**
+       * One rule, shared. This block used to inline its own version of the
+       * lookup, which is why the stale-time-slot notice below could render
+       * «فرع Al Qurayyat» while the branch pill two elements away said
+       * «القريات» -- same location, two readers, one of them unaware of the
+       * `name_in_arabic` metafield. See branchDisplayNameFor.
+       */
+      const resolved = branchDisplayNameFor(activeNode, isEn);
+      if (resolved) return resolved;
     }
 
     const rawVal = String(branch || sessionBranchName || '').trim();
@@ -677,7 +648,7 @@ export function CartSummary({ cart, layout, confirmedCart }: CartSummaryProps) {
   const cartVariantIds = (cart?.lines?.nodes || [])
     .map((l: any) => l.merchandise?.id)
     .filter(Boolean);
-  const {availability: branchStock} = useBranchAvailability(
+  const {availability: branchStock, pending: branchStockPending} = useBranchAvailability(
     cartVariantIds,
     branchLocationId,
   );
@@ -731,6 +702,21 @@ export function CartSummary({ cart, layout, confirmedCart }: CartSummaryProps) {
     if (variantId && stockVerdictsRef.current.has(variantId)) {
       return stockVerdictsRef.current.get(variantId)!;
     }
+
+    /**
+     * A fresh mount has nothing held, so the hold above cannot cover it.
+     *
+     * On a page refresh this map is empty and the lookup has not answered
+     * yet, which sent every line to the `storeAvailability` fallback below.
+     * That fallback lists only pickup-enabled locations holding stock, so an
+     * absent branch reads as out of stock — and here that DISABLES THE
+     * CHECKOUT BUTTON and prints «غير متوفّر» for a moment on a cart that is
+     * perfectly fine.
+     *
+     * While the lookup is genuinely in flight, nothing is claimed. The answer
+     * lands a few hundred milliseconds later and is held from then on.
+     */
+    if (branchStockPending) return false;
 
     return getIsOutOfStockForFulfillment(
       branchLocationId,
@@ -865,8 +851,19 @@ export function CartSummary({ cart, layout, confirmedCart }: CartSummaryProps) {
       newAttributes.push({ key: 'error', value: '' });
     }
 
-    if (type === 'delivery' && typeof branchSelected?.deliveryFee === 'number') {
-      newAttributes.push({ key: 'Delivery Fee', value: branchSelected.deliveryFee.toString() });
+    /**
+     * Cleared, not written — same rule as Header.
+     *
+     * `branchSelected.deliveryFee` is `custom.delivery_fee` off the branch, and
+     * stamping it here put the metafield back on the cart by a second route.
+     * There is no quote yet when a branch is picked, so any number written here
+     * is a guess checkout contradicts, and it is written once and never
+     * corrected. An explicit empty value is needed because mergeCartAttributes
+     * keeps keys it is not given a new value for; omitting it would leave the
+     * previous selection's fee behind.
+     */
+    if (type === 'delivery') {
+      newAttributes.push({ key: 'Delivery Fee', value: '' });
     }
 
     if (typeof branchSelected?.freeDeliveryThreshold === 'number') {
@@ -3428,13 +3425,13 @@ function CartCalendarPicker({
               <div>
                 {isEn ? (
                   <>
-                    Your previous {isPickup ? 'pickup' : 'delivery'} time (<span className="underline">{localizeTimeSlot(droppedStaleSlot, isEn)}</span>) isn&apos;t available at <strong>{currentBranch?.name || 'this branch'}</strong> on this day.
+                    Your previous {isPickup ? 'pickup' : 'delivery'} time (<span className="underline">{localizeTimeSlot(droppedStaleSlot, isEn)}</span>) isn&apos;t available at <strong>{branchDisplayNameFor(currentBranch, isEn) || 'this branch'}</strong> on this day.
                     <br />
                     Hours on this day: <strong>{branchHoursStr}</strong>. Please choose a new time above.
                   </>
                 ) : (
                   <>
-                    وقت {isPickup ? 'الاستلام' : 'التوصيل'} السابق (<span className="underline">{localizeTimeSlot(droppedStaleSlot, isEn)}</span>) غير متاح في فرع <strong>{currentBranch?.name || 'هذا الفرع'}</strong> في هذا اليوم.
+                    وقت {isPickup ? 'الاستلام' : 'التوصيل'} السابق (<span className="underline">{localizeTimeSlot(droppedStaleSlot, isEn)}</span>) غير متاح في فرع <strong>{branchDisplayNameFor(currentBranch, isEn) || 'هذا الفرع'}</strong> في هذا اليوم.
                     <br />
                     ساعات العمل في هذا اليوم: <strong>{branchHoursStr}</strong>. يرجى اختيار وقت جديد أعلاه.
                   </>

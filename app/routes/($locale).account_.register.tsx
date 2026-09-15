@@ -821,7 +821,8 @@ export default function Register() {
   const isEn = useIsEn();
   const actionData = useActionData() as any;
   const navigation = useNavigation();
-  const isLoading = navigation.state === 'submitting';
+  // Whole navigation, including the post-action loader run -- see login.tsx.
+  const isLoading = navigation.state !== 'idle';
 
   const [step, setStep] = useState<'input' | 'otp'>(initialStep);
 

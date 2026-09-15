@@ -7,16 +7,46 @@ export class SaadeddinApi {
     this.token = token;
   }
 
+  /**
+   * How long any single CRM call may take before it is treated as failed.
+   *
+   * There was no limit. `/auth/request-otp` waits on the SMS gateway, and when
+   * that gateway stalled the storefront stalled with it: the login button spun
+   * for as long as the CRM took, with no error and no way to retry. A stalled
+   * send now fails like a failed one -- the caller's existing "could not send
+   * the code, try again" path, with an immediate retry.
+   */
+  private static readonly TIMEOUT_MS = 15_000;
+
   private async api(endpoint: string, opts: RequestInit = {}) {
     const url = `${this.baseUrl}${endpoint}`;
-    const res = await fetch(url, {
-      ...opts,
-      headers: {
-        'Content-Type': 'application/json',
-        ...(this.token ? { Authorization: `Bearer ${this.token}` } : {}),
-        ...(opts.headers || {}),
-      },
-    });
+    let res: Response;
+    try {
+      res = await fetch(url, {
+        ...opts,
+        headers: {
+          'Content-Type': 'application/json',
+          ...(this.token ? { Authorization: `Bearer ${this.token}` } : {}),
+          ...(opts.headers || {}),
+        },
+        signal: opts.signal ?? AbortSignal.timeout(SaadeddinApi.TIMEOUT_MS),
+      });
+    } catch (fetchErr: any) {
+      const timedOut =
+        fetchErr?.name === 'TimeoutError' || fetchErr?.name === 'AbortError';
+      // The endpoint is kept off the message on purpose: the OTP routes
+      // classify errors by wording, and "/auth/verify-otp" in the text would
+      // read as a wrong code and cost the shopper an attempt.
+      const err = new Error(
+        timedOut
+          ? `CRM did not answer within ${SaadeddinApi.TIMEOUT_MS / 1000} seconds`
+          : fetchErr?.message || 'CRM request failed',
+      );
+      (err as any).status = timedOut ? 504 : 0;
+      (err as any).timedOut = timedOut;
+      (err as any).endpoint = endpoint;
+      throw err;
+    }
     
     const data = await (res.json() as Promise<any>).catch(() => ({}));
 

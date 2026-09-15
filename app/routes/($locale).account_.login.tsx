@@ -781,7 +781,19 @@ export default function Login() {
   const location = useLocation();
   const rootData = useRouteLoaderData('root') as any;
   const isEn = useIsEn();
-  const isLoading = navigation.state === 'submitting';
+  /**
+   * Busy for the whole navigation, not just while the action runs.
+   *
+   * React Router goes submitting -> loading -> idle: `loading` is the stretch
+   * after the action has answered, while the redirect is followed and every
+   * loader re-runs (root's customer lookup alone can take seconds). Gating on
+   * `submitting` alone re-enabled the buttons during that stretch, before
+   * anything on screen had changed. A shopper who pressed again aborted the
+   * redirect and sent a second verify for a code the first press had already
+   * consumed -- the CRM answered "no active code", the message flashed, and
+   * the loader then noticed the session from press one and redirected anyway.
+   */
+  const isLoading = navigation.state !== 'idle';
 
   const [step, setStep] = useState<'input' | 'otp'>(initialStep);
   const [phone, setPhone] = useState(initialPhone);

@@ -174,7 +174,8 @@ export default function VerifyPhone() {
     useRef<HTMLInputElement>(null),
   ];
 
-  const isSubmitting = navigation.state === 'submitting';
+  // Whole navigation, including the post-action loader run -- see login.tsx.
+  const isSubmitting = navigation.state !== 'idle';
 
   // Handle step updates and errors from server action
   useEffect(() => {

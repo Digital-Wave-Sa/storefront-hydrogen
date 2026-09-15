@@ -326,14 +326,13 @@ async function loadCriticalData({context}: Route.LoaderArgs) {
     storefront.query(`#graphql
       query GetShopLocationDiscounts {
         shop {
-          locationScope: metafield(namespace: "location", key: "scope") { value }
           locationDiscounts: metafield(namespace: "custom", key: "location_discounts") { value }
           locationDiscountsAlt: metafield(namespace: "location", key: "discounts") { value }
         }
       }
     `, {
       cache: storefront.CacheLong(),
-    }).then(res => res.shop?.locationScope?.value || res.shop?.locationDiscounts?.value || res.shop?.locationDiscountsAlt?.value || null)
+    }).then(res => res.shop?.locationDiscounts?.value || res.shop?.locationDiscountsAlt?.value || null)
       .catch(() => null),
   ]);
 
@@ -436,6 +435,84 @@ function loadDeferredData(
       }
 
       if (adminCust) {
+        /**
+         * Coordinates, which the REST customer above cannot supply.
+         *
+         * Shopify geocodes every address and exposes the result as read-only
+         * `latitude` / `longitude` — but only on the GraphQL MailingAddress.
+         * The REST customer resource has no such fields, so this fallback
+         * returned addresses with no coordinates at all.
+         *
+         * That matters because this fallback is the ONLY path on this shop:
+         * it runs New Customer Accounts, so the Storefront customer query
+         * above always fails. Every signed-in shopper therefore reached
+         * `addressCoords()` with nothing to read, the nearest-branch match in
+         * DeliveryPickupModal skipped its distance loop entirely, and fell
+         * through to matching on city name — where `city` holds a DISTRICT
+         * («الفتح», «الزمرد», «حي الرمال») and every branch's `city` metafield
+         * holds a real city («المدينة المنورة», «جدة», «الرياض»). Those never
+         * match, so the chain ended at "first branch in the list".
+         *
+         * One extra query fills the two missing fields. It is wrapped so that
+         * a failure leaves the addresses exactly as they were — no
+         * coordinates, today's behaviour — rather than losing the customer.
+         */
+        const coordsById = new Map<string, {latitude: number; longitude: number}>();
+        try {
+          const coordsRes = await fetch(
+            `https://${adminDomain}/admin/api/2024-07/graphql.json`,
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-Shopify-Access-Token': adminToken,
+              },
+              body: JSON.stringify({
+                query: `#graphql
+                  query CustomerAddressCoords($id: ID!) {
+                    customer(id: $id) {
+                      addressesV2(first: 30) { nodes { id latitude longitude } }
+                    }
+                  }`,
+                variables: {id: `gid://shopify/Customer/${adminCust.id}`},
+              }),
+              signal: AbortSignal.timeout(5000),
+            },
+          );
+          if (coordsRes.ok) {
+            const coordsJson = (await coordsRes.json()) as any;
+            for (const node of
+              coordsJson?.data?.customer?.addressesV2?.nodes || []) {
+              /**
+               * A MailingAddress id is `gid://…/10799432696041?model_name=…`
+               * while REST gives the bare number. Only the numeric part
+               * identifies the address — see baseAddressId in address-coords.
+               */
+              const numericId = String(node?.id || '')
+                .split('?')[0]
+                .split('/')
+                .pop();
+              if (
+                numericId &&
+                typeof node?.latitude === 'number' &&
+                typeof node?.longitude === 'number'
+              ) {
+                coordsById.set(numericId, {
+                  latitude: node.latitude,
+                  longitude: node.longitude,
+                });
+              }
+            }
+          }
+        } catch (coordsErr) {
+          console.warn(
+            '[ROOT] Address coordinate lookup failed; nearest-branch matching will fall back to city names:',
+            coordsErr,
+          );
+        }
+
+        const coordsFor = (id: any) => coordsById.get(String(id)) || {};
+
         return {
           customer: {
             id: `gid://shopify/Customer/${adminCust.id}`,
@@ -452,7 +529,8 @@ function loadDeferredData(
               city: adminCust.default_address.city,
               phone: adminCust.default_address.phone,
               country: adminCust.default_address.country,
-              zip: adminCust.default_address.zip
+              zip: adminCust.default_address.zip,
+              ...coordsFor(adminCust.default_address.id),
             } : null,
             addresses: {
               nodes: (adminCust.addresses || []).map((addr: any) => ({
@@ -464,7 +542,8 @@ function loadDeferredData(
                 city: addr.city,
                 phone: addr.phone,
                 country: addr.country,
-                zip: addr.zip
+                zip: addr.zip,
+                ...coordsFor(addr.id),
               }))
             }
           }

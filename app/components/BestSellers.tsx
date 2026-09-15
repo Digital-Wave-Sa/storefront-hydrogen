@@ -521,11 +521,26 @@ function BestSellersAddToCart({
         );
     }
 
-    const lines = [{
+    /**
+     * `_groupId` only when there IS a group.
+     *
+     * It was attached to every line, and its value is `useId()` — stable for
+     * one component instance, different across instances. Shopify merges cart
+     * lines only when the merchandise AND the attributes match, so the same
+     * product added from this carousel and from New Arrivals (or from two
+     * different card instances of this one) arrived as TWO lines of quantity
+     * 1 instead of one line of quantity 2.
+     *
+     * The id exists to tie a BOGO give-away to the line that earned it. A
+     * plain line has nothing to tie, so it carries no attributes and merges
+     * with an identical one, which is what a shopper expects when they add the
+     * same cake twice.
+     */
+    const lines: any[] = [{
         merchandiseId: variantId,
         quantity: 1,
         selectedVariant: variant,
-        attributes: [{ key: '_groupId', value: groupId }]
+        ...(isBogo ? { attributes: [{ key: '_groupId', value: groupId }] } : {}),
     }];
 
     if (isBogo) {

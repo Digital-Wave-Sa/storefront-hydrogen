@@ -134,6 +134,56 @@ const steps = [
  * render a coating the bakery cannot make.
  */
 
+/**
+ * A branch's own delivery fee, read fresh from the locations list.
+ *
+ * The fee used to live only in `pickedDeliveryFee`, set when a branch was
+ * chosen THROUGH THIS BUILDER. Change branch anywhere else — the header
+ * picker, another tab, the session restored on reload — and the name updated
+ * while the fee did not: a cake collected from Abha, which has no fee at all,
+ * was charged 33.00, the fee belonging to Anas Ibn Malik. The shopper had
+ * picked that branch earlier in the session and the number simply stayed.
+ *
+ * Money must not be carried in state that only one of several paths resets.
+ * Keyed on the branch id being submitted, this cannot disagree with the branch
+ * on the order — the two are read from the same place at the same moment.
+ *
+ * Returns 0 for a branch with no fee, which is the honest answer: only three
+ * of the 118 locations carry `custom.delivery_fee`.
+ */
+function branchDeliveryFeeFrom(locations: any, branchId?: string | null): number {
+  if (!branchId) return 0;
+
+  const nodes =
+    (locations as any)?.locations?.nodes ||
+    (locations as any)?.nodes ||
+    (Array.isArray(locations) ? locations : []) ||
+    [];
+
+  const branch = nodes.find(
+    (n: any) => String(n?.id || '') === String(branchId),
+  );
+  if (!branch) return 0;
+
+  /** Metafields of this type arrive either bare or JSON-wrapped. */
+  let raw = (branch as any).delivery_fee?.value;
+  if (raw === undefined) {
+    raw = branch.metafields?.find((m: any) => m?.key === 'delivery_fee')?.value;
+  }
+  if (raw === undefined || raw === null || raw === '') return 0;
+
+  let fee = NaN;
+  if (typeof raw === 'string' && raw.trim().startsWith('{')) {
+    try {
+      fee = parseFloat((JSON.parse(raw) as any)?.value);
+    } catch (e) {}
+  } else {
+    fee = parseFloat(raw);
+  }
+
+  return Number.isFinite(fee) && fee > 0 ? fee : 0;
+}
+
 export default function CustomCakeBuilder({
   cakeAttributes = [],
   toppingDesigns = [],
@@ -336,33 +386,8 @@ export default function CustomCakeBuilder({
             (Array.isArray(locations) ? locations : []) ||
             [];
 
-          const branch = nodes.find(
-            (n: any) => String(n?.id || '') === String(selectedBranchId),
-          );
-
-          if (branch) {
-            let raw = (branch as any).delivery_fee?.value;
-            if (raw === undefined) {
-              raw = branch.metafields?.find(
-                (m: any) => m?.key === 'delivery_fee',
-              )?.value;
-            }
-
-            /** Metafields of this type arrive either bare or JSON-wrapped. */
-            let fee = 0;
-            if (raw !== undefined && raw !== null && raw !== '') {
-              if (typeof raw === 'string' && raw.trim().startsWith('{')) {
-                try {
-                  const parsed = JSON.parse(raw) as any;
-                  fee = parseFloat(parsed?.value);
-                } catch (e) {}
-              } else {
-                fee = parseFloat(raw);
-              }
-            }
-
-            if (!cancelled && !isNaN(fee) && fee > 0) setPickedDeliveryFee(fee);
-          }
+          const fee = branchDeliveryFeeFrom(nodes, selectedBranchId);
+          if (!cancelled && fee > 0) setPickedDeliveryFee(fee);
         }
 
         /**
@@ -959,7 +984,7 @@ export default function CustomCakeBuilder({
    * used to say. Step 2 is the one step whose choice is invisible from the
    * outside: swapping شوكولاتة for فراولة changes nothing on an uncut cake, so
    * a shopper was picking a filling blind unless they happened to know to press
-   * «مقطوع» themselves.
+   * «من الداخل» themselves.
    *
    * Resetting on every step change is deliberate, including when stepping back
    * onto a step already visited: a view chosen by hand belongs to the step it
@@ -1171,6 +1196,30 @@ export default function CustomCakeBuilder({
       }
     }
 
+    /**
+     * The fee is recomputed here, from the branch actually being sent.
+     *
+     * `pickedDeliveryFee` is only reset by handleSelectBranchForCake, so a
+     * branch changed through the header — or restored from the session on
+     * reload — left the previous branch's fee in place. The draft order then
+     * carried a shipping line naming one branch and priced from another.
+     *
+     * Reading it again at submit time, keyed on `selectedBranchId`, makes that
+     * impossible: the fee and the branch on the order come from one lookup.
+     * The state is still used for the running total shown in the UI; this is
+     * the number that reaches the money.
+     */
+    let submittedDeliveryFee = 0;
+    if (String(selectedFulfillment).toLowerCase() === 'delivery') {
+      try {
+        const locs = await Promise.resolve(cakeRootData?.locations);
+        submittedDeliveryFee = branchDeliveryFeeFrom(locs, selectedBranchId);
+      } catch (e) {
+        console.warn('[CAKE] Could not re-read the branch fee at submit:', e);
+        submittedDeliveryFee = 0;
+      }
+    }
+
     try {
       const response = await fetch('/api/custom-cake-order', {
         method: 'POST',
@@ -1239,7 +1288,7 @@ export default function CustomCakeBuilder({
           deliveryDate: selectedDeliveryDate,
           // Without these the draft order has no address and a free delivery
           // line -- see the note on handleSelectBranchForCake.
-          deliveryFee: pickedDeliveryFee,
+          deliveryFee: submittedDeliveryFee,
           address: pickedAddress
             ? {
                 address1: pickedAddress.address1 || '',
@@ -2119,7 +2168,7 @@ export default function CustomCakeBuilder({
                       }`}
                   >
                     <Eye className="w-3.5 h-3.5" />
-                    <span>{isEn ? 'Front' : 'جانبي'}</span>
+                    <span>{isEn ? 'Front' : 'الشكل الخارجي'}</span>
                   </button>
 
                   {supportedViews.top && (
@@ -2132,7 +2181,7 @@ export default function CustomCakeBuilder({
                         }`}
                     >
                       <Compass className="w-3.5 h-3.5" />
-                      <span>{isEn ? 'Top' : 'علوي'}</span>
+                      <span>{isEn ? 'Top' : 'من فوق'}</span>
                     </button>
                   )}
 
@@ -2146,7 +2195,7 @@ export default function CustomCakeBuilder({
                         }`}
                     >
                       <Layers className="w-4 h-4" />
-                      <span>{isEn ? 'Sliced' : 'مقطوع'}</span>
+                      <span>{isEn ? 'Sliced' : 'من الداخل'}</span>
                     </button>
                   )}
                 </div>

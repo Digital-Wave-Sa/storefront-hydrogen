@@ -367,11 +367,20 @@ function NewArrivalsAddToCart({
         );
     }
 
-    const lines = [{
+    /**
+     * `_groupId` only when there IS a group — see the note in BestSellers.
+     *
+     * `useId()` differs between component instances, and Shopify merges cart
+     * lines only when merchandise AND attributes match, so the same product
+     * added here and from Best Sellers arrived as two lines of quantity 1.
+     * The id exists to tie a BOGO give-away to its earning line; a plain line
+     * has nothing to tie and should merge with an identical one.
+     */
+    const lines: any[] = [{
         merchandiseId: variantId,
         quantity: 1,
         selectedVariant: variant,
-        attributes: [{ key: '_groupId', value: groupId }]
+        ...(isBogo ? { attributes: [{ key: '_groupId', value: groupId }] } : {}),
     }];
 
     if (isBogo) {

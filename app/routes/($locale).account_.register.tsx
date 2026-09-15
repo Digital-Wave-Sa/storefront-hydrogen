@@ -838,7 +838,9 @@ export default function Register() {
     phone: initialPhone,
     countryCode: initialCountryCode,
     email: '',
-    language: 'ar',
+    // No longer asked on the form: the language the shopper is browsing in
+    // is the one the CRM and the post-register redirect get.
+    language: isEn ? 'en' : 'ar',
     termsAccepted: false,
   });
 
@@ -1605,55 +1607,6 @@ export default function Register() {
                             "'EnglishDigits', 'GE Dinar One', sans-serif",
                         }}
                       />
-                    </div>
-
-                    {/* Preferred Language Select */}
-                    <div className="flex flex-col gap-2 w-full">
-                      <label
-                        className={`text-[12px] font-bold text-[#171717] px-1 w-full flex gap-1 ${isEn ? 'flex-row' : 'flex-row-reverse justify-end'}`}
-                        style={{
-                          fontFamily:
-                            "'EnglishDigits', 'GE Dinar One', sans-serif",
-                        }}
-                      >
-                        <span className="text-[#E55C5C]">*</span>
-                        <span>
-                          {isEn ? 'Preferred Language' : 'اللغة المفضلة'}
-                        </span>
-                      </label>
-                      <div className="relative">
-                        <select
-                          name="language"
-                          className="w-full bg-white border border-[#BBCFCD] rounded-[12px] px-4 py-3 h-[48px] focus:border-[#234745] outline-none text-[#171717] font-medium text-[14px] transition-colors appearance-none"
-                          value={formData.language}
-                          onChange={(e) =>
-                            setFormData({...formData, language: e.target.value})
-                          }
-                          style={{
-                            fontFamily:
-                              "'EnglishDigits', 'GE Dinar One', sans-serif",
-                          }}
-                        >
-                          <option value="ar">العربية (Arabic)</option>
-                          <option value="en">English (الإنجليزية)</option>
-                        </select>
-                        <div className="absolute inset-y-0 ltr:right-4 rtl:left-4 flex items-center pointer-events-none">
-                          <svg
-                            width="12"
-                            height="8"
-                            viewBox="0 0 12 8"
-                            fill="none"
-                          >
-                            <path
-                              d="M1 1.5L6 6.5L11 1.5"
-                              stroke="#9FB7AE"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
-                          </svg>
-                        </div>
-                      </div>
                     </div>
 
                     {/* Terms Checkbox */}

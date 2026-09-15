@@ -215,6 +215,14 @@ async function fetchOrderNode(rawId: string, context: any) {
                   node {
                     title
                     variantTitle
+                    # Read when building reorder lines but never fetched, so
+                    # every reordered line came back as a single unit however
+                    # many were bought.
+                    quantity
+                    # The custom cake's spec - shape, flavour, colour, message.
+                    # Reorder cannot rebuild a cake without it; see the reorder
+                    # block below.
+                    customAttributes { key value }
                     originalUnitPriceSet { shopMoney { amount } }
                     image { url }
                     variant {
@@ -895,6 +903,9 @@ export async function loader({params, context, request}: LoaderFunctionArgs) {
       return {
         variantId,
         quantity: item.quantity || 1,
+        // Carried through so Reorder can tell a custom cake from a product
+        // and rebuild it from its own spec.
+        customAttributes: item.customAttributes || [],
         title:
           variantId && titleMap[variantId]
             ? titleMap[variantId]
@@ -1325,6 +1336,70 @@ export default function TrackOrderPage() {
               {/* Actions */}
               <div className="flex flex-col gap-3">
                 {(() => {
+                  /**
+                   * A custom cake is rebuilt, not re-added.
+                   *
+                   * Reorder maps every line to a `merchandiseId` and drops the
+                   * ones without a usable variant. A custom cake has none —
+                   * it was a draft order priced off a SKU ladder, so its
+                   * variant is a price bracket rather than the cake — which
+                   * left `reorderLines` empty. The form still submitted, and
+                   * `LinesAdd` with no lines is a valid no-op: the shopper was
+                   * taken to an empty cart with no error to explain it.
+                   *
+                   * The orders list already had the answer — send the shopper
+                   * back to the builder with the cake's own spec in the query
+                   * string, which is what `?reorder=true` reads. The same
+                   * order reordered from two pages should not behave
+                   * differently, so this does what that page does.
+                   */
+                  const cakeItem = (orderData.items || []).find((item: any) =>
+                    isCustomCakeLine(item),
+                  );
+
+                  if (cakeItem) {
+                    const attrs = [
+                      ...(cakeItem.customAttributes || []),
+                      ...((orderData as any).customAttributes || []),
+                    ];
+                    const getAttr = (...keys: string[]) =>
+                      attrs.find((a: any) => keys.includes(a.key))?.value || '';
+
+                    const params = new URLSearchParams({
+                      reorder: 'true',
+                      shape: getAttr('Shape', 'الشكل'),
+                      size: getAttr('Size', 'الحجم'),
+                      flavor: getAttr('Flavor', 'النكهة'),
+                      layers: getAttr('Layers', 'الطبقات'),
+                      color: getAttr('Color', 'اللون'),
+                      topping: getAttr('Topping', 'الإضافة'),
+                      message: getAttr(
+                        'Cake Surface Message',
+                        'نص على الكيكة',
+                        'Message',
+                        'الرسالة',
+                      ),
+                      baseMessage: getAttr('Cake Base Message', 'نص على القاعدة'),
+                      specialInstructions: getAttr(
+                        'Special Instructions',
+                        'تعليمات خاصة للمخبز',
+                      ),
+                      textFont: getAttr('Message Font', 'خط الرسالة'),
+                      textColor: getAttr('Message Color', 'لون الرسالة'),
+                      messagePlacement: getAttr('Text Placement', 'موقع الكتابة'),
+                    });
+
+                    return (
+                      <Link
+                        to={`${isEn ? '/en/custom-cake' : '/custom-cake'}?${params.toString()}`}
+                        className="w-full block text-center bg-[#234745] hover:bg-[#1a3533] text-white py-3.5 rounded-full font-bold transition-colors cursor-pointer active:scale-95"
+                        style={{color: '#FFFFFF'}}
+                      >
+                        {isEn ? 'Reorder Cake' : 'إعادة طلب الكيكة'}
+                      </Link>
+                    );
+                  }
+
                   const reorderLines = (orderData.items || [])
                     .map(
                       (item: any) => {
@@ -1347,6 +1422,27 @@ export default function TrackOrderPage() {
                         !l.merchandiseId.endsWith('undefined') &&
                         !l.merchandiseId.endsWith('null')
                     );
+                  /**
+                   * Nothing reorderable is said, not silently submitted.
+                   *
+                   * `LinesAdd` with an empty array succeeds and adds nothing,
+                   * so an order whose lines no longer resolve to a variant —
+                   * a deleted product, an archived variant — sent the shopper
+                   * to an empty cart looking like a broken button. The orders
+                   * list disables it instead; so does this now.
+                   */
+                  if (reorderLines.length === 0) {
+                    return (
+                      <button
+                        type="button"
+                        disabled
+                        className="w-full bg-gray-400 text-white py-3.5 rounded-full font-bold cursor-not-allowed opacity-50"
+                      >
+                        {isEn ? 'Unavailable' : 'غير متوفر'}
+                      </button>
+                    );
+                  }
+
                   return (
                     <Form
                       action={isEn ? '/en/cart' : '/cart'}

@@ -106,8 +106,27 @@ function mapRestOrderToNode(rawRest: any) {
         node: {
           title: item.title,
           variantTitle: item.variant_title || '',
+          // REST never carried these, so the fallback path showed every line
+          // as a single unit at its unit price, whatever was bought.
+          quantity: Number(item.quantity) || 1,
+          customAttributes: (item.properties || []).map((p: any) => ({
+            key: p?.name ?? p?.key ?? '',
+            value: p?.value ?? '',
+          })),
           originalUnitPriceSet: {
             shopMoney: {amount: String(item.price || '0')},
+          },
+          discountedTotalSet: {
+            shopMoney: {
+              amount: String(
+                Math.max(
+                  0,
+                  (parseFloat(item.price || '0') || 0) *
+                    (Number(item.quantity) || 1) -
+                    (parseFloat(item.total_discount || '0') || 0),
+                ),
+              ),
+            },
           },
           image: item.image?.src || item.image?.url ? {url: item.image.src || item.image.url} : null,
           variant: {
@@ -224,6 +243,9 @@ async function fetchOrderNode(rawId: string, context: any) {
                     # block below.
                     customAttributes { key value }
                     originalUnitPriceSet { shopMoney { amount } }
+                    # Quantity x unit price after line-level discounts - the
+                    # figure the subtotal is actually a sum of.
+                    discountedTotalSet { shopMoney { amount } }
                     image { url }
                     variant {
                       id
@@ -913,6 +935,22 @@ export async function loader({params, context, request}: LoaderFunctionArgs) {
         price: parseFloat(
           item.originalUnitPriceSet?.shopMoney?.amount || '0',
         ).toLocaleString('en-US', {minimumFractionDigits: 2}),
+        /**
+         * What this line contributed to the subtotal.
+         *
+         * The summary showed `price` -- the UNIT price -- with no quantity, so
+         * two boxes at 13.00 read as «13.00» under a subtotal of 173.00 and the
+         * numbers did not add up. Shopify's discountedTotalSet is quantity x
+         * unit price less any line discount; when it is absent (older REST
+         * fallback shapes) the product is computed here.
+         */
+        lineTotal: (() => {
+          const qty = Number(item.quantity) || 1;
+          const unit = parseFloat(item.originalUnitPriceSet?.shopMoney?.amount || '0') || 0;
+          const fromApi = parseFloat(item.discountedTotalSet?.shopMoney?.amount ?? '');
+          const total = Number.isFinite(fromApi) ? fromApi : unit * qty;
+          return total.toLocaleString('en-US', {minimumFractionDigits: 2});
+        })(),
         options:
           item.variantTitle && item.variantTitle !== 'Default Title'
             ? item.variantTitle.split(' / ')
@@ -1160,6 +1198,10 @@ export default function TrackOrderPage() {
                         {item.title}
                       </h3>
                       <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-[11px] font-bold text-[#234745] bg-[#EEF3F1] px-2 py-0.5 rounded-full border border-[#D8E3DF]">
+                          {isEn ? 'Qty: ' : 'الكمية: '}
+                          {forceEnNums(item.quantity)}
+                        </span>
                         {item.options.map((opt: any, i: number) => (
                           <span
                             key={i}
@@ -1170,13 +1212,14 @@ export default function TrackOrderPage() {
                         ))}
                       </div>
                     </div>
-                    <div className="shrink-0 flex items-center">
+                    <div className="shrink-0 flex flex-col items-end justify-center gap-0.5">
+                      <div className="flex items-center">
                       <span
                         className="text-[14px] font-bold text-[#1A1A1A] flex items-center gap-1"
                         dir="ltr"
                       >
                         <CurrencyIcon className="h-3 w-auto" />{' '}
-                        {forceEnNums(item.price)}
+                        {forceEnNums(item.lineTotal)}
                       </span>
                       <svg
                         className="w-[14px] h-[14px] ml-1 mr-1 text-[#1A1A1A]"
@@ -1191,6 +1234,12 @@ export default function TrackOrderPage() {
                           strokeLinejoin="round"
                         />
                       </svg>
+                      </div>
+                      {Number(item.quantity) > 1 && (
+                        <span className="text-[11px] text-[#8B8B8B]" dir="ltr">
+                          {forceEnNums(item.quantity)} × {forceEnNums(item.price)}
+                        </span>
+                      )}
                     </div>
                   </div>
                 ))}

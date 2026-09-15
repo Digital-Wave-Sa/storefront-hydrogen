@@ -7,6 +7,7 @@ import { Button } from './layout/Button';
 import { useI18n } from '~/lib/i18n';
 import { StarRating } from './StarRating';
 import { addressCoords, sameAddressId } from '~/lib/address-coords';
+import { AddressForm, LocationPicker } from './AddressForm';
 
 // ─── TYPES ──────────────────────────────────────────────────────────────────
 export type Tab = 'delivery' | 'pickup';
@@ -852,8 +853,89 @@ function ModalContent({
         openUntil: (activeTab === 'pickup' && b.pickupOpenUntil) ? b.pickupOpenUntil : (b.deliveryOpenUntil || b.openUntil),
     }));
 
+    /**
+     * «إضافة عنوان جديد» opens the form here instead of navigating.
+     *
+     * It used to be a <Link> to /account/addresses that closed this modal. A
+     * shopper partway through the cake builder lost the page they were on and
+     * had to find their way back -- the builder keeps a localStorage copy of
+     * the design only because of that detour. The form now takes over this
+     * panel and hands the new address straight back.
+     *
+     * This state belongs to ModalContent, not to DeliveryPickupModal: the list
+     * and the panel that renders the form are both here. It also means a closed
+     * modal forgets a half-filled form for free, because the parent drops this
+     * component entirely when `isOpen` goes false.
+     */
+    const [isAddingAddress, setIsAddingAddress] = useState(false);
+    /**
+     * Addresses created during this modal's life.
+     *
+     * `customerPromise` resolved once, before the new address existed, and
+     * nothing here re-runs that loader, so a freshly saved address would not
+     * appear in the list it was saved from. Held locally and merged below.
+     */
+    const [newAddresses, setNewAddresses] = useState<any[]>([]);
+    /** Where the shopper's pin currently sits, while the form is open. */
+    const [addrDraft, setAddrDraft] = useState<{address: string; city: string; lat: number; lng: number} | null>(null);
+    /**
+     * The picker goes in whichever pane is actually visible.
+     *
+     * `.dpm-map-area` is `display: none` below 768px, so on a phone the left
+     * pane cannot host it -- the picker renders above the fields instead. CSS
+     * alone cannot move a React subtree, and mounting it twice would run two
+     * Google maps and two geocoders against the same draft.
+     */
+    const [hasMapPane, setHasMapPane] = useState(true);
+    useEffect(() => {
+        if (typeof window === 'undefined' || !window.matchMedia) return;
+        const mq = window.matchMedia('(min-width: 769px)');
+        const sync = () => setHasMapPane(mq.matches);
+        sync();
+        mq.addEventListener('change', sync);
+        return () => mq.removeEventListener('change', sync);
+    }, []);
+
+    /** One picker, wherever it lands. */
+    const locationPicker = googleMapsKey ? (
+        <LocationPicker
+            googleMapsKey={googleMapsKey}
+            isEn={isEn}
+            initialCoords={userCoords}
+            onChange={setAddrDraft}
+        />
+    ) : null;
+
     const customerObj = customer?.customer || customer || {};
-    const addresses = customerObj?.addresses?.nodes || customerObj?.data?.customer?.addresses?.nodes || [];
+    const loadedAddresses = customerObj?.addresses?.nodes || customerObj?.data?.customer?.addresses?.nodes || [];
+    const addresses = useMemo(
+        () => [
+            ...loadedAddresses,
+            // Anything saved in this modal that the loader has not seen yet.
+            ...newAddresses.filter(
+                (fresh: any) =>
+                    !loadedAddresses.some((known: any) => sameAddressId(known?.id, fresh?.id)),
+            ),
+        ],
+        [loadedAddresses, newAddresses],
+    );
+
+    /** Save done: show it, select it, and go back to the list. */
+    /** Closing the form drops the pin with it. */
+    const closeAddressForm = React.useCallback(() => {
+        setIsAddingAddress(false);
+        setAddrDraft(null);
+    }, []);
+
+    const handleAddressCreated = React.useCallback((addr: any) => {
+        if (!addr?.id) return;
+        setNewAddresses((prev) =>
+            prev.some((a) => sameAddressId(a?.id, addr.id)) ? prev : [...prev, addr],
+        );
+        setSelectedBranch(addr.id);
+        setIsAddingAddress(false);
+        setAddrDraft(null);
+    }, [setSelectedBranch]);
     
     /**
      * Address ids are compared with `sameAddressId`, never `===`.
@@ -1018,6 +1100,15 @@ function ModalContent({
     return (
         <>
             <div className="dpm-map-area">
+                {isAddingAddress && hasMapPane ? (
+                    /**
+                     * The pane already showed a map; while the form is open it
+                     * shows the one the shopper is steering, instead of the
+                     * address they are replacing.
+                     */
+                    locationPicker
+                ) : (
+                <>
                 <iframe
                     title="Location Map"
                     src={mapUrl}
@@ -1054,6 +1145,8 @@ function ModalContent({
                         </div>
                     </div>
                 )}
+                </>
+                )}
             </div>
 
             <div className="dpm-side-panel">
@@ -1088,14 +1181,14 @@ function ModalContent({
                     <div className="dpm-tabs-toggle">
                         <button
                             className={`dpm-tab-btn ${activeTab === 'delivery' ? 'active' : ''}`}
-                            onClick={() => setActiveTab('delivery')}
+                            onClick={() => { closeAddressForm(); setActiveTab('delivery'); }}
                         >
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 3h15v13H1zM16 8h4l3 3v5h-7V8z" /><circle cx="5.5" cy="18.5" r="2.5" /><circle cx="18.5" cy="18.5" r="2.5" /></svg>
                             {isEn ? 'Delivery' : 'توصيل'}
                         </button>
                         <button
                             className={`dpm-tab-btn ${activeTab === 'pickup' ? 'active' : ''}`}
-                            onClick={() => setActiveTab('pickup')}
+                            onClick={() => { closeAddressForm(); setActiveTab('pickup'); }}
                         >
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" /><polyline points="9 22 9 12 15 12 15 22" /></svg>
                             {isEn ? 'Pickup' : 'استلام'}
@@ -1105,7 +1198,7 @@ function ModalContent({
 
 
 
-                {activeTab === 'pickup' && (
+                {activeTab === 'pickup' && !isAddingAddress && (
                     <div className="dpm-search-box animate-fade-in">
                         {geoError && (
                             <div className="text-[11px] text-[#E17A43] bg-[#E17A43]/10 px-3 py-2.5 rounded-[12px] font-bold mb-3 flex flex-col gap-1.5 text-right">
@@ -1146,7 +1239,54 @@ function ModalContent({
                 )}
 
                 <div className="dpm-panel-body">
-                    {activeTab === 'delivery' ? (
+                    {isAddingAddress ? (
+                        <div className="p-4 animate-fade-in">
+                            <button
+                                type="button"
+                                onClick={closeAddressForm}
+                                className="flex items-center gap-2 text-[13px] font-bold text-[#234745] mb-4 hover:underline"
+                            >
+                                <span aria-hidden="true">{isEn ? '\u2190' : '\u2192'}</span>
+                                {isEn ? 'Back to addresses' : 'العودة إلى العناوين'}
+                            </button>
+                            <h3 className="text-[16px] font-bold text-[#234745] mb-4">
+                                {isEn ? 'Add New Address' : 'إضافة عنوان جديد'}
+                            </h3>
+                            {googleMapsKey ? (
+                                <>
+                                    {!hasMapPane && (
+                                        <div className="h-[260px] w-full rounded-2xl overflow-hidden border-2 border-gray-100 mb-5">
+                                            {locationPicker}
+                                        </div>
+                                    )}
+                                    <AddressForm
+                                        type="create"
+                                        googleMapsKey={googleMapsKey}
+                                        isEn={isEn}
+                                        showHeading={false}
+                                        mode="embedded"
+                                        location={addrDraft}
+                                        onSuccess={handleAddressCreated}
+                                        onClose={closeAddressForm}
+                                    />
+                                </>
+                            ) : (
+                                /**
+                                 * No maps key, no map validation -- and the form
+                                 * refuses to save a new address without it. The
+                                 * old link out is the honest fallback here.
+                                 */
+                                <Link
+                                    to={isEn ? '/en/account/addresses' : '/account/addresses'}
+                                    onClick={onClose}
+                                    className="inline-block px-6 py-3 bg-[#234745] !text-white rounded-xl font-bold text-sm"
+                                    style={{ color: '#ffffff' }}
+                                >
+                                    {isEn ? 'Add New Address' : 'إضافة عنوان جديد'}
+                                </Link>
+                            )}
+                        </div>
+                    ) : activeTab === 'delivery' ? (
                         <div className="p-4 animate-fade-in">
                             <h3 className="text-xs font-bold text-gray-400 mb-4 uppercase tracking-widest">{isEn ? 'Your Addresses' : 'عناوينك المسجلة'}</h3>
                             {addresses.length > 0 ? (
@@ -1170,27 +1310,27 @@ function ModalContent({
                                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ccc" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" /><circle cx="12" cy="10" r="3" /></svg>
                                     </div>
                                     <p className="text-sm text-gray-400 mb-3">{isEn ? 'No addresses found' : 'لم يتم العثور على عناوين'}</p>
-                                    <Link 
-                                        to={isEn ? "/en/account/addresses" : "/account/addresses"}
-                                        onClick={onClose}
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsAddingAddress(true)}
                                         className="inline-block px-6 py-3 bg-[#234745] !text-white rounded-xl font-bold text-sm mt-3 transition-colors hover:bg-[#1a3533]"
                                         style={{ color: '#ffffff' }}
                                     >
                                         {isEn ? 'Add New Address' : 'إضافة عنوان جديد'}
-                                    </Link>
+                                    </button>
                                 </div>
                             )}
                             {addresses.length > 0 && (
                                 <div className="mt-4 px-1">
-                                    <Link 
-                                        to={isEn ? "/en/account/addresses" : "/account/addresses"}
-                                        onClick={onClose}
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsAddingAddress(true)}
                                         className="w-full py-4 flex items-center justify-center gap-2 border-2 border-dashed border-gray-200 rounded-2xl font-bold text-sm transition-all"
                                         style={{ color: '#234745' }}
                                     >
                                         <span className="text-xl">+</span>
                                         {isEn ? 'Add Another Address' : 'إضافة عنوان آخر'}
-                                    </Link>
+                                    </button>
                                 </div>
                             )}
                         </div>
@@ -1311,6 +1451,7 @@ function ModalContent({
                     )}
                 </div>
 
+                {!isAddingAddress && (
                 <div className="dpm-footer-action">
                     <button 
                         className="dpm-confirm-btn"
@@ -1411,6 +1552,7 @@ function ModalContent({
                         {isEn ? 'Confirm Selection' : 'تأكيد الاختيار'}
                     </button>
                 </div>
+                )}
             </div>
         </>
     );

@@ -27,6 +27,15 @@ declare global {
     SHOPIFY_ADMIN_API_ACCESS_TOKENS?: string;
     /** Admin API host; takes priority over SHOPIFY_SHOP. */
     SHOPIFY_ADMIN_DOMAIN?: string;
+    /**
+     * Signs incoming Shopify webhooks (api.webhooks.orders). Use the value the
+     * admin shows under Settings → Notifications → Webhooks. A subscription
+     * created by this app through the API is signed with SHOPIFY_CLIENT_SECRET
+     * instead; the route accepts either.
+     */
+    SHOPIFY_WEBHOOK_SECRET?: string;
+    SHOPIFY_CLIENT_ID?: string;
+    SHOPIFY_CLIENT_SECRET?: string;
     PUBLIC_SHOPIFY_STORE_DOMAIN?: string;
     /** Sender identity for outbound mail; defaults to crm@saadeddin.com. */
     SMTP_USER?: string;

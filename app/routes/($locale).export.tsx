@@ -173,7 +173,16 @@ export async function loader({context, request}: LoaderFunctionArgs) {
             variables: {
               handle,
               filters: filters.length > 0 ? filters : undefined,
-              country: storefront.i18n.country,
+              /**
+               * US, to match the catalogue query above.
+               *
+               * This read `storefront.i18n.country`, which on the Arabic
+               * storefront is SA -- so the unfiltered export grid came back in
+               * USD and the moment a shopper picked a category it came back in
+               * SAR, at the same glyph and the same card. One page, two
+               * currencies, nothing on screen saying which.
+               */
+              country: 'US',
               language: storefront.i18n.language,
             },
             cache: storefront.CacheNone(),
@@ -1036,7 +1045,8 @@ const EXPORT_PAGE_CONTENT_QUERY = `#graphql
   }
 ` as const;
 
-const EXPORT_CATALOG_QUERY = `#graphql
+const EXPORT_CATALOG_QUERY = `#graphql
+
   query ExportCatalogSearch(
     $country: CountryCode
     $language: LanguageCode

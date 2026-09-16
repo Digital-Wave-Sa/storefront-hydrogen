@@ -284,6 +284,30 @@ function ProductItemCard({
 
   const effectiveAvailable = isAvailable && !isVisibilityBlocked;
   const showOutOfStock = !isAvailable && !isVisibilityBlocked;
+
+  /**
+   * The «($X USD)» hint beside an export price.
+   *
+   * This used to be `amount / 3.75`, unconditionally. The export catalogue
+   * queries `@inContext(country: 'US')`, so Shopify already answers in USD --
+   * dividing again turned a $43 box into «$11.47», and the main figure beside
+   * it was USD wearing the riyal glyph. Both numbers on the card were wrong.
+   *
+   * The hint now exists only when there is a real conversion to show: the
+   * price came back in SAR. When Shopify has already converted, the amount
+   * renders as USD on its own (see Price) and a second figure would only
+   * repeat it. The 3.75 peg is fine to hardcode -- it has not moved since
+   * 1986 -- but only when the number it is applied to is actually riyals.
+   */
+  const exportPriceMoney = product?.priceRange?.minVariantPrice;
+  const usdHint = (() => {
+    if (!exportPriceMoney) return null;
+    const currency = String(exportPriceMoney.currencyCode || 'SAR').toUpperCase();
+    if (currency !== 'SAR') return null;
+    const sar = parseFloat(exportPriceMoney.amount);
+    if (!Number.isFinite(sar)) return null;
+    return `$${(sar / 3.75).toFixed(2)}`;
+  })();
   /**
    * Held back with the button, for the same reason.
    *
@@ -362,9 +386,9 @@ function ProductItemCard({
                 isEn={isEn}
                 className="mt-1"
               />
-              {isExport && (
+              {isExport && usdHint && (
                 <span className="text-[13px] font-bold text-[#8B9895] inline-block font-en" dir="ltr">
-                  (${(parseFloat(product.priceRange.minVariantPrice.amount) / 3.75).toFixed(2)} USD)
+                  ({usdHint} USD)
                 </span>
               )}
             </div>
@@ -523,9 +547,9 @@ function ProductItemCard({
             <>
               <div className="flex items-center gap-1.5 text-[#255441]">
                 <Price data={product.priceRange.minVariantPrice} size="lg" isEn={isEn} />
-                {isExport && (
+                {isExport && usdHint && (
                   <span className="text-[13px] font-bold text-[#8B9895] inline-block font-en" dir="ltr">
-                    (${(parseFloat(product.priceRange.minVariantPrice.amount) / 3.75).toFixed(2)} USD)
+                    ({usdHint} USD)
                   </span>
                 )}
               </div>

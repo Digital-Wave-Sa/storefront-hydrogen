@@ -25,13 +25,24 @@ export function SaudiRiyalSymbol({ className = "" }: { className?: string }) {
 }
 
 /**
- * Premium Price Component for Saadeddin
- * Customizes currency symbols and formatting for KSA
+ * Price, in whatever currency Shopify actually returned.
+ *
+ * This used to stamp the riyal glyph on every amount regardless of
+ * `data.currencyCode`. Almost everywhere that is right -- the store sells in
+ * SAR -- but the export catalogue queries `@inContext(country: US)`, so
+ * Shopify answers in USD, and a $43 box was rendered as «43 ﷼». Same number,
+ * a third of the price, on the page that sells abroad.
+ *
+ * SAR (and a missing code, which is every older call site) keeps the custom
+ * glyph. Anything else is formatted by Intl for that currency, so a future
+ * market needs no change here.
  */
 export function Price({ data, className = '', isEn = false, showSymbol = true, size = 'md' }: PriceProps) {
   if (!data) return null;
 
   const amount = parseFloat(data.amount);
+  const currency = String(data.currencyCode || 'SAR').toUpperCase();
+  const isSAR = currency === 'SAR';
 
   // Format with commas but handle .00 removal
   const formattedAmount = amount % 1 === 0
@@ -54,15 +65,36 @@ export function Price({ data, className = '', isEn = false, showSymbol = true, s
     xl: 'h-[20px] md:h-7 w-auto'
   };
 
+  /**
+   * Intl is asked for the symbol only. The number is formatted above so that
+   * a whole amount drops its «.00», which this component has always done and
+   * the cards are laid out around.
+   */
+  const foreignSymbol = (() => {
+    if (isSAR) return '';
+    try {
+      const parts = new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency,
+      }).formatToParts(1);
+      return parts.find((part) => part.type === 'currency')?.value || currency;
+    } catch {
+      // An unrecognised code: show the code rather than nothing.
+      return currency;
+    }
+  })();
+
   return (
     <div className={`inline-flex items-center gap-1.5 leading-none ${className} ${isEn ? 'flex-row' : 'flex-row-reverse'}`} dir="ltr">
       <span className={`${sizeClasses[size]} font-en`}>
         {formattedAmount}
       </span>
       {showSymbol && (
-        <SaudiRiyalSymbol
-          className={`${symbolSizeClasses[size]}`}
-        />
+        isSAR ? (
+          <SaudiRiyalSymbol className={`${symbolSizeClasses[size]}`} />
+        ) : (
+          <span className={`${sizeClasses[size]} font-en`}>{foreignSymbol}</span>
+        )
       )}
     </div>
   );

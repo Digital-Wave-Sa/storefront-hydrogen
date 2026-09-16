@@ -1,0 +1,18 @@
+[
+  {
+    "template": "Order confirmation",
+    "resourceId": "gid://shopify/EmailTemplate/41088811241",
+    "translations": [
+      {
+        "key": "title",
+        "digest": "ac05bc11414a5234535a1a9cad7bc8a5a7b77b1207aace7a6c90a81ae9282fb1",
+        "value": "تم تأكيد طلبك {{name}}"
+      },
+      {
+        "key": "body_html",
+        "digest": "f389e61da5caf3aa3954b2fd09bc0b75718a3bfa66fea1ad089960c2cad0fda5",
+        "file": "41088811241.body_html.ar.html"
+      }
+    ]
+  }
+]

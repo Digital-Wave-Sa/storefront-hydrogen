@@ -1,6 +1,11 @@
 import type {ActionFunctionArgs} from 'react-router';
 import {notifyOrderUpdate} from '~/lib/notifications.server';
 import {routeOrderToChosenBranch} from '~/lib/fulfillment-routing.server';
+import {readyKind} from '~/lib/order-stage-tokens';
+import {
+  readOrderNotificationState,
+  markStageNotified,
+} from '~/lib/notified-stages.server';
 
 /**
  * Shopify order webhooks: `orders/create`, `orders/fulfilled`, `orders/updated`.
@@ -8,7 +13,8 @@ import {routeOrderToChosenBranch} from '~/lib/fulfillment-routing.server';
  * Two independent jobs, each guarded so the other still runs:
  *   1. On `orders/create`, move the fulfillment order to the branch the
  *      customer chose in the cart (see fulfillment-routing.server.ts).
- *   2. Send the stage notification (confirmed / out for delivery / delivered).
+ *   2. Send the stage notification (confirmed / ready / out for delivery /
+ *      delivered).
  *
  * Every request must carry a valid `X-Shopify-Hmac-Sha256`. The signing secret
  * is `SHOPIFY_WEBHOOK_SECRET` (the value the admin shows under Settings →
@@ -117,6 +123,60 @@ export async function action({request, context}: ActionFunctionArgs) {
     }
   }
 
+  /**
+   * 1b. Ready for delivery / collection.
+   *
+   * This stage has no Shopify event of its own: it happens when someone in the
+   * admin tags the order `ready-for-delivery` (or the ERP writes the
+   * `custom.order_status` metafield), which reaches us as a plain
+   * `orders/updated`. That topic fires on every change an order ever sees, and
+   * the tag stays put once added, so the metafield record is what stops the
+   * shopper getting the same email on every subsequent edit.
+   *
+   * `readyKind` is the same token logic the /track-order page uses, imported
+   * rather than copied, so the email and the timeline cannot disagree.
+   */
+  let ready: any = null;
+  if (topic === 'orders/updated' || topic === 'orders/create') {
+    try {
+      const {sent, orderStatus} = await readOrderNotificationState(env, payload);
+      const kind = readyKind(payload, orderStatus);
+      const stage =
+        kind === 'pickup'
+          ? 'READY_FOR_PICKUP'
+          : kind === 'delivery'
+            ? 'READY_FOR_DELIVERY'
+            : null;
+
+      if (!stage) {
+        ready = {skipped: 'not ready'};
+      } else if (sent.includes(stage)) {
+        ready = {skipped: 'already sent', stage};
+      } else {
+        const branchAttr = (payload.note_attributes || []).find(
+          (a: any) => String(a?.name ?? '').toLowerCase() === 'branch',
+        );
+        await notifyOrderUpdate({
+          order: payload,
+          stage: stage as any,
+          env,
+          // Email only -- SMS costs per message and this is a courtesy note,
+          // not something the shopper has to act on.
+          channels: ['email'],
+          extra: {branchName: branchAttr?.value || ''},
+        });
+        // Recorded only after the send resolves, so a failed send is retried by
+        // the next webhook instead of being silently marked done.
+        await markStageNotified(env, payload, stage, sent);
+        ready = {sent: stage};
+        console.log(`[Order Webhook] ${stage} email sent for #${payload.order_number ?? payload.id}`);
+      }
+    } catch (error: any) {
+      console.error('[Order Webhook] Ready-stage error:', error?.message || error);
+      ready = {error: error?.message || String(error)};
+    }
+  }
+
   // 2. Notifications.
   let notified = false;
   try {
@@ -162,7 +222,7 @@ export async function action({request, context}: ActionFunctionArgs) {
 
   // Always 200 once verified: Shopify retries non-2xx responses, and a retry
   // would re-run a move that already happened or resend a notification.
-  return Response.json({success: true, notified, routing});
+  return Response.json({success: true, notified, routing, ready});
 }
 
 // Block GET requests

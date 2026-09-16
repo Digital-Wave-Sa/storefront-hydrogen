@@ -3,7 +3,20 @@
  * Handles Email (HTML) and SMS templates for both Arabic and English.
  */
 
-export type OrderStage = 'CONFIRMED' | 'PREPARING' | 'OUT_FOR_DELIVERY' | 'DELIVERED';
+/**
+ * READY_FOR_DELIVERY and READY_FOR_PICKUP sit between PREPARING and
+ * OUT_FOR_DELIVERY: the order is made, but nobody has picked it up yet. They
+ * are separate stages rather than one "ready" because the two say opposite
+ * things to the customer -- one asks them to come to the branch, the other
+ * asks them to stay where they are.
+ */
+export type OrderStage =
+  | 'CONFIRMED'
+  | 'PREPARING'
+  | 'READY_FOR_DELIVERY'
+  | 'READY_FOR_PICKUP'
+  | 'OUT_FOR_DELIVERY'
+  | 'DELIVERED';
 export type Language = 'AR' | 'EN';
 
 interface OrderData {
@@ -13,6 +26,8 @@ interface OrderData {
   totalPrice?: string;
   items?: Array<{ title: string; quantity: number; price: string }>;
   expectedDelivery?: string;
+  /** Shown on READY_FOR_PICKUP, where the shopper needs to know where to go. */
+  branchName?: string;
 }
 
 export function getNotificationTemplates(stage: OrderStage, lang: Language, data: OrderData) {
@@ -43,6 +58,16 @@ function getSMSTemplate(stage: OrderStage, lang: Language, data: OrderData): str
         ? `Great news! Your order #${orderNumber} is now being prepared by our pastry chefs.`
         : `خبر سعيد! طلبك رقم #${orderNumber} قيد التحضير الآن بواسطة طهاتنا المبدعين.`;
 
+    case 'READY_FOR_DELIVERY':
+      return isEn
+        ? `Your order #${orderNumber} is ready and will be on its way shortly. Track it: ${trackingUrl || 'N/A'}`
+        : `طلبك رقم #${orderNumber} جاهز وسيكون في طريقه إليك قريباً. تتبعه هنا: ${trackingUrl || 'N/A'}`;
+
+    case 'READY_FOR_PICKUP':
+      return isEn
+        ? `Your order #${orderNumber} is ready for collection at our branch. See you soon!`
+        : `طلبك رقم #${orderNumber} جاهز للاستلام من الفرع. بانتظارك!`;
+
     case 'OUT_FOR_DELIVERY':
       return isEn 
         ? `Your order #${orderNumber} is out for delivery! Our courier is on the way. Enjoy! Track: ${trackingUrl || 'N/A'}`
@@ -66,11 +91,13 @@ function getEmailTemplate(stage: OrderStage, lang: Language, data: OrderData) {
   const isEn = lang === 'EN';
   const dir = isEn ? 'ltr' : 'rtl';
   const textAlign = isEn ? 'left' : 'right';
-  const { customerName, orderNumber, items, totalPrice, trackingUrl, expectedDelivery } = data;
+  const { customerName, orderNumber, items, totalPrice, trackingUrl, expectedDelivery, branchName } = data;
 
   const stageTitles = {
     CONFIRMED: isEn ? 'Order Confirmed' : 'تم تأكيد طلبك',
     PREPARING: isEn ? 'Preparing Your Order' : 'تحضير طلبك',
+    READY_FOR_DELIVERY: isEn ? 'Your Order Is Ready' : 'طلبك جاهز',
+    READY_FOR_PICKUP: isEn ? 'Ready for Collection' : 'طلبك جاهز للاستلام',
     OUT_FOR_DELIVERY: isEn ? 'Out for Delivery' : 'قيد التوصيل',
     DELIVERED: isEn ? 'Order Completed — How Was Your Experience?' : 'تم استلام/توصيل طلبك — كيف كانت تجربتك؟'
   };
@@ -78,13 +105,33 @@ function getEmailTemplate(stage: OrderStage, lang: Language, data: OrderData) {
   const stageMessages = {
     CONFIRMED: isEn ? 'We have received your order and started processing it.' : 'لقد استلمنا طلبك وبدأنا في معالجته.',
     PREPARING: isEn ? 'Your favorite treats are being freshly prepared right now.' : 'تجري حالياً عملية تحضير حلوياتك المفضلة بعناية.',
+    READY_FOR_DELIVERY: isEn
+      ? 'Your order is freshly made and packed. It will be on its way to you shortly.'
+      : 'طلبك جاهز ومُغلّف بعناية، وسيكون في طريقه إليك قريباً.',
+    READY_FOR_PICKUP: isEn
+      ? (branchName
+          ? `Your order is ready and waiting for you at our ${branchName} branch.`
+          : 'Your order is ready and waiting for you at the branch.')
+      : (branchName
+          ? `طلبك جاهز وبانتظارك في فرع ${branchName}.`
+          : 'طلبك جاهز وبانتظارك في الفرع.'),
     OUT_FOR_DELIVERY: isEn ? 'Our driver is on the way to your doorstep!' : 'مندوبنا في الطريق إلى باب منزلك الآن!',
     DELIVERED: isEn ? 'Your order is completed! We would love to hear your feedback and review of your experience.' : 'تم استلام/توصيل طلبك بنجاح! نود سماع رأيك وتقييمك لتجربتك معنا.'
   };
 
   // Progress Bar Logic
   const steps = ['CONFIRMED', 'PREPARING', 'OUT_FOR_DELIVERY', 'DELIVERED'];
-  const activeIndex = steps.indexOf(stage);
+  /**
+   * The bar has four segments and there are now six stages. Both ready stages
+   * light the third segment: to the customer, "ready" and "on its way" are the
+   * same point on a four-step bar, and adding a fifth segment would redraw the
+   * bar in every older email people still have in their inbox.
+   */
+  const barStage =
+    stage === 'READY_FOR_DELIVERY' || stage === 'READY_FOR_PICKUP'
+      ? 'OUT_FOR_DELIVERY'
+      : stage;
+  const activeIndex = steps.indexOf(barStage);
 
   const progressHtml = steps.map((s, i) => {
     const active = i <= activeIndex;
@@ -182,7 +229,7 @@ function getEmailTemplate(stage: OrderStage, lang: Language, data: OrderData) {
                 return '';
               })()}
               
-              ${expectedDelivery && stage !== 'DELIVERED' ? `
+              ${expectedDelivery && stage !== 'DELIVERED' && stage !== 'READY_FOR_PICKUP' ? `
                 <p style="color: #888; font-size: 12px; margin-top: 20px;">
                    ${isEn ? 'Estimated Delivery' : 'وقت التوصيل المتوقع'}: <strong>${expectedDelivery}</strong>
                 </p>

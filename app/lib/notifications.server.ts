@@ -10,14 +10,40 @@ import type { OrderStage, Language } from './notification_templates';
 export async function notifyOrderUpdate({
   order,
   stage,
-  env
+  env,
+  channels = ['email', 'sms'],
+  extra,
 }: {
   order: any, 
   stage: OrderStage,
-  env: any
+  env: any,
+  /**
+   * Which channels this stage uses. Defaults to both, so every existing caller
+   * behaves exactly as before; the ready-for-delivery notification passes
+   * ['email'] because SMS costs money per message and that stage is a courtesy,
+   * not something the shopper has to act on.
+   */
+  channels?: Array<'email' | 'sms'>,
+  /** Stage-specific template data, e.g. the branch name for a pickup. */
+  extra?: Record<string, unknown>,
 }) {
-  // 1. Determine Language (Default to AR if not specified)
-  const lang: Language = (order.customer?.locale?.toUpperCase() === 'EN') ? 'EN' : 'AR';
+  /**
+   * The order's own locale, not the customer record's.
+   *
+   * `customer.locale` is the language on the CUSTOMER, which for these shoppers
+   * is usually unset -- so every notification fell to the Arabic default,
+   * including for people who bought the whole way through in English. Shopify
+   * stamps the checkout's language onto the order as `customerLocale`
+   * ("ar-SA" / "en"), which is the one that answers "what language did they
+   * buy in". The customer record and the old default remain as fallbacks.
+   */
+  const localeRaw = String(
+    order.customerLocale ||
+    order.customer_locale ||
+    order.customer?.locale ||
+    '',
+  ).toLowerCase();
+  const lang: Language = localeRaw.startsWith('en') ? 'EN' : 'AR';
   
   // 2. Prepare Data for Templates
   const orderData = {
@@ -34,7 +60,8 @@ export async function notifyOrderUpdate({
         `${item.originalTotalPriceSet.shopMoney.amount} ${item.originalTotalPriceSet.shopMoney.currencyCode}` : 
         (item.price ? `${item.price} ${order.currency || 'SAR'}` : 'N/A')
     })),
-    expectedDelivery: '24-48 Hours' // This can be dynamic based on branch logic
+    expectedDelivery: '24-48 Hours', // This can be dynamic based on branch logic
+    ...(extra || {}),
   };
 
   // 3. Get Templates
@@ -43,6 +70,7 @@ export async function notifyOrderUpdate({
   const results: { email?: any, sms?: any } = {};
 
   // 4. Dispatch Email
+  if (channels.includes('email')) {
   try {
     results.email = await sendEmail({
       to: order.customer?.email || '',
@@ -54,9 +82,10 @@ export async function notifyOrderUpdate({
   } catch (e) {
     console.error('[NOTIFY ERROR - EMAIL]', e);
   }
+  }
 
   // 5. Dispatch SMS
-  if (order.customer?.phone) {
+  if (channels.includes('sms') && order.customer?.phone) {
     try {
       results.sms = await sendSMS({
         to: order.customer.phone,

@@ -1,7 +1,7 @@
 import {useEffect} from 'react';
+import {useBranchStats} from '~/lib/branch-stats';
 import {type MetaFunction, type ActionFunctionArgs} from 'react-router';
 import {
-  useRouteLoaderData,
   useActionData,
   Form,
   useNavigation,
@@ -309,7 +309,12 @@ export async function loader() {
 }
 
 export default function ContactPage() {
-  const rootData = useRouteLoaderData('root') as any;
+  /*
+    The Admin list's figure. Not the root loader's locations: those come from
+    the Storefront API, which returns only the pickup-enabled ones and so
+    counts short. See ~/lib/branch-stats.
+  */
+  const {branchCount} = useBranchStats();
   const isEn = useIsEn();
   const actionData = useActionData<typeof action>();
   const navigation = useNavigation();
@@ -419,7 +424,11 @@ export default function ContactPage() {
           />
           <ContactCard
             title={isEn ? 'Visit Branch' : 'زيارة فرع'}
-            subtitle={isEn ? '117 branches everywhere' : '117 فرع في كل مكان'}
+            subtitle={
+              isEn
+                ? `${branchCount} branches everywhere`
+                : `${branchCount} فرع في كل مكان`
+            }
             pill={isEn ? 'Search for nearest' : 'إبحث عن اقرب فرع'}
             href="/pages/branches"
           />

@@ -4,25 +4,11 @@ import type {Route} from './+types/($locale).pages.branches';
 import {PageHeader} from '~/components/layout/PageHeader';
 
 import {pageTitle} from '~/lib/seo';
+import {branchStats, getBranchCity} from '~/lib/branch-stats';
 export const meta: Route.MetaFunction = ({matches}) => {
   return [{title: pageTitle(matches, 'Our Branches', 'فروعنا')}];
 };
 
-// Helper to extract city from custom.city metafield with fallback to address.city
-const getBranchCity = (loc: any) => {
-  const metaCity =
-    loc.city?.value ||
-    loc.city_metafield?.value ||
-    (loc.metafields &&
-      loc.metafields.find((m: any) => m.key === 'city')?.value);
-  if (metaCity && String(metaCity).trim()) {
-    return String(metaCity).trim();
-  }
-  if (loc.address?.city && String(loc.address.city).trim()) {
-    return String(loc.address.city).trim();
-  }
-  return '';
-};
 
 export const CITY_LOCALIZED_MAP: Record<string, { ar: string; en: string }> = {
   riyadh: { ar: 'الرياض', en: 'Riyadh' },
@@ -167,7 +153,21 @@ export default function BranchesPage() {
     ? "'Inter', sans-serif"
     : "'EnglishDigits', 'Bahij Janna', sans-serif";
 
-  const branchCount = locations.length > 0 ? locations.length : 118;
+  /*
+    Counted from the list this page is about to draw, not from
+    /api/branch-stats like the other two pages.
+
+    That is deliberate. The endpoint always answers from the Admin list, which
+    is the complete one; this page shows a card per location and prefers the
+    same Admin list, so in the normal case the two agree. If the Admin fetch
+    here fails, though, the page falls back to the root loader's shorter list
+    — and a headline reading 117 above 111 visible cards is worse than a
+    headline that matches what loaded.
+
+    It was `locations.length`, which counts Shopify's placeholder location too
+    and so read one higher than every other page. See ~/lib/branch-stats.
+  */
+  const {branchCount, cityCount} = branchStats(locations);
   const googleMapsKey =
     rootData?.env?.PUBLIC_GOOGLE_MAPS_KEY ||
     (typeof window !== 'undefined'
@@ -222,7 +222,7 @@ export default function BranchesPage() {
   };
 
   // Dynamic City Groups from locations custom.city metafield
-  const {cityGroups, citiesList, totalCitiesCount} = useMemo(() => {
+  const {cityGroups, citiesList} = useMemo(() => {
     const groups: Record<string, any[]> = {};
 
     locations.forEach((loc: any) => {
@@ -519,7 +519,7 @@ export default function BranchesPage() {
               style={{fontFamily: 'EnglishDigits, "Bahij Janna", sans-serif'}}
               dir="ltr"
             >
-              {totalCitiesCount || 35}+
+              {cityCount}+
             </div>
             <div className="text-white/60 text-xs lg:text-sm">
               {isEn ? 'Cities' : 'مدينة'}

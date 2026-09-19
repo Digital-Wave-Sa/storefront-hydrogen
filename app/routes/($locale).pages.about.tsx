@@ -1,5 +1,5 @@
 import {type MetaFunction} from 'react-router';
-import {useRouteLoaderData} from 'react-router';
+import {useBranchStats} from '~/lib/branch-stats';
 import {useState, useRef} from 'react';
 import patternBg from '/images/second-bg-pattern.svg';
 // You should place the actual image in assets and update this path
@@ -22,7 +22,13 @@ export const meta: MetaFunction = ({matches}) => {
 };
 
 export default function AboutPage() {
-  const rootData = useRouteLoaderData('root') as any;
+  /*
+    The Admin list's figures. Not the root loader's locations: those come from
+    the Storefront API, which returns only the pickup-enabled ones, so
+    counting them here read 111 where /pages/branches read 117. See
+    ~/lib/branch-stats.
+  */
+  const {branchCount, cityCount} = useBranchStats();
   const isEn = useIsEn();
 
   const [activeStep, setActiveStep] = useState(0);
@@ -73,8 +79,8 @@ export default function AboutPage() {
       year: '2026',
       title: isEn ? 'Today' : 'اليوم',
       desc: isEn
-        ? '117 branches in 35 cities and millions of customers trust us daily.'
-        : '117 فرع في 35 مدينة وملايين العملاء يثقون بنا يومياً',
+        ? `${branchCount} branches in ${cityCount} cities and millions of customers trust us daily.`
+        : `${branchCount} فرع في ${cityCount} مدينة وملايين العملاء يثقون بنا يومياً`,
     },
   ];
   const values = [
@@ -387,7 +393,7 @@ export default function AboutPage() {
                 title={isEn ? 'Today' : 'الطفرة الكبرى'}
                 desc={
                   isEn
-                    ? '117 branches in 35 cities and millions of customers trust us daily.'
+                    ? `${branchCount} branches in ${cityCount} cities and millions of customers trust us daily.`
                     : 'تجاوز 50 فرعاً في أنحاء المملكة وإطلاق تشكيلات جديدة'
                 }
                 isEn={isEn}
@@ -410,7 +416,7 @@ export default function AboutPage() {
                 desc={
                   isEn
                     ? 'Exceeding 50 branches across the Kingdom and launching new assortments.'
-                    : '117 فرع في 35 مدينة وملايين العملاء يثقون بنا يومياً'
+                    : `${branchCount} فرع في ${cityCount} مدينة وملايين العملاء يثقون بنا يومياً`
                 }
                 isEn={isEn}
               />
@@ -589,7 +595,7 @@ export default function AboutPage() {
                   fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif",
                 }}
               >
-                117
+                {branchCount}
               </p>
               <p
                 className="!text-[12px] text-[#9FB7AE]"

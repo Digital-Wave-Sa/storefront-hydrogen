@@ -17,12 +17,29 @@
  * and substring-matching it once pushed brand-new orders to "in transit".
  */
 
-/** Lowercase and collapse spaces/underscores to hyphens: "Ready For Pickup" -> "ready-for-pickup". */
+/**
+ * Lowercase, collapse spaces/underscores to hyphens, and drop the `status-`
+ * prefix: "Ready For Pickup" and "status-ready-for-pickup" both become
+ * "ready-for-pickup".
+ *
+ * The prefix is how this store's ERP actually writes them — `status-received`,
+ * `status-confirmed`, `status-preparing`, `status-ready-for-pickup`,
+ * `status-delivered` — and every list below is spelled without it. Exact
+ * membership on `confirmed` cannot match a tag named `status-confirmed`, so
+ * without this line the whole vocabulary is decorative: an order stays on
+ * stage 1 until Shopify's own fulfillment status moves, which on this store
+ * only happens at delivery. ~/lib/order-status strips it and the tracking
+ * page did not, which is exactly how the two disagreed about one order.
+ *
+ * Only `status-` is stripped, deliberately: `fulfillment-pickup` is not a
+ * status and keeps its prefix.
+ */
 export const normToken = (v: unknown) =>
   String(v ?? '')
     .toLowerCase()
     .trim()
-    .replace(/[\s_]+/g, '-');
+    .replace(/[\s_]+/g, '-')
+    .replace(/^status-/, '');
 
 export const FAILED_TOKENS = [
   'failure',

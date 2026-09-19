@@ -44,6 +44,18 @@ export type CakeFilling = {
   texture: string;
   /** The rectified photograph used for the hero slice at the default camera. */
   presentation: string;
+  /**
+   * The card image on «اختر نكهة الكيك».
+   *
+   * A downscale of the `texture` above — the cut face itself — rather than the
+   * little rendered slice this used to point at. Ten flavours side by side are
+   * chosen by what the cake looks like INSIDE, and at card size a 3D wedge
+   * shows mostly its own white icing; the cross-section shows the strawberries.
+   *
+   * A separate file rather than the texture directly: the texture is 2048px and
+   * around 400 KB because the renderer samples it, and ten of those is 4.8 MB
+   * for one step. These are 420px and 663 KB for the set.
+   */
   thumb: string;
 };
 
@@ -73,43 +85,143 @@ export type CakeDecoration = {
 /** Where the vendor's assets live once copied into our public folder. */
 export const CAKE_ASSET_BASE = '/cake/v5';
 
+/**
+ * Which cakes exist, as the client's own size sheet lists them.
+ *
+ * Three shapes x their sizes x five heights = 150 formats, generated rather
+ * than typed: 150 hand-written lines is 150 chances to mistype a dimension,
+ * and the ids are a contract with the renderer, the price book and the order
+ * spec. Generating them means the id, the name and the geometry cannot
+ * disagree with each other.
+ *
+ * The 23 formats that existed before this list grew keep their exact ids —
+ * `round-20x20-h8` still spells `round-20x20-h8` — so no price row and no
+ * past order is orphaned by the expansion.
+ *
+ * ── What the renderer can and cannot dress ──
+ *
+ * The MESH is parametric: `buildMesh` reads width, depth and height, so every
+ * one of these 150 renders with correct geometry, including sizes far beyond
+ * the original six.
+ *
+ * The FONDANT is not. `render-core.ts` chooses its material with
+ * `shape === 'round' ? (height === 14 ? 'round14' : 'round8') : shape`, and
+ * only those four masters exist. So a 10, 12 or 16 cm cake is dressed in the
+ * 8 cm fondant stretched over a taller body, and its photographic front view
+ * is framed by the 8 cm preset. That is a deliberate, accepted approximation,
+ * not an oversight — the client asked for all five heights before the vendor
+ * supplied masters for the three new ones. Replacing it means new
+ * `fondant-round{10,12,16}` art and matching PHOTO_PRESETS, at which point the
+ * only change needed here is deleting this paragraph.
+ */
+
+/** Diameters in centimetres, for round cakes. */
+const ROUND_DIAMETERS = [15, 20, 25, 30, 40, 50, 60, 70, 80, 90, 100];
+
+/** Side lengths in centimetres, for square cakes. */
+const SQUARE_SIDES = [15, 20, 25, 30, 40, 50, 60, 70, 80, 90, 100];
+
+/** [width, depth] in centimetres, in the order the client's sheet lists them. */
+const RECTANGLE_SIZES: Array<[number, number]> = [
+  [30, 20], [40, 30], [60, 40], [80, 60], [120, 60], [100, 80], [150, 100], [200, 100],
+];
+
+/** Every height offered, in centimetres. Applies to all three shapes. */
+export const CAKE_HEIGHTS = [8, 10, 12, 14, 16];
+
+/**
+ * The thumbnails that actually exist on disk.
+ *
+ * 23 were rendered from the vendor's package; the other 127 formats have no
+ * art of their own. Rather than 404, each one borrows the nearest thumbnail of
+ * the same shape. This is only ever shown on the shape card — the size and
+ * height steps are plain lists, because a white cake photographed from above
+ * cannot tell 40x40 from 50x50 and pretending otherwise wastes the customer's
+ * attention.
+ */
+const THUMBS: Record<CakeShape, {heights: number[]; sizes: Array<[number, number]>}> = {
+  round: {heights: [8, 14], sizes: [[15, 15], [20, 20], [25, 25], [30, 30], [40, 40], [50, 50]]},
+  square: {heights: [8], sizes: [[15, 15], [20, 20], [25, 25], [30, 30], [40, 40], [50, 50]]},
+  rectangle: {heights: [8], sizes: [[30, 20], [40, 30], [60, 40], [80, 60], [100, 80]]},
+};
+
+const nearest = (options: number[], value: number) =>
+  options.reduce((best, o) => (Math.abs(o - value) < Math.abs(best - value) ? o : best));
+
+function thumbFor(shape: CakeShape, width: number, depth: number, height: number): string {
+  const available = THUMBS[shape];
+  const h = nearest(available.heights, height);
+  // Nearest by footprint area, so a 200x100 borrows the largest rectangle
+  // rather than whichever happens to share a width.
+  const area = width * depth;
+  const [w, d] = available.sizes.reduce((best, s) =>
+    Math.abs(s[0] * s[1] - area) < Math.abs(best[0] * best[1] - area) ? s : best,
+  );
+  return `${CAKE_ASSET_BASE}/thumbnails/shape-${shape}-${w}x${d}-h${h}.webp`;
+}
+
+function format(
+  shape: CakeShape,
+  width: number,
+  depth: number,
+  height: number,
+): CakeFormat {
+  const size =
+    shape === 'round'
+      ? {ar: `قطر ${width} سم`, en: `${width}cm`}
+      : {ar: `${width} × ${depth} سم`, en: `${width} × ${depth}cm`};
+  const noun =
+    shape === 'round' ? {ar: 'دائري', en: 'Round'}
+    : shape === 'square' ? {ar: 'مربع', en: 'Square'}
+    : {ar: 'مستطيل', en: 'Rectangle'};
+  return {
+    id: `${shape}-${width}x${depth}-h${height}`,
+    shape,
+    width,
+    depth,
+    height,
+    // The height is in the name as well as its own step: this string is what
+    // gets written onto the order, and a bakery reading "40 × 30" with no
+    // height has to come back and ask.
+    nameAr: `${noun.ar} — ${size.ar}، ارتفاع ${height} سم`,
+    nameEn: `${noun.en} — ${size.en}, ${height}cm tall`,
+    thumb: thumbFor(shape, width, depth, height),
+  };
+}
+
 export const CAKE_FORMATS: CakeFormat[] = [
-  {id: 'round-15x15-h8', shape: 'round', width: 15, depth: 15, height: 8, nameAr: 'دائري — قطر 15 سم', nameEn: 'Round — 15cm', thumb: `${CAKE_ASSET_BASE}/thumbnails/shape-round-15x15-h8.webp`},
-  {id: 'round-20x20-h8', shape: 'round', width: 20, depth: 20, height: 8, nameAr: 'دائري — قطر 20 سم', nameEn: 'Round — 20cm', thumb: `${CAKE_ASSET_BASE}/thumbnails/shape-round-20x20-h8.webp`},
-  {id: 'round-25x25-h8', shape: 'round', width: 25, depth: 25, height: 8, nameAr: 'دائري — قطر 25 سم', nameEn: 'Round — 25cm', thumb: `${CAKE_ASSET_BASE}/thumbnails/shape-round-25x25-h8.webp`},
-  {id: 'round-30x30-h8', shape: 'round', width: 30, depth: 30, height: 8, nameAr: 'دائري — قطر 30 سم', nameEn: 'Round — 30cm', thumb: `${CAKE_ASSET_BASE}/thumbnails/shape-round-30x30-h8.webp`},
-  {id: 'round-40x40-h8', shape: 'round', width: 40, depth: 40, height: 8, nameAr: 'دائري — قطر 40 سم', nameEn: 'Round — 40cm', thumb: `${CAKE_ASSET_BASE}/thumbnails/shape-round-40x40-h8.webp`},
-  {id: 'round-50x50-h8', shape: 'round', width: 50, depth: 50, height: 8, nameAr: 'دائري — قطر 50 سم', nameEn: 'Round — 50cm', thumb: `${CAKE_ASSET_BASE}/thumbnails/shape-round-50x50-h8.webp`},
-  {id: 'round-15x15-h14', shape: 'round', width: 15, depth: 15, height: 14, nameAr: 'دائري — قطر 15 سم (مرتفع)', nameEn: 'Round — 15cm (tall)', thumb: `${CAKE_ASSET_BASE}/thumbnails/shape-round-15x15-h14.webp`},
-  {id: 'round-20x20-h14', shape: 'round', width: 20, depth: 20, height: 14, nameAr: 'دائري — قطر 20 سم (مرتفع)', nameEn: 'Round — 20cm (tall)', thumb: `${CAKE_ASSET_BASE}/thumbnails/shape-round-20x20-h14.webp`},
-  {id: 'round-25x25-h14', shape: 'round', width: 25, depth: 25, height: 14, nameAr: 'دائري — قطر 25 سم (مرتفع)', nameEn: 'Round — 25cm (tall)', thumb: `${CAKE_ASSET_BASE}/thumbnails/shape-round-25x25-h14.webp`},
-  {id: 'round-30x30-h14', shape: 'round', width: 30, depth: 30, height: 14, nameAr: 'دائري — قطر 30 سم (مرتفع)', nameEn: 'Round — 30cm (tall)', thumb: `${CAKE_ASSET_BASE}/thumbnails/shape-round-30x30-h14.webp`},
-  {id: 'round-40x40-h14', shape: 'round', width: 40, depth: 40, height: 14, nameAr: 'دائري — قطر 40 سم (مرتفع)', nameEn: 'Round — 40cm (tall)', thumb: `${CAKE_ASSET_BASE}/thumbnails/shape-round-40x40-h14.webp`},
-  {id: 'round-50x50-h14', shape: 'round', width: 50, depth: 50, height: 14, nameAr: 'دائري — قطر 50 سم (مرتفع)', nameEn: 'Round — 50cm (tall)', thumb: `${CAKE_ASSET_BASE}/thumbnails/shape-round-50x50-h14.webp`},
-  {id: 'square-15x15-h8', shape: 'square', width: 15, depth: 15, height: 8, nameAr: 'مربع — 15 × 15 سم', nameEn: 'Square — 15 x 15cm', thumb: `${CAKE_ASSET_BASE}/thumbnails/shape-square-15x15-h8.webp`},
-  {id: 'square-20x20-h8', shape: 'square', width: 20, depth: 20, height: 8, nameAr: 'مربع — 20 × 20 سم', nameEn: 'Square — 20 x 20cm', thumb: `${CAKE_ASSET_BASE}/thumbnails/shape-square-20x20-h8.webp`},
-  {id: 'square-25x25-h8', shape: 'square', width: 25, depth: 25, height: 8, nameAr: 'مربع — 25 × 25 سم', nameEn: 'Square — 25 x 25cm', thumb: `${CAKE_ASSET_BASE}/thumbnails/shape-square-25x25-h8.webp`},
-  {id: 'square-30x30-h8', shape: 'square', width: 30, depth: 30, height: 8, nameAr: 'مربع — 30 × 30 سم', nameEn: 'Square — 30 x 30cm', thumb: `${CAKE_ASSET_BASE}/thumbnails/shape-square-30x30-h8.webp`},
-  {id: 'square-40x40-h8', shape: 'square', width: 40, depth: 40, height: 8, nameAr: 'مربع — 40 × 40 سم', nameEn: 'Square — 40 x 40cm', thumb: `${CAKE_ASSET_BASE}/thumbnails/shape-square-40x40-h8.webp`},
-  {id: 'square-50x50-h8', shape: 'square', width: 50, depth: 50, height: 8, nameAr: 'مربع — 50 × 50 سم', nameEn: 'Square — 50 x 50cm', thumb: `${CAKE_ASSET_BASE}/thumbnails/shape-square-50x50-h8.webp`},
-  {id: 'rectangle-30x20-h8', shape: 'rectangle', width: 30, depth: 20, height: 8, nameAr: 'مستطيل — 30 × 20 سم', nameEn: 'Rectangle — 30 x 20cm', thumb: `${CAKE_ASSET_BASE}/thumbnails/shape-rectangle-30x20-h8.webp`},
-  {id: 'rectangle-40x30-h8', shape: 'rectangle', width: 40, depth: 30, height: 8, nameAr: 'مستطيل — 40 × 30 سم', nameEn: 'Rectangle — 40 x 30cm', thumb: `${CAKE_ASSET_BASE}/thumbnails/shape-rectangle-40x30-h8.webp`},
-  {id: 'rectangle-60x40-h8', shape: 'rectangle', width: 60, depth: 40, height: 8, nameAr: 'مستطيل — 60 × 40 سم', nameEn: 'Rectangle — 60 x 40cm', thumb: `${CAKE_ASSET_BASE}/thumbnails/shape-rectangle-60x40-h8.webp`},
-  {id: 'rectangle-80x60-h8', shape: 'rectangle', width: 80, depth: 60, height: 8, nameAr: 'مستطيل — 80 × 60 سم', nameEn: 'Rectangle — 80 x 60cm', thumb: `${CAKE_ASSET_BASE}/thumbnails/shape-rectangle-80x60-h8.webp`},
-  {id: 'rectangle-100x80-h8', shape: 'rectangle', width: 100, depth: 80, height: 8, nameAr: 'مستطيل — 100 × 80 سم', nameEn: 'Rectangle — 100 x 80cm', thumb: `${CAKE_ASSET_BASE}/thumbnails/shape-rectangle-100x80-h8.webp`},
+  ...ROUND_DIAMETERS.flatMap((d) => CAKE_HEIGHTS.map((h) => format('round', d, d, h))),
+  ...SQUARE_SIDES.flatMap((s) => CAKE_HEIGHTS.map((h) => format('square', s, s, h))),
+  ...RECTANGLE_SIZES.flatMap(([w, d]) => CAKE_HEIGHTS.map((h) => format('rectangle', w, d, h))),
+];
+
+/**
+ * The three cards on the first step. Each borrows a mid-size thumbnail of its
+ * own shape — big enough to read as round, square or rectangular, which is the
+ * only question that step asks.
+ */
+export const CAKE_SHAPES: Array<{
+  id: CakeShape;
+  nameAr: string;
+  nameEn: string;
+  thumb: string;
+}> = [
+  {id: 'round', nameAr: 'دائري', nameEn: 'Round', thumb: thumbFor('round', 25, 25, 8)},
+  {id: 'square', nameAr: 'مربع', nameEn: 'Square', thumb: thumbFor('square', 25, 25, 8)},
+  {id: 'rectangle', nameAr: 'مستطيل', nameEn: 'Rectangle', thumb: thumbFor('rectangle', 40, 30, 8)},
 ];
 
 export const CAKE_FILLINGS: CakeFilling[] = [
-  {id: '01', slug: 'blueberry_cheese', nameAr: 'تشيز بلو بيري', nameEn: 'Blueberry Cheesecake', texture: `${CAKE_ASSET_BASE}/fillings/filling-01.webp`, presentation: `${CAKE_ASSET_BASE}/slices/presentation-slice-01.webp`, thumb: `${CAKE_ASSET_BASE}/thumbnails/slice-card-01.webp`},
-  {id: '02', slug: 'vanilla', nameAr: 'كيكة فانيلا', nameEn: 'Vanilla', texture: `${CAKE_ASSET_BASE}/fillings/filling-02.webp`, presentation: `${CAKE_ASSET_BASE}/slices/presentation-slice-02.webp`, thumb: `${CAKE_ASSET_BASE}/thumbnails/slice-card-02.webp`},
-  {id: '03', slug: 'mango_cheese', nameAr: 'مانجو تشيز', nameEn: 'Mango Cheesecake', texture: `${CAKE_ASSET_BASE}/fillings/filling-03.webp`, presentation: `${CAKE_ASSET_BASE}/slices/presentation-slice-03.webp`, thumb: `${CAKE_ASSET_BASE}/thumbnails/slice-card-03.webp`},
-  {id: '04', slug: 'vanilla_strawberry', nameAr: 'فانيلا فراولة', nameEn: 'Vanilla & Strawberry', texture: `${CAKE_ASSET_BASE}/fillings/filling-04.webp`, presentation: `${CAKE_ASSET_BASE}/slices/presentation-slice-04.webp`, thumb: `${CAKE_ASSET_BASE}/thumbnails/slice-card-04.webp`},
-  {id: '05', slug: 'black_forest', nameAr: 'بلاك فورست', nameEn: 'Black Forest', texture: `${CAKE_ASSET_BASE}/fillings/filling-05.webp`, presentation: `${CAKE_ASSET_BASE}/slices/presentation-slice-05.webp`, thumb: `${CAKE_ASSET_BASE}/thumbnails/slice-card-05.webp`},
-  {id: '06', slug: 'light_chocolate_mousse', nameAr: 'شوكليت موس', nameEn: 'Chocolate Mousse', texture: `${CAKE_ASSET_BASE}/fillings/filling-06.webp`, presentation: `${CAKE_ASSET_BASE}/slices/presentation-slice-06.webp`, thumb: `${CAKE_ASSET_BASE}/thumbnails/slice-card-06.webp`},
-  {id: '07', slug: 'nutella', nameAr: 'كيكة نوتيلا', nameEn: 'Nutella', texture: `${CAKE_ASSET_BASE}/fillings/filling-07.webp`, presentation: `${CAKE_ASSET_BASE}/slices/presentation-slice-07.webp`, thumb: `${CAKE_ASSET_BASE}/thumbnails/slice-card-07.webp`},
-  {id: '08', slug: 'peanut', nameAr: 'كيكة فول سوداني', nameEn: 'Peanut', texture: `${CAKE_ASSET_BASE}/fillings/filling-08.webp`, presentation: `${CAKE_ASSET_BASE}/slices/presentation-slice-08.webp`, thumb: `${CAKE_ASSET_BASE}/thumbnails/slice-card-08.webp`},
-  {id: '09', slug: 'chocolate_mousse_09', nameAr: 'شوكولاتة موس — مرجع 09', nameEn: 'Dark Chocolate Mousse', texture: `${CAKE_ASSET_BASE}/fillings/filling-09.webp`, presentation: `${CAKE_ASSET_BASE}/slices/presentation-slice-09.webp`, thumb: `${CAKE_ASSET_BASE}/thumbnails/slice-card-09.webp`},
-  {id: '10', slug: 'rocher', nameAr: 'روشيه', nameEn: 'Rocher', texture: `${CAKE_ASSET_BASE}/fillings/filling-10.webp`, presentation: `${CAKE_ASSET_BASE}/slices/presentation-slice-10.webp`, thumb: `${CAKE_ASSET_BASE}/thumbnails/slice-card-10.webp`},
+  {id: '01', slug: 'blueberry_cheese', nameAr: 'تشيز بلو بيري', nameEn: 'Blueberry Cheesecake', texture: `${CAKE_ASSET_BASE}/fillings/filling-01.webp`, presentation: `${CAKE_ASSET_BASE}/slices/presentation-slice-01.webp`, thumb: `${CAKE_ASSET_BASE}/thumbnails/flavor-card-01.webp`},
+  {id: '02', slug: 'vanilla', nameAr: 'كيكة فانيلا', nameEn: 'Vanilla', texture: `${CAKE_ASSET_BASE}/fillings/filling-02.webp`, presentation: `${CAKE_ASSET_BASE}/slices/presentation-slice-02.webp`, thumb: `${CAKE_ASSET_BASE}/thumbnails/flavor-card-02.webp`},
+  {id: '03', slug: 'mango_cheese', nameAr: 'مانجو تشيز', nameEn: 'Mango Cheesecake', texture: `${CAKE_ASSET_BASE}/fillings/filling-03.webp`, presentation: `${CAKE_ASSET_BASE}/slices/presentation-slice-03.webp`, thumb: `${CAKE_ASSET_BASE}/thumbnails/flavor-card-03.webp`},
+  {id: '04', slug: 'vanilla_strawberry', nameAr: 'فانيلا فراولة', nameEn: 'Vanilla & Strawberry', texture: `${CAKE_ASSET_BASE}/fillings/filling-04.webp`, presentation: `${CAKE_ASSET_BASE}/slices/presentation-slice-04.webp`, thumb: `${CAKE_ASSET_BASE}/thumbnails/flavor-card-04.webp`},
+  {id: '05', slug: 'black_forest', nameAr: 'بلاك فورست', nameEn: 'Black Forest', texture: `${CAKE_ASSET_BASE}/fillings/filling-05.webp`, presentation: `${CAKE_ASSET_BASE}/slices/presentation-slice-05.webp`, thumb: `${CAKE_ASSET_BASE}/thumbnails/flavor-card-05.webp`},
+  {id: '06', slug: 'light_chocolate_mousse', nameAr: 'شوكليت موس', nameEn: 'Chocolate Mousse', texture: `${CAKE_ASSET_BASE}/fillings/filling-06.webp`, presentation: `${CAKE_ASSET_BASE}/slices/presentation-slice-06.webp`, thumb: `${CAKE_ASSET_BASE}/thumbnails/flavor-card-06.webp`},
+  {id: '07', slug: 'nutella', nameAr: 'كيكة نوتيلا', nameEn: 'Nutella', texture: `${CAKE_ASSET_BASE}/fillings/filling-07.webp`, presentation: `${CAKE_ASSET_BASE}/slices/presentation-slice-07.webp`, thumb: `${CAKE_ASSET_BASE}/thumbnails/flavor-card-07.webp`},
+  {id: '08', slug: 'peanut', nameAr: 'كيكة فول سوداني', nameEn: 'Peanut', texture: `${CAKE_ASSET_BASE}/fillings/filling-08.webp`, presentation: `${CAKE_ASSET_BASE}/slices/presentation-slice-08.webp`, thumb: `${CAKE_ASSET_BASE}/thumbnails/flavor-card-08.webp`},
+  {id: '09', slug: 'chocolate_mousse_09', nameAr: 'شوكولاتة موس — مرجع 09', nameEn: 'Dark Chocolate Mousse', texture: `${CAKE_ASSET_BASE}/fillings/filling-09.webp`, presentation: `${CAKE_ASSET_BASE}/slices/presentation-slice-09.webp`, thumb: `${CAKE_ASSET_BASE}/thumbnails/flavor-card-09.webp`},
+  {id: '10', slug: 'rocher', nameAr: 'روشيه', nameEn: 'Rocher', texture: `${CAKE_ASSET_BASE}/fillings/filling-10.webp`, presentation: `${CAKE_ASSET_BASE}/slices/presentation-slice-10.webp`, thumb: `${CAKE_ASSET_BASE}/thumbnails/flavor-card-10.webp`},
 ];
 
 export const CAKE_COLORS: CakeColor[] = [

@@ -9,7 +9,7 @@ import {
   provisionalSelections,
   type BuilderOption,
 } from '~/lib/cake-render/builder-options';
-import { CAKE_FILLINGS } from '~/lib/cake-render/catalog';
+import { CAKE_FILLINGS, findFilling } from '~/lib/cake-render/catalog';
 import type { CakeView, CakeAngle } from '~/lib/cake-render/compose';
 import { FaqModal } from './FaqModal';
 import { SaudiRiyalSymbol } from '~/components/Price';
@@ -73,6 +73,19 @@ const VIEW_TO_RENDERER: Record<
   {view: CakeView; angle: CakeAngle}
 > = {
   front: {view: 'whole', angle: 'original'},
+  /*
+    'high', because azimuth is the axis that cannot be fixed.
+
+    The board is a photograph: its own rotation is baked into the pixels, so a
+    camera that turns the cake leaves it sitting skew on its own board. Of the
+    four, only 'original' and 'high' keep the art's azimuth for a box — 'side'
+    turns it by 67 degrees, which is exactly the broken look it produced.
+
+    Elevation is free. The board is flat, so between two cameras of the same
+    azimuth it only needs a vertical stretch of sin(elevation), which
+    CakeRenderer applies. 52 degrees is a genuine look from above, on a board
+    that agrees with it.
+  */
   top: {view: 'whole', angle: 'high'},
   sliced: {view: 'cut', angle: 'original'},
 };
@@ -94,22 +107,28 @@ const FONT_FOR_RENDERER: Record<string, string> = {
 };
 
 /**
- * Shape families for the step-1 filter.
+ * Step 1 asks three questions in sequence: shape, then size, then height.
  *
- * `round-tall` is split out rather than left inside `round` because a 14 cm
- * cake is a different product to an 8 cm one at the same diameter — same
- * footprint, nearly twice the cake — and burying the twelve round formats in
- * one list makes the two heights look like duplicates of each other.
+ * It used to be a chip filter over one flat grid of every format. That worked
+ * at 23 and does not at 150 — eleven diameters times five heights is a wall no
+ * chip row makes navigable. More to the point, a grid asks the customer to
+ * compare fifty-five cards when they are really making three small decisions,
+ * each of which narrows the next.
+ *
+ * Cards survive only for the shape, where round/square/rectangle is a real
+ * visual difference. Size and height are plain lists, because a white cake
+ * photographed from above cannot tell 40×40 from 50×50, and a picture that
+ * carries no information is just one more thing to look at. It is also why the
+ * old `round-tall` chip is gone: height is now its own question rather than a
+ * family of the shape.
  */
-const SHAPE_FAMILIES = [
-  {id: 'all', nameAr: 'الكل', nameEn: 'All'},
+type ShapeId = 'round' | 'square' | 'rectangle';
+
+const SHAPE_CARDS: Array<{id: ShapeId; nameAr: string; nameEn: string}> = [
   {id: 'round', nameAr: 'دائري', nameEn: 'Round'},
-  {id: 'round-tall', nameAr: 'دائري مرتفع', nameEn: 'Round, tall'},
   {id: 'square', nameAr: 'مربع', nameEn: 'Square'},
   {id: 'rectangle', nameAr: 'مستطيل', nameEn: 'Rectangle'},
-] as const;
-
-type ShapeFamily = (typeof SHAPE_FAMILIES)[number]['id'];
+];
 
 const steps = [
   { id: 1, titleEn: 'Shape', titleAr: 'اختر الشكل', icon: Cake },
@@ -940,31 +959,131 @@ export default function CustomCakeBuilder({
   const [view, setView] = useState<'front' | 'top' | 'sliced'>('front');
 
   /**
-   * Every view works on every shape now, so this is a constant.
+   * Only what Saadeddin supplied art for is offered as a live view.
    *
-   * It used to test for an `imageTop` or `imageSliced` file on the metaobject,
-   * falling back to a hardcoded list of five shape ids — which is why a square
-   * cake had no top view: nobody had photographed one. The renderer draws any
-   * view of any format from the same mesh, so the switcher no longer has to
-   * hide buttons that would show nothing.
+   * The supplied set — boards/, cakes/, toppings/ — exists for a single camera
+   * and a whole cake, so الشكل الخارجي is the one view that is genuinely the
+   * shopper's cake: their format, their colour, their toppings.
+   *
+   * من فوق has no art. What we showed was the front still stretched to a
+   * 52-degree camera, and it looked like it. The button stays where shoppers
+   * expect it but is disabled, marked قريباً, until a top set arrives.
+   *
+   * القطعة (formerly من الداخل) shows `slices/presentation-slice-NN.webp`: the
+   * vendor's own standalone wedge of the chosen flavour. It is a picture of
+   * the FILLING, not of this cake cut open — always a round white wedge,
+   * whatever the shopper chose — which is why the button no longer says «من
+   * الداخل». It is clean by construction and it replaces the cut we used to
+   * compute out of the front still, which stretched on every height without
+   * art. The renderer keeps drawing the front view underneath so the checkout
+   * snapshot (`cake-3d-canvas`) is always there.
    */
-  const supportedViews = {front: true, top: true, sliced: true} as const;
+  const supportedViews = {front: true, top: false, sliced: true} as const;
 
-  const {view: rendererView, angle: rendererAngle} = VIEW_TO_RENDERER[view];
+  const {view: rendererView, angle: rendererAngle} =
+    VIEW_TO_RENDERER[view === 'sliced' ? 'front' : view];
 
-  const [shapeFamily, setShapeFamily] = useState<ShapeFamily>('all');
+  const presentationSlice =
+    findFilling(selections.flavor?.id || CAKE_FILLINGS[0].id)?.presentation ??
+    CAKE_FILLINGS[0].presentation;
 
-  const visibleShapes = React.useMemo(() => {
-    const matches = (s: BuilderOption) => {
-      if (shapeFamily === 'all') return true;
-      if (shapeFamily === 'round') return s.shape === 'round' && s.height === 8;
-      if (shapeFamily === 'round-tall') return s.shape === 'round' && s.height === 14;
-      return s.shape === shapeFamily;
-    };
-    return mergedOptions.shapes.filter(
-      (s) => matches(s) || s.id === selections.shape?.id,
-    );
-  }, [mergedOptions.shapes, shapeFamily, selections.shape?.id]);
+  /**
+   * Step 1's two intermediate answers. The third — the height — IS the format,
+   * so it lands straight in `selections.shape` and nothing here shadows it.
+   */
+  const [pickShape, setPickShape] = useState<ShapeId | null>(null);
+  const [pickSize, setPickSize] = useState<{w: number; d: number} | null>(null);
+
+  /**
+   * Follow the chosen format rather than lead it.
+   *
+   * A format can arrive without anyone touching these lists — a restored draft,
+   * a reorder, a `?shape=` link. Deriving the two answers from whatever is
+   * selected means stepping back onto step 1 shows the customer where they
+   * actually are, instead of an empty shape row above a cake they already
+   * picked.
+   */
+  React.useEffect(() => {
+    const chosen = selections.shape;
+    if (!chosen?.shape) return;
+    setPickShape(chosen.shape as ShapeId);
+    setPickSize({w: Number(chosen.width), d: Number(chosen.depth)});
+  }, [selections.shape?.id]);
+
+  /** Distinct footprints for the chosen shape, in the client's own order. */
+  const sizesForShape = React.useMemo(() => {
+    if (!pickShape) return [] as Array<{w: number; d: number; from: number | null}>;
+    const seen = new Map<string, {w: number; d: number; from: number | null}>();
+    for (const s of mergedOptions.shapes) {
+      if (s.shape !== pickShape) continue;
+      const key = `${s.width}x${s.depth}`;
+      const existing = seen.get(key);
+      // "from" is the cheapest priced height at this footprint — the customer
+      // is choosing a size before they have seen a height, and a size list with
+      // no prices at all makes that choice blind.
+      const candidate = s.priced ? s.price : null;
+      if (!existing) {
+        seen.set(key, {w: Number(s.width), d: Number(s.depth), from: candidate});
+      } else if (candidate !== null && (existing.from === null || candidate < existing.from)) {
+        existing.from = candidate;
+      }
+    }
+    return [...seen.values()];
+  }, [mergedOptions.shapes, pickShape]);
+
+  /** The formats at the chosen footprint — one per height. */
+  const heightsForSize = React.useMemo(() => {
+    if (!pickShape || !pickSize) return [] as BuilderOption[];
+    return mergedOptions.shapes
+      .filter(
+        (s) =>
+          s.shape === pickShape &&
+          Number(s.width) === pickSize.w &&
+          Number(s.depth) === pickSize.d,
+      )
+      .sort((a, b) => Number(a.height) - Number(b.height));
+  }, [mergedOptions.shapes, pickShape, pickSize]);
+
+  const sizeLabel = (w: number, d: number) =>
+    pickShape === 'round'
+      ? isEn
+        ? `${w} cm`
+        : `قطر ${w} سم`
+      : isEn
+        ? `${w} × ${d} cm`
+        : `${w} × ${d} سم`;
+
+  /** The first footprint the client's own sheet lists for a shape — the smallest. */
+  const firstSizeFor = (shape: ShapeId) => {
+    const first = mergedOptions.shapes.find((s) => s.shape === shape);
+    return first ? {w: Number(first.width), d: Number(first.depth)} : null;
+  };
+
+  /**
+   * The format at this footprint, keeping the height the customer already
+   * chose.
+   *
+   * Every footprint offers all five heights, so someone who picked 14 cm and
+   * then changed their mind about the size keeps their 14 cm rather than being
+   * silently dropped back to 8. Falls back to the shortest, which is also the
+   * cheapest — see the note on the shape card's onClick.
+   */
+  const formatFor = (
+    shape: ShapeId,
+    size: {w: number; d: number},
+    height: number | null,
+  ) => {
+    const atSize = mergedOptions.shapes
+      .filter(
+        (s) =>
+          s.shape === shape &&
+          Number(s.width) === size.w &&
+          Number(s.depth) === size.d,
+      )
+      .sort((a, b) => Number(a.height) - Number(b.height));
+    if (!atSize.length) return null;
+    return atSize.find((s) => Number(s.height) === height) ?? atSize[0];
+  };
 
   React.useEffect(() => {
     // Functional form on purpose: the effect depends only on `isCutaway`, so
@@ -997,6 +1116,12 @@ export default function CustomCakeBuilder({
    * wins. If the rule needs to grow, it grows here.
    */
   React.useEffect(() => {
+    /*
+      The flavour step opens ON the slice, because that is the question it
+      asks: swapping the filling changes nothing on the outside, so the step
+      shows the vendor's wedge of whatever is selected. Every other step opens
+      on the front.
+    */
     setView(currentStep === 2 ? 'sliced' : 'front');
     setIsCutaway(false);
   }, [currentStep]);
@@ -1438,6 +1563,113 @@ export default function CustomCakeBuilder({
     </svg>
   );
 
+  /**
+   * The flavour card.
+   *
+   * Split out of `renderOptionsGrid` rather than bolted into it with another
+   * `category === 'flavor'` ternary. That function already carries four of
+   * those, and every one of them makes the other three categories harder to
+   * read for the sake of a branch they never take. Flavours are the one step
+   * whose card is mostly a photograph, so they get their own.
+   *
+   * The image is the filling's own cut face — see the note on `thumb` in
+   * `catalog.ts` for why that beats the rendered wedge it replaced.
+   */
+  /*
+    One picture card, used by the flavour step and the decoration step.
+
+    Both steps ask the shopper to choose between things that can only be judged
+    by looking: a filling's cut face and a cake's decoration. The small
+    `renderOptionsGrid` tile puts its picture in a 56px circle, which threw away
+    almost everything in an 840px card and made fifteen decorations read as
+    fifteen identical white discs.
+
+    `fit` is the one real difference between the two. A filling card is a
+    texture and is CROPPED to fill the circle. A decoration card is a whole cake
+    that has to stay whole, so it is CONTAINED — cropping it cuts the board and
+    the piped edge off, which is exactly the part being chosen.
+  */
+  const renderPictureCard = (
+    category: 'flavor' | 'style',
+    fit: 'cover' | 'contain',
+  ) => (option: any) => {
+    const isSelected =
+      (selections[category as keyof typeof selections] as any)?.id === option.id;
+    const nameParts = option.name.split(' (');
+    const displayName =
+      isEn && nameParts.length > 1
+        ? nameParts[1].replace(')', '')
+        : nameParts[0].trim();
+
+    return (
+      <button
+        key={option.id}
+        type="button"
+        onClick={() => handleSelect(category, option)}
+        aria-pressed={isSelected}
+        className={`group relative flex flex-col overflow-hidden rounded-[20px] border bg-white text-center transition-all cursor-pointer ${
+          isSelected
+            ? 'border-[#294941] shadow-md'
+            : 'border-[#EFE6D4] shadow-sm hover:border-[#C9A84C] hover:shadow-md'
+        }`}
+      >
+        {isSelected && (
+          <div className="absolute top-3 right-3 z-10 w-6 h-6 rounded-full bg-[#294941] text-white flex items-center justify-center shadow">
+            <CheckIcon className="w-3.5 h-3.5" />
+          </div>
+        )}
+
+        {/* The picture, on cream, ringed in gold. */}
+        <div className="bg-[#FBF5E9] px-5 pt-5 pb-4 flex items-center justify-center">
+          <div className="w-full aspect-square max-w-[190px] rounded-full overflow-hidden ring-2 ring-[#C9A84C] shadow-inner">
+            <img
+              src={option.image}
+              alt=""
+              className={`w-full h-full ${fit === 'cover' ? 'object-cover' : 'object-contain p-2'}`}
+              loading="lazy"
+            />
+          </div>
+        </div>
+
+        {/* The gold rule, which is what stops the cream area and the white
+            name area reading as one washed-out block. */}
+        <div className="h-px w-full bg-[#C9A84C]/45" />
+
+        <div className="flex flex-col items-center gap-2 px-3 py-4">
+          <div className="font-bold text-[#1a1a1a] leading-snug">
+            {displayName}
+          </div>
+          {option.priced && option.price > 0 ? (
+            <span className="inline-flex items-center gap-1 rounded-full border border-[#DCC58A] bg-[#F7EFD9] px-3 py-1 text-sm font-bold text-[#4A3F28]">
+              {toArabicDigits(option.price)}
+              <SaudiRiyalSymbol className="w-auto h-3.5 text-[#4A3F28]" />
+            </span>
+          ) : (
+            <span className="inline-flex items-center rounded-full border border-[#BBD3C6] bg-[#EEF6F1] px-3 py-1 text-sm font-bold text-[#2F6B4F]">
+              {option.priced
+                ? isEn
+                  ? 'Included'
+                  : 'مشمول'
+                : isEn
+                  ? 'Price on request'
+                  : 'السعر عند الطلب'}
+            </span>
+          )}
+        </div>
+      </button>
+    );
+  };
+
+  const renderPictureGrid = (
+    category: 'flavor' | 'style',
+    options: any[],
+    fit: 'cover' | 'contain',
+  ) => (
+    <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mt-6 w-full">
+      {options.map(renderPictureCard(category, fit))}
+    </div>
+  );
+
   const renderOptionsGrid = (category: string, options: any[]) => (
     <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mt-6 w-full">
       {options.map(option => {
@@ -1679,18 +1911,11 @@ export default function CustomCakeBuilder({
                     )}
 
                     {/*
-                      A family filter, because 23 sizes in one flat grid is a
-                      wall. The old list had six and needed none. Filtering
-                      never hides the shape already chosen — changing filter
-                      would otherwise make a selected cake vanish from view
-                      while still being the cake being built.
-                    */}
-                    {/*
-                      No `justify-*` here, deliberately.
+                      No `justify-*` on the rows below, deliberately.
 
-                      This read `isEn ? '' : 'justify-end'`, which put the
-                      Arabic chips against the LEFT edge while the heading above
-                      them sat on the right. `justify-end` is
+                      An earlier version read `isEn ? '' : 'justify-end'`, which
+                      put the Arabic content against the LEFT edge while the
+                      heading above it sat on the right. `justify-end` is
                       `justify-content: flex-end`, and flex-end is the inline
                       END of the container -- which under `dir="rtl"` is the
                       left. The conditional was correcting for a direction flex
@@ -1700,24 +1925,222 @@ export default function CustomCakeBuilder({
                       in Arabic, the left in English. One class list, correct in
                       both, with nothing to keep in sync.
                     */}
-                    <div className="flex flex-wrap gap-2 mt-5">
-                      {SHAPE_FAMILIES.map((family) => (
-                        <button
-                          key={family.id}
-                          type="button"
-                          onClick={() => setShapeFamily(family.id)}
-                          className={`px-4 py-2 rounded-full text-sm font-bold transition-all cursor-pointer border ${
-                            shapeFamily === family.id
-                              ? 'bg-[#294941] text-white border-[#294941]'
-                              : 'bg-white text-[#294941] border-[#E5E7EB] hover:border-[#294941]/50'
-                          }`}
-                        >
-                          {isEn ? family.nameEn : family.nameAr}
-                        </button>
-                      ))}
+                    <div className="grid grid-cols-3 gap-3 sm:gap-4 mt-5">
+                      {SHAPE_CARDS.map((card) => {
+                        const isSelected = pickShape === card.id;
+                        return (
+                          <button
+                            key={card.id}
+                            type="button"
+                            onClick={() => {
+                              if (pickShape === card.id) return;
+                              /*
+                                Choosing a shape fills in the two answers below
+                                it, rather than leaving two empty lists and a
+                                preview with nothing to draw.
+
+                                This is a deliberate, narrow exception to the
+                                rule a few hundred lines up — "the total opens
+                                at 0.00 and every riyal on it is something they
+                                clicked" — which exists because this builder
+                                once opened on a complete cake and charged 370
+                                before the first click.
+
+                                It stays true where it matters. On arrival no
+                                shape is chosen, so nothing is selected and the
+                                total is still 0.00; a price only ever appears
+                                after the customer has clicked something. And
+                                the default is the FIRST entry in the client's
+                                own sheet, which is the smallest size at the
+                                shortest height — the cheapest cake of that
+                                shape. So every later move is upward and
+                                deliberate. A default that picked anything else
+                                would be the old bug wearing a new hat.
+
+                                A footprint the customer cannot see on a
+                                rectangle has no meaning on a round cake, so the
+                                size resets to that shape's own first. The
+                                height carries over, because 14 cm means the
+                                same thing on all three.
+                              */
+                              const size = firstSizeFor(card.id);
+                              const carriedHeight =
+                                Number(selections.shape?.height) || null;
+                              setPickShape(card.id);
+                              setPickSize(size);
+                              setSelections((prev) => ({
+                                ...prev,
+                                shape: size
+                                  ? formatFor(card.id, size, carriedHeight)
+                                  : null,
+                              }));
+                            }}
+                            aria-pressed={isSelected}
+                            className={`relative flex flex-col items-center justify-center rounded-2xl border p-4 sm:p-6 transition-all cursor-pointer ${
+                              isSelected
+                                ? 'border-[#294941] bg-[#F7EAE6]'
+                                : 'border-[#E5E7EB] bg-white hover:border-[#294941]/50'
+                            }`}
+                          >
+                            {isSelected && (
+                              <div className="absolute top-3 right-3 text-white bg-[#294941] rounded-full p-1 z-10 w-5 h-5 flex items-center justify-center">
+                                <CheckIcon className="w-3 h-3" />
+                              </div>
+                            )}
+                            {/*
+                              The plate is darker than the cake on purpose, and
+                              this is the whole fix for "I can't see the shape".
+
+                              The art is not short of detail: measured across
+                              the body, its shading runs from luminance 155 in
+                              the shadowed side to 255 on the top face. The
+                              trouble was what sat behind it. A white ring, and
+                              then a first attempt at #EFE7DC, both land around
+                              luminance 230 — within ~25 steps of the top face,
+                              which is the largest surface and the one the eye
+                              goes to. The cake's brightest, flattest area was
+                              dissolving into its own backdrop.
+
+                              #D6C3AC is luminance 194. That buys ~56 steps of
+                              separation on the top face while staying warm
+                              enough for the builder's cream palette, and the
+                              shading that was always in the file becomes
+                              visible. Going darker still reads as muddy.
+
+                              Padding removed and the plate widened for the same
+                              reason: the cake occupies only the middle ~79% of
+                              its own square canvas, so every pixel of box spent
+                              on padding shrinks the subject twice over.
+                            */}
+                            <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-[#D6C3AC] flex items-center justify-center overflow-hidden mb-3">
+                              <img
+                                src={`/cake/v5/thumbnails/shape-${card.id}-${
+                                  card.id === 'rectangle' ? '40x30' : '25x25'
+                                }-h8.webp`}
+                                alt=""
+                                className="w-full h-full object-contain"
+                                loading="lazy"
+                              />
+                            </div>
+                            <div className="font-bold text-[#1a1a1a]">
+                              {isEn ? card.nameEn : card.nameAr}
+                            </div>
+                          </button>
+                        );
+                      })}
                     </div>
 
-                    {renderOptionsGrid('shape', visibleShapes)}
+                    {pickShape && (
+                      <div className="mt-8">
+                        <h3 className={`text-lg font-bold text-[#1a1a1a] ${isEn ? 'text-left' : 'text-right'}`}>
+                          {isEn ? 'Choose Size' : 'اختر المقاس'}
+                        </h3>
+                        <div className="mt-3 flex flex-col gap-2">
+                          {sizesForShape.map((size) => {
+                            const isSelected =
+                              pickSize?.w === size.w && pickSize?.d === size.d;
+                            return (
+                              <button
+                                key={`${size.w}x${size.d}`}
+                                type="button"
+                                onClick={() => {
+                                  if (isSelected) return;
+                                  // Keep the chosen height across a size
+                                  // change; every footprint offers all five.
+                                  const next = {w: size.w, d: size.d};
+                                  const carriedHeight =
+                                    Number(selections.shape?.height) || null;
+                                  setPickSize(next);
+                                  setSelections((prev) => ({
+                                    ...prev,
+                                    shape: pickShape
+                                      ? formatFor(pickShape, next, carriedHeight)
+                                      : null,
+                                  }));
+                                }}
+                                aria-pressed={isSelected}
+                                className={`flex items-center gap-3 rounded-xl border px-4 py-3 transition-all cursor-pointer text-start ${
+                                  isSelected
+                                    ? 'border-[#294941] bg-[#F7EAE6]'
+                                    : 'border-[#E5E7EB] bg-white hover:border-[#294941]/50'
+                                }`}
+                              >
+                                <span
+                                  className={`shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                                    isSelected ? 'border-[#294941]' : 'border-[#CBD5D1]'
+                                  }`}
+                                >
+                                  {isSelected && (
+                                    <span className="w-2.5 h-2.5 rounded-full bg-[#294941]" />
+                                  )}
+                                </span>
+                                <span className="font-bold text-[#1a1a1a] font-en">
+                                  {sizeLabel(size.w, size.d)}
+                                </span>
+                                {size.from !== null && size.from > 0 && (
+                                  <span className="ms-auto flex items-center gap-1 text-[#6B7B77] text-sm font-bold">
+                                    {isEn ? 'from' : 'من'} {toArabicDigits(size.from)}
+                                    <SaudiRiyalSymbol className="w-auto h-3 text-[#6B7B77]" />
+                                  </span>
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {pickShape && pickSize && (
+                      <div className="mt-8">
+                        <h3 className={`text-lg font-bold text-[#1a1a1a] ${isEn ? 'text-left' : 'text-right'}`}>
+                          {isEn ? 'Choose Height' : 'اختر الارتفاع'}
+                        </h3>
+                        <div className="mt-3 flex flex-col gap-2">
+                          {heightsForSize.map((option) => {
+                            const isSelected = selections.shape?.id === option.id;
+                            return (
+                              <button
+                                key={option.id}
+                                type="button"
+                                onClick={() => handleSelect('shape', option)}
+                                aria-pressed={isSelected}
+                                className={`flex items-center gap-3 rounded-xl border px-4 py-3 transition-all cursor-pointer text-start ${
+                                  isSelected
+                                    ? 'border-[#294941] bg-[#F7EAE6]'
+                                    : 'border-[#E5E7EB] bg-white hover:border-[#294941]/50'
+                                }`}
+                              >
+                                <span
+                                  className={`shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                                    isSelected ? 'border-[#294941]' : 'border-[#CBD5D1]'
+                                  }`}
+                                >
+                                  {isSelected && (
+                                    <span className="w-2.5 h-2.5 rounded-full bg-[#294941]" />
+                                  )}
+                                </span>
+                                <span className="font-bold text-[#1a1a1a] font-en">
+                                  {toArabicDigits(Number(option.height))}{' '}
+                                  {isEn ? 'cm' : 'سم'}
+                                </span>
+                                <span className="ms-auto flex items-center gap-1 text-[#1a1a1a] font-bold">
+                                  {option.priced && option.price > 0 ? (
+                                    <>
+                                      {toArabicDigits(option.price)}
+                                      <SaudiRiyalSymbol className="w-auto h-3.5 text-[#1a1a1a]" />
+                                    </>
+                                  ) : (
+                                    <span className="text-[#8BA19C] text-sm font-bold">
+                                      {isEn ? 'Price on request' : 'السعر عند الطلب'}
+                                    </span>
+                                  )}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -1728,7 +2151,7 @@ export default function CustomCakeBuilder({
                     <div className={`flex items-center justify-between mb-4 ${isEn ? 'flex-row-reverse' : ''}`}>
                       <h2 className="text-2xl font-bold text-[#1a1a1a]">{isEn ? 'Choose Flavor' : 'اختر نكهة الكيك'}</h2>
                     </div>
-                    {renderOptionsGrid('flavor', mergedOptions.flavors)}
+                    {renderPictureGrid('flavor', mergedOptions.flavors, 'cover')}
                   </div>
                   <div>
                     <h2 className={`text-2xl font-bold text-[#1a1a1a] ${isEn ? 'text-left' : 'text-right'}`}>{isEn ? 'Frosting Color' : 'لون التغليف (الكريمة)'}</h2>
@@ -1749,7 +2172,7 @@ export default function CustomCakeBuilder({
                     </div>
                   ) : null}
 
-                  {renderOptionsGrid('style', availableStyles)}
+                  {renderPictureGrid('style', availableStyles, 'contain')}
                 </div>
               )}
 
@@ -2119,6 +2542,24 @@ export default function CustomCakeBuilder({
                     draggable={false}
                   />
                 ) : (
+                <>
+                {/*
+                  القطعة: the vendor's wedge of the chosen flavour, laid over
+                  the live preview. The renderer stays mounted underneath
+                  (hidden, not unmounted) so the checkout snapshot can always
+                  find its canvas.
+                */}
+                {view === 'sliced' && (
+                  <img
+                    src={presentationSlice}
+                    alt={isEn
+                      ? `${selections.flavor?.name || 'Filling'} — slice`
+                      : `${selections.flavor?.name || 'الحشوة'} — القطعة`}
+                    className="absolute inset-0 z-30 w-full h-full object-contain p-6 select-none"
+                    draggable={false}
+                  />
+                )}
+                <div className={view === 'sliced' ? 'invisible w-full h-full' : 'w-full h-full'}>
                 <CakeRenderer
                   /*
                    * `canvasId` is load-bearing: handleCheckout grabs the
@@ -2151,6 +2592,8 @@ export default function CustomCakeBuilder({
                   }}
                   isEn={isEn}
                 />
+                </div>
+                </>
                 )}
               </div>
             </div>
@@ -2171,19 +2614,31 @@ export default function CustomCakeBuilder({
                     <span>{isEn ? 'Front' : 'الشكل الخارجي'}</span>
                   </button>
 
-                  {supportedViews.top && (
-                    <button
-                      type="button"
-                      onClick={() => setView('top')}
-                      className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-black transition-all cursor-pointer ${view === 'top'
-                        ? 'bg-[#294941] text-white shadow-sm'
-                        : 'text-[#294941] hover:bg-gray-100'
-                        }`}
-                    >
-                      <Compass className="w-3.5 h-3.5" />
-                      <span>{isEn ? 'Top' : 'من فوق'}</span>
-                    </button>
-                  )}
+                  {/*
+                    Kept in place but disabled: there is no top-view art yet.
+                    Hiding it would move the other buttons around for no
+                    reason; greying it out says "coming" rather than "gone".
+                  */}
+                  <button
+                    type="button"
+                    disabled={!supportedViews.top}
+                    aria-disabled={!supportedViews.top}
+                    title={supportedViews.top ? undefined : isEn ? 'Coming soon' : 'قريباً'}
+                    onClick={() => supportedViews.top && setView('top')}
+                    className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-black transition-all ${
+                      !supportedViews.top
+                        ? 'text-gray-400 cursor-not-allowed'
+                        : view === 'top'
+                          ? 'bg-[#294941] text-white shadow-sm cursor-pointer'
+                          : 'text-[#294941] hover:bg-gray-100 cursor-pointer'
+                    }`}
+                  >
+                    <Compass className="w-3.5 h-3.5" />
+                    <span>{isEn ? 'Top' : 'من فوق'}</span>
+                    {!supportedViews.top && (
+                      <span className="text-[10px] font-bold opacity-80">{isEn ? 'soon' : 'قريباً'}</span>
+                    )}
+                  </button>
 
                   {supportedViews.sliced && (
                     <button
@@ -2195,7 +2650,7 @@ export default function CustomCakeBuilder({
                         }`}
                     >
                       <Layers className="w-4 h-4" />
-                      <span>{isEn ? 'Sliced' : 'من الداخل'}</span>
+                      <span>{isEn ? 'Slice' : 'القطعة'}</span>
                     </button>
                   )}
                 </div>

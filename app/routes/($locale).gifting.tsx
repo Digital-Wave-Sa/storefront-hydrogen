@@ -865,7 +865,7 @@ export default function GiftingPage() {
               >
                 {isEn
                   ? 'Choose value, add message, and send instantly'
-                  : 'اختار القيمة، أضف رسالتك، وأرسلها فوراً'}
+                  : 'اختر القيمة، أضف رسالتك، وأرسلها فوراً'}
               </p>
 
               <div

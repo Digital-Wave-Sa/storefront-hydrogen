@@ -1,5 +1,6 @@
 import {type MetaFunction} from 'react-router';
 import {useBranchStats} from '~/lib/branch-stats';
+import {yearsSinceFounding} from '~/lib/founded';
 import {useState, useRef} from 'react';
 import patternBg from '/images/second-bg-pattern.svg';
 // You should place the actual image in assets and update this path
@@ -124,7 +125,7 @@ export default function AboutPage() {
       title: isEn ? 'Innovation' : 'الابتكار',
       desc: isEn
         ? 'We develop new products every season while maintaining the ancient spirit of heritage.'
-        : 'نطور منتجات جديدة كل موسم مع الحفاظ على روح Tراث العريقة',
+        : 'نطور منتجات جديدة كل موسم مع الحفاظ على روح التراث العريقة',
     },
   ];
   const progressPercent = (activeStep / (milestones.length - 1)) * 100;
@@ -575,7 +576,7 @@ export default function AboutPage() {
                   fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif",
                 }}
               >
-                100+
+                {yearsSinceFounding()}+
               </p>
               <p
                 className="!text-[12px] text-[#9FB7AE]"

@@ -288,7 +288,7 @@ export default function OccasionsPage() {
         subtitle={
           isEn
             ? 'Choose the occasion and we pick the best for you'
-            : 'اختار المناسبة ونختار لك الأفضل'
+            : 'اختر المناسبة ونختار لك الأفضل'
         }
         isEn={isEn}
       />
@@ -549,7 +549,7 @@ export default function OccasionsPage() {
               >
                 {isEn
                   ? 'Choose value, add message, and send instantly'
-                  : 'اختار القيمة، أضف رسالتك، وأرسلها فوراً'}
+                  : 'اختر القيمة، أضف رسالتك، وأرسلها فوراً'}
               </p>
 
               <div

@@ -1,3 +1,4 @@
+import {yearsSinceFounding} from '~/lib/founded';
 import {
   data,
   type LoaderFunctionArgs,
@@ -314,7 +315,7 @@ export default function ExportPage() {
       hero.localized('subtitle', isEn) ||
       (isEn
         ? 'Luxury Arabic sweets, maamoul, and chocolates — crafted in heritage ovens and exported via cold-chain logistics to over 30 countries.'
-        : 'حلويات عربية فاخرة، معمول وشوكولاتة — صُنعت بأكثر من قرن من العراقة، وتُصوّر بموجب خدمات لوجستية مبرّدة ومعتمدة حلال إلى أكثر من 30 دولة'),
+        : 'حلويات عربية فاخرة، معمول وشوكولاتة — صُنعت بأكثر من قرن من العراقة، وتُصدَّر عبر خدمات لوجستية مبرّدة ومعتمدة حلال إلى أكثر من 30 دولة'),
     primaryCta:
       hero.localized('primary_button_text', isEn) ||
       (isEn ? 'Browse Export Products' : 'استعرض منتجات التصدير'),
@@ -505,7 +506,7 @@ export default function ExportPage() {
                 className="text-[36px] sm:text-[44px] font-extrabold text-[#C5A96A] leading-none mb-2"
                 style={{fontFamily: "'Bahij Janna', sans-serif"}}
               >
-                +105
+                +{yearsSinceFounding()}
               </span>
               <span
                 className="text-[14px] sm:text-[15px] font-bold text-[#234745]"

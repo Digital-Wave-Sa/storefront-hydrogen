@@ -1,4 +1,5 @@
 import {Suspense, Fragment, useState, useEffect, useMemo} from 'react';
+import {counted, REVIEWS} from '~/lib/plural';
 import {
   getVisibilityStatus,
   getProductVisibility,
@@ -1386,9 +1387,7 @@ export default function Product() {
                 fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
               }}
             >
-              {isEn
-                ? `(${reviews?.length || 0} reviews)`
-                : `(${new Intl.NumberFormat('en-US').format(reviews?.length || 0)} مراجعة)`}
+              {`(${counted(reviews?.length || 0, isEn, REVIEWS)})`}
             </span>
           </div>
 

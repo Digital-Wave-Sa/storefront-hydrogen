@@ -1093,7 +1093,7 @@ export default function CorporatePage() {
             <p className="text-[#9FB7AE] text-[16px] md:text-[18px] font-medium leading-[22px]">
               {isEn
                 ? 'Three simple steps from choosing your path to delivering the gift'
-                : 'ثلاث خطوات بسبطة من اختيار المسار وحتي وصول الهدية إلي المُستلم'}
+                : 'ثلاث خطوات بسيطة من اختيار المسار وحتى وصول الهدية إلى المُستلم'}
             </p>
           </div>
 

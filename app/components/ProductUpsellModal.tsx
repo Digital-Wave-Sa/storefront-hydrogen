@@ -244,7 +244,7 @@ export function ProductUpsellModal({
                           : 'تمت الإضافة ✓'
                         : isEn
                         ? 'Add to Cart'
-                        : 'أضف إلي السلة'}
+                        : 'أضف إلى السلة'}
                     </span>
                   </AddToCartButton>
                 </div>

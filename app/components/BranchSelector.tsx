@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import {counted, BRANCHES} from '~/lib/plural';
 import { parseLocationToBranch, FALLBACK_BRANCHES, getDistance } from './DeliveryPickupModal';
 import type { Branch } from './DeliveryPickupModal';
 
@@ -107,7 +108,7 @@ export function BranchSelector({ locationsPromise, locale, onSelectBranch, selec
                         <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
                             {isEn ? 'Select Branch' : 'اختر الفرع'}
                         </span>
-                        <span className="text-[10px] text-gray-300">{enrichedBranches.length} {isEn ? 'branches' : 'فرع'}</span>
+                        <span className="text-[10px] text-gray-300">{counted(enrichedBranches.length, isEn, BRANCHES)}</span>
                     </div>
 
                     {/* Branch list */}

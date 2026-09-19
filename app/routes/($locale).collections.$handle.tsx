@@ -1,4 +1,6 @@
 import type {MetaFunction} from 'react-router';
+import {Count} from '~/components/Count';
+import {PRODUCTS} from '~/lib/plural';
 import {createPortal} from 'react-dom';
 import {data, redirect, type LoaderFunctionArgs} from 'react-router';
 import {
@@ -861,8 +863,7 @@ function CollectionHero({
               : {fontFamily: "'EnglishDigits', 'Bahij Janna', sans-serif"}
           }
         >
-          <span className="font-en">{productsCount}</span>{' '}
-          {isEn ? 'Products' : 'منتجات'}
+          <Count n={productsCount} forms={PRODUCTS} isEn={isEn} />
         </div>
       </div>
     </section>

@@ -53,7 +53,7 @@ export function ShopByOccasion({ collections }: { collections?: any[] }) {
                         {isEn ? 'What is your occasion?' : 'ما هي مناسبتك؟'}
                     </h2>
                     <p className="text-[#7D7D7D] text-[16px] lg:text-[16px] font-medium tracking-wide">
-                        {isEn ? 'Choose the occasion and we pick the best for you' : 'اختار المناسبة ونختار لك الأفضل'}
+                        {isEn ? 'Choose the occasion and we pick the best for you' : 'اختر المناسبة ونختار لك الأفضل'}
                     </p>
                 </div>
 

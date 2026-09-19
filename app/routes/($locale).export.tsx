@@ -141,7 +141,17 @@ export async function loader({context, request}: LoaderFunctionArgs) {
         filters: filters.length > 0 ? filters : undefined,
         sortKey: sortKey as any,
         reverse,
-        country: 'US', // International Market context
+        /**
+         * The store's own market, so prices come back in SAR.
+         *
+         * This was 'US', which put the query in the International market and
+         * made Shopify answer in USD -- amounts the cards then rendered with
+         * the riyal glyph and divided by 3.75 a second time, so a 158 SAR box
+         * advertised as «43 riyal ($11.47)». The category-filter query below
+         * always used the store's market, so filtering also flipped the page
+         * from one currency to the other. Both read the same market now.
+         */
+        country: storefront.i18n.country,
         language: storefront.i18n.language,
       },
       cache: storefront.CacheNone(),
@@ -173,16 +183,7 @@ export async function loader({context, request}: LoaderFunctionArgs) {
             variables: {
               handle,
               filters: filters.length > 0 ? filters : undefined,
-              /**
-               * US, to match the catalogue query above.
-               *
-               * This read `storefront.i18n.country`, which on the Arabic
-               * storefront is SA -- so the unfiltered export grid came back in
-               * USD and the moment a shopper picked a category it came back in
-               * SAR, at the same glyph and the same card. One page, two
-               * currencies, nothing on screen saying which.
-               */
-              country: 'US',
+              country: storefront.i18n.country,
               language: storefront.i18n.language,
             },
             cache: storefront.CacheNone(),
@@ -706,7 +707,20 @@ export default function ExportPage() {
                   )}
 
                   <div className="flex justify-center mt-12">
-                    <NextLink className="bg-[#234745] text-white px-14 py-3.5 rounded-full font-bold shadow-md hover:bg-[#1A3533] transition-all">
+                    {/*
+                      The white text is set inline, not left to `text-white`.
+
+                      reset.css carries an unlayered `a { color: inherit }`,
+                      and Tailwind v4 emits its utilities inside a real CSS
+                      @layer -- unlayered rules beat layered ones whatever the
+                      specificity, so the utility loses and the link inherits
+                      the page's near-black. ($locale).collections.$handle
+                      already works around this on the same button.
+                    */}
+                    <NextLink
+                      className="bg-[#234745] text-white px-14 py-3.5 rounded-full font-bold shadow-md hover:bg-[#1A3533] transition-all"
+                      style={{color: '#ffffff'}}
+                    >
                       {isLoading ? (
                         isEn ? (
                           'Loading...'

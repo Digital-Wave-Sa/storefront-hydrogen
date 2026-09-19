@@ -1036,8 +1036,18 @@ export function FilterSidebar({
     occasions: true,
   });
 
+  /**
+   * Handles that must not become category chips.
+   *
+   * The chips are built from every collection the Storefront API returns, so
+   * anything published shows up here whether or not it is a shopping category.
+   * `export-products` is the catalogue for the /export page: it has to be
+   * published for that page to read it, but it is a shipping list, not a
+   * category, and a shopper on /collections/all should never see it.
+   */
   const isOccasionOrGift = (handle: string) => {
     const occasions = [
+      'export-products',
       'wedding',
       'ramadan',
       'birthdays',

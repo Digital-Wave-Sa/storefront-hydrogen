@@ -573,10 +573,26 @@ export async function loader({params, context, request}: LoaderFunctionArgs) {
     orderNode.totalPriceSet,
   );
 
+  /**
+   * The subtotal BEFORE discounts, which is the only one that reconciles.
+   *
+   * Shopify's `currentSubtotalPriceSet` is already net of order discounts, and
+   * this page also prints the discount on its own row -- so the column read
+   * «221.28 subtotal, +25.00 delivery, -55.32 discount» above a total of
+   * 246.28 (SDN-1415). Adding those gives 190.96: the discount looked as if it
+   * had never been taken off, when in fact it was taken off twice on screen and
+   * once in reality.
+   *
+   * Adding the discount back makes the rows arithmetic the shopper can follow:
+   * 276.60 - 55.32 + 25.00 = 246.28, the figure they were charged. Orders with
+   * no discount are unchanged, since the addend is zero.
+   */
+  const subtotalBeforeDiscounts = subtotalAmount + discountAmount;
+
   // If the rows don't add up to the total, the page is showing a number Shopify
   // doesn't agree with — log it rather than letting it slide silently.
   const rowsSum =
-    subtotalAmount +
+    subtotalBeforeDiscounts +
     shippingAmount -
     discountAmount +
     (taxesIncluded ? 0 : taxAmount);
@@ -959,7 +975,7 @@ export async function loader({params, context, request}: LoaderFunctionArgs) {
       };
     }),
     summary: {
-      subtotal: fmtMoney(subtotalAmount),
+      subtotal: fmtMoney(subtotalBeforeDiscounts),
       delivery:
         shippingAmount > 0
           ? fmtMoney(shippingAmount)

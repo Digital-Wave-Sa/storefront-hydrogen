@@ -824,7 +824,7 @@ export default function ExportPage() {
             >
               {isEn
                 ? 'Become an authorized distributor and enjoy exclusive deals, personalized pricing, and dedicated logistics support.'
-                : 'املأ بياناتك وسيقوم فريق التصدير لدينا بالرد عليك خلال 48 ساعة بكتالوج جملة مخصص، والأسعار، وخيارات الشحن المناسبة لسوقك'}
+                : 'املأ بياناتك وسيقوم فريق التصدير لدينا بالرد عليك خلال 24 ساعة بكتالوج جملة مخصص، والأسعار، وخيارات الشحن المناسبة لسوقك'}
             </p>
 
             <div className="space-y-3 pt-4 border-t mt-[20px] border-white/15 text-[14px] text-gray-200 w-full" style={{fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif"}}>
@@ -849,11 +849,11 @@ export default function ExportPage() {
               >
                 <span>
                   {isEn ? (
-                    'WhatsApp Business: +966 50 123 4567'
+                    'WhatsApp Business: +966 9200 17070'
                   ) : (
                     <>
                       <span>واتساب للأعمال: </span>
-                      <span dir="ltr" className="inline-block font-mono">+966 50 123 4567</span>
+                      <span dir="ltr" className="inline-block font-mono">+966 9200 17070</span>
                     </>
                   )}
                 </span>

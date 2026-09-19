@@ -111,8 +111,8 @@ export default function CustomRequestPage() {
           </h1>
           <p className="text-[16px] text-[#8B9895] max-w-2xl m-0 leading-relaxed">
             {isEn
-              ? 'Design your corporate gift from scratch — content, packaging, colors, and identity. Fill in your requirements and our team will contact you within 24-48 hours with a sample approval & Draft Order.'
-              : 'صمّم هديتك المؤسسية بما يعكس هويتك بالكامل من الصفر (محتوى، تغليف، ألوان، شعار). املأ التفاصيل وسيتواصل معك فريقنا خلال 24-48 ساعة لتأكيد الطلب وإصدار فاتورة مسودة (Draft Order).'}
+              ? 'Design your corporate gift from scratch — content, packaging, colors, and identity. Fill in your requirements and our team will contact you within 24 hours with a sample approval & Draft Order.'
+              : 'صمّم هديتك المؤسسية بما يعكس هويتك بالكامل من الصفر (محتوى، تغليف، ألوان، شعار). املأ التفاصيل وسيتواصل معك فريقنا خلال 24 ساعة لتأكيد الطلب وإصدار فاتورة مسودة (Draft Order).'}
           </p>
         </div>
 
@@ -128,8 +128,8 @@ export default function CustomRequestPage() {
               </h2>
               <p className="text-[16px] text-[#8B9895] max-w-xl m-0 leading-relaxed">
                 {isEn
-                  ? 'Your request has been forwarded to info@saadeddin.com. Our corporate sales manager will review your brand assets and issue a Draft Order within 24-48 hours.'
-                  : 'تم تحويل طلبك بنجاح إلى info@saadeddin.com. سيتواصل معك مدير حسابك المختص خلال 24-48 ساعة لمراجعة الأصول وإصدار فاتورة مسودة (Draft Order).'}
+                  ? 'Your request has been forwarded to info@saadeddin.com. Our corporate sales manager will review your brand assets and issue a Draft Order within 24 hours.'
+                  : 'تم تحويل طلبك بنجاح إلى info@saadeddin.com. سيتواصل معك مدير حسابك المختص خلال 24 ساعة لمراجعة الأصول وإصدار فاتورة مسودة (Draft Order).'}
               </p>
 
               {/* Delivery Lead Time Note */}
@@ -139,13 +139,13 @@ export default function CustomRequestPage() {
 
               <div className="flex flex-col sm:flex-row gap-4 w-full max-w-md mt-4">
                 <a
-                  href="https://wa.me/966501234567"
+                  href="https://wa.me/966920017070"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex-1 bg-[#25D366] text-white font-bold py-3.5 rounded-full text-[15px] flex items-center justify-center gap-2 hover:bg-[#20bd5a] transition-all shadow-sm"
                 >
                   <span>💬</span>
-                  <span>{isEn ? 'WhatsApp: +966 50 123 4567' : 'واتساب للأعمال: +966 50 123 4567'}</span>
+                  <span>{isEn ? 'WhatsApp: +966 9200 17070' : 'واتساب للأعمال: +966 9200 17070'}</span>
                 </a>
                 <Link
                   to={isEn ? '/en/corporate' : '/corporate'}

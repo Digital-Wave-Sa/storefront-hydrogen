@@ -46,7 +46,6 @@ export async function action({request, context}: ActionFunctionArgs) {
 
   try {
     const intent = form.get('intent');
-    const password = getPassword(form);
     const customer: CustomerUpdateInput = {};
     const lang = storefront.i18n.language === 'EN' ? 'en' : 'ar';
 
@@ -105,40 +104,76 @@ export async function action({request, context}: ActionFunctionArgs) {
       }
     }
 
-    if (intent === 'deleteAccount') {
-      const {customer: currentCustomer} = await storefront.query(
-        `#graphql
-        query getDeleteProfileCustomerId($customerAccessToken: String!) {
-          customer(customerAccessToken: $customerAccessToken) {
-            id
-          }
-        }
-      `,
+    /**
+     * Who is being edited, resolved server-side.
+     *
+     * Both of this action's write paths used to start with
+     * `customer(customerAccessToken:)` on the Storefront API. Under the shop's
+     * new customer accounts setting that query returns null every time, so both
+     * threw «Customer not found» and neither a profile edit nor an account
+     * deletion could ever complete. The page itself renders because the account
+     * layout already falls back to the Admin API; this action had no fallback.
+     *
+     * `resolveLoggedInCustomer` is the resolver /add-email and the cake builder
+     * already use: the Storefront record when the token really is a Shopify
+     * one, otherwise the session keys written at OTP login.
+     */
+    const {resolveLoggedInCustomer, saveCustomerEmail} = await import(
+      '~/lib/customer-email.server'
+    );
+    const self = await resolveLoggedInCustomer(context);
+    if (!self) {
+      return data(
         {
-          variables: {
-            customerAccessToken: customerAccessToken.accessToken,
+          error:
+            lang === 'en'
+              ? 'We could not identify your account. Please sign in again.'
+              : 'تعذر التعرف على حسابك. يرجى تسجيل الدخول مرة أخرى.',
+          customer: null,
+        },
+        {status: 401},
+      );
+    }
+    const customerGid = `gid://shopify/Customer/${self.numericId}`;
+
+    const {getAdminToken, getAdminDomain} = await import(
+      '~/lib/shopify-admin.server'
+    );
+    const adminToken = await getAdminToken(context.env);
+    const adminDomain = getAdminDomain(context.env);
+    if (!adminToken || !adminDomain) {
+      return data(
+        {
+          error:
+            lang === 'en'
+              ? 'Profile service unavailable. Please try again shortly.'
+              : 'خدمة الملف الشخصي غير متاحة حالياً. يرجى المحاولة بعد قليل.',
+          customer: null,
+        },
+        {status: 503},
+      );
+    }
+
+    if (intent === 'deleteAccount') {
+      /**
+       * `getAdminToken` rather than the raw env var this used to read: the shop
+       * authenticates by client-credentials exchange, so
+       * SHOPIFY_ADMIN_API_ACCESS_TOKEN is usually absent — and the old code
+       * treated its absence as success, clearing the session and redirecting
+       * while the Shopify customer stayed exactly where it was.
+       */
+      const response = await fetch(
+        `https://${adminDomain}/admin/api/2024-01/customers/${self.numericId}.json`,
+        {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Shopify-Access-Token': adminToken,
           },
         },
       );
-      if (!currentCustomer) throw new Error('Customer not found');
-
-      const adminAccessToken = (context.env as any)
-        .SHOPIFY_ADMIN_API_ACCESS_TOKEN;
-      if (adminAccessToken) {
-        const numericalId = currentCustomer.id.split('/').pop();
-        const response = await fetch(
-          `https://${context.env.PUBLIC_STORE_DOMAIN}/admin/api/2024-01/customers/${numericalId}.json`,
-          {
-            method: 'DELETE',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-Shopify-Access-Token': adminAccessToken,
-            },
-          },
-        );
-        if (!response.ok) {
-          throw new Error('Failed to delete account on the server.');
-        }
+      if (!response.ok) {
+        throw new Error('Failed to delete account on the server.');
       }
 
       // The token resolves to nobody, so neither should the session --
@@ -211,53 +246,69 @@ export async function action({request, context}: ActionFunctionArgs) {
       }
     }
 
-    if (password) {
-      customer.password = password;
-    }
+    /**
+     * The email goes through the shared writer rather than this route's own
+     * update, so the rules that decide what counts as an address — the format
+     * check, the placeholder domain, and «already taken by someone else» — stay
+     * in one place with /add-email and the checkout gates. It also keeps
+     * `loginCustomerEmail` in step, which the account layout reads.
+     *
+     * It runs before the rest of the write so a rejected address leaves the
+     * record untouched rather than half-saved.
+     */
+    const {isPlaceholderEmail} = await import('~/lib/needs-email');
+    const nextEmail = String(customer.email || '').trim();
 
-    const {customer: currentCustomer} = await storefront.query(
-      `#graphql
-      query getProfileCustomerId($customerAccessToken: String!) {
-        customer(customerAccessToken: $customerAccessToken) {
-          id
-          birthdate: metafield(namespace: "custom", key: "birthdate") {
-            value
-          }
-        }
+    /**
+     * A placeholder address posted back unchanged is not an edit.
+     *
+     * OTP-only customers are given `<phone>@saadeddin.placeholder`, and the
+     * field above shows it, so it is posted with every save. `saveCustomerEmail`
+     * rightly refuses to WRITE a placeholder — without this guard, a customer
+     * who only wanted to correct their name would be told their email is
+     * invalid and nothing at all would save.
+     */
+    if (
+      nextEmail &&
+      !isPlaceholderEmail(nextEmail) &&
+      nextEmail.toLowerCase() !== String(self.currentEmail || '').toLowerCase()
+    ) {
+      const emailResult = await saveCustomerEmail(
+        context,
+        self.numericId,
+        nextEmail,
+      );
+      if (!emailResult.ok) {
+        const message =
+          emailResult.code === 'in_use'
+            ? lang === 'en'
+              ? 'That email address is already used by another account.'
+              : 'هذا البريد الإلكتروني مستخدم في حساب آخر.'
+            : emailResult.code === 'invalid_format'
+              ? lang === 'en'
+                ? 'Please enter a valid email address.'
+                : 'يرجى إدخال بريد إلكتروني صحيح.'
+              : lang === 'en'
+                ? 'We could not save your email. Please try again.'
+                : 'تعذر حفظ البريد الإلكتروني. يرجى المحاولة مرة أخرى.';
+        return data({error: message, customer: null}, {status: 400});
       }
-    `,
-      {
-        variables: {
-          customerAccessToken: customerAccessToken.accessToken,
-        },
-      },
-    );
-
-    if (!currentCustomer) {
-      throw new Error('Customer not found');
     }
 
     const birthdateStr = String(form.get('birthdate') || '').trim();
     if (birthdateStr) {
       // 1. Sync with Shopify Admin API via GraphQL metafieldsSet
       try {
-        const {getAdminToken, getAdminDomain} = await import(
-          '~/lib/shopify-admin.server'
-        );
-        const adminAccessToken = await getAdminToken(context.env);
-        const adminDomain = getAdminDomain(context.env);
-
-        if (adminAccessToken && adminDomain) {
-          const res = await fetch(
-            `https://${adminDomain}/admin/api/2024-01/graphql.json`,
-            {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'X-Shopify-Access-Token': adminAccessToken,
-              },
-              body: JSON.stringify({
-                query: `
+        const res = await fetch(
+          `https://${adminDomain}/admin/api/2024-01/graphql.json`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Shopify-Access-Token': adminToken,
+            },
+            body: JSON.stringify({
+              query: `
                   mutation setMetafield($metafields: [MetafieldsSetInput!]!) {
                     metafieldsSet(metafields: $metafields) {
                       userErrors {
@@ -267,27 +318,26 @@ export async function action({request, context}: ActionFunctionArgs) {
                     }
                   }
                 `,
-                variables: {
-                  metafields: [
-                    {
-                      ownerId: currentCustomer.id,
-                      namespace: 'custom',
-                      key: 'birthdate',
-                      value: birthdateStr,
-                      type: 'date',
-                    },
-                  ],
-                },
-              }),
-            },
+              variables: {
+                metafields: [
+                  {
+                    ownerId: customerGid,
+                    namespace: 'custom',
+                    key: 'birthdate',
+                    value: birthdateStr,
+                    type: 'date',
+                  },
+                ],
+              },
+            }),
+          },
+        );
+        const resJson: any = await res.json();
+        if (resJson.data?.metafieldsSet?.userErrors?.length > 0) {
+          console.error(
+            '[Profile] Admin API birthdate update userErrors:',
+            resJson.data.metafieldsSet.userErrors,
           );
-          const resJson: any = await res.json();
-          if (resJson.data?.metafieldsSet?.userErrors?.length > 0) {
-            console.error(
-              '[Profile] Admin API birthdate update userErrors:',
-              resJson.data.metafieldsSet.userErrors,
-            );
-          }
         }
       } catch (e) {
         console.error('Failed to sync birthdate with Shopify:', e);
@@ -305,35 +355,91 @@ export async function action({request, context}: ActionFunctionArgs) {
       }
     }
 
-    const updated = await storefront.mutate(CUSTOMER_UPDATE_MUTATION, {
-      variables: {
-        customerAccessToken: customerAccessToken.accessToken,
-        customer,
+    /**
+     * The name and phone, written through the Admin API.
+     *
+     * This was `storefront.mutate(customerUpdate, {customerAccessToken})`,
+     * which is the other half of the same dead path as the lookup above: the
+     * shop's OTP sign-in hands out its own `session-...` token, and the
+     * Storefront customer mutations refuse it.
+     *
+     * Only keys the form actually posted are sent, so Shopify keeps whatever
+     * it already holds for the rest — that is what preserves the "(Company)"
+     * last name on accounts whose form does not render that field. The
+     * response carries the full updated record, which is what goes back to the
+     * page, so nothing here has to guess the saved shape.
+     */
+    const adminPayload: Record<string, unknown> = {id: Number(self.numericId)};
+    if (typeof customer.firstName === 'string') {
+      adminPayload.first_name = customer.firstName;
+    }
+    if (typeof customer.lastName === 'string') {
+      adminPayload.last_name = customer.lastName;
+    }
+    if (typeof customer.phone === 'string') {
+      adminPayload.phone = customer.phone;
+    }
+
+    const updateRes = await fetch(
+      `https://${adminDomain}/admin/api/2024-01/customers/${self.numericId}.json`,
+      {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Shopify-Access-Token': adminToken,
+        },
+        body: JSON.stringify({customer: adminPayload}),
       },
-    });
+    );
 
-    if (updated.customerUpdate?.customerUserErrors?.length) {
-      return data(
-        {error: updated.customerUpdate?.customerUserErrors[0].message},
-        {status: 400},
+    if (!updateRes.ok) {
+      const body = (await updateRes.text().catch(() => '')).toLowerCase();
+      console.error(
+        `[Profile] Customer update failed for ${self.numericId} (HTTP ${updateRes.status}):`,
+        body.slice(0, 300),
       );
+      const phoneTaken =
+        body.includes('phone') && body.includes('already been taken');
+      const phoneInvalid = body.includes('phone') && body.includes('invalid');
+      const message = phoneTaken
+        ? lang === 'en'
+          ? 'That phone number is already used by another account.'
+          : 'رقم الجوال هذا مستخدم في حساب آخر.'
+        : phoneInvalid
+          ? lang === 'en'
+            ? 'Please enter a valid phone number.'
+            : 'يرجى إدخال رقم جوال صحيح.'
+          : lang === 'en'
+            ? 'We could not save your changes. Please try again.'
+            : 'تعذر حفظ التغييرات. يرجى المحاولة مرة أخرى.';
+      return data({error: message, customer: null}, {status: 400});
     }
 
-    if (updated.customerUpdate?.customerAccessToken?.accessToken) {
-      session.set(
-        'customerAccessToken',
-        updated.customerUpdate?.customerAccessToken,
-      );
+    const updatedAdmin = ((await updateRes.json()) as any)?.customer || {};
+
+    /**
+     * Keep the session's own idea of the number in step with Shopify's.
+     *
+     * `loginOtpPhone` is what the check above compares against to decide
+     * whether a number CHANGED, and what the account layout searches on when
+     * it falls back to the Admin API. Left holding the old number, a saved
+     * change would keep counting as a change, and `verifiedProfilePhone` would
+     * sit there as a standing permission for that number.
+     */
+    if (updatedAdmin.phone) {
+      session.set('loginOtpPhone', String(updatedAdmin.phone));
+      session.unset('verifiedProfilePhone');
     }
 
-    const returnedCustomer = updated.customerUpdate?.customer
-      ? {
-          ...updated.customerUpdate.customer,
-          birthdate: birthdateStr
-            ? {value: birthdateStr}
-            : (currentCustomer as any)?.birthdate,
-        }
-      : null;
+    const returnedCustomer = {
+      id: updatedAdmin.id ? `gid://shopify/Customer/${updatedAdmin.id}` : customerGid,
+      firstName: updatedAdmin.first_name || '',
+      lastName: updatedAdmin.last_name || '',
+      email: updatedAdmin.email || self.currentEmail || '',
+      phone: updatedAdmin.phone || '',
+      acceptsMarketing: Boolean(updatedAdmin.accepts_marketing),
+      birthdate: birthdateStr ? {value: birthdateStr} : null,
+    };
 
     return data(
       {error: null, customer: returnedCustomer},
@@ -983,10 +1089,18 @@ export default function AccountProfile() {
                 >
                   {isEn ? 'Email' : 'البريد الإلكتروني'}
                 </label>
+                {/*
+                  `dir="ltr"`: an email is a left-to-right string. Inside the
+                  Arabic (RTL) form, bidi reordering rendered
+                  966501234567@saadeddin.placeholder as
+                  saadeddin.placeholder@966501234567 — the same address,
+                  displayed back to front.
+                */}
                 <input
                   id="email"
                   name="email"
                   type="email"
+                  dir="ltr"
                   placeholder={isEn ? 'Email' : 'البريد الإلكتروني'}
                   className="bg-white border border-[#BBCFCD] rounded-[12px] h-[48px] px-4 w-full text-[14px] font-medium text-[#171717] focus:outline-none focus:border-[#9FB7AE]"
                   style={{
@@ -1288,46 +1402,13 @@ export default function AccountProfile() {
   );
 }
 
-function getPassword(form: FormData): string | undefined {
-  const currentPassword = form.get('currentPassword');
-  const newPassword = form.get('newPassword');
-
-  if (newPassword && !currentPassword) {
-    throw new Error('كلمة المرور الحالية مطلوبة لتغيير كلمة المرور.');
-  }
-
-  if (currentPassword && newPassword) {
-    return String(newPassword);
-  }
-
-  return undefined;
-}
-
-const CUSTOMER_UPDATE_MUTATION = `#graphql
-  mutation customerUpdate(
-    $customerAccessToken: String!,
-    $customer: CustomerUpdateInput!
-    $country: CountryCode
-    $language: LanguageCode
-  ) @inContext(language: $language, country: $country) {
-    customerUpdate(customerAccessToken: $customerAccessToken, customer: $customer) {
-      customer {
-        acceptsMarketing
-        email
-        firstName
-        id
-        lastName
-        phone
-      }
-      customerAccessToken {
-        accessToken
-        expiresAt
-      }
-      customerUserErrors {
-        code
-        field
-        message
-      }
-    }
-  }
-` as const;
+/**
+ * The password plumbing that used to live here is gone.
+ *
+ * This form has never rendered a password field, and the only thing that could
+ * set one — the Storefront `customerUpdate` mutation — is unreachable under the
+ * shop's new customer accounts setting; the Admin API cannot set a customer
+ * password at all. Keeping `getPassword` would have meant accepting a posted
+ * password and silently dropping it, which is worse than not offering it.
+ * Sign-in is by OTP, so there is no password to change.
+ */

@@ -472,8 +472,8 @@ export default function FAQPage() {
             }}
           >
             {isEn
-              ? 'Our support team is ready to help you 24/7.'
-              : 'فريق الدعم جاهز لمساعدتك على مدار الساعة'}
+              ? 'Our support team is here daily, 7:30 AM - 4:00 PM.'
+              : 'فريق الدعم جاهز لمساعدتك يومياً من 7:30 ص حتى 4:00 م'}
           </p>
 
           <div

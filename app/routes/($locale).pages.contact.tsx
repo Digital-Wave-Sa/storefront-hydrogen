@@ -477,7 +477,7 @@ export default function ContactPage() {
                   lineHeight: '100%',
                 }}
               >
-                {isEn ? 'Business Hours' : 'أوقات العمل'}
+                {isEn ? 'Customer Service Hours' : 'ساعات خدمة العملاء'}
               </h2>
               <div className="space-y-0">
                 <InfoRow

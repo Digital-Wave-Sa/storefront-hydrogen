@@ -725,8 +725,8 @@ export default function BranchesPage() {
             >
               <span>
                 {isEn
-                  ? `Showing ${filteredLocations.length} Branches`
-                  : `عرض ${filteredLocations.length} فروع`}
+                  ? `Showing ${counted(filteredLocations.length, true, BRANCHES)}`
+                  : `عرض ${counted(filteredLocations.length, false, BRANCHES)}`}
               </span>
               {selectedCity !== 'all' && (
                 <button

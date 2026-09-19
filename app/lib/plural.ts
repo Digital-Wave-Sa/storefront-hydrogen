@@ -101,6 +101,18 @@ export const BRANCHES: CountForms = {
   },
 };
 
+export const REVIEWS: CountForms = {
+  en: {one: 'review', other: 'reviews'},
+  ar: {
+    zero: 'لا مراجعات',
+    one: 'مراجعة واحدة',
+    two: 'مراجعتان',
+    few: 'مراجعات',
+    many: 'مراجعةً',
+    other: 'مراجعة',
+  },
+};
+
 export const POINTS: CountForms = {
   en: {one: 'Point', other: 'Points'},
   ar: {

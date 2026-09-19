@@ -4,6 +4,13 @@ import {getAdminToken} from '~/lib/shopify-admin.server';
 import {adminApiQuery} from '~/lib/admin.server';
 import {useI18n} from '~/lib/i18n';
 
+import type {MetaFunction} from 'react-router';
+import {pageTitle} from '~/lib/seo';
+
+export const meta: MetaFunction = ({matches}) => [
+  {title: pageTitle(matches, 'Feedback Analytics', 'تحليلات التقييمات')},
+];
+
 export async function loader({request, context}: LoaderFunctionArgs) {
   const {session, storefront, env} = context;
   const customerAccessToken = await session.get('customerAccessToken');
@@ -431,7 +438,6 @@ export async function loader({request, context}: LoaderFunctionArgs) {
 
 import {Suspense} from 'react';
 import {Await} from 'react-router';
-
 export default function FeedbackAnalyticsDashboard() {
   const {adminDataPromise, restrictedBranch} = useLoaderData<typeof loader>();
   const locale = useLocation().pathname.startsWith('/en') ? 'en' : 'ar';

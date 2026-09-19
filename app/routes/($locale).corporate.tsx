@@ -11,8 +11,9 @@ import {
 import {ProductItem} from '~/components/ProductItem';
 import {PageHeader} from '~/components/layout/PageHeader';
 
-export const meta: MetaFunction = () => {
-  return [{title: `Saadeddin | Corporate Gifting`}];
+import {pageTitle} from '~/lib/seo';
+export const meta: MetaFunction = ({matches}) => {
+  return [{title: pageTitle(matches, 'Corporate Gifting', 'الهدايا المؤسسية')}];
 };
 
 export async function action({request, context}: LoaderFunctionArgs) {

@@ -18,6 +18,13 @@ import {Button} from '~/components/layout/Button';
 import {SaudiRiyalSymbol} from '~/components/Price';
 import {toGiftCardPhone} from '~/lib/phone-validation';
 
+import type {MetaFunction} from 'react-router';
+import {pageTitle} from '~/lib/seo';
+
+export const meta: MetaFunction = ({matches}) => [
+  {title: pageTitle(matches, 'Wallet & Vouchers', 'المحفظة والقسائم')},
+];
+
 // The loader has been removed because WalletPage relies entirely on data from the parent AccountLayout (via useOutletContext)
 export async function action({request, context}: ActionFunctionArgs) {
   const {session, storefront, env} = context;
@@ -326,7 +333,6 @@ export async function action({request, context}: ActionFunctionArgs) {
 import {useOutletContext} from 'react-router';
 import {GiftCardActivation} from '~/components/GiftCardActivation';
 import {StoreCreditBalance} from '~/components/StoreCreditBalance';
-
 export default function WalletPage() {
   const {customer, walletPromise} = useOutletContext<{
     customer?: any;

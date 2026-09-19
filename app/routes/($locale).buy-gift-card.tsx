@@ -15,8 +15,9 @@ import { CartForm } from '@shopify/hydrogen';
 import { SaudiRiyalSymbol } from '~/components/Price';
 import { useAside } from '~/components/Aside';
 
-export const meta: MetaFunction = () => [
-  { title: 'أهدِ قسيمة | حلويات سعد الدين' },
+import {pageTitle} from '~/lib/seo';
+export const meta: MetaFunction = ({matches}) => [
+  {title: pageTitle(matches, 'Gift a Voucher', 'أهدِ قسيمة')},
 ];
 
 // ─── Loader: pre-fill customer info from session & verify Gift Card product ──

@@ -19,6 +19,7 @@ import {Button} from '~/components/layout/Button';
 import {stripCoordsMarker} from '~/lib/address-coords';
 import {AddressForm} from '~/components/AddressForm';
 
+import {pageTitle} from '~/lib/seo';
 export type ActionResponse = {
   addressId?: string | null;
   createdAddress?: AddressFragment;
@@ -28,8 +29,8 @@ export type ActionResponse = {
   updatedAddress?: AddressFragment;
 };
 
-export const meta: MetaFunction = () => {
-  return [{title: 'Addresses | Saadeddin'}];
+export const meta: MetaFunction = ({matches}) => {
+  return [{title: pageTitle(matches, 'Addresses', 'عناوين التوصيل')}];
 };
 
 const formatAddressGid = (rawId: string) => {

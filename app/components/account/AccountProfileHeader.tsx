@@ -214,19 +214,19 @@ export function AccountProfileHeader({
                 <div className="text-center">
                   <p className="text-[14px] md:text-[22px] font-bold leading-none text-white mb-1 md:mb-2 font-en">{forceEnDigits(Number(customer.numberOfOrders) || customer.orders?.nodes?.length || 0)}</p>
                   <p className="text-[12px] md:text-[12px] text-[#9FB7AE] font-normal opacity-90">
-                    {isEn ? 'Orders' : 'طلب'}
+                    {isEn ? 'Orders' : 'الطلبات'}
                   </p>
                 </div>
                 <div className="text-center">
                   <p className="text-[16px] md:text-[22px] font-bold leading-none text-white mb-1 md:mb-2 font-en">{forceEnDigits(customer.addresses?.nodes?.length || 0)}</p>
                   <p className="text-[10px] md:text-[12px] text-[#A6BFB9] font-medium opacity-90">
-                    {isEn ? 'Addresses' : 'عنوان'}
+                    {isEn ? 'Addresses' : 'العناوين'}
                   </p>
                 </div>
                 <div className="text-center">
                   <p className="text-[16px] md:text-[22px] font-bold leading-none text-white mb-1 md:mb-2 font-en">{forceEnDigits(wishlistCount || 0)}</p>
                   <p className="text-[10px] md:text-[12px] text-[#A6BFB9] font-medium opacity-90">
-                    {isEn ? 'Wishlist' : 'مفضلة'}
+                    {isEn ? 'Wishlist' : 'المفضلة'}
                   </p>
                 </div>
               </div>

@@ -4,20 +4,18 @@ import {useState} from 'react';
 import {PageHeader} from '~/components/layout/PageHeader';
 import {useIsEn} from '~/lib/i18n';
 
-export const meta: MetaFunction = () => {
+import {pageTitle, isEnglish} from '~/lib/seo';
+export const meta: MetaFunction = ({matches}) => {
+  const isEn = isEnglish(matches);
+  const title = pageTitle(matches, 'FAQs', 'الأسئلة الشائعة');
+  const description = isEn
+    ? 'Find answers to frequently asked questions about our products, orders, and services.'
+    : 'ابحث عن إجابات للأسئلة الشائعة حول منتجاتنا وطلباتنا وخدماتنا.';
   return [
-    {title: 'FAQs | Saadeddin | الأسئلة الشائعة | سعد الدين'},
-    {
-      name: 'description',
-      content:
-        'Find answers to frequently asked questions about our products, orders, and services. | ابحث عن إجابات للأسئلة الشائعة حول منتجاتنا وطلباتنا وخدماتنا.',
-    },
-    {property: 'og:title', content: 'FAQs | Saadeddin'},
-    {
-      property: 'og:description',
-      content:
-        'Find answers to frequently asked questions about our products, orders, and services.',
-    },
+    {title},
+    {name: 'description', content: description},
+    {property: 'og:title', content: title},
+    {property: 'og:description', content: description},
   ];
 };
 

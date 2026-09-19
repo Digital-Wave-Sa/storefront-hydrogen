@@ -16,6 +16,12 @@ import {
 import {Button} from '~/components/layout/Button';
 import {useState} from 'react';
 import {getAdminToken} from '~/lib/shopify-admin.server';
+import type {MetaFunction} from 'react-router';
+import {pageTitle} from '~/lib/seo';
+
+export const meta: MetaFunction = ({matches}) => [
+  {title: pageTitle(matches, 'Dashboard', 'لوحة المتابعة')},
+];
 
 export async function loader({context}: LoaderFunctionArgs) {
   const {session, storefront, env} = context;

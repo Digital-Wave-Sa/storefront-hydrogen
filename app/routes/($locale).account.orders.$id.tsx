@@ -3,6 +3,7 @@ import {
   type LoaderFunctionArgs,
   type MetaFunction,
 } from 'react-router';
+import {pageTitle} from '~/lib/seo';
 export {default} from './($locale).track-order.$id';
 
 export async function loader({params, request}: LoaderFunctionArgs) {
@@ -23,6 +24,6 @@ export async function loader({params, request}: LoaderFunctionArgs) {
   return redirect(`${localePrefix}/track-order/${rawId}`);
 }
 
-export const meta: MetaFunction = () => {
-  return [{title: 'Order Details | Saadeddin'}];
+export const meta: MetaFunction = ({matches}) => {
+  return [{title: pageTitle(matches, 'Order Details', 'تفاصيل الطلب')}];
 };

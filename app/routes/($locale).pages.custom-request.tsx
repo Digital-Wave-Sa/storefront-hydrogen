@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { type MetaFunction, useRouteLoaderData, Link, useFetcher, data, type LoaderFunctionArgs } from 'react-router';
 
-export const meta: MetaFunction = () => {
-  return [{ title: 'طلب باقة مخصصة | سعد الدين للهدايا المؤسسية' }];
+import {pageTitle} from '~/lib/seo';
+export const meta: MetaFunction = ({matches}) => {
+  return [{title: pageTitle(matches, 'Custom Corporate Request', 'طلب باقة مخصصة')}];
 };
 
 export async function action({request, context}: LoaderFunctionArgs) {

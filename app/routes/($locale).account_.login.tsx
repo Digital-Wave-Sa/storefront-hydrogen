@@ -32,8 +32,9 @@ import {
   OTP_BLOCK_MS,
 } from '~/lib/otp-errors';
 
-export const meta: MetaFunction<typeof loader> = () => {
-  return [{title: 'Login | Saadeddin'}];
+import {pageTitle} from '~/lib/seo';
+export const meta: MetaFunction<typeof loader> = ({matches}) => {
+  return [{title: pageTitle(matches, 'Login', 'تسجيل الدخول')}];
 };
 
 export async function loader({request, context}: LoaderFunctionArgs) {

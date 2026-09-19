@@ -1,4 +1,6 @@
 import {Suspense} from 'react';
+import {Count} from '~/components/Count';
+import {ADDRESSES, ORDERS, PRODUCTS} from '~/lib/plural';
 import {useOutletContext, Link, useLocation, Await, Form} from 'react-router';
 import type {CustomerFragment} from 'storefrontapi.generated';
 import {useWishlist} from '~/context/WishlistContext';
@@ -14,6 +16,12 @@ import {
   isCustomCakeOrder,
   CUSTOM_CAKE_IMAGE_URL,
 } from '~/lib/cake-order';
+import type {MetaFunction} from 'react-router';
+import {pageTitle} from '~/lib/seo';
+
+export const meta: MetaFunction = ({matches}) => [
+  {title: pageTitle(matches, 'Control Panel', 'لوحة التحكم')},
+];
 
 // Currency SVG Icon provided by user
 /**
@@ -114,6 +122,7 @@ export default function AccountDashboard() {
         {(wallet) => {
           const points = wallet?.loyaltyPoints || 0;
           const history = wallet?.history || [];
+          const addressCount = customer?.addresses?.nodes?.length ?? 0;
 
           /**
            * Progress from the real tier table, not an ad-hoc ladder.
@@ -209,18 +218,16 @@ export default function AccountDashboard() {
                       {isEn ? 'My Orders' : 'طلباتي'}
                     </h3>
                     <span className="text-[12px] md:text-[13px] font-medium text-[#9FB7AE] select-none truncate">
-                      {isEn ? (
-                        `${customer?.numberOfOrders || 0} Orders`
-                      ) : (
-                        <>
-                          <span className="font-en">
-                            {(customer?.numberOfOrders || 0).toLocaleString(
-                              'en-US',
-                            )}
-                          </span>{' '}
-                          طلبات
-                        </>
-                      )}
+                      {/*
+                        Number(): the Storefront query types numberOfOrders
+                        as an Int, but the Admin fallback in the account
+                        layout fills it from a REST payload as a string.
+                      */}
+                      <Count
+                        n={Number(customer?.numberOfOrders) || 0}
+                        forms={ORDERS}
+                        isEn={isEn}
+                      />
                     </span>
                   </div>
                 </Link>
@@ -255,19 +262,10 @@ export default function AccountDashboard() {
                           : undefined
                       }
                     >
-                      {isEn ? 'Favorites' : 'المفضلة'}
+                      {isEn ? 'Wishlist' : 'المفضلة'}
                     </h3>
                     <span className="text-[12px] md:text-[13px] font-medium text-[#9FB7AE] select-none truncate">
-                      {isEn ? (
-                        `${wishlistCount} Products`
-                      ) : (
-                        <>
-                          <span className="font-en">
-                            {wishlistCount.toLocaleString('en-US')}
-                          </span>{' '}
-                          منتجات
-                        </>
-                      )}
+                      <Count n={wishlistCount} forms={PRODUCTS} isEn={isEn} />
                     </span>
                   </div>
                 </Link>
@@ -306,16 +304,13 @@ export default function AccountDashboard() {
                       {isEn ? 'Addresses' : 'عناوين التوصيل'}
                     </h3>
                     <span className="text-[12px] md:text-[13px] font-medium text-[#9FB7AE] select-none truncate">
-                      {isEn ? (
-                        `${points} Points`
-                      ) : (
-                        <>
-                          <span className="font-en">
-                            {points.toLocaleString('en-US')}
-                          </span>{' '}
-                          نقطة
-                        </>
-                      )}
+                      {/*
+                        The count of saved addresses. This card read the
+                        loyalty balance — «1,560 نقطة» under «عناوين التوصيل»
+                        — a copy-paste from the loyalty tile that nobody
+                        caught because the number looked plausible.
+                      */}
+                      <Count n={addressCount} forms={ADDRESSES} isEn={isEn} />
                     </span>
                   </div>
                 </Link>
@@ -677,18 +672,18 @@ export default function AccountDashboard() {
                             >
                               {titles}
                             </h3>
-                            <div className="text-[13px] text-[#9FB7AE] font-medium leading-tight flex items-center gap-1.5 flex-wrap">
-                              <span>
-                                {isEn
-                                  ? `${productCount} Products`
-                                  : `${productCount.toLocaleString('en-US')} منتجات`}
-                              </span>
-                              <span>•</span>
-                              <span className="font-en notranslate">
-                                {parseFloat(totalAmount).toLocaleString('en-US')}
-                              </span>
-                              <SaudiRiyalSymbol className="h-3.5 w-auto fill-current" />
-                            </div>
+                            {/*
+                              The date, as the desktop row below has it. This
+                              was the product count and the total, both of
+                              which the card already shows: the count on the
+                              image badge, the total in large type on the very
+                              next line.
+                            */}
+                            {dateNode && (
+                              <div className="text-[13px] text-[#9FB7AE] font-medium leading-tight">
+                                {dateNode}
+                              </div>
+                            )}
                             <div className="flex items-center justify-start gap-2 mt-1">
                               <span className="text-[#234745]">
                                 <SaudiRiyalSymbol className="h-5 w-auto" />

@@ -9,6 +9,12 @@ import {
   POINT_REDEEM_STEP,
 } from '~/lib/loyalty-tiers';
 import {LoyaltyCard} from '~/components/account/LoyaltyCard';
+import type {MetaFunction} from 'react-router';
+import {pageTitle} from '~/lib/seo';
+
+export const meta: MetaFunction = ({matches}) => [
+  {title: pageTitle(matches, 'Loyalty Points', 'نقاط الولاء')},
+];
 
 export async function loader({request, context}: LoaderFunctionArgs) {
   const isEn = new URL(request.url).pathname.startsWith('/en');

@@ -1,10 +1,12 @@
-import {type ActionFunctionArgs, data, redirect} from 'react-router';
+import {type ActionFunctionArgs, data, redirect, type MetaFunction} from 'react-router';
 import {type LoaderFunctionArgs} from 'react-router';
 import {Form, useActionData, useNavigation} from 'react-router';
 import {Button} from '~/components/layout/Button';
 
-export const meta = () => {
-  return [{title: 'Reset Password | Saadeddin'}];
+import {pageTitle} from '~/lib/seo';
+
+export const meta: MetaFunction = ({matches}) => {
+  return [{title: pageTitle(matches, 'Reset Password', 'إعادة تعيين كلمة المرور')}];
 };
 
 export async function loader({params, context}: LoaderFunctionArgs) {

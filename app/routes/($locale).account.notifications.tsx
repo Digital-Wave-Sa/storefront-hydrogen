@@ -11,6 +11,12 @@ import {
   Link,
 } from 'react-router';
 import {findBranchLocation} from '~/lib/stock';
+import type {MetaFunction} from 'react-router';
+import {pageTitle} from '~/lib/seo';
+
+export const meta: MetaFunction = ({matches}) => [
+  {title: pageTitle(matches, 'Stock Alerts', 'تنبيهات التوفر')},
+];
 
 /**
  * /account/notifications -- the waiting list, from the shopper's side.

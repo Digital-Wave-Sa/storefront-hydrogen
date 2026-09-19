@@ -1,7 +1,15 @@
 import {useOutletContext, Link} from 'react-router';
+import {Count} from '~/components/Count';
+import {PRODUCTS} from '~/lib/plural';
 import {useEffect, useState} from 'react';
 import {useWishlist} from '~/context/WishlistContext';
 import {ProductItem} from '~/components/ProductItem';
+import type {MetaFunction} from 'react-router';
+import {pageTitle} from '~/lib/seo';
+
+export const meta: MetaFunction = ({matches}) => [
+  {title: pageTitle(matches, 'Wishlist', 'المفضلة')},
+];
 
 export default function Wishlist() {
   const {locale, selectedLocationId} = useOutletContext<{locale: string; selectedLocationId?: string}>();
@@ -48,7 +56,7 @@ export default function Wishlist() {
               : undefined
           }
         >
-          {isEn ? 'Favorites' : 'المفضلة'}
+          {isEn ? 'Wishlist' : 'المفضلة'}
         </h1>
         <span
           className="text-[#234745] font-normal !text-[16px]"
@@ -58,7 +66,7 @@ export default function Wishlist() {
               : undefined
           }
         >
-          {wishlist.length} {isEn ? 'Products' : 'منتجات'}
+          <Count n={wishlist.length} forms={PRODUCTS} isEn={isEn} />
         </span>
       </div>
 

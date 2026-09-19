@@ -7,8 +7,9 @@ import {
 } from 'react-router';
 import {SaadeddinApi} from '~/lib/saadeddin-api.server';
 
-export const meta: MetaFunction<typeof loader> = () => {
-  return [{title: 'Logout'}];
+import {pageTitle} from '~/lib/seo';
+export const meta: MetaFunction<typeof loader> = ({matches}) => {
+  return [{title: pageTitle(matches, 'Logout', 'تسجيل الخروج')}];
 };
 
 /**

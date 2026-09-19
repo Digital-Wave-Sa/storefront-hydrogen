@@ -16,8 +16,9 @@ import {
 } from '~/lib/customer-email.server';
 import {needsRealEmail} from '~/lib/needs-email';
 
-export const meta: MetaFunction = () => {
-  return [{title: 'Add your email | Saadeddin'}];
+import {pageTitle} from '~/lib/seo';
+export const meta: MetaFunction = ({matches}) => {
+  return [{title: pageTitle(matches, 'Add your email', 'أضف بريدك الإلكتروني')}];
 };
 
 /**

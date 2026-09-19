@@ -6,8 +6,9 @@ import {CartMain} from '~/components/CartMain';
 import {getShopTitle} from '~/lib/seo';
 import {stripCoordsMarker} from '~/lib/address-coords';
 
+import {pageTitle} from '~/lib/seo';
 export const meta: Route.MetaFunction = ({matches}) => {
-  return [{title: getShopTitle('Cart', matches)}];
+  return [{title: pageTitle(matches, 'Cart', 'سلة التسوق')}];
 };
 
 export const headers: HeadersFunction = ({actionHeaders, loaderHeaders}) => {

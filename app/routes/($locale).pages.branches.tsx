@@ -3,8 +3,9 @@ import {useEffect, useRef, useState, useMemo} from 'react';
 import type {Route} from './+types/($locale).pages.branches';
 import {PageHeader} from '~/components/layout/PageHeader';
 
-export const meta: Route.MetaFunction = () => {
-  return [{title: 'Our Branches | فروعنا'}];
+import {pageTitle} from '~/lib/seo';
+export const meta: Route.MetaFunction = ({matches}) => {
+  return [{title: pageTitle(matches, 'Our Branches', 'فروعنا')}];
 };
 
 // Helper to extract city from custom.city metafield with fallback to address.city

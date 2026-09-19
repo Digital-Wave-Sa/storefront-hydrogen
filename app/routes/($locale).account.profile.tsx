@@ -20,13 +20,14 @@ import {Button} from '~/components/layout/Button';
 import {useState, useRef, useEffect} from 'react';
 import {SaadeddinApi} from '~/lib/saadeddin-api.server';
 import {COUNTRY_CODES, parsePhoneCountry} from '~/lib/country-codes';
+import {pageTitle} from '~/lib/seo';
 export type ActionResponse = {
   error: string | null;
   customer: CustomerFragment | null;
 };
 
-export const meta: MetaFunction = () => {
-  return [{title: 'Profile | Saadeddin'}];
+export const meta: MetaFunction = ({matches}) => {
+  return [{title: pageTitle(matches, 'Personal Information', 'المعلومات الشخصية')}];
 };
 
 // Loader removed to ensure instant client-side navigation using parent's OutletContext

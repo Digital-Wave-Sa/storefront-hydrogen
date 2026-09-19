@@ -11,8 +11,9 @@ import {useState, useEffect} from 'react';
 import {ProductItem} from '~/components/ProductItem';
 import {PageHeader} from '~/components/layout/PageHeader';
 
-export const meta: MetaFunction = () => {
-  return [{title: `Saadeddin | Occasions`}];
+import {pageTitle} from '~/lib/seo';
+export const meta: MetaFunction = ({matches}) => {
+  return [{title: pageTitle(matches, 'Occasions', 'المناسبات')}];
 };
 
 const PRODUCT_ITEM_FRAGMENT = `#graphql

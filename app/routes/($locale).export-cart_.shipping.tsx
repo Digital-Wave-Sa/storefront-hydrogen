@@ -16,10 +16,11 @@ import type {CartApiQueryFragment} from 'storefrontapi.generated';
 import {getShopTitle} from '~/lib/seo';
 import {SaudiRiyalSymbol} from '~/components/Price';
 
+import {pageTitle} from '~/lib/seo';
 // ─── Meta ────────────────────────────────────────────────────────────────────
 
 export const meta: Route.MetaFunction = ({matches}) => [
-  {title: getShopTitle('عنوان الشحن للتصدير | سعد الدين', matches)},
+  {title: pageTitle(matches, 'Export Shipping Address', 'عنوان الشحن للتصدير')},
 ];
 
 // ─── Loader ──────────────────────────────────────────────────────────────────

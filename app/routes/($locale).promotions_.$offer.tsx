@@ -1,4 +1,5 @@
 import {useState, useEffect} from 'react';
+import {counted, PRODUCTS} from '~/lib/plural';
 import {
   type LoaderFunctionArgs,
   useLoaderData,
@@ -570,8 +571,8 @@ export default function SubPromotionPage() {
           </Link>
           <span className="text-[#906B51] font-medium text-[14px]">
             {isEn
-              ? `${products.length} Products Found`
-              : `تم العثور على ${products.length} منتج`}
+              ? `${counted(products.length, true, PRODUCTS)} Found`
+              : `تم العثور على ${counted(products.length, false, PRODUCTS)}`}
           </span>
         </div>
 

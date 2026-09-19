@@ -3,6 +3,8 @@ import {useLoaderData, useRouteLoaderData} from 'react-router';
 import {PageHeader} from '~/components/layout/PageHeader';
 import {useIsEn} from '~/lib/i18n';
 
+import {pageTitle} from '~/lib/seo';
+import {getShopTitle} from '~/lib/seo';
 const PAGE_QUERY = `#graphql
   query QualityPolicyPage(
     $language: LanguageCode,
@@ -38,13 +40,13 @@ export async function loader({context}: LoaderFunctionArgs) {
   return data({page});
 }
 
-export const meta: MetaFunction<typeof loader> = ({data}) => {
+export const meta: MetaFunction<typeof loader> = ({data, matches}) => {
   if (!data?.page) {
-    return [{title: 'Quality Policy | Saadeddin'}];
+    return [{title: pageTitle(matches, 'Quality Policy', 'سياسة الجودة')}];
   }
 
   const {page} = data;
-  const title = page.seo?.title || `${page.title} | Saadeddin`;
+  const title = page.seo?.title || getShopTitle(page.title, matches);
   const description =
     page.seo?.description ||
     page.body?.replace(/<[^>]*>?/gm, '').substring(0, 155) ||

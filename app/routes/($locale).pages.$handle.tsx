@@ -1,12 +1,13 @@
 import {data, type LoaderFunctionArgs, type MetaFunction} from 'react-router';
 import {useLoaderData, useRouteLoaderData} from 'react-router';
 
-export const meta: MetaFunction<typeof loader> = ({data}) => {
+import {getShopTitle} from '~/lib/seo';
+export const meta: MetaFunction<typeof loader> = ({data, matches}) => {
   if (!data?.page) {
-    return [{title: 'Saadeddin Page'}];
+    return [{title: getShopTitle('', matches)}];
   }
   const {page} = data;
-  const title = page.seo?.title || `${page.title} | Saadeddin`;
+  const title = page.seo?.title || getShopTitle(page.title, matches);
   const description =
     page.seo?.description ||
     page.body?.replace(/<[^>]*>?/gm, '').substring(0, 155) ||

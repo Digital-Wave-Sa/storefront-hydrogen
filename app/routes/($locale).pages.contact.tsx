@@ -11,20 +11,18 @@ import {PageLayout} from '~/components/PageLayout';
 import patternBg from '/images/second-bg-pattern.svg';
 import {useIsEn} from '~/lib/i18n';
 
-export const meta: MetaFunction = () => {
+import {pageTitle, isEnglish} from '~/lib/seo';
+export const meta: MetaFunction = ({matches}) => {
+  const isEn = isEnglish(matches);
+  const title = pageTitle(matches, 'Contact Us', 'اتصل بنا');
+  const description = isEn
+    ? 'Contact us for any inquiries, support, or feedback. We are here to help.'
+    : 'اتصل بنا لأي استفسارات أو دعم أو ملاحظات. نحن هنا للمساعدة.';
   return [
-    {title: 'Contact Us | Saadeddin | اتصل بنا | سعد الدين'},
-    {
-      name: 'description',
-      content:
-        'Contact us for any inquiries, support, or feedback. We are here to help. | اتصل بنا لأي استفسارات أو دعم أو ملاحظات. نحن هنا للمساعدة.',
-    },
-    {property: 'og:title', content: 'Contact Us | Saadeddin'},
-    {
-      property: 'og:description',
-      content:
-        'Contact us for any inquiries, support, or feedback. We are here to help.',
-    },
+    {title},
+    {name: 'description', content: description},
+    {property: 'og:title', content: title},
+    {property: 'og:description', content: description},
   ];
 };
 

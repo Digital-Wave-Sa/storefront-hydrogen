@@ -18,8 +18,9 @@ import {getShopTitle} from '~/lib/seo';
 import {SaudiRiyalSymbol} from '~/components/Price';
 import type {Route} from './+types/($locale).collections.all';
 
+import {pageTitle} from '~/lib/seo';
 export const meta: Route.MetaFunction = ({matches}) => {
-  return [{title: getShopTitle('All Products', matches)}];
+  return [{title: pageTitle(matches, 'All Products', 'كل المنتجات')}];
 };
 
 /**

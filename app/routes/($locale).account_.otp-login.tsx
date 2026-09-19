@@ -4,8 +4,9 @@ import {Form, useNavigation, useActionData} from 'react-router';
 import {Button} from '~/components/layout/Button';
 import {sanitizePhoneInput} from '~/lib/phone-validation';
 
-export const meta: MetaFunction<typeof loader> = () => {
-  return [{title: 'Login | Saadeddin'}];
+import {pageTitle} from '~/lib/seo';
+export const meta: MetaFunction<typeof loader> = ({matches}) => {
+  return [{title: pageTitle(matches, 'Login', 'تسجيل الدخول')}];
 };
 
 export async function loader({context}: LoaderFunctionArgs) {

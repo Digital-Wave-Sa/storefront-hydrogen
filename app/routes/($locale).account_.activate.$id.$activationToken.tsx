@@ -2,12 +2,13 @@ import type {ActionFunctionArgs, LoaderFunctionArgs} from 'react-router';
 import {data, redirect} from 'react-router';
 import {Form, useActionData, type MetaFunction} from 'react-router';
 
+import {pageTitle} from '~/lib/seo';
 type ActionResponse = {
   error: string | null;
 };
 
-export const meta: MetaFunction<typeof loader> = () => {
-  return [{title: 'Activate Account'}];
+export const meta: MetaFunction<typeof loader> = ({matches}) => {
+  return [{title: pageTitle(matches, 'Activate Account', 'تفعيل الحساب')}];
 };
 
 export async function loader({context}: LoaderFunctionArgs) {

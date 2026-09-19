@@ -6,20 +6,18 @@ import patternBg from '/images/second-bg-pattern.svg';
 import storyImage from '~/assets/patteren-collection-header.svg';
 import {useIsEn} from '~/lib/i18n';
 
-export const meta: MetaFunction = () => {
+import {pageTitle, isEnglish} from '~/lib/seo';
+export const meta: MetaFunction = ({matches}) => {
+  const isEn = isEnglish(matches);
+  const title = pageTitle(matches, 'Our Story', 'قصتنا');
+  const description = isEn
+    ? 'Learn more about Saadeddin, our story, values, and history since 1919.'
+    : 'تعرف على المزيد حول حلويات سعد الدين، قصتنا، قيمنا، وتاريخنا منذ عام 1919.';
   return [
-    {title: 'Our Story | Saadeddin | قصتنا | سعد الدين'},
-    {
-      name: 'description',
-      content:
-        'Learn more about Saadeddin, our story, values, and history since 1919. | تعرف على المزيد حول حلويات سعد الدين، قصتنا، قيمنا، وتاريخنا منذ عام 1919.',
-    },
-    {property: 'og:title', content: 'Our Story | Saadeddin'},
-    {
-      property: 'og:description',
-      content:
-        'Learn more about Saadeddin, our story, values, and history since 1919.',
-    },
+    {title},
+    {name: 'description', content: description},
+    {property: 'og:title', content: title},
+    {property: 'og:description', content: description},
   ];
 };
 

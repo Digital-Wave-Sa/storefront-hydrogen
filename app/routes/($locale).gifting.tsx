@@ -11,6 +11,7 @@ import {useState, useEffect, useRef} from 'react';
 import {ProductItem} from '~/components/ProductItem';
 import {PageHeader} from '~/components/layout/PageHeader';
 
+import {pageTitle} from '~/lib/seo';
 function ProductSlider({products}: {products: any[]}) {
   const sliderRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
@@ -120,8 +121,8 @@ function ProductSlider({products}: {products: any[]}) {
   );
 }
 
-export const meta: MetaFunction = () => {
-  return [{title: `Saadeddin | Gifting`}];
+export const meta: MetaFunction = ({matches}) => {
+  return [{title: pageTitle(matches, 'Gifting', 'الهدايا')}];
 };
 
 const PRODUCT_ITEM_FRAGMENT = `#graphql

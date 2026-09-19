@@ -19,6 +19,13 @@ import {getAdminToken} from '~/lib/shopify-admin.server';
 import {sendEmail} from '~/lib/email.server';
 import {syncVoucherToCRM} from '~/lib/crm.server';
 
+import type {MetaFunction} from 'react-router';
+import {pageTitle} from '~/lib/seo';
+
+export const meta: MetaFunction = ({matches}) => [
+  {title: pageTitle(matches, 'Promotions', 'العروض')},
+];
+
 export async function loader({context}: LoaderFunctionArgs) {
   const {session, storefront, env} = context;
   const customerAccessToken = await session.get('customerAccessToken');
@@ -633,7 +640,6 @@ export async function action({request, context}: ActionFunctionArgs) {
 
 import {Suspense} from 'react';
 import {Await} from 'react-router';
-
 export default function PromotionsDashboard() {
   const {adminDataPromise} = useLoaderData<typeof loader>();
   const isEn = useLocation().pathname.startsWith('/en');

@@ -28,6 +28,7 @@ import {
 } from '~/lib/cake-order';
 import {resolveOrderStatus} from '~/lib/order-status';
 
+import {pageTitle} from '~/lib/seo';
 export function checkIsPickupOrder(order: any): boolean {
   if (!order) return false;
 
@@ -170,8 +171,8 @@ export function formatOrderDate(processedAt: string | null | undefined, isEn: bo
   );
 }
 
-export const meta: MetaFunction<typeof loader> = () => {
-  return [{title: 'طلباتي | Saadeddin'}];
+export const meta: MetaFunction<typeof loader> = ({matches}) => {
+  return [{title: pageTitle(matches, 'My Orders', 'طلباتي')}];
 };
 
 export async function action({request, context}: ActionFunctionArgs) {
@@ -1426,19 +1427,20 @@ function OrderCard({order, isEn}: {order: OrderItemFragment; isEn: boolean}) {
               {titles}
             </h3>
 
-            {/* Subtitle: product count & total */}
-            <div className="text-[13px] text-[#9FB7AE] font-medium leading-tight flex items-center gap-1.5 flex-wrap">
-              <span>
-                {productCount} {isEn ? 'Products' : 'منتجات'}
-              </span>
-              <span>•</span>
-              <span className="font-en notranslate">
-                {totalAmount.toLocaleString('en-US', {
-                  minimumFractionDigits: 2,
-                })}
-              </span>
-              <CurrencyIcon className="h-3.5 w-auto fill-current" />
-            </div>
+            {/*
+              The date, the same line the desktop row carries.
+
+              This read «منتج واحد • 835.00»: the count that the badge on the
+              image is already showing, and the total in small type directly
+              above the same total in large type. Neither told the shopper the
+              one thing that distinguishes two otherwise identical orders in a
+              list -- when it was placed -- which only the desktop card showed.
+            */}
+            {dateNode ? (
+              <div className="text-[13px] text-[#9FB7AE] font-medium leading-tight">
+                {dateNode}
+              </div>
+            ) : null}
 
             {/* Paid Total */}
             <div className="flex items-center justify-start gap-2 mt-1">

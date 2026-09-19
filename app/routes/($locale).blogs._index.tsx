@@ -2,8 +2,9 @@ import {data, type LoaderFunctionArgs, type MetaFunction} from 'react-router';
 import {useLoaderData, Link, useRouteLoaderData} from 'react-router';
 import {Pagination, getPaginationVariables} from '@shopify/hydrogen';
 
-export const meta: MetaFunction = () => {
-  return [{title: 'Saadeddin | Blogs'}];
+import {pageTitle} from '~/lib/seo';
+export const meta: MetaFunction = ({matches}) => {
+  return [{title: pageTitle(matches, 'Blog', 'المدونة')}];
 };
 
 export const loader = async ({

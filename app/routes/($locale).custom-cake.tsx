@@ -7,8 +7,9 @@ import CustomCakeBuilder from '~/components/CakeBuilder/CustomCakeBuilder';
 import {getShopTitle} from '~/lib/seo';
 import type {Route} from './+types/($locale).custom-cake';
 
+import {pageTitle} from '~/lib/seo';
 export const meta: Route.MetaFunction = ({matches}) => {
-  return [{title: getShopTitle('Customize Your Dream Cake', matches)}];
+  return [{title: pageTitle(matches, 'Design Your Cake', 'صمّم كيكتك')}];
 };
 
 /**

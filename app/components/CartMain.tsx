@@ -1,4 +1,5 @@
 import { useOptimisticCart, Analytics, CartForm } from '@shopify/hydrogen';
+import {counted, PRODUCTS} from '~/lib/plural';
 import { Link, useRouteLoaderData, useLocation, useFetcher, useFetchers } from 'react-router';
 import { useEffect, useState, useRef } from 'react';
 import type { CartApiQueryFragment } from 'storefrontapi.generated';
@@ -50,19 +51,13 @@ function getLineItemChildrenMap(lines: CartLine[]): LineItemChildrenMap {
  * counts the rows the shopper can actually see: lines nested under a parent
  * are rendered inside it and were never separate products either.
  *
- * Arabic does not pluralize by adding an s. One, two, a few and many each
- * take a different form, and «4 منتجات في سلتك» read as broken Arabic for
- * every count but 3-10.
+ * The Arabic forms used to be spelled out here, and stopped at ten -- a
+ * hundred products came out «100 منتجًا». They live in `~/lib/plural` now,
+ * with the rest of the storefront's counted labels.
  */
 function productsInCartLabel(count: number, isEn: boolean): string {
-  if (isEn) {
-    return count === 1 ? '1 product in your cart' : `${count} products in your cart`;
-  }
-  if (count === 0) return 'لا توجد منتجات في سلتك';
-  if (count === 1) return 'منتج واحد في سلتك';
-  if (count === 2) return 'منتجان في سلتك';
-  if (count <= 10) return `${count} منتجات في سلتك`;
-  return `${count} منتجًا في سلتك`;
+  const phrase = counted(count, isEn, PRODUCTS);
+  return isEn ? `${phrase.toLowerCase()} in your cart` : `${phrase} في سلتك`;
 }
 
 export function CartMain({ layout, cart: originalCart }: CartMainProps) {

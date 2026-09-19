@@ -7,6 +7,7 @@ import {
   useRouteLoaderData,
   Await,
 } from 'react-router';
+import {counted, PRODUCTS} from '~/lib/plural';
 import {
   data,
   redirect,
@@ -606,7 +607,7 @@ function getSectionTitle(pathname: string, isEn: boolean) {
   if (cleanPath.startsWith('/account/orders'))
     return isEn ? 'My Orders' : 'طلباتي';
   if (cleanPath.startsWith('/account/wishlist'))
-    return isEn ? 'Favorites' : 'المفضلة';
+    return isEn ? 'Wishlist' : 'المفضلة';
   if (cleanPath.startsWith('/account/wallet'))
     return isEn ? 'Wallet & Vouchers' : 'المحفظة والقسائم';
   if (cleanPath.startsWith('/account/notifications'))
@@ -667,7 +668,7 @@ function AccountLayout({
   let badgeText = '';
   const cleanPath = location.pathname.replace(/^\/en/, '').replace(/\/$/, '');
   if (cleanPath.startsWith('/account/wishlist')) {
-    badgeText = `${wishlistCount} ${isEn ? 'Products' : 'منتجات'}`;
+    badgeText = counted(wishlistCount, isEn, PRODUCTS);
   }
 
   const backHeader = (
@@ -837,7 +838,7 @@ function AcccountMenu({
     },
     {
       to: `${localePrefix}/account/wishlist`,
-      label: isEn ? 'Favorites' : 'المفضلة',
+      label: isEn ? 'Wishlist' : 'المفضلة',
       icon: (
         <svg
           width="20"

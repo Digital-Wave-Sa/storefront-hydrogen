@@ -4,6 +4,7 @@ import {
   useLoaderData,
   useNavigate,
 } from 'react-router';
+import {localizeCakeLineTitle} from '~/lib/cake-order';
 import {getAdminToken} from '~/lib/shopify-admin.server';
 
 export async function loader({params, context}: LoaderFunctionArgs) {
@@ -115,7 +116,9 @@ export async function loader({params, context}: LoaderFunctionArgs) {
       customerCity: orderNode.shippingAddress?.city || '',
       customerAddress: orderNode.shippingAddress?.address1 || '',
       items: orderNode.lineItems.edges.map(({node: item}: any) => ({
-        title: item.title,
+        // The cake line's title is the one Shopify never translates; see
+        // localizeCakeLineTitle. Anything else passes through untouched.
+        title: localizeCakeLineTitle(item.title, isEn),
         quantity: item.quantity,
         price: parseFloat(item.originalUnitPriceSet?.shopMoney?.amount || '0'),
         total:

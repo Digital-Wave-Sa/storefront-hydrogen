@@ -13,7 +13,16 @@ import {
 import {useState} from 'react';
 import {isNonShippableLine} from '~/lib/digital-lines';
 import {
+  normToken,
+  FAILED_TOKENS,
+  STEP5_TOKENS,
+  STEP4_TOKENS,
+  STEP3_TOKENS,
+  STEP2_TOKENS,
+} from '~/lib/order-stage-tokens';
+import {
   isCustomCakeLine,
+  localizeCakeLineTitle,
   CUSTOM_CAKE_IMAGE_URL,
 } from '~/lib/cake-order';
 
@@ -573,26 +582,10 @@ export async function loader({params, context, request}: LoaderFunctionArgs) {
     orderNode.totalPriceSet,
   );
 
-  /**
-   * The subtotal BEFORE discounts, which is the only one that reconciles.
-   *
-   * Shopify's `currentSubtotalPriceSet` is already net of order discounts, and
-   * this page also prints the discount on its own row -- so the column read
-   * «221.28 subtotal, +25.00 delivery, -55.32 discount» above a total of
-   * 246.28 (SDN-1415). Adding those gives 190.96: the discount looked as if it
-   * had never been taken off, when in fact it was taken off twice on screen and
-   * once in reality.
-   *
-   * Adding the discount back makes the rows arithmetic the shopper can follow:
-   * 276.60 - 55.32 + 25.00 = 246.28, the figure they were charged. Orders with
-   * no discount are unchanged, since the addend is zero.
-   */
-  const subtotalBeforeDiscounts = subtotalAmount + discountAmount;
-
   // If the rows don't add up to the total, the page is showing a number Shopify
   // doesn't agree with — log it rather than letting it slide silently.
   const rowsSum =
-    subtotalBeforeDiscounts +
+    subtotalAmount +
     shippingAmount -
     discountAmount +
     (taxesIncluded ? 0 : taxAmount);
@@ -702,13 +695,6 @@ export async function loader({params, context, request}: LoaderFunctionArgs) {
   // "delivery" or "pickup" there describe how the order ships, not where it is.
   // -------------------------------------------------------------------------
 
-  /** Lowercase and collapse spaces/underscores to hyphens: "Ready For Pickup" -> "ready-for-pickup". */
-  const normToken = (v: unknown) =>
-    String(v ?? '')
-      .toLowerCase()
-      .trim()
-      .replace(/[\s_]+/g, '-');
-
   // Every token Shopify gives us about fulfillment progress.
   const fulfillmentTokens = [
     ...fulfillments.map((f: any) => normToken(f.displayStatus)),
@@ -731,43 +717,23 @@ export async function loader({params, context, request}: LoaderFunctionArgs) {
     tokens.some((t) => fulfillmentTokens.includes(t));
   const hasErpToken = (...tokens: string[]) => tokens.some((t) => erpTokens.has(t));
 
-  const failedTokens = [
-    'failure',
-    'failed',
-    'attempted-delivery',
-    'expired',
-    'تعذر-التسليم',
-    'انتهت-مدة-الاستلام',
-  ];
-  const step5Tokens = [
-    'delivered',
-    'picked-up',
-    'تم-التسليم',
-    'تم-الاستلام',
-    'تم-استلام-الطلب',
-  ];
-  const step4Tokens = [
-    'ready-for-pickup',
-    'ready-for-delivery',
-    'out-for-delivery',
-    'in-transit',
-    'on-the-way',
-    'label-printed',
-    'label-purchased',
-    'submitted',
-    'جاهز-للاستلام',
-    'جاهز-للتسليم',
-    'في-الطريق',
-  ];
-  const step3Tokens = [
-    'in-progress',
-    'preparing',
-    'being-prepared',
-    'processing',
-    'جاري-التجهيز',
-    'قيد-التجهيز',
-  ];
-  const step2Tokens = ['confirmed', 'accepted', 'تم-التأكيد', 'تأكيد'];
+  /*
+    The lists and the normaliser come from ~/lib/order-stage-tokens now.
+
+    They were written into that module for the notification webhook and then
+    never imported, so this file kept its own copy — and the copy drifted from
+    the one the orders list uses (~/lib/order-status) by a single character:
+    that one strips the `status-` prefix the ERP actually writes, this one did
+    not. `status-confirmed` therefore matched `confirmed` on the list and
+    matched nothing here, which is why one order read «Order Confirmed» there
+    and sat on stage 1, «Order Received», on this page. Every later stage was
+    unreachable the same way.
+  */
+  const failedTokens = FAILED_TOKENS;
+  const step5Tokens = STEP5_TOKENS;
+  const step4Tokens = STEP4_TOKENS;
+  const step3Tokens = STEP3_TOKENS;
+  const step2Tokens = STEP2_TOKENS;
 
   const fulfillmentStatus = String(
     orderNode.displayFulfillmentStatus || 'UNFULFILLED',
@@ -944,10 +910,23 @@ export async function loader({params, context, request}: LoaderFunctionArgs) {
         // Carried through so Reorder can tell a custom cake from a product
         // and rebuild it from its own spec.
         customAttributes: item.customAttributes || [],
-        title:
-          variantId && titleMap[variantId]
-            ? titleMap[variantId]
-            : item.title,
+        /*
+          Localised LAST, over whichever title won.
+
+          A product line takes the live, translated name from `titleMap`. A
+          cake has no variant, so it falls through to the line's own title --
+          the string `api.custom-cake-order` wrote at checkout, «طلبية خاصة
+          فئة 810 ريال», which is the record and is never translated by
+          Shopify. /en/track-order therefore named the one item the customer
+          designed themselves in Arabic. `localizeCakeLineTitle` returns
+          anything it does not recognise untouched, so a real product name
+          passes through either branch unchanged; the orders list has run
+          this way for a while (see getOrderTitles).
+        */
+        title: localizeCakeLineTitle(
+          variantId && titleMap[variantId] ? titleMap[variantId] : item.title,
+          isEn,
+        ),
         price: parseFloat(
           item.originalUnitPriceSet?.shopMoney?.amount || '0',
         ).toLocaleString('en-US', {minimumFractionDigits: 2}),
@@ -975,7 +954,7 @@ export async function loader({params, context, request}: LoaderFunctionArgs) {
       };
     }),
     summary: {
-      subtotal: fmtMoney(subtotalBeforeDiscounts),
+      subtotal: fmtMoney(subtotalAmount),
       delivery:
         shippingAmount > 0
           ? fmtMoney(shippingAmount)

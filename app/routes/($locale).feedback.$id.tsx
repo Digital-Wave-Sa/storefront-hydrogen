@@ -1,4 +1,5 @@
 import {useState, useRef, useEffect} from 'react';
+import {localizeCakeLineTitle} from '~/lib/cake-order';
 import {useLoaderData, useFetcher, useLocation, Link, Form} from 'react-router';
 // @ts-ignore - route types generated during build
 import type {Route} from './+types/feedback.$id';
@@ -121,7 +122,9 @@ export async function loader({params, context, request}: Route.LoaderArgs) {
           id: String(li.id),
           variantId: li.variant_id ? String(li.variant_id) : null,
           handle: li.handle || li.product_id ? `product-${li.product_id}` : 'general-feedback',
-          title: li.title || (isEn ? 'Product' : 'منتج'),
+          title:
+            localizeCakeLineTitle(li.title, isEn) ||
+            (isEn ? 'Product' : 'منتج'),
           image:
             li.image?.src ||
             'https://cdn.shopify.com/s/files/1/0533/2089/files/placeholder-images-image_large.png',

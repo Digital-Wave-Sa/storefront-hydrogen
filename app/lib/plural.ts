@@ -89,6 +89,18 @@ export const ADDRESSES: CountForms = {
   },
 };
 
+export const BRANCHES: CountForms = {
+  en: {one: 'Branch', other: 'Branches'},
+  ar: {
+    zero: 'لا فروع',
+    one: 'فرع واحد',
+    two: 'فرعان',
+    few: 'فروع',
+    many: 'فرعًا',
+    other: 'فرع',
+  },
+};
+
 export const POINTS: CountForms = {
   en: {one: 'Point', other: 'Points'},
   ar: {

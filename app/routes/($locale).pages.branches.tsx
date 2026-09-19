@@ -4,7 +4,14 @@ import type {Route} from './+types/($locale).pages.branches';
 import {PageHeader} from '~/components/layout/PageHeader';
 
 import {pageTitle} from '~/lib/seo';
-import {branchStats, getBranchCity} from '~/lib/branch-stats';
+import {branchStats, getBranchCity, isBranch} from '~/lib/branch-stats';
+import {counted, BRANCHES} from '~/lib/plural';
+import {
+  branchHours,
+  formatHm,
+  isOpenAt,
+  minutesNowInRiyadh,
+} from '~/lib/branch-hours';
 export const meta: Route.MetaFunction = ({matches}) => {
   return [{title: pageTitle(matches, 'Our Branches', 'فروعنا')}];
 };
@@ -119,6 +126,46 @@ export function formatCityName(rawName: string, isEn: boolean): string {
   return trimmed;
 }
 
+/**
+ * One identity per city, for grouping and filtering.
+ *
+ * `formatCityName` above already knows that «مكة» and «مكة المكرمة» are the
+ * same place — it renders both as «مكة المكرمة». The filter did not: it
+ * grouped and compared the raw Shopify string, so Makkah appeared twice in
+ * the chip row, (6) and (1), and clicking the (6) could never reach the
+ * seventh branch. The same trap is set for «المدينة» / «المدينة المنورة» and
+ * only stays hidden because every Madinah branch happens to use the long
+ * spelling today.
+ *
+ * The key is the entry's English name: unique per displayed city, the same
+ * for every spelling of it, and stable when the reader switches language —
+ * which the raw string was not. A city the map has never heard of keys on
+ * its own name, exactly as before.
+ *
+ * «الأحساء» and «الأحساء - الجفر» stay two chips on purpose: the map gives
+ * them different labels. Note that ~/lib/branch-stats deliberately disagrees
+ * and counts them as one city, which is why the total reads 33.
+ */
+const CITY_BY_EN: Record<string, {ar: string; en: string}> = {};
+for (const entry of Object.values(CITY_LOCALIZED_MAP)) {
+  CITY_BY_EN[entry.en] = entry;
+}
+
+export function cityKey(rawName: string): string {
+  const trimmed = String(rawName ?? '').trim();
+  const entry =
+    CITY_LOCALIZED_MAP[trimmed] ?? CITY_LOCALIZED_MAP[trimmed.toLowerCase()];
+  if (entry) return entry.en;
+  return trimmed || 'Other';
+}
+
+/** The name to print for a key from `cityKey`. */
+export function cityLabel(key: string, isEn: boolean): string {
+  const entry = CITY_BY_EN[key];
+  if (entry) return isEn ? entry.en : entry.ar;
+  return key;
+}
+
 export default function BranchesPage() {
   const {locale} = useOutletContext<{locale: string}>();
   const rootData = useRouteLoaderData<any>('root');
@@ -138,11 +185,33 @@ export default function BranchesPage() {
   }, []);
 
   const locations = useMemo(() => {
-    if (adminLocations.length > sfLocations.length) {
-      return adminLocations;
-    }
-    return sfLocations;
+    /*
+      Shopify's own default location, «Shop location», has no address at all.
+      It was drawn as a card and counted as a city called «أخرى», while
+      branchStats excluded it — so the headline and the list disagreed by one.
+      Filtering here means every figure on this page counts what is on it.
+    */
+    const list =
+      adminLocations.length > sfLocations.length ? adminLocations : sfLocations;
+    return list.filter(isBranch);
   }, [adminLocations, sfLocations]);
+
+  /*
+    Riyadh's clock, not the reader's — someone browsing from Cairo is still
+    asking whether the branch is open where the branch is.
+
+    It starts null and is set after mount rather than during render, so the
+    server and the first client render agree; the badge appears a beat later
+    instead of hydrating with a different answer. It re-reads every minute so
+    a page left open does not keep claiming a branch is open past closing.
+  */
+  const [riyadhMinutes, setRiyadhMinutes] = useState<number | null>(null);
+  useEffect(() => {
+    const tick = () => setRiyadhMinutes(minutesNowInRiyadh());
+    tick();
+    const id = setInterval(tick, 60_000);
+    return () => clearInterval(id);
+  }, []);
 
   const isEn = locale === 'en';
   const fontClass = isEn ? 'font-en' : 'font-ar';
@@ -226,7 +295,7 @@ export default function BranchesPage() {
     const groups: Record<string, any[]> = {};
 
     locations.forEach((loc: any) => {
-      const cityName = getBranchCity(loc) || 'other';
+      const cityName = cityKey(getBranchCity(loc));
       if (!groups[cityName]) {
         groups[cityName] = [];
       }
@@ -247,8 +316,8 @@ export default function BranchesPage() {
       },
       ...sortedCityNames.map((cityName) => ({
         id: cityName,
-        nameAr: `${formatCityName(cityName, false)} (${groups[cityName].length})`,
-        nameEn: `${formatCityName(cityName, true)} (${groups[cityName].length})`,
+        nameAr: `${cityLabel(cityName, false)} (${groups[cityName].length})`,
+        nameEn: `${cityLabel(cityName, true)} (${groups[cityName].length})`,
         cityName,
         count: groups[cityName].length,
       })),
@@ -264,9 +333,10 @@ export default function BranchesPage() {
   // Dynamic Locations filtered by selected city and search query
   const filteredLocations = useMemo(() => {
     return locations.filter((loc: any) => {
-      const rawCity = getBranchCity(loc) || 'other';
+      const rawCity = getBranchCity(loc);
+      const key = cityKey(rawCity);
 
-      if (selectedCity !== 'all' && rawCity !== selectedCity) {
+      if (selectedCity !== 'all' && key !== selectedCity) {
         return false;
       }
 
@@ -294,35 +364,31 @@ export default function BranchesPage() {
     return cityNames.map((cityName) => {
       const branchList = cityGroups[cityName] || [];
       const count = branchList.length;
-      const displayCityName = formatCityName(cityName, isEn);
+      const displayCityName = cityLabel(cityName, isEn);
 
-      let branchesText = '';
-      if (isEn) {
-        branchesText = `${count} ${count === 1 ? 'Branch' : 'Branches'}`;
-      } else {
-        if (count === 1) branchesText = 'فرع واحد';
-        else if (count === 2) branchesText = 'فرعان';
-        else if (count >= 3 && count <= 10) branchesText = `${count} فروع`;
-        else branchesText = `${count} فرع`;
-      }
+      /*
+        This card used to carry a «توصيل متاح / استلام فقط» line under the
+        count. It said «استلام فقط» on every city in the country, because the
+        test read `b.delivery_fee?.value` and `b.delivery_time_from?.value` —
+        the shape Shopify's GraphQL returns, not the shape this page gets.
+        /api/locations-meta flattens both (delivery_fee to a number,
+        delivery_time_from to a string), so `.value` was undefined either way
+        and the answer was always false.
 
-      const hasDelivery = branchList.some(
-        (b: any) => b.delivery_fee?.value || b.delivery_time_from?.value,
-      );
+        Repairing the read would have flipped all 34 cards to «توصيل متاح»,
+        which is no better founded: `delivery_available`, the metafield meant
+        to answer this, is empty on all 118 locations, and `delivery_fee` is
+        25 on every one of them — including «Shop location», which is not a
+        shop. That is a bulk default, not a per-branch decision.
 
+        So the line is gone rather than guessed. Fill in delivery_available in
+        Shopify and it can come back, reading that field.
+      */
       return {
         cityName,
         displayCityName,
         count,
-        branchesText,
-        coverage: hasDelivery
-          ? isEn
-            ? 'Delivery Available'
-            : 'توصيل متاح'
-          : isEn
-            ? 'Pickup Only'
-            : 'استلام فقط',
-        isPickupOnly: !hasDelivery,
+        branchesText: counted(count, isEn, BRANCHES),
       };
     });
   }, [cityGroups, isEn]);
@@ -482,8 +548,8 @@ export default function BranchesPage() {
       <PageHeader
         title={
           isEn
-            ? `${branchCount} Branches Across the Kingdom`
-            : `${branchCount} فرع في أنحاء المملكة`
+            ? `${counted(branchCount, true, BRANCHES)} in Saudi Arabia, Bahrain & Qatar`
+            : `${counted(branchCount, false, BRANCHES)} في السعودية والبحرين وقطر`
         }
         subtitle={isEn ? 'Our Branches' : 'فروعنا'}
         isEn={isEn}
@@ -674,19 +740,17 @@ export default function BranchesPage() {
 
             <div className="flex-1 overflow-y-auto space-y-3 pr-2 scrollbar-thin">
               {filteredLocations.map((branch: any) => {
-                const rawShift1 =
-                  branch.working_hours_from?.value &&
-                  branch.working_hours_to?.value
-                    ? `${branch.working_hours_from.value} - ${branch.working_hours_to.value}`
-                    : `${isEn ? '8:00 AM' : '8:00 ص'} - ${isEn ? '11:00 PM' : '11:00 م'}`;
-                const rawShift2 =
-                  branch.working_hours_from_shift2?.value &&
-                  branch.working_hours_to_shift2?.value
-                    ? `${branch.working_hours_from_shift2.value} - ${branch.working_hours_to_shift2.value}`
-                    : '';
-                const hours = forceEnglishDigits(
-                  rawShift2 ? `${rawShift1} & ${rawShift2}` : rawShift1,
-                );
+                /*
+                  This read `branch.working_hours_from?.value` — Shopify's
+                  GraphQL shape, not the shape this page gets, since
+                  /api/locations-meta flattens it to `hours_from`. The test
+                  never passed, so every branch in the country printed the
+                  same hardcoded «8:00 ص - 11:00 م»: الأربعين opens at 13:00
+                  and the page said 8:00. The shift-2 pair it also read is
+                  empty on all 118 locations, so that half was doing nothing.
+                */
+                const hoursOf = branchHours(branch);
+                const openNow = isOpenAt(hoursOf, riyadhMinutes);
                 const isSelected = selectedBranch?.id === branch.id;
                 const cityName = getBranchCity(branch);
 
@@ -714,12 +778,32 @@ export default function BranchesPage() {
                             )?.value
                           : branch.name}
                       </h3>
-                      <span
-                        className="px-3 py-1 rounded-full text-[13px] font-normal bg-[#BBCFCD] text-gray-600"
-                        style={{fontFamily: fontFam}}
-                      >
-                        {isEn ? 'Open Now' : 'مفتوح الآن'}
-                      </span>
+                      {/*
+                        Was a bare <span>: every branch read «مفتوح الآن», at
+                        every hour, including the one whose name says it is
+                        temporarily closed. It is hidden rather than guessed
+                        while the answer is unknown — before the clock is read
+                        on the client, and for the three branches with no
+                        hours on file.
+                      */}
+                      {openNow !== null && (
+                        <span
+                          className={`px-3 py-1 rounded-full text-[13px] font-normal ${
+                            openNow
+                              ? 'bg-[#BBCFCD] text-gray-600'
+                              : 'bg-gray-100 text-gray-400'
+                          }`}
+                          style={{fontFamily: fontFam}}
+                        >
+                          {openNow
+                            ? isEn
+                              ? 'Open Now'
+                              : 'مفتوح الآن'
+                            : isEn
+                              ? 'Closed Now'
+                              : 'مغلق الآن'}
+                        </span>
+                      )}
                     </div>
                     <p
                       className="text-[#9FB7AE] font-medium text-[16px] !mb-2 leading-relaxed"
@@ -732,23 +816,47 @@ export default function BranchesPage() {
                           ? `, ${formatCityName(branch.address.city, isEn)}`
                           : ''}
                     </p>
-                    <div
-                      className="flex !items-center gap-1.5 text-[#9FB7AE] text-[11px] mb-4 font-medium"
-                      style={{fontFamily: fontFam}}
-                    >
-                      <svg
-                        width="12"
-                        height="12"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
+                    {hoursOf ? (
+                      <div
+                        className="flex !items-center gap-1.5 text-[#9FB7AE] text-[11px] mb-4 font-medium"
+                        style={{fontFamily: fontFam}}
                       >
-                        <circle cx="12" cy="12" r="10" />
-                        <polyline points="12 6 12 12 16 14" />
-                      </svg>
-                      <span dir="ltr">{hours}</span>
-                    </div>
+                        <svg
+                          width="12"
+                          height="12"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                        >
+                          <circle cx="12" cy="12" r="10" />
+                          <polyline points="12 6 12 12 16 14" />
+                        </svg>
+                        {/*
+                          This was one string in a span forced to dir="ltr".
+                          «9:00 ص - 11:00 م» is not an LTR string: ص and م are
+                          Arabic letters, so the bidi algorithm reordered the
+                          run around them and the opening time lost its ص to
+                          the closing time.
+
+                          Each clock value is its own <bdi> now, so neither
+                          can reorder the other, and the base direction is the
+                          page's — opening time first, which in Arabic means
+                          rightmost.
+                        */}
+                        <span dir={isEn ? 'ltr' : 'rtl'}>
+                          <bdi>
+                            {forceEnglishDigits(formatHm(hoursOf.from, isEn))}
+                          </bdi>
+                          {' - '}
+                          <bdi>
+                            {forceEnglishDigits(formatHm(hoursOf.to, isEn))}
+                          </bdi>
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="mb-4" />
+                    )}
 
                     <div className="flex items-center justify-end gap-2">
                       {branch.address?.phone && (
@@ -875,19 +983,6 @@ export default function BranchesPage() {
           >
             {isEn ? 'Delivery Zones' : 'مناطق التوصيل'}
           </h2>
-          <div
-            className="flex items-center gap-3 text-[12px] font-normal"
-            style={{fontFamily: fontFam}}
-          >
-            <div className="flex items-center gap-1 text-[#234745]">
-              <div className="w-2 h-2 rounded-full bg-[#234745]" />
-              <span>{isEn ? 'Delivery Available' : 'توصيل متاح'}</span>
-            </div>
-            <div className="flex items-center gap-1 text-[#9FB7AE]">
-              <div className="w-2 h-2 rounded-full bg-[#9FB7AE]" />
-              <span>{isEn ? 'Pickup Only' : 'استلام فقط'}</span>
-            </div>
-          </div>
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 lg:gap-6">
@@ -910,17 +1005,11 @@ export default function BranchesPage() {
                 {zone.displayCityName}
               </h3>
               <p
-                className="text-[#9FB7AE] text-[16px] md:text-[18px] font-medium mb-4"
+                className="text-[#9FB7AE] text-[16px] md:text-[18px] font-medium"
                 style={{fontFamily: fontFam}}
               >
                 {zone.branchesText}
               </p>
-              <div
-                className={`text-[15px] md:text-[18px] font-medium mt-2 ${zone.isPickupOnly ? 'text-gray-400' : 'text-[#234745]'}`}
-                style={{fontFamily: fontFam}}
-              >
-                {zone.coverage}
-              </div>
             </div>
           ))}
         </div>

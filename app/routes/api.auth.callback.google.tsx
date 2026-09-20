@@ -1,4 +1,5 @@
 import {redirect, type LoaderFunctionArgs} from 'react-router';
+import {localeRedirect} from '~/lib/i18n';
 import {getAdminToken} from '~/lib/shopify-admin.server';
 
 /** Derive a consistent password from a user's unique social ID + server secret */
@@ -20,7 +21,7 @@ export async function loader({context, request}: LoaderFunctionArgs) {
   const baseUrl = `${url.protocol}//${url.host}`;
   const redirectUri = `${baseUrl}/api/auth/callback/google`;
 
-  if (!code) return redirect('/account/login');
+  if (!code) return localeRedirect(request, '/account/login');
 
   try {
     // 1. Exchange code for tokens

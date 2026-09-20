@@ -25,7 +25,7 @@ import {useVariantUrl} from '~/utils';
 import {useState, useEffect} from 'react';
 import {useAside} from '~/components/Aside';
 import {getVisibilityStatus} from '~/lib/visibility';
-import {useI18n} from '~/lib/i18n';
+import {localeRedirect, useI18n} from '~/lib/i18n';
 import {getIsOutOfStock} from '~/lib/stock';
 import {Price} from '~/components/Price';
 import {StockNotificationModal} from '~/components/StockNotificationModal';
@@ -59,7 +59,7 @@ export async function loader({request, params, context}: LoaderFunctionArgs) {
   });
 
   if (!handle) {
-    return redirect('/collections');
+    return localeRedirect(request, '/collections');
   }
 
   // Parse filters from URL

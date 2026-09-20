@@ -1,4 +1,5 @@
 import type {CustomerFragment} from 'storefrontapi.generated';
+import {localeRedirect} from '~/lib/i18n';
 import type {CustomerUpdateInput} from '@shopify/hydrogen/storefront-api-types';
 import type {ActionFunctionArgs, LoaderFunctionArgs} from 'react-router';
 import {
@@ -181,7 +182,7 @@ export async function action({request, context}: ActionFunctionArgs) {
       // clearing only the token left wallet and loyalty answering for
       // the last shopper. See ~/lib/session-identity.server.
       await (await import('~/lib/session-identity.server')).clearIdentity(session);
-      return redirect('/', {
+      return localeRedirect(request, '/', {
         headers: {
           'Set-Cookie': await session.commit(),
         },

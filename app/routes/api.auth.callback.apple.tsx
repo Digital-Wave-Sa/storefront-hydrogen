@@ -1,4 +1,5 @@
 import {
+import {localeRedirect} from '~/lib/i18n';
   redirect,
   type ActionFunctionArgs,
   type LoaderFunctionArgs,
@@ -191,7 +192,7 @@ export async function action({request, context}: ActionFunctionArgs) {
 export async function loader({request, context}: LoaderFunctionArgs) {
   const url = new URL(request.url);
   const code = url.searchParams.get('code');
-  if (!code) return redirect('/account/login');
+  if (!code) return localeRedirect(request, '/account/login');
 
   try {
     const mockFormData = new FormData();

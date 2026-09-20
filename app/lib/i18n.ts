@@ -1,5 +1,5 @@
 import type {I18nBase} from '@shopify/hydrogen';
-import {useLocation} from 'react-router';
+import {redirect, useLocation} from 'react-router';
 
 export type Locale = 'en' | 'ar';
 
@@ -35,6 +35,46 @@ export function localeFromPath(pathname: string): Locale {
 }
 
 /** The current page's language, from the URL. */
+/**
+ * Redirect without dropping the language.
+ *
+ * Twenty-six redirects across sixteen route files were written as
+ * `redirect('/account/login')`. The locale lives in the first path segment and
+ * nowhere else, so every one of them moved an English shopper into Arabic —
+ * on sign-out, on saving a profile, on a dead collection handle, and on every
+ * load of an account page without a session. That last one fires repeatedly,
+ * which is why it was reported as «the language resets on every reload»: it is
+ * not the reload, it is the redirect underneath it.
+ *
+ * `request` is the only thing needed, because the language is already in the
+ * URL being redirected FROM. Nothing is remembered and nothing needs to be:
+ * keeping the locale in the path is what makes a link shareable in the
+ * language it was sent in, and a page cacheable per URL. Storing a preference
+ * in the session instead would make one URL render two ways.
+ *
+ * The exception is a redirect with no locale to read — the OAuth callbacks
+ * return from Google, Apple and Facebook with nothing in the path. Those pass
+ * an explicit `locale` from the session, which is what `api.locale` has been
+ * writing all along without anything ever reading it back.
+ */
+export function localeRedirect(
+  request: Request,
+  path: string,
+  init?: number | ResponseInit,
+  locale?: Locale,
+) {
+  const from = locale ?? localeFromPath(new URL(request.url).pathname);
+  const target = path.startsWith('/') ? path : `/${path}`;
+
+  // Already prefixed, or Arabic, which has no prefix at all.
+  if (from !== 'en' || target === '/en' || target.startsWith('/en/')) {
+    return redirect(target, init as any);
+  }
+
+  // `/en/` is not a route; the English home is `/en`.
+  return redirect(target === '/' ? '/en' : `/en${target}`, init as any);
+}
+
 export function useLocale(): Locale {
   const {pathname} = useLocation();
   return localeFromPath(pathname);

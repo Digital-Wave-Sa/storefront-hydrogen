@@ -1,4 +1,5 @@
 import {
+import {localeRedirect} from '~/lib/i18n';
   data,
   redirect,
   type LoaderFunctionArgs,
@@ -31,7 +32,7 @@ export async function loader({context}: LoaderFunctionArgs) {
   const customerAccessToken = await session.get('customerAccessToken');
 
   if (!customerAccessToken) {
-    return redirect('/account/login');
+    return localeRedirect(request, '/account/login');
   }
 
   // 1. Verify if user is an Admin
@@ -55,7 +56,7 @@ export async function loader({context}: LoaderFunctionArgs) {
   );
 
   if (!sfCustomer?.id) {
-    return redirect('/account/login');
+    return localeRedirect(request, '/account/login');
   }
 
   // Then we check tags directly via Storefront API (Now that permission is enabled!)
@@ -67,7 +68,7 @@ export async function loader({context}: LoaderFunctionArgs) {
   );
 
   if (!isAdmin) {
-    return redirect('/account/profile');
+    return localeRedirect(request, '/account/profile');
   }
 
   // 2. Fetch existing price rules (vouchers) and orders for analytics from Shopify Admin API

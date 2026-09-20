@@ -1,4 +1,5 @@
 import {type ActionFunctionArgs, data, redirect, type MetaFunction} from 'react-router';
+import {localeRedirect} from '~/lib/i18n';
 import {type LoaderFunctionArgs} from 'react-router';
 import {Form, useActionData, useNavigation} from 'react-router';
 import {Button} from '~/components/layout/Button';
@@ -54,7 +55,7 @@ export async function action({request, context, params}: ActionFunctionArgs) {
     }
     session.set('customerAccessToken', customerReset.customerAccessToken);
 
-    return redirect('/account', {
+    return localeRedirect(request, '/account', {
       headers: {
         'Set-Cookie': await session.commit(),
       },

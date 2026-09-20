@@ -1,4 +1,5 @@
 import {
+import {localeRedirect} from '~/lib/i18n';
   data,
   redirect,
   type ActionFunctionArgs,
@@ -50,7 +51,7 @@ export async function loader({context}: LoaderFunctionArgs) {
   /** Never let a logged-out response be replayed from a cache. */
   headers.append('Cache-Control', 'no-cache, no-store, must-revalidate');
 
-  return redirect('/account/login', {headers});
+  return localeRedirect(request, '/account/login', {headers});
 }
 
 export async function action({request, context}: ActionFunctionArgs) {
@@ -110,7 +111,7 @@ export async function action({request, context}: ActionFunctionArgs) {
     'cart=; Path=/; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT',
   );
 
-  return redirect('/', {
+  return localeRedirect(request, '/', {
     headers,
   });
 }

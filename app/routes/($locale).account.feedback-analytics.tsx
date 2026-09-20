@@ -2,7 +2,7 @@ import {data, redirect, type LoaderFunctionArgs} from 'react-router';
 import {useLoaderData, useLocation, useNavigation} from 'react-router';
 import {getAdminToken} from '~/lib/shopify-admin.server';
 import {adminApiQuery} from '~/lib/admin.server';
-import {useI18n} from '~/lib/i18n';
+import {localeRedirect, useI18n} from '~/lib/i18n';
 
 import type {MetaFunction} from 'react-router';
 import {pageTitle} from '~/lib/seo';
@@ -16,7 +16,7 @@ export async function loader({request, context}: LoaderFunctionArgs) {
   const customerAccessToken = await session.get('customerAccessToken');
 
   if (!customerAccessToken) {
-    return redirect('/account/login');
+    return localeRedirect(request, '/account/login');
   }
 
   let isAdmin = false;
@@ -84,7 +84,7 @@ export async function loader({request, context}: LoaderFunctionArgs) {
     );
 
     if (!sfCustomer?.id) {
-      return redirect('/account/login');
+      return localeRedirect(request, '/account/login');
     }
 
     customerTags = sfCustomer?.tags || [];
@@ -100,7 +100,7 @@ export async function loader({request, context}: LoaderFunctionArgs) {
   }
 
   if (!isAdmin) {
-    return redirect('/account/profile');
+    return localeRedirect(request, '/account/profile');
   }
 
   const branchTag = customerTags.find((tag: string) =>

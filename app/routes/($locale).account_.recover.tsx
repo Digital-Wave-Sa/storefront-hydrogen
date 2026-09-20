@@ -7,7 +7,7 @@ import {
 import {Form, Link, useActionData, useRouteLoaderData} from 'react-router';
 import {Button} from '~/components/layout/Button';
 import {getAdminToken} from '~/lib/shopify-admin.server';
-import {useLocale} from '~/lib/i18n';
+import {localeRedirect, useLocale} from '~/lib/i18n';
 
 type ActionResponse = {
   error?: string;
@@ -17,7 +17,7 @@ type ActionResponse = {
 export async function loader({context}: LoaderFunctionArgs) {
   const customerAccessToken = await context.session.get('customerAccessToken');
   if (customerAccessToken) {
-    return redirect('/account');
+    return localeRedirect(request, '/account');
   }
 
   return data({});

@@ -1,4 +1,5 @@
 import {
+import {localeRedirect} from '~/lib/i18n';
   data,
   redirect,
   type LoaderFunctionArgs,
@@ -191,7 +192,7 @@ export async function action({request, context}: ActionFunctionArgs) {
 
     if (lines.length > 0) {
       await cart.addLines(lines);
-      return redirect('/cart');
+      return localeRedirect(request, '/cart');
     }
   }
   return data({error: 'Invalid action'}, {status: 400});
@@ -635,7 +636,7 @@ export async function loader({request, context}: LoaderFunctionArgs) {
   const customerAccessToken = await session.get('customerAccessToken');
 
   if (!customerAccessToken?.accessToken) {
-    return redirect('/account/login');
+    return localeRedirect(request, '/account/login');
   }
 
   // {first, endCursor} going forward, {last, startCursor} going back —

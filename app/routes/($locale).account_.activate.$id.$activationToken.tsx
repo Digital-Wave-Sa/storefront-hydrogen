@@ -1,4 +1,5 @@
 import type {ActionFunctionArgs, LoaderFunctionArgs} from 'react-router';
+import {localeRedirect} from '~/lib/i18n';
 import {data, redirect} from 'react-router';
 import {Form, useActionData, type MetaFunction} from 'react-router';
 
@@ -11,9 +12,9 @@ export const meta: MetaFunction<typeof loader> = ({matches}) => {
   return [{title: pageTitle(matches, 'Activate Account', 'تفعيل الحساب')}];
 };
 
-export async function loader({context}: LoaderFunctionArgs) {
+export async function loader({context, request}: LoaderFunctionArgs) {
   if (await context.session.get('customerAccessToken')) {
-    return redirect('/account');
+    return localeRedirect(request, '/account');
   }
   return data({});
 }
@@ -67,7 +68,7 @@ export async function action({request, context, params}: ActionFunctionArgs) {
     }
     session.set('customerAccessToken', customerAccessToken);
 
-    return redirect('/account', {
+    return localeRedirect(request, '/account', {
       headers: {
         'Set-Cookie': await session.commit(),
       },

@@ -1,4 +1,5 @@
 import {Suspense, useState} from 'react';
+import {localeRedirect} from '~/lib/i18n';
 import {
   data as json,
   redirect,
@@ -31,7 +32,7 @@ export async function action({request, context}: ActionFunctionArgs) {
   const customerAccessToken = await session.get('customerAccessToken');
 
   if (!customerAccessToken) {
-    return redirect('/account/login');
+    return localeRedirect(request, '/account/login');
   }
 
   let customer: any = null;

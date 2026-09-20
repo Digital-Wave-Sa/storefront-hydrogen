@@ -259,35 +259,28 @@ export async function action({request, context, params}: Route.ActionArgs) {
           break;
         }
 
-        /**
-         * One redemption at a time.
-         *
-         * Two redeem surfaces are mounted at once (quick-redeem and the custom
-         * amount), each with its own button and fetcher, so a quick double-tap
-         * — or two tabs — could call this twice. Each call debits the points
-         * from SDLP and mints a fresh Shopify code, and the second silently
-         * replaced the first on the cart while leaving the first code live and
-         * its points already gone. Redeeming again while a redemption is
-         * already applied is refused; the shopper removes it first, which is
-         * also the only way to change the amount.
-         */
-        const alreadyRedeemed =
-          (currentCart.discountCodes || []).some(
-            (dc) => dc.code.startsWith('LOYAL-') || dc.code.startsWith('LOYALTY-'),
-          ) ||
+        const previousCode = String(
+          currentCart.attributes?.find((a) => a.key === 'loyalty_code')?.value || '',
+        ).trim();
+        const previousPoints =
           parseInt(
             currentCart.attributes?.find((a) => a.key === 'loyalty_points')?.value || '0',
-          ) > 0;
+          ) || 0;
 
-        if (alreadyRedeemed) {
-          return data(
-            {
-              error: isEn
-                ? 'You already have a points redemption applied. Remove it first to redeem a different amount.'
-                : 'لديك استبدال نقاط مطبّق بالفعل. أزله أولاً لاستبدال مبلغ مختلف.',
-            },
-            {status: 400},
-          );
+        if (previousPoints > 0 || previousCode) {
+          const {voidLoyaltyPoints, deleteLoyaltyDiscountCode} =
+            await import('~/lib/loyalty.server');
+          if (previousPoints > 0) {
+            await voidLoyaltyPoints({
+              code: previousCode,
+              points: previousPoints,
+              env: context.env,
+              context,
+            });
+          }
+          if (previousCode) {
+            await deleteLoyaltyDiscountCode(context.env, previousCode);
+          }
         }
 
         const {redeemLoyaltyPoints} = await import('~/lib/loyalty.server');

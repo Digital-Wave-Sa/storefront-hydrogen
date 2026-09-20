@@ -820,3 +820,102 @@ export async function redeemLoyaltyPoints({
   }
 }
 
+/** Credits a superseded redemption back via SDLP. Best-effort; never blocks the replacement. */
+export async function voidLoyaltyPoints({
+  code,
+  points,
+  customerId,
+  phone,
+  email,
+  env,
+  context,
+}: LoyaltyParams & {code: string; points: number}): Promise<{
+  success: boolean;
+  newBalance?: number;
+  reason?: string;
+}> {
+  if (!code && !(points > 0)) return {success: true, reason: 'nothing to void'};
+
+  const sdlpAppUrl = env?.PUBLIC_SDLP_APP_URL || env?.SDLP_APP_URL || 'https://sdlp.saadeddin.top';
+  const shop = env?.PUBLIC_SHOPIFY_STORE_DOMAIN || env?.PUBLIC_STORE_DOMAIN || 'saadeldeenshop-x21xumcd.myshopify.com';
+
+  try {
+    const resolvedCustomerId = await getCustomerGid({customerId, phone, email, env, context});
+    const resolvedPhone = await resolveCustomerPhone({customerId, phone, email, env, context});
+
+    const payload: any = {shop, discountCode: code, points};
+    if (resolvedCustomerId) payload.customerId = resolvedCustomerId;
+    if (resolvedPhone) payload.phone = resolvedPhone;
+    if (!payload.customerId && !payload.phone) {
+      return {success: false, reason: 'no customer identifier'};
+    }
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
+    const res = await fetch(`${sdlpAppUrl}/api/storefront/loyalty/void`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json', Accept: 'application/json'},
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+
+    const data: any = await res.json().catch(() => ({}));
+    if (!res.ok || !data?.success) {
+      const reason = data?.error || `HTTP ${res.status}`;
+      console.warn('[SDLP Loyalty] Void failed:', reason);
+      return {success: false, reason};
+    }
+
+    const cacheKey = `${resolvedPhone || ''}_${resolvedCustomerId || ''}`.trim();
+    LOYALTY_CACHE.delete(cacheKey);
+
+    return {success: true, newBalance: data?.newBalance};
+  } catch (e: any) {
+    const thrown = e?.name === 'AbortError' ? 'timed out after 8s' : e?.message || String(e);
+    console.warn('[SDLP Loyalty] Void threw:', thrown);
+    return {success: false, reason: thrown};
+  }
+}
+
+/** Deletes the Admin REST price rule behind a superseded loyalty code. Best-effort. */
+export async function deleteLoyaltyDiscountCode(env: any, code: string): Promise<boolean> {
+  const submitted = String(code || '').trim();
+  if (!submitted) return false;
+
+  try {
+    const {getAdminToken, getAdminDomain} = await import('~/lib/shopify-admin.server');
+    const token = await getAdminToken(env);
+    const domain = getAdminDomain(env);
+    if (!token || !domain) return false;
+
+    const lookupRes = await fetch(
+      `https://${domain}/admin/api/2024-01/discount_codes/lookup.json?code=${encodeURIComponent(submitted)}`,
+      {headers: {'X-Shopify-Access-Token': token}},
+    );
+    if (!lookupRes.ok) {
+      console.warn(`[Loyalty] Could not look up code ${submitted} to invalidate (HTTP ${lookupRes.status})`);
+      return false;
+    }
+
+    const lookupJson: any = await lookupRes.json();
+    const priceRuleId = lookupJson?.discount_code?.price_rule_id;
+    if (!priceRuleId) return false;
+
+    const delRes = await fetch(
+      `https://${domain}/admin/api/2024-01/price_rules/${priceRuleId}.json`,
+      {method: 'DELETE', headers: {'X-Shopify-Access-Token': token}},
+    );
+    if (!delRes.ok) {
+      console.warn(`[Loyalty] Failed to invalidate superseded code ${submitted} (HTTP ${delRes.status})`);
+      return false;
+    }
+
+    console.log('[Loyalty] Invalidated superseded discount code:', submitted);
+    return true;
+  } catch (e: any) {
+    console.warn('[Loyalty] Invalidate superseded code threw:', e?.message || e);
+    return false;
+  }
+}
+

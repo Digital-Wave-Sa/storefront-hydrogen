@@ -32,9 +32,11 @@
  *   node set-variants-taxable.mjs              # dry run, writes nothing
  *   node set-variants-taxable.mjs --apply      # do it
  *
- * Reads SHOPIFY_ADMIN_API_TOKEN (or SHOPIFY_ADMIN_TOKEN / ADMIN_API_TOKEN)
- * and PUBLIC_STORE_DOMAIN from .env in the current directory, or from the
- * environment. The token never leaves your machine.
+ * Credentials come from .env the same way the app gets them: this project has
+ * no static admin token, so SHOPIFY_CLIENT_ID and SHOPIFY_CLIENT_SECRET are
+ * exchanged for a short-lived one, exactly as getAdminToken does in
+ * app/lib/shopify-admin.server.ts. Nothing is printed and nothing leaves your
+ * machine.
  */
 
 import {readFileSync} from 'node:fs';
@@ -72,24 +74,63 @@ function loadEnv() {
 
 const env = loadEnv();
 
-const TOKEN =
-  env.SHOPIFY_ADMIN_API_TOKEN ||
-  env.SHOPIFY_ADMIN_TOKEN ||
-  env.ADMIN_API_TOKEN ||
-  env.PRIVATE_ADMIN_API_TOKEN;
+const CLIENT_ID = env.SHOPIFY_CLIENT_ID || env.SHOPIFY_ADMIN_CLIENT_ID;
+const CLIENT_SECRET =
+  env.SHOPIFY_CLIENT_SECRET || env.SHOPIFY_ADMIN_CLIENT_SECRET;
 
+/** Same precedence as getAdminDomain in app/lib/shopify-admin.server.ts. */
 const DOMAIN = (
   env.SHOPIFY_ADMIN_DOMAIN ||
+  (env.SHOPIFY_SHOP && !String(env.SHOPIFY_SHOP).includes('x21kumcd')
+    ? `${String(env.SHOPIFY_SHOP).replace(/^https?:\/\//, '').split('.')[0]}.myshopify.com`
+    : '') ||
   env.PUBLIC_STORE_DOMAIN ||
   ''
-).replace(/^https?:\/\//, '');
+)
+  .replace(/^https?:\/\//, '')
+  .replace(/\/$/, '');
 
-if (!TOKEN || !DOMAIN) {
+if (!CLIENT_ID || !CLIENT_SECRET || !DOMAIN) {
   console.error(
-    'Missing admin credentials. Expected SHOPIFY_ADMIN_API_TOKEN and PUBLIC_STORE_DOMAIN in .env or the environment.',
+    'Missing admin credentials. Expected SHOPIFY_CLIENT_ID, SHOPIFY_CLIENT_SECRET and a shop domain (SHOPIFY_ADMIN_DOMAIN / SHOPIFY_SHOP / PUBLIC_STORE_DOMAIN) in .env.',
   );
   process.exit(1);
 }
+
+/**
+ * Mint an admin token the way the app does — client-credentials exchange, no
+ * stored secret of its own. Short-lived, so there is nothing to clean up.
+ */
+async function getAdminToken() {
+  const res = await fetch(`https://${DOMAIN}/admin/oauth/access_token`, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      client_id: CLIENT_ID,
+      client_secret: CLIENT_SECRET,
+      grant_type: 'client_credentials',
+    }),
+  });
+
+  const text = await res.text();
+  let data;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    throw new Error(
+      `Shopify returned non-JSON from the token endpoint — check the shop domain (${DOMAIN}).`,
+    );
+  }
+  if (data.error) {
+    throw new Error(
+      `Token exchange failed: ${data.error_description || data.error}`,
+    );
+  }
+  if (!data.access_token) throw new Error('Token exchange returned no token.');
+  return data.access_token;
+}
+
+let TOKEN = null;
 
 const ENDPOINT = `https://${DOMAIN}/admin/api/${API_VERSION}/graphql.json`;
 
@@ -161,6 +202,8 @@ const UPDATE_MUTATION = `
 `;
 
 async function main() {
+  TOKEN = await getAdminToken();
+
   console.log(
     APPLY
       ? '── APPLYING changes ──'

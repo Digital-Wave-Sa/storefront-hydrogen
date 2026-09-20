@@ -119,8 +119,56 @@ export function CartMain({ layout, cart: originalCart }: CartMainProps) {
   const productCount = cartLines.filter(
     (line: any) => !('parentRelationship' in line && line.parentRelationship?.parent),
   ).length;
-  const cartHasItems = (cart?.totalQuantity ? cart.totalQuantity > 0 : false) || linesCount > 0;
+  /**
+   * The lines decide, not `totalQuantity`.
+   *
+   * This was `totalQuantity > 0 || linesCount > 0`, and the first half is the
+   * bug: `useOptimisticCart` removes LINES optimistically but does not touch
+   * `totalQuantity`, which keeps the server's old number until the mutation
+   * comes back. So removing the last item left `cartHasItems` true over an
+   * empty list, and the summary carried on rendering — coupon, points and
+   * wallet rows and all — above a cart with nothing in it. Reported as «the
+   * coupon stays applied after the cart is emptied», and it is the same
+   * optimistic-cart trap that made VAT lag a beat behind the lines.
+   *
+   * `linesCount` is right in both directions: it is optimistic on the way
+   * down, and a freshly added line appears in `lines` before `totalQuantity`
+   * catches up too.
+   *
+   * `totalQuantity` is kept for exactly one case — a cart object that has no
+   * `lines` ARRAY at all, which is a cart that has not loaded rather than one
+   * that is empty. An empty array is an answer; a missing one is not, and
+   * treating the two alike would flash a full cart as empty on any render
+   * that arrives before its lines do.
+   */
+  const linesKnown = Array.isArray(cart?.lines?.nodes);
+  const cartHasItems = linesKnown
+    ? linesCount > 0
+    : Boolean(cart?.totalQuantity && cart.totalQuantity > 0);
   const childrenMap = getLineItemChildrenMap(cartLines);
+
+  /**
+   * A redemption the shopper has already paid for, still waiting on a cart
+   * with nothing in it.
+   *
+   * Points and wallet balance are debited when they are applied and cannot be
+   * returned from the storefront, so emptying the cart deliberately does NOT
+   * release them (see dropCouponsIfCartIsEmpty in the cart route). Saying
+   * nothing would be the worse half of that trade: the shopper sees their
+   * points gone from the balance and gone from the cart, and the next ticket
+   * is «my points disappeared».
+   */
+  const heldLoyaltyPoints = parseInt(
+    cart?.attributes?.find((a: any) => a.key === 'loyalty_points')?.value || '0',
+    10,
+  );
+  const heldStoreCredit = parseFloat(
+    cart?.attributes?.find((a: any) => a.key === 'store_credit_amount')?.value ||
+      '0',
+  );
+  const hasHeldRedemption =
+    (Number.isFinite(heldLoyaltyPoints) && heldLoyaltyPoints > 0) ||
+    (Number.isFinite(heldStoreCredit) && heldStoreCredit > 0);
 
   // Clean up any legacy localStorage backup items if present
   useEffect(() => {
@@ -335,7 +383,48 @@ export function CartMain({ layout, cart: originalCart }: CartMainProps) {
                 </div>
               )}
 
-              {!cartHasItems && <CartEmpty layout={layout} isEn={isEn} />}
+              {!cartHasItems && (
+                <>
+                  {/*
+                    What is still being held, on an otherwise empty cart.
+
+                    Above CartEmpty rather than inside it, because CartEmpty is
+                    shared with the drawer and this is a statement about the
+                    cart's attributes, not about emptiness.
+                  */}
+                  {hasHeldRedemption && (
+                    <div
+                      role="status"
+                      className="mb-6 w-full rounded-xl border border-[#BBCFCD] bg-[#F7FBFA] px-4 py-3 text-[14px] text-[#234745] text-start"
+                      style={{
+                        fontFamily:
+                          "'EnglishDigits', 'GE Dinar One', sans-serif",
+                      }}
+                    >
+                      {isEn ? (
+                        <>
+                          {heldLoyaltyPoints > 0 && heldStoreCredit > 0
+                            ? `Your ${heldLoyaltyPoints} points and ${heldStoreCredit.toFixed(2)} SAR wallet balance are still applied`
+                            : heldLoyaltyPoints > 0
+                              ? `Your ${heldLoyaltyPoints} points are still applied`
+                              : `Your ${heldStoreCredit.toFixed(2)} SAR wallet balance is still applied`}
+                          {' — they will be used on your next order. '}
+                        </>
+                      ) : (
+                        <>
+                          {heldLoyaltyPoints > 0 && heldStoreCredit > 0
+                            ? `نقاطك (${heldLoyaltyPoints}) ورصيد محفظتك (${heldStoreCredit.toFixed(2)} ر.س) ما زالا مطبّقين`
+                            : heldLoyaltyPoints > 0
+                              ? `نقاطك (${heldLoyaltyPoints}) ما زالت مطبّقة`
+                              : `رصيد محفظتك (${heldStoreCredit.toFixed(2)} ر.س) ما زال مطبّقاً`}
+                          {' — سيتم استخدامه في طلبك القادم. '}
+                        </>
+                      )}
+                    </div>
+                  )}
+                  <CartEmpty layout={layout} isEn={isEn} />
+                </>
+              )}
 
               {cartHasItems && (
                 <div className="flex flex-col gap-4">

@@ -154,6 +154,89 @@ export async function action({request, context, params}: Route.ActionArgs) {
       throw lastError;
     }
 
+    /**
+     * Let go of the shopper's coupon when the last line leaves the cart.
+     *
+     * Emptying the cart used to leave every code on it. `LinesRemove` was one
+     * line — remove and done — so a cart with nothing in it still carried
+     * DISCOUNT10, and the moment a NEW product was added the old coupon
+     * reattached to a cart the shopper had never applied it to. What looked
+     * like a display bug on an empty cart was really a code silently
+     * following them into the next one.
+     *
+     * ── Why only the coupon ──
+     *
+     * `LOYAL-` and `CREDIT-` are NOT dropped here, and that is the whole
+     * subtlety. Both are paid for at the moment they are applied:
+     * `redeemLoyaltyPoints` debits SDLP, `applyStoreCredit` debits the wallet,
+     * and neither service exposes a way to put the balance back — loyalty's
+     * only rollback fires when the deduction itself fails, and SaadeddinApi
+     * has no reverse for store credit at all. Clearing them because a cart
+     * went empty would burn the customer's balance with no click and no
+     * warning, which is a worse bug than the one being fixed.
+     *
+     * So they stay, and the shopper spends them on whatever they put in the
+     * cart next. That is the outcome they already paid for. The empty cart
+     * says so rather than showing a discount applied to nothing.
+     *
+     * A shopper's own coupon costs nothing to drop and nothing to retype, so
+     * it does not get the same protection.
+     *
+     * Returns the updated cart when it changed anything, otherwise null so the
+     * caller keeps the result it already had.
+     */
+    async function dropCouponsIfCartIsEmpty() {
+      try {
+        /**
+         * Ask the cart, not the mutation.
+         *
+         * The first version of this read `lines.nodes` off the mutation's
+         * result and did nothing, ever. A mutation resolves with the slice it
+         * selected — `{id, totalQuantity, checkoutUrl}`, no `lines`, no `cost`
+         * — because only `queryFragment` is configured on the cart handler and
+         * not `mutateFragment`. See the note further down this file, where the
+         * same assumption told the CRM a cart had been emptied the moment
+         * something was added to it.
+         *
+         * So the guard against acting on an unknown line list — right in
+         * itself — was triggering on every single call. `cart.get()` runs the
+         * full fragment and actually knows.
+         */
+        const currentCart = await cart.get();
+        const lines = currentCart?.lines?.nodes;
+
+        /**
+         * Only act on a cart we can SEE is empty. An unreadable cart means
+         * "not sure", and guessing "empty" there would throw away a live
+         * shopper's coupon mid-edit.
+         */
+        if (!Array.isArray(lines) || lines.length > 0) return null;
+
+        const codes = (currentCart?.discountCodes || []).map((dc) => dc.code);
+        if (codes.length === 0) return null;
+
+        const keep = codes.filter((code) => {
+          const upper = String(code).toUpperCase();
+          return (
+            upper.startsWith('LOYAL-') ||
+            upper.startsWith('LOYALTY-') ||
+            upper.startsWith('CREDIT-')
+          );
+        });
+
+        if (keep.length === codes.length) return null;
+
+        console.log(
+          `[CART] Cart emptied — dropping ${codes.length - keep.length} coupon code(s), keeping ${keep.length} paid-for redemption(s).`,
+        );
+        return await cart.updateDiscountCodes(keep);
+      } catch (e) {
+        /** Never fail the removal itself over this. */
+        console.error('[CART] Could not clear coupons on empty cart:', e);
+        return null;
+      }
+    }
+
     switch (action) {
       case CartForm.ACTIONS.LinesAdd: {
         const cleanLines = (inputs.lines || []).map((line: any) => ({
@@ -223,9 +306,11 @@ export async function action({request, context, params}: Route.ActionArgs) {
       }
       case CartForm.ACTIONS.LinesUpdate:
         result = await withRetry(() => cart.updateLines(inputs.lines));
+        result = (await dropCouponsIfCartIsEmpty()) ?? result;
         break;
       case CartForm.ACTIONS.LinesRemove:
         result = await withRetry(() => cart.removeLines(inputs.lineIds));
+        result = (await dropCouponsIfCartIsEmpty()) ?? result;
         break;
       case 'LoyaltyUpdate':
       case 'CustomLoyaltyUpdate': {

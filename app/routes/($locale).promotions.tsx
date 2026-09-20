@@ -1,4 +1,5 @@
 import {useState, useEffect} from 'react';
+import {counted, PRODUCTS} from '~/lib/plural';
 import {
   type LoaderFunctionArgs,
   useLoaderData,
@@ -1316,15 +1317,33 @@ export default function PromotionsPage() {
                     : gridData?.card2TitleAr || 'خصم 40% على الشوكولاتة',
                 )}
               </h3>
-              <p className="text-[#7D7D7D] text-[14px] font-semibold mb-6">
-                {renderTextWithRiyalSymbol(
-                  isEn
-                    ? gridData?.card2SubtitleEn ||
-                        'More than 20 products with exceptional prices'
-                    : gridData?.card2SubtitleAr ||
-                        'أكثر من 20 منتج بأسعار استثنائية',
-                )}
-              </p>
+              {/*
+                The fallback used to claim «أكثر من 20 منتج» — «more than 20
+                products with exceptional prices». It is a hardcoded string
+                standing in for `gridData`, which comes from a promotion_offer
+                metaobject that does not exist on this store, so the fallback
+                is what every shopper sees. The offer it sits on has one
+                product.
+
+                A count we can prove is better than a number someone typed.
+                `productCount` is computed in the loader from the products
+                actually carrying the offer's tag, so it cannot overstate. If
+                the offer is empty, the line is dropped rather than replaced
+                with a smaller boast.
+              */}
+              {(gridData?.card2SubtitleEn ||
+                gridData?.card2SubtitleAr ||
+                cardOffer2.productCount > 0) && (
+                <p className="text-[#7D7D7D] text-[14px] font-semibold mb-6">
+                  {renderTextWithRiyalSymbol(
+                    isEn
+                      ? gridData?.card2SubtitleEn ||
+                          `${counted(cardOffer2.productCount, true, PRODUCTS)} at exceptional prices`
+                      : gridData?.card2SubtitleAr ||
+                          `${counted(cardOffer2.productCount, false, PRODUCTS)} بأسعار استثنائية`,
+                  )}
+                </p>
+              )}
             </div>
             <Link
               to={`/promotions/${cardOffer2.handle}`}

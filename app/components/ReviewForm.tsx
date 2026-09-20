@@ -43,8 +43,26 @@ export function ReviewForm({
                 <h4 className="text-xl font-black text-[#234745] mb-2">
                     {isEn ? 'Thank you!' : 'شكراً لك!'}
                 </h4>
+                {/*
+                  This said the review had been sent for the team to review.
+
+                  It had not. api.submit-review writes the metaobject with
+                  status "Approved", so a review is live the moment it is
+                  submitted — and there is no edit or delete path anywhere in
+                  the storefront, so the customer cannot take it back either.
+                  Telling someone their words are being checked, publishing
+                  them at once, and giving them no way to undo it is three
+                  problems wearing one sentence.
+
+                  Only the sentence is fixed here. The absent edit and delete
+                  are a real gap and need their own work; until then, the only
+                  way to remove a review is deleting the metaobject in Shopify
+                  admin by hand, which support should know.
+                */}
                 <p className="text-gray-600 font-bold">
-                    {isEn ? 'Your review has been submitted for moderation.' : 'تم إرسال مراجعتك للمراجعة من قبل فريقنا.'}
+                    {isEn
+                        ? 'Your review is now live on this product.'
+                        : 'تم نشر مراجعتك على صفحة المنتج.'}
                 </p>
             </div>
         );

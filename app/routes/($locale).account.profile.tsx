@@ -36,20 +36,53 @@ export const meta: MetaFunction = ({matches}) => {
 export async function action({request, context}: ActionFunctionArgs) {
   const {session, storefront} = context;
 
+  /*
+    Every `error` this action returns is rendered to the shopper verbatim —
+    `⚠️ {action.error}` near the bottom of this file, with no translation
+    between. So the message has to be written for them, in their language,
+    at the point it is created.
+
+    It was not. «Customer not found», thrown in account.tsx as a note to a
+    developer, reached an Arabic shopper unchanged, and so did «Method not
+    allowed» and «Unauthorized». Worse, the two OTP catches below put
+    `e.message ||` in FRONT of a perfectly good Arabic string, so the
+    translation was only ever used for an error carrying no message at all —
+    which is almost none of them.
+
+    lib/otp-errors.ts exists because this exact mistake was caught once
+    already, on the CRM's replies. The raw text belongs in the log.
+  */
+  const lang = storefront.i18n.language === 'EN' ? 'en' : 'ar';
+
   if (request.method !== 'PUT' && request.method !== 'POST') {
-    return data({error: 'Method not allowed'}, {status: 405});
+    return data(
+      {
+        error:
+          lang === 'en'
+            ? 'That request could not be processed.'
+            : 'تعذر تنفيذ هذا الطلب.',
+      },
+      {status: 405},
+    );
   }
 
   const form = await request.formData();
   const customerAccessToken = await session.get('customerAccessToken');
   if (!customerAccessToken) {
-    return data({error: 'Unauthorized'}, {status: 401});
+    return data(
+      {
+        error:
+          lang === 'en'
+            ? 'Please sign in again to update your profile.'
+            : 'يرجى تسجيل الدخول مرة أخرى لتحديث بياناتك.',
+      },
+      {status: 401},
+    );
   }
 
   try {
     const intent = form.get('intent');
     const customer: CustomerUpdateInput = {};
-    const lang = storefront.i18n.language === 'EN' ? 'en' : 'ar';
 
     if (intent === 'send-profile-otp') {
       const phone = String(form.get('phone') || '');
@@ -58,11 +91,13 @@ export async function action({request, context}: ActionFunctionArgs) {
         await api.requestOtp(phone, 'login');
         return data({success: true, otpSent: true});
       } catch (e: any) {
+        console.error('[Profile] OTP send failed:', e?.message || e);
         return data(
           {
             error:
-              e.message ||
-              (lang === 'en' ? 'Failed to send OTP.' : 'فشل إرسال رمز التحقق.'),
+              lang === 'en'
+                ? 'We could not send the verification code. Please try again.'
+                : 'تعذر إرسال رمز التحقق. يرجى المحاولة مرة أخرى.',
           },
           {status: 400},
         );
@@ -93,13 +128,13 @@ export async function action({request, context}: ActionFunctionArgs) {
           {headers: {'Set-Cookie': await session.commit()}},
         );
       } catch (e: any) {
+        console.error('[Profile] OTP verification failed:', e?.message || e);
         return data(
           {
             error:
-              e.message ||
-              (lang === 'en'
+              lang === 'en'
                 ? 'Invalid verification code.'
-                : 'رمز التحقق غير صحيح.'),
+                : 'رمز التحقق غير صحيح.',
           },
           {status: 400},
         );
@@ -452,7 +487,23 @@ export async function action({request, context}: ActionFunctionArgs) {
       },
     );
   } catch (error: any) {
-    return data({error: error.message, customer: null}, {status: 400});
+    /*
+      This is where «Customer not found» reached the page. It is thrown in
+      account.tsx when Shopify cannot resolve the signed-in customer — true,
+      useful in a log, and meaningless to the person reading it, who cannot
+      act on it and is left staring at an English string on an Arabic page.
+    */
+    console.error('[Profile] Update failed:', error?.message || error);
+    return data(
+      {
+        error:
+          lang === 'en'
+            ? 'We could not save your changes. Please try again.'
+            : 'تعذر حفظ التغييرات. يرجى المحاولة مرة أخرى.',
+        customer: null,
+      },
+      {status: 400},
+    );
   }
 }
 

@@ -125,6 +125,14 @@ export function GiftVoucherWizard({
 
   // Validation errors
   const [amountError, setAmountError] = useState('');
+  /**
+   * The recipient's name gets its own error, beside its own field.
+   *
+   * It used to borrow `cartError`, which renders at the BOTTOM of the final
+   * step. So an empty name was reported in a different place, on a different
+   * screen, from the field that caused it.
+   */
+  const [nameError, setNameError] = useState('');
   const [emailError, setEmailError] = useState('');
   const [cartError, setCartError] = useState('');
 
@@ -218,8 +226,32 @@ export function GiftVoucherWizard({
     return true;
   };
 
+  /**
+   * Both required fields are checked HERE, on the step that asks for them.
+   *
+   * The name used to be checked only in handleCheckoutSubmit, so the two
+   * fields sitting side by side under the same red asterisk behaved
+   * differently: an empty email stopped you leaving this step, an empty name
+   * let you through and failed at payment. Same form, same asterisk, two
+   * different moments — and the later one arrives after the shopper has
+   * mentally finished with the message.
+   *
+   * The check in handleCheckoutSubmit stays as a backstop. This gate is the
+   * courtesy; that one is the guarantee, since nothing in the component
+   * structurally prevents reaching checkout another way.
+   */
   const validateStep2 = (): boolean => {
     if (giftMode === 'gift') {
+      if (!recipientName.trim()) {
+        setNameError(
+          isEn
+            ? 'Please enter the recipient\u2019s name.'
+            : 'يرجى إدخال اسم المستلم.',
+        );
+        return false;
+      }
+      setNameError('');
+
       if (!recipientEmail.trim()) {
         setEmailError(isEn
           ? 'Please enter recipient email.'
@@ -231,6 +263,7 @@ export function GiftVoucherWizard({
         return false;
       }
     }
+    setNameError('');
     setEmailError('');
     return true;
   };
@@ -1069,9 +1102,18 @@ export function GiftVoucherWizard({
                         aria-required="true"
                         placeholder={isEn ? 'Sara' : 'سارة'}
                         value={recipientName}
-                        onChange={(e) => setRecipientName(e.target.value)}
+                        onChange={(e) => {
+                          setRecipientName(e.target.value);
+                          if (nameError) setNameError('');
+                        }}
                         className="gift-input"
+                        aria-invalid={nameError ? true : undefined}
                       />
+                      {nameError && (
+                        <p className="text-red-500 text-[13px] mt-1 font-medium">
+                          {nameError}
+                        </p>
+                      )}
                     </div>
 
                     <div className="gift-field">
@@ -1085,7 +1127,10 @@ export function GiftVoucherWizard({
                         aria-required="true"
                         placeholder="sara@example.com"
                         value={recipientEmail}
-                        onChange={(e) => setRecipientEmail(e.target.value)}
+                        onChange={(e) => {
+                          setRecipientEmail(e.target.value);
+                          if (emailError) setEmailError('');
+                        }}
                         className={`gift-input font-en notranslate ${isEn ? 'text-left' : 'text-right'}`}
                       />
                     </div>

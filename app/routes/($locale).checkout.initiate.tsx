@@ -1087,11 +1087,50 @@ async function processCheckoutInitiate({request, context}: ActionFunctionArgs) {
       }
 
       const knownPromoCodes = ['freeshipping', 'branch free delivery promo'];
-      const hasFreeShippingCode = cart?.discountCodes?.some((d: any) =>
-        knownPromoCodes.includes(String(d.code || '').toLowerCase().trim())
-      ) || false;
+      const isPromoCode = (code: unknown) =>
+        knownPromoCodes.includes(String(code || '').toLowerCase().trim());
 
-      if (isPromoFreeDelivery || hasFreeShippingCode) {
+      const hasFreeShippingCode =
+        cart?.discountCodes?.some((d: any) => isPromoCode(d.code)) || false;
+
+      /**
+       * A code the shopper entered that Shopify is currently honouring.
+       *
+       * Every discount on this store is non-combinable — DISCOUNT10 and the
+       * Branch Free Delivery Promo both carry combinesWith false for order,
+       * product AND shipping — so two codes on one cart is not two discounts.
+       * Shopify keeps one and marks the other `applicable: false`.
+       *
+       * Which made the block below take money off the shopper on the way out
+       * the door. It fired whenever the branch and time slot qualified for
+       * free delivery, and did two things that each drop the shopper's own
+       * code: it added `freeshipping` beside it, and it set `?discount=` on
+       * the checkout URL, which Shopify applies IN PLACE OF the cart's codes.
+       * A cart showing 483.30 with DISCOUNT10 arrived at checkout charging
+       * 537.00 — the full 53.70 — in exchange for delivery worth about 25.
+       *
+       * So the promo is only forced when the shopper has no applicable code of
+       * their own. The rule is that a code someone typed outranks one we add
+       * silently: it is worth more here, and quietly swapping a discount for a
+       * smaller one at the payment step is the kind of thing that ends in a
+       * refund request. If the business would rather compare the two values
+       * and keep whichever is larger, that is a different rule and belongs
+       * here — but it needs the delivery fee, which this scope does not have.
+       *
+       * A shopper code that is already inapplicable does not count: Shopify
+       * has settled that one itself, and this should not second-guess it.
+       */
+      const applicableShopperCode = cart?.discountCodes?.find(
+        (d: any) => d?.applicable && !isPromoCode(d.code),
+      );
+
+      if ((isPromoFreeDelivery || hasFreeShippingCode) && applicableShopperCode) {
+        console.log(
+          `[CHECKOUT INITIATE] Free-delivery promo not forced: cart carries "${applicableShopperCode.code}", which does not combine with it.`,
+        );
+      }
+
+      if ((isPromoFreeDelivery || hasFreeShippingCode) && !applicableShopperCode) {
         urlObj.searchParams.set('discount', 'freeshipping');
         try {
           const existingCodes = cart?.discountCodes?.map((d: any) => d.code)?.filter((c: string) => c !== 'Branch Free Delivery Promo') || [];

@@ -518,9 +518,39 @@ export function CartSummary({ cart, layout, confirmedCart }: CartSummaryProps) {
     taxableProductsTotal - otherDiscountDisplay - loyaltyDiscountDisplay - storeCreditDiscountDisplay,
   );
 
-  const calculatedTax = (cart?.cost?.totalTaxAmount && parseFloat(cart.cost.totalTaxAmount.amount) > 0)
-    ? parseFloat(cart.cost.totalTaxAmount.amount)
-    : (netTaxableAmount > 0 ? netTaxableAmount * (15 / 115) : 0);
+  /*
+    Shopify's figure, except while a change is still in flight.
+
+    `cart.cost.totalTaxAmount` is recomputed server-side, so after a quantity
+    change in the drawer it holds the PREVIOUS cart's tax until the mutation
+    returns. The old test preferred it whenever it was above zero, which is
+    exactly when it is stale, so the VAT line sat on the old amount for a
+    round trip — one to three seconds in which the subtotal had already moved
+    and the three numbers on the panel did not add up.
+
+    The local figure is not a guess: `netTaxableAmount` above is summed from
+    the same optimistic lines the shopper is looking at, so during that window
+    it is the correct answer and the server's is not. Once the cart settles we
+    go back to Shopify's number, which is the one that must match the invoice.
+
+    This is the other half of QA-059. That fix added the local calculation as a
+    fallback for a cart Shopify had not taxed yet — the ABSENT case. The stale
+    case never reached it. The subtotal had already been handled properly, by
+    `optimisticDelta` above; the VAT row had not, which is why the two rows
+    disagreed on screen.
+
+    Note the two are founded differently. `optimisticDelta` diffs Shopify's own
+    confirmed line prices, so it stays right whatever the tax rules are. This
+    assumes a flat 15% inclusive rate on every taxable line, which holds for
+    this catalogue. If a line is ever zero-rated or overridden, the figure will
+    correct itself when the server answers — still better than showing the
+    previous cart's tax, but worth knowing before the catalogue grows one.
+  */
+  const cartIsSettling = !!cart?.isOptimistic || pendingCart.busy;
+  const serverTax = parseFloat(cart?.cost?.totalTaxAmount?.amount ?? '0');
+  const localTax = netTaxableAmount > 0 ? netTaxableAmount * (15 / 115) : 0;
+  const calculatedTax =
+    !cartIsSettling && serverTax > 0 ? serverTax : localTax;
   const hasTax = calculatedTax > 0;
 
   const isBranchHidden = currentBranch && (

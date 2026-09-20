@@ -126,6 +126,32 @@ export async function action({request, context}: ActionFunctionArgs) {
     return data({error: 'Missing rating'}, {status: 400});
   }
 
+  /**
+   * Who is actually writing this, as opposed to who the form says.
+   *
+   * Resolved once here because it is the same answer for every review this
+   * request creates, and because it must come from the session: the name,
+   * email and phone above are all client-supplied, which is acceptable for
+   * something displayed and unacceptable for something that grants an edit.
+   *
+   * Null for a signed-out submitter. Those reviews carry no owner token and
+   * can never be edited, which is correct -- there is nobody to prove they
+   * belong to.
+   */
+  const ownerToken = await (async () => {
+    try {
+      const {resolveNumericCustomerId} = await import(
+        '~/lib/session-identity.server'
+      );
+      const {reviewOwnerToken} = await import('~/lib/review-owner.server');
+      const numericCustomerId = await resolveNumericCustomerId(context);
+      return await reviewOwnerToken(numericCustomerId, env?.SESSION_SECRET);
+    } catch (e) {
+      console.error('[REVIEWS] Could not stamp review owner:', e);
+      return null;
+    }
+  })();
+
   try {
     const token = await getAdminToken(env);
     const timestamp = Date.now();
@@ -231,6 +257,23 @@ export async function action({request, context}: ActionFunctionArgs) {
 
       if (finalLocationId) productReviewFields.push({key: 'location_id', value: String(finalLocationId)});
       if (branchName) productReviewFields.push({key: 'location_name', value: String(branchName)});
+
+      /**
+       * Stamp the author so the review can be edited later.
+       *
+       * From the SESSION, never the form. Everything else identifying in this
+       * action -- customerName, customerEmail, customerPhone -- is whatever
+       * the client posted, which is fine for a display name and useless as a
+       * permission. Taking the owner from the form would mean anyone could
+       * claim authorship of anyone's review by posting their token.
+       *
+       * A hash rather than the id: see review-owner.server for why. Absent
+       * when nobody is signed in, and a review with no token is simply not
+       * editable, which is the safe direction to fail.
+       */
+      if (ownerToken) {
+        productReviewFields.push({key: 'owner_token', value: ownerToken});
+      }
 
       await createMetaobjectWithAutoDef(
         shopDomain,

@@ -361,6 +361,34 @@ export async function loader(args: LoaderFunctionArgs) {
       return redirectToFirstVariant({product, request});
     }
   }
+  /**
+   * Who is asking, resolved ONCE for this request.
+   *
+   * Both branches below need it -- the purchase gate to look up orders, the
+   * review list to mark which reviews are the shopper's own -- and they run in
+   * parallel, so resolving it inside each would mean two identical Storefront
+   * round-trips on every product page for the same answer.
+   */
+  const viewerPromise = (async () => {
+    try {
+      const {resolveNumericCustomerId} = await import(
+        '~/lib/session-identity.server',
+      );
+      const {reviewOwnerToken} = await import('~/lib/review-owner.server');
+      const numericCustomerId = await resolveNumericCustomerId(context);
+      return {
+        numericCustomerId,
+        ownerToken: await reviewOwnerToken(
+          numericCustomerId,
+          (args.context.env as any)?.SESSION_SECRET,
+        ),
+      };
+    } catch (e) {
+      console.error('[REVIEWS] Could not resolve viewer:', e);
+      return {numericCustomerId: null, ownerToken: null};
+    }
+  })();
+
   // --- PARALLEL FETCH FOR SECONDARY DATA ---
   const [reviewsData, hasPurchasedResult, recommendedResult, panelContent] =
     await Promise.all([
@@ -377,6 +405,7 @@ export async function loader(args: LoaderFunctionArgs) {
             query GetProductReviews {
               metaobjects(type: "storefront_review", first: 250) {
                 nodes {
+                  id
                   fields {
                     key
                     value
@@ -394,7 +423,7 @@ export async function loader(args: LoaderFunctionArgs) {
 
           const allReviews =
             reviewsResult.data?.metaobjects?.nodes?.map((node: any) => {
-              const f: any = {};
+              const f: any = {id: node.id};
               node.fields.forEach((field: any) => (f[field.key] = field.value));
               return f;
             }) || [];
@@ -418,6 +447,37 @@ export async function loader(args: LoaderFunctionArgs) {
           console.error('[REVIEWS] Failed to fetch reviews:', err);
         }
 
+        /**
+         * Decide ownership HERE, and send a boolean rather than the token.
+         *
+         * The client is told «this one is yours», never what makes it yours.
+         * Shipping `owner_token` to the browser would put a stable
+         * per-customer identifier into the page source of every product,
+         * letting anyone reading it group the shop's reviews by author — and
+         * it would buy nothing, because the edit endpoint re-checks ownership
+         * server-side regardless of what the page believes.
+         *
+         * `isMine` is false for everyone when nobody is signed in, and false
+         * for reviews written before `owner_token` existed. Those stay
+         * read-only: there is no way to prove who wrote them, and inferring it
+         * from `customer_name` is the mistake this field exists to avoid.
+         */
+        try {
+          const {ownsReview} = await import('~/lib/review-owner.server');
+          const {ownerToken: viewerToken} = await viewerPromise;
+
+          reviews = reviews.map((r: any) => {
+            const {owner_token: storedToken, ...rest} = r;
+            return {...rest, isMine: ownsReview(storedToken, viewerToken)};
+          });
+        } catch (e) {
+          console.error('[REVIEWS] Could not mark review ownership:', e);
+          reviews = reviews.map(({owner_token: _drop, ...rest}: any) => ({
+            ...rest,
+            isMine: false,
+          }));
+        }
+
         if (reviews.length > 0) {
           const sum = reviews.reduce(
             (acc, r: any) => acc + (parseFloat(r.rating) || 0),
@@ -432,14 +492,148 @@ export async function loader(args: LoaderFunctionArgs) {
         return {reviews, dynamicRating, dynamicCount};
       })(),
 
-      // 2. HAS PURCHASED
+      /**
+       * 2. HAS PURCHASED — does this shopper get to write a review?
+       *
+       * This answered «no» for a customer looking at a product sitting in
+       * their own order history, which is the worst possible failure for a
+       * gate: the page says «فقط المشترين يمكنهم إضافة مراجعة» to a buyer, and
+       * nothing anywhere says why.
+       *
+       * Three things were wrong, and they share one cause — this block
+       * identified the customer its own way instead of the way the rest of the
+       * app does.
+       *
+       * 1. It knew two token shapes and login mints three. OTP sign-in falls
+       *    back to `session-<customerId>` when customerAccessTokenCreate fails
+       *    (see account_.login), and that token went down the `else` branch
+       *    and was handed to Shopify as if it were real. Shopify returns null,
+       *    the catch logs, and the shopper is quietly told they never bought
+       *    anything. root, account, account.addresses, cart, checkout.initiate
+       *    and account.orders all test for `session-`; only this did not.
+       *
+       * 2. It asked the Storefront API, which does not return TEST orders.
+       *    Every order this storefront places in staging is a test order, so
+       *    in QA the gate is shut for everyone, always. account.orders already
+       *    knew Storefront orders were insufficient — it calls them «only used
+       *    when the Admin path can't serve» — and this block was doing the
+       *    exact inverse.
+       *
+       * 3. Its phone match was exact where root's is fuzzy, so the header
+       *    could know who you were while this did not.
+       *
+       * The fix removes the identification problem rather than solving it
+       * again: in all three token shapes the customer id is already in hand,
+       * so nothing here searches for a customer any more. A `session-` token
+       * carries the id in the token. A real token IS proof of identity, and
+       * one Storefront query trades it for `customer.id`. Only the legacy
+       * dev-bypass path still searches by phone, and only because it has
+       * nothing else.
+       *
+       * With an id, purchases come from the Admin API, which returns test
+       * orders and does not care what shape the token was. The Storefront
+       * orders query stays as the fallback for when no id resolves — it is
+       * weaker, not wrong, and it is better than refusing everybody.
+       */
       (async () => {
         let hasPurchased = false;
         const customerAccessToken = await context.session.get(
           'customerAccessToken',
         );
+        const tokenStr =
+          typeof customerAccessToken === 'string'
+            ? customerAccessToken
+            : customerAccessToken?.accessToken;
 
-        if (customerAccessToken?.accessToken) {
+        /** The product we are gating on, as the Admin REST API numbers it. */
+        const wantedProductId = String(product.id).split('/').pop();
+
+        /**
+         * Ask the Admin API whether this customer ever bought this product.
+         *
+         * `status=any` so an unfulfilled or cancelled order still counts: the
+         * question is whether they bought it, not whether it arrived. 250 is
+         * the REST maximum and far past any real customer's history; a shopper
+         * beyond it has bought enough to have reviewed something already.
+         */
+        const boughtItAccordingToAdmin = async (
+          numericCustomerId: string,
+        ): Promise<boolean | null> => {
+          /**
+           * `null` means «could not tell», and is not the same answer as
+           * `false`. Collapsing the two would make an Admin outage look
+           * exactly like a shopper who has never ordered, and silently shut
+           * the gate on every real buyer for as long as it lasted. Only `null`
+           * falls through to the weaker Storefront check below; a confident
+           * `false` is the answer.
+           */
+          const {getAdminToken, getAdminDomain} = await import(
+            '~/lib/shopify-admin.server'
+          );
+          const token = await getAdminToken(context.env);
+          const shopDomain = getAdminDomain(context.env);
+          if (!token || !shopDomain) return null;
+
+          const res = await fetch(
+            `https://${shopDomain}/admin/api/2024-04/customers/${numericCustomerId}/orders.json?status=any&limit=250&fields=id,line_items`,
+            {
+              headers: {
+                'X-Shopify-Access-Token': token,
+                'Content-Type': 'application/json',
+              },
+              signal: AbortSignal.timeout(4000),
+            },
+          ).catch(() => null);
+
+          if (!res || !res.ok) return null;
+
+          const body = (await res.json().catch(() => null)) as any;
+          if (!body || !Array.isArray(body.orders)) return null;
+
+          /**
+           * `fields` is trimming the payload, and if it ever trims the wrong
+           * thing the orders still arrive — just without the one array this
+           * reads. `.some` over a missing field is `false`, which here would
+           * mean «never bought it», so a change in what the REST API returns
+           * would quietly shut the gate on everyone rather than fail. An order
+           * always has line items, so one without them means the response is
+           * not what this expects, and «could not tell» is the honest answer.
+           */
+          if (body.orders.some((o: any) => !Array.isArray(o?.line_items))) {
+            console.warn(
+              '[REVIEWS] Admin orders came back without line_items; falling back.',
+            );
+            return null;
+          }
+
+          return body.orders.some((o: any) =>
+            o.line_items.some(
+              (li: any) =>
+                li.product_id && String(li.product_id) === wantedProductId,
+            ),
+          );
+        };
+
+        /**
+         * Identifying the shopper happens once per request, above, and lives
+         * in session-identity next to every other answer to «who is this».
+         * This block having its own version of that is precisely what broke
+         * the gate.
+         */
+        if (tokenStr) {
+          try {
+            const {numericCustomerId} = await viewerPromise;
+            if (numericCustomerId) {
+              const answer = await boughtItAccordingToAdmin(numericCustomerId);
+              /** A definite yes OR a definite no. Only null keeps looking. */
+              if (answer !== null) return answer;
+            }
+          } catch (e) {
+            console.error('[REVIEWS] Admin purchase check failed:', e);
+          }
+        }
+
+        if (customerAccessToken?.accessToken && !hasPurchased) {
           if (customerAccessToken.accessToken === 'dev-bypass-token') {
             const savedPhone = await context.session.get('loginOtpPhone');
             if (savedPhone) {
@@ -1040,6 +1234,95 @@ export default function Product() {
   const [recipientName, setRecipientName] = useState('');
   const [hideSender, setHideSender] = useState(false);
   const [showReviewForm, setShowReviewForm] = useState(false);
+
+  /**
+   * Editing a review you wrote, in place on the card.
+   *
+   * `reviewEdits` and `deletedReviewIds` exist because the review list comes
+   * from the loader, and the loader does not re-run when this page POSTs to
+   * /api/review. Without them a saved edit shows the OLD text until something
+   * else happens to revalidate, and a deleted review stays on screen -- both
+   * of which read as «it didn't work», and invite the shopper to do it again.
+   *
+   * Keyed by metaobject id rather than by index: a delete changes every index
+   * after it, so an index-keyed override would slide onto the wrong review.
+   */
+  const [editingReviewId, setEditingReviewId] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState<{rating: number; comment: string}>(
+    {rating: 5, comment: ''},
+  );
+  const [reviewBusy, setReviewBusy] = useState(false);
+  const [reviewError, setReviewError] = useState<string | null>(null);
+  const [reviewEdits, setReviewEdits] = useState<Record<string, any>>({});
+  const [deletedReviewIds, setDeletedReviewIds] = useState<string[]>([]);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+
+  const beginEditReview = (review: any) => {
+    setReviewError(null);
+    setConfirmDeleteId(null);
+    setEditingReviewId(review.id);
+    setEditDraft({
+      rating: Number(review.rating) || 5,
+      comment: String(review.review_comment || review.comment || ''),
+    });
+  };
+
+  /**
+   * Both actions go through one request shape, and the server decides.
+   *
+   * Nothing here is a permission check -- the buttons are only DRAWN for
+   * `isMine`, which is cosmetic. /api/review re-reads the review and compares
+   * its stored owner token against the session on every call, so a crafted
+   * POST gets the same answer as a crafted page.
+   */
+  const submitReviewAction = async (
+    intent: 'edit' | 'delete',
+    reviewId: string,
+  ) => {
+    if (reviewBusy) return;
+    setReviewBusy(true);
+    setReviewError(null);
+
+    try {
+      const body = new FormData();
+      body.set('intent', intent);
+      body.set('reviewId', reviewId);
+      if (intent === 'edit') {
+        body.set('rating', String(editDraft.rating));
+        body.set('comment', editDraft.comment.trim());
+      }
+
+      const res = await fetch('/api/review', {method: 'POST', body});
+      const json = (await res.json().catch(() => null)) as any;
+
+      if (!res.ok || !json?.success) {
+        setReviewError(
+          json?.error ||
+            (isEn
+              ? 'Could not save your change. Please try again.'
+              : 'تعذّر حفظ التغيير. يرجى المحاولة مرة أخرى.'),
+        );
+        return;
+      }
+
+      if (intent === 'delete') {
+        setDeletedReviewIds((prev) => [...prev, reviewId]);
+        setConfirmDeleteId(null);
+      } else {
+        setReviewEdits((prev) => ({...prev, [reviewId]: json.review}));
+        setEditingReviewId(null);
+      }
+    } catch (e) {
+      console.error('[REVIEWS] Review action failed:', e);
+      setReviewError(
+        isEn
+          ? 'Could not reach the server. Please try again.'
+          : 'تعذّر الاتصال بالخادم. يرجى المحاولة مرة أخرى.',
+      );
+    } finally {
+      setReviewBusy(false);
+    }
+  };
   const [cakeMessage, setCakeMessage] = useState('');
   const [writeLocation, setWriteLocation] = useState<'cake' | 'board'>('cake');
   const [companyName, setCompanyName] = useState('');
@@ -1177,7 +1460,15 @@ export default function Product() {
 
   const processedReviews = useMemo(() => {
     if (!reviews) return [];
-    let result = [...reviews];
+    /**
+     * Local edits and deletes win over the loader's copy, because the loader
+     * has not re-run since the change was saved. Applied before filtering so
+     * a review edited from 2 stars to 5 lands in the right bucket rather than
+     * sitting under a filter it no longer matches.
+     */
+    let result = reviews
+      .filter((r: any) => !deletedReviewIds.includes(r.id))
+      .map((r: any) => (r.id && reviewEdits[r.id] ? {...r, ...reviewEdits[r.id]} : r));
     if (filterRating) {
       result = result.filter((r) => r.rating === filterRating);
     }
@@ -1185,7 +1476,7 @@ export default function Product() {
     if (sortBy === 'lowest') result.sort((a, b) => a.rating - b.rating);
     // Newest is default as they come from the API
     return result;
-  }, [reviews, sortBy, filterRating]);
+  }, [reviews, sortBy, filterRating, reviewEdits, deletedReviewIds]);
 
   const rawAddons = (product as any).addons?.references?.nodes || [];
   const addonNodes = useMemo(() => {
@@ -1542,8 +1833,13 @@ export default function Product() {
         <div className="flex flex-col gap-[16px] w-full">
           {processedReviews && processedReviews.length > 0 ? (
             processedReviews.map((review: any, idx: number) => (
+              /**
+               * Keyed by the review, not its position. With `key={idx}` a
+               * delete makes every later review inherit the previous one's
+               * element -- and its open edit box and draft text.
+               */
               <div
-                key={idx}
+                key={review.id || idx}
                 className="w-full bg-white p-[24px] rounded-[16px] border border-[#E5E5E5] flex flex-col gap-[16px]"
               >
                 <div className="w-full flex justify-between items-start">
@@ -1597,20 +1893,105 @@ export default function Product() {
                   </div>
                 </div>
 
-                {/* Review Comment */}
-                <div className="w-full text-start pr-[52px]">
-                  <p
-                    className="text-[#7D7D7D] text-[14px] font-normal leading-[24px]"
-                    style={{
-                      fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
-                    }}
-                  >
-                    {review.review_comment || review.comment}
-                  </p>
-                </div>
+                {/* Review Comment — or the edit box, in its place */}
+                {editingReviewId === review.id ? (
+                  <div className="w-full text-start pr-[52px] flex flex-col gap-[12px]">
+                    <div dir="ltr" className="flex items-center gap-1">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <button
+                          key={star}
+                          type="button"
+                          onClick={() =>
+                            setEditDraft((d) => ({...d, rating: star}))
+                          }
+                          aria-label={
+                            isEn ? `${star} stars` : `${star} نجوم`
+                          }
+                          aria-pressed={editDraft.rating === star}
+                          className="p-1 transition-transform active:scale-90"
+                        >
+                          <svg
+                            width="22"
+                            height="22"
+                            viewBox="0 0 24 24"
+                            fill={
+                              star <= editDraft.rating ? '#F0B23F' : '#E5E5E5'
+                            }
+                            aria-hidden="true"
+                          >
+                            <path d="M12 2l2.9 6.26 6.6.72-4.9 4.6 1.3 6.42L12 16.9l-5.9 3.1 1.3-6.42-4.9-4.6 6.6-.72z" />
+                          </svg>
+                        </button>
+                      ))}
+                    </div>
 
-                {/* Verified Buyer */}
-                <div className="w-full flex justify-start pr-[52px]">
+                    <textarea
+                      value={editDraft.comment}
+                      onChange={(e) =>
+                        setEditDraft((d) => ({...d, comment: e.target.value}))
+                      }
+                      rows={4}
+                      maxLength={1000}
+                      className="w-full p-3 text-[14px] border border-[#BBCFCD]/60 rounded-[8px] focus:ring-[#234745] focus:border-[#234745] resize-none bg-white text-start"
+                      style={{
+                        fontFamily:
+                          "'EnglishDigits', 'GE Dinar One', sans-serif",
+                      }}
+                    />
+
+                    {reviewError && (
+                      <span
+                        role="alert"
+                        className="text-[#E64950] text-[13px] font-medium"
+                      >
+                        {reviewError}
+                      </span>
+                    )}
+
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        disabled={reviewBusy || !editDraft.comment.trim()}
+                        onClick={() => submitReviewAction('edit', review.id)}
+                        className="px-5 py-2 rounded-full bg-[#234745] text-white text-[13px] font-bold disabled:opacity-50 transition-all active:scale-95"
+                      >
+                        {reviewBusy
+                          ? isEn
+                            ? 'Saving…'
+                            : 'جارٍ الحفظ…'
+                          : isEn
+                            ? 'Save'
+                            : 'حفظ'}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={reviewBusy}
+                        onClick={() => {
+                          setEditingReviewId(null);
+                          setReviewError(null);
+                        }}
+                        className="px-4 py-2 rounded-full border border-[#BBCFCD] text-[#234745] text-[13px] font-bold disabled:opacity-50 transition-all"
+                      >
+                        {isEn ? 'Cancel' : 'إلغاء'}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="w-full text-start pr-[52px]">
+                    <p
+                      className="text-[#7D7D7D] text-[14px] font-normal leading-[24px]"
+                      style={{
+                        fontFamily:
+                          "'EnglishDigits', 'GE Dinar One', sans-serif",
+                      }}
+                    >
+                      {review.review_comment || review.comment}
+                    </p>
+                  </div>
+                )}
+
+                {/* Verified Buyer, and your own controls opposite it */}
+                <div className="w-full flex justify-between items-center gap-3 pr-[52px]">
                   <div className="flex items-center gap-[6px]">
                     <svg
                       width="14"
@@ -1644,6 +2025,68 @@ export default function Product() {
                       {isEn ? 'Verified Buyer' : 'مشتري موثق'}
                     </span>
                   </div>
+
+                  {/*
+                    Edit and delete, on your own review only.
+
+                    `isMine` is decided in the loader by comparing the review's
+                    stored owner token with one derived from the session — the
+                    page is told «yours», never why. Drawing these is cosmetic:
+                    /api/review re-checks ownership on every call, so hiding
+                    them is a courtesy and not the control.
+
+                    Absent on reviews written before owner_token existed, which
+                    have no author on record and so cannot be claimed by
+                    anyone.
+
+                    Delete asks twice, in place, for the same reasons as the
+                    cake builder's reset: one tap should not destroy something
+                    the shopper wrote, and window.confirm cannot be read
+                    right-to-left or in the shop's language.
+                  */}
+                  {review.isMine && editingReviewId !== review.id && (
+                    <div className="flex items-center gap-3 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => beginEditReview(review)}
+                        className="text-[12px] font-bold text-[#255441] underline hover:text-[#1a3a2d] transition-colors"
+                        style={{
+                          fontFamily:
+                            "'EnglishDigits', 'GE Dinar One', sans-serif",
+                        }}
+                      >
+                        {isEn ? 'Edit' : 'تعديل'}
+                      </button>
+
+                      <button
+                        type="button"
+                        disabled={reviewBusy}
+                        onClick={() =>
+                          confirmDeleteId === review.id
+                            ? submitReviewAction('delete', review.id)
+                            : setConfirmDeleteId(review.id)
+                        }
+                        onBlur={() => setConfirmDeleteId(null)}
+                        className={`text-[12px] font-bold underline transition-colors disabled:opacity-50 ${
+                          confirmDeleteId === review.id
+                            ? 'text-[#E64950]'
+                            : 'text-[#9A9A9A] hover:text-[#E64950]'
+                        }`}
+                        style={{
+                          fontFamily:
+                            "'EnglishDigits', 'GE Dinar One', sans-serif",
+                        }}
+                      >
+                        {confirmDeleteId === review.id
+                          ? isEn
+                            ? 'Sure?'
+                            : 'متأكد؟'
+                          : isEn
+                            ? 'Delete'
+                            : 'حذف'}
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             ))

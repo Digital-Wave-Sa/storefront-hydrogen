@@ -185,6 +185,82 @@ export function identifierMatchesSession(
 }
 
 /**
+ * The signed-in customer's NUMERIC Shopify id, whatever shape of token they
+ * hold — the one thing the Admin API needs and `getSessionIdentity` cannot
+ * always supply.
+ *
+ * Sign-in mints three kinds of token and each carries the id somewhere
+ * different, which is how the review gate came to refuse a customer looking at
+ * a product in their own order history: it knew two of the three.
+ *
+ *   `session-<id>`      OTP sign-in's fallback for when
+ *                       customerAccessTokenCreate fails. The id IS the token,
+ *                       which account.tsx and account.addresses already read.
+ *   `loginCustomerId`   Written at login by every path that resolved a
+ *                       customer, and true regardless of token shape.
+ *   a real token        Proof of identity in itself. One Storefront query
+ *                       trades it for `customer.id`.
+ *
+ * Note what this deliberately does NOT do: look for a customer who RESEMBLES
+ * the session — by phone, by email, by anything. Every caller here already
+ * holds proof of who the shopper is, so this is a lookup, not a guess, and
+ * there is no near-match to get wrong. `findAdminCustomerId` in account.orders
+ * stays the one place that has to search, because a dev-bypass session
+ * genuinely has nothing else to go on.
+ *
+ * Returns null when nobody is signed in, or when a real token no longer
+ * resolves. Callers must treat null as «unknown», never as «not them».
+ */
+export async function resolveNumericCustomerId(
+  context: any,
+): Promise<string | null> {
+  const session = context?.session;
+  if (!session) return null;
+
+  const numeric = (value: unknown): string | null => {
+    const id = String(value ?? '').split('/').pop()?.trim();
+    return id && /^\d+$/.test(id) ? id : null;
+  };
+
+  const sessionToken = await session.get('customerAccessToken');
+  const token =
+    typeof sessionToken === 'string' ? sessionToken : sessionToken?.accessToken;
+
+  if (token?.startsWith('session-')) {
+    const fromToken = numeric(token.replace('session-', ''));
+    if (fromToken) return fromToken;
+  }
+
+  const fromSession = numeric(await session.get('loginCustomerId'));
+  if (fromSession) return fromSession;
+
+  if (!token || token === 'dev-bypass-token' || !context?.storefront) {
+    return null;
+  }
+
+  try {
+    const {customer} = (await context.storefront.query(
+      `#graphql
+      query SessionNumericCustomerId($customerAccessToken: String!) {
+        customer(customerAccessToken: $customerAccessToken) {
+          id
+        }
+      }
+      `,
+      {
+        variables: {customerAccessToken: token},
+        cache: context.storefront.CacheNone(),
+      },
+    )) as any;
+
+    return numeric(customer?.id);
+  } catch (e) {
+    console.error('[Identity] Could not resolve numeric customer id:', e);
+    return null;
+  }
+}
+
+/**
  * Resolve the customer to act on: always the session's own identity.
  *
  * Falls back to the Storefront customer behind `customerAccessToken` — that

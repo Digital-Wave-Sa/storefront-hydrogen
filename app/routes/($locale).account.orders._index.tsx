@@ -1,5 +1,4 @@
 import {
-import {localeRedirect} from '~/lib/i18n';
   data,
   redirect,
   type LoaderFunctionArgs,
@@ -30,6 +29,7 @@ import {
 import {resolveOrderStatus} from '~/lib/order-status';
 
 import {pageTitle} from '~/lib/seo';
+import {localeRedirect} from '~/lib/i18n';
 export function checkIsPickupOrder(order: any): boolean {
   if (!order) return false;
 

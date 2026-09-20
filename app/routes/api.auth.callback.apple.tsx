@@ -1,10 +1,10 @@
 import {
-import {localeRedirect} from '~/lib/i18n';
   redirect,
   type ActionFunctionArgs,
   type LoaderFunctionArgs,
 } from 'react-router';
 import {getAdminToken} from '~/lib/shopify-admin.server';
+import {localeRedirect} from '~/lib/i18n';
 
 /** Derive a consistent password from a user's unique social ID + server secret */
 async function derivePassword(userId: string, secret: string): Promise<string> {

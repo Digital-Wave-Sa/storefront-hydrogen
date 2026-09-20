@@ -1,5 +1,4 @@
 import {
-import {localeRedirect} from '~/lib/i18n';
   data,
   redirect,
   type LoaderFunctionArgs,
@@ -19,12 +18,13 @@ import {useState} from 'react';
 import {getAdminToken} from '~/lib/shopify-admin.server';
 import type {MetaFunction} from 'react-router';
 import {pageTitle} from '~/lib/seo';
+import {localeRedirect} from '~/lib/i18n';
 
 export const meta: MetaFunction = ({matches}) => [
   {title: pageTitle(matches, 'Dashboard', 'لوحة المتابعة')},
 ];
 
-export async function loader({context}: LoaderFunctionArgs) {
+export async function loader({context, request}: LoaderFunctionArgs) {
   const {session, storefront, env} = context;
   const customerAccessToken = await session.get('customerAccessToken');
 

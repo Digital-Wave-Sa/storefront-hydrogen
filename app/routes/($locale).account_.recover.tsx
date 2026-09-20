@@ -14,7 +14,7 @@ type ActionResponse = {
   resetRequested?: boolean;
 };
 
-export async function loader({context}: LoaderFunctionArgs) {
+export async function loader({context, request}: LoaderFunctionArgs) {
   const customerAccessToken = await context.session.get('customerAccessToken');
   if (customerAccessToken) {
     return localeRedirect(request, '/account');

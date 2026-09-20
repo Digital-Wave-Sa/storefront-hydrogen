@@ -1,5 +1,4 @@
 import {
-import {localeRedirect} from '~/lib/i18n';
   data,
   redirect,
   type ActionFunctionArgs,
@@ -9,6 +8,7 @@ import {localeRedirect} from '~/lib/i18n';
 import {SaadeddinApi} from '~/lib/saadeddin-api.server';
 
 import {pageTitle} from '~/lib/seo';
+import {localeRedirect} from '~/lib/i18n';
 export const meta: MetaFunction<typeof loader> = ({matches}) => {
   return [{title: pageTitle(matches, 'Logout', 'تسجيل الخروج')}];
 };
@@ -33,7 +33,7 @@ export const meta: MetaFunction<typeof loader> = ({matches}) => {
  * which is a nuisance rather than a disclosure -- the trade the old behaviour
  * had backwards.
  */
-export async function loader({context}: LoaderFunctionArgs) {
+export async function loader({context, request}: LoaderFunctionArgs) {
   const {session} = context;
 
   const {clearIdentity, clearShoppingSelection} = await import(

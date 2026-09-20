@@ -1,5 +1,4 @@
 import {
-import {localeRedirect} from '~/lib/i18n';
   data,
   redirect,
   type LoaderFunctionArgs,
@@ -27,7 +26,7 @@ export const meta: MetaFunction = ({matches}) => [
   {title: pageTitle(matches, 'Promotions', 'العروض')},
 ];
 
-export async function loader({context}: LoaderFunctionArgs) {
+export async function loader({context, request}: LoaderFunctionArgs) {
   const {session, storefront, env} = context;
   const customerAccessToken = await session.get('customerAccessToken');
 
@@ -641,6 +640,7 @@ export async function action({request, context}: ActionFunctionArgs) {
 
 import {Suspense} from 'react';
 import {Await} from 'react-router';
+import {localeRedirect} from '~/lib/i18n';
 export default function PromotionsDashboard() {
   const {adminDataPromise} = useLoaderData<typeof loader>();
   const isEn = useLocation().pathname.startsWith('/en');

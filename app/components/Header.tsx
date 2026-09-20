@@ -332,7 +332,19 @@ export function Header({ header, isLoggedIn, cart, locations, customer, locale, 
    * touch device, where `mouseleave` may never fire at all.
    */
   useEffect(() => {
-    setActiveMega(null);
+    /*
+      A transition, for the reason set out above `setBranches`: this effect
+      runs on MOUNT as well as on navigation, so on first load it schedules an
+      update while the header's Suspense boundaries are still hydrating, and
+      React throws away their server HTML — «Minified React error #421», once
+      per boundary, on every page load.
+
+      The functional form means a menu that is already closed produces no
+      update at all, which is the common case by far.
+    */
+    startTransition(() => {
+      setActiveMega((prev) => (prev === null ? prev : null));
+    });
   }, [location.pathname, location.search]);
 
   /** Escape closes it, as a dropdown should. */
@@ -484,7 +496,16 @@ function TopBar({
   // 2. Compute branch open status dynamically
   useEffect(() => {
     if (!selectedLocationId || !branches.length) {
-      setIsOpenBranch(true); // default open if not loaded
+      /*
+        This condition is TRUE on first mount — `branches` starts empty and is
+        filled by the effect above — so this fired during hydration on every
+        load, fifteen lines below the comment explaining why that must not
+        happen. Same fix, and the functional form makes it a no-op when the
+        value is already true, which it is by default.
+      */
+      startTransition(() => {
+        setIsOpenBranch((prev) => (prev === true ? prev : true));
+      });
       return;
     }
     const activeBranchNode = branches.find((b: any) => b.id === selectedLocationId);
@@ -609,7 +630,7 @@ function TopBar({
       }
     };
 
-    setIsOpenBranch(checkOpenStatus());
+    startTransition(() => setIsOpenBranch(checkOpenStatus()));
   }, [selectedLocationId, branches]);
 
   useEffect(() => {

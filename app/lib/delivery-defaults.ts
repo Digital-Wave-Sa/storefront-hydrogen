@@ -20,15 +20,27 @@
  *     Settings -> Shipping and delivery -> General profile
  *       -> Domestic zone -> قياسي
  *
- * which is 25.00 SAR with free delivery over 320. If that rate is ever
+ * which is 19.00 SAR with free delivery over 320. If that rate is ever
  * changed, change it here too. There is no way to read it from the Storefront
  * API without a quoted cart, which is precisely the situation this covers.
  *
  * Deliberately NOT per branch. Branch fees belong in Shopify Local delivery,
  * where checkout can honour them; a second per-branch list in the storefront
  * would be a rival source of truth that silently drifts.
+ *
+ * ── Why it was wrong ──
+ *
+ * It said 25 while the shop charges 19, and that was not cosmetic.
+ * `getStandardDeliveryRate` exists to read the live rate from the Admin API
+ * and make this constant irrelevant — but it could not match this shop's rate
+ * shape (see delivery-rate.server.ts) and fell back here every single time.
+ * So the cart printed «رسوم التوصيل ٢٥٫٠٠» on every delivery order that had no
+ * address yet, and checkout then charged «التوصيل القياسي ١٩٫٠٠». Six riyals,
+ * on the one number a shopper checks before committing, on every order, for as
+ * long as both bugs stood. Fixing the reader matters more than fixing this
+ * number; both are done.
  */
-export const STANDARD_DELIVERY_FEE = 25;
+export const STANDARD_DELIVERY_FEE = 19;
 
 /**
  * Whether the free-delivery threshold on the standard rate is met.

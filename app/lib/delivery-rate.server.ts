@@ -120,10 +120,31 @@ export async function getStandardDeliveryRate(env: any): Promise<StandardDeliver
             (c: any) => c?.field === 'TOTAL_PRICE',
           );
 
-          // The paid standard rate: first active rate with a real price and no
-          // "free over X" condition. Kept as the first one found so an added
-          // express rate later cannot displace it.
-          if (price > 0 && !totalPriceCondition && fee === null) {
+          /*
+            The paid standard rate: the first active rate with a real price.
+            Kept as the first one found so an added express rate later cannot
+            displace it.
+
+            This used to also require `!totalPriceCondition`, on the assumption
+            that the paid rate carries no threshold and only the free rate
+            does. That is not how this shop is configured. Its قياسي rate is:
+
+                Standard Delivery  19.00  TOTAL_PRICE >= 0.00 AND <= 320.00
+                Free Delivery       0.00  TOTAL_PRICE >= 320.00
+
+            — the paid rate carries a TOTAL_PRICE condition of its own, to stop
+            applying once the free rate takes over. So the guard excluded the
+            very rate it was looking for, `fee` stayed null on every call, and
+            this returned STANDARD_DELIVERY_FEE forever. The whole point of
+            reading from Shopify was defeated silently, and nothing said so:
+            the fallback is a legitimate value, so a permanently-failing lookup
+            is indistinguishable from a working one.
+
+            Dropping the condition is safe because the free rate is separated
+            by `price === 0` below, not by the presence of a threshold. A
+            0.00 rate can never satisfy `price > 0`.
+          */
+          if (price > 0 && fee === null) {
             fee = price;
           }
 

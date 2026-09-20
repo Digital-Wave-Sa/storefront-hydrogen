@@ -1,6 +1,9 @@
 import type {ActionFunctionArgs} from 'react-router';
 import {notifyOrderUpdate} from '~/lib/notifications.server';
-import {routeOrderToChosenBranch} from '~/lib/fulfillment-routing.server';
+import {
+  routeOrderToChosenBranch,
+  recordRoutingOutcome,
+} from '~/lib/fulfillment-routing.server';
 import {readyKind} from '~/lib/order-stage-tokens';
 import {
   readOrderNotificationState,
@@ -8,11 +11,14 @@ import {
 } from '~/lib/notified-stages.server';
 
 /**
- * Shopify order webhooks: `orders/create`, `orders/fulfilled`, `orders/updated`.
+ * Shopify order webhooks: `orders/create`, `orders/paid`, `orders/fulfilled`,
+ * `orders/updated`.
  *
  * Two independent jobs, each guarded so the other still runs:
- *   1. On `orders/create`, move the fulfillment order to the branch the
- *      customer chose in the cart (see fulfillment-routing.server.ts).
+ *   1. On `orders/create` AND `orders/paid`, move the fulfillment order to the
+ *      branch the customer chose in the cart, and record what happened on the
+ *      order (see fulfillment-routing.server.ts). Subscribe `orders/paid` to
+ *      this same URL in admin — the retry does nothing until you do.
  *   2. Send the stage notification (confirmed / ready / out for delivery /
  *      delivered).
  *
@@ -102,9 +108,28 @@ export async function action({request, context}: ActionFunctionArgs) {
 
   console.log(`[Order Webhook] ${topic} for order #${payload.order_number ?? payload.name ?? payload.id}`);
 
-  // 1. Branch routing — only on creation, never blocks notifications.
+  /**
+   * 1. Branch routing — never blocks notifications.
+   *
+   * Runs on `orders/paid` as well as `orders/create`, because the failure this
+   * is guarding against is transient. SDN-1457 and SDN-1458 were created seven
+   * minutes apart, with the same delivery method, the same OPEN status and
+   * items stocked at the same 118 locations; one routed and one did not, and
+   * the move the failed one should have made succeeds by hand with no errors
+   * at all. Nothing static explains that, so the answer is a second attempt
+   * rather than a better first one.
+   *
+   * A second pass costs nothing when the first worked: `routeOrderToChosenBranch`
+   * compares each fulfillment order's current location and counts a match as
+   * `alreadyThere` without issuing a mutation. It is idempotent by
+   * construction, which is what makes re-running it safe.
+   *
+   * This also closes the `orders/paid` gap noted on the gift-card work — the
+   * webhook had no paid topic at all, so nothing in the app could distinguish
+   * a started checkout from money actually arriving.
+   */
   let routing: any = null;
-  if (topic === 'orders/create') {
+  if (topic === 'orders/create' || topic === 'orders/paid') {
     try {
       routing = await routeOrderToChosenBranch(env, payload);
       if (routing.skipped) {
@@ -118,6 +143,16 @@ export async function action({request, context}: ActionFunctionArgs) {
           console.warn(`[Order Webhook] Routing failed for ${f.id}: ${f.reason}`);
         }
       }
+
+      /*
+        Put the outcome on the order, not only in the log.
+
+        Every line above this writes to stdout, which is where the SDN-1457
+        failure went and why it took a screenshot to find. `tag:routing-failed`
+        in the admin order list is the difference between knowing the failure
+        rate and guessing it.
+      */
+      await recordRoutingOutcome(env, payload, routing);
     } catch (error: any) {
       console.error('[Order Webhook] Routing error:', error?.message || error);
     }

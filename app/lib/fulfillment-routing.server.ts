@@ -34,7 +34,12 @@ type LocationIndex = {
 
 let locationIndex: LocationIndex | null = null;
 
-async function adminGraphql(env: any, query: string, variables?: any) {
+async function adminGraphql(
+  env: any,
+  query: string,
+  variables?: any,
+  timeoutMs = 10000,
+) {
   const domain = getAdminDomain(env);
   const token = await getAdminToken(env);
   if (!domain || !token) {
@@ -49,7 +54,7 @@ async function adminGraphql(env: any, query: string, variables?: any) {
         'X-Shopify-Access-Token': token,
       },
       body: JSON.stringify({query, variables}),
-      signal: AbortSignal.timeout(10000),
+      signal: AbortSignal.timeout(timeoutMs),
     },
   );
   if (!res.ok) {
@@ -62,29 +67,86 @@ async function adminGraphql(env: any, query: string, variables?: any) {
   return json?.data;
 }
 
+const BRANCH_LOCATIONS_QUERY = `query BranchLocations {
+  locations(first: 250, includeInactive: false) {
+    nodes {
+      id
+      name
+      branchId: metafield(namespace: "custom", key: "branch_id") { value }
+    }
+  }
+}`;
+
+/**
+ * Retried once, and given longer than everything else.
+ *
+ * This is the single heaviest call in the route — 118 locations, each with a
+ * metafield lookup — and the cache guarding it is a module-level `let`, which
+ * on Oxygen rarely survives between requests. So most webhooks pay the full
+ * query, and one slow response used to throw past the 10s budget, unwind the
+ * whole route through the catch at the bottom, and lose the order's routing
+ * with nothing recorded anywhere.
+ *
+ * That is what SDN-1457 looks like: identical in every respect to SDN-1458
+ * seven minutes later, which routed correctly, and the move it should have
+ * made succeeds by hand with zero userErrors. The failure was transient, so
+ * the fix is to survive a transient failure rather than to explain it.
+ */
+async function fetchLocationNodes(env: any): Promise<any[]> {
+  try {
+    const data = await adminGraphql(env, BRANCH_LOCATIONS_QUERY, undefined, 20000);
+    return data?.locations?.nodes || [];
+  } catch (first: any) {
+    console.warn(
+      `[Routing] Location index failed (${first?.message || first}); retrying once.`,
+    );
+    const data = await adminGraphql(env, BRANCH_LOCATIONS_QUERY, undefined, 20000);
+    return data?.locations?.nodes || [];
+  }
+}
+
 async function loadLocationIndex(env: any): Promise<LocationIndex> {
   if (locationIndex && Date.now() - locationIndex.fetchedAt < LOCATION_CACHE_TTL_MS) {
     return locationIndex;
   }
-  const data = await adminGraphql(
-    env,
-    `query BranchLocations {
-      locations(first: 250, includeInactive: false) {
-        nodes {
-          id
-          branchId: metafield(namespace: "custom", key: "branch_id") { value }
-        }
-      }
-    }`,
-  );
+  const nodes = await fetchLocationNodes(env);
+
   const byBranchId = new Map<string, string>();
   const byNumericId = new Map<string, string>();
-  for (const node of data?.locations?.nodes || []) {
+
+  /**
+   * First write wins, and a collision is reported.
+   *
+   * `set()` on a duplicate key used to be last-write-wins, silently. The shop
+   * currently has `custom.branch_id = "1"` on TWO locations — Katara - Qatar
+   * and Prince Sultan Hospital Cafe — so one of them routes every order to the
+   * other, and which one depends on the order Shopify returns locations in.
+   * A branch quietly receiving another branch's orders is not a failure mode
+   * anyone would think to look for, so it is named here.
+   *
+   * Five locations carry no branch_id at all (Al Hawiyah, Al Kharj 1, Jubail
+   * Industrial City, الحمراء, Shop location). Nothing can route to them, which
+   * is correct for Shop location and a data gap for the rest.
+   */
+  const duplicates: string[] = [];
+  for (const node of nodes) {
     const gid = String(node.id);
     byNumericId.set(gid.split('/').pop() || '', gid);
     const branchId = String(node?.branchId?.value ?? '').trim();
-    if (branchId) byBranchId.set(branchId, gid);
+    if (!branchId) continue;
+    if (byBranchId.has(branchId)) {
+      duplicates.push(`${branchId} (${node?.name ?? gid})`);
+      continue;
+    }
+    byBranchId.set(branchId, gid);
   }
+
+  if (duplicates.length) {
+    console.warn(
+      `[Routing] Duplicate custom.branch_id, ignored in favour of the first: ${duplicates.join(', ')}`,
+    );
+  }
+
   locationIndex = {byBranchId, byNumericId, fetchedAt: Date.now()};
   return locationIndex;
 }
@@ -234,4 +296,82 @@ export async function routeOrderToChosenBranch(
   }
 
   return result;
+}
+
+/**
+ * Write what routing did onto the order itself.
+ *
+ * Everything above already produced a precise account of what happened —
+ * which branch, which fulfillment orders moved, which failed and why — and the
+ * webhook threw all of it at `console.log`. That is why a wrong branch could
+ * only ever be found the way it was found: by a human noticing the location
+ * chip in admin did not match the branch on the order.
+ *
+ * So the outcome goes somewhere durable and somewhere visible:
+ *
+ *   tag `routed-<branchId>`   the move landed, and on which branch
+ *   tag `routing-failed`      it did not, for any reason including a skip
+ *                             that should not have skipped
+ *   metafield custom.routing_outcome   the full result, for reading the why
+ *
+ * The tag is the part that matters operationally: order tags are filterable in
+ * the admin order list, so `tag:routing-failed` is a live list of orders
+ * sitting at the wrong branch. Without it there is no query that finds them.
+ *
+ * A pickup skip is NOT marked failed — checkout already assigned those, so
+ * skipping is the correct outcome, and flagging it would bury the real ones.
+ *
+ * Never throws. A webhook that cannot record what it did must still have done
+ * it, and must still send its notifications.
+ */
+export async function recordRoutingOutcome(
+  env: any,
+  order: any,
+  result: RoutingResult,
+): Promise<void> {
+  try {
+    const numericOrderId = String(order?.id ?? '').split('/').pop();
+    if (!numericOrderId) return;
+    const orderGid = `gid://shopify/Order/${numericOrderId}`;
+
+    const skippedForGoodReason = result.skipped === 'pickup order';
+    if (skippedForGoodReason) return;
+
+    const landed = result.moved.length > 0 || result.alreadyThere.length > 0;
+    const ok = landed && result.failed.length === 0;
+    const tag = ok ? `routed-${result.branchValue ?? 'unknown'}` : 'routing-failed';
+
+    await adminGraphql(
+      env,
+      `mutation RecordRouting($id: ID!, $tags: [String!]!, $metafields: [MetafieldsSetInput!]!) {
+        tagsAdd(id: $id, tags: $tags) { userErrors { message } }
+        metafieldsSet(metafields: $metafields) { userErrors { message } }
+      }`,
+      {
+        id: orderGid,
+        tags: [tag],
+        metafields: [
+          {
+            ownerId: orderGid,
+            namespace: 'custom',
+            key: 'routing_outcome',
+            type: 'json',
+            value: JSON.stringify({
+              at: new Date().toISOString(),
+              branchValue: result.branchValue ?? null,
+              locationId: result.locationId ?? null,
+              skipped: result.skipped ?? null,
+              moved: result.moved,
+              alreadyThere: result.alreadyThere,
+              failed: result.failed,
+            }),
+          },
+        ],
+      },
+    );
+  } catch (err: any) {
+    console.warn(
+      `[Routing] Could not record the outcome: ${err?.message || err}`,
+    );
+  }
 }

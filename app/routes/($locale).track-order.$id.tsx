@@ -467,6 +467,21 @@ async function viewerMaySeeOrder(orderNode: any, context: any) {
  * Handles the "confirm the phone or email on this order" form.
  * On success the order id is stored in the session and the page reloads.
  */
+/**
+ * The bakery's clock, not the worker's.
+ *
+ * `processedAt` is UTC. These lines carried no `timeZone`, so they rendered in
+ * whatever zone the runtime was in — UTC on Oxygen — and an order placed at
+ * 2:10 PM in Riyadh was shown as 11:10 AM. The hour is the visible half; the
+ * date is the dangerous one, because anything ordered after 9 PM local falls
+ * on the previous day in UTC and was shown a day early.
+ *
+ * It also differed between server and client: a shopper in Riyadh would have
+ * hydrated over the UTC string with their own local time. The storefront
+ * already pins this zone in CartSummary, Header and lib/branch-hours.
+ */
+const RIYADH = 'Asia/Riyadh';
+
 export async function action({params, context, request}: ActionFunctionArgs) {
   const session = context.session;
   const rawId = decodeURIComponent(params.id || params['*'] || '');
@@ -880,8 +895,8 @@ export async function loader({params, context, request}: LoaderFunctionArgs) {
   const orderData = {
     id: orderNode.name,
     date: isEn
-      ? `Ordered on ${new Date(orderNode.processedAt).toLocaleDateString('en-US', {year: 'numeric', month: 'long', day: 'numeric'})}, ${new Date(orderNode.processedAt).toLocaleTimeString('en-US', {hour: 'numeric', minute: '2-digit'})}`
-      : `طلب في ${new Date(orderNode.processedAt).toLocaleDateString('ar-SA-u-nu-latn', {year: 'numeric', month: 'long', day: 'numeric'})}, ${new Date(orderNode.processedAt).toLocaleTimeString('ar-SA-u-nu-latn', {hour: 'numeric', minute: '2-digit'})}`,
+      ? `Ordered on ${new Date(orderNode.processedAt).toLocaleDateString('en-US', {year: 'numeric', month: 'long', day: 'numeric', timeZone: RIYADH})}, ${new Date(orderNode.processedAt).toLocaleTimeString('en-US', {hour: 'numeric', minute: '2-digit', timeZone: RIYADH})}`
+      : `طلب في ${new Date(orderNode.processedAt).toLocaleDateString('ar-SA-u-nu-latn', {year: 'numeric', month: 'long', day: 'numeric', timeZone: RIYADH})}, ${new Date(orderNode.processedAt).toLocaleTimeString('ar-SA-u-nu-latn', {hour: 'numeric', minute: '2-digit', timeZone: RIYADH})}`,
     status: statusLabel,
     step,
     isFailed,

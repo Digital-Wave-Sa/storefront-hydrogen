@@ -87,6 +87,14 @@ export async function loader({params, context}: LoaderFunctionArgs) {
   return json({
     order: {
       id: orderNode.name,
+      /*
+        Riyadh, not the runtime's zone.
+
+        `processedAt` is UTC and this had no `timeZone`, so on the worker it
+        rendered UTC: an order placed at 2:10 PM in Riyadh printed 11:10 AM.
+        Worse than an hour out — an order placed after 9 PM local falls on the
+        previous UTC day, so the DATE was wrong too, on the invoice.
+      */
       date: new Date(orderNode.processedAt).toLocaleDateString(
         isEn ? 'en-US' : 'ar-SA-u-nu-latn',
         {
@@ -95,6 +103,7 @@ export async function loader({params, context}: LoaderFunctionArgs) {
           day: 'numeric',
           hour: '2-digit',
           minute: '2-digit',
+          timeZone: 'Asia/Riyadh',
         },
       ),
       isPaid,

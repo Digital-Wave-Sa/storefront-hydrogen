@@ -135,6 +135,44 @@ export async function loader({context, request}: LoaderFunctionArgs) {
   const searchQueryString =
     queryParts.length > 0 ? queryParts.join(' AND ') : '*';
 
+  /**
+   * The headline count, from the catalogue rather than the search index.
+   *
+   * `search.totalCount` was driving «٢٢٧ منتجات», and it disagreed with itself:
+   * 158 on one load, 227 on the next, on the same page with no filters and the
+   * category counts beside it unmoved. It is the search index's own estimate of
+   * how many documents match, which is fine for «about this many results» and
+   * not fine as the number a shop states about itself. CacheShort() then pins
+   * whichever estimate arrived into an entry, so reloads flip between them.
+   *
+   * The real figure is 422 — active, published products — and the Admin API
+   * will say so exactly, every time. `productsCount` is a counting endpoint
+   * rather than a search, so it does not estimate.
+   *
+   * Cached in module scope because it changes when the catalogue changes,
+   * which is rarely, and this runs on every listing page load.
+   *
+   * ── Only the unfiltered view, and deliberately so ──
+   *
+   * The temptation is to translate the whole query — tags and text map to
+   * Admin search readily enough. They must not be, because the two engines do
+   * not agree on what the terms MEAN. A «category» here is sometimes a tag and
+   * sometimes a COLLECTION HANDLE: the block below falls back to fetching by
+   * handle precisely when the tag search finds nothing. Counting that as a tag
+   * returns 0 while the page shows a full grid, and «٠ منتجات» over forty
+   * products is a worse bug than the one being fixed. `buildTermQuery` does
+   * not match `title:*q*` either.
+   *
+   * Exact where it is certain, unchanged everywhere else. The reported fault
+   * is the unfiltered page, and that is what this covers.
+   */
+  const isUnfiltered =
+    !q && activeTags.length === 0 && selectedCategories.length === 0;
+
+  const exactCount = await countProductsExact(context.env, {
+    skip: !isUnfiltered || filters.length > 0,
+  });
+
   try {
     const response = await storefront.query(CATALOG_QUERY, {
       variables: {
@@ -264,6 +302,15 @@ export async function loader({context, request}: LoaderFunctionArgs) {
         collections: null,
         error: 'GraphQL query returned null. ' + JSON.stringify(response),
       });
+    }
+
+    /**
+     * The exact figure wins where we have one. Null means the lookup could not
+     * answer — a metafield facet is active, or the Admin call failed — and the
+     * page keeps the storefront's own number rather than showing nothing.
+     */
+    if (exactCount !== null) {
+      (products as any).totalCount = exactCount;
     }
 
     return data({
@@ -2303,6 +2350,73 @@ export function CurrencyIcon({className}: {className?: string}) {
   );
 }
 
+
+/**
+ * How many products the catalogue actually holds, matching the current search.
+ *
+ * Deliberately the ADMIN API. Shopify's Storefront search exposes only
+ * `totalCount`, which is the index's estimate of matching documents — the very
+ * number that was reporting 158 and 227 for the same unfiltered page. Admin's
+ * `productsCount` is a count, not a search: it answers exactly, and it answers
+ * the same way twice.
+ *
+ * The caller decides when this is safe to ask — see `isUnfiltered` there.
+ *
+ * Returns null when it cannot answer — a failed lookup must fall back to the
+ * old number, never to zero. A shop that says it has no products because an
+ * API call timed out is worse than one whose count wobbles.
+ */
+const productCountCache = new Map<string, {count: number; expires: number}>();
+const PRODUCT_COUNT_TTL_MS = 5 * 60 * 1000;
+
+async function countProductsExact(
+  env: any,
+  opts: {skip?: boolean},
+): Promise<number | null> {
+  if (opts.skip) return null;
+
+  /**
+   * `status:active` is the shop's own definition of a listed product, and on
+   * this store every active product is also published, so the two agree at
+   * 422. Drafts and archived products are excluded, which is what a shopper
+   * is being told.
+   */
+  const query = 'status:active';
+  const cached = productCountCache.get(query);
+  if (cached && cached.expires > Date.now()) return cached.count;
+
+  try {
+    const {getAdminToken, getAdminDomain} = await import('~/lib/shopify-admin.server');
+    const {adminApiQuery} = await import('~/lib/admin.server');
+    const token = await getAdminToken(env);
+    const domain = getAdminDomain(env);
+    if (!token || !domain) return null;
+
+    const res: any = await adminApiQuery(
+      domain,
+      token,
+      `#graphql
+        query ExactProductCount($query: String) {
+          productsCount(query: $query) { count }
+        }
+      `,
+      {query},
+    );
+
+    const count = res?.data?.productsCount?.count;
+    if (typeof count !== 'number') return null;
+
+    productCountCache.set(query, {
+      count,
+      expires: Date.now() + PRODUCT_COUNT_TTL_MS,
+    });
+    return count;
+  } catch (e) {
+    console.warn('[COLLECTIONS] Exact product count unavailable:', e);
+    return null;
+  }
+}
+
 const CATALOG_QUERY = `#graphql
   query CatalogSearch(
     $country: CountryCode
@@ -2325,7 +2439,21 @@ const CATALOG_QUERY = `#graphql
       types: [PRODUCT],
       productFilters: $filters,
       sortKey: $sortKey,
-      reverse: $reverse
+      reverse: $reverse,
+      # Sold out goes to the BOTTOM of the list, not out of it.
+      #
+      # This argument was absent, and its default is HIDE — so a product that
+      # ran out stopped existing on this page. Not greyed out, not marked
+      # «نفد»: gone, along with its place in the count. A shopper who had
+      # browsed to it yesterday found the shop had silently shrunk, and the
+      # card that tells them it is unavailable at their branch never got the
+      # chance to render.
+      #
+      # LAST rather than SHOW so the things that can be bought still come
+      # first. Availability here is shop-wide, which is not the same question
+      # as «is it at MY branch» — that is computed per line in the cart and on
+      # the product card, and is the answer the shopper actually needs.
+      unavailableProducts: LAST
     ) {
       # Total matching products across all pages, not just this page's nodes.
       totalCount

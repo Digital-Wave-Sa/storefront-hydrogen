@@ -12,12 +12,20 @@
  *     pair. الأربعين opens at 13:00 and the page told people 8:00.
  *   - The badge was a `<span>` with no condition at all.
  *
- * Checked against the live list before writing this: `working_days`, both
- * shift-2 fields and every per-day field (friday_working_hours_from and its
- * siblings) are empty on all 118 locations. Only working_hours_from and
+ * Checked against the live list before writing this: `working_days`, the
+ * second-shift fields and every per-day field (friday_working_hours_from and
+ * its siblings) are empty on all 118 locations. Only working_hours_from and
  * working_hours_to carry anything. So a branch has one window, the same on
  * every day, and none of the weekday machinery in api.locations-meta has any
  * data behind it yet.
+ *
+ * One thing to know before anyone builds on that. api.locations-meta reads
+ * `working_hours_from_shift2` / `_to_shift2`, and no such metafield is
+ * DEFINED on this store. The defined keys are `working_hours_from_2` and
+ * `working_hours_to_2`. Both spellings read empty today, so nothing is broken
+ * — but fill in a second shift from Shopify admin, which can only write the
+ * defined key, and the storefront will not see it. Fix the key in
+ * api.locations-meta before relying on shift two.
  */
 
 /** Minutes past midnight, or null if the value is missing or unparseable. */

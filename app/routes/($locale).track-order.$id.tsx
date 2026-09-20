@@ -919,6 +919,28 @@ export async function loader({params, context, request}: LoaderFunctionArgs) {
     canceledAt: orderNode.canceledAt || null,
     isPickup,
     isDigitalOnly,
+    /**
+     * The codes of the gift cards this order actually issued.
+     *
+     * Nothing in this codebase writes this attribute — a grep over app/ finds
+     * only the comment in checkout.initiate that PRESERVES it. The storefront
+     * writes gift-voucher data as LINE attributes (`_gift_voucher`, `Gift
+     * Mode`, `Voucher Amount`, `Card Color`); `gift_card_codes` is order-level
+     * and arrives from whatever issues the cards. Every gift-card order on the
+     * store carries it, and orders with two cards carry two codes.
+     *
+     * A code cannot exist before its card does. So unlike the financial
+     * status, this is an observation of issuance rather than an inference
+     * from payment — which is exactly what the stage below was missing.
+     */
+    giftCardCodes: (
+      customAttrs.find(
+        (a: any) => (a.key || '').toLowerCase().trim() === 'gift_card_codes',
+      )?.value || ''
+    )
+      .split(',')
+      .map((c: string) => c.trim())
+      .filter(Boolean),
     orderStatusMeta,
     items: orderNode.lineItems.edges.map(({node: item}: any) => {
       const variantId = item.variant?.id || item.variantId || item.variant_id;
@@ -1728,14 +1750,53 @@ export default function TrackOrderPage() {
                   ];
 
                   /**
-                   * Fold the 1–5 step onto the two digital stages: received,
-                   * then sent once the order reaches "ready" or beyond. Left
-                   * unmapped, a fulfilled gift card (step 5) would compare
-                   * against ids 1 and 2 and light up as complete far too
-                   * early — and an unfulfilled one would too.
+                   * A paid gift card has been sent.
+                   *
+                   * This used to fold the 1–5 step onto the two digital
+                   * stages, so «تم إرسال البطاقة» waited for the order to
+                   * reach «ready» — which means waiting for somebody to mark
+                   * it FULFILLED in Shopify. Nobody ever does: a gift card has
+                   * nothing to ship, no branch to collect it from and no
+                   * courier, so digital orders sit UNFULFILLED for ever. The
+                   * card lands in the recipient's inbox within seconds and the
+                   * page goes on saying it has not been sent, permanently.
+                   *
+                   * Payment is the real trigger — the card is issued and
+                   * emailed when the money arrives — so that is what this
+                   * reads now.
+                   *
+                   * PAID rather than «the order exists», deliberately. A
+                   * pending or failed payment is exactly when no card has been
+                   * sent, and that is the one case worth being right about.
+                   *
+                   * The tag that was going to be asked for turned out to
+                   * already exist, under another name: the issuing service
+                   * writes the card's own code onto the order as the
+                   * `gift_card_codes` attribute. That is read below, so the
+                   * stage now rests on something observed rather than on what
+                   * usually follows payment.
                    */
+                  const isPaidOrder =
+                    String(orderData.rawFinancialStatus || '').toUpperCase() ===
+                    'PAID';
+
+                  /**
+                   * Both conditions, not either.
+                   *
+                   * The code is the stronger signal — it exists only because a
+                   * card was created. But every gift-card order on this store
+                   * is PAID, so there is no unpaid one to prove the attribute
+                   * is written at ISSUANCE rather than at order creation.
+                   * Until one exists, PAID stays as the floor: never worse than
+                   * the previous behaviour, strictly better if the attribute is
+                   * what it appears to be. `currentStep >= 4` keeps the ERP's
+                   * own escape hatch.
+                   */
+                  const cardIssued =
+                    isPaidOrder && ((orderData as any).giftCardCodes?.length || 0) > 0;
+
                   const effectiveStep = isDigitalOnly
-                    ? currentStep >= 4
+                    ? cardIssued || currentStep >= 4
                       ? 2
                       : 1
                     : currentStep;

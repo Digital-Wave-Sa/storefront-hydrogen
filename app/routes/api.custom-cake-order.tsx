@@ -738,7 +738,28 @@ export async function action({request, context}: ActionFunctionArgs) {
         'hide-cod',
         ...(fulfillmentType ? [isPickup ? 'pickup' : 'delivery'] : []),
       ],
-      taxExempt: true,
+      /**
+       * `taxExempt: true` was here, on every custom cake ever ordered, with no
+       * comment and no condition.
+       *
+       * It is an order-level override: it zeroes tax whatever the line items
+       * say, and the custom line below does not set `taxable` at all, so
+       * without it Shopify taxes the cake the way it taxes everything else.
+       * SDN-1438, SDN-1440 and SDN-1443 each recorded 0.00 VAT on 525, 810 and
+       * 280 riyals.
+       *
+       * The shop is `taxesIncluded: true` and bills from Saudi Arabia, so the
+       * price a customer pays already contains 15% — the exemption did not
+       * make the cake cheaper, it just stopped the VAT being declared, while
+       * the cart on screen showed a VAT line computed locally. An invoice that
+       * says zero for tax already collected is a ZATCA problem, not a rounding
+       * one.
+       *
+       * Nothing else in this file mentions tax, and a genuine exemption
+       * belongs to a CUSTOMER — a registered charity, a diplomatic mission —
+       * never to a product category. If custom cakes ever do need one, it
+       * belongs on the customer record where Shopify can evidence it.
+       */
       // Dedicated order-level flag for the ETP payment-customization rule. The
       // draft otherwise carries no order-level attributes, so this is isolated:
       // set the ETP rule to hide COD when cart attribute `disable_cod` = true

@@ -1076,10 +1076,43 @@ export default function Product() {
     Boolean(companyLogoName) ||
     Boolean(companyMessage);
 
+  /**
+   * Whether this product can be written on -- the gate on the whole «الكتابة
+   * وتخصيص الكيكة» panel below.
+   *
+   * The title is deliberately NOT one of the tests, and this is the entire bug
+   * this replaces. `product` comes back from `@inContext(language: $language)`,
+   * so `title` is the one field here that Shopify swaps per locale. «Soft
+   * Nabulsi Kunafa Cake» contains `cake`; «كعك كنافة نابلسية ناعمة» does not.
+   * With productType and tags empty -- which they are on 40 of the 41 cake
+   * products on this store -- the title was carrying the condition alone, so
+   * the panel rendered in English and vanished in Arabic. Same product, same
+   * variant, same price, and only half the shoppers could put a message on it.
+   *
+   * The handle replaces it because it is the same string in both languages:
+   * only `title` and `body_html` have Arabic translations on this store, and
+   * tags are not translatable in Shopify at all. Every one of the 41 carries
+   * `cake` in its handle, so this restores the panel for all of them without
+   * touching a single product in admin.
+   *
+   * It is still a name match, and a name is not a merchandising decision. The
+   * durable answer is a tag or a `custom.allow_writing` metafield that Israa
+   * sets -- language-independent by construction, and able to say NO to a
+   * cheesecake slice whose handle happens to contain `cake`. Both tests below
+   * are already in place for the day that lands; adding the tag is then the
+   * only step, and nothing here needs to change.
+   *
+   * The same defect was found and patched 300 lines up, at `isGiftCard`, by
+   * bolting «بطاقة هدية» and «قسيمة» onto the English match. That works and it
+   * does not generalise -- there is no single Arabic word for these 41
+   * («قالب», «قطعة», «كيك», «كعك», «تشيز كيك»), and «كيك» alone would wrongly
+   * catch the cheesecake slices nobody writes on. Matching something that is
+   * not display text is the fix that holds.
+   */
   const isCakeProduct =
     product.productType?.toLowerCase().includes('cake') ||
     product.tags?.some((t: string) => t.toLowerCase().includes('cake')) ||
-    product.title?.toLowerCase().includes('cake') ||
+    product.handle?.toLowerCase().includes('cake') ||
     false;
 
   const isCorporateProduct =

@@ -3,7 +3,7 @@ import { Image } from '@shopify/hydrogen';
 import { useState, useEffect, useMemo } from 'react';
 import { useVariantUrl } from '~/utils';
 import { useI18n } from '~/lib/i18n';
-import { getIsOutOfStock, isCorporateProduct, isOutOfStockAtBranch, resolveBranchLocationId } from '~/lib/stock';
+import { getIsOutOfStock, getIsOutOfStockForFulfillment, isCorporateProduct, isOutOfStockAtBranch, isPickupSession, resolveBranchLocationId } from '~/lib/stock';
 import { useBranchAvailability } from '~/lib/useBranchAvailability';
 import { getVisibilityStatus } from '~/lib/visibility';
 import { Price } from '~/components/Price';
@@ -178,7 +178,18 @@ function ProductItemCard({
   const {availability: branchStock, pending: branchStockPending} =
     useBranchAvailability(variant?.id ? [variant.id] : [], resolvedBranchId);
   const branchEntry = branchStock[variant?.id];
-  const inventoryVerdict = isOutOfStockAtBranch(branchEntry);
+  /**
+   * Pickup shoppers see collectability, not sellability.
+   *
+   * An untracked item with nothing collectable anywhere used to read as in
+   * stock here — true for delivery, false for collection — so the card
+   * offered «أضف إلى السلة» to someone who had chosen «استلام من الفرع» for a
+   * cake no branch could hand over. They found out at checkout. Export
+   * products ship from central stock and are never collected, so they keep
+   * the delivery rule.
+   */
+  const isPickup = !isExport && isPickupSession(rootData);
+  const inventoryVerdict = isOutOfStockAtBranch(branchEntry, isPickup);
 
   /**
    * The branch answer has not arrived and the fallback has nothing real to say.
@@ -222,13 +233,15 @@ function ProductItemCard({
       ? inventoryVerdict
       : availabilityUnresolved
       ? false
-      : getIsOutOfStock(
+      : getIsOutOfStockForFulfillment(
           // Export products ship from central stock — bypass branch check
           isExport ? null : selectedLocationId,
           isExport ? null : selectedLocationName,
           storeAvailabilityNodes,
           variantAvailable,
-          // Untracked inventory is sellable everywhere.
+          isPickup,
+          // Untracked inventory sells everywhere for delivery; for pickup the
+          // fulfillment-aware check reads collectability instead.
           branchEntry?.tracked,
         );
   const isAvailable = !isOutOfStock && !!variant;

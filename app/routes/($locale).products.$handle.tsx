@@ -6,7 +6,7 @@ import {
   getProductVisibility,
   type VisibilityResult,
 } from '~/lib/visibility';
-import {getIsOutOfStock, isOutOfStockAtBranch, resolveBranchLocationId} from '~/lib/stock';
+import {getIsOutOfStockForFulfillment, isOutOfStockAtBranch, isPickupSession, resolveBranchLocationId} from '~/lib/stock';
 import {isGiftCardProduct} from '~/lib/digital-lines';
 import {useBranchAvailability} from '~/lib/useBranchAvailability';
 import {StockNotificationModal} from '~/components/StockNotificationModal';
@@ -371,9 +371,7 @@ export async function loader(args: LoaderFunctionArgs) {
    */
   const viewerPromise = (async () => {
     try {
-      const {resolveNumericCustomerId} = await import(
-        '~/lib/session-identity.server',
-      );
+      const {resolveNumericCustomerId} = await import('~/lib/session-identity.server');
       const {reviewOwnerToken} = await import('~/lib/review-owner.server');
       const numericCustomerId = await resolveNumericCustomerId(context);
       return {
@@ -1148,9 +1146,19 @@ export default function Product() {
       resolvedBranchId,
     );
 
+  /**
+   * Pickup shoppers see collectability, not sellability.
+   *
+   * An untracked cake with nothing collectable anywhere read as in stock on
+   * this page — correct for delivery — so a shopper who had chosen «استلام
+   * من الفرع» was offered «أضف إلى السلة» directly above a promise of «جاهز
+   * خلال ١٥ دقيقة», for something checkout would then refuse to hand over.
+   */
+  const isPickup = isPickupSession(rootData);
+
   const isOutOfStock = useMemo(() => {
     const entry = branchStock[product.selectedVariant?.id as string];
-    const verdict = isOutOfStockAtBranch(entry);
+    const verdict = isOutOfStockAtBranch(entry, isPickup);
     if (verdict !== null) return verdict;
 
     /**
@@ -1167,15 +1175,19 @@ export default function Product() {
      */
     if (branchStockPending) return false;
 
-    return getIsOutOfStock(
+    return getIsOutOfStockForFulfillment(
       selectedLocationId,
       selectedLocationName,
       storeAvailabilityNodes,
       product.selectedVariant?.availableForSale ?? false,
-      // Untracked inventory is sellable everywhere.
+      isPickup,
+      // Untracked sells everywhere for delivery; pickup reads collectability.
       entry?.tracked,
     );
   }, [
+    // Switching between delivery and pickup must re-decide, or the page
+    // keeps the previous mode's answer until something else changes.
+    isPickup,
     branchStock,
     branchStockPending,
     selectedLocationId,
@@ -1190,8 +1202,10 @@ export default function Product() {
    */
   const availabilityUnresolved =
     branchStockPending &&
-    isOutOfStockAtBranch(branchStock[product.selectedVariant?.id as string]) ===
-      null;
+    isOutOfStockAtBranch(
+      branchStock[product.selectedVariant?.id as string],
+      isPickup,
+    ) === null;
 
   // Visibility scheduling — force unavailable if product is not active
   const isVisibilityBlocked = !visibility.isActive;

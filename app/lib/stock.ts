@@ -102,29 +102,54 @@ export function getIsOutOfStockForFulfillment(
   if (!availableForSale) return true;
 
   /**
-   * Untracked items skip every test below, including the pickup rule.
+   * Untracked items skip the branch reasoning FOR DELIVERY ONLY.
    *
-   * `storeAvailability` lists only what is collectable at pickup-enabled
-   * locations, and an untracked variant has no inventory to be collectable
-   * *of* — so it comes back empty and the pickup rule would refuse an item
-   * Shopify is perfectly happy to sell.
+   * This was unconditional — `if (tracked === false) return false` — on the
+   * argument that an untracked variant has no inventory to be collectable
+   * *of*, so an empty `storeAvailability` says nothing and the pickup rule
+   * would refuse something Shopify is happy to sell.
+   *
+   * Half of that is right. Shopify IS happy to sell it: «قالب روشية كبير»
+   * (320013) is untracked with `availableForSale: true`, and buying it for
+   * delivery works exactly as the product page promises.
+   *
+   * The other half is not. Shopify decides pickup eligibility from the
+   * QUANTITY at each pickup-enabled location and does not care whether the
+   * item is tracked. 320013's only inventory record is Shop location at minus
+   * one, so checkout offers no pickup point at all and answers «لا توجد مواقع
+   * في المملكة العربية السعودية يتوفر فيها عنصرك». The empty list was never
+   * noise — it was the literal answer, and this discarded it.
+   *
+   * What the shopper got: a product page offering «استلام من الفرع — جاهز
+   * خلال ١٥ دقيقة», a cart that accepted the choice, and a dead end on the
+   * last screen before payment.
+   *
+   * Delivery keeps the bypass, because there the empty list genuinely is
+   * meaningless — delivery ships from wherever the stock is, including
+   * locations with no pickup and therefore no `storeAvailability` entry.
    */
-  if (tracked === false) return false;
+  if (!isPickup && tracked === false) return false;
 
   const hasNodes =
     Array.isArray(storeAvailabilityNodes) && storeAvailabilityNodes.length > 0;
 
   /**
-   * Pickup with nothing collectable anywhere — but ONLY when we know the item
-   * is tracked. The guard above protects untracked items only once `tracked`
-   * has resolved to `false`; this fallback runs precisely while the branch
-   * lookup is still in flight (or has failed), when `tracked` is `undefined`.
-   * In that window an untracked product looks identical to an unstocked one
-   * (both have no storeAvailability node), and refusing on that guess showed
-   * "not available at this branch" for an item Shopify sells anywhere — then
-   * flipped to available once the lookup answered. Unknown is not "out".
+   * Pickup with nothing collectable anywhere.
+   *
+   * This read `tracked === true`, which is the same exemption as the guard
+   * above wearing a second hat: untracked resolved to `false` and fell
+   * through as collectable. Removing only the first guard would have changed
+   * nothing, because this one caught it again.
+   *
+   * `tracked !== undefined` keeps the part that was right. The comment this
+   * replaces was defending a real bug: while the branch lookup is in flight
+   * `tracked` is `undefined`, an untracked product is indistinguishable from
+   * an unstocked one, and refusing on that guess flashed "not available at
+   * this branch" before flipping back. Unknown is still not "out". But once
+   * the answer is in — tracked or untracked — an empty list means there is
+   * nowhere to collect this, and that is Shopify's answer, not a guess.
    */
-  if (isPickup && !hasNodes) return tracked === true;
+  if (isPickup && !hasNodes) return tracked !== undefined;
 
   // Delivery: the per-branch list is not the right signal, so fall back to
   // whether Shopify considers the variant sellable at all.
@@ -135,7 +160,17 @@ export function getIsOutOfStockForFulfillment(
     selectedLocationName,
     storeAvailabilityNodes,
     availableForSale,
-    tracked,
+    /**
+     * Withheld on the pickup path, deliberately.
+     *
+     * `getIsOutOfStock` carries the same `tracked === false` bypass at its
+     * top, so passing the flag through would reinstate everything removed
+     * above the moment a variant has any nodes at all — a third copy of the
+     * same exemption. `undefined` is that function's documented "unknown",
+     * which makes it read the `storeAvailability` list instead. That list is
+     * the authority on collection.
+     */
+    isPickup ? undefined : tracked,
   );
 }
 
@@ -235,16 +270,33 @@ export function isOutOfStockAtBranch(
       }
     | undefined
     | null,
+  /**
+   * Whether the shopper is collecting. Defaults to false so every caller that
+   * does not pass it keeps its exact previous behaviour.
+   */
+  isPickup = false,
 ): boolean | null {
   if (!entry) return null;
 
   /**
-   * Untracked inventory is sellable everywhere, always. Shopify keeps no
-   * counts for it, so there is no location list to be absent from and no
-   * quantity to be zero. Checked first, because both tests below would read
-   * that absence as "not stocked at this branch".
+   * Untracked inventory is sellable everywhere — for DELIVERY.
+   *
+   * Shopify keeps no counts for it, so for delivery there is no location list
+   * to be absent from and no quantity to be zero, and both tests below would
+   * misread that absence as "not stocked at this branch".
+   *
+   * For pickup the absence is the answer. Shopify decides collection from the
+   * quantity at the location whether the item is tracked or not: «قالب روشية
+   * كبير» is untracked, its only record is Shop location at −1, and checkout
+   * offers no pickup point for it anywhere in the country. So pickup falls
+   * through to the same `stockedHere` / `available` tests as a tracked item,
+   * which read exactly that data and give the right answer.
+   *
+   * This was the FOURTH copy of the same exemption, and the one that
+   * mattered most for display: every product card consults this before
+   * anything else, so while it said "in stock" nothing downstream was asked.
    */
-  if (entry.tracked === false) return false;
+  if (!isPickup && entry.tracked === false) return false;
 
   /**
    * The inventory item could not be read, so we know nothing. Falling through
@@ -256,6 +308,18 @@ export function isOutOfStockAtBranch(
   if (entry.stockedHere === false) return true;
   if (typeof entry.available === 'number') return entry.available <= 0;
   return null;
+}
+
+/**
+ * Whether the shopper has chosen to collect, from the root loader's session.
+ *
+ * One definition for every product surface — grid, product page, Best
+ * Sellers, New Arrivals — so they cannot drift into disagreeing about which
+ * mode the shopper is in. The session is the source of truth; CartLineItem
+ * reads the same field first for the same reason.
+ */
+export function isPickupSession(rootData: any): boolean {
+  return String(rootData?.fulfillmentType || '').toLowerCase() === 'pickup';
 }
 
 /**

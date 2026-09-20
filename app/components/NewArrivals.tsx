@@ -5,7 +5,7 @@ import { Price } from './Price';
 import { useI18n } from '~/lib/i18n';
 import { useAside } from '~/components/Aside';
 import { getVisibilityStatus } from '~/lib/visibility';
-import { getIsOutOfStock, shouldHideProduct, isOutOfStockAtBranch, resolveBranchLocationId } from '~/lib/stock';
+import { getIsOutOfStockForFulfillment, shouldHideProduct, isOutOfStockAtBranch, isPickupSession, resolveBranchLocationId } from '~/lib/stock';
 import { useBranchAvailabilityReader } from '~/lib/useBranchAvailability';
 import { StockPendingButton } from './ProductItem';
 import { AddToCartButton } from './AddToCartButton';
@@ -22,6 +22,8 @@ export function NewArrivals({
 
     // Same branch-aware stock source as the cart and product page.
     const naRootData = useRouteLoaderData('root') as any;
+    // Pickup shoppers see collectability, not sellability — see ProductItem.
+    const naIsPickup = isPickupSession(naRootData);
     const naLocations = naRootData?.locations?.locations?.nodes || naRootData?.locations?.nodes || [];
     const naBranchId = resolveBranchLocationId(naLocations, selectedLocationId, selectedLocationName);
     const { read: readBranchStock, pending: branchStockPending } =
@@ -85,7 +87,7 @@ export function NewArrivals({
                                             const storeAvailabilityNodes = variant?.storeAvailability?.nodes || [];
 
                                             const naEntry = readBranchStock(variant?.id);
-                                            const naVerdict = isOutOfStockAtBranch(naEntry);
+                                            const naVerdict = isOutOfStockAtBranch(naEntry, naIsPickup);
                                             // Claim nothing until the branch answers — see ProductItem.
                                             const naUnresolved =
                                                 naVerdict === null && branchStockPending(variant?.id);
@@ -94,12 +96,13 @@ export function NewArrivals({
                                                     ? naVerdict
                                                     : naUnresolved
                                                     ? false
-                                                    : getIsOutOfStock(
+                                                    : getIsOutOfStockForFulfillment(
                                                           selectedLocationId,
                                                           selectedLocationName,
                                                           storeAvailabilityNodes,
                                                           product.availableForSale,
-                                                          // Untracked stock sells everywhere.
+                                                          naIsPickup,
+                                                          // Untracked sells everywhere for delivery; pickup reads collectability.
                                                           naEntry?.tracked
                                                       );
 

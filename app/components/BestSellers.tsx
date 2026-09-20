@@ -6,7 +6,7 @@ import { Button } from './layout/Button';
 import { useI18n } from '~/lib/i18n';
 import { useAside } from '~/components/Aside';
 import { getVisibilityStatus } from '~/lib/visibility';
-import { getIsOutOfStock, shouldHideProduct, isOutOfStockAtBranch, resolveBranchLocationId } from '~/lib/stock';
+import { getIsOutOfStockForFulfillment, shouldHideProduct, isOutOfStockAtBranch, isPickupSession, resolveBranchLocationId } from '~/lib/stock';
 import { useBranchAvailabilityReader } from '~/lib/useBranchAvailability';
 import { StockPendingButton } from './ProductItem';
 import { AddToCartButton } from './AddToCartButton';
@@ -32,6 +32,8 @@ export function BestSellers({
      * availableForSale flag and every card offered Add to Cart everywhere.
      */
     const bsRootData = useRouteLoaderData('root') as any;
+    // Pickup shoppers see collectability, not sellability — see ProductItem.
+    const bsIsPickup = isPickupSession(bsRootData);
     const bsLocations = bsRootData?.locations?.locations?.nodes || bsRootData?.locations?.nodes || [];
     const bsBranchId = resolveBranchLocationId(bsLocations, selectedLocationId, selectedLocationName);
     const { read: readBranchStock, pending: branchStockPending } =
@@ -236,7 +238,7 @@ export function BestSellers({
                                         const storeAvailabilityNodes = variant?.storeAvailability?.nodes || [];
 
                                         const bsEntry = readBranchStock(variant?.id);
-                                        const bsVerdict = isOutOfStockAtBranch(bsEntry);
+                                        const bsVerdict = isOutOfStockAtBranch(bsEntry, bsIsPickup);
                                         /**
                                          * Nothing is claimed while the branch
                                          * lookup is in flight. See ProductItem:
@@ -254,12 +256,13 @@ export function BestSellers({
                                                 ? bsVerdict
                                                 : bsUnresolved
                                                 ? false
-                                                : getIsOutOfStock(
+                                                : getIsOutOfStockForFulfillment(
                                                       selectedLocationId,
                                                       selectedLocationName,
                                                       storeAvailabilityNodes,
                                                       product.availableForSale,
-                                                      // Untracked stock sells everywhere.
+                                                      bsIsPickup,
+                                                      // Untracked sells everywhere for delivery; pickup reads collectability.
                                                       bsEntry?.tracked
                                                   );
 

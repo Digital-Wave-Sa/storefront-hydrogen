@@ -651,15 +651,27 @@ export default function SubPromotionPage() {
             <div className="w-16 h-16 rounded-full bg-[#FEF8EB] flex items-center justify-center text-[28px]">
               🏷️
             </div>
+            {/*
+              Written for a shopper, not for whoever configures the offer.
+
+              This used to say «تظهر المنتجات هنا عندما يحمل خصم مُفعّل في لوحة
+              تحكم شوبيفاي تاج هذا العرض» — Shopify Admin, and the offer's tag,
+              explained to a customer who has never seen either. It read as a
+              broken page rather than an offer between runs.
+
+              The cause is real and unchanged: membership comes from product
+              tags, and no product currently carries this offer's. That belongs
+              in a log, not on the page.
+            */}
             <h3 className="text-[#171717] font-bold text-[18px] md:text-[22px]">
               {isEn
-                ? 'No products registered in this offer yet'
-                : 'لا توجد منتجات مسجلة في هذا العرض حالياً'}
+                ? 'This offer has ended'
+                : 'انتهى هذا العرض'}
             </h3>
             <p className="text-[#7D7D7D] text-[14px] max-w-[420px]">
               {isEn
-                ? 'This offer is not running at the moment. Products appear here once an active discount in Shopify Admin carries this offer\u2019s tag.'
-                : 'هذا العرض غير مفعّل حالياً. تظهر المنتجات هنا عندما يحمل خصم مُفعّل في لوحة تحكم شوبيفاي تاج هذا العرض.'}
+                ? 'It is not running at the moment. Take a look at what else is on.'
+                : 'هذا العرض غير متاح حالياً. تصفّح عروضنا الأخرى.'}
             </p>
             <Link
               to="/promotions"

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import {STANDARD_FREE_DELIVERY_THRESHOLD} from '~/lib/delivery-defaults';
 import { createPortal } from 'react-dom';
 import { Await, useFetcher, useRouteLoaderData, Link, useLocation } from 'react-router';
 import { Suspense } from 'react';
@@ -99,7 +100,7 @@ export const FALLBACK_BRANCHES: Branch[] = [
         minOrder: 40,
         deliveryFee: 0,
         perKmRate: 0,
-        freeDeliveryThreshold: 200,
+        freeDeliveryThreshold: STANDARD_FREE_DELIVERY_THRESHOLD,
         badge: 'طلب مسبق',
         rating: 4.8,
         ratingCount: 342,
@@ -118,7 +119,7 @@ export const FALLBACK_BRANCHES: Branch[] = [
         minOrder: 40,
         deliveryFee: 0,
         perKmRate: 0,
-        freeDeliveryThreshold: 200,
+        freeDeliveryThreshold: STANDARD_FREE_DELIVERY_THRESHOLD,
         badge: 'طلب مسبق',
         rating: 4.5,
         ratingCount: 128,
@@ -137,7 +138,7 @@ export const FALLBACK_BRANCHES: Branch[] = [
         minOrder: 40,
         deliveryFee: 0,
         perKmRate: 0,
-        freeDeliveryThreshold: 200,
+        freeDeliveryThreshold: STANDARD_FREE_DELIVERY_THRESHOLD,
         badge: 'طلب مسبق',
         rating: 4.9,
         ratingCount: 512,
@@ -156,7 +157,7 @@ export const FALLBACK_BRANCHES: Branch[] = [
         minOrder: 40,
         deliveryFee: 0,
         perKmRate: 0,
-        freeDeliveryThreshold: 200,
+        freeDeliveryThreshold: STANDARD_FREE_DELIVERY_THRESHOLD,
         badge: 'طلب مسبق',
         rating: 4.2,
         ratingCount: 89,
@@ -175,7 +176,7 @@ export const FALLBACK_BRANCHES: Branch[] = [
         minOrder: 40,
         deliveryFee: 0,
         perKmRate: 0,
-        freeDeliveryThreshold: 200,
+        freeDeliveryThreshold: STANDARD_FREE_DELIVERY_THRESHOLD,
         badge: 'طلب مسبق',
         rating: 4.6,
         ratingCount: 204,
@@ -1543,13 +1544,27 @@ function ModalContent({
                                            || branches.find((b: any) => !b.hideFromStorefront)
                                            || branches[0];
 
-                                         console.log(
-                                             '[BRANCH MATCH] address:',
-                                             [currentAddress?.city, currentAddress?.address1].filter(Boolean).join(' / '),
-                                             '→ branch:',
-                                             nearestBranch?.name,
-                                             `(${targetCity ? `city=${targetCity}` : 'no city detected'}, no coordinates on this address)`,
-                                         );
+                                         /*
+                                           Development only. `import.meta.env.DEV`
+                                           is replaced at build time, so this whole
+                                           branch is stripped from a production
+                                           bundle rather than merely skipped.
+
+                                           It has to be gated rather than kept,
+                                           because the line prints the shopper's own
+                                           city and street to the browser console —
+                                           which is worth rather more than the usual
+                                           stray debug message.
+                                         */
+                                         if (import.meta.env.DEV) {
+                                           console.log(
+                                               '[BRANCH MATCH] address:',
+                                               [currentAddress?.city, currentAddress?.address1].filter(Boolean).join(' / '),
+                                               '→ branch:',
+                                               nearestBranch?.name,
+                                               `(${targetCity ? `city=${targetCity}` : 'no city detected'}, no coordinates on this address)`,
+                                           );
+                                         }
                                          
                                          // Reset to base fee if no exact coordinates
                                          nearestBranch = { ...nearestBranch, deliveryFee: nearestBranch.baseDeliveryFee || nearestBranch.deliveryFee };

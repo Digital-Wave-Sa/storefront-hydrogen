@@ -1,4 +1,5 @@
 import {Suspense, Fragment, useState, useEffect, useMemo} from 'react';
+import {STANDARD_FREE_DELIVERY_THRESHOLD} from '~/lib/delivery-defaults';
 import {counted, REVIEWS} from '~/lib/plural';
 import {
   getVisibilityStatus,
@@ -4300,14 +4301,26 @@ export default function Product() {
                   (selectedLocationId && loc.id === selectedLocationId) ||
                   (selectedLocationName && loc.name === selectedLocationName),
               );
-              const thresholdMeta =
-                currentBranch?.free_delivery_threshold ||
-                currentBranch?.metafields?.find(
-                  (m: any) => m?.key === 'free_delivery_threshold',
-                );
-              const threshold = thresholdMeta?.value
-                ? parseInt(thresholdMeta.value)
-                : 200;
+              /*
+                The shop's own free-delivery rate, from the Domestic zone.
+
+                This used to read the branch's `custom.free_delivery_threshold`
+                and fall back to a hardcoded 200. Both were fiction. Shopify's
+                shipping profile has ONE Domestic zone with one free rate, at
+                320, and that is what checkout charges against — a per-branch
+                threshold cannot be enforced, so the two branches carrying one
+                (500 and 700) only ever made this line disagree with the till.
+                The 200 was worse: it promised free delivery on a 250 cart that
+                Shopify then charged 19 for.
+
+                root reads the rate through lib/delivery-rate.server, so
+                editing it in Shopify admin changes this line with no deploy.
+                The constant is the offline fallback and matches the rate.
+              */
+              const threshold =
+                typeof rootData?.standardFreeDeliveryThreshold === 'number'
+                  ? rootData.standardFreeDeliveryThreshold
+                  : STANDARD_FREE_DELIVERY_THRESHOLD;
 
               /**
                * The free-delivery line names an amount that comes from the

@@ -1882,8 +1882,17 @@ export default function CustomCakeBuilder({
           }}
         />
         <div className="relative z-10 max-w-[1440px] mx-auto w-full px-4 md:px-8 lg:px-12 flex items-center justify-between gap-2 md:gap-4">
-          {/* Right Group in RTL: Back Button + Title */}
-          <div className="flex items-center gap-3 md:gap-6 shrink-0">
+          {/*
+            Right Group in RTL: Back Button + Title
+
+            `min-w-0` instead of `shrink-0`, so this group is the one that
+            gives when the bar runs out of room. With every group pinned at
+            `shrink-0` the row simply overflowed and the LAST item -- the total
+            -- was cut off the edge, which is a silent way to lose the one
+            number the customer is watching. Now the title truncates instead,
+            at any width, and the arithmetic above stops being load-bearing.
+          */}
+          <div className="flex items-center gap-3 md:gap-6 min-w-0">
             <button
               onClick={() => window.history.back()}
               className={`flex items-center gap-[8px] bg-[#9FB7AE] hover:bg-[#8BA19C] text-[#234745] px-4 md:px-6 py-2.5 rounded-[25px] text-[12px] md:text-[16px] font-bold transition-all shrink-0 ${isEn ? 'font-en' : ''}`}
@@ -1896,7 +1905,24 @@ export default function CustomCakeBuilder({
               <span>{isEn ? 'Back' : 'رجوع'}</span>
             </button>
 
-            <h1 className="text-[18px] md:text-2xl font-extrabold leading-tight text-white m-0">
+            {/*
+              Hidden on phones, because something in this bar had to give.
+
+              Every child here is `shrink-0` inside a fixed 144px row, so a
+              fourth control does not compress the others -- it pushes the
+              total off the edge, which is what «ابدأ من جديد» did: رجوع +
+              title + button + total came to roughly 390px against a 360-390px
+              screen, and «الإجمالي» was the item that fell off. Hiding the
+              button's label was not enough; the button itself is only ~44px of
+              the overflow.
+
+              The title is what gives, because it is the one thing here that is
+              not a control AND is already on screen: the content column opens
+              with «صمّم كيكتك بلمستك الخاصة» immediately below this bar, so a
+              phone loses nothing but the duplicate. Back, start over and the
+              running total all do something no other element does.
+            */}
+            <h1 className="hidden sm:block truncate text-[18px] md:text-2xl font-extrabold leading-tight text-white m-0">
               {isEn ? 'Design Your Cake' : 'صمم كيكتك'}
             </h1>
           </div>

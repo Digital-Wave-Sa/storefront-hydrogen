@@ -2871,8 +2871,74 @@ function CartDiscounts({
   const isEmployeeDiscountActive =
     codes.some(c => c.toUpperCase().includes('EMPLOYEE') || c.toUpperCase().startsWith('EMP') || c.toUpperCase() === 'EMPLOYEE25');
 
+  /**
+   * Codes that are on the cart and giving nothing.
+   *
+   * Every discount on this store is non-combinable — `combinesWith` is false
+   * for order, product AND shipping on every one of them — so a coupon beside
+   * loyalty points is not two discounts. Shopify honours whichever went on
+   * last and marks the other `applicable: false`.
+   *
+   * Nothing said so. Every list on this panel is built from
+   * `discountCodes.filter(d => d.applicable)`, so a code that stopped applying
+   * stopped being drawn, and the shopper watched a discount evaporate with no
+   * explanation. `invalidActiveDiscount` could not cover it either: it is
+   * computed from the applicable list, so it is structurally blind to exactly
+   * this case.
+   *
+   * That silence is why one defect arrived as three separate reports.
+   */
+  const blockedCodes: string[] =
+    discountCodes
+      ?.filter((d) => !d.applicable && !isSystemDiscountCode(d.code))
+      ?.map(({code}) => code) || [];
+
+  /** What is winning, so the message can name it rather than just apologise. */
+  const activeSystemDiscount = (discountCodes || []).find(
+    (d) => d.applicable && isSystemDiscountCode(d.code),
+  );
+  const blockedBy = activeSystemDiscount
+    ? (activeSystemDiscount.code || '').toUpperCase().startsWith('CREDIT-')
+      ? (isEn ? 'your store credit' : 'رصيد المتجر')
+      : (isEn ? 'your points discount' : 'خصم النقاط')
+    : codes[0]
+      ? (isEn ? `the code ${codes[0]}` : `كود ${codes[0]}`)
+      : null;
+
   return (
     <div aria-label={isEn ? "Discounts" : "الخصومات"} className="w-full relative space-y-2">
+      {/*
+        Say it out loud when a code has stopped applying. The acceptance was
+        «either both apply, or a clear message explains they cannot be
+        combined» — both cannot, because Shopify refuses to combine them, so
+        this is the message.
+      */}
+      {blockedCodes.length > 0 && (
+        <div className="flex flex-col gap-1 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-amber-900 shadow-sm mb-2">
+          <div className="flex items-center gap-2 font-bold text-[13px]">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="shrink-0">
+              <circle cx="12" cy="12" r="10" />
+              <line x1="12" y1="8" x2="12" y2="12" />
+              <line x1="12" y1="16" x2="12.01" y2="16" />
+            </svg>
+            <span>
+              {isEn
+                ? `${blockedCodes.join(', ')} is not being applied`
+                : `${blockedCodes.join('، ')} غير مطبَّق حالياً`}
+            </span>
+          </div>
+          <p className="text-[12px] m-0 opacity-90">
+            {blockedBy
+              ? isEn
+                ? `It cannot be combined with ${blockedBy}. Remove one to use the other.`
+                : `لا يمكن دمجه مع ${blockedBy}. أزل أحدهما لاستخدام الآخر.`
+              : isEn
+                ? 'It cannot be combined with the discount already on your cart.'
+                : 'لا يمكن دمجه مع الخصم المطبَّق على سلتك.'}
+          </p>
+        </div>
+      )}
+
       {/* Promo Free Delivery Active Badge */}
       {isBranchPromoFreeDelivery && (
         <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 text-emerald-800 shadow-sm mb-2">

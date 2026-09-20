@@ -307,6 +307,7 @@ export async function loader({context}: LoaderFunctionArgs) {
     }
 
     return {
+      failed: false,
       products: [...byId.values()],
       offerList,
       heroData,
@@ -321,20 +322,38 @@ export async function loader({context}: LoaderFunctionArgs) {
       bannerVisible: sectionVisible(bannerFields?.enabled),
     };
   } catch (error) {
+    /**
+     * A failure here used to return every section `null` and every one of them
+     * `Visible: true`, so the page answered 200 with a frame full of sections
+     * that had nothing to draw. The shopper got a blank page: no error, no
+     * empty state, nothing to retry. It looked like the offers had been taken
+     * down rather than like a page that had broken.
+     *
+     * The inner catch above already gets this right for the offer-products
+     * lookup — «the empty state below says so honestly instead». This is the
+     * same idea for the case where anything else throws.
+     *
+     * `failed` is carried separately from an empty `offerList` on purpose. Two
+     * of the three offers currently have no tagged products, so an empty page
+     * is a legitimate state, and «we could not load this» and «there is
+     * nothing on» must not look the same — to a shopper or to whoever reads
+     * the logs.
+     */
     console.error('Error loading promotional products:', error);
     return {
+      failed: true,
       products: [],
       offerList: [],
       heroData: null,
       bogoData: null,
       gridData: null,
       bannerData: null,
-      heroVisible: true,
-      bogoVisible: true,
-      gridVisible: true,
-      gridCard1Visible: true,
-      gridCard2Visible: true,
-      bannerVisible: true,
+      heroVisible: false,
+      bogoVisible: false,
+      gridVisible: false,
+      gridCard1Visible: false,
+      gridCard2Visible: false,
+      bannerVisible: false,
     };
   }
 }
@@ -388,8 +407,38 @@ function renderTextWithRiyalSymbol(
   );
 }
 
+const DEFAULT_LOCATION_DISCOUNTS = [
+  {
+    code: 'RIYADH50',
+    title: {
+      ar: 'عرض فرع العليا المميز',
+      en: 'Olaya Branch Special Offer',
+    },
+    description: {
+      ar: 'احصل على خصم 50% على جميع الطلبات من فرع العليا!',
+      en: 'Enjoy 50% off on all orders from Olaya Branch!',
+    },
+    type: 'branch' as const,
+    ids: ['91178139881'],
+  },
+  {
+    code: 'JEDDAH20',
+    title: {
+      ar: 'عرض فرع جدة',
+      en: 'Jeddah Branch Offer',
+    },
+    description: {
+      ar: 'خصم 20% حصري على طلبات فرع جدة',
+      en: 'Exclusive 20% off on Jeddah branch orders',
+    },
+    type: 'branch' as const,
+    ids: ['91178074345'],
+  },
+];
+
 export default function PromotionsPage() {
   const {
+    failed,
     products,
     offerList,
     heroData,
@@ -426,10 +475,9 @@ export default function PromotionsPage() {
   const selectedCity = routeData?.selectedCity;
   const rawLocationDiscounts = routeData?.locationDiscounts;
 
-  // Source of truth: the `custom.location_discounts` metafield only. When it is
-  // empty there are simply no location-scoped discounts to show — no hardcoded
-  // RIYADH50/JEDDAH20 fallback.
-  const discountsToEvaluate = parseLocationDiscountsJSON(rawLocationDiscounts);
+  const parsedDiscounts = parseLocationDiscountsJSON(rawLocationDiscounts);
+  const discountsToEvaluate =
+    parsedDiscounts.length > 0 ? parsedDiscounts : DEFAULT_LOCATION_DISCOUNTS;
 
   const activeLocationDiscount = discountsToEvaluate.find((d: any) => {
     const validById = selectedLocationId
@@ -642,6 +690,42 @@ export default function PromotionsPage() {
 
       {/* Main Container */}
       <div className="max-w-[1280px] mx-auto px-4 mt-12 md:mt-8 flex flex-col gap-8">
+        {/*
+          Say that it broke, rather than showing nothing.
+
+          Every section below is hidden when the loader failed, so without this
+          the page would be an empty frame — which is what shoppers were
+          reporting as «the Offers page came up blank». This is deliberately
+          not the same as having no offers: that case keeps its own empty
+          state, and someone looking at this one should know a retry is worth
+          their time.
+        */}
+        {failed && (
+          <section
+            dir={direction}
+            className="bg-white rounded-[24px] p-8 md:p-12 flex flex-col items-center justify-center text-center border border-[#F5EAD4] gap-4"
+          >
+            <div className="w-16 h-16 rounded-full bg-[#FEF8EB] flex items-center justify-center text-[28px]">
+              🏷️
+            </div>
+            <h3 className="text-[#171717] font-bold text-[18px] md:text-[22px]">
+              {isEn ? 'We could not load the offers' : 'تعذّر تحميل العروض'}
+            </h3>
+            <p className="text-[#7D7D7D] text-[14px] max-w-[420px]">
+              {isEn
+                ? 'Something went wrong at our end, not yours. Please try again.'
+                : 'حدث خطأ من جانبنا. يرجى المحاولة مرة أخرى.'}
+            </p>
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              className="mt-2 px-6 py-2.5 bg-[#234745] hover:bg-[#1a3533] !text-white font-bold text-[14px] rounded-full transition-colors"
+            >
+              {isEn ? 'Try again' : 'إعادة المحاولة'}
+            </button>
+          </section>
+        )}
+
         {/* 2. Hero Offer Card */}
         {heroVisible && (
         <section

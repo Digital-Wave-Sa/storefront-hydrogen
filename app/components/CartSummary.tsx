@@ -1,4 +1,5 @@
 import type { CartApiQueryFragment } from 'storefrontapi.generated';
+import {couponWorthOf, promoBeatsCoupon} from '~/lib/exclusive-discounts';
 import { getIsOutOfStockForFulfillment, isOutOfStockAtBranch } from '~/lib/stock';
 import { useBranchAvailability } from '~/lib/useBranchAvailability';
 import type { CartLayout } from '~/components/CartMain';
@@ -403,23 +404,6 @@ export function CartSummary({ cart, layout, confirmedCart }: CartSummaryProps) {
    */
   const isThresholdMet = shopifyDeliveryFee === 0;
 
-  // Check promotional free delivery interval for current selected branch and chosen time slot (only for home delivery)
-  const branchPromo = checkBranchFreeDeliveryInterval(currentBranch, timeSlot);
-  const isBranchPromoFreeDelivery = !isPickup && !isDigitalOnlyCart && branchPromo.isPromoFreeDelivery;
-
-  /**
-   * `freeshipping` is appended for the promo window only. It is a time-of-day
-   * rule Shopify's rates cannot express, so the storefront has to apply it.
-   * A threshold Shopify already honours needs no code from us.
-   */
-  const rawCheckoutUrl = cart?.checkoutUrl;
-  const effectiveCheckoutUrl = (rawCheckoutUrl && !isPickup && isBranchPromoFreeDelivery && !cartHasFreeShippingCode)
-    ? (rawCheckoutUrl.includes('?') ? `${rawCheckoutUrl}&discount=freeshipping` : `${rawCheckoutUrl}?discount=freeshipping`)
-    : rawCheckoutUrl;
-
-  // Free delivery applies if freeshipping code is active, branch promo interval is active, or Shopify quoted zero
-  const isFreeDelivery = isPickup || isDigitalOnlyCart || cartHasFreeShippingCode || isBranchPromoFreeDelivery || isThresholdMet;
-  
   /**
    * The `Delivery Fee` cart attribute is not read either.
    *
@@ -472,6 +456,52 @@ export function CartSummary({ cart, layout, confirmedCart }: CartSummaryProps) {
     liveFreeThreshold != null && subtotalBeforeDiscounts >= liveFreeThreshold
       ? 0
       : liveStandardFee;
+
+  /*
+    The free-delivery promo, and whether it is worth having.
+
+    Moved down from above `rawDeliveryFee` because it now needs it: the promo
+    is only worth what the delivery would have cost, and that is the number it
+    has to beat. Nothing between here and its old position used either value.
+
+    See ~/lib/exclusive-discounts for why a choice has to be made at all —
+    briefly, every code on this store is non-combinable, so putting the promo
+    beside the shopper's own code does not give them both, it silently
+    replaces one with the other. This used to take a 53.70 coupon off a cart
+    in exchange for 20 of delivery, and when that was first "fixed" by always
+    keeping the coupon, it gave away 20 of delivery to protect a coupon worth
+    9.90. Neither is a rule. The money is.
+  */
+  const branchPromo = checkBranchFreeDeliveryInterval(currentBranch, timeSlot);
+  const promoWorth = rawDeliveryFee ?? standardFallbackFee;
+  const couponWorth = couponWorthOf(
+    totalDiscount,
+    loyaltyDiscountDisplay,
+    storeCreditDiscountDisplay,
+  );
+  const promoWins = promoBeatsCoupon(couponWorth, promoWorth);
+
+  const isBranchPromoFreeDelivery =
+    !isPickup && !isDigitalOnlyCart && branchPromo.isPromoFreeDelivery && promoWins;
+
+  /**
+   * The promo is a time-of-day rule Shopify's rates cannot express, so the
+   * storefront applies it as a code. It is appended ONLY when the promo won
+   * the comparison above — this was the third place that forced it regardless
+   * of what the shopper already had, alongside the two in checkout.initiate,
+   * and it is the one that survived the first fix.
+   */
+  const rawCheckoutUrl = cart?.checkoutUrl;
+  const effectiveCheckoutUrl = (rawCheckoutUrl && !isPickup && isBranchPromoFreeDelivery && !cartHasFreeShippingCode)
+    ? (rawCheckoutUrl.includes('?') ? `${rawCheckoutUrl}&discount=freeshipping` : `${rawCheckoutUrl}?discount=freeshipping`)
+    : rawCheckoutUrl;
+
+  /**
+   * Free delivery when the shopper collects, when their cart is digital, when
+   * a freeshipping code is live, when the promo won, or when Shopify itself
+   * quoted zero. Only the promo term is a choice; the rest are facts.
+   */
+  const isFreeDelivery = isPickup || isDigitalOnlyCart || cartHasFreeShippingCode || isBranchPromoFreeDelivery || isThresholdMet;
 
   /**
    * Local delivery when Shopify quotes it; قياسي when it does not.

@@ -224,7 +224,25 @@ export async function action({request, context}: ActionFunctionArgs) {
       });
     }
 
-    const validInputKeys = ['firstName', 'lastName', 'email', 'phone'] as const;
+    /*
+      The phone is deliberately absent.
+
+      Customers must not change their number from /account: it is the login
+      identity for OTP sign-in and the key the wallet, loyalty and gift-card
+      lookups hang off, so a self-service swap is an account takeover waiting
+      to happen.
+
+      Dropping it from this list is what enforces it. Hiding the field would
+      not: the action reads whatever is posted, so anything short of refusing
+      the value here could be worked around with a crafted request. With the
+      key gone, `customer.phone` is never set, so `adminPayload.phone` below
+      is never set either, and Shopify is never asked to change it.
+
+      The `key === 'phone'` branch further down is now unreachable. It is left
+      in place on purpose: re-adding 'phone' to this list is the whole of
+      turning the feature back on, OTP verification and all.
+    */
+    const validInputKeys = ['firstName', 'lastName', 'email'] as const;
 
     for (const [key, value] of form.entries()) {
       if (!validInputKeys.includes(key as any)) {
@@ -627,18 +645,21 @@ export default function AccountProfile() {
     );
   };
 
-  const handleProfileSubmit = (e: React.FormEvent) => {
-    // Determine if phone number changed
-    let cleanOriginal = (customer.phone || '').replace(/\D/g, '');
-    let cleanNew = `${selectedCountryCode}${enteredPhone}`.replace(/\D/g, '');
+  const handleProfileSubmit = (_e: React.FormEvent) => {
+    /*
+      Nothing to intercept: the phone is read-only and the action refuses a
+      posted one, so it cannot change and there is nothing to verify.
 
-    if (cleanOriginal !== cleanNew && !isPhoneVerifiedRef.current) {
-      e.preventDefault();
-      // Must verify via OTP
-      startOtpVerification();
-    } else {
-      // Normal submit using react-router SPA submit (triggers standard action update)
-    }
+      This used to compare the field against the stored number and divert into
+      OTP when they differed. Left in place it would have fired for every
+      customer with NO phone on file — `customer.phone` is '' while the
+      country-code default makes the comparison string '966', so the two never
+      matched and saving a NAME would have opened an OTP modal for a number
+      they can no longer type.
+
+      Restoring this check, along with 'phone' in `validInputKeys` in the
+      action, is what turns phone editing back on.
+    */
   };
 
   if (!isEditing) {
@@ -969,8 +990,8 @@ export default function AccountProfile() {
                   }}
                 >
                   {isEn
-                    ? 'Please register your phone number to secure your account and access gift cards & loyalty rewards.'
-                    : 'يرجى ربط رقم الجوال الخاص بك لتأمين حسابك والاستفادة من بطاقات الهدايا ونقاط الولاء.'}
+                    ? 'Contact customer service to link your mobile number and access gift cards & loyalty rewards.'
+                    : 'يرجى التواصل مع خدمة العملاء لربط رقم جوالك والاستفادة من بطاقات الهدايا ونقاط الولاء.'}
                 </p>
               </div>
             </div>
@@ -1064,7 +1085,17 @@ export default function AccountProfile() {
               </div>
             </div>
             
-            {/* Row 2: Phone */}
+            {/*
+              Read-only. The number is shown because shoppers check it; it is
+              not editable because it is the OTP login identity and the key the
+              wallet, loyalty and gift-card lookups use. The action refuses a
+              posted phone regardless — this just stops the page offering
+              something it will not do.
+
+              The missing-phone alert above used to say «please register your
+              phone number», which is no longer something the customer can act
+              on. It now points at the people who can.
+            */}
             <div className="flex flex-col md:flex-row gap-6 w-full">
               <div className="flex flex-col gap-2 flex-1">
                 <label
@@ -1076,57 +1107,28 @@ export default function AccountProfile() {
                   {isEn ? 'Mobile Number' : 'رقم الجوال'}
                 </label>
                 <div
-                  className="flex flex-row items-center border border-[#BBCFCD] bg-white rounded-[12px] h-[48px] focus-within:border-[#234745] transition-colors overflow-hidden"
+                  className="flex flex-row items-center border border-[#BBCFCD] bg-[#F7F7F7] rounded-[12px] h-[48px] px-4 overflow-hidden"
                   dir="ltr"
                 >
-                  <div className="relative flex items-center justify-center shrink-0 pl-4 pr-3 py-3 cursor-pointer min-w-[72px]">
-                    <div className="flex items-center gap-1.5 text-[#171717] font-bold text-[14px] pointer-events-none select-none">
-                      <span>{selectedCountryCode}</span>
-                      <svg
-                        width="10"
-                        height="6"
-                        viewBox="0 0 10 6"
-                        fill="none"
-                        className="text-[#171717]"
-                      >
-                        <path
-                          d="M1 1L5 5L9 1"
-                          stroke="currentColor"
-                          strokeWidth="1.6"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
-                    </div>
-                    <select
-                      name="countryCode"
-                      value={selectedCountryCode}
-                      onChange={(e) => setSelectedCountryCode(e.target.value)}
-                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer text-[14px]"
-                    >
-                      {COUNTRY_CODES.map((c) => (
-                        <option key={`${c.code}-${c.dialCode}`} value={c.dialCode}>
-                          {c.flag} {c.dialCode} ({isEn ? c.nameEn : c.nameAr})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="w-[1px] h-3/5 bg-[#BBCFCD] mx-1 shrink-0"></div>
-                  <input
-                    name="phone"
-                    type="tel"
-                    placeholder="5XXXXXXXXX"
-                    className="flex-1 bg-transparent border-none outline-none text-[#171717] font-medium text-[14px] focus:ring-0 placeholder:text-[#BBCFCD] px-2 py-3"
+                  <span
+                    className="text-[14px] font-medium text-[#7D7D7D]"
                     style={{
                       fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
                     }}
-                    value={enteredPhone}
-                    onChange={(e) =>
-                      setEnteredPhone(e.target.value.replace(/\D/g, ''))
-                    }
-                    required
-                  />
+                  >
+                    {customer.phone || '—'}
+                  </span>
                 </div>
+                <p
+                  className="text-[12px] text-[#7D7D7D] m-0"
+                  style={{
+                    fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
+                  }}
+                >
+                  {isEn
+                    ? 'To change your mobile number, please contact customer service.'
+                    : 'لتغيير رقم الجوال، يرجى التواصل مع خدمة العملاء.'}
+                </p>
               </div>
             </div>
 

@@ -203,6 +203,33 @@ function branchDeliveryFeeFrom(locations: any, branchId?: string | null): number
   return Number.isFinite(fee) && fee > 0 ? fee : 0;
 }
 
+/**
+ * The builder's blank state, as a factory.
+ *
+ * It is a function rather than a shared const so the opening state and «ابدأ
+ * من جديد» cannot ever be handed the same object. Nothing mutates `selections`
+ * today -- every write spreads into a fresh object -- but a reset that handed
+ * back the very object the initial state is still holding is the kind of
+ * aliasing bug that only shows up months later, and costing nothing to avoid.
+ *
+ * There is exactly one copy of these defaults now. Reset and first load read
+ * the same list, so a field added to one is added to both.
+ */
+const emptySelections = () => ({
+  shape: null as any,
+  flavor: null as any,
+  style: null as any,
+  color: null as any,
+  messagePlacement: 'cake' as 'cake' | 'base' | 'both',
+  message: '',
+  baseMessage: '',
+  specialInstructions: '',
+  textColor: '#4a2511',
+  textFont: 'Classic',
+  uploadedImage: null as string | null,
+  prepTime: null as any,
+});
+
 export default function CustomCakeBuilder({
   cakeAttributes = [],
   toppingDesigns = [],
@@ -217,6 +244,18 @@ export default function CustomCakeBuilder({
   const [currentStep, setCurrentStep] = useState(1);
   const [isFaqOpen, setIsFaqOpen] = useState(false);
   const [isCutaway, setIsCutaway] = useState(false);
+
+  /**
+   * Whether «ابدأ من جديد» is waiting to be pressed a second time.
+   *
+   * Throwing away a design the customer may have spent ten minutes on should
+   * not be one stray tap on a phone, and it should not be a `window.confirm`
+   * either: that blocks the page, cannot be styled, cannot be read
+   * right-to-left and appears in the browser's language rather than the
+   * shop's. The button asks for itself instead -- one press arms it, the
+   * second does it -- which needs no modal and no new component.
+   */
+  const [confirmingReset, setConfirmingReset] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   /**
@@ -601,20 +640,7 @@ export default function CustomCakeBuilder({
    * the builder, so the 180 for a "Medium" was money taken for a decision the
    * customer was never offered.
    */
-  const [selections, setSelections] = useState({
-    shape: null as any,
-    flavor: null as any,
-    style: null as any,
-    color: null as any,
-    messagePlacement: 'cake' as 'cake' | 'base' | 'both',
-    message: '',
-    baseMessage: '',
-    specialInstructions: '',
-    textColor: '#4a2511',
-    textFont: 'Classic',
-    uploadedImage: null as string | null,
-    prepTime: null as any
-  });
+  const [selections, setSelections] = useState(emptySelections);
 
   const hasLoadedRef = useRef(false);
 
@@ -840,6 +866,35 @@ export default function CustomCakeBuilder({
   );
 
   /**
+   * Has the customer actually designed anything yet?
+   *
+   * Two things ask this and they must never disagree: the autosave below,
+   * which refuses to write an untouched builder, and «ابدأ من جديد», which
+   * has nothing to offer on one. When they were separate expressions a field
+   * added to one would have been forgotten in the other, and the failure is
+   * quiet in both directions -- a reset button that does nothing, or a saved
+   * draft that the button cannot clear.
+   *
+   * `messagePlacement`, `textColor` and `textFont` are deliberately absent:
+   * they open on a value, so including them would make an untouched builder
+   * look designed.
+   */
+  const hasAnySelection = React.useMemo(
+    () =>
+      Boolean(
+        selections.shape ||
+          selections.flavor ||
+          selections.style ||
+          selections.color ||
+          selections.message ||
+          selections.baseMessage ||
+          selections.specialInstructions ||
+          selections.uploadedImage,
+      ),
+    [selections],
+  );
+
+  /**
    * The design is saved while it is being built, not only on the way to login.
    *
    * Storing it was previously a single line inside `handleCheckout`, reached
@@ -868,17 +923,7 @@ export default function CustomCakeBuilder({
   React.useEffect(() => {
     if (!hasLoadedRef.current || typeof window === 'undefined') return;
 
-    const hasChoice = Boolean(
-      selections.shape ||
-        selections.flavor ||
-        selections.style ||
-        selections.color ||
-        selections.message ||
-        selections.baseMessage ||
-        selections.specialInstructions ||
-        selections.uploadedImage,
-    );
-    if (!hasChoice) return;
+    if (!hasAnySelection) return;
 
     /** Debounced: the message field fires this on every keystroke. */
     const timer = setTimeout(() => {
@@ -903,7 +948,7 @@ export default function CustomCakeBuilder({
     }, 600);
 
     return () => clearTimeout(timer);
-  }, [selections, pendingCakeSnapshot]);
+  }, [selections, hasAnySelection, pendingCakeSnapshot]);
 
   /**
    * Every decoration is offered on every shape.
@@ -1129,6 +1174,66 @@ export default function CustomCakeBuilder({
   const handleSelect = (category: string, item: any) => {
     setSelections(prev => ({ ...prev, [category]: item }));
   };
+
+  /**
+   * «ابدأ من جديد» -- put the builder back to how it opens.
+   *
+   * The stored draft is the part that is easy to miss, and getting it wrong
+   * makes the button worse than useless. The autosave effect only WRITES; it
+   * returns early once `hasAnySelection` goes false, so clearing the state
+   * alone leaves the old design sitting in `pending_custom_cake`, and the next
+   * visit restores the cake the customer just asked to throw away. The removal
+   * has to be explicit, and it has to happen here.
+   *
+   * `hasLoadedRef` is deliberately NOT reset. It is what tells the restore
+   * effect it has already run; setting it back to false would let that effect
+   * fire again and put the design straight back. Leaving it true is what makes
+   * the reset stick.
+   *
+   * `view` and `isCutaway` are set here rather than left to the step effect.
+   * That effect runs on `currentStep` only, so resetting to step 1 while
+   * already ON step 1 would not re-run it, and a shopper who reset from the
+   * flavour step would get a blank cake still showing the slice.
+   *
+   * Branch, address and delivery choice are untouched on purpose. They are not
+   * part of the design -- the same selection lives in the header and the cart,
+   * and clearing it from here would silently undo a choice the customer made
+   * somewhere else entirely.
+   */
+  const resetBuilder = () => {
+    setSelections(emptySelections());
+    setPickShape(null);
+    setPickSize(null);
+    setCurrentStep(1);
+    setView('front');
+    setIsCutaway(false);
+    setRestoreFailed(false);
+    setConfirmingReset(false);
+
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.removeItem('pending_custom_cake');
+      } catch (e) {
+        /** Private mode or blocked storage. The state above is already clear. */
+      }
+    }
+
+    optionsScrollRef.current?.scrollTo({top: 0, behavior: 'smooth'});
+  };
+
+  /**
+   * An armed reset disarms itself.
+   *
+   * Otherwise «متأكد؟» sits there for the rest of the session, and the next
+   * press -- minutes later, on a design that has moved on -- wipes it with no
+   * warning at all. The arming only means anything while it is still the thing
+   * the customer just did.
+   */
+  React.useEffect(() => {
+    if (!confirmingReset) return;
+    const timer = setTimeout(() => setConfirmingReset(false), 4000);
+    return () => clearTimeout(timer);
+  }, [confirmingReset]);
 
   /**
    * What a step needs before it can be left.
@@ -1796,14 +1901,92 @@ export default function CustomCakeBuilder({
             </h1>
           </div>
 
-          {/* Left Group in RTL: Total Price */}
-          <div className={`flex flex-col items-end shrink-0 ${isEn ? 'text-right' : 'text-left'}`}>
-            <span className="text-[10px] md:text-sm font-medium mb-0.5 opacity-90">{isEn ? 'Total' : 'الإجمالي'}</span>
-            <div className="flex items-center gap-1.5" dir="ltr">
-              <SaudiRiyalSymbol className="w-auto h-3.5 md:h-5 shrink-0" />
-              <span className="text-xl md:text-3xl font-black font-en tracking-tight">
-                {calculateTotal().toFixed(2)}
-              </span>
+          {/* Left Group in RTL: Start Over + Total Price */}
+          <div className="flex items-center gap-3 md:gap-5 shrink-0">
+            {/*
+              Start over.
+
+              In the header rather than beside the page title because this is
+              where the design's other whole-cake controls already are -- رجوع
+              and the running total -- and because the header is the one thing
+              on this page that does not scroll away. A customer who wants out
+              on step 4 should not have to scroll back to step 1 to find the
+              door.
+
+              Only drawn once there is something to clear. On an untouched
+              builder it would be a control that visibly does nothing, which
+              reads as broken rather than as considered; `hasAnySelection` is
+              the same test the autosave uses, so the button is present exactly
+              when a saved draft exists.
+
+              Two presses, not one, and the second is styled as the destructive
+              one. See `confirmingReset` for why this is not a window.confirm.
+
+              The label hides below `sm`. The header already carries رجوع, the
+              title and the total on a 144px bar, and a fourth full-width pill
+              overflows a 360px screen. The icon is the affordance there, the
+              red confirm state still reads, and `aria-label` carries the full
+              wording at every width.
+            */}
+            {hasAnySelection && (
+              <button
+                type="button"
+                onClick={() =>
+                  confirmingReset ? resetBuilder() : setConfirmingReset(true)
+                }
+                onBlur={() => setConfirmingReset(false)}
+                aria-label={
+                  isEn
+                    ? confirmingReset
+                      ? 'Confirm starting over — this clears your design'
+                      : 'Start over'
+                    : confirmingReset
+                      ? 'تأكيد البدء من جديد — سيُمسح تصميمك'
+                      : 'ابدأ من جديد'
+                }
+                className={`flex items-center gap-[8px] px-3 md:px-5 py-2.5 rounded-[25px] text-[12px] md:text-[16px] font-bold transition-all shrink-0 active:scale-95 ${
+                  confirmingReset
+                    ? 'bg-[#E64950] hover:bg-[#cf3f46] text-white'
+                    : 'bg-[#9FB7AE] hover:bg-[#8BA19C] text-[#234745]'
+                } ${isEn ? 'font-en' : ''}`}
+                style={isEn ? {} : {fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif"}}
+                dir={isEn ? 'ltr' : 'rtl'}
+              >
+                <svg
+                  width="15"
+                  height="15"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="shrink-0"
+                  aria-hidden="true"
+                >
+                  <path d="M3 12a9 9 0 1 0 3-6.7" />
+                  <polyline points="3 3 3 8.5 8.5 8.5" />
+                </svg>
+                <span className="hidden sm:inline whitespace-nowrap">
+                  {isEn
+                    ? confirmingReset
+                      ? 'Sure?'
+                      : 'Start over'
+                    : confirmingReset
+                      ? 'متأكد؟'
+                      : 'ابدأ من جديد'}
+                </span>
+              </button>
+            )}
+
+            <div className={`flex flex-col items-end shrink-0 ${isEn ? 'text-right' : 'text-left'}`}>
+              <span className="text-[10px] md:text-sm font-medium mb-0.5 opacity-90">{isEn ? 'Total' : 'الإجمالي'}</span>
+              <div className="flex items-center gap-1.5" dir="ltr">
+                <SaudiRiyalSymbol className="w-auto h-3.5 md:h-5 shrink-0" />
+                <span className="text-xl md:text-3xl font-black font-en tracking-tight">
+                  {calculateTotal().toFixed(2)}
+                </span>
+              </div>
             </div>
           </div>
         </div>
@@ -1856,7 +2039,7 @@ export default function CustomCakeBuilder({
             {/* Title */}
             <div className={`mb-[32px] ${isEn ? 'text-left' : 'text-right'}`}>
               <h1 className="sm:!text-[38px] !text-[28px] font-extrabold text-[#171717] !mb-2 !mt-2 leading-tight">{isEn ? 'Design Your Custom Cake' : 'صمّم كيكتك بلمستك الخاصة'}</h1>
-              <p className="text-[#8BA19C] text-[14px">{isEn ? 'Shape, size, flavor, decoration, and your message' : 'شكل، حجم، نكهة، تزيين، ورسالتك'}</p>
+              <p className="text-[#8BA19C] text-[14px]">{isEn ? 'Shape, size, flavor, decoration, and your message' : 'شكل، حجم، نكهة، تزيين، ورسالتك'}</p>
             </div>
 
             {/* Steps Boxes */}

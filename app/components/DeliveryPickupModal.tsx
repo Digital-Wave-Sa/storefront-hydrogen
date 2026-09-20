@@ -908,6 +908,18 @@ function ModalContent({
 
     const customerObj = customer?.customer || customer || {};
     const loadedAddresses = customerObj?.addresses?.nodes || customerObj?.data?.customer?.addresses?.nodes || [];
+
+    /**
+     * The shopper's default address, as Shopify holds it.
+     *
+     * Read from the same object the list comes from, with the root loader as a
+     * second source for the paths that hand this modal a bare customer.
+     */
+    const defaultAddressId =
+        customerObj?.defaultAddress?.id ||
+        customerObj?.data?.customer?.defaultAddress?.id ||
+        rootData?.customer?.defaultAddress?.id ||
+        null;
     const addresses = useMemo(
         () => [
             ...loadedAddresses,
@@ -1010,7 +1022,23 @@ function ModalContent({
             }
         }
         
-        if (!isValidAddress) effectiveSelectedBranch = addresses[0]?.id || '';
+        /**
+         * Nothing above matched, so nothing this shopper has done tells us
+         * which address to open on. Their DEFAULT is the answer; it was not
+         * consulted at all, and this fell straight to `addresses[0]` — the
+         * first address Shopify happened to return, which is creation order.
+         * So an old address the shopper had long since stopped using was
+         * pre-selected over the one they had actually marked as default, and
+         * confirming without noticing sent the order there.
+         *
+         * Index zero survives only for a shopper with no default set.
+         */
+        if (!isValidAddress) {
+            const byDefault = defaultAddressId
+                ? addresses.find((a: any) => sameAddressId(a.id, defaultAddressId))
+                : undefined;
+            effectiveSelectedBranch = byDefault?.id || addresses[0]?.id || '';
+        }
     } else {
         const isValidBranch = branches.some((b: any) => b.id === selectedBranch && !b.hideFromStorefront);
         if (!isValidBranch) {
@@ -1050,12 +1078,20 @@ function ModalContent({
         }
     }, [userCoords, hasAutoSelected, activeTab, branches, selectedBranch, setSelectedBranch]);
 
-    // Auto-select first address under delivery tab when no manual selection is made yet
+    /*
+      Open on the shopper's default address when they have not chosen one yet.
+
+      This has to agree with the fallback chain above, or the two fight: that
+      one resolves the default and this one would put index zero straight back.
+    */
     useEffect(() => {
         if (!selectedBranch && activeTab === 'delivery' && addresses.length > 0) {
-            setSelectedBranch(addresses[0].id);
+            const byDefault = defaultAddressId
+                ? addresses.find((a: any) => sameAddressId(a.id, defaultAddressId))
+                : undefined;
+            setSelectedBranch(byDefault?.id || addresses[0].id);
         }
-    }, [selectedBranch, activeTab, addresses, setSelectedBranch]);
+    }, [selectedBranch, activeTab, addresses, defaultAddressId, setSelectedBranch]);
 
 
 
@@ -1169,8 +1205,8 @@ function ModalContent({
                       The reset was also redundant. `effectiveSelectedBranch`
                       above already confines the selection to the active tab's
                       domain on every render, non-destructively: an id that is
-                      not an address falls back to the session address or
-                      `addresses[0]` under delivery, and an id that is not a
+                      not an address falls back to the session address, then
+                      the shopper's default, under delivery, and an id that is not a
                       branch falls back to the nearest branch or العليا under
                       pickup. That value -- not `selectedBranch` -- is what
                       renders the highlight, what enables the confirm button and

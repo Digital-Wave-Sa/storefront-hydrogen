@@ -613,21 +613,34 @@ export async function loader({params, context, request}: LoaderFunctionArgs) {
     );
   }
 
-  let paymentGateway = orderNode.paymentGatewayNames?.[0] || 'Credit Card';
-  if (!isEn) {
-    if (
-      paymentGateway.toLowerCase().includes('cash on delivery') ||
-      paymentGateway.toLowerCase() === 'cod'
-    ) {
-      paymentGateway = 'الدفع عند الاستلام';
-    } else if (paymentGateway.toLowerCase().includes('bogus')) {
-      paymentGateway = 'بطاقة ائتمانية (تجريبي)';
-    } else if (
-      paymentGateway.toLowerCase().includes('credit') ||
-      paymentGateway.toLowerCase().includes('card')
-    ) {
-      paymentGateway = 'بطاقة ائتمانية';
-    }
+  /*
+    Name the payment method in both languages.
+
+    The whole mapping used to sit inside `if (!isEn)`, so English printed
+    whatever Shopify returned verbatim — and for a test order that is the
+    literal string «bogus», the name of Shopify's test gateway, shown to a
+    customer on their own order page. The Arabic side had been translated and
+    the English side had simply never been given the same treatment.
+
+    The classification happens once; only the label depends on the language.
+    Anything unrecognised still falls through with Shopify's own name, which
+    is better than inventing one — but it is now the exception rather than the
+    rule for every English shopper.
+  */
+  const rawGateway = orderNode.paymentGatewayNames?.[0] || '';
+  const gw = rawGateway.toLowerCase();
+
+  let paymentGateway =
+    rawGateway || (isEn ? 'Credit Card' : 'بطاقة ائتمانية');
+
+  if (gw.includes('cash on delivery') || gw === 'cod') {
+    paymentGateway = isEn ? 'Cash on Delivery' : 'الدفع عند الاستلام';
+  } else if (gw.includes('bogus')) {
+    paymentGateway = isEn
+      ? 'Credit Card (test)'
+      : 'بطاقة ائتمانية (تجريبي)';
+  } else if (gw.includes('credit') || gw.includes('card')) {
+    paymentGateway = isEn ? 'Credit Card' : 'بطاقة ائتمانية';
   }
 
   // Detect pickup order

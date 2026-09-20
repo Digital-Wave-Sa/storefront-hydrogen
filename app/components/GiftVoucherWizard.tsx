@@ -239,10 +239,44 @@ export function GiftVoucherWizard({
     if (!agreeTerms) return;
     setCartError('');
 
+    /*
+      Both fields are marked required with a red asterisk and neither was
+      checked. The inputs carry no `required`, and this function guarded only
+      `agreeTerms`, so an empty name went straight into the cart attributes —
+      and the summary substituted «Sara / سارة» for it, which reads as a real
+      recipient rather than as a blank. An empty email fared worse: it became
+      the literal string 'N/A' a few lines down, and a gift card was addressed
+      to that.
+
+      Only the gift path is checked. Sending to yourself takes the account's
+      own name and email, which is why 'نفسي' is a sensible default there and
+      an invented name is not one here.
+    */
+    if (giftMode === 'gift') {
+      if (!recipientName.trim()) {
+        setCartError(
+          isEn
+            ? 'Please enter the recipient\u2019s name.'
+            : 'يرجى إدخال اسم المستلم.',
+        );
+        return;
+      }
+      const email = recipientEmail.trim();
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        setCartError(
+          isEn
+            ? 'Please enter a valid email address for the recipient.'
+            : 'يرجى إدخال بريد إلكتروني صحيح للمستلم.',
+        );
+        return;
+      }
+    }
+
     try {
       const liveVariants = giftProduct?.variants?.nodes;
       const merchandiseId = getVariantForAmount(finalAmount, liveVariants);
-      const targetRecipientName = giftMode === 'self' ? (senderName || 'نفسي') : recipientName;
+      const targetRecipientName =
+        giftMode === 'self' ? senderName || 'نفسي' : recipientName.trim();
       const targetRecipientEmail = giftMode === 'self' ? (customerEmail || recipientEmail || 'N/A') : (recipientEmail || 'N/A');
 
       const selectedVariantObj = {
@@ -811,7 +845,19 @@ export function GiftVoucherWizard({
                 <div className="gift-summary-mini-card" dir={isEn ? 'ltr' : 'rtl'}>
                   <div className="mini-row">
                     <span>{isEn ? 'Recipient' : 'إلى'}</span>
-                    <strong>{recipientName || (isEn ? 'Sara' : 'سارة')}</strong>
+                    {/*
+                      An empty name is shown as a blank, not as «Sara». The
+                      placeholder belongs in the input, where it reads as an
+                      example; here it read as the person the voucher was
+                      going to.
+                    */}
+                    <strong>
+                      {recipientName.trim() || (
+                        <span className="opacity-40">
+                          {isEn ? '—' : '—'}
+                        </span>
+                      )}
+                    </strong>
                   </div>
                   <div className="mini-row">
                     <span>{isEn ? 'Sender' : 'من'}</span>
@@ -1019,6 +1065,8 @@ export function GiftVoucherWizard({
                       </label>
                       <input
                         type="text"
+                        required
+                        aria-required="true"
                         placeholder={isEn ? 'Sara' : 'سارة'}
                         value={recipientName}
                         onChange={(e) => setRecipientName(e.target.value)}
@@ -1033,6 +1081,8 @@ export function GiftVoucherWizard({
                       </label>
                       <input
                         type="email"
+                        required
+                        aria-required="true"
                         placeholder="sara@example.com"
                         value={recipientEmail}
                         onChange={(e) => setRecipientEmail(e.target.value)}

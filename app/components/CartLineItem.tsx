@@ -678,30 +678,33 @@ export function CartLineItem({
 
           {/* Body text */}
           <p style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", fontWeight: 500, fontSize: '16px', lineHeight: '20px', color: '#7D7D7D', textAlign: isEn ? 'left' : 'right', margin: 0 }}>
-            {isEn ? 'This product is out of stock. You can remove it or replace it.' : 'نفد هذا المنتج. يمكنك إزالته أو استبداله ببديل.'}
+            {/*
+              The old wording offered a choice the card no longer contains:
+              «you can remove it or replace it» beside a single Remove button
+              reads as a missing control. It now says the one thing that is
+              true — the order cannot go through with this line on it.
+            */}
+            {isEn
+              ? 'This product is out of stock. Please remove it to continue with your order.'
+              : 'نفد هذا المنتج. يرجى إزالته لإتمام طلبك.'}
           </p>
 
-          {/* Buttons — aligned to the start (right in RTL, left in LTR) */}
+          {/*
+            «عرض البدائل» was here and is gone.
+
+            It promised alternatives and linked to /collections/all — the whole
+            catalogue, 446 products, unfiltered. Not this product's category,
+            not anything comparable, and not restricted to what the branch that
+            just refused this item actually has. A shopper told «here are
+            alternatives» and handed the entire shop has been sent further from
+            an answer than if nothing had been offered.
+
+            Removed rather than repointed: a real alternatives list needs a
+            source of truth for «comparable», and there is none in the data
+            today. A button that lies is worse than one absent, and removal is
+            reversible the day that source exists.
+          */}
           <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '8px' }}>
-            {/* عرض البدائل */}
-            <Link
-              to={isEn ? '/en/collections/all' : '/collections/all'}
-              onClick={close}
-              style={{
-                display: 'flex', justifyContent: 'center', alignItems: 'center',
-                padding: '12px 40px',
-                height: '48px',
-                background: '#FEF8EB',
-                border: '1px solid #234745',
-                borderRadius: '25px',
-                fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
-                fontWeight: 700, fontSize: '16px', lineHeight: '20px',
-                color: '#234745', cursor: 'pointer', whiteSpace: 'nowrap',
-                textDecoration: 'none',
-              }}
-            >
-              {isEn ? 'Show alternatives' : 'عرض البدائل'}
-            </Link>
             {/* إزالة من السلة */}
             <CartForm fetcherKey={`remove-oos-${id}`} route={cartRoute} action={CartForm.ACTIONS.LinesRemove} inputs={{ lineIds: [id] }}>
               <button

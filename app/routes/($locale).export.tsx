@@ -967,7 +967,12 @@ export default function ExportPage() {
                     type="tel"
                     name="phone"
                     required
-                    placeholder="+966 50 123 4567"
+                    /* Masked, like every other phone field on the site. It read
+                       "+966 50 123 4567" — a plausible Saudi mobile, and so
+                       indistinguishable from the placeholder contact details QA-081
+                       asked to remove. The +966 stays because this page is read from
+                       outside the Kingdom. */
+                    placeholder="+966 5X XXX XXXX"
                     className={`w-full h-[46px] px-4 rounded-[12px] border border-gray-200 text-[14px] focus:outline-none focus:border-[#234745] ${isEn ? 'text-left' : 'text-right'}`}
                     dir="ltr"
                   />

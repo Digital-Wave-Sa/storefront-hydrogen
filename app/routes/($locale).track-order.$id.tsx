@@ -235,6 +235,7 @@ async function fetchOrderNode(rawId: string, context: any) {
                 }
               }
               tags
+              note
               order_status: metafield(namespace: "custom", key: "order_status") {
                 value
               }
@@ -482,6 +483,29 @@ async function viewerMaySeeOrder(orderNode: any, context: any) {
  */
 const RIYADH = 'Asia/Riyadh';
 
+/**
+ * «21 سبتمبر 2026، 2:06 م» — Gregorian, Riyadh time, Latin digits.
+ *
+ * `ar-SA` defaults to the Umm al-Qura calendar, so the page said «10 ربيع
+ * الآخر 1448هـ». Asking Intl for `-u-ca-gregory` is not enough on its own:
+ * how complete the worker's ICU is decides what comes back. Built by hand, the
+ * output is the same on every runtime. Riyadh has no daylight saving, so UTC+3
+ * is exact.
+ */
+const AR_MONTHS = [
+  'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
+  'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر',
+];
+function arabicGregorian(iso: string): string {
+  const t = new Date(iso);
+  if (Number.isNaN(t.getTime())) return '';
+  const r = new Date(t.getTime() + 3 * 60 * 60 * 1000);
+  const h24 = r.getUTCHours();
+  const h12 = h24 % 12 || 12;
+  const mm = String(r.getUTCMinutes()).padStart(2, '0');
+  return `${r.getUTCDate()} ${AR_MONTHS[r.getUTCMonth()]} ${r.getUTCFullYear()}، ${h12}:${mm} ${h24 < 12 ? 'ص' : 'م'}`;
+}
+
 export async function action({params, context, request}: ActionFunctionArgs) {
   const session = context.session;
   const rawId = decodeURIComponent(params.id || params['*'] || '');
@@ -665,7 +689,27 @@ export async function loader({params, context, request}: LoaderFunctionArgs) {
     shippingLineTitle.includes('self pickup') ||
     shippingLineTitle.includes('self-pickup') ||
     fulfillmentAttr.includes('pickup') ||
-    fulfillmentAttr.includes('استلام');
+    fulfillmentAttr.includes('استلام') ||
+    /*
+      Cake-builder orders carried their fulfilment type only as a tag and in
+      the note — the Branch / Fulfillment Type attributes went onto the line
+      item, not the order — so a pickup cake matched none of the checks above
+      and its summary said «لا يوجد عنوان». api.custom-cake-order now writes
+      the attributes on the order too; the tag keeps older orders right.
+    */
+    (Array.isArray(orderNode.tags) &&
+      orderNode.tags.some((t: string) => String(t).toLowerCase() === 'pickup'));
+
+  // Which branch a pickup order is collected from: the `Branch` attribute when
+  // there is one, otherwise the `[Pickup: <branch>, <date>]` the note carries.
+  const pickupBranch = (() => {
+    const fromAttr = customAttrs.find(
+      (a: any) => String(a?.key || '').toLowerCase() === 'branch',
+    )?.value;
+    if (fromAttr) return String(fromAttr).trim();
+    const m = String(orderNode.note || '').match(/\[Pickup:\s*([^,\]]+)/i);
+    return m ? m[1].trim() : '';
+  })();
 
   /**
    * An order of nothing but gift cards has no branch, no courier and nothing
@@ -909,7 +953,7 @@ export async function loader({params, context, request}: LoaderFunctionArgs) {
     id: orderNode.name,
     date: isEn
       ? `Ordered on ${new Date(orderNode.processedAt).toLocaleDateString('en-US', {year: 'numeric', month: 'long', day: 'numeric', timeZone: RIYADH})}, ${new Date(orderNode.processedAt).toLocaleTimeString('en-US', {hour: 'numeric', minute: '2-digit', timeZone: RIYADH})}`
-      : `طلب في ${new Date(orderNode.processedAt).toLocaleDateString('ar-SA-u-nu-latn', {year: 'numeric', month: 'long', day: 'numeric', timeZone: RIYADH})}, ${new Date(orderNode.processedAt).toLocaleTimeString('ar-SA-u-nu-latn', {hour: 'numeric', minute: '2-digit', timeZone: RIYADH})}`,
+      : `طلب في ${arabicGregorian(orderNode.processedAt)}`,
     status: statusLabel,
     step,
     isFailed,
@@ -1017,12 +1061,16 @@ export async function loader({params, context, request}: LoaderFunctionArgs) {
       taxesIncluded,
       total: fmtMoney(totalAmount),
     },
-    address: orderNode.shippingAddress
-      ? `${orderNode.shippingAddress.address1}, ${orderNode.shippingAddress.city}`
-      : isPickup
-        ? isEn
-          ? 'Store Pickup'
+    address: isPickup
+      ? isEn
+        ? pickupBranch
+          ? `Pickup — ${pickupBranch}`
+          : 'Store Pickup'
+        : pickupBranch
+          ? `استلام من فرع ${pickupBranch}`
           : 'استلام من الفرع'
+      : orderNode.shippingAddress
+        ? `${orderNode.shippingAddress.address1}, ${orderNode.shippingAddress.city}`
         : isEn
           ? 'No Address'
           : 'لا يوجد عنوان',
@@ -1046,6 +1094,25 @@ export default function TrackOrderPage() {
   const loaderData = useLoaderData<typeof loader>() as any;
   const {isEn} = loaderData;
   const orderData = loaderData.orderData;
+
+  /**
+   * A gift-card-only order has no delivery, no VAT at sale and a two-stage
+   * timeline, so the summary and the header pill follow that instead of the
+   * cake-shop defaults. The pill said «تم تأكيد الطلب» directly above a
+   * timeline that had already ticked «تم إرسال البطاقة» — the same rule as
+   * the timeline (paid AND the card's code on the order) now drives both.
+   */
+  const isGiftCardOrder = !!orderData.isDigitalOnly;
+  const giftCardSent =
+    isGiftCardOrder &&
+    String(orderData.rawFinancialStatus || '').toUpperCase() === 'PAID' &&
+    ((orderData.giftCardCodes?.length || 0) > 0 || (orderData.step || 0) >= 4);
+  const headerStatus =
+    giftCardSent && orderData.step !== 0 && !orderData.isFailed
+      ? isEn
+        ? 'Card Sent'
+        : 'تم إرسال البطاقة'
+      : orderData.status;
   const actionData = useActionData<typeof action>() as any;
   const navigation = useNavigation();
   const navigate = useNavigate();
@@ -1064,9 +1131,13 @@ export default function TrackOrderPage() {
         ),
       );
     return (
-      <span className="inline-flex items-baseline" dir="auto">
-        {parts}
-      </span>
+      /*
+        Plain inline, not `inline-flex`: in a flex box every text run becomes
+        its own flex item and the spaces at its edges are dropped, so «طلب في
+        21 سبتمبر 2026، 2:06 م» rendered as «طلب في21سبتمبر2026،2:06م» — every
+        space next to a number vanished.
+      */
+      <span dir="auto">{parts}</span>
     );
   };
 
@@ -1201,7 +1272,7 @@ export default function TrackOrderPage() {
               {isEn && (
                 <div className="w-2 h-2 rounded-full bg-[#A67E4E]"></div>
               )}
-              {orderData.status}
+              {headerStatus}
               {!isEn && (
                 <div className="w-2 h-2 rounded-full bg-[#A67E4E]"></div>
               )}
@@ -1306,33 +1377,47 @@ export default function TrackOrderPage() {
                     {forceEnNums(orderData.summary.subtotal)}
                   </span>
                 </div>
-                <div className="flex justify-between items-center text-[14px]">
-                  <span className="text-[#8B8B8B]">
-                    {isEn ? 'Delivery Fee' : 'رسوم التوصيل'}
-                  </span>
-                  <span
-                    className="font-bold text-[#1A1A1A] flex items-center gap-1"
-                    dir="ltr"
-                  >
-                    {orderData.summary.delivery !== 'Free' &&
-                      orderData.summary.delivery !== 'مجاني' && (
-                        <CurrencyIcon className="h-3 w-auto" />
-                      )}
-                    {forceEnNums(orderData.summary.delivery)}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center text-[14px]">
-                  <span className="text-[#8B8B8B]">
-                    {isEn ? 'Gift Wrapping' : 'تغليف الهدايا'}
-                  </span>
-                  <span
-                    className="font-bold text-[#1A1A1A] flex items-center gap-1"
-                    dir="ltr"
-                  >
-                    <CurrencyIcon className="h-3 w-auto" />{' '}
-                    {forceEnNums(orderData.summary.giftWrap)}
-                  </span>
-                </div>
+                {/* A gift card is sent by message — there is no delivery to price. */}
+                {!isGiftCardOrder && (
+                  <div className="flex justify-between items-center text-[14px]">
+                    <span className="text-[#8B8B8B]">
+                      {isEn ? 'Delivery Fee' : 'رسوم التوصيل'}
+                    </span>
+                    <span
+                      className="font-bold text-[#1A1A1A] flex items-center gap-1"
+                      dir="ltr"
+                    >
+                      {orderData.summary.delivery !== 'Free' &&
+                        orderData.summary.delivery !== 'مجاني' && (
+                          <CurrencyIcon className="h-3 w-auto" />
+                        )}
+                      {forceEnNums(orderData.summary.delivery)}
+                    </span>
+                  </div>
+                )}
+                {/*
+                  No gift-wrap row on orders that cannot be wrapped: a custom
+                  cake leaves the kitchen in its own box, and a gift card is a
+                  code sent by message. «تغليف الهدايا 0.00» on those only
+                  suggested an option that never existed.
+                */}
+                {!(
+                  orderData.isDigitalOnly ||
+                  (orderData.items || []).some((item: any) => isCustomCakeLine(item))
+                ) && (
+                  <div className="flex justify-between items-center text-[14px]">
+                    <span className="text-[#8B8B8B]">
+                      {isEn ? 'Gift Wrapping' : 'تغليف الهدايا'}
+                    </span>
+                    <span
+                      className="font-bold text-[#1A1A1A] flex items-center gap-1"
+                      dir="ltr"
+                    >
+                      <CurrencyIcon className="h-3 w-auto" />{' '}
+                      {forceEnNums(orderData.summary.giftWrap)}
+                    </span>
+                  </div>
+                )}
                 {orderData.summary.discount ? (
                   <div className="flex justify-between items-center text-[14px]">
                     <span className="text-[#8B8B8B]">
@@ -1347,24 +1432,27 @@ export default function TrackOrderPage() {
                     </span>
                   </div>
                 ) : null}
-                <div className="flex justify-between items-center text-[14px]">
-                  <span className="text-[#8B8B8B]">
-                    {orderData.summary.taxesIncluded
-                      ? isEn
-                        ? 'VAT (15%, included)'
-                        : 'ضريبة القيمة المضافة (15% — مشمولة)'
-                      : isEn
-                        ? 'VAT (15%)'
-                        : 'ضريبة القيمة المضافة (15%)'}
-                  </span>
-                  <span
-                    className="font-bold text-[#1A1A1A] flex items-center gap-1"
-                    dir="ltr"
-                  >
-                    <CurrencyIcon className="h-3 w-auto" />{' '}
-                    {forceEnNums(orderData.summary.vat)}
-                  </span>
-                </div>
+                {/* Gift cards carry no VAT when sold — it is charged when the card is spent. */}
+                {!isGiftCardOrder && (
+                  <div className="flex justify-between items-center text-[14px]">
+                    <span className="text-[#8B8B8B]">
+                      {orderData.summary.taxesIncluded
+                        ? isEn
+                          ? 'VAT (15%, included)'
+                          : 'ضريبة القيمة المضافة (15% — مشمولة)'
+                        : isEn
+                          ? 'VAT (15%)'
+                          : 'ضريبة القيمة المضافة (15%)'}
+                    </span>
+                    <span
+                      className="font-bold text-[#1A1A1A] flex items-center gap-1"
+                      dir="ltr"
+                    >
+                      <CurrencyIcon className="h-3 w-auto" />{' '}
+                      {forceEnNums(orderData.summary.vat)}
+                    </span>
+                  </div>
+                )}
               </div>
 
               <div className="w-full h-[1px] bg-[#EBEBEB] mb-6"></div>
@@ -1376,9 +1464,13 @@ export default function TrackOrderPage() {
                     {isEn ? 'Total' : 'الإجمالي'}
                   </span>
                   <span className="text-[11px] text-[#8B8B8B]">
-                    {isEn
-                      ? 'Inclusive of VAT'
-                      : 'شامل ضريبة القيمة المضافة 15%'}
+                    {isGiftCardOrder
+                      ? isEn
+                        ? 'VAT applies when the card is used'
+                        : 'تُحتسب الضريبة عند استخدام البطاقة'
+                      : isEn
+                        ? 'Inclusive of VAT'
+                        : 'شامل ضريبة القيمة المضافة 15%'}
                   </span>
                 </div>
                 <span
@@ -1401,7 +1493,7 @@ export default function TrackOrderPage() {
                 */}
                 <div className="flex justify-between items-center text-[14px]">
                   <span className="text-[#8B8B8B]">
-                    {orderData.isDigitalOnly
+                    {orderData.isDigitalOnly || orderData.isPickup
                       ? isEn
                         ? 'Delivery Method'
                         : 'طريقة التسليم'

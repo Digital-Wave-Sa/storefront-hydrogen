@@ -412,6 +412,33 @@ export async function action({request, context}: ActionFunctionArgs) {
       ...(timeSlot ? [{key: 'Time Slot', value: String(timeSlot)}] : []),
     ];
 
+    /**
+     * Saudi addresses only.
+     *
+     * The shop delivers inside Saudi Arabia, but nothing here checked the
+     * address it was handed. SDN-1460 to SDN-1462 went to a saved address whose
+     * country was Jordan: Shopify priced the draft in the Jordan market — USD,
+     * the cake re-rounded (900 became 918.75), the 33 riyal delivery fee read
+     * as 33 dollars (123.75 SAR) — and charged no VAT, because Saudi VAT does
+     * not apply outside Saudi Arabia. Refusing here is the only honest answer;
+     * silently rewriting the country would ship to an address the customer
+     * never gave.
+     */
+    if (!isPickup && shippingAddress?.country) {
+      const c = shippingAddress.country.trim().toLowerCase();
+      const saudi = ['sa', 'ksa', 'saudi arabia', 'السعودية', 'المملكة العربية السعودية'];
+      if (!saudi.includes(c)) {
+        return Response.json(
+          {
+            error: isEn
+              ? 'We deliver inside Saudi Arabia only. Please choose a Saudi address.'
+              : 'التوصيل متاح داخل السعودية فقط. اختر عنواناً داخل السعودية.',
+          },
+          {status: 400},
+        );
+      }
+    }
+
     // Use finalTotal (which already includes 15% VAT) so the checkout matches the builder
     const priceNum = Number(finalTotal || subtotal);
     if (!priceNum || priceNum <= 0) {
@@ -764,7 +791,22 @@ export async function action({request, context}: ActionFunctionArgs) {
       // draft otherwise carries no order-level attributes, so this is isolated:
       // set the ETP rule to hide COD when cart attribute `disable_cod` = true
       // (or, equivalently, the line property of the same name above).
-      customAttributes: [{key: 'disable_cod', value: 'true'}],
+      /**
+       * Branch, Branch ID, Fulfillment Type, date and slot belong on the ORDER.
+       *
+       * They were only ever spread into the line item's properties, so nothing
+       * that reads order attributes saw them: the routing webhook found no
+       * `Branch ID` and left every cake at «Shop location» (SDN-1463, a pickup
+       * from القريات, was never moved), and the order page could not tell a
+       * pickup cake from a delivery with no address. The line keeps its copy
+       * for the kitchen slip.
+       */
+      customAttributes: [{key: 'disable_cod', value: 'true'}, ...fulfilmentAttributes],
+      /**
+       * Price the draft in riyals whatever market Shopify would otherwise
+       * infer, so a stray address can never turn the invoice into dollars.
+       */
+      presentmentCurrencyCode: 'SAR',
       /**
        * A draft order has no local-pickup option -- `shippingLine` is the only
        * delivery field on it -- so pickup is expressed as a zero-priced line

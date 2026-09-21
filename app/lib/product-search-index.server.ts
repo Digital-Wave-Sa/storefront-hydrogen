@@ -292,11 +292,33 @@ function startBuild(env: any): Promise<IndexCache | null> {
   return building;
 }
 
-/** Kick the build off without waiting — for warming the index up front. */
-export function warmProductIndex(env: any): void {
+/**
+ * Kick the build off without waiting — for warming the index up front.
+ *
+ * Checks the shared copy first, as getIndex does, so a warm-up on a fresh
+ * isolate does not crawl the catalogue another isolate already crawled. Pass
+ * the request's `waitUntil` so Oxygen lets the work finish after the response.
+ */
+export function warmProductIndex(
+  env: any,
+  waitUntil?: (p: Promise<unknown>) => void,
+): void {
   const now = Date.now();
   if (cache && now - cache.timestamp < TTL_MS) return;
-  void startBuild(env);
+  if (building) return;
+  const work = (async () => {
+    const shared = await readSharedIndex();
+    if (shared) {
+      cache = shared;
+      return;
+    }
+    await startBuild(env);
+  })().catch(() => {});
+  if (waitUntil) {
+    try {
+      waitUntil(work);
+    } catch (e) {}
+  }
 }
 
 async function getIndex(env: any, waitMs = BUILD_WAIT_MS): Promise<IndexCache | null> {

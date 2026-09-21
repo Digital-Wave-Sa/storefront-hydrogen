@@ -8,6 +8,7 @@ import {
   useSearchParams,
   useSubmit,
   useLocation,
+  useNavigation,
 } from 'react-router';
 import {getPaginationVariables, Pagination, Image} from '@shopify/hydrogen';
 import {ProductItem} from '~/components/ProductItem';
@@ -114,6 +115,20 @@ export async function loader({context, request}: LoaderFunctionArgs) {
     .concat(searchParams.getAll('tag'));
   let q = searchParams.get('q') || '';
   if (q === '*') q = '';
+
+  /*
+    Start building the bilingual search index while the shopper is still
+    browsing, so their first Arabic search finds it ready. Cold, the build
+    crawls the whole catalogue and that first search sat for several seconds
+    with the old grid on screen and the new text in the box — it looked as if
+    the search had done nothing.
+  */
+  if (!q || !/[\u0600-\u06FF]/.test(q)) {
+    try {
+      const {warmProductIndex} = await import('~/lib/product-search-index.server');
+      warmProductIndex(context.env, (context as any).waitUntil);
+    } catch (e) {}
+  }
 
   const selectedCategories = searchParams.getAll('category');
 
@@ -538,6 +553,8 @@ const COLLECTION_FILTER_QUERY = `#graphql
 
 export default function CollectionAll() {
   const {products, collections, error} = useLoaderData<typeof loader>();
+  const navigation = useNavigation();
+  const currentLocation = useLocation();
   const [view, setView] = useState<'grid' | 'list'>('grid');
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -550,6 +567,18 @@ export default function CollectionAll() {
     );
   }
   const q = searchParams.get('q')?.toLowerCase() || '';
+
+  /*
+    A search on its way: same page, different «q». Until it lands the old grid
+    is still the loader's latest answer, so say so rather than show it as if
+    it were the result of what is in the box.
+  */
+  const isSearching =
+    navigation.state !== 'idle' &&
+    !!navigation.location &&
+    navigation.location.pathname === currentLocation.pathname &&
+    (new URLSearchParams(navigation.location.search).get('q') || '') !==
+      (searchParams.get('q') || '');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
 
@@ -797,6 +826,21 @@ export default function CollectionAll() {
                       return false;
                     return true;
                   });
+
+                  if (isSearching) {
+                    return (
+                      <div
+                        role="status"
+                        aria-live="polite"
+                        className="py-16 flex flex-col items-center gap-4 text-[#234745]"
+                      >
+                        <span className="h-9 w-9 rounded-full border-[3px] border-[#234745]/20 border-t-[#234745] animate-spin" />
+                        <span className="font-bold text-lg [font-family:'GE_Dinar_One',sans-serif]">
+                          {isEn ? 'Searching…' : 'جارٍ البحث…'}
+                        </span>
+                      </div>
+                    );
+                  }
 
                   return (
                     <>

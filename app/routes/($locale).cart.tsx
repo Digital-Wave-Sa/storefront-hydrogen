@@ -7,6 +7,7 @@ import {getShopTitle} from '~/lib/seo';
 import {stripCoordsMarker} from '~/lib/address-coords';
 
 import {pageTitle} from '~/lib/seo';
+import {redeemableAmount, cartHasGiftCard} from '~/lib/redeemable';
 export const meta: Route.MetaFunction = ({matches}) => {
   return [{title: pageTitle(matches, 'Cart', 'سلة التسوق')}];
 };
@@ -352,6 +353,42 @@ export async function action({request, context, params}: Route.ActionArgs) {
             currentCart.attributes?.find((a) => a.key === 'loyalty_points')?.value || '0',
           ) || 0;
 
+        /**
+         * Points may pay only for what is not a gift card, and the check runs
+         * BEFORE anything is voided or redeemed: SDLP debits the moment
+         * `redeemLoyaltyPoints` runs, and Shopify would then apply the code to
+         * the eligible items only, so an over-ask was simply lost. The points
+         * already on this cart are added back because they are about to be
+         * replaced.
+         */
+        {
+          const loyaltyApplies = !!currentCart.discountCodes?.some(
+            (dc: any) =>
+              dc?.applicable &&
+              (dc.code.startsWith('LOYAL-') || dc.code.startsWith('LOYALTY-')),
+          );
+          const ceiling = redeemableAmount(
+            currentCart,
+            loyaltyApplies ? previousPoints * 0.01 : 0,
+          );
+          const asked = pointsToRedeem * 0.01;
+          if (asked > ceiling + 0.005) {
+            return data(
+              {
+                error:
+                  ceiling <= 0 && cartHasGiftCard(currentCart)
+                    ? isEn
+                      ? 'Loyalty Points cannot be used to purchase Gift Cards.'
+                      : 'لا يمكن استخدام نقاط الولاء لشراء بطاقات الهدايا.'
+                    : isEn
+                      ? `You can redeem up to ${Math.floor(ceiling * 100).toLocaleString('en-US')} points on this cart${cartHasGiftCard(currentCart) ? ' — Loyalty Points cannot be used to purchase Gift Cards' : ''}.`
+                      : `يمكنك استبدال ${Math.floor(ceiling * 100).toLocaleString('en-US')} نقطة كحد أقصى على هذه السلة${cartHasGiftCard(currentCart) ? ' — لا يمكن استخدام نقاط الولاء لشراء بطاقات الهدايا' : ''}.`,
+              },
+              {status: 400},
+            );
+          }
+        }
+
         if (previousPoints > 0 || previousCode) {
           const {voidLoyaltyPoints, deleteLoyaltyDiscountCode} =
             await import('~/lib/loyalty.server');
@@ -455,6 +492,43 @@ export async function action({request, context, params}: Route.ActionArgs) {
             },
             {status: 400},
           );
+        }
+
+        /**
+         * Wallet credit may pay only for what is not a gift card. Checked
+         * before `applyStoreCredit`, which debits the wallet immediately —
+         * Shopify would then apply the code to eligible items only and the
+         * difference would be gone. Credit already on this cart is added back
+         * because it is about to be replaced.
+         */
+        {
+          const previousCredit =
+            parseFloat(
+              currentCart.attributes?.find((a: any) => a.key === 'store_credit_amount')
+                ?.value || '0',
+            ) || 0;
+          const creditApplies = !!currentCart.discountCodes?.some(
+            (dc: any) => dc?.applicable && dc.code.startsWith('CREDIT-'),
+          );
+          const ceiling = redeemableAmount(
+            currentCart,
+            creditApplies ? previousCredit : 0,
+          );
+          if (amountToApply > ceiling + 0.005) {
+            return data(
+              {
+                error:
+                  ceiling <= 0 && cartHasGiftCard(currentCart)
+                    ? isEn
+                      ? 'Wallet credit cannot be used to purchase Gift Cards.'
+                      : 'لا يمكن استخدام رصيد المحفظة لشراء بطاقات الهدايا.'
+                    : isEn
+                      ? `You can use up to ${ceiling.toFixed(2)} SAR on this cart${cartHasGiftCard(currentCart) ? ' — wallet credit cannot be used to purchase Gift Cards' : ''}.`
+                      : `يمكنك استخدام ${ceiling.toFixed(2)} ر.س كحد أقصى على هذه السلة${cartHasGiftCard(currentCart) ? ' — لا يمكن استخدام رصيد المحفظة لشراء بطاقات الهدايا' : ''}.`,
+              },
+              {status: 400},
+            );
+          }
         }
 
         const {SaadeddinApi} = await import('~/lib/saadeddin-api.server');

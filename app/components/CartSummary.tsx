@@ -16,6 +16,7 @@ import { localizeTimeSlot } from '~/lib/time-utils';
 import { stripCoordsMarker } from '~/lib/address-coords';
 import { useAdminLocations } from '~/lib/locations-meta';
 import { isDigitalOnlyCart as cartIsDigitalOnly, isNonShippableLine } from '~/lib/digital-lines';
+import { redeemableAmount, cartHasGiftCard } from '~/lib/redeemable';
 import { usePendingCartMutations, lineTotalOf } from '~/lib/cart-pending';
 import { trackSelectBranch, trackLoyaltyRedeem } from '~/lib/analytics-events';
 import {
@@ -1137,7 +1138,12 @@ export function CartSummary({ cart, layout, confirmedCart }: CartSummaryProps) {
                     </span>
                   </button>
                 </div>
-              ) : (
+              ) : isDigitalOnlyCart ? null : (
+                /*
+                  Not offered on a cart of gift cards: neither points nor
+                  wallet credit may pay for one, so both sections could only
+                  ever say no. The note beside the coupon field says why.
+                */
                 <>
                   <LoyaltyRedemptionUI isEn={isEn} cart={cart} />
                   <StoreCreditRedemptionUI isEn={isEn} cart={cart} />
@@ -1146,18 +1152,21 @@ export function CartSummary({ cart, layout, confirmedCart }: CartSummaryProps) {
 
               {/* IF DIGITAL ONLY CART: SHOW DIGITAL DELIVERY NOTICE */}
               {isDigitalOnlyCart ? (
-                <div className="w-full rounded-2xl p-4 bg-[#f0f7f5] border border-[#234745]/20 text-[#234745] flex items-center gap-3 shadow-xs">
-                  <div className="w-9 h-9 rounded-full bg-[#234745] text-white flex items-center justify-center font-bold text-base shrink-0">
-                    ✉️
+                <div className="w-full rounded-2xl p-4 bg-[#f0f7f5] border border-[#234745]/15 text-[#234745] flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-full bg-[#234745] flex items-center justify-center shrink-0" aria-hidden="true">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="5" width="18" height="14" rx="2" />
+                      <path d="m3 7 9 6 9-6" />
+                    </svg>
                   </div>
-                  <div className="text-[13px] leading-relaxed">
-                    <span className="font-bold block text-[14px] text-[#234745] mb-0.5">
-                      {isEn ? 'Digital Delivery (Email / SMS)' : 'توصيل إلكتروني فوري (عبر البريد الإلكتروني / SMS)'}
+                  <div className="flex flex-col gap-1 min-w-0">
+                    <span className="font-bold text-[14px] leading-snug text-[#234745]">
+                      {isEn ? 'Instant digital delivery' : 'توصيل إلكتروني فوري'}
                     </span>
-                    <span className="text-[#64748b] text-[12px]">
+                    <span className="text-[12px] leading-relaxed text-[#5E6B68]">
                       {isEn
-                        ? 'Digital gift card voucher code will be delivered electronically upon payment.'
-                        : 'سيتم إرسال رمز القسيمة الرقمية إلكترونياً فور إتمام الدفع دون الحاجة لاختيار فرع أو موعد.'}
+                        ? 'The card code is sent by email and SMS as soon as payment is complete — no branch or time to choose.'
+                        : 'يُرسل رمز البطاقة عبر البريد الإلكتروني والرسائل النصية فور إتمام الدفع، دون الحاجة لاختيار فرع أو موعد.'}
                     </span>
                   </div>
                 </div>
@@ -2158,13 +2167,9 @@ function CartCheckoutActions({
  * must agree or the cart's own arithmetic stops adding up.
  */
 function amountStillPayable(cart: any): number {
-  const subtotal = parseFloat(cart?.cost?.subtotalAmount?.amount || '0');
-  const orderDiscounts =
-    cart?.discountAllocations?.reduce((acc: number, allocation: any) => {
-      if (allocation?.targetType === 'SHIPPING_LINE') return acc;
-      return acc + parseFloat(allocation?.discountedAmount?.amount || '0');
-    }, 0) || 0;
-  return Math.max(0, subtotal - orderDiscounts);
+  // Gift cards excluded: neither points nor wallet credit may buy one. The
+  // cart action runs the same arithmetic, see lib/redeemable.ts.
+  return redeemableAmount(cart);
 }
 
 function PointsRedemptionError({message}: {message?: string | null}) {
@@ -2253,13 +2258,22 @@ function LoyaltyRedemptionUI({ isEn, cart }: { isEn: boolean, cart: any }) {
      * "we could not find out", and the console line names which failure it
      * was, so the next occurrence identifies itself.
      */
+    /*
+      Only the latest lookup may write. This effect re-runs as the identity
+      fills in (phone first, then the customer record), so two requests are
+      normally in flight; when the earlier one failed and landed LAST it set
+      `pointsUnavailable` on top of a balance the later one had already
+      loaded — «1,560 نقطة متاحة» beside «تعذّر تحميل نقاط الولاء».
+    */
+    let stale = false;
     setPointsUnavailable(false);
-
     fetch(`/api/loyalty-points?${q.toString()}`)
       .then(async (res) => {
         const data = await res.json().catch(() => null);
+        if (stale) return;
         if (res.ok && data?.success && typeof data?.data?.points === 'number') {
           setAvailablePoints(data.data.points);
+          setPointsUnavailable(false);
           return;
         }
         console.warn(
@@ -2271,10 +2285,14 @@ function LoyaltyRedemptionUI({ isEn, cart }: { isEn: boolean, cart: any }) {
         setPointsUnavailable(true);
       })
       .catch((err) => {
+        if (stale) return;
         console.warn('[Loyalty] Points lookup failed:', err?.message || err);
         setAvailablePoints(null);
         setPointsUnavailable(true);
       });
+    return () => {
+      stale = true;
+    };
   }, [customerIdentifier, phone, email, customerId]);
 
   if (!customerIdentifier) {
@@ -2411,9 +2429,13 @@ function LoyaltyRedemptionUI({ isEn, cart }: { isEn: boolean, cart: any }) {
                 ? (isEn
                     ? 'You need at least 100 points to redeem.'
                     : 'تحتاج إلى 100 نقطة على الأقل للاستبدال.')
-                : (isEn
-                    ? 'Your cart total is too small to redeem points yet.'
-                    : 'قيمة السلة غير كافية لاستبدال النقاط حالياً.')}
+                : amountStillPayable(cart) < 1 && cartHasGiftCard(cart)
+                  ? (isEn
+                      ? 'Loyalty Points cannot be used to purchase Gift Cards.'
+                      : 'لا يمكن استخدام نقاط الولاء لشراء بطاقات الهدايا.')
+                  : (isEn
+                      ? 'Your cart total is too small to redeem points yet.'
+                      : 'قيمة السلة غير كافية لاستبدال النقاط حالياً.')}
             </p>
           ) : (
             <>
@@ -2707,6 +2729,13 @@ function StoreCreditRedemptionUI({ isEn, cart }: { isEn: boolean; cart: any }) {
             )}
           </CartForm>
         </div>
+      ) : availableBalance !== null && availableBalance > 0 && maxApplicable <= 0 && cartHasGiftCard(cart) ? (
+        // Balance to spend, but nothing on the cart it may pay for.
+        <p className="text-[12px] text-gray-500 font-medium px-1">
+          {isEn
+            ? 'Wallet/store credit cannot be used to purchase Gift Cards.'
+            : 'لا يمكن استخدام رصيد المحفظة لشراء بطاقات الهدايا.'}
+        </p>
       ) : availableBalance !== null && availableBalance > 0 ? (
         <CartForm
           route={isEn ? '/en/cart' : '/cart'}
@@ -2925,9 +2954,14 @@ function CartDiscounts({
     isNonShippableLine(line),
   );
   const giftCardsOnly = hasGiftCardLine && cartIsDigitalOnly(cart);
+  /*
+    One sentence for all three rules — coupons, points and wallet credit are
+    all kept off gift cards (Discountable collection for codes,
+    lib/redeemable.ts for the points and wallet ceilings).
+  */
   const giftCardNote = isEn
-    ? 'Coupons cannot be used to purchase Gift Cards.'
-    : 'لا يمكن استخدام الكوبونات لشراء بطاقات الهدايا.';
+    ? 'Coupons, loyalty points and wallet credit cannot be used to purchase Gift Cards.'
+    : 'لا يمكن استخدام الكوبونات أو نقاط الولاء أو رصيد المحفظة لشراء بطاقات الهدايا.';
 
   return (
     <div aria-label={isEn ? "Discounts" : "الخصومات"} className="w-full relative space-y-2">
@@ -2966,12 +3000,15 @@ function CartDiscounts({
       )}
 
       {hasGiftCardLine && !(giftCardsOnly && blockedCodes.length > 0) && (
-        <p className="flex items-center gap-1.5 text-[12px] text-[#234745]/80 m-0 px-1">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="shrink-0" aria-hidden="true">
-            <circle cx="12" cy="12" r="10" />
-            <line x1="12" y1="16" x2="12" y2="12" />
-            <line x1="12" y1="8" x2="12.01" y2="8" />
-          </svg>
+        <p className="flex items-center gap-2.5 !mt-0 !mb-3 rounded-xl border border-[#EFE3CF] bg-[#FBF6EE] px-3 py-2.5 text-[12px] leading-relaxed text-[#7A5C33]">
+          <span className="w-7 h-7 rounded-full bg-white border border-[#EFE3CF] flex items-center justify-center shrink-0" aria-hidden="true">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#A67E4E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="8" width="18" height="4" rx="1" />
+              <path d="M12 8v13" />
+              <path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7" />
+              <path d="M7.5 8a2.5 2.5 0 0 1 0-5C9.5 3 12 8 12 8s2.5-5 4.5-5a2.5 2.5 0 0 1 0 5" />
+            </svg>
+          </span>
           <span>{giftCardNote}</span>
         </p>
       )}
@@ -3076,7 +3113,13 @@ function CartDiscounts({
             </dl>
           )}
 
-          <div hidden={codes.length > 0}>
+          {/*
+            No code field on a cart of gift cards: no coupon can apply to one,
+            so the field could only ever reject what was typed. The note above
+            says why. A code already on the cart still shows, so it can be
+            removed.
+          */}
+          <div hidden={codes.length > 0 || giftCardsOnly}>
             <UpdateDiscountForm discountCodes={codes}>
               {(fetcher: any) => {
                 const isLoading = fetcher.state !== 'idle';

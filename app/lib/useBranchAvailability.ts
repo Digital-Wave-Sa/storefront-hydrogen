@@ -61,6 +61,8 @@ interface PendingBatch {
   waiters: (() => void)[];
 }
 const pending = new Map<string, PendingBatch>();
+/** Keys whose request has been sent and not yet answered. */
+const inFlight = new Set<string>();
 const subscribers = new Set<() => void>();
 
 const cacheKey = (locationId: string, variantId: string) =>
@@ -107,6 +109,7 @@ async function flush(locationId: string) {
   if (batch.timer) clearTimeout(batch.timer);
 
   const ids = [...batch.ids];
+  ids.forEach((id) => inFlight.add(cacheKey(locationId, id)));
   for (let i = 0; i < ids.length; i += MAX_PER_REQUEST) {
     const chunk = ids.slice(i, i + MAX_PER_REQUEST);
     let answered = false;
@@ -153,6 +156,7 @@ async function flush(locationId: string) {
     }
   }
 
+  ids.forEach((id) => inFlight.delete(cacheKey(locationId, id)));
   batch.waiters.forEach((w) => w());
   subscribers.forEach((s) => s());
 }
@@ -161,7 +165,13 @@ function request(locationId: string, variantIds: string[]) {
   if (!locationId) return;
   // Skip ids a recent request already failed to answer, so a render loop
   // cannot turn one outage into a request per card per render.
-  const wanted = variantIds.filter((id) => !isParked(cacheKey(locationId, id)));
+  const now = Date.now();
+  const wanted = variantIds.filter((id) => {
+    const key = cacheKey(locationId, id);
+    if (isParked(key, now) || inFlight.has(key)) return false;
+    const hit = cache.get(key);
+    return !(hit && hit.expires > now);
+  });
   if (wanted.length === 0) return;
 
   let batch = pending.get(locationId);
@@ -197,6 +207,23 @@ export function useBranchAvailability(
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
+
+  /**
+   * Re-ask after every commit for anything that has fallen out of the cache.
+   *
+   * The effect above runs only when the branch or the id set changes. Cached
+   * answers expire after a minute, so on a page left open that long the next
+   * re-render — adding to cart, toggling the wishlist, any revalidation —
+   * found the ids uncached, not parked and not requested. `pending` was then
+   * true with nothing in flight to end it, and every card's button sat on the
+   * blank pulsing placeholder indefinitely. `request` skips anything cached,
+   * queued, in flight or parked, so this is free when nothing has expired.
+   */
+  useEffect(() => {
+    if (!locationId || variantIds.length === 0) return;
+    const {missing} = readCache(locationId, variantIds);
+    if (missing.length > 0) request(locationId, missing);
+  });
 
   if (!locationId || variantIds.length === 0) {
     // Nothing to ask about — not pending, so callers do not hold their UI.

@@ -241,6 +241,13 @@ export function GiftVoucherWizard({
    * structurally prevents reaching checkout another way.
    */
   const validateStep2 = (): boolean => {
+    /*
+      Both fields are checked on every press, not one at a time: stopping at
+      the first empty field meant a shopper fixed the name, pressed again, and
+      only then learned the email was missing too. Both messages render in the
+      same place, above the buttons.
+    */
+    let ok = true;
     if (giftMode === 'gift') {
       if (!recipientName.trim()) {
         setNameError(
@@ -248,20 +255,23 @@ export function GiftVoucherWizard({
             ? 'Please enter the recipient\u2019s name.'
             : 'يرجى إدخال اسم المستلم.',
         );
-        return false;
+        ok = false;
+      } else {
+        setNameError('');
       }
-      setNameError('');
 
       if (!recipientEmail.trim()) {
         setEmailError(isEn
           ? 'Please enter recipient email.'
           : 'يرجى إدخال البريد الإلكتروني للمستلم.');
-        return false;
-      }
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipientEmail.trim())) {
+        ok = false;
+      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipientEmail.trim())) {
         setEmailError(isEn ? 'Please enter a valid email address.' : 'يرجى إدخال بريد إلكتروني صحيح.');
-        return false;
+        ok = false;
+      } else {
+        setEmailError('');
       }
+      return ok;
     }
     setNameError('');
     setEmailError('');
@@ -1108,12 +1118,8 @@ export function GiftVoucherWizard({
                         }}
                         className="gift-input"
                         aria-invalid={nameError ? true : undefined}
+                        style={nameError ? {borderColor: '#EF4444'} : undefined}
                       />
-                      {nameError && (
-                        <p className="text-red-500 text-[13px] mt-1 font-medium">
-                          {nameError}
-                        </p>
-                      )}
                     </div>
 
                     <div className="gift-field">
@@ -1131,6 +1137,8 @@ export function GiftVoucherWizard({
                           setRecipientEmail(e.target.value);
                           if (emailError) setEmailError('');
                         }}
+                        aria-invalid={emailError ? true : undefined}
+                        style={emailError ? {borderColor: '#EF4444'} : undefined}
                         className={`gift-input font-en notranslate ${isEn ? 'text-left' : 'text-right'}`}
                       />
                     </div>
@@ -1166,8 +1174,16 @@ export function GiftVoucherWizard({
                       </div>
                     </div>
 
-                    {emailError && (
-                      <p className="text-red-500 text-[13px] mt-1 font-medium">{emailError}</p>
+                    {/* Name and email problems, together, in one place. */}
+                    {(nameError || emailError) && (
+                      <div className="flex flex-col gap-0.5 mt-1" role="alert">
+                        {nameError && (
+                          <p className="text-red-500 text-[13px] font-medium m-0">{nameError}</p>
+                        )}
+                        {emailError && (
+                          <p className="text-red-500 text-[13px] font-medium m-0">{emailError}</p>
+                        )}
+                      </div>
                     )}
 
                     <div className="flex items-center justify-between gap-4 mt-8 pt-4 border-t border-[#BBCFCD]/30" dir={isEn ? 'ltr' : 'rtl'}>

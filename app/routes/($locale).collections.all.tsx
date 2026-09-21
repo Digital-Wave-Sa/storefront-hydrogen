@@ -347,6 +347,34 @@ export async function loader({context, request}: LoaderFunctionArgs) {
               cache: storefront.CacheShort(),
             });
             allowed = new Set((res?.search?.nodes || []).map((n: any) => n.id));
+
+            /*
+              A «category» is sometimes a collection handle rather than a tag
+              (national-day is one), so the tag query finds nothing — the same
+              reason the listing falls back to COLLECTION_FILTER_QUERY above.
+              Do the same here, or every Arabic search inside such a category
+              reads «٠ منتجات».
+            */
+            if (allowed.size === 0 && selectedCategories.length > 0) {
+              const cols: any[] = await Promise.all(
+                selectedCategories.map((handle) =>
+                  storefront.query(COLLECTION_FILTER_QUERY, {
+                    variables: {
+                      handle,
+                      filters: filters.length > 0 ? filters : undefined,
+                      country: storefront.i18n.country,
+                      language: storefront.i18n.language,
+                    },
+                    cache: storefront.CacheShort(),
+                  }),
+                ),
+              );
+              for (const c of cols) {
+                for (const n of c?.collection?.products?.nodes || []) {
+                  if (n?.id) allowed.add(n.id);
+                }
+              }
+            }
           }
 
           let matched = ids
@@ -369,6 +397,8 @@ export async function loader({context, request}: LoaderFunctionArgs) {
               if (typeof parsed.offset === 'number') offset = parsed.offset;
             } catch (e) {}
           }
+          // A cursor from another result set can point past the end.
+          if (offset >= matched.length) offset = 0;
           const hasNextPage = offset + pageBy < matched.length;
           const hasPreviousPage = offset > 0;
           products = {
@@ -1414,6 +1444,11 @@ export function FilterSidebar({
     } else {
       params.delete('q');
     }
+    // A new search starts on page one. The cursor belongs to the previous
+    // result set: carried over, «ق» opened on page 2 (offset 12) of a result
+    // that fits on one page, and showed «٠ منتجات».
+    params.delete('cursor');
+    params.delete('direction');
     submit(params, {replace: true, preventScrollReset: true});
   };
 

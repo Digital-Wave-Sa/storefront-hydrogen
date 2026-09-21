@@ -647,6 +647,31 @@ export async function redeemLoyaltyPoints({
     // The discount value: 1 point = 0.01 SAR
     const discountAmount = (requested * 0.01).toFixed(2);
 
+    /**
+     * Points may not buy gift cards.
+     *
+     * This rule used `target_selection: 'all'`, and the Saadeddin Gift Card is
+     * an ordinary product to Shopify (`isGiftCard: false`), so redeemed points
+     * came off a gift card like anything else — loyalty points converted
+     * straight into a cash-equivalent card. The rule now targets the
+     * Discountable collection: every product except gift cards.
+     *
+     * Refused outright if the collection cannot be found. Falling back to
+     * 'all' would silently reopen exactly the hole this closes, and a
+     * redemption that fails with a clear message is recoverable where a gift
+     * card sold at a discount is not. The points are not deducted, because
+     * nothing past this point has run.
+     */
+    const {getDiscountableCollectionNumericId} = await import(
+      '~/lib/discount-scope.server'
+    );
+    const discountableCollectionId = await getDiscountableCollectionNumericId(env);
+    if (!discountableCollectionId) {
+      throw new Error(
+        'Discountable collection not found — refusing to create a loyalty code that would apply to gift cards',
+      );
+    }
+
     // Create a price rule (fixed amount, once per order, no minimum)
     const priceRuleRes = await fetch(
       `https://${adminDomain}/admin/api/2024-01/price_rules.json`,
@@ -660,7 +685,8 @@ export async function redeemLoyaltyPoints({
           price_rule: {
             title: `Loyalty Points Redemption - ${requested} pts`,
             target_type: 'line_item',
-            target_selection: 'all',
+            target_selection: 'entitled',
+            entitled_collection_ids: [discountableCollectionId],
             allocation_method: 'across',
             value_type: 'fixed_amount',
             value: `-${discountAmount}`,

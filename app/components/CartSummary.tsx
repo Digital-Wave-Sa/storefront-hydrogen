@@ -2905,6 +2905,30 @@ function CartDiscounts({
       ? (isEn ? `the code ${codes[0]}` : `كود ${codes[0]}`)
       : null;
 
+  /**
+   * No discount reduces a gift card — promo codes, loyalty points and store
+   * credit alike. Shopify enforces it: every discount targets the
+   * Discountable collection, which holds every product except gift cards
+   * (see discount-scope.server.ts). This only has to say so.
+   *
+   * Two cases, and the old copy was wrong for one of them:
+   *
+   *   gift cards only  Shopify marks the code `applicable: false`, so it
+   *                    lands in `blockedCodes` above — whose message blamed
+   *                    COMBINING. Nothing was being combined. The real reason
+   *                    replaces it.
+   *   mixed cart       the code applies, to everything but the gift card,
+   *                    silently. The note tells the shopper why the discount
+   *                    is smaller than they expected.
+   */
+  const hasGiftCardLine = (cart?.lines?.nodes || []).some((line: any) =>
+    isNonShippableLine(line),
+  );
+  const giftCardsOnly = hasGiftCardLine && cartIsDigitalOnly(cart);
+  const giftCardNote = isEn
+    ? 'Coupons cannot be used to purchase Gift Cards.'
+    : 'لا يمكن استخدام الكوبونات لشراء بطاقات الهدايا.';
+
   return (
     <div aria-label={isEn ? "Discounts" : "الخصومات"} className="w-full relative space-y-2">
       {/*
@@ -2928,7 +2952,9 @@ function CartDiscounts({
             </span>
           </div>
           <p className="text-[12px] m-0 opacity-90">
-            {blockedBy
+            {giftCardsOnly
+              ? giftCardNote
+              : blockedBy
               ? isEn
                 ? `It cannot be combined with ${blockedBy}. Remove one to use the other.`
                 : `لا يمكن دمجه مع ${blockedBy}. أزل أحدهما لاستخدام الآخر.`
@@ -2937,6 +2963,17 @@ function CartDiscounts({
                 : 'لا يمكن دمجه مع الخصم المطبَّق على سلتك.'}
           </p>
         </div>
+      )}
+
+      {hasGiftCardLine && !(giftCardsOnly && blockedCodes.length > 0) && (
+        <p className="flex items-center gap-1.5 text-[12px] text-[#234745]/80 m-0 px-1">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="shrink-0" aria-hidden="true">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="16" x2="12" y2="12" />
+            <line x1="12" y1="8" x2="12.01" y2="8" />
+          </svg>
+          <span>{giftCardNote}</span>
+        </p>
       )}
 
       {/* Promo Free Delivery Active Badge */}

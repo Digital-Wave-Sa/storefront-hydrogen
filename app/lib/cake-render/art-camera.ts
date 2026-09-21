@@ -92,3 +92,30 @@ export function artScale(cam: ArtCamera): number {
   if (cam.kind === 'round') return cam.kx;
   return Math.hypot(cam.m[0], cam.m[3]);
 }
+
+/**
+ * The overhead set (`/cake/v5/top/`), round formats only.
+ *
+ * Measured the same way as above, from the alpha of the shadowless `cakes/`
+ * frames: the centre is the alpha-weighted centroid and the scale comes from
+ * the disc's area, which is steadier than a bounding box because it averages
+ * the anti-aliased rim instead of trusting its outermost pixel. The camera
+ * looks straight down, so across and into the picture are the same scale and
+ * height does not move anything (`kz: 0`) — the side wall is out of sight.
+ * Width and height of every silhouette agree to within a pixel, which is what
+ * says the camera really is overhead.
+ */
+export const TOP_ART_CAMERAS: Record<string, ArtCamera> = {
+  'round-15x15-h8': {kind: 'round', cx: 624.9, cy: 629.8, kx: 36.3934, ky: 36.3934, kz: 0},
+  'round-20x20-h8': {kind: 'round', cx: 626.0, cy: 631.8, kx: 28.9697, ky: 28.9697, kz: 0},
+  'round-25x25-h8': {kind: 'round', cx: 626.0, cy: 631.7, kx: 24.0288, ky: 24.0288, kz: 0},
+  'round-30x30-h8': {kind: 'round', cx: 625.5, cy: 631.3, kx: 20.5351, ky: 20.5351, kz: 0},
+  'round-40x40-h8': {kind: 'round', cx: 626.0, cy: 631.7, kx: 15.9419, ky: 15.9419, kz: 0},
+  'round-50x50-h8': {kind: 'round', cx: 625.0, cy: 630.8, kx: 13.0132, ky: 13.0132, kz: 0},
+  'round-15x15-h14': {kind: 'round', cx: 626.0, cy: 629.9, kx: 31.1166, ky: 31.1166, kz: 0},
+  'round-20x20-h14': {kind: 'round', cx: 627.0, cy: 630.7, kx: 27.1828, ky: 27.1828, kz: 0},
+  'round-25x25-h14': {kind: 'round', cx: 626.5, cy: 631.3, kx: 22.5503, ky: 22.5503, kz: 0},
+  'round-30x30-h14': {kind: 'round', cx: 626.5, cy: 631.3, kx: 19.2733, ky: 19.2733, kz: 0},
+  'round-40x40-h14': {kind: 'round', cx: 626.5, cy: 631.3, kx: 14.9375, ky: 14.9375, kz: 0},
+  'round-50x50-h14': {kind: 'round', cx: 627.0, cy: 630.7, kx: 12.1924, ky: 12.1924, kz: 0},
+};

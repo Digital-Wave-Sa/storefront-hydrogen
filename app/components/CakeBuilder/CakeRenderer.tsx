@@ -32,6 +32,7 @@ import type {CakeChoice, CakeView, CakeAngle} from '~/lib/cake-render/compose';
 import {
   ART_CAMERAS,
   ART_FRAME,
+  TOP_ART_CAMERAS,
   artScale,
   projectArt,
 } from '~/lib/cake-render/art-camera';
@@ -649,6 +650,69 @@ async function paintArt(
 }
 
 /**
+ * Paint the top view from the overhead art (`/cake/v5/top/`).
+ *
+ * The same three layers as the front — board, tinted cake, toppings — from a
+ * second set rendered straight down, and the message and photo laid on the
+ * top face through `TOP_ART_CAMERAS`. Overhead, the top face IS the picture:
+ * it is a true circle, so the face transform is a plain scale and the writing
+ * reads flat, the way a shopper checks spelling on a real cake.
+ *
+ * Round only: that is the set Saadeddin supplied. Height needs no growing
+ * here either — from above an 8 cm and a 10 cm cake are the same disc — so a
+ * borrowed still is chosen by `artFor` exactly as for the front, and nothing
+ * is stretched. Returns false for anything it cannot serve.
+ */
+async function paintTopArt(
+  ctx: CanvasRenderingContext2D,
+  formatId: string,
+  colorId: string,
+  decorationId: string,
+  edge: number,
+  extras: {
+    text: typeof DEFAULT_TEXT;
+    photo: PhotoOpts;
+    photoSrc?: string | null;
+  },
+): Promise<boolean> {
+  const {findFormat, findColor} = await import('~/lib/cake-render/catalog');
+  const format = findFormat(formatId);
+  if (format?.shape !== 'round') return false;
+  const asset = artFor(format);
+  const cam = asset ? TOP_ART_CAMERAS[asset] : undefined;
+  if (!asset || !cam) return false;
+
+  const [board, cake] = await Promise.all([
+    artImage(`/cake/v5/top/boards/${asset}.webp`),
+    artImage(`/cake/v5/top/cakes/${asset}.webp`),
+  ]);
+  if (!board || !cake) return false;
+
+  const colour = findColor(colorId);
+  const rgb = !colour || colour.id === '00' ? null : colour.rgb;
+
+  ctx.drawImage(board, 0, 0, edge, edge);
+  ctx.drawImage(
+    tintedCake(cake, edge, rgb, `top/cakes/${asset}@${edge}:${colorId}`),
+    0,
+    0,
+    edge,
+    edge,
+  );
+
+  if (decorationId && decorationId !== 'none') {
+    const deco = await artImage(`/cake/v5/top/toppings/${decorationId}/${asset}.webp`);
+    // A decoration with no overlay leaves a plain cake, never a blank canvas.
+    if (deco) ctx.drawImage(deco, 0, 0, edge, edge);
+  }
+
+  if (extras.photoSrc || extras.text.value.trim()) {
+    await paintOnFace(ctx, cam, asset, edge, extras.text, extras.photo, extras.photoSrc);
+  }
+  return true;
+}
+
+/**
  * Punch the cut out of a layer.
  *
  * The outline is exact geometry, but the photograph is not: the real cake has
@@ -983,8 +1047,9 @@ export default function CakeRenderer({
         swaps Saadeddin's cake for a different one; the engine is only reached
         when the art cannot serve the format at all.
       */
-      const artVariant: 'whole' | 'cut' | null =
-        angle !== 'original' ? null
+      const artVariant: 'whole' | 'cut' | 'top' | null =
+        view === 'whole' && angle === 'high' ? 'top'
+        : angle !== 'original' ? null
         : view === 'whole' ? 'whole'
         : view === 'cut' ? 'cut'
         : null;
@@ -997,20 +1062,24 @@ export default function CakeRenderer({
           canvas.height = edge;
           const ctx = canvas.getContext('2d')!;
           ctx.clearRect(0, 0, edge, edge);
-          const painted = await paintArt(
-            ctx,
-            formatId,
-            colorId,
-            decorationId,
-            fillingId,
-            edge,
-            artVariant,
-            {
-              text: {...DEFAULT_TEXT, ...text},
-              photo: {...DEFAULT_PHOTO, ...photo},
-              photoSrc,
-            },
-          );
+          const extras = {
+            text: {...DEFAULT_TEXT, ...text},
+            photo: {...DEFAULT_PHOTO, ...photo},
+            photoSrc,
+          };
+          const painted =
+            artVariant === 'top'
+              ? await paintTopArt(ctx, formatId, colorId, decorationId, edge, extras)
+              : await paintArt(
+                  ctx,
+                  formatId,
+                  colorId,
+                  decorationId,
+                  fillingId,
+                  edge,
+                  artVariant,
+                  extras,
+                );
           if (token !== revision.current) return;
           if (painted) {
             setStatus('ready');

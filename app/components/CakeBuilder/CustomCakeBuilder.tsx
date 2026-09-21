@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo, useEffect } from 'react';
+import React, { useState, useRef, useMemo, useEffect, useCallback } from 'react';
 import { useRouteLoaderData, useFetcher, useRevalidator } from 'react-router';
 import { DeliveryPickupModal } from '~/components/DeliveryPickupModal';
 import { Cake, Palette, Sparkles, MessageSquare, Layers, ArrowRight, ArrowLeft, Eye, Compass, Clock, Check } from 'lucide-react';
@@ -64,9 +64,10 @@ const MessageIcon = ({ className }: { className?: string }) => (
  * engine thinks in views (whole, cut, slice, filling, combo) crossed with four
  * fixed cameras, so the mapping lives here rather than renaming buttons.
  *
- * "Top" is the whole cake at the 52° camera, not a true overhead: straight down
- * on a cake is a flat disc, which reads as a coaster. 52° still shows the
- * decoration layout, which is what anyone pressing Top is looking for.
+ * "Top" asks the renderer for the whole cake at 'high'. For a round cake that
+ * is answered from Saadeddin's overhead art (`/cake/v5/top/`, see
+ * `paintTopArt`), which ignores the engine camera entirely; the camera below
+ * only matters if that art cannot be drawn and the engine takes over.
  */
 const VIEW_TO_RENDERER: Record<
   'front' | 'top' | 'sliced',
@@ -1010,9 +1011,11 @@ export default function CustomCakeBuilder({
    * and a whole cake, so الشكل الخارجي is the one view that is genuinely the
    * shopper's cake: their format, their colour, their toppings.
    *
-   * من فوق has no art. What we showed was the front still stretched to a
-   * 52-degree camera, and it looked like it. The button stays where shoppers
-   * expect it but is disabled, marked قريباً, until a top set arrives.
+   * من فوق has art for ROUND cakes only — the overhead set in
+   * `/cake/v5/top/`. For a square or rectangle the button stays where
+   * shoppers expect it but is disabled and marked قريباً, because the only
+   * alternative is the front still stretched to a 52-degree camera, which is
+   * what we used to show and it looked like it.
    *
    * القطعة (formerly من الداخل) shows `slices/presentation-slice-NN.webp`: the
    * vendor's own standalone wedge of the chosen flavour. It is a picture of
@@ -1023,7 +1026,26 @@ export default function CustomCakeBuilder({
    * art. The renderer keeps drawing the front view underneath so the checkout
    * snapshot (`cake-3d-canvas`) is always there.
    */
-  const supportedViews = {front: true, top: false, sliced: true} as const;
+  const topHasArt = Boolean(selections.shape?.id?.startsWith('round-'));
+  const supportedViews = {front: true, top: topHasArt, sliced: true} as const;
+
+  // Switching to a square while looking from above would leave the shopper on
+  // a view that no longer exists.
+  useEffect(() => {
+    if (view === 'top' && !topHasArt) setView('front');
+  }, [view, topHasArt]);
+
+  /**
+   * The checkout snapshot is the FRONT of the cake: it is what the branch
+   * bakes from. When the shopper is looking from above, handleCheckout flips
+   * back to the front and waits for that frame before capturing it.
+   */
+  const renderWaiter = useRef<(() => void) | null>(null);
+  const handlePreviewRendered = useCallback(() => {
+    const done = renderWaiter.current;
+    renderWaiter.current = null;
+    done?.();
+  }, []);
 
   const {view: rendererView, angle: rendererAngle} =
     VIEW_TO_RENDERER[view === 'sliced' ? 'front' : view];
@@ -1413,6 +1435,19 @@ export default function CustomCakeBuilder({
     }
 
     setIsSubmitting(true);
+
+    if (view === 'top') {
+      await new Promise<void>((resolve) => {
+        renderWaiter.current = resolve;
+        setView('front');
+        // Never hold the order hostage to a preview: capture whatever is
+        // there after a couple of seconds.
+        setTimeout(() => {
+          if (renderWaiter.current === resolve) renderWaiter.current = null;
+          resolve();
+        }, 2500);
+      });
+    }
 
     // Capture the 3D Canvas as a screenshot
     let cakePreviewImage = null;
@@ -1906,104 +1941,19 @@ export default function CustomCakeBuilder({
             </button>
 
             {/*
-              Hidden on phones, because something in this bar had to give.
-
-              Every child here is `shrink-0` inside a fixed 144px row, so a
-              fourth control does not compress the others -- it pushes the
-              total off the edge, which is what «ابدأ من جديد» did: رجوع +
-              title + button + total came to roughly 390px against a 360-390px
-              screen, and «الإجمالي» was the item that fell off. Hiding the
-              button's label was not enough; the button itself is only ~44px of
-              the overflow.
-
-              The title is what gives, because it is the one thing here that is
-              not a control AND is already on screen: the content column opens
-              with «صمّم كيكتك بلمستك الخاصة» immediately below this bar, so a
-              phone loses nothing but the duplicate. Back, start over and the
-              running total all do something no other element does.
+              Visible at every width again. It was hidden on phones only
+              because «ابدأ من جديد» sat in this row as a fourth full pill and
+              pushed the total off a 360px screen; that button now lives under
+              the total, and `truncate` inside this `min-w-0` group lets the
+              title give way first if space is ever short.
             */}
-            <h1 className="hidden sm:block truncate text-[18px] md:text-2xl font-extrabold leading-tight text-white m-0">
+            <h1 className="block truncate text-[16px] sm:text-[18px] md:text-2xl font-extrabold leading-tight text-white m-0">
               {isEn ? 'Design Your Cake' : 'صمم كيكتك'}
             </h1>
           </div>
 
-          {/* Left Group in RTL: Start Over + Total Price */}
+          {/* Left Group in RTL: Total Price, with Start Over under it */}
           <div className="flex items-center gap-3 md:gap-5 shrink-0">
-            {/*
-              Start over.
-
-              In the header rather than beside the page title because this is
-              where the design's other whole-cake controls already are -- رجوع
-              and the running total -- and because the header is the one thing
-              on this page that does not scroll away. A customer who wants out
-              on step 4 should not have to scroll back to step 1 to find the
-              door.
-
-              Only drawn once there is something to clear. On an untouched
-              builder it would be a control that visibly does nothing, which
-              reads as broken rather than as considered; `hasAnySelection` is
-              the same test the autosave uses, so the button is present exactly
-              when a saved draft exists.
-
-              Two presses, not one, and the second is styled as the destructive
-              one. See `confirmingReset` for why this is not a window.confirm.
-
-              The label hides below `sm`. The header already carries رجوع, the
-              title and the total on a 144px bar, and a fourth full-width pill
-              overflows a 360px screen. The icon is the affordance there, the
-              red confirm state still reads, and `aria-label` carries the full
-              wording at every width.
-            */}
-            {hasAnySelection && (
-              <button
-                type="button"
-                onClick={() =>
-                  confirmingReset ? resetBuilder() : setConfirmingReset(true)
-                }
-                onBlur={() => setConfirmingReset(false)}
-                aria-label={
-                  isEn
-                    ? confirmingReset
-                      ? 'Confirm starting over — this clears your design'
-                      : 'Start over'
-                    : confirmingReset
-                      ? 'تأكيد البدء من جديد — سيُمسح تصميمك'
-                      : 'ابدأ من جديد'
-                }
-                className={`flex items-center gap-[8px] px-3 md:px-5 py-2.5 rounded-[25px] text-[12px] md:text-[16px] font-bold transition-all shrink-0 active:scale-95 ${
-                  confirmingReset
-                    ? 'bg-[#E64950] hover:bg-[#cf3f46] text-white'
-                    : 'bg-[#9FB7AE] hover:bg-[#8BA19C] text-[#234745]'
-                } ${isEn ? 'font-en' : ''}`}
-                style={isEn ? {} : {fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif"}}
-                dir={isEn ? 'ltr' : 'rtl'}
-              >
-                <svg
-                  width="15"
-                  height="15"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="shrink-0"
-                  aria-hidden="true"
-                >
-                  <path d="M3 12a9 9 0 1 0 3-6.7" />
-                  <polyline points="3 3 3 8.5 8.5 8.5" />
-                </svg>
-                <span className="hidden sm:inline whitespace-nowrap">
-                  {isEn
-                    ? confirmingReset
-                      ? 'Sure?'
-                      : 'Start over'
-                    : confirmingReset
-                      ? 'متأكد؟'
-                      : 'ابدأ من جديد'}
-                </span>
-              </button>
-            )}
 
             <div className={`flex flex-col items-end shrink-0 ${isEn ? 'text-right' : 'text-left'}`}>
               <span className="text-[10px] md:text-sm font-medium mb-0.5 opacity-90">{isEn ? 'Total' : 'الإجمالي'}</span>
@@ -2013,6 +1963,67 @@ export default function CustomCakeBuilder({
                   {calculateTotal().toFixed(2)}
                 </span>
               </div>
+              {/*
+                Start over, under the total it resets.
+
+                It used to be a full pill in the row beside رجوع, the same size
+                and colour as it — two equal buttons side by side, one of which
+                throws the whole design away. Under the price it reads as a
+                quiet secondary action tied to the number above, it no longer
+                competes with رجوع for width on a phone (so its label can show
+                at every size), and the red confirm state stands out against
+                the outline around it.
+              */}
+              {hasAnySelection && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    confirmingReset ? resetBuilder() : setConfirmingReset(true)
+                  }
+                  onBlur={() => setConfirmingReset(false)}
+                  aria-label={
+                    isEn
+                      ? confirmingReset
+                        ? 'Confirm starting over — this clears your design'
+                        : 'Start over'
+                      : confirmingReset
+                        ? 'تأكيد البدء من جديد — سيُمسح تصميمك'
+                        : 'ابدأ من جديد'
+                  }
+                  className={`mt-1.5 inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-[11px] md:text-[12px] font-bold transition-all active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/70 ${
+                    confirmingReset
+                      ? 'bg-[#E64950] border-[#E64950] text-white hover:bg-[#cf3f46]'
+                      : 'bg-white/10 border-white/25 text-white/85 hover:bg-white/20 hover:text-white'
+                  } ${isEn ? 'font-en' : ''}`}
+                  style={isEn ? {} : {fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif"}}
+                  dir={isEn ? 'ltr' : 'rtl'}
+                >
+                  <svg
+                    width="12"
+                    height="12"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.4"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="shrink-0"
+                    aria-hidden="true"
+                  >
+                    <path d="M3 12a9 9 0 1 0 3-6.7" />
+                    <polyline points="3 3 3 8.5 8.5 8.5" />
+                  </svg>
+                  <span className="whitespace-nowrap">
+                    {isEn
+                      ? confirmingReset
+                        ? 'Tap again to clear'
+                        : 'Start over'
+                      : confirmingReset
+                        ? 'اضغط مرة أخرى للمسح'
+                        : 'ابدأ من جديد'}
+                  </span>
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -2781,6 +2792,7 @@ export default function CustomCakeBuilder({
                   decorationId={selections.style?.id || 'none'}
                   view={rendererView}
                   angle={rendererAngle}
+                  onRendered={handlePreviewRendered}
                   photoSrc={selections.uploadedImage}
                   text={{
                     /*
@@ -2824,9 +2836,9 @@ export default function CustomCakeBuilder({
                   </button>
 
                   {/*
-                    Kept in place but disabled: there is no top-view art yet.
-                    Hiding it would move the other buttons around for no
-                    reason; greying it out says "coming" rather than "gone".
+                    Disabled, not hidden, for shapes with no top-view art (only
+                    round has it). Hiding it would move the other buttons
+                    around; greying it out says "coming" rather than "gone".
                   */}
                   <button
                     type="button"

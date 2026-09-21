@@ -296,6 +296,105 @@ export async function loader({context, request}: LoaderFunctionArgs) {
       }
     }
 
+    /**
+     * Arabic text search comes from our bilingual index, not Shopify's.
+     *
+     * Shopify's search indexes only the shop's primary language (English), so
+     * an Arabic query matched stray text and missed the Arabic titles
+     * entirely: «مانجو فلفت كبير» reported «1 منتجات» and then showed none,
+     * because the one hit it found was dropped by the title check in the
+     * grid. The same index serves the typeahead and /search, so all three now
+     * agree.
+     *
+     * Tags, categories and facet filters still apply: when any is active the
+     * same query without the text is run to get the set they allow (first
+     * 250), and the index hits are kept, in relevance order, within it.
+     * Pagination is in memory with offset cursors, as the category fallback
+     * above already does. If the index cannot answer, Shopify's result stands.
+     */
+    if (q && /[\u0600-\u06FF]/.test(q)) {
+      try {
+        const {searchProductIndex} = await import('~/lib/product-search-index.server');
+        const {hits, ready} = await searchProductIndex(context.env, q, 250, 20000);
+        if (ready) {
+          const ids = hits.map((h) => h.id);
+          const byId = new Map<string, any>();
+          for (let i = 0; i < ids.length; i += 250) {
+            const res: any = await storefront.query(PRODUCTS_BY_IDS_QUERY, {
+              variables: {
+                ids: ids.slice(i, i + 250),
+                country: storefront.i18n.country,
+                language: storefront.i18n.language,
+              },
+              cache: storefront.CacheShort(),
+            });
+            for (const n of res?.nodes || []) if (n?.id) byId.set(n.id, n);
+          }
+
+          let allowed: Set<string> | null = null;
+          const otherParts = queryParts.slice(1);
+          if (otherParts.length > 0 || filters.length > 0) {
+            const res: any = await storefront.query(CATALOG_QUERY, {
+              variables: {
+                first: 250,
+                query: otherParts.length > 0 ? otherParts.join(' AND ') : '*',
+                filters: filters.length > 0 ? filters : undefined,
+                sortKey: 'RELEVANCE' as any,
+                reverse: false,
+                country: storefront.i18n.country,
+                language: storefront.i18n.language,
+              },
+              cache: storefront.CacheShort(),
+            });
+            allowed = new Set((res?.search?.nodes || []).map((n: any) => n.id));
+          }
+
+          let matched = ids
+            .map((id) => byId.get(id))
+            .filter((n: any) => n && (!allowed || allowed.has(n.id)));
+          if (sortKey === 'PRICE') {
+            matched = [...matched].sort((a: any, b: any) => {
+              const pa = parseFloat(a.priceRange?.minVariantPrice?.amount || '0');
+              const pb = parseFloat(b.priceRange?.minVariantPrice?.amount || '0');
+              return reverse ? pb - pa : pa - pb;
+            });
+          }
+
+          const pageBy = 12;
+          let offset = 0;
+          const cursorParam = searchParams.get('cursor');
+          if (cursorParam) {
+            try {
+              const parsed = JSON.parse(atob(cursorParam));
+              if (typeof parsed.offset === 'number') offset = parsed.offset;
+            } catch (e) {}
+          }
+          const hasNextPage = offset + pageBy < matched.length;
+          const hasPreviousPage = offset > 0;
+          products = {
+            ...(products || {}),
+            totalCount: matched.length,
+            nodes: matched.slice(offset, offset + pageBy),
+            pageInfo: {
+              hasNextPage,
+              hasPreviousPage,
+              startCursor: hasPreviousPage
+                ? btoa(JSON.stringify({offset: Math.max(0, offset - pageBy)}))
+                : null,
+              endCursor: hasNextPage
+                ? btoa(JSON.stringify({offset: offset + pageBy}))
+                : null,
+            },
+          } as any;
+        }
+        console.log(
+          `[Collections] Arabic query «${q}»: index ${ready ? `ready, ${hits.length} hits` : 'NOT ready — using Shopify results'}`,
+        );
+      } catch (e) {
+        console.error('[Collections] Arabic index search failed; using Shopify results:', e);
+      }
+    }
+
     if (!response.search) {
       return data({
         products: null,
@@ -648,7 +747,15 @@ export default function CollectionAll() {
               <Pagination connection={products}>
                 {({nodes, isLoading, PreviousLink, NextLink}) => {
                   const filteredNodes = nodes.filter((n: any) => {
-                    if (q && !n.title.toLowerCase().includes(q)) return false;
+                    // Arabic queries were matched word by word on the server
+                    // (see the index search in the loader); a raw substring
+                    // check here would drop «مانجو فلفت كبير» for word order.
+                    if (
+                      q &&
+                      !/[\u0600-\u06FF]/.test(q) &&
+                      !n.title.toLowerCase().includes(q)
+                    )
+                      return false;
                     const pTags = (n.tags || []).map((t: string) =>
                       t.toLowerCase(),
                     );
@@ -2416,6 +2523,21 @@ async function countProductsExact(
     return null;
   }
 }
+
+const PRODUCTS_BY_IDS_QUERY = `#graphql
+  query CatalogByIds(
+    $ids: [ID!]!
+    $country: CountryCode
+    $language: LanguageCode
+  ) @inContext(country: $country, language: $language) {
+    nodes(ids: $ids) {
+      ... on Product {
+        ...AllProductItem
+      }
+    }
+  }
+  ${PRODUCT_ITEM_FRAGMENT}
+` as const;
 
 const CATALOG_QUERY = `#graphql
   query CatalogSearch(

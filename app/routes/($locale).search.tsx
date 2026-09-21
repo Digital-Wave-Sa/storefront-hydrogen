@@ -130,6 +130,79 @@ export async function loader({request, context}: LoaderFunctionArgs) {
     throw new Error('No search data returned from Shopify API');
   }
 
+  /**
+   * Arabic queries are answered from our own bilingual index, not Shopify's.
+   *
+   * The shop's primary language is English and Shopify's search indexes only
+   * primary-language content — the Arabic titles are translations it never
+   * compares against. An Arabic query therefore matched on whatever stray
+   * Arabic it could find (descriptions, handles, tags): «مانجو فلفت كبير»
+   * returned «تشيز كيك مانجو كبير» and not the product actually called
+   * «مانجو فلفت كبير». The typeahead already used this index; the results
+   * page now does too, so the two agree.
+   *
+   * Filters still come from Shopify: the same filters are run against the
+   * whole catalogue ('*'), which gives the facet counts and the set of
+   * products the filters allow, and the index hits are kept in their own
+   * relevance order within that set. If the index is not available in time,
+   * the Shopify results stand rather than an empty page.
+   */
+  if (/[\u0600-\u06FF]/.test(searchTerm) && searchTerm.trim() !== '*') {
+    try {
+      const {searchProductIndex} = await import('~/lib/product-search-index.server');
+      const {hits, ready} = await searchProductIndex(
+        context.env,
+        searchTerm.trim(),
+        250,
+        20000,
+      );
+      console.log(
+        `[Search] Arabic query «${searchTerm.trim()}»: index ${ready ? `ready, ${hits.length} hits` : 'NOT ready — using Shopify results'}`,
+      );
+      if (ready) {
+        const ids = hits.map((h) => h.id);
+        const [byIds, allowed] = await Promise.all([
+          ids.length
+            ? storefront.query(SEARCH_BY_IDS_QUERY as any, {
+                variables: {
+                  ids,
+                  country: storefront.i18n.country,
+                  language: storefront.i18n.language,
+                },
+              })
+            : Promise.resolve({nodes: []}),
+          storefront.query(SEARCH_QUERY as any, {
+            variables: {
+              query: '*',
+              productFilters: filters.length > 0 ? filters : undefined,
+              sortKey: 'RELEVANCE',
+              reverse: false,
+              first: 250,
+              country: storefront.i18n.country,
+              language: storefront.i18n.language,
+            },
+          }),
+        ]);
+        const byId = new Map<string, any>(
+          ((byIds as any)?.nodes || [])
+            .filter((n: any) => n?.id)
+            .map((n: any) => [n.id, n]),
+        );
+        const allowedIds = filters.length
+          ? new Set(((allowed as any)?.products?.nodes || []).map((n: any) => n.id))
+          : null;
+        searchPayload.products.nodes = ids
+          .map((id) => byId.get(id))
+          .filter((n: any) => n && (!allowedIds || allowedIds.has(n.id)));
+        if ((allowed as any)?.products?.productFilters) {
+          searchPayload.products.productFilters = (allowed as any).products.productFilters;
+        }
+      }
+    } catch (e) {
+      console.error('[Search] Arabic index search failed; using Shopify results:', e);
+    }
+  }
+
   // Strictly filter by selected categories if 'category' params exist
   const selectedCategories = searchParams.getAll('category');
   if (selectedCategories.length > 0) {
@@ -737,6 +810,81 @@ const SEARCH_QUERY = `#graphql
         id
         title
         handle
+      }
+    }
+  }
+`;
+
+/** The same product fields as SEARCH_QUERY, fetched by id for index hits. */
+const SEARCH_BY_IDS_QUERY = `#graphql
+    fragment SearchByIdsProduct on Product {
+    __typename
+    handle
+    id
+    publishedAt
+    title
+    availableForSale
+    trackingParameters
+    vendor
+    tags
+    productType
+    isGiftCard
+    featuredImage {
+      id
+      altText
+      url
+      width
+      height
+    }
+    priceRange {
+      minVariantPrice {
+        amount
+        currencyCode
+      }
+      maxVariantPrice {
+        amount
+        currencyCode
+      }
+    }
+    compareAtPriceRange {
+      minVariantPrice {
+        amount
+        currencyCode
+      }
+    }
+    variants(first: 1) {
+      nodes {
+        id
+        title
+        availableForSale
+        price {
+          amount
+          currencyCode
+        }
+        compareAtPrice {
+          amount
+          currencyCode
+        }
+        selectedOptions {
+          name
+          value
+        }
+        product {
+          handle
+          title
+        }
+      }
+    }
+  }
+
+  query SearchByIds(
+    $ids: [ID!]!
+    $country: CountryCode
+    $language: LanguageCode
+  ) @inContext(country: $country, language: $language) {
+    nodes(ids: $ids) {
+      ... on Product {
+        ...SearchByIdsProduct
       }
     }
   }

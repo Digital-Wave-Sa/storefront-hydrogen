@@ -299,7 +299,7 @@ export function warmProductIndex(env: any): void {
   void startBuild(env);
 }
 
-async function getIndex(env: any): Promise<IndexCache | null> {
+async function getIndex(env: any, waitMs = BUILD_WAIT_MS): Promise<IndexCache | null> {
   const now = Date.now();
   if (cache && now - cache.timestamp < TTL_MS) return cache;
 
@@ -319,36 +319,88 @@ async function getIndex(env: any): Promise<IndexCache | null> {
   return Promise.race([
     build,
     new Promise<IndexCache | null>((resolve) =>
-      setTimeout(() => resolve(cache), BUILD_WAIT_MS),
+      setTimeout(() => resolve(cache), waitMs),
     ),
   ]);
 }
 
 export type SearchHit = IndexedProduct & {score: number};
 
+/** A word with the Arabic definite article removed: «المانجو» → «مانجو». */
+function bare(word: string): string {
+  return word.length > 3 && word.startsWith('ال') ? word.slice(2) : word;
+}
+
+/** Does one query word match one title word (prefix, article-insensitive)? */
+function wordMatches(queryWord: string, titleWord: string): boolean {
+  const q = bare(queryWord);
+  const t = bare(titleWord);
+  return t.startsWith(q) || titleWord.startsWith(queryWord);
+}
+
 /**
- * Match `query` against the catalog. Ranks a word-start match above a
- * mid-word match, and shorter titles first on ties, so "شوك" surfaces
- * "شوكولاتة" products before longer titles that merely contain it.
+ * How well a normalised title key answers a normalised query. 0 = no match.
+ *
+ *   5   the whole title, exactly
+ *   4   the title starts with the query
+ *   3   a word of the title starts with the query (one-word queries)
+ *   2+  EVERY query word starts some title word, in any order — plus up to
+ *       one point for how much of the title the query covers, so
+ *       «مانجو فلفت كبير» ranks «مانجو فلفت كبير» above «مانجو فلفت كبير
+ *       بالكريمة»
+ *   1   the query appears somewhere inside the title
+ *
+ * The all-words rule is the one that was missing. Matching used to test the
+ * query as a single substring, so a multi-word query only hit titles holding
+ * that exact phrase, and the full search page did not use this index at all.
+ */
+function scoreKey(key: string, q: string, qWords: string[]): number {
+  if (!key) return 0;
+  if (key === q) return 5;
+  if (key.startsWith(q)) return 4;
+  const words = key.split(' ');
+  if (qWords.length === 1 && words.some((w) => wordMatches(q, w))) return 3;
+  if (
+    qWords.length > 1 &&
+    qWords.every((qw) => words.some((w) => wordMatches(qw, w)))
+  ) {
+    return 2 + Math.min(1, qWords.length / Math.max(words.length, 1));
+  }
+  if (key.includes(q)) return 1;
+  return 0;
+}
+
+/**
+ * Match `query` against the catalog, best first; shorter titles win ties.
+ *
+ * `ready` is false when no index could be had in time, so a caller can tell
+ * "nothing matches" from "we could not look" and fall back instead of
+ * showing an empty page.
  */
 export async function searchProductIndex(
   env: any,
   query: string,
   limit = 6,
-): Promise<{hits: SearchHit[]; currencyCode: string}> {
+  /**
+   * How long to wait for a cold index. The typeahead keeps the short default
+   * — the next keystroke retries. The results page passes a long one: it is
+   * a single request, and answering it without the index meant falling back
+   * to Shopify's English-only matching, i.e. the wrong products.
+   */
+  waitMs = BUILD_WAIT_MS,
+): Promise<{hits: SearchHit[]; currencyCode: string; ready: boolean}> {
   const q = normalizeSearchText(query);
-  const idx = await getIndex(env);
-  if (!q || !idx) return {hits: [], currencyCode: idx?.currencyCode || 'SAR'};
+  const idx = await getIndex(env, waitMs);
+  if (!idx) return {hits: [], currencyCode: 'SAR', ready: false};
+  if (!q) return {hits: [], currencyCode: idx.currencyCode, ready: true};
+  const qWords = q.split(' ').filter(Boolean);
 
   const scored: SearchHit[] = [];
   for (const item of idx.items) {
-    let score = 0;
-    for (const key of [item.keyAr, item.keyEn]) {
-      if (!key) continue;
-      if (key.startsWith(q)) score = Math.max(score, 3);
-      else if (key.split(' ').some((w) => w.startsWith(q))) score = Math.max(score, 2);
-      else if (key.includes(q)) score = Math.max(score, 1);
-    }
+    const score = Math.max(
+      scoreKey(item.keyAr, q, qWords),
+      scoreKey(item.keyEn, q, qWords),
+    );
     if (score > 0) scored.push({...item, score});
   }
 
@@ -359,5 +411,5 @@ export async function searchProductIndex(
     return la - lb;
   });
 
-  return {hits: scored.slice(0, limit), currencyCode: idx.currencyCode};
+  return {hits: scored.slice(0, limit), currencyCode: idx.currencyCode, ready: true};
 }

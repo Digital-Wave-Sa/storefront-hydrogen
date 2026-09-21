@@ -1367,7 +1367,9 @@ export default function TrackOrderPage() {
               <div className="flex flex-col gap-3 mb-6">
                 <div className="flex justify-between items-center text-[14px]">
                   <span className="text-[#8B8B8B]">
-                    {isEn ? 'Subtotal' : 'المجموع الفرعي'}
+                    {isGiftCardOrder
+                      ? (isEn ? 'Subtotal' : 'المجموع الفرعي')
+                      : (isEn ? 'Subtotal (Including VAT)' : 'المجموع الفرعي (شامل الضريبة)')}
                   </span>
                   <span
                     className="font-bold text-[#1A1A1A] flex items-center gap-1"

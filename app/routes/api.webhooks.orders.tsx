@@ -4,7 +4,14 @@ import {
   routeOrderToChosenBranch,
   recordRoutingOutcome,
 } from '~/lib/fulfillment-routing.server';
-import {readyKind} from '~/lib/order-stage-tokens';
+import {
+  readyKind,
+  collectOrderTokens,
+  FAILED_TOKENS,
+  STEP5_TOKENS,
+  IN_TRANSIT_TOKENS,
+  STEP3_TOKENS,
+} from '~/lib/order-stage-tokens';
 import {
   readOrderNotificationState,
   markStageNotified,
@@ -29,6 +36,62 @@ import {
  * everything — an unsigned endpoint that can move fulfillment orders is not
  * acceptable.
  */
+
+/** Order of the stages, for "never send one behind what was already sent". */
+const STAGE_RANK: Record<string, number> = {
+  CONFIRMED: 1,
+  PREPARING: 2,
+  READY_FOR_PICKUP: 3,
+  READY_FOR_DELIVERY: 3,
+  OUT_FOR_DELIVERY: 4,
+  DELIVERED: 5,
+};
+
+/** Older spellings the ERP and staff have used for "done". */
+const EXTRA_DONE_TOKENS = ['completed', 'مكتمل', 'pickedup'];
+
+/**
+ * Where the order is, for the progress emails. Furthest stage wins, because
+ * tags pile up: a delivered order usually still carries its «preparing» tag.
+ * READY is left to the block above, which already handles it.
+ */
+function progressStage(
+  order: any,
+  orderStatusMeta: string,
+): 'PREPARING' | 'OUT_FOR_DELIVERY' | 'DELIVERED' | null {
+  if (order?.cancelled_at || order?.canceledAt) return null;
+  const {fulfillment, erp} = collectOrderTokens(order, orderStatusMeta);
+  const has = (list: string[]) =>
+    list.some((t) => erp.has(t) || fulfillment.includes(t));
+  if (has(FAILED_TOKENS)) return null;
+
+  const shipment = (order?.fulfillments || []).map((f: any) =>
+    String(f?.shipment_status || '').toLowerCase(),
+  );
+
+  if (
+    has(STEP5_TOKENS) ||
+    has(EXTRA_DONE_TOKENS) ||
+    shipment.includes('delivered') ||
+    shipment.includes('picked_up')
+  ) {
+    return 'DELIVERED';
+  }
+  if (
+    has(IN_TRANSIT_TOKENS) ||
+    shipment.includes('in_transit') ||
+    shipment.includes('out_for_delivery')
+  ) {
+    return 'OUT_FOR_DELIVERY';
+  }
+  // On this store Shopify fulfils at hand-over, so fulfilled with no finer
+  // shipment detail means the customer has it.
+  if (String(order?.fulfillment_status || '').toLowerCase() === 'fulfilled') {
+    return 'DELIVERED';
+  }
+  if (has(STEP3_TOKENS)) return 'PREPARING';
+  return null;
+}
 
 function timingSafeEqual(a: string, b: string): boolean {
   if (a.length !== b.length) return false;
@@ -185,13 +248,18 @@ export async function action({request, context}: ActionFunctionArgs) {
 
       if (!stage) {
         ready = {skipped: 'not ready'};
+        const t = collectOrderTokens(payload, orderStatus);
+        console.log(
+          `[Order Webhook] Ready check #${payload.order_number ?? payload.id}: not ready — tags=[${[...t.erp].join(', ')}] fulfillment=[${t.fulfillment.join(', ')}] fulfillment_status=${payload.fulfillment_status ?? 'null'}`,
+        );
       } else if (sent.includes(stage)) {
         ready = {skipped: 'already sent', stage};
+        console.log(`[Order Webhook] ${stage} already sent for #${payload.order_number ?? payload.id} — not resending`);
       } else {
         const branchAttr = (payload.note_attributes || []).find(
           (a: any) => String(a?.name ?? '').toLowerCase() === 'branch',
         );
-        await notifyOrderUpdate({
+        const res = await notifyOrderUpdate({
           order: payload,
           stage: stage as any,
           env,
@@ -200,11 +268,17 @@ export async function action({request, context}: ActionFunctionArgs) {
           channels: ['email'],
           extra: {branchName: branchAttr?.value || ''},
         });
-        // Recorded only after the send resolves, so a failed send is retried by
-        // the next webhook instead of being silently marked done.
-        await markStageNotified(env, payload, stage, sent);
-        ready = {sent: stage};
-        console.log(`[Order Webhook] ${stage} email sent for #${payload.order_number ?? payload.id}`);
+        // Recorded only when the email actually went, so a failed send is
+        // retried by the next webhook. sendEmail reports failure as `false`,
+        // not an exception; this used to mark those as done.
+        if (res.email) {
+          await markStageNotified(env, payload, stage, sent);
+          ready = {sent: stage};
+          console.log(`[Order Webhook] ${stage} email sent for #${payload.order_number ?? payload.id}`);
+        } else {
+          ready = {failed: stage};
+          console.warn(`[Order Webhook] ${stage} email NOT sent for #${payload.order_number ?? payload.id}`);
+        }
       }
     } catch (error: any) {
       console.error('[Order Webhook] Ready-stage error:', error?.message || error);
@@ -212,52 +286,87 @@ export async function action({request, context}: ActionFunctionArgs) {
     }
   }
 
-  // 2. Notifications.
+  /**
+   * 2. Progress notifications: confirmed, preparing, on the way, delivered.
+   *
+   * What was wrong before, and why «on the way» and «being prepared» never
+   * arrived:
+   *   - PREPARING had a template but nothing ever sent it.
+   *   - OUT_FOR_DELIVERY was only tried on `orders/fulfilled`, and the
+   *     "delivered?" test there counted `fulfillment.status === 'success'`,
+   *     which every fulfillment Shopify creates has — so it always said
+   *     DELIVERED. The ERP's `status-out-for-delivery` / «في-الطريق» tags,
+   *     which arrive as `orders/updated`, were never read at all.
+   *   - DELIVERED on `orders/updated` had no memory, so every later edit to a
+   *     finished order (a note, a tag) sent it again.
+   *
+   * Now the stage comes from the same tokens the /track-order timeline reads
+   * (tags, the `custom.order_status` metafield, Shopify's shipment status), and
+   * each stage is sent once, recorded in the same notified-stages metafield the
+   * ready email uses. A stage behind one already sent is skipped, so a late
+   * «preparing» tag cannot follow «delivered».
+   */
   let notified = false;
-  try {
-    let stage: 'CONFIRMED' | 'OUT_FOR_DELIVERY' | 'DELIVERED' | null = null;
-
-    const tagsLower = (payload.tags || '').toLowerCase();
-    const isDeliveredOrPickedUp =
-      payload.fulfillments?.some(
-        (f: any) =>
-          f.shipment_status === 'delivered' ||
-          f.shipment_status === 'picked_up' ||
-          f.status === 'success',
-      ) ||
-      payload.fulfillment_status === 'fulfilled' ||
-      tagsLower.includes('delivered') ||
-      tagsLower.includes('pickedup') ||
-      tagsLower.includes('picked_up') ||
-      tagsLower.includes('completed') ||
-      tagsLower.includes('تم التوصيل') ||
-      tagsLower.includes('تم الاستلام') ||
-      tagsLower.includes('مكتمل');
-
-    if (topic === 'orders/create') {
-      stage = 'CONFIRMED';
-    } else if (topic === 'orders/fulfilled') {
-      stage = isDeliveredOrPickedUp ? 'DELIVERED' : 'OUT_FOR_DELIVERY';
-    } else if (topic === 'orders/updated') {
-      if (isDeliveredOrPickedUp) {
-        stage = 'DELIVERED';
+  let progress: any = null;
+  if (
+    topic === 'orders/create' ||
+    topic === 'orders/updated' ||
+    topic === 'orders/fulfilled'
+  ) {
+    try {
+      // The confirmation must not depend on the Admin read: if that fails on
+      // a brand-new order there is nothing recorded yet anyway.
+      let state: {sent: string[]; orderStatus: string};
+      try {
+        state = await readOrderNotificationState(env, payload);
+      } catch (e) {
+        if (topic !== 'orders/create') throw e;
+        state = {sent: [], orderStatus: ''};
       }
-    }
+      const {sent, orderStatus} = state;
+      const stage =
+        topic === 'orders/create' ? 'CONFIRMED' : progressStage(payload, orderStatus);
 
-    if (stage) {
-      const results = await notifyOrderUpdate({order: payload, stage, env});
-      notified = true;
-      console.log(`[Order Webhook] ${stage} notification sent:`, results);
-    } else {
-      console.log(`[Order Webhook] No notification for topic: ${topic}`);
+      const rank = (s: string) => STAGE_RANK[s] ?? 0;
+      const furthestSent = Math.max(0, ...sent.map(rank));
+
+      if (!stage) {
+        progress = {skipped: 'no progress stage'};
+      } else if (sent.includes(stage)) {
+        progress = {skipped: 'already sent', stage};
+      } else if (rank(stage) <= furthestSent) {
+        progress = {skipped: 'behind a stage already sent', stage};
+      } else {
+        const results = await notifyOrderUpdate({
+          order: payload,
+          stage,
+          env,
+          // «Being prepared» is a courtesy: email only, as with «ready».
+          channels: stage === 'PREPARING' ? ['email'] : ['email', 'sms'],
+        });
+        try {
+          // Only once something actually reached the customer.
+          if (results.email || results.sms) {
+            await markStageNotified(env, payload, stage, sent);
+          }
+        } catch (e: any) {
+          console.warn(`[Order Webhook] Could not record ${stage} as sent:`, e?.message || e);
+        }
+        notified = true;
+        progress = {sent: stage};
+        console.log(`[Order Webhook] ${stage} notification sent:`, results);
+      }
+    } catch (error: any) {
+      console.error('[Order Webhook] Notification error:', error?.message || error);
+      progress = {error: error?.message || String(error)};
     }
-  } catch (error: any) {
-    console.error('[Order Webhook] Notification error:', error?.message || error);
+  } else {
+    console.log(`[Order Webhook] No notification for topic: ${topic}`);
   }
 
   // Always 200 once verified: Shopify retries non-2xx responses, and a retry
   // would re-run a move that already happened or resend a notification.
-  return Response.json({success: true, notified, routing, ready});
+  return Response.json({success: true, notified, routing, ready, progress});
 }
 
 // Block GET requests

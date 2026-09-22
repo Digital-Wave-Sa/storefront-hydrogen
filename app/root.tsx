@@ -28,6 +28,7 @@ import {NotFound} from './components/NotFound';
 import {ServerError} from './components/ServerError';
 import {CookieConsentBanner} from './components/CookieConsentBanner';
 import {ProductSkeleton} from './components/ProductSkeleton';
+import {CollectionPageSkeleton} from './components/CollectionSkeleton';
 import {NavigationProgress} from './components/NavigationProgress';
 import {useLocale} from '~/lib/i18n';
 
@@ -753,6 +754,7 @@ export default function App() {
   const pageLocale = useLocale();
   const [customerId, setCustomerId] = useState<string | undefined>(undefined);
   const navigation = useNavigation();
+  const currentLocation = useLocation();
   const locationFetcher = useFetcher();
 
   useEffect(() => {
@@ -830,6 +832,17 @@ export default function App() {
 
   const isNavigatingToProduct = navigation.state === 'loading' && navigation.location.pathname.includes('/products/');
 
+  /*
+    Arriving at a collection from another page shows the listing's shape while
+    its loader runs. A change within the same collection (filter, sort, search,
+    «load more») is left to the page, which blanks only the grid.
+  */
+  const isNavigatingToCollection =
+    navigation.state === 'loading' &&
+    !!navigation.location &&
+    /\/collections(\/|$)/.test(navigation.location.pathname) &&
+    navigation.location.pathname !== currentLocation.pathname;
+
   return (
     <Analytics.Provider
       cart={data!.cart as any}
@@ -842,6 +855,8 @@ export default function App() {
         <PageLayout {...(data as any)}>
           {isNavigatingToProduct ? (
             <ProductSkeleton isEn={pageLocale === 'en'} />
+          ) : isNavigatingToCollection ? (
+            <CollectionPageSkeleton isEn={pageLocale === 'en'} />
           ) : (
             <Outlet context={{ 
               locale: pageLocale,

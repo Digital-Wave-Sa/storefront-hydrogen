@@ -36,7 +36,10 @@ export function NavigationProgress({delay = 250}: {delay?: number}) {
    * Showing both would stack two loading states on one navigation.
    */
   const isProduct = target.includes('/products/');
-  const pending = navigation.state === 'loading' && !!target && !isProduct;
+  // Collections have one too (CollectionSkeleton), for the same reason.
+  const isCollection = /\/collections(\/|$)/.test(target);
+  const pending =
+    navigation.state === 'loading' && !!target && !isProduct && !isCollection;
 
   const [visible, setVisible] = useState(false);
 

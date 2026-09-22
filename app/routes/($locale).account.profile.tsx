@@ -350,6 +350,78 @@ export async function action({request, context}: ActionFunctionArgs) {
       }
     }
 
+    /**
+     * Company details, for B2B accounts.
+     *
+     * Only the keys this form posted are touched, so an individual account —
+     * whose form has no company section — cannot clear anything, and a company
+     * form that renders three fields cannot blank the other two. The values are
+     * checked against the registration rules first: a saved profile has to be
+     * as good as a new signup, and Shopify would happily store "12" as a tax
+     * number.
+     */
+    const {
+      companyProfileFromForm,
+      validateCompanyProfile,
+      writeCompanyProfile,
+      companyProfileForCrm,
+    } = await import('~/lib/b2b-profile.server');
+    const companyValues = companyProfileFromForm(form);
+
+    /*
+      The company name is edited through the ordinary name field — the form
+      labels `firstName` "Company Name" for these accounts — so mirror it into
+      the company record rather than showing the same thing twice and letting
+      the two drift.
+    */
+    if (
+      String(form.get('lastName') || '').trim() === '(Company)' &&
+      typeof customer.firstName === 'string' &&
+      customer.firstName.trim()
+    ) {
+      companyValues.companyName = customer.firstName.trim();
+    }
+    if (Object.keys(companyValues).length > 0) {
+      const check = validateCompanyProfile(companyValues, lang);
+      if (!check.ok) {
+        return data({error: check.error, customer: null}, {status: 400});
+      }
+
+      const written = await writeCompanyProfile(
+        context.env,
+        self.numericId,
+        companyValues,
+      );
+      if (!written) {
+        return data(
+          {
+            error:
+              lang === 'en'
+                ? 'We could not save the company details. Please try again.'
+                : 'تعذر حفظ بيانات الشركة. يرجى المحاولة مرة أخرى.',
+            customer: null,
+          },
+          {status: 502},
+        );
+      }
+
+      /*
+        The CRM gets the change too, but its answer does not decide this save.
+        Its profile endpoint takes birthDate and city today; the company keys
+        may well be ignored until they add them, and a shopper correcting a
+        typo should not be told the save failed because of that.
+      */
+      try {
+        const saadeddinToken = await context.session.get('saadeddinToken');
+        if (saadeddinToken) {
+          const api = new SaadeddinApi(context.env, saadeddinToken);
+          await api.updateProfile(companyProfileForCrm(companyValues));
+        }
+      } catch (e) {
+        console.error('[B2B] CRM company profile sync failed:', e);
+      }
+    }
+
     const birthdateStr = String(form.get('birthdate') || '').trim();
     if (birthdateStr) {
       // 1. Sync with Shopify Admin API via GraphQL metafieldsSet
@@ -568,6 +640,69 @@ export default function AccountProfile() {
   ];
 
   const fetcher = useFetcher<any>();
+
+  /**
+   * The company's own details.
+   *
+   * This page has no loader — it renders from the account layout's outlet
+   * context so that moving between account pages costs no round trip — and
+   * that context carries no metafields. So a company account asks
+   * /api/b2b-profile for them once, and only a company account does.
+   */
+  const companyFetcher = useFetcher<any>();
+  useEffect(() => {
+    if (!isCompany) return;
+    if (companyFetcher.state === 'idle' && companyFetcher.data === undefined) {
+      companyFetcher.load('/api/b2b-profile');
+    }
+  }, [isCompany, companyFetcher]);
+  const company = (companyFetcher.data?.company || {}) as Record<string, string>;
+  const companyLoading = isCompany && companyFetcher.state !== 'idle';
+
+  /** Label, value and input rules for each company field, in display order. */
+  const companyFields = [
+    {
+      name: 'taxRegistration',
+      labelEn: 'Tax Number',
+      labelAr: 'الرقم الضريبي',
+      hintEn: '15 digits',
+      hintAr: '١٥ رقماً',
+      inputMode: 'numeric' as const,
+      maxLength: 15,
+      digitsOnly: true,
+    },
+    {
+      name: 'commercialRegister',
+      labelEn: 'Commercial Register',
+      labelAr: 'السجل التجاري',
+      hintEn: '10 digits',
+      hintAr: '١٠ أرقام',
+      inputMode: 'numeric' as const,
+      maxLength: 10,
+      digitsOnly: true,
+    },
+    {
+      name: 'nationalAddress',
+      labelEn: 'National Address',
+      labelAr: 'العنوان الوطني',
+      hintEn: '8 characters',
+      hintAr: '٨ خانات',
+      inputMode: 'text' as const,
+      maxLength: 8,
+      digitsOnly: false,
+    },
+    {
+      name: 'companyAddress',
+      labelEn: 'Company Address',
+      labelAr: 'عنوان الشركة',
+      hintEn: '',
+      hintAr: '',
+      inputMode: 'text' as const,
+      maxLength: 200,
+      digitsOnly: false,
+    },
+  ];
+
   const formRef = useRef<HTMLFormElement>(null);
   const submit = useSubmit();
   const isPhoneVerifiedRef = useRef(false);
@@ -852,6 +987,60 @@ export default function AccountProfile() {
                 </div>
               </div>
             </div>
+
+            {/* Company details, for B2B accounts only. */}
+            {isCompany && (
+              <>
+                <div className="border-t border-[#BBCFCD] w-full my-2"></div>
+                <h3
+                  className="text-[16px] font-bold text-[#171717] m-0"
+                  style={{
+                    fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
+                  }}
+                >
+                  {isEn ? 'Company Details' : 'بيانات الشركة'}
+                </h3>
+                <div className="flex flex-col gap-6 w-full">
+                  {[0, 2].map((start) => (
+                    <div
+                      key={start}
+                      className="flex flex-col md:flex-row gap-6 w-full"
+                    >
+                      {companyFields.slice(start, start + 2).map((field) => (
+                        <div
+                          key={field.name}
+                          className="flex flex-col gap-2 flex-1"
+                        >
+                          <span
+                            className="text-[14px] font-medium text-[#171717] leading-none"
+                            style={{
+                              fontFamily:
+                                "'EnglishDigits', 'GE Dinar One', sans-serif",
+                            }}
+                          >
+                            {isEn ? field.labelEn : field.labelAr}
+                          </span>
+                          <div className="bg-[#FEF8EB] border border-[#BBCFCD] rounded-[12px] min-h-[48px] px-4 flex items-center">
+                            <span
+                              className="text-[14px] font-medium text-[#9FB7AE] py-2 break-words"
+                              style={{
+                                fontFamily:
+                                  "'EnglishDigits', 'GE Dinar One', sans-serif",
+                              }}
+                              dir={field.digitsOnly ? 'ltr' : undefined}
+                            >
+                              {companyLoading
+                                ? '…'
+                                : company[field.name] || '-'}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
 
             <div className="border-t border-[#BBCFCD] w-full my-2"></div>
 
@@ -1228,6 +1417,89 @@ export default function AccountProfile() {
                 </div>
               </div>
             </div>
+
+            {/*
+              Company details.
+ 
+              Rendered only for a company account, so an individual's form
+              posts none of these keys and the action leaves them alone. The
+              field rules are the registration rules; the action checks them
+              again server-side, which is what actually enforces them.
+            */}
+            {isCompany && (
+              <>
+                <div className="border-t border-[#BBCFCD] w-full my-2"></div>
+                <h3
+                  className="text-[16px] font-bold text-[#171717] m-0"
+                  style={{
+                    fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
+                  }}
+                >
+                  {isEn ? 'Company Details' : 'بيانات الشركة'}
+                </h3>
+                {[0, 2].map((start) => (
+                  <div
+                    key={start}
+                    className="flex flex-col md:flex-row gap-6 w-full"
+                  >
+                    {companyFields.slice(start, start + 2).map((field) => (
+                      <div
+                        key={`${field.name}-${companyFetcher.data ? 'loaded' : 'pending'}`}
+                        className="flex flex-col gap-2 flex-1"
+                      >
+                        <label
+                          className={`text-[14px] font-medium text-[#171717] leading-none ${!isEn && 'text-right'}`}
+                          style={{
+                            fontFamily:
+                              "'EnglishDigits', 'GE Dinar One', sans-serif",
+                          }}
+                          htmlFor={field.name}
+                        >
+                          {isEn ? field.labelEn : field.labelAr}
+                        </label>
+                        <input
+                          id={field.name}
+                          name={field.name}
+                          type="text"
+                          dir={field.digitsOnly ? 'ltr' : undefined}
+                          inputMode={field.inputMode}
+                          maxLength={field.maxLength}
+                          defaultValue={company[field.name] ?? ''}
+                          onInput={
+                            field.digitsOnly
+                              ? (e) => {
+                                  const el = e.currentTarget;
+                                  el.value = el.value
+                                    .replace(/\D/g, '')
+                                    .slice(0, field.maxLength);
+                                }
+                              : undefined
+                          }
+                          className="bg-white border border-[#BBCFCD] rounded-[12px] h-[48px] px-4 w-full text-[14px] font-medium text-[#171717] focus:outline-none focus:border-[#9FB7AE]"
+                          style={{
+                            fontFamily:
+                              "'EnglishDigits', 'GE Dinar One', sans-serif",
+                            textAlign: isEn || field.digitsOnly ? 'left' : 'right',
+                          }}
+                          required
+                        />
+                        {(isEn ? field.hintEn : field.hintAr) && (
+                          <p
+                            className={`text-[12px] text-[#7D7D7D] m-0 ${!isEn && 'text-right'}`}
+                            style={{
+                              fontFamily:
+                                "'EnglishDigits', 'GE Dinar One', sans-serif",
+                            }}
+                          >
+                            {isEn ? field.hintEn : field.hintAr}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </>
+            )}
 
             {/* Save Button */}
             <div className="flex justify-end w-full mt-2">

@@ -149,6 +149,8 @@ export class SaadeddinApi {
       otpToken: string;
       companyName?: string;
       taxNumber?: string;
+      commercialRegister?: string;
+      nationalAddress?: string;
       companyAddress?: string;
       birthDate?: string;
     },
@@ -195,7 +197,17 @@ export class SaadeddinApi {
     return this.api('/auth/me');
   }
 
-  async updateProfile(data: { birthDate?: string; city?: string }) {
+  async updateProfile(data: {
+    birthDate?: string;
+    city?: string;
+    // Company accounts edit these from /account/profile. The CRM received
+    // them at registration under exactly these names.
+    companyName?: string;
+    taxNumber?: string;
+    commercialRegister?: string;
+    nationalAddress?: string;
+    companyAddress?: string;
+  }) {
     return this.api('/auth/profile', {
       method: 'PUT',
       body: JSON.stringify(data),

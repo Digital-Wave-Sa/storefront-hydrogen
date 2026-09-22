@@ -741,6 +741,71 @@ export async function action({request, context}: ActionFunctionArgs) {
               : 'فشل التسجيل. يرجى المحاولة مرة أخرى أو التواصل مع الدعم.',
         });
       }
+      /**
+       * Keep the company's own details on this side too.
+       *
+       * They used to go to the CRM and nowhere else, so /account/profile had
+       * nothing to show and nothing to edit. They are written as customer
+       * metafields under `b2b`, which is what the profile page reads.
+       *
+       * Best effort: the account exists and the shopper is signed in either
+       * way, and the profile page lets them fill in anything that did not
+       * land.
+       */
+      if (accountType === 'company') {
+        try {
+          let numericId = String((await session.get('loginCustomerId')) || '')
+            .split('/')
+            .pop();
+
+          /*
+            `loginCustomerId` is only set on the Admin fallback path. When the
+            CRM created the Shopify customer and the Storefront token worked
+            first time — the ordinary case — nothing here knows the id yet, so
+            look it up by the number that just registered. Exact match only.
+          */
+          if (!numericId) {
+            const {getAdminToken} = await import('~/lib/shopify-admin.server');
+            const adminToken = await getAdminToken(env);
+            const rawDigits = savedPhone.replace(/\D/g, '');
+            if (adminToken && rawDigits) {
+              const lookup = await fetch(
+                `https://${env.PUBLIC_STORE_DOMAIN}/admin/api/2024-01/customers/search.json?query=${encodeURIComponent(
+                  `phone:${rawDigits}`,
+                )}&fields=id,phone`,
+                {headers: {'X-Shopify-Access-Token': adminToken}},
+              );
+              if (lookup.ok) {
+                const found = ((await lookup.json()) as any).customers || [];
+                const match = found.find(
+                  (c: any) => (c.phone || '').replace(/\D/g, '') === rawDigits,
+                );
+                if (match?.id) numericId = String(match.id);
+              }
+            }
+          }
+
+          if (numericId) {
+            const {writeCompanyProfile} = await import(
+              '~/lib/b2b-profile.server'
+            );
+            await writeCompanyProfile(env, numericId, {
+              companyName,
+              taxRegistration,
+              commercialRegister,
+              nationalAddress,
+              companyAddress,
+            });
+          } else {
+            console.warn(
+              '[Register] Company details not stored: no customer id in session.',
+            );
+          }
+        } catch (e) {
+          console.error('[Register] Failed to store the company details:', e);
+        }
+      }
+
       session.set('customerAccessToken', token);
       session.set('saadeddinToken', saadeddinToken);
       session.set('preferredLanguage', selectedLanguage);

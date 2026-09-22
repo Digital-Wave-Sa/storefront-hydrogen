@@ -1464,7 +1464,19 @@ export function FilterSidebar({
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    setSearchQuery(params.get('q') || '');
+    /*
+      Copy «q» from the URL into the box only when the shopper is not typing
+      in it. Each search lands about a second after its keystroke (debounce
+      plus the loader), and by then the box has moved on: writing the older
+      URL value back deleted the letters typed since, and the next search to
+      land put them back, so text vanished and reappeared mid-word. The URL
+      still wins when it changes from elsewhere — a cleared chip, back/forward.
+    */
+    const typing =
+      searchDebounceRef.current !== null ||
+      (typeof document !== 'undefined' &&
+        document.activeElement === searchInputRef.current);
+    if (!typing) setSearchQuery(params.get('q') || '');
     const priceParam = params.get('filter.v.price');
     if (priceParam) {
       try {
@@ -1480,6 +1492,7 @@ export function FilterSidebar({
 
   /** Pending keystroke navigation, so typing does not fire one per character. */
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
 
   const runSearch = (value: string) => {
     const params = new URLSearchParams(window.location.search);
@@ -1507,13 +1520,17 @@ export function FilterSidebar({
   const handleSearchChange = (value: string) => {
     setSearchQuery(value);
     if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
-    searchDebounceRef.current = setTimeout(() => runSearch(value), 350);
+    searchDebounceRef.current = setTimeout(() => {
+      searchDebounceRef.current = null;
+      runSearch(value);
+    }, 350);
   };
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     // Enter searches now, without waiting out the debounce.
     if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    searchDebounceRef.current = null;
     runSearch(searchQuery);
   };
 
@@ -1769,6 +1786,7 @@ export function FilterSidebar({
                   placeholder={
                     isEn ? 'Search products...' : 'إبحث في المنتجات...'
                   }
+                  ref={searchInputRef}
                   value={searchQuery}
                   onChange={(e) => handleSearchChange(e.target.value)}
                   className={`flex-1 min-w-0 bg-transparent text-[14px] ${isEn ? 'font-en text-left' : "font-['GE_Dinar_One'] text-right"} text-[#234745] placeholder-[#234745] focus:outline-none`}

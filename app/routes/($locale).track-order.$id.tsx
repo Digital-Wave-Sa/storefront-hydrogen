@@ -174,8 +174,15 @@ async function fetchOrderNode(rawId: string, context: any) {
   const adminDomain = getAdminDomain(context.env);
 
   // Build the Admin GraphQL query — search by GID or order name
+  /*
+    `$id` used to be declared here and never used. GraphQL refuses an operation
+    with an unused variable, so this query failed on every request and the
+    page always fell back to the REST order — which has no fulfillment-order
+    status. «Mark as in progress» in the admin therefore never reached the
+    timeline: SDN-1472 was IN_PROGRESS in Shopify and sat on «تم التأكيد» here.
+  */
   const gqlQuery = `
-      query GetOrderForTracking($id: ID, $query: String) {
+      query GetOrderForTracking($query: String) {
         orders(first: 1, query: $query) {
           edges {
             node {

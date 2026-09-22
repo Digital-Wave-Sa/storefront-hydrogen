@@ -12,6 +12,7 @@ import {
 } from 'react-router';
 import {getPaginationVariables, Pagination, Image} from '@shopify/hydrogen';
 import {ProductItem} from '~/components/ProductItem';
+import {ProductGridSkeleton} from '~/components/CollectionSkeleton';
 import {useState, useEffect, useRef, Fragment} from 'react';
 import {createPortal} from 'react-dom';
 import patternBg from '/images/second-bg-pattern.svg';
@@ -278,9 +279,19 @@ export async function loader({context, request}: LoaderFunctionArgs) {
         if (cursorParam) {
           try {
             const parsed = JSON.parse(atob(cursorParam));
-            if (typeof parsed.offset === 'number') offset = parsed.offset;
+            // Only our own {offset} cursors. Shopify's also carry an `offset`
+            // (with page/last_id), and reading one here skipped real products.
+            if (
+              typeof parsed.offset === 'number' &&
+              parsed.page === undefined &&
+              parsed.last_id === undefined
+            ) {
+              offset = parsed.offset;
+            }
           } catch (e) {}
         }
+        // A cursor from another result set can point past the end.
+        if (offset >= mergedNodes.length) offset = 0;
 
         const paginatedNodes = mergedNodes.slice(offset, offset + pageBy);
         const hasNextPage = offset + pageBy < mergedNodes.length;
@@ -409,7 +420,13 @@ export async function loader({context, request}: LoaderFunctionArgs) {
           if (cursorParam) {
             try {
               const parsed = JSON.parse(atob(cursorParam));
-              if (typeof parsed.offset === 'number') offset = parsed.offset;
+              if (
+                typeof parsed.offset === 'number' &&
+                parsed.page === undefined &&
+                parsed.last_id === undefined
+              ) {
+                offset = parsed.offset;
+              }
             } catch (e) {}
           }
           // A cursor from another result set can point past the end.
@@ -573,12 +590,23 @@ export default function CollectionAll() {
     is still the loader's latest answer, so say so rather than show it as if
     it were the result of what is in the box.
   */
-  const isSearching =
-    navigation.state !== 'idle' &&
-    !!navigation.location &&
-    navigation.location.pathname === currentLocation.pathname &&
-    (new URLSearchParams(navigation.location.search).get('q') || '') !==
-      (searchParams.get('q') || '');
+  const isSearching = (() => {
+    /*
+      The listing is being replaced: same page, different filters, sort,
+      category or search. «Load more» only changes the cursor and appends, so
+      it keeps the grid and uses its own button state.
+    */
+    if (navigation.state === 'idle' || !navigation.location) return false;
+    if (navigation.location.pathname !== currentLocation.pathname) return false;
+    const strip = (search: string) => {
+      const p = new URLSearchParams(search);
+      p.delete('cursor');
+      p.delete('direction');
+      p.sort();
+      return p.toString();
+    };
+    return strip(navigation.location.search) !== strip(currentLocation.search);
+  })();
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
 
@@ -828,18 +856,7 @@ export default function CollectionAll() {
                   });
 
                   if (isSearching) {
-                    return (
-                      <div
-                        role="status"
-                        aria-live="polite"
-                        className="py-16 flex flex-col items-center gap-4 text-[#234745]"
-                      >
-                        <span className="h-9 w-9 rounded-full border-[3px] border-[#234745]/20 border-t-[#234745] animate-spin" />
-                        <span className="font-bold text-lg [font-family:'GE_Dinar_One',sans-serif]">
-                          {isEn ? 'Searching…' : 'جارٍ البحث…'}
-                        </span>
-                      </div>
-                    );
+                    return <ProductGridSkeleton count={6} view={view} isEn={isEn} />;
                   }
 
                   return (
@@ -1000,7 +1017,21 @@ export function ActiveFilterChips({
   collections?: any[];
 }) {
   const location = useLocation();
-  const submit = useSubmit();
+  const rawSubmit = useSubmit();
+  /*
+    Every filter change starts again on page one. The category, tag, price and
+    occasion handlers carried the page-2 cursor along, so ticking «منتجات
+    مجمدة» after «تصفح المزيد» asked for page 2 of an 11-product category and
+    showed «لا توجد منتجات تطابق بحثك». Pagination itself goes through
+    Hydrogen's NextLink, not this, so dropping the cursor here is always right.
+  */
+  const submit: typeof rawSubmit = (target: any, options?: any) => {
+    if (target instanceof URLSearchParams) {
+      target.delete('cursor');
+      target.delete('direction');
+    }
+    return rawSubmit(target, options);
+  };
   const [params, setParams] = useState<URLSearchParams | null>(null);
 
   useEffect(() => {
@@ -1256,7 +1287,21 @@ export function FilterSidebar({
   hideSearchInput?: boolean;
   hideCategories?: boolean;
 }) {
-  const submit = useSubmit();
+  const rawSubmit = useSubmit();
+  /*
+    Every filter change starts again on page one. The category, tag, price and
+    occasion handlers carried the page-2 cursor along, so ticking «منتجات
+    مجمدة» after «تصفح المزيد» asked for page 2 of an 11-product category and
+    showed «لا توجد منتجات تطابق بحثك». Pagination itself goes through
+    Hydrogen's NextLink, not this, so dropping the cursor here is always right.
+  */
+  const submit: typeof rawSubmit = (target: any, options?: any) => {
+    if (target instanceof URLSearchParams) {
+      target.delete('cursor');
+      target.delete('direction');
+    }
+    return rawSubmit(target, options);
+  };
   const location = useLocation();
   const [searchQuery, setSearchQuery] = useState('');
   const [openSections, setOpenSections] = useState<{[key: string]: boolean}>({

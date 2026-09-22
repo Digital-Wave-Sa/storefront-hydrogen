@@ -10,8 +10,11 @@ import {
   useRouteLoaderData,
   useNavigate,
   useSearchParams,
+  useNavigation,
+  useLocation,
 } from 'react-router';
 import {ProductItem} from '~/components/ProductItem';
+import {ProductGridSkeleton} from '~/components/CollectionSkeleton';
 import {
   Pagination,
   getPaginationVariables,
@@ -299,6 +302,21 @@ export async function loader({request, params, context}: LoaderFunctionArgs) {
 export default function Collection() {
   const {collection} = useLoaderData<typeof loader>();
   const [view, setView] = useState<'grid' | 'list'>('grid');
+  const navigation = useNavigation();
+  const currentLocation = useLocation();
+  /** Same collection, new filters or sort: blank the grid, keep the page. */
+  const isRefreshing = (() => {
+    if (navigation.state === 'idle' || !navigation.location) return false;
+    if (navigation.location.pathname !== currentLocation.pathname) return false;
+    const strip = (search: string) => {
+      const p = new URLSearchParams(search);
+      p.delete('cursor');
+      p.delete('direction');
+      p.sort();
+      return p.toString();
+    };
+    return strip(navigation.location.search) !== strip(currentLocation.search);
+  })();
   const [searchParams, setSearchParams] = useSearchParams();
   const q = searchParams.get('q')?.toLowerCase() || '';
   const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -429,6 +447,8 @@ export default function Collection() {
                               .filter((v) => v !== value);
                             params.delete(key);
                             allVals.forEach((v) => params.append(key, v));
+                            params.delete('cursor');
+                            params.delete('direction');
                             setSearchParams(params, {
                               preventScrollReset: true,
                               replace: true,
@@ -464,6 +484,8 @@ export default function Collection() {
                           const params = new URLSearchParams(searchParams);
                           params.delete('filter.v.price.min');
                           params.delete('filter.v.price.max');
+                          params.delete('cursor');
+                          params.delete('direction');
                           setSearchParams(params, {
                             preventScrollReset: true,
                             replace: true,
@@ -505,6 +527,8 @@ export default function Collection() {
                           const params = new URLSearchParams(searchParams);
                           params.set('sortKey', key);
                           params.set('reverse', rev);
+                          params.delete('cursor');
+                          params.delete('direction');
                           setSearchParams(params, {preventScrollReset: true});
                         }}
                         value={`${searchParams.get('sortKey') || 'COLLECTION_DEFAULT'}|${searchParams.get('reverse') || 'false'}`}
@@ -589,6 +613,16 @@ export default function Collection() {
                     }
                     return true;
                   });
+                  if (isRefreshing) {
+                    return (
+                      <ProductGridSkeleton
+                        count={6}
+                        view={view}
+                        isEn={isEn}
+                        gridClassName="grid grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8"
+                      />
+                    );
+                  }
                   return (
                     <>
                       {filteredNodes.length === 0 && (

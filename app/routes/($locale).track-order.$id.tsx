@@ -316,6 +316,52 @@ async function fetchOrderNode(rawId: string, context: any) {
       searchQuery,
     );
     orderNode = jsonRes?.data?.orders?.edges?.[0]?.node;
+
+    /*
+      Say why, when it fails. This query failing sends the page to the REST
+      order, which has no fulfillment-order status, and nothing on screen
+      shows that happened — «Mark as in progress» just never appears.
+    */
+    if (jsonRes?.errors?.length || !res.ok) {
+      console.warn(
+        `[TrackOrder] Admin GraphQL errors (HTTP ${res.status}):`,
+        JSON.stringify(jsonRes?.errors || jsonRes).slice(0, 600),
+      );
+    }
+
+    /*
+      A token without the fulfillment-order scopes fails the whole query on
+      `fulfillmentOrders`. Ask again without it: `displayFulfillmentStatus`
+      alone already says IN_PROGRESS, which is what the timeline needs.
+    */
+    if (!orderNode && jsonRes?.errors?.length) {
+      const leanQuery = gqlQuery.replace(
+        /fulfillmentOrders\(first: 5\) \{[\s\S]*?\n              \}\n/,
+        '',
+      );
+      if (leanQuery !== gqlQuery) {
+        const retry = await fetch(
+          `https://${adminDomain}/admin/api/2024-01/graphql.json`,
+          {
+            method: 'POST',
+            headers: {
+              'X-Shopify-Access-Token': adminToken,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              query: leanQuery,
+              variables: {query: searchQuery},
+            }),
+          },
+        );
+        const retryJson = (await retry.json()) as any;
+        orderNode = retryJson?.data?.orders?.edges?.[0]?.node || null;
+        console.log(
+          `[TrackOrder] Retried without fulfillmentOrders: ${orderNode ? 'ok' : 'failed'}`,
+          retryJson?.errors ? JSON.stringify(retryJson.errors).slice(0, 400) : '',
+        );
+      }
+    }
   } catch (e) {
     console.error('[TrackOrder Loader] Admin GraphQL query failed:', e);
   }

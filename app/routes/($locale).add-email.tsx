@@ -22,6 +22,33 @@ export const meta: MetaFunction = ({matches}) => {
 };
 
 /**
+ * Where to go after saving: a path on this site, never another host.
+ *
+ * The checkout gate used to pass its full `request.url`, and the page sent
+ * people to whatever `redirectTo` said — a link to /add-email?redirectTo=
+ * https://elsewhere was an open redirect. Anything that is not a local path
+ * falls back to the account page.
+ */
+function safeRedirectTo(raw: string | null | undefined, isEn: boolean): string {
+  const fallback = isEn ? '/en/account' : '/account';
+  if (!raw) return fallback;
+  let value = String(raw).trim();
+  if (/^https?:\/\//i.test(value)) {
+    try {
+      const u = new URL(value);
+      value = u.pathname + u.search;
+    } catch {
+      return fallback;
+    }
+  }
+  if (!value.startsWith('/') || value.startsWith('//') || value.startsWith('/\\')) {
+    return fallback;
+  }
+  if (/^\/(en\/)?add-email/.test(value)) return fallback;
+  return value;
+}
+
+/**
  * A one-field step that collects a real email from a signed-in customer whose
  * account only has a placeholder (the phone-OTP login creates those). The
  * checkout gate sends people here with `?redirectTo=<where they were going>`
@@ -30,7 +57,7 @@ export const meta: MetaFunction = ({matches}) => {
 export async function loader({context, request}: LoaderFunctionArgs) {
   const url = new URL(request.url);
   const isEn = context.storefront.i18n.language === 'EN';
-  const redirectTo = url.searchParams.get('redirectTo') || (isEn ? '/en/account' : '/account');
+  const redirectTo = safeRedirectTo(url.searchParams.get('redirectTo'), isEn);
 
   const customer = await resolveLoggedInCustomer(context);
 
@@ -53,7 +80,7 @@ export async function action({context, request}: ActionFunctionArgs) {
   const isEn = context.storefront.i18n.language === 'EN';
   const form = await request.formData();
   const email = String(form.get('email') || '');
-  const redirectTo = String(form.get('redirectTo') || (isEn ? '/en/account' : '/account'));
+  const redirectTo = safeRedirectTo(String(form.get('redirectTo') || ''), isEn);
 
   const customer = await resolveLoggedInCustomer(context);
   if (!customer) {
@@ -123,7 +150,16 @@ export default function AddEmailPage() {
             : 'نحتاج بريداً إلكترونياً صحيحاً لإرسال تأكيد الطلب والتحديثات. هذه خطوة لمرة واحدة لإتمام طلبك.'}
         </p>
 
-        <Form method="POST" style={{display: 'flex', flexDirection: 'column', gap: '14px'}}>
+        {/*
+          A full-page submit, not a client-side one. Where this page sends
+          people next is /checkout/initiate — a route with no page of its own
+          that answers with a redirect to Shopify's checkout on another domain.
+          Submitted client-side, React Router tried to follow that redirect
+          inside the app, and the shopper was left on this page after «حفظ
+          ومتابعة» with their email saved but nowhere to go. The browser
+          follows the chain itself this way.
+        */}
+        <Form method="POST" reloadDocument style={{display: 'flex', flexDirection: 'column', gap: '14px'}}>
           <input type="hidden" name="redirectTo" value={redirectTo} />
           <input
             type="email"

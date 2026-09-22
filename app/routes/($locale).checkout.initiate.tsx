@@ -949,7 +949,10 @@ async function processCheckoutInitiate({request, context}: ActionFunctionArgs) {
     const signedInCustomer = await resolveLoggedInCustomer(context);
     if (signedInCustomer?.currentEmail && needsRealEmail(signedInCustomer.currentEmail)) {
       const addEmailPath = lang === 'en' ? '/en/add-email' : '/add-email';
-      return redirect(`${addEmailPath}?redirectTo=${encodeURIComponent(request.url)}`);
+      const back = new URL(request.url);
+      return redirect(
+        `${addEmailPath}?redirectTo=${encodeURIComponent(back.pathname + back.search)}`,
+      );
     }
   }
 

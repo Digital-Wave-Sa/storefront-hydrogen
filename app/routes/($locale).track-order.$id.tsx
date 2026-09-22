@@ -21,6 +21,11 @@ import {
   STEP2_TOKENS,
 } from '~/lib/order-stage-tokens';
 import {
+  VERIFIED_ORDERS_KEY,
+  contactMatchesOrder,
+  viewerMaySeeOrder,
+} from '~/lib/order-access.server';
+import {
   isCustomCakeLine,
   localizeCakeLineTitle,
   CUSTOM_CAKE_IMAGE_URL,
@@ -437,85 +442,10 @@ async function fetchOrderNode(rawId: string, context: any) {
 // ---------------------------------------------------------------------------
 
 /** Session key holding the order GIDs this visitor has proved access to. */
-const VERIFIED_ORDERS_KEY = 'verifiedOrders';
 /** Wrong answers allowed per session before the form stops accepting attempts. */
 const MAX_VERIFY_ATTEMPTS = 8;
 const VERIFY_ATTEMPTS_KEY = 'orderVerifyAttempts';
 
-const onlyDigits = (v: unknown) => String(v ?? '').replace(/\D/g, '');
-const normEmail = (v: unknown) => String(v ?? '').trim().toLowerCase();
-
-/** Every phone/email recorded against the order. */
-function orderContacts(orderNode: any) {
-  const phones = [
-    orderNode?.phone,
-    orderNode?.customer?.phone,
-    orderNode?.shippingAddress?.phone,
-  ]
-    .map(onlyDigits)
-    .filter((p) => p.length >= 7);
-
-  const emails = [orderNode?.email, orderNode?.customer?.email]
-    .map(normEmail)
-    .filter(Boolean);
-
-  return {phones, emails};
-}
-
-/**
- * Compare a supplied phone/email against the order's own contacts.
- * Phones match on their last 9 digits so +966 / 05 / 9665 spellings all work.
- */
-function contactMatchesOrder(orderNode: any, contact: string) {
-  const value = String(contact ?? '').trim();
-  if (!value) return false;
-
-  const {phones, emails} = orderContacts(orderNode);
-
-  if (value.includes('@')) {
-    return emails.includes(normEmail(value));
-  }
-
-  const supplied = onlyDigits(value);
-  if (supplied.length < 7) return false;
-  const tail = supplied.slice(-9);
-  return phones.some((p) => p === supplied || p.endsWith(tail));
-}
-
-/** True when the signed-in visitor is the person on the order, or already verified it. */
-async function viewerMaySeeOrder(orderNode: any, context: any) {
-  const session = context.session;
-
-  // Identity keys written at login: loginOtpPhone / loginCustomerEmail /
-  // loginCustomerId (loginOtpEmail is read elsewhere in the app, so honour it
-  // too in case it starts being written).
-  const sessionPhone = await session.get('loginOtpPhone');
-  const sessionEmail =
-    (await session.get('loginCustomerEmail')) ||
-    (await session.get('loginOtpEmail'));
-  const sessionCustomerId = await session.get('loginCustomerId');
-
-  if (sessionPhone && contactMatchesOrder(orderNode, String(sessionPhone))) {
-    return true;
-  }
-  if (sessionEmail && contactMatchesOrder(orderNode, String(sessionEmail))) {
-    return true;
-  }
-
-  // Orders placed in-store or by phone may carry no contact details of their
-  // own; fall back to the customer the order is attached to.
-  const orderCustomerId = onlyDigits(orderNode?.customer?.id);
-  if (
-    sessionCustomerId &&
-    orderCustomerId &&
-    onlyDigits(sessionCustomerId) === orderCustomerId
-  ) {
-    return true;
-  }
-
-  const verified: string[] = (await session.get(VERIFIED_ORDERS_KEY)) || [];
-  return verified.includes(String(orderNode.id));
-}
 
 /**
  * Handles the "confirm the phone or email on this order" form.
@@ -1155,17 +1085,18 @@ export default function TrackOrderPage() {
    * timeline that had already ticked «تم إرسال البطاقة» — the same rule as
    * the timeline (paid AND the card's code on the order) now drives both.
    */
-  const isGiftCardOrder = !!orderData.isDigitalOnly;
+  // `orderData` is null on the «confirm your phone or email» screen (gated).
+  const isGiftCardOrder = !!orderData?.isDigitalOnly;
   const giftCardSent =
     isGiftCardOrder &&
-    String(orderData.rawFinancialStatus || '').toUpperCase() === 'PAID' &&
-    ((orderData.giftCardCodes?.length || 0) > 0 || (orderData.step || 0) >= 4);
+    String(orderData?.rawFinancialStatus || '').toUpperCase() === 'PAID' &&
+    ((orderData?.giftCardCodes?.length || 0) > 0 || (orderData?.step || 0) >= 4);
   const headerStatus =
-    giftCardSent && orderData.step !== 0 && !orderData.isFailed
+    giftCardSent && orderData?.step !== 0 && !orderData?.isFailed
       ? isEn
         ? 'Card Sent'
         : 'تم إرسال البطاقة'
-      : orderData.status;
+      : orderData?.status;
   const actionData = useActionData<typeof action>() as any;
   const navigation = useNavigation();
   const navigate = useNavigate();

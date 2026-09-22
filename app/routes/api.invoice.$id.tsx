@@ -1,11 +1,13 @@
 import {
   data as json,
+  redirect,
   type LoaderFunctionArgs,
   useLoaderData,
   useNavigate,
 } from 'react-router';
 import {localizeCakeLineTitle} from '~/lib/cake-order';
-import {getAdminToken} from '~/lib/shopify-admin.server';
+import {getAdminToken, getAdminDomain} from '~/lib/shopify-admin.server';
+import {viewerMaySeeOrder} from '~/lib/order-access.server';
 
 export async function loader({params, context}: LoaderFunctionArgs) {
   const locale = context.storefront.i18n.language.toLowerCase() || 'ar';
@@ -29,6 +31,10 @@ export async function loader({params, context}: LoaderFunctionArgs) {
               processedAt
               displayFinancialStatus
               displayFulfillmentStatus
+              # Contact details: only to check the viewer owns the order.
+              email
+              phone
+              customer { id email phone }
               totalPriceSet { shopMoney { amount currencyCode } }
               subtotalPriceSet { shopMoney { amount currencyCode } }
               totalTaxSet { shopMoney { amount currencyCode } }
@@ -56,7 +62,7 @@ export async function loader({params, context}: LoaderFunctionArgs) {
     `;
 
   const res = await fetch(
-    `https://${context.env.PUBLIC_STORE_DOMAIN}/admin/api/2023-10/graphql.json`,
+    `https://${getAdminDomain(context.env)}/admin/api/2024-01/graphql.json`,
     {
       method: 'POST',
       headers: {
@@ -77,12 +83,42 @@ export async function loader({params, context}: LoaderFunctionArgs) {
     throw new Response('Order Not Found', {status: 404});
   }
 
+  /*
+    Only the customer on the order — or someone who already confirmed its
+    phone/email on the tracking page — gets the invoice. Anyone else is sent to
+    the tracking page, which asks for that confirmation. Before this, any order
+    number returned its customer's name, phone and address.
+  */
+  if (!(await viewerMaySeeOrder(orderNode, context))) {
+    const prefix = isEn ? '/en' : '';
+    throw redirect(`${prefix}/track-order/${encodeURIComponent(orderNode.name)}`);
+  }
+
   const financialStatus = orderNode.displayFinancialStatus || 'PENDING';
   const isPaid = financialStatus.toUpperCase() === 'PAID';
   // An invoice is only issued once the order has actually been handed over,
   // so a paid-but-undelivered order can't pull one yet.
   const fulfillmentStatus = orderNode.displayFulfillmentStatus || 'UNFULFILLED';
   const isDelivered = fulfillmentStatus.toUpperCase() === 'FULFILLED';
+
+  /*
+    Enforced here, not only in the page: the loader's data is readable on its
+    own (`?_data` / `.data`), so a component that hides the invoice still sent
+    it. Before payment and hand-over there is nothing to return.
+  */
+  if (!isPaid || !isDelivered) {
+    return json({
+      order: {
+        id: orderNode.name,
+        isPaid,
+        isDelivered,
+        financialStatus,
+        fulfillmentStatus,
+      },
+      locale,
+      isEn,
+    });
+  }
 
   return json({
     order: {
@@ -141,7 +177,10 @@ export async function loader({params, context}: LoaderFunctionArgs) {
 }
 
 export default function InvoicePage() {
-  const {order, isEn} = useLoaderData<typeof loader>();
+  const {order: loadedOrder, isEn} = useLoaderData<typeof loader>();
+  // Two shapes: the full invoice, or just the status flags before payment and
+  // hand-over (see the loader). The gate below reads only the flags.
+  const order = loadedOrder as any;
   const navigate = useNavigate();
 
   // An invoice needs both: payment taken AND the order handed over.

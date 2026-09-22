@@ -70,17 +70,37 @@ export async function notifyOrderUpdate({
   const results: { email?: any, sms?: any } = {};
 
   // 4. Dispatch Email
-  if (channels.includes('email')) {
+  /*
+    Say who it went to, and when it could not go at all. This used to hand
+    sendEmail an empty or placeholder address and report nothing: sendEmail
+    returns false rather than throwing, so the webhook logged «sent» and marked
+    the stage done for an email that never left.
+  */
+  const toEmail = String(order.customer?.email || order.email || order.contact_email || '').trim();
+  const emailUsable =
+    !!toEmail && !toEmail.toLowerCase().endsWith('@saadeddin.placeholder');
+  if (channels.includes('email') && !emailUsable) {
+    console.warn(
+      `[NOTIFY] ${stage} email skipped for #${orderData.orderNumber}: ` +
+        (toEmail ? `placeholder address ${toEmail}` : 'order has no email'),
+    );
+    results.email = false;
+  }
+  if (channels.includes('email') && emailUsable) {
   try {
     results.email = await sendEmail({
-      to: order.customer?.email || '',
+      to: toEmail,
       subject: email.subject,
       html: email.html,
       text: sms, // Use SMS text as fallback text version
       env
     });
+    console.log(
+      `[NOTIFY] ${stage} email to ${toEmail} for #${orderData.orderNumber}: ${results.email ? 'sent' : 'FAILED (no mail provider accepted it — check SMTP/Graph/Resend env vars)'}`,
+    );
   } catch (e) {
     console.error('[NOTIFY ERROR - EMAIL]', e);
+    results.email = false;
   }
   }
 

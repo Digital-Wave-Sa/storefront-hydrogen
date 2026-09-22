@@ -144,7 +144,7 @@ export function CartLineItem({
         : product?.collections?.nodes?.[0]?.title || (isEn ? 'Saadeddin' : 'سعد الدين');
   const giftSubline =
     giftKind === 'self'
-      ? isEn ? 'For your own use — the code is sent to you' : 'لاستخدامك الشخصي — يُرسل الرمز إليك'
+      ? isEn ? 'For your own use' : 'لاستخدامك الشخصي'
       : giftKind === 'gift'
         ? giftRecipientName
           ? isEn ? `To: ${giftRecipientName}` : `إلى: ${giftRecipientName}`

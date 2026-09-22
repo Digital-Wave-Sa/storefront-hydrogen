@@ -22,6 +22,7 @@ import {useState, useRef, useEffect} from 'react';
 import {SaadeddinApi} from '~/lib/saadeddin-api.server';
 import {COUNTRY_CODES, parsePhoneCountry} from '~/lib/country-codes';
 import {pageTitle} from '~/lib/seo';
+import {accountDetailsLabel, isCompanyAccount} from '~/lib/is-company-account';
 export type ActionResponse = {
   error: string | null;
   customer: CustomerFragment | null;
@@ -615,7 +616,9 @@ export default function AccountProfile() {
 
   const customer = action?.customer ?? loaderCustomer;
   const isLoading = navigation.state !== 'idle';
-  const isCompany = customer.lastName === '(Company)';
+  // The shared test, so the page, the sidebar and the server agree on who is
+  // a company: the `B2B` tag OR the "(Company)" last name.
+  const isCompany = isCompanyAccount(customer);
 
   const [isEditing, setIsEditing] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -850,7 +853,7 @@ export default function AccountProfile() {
                   fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
                 }}
               >
-                {isEn ? 'Personal Information' : 'المعلومات الشخصية'}
+                {accountDetailsLabel(isCompany, isEn)}
               </h3>
               <button
                 onClick={() => setIsEditing(true)}
@@ -965,27 +968,6 @@ export default function AccountProfile() {
                 </div>
               </div>
 
-              {/* Row 3 */}
-              <div className="flex flex-col gap-2 w-full">
-                <span
-                  className="text-[14px] font-medium text-[#171717] leading-none"
-                  style={{
-                    fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
-                  }}
-                >
-                  {isEn ? 'Preferred Language' : 'اللغة المفضلة'}
-                </span>
-                <div className="bg-[#FEF8EB] border border-[#BBCFCD] rounded-[12px] h-[48px] px-4 flex items-center w-full">
-                  <span
-                    className="text-[14px] font-medium text-[#9FB7AE]"
-                    style={{
-                      fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
-                    }}
-                  >
-                    {isEn ? 'English' : 'العربية'}
-                  </span>
-                </div>
-              </div>
             </div>
 
             {/* Company details, for B2B accounts only. */}
@@ -1194,7 +1176,7 @@ export default function AccountProfile() {
                 fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
               }}
             >
-              {isEn ? 'Personal Information' : 'المعلومات الشخصية'}
+              {accountDetailsLabel(isCompany, isEn)}
             </h3>
             <button
               type="button"
@@ -1374,47 +1356,6 @@ export default function AccountProfile() {
                   }}
                   defaultValue={(customer as any).birthdate?.value ?? ''}
                 />
-              </div>
-            </div>
-
-            {/* Row 3 */}
-            <div className="flex flex-col gap-2 w-full">
-              <label
-                className="text-[14px] font-medium text-[#171717] leading-none"
-                style={{
-                  fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
-                }}
-              >
-                {isEn ? 'Preferred Language' : 'اللغة المفضلة'}
-              </label>
-              <div className="relative">
-                <select
-                  className="appearance-none bg-white border border-[#BBCFCD] rounded-[12px] h-[48px] px-4 w-full text-[14px] font-medium text-[#171717] focus:outline-none focus:border-[#9FB7AE]"
-                  style={{
-                    fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
-                  }}
-                  defaultValue={isEn ? 'en' : 'ar'}
-                  disabled
-                >
-                  <option value="en">English</option>
-                  <option value="ar">العربية</option>
-                </select>
-                <div
-                  className={`absolute top-0 bottom-0 flex items-center pointer-events-none ${isEn ? 'right-4' : 'left-4'}`}
-                >
-                  <svg
-                    width="12"
-                    height="8"
-                    viewBox="0 0 12 8"
-                    fill="none"
-                    stroke="#234745"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M1 1.5L6 6.5L11 1.5" />
-                  </svg>
-                </div>
               </div>
             </div>
 

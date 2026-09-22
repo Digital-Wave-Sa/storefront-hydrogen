@@ -1648,7 +1648,13 @@ function EmptyOrders({isEn}: {isEn: boolean}) {
       </h3>
       <Link
         to="/collections"
-        className="mt-6 inline-block px-8 py-3 bg-[#234745] text-white rounded-[24px] text-[13px] font-bold hover:opacity-90"
+        /*
+          `!text-white`, not `text-white`: a global rule colours links, and it
+          won out here — the label rendered black on the dark green pill. The
+          wishlist's empty state already carried the override; the two buttons
+          now share one set of classes so they cannot drift again.
+        */
+        className="mt-6 inline-block px-10 py-3.5 bg-[#234745] !text-white rounded-full text-[14px] font-bold hover:bg-[#1a3533] transition-colors shadow-sm text-center"
       >
         {isEn ? 'Start Shopping' : 'ابدأ التسوق الآن'}
       </Link>

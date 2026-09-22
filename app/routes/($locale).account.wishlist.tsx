@@ -87,14 +87,14 @@ export default function Wishlist() {
           <h2 className="text-xl font-bold text-[#234745] mb-3 text-center">
             {isEn ? 'Your wishlist is empty' : 'قائمة أمنياتك فارغة'}
           </h2>
-          <p className="text-gray-500 mb-8 md:mb-10 text-center mx-auto w-full max-w-md px-4 leading-relaxed">
+          <p className="text-gray-500 mb-2 text-center mx-auto w-full max-w-md px-4 leading-relaxed">
             {isEn
               ? 'Save your favorite items here to find them easily later.'
               : 'احفظ منتجاتك المفضلة هنا لتجدها بسهولة لاحقاً.'}
           </p>
           <Link
             to={isEn ? '/en/collections/all' : '/collections/all'}
-            className="inline-block px-10 py-3.5 bg-[#234745] !text-white rounded-full font-bold hover:bg-[#1a3533] transition-colors shadow-sm text-center"
+            className="mt-6 inline-block px-10 py-3.5 bg-[#234745] !text-white rounded-full text-[14px] font-bold hover:bg-[#1a3533] transition-colors shadow-sm text-center"
           >
             {isEn ? 'Start Shopping' : 'ابدأ التسوق'}
           </Link>

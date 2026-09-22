@@ -598,10 +598,14 @@ export default function Acccount() {
   );
 }
 
+import {
+  accountDetailsLabel,
+  isCompanyAccount,
+} from '~/lib/is-company-account';
 import {useWishlist} from '~/context/WishlistContext';
 import {SaudiRiyalSymbol} from '~/components/Price';
 
-function getSectionTitle(pathname: string, isEn: boolean) {
+function getSectionTitle(pathname: string, isEn: boolean, isCompany = false) {
   const cleanPath = pathname.replace(/^\/en/, '').replace(/\/$/, '');
   if (cleanPath === '/account') return isEn ? 'Control Panel' : 'لوحة التحكم';
   if (cleanPath.startsWith('/account/orders'))
@@ -615,7 +619,7 @@ function getSectionTitle(pathname: string, isEn: boolean) {
   if (cleanPath.startsWith('/account/addresses'))
     return isEn ? 'Addresses' : 'عناوين التوصيل';
   if (cleanPath.startsWith('/account/profile'))
-    return isEn ? 'Personal Information' : 'المعلومات الشخصية';
+    return accountDetailsLabel(isCompany, isEn);
   return isEn ? 'Control Panel' : 'لوحة التحكم';
 }
 
@@ -663,7 +667,8 @@ function AccountLayout({
   const wishlistCount = wishlist?.length || 0;
 
   const backUrl = `${localePrefix}/account`;
-  const sectionTitle = getSectionTitle(location.pathname, isEn);
+  const isCompany = isCompanyAccount(customer);
+  const sectionTitle = getSectionTitle(location.pathname, isEn, isCompany);
 
   let badgeText = '';
   const cleanPath = location.pathname.replace(/^\/en/, '').replace(/\/$/, '');
@@ -796,6 +801,7 @@ function AcccountMenu({
 }) {
   const isEn = useLocation().pathname.startsWith('/en');
   const localePrefix = isEn ? '/en' : '';
+  const isCompany = isCompanyAccount(customer);
 
   const menuItems = [
     {
@@ -908,7 +914,7 @@ function AcccountMenu({
     },
     {
       to: `${localePrefix}/account/profile`,
-      label: isEn ? 'Personal Information' : 'المعلومات الشخصية',
+      label: accountDetailsLabel(isCompany, isEn),
       icon: (
         <svg
           width="20"

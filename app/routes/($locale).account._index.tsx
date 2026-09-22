@@ -1,4 +1,8 @@
 import {Suspense} from 'react';
+import {
+  accountDetailsLabel,
+  isCompanyAccount,
+} from '~/lib/is-company-account';
 import {Count} from '~/components/Count';
 import {ADDRESSES, ORDERS, PRODUCTS} from '~/lib/plural';
 import {useOutletContext, Link, useLocation, Await, Form} from 'react-router';
@@ -90,7 +94,7 @@ export default function AccountDashboard() {
   const bottomLinks = [
     {
       to: `${localePrefix}/account/profile`,
-      label: isEn ? 'Personal Information' : 'المعلومات الشخصية',
+      label: accountDetailsLabel(isCompanyAccount(customer), isEn),
       icon: (
         <svg
           width="10"

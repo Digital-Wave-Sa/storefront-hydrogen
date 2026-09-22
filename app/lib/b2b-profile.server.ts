@@ -32,24 +32,11 @@ export type CompanyProfile = Partial<Record<B2BFormKey, string>>;
 const ADMIN_API_VERSION = '2024-01';
 
 /**
- * A company account, as the rest of the site marks one.
- *
- * Registration writes BOTH signals: the `B2B` tag on the Shopify customer and
- * the `(Company)` last name that the profile page already keys off. Either one
- * alone is enough here — a tag edited away in admin should not hide a
- * company's own details from it.
+ * A company account, as the rest of the site marks one. The test lives in
+ * `~/lib/is-company-account` because the sidebar and the profile page label
+ * themselves from it too, and the two must not disagree.
  */
-export function isCompanyAccount(customer: any): boolean {
-  if (!customer) return false;
-  const raw = customer.tags;
-  const tags: string[] = Array.isArray(raw)
-    ? raw.map((t: unknown) => String(t))
-    : typeof raw === 'string'
-      ? raw.split(',')
-      : [];
-  if (tags.some((t) => String(t).trim().toLowerCase() === 'b2b')) return true;
-  return String(customer.lastName || '').trim() === '(Company)';
-}
+export {isCompanyAccount} from '~/lib/is-company-account';
 
 /** Digits and length rules, identical to the registration form's. */
 export function validateCompanyProfile(

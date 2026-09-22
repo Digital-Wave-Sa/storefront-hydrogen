@@ -1270,13 +1270,13 @@ export default function Register() {
                       <div className="flex flex-col md:flex-row gap-4 w-full">
                         <div className="flex flex-col gap-2 w-full md:w-1/2">
                           <label
-                            className={`text-[12px] font-bold text-[#171717] px-1 w-full flex gap-1 ${isEn ? 'flex-row' : 'flex-row-reverse justify-end'}`}
+                            className="text-[12px] font-bold text-[#171717] px-1 w-full flex items-center gap-1"
                             style={{
                               fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
                             }}
                           >
-                            <span className="text-[#E55C5C]">*</span>
                             <span>{isEn ? 'First Name' : 'الاسم الأول'}</span>
+                            <span className="text-[#E55C5C]">*</span>
                           </label>
                           <input
                             name="firstName"
@@ -1293,13 +1293,13 @@ export default function Register() {
                         </div>
                         <div className="flex flex-col gap-2 w-full md:w-1/2">
                           <label
-                            className={`text-[12px] font-bold text-[#171717] px-1 w-full flex gap-1 ${isEn ? 'flex-row' : 'flex-row-reverse justify-end'}`}
+                            className="text-[12px] font-bold text-[#171717] px-1 w-full flex items-center gap-1"
                             style={{
                               fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif",
                             }}
                           >
-                            <span className="text-[#E55C5C]">*</span>
                             <span>{isEn ? 'Last Name' : 'اسم العائلة'}</span>
+                            <span className="text-[#E55C5C]">*</span>
                           </label>
                           <input
                             name="lastName"
@@ -1319,14 +1319,14 @@ export default function Register() {
                       <>
                         <div className="flex flex-col gap-2 w-full">
                           <label
-                            className={`text-[12px] font-bold text-[#171717] px-1 w-full flex gap-1 ${isEn ? 'flex-row' : 'flex-row-reverse justify-end'}`}
+                            className="text-[12px] font-bold text-[#171717] px-1 w-full flex items-center gap-1"
                             style={{
                               fontFamily:
                                 "'EnglishDigits', 'GE Dinar One', sans-serif",
                             }}
                           >
-                            <span className="text-[#E55C5C]">*</span>
                             <span>{isEn ? 'Company Name' : 'اسم الشركة'}</span>
+                            <span className="text-[#E55C5C]">*</span>
                           </label>
                           <input
                             name="companyName"
@@ -1352,13 +1352,12 @@ export default function Register() {
 
                         <div className="flex flex-col gap-2 w-full">
                           <label
-                            className={`text-[12px] font-bold text-[#171717] px-1 w-full flex gap-1 ${isEn ? 'flex-row' : 'flex-row-reverse justify-end'}`}
+                            className="text-[12px] font-bold text-[#171717] px-1 w-full flex items-center gap-1"
                             style={{
                               fontFamily:
                                 "'EnglishDigits', 'GE Dinar One', sans-serif",
                             }}
                           >
-                            <span className="text-[#E55C5C]">*</span>
                             <span>
                               {isEn
                                 ? 'Tax Registration Number'
@@ -1367,6 +1366,7 @@ export default function Register() {
                             <span className="text-[#7D7D7D] text-[11px] font-normal">
                               {isEn ? '(15 digits)' : '(15 رقماً)'}
                             </span>
+                            <span className="text-[#E55C5C]">*</span>
                           </label>
                           <input
                             name="taxRegistration"
@@ -1399,19 +1399,19 @@ export default function Register() {
 
                         <div className="flex flex-col gap-2 w-full">
                           <label
-                            className={`text-[12px] font-bold text-[#171717] px-1 w-full flex gap-1 ${isEn ? 'flex-row' : 'flex-row-reverse justify-end'}`}
+                            className="text-[12px] font-bold text-[#171717] px-1 w-full flex items-center gap-1"
                             style={{
                               fontFamily:
                                 "'EnglishDigits', 'GE Dinar One', sans-serif",
                             }}
                           >
-                            <span className="text-[#E55C5C]">*</span>
                             <span>
                               {isEn ? 'National Address' : 'العنوان الوطني'}
                             </span>
                             <span className="text-[#7D7D7D] text-[11px] font-normal">
                               {isEn ? '(8 characters)' : '(8 خانات)'}
                             </span>
+                            <span className="text-[#E55C5C]">*</span>
                           </label>
                           <input
                             name="nationalAddress"
@@ -1447,13 +1447,12 @@ export default function Register() {
 
                         <div className="flex flex-col gap-2 w-full">
                           <label
-                            className={`text-[12px] font-bold text-[#171717] px-1 w-full flex gap-1 ${isEn ? 'flex-row' : 'flex-row-reverse justify-end'}`}
+                            className="text-[12px] font-bold text-[#171717] px-1 w-full flex items-center gap-1"
                             style={{
                               fontFamily:
                                 "'EnglishDigits', 'GE Dinar One', sans-serif",
                             }}
                           >
-                            <span className="text-[#E55C5C]">*</span>
                             <span>
                               {isEn
                                 ? 'Commercial Register (CR)'
@@ -1462,6 +1461,7 @@ export default function Register() {
                             <span className="text-[#7D7D7D] text-[11px] font-normal">
                               {isEn ? '(10 digits)' : '(10 أرقام)'}
                             </span>
+                            <span className="text-[#E55C5C]">*</span>
                           </label>
                           <input
                             name="commercialRegister"
@@ -1494,7 +1494,7 @@ export default function Register() {
 
                         <div className="flex flex-col gap-2 w-full">
                           <label
-                            className={`text-[12px] font-bold text-[#171717] px-1 w-full flex gap-1 ${isEn ? 'flex-row' : 'flex-row-reverse justify-end'}`}
+                            className="text-[12px] font-bold text-[#171717] px-1 w-full flex items-center gap-1"
                             style={{
                               fontFamily:
                                 "'EnglishDigits', 'GE Dinar One', sans-serif",
@@ -1534,14 +1534,14 @@ export default function Register() {
                     {/* Phone Input */}
                     <div className="flex flex-col gap-2 w-full">
                       <label
-                        className={`text-[12px] font-bold text-[#171717] px-1 w-full flex gap-1 ${isEn ? 'flex-row' : 'flex-row-reverse justify-end'}`}
+                        className="text-[12px] font-bold text-[#171717] px-1 w-full flex items-center gap-1"
                         style={{
                           fontFamily:
                             "'EnglishDigits', 'GE Dinar One', sans-serif",
                         }}
                       >
-                        <span className="text-[#E55C5C]">*</span>
                         <span>{isEn ? 'Mobile Number' : 'رقم الجوال'}</span>
+                        <span className="text-[#E55C5C]">*</span>
                       </label>
                       <div
                         className="flex flex-row items-center border border-[#BBCFCD] bg-white rounded-[12px] h-[48px] focus-within:border-[#234745] transition-colors overflow-hidden"
@@ -1648,14 +1648,14 @@ export default function Register() {
                     {/* Email Input */}
                     <div className="flex flex-col gap-2 w-full">
                       <label
-                        className={`text-[12px] font-bold text-[#171717] px-1 w-full flex gap-1 ${isEn ? 'flex-row' : 'flex-row-reverse justify-end'}`}
+                        className="text-[12px] font-bold text-[#171717] px-1 w-full flex items-center gap-1"
                         style={{
                           fontFamily:
                             "'EnglishDigits', 'GE Dinar One', sans-serif",
                         }}
                       >
-                        <span className="text-[#E55C5C]">*</span>
                         <span>{isEn ? 'Email' : 'البريد الإلكتروني'}</span>
+                        <span className="text-[#E55C5C]">*</span>
                       </label>
                       <input
                         name="email"

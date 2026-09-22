@@ -35,6 +35,17 @@ export type BranchAvailabilityMap = Record<string, BranchAvailabilityEntry>;
  */
 
 const TTL_MS = 60 * 1000;
+/**
+ * How long an expired answer may still be shown while a fresh one is fetched.
+ *
+ * Expiry used to drop the answer outright, so the next re-render (add to
+ * cart, the wishlist heart, any revalidation) put every card back into
+ * «not known yet» — the badge vanished, the image un-faded and the button went
+ * blank — and then the same answer came back and it all flipped again. An
+ * out-of-stock card briefly looked in stock, once a minute. The last answer
+ * now stays on screen until the new one replaces it.
+ */
+const MAX_STALE_MS = 30 * 60 * 1000;
 const BATCH_WINDOW_MS = 40;
 /** Keep each request well inside the API's own per-call variant cap. */
 const MAX_PER_REQUEST = 50;
@@ -63,6 +74,12 @@ interface PendingBatch {
 const pending = new Map<string, PendingBatch>();
 /** Keys whose request has been sent and not yet answered. */
 const inFlight = new Set<string>();
+/**
+ * Keys that have had a final outcome at least once: an answer, or given up on.
+ * Only a key that has never settled counts as pending, so a card goes through
+ * the «not known yet» state once, on its first lookup, and never again.
+ */
+const settled = new Set<string>();
 const subscribers = new Set<() => void>();
 
 const cacheKey = (locationId: string, variantId: string) =>
@@ -84,20 +101,28 @@ function readCache(
   const missing: string[] = [];
   const now = Date.now();
   for (const id of variantIds) {
-    const hit = cache.get(cacheKey(locationId, id));
-    if (hit && hit.expires > now) found[id] = hit.value;
-    else missing.push(id);
+    const key = cacheKey(locationId, id);
+    const hit = cache.get(key);
+    if (hit && hit.expires + MAX_STALE_MS > now) {
+      // Fresh, or stale but still the best answer we have.
+      found[id] = hit.value;
+      if (hit.expires <= now) missing.push(id);
+    } else {
+      if (hit) cache.delete(key);
+      missing.push(id);
+    }
   }
   return {found, missing};
 }
 
-/** True while any of these ids is neither cached nor given up on. */
+/** True while any of these ids has never had an answer or been given up on. */
 function hasPending(locationId: string, variantIds: string[]): boolean {
   const now = Date.now();
   return variantIds.some((id) => {
     const key = cacheKey(locationId, id);
+    if (settled.has(key)) return false;
     const hit = cache.get(key);
-    if (hit && hit.expires > now) return false;
+    if (hit && hit.expires + MAX_STALE_MS > now) return false;
     return !isParked(key, now);
   });
 }
@@ -133,6 +158,7 @@ async function flush(locationId: string) {
         const parkUntil = Date.now() + UNRESOLVED_TTL_MS;
         for (const id of chunk) {
           const key = cacheKey(locationId, id);
+          settled.add(key);
           if (availability[id]) {
             cache.set(key, {value: availability[id], expires});
             unresolved.delete(key);
@@ -151,7 +177,9 @@ async function flush(locationId: string) {
     if (!answered) {
       const parkUntil = Date.now() + UNRESOLVED_TTL_MS;
       for (const id of chunk) {
-        unresolved.set(cacheKey(locationId, id), parkUntil);
+        const key = cacheKey(locationId, id);
+        unresolved.set(key, parkUntil);
+        settled.add(key);
       }
     }
   }
@@ -230,10 +258,10 @@ export function useBranchAvailability(
     return {availability: {}, loaded: false, pending: false};
   }
 
-  const {found, missing} = readCache(locationId, variantIds);
+  const {found} = readCache(locationId, variantIds);
   return {
     availability: found,
-    loaded: missing.length === 0,
+    loaded: variantIds.every((id) => id in found),
     pending: hasPending(locationId, variantIds),
   };
 }
@@ -261,8 +289,11 @@ export function useBranchAvailabilityReader(locationId?: string | null) {
   const read = (variantId?: string | null): BranchAvailabilityEntry | null => {
     if (!locationId || !variantId) return null;
     const hit = cache.get(cacheKey(locationId, variantId));
-    if (hit && hit.expires > Date.now()) return hit.value;
+    const now = Date.now();
+    if (hit && hit.expires > now) return hit.value;
     request(locationId, [variantId]);
+    // Stale: keep showing it while the refresh above runs.
+    if (hit && hit.expires + MAX_STALE_MS > now) return hit.value;
     return null;
   };
 

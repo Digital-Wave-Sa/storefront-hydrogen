@@ -66,7 +66,7 @@ export function StockPendingButton({className}: {className: string}) {
     <div
       aria-busy="true"
       role="status"
-      className={`${className} !bg-[#E4EDEA] !text-transparent pointer-events-none select-none animate-pulse`}
+      className={`${className} !bg-[#E9E4DC] !text-transparent pointer-events-none select-none motion-safe:animate-pulse`}
     />
   );
 }
@@ -333,6 +333,18 @@ function ProductItemCard({
 
   const isDimmed = isVisibilityBlocked;
 
+  /**
+   * Until this branch's stock is known, the grid card is a skeleton.
+   *
+   * Holding back only the button was not enough: with the badge hidden and
+   * the image at full strength, an out-of-stock product looked in stock for
+   * the moment the lookup took, then turned grey with «نفذت الكمية» — and the
+   * reverse for items the fallback wrongly called sold out. Neither state is
+   * shown now until there is an answer. The title stays in the markup for
+   * search engines and screen readers; only its painted form waits.
+   */
+  const showStockSkeleton = availabilityUnresolved && !isVisibilityBlocked;
+
   if (view === 'list') {
     return (
       <div className={`flex items-center gap-6 p-4 md:p-6 bg-white border border-gray-100 rounded-3xl transition-all duration-300 group relative ${isDimmed ? 'opacity-60 grayscale-[30%]' : 'hover:shadow-xl hover:border-[#234745]/20'}`}>
@@ -489,10 +501,14 @@ function ProductItemCard({
                 widths={[400, 600, 800, 1200]}
                 sizes="(min-width: 45em) 400px, 100vw"
                 className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                style={{ opacity: isVisibilityBlocked ? 0.5 : (showOutOfStock ? 0.4 : 1), filter: isVisibilityBlocked ? 'grayscale(1)' : 'none' }}
+                style={{ opacity: showStockSkeleton ? 0 : isVisibilityBlocked ? 0.5 : (showOutOfStock ? 0.4 : 1), filter: isVisibilityBlocked ? 'grayscale(1)' : 'none' }}
               />
             );
           })()}
+
+          {showStockSkeleton && (
+            <div aria-hidden="true" className="absolute inset-0 z-30 bg-[#F1ECE4] motion-safe:animate-pulse" />
+          )}
 
           {/* Wishlist Heart Icon */}
           <div className={`absolute top-2 md:top-3 ${isEn ? 'right-2 md:right-3' : 'left-2 md:left-3'} z-20`}>
@@ -550,13 +566,22 @@ function ProductItemCard({
 
       <div className={`p-3 md:p-4 flex flex-col flex-grow ${isEn ? 'text-left' : 'text-right'}`}>
         <Link prefetch="intent" to={variantUrl}>
+          {showStockSkeleton ? (
+            <h4 className="relative h-[24px]">
+              <span className="sr-only">{fixMojibake(product.title || '')}</span>
+              <span aria-hidden="true" className="absolute inset-y-[4px] start-0 w-3/4 rounded-full bg-[#E9E4DC] motion-safe:animate-pulse" />
+            </h4>
+          ) : (
           <h4 className={`font-bold text-[#234745] text-[16px] line-clamp-1 transition-colors duration-300 ${isVisibilityBlocked ? '' : 'group-hover:text-[#1a3a2d]'}`} style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif", fontSize: '16px', lineHeight: '24px', opacity: showOutOfStock ? 0.4 : 1 }}>
             {formatNumbers(product.title)}
           </h4>
+          )}
         </Link>
 
         <div className={`mt-[8px] mb-[16px] flex ${isEn ? 'justify-start' : 'justify-start'} items-center gap-[8px] min-h-[28px]`} style={{ opacity: showOutOfStock ? 0.4 : 1 }}>
-          {!isVisibilityBlocked && product.priceRange ? (
+          {showStockSkeleton ? (
+            <span aria-hidden="true" className="h-4 w-16 rounded-full bg-[#E9E4DC] motion-safe:animate-pulse" />
+          ) : !isVisibilityBlocked && product.priceRange ? (
             <>
               <div className="flex items-center gap-1.5 text-[#255441]">
                 <Price data={product.priceRange.minVariantPrice} size="lg" isEn={isEn} />

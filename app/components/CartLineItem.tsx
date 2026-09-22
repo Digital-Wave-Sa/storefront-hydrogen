@@ -105,6 +105,60 @@ export function CartLineItem({
    */
   const isGiftCard = isNonShippableLine(line);
 
+  /**
+   * «Gift card» or «credit for yourself»?
+   *
+   * Both are the same Shopify gift-card product, so both showed its title,
+   * GIFT CARD, and a shopper with one of each could not tell them apart. The
+   * wizard and /buy-gift-card already record which it is in `Gift Mode`
+   * ('For Myself' / 'Gift to Someone'); this reads it. A voucher that reached
+   * the cart without the attribute (a reorder) keeps the product title.
+   */
+  const giftModeAttr = isGiftCard
+    ? line.attributes?.find((a: any) => a.key === 'Gift Mode')?.value || ''
+    : '';
+  const giftKind: 'self' | 'gift' | null = !isGiftCard
+    ? null
+    : giftModeAttr === 'For Myself'
+      ? 'self'
+      : giftModeAttr === 'Gift to Someone'
+        ? 'gift'
+        : null;
+  const giftRecipientName = (() => {
+    const v = String(
+      line.attributes?.find((a: any) => a.key === 'Recipient Name')?.value || '',
+    ).trim();
+    return v && v !== 'N/A' ? v : '';
+  })();
+  const lineTitle =
+    giftKind === 'self'
+      ? isEn ? 'Credit for yourself' : 'رصيد لنفسك'
+      : giftKind === 'gift'
+        ? isEn ? 'Gift card' : 'بطاقة هدية'
+        : fixMojibake(product?.title || title || '');
+  const lineEyebrow =
+    giftKind === 'self'
+      ? isEn ? 'Store credit' : 'رصيد شرائي'
+      : giftKind === 'gift'
+        ? isEn ? 'Gift voucher' : 'قسيمة هدية'
+        : product?.collections?.nodes?.[0]?.title || (isEn ? 'Saadeddin' : 'سعد الدين');
+  const giftSubline =
+    giftKind === 'self'
+      ? isEn ? 'For your own use — the code is sent to you' : 'لاستخدامك الشخصي — يُرسل الرمز إليك'
+      : giftKind === 'gift'
+        ? giftRecipientName
+          ? isEn ? `To: ${giftRecipientName}` : `إلى: ${giftRecipientName}`
+          : isEn ? 'To be sent to the recipient' : 'تُرسل إلى المُهدى إليه'
+        : '';
+  const giftSublineEl = giftSubline ? (
+    <p
+      className={`text-[13px] font-bold mb-2 ${giftKind === 'self' ? 'text-[#234745]' : 'text-[#906B51]'}`}
+      style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}
+    >
+      {giftSubline}
+    </p>
+  ) : null;
+
   // Filter out default title option
   const validOptions = selectedOptions?.filter((opt: any) => opt.value !== 'Default Title') || [];
 
@@ -309,7 +363,7 @@ export function CartLineItem({
         <div className={`flex-1 min-w-0 ${isEn ? 'text-left' : 'text-right'}`}>
           <div className="flex items-center gap-2 mb-1">
             <span className="text-[12px] font-bold text-[#906B51]" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
-              {product?.collections?.nodes?.[0]?.title || (isEn ? 'Saadeddin' : 'سعد الدين')}
+              {lineEyebrow}
             </span>
             {(() => {
               const isPreorder = product?.tags?.some((t: string) => t.toLowerCase() === 'pre-order') || line.attributes?.some((a: any) => a.key === '_is_preorder' && a.value === 'true');
@@ -325,8 +379,9 @@ export function CartLineItem({
           </div>
 
           <h4 className="font-bold text-[16px] text-[#1a1a1a] line-clamp-2 leading-tight mb-2" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
-            {fixMojibake(product?.title || title || '')}
+            {lineTitle}
           </h4>
+          {giftSublineEl}
 
           {(() => {
             const preorderDate = line.attributes?.find((a: any) => a.key === 'Pre-order Date' || a.key === 'Availability Date')?.value;
@@ -517,11 +572,12 @@ export function CartLineItem({
           {/* Details */}
           <div className={`flex-1 min-w-0 ${isEn ? 'text-left' : 'text-right'}`}>
             <span className="text-[12px] font-bold text-[#906B51] block mb-1" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
-              {product?.collections?.nodes?.[0]?.title || (isEn ? 'Saadeddin' : 'سعد الدين')}
+              {lineEyebrow}
             </span>
             <h4 className="font-bold text-[16px] text-[#171717] mb-1.5 leading-snug line-clamp-2" style={{ fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif" }}>
-              {product?.title || title}
+              {lineTitle}
             </h4>
+            {giftSublineEl}
 
             {/* Options */}
             {!isGiftCard && (validOptions.length > 0 || (line.attributes?.filter((a: any) => a.value && !a.key.startsWith('_')).length || 0) > 0) && (

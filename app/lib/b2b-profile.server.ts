@@ -15,15 +15,53 @@
  * places cannot drift: a saved profile has to be as good as a new signup.
  */
 
-export const B2B_NAMESPACE = 'b2b';
+/*
+  `custom`, not a namespace of our own.
+
+  The store already defines `custom.tax_registration` and
+  `custom.company_address` for customers, and those definitions are what the
+  admin customer page shows. Writing the same facts to a private `b2b`
+  namespace stored them correctly but left the admin card empty and gave the
+  shop two places to look. Definitions for the other three keys now exist
+  alongside them.
+
+  `type` has to match each definition exactly — company_address is defined as
+  multi-line — or Shopify rejects the write.
+*/
+export const B2B_NAMESPACE = 'custom';
 
 /** The company fields, in the order the profile shows them. */
 export const B2B_FIELDS = [
-  {key: 'company_name', form: 'companyName', crm: 'companyName'},
-  {key: 'tax_number', form: 'taxRegistration', crm: 'taxNumber'},
-  {key: 'commercial_register', form: 'commercialRegister', crm: 'commercialRegister'},
-  {key: 'national_address', form: 'nationalAddress', crm: 'nationalAddress'},
-  {key: 'company_address', form: 'companyAddress', crm: 'companyAddress'},
+  {
+    key: 'company_name',
+    form: 'companyName',
+    crm: 'companyName',
+    type: 'single_line_text_field',
+  },
+  {
+    key: 'tax_registration',
+    form: 'taxRegistration',
+    crm: 'taxNumber',
+    type: 'single_line_text_field',
+  },
+  {
+    key: 'commercial_register',
+    form: 'commercialRegister',
+    crm: 'commercialRegister',
+    type: 'single_line_text_field',
+  },
+  {
+    key: 'national_address',
+    form: 'nationalAddress',
+    crm: 'nationalAddress',
+    type: 'single_line_text_field',
+  },
+  {
+    key: 'company_address',
+    form: 'companyAddress',
+    crm: 'companyAddress',
+    type: 'multi_line_text_field',
+  },
 ] as const;
 
 export type B2BFormKey = (typeof B2B_FIELDS)[number]['form'];
@@ -161,7 +199,7 @@ export async function writeCompanyProfile(
     ownerId: `gid://shopify/Customer/${numericId}`,
     namespace: B2B_NAMESPACE,
     key: f.key,
-    type: 'single_line_text_field',
+    type: f.type,
     value: String(values[f.form]).trim(),
   }));
   if (metafields.length === 0) return true;

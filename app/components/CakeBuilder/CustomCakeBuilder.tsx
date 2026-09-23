@@ -2888,8 +2888,15 @@ export default function CustomCakeBuilder({
               </span>
             </div>
 
-            {/* Circle & 3D Canvas */}
-            <div className="relative w-[260px] h-[260px] sm:w-[320px] sm:h-[320px] lg:w-auto lg:h-[50vh] aspect-square rounded-full border-[12px] lg:border-[24px] border-white bg-[#EED5D7] shadow-sm flex items-center justify-center overflow-hidden shrink-0">
+            {/*
+              Circle & 3D Canvas.
+
+              No white ring. It used to carry a 12px (24px on desktop) white
+              border, which on the pink stage read as a porthole cut into the
+              page rather than as a stage the cake sits on, and it ate the
+              radius the preview had to render into on a phone.
+            */}
+            <div className="relative w-[260px] h-[260px] sm:w-[320px] sm:h-[320px] lg:w-auto lg:h-[50vh] aspect-square rounded-full bg-[#EED5D7] flex items-center justify-center overflow-hidden shrink-0">
               <div className="absolute inset-0 z-20 flex items-center justify-center">
                 {/*
                   The live preview still draws nothing until a shape is picked

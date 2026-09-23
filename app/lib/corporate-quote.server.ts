@@ -248,6 +248,8 @@ export type QuoteRecord = {
   notes?: string;
   logoFileId?: string | null;
   brandGuideFileId?: string | null;
+  /** For forms whose upload field takes several files at once. */
+  attachmentFileIds?: string[];
   source: string;
   locale: string;
 };
@@ -287,6 +289,13 @@ export async function recordCorporateQuote(
       {key: 'notes', value: record.notes},
       {key: 'logo', value: record.logoFileId},
       {key: 'brand_guide', value: record.brandGuideFileId},
+      // A list.file_reference wants a JSON array of gids, not a bare id.
+      {
+        key: 'attachments',
+        value: record.attachmentFileIds?.length
+          ? JSON.stringify(record.attachmentFileIds)
+          : null,
+      },
       {key: 'source', value: record.source},
       {key: 'locale', value: record.locale},
       {key: 'submitted_at', value: new Date().toISOString()},

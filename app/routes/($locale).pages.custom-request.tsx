@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { type MetaFunction, useRouteLoaderData, Link, useFetcher, data, type LoaderFunctionArgs } from 'react-router';
 
 import {pageTitle} from '~/lib/seo';
@@ -27,6 +27,58 @@ export async function action({request, context}: LoaderFunctionArgs) {
       });
     }
 
+    const {
+      uploadToShopifyFiles,
+      recordCorporateQuote,
+      quoteAdminUrl,
+    } = await import('~/lib/corporate-quote.server');
+
+    /**
+     * The brand-assets field takes several files at once, so they land in
+     * the metaobject's `attachments` list rather than the single `logo` and
+     * `brand_guide` references the corporate modal uses.
+     *
+     * Capped at five. The field is an open "drag your brand folder here"
+     * invitation and somebody will eventually drop thirty files into it;
+     * five uploads is already the slowest thing this action does, and the
+     * rest can be asked for by reply.
+     */
+    const MAX_ATTACHMENTS = 5;
+    const allFiles = formData
+      .getAll('brandAssets')
+      .filter((f): f is File => f instanceof File && f.size > 0);
+    const submittedFiles = allFiles.slice(0, MAX_ATTACHMENTS);
+
+    const uploaded = (
+      await Promise.all(
+        submittedFiles.map((file) =>
+          uploadToShopifyFiles(context.env, file, 'custom-request-asset'),
+        ),
+      )
+    ).filter((f): f is NonNullable<typeof f> => Boolean(f));
+
+    /**
+     * Storage first, notification second -- see corporate-quote.server.ts.
+     * These land in the same `corporate_quote_request` list as the two forms
+     * on /corporate, separated by `source`, because the team works them as
+     * one queue and splitting them across two metaobject types would only
+     * mean two places to forget to look.
+     */
+    const stored = await recordCorporateQuote(context.env, {
+      companyName,
+      contactName,
+      email,
+      phone,
+      quantity,
+      budgetPerBox,
+      notes: specialRequirements,
+      attachmentFileIds: uploaded.map((f) => f.id),
+      source: 'custom-request',
+      locale: isEn ? 'en' : 'ar',
+    });
+
+    const adminLink = stored ? quoteAdminUrl(context.env, stored.id) : null;
+
     const {sendFormEmailNotification} = await import('~/lib/email.server');
     await sendFormEmailNotification(
       {
@@ -39,12 +91,31 @@ export async function action({request, context}: LoaderFunctionArgs) {
         quantity,
         budget: budgetPerBox,
         subject: `Custom Package Request - ${companyName || contactName}`,
-        message: specialRequirements,
+        message: [
+          specialRequirements || 'No notes provided.',
+          uploaded.length
+            ? `\nBrand assets (${uploaded.length}):\n${uploaded
+                .map(
+                  (f) =>
+                    `- ${f.filename}${f.url ? ` — ${f.url}` : ' (uploaded; still processing)'}`,
+                )
+                .join('\n')}`
+            : null,
+          allFiles.length > MAX_ATTACHMENTS
+            ? `Note: the customer attached ${allFiles.length} files; only the first ${MAX_ATTACHMENTS} were kept. Ask them for the rest by reply.`
+            : null,
+          adminLink ? `Saved in Shopify: ${adminLink}` : null,
+          stored
+            ? null
+            : 'WARNING: this request could NOT be saved to Shopify. This email is the only copy.',
+        ]
+          .filter(Boolean)
+          .join('\n'),
       },
       context.env,
     );
 
-    return data({success: true});
+    return data({success: true, stored: Boolean(stored)});
   } catch (err) {
     return data({
       success: false,
@@ -58,7 +129,7 @@ export default function CustomRequestPage() {
   const isEn = rootData?.locale === 'en';
 
   const [submitted, setSubmitted] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [attachmentNames, setAttachmentNames] = useState<string[]>([]);
   const [formData, setFormData] = useState({
     companyName: '',
     contactName: '',
@@ -71,17 +142,26 @@ export default function CustomRequestPage() {
     brandAssetsUploaded: false,
   });
 
-  const requestFetcher = useFetcher();
+  const requestFetcher = useFetcher<{success?: boolean; error?: string}>();
+  const loading = requestFetcher.state !== 'idle';
+
+  /**
+   * The thank-you screen used to appear on a 400ms timer running alongside
+   * the submit, so it said "received" whether or not the action answered,
+   * and always before it had. It now waits for the action.
+   */
+  useEffect(() => {
+    if (requestFetcher.state === 'idle' && requestFetcher.data?.success) {
+      setSubmitted(true);
+    }
+  }, [requestFetcher.state, requestFetcher.data]);
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setLoading(true);
-    const formData = new FormData(e.currentTarget);
-    requestFetcher.submit(formData, { method: 'post' });
-    setTimeout(() => {
-      setLoading(false);
-      setSubmitted(true);
-    }, 400);
+    requestFetcher.submit(new FormData(e.currentTarget), {
+      method: 'post',
+      encType: 'multipart/form-data',
+    });
   };
 
   return (
@@ -156,7 +236,11 @@ export default function CustomRequestPage() {
               </div>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="flex flex-col gap-6 text-start">
+            <form
+              onSubmit={handleSubmit}
+              encType="multipart/form-data"
+              className="flex flex-col gap-6 text-start"
+            >
               <div className="border-b border-[#E6E2D8] pb-4 mb-2">
                 <h3 className="text-[20px] font-bold text-[#234745] m-0" style={{ fontFamily: isEn ? 'inherit' : "'Bahij Janna', sans-serif" }}>
                   {isEn ? '1. Company & Contact Info' : '1. معلومات الشركة والمسؤول'}
@@ -272,15 +356,41 @@ export default function CustomRequestPage() {
                     {isEn ? 'Click to select or drag & drop files here' : 'اضغط لاختيار الملفات أو اسحب أصول الهوية هنا'}
                   </p>
                   <p className="text-[12px] text-[#8B9895] m-0">
-                    {isEn ? 'Supports PNG, SVG, AI, PDF, ZIP' : 'يدعم صور الشعار ورسومات AI و PDF و ZIP'}
+                    {isEn
+                      ? 'Supports PNG, SVG, AI, PDF, ZIP — up to 5 files, 3MB each'
+                      : 'يدعم صور الشعار ورسومات AI و PDF و ZIP — حتى 5 ملفات، 3 ميجابايت لكل ملف'}
                   </p>
+                  {/**
+                   * This input had no `name`, so nothing it held was ever
+                   * submitted. Its onChange only flipped a boolean used to
+                   * tick the field as "done" -- the files themselves were
+                   * read into the browser and dropped with the page.
+                   */}
                   <input
                     type="file"
+                    name="brandAssets"
                     multiple
-                    onChange={() => setFormData({ ...formData, brandAssetsUploaded: true })}
+                    accept="image/*,.pdf,.svg,.ai,.eps,.zip"
+                    onChange={(e) => {
+                      const picked = Array.from(e.target.files || []);
+                      setAttachmentNames(picked.map((f) => f.name));
+                      setFormData({
+                        ...formData,
+                        brandAssetsUploaded: picked.length > 0,
+                      });
+                    }}
                     className="hidden"
                     id="brand-assets-file"
                   />
+                  {attachmentNames.length > 0 && (
+                    <ul className="m-0 mt-1 list-none p-0 text-[12px] font-bold text-[#234745]">
+                      {attachmentNames.map((n) => (
+                        <li key={n} className="truncate max-w-[320px]">
+                          {n}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                   <label htmlFor="brand-assets-file" className="mt-2 bg-[#234745] text-white px-5 py-2 rounded-full font-bold text-[13px] cursor-pointer hover:bg-[#1a3533]">
                     {isEn ? 'Select Files' : 'اختيار الملفات'}
                   </label>
@@ -300,6 +410,21 @@ export default function CustomRequestPage() {
                   className="w-full border border-[#E6E2D8] rounded-[14px] px-4 py-3 text-[15px] focus:outline-none focus:border-[#234745]"
                 />
               </div>
+
+              {/* A failed submit has to be visible. The old handler could
+                  not fail, so there was nowhere for an error to show. */}
+              {requestFetcher.state === 'idle' &&
+                requestFetcher.data?.success === false && (
+                  <div
+                    role="alert"
+                    className="rounded-[14px] border border-red-300 bg-red-50 px-4 py-3 text-[14px] font-bold text-red-700"
+                  >
+                    {requestFetcher.data?.error ||
+                      (isEn
+                        ? 'Something went wrong. Please try again, or WhatsApp us below.'
+                        : 'تعذّر إرسال الطلب. حاول مرة أخرى أو راسلنا على واتساب بالأسفل.')}
+                  </div>
+                )}
 
               {/* Action Buttons */}
               <div className="pt-4 flex flex-col sm:flex-row items-center gap-4">

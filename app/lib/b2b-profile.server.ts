@@ -142,10 +142,6 @@ export async function readCompanyProfile(
   const creds = await adminCredentials(env);
   if (!creds || !numericId) return {};
 
-  const identifiers = B2B_FIELDS.map(
-    (f) => `{namespace: "${B2B_NAMESPACE}", key: "${f.key}"}`,
-  ).join(', ');
-
   try {
     const res = await fetch(
       `https://${creds.domain}/admin/api/${ADMIN_API_VERSION}/graphql.json`,
@@ -156,10 +152,28 @@ export async function readCompanyProfile(
           'X-Shopify-Access-Token': creds.token,
         },
         body: JSON.stringify({
+          /**
+           * A connection, not `identifiers`.
+           *
+           * This asked for `metafields(identifiers: [{namespace, key}, ...])`,
+           * which is the shape Product and Order accept. On Customer,
+           * `metafields` is a plain MetafieldConnection, so Shopify answered
+           *
+           *   Field 'metafields' doesn't accept argument 'identifiers'
+           *
+           * to every single call. That is a GraphQL error, not a thrown one:
+           * the fetch resolved, `json.data` came back null, the catch below
+           * never ran, and the function returned {} as though the customer
+           * had no company details at all. The write was fine the whole time
+           * -- the values are on the customer and show in the admin card --
+           * the profile page just never managed to read them back.
+           */
           query: `
             query companyProfile($id: ID!) {
               customer(id: $id) {
-                metafields(identifiers: [${identifiers}]) { key value }
+                metafields(first: 25, namespace: "${B2B_NAMESPACE}") {
+                  nodes { key value }
+                }
               }
             }
           `,
@@ -168,7 +182,22 @@ export async function readCompanyProfile(
       },
     );
     const json: any = await res.json();
-    const rows: any[] = json?.data?.customer?.metafields || [];
+
+    /**
+     * Read the errors. A query that could not be executed was
+     * indistinguishable here from a customer with nothing stored, which is
+     * exactly what let the bug above survive: the only symptom was four
+     * empty fields, which looks like missing data, not a broken request.
+     */
+    if (json?.errors?.length) {
+      console.error(
+        '[B2B] readCompanyProfile GraphQL errors:',
+        JSON.stringify(json.errors),
+      );
+      return {};
+    }
+
+    const rows: any[] = json?.data?.customer?.metafields?.nodes || [];
     const out: CompanyProfile = {};
     for (const field of B2B_FIELDS) {
       const hit = rows.find((m) => m && m.key === field.key);

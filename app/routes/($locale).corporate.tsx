@@ -2028,7 +2028,7 @@ export default function CorporatePage() {
                 <p className="text-[#8B9895] font-medium text-[15px] md:text-[17px] leading-relaxed m-0">
                   {isEn
                     ? 'For orders over 200 boxes, custom branding, or multi-address delivery — your account manager will reach out within 24 hours with a tailored quote.'
-                    : 'للطلبات فوق 200 علبة، أو التخصيص الخاص، أو التوصيل لعدة عناوين — مدير حسابك سيتواصل خلال 24 ساعة بعرض مفضل.'}
+                    : 'للطلبات فوق 200 علبة، أو التخصيص الخاص، أو التوصيل لعدة عناوين — مدير حسابك سيتواصل خلال 24 ساعة بعرض مفصّل.'}
                 </p>
               </div>
 

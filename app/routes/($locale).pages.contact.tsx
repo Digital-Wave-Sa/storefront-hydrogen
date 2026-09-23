@@ -58,6 +58,14 @@ export async function action({request, context}: ActionFunctionArgs) {
           email,
           phone: mobile,
           subject,
+          /**
+           * The order number now travels as its own field as well as in the
+           * message body. This function is what writes the
+           * `contact_submission` metaobject, so passing it here is what puts
+           * it in a column the team can filter on rather than a line buried
+           * in free text.
+           */
+          orderNumber,
           message: `${orderNumber ? `Order Number: ${orderNumber}\n` : ''}${message}`,
         },
         context.env,
@@ -66,103 +74,18 @@ export async function action({request, context}: ActionFunctionArgs) {
       console.error('Failed to send contact form email notification:', e);
     }
 
-    const createMutation = `
-      mutation metaobjectCreate($metaobject: MetaobjectCreateInput!) {
-        metaobjectCreate(metaobject: $metaobject) {
-          metaobject {
-            id
-            handle
-          }
-          userErrors {
-            field
-            message
-          }
-        }
-      }
-    `;
-
-    const defMutation = `
-      mutation metaobjectDefinitionCreate($definition: MetaobjectDefinitionCreateInput!) {
-        metaobjectDefinitionCreate(definition: $definition) {
-          createdDefinition {
-            id
-            type
-          }
-          userErrors {
-            field
-            message
-          }
-        }
-      }
-    `;
-
-    const entryVariables = {
-      metaobject: {
-        type: 'contact_submission',
-        fields: [
-          {key: 'full_name', value: fullName},
-          {key: 'mobile', value: mobile},
-          {key: 'email', value: email},
-          {key: 'subject', value: subject},
-          {key: 'order_number', value: orderNumber},
-          {key: 'message', value: message},
-        ],
-      },
-    };
-
-    const defVariables = {
-      definition: {
-        name: 'Contact Submission',
-        type: 'contact_submission',
-        fieldDefinitions: [
-          {name: 'Full Name', key: 'full_name', type: 'single_line_text_field'},
-          {name: 'Mobile', key: 'mobile', type: 'single_line_text_field'},
-          {name: 'Email', key: 'email', type: 'single_line_text_field'},
-          {name: 'Subject', key: 'subject', type: 'single_line_text_field'},
-          {
-            name: 'Order Number',
-            key: 'order_number',
-            type: 'single_line_text_field',
-          },
-          {name: 'Message', key: 'message', type: 'multi_line_text_field'},
-        ],
-      },
-    };
-
-    async function executeQuery(
-      query: string,
-      variables: any,
-      adminToken: string,
-      shopDomain: string,
-    ) {
-      if (!adminToken) return null;
-      try {
-        const response = await fetch(
-          `https://${shopDomain}/admin/api/2023-04/graphql.json`,
-          {
-            method: 'POST',
-            headers: {
-              'X-Shopify-Access-Token': adminToken,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({query, variables}),
-          },
-        );
-        const text = await response.text();
-        try {
-          return JSON.parse(text);
-        } catch {
-          console.error(
-            '[CONTACT ACTION] Non-JSON response from Shopify Admin:',
-            text.substring(0, 200),
-          );
-          return null;
-        }
-      } catch (err) {
-        console.error('[CONTACT ACTION FETCH ERROR]', err);
-        return null;
-      }
-    }
+    /**
+     * The dead metaobject block that stood here is gone.
+     *
+     * It built a createMutation, a defMutation, entry and definition
+     * variables and an executeQuery helper -- and then never called any
+     * of it. `executeQuery` had no call site anywhere in the file. Ninety
+     * lines that looked like the contact form's storage and did nothing.
+     *
+     * Storage is real, and it happens inside sendFormEmailNotification
+     * above, which writes the `contact_submission` metaobject for every
+     * form on the site.
+     */
 
     const {getAdminToken} = await import('~/lib/shopify-admin.server');
     const adminToken = await getAdminToken(context.env);
@@ -244,48 +167,22 @@ export async function action({request, context}: ActionFunctionArgs) {
       console.error('[SHOPIFY NATIVE CONTACT FORM SUBMIT ERROR]', err);
     }
 
-    // 2. Also save to Shopify Admin Metaobject as backup record
-    try {
-      const {getAdminToken} = await import('~/lib/shopify-admin.server');
-      const adminToken = await getAdminToken(context.env);
-
-      if (adminToken) {
-        const createMutation = `
-          mutation metaobjectCreate($metaobject: MetaobjectCreateInput!) {
-            metaobjectCreate(metaobject: $metaobject) {
-              metaobject { id handle }
-              userErrors { field message }
-            }
-          }
-        `;
-        const entryVariables = {
-          metaobject: {
-            type: 'contact_submission',
-            fields: [
-              {key: 'full_name', value: fullName},
-              {key: 'mobile', value: mobile},
-              {key: 'email', value: email},
-              {key: 'subject', value: subject},
-              {key: 'order_number', value: orderNumber},
-              {key: 'message', value: message},
-            ],
-          },
-        };
-        await fetch(`https://${shopDomain}/admin/api/2023-04/graphql.json`, {
-          method: 'POST',
-          headers: {
-            'X-Shopify-Access-Token': adminToken,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            query: createMutation,
-            variables: entryVariables,
-          }),
-        });
-      }
-    } catch (adminErr) {
-      console.error('[SHOPIFY ADMIN METAOBJECT ERROR]', adminErr);
-    }
+    /**
+     * The second metaobject write that stood here is gone too.
+     *
+     * It did fire, and it failed every time. It sent the field keys
+     * `mobile`, `email`, `subject`, `order_number` and `message`, while the
+     * `contact_submission` definition uses `mobile_phone`, `email_address`,
+     * `subject_form` and `message_details`. Only `full_name` ever matched,
+     * so Shopify answered with five UNDEFINED_OBJECT_FIELD errors and
+     * created nothing. The response was never read, so it failed in
+     * silence.
+     *
+     * Correcting the keys here would have produced a second entry for every
+     * submission, because sendFormEmailNotification already writes one with
+     * the right keys. The order number -- the only thing this block carried
+     * that the other did not -- is passed to that function instead.
+     */
 
     return {
       success: true,

@@ -11,6 +11,8 @@ export interface FormSubmissionPayload {
   budget?: string;
   quantity?: string;
   subject?: string;
+  /** An existing order the enquiry is about, where the form asks for one. */
+  orderNumber?: string;
   message?: string;
   customDetails?: Record<string, any>;
 }
@@ -389,12 +391,21 @@ export async function sendFormEmailNotification(
           variables: {
             metaobject: {
               type: 'contact_submission',
+              /**
+               * `order_number` is only sent when the form supplied one.
+               * Passing it empty would put a blank row on every lead from
+               * the forms that have no such field, which reads in the admin
+               * like a question the customer declined to answer.
+               */
               fields: [
                 {key: 'full_name', value: payload.fullName || 'Customer Lead'},
                 {key: 'mobile_phone', value: payload.phone || ''},
                 {key: 'email_address', value: payload.email || ''},
                 {key: 'subject_form', value: payload.subject || payload.formTitle},
                 {key: 'message_details', value: messageContent},
+                ...(payload.orderNumber?.trim()
+                  ? [{key: 'order_number', value: payload.orderNumber.trim()}]
+                  : []),
               ],
             },
           },

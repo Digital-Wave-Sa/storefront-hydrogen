@@ -66,13 +66,25 @@ export async function fetchWalletData({
 
     if (customerGid) {
       try {
+        // A server-side fetch sends no Referer/Origin, so `?shop=` is the only
+        // way the service can pick the right session instead of a stale one.
+        const shopDomain =
+          context.env.PUBLIC_SHOPIFY_STORE_DOMAIN ||
+          context.env.PUBLIC_STORE_DOMAIN ||
+          'saadeldeenshop-x21xumcd.myshopify.com';
         const creditRes = await fetch(
-          `${storeCreditUrl}/api/storefront/gift-card?customerId=${encodeURIComponent(customerGid)}`,
+          `${storeCreditUrl}/api/storefront/gift-card?customerId=${encodeURIComponent(customerGid)}&shop=${encodeURIComponent(shopDomain)}`,
         );
         if (creditRes.ok) {
           const creditData = (await creditRes.json()) as any;
           const value = parseFloat(creditData?.balance);
-          if (creditData?.success && Number.isFinite(value)) {
+          // A placeholder zero (`storeCreditResolved: false`) must stay unknown,
+          // not become an empty wallet.
+          if (
+            creditData?.success &&
+            Number.isFinite(value) &&
+            creditData?.storeCreditResolved !== false
+          ) {
             authoritativeBalance = value;
           }
         } else {

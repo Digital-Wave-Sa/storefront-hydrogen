@@ -38,6 +38,18 @@ function toCustomerGid(id?: string | null): string | null {
   return null;
 }
 
+/**
+ * The service resolves its session by shop. A server-side fetch sends no
+ * Referer/Origin, so the shop has to travel as an explicit parameter.
+ */
+function storeShopDomain(context: any): string {
+  return (
+    context?.env?.PUBLIC_SHOPIFY_STORE_DOMAIN ||
+    context?.env?.PUBLIC_STORE_DOMAIN ||
+    'saadeldeenshop-x21xumcd.myshopify.com'
+  );
+}
+
 export async function loader({context}: LoaderFunctionArgs) {
   const self = await resolveSelf(context);
   if (!self) {
@@ -59,7 +71,7 @@ export async function loader({context}: LoaderFunctionArgs) {
     const res = await fetch(
       `${storeCreditBase(context)}/api/storefront/gift-card?customerId=${encodeURIComponent(
         customerGid,
-      )}`,
+      )}&shop=${encodeURIComponent(storeShopDomain(context))}`,
     );
 
     if (!res.ok) {
@@ -79,8 +91,15 @@ export async function loader({context}: LoaderFunctionArgs) {
      * A balance that could not be established is reported as a failure, not as
      * zero — the caller renders "unavailable" rather than telling the customer
      * their wallet is empty because a lookup timed out.
+     *
+     * `storeCreditResolved: false` is the service saying it could not identify
+     * the customer and answered a placeholder zero; that is equally unknown.
      */
-    if (!body?.success || !Number.isFinite(value)) {
+    if (
+      !body?.success ||
+      !Number.isFinite(value) ||
+      body?.storeCreditResolved === false
+    ) {
       return data(
         {success: false, balance: null, error: 'balance-unavailable'},
         {status: 503},
@@ -154,7 +173,11 @@ export async function action({request, context}: ActionFunctionArgs) {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       // customerId comes from the session, never from the caller.
-      body: JSON.stringify({code, customerId: customerGid}),
+      body: JSON.stringify({
+        code,
+        customerId: customerGid,
+        shop: storeShopDomain(context),
+      }),
     });
 
     const body = (await res.json().catch(() => null)) as any;

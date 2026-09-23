@@ -290,6 +290,10 @@ export async function action({request, context}: ActionFunctionArgs) {
         body: JSON.stringify({
           code: voucherCode,
           customerId: customer.id,
+          shop:
+            env.PUBLIC_SHOPIFY_STORE_DOMAIN ||
+            env.PUBLIC_STORE_DOMAIN ||
+            'saadeldeenshop-x21xumcd.myshopify.com',
         }),
       });
 

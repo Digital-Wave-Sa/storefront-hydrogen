@@ -1,4 +1,4 @@
-import {useState} from 'react';
+import {useState, useEffect} from 'react';
 import {
   data,
   type LoaderFunctionArgs,
@@ -41,6 +41,73 @@ export async function action({request, context}: LoaderFunctionArgs) {
       });
     }
 
+    /**
+     * Which of the two forms on this page sent it.
+     *
+     * The inline form at #custom-quote and the CustomQuoteModal collect
+     * overlapping but different fields, and the sales team needs to know
+     * which path a lead came in through -- the modal is the one that asks
+     * for brand assets, so it arrives with more to work from.
+     */
+    const source = String(formData.get('source') || 'inline').trim();
+
+    const logoUpload = formData.get('logoFile');
+    const guideUpload = formData.get('colorGuidelinesFile');
+
+    const {
+      uploadToShopifyFiles,
+      recordCorporateQuote,
+      quoteAdminUrl,
+    } = await import('~/lib/corporate-quote.server');
+
+    /**
+     * Both uploads at once. They are independent, each one is a staged
+     * upload plus a create plus up to two short polls, and doing them in
+     * series put the customer on a spinner for twice as long for no reason.
+     */
+    const [logoFile, guideFile] = await Promise.all([
+      logoUpload instanceof File
+        ? uploadToShopifyFiles(context.env, logoUpload, 'corporate-logo')
+        : Promise.resolve(null),
+      guideUpload instanceof File
+        ? uploadToShopifyFiles(context.env, guideUpload, 'corporate-brand-guide')
+        : Promise.resolve(null),
+    ]);
+
+    /**
+     * Storage before notification. See corporate-quote.server.ts -- Shopify
+     * is the record and the email is the alert, so a mail failure can no
+     * longer take a lead down with it.
+     */
+    const stored = await recordCorporateQuote(context.env, {
+      companyName,
+      contactName: managerName,
+      email,
+      phone,
+      taxId,
+      occasion: occasionType,
+      quantity: targetQuantity,
+      budgetPerBox,
+      deliveryDate,
+      selectedPackage,
+      notes: customization,
+      logoFileId: logoFile?.id || null,
+      brandGuideFileId: guideFile?.id || null,
+      source,
+      locale: isEn ? 'en' : 'ar',
+    });
+
+    const attachmentLines = [
+      logoFile
+        ? `Logo: ${logoFile.filename}${logoFile.url ? ` — ${logoFile.url}` : ' (uploaded; still processing)'}`
+        : null,
+      guideFile
+        ? `Brand guide: ${guideFile.filename}${guideFile.url ? ` — ${guideFile.url}` : ' (uploaded; still processing)'}`
+        : null,
+    ].filter(Boolean);
+
+    const adminLink = stored ? quoteAdminUrl(context.env, stored.id) : null;
+
     const {sendFormEmailNotification} = await import('~/lib/email.server');
     await sendFormEmailNotification(
       {
@@ -53,12 +120,24 @@ export async function action({request, context}: LoaderFunctionArgs) {
         quantity: targetQuantity,
         budget: budgetPerBox,
         subject: `Corporate Gifting - ${occasionType || 'Custom Request'} ${selectedPackage ? `(${selectedPackage})` : ''}`,
-        message: `Delivery Date: ${deliveryDate || 'N/A'}\nPackage: ${selectedPackage || 'Custom'}\nCustomization Details: ${customization || 'N/A'}`,
+        message: [
+          `Submitted via: ${source === 'modal' ? 'Custom quote modal' : 'Inline corporate form'}`,
+          `Delivery Date: ${deliveryDate || 'N/A'}`,
+          `Package: ${selectedPackage || 'Custom'}`,
+          `Customization Details: ${customization || 'N/A'}`,
+          ...attachmentLines,
+          adminLink ? `Saved in Shopify: ${adminLink}` : null,
+          stored
+            ? null
+            : 'WARNING: this request could NOT be saved to Shopify. This email is the only copy.',
+        ]
+          .filter(Boolean)
+          .join('\n'),
       },
       context.env,
     );
 
-    return data({success: true});
+    return data({success: true, stored: Boolean(stored)});
   } catch (err) {
     return data({
       success: false,
@@ -547,7 +626,6 @@ function CustomQuoteModal({
   isEn: boolean;
 }) {
   const [submitted, setSubmitted] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [guidelinesFile, setGuidelinesFile] = useState<File | null>(null);
   const [logoError, setLogoError] = useState<string | null>(null);
@@ -581,13 +659,42 @@ function CustomQuoteModal({
 
   if (!isOpen) return null;
 
+  /**
+   * This used to be a 600ms setTimeout and nothing else.
+   *
+   * No fetch, no action, no request of any kind: it set `loading`, waited,
+   * then showed the success screen. Every company that filled this in was
+   * told their request was received and that the export team would reply
+   * within 24-48 hours, and the request never left their browser. The
+   * uploads were read into state and discarded with the tab.
+   *
+   * It now posts to this route's own action, which stores the submission as
+   * a `corporate_quote_request` metaobject and then emails it. The success
+   * screen waits for that to actually come back.
+   */
+  const quoteFetcher = useFetcher<{success?: boolean; error?: string}>();
+  const loading = quoteFetcher.state !== 'idle';
+
+  useEffect(() => {
+    if (quoteFetcher.state === 'idle' && quoteFetcher.data?.success) {
+      setSubmitted(true);
+    }
+  }, [quoteFetcher.state, quoteFetcher.data]);
+
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      setSubmitted(true);
-    }, 600);
+
+    // A file that failed the size check is still in the input; sending it
+    // would fail server-side anyway and lose the rest of the form with it.
+    if (logoError || guidelinesError) return;
+
+    const formData = new FormData(e.currentTarget);
+    formData.set('source', 'modal');
+
+    quoteFetcher.submit(formData, {
+      method: 'post',
+      encType: 'multipart/form-data',
+    });
   };
 
   return (
@@ -667,7 +774,13 @@ function CustomQuoteModal({
             </div>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4 text-start">
+          <form
+            onSubmit={handleSubmit}
+            encType="multipart/form-data"
+            className="flex flex-col gap-4 text-start"
+          >
+            <input type="hidden" name="source" value="modal" />
+
             {/* Company Name & Manager Name */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
@@ -676,6 +789,7 @@ function CustomQuoteModal({
                 </label>
                 <input
                   type="text"
+                  name="companyName"
                   required
                   placeholder={isEn ? 'e.g. Acme Corp' : 'مثال: شركة الحلول المتقدمة'}
                   className="w-full border border-[#E6E2D8] rounded-[12px] px-4 py-3 text-[14px] text-[#234745] focus:outline-none focus:border-[#234745] bg-white"
@@ -687,6 +801,7 @@ function CustomQuoteModal({
                 </label>
                 <input
                   type="text"
+                  name="managerName"
                   required
                   placeholder={isEn ? 'Full Name' : 'الاسم الثلاثي'}
                   className="w-full border border-[#E6E2D8] rounded-[12px] px-4 py-3 text-[14px] text-[#234745] focus:outline-none focus:border-[#234745] bg-white"
@@ -702,6 +817,7 @@ function CustomQuoteModal({
                 </label>
                 <input
                   type="email"
+                  name="email"
                   required
                   placeholder="info@company.com"
                   className="w-full border border-[#E6E2D8] rounded-[12px] px-4 py-3 text-[14px] text-[#234745] focus:outline-none focus:border-[#234745] bg-white"
@@ -713,6 +829,7 @@ function CustomQuoteModal({
                 </label>
                 <input
                   type="tel"
+                  name="phone"
                   required
                   placeholder="05xxxxxxx"
                   className="w-full border border-[#E6E2D8] rounded-[12px] px-4 py-3 text-[14px] text-[#234745] focus:outline-none focus:border-[#234745] bg-white"
@@ -728,6 +845,7 @@ function CustomQuoteModal({
                 </label>
                 <input
                   type="number"
+                  name="targetQuantity"
                   min="200"
                   defaultValue="200"
                   required
@@ -740,6 +858,7 @@ function CustomQuoteModal({
                 </label>
                 <input
                   type="text"
+                  name="budgetPerBox"
                   placeholder={isEn ? 'e.g. 150-250 SAR' : 'مثال: 150 - 250 ريال'}
                   className="w-full border border-[#E6E2D8] rounded-[12px] px-4 py-3 text-[14px] text-[#234745] focus:outline-none focus:border-[#234745] bg-white"
                 />
@@ -753,6 +872,7 @@ function CustomQuoteModal({
               </label>
               <textarea
                 rows={3}
+                name="customization"
                 placeholder={isEn ? 'Mention colors, preferred box style, delivery date...' : 'اذكر الألوان المفضلة، نوع العلب، تاريخ المناسبة...'}
                 className="w-full border border-[#E6E2D8] rounded-[12px] p-3 text-[14px] text-[#234745] focus:outline-none focus:border-[#234745] bg-white resize-none"
               />
@@ -824,6 +944,20 @@ function CustomQuoteModal({
                 )}
               </div>
             </div>
+
+            {/* A failed submit has to say so. The old handler could not fail,
+                so there was nowhere for an error to appear. */}
+            {quoteFetcher.state === 'idle' && quoteFetcher.data?.success === false && (
+              <div
+                role="alert"
+                className="rounded-[12px] border border-red-300 bg-red-50 px-4 py-3 text-[13px] font-bold text-red-700"
+              >
+                {quoteFetcher.data?.error ||
+                  (isEn
+                    ? 'Something went wrong. Please try again, or WhatsApp us below.'
+                    : 'تعذّر إرسال الطلب. حاول مرة أخرى أو راسلنا على واتساب بالأسفل.')}
+              </div>
+            )}
 
             {/* Actions */}
             <div className="pt-2 flex flex-col sm:flex-row items-center gap-3">
@@ -994,11 +1128,23 @@ export default function CorporatePage() {
 
   const corporateFetcher = useFetcher();
 
+  /**
+   * The thank-you screen waits for the action, rather than appearing the
+   * moment the button is pressed. The submit itself was always real here --
+   * unlike the modal's -- but an optimistic success screen still told a
+   * company their request was in when the action may have thrown.
+   */
+  useEffect(() => {
+    if (corporateFetcher.state === 'idle' && (corporateFetcher.data as any)?.success) {
+      setFormSubmitted(true);
+    }
+  }, [corporateFetcher.state, corporateFetcher.data]);
+
   const handleFormSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
-    corporateFetcher.submit(formData, { method: 'post' });
-    setFormSubmitted(true);
+    formData.set('source', 'inline');
+    corporateFetcher.submit(formData, {method: 'post'});
   };
 
   return (

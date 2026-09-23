@@ -1091,9 +1091,22 @@ export default function CustomCakeBuilder({
     shapeArt && selections.shape && selections.style
       ? toppingIndex.get(`${selections.shape.id}|${selections.style.id}`)
       : undefined;
+  /**
+   * No topping in the cutaway.
+   *
+   * The sliced view exists to answer one question -- what is inside -- and
+   * it is what step 2 opens on, where the shopper is choosing the filling.
+   * The topping art sits on the outside of the cake, so in the cutaway it
+   * is both irrelevant to the decision being made and the weakest artwork
+   * in the set: the decoration is drawn for a whole cake and reads as a
+   * smear once the front face is cut away.
+   *
+   * So the cutaway shows the shape and the filling only. The topping is
+   * still on the front and top views, and the checkout snapshot is taken
+   * from the front, so nothing the branch bakes from loses the decoration.
+   */
   const toppingLayer =
     (view === 'top' && shapeArt?.top && toppingArt?.top) ||
-    (view === 'sliced' && shapeSlice && toppingArt?.sliced) ||
     (view !== 'top' && view !== 'sliced' && toppingArt?.front) ||
     undefined;
 

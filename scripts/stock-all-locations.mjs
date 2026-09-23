@@ -46,6 +46,10 @@
  *
  * ── Running it ──
  *
+ * By default it stocks every ACTIVE product at every branch except «Shop
+ * location» (Shopify's default warehouse) and any branch whose name says مغلق.
+ * `--include-all-locations` and `--include-inactive-products` widen that.
+ *
  *   node stock-all-locations.mjs --activate                  # dry run
  *   node stock-all-locations.mjs --activate --apply
  *
@@ -81,9 +85,31 @@ const DO_ACTIVATE = has('--activate');
 const DO_STOCK = has('--stock');
 const DO_TRACK = has('--track');
 const QTY = parseInt(valueOf('--qty', '1000'), 10);
+/**
+ * Variants per scan page. The query's cost is roughly this times the number
+ * of branches, and Shopify's ceiling for one query is 1000.
+ */
+const SCAN_PAGE = Math.max(1, parseInt(valueOf('--page-size', '5'), 10) || 5);
 
 const API_VERSION = '2024-04';
 const SKIP_PRODUCT_TYPE = 'gift card';
+
+/**
+ * Branches this deliberately leaves out, unless --include-all-locations.
+ *
+ *   «Shop location» is Shopify's default warehouse, not a shop. It is where
+ *   every item is activated today, and it is not one of the branches a
+ *   customer can pick up from.
+ *
+ *   A branch whose name says مغلق ("closed") is shut. Stocking it would put it
+ *   back in front of shoppers as a pickup option.
+ */
+const SKIP_LOCATION_NAMES = ['shop location'];
+const SKIP_LOCATION_PATTERNS = [/مغلق/];
+const INCLUDE_ALL_LOCATIONS = has('--include-all-locations');
+
+/** Draft and archived products are not for sale, so they are not stocked. */
+const ONLY_ACTIVE = !has('--include-inactive-products');
 /** Shopify caps inventorySetQuantities at 250; 200 leaves headroom. */
 const QTY_BATCH = 200;
 
@@ -185,26 +211,33 @@ const LOCATIONS_QUERY = `
   }
 `;
 
+/**
+ * The scan, variant by variant.
+ *
+ * This used to ask for 25 products x 100 variants x 150 inventory levels in
+ * one query and Shopify refused it: "Query cost is 1856, which exceeds the
+ * single query max cost limit (1000)". The cost of a nested query is the
+ * product of its page sizes, so the levels — one per branch, and there are
+ * 116 — have to sit under a small page.
+ *
+ * `productVariants` at the top level removes one whole level of nesting, and
+ * SCAN_PAGE keeps the cost near (page x levels). Lower it with --page-size if
+ * the shop ever grows past the limit again.
+ */
 const SCAN_QUERY = `
-  query Scan($cursor: String) {
-    products(first: 25, after: $cursor) {
+  query Scan($cursor: String, $page: Int!, $levels: Int!) {
+    productVariants(first: $page, after: $cursor) {
       pageInfo { hasNextPage endCursor }
       nodes {
         id
-        title
-        productType
-        variants(first: 100) {
-          nodes {
-            id
-            inventoryItem {
-              id
-              tracked
-              inventoryLevels(first: 150) {
-                nodes {
-                  location { id }
-                  quantities(names: ["available"]) { quantity }
-                }
-              }
+        product { id title status productType }
+        inventoryItem {
+          id
+          tracked
+          inventoryLevels(first: $levels) {
+            nodes {
+              location { id }
+              quantities(names: ["available"]) { quantity }
             }
           }
         }
@@ -255,52 +288,83 @@ async function main() {
 
   // Every active location.
   const locations = new Map();
+  const skippedLocations = [];
   let cursor = null;
   do {
     const d = await gql(LOCATIONS_QUERY, {cursor});
-    for (const l of d.locations.nodes) locations.set(l.id, l.name);
+    for (const l of d.locations.nodes) {
+      const name = String(l.name || '');
+      const skip =
+        !INCLUDE_ALL_LOCATIONS &&
+        (SKIP_LOCATION_NAMES.includes(name.trim().toLowerCase()) ||
+          SKIP_LOCATION_PATTERNS.some((re) => re.test(name)));
+      if (skip) {
+        skippedLocations.push(name);
+        continue;
+      }
+      locations.set(l.id, name);
+    }
     cursor = d.locations.pageInfo.hasNextPage ? d.locations.pageInfo.endCursor : null;
   } while (cursor);
   const allLocationIds = [...locations.keys()];
+  if (skippedLocations.length) {
+    console.log(
+      `Branches skipped (${skippedLocations.length}): ${skippedLocations.join(', ')}\n` +
+        '(--include-all-locations stocks these too.)\n',
+    );
+  }
 
   // Every variant, with where it is activated and what is there.
   const items = [];
   let skippedGiftCards = 0;
+  let skippedInactive = 0;
   cursor = null;
   let scanned = 0;
 
+  const levelPage = Math.max(locations.size + 4, 10);
+
   do {
-    const d = await gql(SCAN_QUERY, {cursor});
-    for (const p of d.products.nodes) {
-      const isGiftCard = (p.productType || '').trim().toLowerCase() === SKIP_PRODUCT_TYPE;
-      for (const v of p.variants.nodes) {
-        scanned++;
-        if (isGiftCard) {
-          skippedGiftCards++;
-          continue;
-        }
-        const inv = v.inventoryItem;
-        if (!inv) continue;
-        const levels = new Map();
-        for (const lvl of inv.inventoryLevels.nodes) {
-          levels.set(lvl.location.id, lvl.quantities?.[0]?.quantity ?? 0);
-        }
-        items.push({
-          productId: p.id,
-          variantId: v.id,
-          title: p.title,
-          inventoryItemId: inv.id,
-          tracked: inv.tracked,
-          levels,
-        });
+    const d = await gql(SCAN_QUERY, {
+      cursor,
+      page: SCAN_PAGE,
+      levels: levelPage,
+    });
+    for (const v of d.productVariants.nodes) {
+      scanned++;
+      const p = v.product || {};
+      if ((p.productType || '').trim().toLowerCase() === SKIP_PRODUCT_TYPE) {
+        skippedGiftCards++;
+        continue;
       }
+      if (ONLY_ACTIVE && p.status !== 'ACTIVE') {
+        skippedInactive++;
+        continue;
+      }
+      const inv = v.inventoryItem;
+      if (!inv) continue;
+      const levels = new Map();
+      for (const lvl of inv.inventoryLevels.nodes) {
+        levels.set(lvl.location.id, lvl.quantities?.[0]?.quantity ?? 0);
+      }
+      items.push({
+        productId: p.id,
+        variantId: v.id,
+        title: p.title,
+        inventoryItemId: inv.id,
+        tracked: inv.tracked,
+        levels,
+      });
     }
-    cursor = d.products.pageInfo.hasNextPage ? d.products.pageInfo.endCursor : null;
+    cursor = d.productVariants.pageInfo.hasNextPage
+      ? d.productVariants.pageInfo.endCursor
+      : null;
     process.stdout.write(`\rScanned ${scanned} variants…`);
   } while (cursor);
 
   console.log(
-    `\n\nLocations ${locations.size}   variants ${items.length}   gift-card variants skipped ${skippedGiftCards}\n`,
+    `\n\nBranches ${locations.size}   variants ${items.length}   ` +
+      `gift-card variants skipped ${skippedGiftCards}   ` +
+      `draft/archived variants skipped ${skippedInactive}\n`,
   );
 
   if (DO_ACTIVATE) await phaseActivate(items, allLocationIds, locations);
@@ -402,6 +466,18 @@ async function phaseStock(items, allLocationIds) {
           reason: 'correction',
           /** Names this script in Shopify's inventory history, so the entries are traceable. */
           referenceDocumentUri: 'gid://saadeddin-storefront/StockSeed/all-locations',
+          /*
+            Without this Shopify refuses every batch: "The compareQuantity
+            argument must be given to each quantity or ignored using
+            ignoreCompareQuantity." It is the API's guard against two writers
+            racing — you normally send the value you believe is there, and the
+            write fails if someone changed it meanwhile.
+
+            We ignore it on purpose. The scan is minutes old by the time the
+            last batch goes out, and this phase only ever touches levels that
+            read zero or absent, so there is no number here worth protecting.
+          */
+          ignoreCompareQuantity: true,
           quantities: batch,
         },
       });

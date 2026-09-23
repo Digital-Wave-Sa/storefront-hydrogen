@@ -190,25 +190,29 @@ export async function sendFormEmailNotification(
   env: any,
 ) {
   /**
-   * No personal fallback address. Deliberately.
+   * The fallback is a company mailbox, never a personal one.
    *
-   * This used to fall back to a developer's personal Gmail when
-   * `FORM_EMAIL_RECIPIENT` was unset -- and this function is the destination
-   * for EVERY form on the site: contact enquiries, back-in-stock requests,
-   * catering, the lot. A missing environment variable in production therefore
-   * did not fail; it quietly delivered customers' names, emails and messages
-   * to one person's private inbox, where nobody would think to look and which
-   * keeps working long after whoever owns it has moved on.
+   * This function is the destination for EVERY form on the site: contact
+   * enquiries, back-in-stock requests, corporate quotes, catering, the lot.
+   * It used to fall back to a developer's personal Gmail, so a missing
+   * environment variable did not fail -- it quietly delivered customers'
+   * names, emails and messages to one person's private inbox, which nobody
+   * thinks to check and which keeps working long after whoever owns it has
+   * moved on. Then the fallback was removed entirely, and an unset variable
+   * meant the enquiries went nowhere at all.
    *
-   * Unset now means nobody is emailed and the log says so loudly, which is a
-   * problem someone notices and fixes. Silently sending customer enquiries to
-   * the wrong person is a problem nobody notices at all.
+   * `crm@saadeddin.com` is the same mailbox this app already sends AS (see
+   * `sendEmail` above), so it is owned by the business and someone reads it.
+   * Set `FORM_EMAIL_RECIPIENT` to route elsewhere; the warning below says
+   * loudly when that has not been done.
    */
-  const recipientEmail = String(env?.FORM_EMAIL_RECIPIENT || '').trim();
+  const DEFAULT_FORM_RECIPIENT = 'crm@saadeddin.com';
+  const configuredRecipient = String(env?.FORM_EMAIL_RECIPIENT || '').trim();
+  const recipientEmail = configuredRecipient || DEFAULT_FORM_RECIPIENT;
 
-  if (!recipientEmail) {
-    console.error(
-      '[FORM EMAIL] FORM_EMAIL_RECIPIENT is not set — the internal notification was NOT sent for:',
+  if (!configuredRecipient) {
+    console.warn(
+      `[FORM EMAIL] FORM_EMAIL_RECIPIENT is not set — falling back to ${DEFAULT_FORM_RECIPIENT} for:`,
       payload.formTitle,
       '| from:',
       payload.email || payload.fullName,
@@ -296,12 +300,11 @@ export async function sendFormEmailNotification(
   `;
 
   /**
-   * 1. The internal notification -- only when there is somewhere to send it.
+   * 1. The internal notification.
    *
-   * Skipped rather than redirected when `FORM_EMAIL_RECIPIENT` is unset. The
-   * customer's own confirmation below still goes out: a misconfigured internal
-   * address is our problem, and the shopper should not be left wondering
-   * whether their message arrived because of it.
+   * `recipientEmail` always resolves -- to `FORM_EMAIL_RECIPIENT` when set,
+   * otherwise to the company mailbox above -- so this always has somewhere to
+   * go. The guard stays as a safety net in case the default is ever emptied.
    */
   if (recipientEmail) {
     await sendEmail({

@@ -1,0 +1,188 @@
+[
+ {
+  "sku": "370352",
+  "nameAr": "(١٦ اونص ) ايس لاتيه بيستاشيو | (١٦ اونص) ايس لاتيه سبانيش",
+  "handle": "pistachio-ice-latte-16oz",
+  "why": "one SKU covers several Shopify products"
+ },
+ {
+  "sku": "370358",
+  "nameAr": "(١٦ اونص ) ايس شوكولا موكا | (١٢ اونص) شوكولا موكا",
+  "handle": "ice-chocolate-mocha-16oz",
+  "why": "one SKU covers several Shopify products"
+ },
+ {
+  "sku": "370359",
+  "nameAr": "(١٢ اونص) ايس شوكولا موكا | (٨ اونص )  شوكولا موكا",
+  "handle": "ice-chocolate-mocha-12oz",
+  "why": "one SKU covers several Shopify products"
+ },
+ {
+  "sku": "307122",
+  "nameAr": "بلح الشام نصف كيلو",
+  "handle": "balah-al-sham | balah-al-sham-half-kilo",
+  "why": "one SKU covers several Shopify products"
+ },
+ {
+  "sku": "307126",
+  "nameAr": "معكرون نصف كيلو",
+  "handle": "makaron-half-kilo | makaron",
+  "why": "one SKU covers several Shopify products"
+ },
+ {
+  "sku": "301014",
+  "nameAr": "بقلاوة قشطة ١ ك",
+  "handle": "baklava-cream-1-kg",
+  "why": "flagged for removal: ايقاف"
+ },
+ {
+  "sku": "301366",
+  "nameAr": "بقلاوة قشطة ١/٢ ك",
+  "handle": "baklava-cream-1-2-kg",
+  "why": "flagged for removal: ايقاف"
+ },
+ {
+  "sku": "302015",
+  "nameAr": "معمول مد قشطة وفستق ١ ك",
+  "handle": "maamoul-mad-with-cream-and-pistachio-1-kg",
+  "why": "flagged for removal: ايقاف"
+ },
+ {
+  "sku": "302208",
+  "nameAr": "معمول مد قشطة وفستق ١/٢ ك",
+  "handle": "maamoul-mad-with-cream-and-pistachio-1-2-kg",
+  "why": "flagged for removal: ايقاف"
+ },
+ {
+  "sku": "305184",
+  "nameAr": "قطايف عصافيري قشطة ١ ك",
+  "handle": "qatayef-asfouri-cream-1-kg",
+  "why": "flagged for removal: ايقاف"
+ },
+ {
+  "sku": "305237",
+  "nameAr": "بقلاوة مهلبية ١ ك",
+  "handle": "muhallabia-baklava-1-kg",
+  "why": "flagged for removal: ايقاف"
+ },
+ {
+  "sku": "305238",
+  "nameAr": "قطايف عصافيري قشطة ١/٢ ك",
+  "handle": "qatayef-asfouri-cream-1-2-kg",
+  "why": "flagged for removal: ايقاف"
+ },
+ {
+  "sku": "307002",
+  "nameAr": "مشبك ١ ك",
+  "handle": "meshbak-1-kg",
+  "why": "flagged for removal: ايقاف"
+ },
+ {
+  "sku": "307040",
+  "nameAr": "قطايف جبن ١ ك",
+  "handle": "1-kg-of-cheese-qatayef",
+  "why": "flagged for removal: ايقاف"
+ },
+ {
+  "sku": "307042",
+  "nameAr": "قطايف جوز ١ ك",
+  "handle": "qatayef-walnut-1-kg",
+  "why": "flagged for removal: ايقاف"
+ },
+ {
+  "sku": "307125",
+  "nameAr": "مشبك  ١/٢ ك",
+  "handle": "meshbak-1-2-kg",
+  "why": "flagged for removal: ايقاف"
+ },
+ {
+  "sku": "307167",
+  "nameAr": "قطايف جبن ١/٢ ك",
+  "handle": "1-2-kg-cheese-qatayef",
+  "why": "flagged for removal: ايقاف"
+ },
+ {
+  "sku": "307168",
+  "nameAr": "قطايف جوز  ١/٢ ك",
+  "handle": "qatayef-walnut-1-2-kg",
+  "why": "flagged for removal: ايقاف"
+ },
+ {
+  "sku": "308183",
+  "nameAr": "علبة قطابف سادة عجين ١ ك",
+  "handle": "plain-qatayef-dough-1-kg",
+  "why": "flagged for removal: ايقاف"
+ },
+ {
+  "sku": "308184",
+  "nameAr": "علبة قطابف سادة عجين ١/٢ ك",
+  "handle": "plain-qatayef-dough-1-2-kg",
+  "why": "flagged for removal: ايقاف"
+ },
+ {
+  "sku": "321304",
+  "nameAr": "كوكيز براونيز نيوتيلا قطعة",
+  "handle": "nutella-brownies-cookies-1-piece | nutella-brownies-cookies",
+  "why": "one SKU covers several Shopify products"
+ },
+ {
+  "sku": "329060",
+  "nameAr": "كوكيز شوكولا صغير | كوكيز فانيلا شيبس صغير",
+  "handle": "small-chocolate-cookies | small-vanilla-chips-cookies",
+  "why": "one SKU covers several Shopify products"
+ },
+ {
+  "sku": "332372",
+  "nameAr": "امبنادا بيستو دجاج صغير | امبنادا جبن شرقي صغير | امبنادا فاهيتا دجاج صغير | امبنادا كاري دجاج صغير | امبنادا مسخن دجاج صغير | امبنادا ميكس تشيز صغير",
+  "handle": "small-chicken-empanada-musakhan | small-oriental-cheese-empanada | small-chicken-fajita-empanada | small-empanada-mixed-cheese | small-chicken-pesto-empanada | small-chicken-curry-empanada",
+  "why": "one SKU covers several Shopify products"
+ },
+ {
+  "sku": "332436",
+  "nameAr": "بوكس معجنات إمبنادا ٥ حبة",
+  "handle": "empanadas-box-5-pcs",
+  "why": "flagged for removal: نعم"
+ },
+ {
+  "sku": "308013",
+  "nameAr": "علبة عوامة كبير",
+  "handle": "large-eawamuh-box",
+  "why": "flagged for removal: نعم"
+ },
+ {
+  "sku": "308014",
+  "nameAr": "علبة عوامه صغير مفرزن",
+  "handle": "small-eawamuh-box",
+  "why": "flagged for removal: نعم"
+ },
+ {
+  "sku": "308018",
+  "nameAr": "قطايف جوز ولوز كبير",
+  "handle": "qatayef-walnuts-and-large-almonds",
+  "why": "flagged for removal: نعم"
+ },
+ {
+  "sku": "308019",
+  "nameAr": "قطايف جوز ولوز صغير",
+  "handle": "qatayef-walnuts-and-small-almonds",
+  "why": "flagged for removal: نعم"
+ },
+ {
+  "sku": "308020",
+  "nameAr": "علبة قطايف جبن كبير",
+  "handle": "a-large-box-of-qatayef-cheese",
+  "why": "flagged for removal: نعم"
+ },
+ {
+  "sku": "308021",
+  "nameAr": "علبة قطايف جبن صغير",
+  "handle": "small-box-of-qatayef-cheese",
+  "why": "flagged for removal: نعم"
+ },
+ {
+  "sku": "308081",
+  "nameAr": "علبة برك جبن مفرزن ١٠ حبة",
+  "handle": "box-cheese-burek-frozen-10-pieces",
+  "why": "flagged for removal: نعم"
+ }
+]

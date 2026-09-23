@@ -234,11 +234,13 @@ const emptySelections = () => ({
 export default function CustomCakeBuilder({
   cakeAttributes = [],
   toppingDesigns = [],
+  flavorSlices = [],
   isEn = false,
   preparationHours = 24
 }: {
   cakeAttributes?: any[],
   toppingDesigns?: any[],
+  flavorSlices?: any[],
   isEn?: boolean,
   preparationHours?: number
 }) {
@@ -631,6 +633,13 @@ export default function CustomCakeBuilder({
     () => buildCakeOptions(cakeAttributes, isEn),
     [cakeAttributes, isEn],
   );
+
+  /**
+   * Shapes come from Shopify, pictures and all (see buildCakeOptions). When
+   * they do, step 1 is one list of shape cards and the preview shows the
+   * shape's own front / top / slice pictures instead of drawing the cake.
+   */
+  const artMode = mergedOptions.shapes.some((s) => !!s.art);
 
   /**
    * Nothing is chosen until the customer chooses it, so the total opens at
@@ -1026,14 +1035,92 @@ export default function CustomCakeBuilder({
    * art. The renderer keeps drawing the front view underneath so the checkout
    * snapshot (`cake-3d-canvas`) is always there.
    */
-  const topHasArt = Boolean(selections.shape?.id?.startsWith('round-'));
-  const supportedViews = {front: true, top: topHasArt, sliced: true} as const;
+  // A shape managed in Shopify offers exactly the views it has pictures for.
+  const shapeArt = selections.shape?.art;
 
-  // Switching to a square while looking from above would leave the shopper on
+  /** `${shape}|${flavor}` → that flavour's slice picture on that shape. */
+  const sliceIndex = React.useMemo(() => {
+    const index = new Map<string, string>();
+    for (const row of flavorSlices ?? []) {
+      const shapeKey = row?.shape?.reference?.builderKey?.value;
+      const flavorKey = row?.flavor?.reference?.builderKey?.value;
+      const url = row?.imageSliced?.reference?.image?.url;
+      if (shapeKey && flavorKey && url) index.set(`${shapeKey}|${flavorKey}`, url);
+    }
+    return index;
+  }, [flavorSlices]);
+  const shapeSlice =
+    (selections.shape &&
+      selections.flavor &&
+      sliceIndex.get(`${selections.shape.id}|${selections.flavor.id}`)) ||
+    shapeArt?.sliced;
+  const topHasArt = shapeArt
+    ? Boolean(shapeArt.top)
+    : Boolean(selections.shape?.id?.startsWith('round-'));
+  const slicedHasArt = shapeArt ? Boolean(shapeSlice) : true;
+  const supportedViews = {front: true, top: topHasArt, sliced: slicedHasArt} as const;
+
+  /**
+   * Frosting colour on the Shopify pictures. Each shape carries a grey
+   * "frosting layer" per view (only the frosting, shaded, transparent
+   * elsewhere). An SVG colour matrix multiplies that grey by the chosen
+   * colour, so the frosting takes the colour while keeping its light and
+   * texture, and the board, sponge and filling stay as photographed. No
+   * pixel reading, so it works on cross-origin CDN images.
+   */
+  /**
+   * Topping pictures: `${shape}|${topping}` → that topping's transparent
+   * layers for that shape, from `cake_topping_design`. Drawn above the
+   * frosting so the decoration keeps its own colours.
+   */
+  const toppingIndex = React.useMemo(() => {
+    const index = new Map<string, {front?: string; top?: string; sliced?: string}>();
+    for (const row of toppingDesigns ?? []) {
+      const toppingKey = row?.topping?.reference?.builderKey?.value;
+      const shapeKey = row?.shape?.reference?.builderKey?.value;
+      if (!toppingKey || !shapeKey) continue;
+      index.set(`${shapeKey}|${toppingKey}`, {
+        front: row?.imageFront?.reference?.image?.url || undefined,
+        top: row?.imageTop?.reference?.image?.url || undefined,
+        sliced: row?.imageSliced?.reference?.image?.url || undefined,
+      });
+    }
+    return index;
+  }, [toppingDesigns]);
+  const toppingArt =
+    shapeArt && selections.shape && selections.style
+      ? toppingIndex.get(`${selections.shape.id}|${selections.style.id}`)
+      : undefined;
+  const toppingLayer =
+    (view === 'top' && shapeArt?.top && toppingArt?.top) ||
+    (view === 'sliced' && shapeSlice && toppingArt?.sliced) ||
+    (view !== 'top' && view !== 'sliced' && toppingArt?.front) ||
+    undefined;
+
+  const frostingFilterId = `cake-frost-${React.useId().replace(/[^a-zA-Z0-9_-]/g, '')}`;
+  const frostingRgb = React.useMemo(() => {
+    const raw = String(selections.color?.color || '').trim();
+    const m = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(raw);
+    if (!m) return null;
+    const hex = m[1].length === 3 ? m[1].replace(/./g, (c) => c + c) : m[1];
+    const n = parseInt(hex, 16);
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => v / 255) as [number, number, number];
+  }, [selections.color]);
+  const frostingLayer =
+    shapeArt?.frosting && frostingRgb
+      ? (view === 'top' && shapeArt.top && shapeArt.frosting.top) ||
+        (view === 'sliced' && shapeSlice && shapeArt.frosting.sliced) ||
+        (view !== 'top' && view !== 'sliced' && shapeArt.frosting.front) ||
+        undefined
+      : undefined;
+
+  // Switching to a shape without the current view would leave the shopper on
   // a view that no longer exists.
   useEffect(() => {
-    if (view === 'top' && !topHasArt) setView('front');
-  }, [view, topHasArt]);
+    if ((view === 'top' && !topHasArt) || (view === 'sliced' && !slicedHasArt)) {
+      setView('front');
+    }
+  }, [view, topHasArt, slicedHasArt]);
 
   /**
    * The checkout snapshot is the FRONT of the cake: it is what the branch
@@ -1436,7 +1523,7 @@ export default function CustomCakeBuilder({
 
     setIsSubmitting(true);
 
-    if (view === 'top') {
+    if (view === 'top' && !shapeArt) {
       await new Promise<void>((resolve) => {
         renderWaiter.current = resolve;
         setView('front');
@@ -1450,8 +1537,13 @@ export default function CustomCakeBuilder({
     }
 
     // Capture the 3D Canvas as a screenshot
-    let cakePreviewImage = null;
-    const canvas = document.getElementById('cake-3d-canvas') as HTMLCanvasElement;
+    let cakePreviewImage: string | null = null;
+    // A Shopify-managed shape already has its picture on the CDN; the order
+    // carries that URL rather than a screenshot.
+    if (shapeArt?.front) cakePreviewImage = shapeArt.front;
+    const canvas = shapeArt?.front
+      ? null
+      : (document.getElementById('cake-3d-canvas') as HTMLCanvasElement);
     if (canvas) {
       try {
         // Use heavily compressed JPEG instead of PNG to prevent Oxygen payload & CPU limits
@@ -2145,6 +2237,58 @@ export default function CustomCakeBuilder({
                       in Arabic, the left in English. One class list, correct in
                       both, with nothing to keep in sync.
                     */}
+                    {artMode ? (
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 mt-5">
+                        {mergedOptions.shapes.map((option) => {
+                          const isSelected = selections.shape?.id === option.id;
+                          return (
+                            <button
+                              key={option.id}
+                              type="button"
+                              onClick={() => handleSelect('shape', option)}
+                              aria-pressed={isSelected}
+                              className={`relative flex flex-col items-center rounded-2xl border p-3 sm:p-4 transition-all cursor-pointer ${
+                                isSelected
+                                  ? 'border-[#294941] bg-[#F7EAE6]'
+                                  : 'border-[#E5E7EB] bg-white hover:border-[#294941]/50'
+                              }`}
+                            >
+                              {isSelected && (
+                                <div className="absolute top-3 right-3 text-white bg-[#294941] rounded-full p-1 z-10 w-5 h-5 flex items-center justify-center">
+                                  <CheckIcon className="w-3 h-3" />
+                                </div>
+                              )}
+                              <div className="w-full aspect-square rounded-xl bg-[#F4ECE3] flex items-center justify-center overflow-hidden mb-3">
+                                <img
+                                  src={`${option.image}${option.image.includes('?') ? '&' : '?'}width=320`}
+                                  alt=""
+                                  width={320}
+                                  height={320}
+                                  className="w-full h-full object-contain"
+                                  loading="lazy"
+                                />
+                              </div>
+                              <div className="font-bold text-[#1a1a1a] text-center leading-tight">
+                                {option.name}
+                              </div>
+                              <div className="mt-1 flex items-center gap-1 text-sm font-bold">
+                                {option.priced && option.price > 0 ? (
+                                  <span className="flex items-center gap-1 text-[#1a1a1a]">
+                                    {toArabicDigits(option.price)}
+                                    <SaudiRiyalSymbol className="w-auto h-3 text-[#1a1a1a]" />
+                                  </span>
+                                ) : (
+                                  <span className="text-[#8BA19C]">
+                                    {isEn ? 'Price on request' : 'السعر عند الطلب'}
+                                  </span>
+                                )}
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                    <>
                     <div className="grid grid-cols-3 gap-3 sm:gap-4 mt-5">
                       {SHAPE_CARDS.map((card) => {
                         const isSelected = pickShape === card.id;
@@ -2361,6 +2505,8 @@ export default function CustomCakeBuilder({
                         </div>
                       </div>
                     )}
+                    </>
+                    )}
                   </div>
                 </div>
               )}
@@ -2371,7 +2517,7 @@ export default function CustomCakeBuilder({
                     <div className={`flex items-center justify-between mb-4 ${isEn ? 'flex-row-reverse' : ''}`}>
                       <h2 className="text-2xl font-bold text-[#1a1a1a]">{isEn ? 'Choose Flavor' : 'اختر نكهة الكيك'}</h2>
                     </div>
-                    {renderPictureGrid('flavor', mergedOptions.flavors, 'cover')}
+                    {renderPictureGrid('flavor', mergedOptions.flavors, artMode ? 'contain' : 'cover')}
                   </div>
                   <div>
                     <h2 className={`text-2xl font-bold text-[#1a1a1a] ${isEn ? 'text-left' : 'text-right'}`}>{isEn ? 'Frosting Color' : 'لون التغليف (الكريمة)'}</h2>
@@ -2384,7 +2530,7 @@ export default function CustomCakeBuilder({
                 <div className="animate-in fade-in duration-300 space-y-4">
                   <h2 className={`text-2xl font-bold text-[#1a1a1a] ${isEn ? 'text-left' : 'text-right'}`}>{isEn ? 'Choose Decoration Style' : 'اختر أسلوب التزيين'}</h2>
 
-                  {selections.shape?.id === 'square' || selections.shape?.id === 'sheet' ? (
+                  {!artMode && (selections.shape?.id === 'square' || selections.shape?.id === 'sheet') ? (
                     <div className={`p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-sm font-medium ${isEn ? 'text-left' : 'text-right'}`}>
                       {isEn
                         ? 'Topping decorations are only available for Round, Standard, and Heart shapes.'
@@ -2769,6 +2915,62 @@ export default function CustomCakeBuilder({
                   (hidden, not unmounted) so the checkout snapshot can always
                   find its canvas.
                 */}
+                {shapeArt ? (
+                  /*
+                    A shape managed in Shopify: its own picture for the chosen
+                    view, with the frosting layer painted in the chosen colour
+                    on top, then the chosen topping's layer for this shape.
+                  */
+                  <>
+                  <img
+                    key={`${selections.shape?.id}-${view}`}
+                    src={
+                      (view === 'top' && shapeArt.top) ||
+                      (view === 'sliced' && shapeSlice) ||
+                      shapeArt.front
+                    }
+                    alt={
+                      isEn
+                        ? `${selections.shape?.name} — ${view}`
+                        : `${selections.shape?.name}`
+                    }
+                    className="absolute inset-0 z-30 w-full h-full object-contain p-6 select-none animate-in fade-in duration-300"
+                    draggable={false}
+                  />
+                  {frostingLayer && frostingRgb && (
+                    <>
+                      <svg width="0" height="0" aria-hidden="true" focusable="false" className="absolute">
+                        <filter id={frostingFilterId} colorInterpolationFilters="sRGB">
+                          <feColorMatrix
+                            type="matrix"
+                            values={`${frostingRgb[0]} 0 0 0 0  ${frostingRgb[1]} 0 0 0 0  ${frostingRgb[2]} 0 0 0 0  0 0 0 1 0`}
+                          />
+                        </filter>
+                      </svg>
+                      <img
+                        key={`frost-${selections.shape?.id}-${view}`}
+                        src={frostingLayer}
+                        alt=""
+                        aria-hidden="true"
+                        style={{filter: `url(#${frostingFilterId})`}}
+                        className="absolute inset-0 z-30 w-full h-full object-contain p-6 select-none pointer-events-none animate-in fade-in duration-300"
+                        draggable={false}
+                      />
+                    </>
+                  )}
+                  {toppingLayer && (
+                    <img
+                      key={`topping-${selections.shape?.id}-${selections.style?.id}-${view}`}
+                      src={toppingLayer}
+                      alt=""
+                      aria-hidden="true"
+                      className="absolute inset-0 z-30 w-full h-full object-contain p-6 select-none pointer-events-none animate-in fade-in duration-300"
+                      draggable={false}
+                    />
+                  )}
+                  </>
+                ) : (
+                <>
                 {view === 'sliced' && (
                   <img
                     src={presentationSlice}
@@ -2814,6 +3016,8 @@ export default function CustomCakeBuilder({
                   isEn={isEn}
                 />
                 </div>
+                </>
+                )}
                 </>
                 )}
               </div>

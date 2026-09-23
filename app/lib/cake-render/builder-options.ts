@@ -60,6 +60,22 @@ export type BuilderOption = {
    */
   provisional: boolean;
   image: string;
+  /**
+   * Present on shapes managed in Shopify: the finished pictures of this cake
+   * from each side, straight from the metaobject. When a shape has these the
+   * builder shows them instead of drawing the cake.
+   */
+  art?: {
+    front?: string;
+    top?: string;
+    sliced?: string;
+    /**
+     * Frosting layers for each view: a grey shading picture of just the
+     * frosting, transparent everywhere else. The builder paints it in the
+     * chosen colour and lays it over the matching picture.
+     */
+    frosting?: {front?: string; top?: string; sliced?: string};
+  };
   /** Present on colours only: the swatch the preview tints with. */
   color?: string;
   /** Present on shapes only: the geometry the renderer needs. */
@@ -125,7 +141,63 @@ export function buildCakeOptions(
     };
   };
 
-  const shapes: BuilderOption[] = CAKE_FORMATS.map((f) => ({
+  /**
+   * Shapes managed in Shopify.
+   *
+   * A `cake_attribute` row is a builder shape when it is typed `shape`, has a
+   * `builder_key`, a front picture, and is not marked hidden. Everything about
+   * it — name, price, pictures, position — is edited in admin; adding a shape
+   * is adding a row, with no deploy.
+   *
+   * The older size rows (round-20x20-h8 …) have no pictures, so they are not
+   * listed, and stay in place for the price book and for old orders.
+   *
+   * When no such row exists yet the builder falls back to the render catalog
+   * below, so the page never opens empty.
+   */
+  const urlOf = (field: any): string | undefined =>
+    field?.reference?.image?.url || undefined;
+  const managedShapes: BuilderOption[] = (cakeAttributes ?? [])
+    .filter(
+      (a: any) =>
+        a?.attributeType?.value === 'shape' &&
+        a?.builderKey?.value &&
+        urlOf(a?.imageFront) &&
+        a?.hidden?.value !== 'true',
+    )
+    .map((a: any) => {
+      const key = String(a.builderKey.value);
+      const nameEn = String(a?.nameEn?.value || key);
+      const nameAr = String(a?.nameAr?.value || nameEn);
+      const front = urlOf(a.imageFront);
+      return {
+        id: key,
+        name: label(nameAr, nameEn, isEn),
+        nameAr,
+        nameEn,
+        image: urlOf(a.thumbnailUrl) || front || '',
+        art: {
+          front,
+          top: urlOf(a.imageTop),
+          sliced: urlOf(a.imageSliced),
+          frosting: {
+            front: urlOf(a.frostingFront),
+            top: urlOf(a.frostingTop),
+            sliced: urlOf(a.frostingSliced),
+          },
+        },
+        sortOrder: Number(a?.sortOrder?.value ?? NaN),
+        ...priceOf(key),
+      };
+    })
+    .sort((x: any, y: any) => {
+      const ax = Number.isFinite(x.sortOrder) ? x.sortOrder : 1e9;
+      const ay = Number.isFinite(y.sortOrder) ? y.sortOrder : 1e9;
+      return ax - ay || x.nameEn.localeCompare(y.nameEn);
+    })
+    .map(({sortOrder, ...rest}: any) => rest as BuilderOption);
+
+  const catalogShapes: BuilderOption[] = CAKE_FORMATS.map((f) => ({
     id: f.id,
     name: label(f.nameAr, f.nameEn, isEn),
     nameAr: f.nameAr,
@@ -138,7 +210,46 @@ export function buildCakeOptions(
     ...priceOf(f.id),
   }));
 
-  const flavors: BuilderOption[] = CAKE_FILLINGS.map((f) => ({
+  const shapes = managedShapes.length > 0 ? managedShapes : catalogShapes;
+
+  /**
+   * Flavours managed in Shopify, the same way as shapes: a `cake_attribute`
+   * row typed `flavor` with a `builder_key`, a slice picture and not hidden.
+   * The per-shape slice pictures live in `cake_flavor_slice`.
+   *
+   * The older filling price rows (01–10) have no slice picture and are left
+   * out; with no managed flavour at all the catalog list below is used.
+   */
+  const managedFlavors: BuilderOption[] = (cakeAttributes ?? [])
+    .filter(
+      (a: any) =>
+        a?.attributeType?.value === 'flavor' &&
+        a?.builderKey?.value &&
+        urlOf(a?.imageSliced) &&
+        a?.hidden?.value !== 'true',
+    )
+    .map((a: any) => {
+      const key = String(a.builderKey.value);
+      const nameEn = String(a?.nameEn?.value || key);
+      const nameAr = String(a?.nameAr?.value || nameEn);
+      return {
+        id: key,
+        name: label(nameAr, nameEn, isEn),
+        nameAr,
+        nameEn,
+        image: urlOf(a.thumbnailUrl) || urlOf(a.imageSliced) || '',
+        sortOrder: Number(a?.sortOrder?.value ?? NaN),
+        ...priceOf(key),
+      };
+    })
+    .sort((x: any, y: any) => {
+      const ax = Number.isFinite(x.sortOrder) ? x.sortOrder : 1e9;
+      const ay = Number.isFinite(y.sortOrder) ? y.sortOrder : 1e9;
+      return ax - ay || x.nameEn.localeCompare(y.nameEn);
+    })
+    .map(({sortOrder, ...rest}: any) => rest as BuilderOption);
+
+  const catalogFlavors: BuilderOption[] = CAKE_FILLINGS.map((f) => ({
     id: f.id,
     name: label(f.nameAr, f.nameEn, isEn),
     nameAr: f.nameAr,
@@ -150,7 +261,45 @@ export function buildCakeOptions(
   // `none` is a real decoration with its own row and its own thumbnail. It is
   // NOT the old hand-written "Smooth Minimalist" placeholder, which existed
   // only because the absence of a topping had nowhere to live.
-  const styles: BuilderOption[] = CAKE_DECORATIONS.map((d) => ({
+  const flavors = managedFlavors.length > 0 ? managedFlavors : catalogFlavors;
+
+  /**
+   * Toppings managed in Shopify: `cake_attribute` rows typed `topping` with a
+   * `builder_key` and a thumbnail, not hidden. Their pictures per shape live
+   * in `cake_topping_design` (topping × shape → front/top/sliced layers) and
+   * are laid over the cake by the builder. When any exist they replace the
+   * drawn decorations, with "no decoration" kept first.
+   */
+  const managedStyles: BuilderOption[] = (cakeAttributes ?? [])
+    .filter(
+      (a: any) =>
+        a?.attributeType?.value === 'topping' &&
+        a?.builderKey?.value &&
+        urlOf(a?.thumbnailUrl) &&
+        a?.hidden?.value !== 'true',
+    )
+    .map((a: any) => {
+      const key = String(a.builderKey.value);
+      const nameEn = String(a?.nameEn?.value || key);
+      const nameAr = String(a?.nameAr?.value || nameEn);
+      return {
+        id: key,
+        name: label(nameAr, nameEn, isEn),
+        nameAr,
+        nameEn,
+        image: urlOf(a.thumbnailUrl) || '',
+        sortOrder: Number(a?.sortOrder?.value ?? NaN),
+        ...priceOf(key),
+      };
+    })
+    .sort((x: any, y: any) => {
+      const ax = Number.isFinite(x.sortOrder) ? x.sortOrder : 1e9;
+      const ay = Number.isFinite(y.sortOrder) ? y.sortOrder : 1e9;
+      return ax - ay || x.nameEn.localeCompare(y.nameEn);
+    })
+    .map(({sortOrder, ...rest}: any) => rest as BuilderOption);
+
+  const catalogStyles: BuilderOption[] = CAKE_DECORATIONS.map((d) => ({
     id: d.id,
     name: label(d.nameAr, d.nameEn, isEn),
     nameAr: d.nameAr,
@@ -180,6 +329,12 @@ export function buildCakeOptions(
     priced: true,
     provisional: false,
   }));
+
+  const noneStyle = catalogStyles.find((d) => d.id === 'none');
+  const styles: BuilderOption[] =
+    managedStyles.length > 0
+      ? [...(noneStyle ? [{...noneStyle, priced: true, provisional: false}] : []), ...managedStyles]
+      : catalogStyles;
 
   return {shapes, flavors, styles, colors};
 }

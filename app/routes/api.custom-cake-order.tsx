@@ -612,6 +612,13 @@ export async function action({request, context}: ActionFunctionArgs) {
     let previewImageAttr = cakePreviewImage
       ? 'Yes (Processing Upload...)'
       : null;
+    // A shape managed in Shopify sends its own CDN picture, not a screenshot.
+    if (
+      typeof cakePreviewImage === 'string' &&
+      /^https:\/\/cdn\.shopify\.com\//.test(cakePreviewImage)
+    ) {
+      previewImageAttr = cakePreviewImage;
+    }
 
     // If there's a base64 image payload, upload it to Shopify Files first
     if (uploadedImage && uploadedImage.startsWith('data:image')) {

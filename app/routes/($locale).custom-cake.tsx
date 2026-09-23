@@ -58,33 +58,41 @@ const CAKE_ATTRIBUTES_QUERY = `#graphql
         # "true" only on prices the development team modelled. Absent or
         # "false" means the price came from Saadeddin and is sellable.
         provisional: field(key: "provisional") { value }
+        # Admin-controlled list order and visibility for the builder.
+        sortOrder: field(key: "sort_order") { value }
+        hidden: field(key: "hidden") { value }
         thumbnailUrl: field(key: "thumbnail_image") { reference { ... on MediaImage { image { url } } } }
         imageFront: field(key: "image_front") { reference { ... on MediaImage { image { url } } } }
         imageTop: field(key: "image_top") { reference { ... on MediaImage { image { url } } } }
         imageSliced: field(key: "image_sliced") { reference { ... on MediaImage { image { url } } } }
+        frostingFront: field(key: "frosting_front") { reference { ... on MediaImage { image { url } } } }
+        frostingTop: field(key: "frosting_top") { reference { ... on MediaImage { image { url } } } }
+        frostingSliced: field(key: "frosting_sliced") { reference { ... on MediaImage { image { url } } } }
       }
     }
     toppingDesigns: metaobjects(type: "cake_topping_design", first: 250) {
       nodes {
         id
         topping: field(key: "topping") {
-          value
-          reference {
-            ... on Metaobject {
-              id
-            }
-          }
+          reference { ... on Metaobject { builderKey: field(key: "builder_key") { value } } }
         }
         shape: field(key: "shape") {
-          value
-          reference {
-            ... on Metaobject {
-              id
-            }
-          }
+          reference { ... on Metaobject { builderKey: field(key: "builder_key") { value } } }
         }
         imageFront: field(key: "image_front") { reference { ... on MediaImage { image { url } } } }
         imageTop: field(key: "image_top") { reference { ... on MediaImage { image { url } } } }
+        imageSliced: field(key: "image_sliced") { reference { ... on MediaImage { image { url } } } }
+      }
+    }
+    # One slice picture per flavour per shape, for the builder's Slice view.
+    flavorSlices: metaobjects(type: "cake_flavor_slice", first: 250) {
+      nodes {
+        shape: field(key: "shape") {
+          reference { ... on Metaobject { builderKey: field(key: "builder_key") { value } } }
+        }
+        flavor: field(key: "flavor") {
+          reference { ... on Metaobject { builderKey: field(key: "builder_key") { value } } }
+        }
         imageSliced: field(key: "image_sliced") { reference { ... on MediaImage { image { url } } } }
       }
     }
@@ -119,6 +127,7 @@ export async function loader({context}: LoaderFunctionArgs) {
       locale: storefront.i18n.language.toLowerCase(),
       cakeAttributes: data?.cakeAttributes?.nodes || [],
       toppingDesigns: data?.toppingDesigns?.nodes || [],
+      flavorSlices: data?.flavorSlices?.nodes || [],
       preparationHours: isNaN(preparationHours) ? 24 : preparationHours,
     };
   } catch (error) {
@@ -127,19 +136,21 @@ export async function loader({context}: LoaderFunctionArgs) {
       locale: 'en',
       cakeAttributes: [],
       toppingDesigns: [],
+      flavorSlices: [],
       preparationHours: 24,
     };
   }
 }
 
 export default function CustomCakeBuilderRoute() {
-  const {cakeAttributes, toppingDesigns, locale, preparationHours} =
+  const {cakeAttributes, toppingDesigns, flavorSlices, locale, preparationHours} =
     useLoaderData<typeof loader>();
   const isEn = locale === 'en';
   return (
     <CustomCakeBuilder
       cakeAttributes={cakeAttributes}
       toppingDesigns={toppingDesigns}
+      flavorSlices={flavorSlices}
       isEn={isEn}
       preparationHours={preparationHours}
     />

@@ -35,6 +35,32 @@ export async function action({request, context}: LoaderFunctionArgs) {
       });
     }
 
+    const {recordCorporateQuote, quoteAdminUrl} = await import(
+      '~/lib/corporate-quote.server'
+    );
+
+    /**
+     * Storage first, notification second -- see corporate-quote.server.ts.
+     *
+     * These are international wholesale enquiries: the slowest-closing and
+     * highest-value leads the site takes, and their only record was one
+     * email to an address that was unset in production. They now join the
+     * same `corporate_quote_request` list as the other B2B forms,
+     * separated by `source`.
+     */
+    const stored = await recordCorporateQuote(context.env, {
+      companyName,
+      contactName: fullName,
+      email,
+      phone,
+      destinationCountry,
+      notes: message,
+      source: 'export',
+      locale: isEn ? 'en' : 'ar',
+    });
+
+    const adminLink = stored ? quoteAdminUrl(context.env, stored.id) : null;
+
     const {sendFormEmailNotification} = await import('~/lib/email.server');
     await sendFormEmailNotification(
       {
@@ -45,12 +71,30 @@ export async function action({request, context}: LoaderFunctionArgs) {
         phone,
         companyName,
         destinationCountry,
-        message,
+        /**
+         * The destination market leads the subject and the body because it
+         * decides who picks the enquiry up, and because the payload's own
+         * `destinationCountry` is not one of the rows the notification
+         * template renders -- it was being collected and then dropped on
+         * the way to the inbox.
+         */
+        subject: `Export enquiry — ${destinationCountry || 'destination not given'}`,
+        message: [
+          `Destination country: ${destinationCountry || 'Not given'}`,
+          '',
+          message || 'No products or quantities specified.',
+          adminLink ? `\nSaved in Shopify: ${adminLink}` : null,
+          stored
+            ? null
+            : '\nWARNING: this enquiry could NOT be saved to Shopify. This email is the only copy.',
+        ]
+          .filter((line) => line !== null)
+          .join('\n'),
       },
       context.env,
     );
 
-    return data({success: true});
+    return data({success: true, stored: Boolean(stored)});
   } catch (err) {
     return data({
       success: false,
@@ -382,13 +426,22 @@ export default function ExportPage() {
     setMounted(true);
   }, []);
 
-  const exportFetcher = useFetcher();
+  const exportFetcher = useFetcher<{success?: boolean; error?: string}>();
+
+  /**
+   * The thank-you screen waits for the action now. It used to appear on the
+   * same tick as the submit, so a thrown action still read as "received"
+   * and the enquiry was gone with no sign of it.
+   */
+  useEffect(() => {
+    if (exportFetcher.state === 'idle' && exportFetcher.data?.success) {
+      setFormSubmitted(true);
+    }
+  }, [exportFetcher.state, exportFetcher.data]);
 
   const handleFormSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    exportFetcher.submit(formData, { method: 'post' });
-    setFormSubmitted(true);
+    exportFetcher.submit(new FormData(e.currentTarget), {method: 'post'});
   };
 
   const scrollToSection = (e: React.MouseEvent, targetId: string) => {
@@ -999,12 +1052,32 @@ export default function ExportPage() {
                   />
                 </div>
 
+                {exportFetcher.state === 'idle' &&
+                  exportFetcher.data?.success === false && (
+                    <div
+                      role="alert"
+                      className="rounded-[12px] border border-red-300 bg-red-50 px-4 py-3 text-[14px] font-bold text-red-700"
+                    >
+                      {exportFetcher.data?.error ||
+                        (isEn
+                          ? 'Something went wrong. Please try again, or contact us on WhatsApp.'
+                          : 'تعذّر إرسال الطلب. حاول مرة أخرى أو راسلنا على واتساب.')}
+                    </div>
+                  )}
+
                 <button
                   type="submit"
-                  className="w-full h-[50px] bg-[#234745] hover:bg-[#1A3533] text-white font-bold text-[18px] rounded-[999px] transition-all shadow-md active:scale-98"
+                  disabled={exportFetcher.state !== 'idle'}
+                  className="w-full h-[50px] bg-[#234745] hover:bg-[#1A3533] text-white font-bold text-[18px] rounded-[999px] transition-all shadow-md active:scale-98 disabled:opacity-50"
                   style={{fontFamily: "'GE Dinar One', sans-serif"}}
                 >
-                  {isEn ? 'Submit Export Request' : 'إرسال الطلب'}
+                  {exportFetcher.state !== 'idle'
+                    ? isEn
+                      ? 'Submitting...'
+                      : 'جاري الإرسال...'
+                    : isEn
+                      ? 'Submit Export Request'
+                      : 'إرسال الطلب'}
                 </button>
 
                 <p className="text-[12px] text-[#9FB7AE] text-center pt-1" style={{fontFamily: "'EnglishDigits', 'GE Dinar One', sans-serif"}}>

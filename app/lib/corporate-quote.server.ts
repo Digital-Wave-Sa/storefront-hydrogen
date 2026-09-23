@@ -245,6 +245,8 @@ export type QuoteRecord = {
   budgetPerBox?: string;
   deliveryDate?: string;
   selectedPackage?: string;
+  /** Target market, for wholesale enquiries from /export. */
+  destinationCountry?: string;
   notes?: string;
   logoFileId?: string | null;
   brandGuideFileId?: string | null;
@@ -286,6 +288,7 @@ export async function recordCorporateQuote(
       {key: 'budget_per_box', value: record.budgetPerBox},
       {key: 'delivery_date', value: record.deliveryDate},
       {key: 'selected_package', value: record.selectedPackage},
+      {key: 'destination_country', value: record.destinationCountry},
       {key: 'notes', value: record.notes},
       {key: 'logo', value: record.logoFileId},
       {key: 'brand_guide', value: record.brandGuideFileId},

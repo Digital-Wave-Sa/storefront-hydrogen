@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, startTransition } from 'react';
 import { SaudiRiyalSymbol } from '~/components/Price';
 
 export interface StoreCreditBalanceProps {
@@ -37,8 +37,10 @@ export function StoreCreditBalance({
    */
   useEffect(() => {
     if (initialBalance === null || initialBalance === undefined) return;
-    setBalance(initialBalance);
-    setLoading(false);
+    startTransition(() => {
+      setBalance(initialBalance);
+      setLoading(false);
+    });
   }, [initialBalance]);
 
   useEffect(() => {
@@ -50,15 +52,18 @@ export function StoreCreditBalance({
     fetch('/api/store-credit')
       .then((r) => r.json())
       .then((data: any) => {
-        if (isMounted && data.success && typeof data.balance === 'number') {
-          setBalance(data.balance);
-        }
+        if (!isMounted) return;
+        startTransition(() => {
+          if (data.success && typeof data.balance === 'number') {
+            setBalance(data.balance);
+          }
+        });
       })
       .catch((err) => {
         console.error('Failed to fetch store credit balance', err);
       })
       .finally(() => {
-        if (isMounted) setLoading(false);
+        if (isMounted) startTransition(() => setLoading(false));
       });
 
     return () => {

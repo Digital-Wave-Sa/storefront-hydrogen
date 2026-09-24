@@ -41,6 +41,25 @@ export const links: LinksFunction = () => {
   ];
 };
 
+/**
+ * The shape of one `cake_topping_design` row, written out once because the
+ * first page comes back with the rest of the builder's data and the pages
+ * after it come back on their own. Both queries have to ask for exactly the
+ * same fields or the second page would arrive missing pictures.
+ */
+const TOPPING_DESIGN_FIELDS = `#graphql
+  id
+  topping: field(key: "topping") {
+    reference { ... on Metaobject { builderKey: field(key: "builder_key") { value } } }
+  }
+  shape: field(key: "shape") {
+    reference { ... on Metaobject { builderKey: field(key: "builder_key") { value } } }
+  }
+  imageFront: field(key: "image_front") { reference { ... on MediaImage { image { url } } } }
+  imageTop: field(key: "image_top") { reference { ... on MediaImage { image { url } } } }
+  imageSliced: field(key: "image_sliced") { reference { ... on MediaImage { image { url } } } }
+`;
+
 const CAKE_ATTRIBUTES_QUERY = `#graphql
   query CakeAttributes($language: LanguageCode) @inContext(language: $language) {
     cakeAttributes: metaobjects(type: "cake_attribute", first: 250) {
@@ -70,18 +89,15 @@ const CAKE_ATTRIBUTES_QUERY = `#graphql
         frostingSliced: field(key: "frosting_sliced") { reference { ... on MediaImage { image { url } } } }
       }
     }
+    # 250 is the Storefront API's hard page limit, not a number we chose, and
+    # one topping set is 10 designs x 10 shapes = 100 rows. Past ~two and a
+    # half sets the rest of the rows are simply not in the response and the
+    # toppings that lost their pictures vanish from the builder with no error
+    # anywhere, so the loader follows the cursor. See TOPPING_DESIGNS_PAGE.
     toppingDesigns: metaobjects(type: "cake_topping_design", first: 250) {
+      pageInfo { hasNextPage endCursor }
       nodes {
-        id
-        topping: field(key: "topping") {
-          reference { ... on Metaobject { builderKey: field(key: "builder_key") { value } } }
-        }
-        shape: field(key: "shape") {
-          reference { ... on Metaobject { builderKey: field(key: "builder_key") { value } } }
-        }
-        imageFront: field(key: "image_front") { reference { ... on MediaImage { image { url } } } }
-        imageTop: field(key: "image_top") { reference { ... on MediaImage { image { url } } } }
-        imageSliced: field(key: "image_sliced") { reference { ... on MediaImage { image { url } } } }
+        ${TOPPING_DESIGN_FIELDS}
       }
     }
     # One slice picture per flavour per shape, for the builder's Slice view.
@@ -104,6 +120,26 @@ const CAKE_ATTRIBUTES_QUERY = `#graphql
   }
 `;
 
+/** The pages of `cake_topping_design` after the first one. */
+const TOPPING_DESIGNS_PAGE_QUERY = `#graphql
+  query ToppingDesignsPage($language: LanguageCode, $after: String)
+  @inContext(language: $language) {
+    toppingDesigns: metaobjects(type: "cake_topping_design", first: 250, after: $after) {
+      pageInfo { hasNextPage endCursor }
+      nodes {
+        ${TOPPING_DESIGN_FIELDS}
+      }
+    }
+  }
+`;
+
+/**
+ * A ceiling on the cursor loop. Ten pages is 2,500 design rows — far more than
+ * the shop will ever have — and it exists only so a malformed cursor can never
+ * spin the loader forever.
+ */
+const MAX_TOPPING_DESIGN_PAGES = 10;
+
 export async function loader({context}: LoaderFunctionArgs) {
   const {storefront} = context;
   try {
@@ -120,13 +156,42 @@ export async function loader({context}: LoaderFunctionArgs) {
         return null;
       })) as any;
 
+    /**
+     * Follow the cursor for the remaining design rows. A failed page is
+     * dropped rather than thrown: the builder degrades to the toppings it did
+     * receive, which is what the outer catch already does for the whole query.
+     */
+    const toppingDesigns: any[] = [...(data?.toppingDesigns?.nodes || [])];
+    let pageInfo = data?.toppingDesigns?.pageInfo;
+    for (let page = 1; page < MAX_TOPPING_DESIGN_PAGES; page++) {
+      if (!pageInfo?.hasNextPage || !pageInfo?.endCursor) break;
+      const next = (await storefront
+        .query(TOPPING_DESIGNS_PAGE_QUERY, {
+          variables: {
+            language: storefront.i18n.language,
+            after: pageInfo.endCursor,
+          },
+          cache: storefront.CacheShort(),
+        })
+        .catch((err: any) => {
+          console.warn(
+            '[Cake Builder Loader] Topping designs page error:',
+            err?.message || err,
+          );
+          return null;
+        })) as any;
+      if (!next?.toppingDesigns?.nodes?.length) break;
+      toppingDesigns.push(...next.toppingDesigns.nodes);
+      pageInfo = next.toppingDesigns.pageInfo;
+    }
+
     const rawHours = data?.cakeSettings?.nodes?.[0]?.preparationHours?.value;
     const preparationHours = rawHours ? parseInt(rawHours, 10) : 24;
 
     return {
       locale: storefront.i18n.language.toLowerCase(),
       cakeAttributes: data?.cakeAttributes?.nodes || [],
-      toppingDesigns: data?.toppingDesigns?.nodes || [],
+      toppingDesigns,
       flavorSlices: data?.flavorSlices?.nodes || [],
       preparationHours: isNaN(preparationHours) ? 24 : preparationHours,
     };

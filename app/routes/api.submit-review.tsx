@@ -389,7 +389,6 @@ export async function action({request, context}: ActionFunctionArgs) {
       if (isBranchNegative) {
         await api.sendNegativeReview({
           orderId: resolvedOrderId,
-          orderNumber: String(foundOrder?.order_number || cleanOrdId),
           rating: bRatingNum,
           branchRating: bRatingNum,
           comment: String(comment || 'No comment provided'),
@@ -404,7 +403,6 @@ export async function action({request, context}: ActionFunctionArgs) {
         if (pRatingNum > 0 && pRatingNum <= 2) {
           await api.sendNegativeReview({
             orderId: resolvedOrderId,
-            orderNumber: String(foundOrder?.order_number || cleanOrdId),
             rating: pRatingNum,
             // The branch score alongside the product's, so the ERP can see
             // whether one bad item sat inside an otherwise fine order.

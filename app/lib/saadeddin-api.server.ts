@@ -422,7 +422,6 @@ export class SaadeddinApi {
    */
   async sendNegativeReview(payload: {
     orderId: string;
-    orderNumber?: string;
     rating: number;
     comment: string;
     customerName?: string;
@@ -435,7 +434,6 @@ export class SaadeddinApi {
     try {
       const bodyPayload: Record<string, any> = {
         order_id: String(payload.orderId),
-        ...(payload.orderNumber ? { order_number: String(payload.orderNumber) } : {}),
         customer_name: payload.customerName || 'عميل سعد الدين',
         branch_name: payload.branchName || 'General',
         // A string in the documented example, unlike `rating`.
